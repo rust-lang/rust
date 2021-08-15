@@ -16,7 +16,6 @@ fn main() {
     let stderr = ::std::io::stderr();
     let mut stderr = stderr.lock();
 
-    // FIXME: this thread panics.
     std::thread::spawn(move || {
         println!("Hello from another thread!");
     });
@@ -56,7 +55,7 @@ fn main() {
     assert_eq!(-32768i16, (-32768i16).saturating_add(-32768));
     assert_eq!(32767i16, 32767i16.saturating_add(1));
 
-    /*assert_eq!(0b0000000000000000000000000010000010000000000000000000000000000000_0000000000100000000000000000000000001000000000000100000000000000u128.leading_zeros(), 26);
+    assert_eq!(0b0000000000000000000000000010000010000000000000000000000000000000_0000000000100000000000000000000000001000000000000100000000000000u128.leading_zeros(), 26);
     assert_eq!(0b0000000000000000000000000010000000000000000000000000000000000000_0000000000000000000000000000000000001000000000000000000010000000u128.trailing_zeros(), 7);
 
     let _d = 0i128.checked_div(2i128);
@@ -85,7 +84,7 @@ fn main() {
     assert_eq!(houndred_i128 as f32, 100.0);
     assert_eq!(houndred_i128 as f64, 100.0);
     assert_eq!(houndred_f32 as i128, 100);
-    assert_eq!(houndred_f64 as i128, 100);*/
+    assert_eq!(houndred_f64 as i128, 100);
 
     let _a = 1u32 << 2u8;
 

@@ -1,8 +1,7 @@
 #!/bin/bash
 
-# TODO: rewrite to cargo-make (or just) or something like that to only rebuild the sysroot when needed?
+# TODO(antoyo): rewrite to cargo-make (or just) or something like that to only rebuild the sysroot when needed?
 
-#set -x
 set -e
 
 export GCC_PATH=$(cat gcc_path)
@@ -30,17 +29,9 @@ $RUSTC example/mini_core.rs --crate-name mini_core --crate-type lib,dylib --targ
 echo "[BUILD] example"
 $RUSTC example/example.rs --crate-type lib --target $TARGET_TRIPLE
 
-#if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
-    #echo "[JIT] mini_core_hello_world"
-    #CG_CLIF_JIT=1 CG_CLIF_JIT_ARGS="abc bcd" $RUSTC --crate-type bin -Cprefer-dynamic example/mini_core_hello_world.rs --cfg jit --target $HOST_TRIPLE
-#else
-    #echo "[JIT] mini_core_hello_world (skipped)"
-#fi
-
 echo "[AOT] mini_core_hello_world"
 $RUSTC example/mini_core_hello_world.rs --crate-name mini_core_hello_world --crate-type bin -g --target $TARGET_TRIPLE
 $RUN_WRAPPER ./target/out/mini_core_hello_world abc bcd
-# (echo "break set -n main"; echo "run"; sleep 1; echo "si -c 10"; sleep 1; echo "frame variable") | lldb -- ./target/out/mini_core_hello_world abc bcd
 
 echo "[BUILD] sysroot"
 time ./build_sysroot/build_sysroot.sh
@@ -52,20 +43,12 @@ $RUN_WRAPPER ./target/out/arbitrary_self_types_pointers_and_wrappers
 echo "[AOT] alloc_system"
 $RUSTC example/alloc_system.rs --crate-type lib --target "$TARGET_TRIPLE"
 
-# FIXME: this requires linking an additional lib for __popcountdi2
-#echo "[AOT] alloc_example"
-#$RUSTC example/alloc_example.rs --crate-type bin --target $TARGET_TRIPLE
-#$RUN_WRAPPER ./target/out/alloc_example
-
-#if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
-    #echo "[JIT] std_example"
-    #CG_CLIF_JIT=1 $RUSTC --crate-type bin -Cprefer-dynamic example/std_example.rs --target $HOST_TRIPLE
-#else
-    #echo "[JIT] std_example (skipped)"
-#fi
+echo "[AOT] alloc_example"
+$RUSTC example/alloc_example.rs --crate-type bin --target $TARGET_TRIPLE
+$RUN_WRAPPER ./target/out/alloc_example
 
 echo "[AOT] dst_field_align"
-# FIXME Re-add -Zmir-opt-level=2 once rust-lang/rust#67529 is fixed.
+# FIXME(antoyo): Re-add -Zmir-opt-level=2 once rust-lang/rust#67529 is fixed.
 $RUSTC example/dst-field-align.rs --crate-name dst_field_align --crate-type bin --target $TARGET_TRIPLE
 $RUN_WRAPPER ./target/out/dst_field_align || (echo $?; false)
 
@@ -81,14 +64,14 @@ echo "[AOT] track-caller-attribute"
 $RUSTC example/track-caller-attribute.rs --crate-type bin -Cpanic=abort --target $TARGET_TRIPLE
 $RUN_WRAPPER ./target/out/track-caller-attribute
 
-# FIXME: this requires linking an additional lib for __popcountdi2
-#echo "[BUILD] mod_bench"
-#$RUSTC example/mod_bench.rs --crate-type bin --target $TARGET_TRIPLE
+echo "[BUILD] mod_bench"
+$RUSTC example/mod_bench.rs --crate-type bin --target $TARGET_TRIPLE
 
-# FIXME linker gives multiple definitions error on Linux
+# FIXME(antoyo): linker gives multiple definitions error on Linux
 #echo "[BUILD] sysroot in release mode"
 #./build_sysroot/build_sysroot.sh --release
 
+# TODO(antoyo): uncomment when it works.
 #pushd simple-raytracer
 #if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
     #echo "[BENCH COMPILE] ebobby/simple-raytracer"
@@ -113,6 +96,7 @@ rm -r ./target || true
 ../../../../../cargo.sh test
 popd
 
+# TODO(antoyo): uncomment when it works.
 #pushd regex
 #echo "[TEST] rust-lang/regex example shootout-regex-dna"
 #../cargo.sh clean
@@ -152,9 +136,6 @@ git fetch
 git checkout $(rustc -V | cut -d' ' -f3 | tr -d '(')
 export RUSTFLAGS=
 
-#git apply ../rust_lang.patch
-
-
 rm config.toml || true
 
 cat > config.toml <<EOF
@@ -182,16 +163,9 @@ for test in $(rg --files-with-matches "catch_unwind|should_panic|thread|lto" src
 done
 git checkout src/test/ui/type-alias-impl-trait/auxiliary/cross_crate_ice.rs
 git checkout src/test/ui/type-alias-impl-trait/auxiliary/cross_crate_ice2.rs
-rm src/test/ui/llvm-asm/llvm-asm-in-out-operand.rs || true # TODO: Enable back this test if I ever implement the llvm_asm! macro.
-#rm src/test/ui/consts/const-size_of-cycle.rs || true # Error file path difference
-#rm src/test/ui/impl-trait/impl-generic-mismatch.rs || true # ^
-#rm src/test/ui/type_length_limit.rs || true
-#rm src/test/ui/issues/issue-50993.rs || true # Target `thumbv7em-none-eabihf` is not supported
-#rm src/test/ui/macros/same-sequence-span.rs || true # Proc macro .rustc section not found?
-#rm src/test/ui/suggestions/issue-61963.rs || true # ^
+rm src/test/ui/llvm-asm/llvm-asm-in-out-operand.rs || true # TODO(antoyo): Enable back this test if I ever implement the llvm_asm! macro.
 
 RUSTC_ARGS="-Zpanic-abort-tests -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot -Cpanic=abort"
 
 echo "[TEST] rustc test suite"
-# TODO: remove excluded tests when they stop stalling.
-COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 src/test/ui/ --rustc-args "$RUSTC_ARGS" --exclude src/test/ui/numbers-arithmetic/saturating-float-casts.rs --exclude src/test/ui/issues/issue-50811.rs
+COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 src/test/ui/ --rustc-args "$RUSTC_ARGS"

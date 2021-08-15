@@ -41,7 +41,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub codegen_unit: &'tcx CodegenUnit<'tcx>,
     pub context: &'gcc Context<'gcc>,
 
-    // TODO: First set it to a dummy block to avoid using Option?
+    // TODO(antoyo): First set it to a dummy block to avoid using Option?
     pub current_block: RefCell<Option<Block<'gcc>>>,
     pub current_func: RefCell<Option<Function<'gcc>>>,
     pub normal_function_addresses: RefCell<FxHashSet<RValue<'gcc>>>,
@@ -104,7 +104,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
 
     /// Cache of globals.
     pub globals: RefCell<FxHashMap<String, RValue<'gcc>>>,
-    // TODO: remove global_names.
+    // TODO(antoyo): remove global_names.
     pub global_names: RefCell<FxHashMap<RValue<'gcc>, String>>,
 
     /// A counter that is used for generating local symbol names
@@ -119,13 +119,13 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// `const_undef()` returns struct as pointer so that they can later be assigned a value.
     /// As such, this set remembers which of these pointers were returned by this function so that
     /// they can be derefered later.
-    /// FIXME: fix the rustc API to avoid having this hack.
+    /// FIXME(antoyo): fix the rustc API to avoid having this hack.
     pub structs_as_pointer: RefCell<FxHashSet<RValue<'gcc>>>,
 
     /// Store the pointer of different types for safety.
     /// When casting the values back to their original types, check that they are indeed that type
     /// with these sets.
-    /// FIXME: remove when the API supports more types.
+    /// FIXME(antoyo): remove when the API supports more types.
     #[cfg(debug_assertions)]
     lvalues: RefCell<FxHashSet<LValue<'gcc>>>,
 }
@@ -133,22 +133,20 @@ pub struct CodegenCx<'gcc, 'tcx> {
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn new(context: &'gcc Context<'gcc>, codegen_unit: &'tcx CodegenUnit<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         let check_overflow = tcx.sess.overflow_checks();
-        // TODO: fix this mess. libgccjit seems to return random type when using new_int_type().
-        //let isize_type = context.new_int_type((tcx.data_layout.pointer_size.bits() / 8) as i32, true);
+        // TODO(antoyo): fix this mess. libgccjit seems to return random type when using new_int_type().
         let isize_type = context.new_c_type(CType::LongLong);
-        //let usize_type = context.new_int_type((tcx.data_layout.pointer_size.bits() / 8) as i32, false);
         let usize_type = context.new_c_type(CType::ULongLong);
         let bool_type = context.new_type::<bool>();
         let i8_type = context.new_type::<i8>();
         let i16_type = context.new_type::<i16>();
         let i32_type = context.new_type::<i32>();
         let i64_type = context.new_c_type(CType::LongLong);
-        let i128_type = context.new_c_type(CType::Int128t).get_aligned(8); // TODO: should this be hard-coded?
+        let i128_type = context.new_c_type(CType::Int128t).get_aligned(8); // TODO(antoyo): should the alignment be hard-coded?
         let u8_type = context.new_type::<u8>();
         let u16_type = context.new_type::<u16>();
         let u32_type = context.new_type::<u32>();
         let u64_type = context.new_c_type(CType::ULongLong);
-        let u128_type = context.new_c_type(CType::UInt128t).get_aligned(8); // TODO: should this be hard-coded?
+        let u128_type = context.new_c_type(CType::UInt128t).get_aligned(8); // TODO(antoyo): should the alignment be hard-coded?
 
         let tls_model = to_gcc_tls_mode(tcx.sess.tls_model());
 
@@ -261,7 +259,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
     pub fn rvalue_as_lvalue(&self, value: RValue<'gcc>) -> LValue<'gcc> {
         let lvalue: LValue<'gcc> = unsafe { std::mem::transmute(value) };
-        //debug_assert!(self.lvalues.borrow().contains(&lvalue), "{:?} is not an lvalue", value);
         lvalue
     }
 
@@ -276,11 +273,11 @@ impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
 
     type BasicBlock = Block<'gcc>;
     type Type = Type<'gcc>;
-    type Funclet = (); // TODO
+    type Funclet = (); // TODO(antoyo)
 
-    type DIScope = (); // TODO
-    type DILocation = (); // TODO
-    type DIVariable = (); // TODO
+    type DIScope = (); // TODO(antoyo)
+    type DILocation = (); // TODO(antoyo)
+    type DIVariable = (); // TODO(antoyo)
 }
 
 impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
@@ -295,17 +292,12 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn get_fn_addr(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
-        //let symbol = self.tcx.symbol_name(instance).name;
-
         let func = get_fn(self, instance);
         let func = self.rvalue_as_function(func);
         let ptr = func.get_address(None);
 
-        // TODO: don't do this twice: i.e. in declare_fn and here.
-        //let fn_abi = FnAbi::of_instance(self, instance, &[]);
-        //let (return_type, params, _) = fn_abi.gcc_type(self);
-        // FIXME: the rustc API seems to call get_fn_addr() when not needed (e.g. for FFI).
-        //let pointer_type = ptr.get_type();
+        // TODO(antoyo): don't do this twice: i.e. in declare_fn and here.
+        // FIXME(antoyo): the rustc API seems to call get_fn_addr() when not needed (e.g. for FFI).
 
         self.normal_function_addresses.borrow_mut().insert(ptr);
 
@@ -354,12 +346,12 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     "rust_eh_personality"
                 };
                 //let func = self.declare_func(name, self.type_i32(), &[], true);
-                // FIXME: this hack should not be needed. That will probably be removed when
+                // FIXME(antoyo): this hack should not be needed. That will probably be removed when
                 // unwinding support is added.
                 self.context.new_rvalue_from_int(self.int_type, 0)
             }
         };
-        //attributes::apply_target_cpu_attr(self, llfn);
+        // TODO(antoyo): apply target cpu attributes.
         self.eh_personality.set(Some(llfn));
         llfn
     }
@@ -378,32 +370,18 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn used_statics(&self) -> &RefCell<Vec<RValue<'gcc>>> {
         unimplemented!();
-        //&self.used_statics
     }
 
     fn set_frame_pointer_type(&self, _llfn: RValue<'gcc>) {
-        // TODO
-        //attributes::set_frame_pointer_type(self, llfn)
+        // TODO(antoyo)
     }
 
     fn apply_target_cpu_attr(&self, _llfn: RValue<'gcc>) {
-        // TODO
-        //attributes::apply_target_cpu_attr(self, llfn)
+        // TODO(antoyo)
     }
 
     fn create_used_variable(&self) {
         unimplemented!();
-        /*let name = const_cstr!("llvm.used");
-        let section = const_cstr!("llvm.metadata");
-        let array =
-            self.const_array(&self.type_ptr_to(self.type_i8()), &*self.used_statics.borrow());
-
-        unsafe {
-            let g = llvm::LLVMAddGlobal(self.llmod, self.val_ty(array), name.as_ptr());
-            llvm::LLVMSetInitializer(g, array);
-            llvm::LLVMRustSetLinkage(g, llvm::Linkage::AppendingLinkage);
-            llvm::LLVMSetSection(g, section.as_ptr());
-        }*/
     }
 
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {

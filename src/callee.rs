@@ -17,8 +17,6 @@ use crate::context::CodegenCx;
 pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) -> RValue<'gcc> {
     let tcx = cx.tcx();
 
-    //debug!("get_fn(instance={:?})", instance);
-
     assert!(!instance.substs.needs_infer());
     assert!(!instance.substs.has_escaping_bound_vars());
     assert!(!instance.substs.has_param_types_or_consts());
@@ -28,11 +26,9 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
     }
 
     let sym = tcx.symbol_name(instance).name;
-    //debug!("get_fn({:?}: {:?}) => {}", instance, instance.monomorphic_ty(cx.tcx()), sym);
 
     let fn_abi = FnAbi::of_instance(cx, instance, &[]);
 
-    // TODO
     let func =
         if let Some(func) = cx.get_declared_value(&sym) {
             // Create a fn pointer with the new signature.
@@ -62,34 +58,18 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
             // reference. It also occurs when testing libcore and in some
             // other weird situations. Annoying.
             if cx.val_ty(func) != ptrty {
-                //debug!("get_fn: casting {:?} to {:?}", func, ptrty);
-                // TODO
-                //cx.const_ptrcast(func, ptrty)
+                // TODO(antoyo): cast the pointer.
                 func
             }
             else {
-                //debug!("get_fn: not casting pointer!");
                 func
             }
         }
         else {
             cx.linkage.set(FunctionType::Extern);
             let func = cx.declare_fn(&sym, &fn_abi);
-            //cx.linkage.set(FunctionType::Internal);
-            //debug!("get_fn: not casting pointer!");
 
-            // TODO
-            //attributes::from_fn_attrs(cx, func, instance);
-
-            //let instance_def_id = instance.def_id();
-
-            // TODO
-            /*if cx.use_dll_storage_attrs && tcx.is_dllimport_foreign_item(instance_def_id) {
-              unsafe {
-              llvm::LLVMSetDLLStorageClass(func, llvm::DLLStorageClass::DllImport);
-              }
-              }*/
-
+            // TODO(antoyo): set linkage and attributes.
             func
         };
 

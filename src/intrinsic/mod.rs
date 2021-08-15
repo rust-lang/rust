@@ -96,7 +96,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         let llval =
             match name {
                 _ if simple.is_some() => {
-                    // FIXME: remove this cast when the API supports function.
+                    // FIXME(antoyo): remove this cast when the API supports function.
                     let func = unsafe { std::mem::transmute(simple.expect("simple")) };
                     self.call(self.type_void(), func, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None)
                 },
@@ -118,40 +118,12 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 }
                 sym::breakpoint => {
                     unimplemented!();
-                    /*let llfn = self.get_intrinsic(&("llvm.debugtrap"));
-                    self.call(llfn, &[], None)*/
                 }
                 sym::va_copy => {
                     unimplemented!();
-                    /*let intrinsic = self.cx().get_intrinsic(&("llvm.va_copy"));
-                    self.call(intrinsic, &[args[0].immediate(), args[1].immediate()], None)*/
                 }
                 sym::va_arg => {
                     unimplemented!();
-                    /*match fn_abi.ret.layout.abi {
-                        abi::Abi::Scalar(ref scalar) => {
-                            match scalar.value {
-                                Primitive::Int(..) => {
-                                    if self.cx().size_of(ret_ty).bytes() < 4 {
-                                        // `va_arg` should not be called on a integer type
-                                        // less than 4 bytes in length. If it is, promote
-                                        // the integer to a `i32` and truncate the result
-                                        // back to the smaller type.
-                                        let promoted_result = emit_va_arg(self, args[0], tcx.types.i32);
-                                        self.trunc(promoted_result, llret_ty)
-                                    } else {
-                                        emit_va_arg(self, args[0], ret_ty)
-                                    }
-                                }
-                                Primitive::F64 | Primitive::Pointer => {
-                                    emit_va_arg(self, args[0], ret_ty)
-                                }
-                                // `va_arg` should never be used with the return type f32.
-                                Primitive::F32 => bug!("the va_arg intrinsic does not work with `f32`"),
-                            }
-                        }
-                        _ => bug!("the va_arg intrinsic does not work with non-scalar types"),
-                    }*/
                 }
 
                 sym::volatile_load | sym::unaligned_volatile_load => {
@@ -161,15 +133,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         ptr = self.pointercast(ptr, self.type_ptr_to(ty.gcc_type(self)));
                     }
                     let load = self.volatile_load(ptr.get_type(), ptr);
-                    // TODO
-                    /*let align = if name == sym::unaligned_volatile_load {
-                        1
-                    } else {
-                        self.align_of(tp_ty).bytes() as u32
-                    };
-                    unsafe {
-                      llvm::LLVMSetAlignment(load, align);
-                      }*/
+                    // TODO(antoyo): set alignment.
                     self.to_immediate(load, self.layout_of(tp_ty))
                 }
                 sym::volatile_store => {
@@ -187,24 +151,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     | sym::prefetch_read_instruction
                     | sym::prefetch_write_instruction => {
                         unimplemented!();
-                        /*let expect = self.get_intrinsic(&("llvm.prefetch"));
-                        let (rw, cache_type) = match name {
-                            sym::prefetch_read_data => (0, 1),
-                            sym::prefetch_write_data => (1, 1),
-                            sym::prefetch_read_instruction => (0, 0),
-                            sym::prefetch_write_instruction => (1, 0),
-                            _ => bug!(),
-                        };
-                        self.call(
-                            expect,
-                            &[
-                            args[0].immediate(),
-                            self.const_i32(rw),
-                            args[1].immediate(),
-                            self.const_i32(cache_type),
-                            ],
-                            None,
-                        )*/
                     }
                 sym::ctlz
                     | sym::ctlz_nonzero
@@ -257,10 +203,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                     self.block = Some(after_block);
 
                                     result.to_rvalue()
-
-                                    /*let y = self.const_bool(false);
-                                    let llfn = self.get_intrinsic(&format!("llvm.{}.i{}", name, width));
-                                    self.call(llfn, &[args[0].immediate(), y], None)*/
                                 }
                                 sym::ctlz_nonzero => {
                                     self.count_leading_zeroes(width, args[0].immediate())
@@ -274,11 +216,11 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                         args[0].immediate() // byte swap a u8/i8 is just a no-op
                                     }
                                     else {
-                                        // TODO: check if it's faster to use string literals and a
+                                        // TODO(antoyo): check if it's faster to use string literals and a
                                         // match instead of format!.
                                         let bswap = self.cx.context.get_builtin_function(&format!("__builtin_bswap{}", width));
                                         let mut arg = args[0].immediate();
-                                        // FIXME: this cast should not be necessary. Remove
+                                        // FIXME(antoyo): this cast should not be necessary. Remove
                                         // when having proper sized integer types.
                                         let param_type = bswap.get_param(0).to_rvalue().get_type();
                                         if param_type != arg.get_type() {
@@ -289,7 +231,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                 },
                                 sym::bitreverse => self.bit_reverse(width, args[0].immediate()),
                                 sym::rotate_left | sym::rotate_right => {
-                                    // TODO: implement using algorithm from:
+                                    // TODO(antoyo): implement using algorithm from:
                                     // https://blog.regehr.org/archives/1063
                                     // for other platforms.
                                     let is_left = name == sym::rotate_left;
@@ -346,7 +288,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         self.const_bool(true)
                     }
                     /*else if use_integer_compare {
-                        let integer_ty = self.type_ix(layout.size.bits()); // FIXME: LLVM creates an integer of 96 bits for [i32; 3], but gcc doesn't support this, so it creates an integer of 128 bits.
+                        let integer_ty = self.type_ix(layout.size.bits()); // FIXME(antoyo): LLVM creates an integer of 96 bits for [i32; 3], but gcc doesn't support this, so it creates an integer of 128 bits.
                         let ptr_ty = self.type_ptr_to(integer_ty);
                         let a_ptr = self.bitcast(a, ptr_ty);
                         let a_val = self.load(integer_ty, a_ptr, layout.align.abi);
@@ -396,38 +338,27 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn assume(&mut self, value: Self::Value) {
-        // TODO: switch to asumme when it exists.
+        // TODO(antoyo): switch to asumme when it exists.
         // Or use something like this:
         // #define __assume(cond) do { if (!(cond)) __builtin_unreachable(); } while (0)
         self.expect(value, true);
     }
 
     fn expect(&mut self, cond: Self::Value, _expected: bool) -> Self::Value {
-        // TODO
-        /*let expect = self.context.get_builtin_function("__builtin_expect");
-        let expect: RValue<'gcc> = unsafe { std::mem::transmute(expect) };
-        self.call(expect, &[cond, self.const_bool(expected)], None)*/
+        // TODO(antoyo)
         cond
     }
 
     fn sideeffect(&mut self) {
-        // TODO
-        /*if self.tcx().sess.opts.debugging_opts.insert_sideeffect {
-            let fnname = self.get_intrinsic(&("llvm.sideeffect"));
-            self.call(fnname, &[], None);
-        }*/
+        // TODO(antoyo)
     }
 
     fn va_start(&mut self, _va_list: RValue<'gcc>) -> RValue<'gcc> {
         unimplemented!();
-        /*let intrinsic = self.cx().get_intrinsic("llvm.va_start");
-        self.call(intrinsic, &[va_list], None)*/
     }
 
     fn va_end(&mut self, _va_list: RValue<'gcc>) -> RValue<'gcc> {
         unimplemented!();
-        /*let intrinsic = self.cx().get_intrinsic("llvm.va_end");
-        self.call(intrinsic, &[va_list], None)*/
     }
 }
 
@@ -634,7 +565,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 step4
             },
             32 => {
-                // TODO: Refactor with other implementations.
+                // TODO(antoyo): Refactor with other implementations.
                 // First step.
                 let left = self.and(value, context.new_rvalue_from_long(typ, 0x55555555));
                 let left = self.shl(left, context.new_rvalue_from_long(typ, 1));
@@ -681,7 +612,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 // Second step.
                 let left = self.and(step1, context.new_rvalue_from_long(typ, 0x0001FFFF0001FFFF));
                 let left = self.shl(left, context.new_rvalue_from_long(typ, 15));
-                let right = self.and(step1, context.new_rvalue_from_long(typ, 0xFFFE0000FFFE0000u64 as i64)); // TODO: transmute the number instead?
+                let right = self.and(step1, context.new_rvalue_from_long(typ, 0xFFFE0000FFFE0000u64 as i64)); // TODO(antoyo): transmute the number instead?
                 let right = self.lshr(right, context.new_rvalue_from_long(typ, 17));
                 let step2 = self.or(left, right);
 
@@ -715,7 +646,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 step5
             },
             128 => {
-                // TODO: find a more efficient implementation?
+                // TODO(antoyo): find a more efficient implementation?
                 let sixty_four = self.context.new_rvalue_from_long(typ, 64);
                 let high = self.context.new_cast(None, value >> sixty_four, self.u64_type);
                 let low = self.context.new_cast(None, value, self.u64_type);
@@ -735,7 +666,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     fn count_leading_zeroes(&self, width: u64, arg: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO: use width?
+        // TODO(antoyo): use width?
         let arg_type = arg.get_type();
         let count_leading_zeroes =
             if arg_type.is_uint(&self.cx) {
@@ -873,11 +804,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     fn pop_count(&self, value: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO: use the optimized version with fewer operations.
+        // TODO(antoyo): use the optimized version with fewer operations.
         let value_type = value.get_type();
 
         if value_type.is_u128(&self.cx) {
-            // TODO: implement in the normal algorithm below to have a more efficient
+            // TODO(antoyo): implement in the normal algorithm below to have a more efficient
             // implementation (that does not require a call to __popcountdi2).
             let popcount = self.context.get_builtin_function("__builtin_popcountll");
             let sixty_four = self.context.new_rvalue_from_long(value_type, 64);
@@ -1083,204 +1014,8 @@ fn try_intrinsic<'gcc, 'tcx>(bx: &mut Builder<'_, 'gcc, 'tcx>, try_func: RValue<
     }
     else if wants_msvc_seh(bx.sess()) {
         unimplemented!();
-        //codegen_msvc_try(bx, try_func, data, catch_func, dest);
     }
     else {
         unimplemented!();
-        //codegen_gnu_try(bx, try_func, data, catch_func, dest);
     }
 }
-
-// MSVC's definition of the `rust_try` function.
-//
-// This implementation uses the new exception handling instructions in LLVM
-// which have support in LLVM for SEH on MSVC targets. Although these
-// instructions are meant to work for all targets, as of the time of this
-// writing, however, LLVM does not recommend the usage of these new instructions
-// as the old ones are still more optimized.
-/*fn codegen_msvc_try<'a, 'gcc, 'tcx>(_bx: &mut Builder<'a, 'gcc, 'tcx>, _try_func: RValue<'gcc>, _data: RValue<'gcc>, _catch_func: RValue<'gcc>, _dest: RValue<'gcc>) {
-    unimplemented!();
-    /*let llfn = get_rust_try_fn(bx, &mut |mut bx| {
-        bx.set_personality_fn(bx.eh_personality());
-        bx.sideeffect();
-
-        let mut normal = bx.build_sibling_block("normal");
-        let mut catchswitch = bx.build_sibling_block("catchswitch");
-        let mut catchpad = bx.build_sibling_block("catchpad");
-        let mut caught = bx.build_sibling_block("caught");
-
-        let try_func = llvm::get_param(bx.llfn(), 0);
-        let data = llvm::get_param(bx.llfn(), 1);
-        let catch_func = llvm::get_param(bx.llfn(), 2);
-
-        // We're generating an IR snippet that looks like:
-        //
-        //   declare i32 @rust_try(%try_func, %data, %catch_func) {
-        //      %slot = alloca u8*
-        //      invoke %try_func(%data) to label %normal unwind label %catchswitch
-        //
-        //   normal:
-        //      ret i32 0
-        //
-        //   catchswitch:
-        //      %cs = catchswitch within none [%catchpad] unwind to caller
-        //
-        //   catchpad:
-        //      %tok = catchpad within %cs [%type_descriptor, 0, %slot]
-        //      %ptr = load %slot
-        //      call %catch_func(%data, %ptr)
-        //      catchret from %tok to label %caught
-        //
-        //   caught:
-        //      ret i32 1
-        //   }
-        //
-        // This structure follows the basic usage of throw/try/catch in LLVM.
-        // For example, compile this C++ snippet to see what LLVM generates:
-        //
-        //      #include <stdint.h>
-        //
-        //      struct rust_panic {
-        //          rust_panic(const rust_panic&);
-        //          ~rust_panic();
-        //
-        //          uint64_t x[2];
-        //      };
-        //
-        //      int __rust_try(
-        //          void (*try_func)(void*),
-        //          void *data,
-        //          void (*catch_func)(void*, void*) noexcept
-        //      ) {
-        //          try {
-        //              try_func(data);
-        //              return 0;
-        //          } catch(rust_panic& a) {
-        //              catch_func(data, &a);
-        //              return 1;
-        //          }
-        //      }
-        //
-        // More information can be found in libstd's seh.rs implementation.
-        let ptr_align = bx.tcx().data_layout.pointer_align.abi;
-        let slot = bx.alloca(bx.type_i8p(), ptr_align);
-        bx.invoke(try_func, &[data], normal.llbb(), catchswitch.llbb(), None);
-
-        normal.ret(bx.const_i32(0));
-
-        let cs = catchswitch.catch_switch(None, None, 1);
-        catchswitch.add_handler(cs, catchpad.llbb());
-
-        // We can't use the TypeDescriptor defined in libpanic_unwind because it
-        // might be in another DLL and the SEH encoding only supports specifying
-        // a TypeDescriptor from the current module.
-        //
-        // However this isn't an issue since the MSVC runtime uses string
-        // comparison on the type name to match TypeDescriptors rather than
-        // pointer equality.
-        //
-        // So instead we generate a new TypeDescriptor in each module that uses
-        // `try` and let the linker merge duplicate definitions in the same
-        // module.
-        //
-        // When modifying, make sure that the type_name string exactly matches
-        // the one used in src/libpanic_unwind/seh.rs.
-        let type_info_vtable = bx.declare_global("??_7type_info@@6B@", bx.type_i8p());
-        let type_name = bx.const_bytes(b"rust_panic\0");
-        let type_info =
-            bx.const_struct(&[type_info_vtable, bx.const_null(bx.type_i8p()), type_name], false);
-        let tydesc = bx.declare_global("__rust_panic_type_info", bx.val_ty(type_info));
-        unsafe {
-            llvm::LLVMRustSetLinkage(tydesc, llvm::Linkage::LinkOnceODRLinkage);
-            llvm::SetUniqueComdat(bx.llmod, tydesc);
-            llvm::LLVMSetInitializer(tydesc, type_info);
-        }
-
-        // The flag value of 8 indicates that we are catching the exception by
-        // reference instead of by value. We can't use catch by value because
-        // that requires copying the exception object, which we don't support
-        // since our exception object effectively contains a Box.
-        //
-        // Source: MicrosoftCXXABI::getAddrOfCXXCatchHandlerType in clang
-        let flags = bx.const_i32(8);
-        let funclet = catchpad.catch_pad(cs, &[tydesc, flags, slot]);
-        let ptr = catchpad.load(slot, ptr_align);
-        catchpad.call(catch_func, &[data, ptr], Some(&funclet));
-
-        catchpad.catch_ret(&funclet, caught.llbb());
-
-        caught.ret(bx.const_i32(1));
-    });
-
-    // Note that no invoke is used here because by definition this function
-    // can't panic (that's what it's catching).
-    let ret = bx.call(llfn, &[try_func, data, catch_func], None);
-    let i32_align = bx.tcx().data_layout.i32_align.abi;
-    bx.store(ret, dest, i32_align);*/
-}*/
-
-// Definition of the standard `try` function for Rust using the GNU-like model
-// of exceptions (e.g., the normal semantics of LLVM's `landingpad` and `invoke`
-// instructions).
-//
-// This codegen is a little surprising because we always call a shim
-// function instead of inlining the call to `invoke` manually here. This is done
-// because in LLVM we're only allowed to have one personality per function
-// definition. The call to the `try` intrinsic is being inlined into the
-// function calling it, and that function may already have other personality
-// functions in play. By calling a shim we're guaranteed that our shim will have
-// the right personality function.
-/*fn codegen_gnu_try<'a, 'gcc, 'tcx>(_bx: &mut Builder<'a, 'gcc, 'tcx>, _try_func: RValue<'gcc>, _data: RValue<'gcc>, _catch_func: RValue<'gcc>, _dest: RValue<'gcc>) {
-    unimplemented!();
-    /*let llfn = get_rust_try_fn(bx, &mut |mut bx| {
-        // Codegens the shims described above:
-        //
-        //   bx:
-        //      invoke %try_func(%data) normal %normal unwind %catch
-        //
-        //   normal:
-        //      ret 0
-        //
-        //   catch:
-        //      (%ptr, _) = landingpad
-        //      call %catch_func(%data, %ptr)
-        //      ret 1
-
-        bx.sideeffect();
-
-        let mut then = bx.build_sibling_block("then");
-        let mut catch = bx.build_sibling_block("catch");
-
-        let try_func = llvm::get_param(bx.llfn(), 0);
-        let data = llvm::get_param(bx.llfn(), 1);
-        let catch_func = llvm::get_param(bx.llfn(), 2);
-        bx.invoke(try_func, &[data], then.llbb(), catch.llbb(), None);
-        then.ret(bx.const_i32(0));
-
-        // Type indicator for the exception being thrown.
-        //
-        // The first value in this tuple is a pointer to the exception object
-        // being thrown.  The second value is a "selector" indicating which of
-        // the landing pad clauses the exception's type had been matched to.
-        // rust_try ignores the selector.
-        let lpad_ty = bx.type_struct(&[bx.type_i8p(), bx.type_i32()], false);
-        let vals = catch.landing_pad(lpad_ty, bx.eh_personality(), 1);
-        let tydesc = match bx.tcx().lang_items().eh_catch_typeinfo() {
-            Some(tydesc) => {
-                let tydesc = bx.get_static(tydesc);
-                bx.bitcast(tydesc, bx.type_i8p())
-            }
-            None => bx.const_null(bx.type_i8p()),
-        };
-        catch.add_clause(vals, tydesc);
-        let ptr = catch.extract_value(vals, 0);
-        catch.call(catch_func, &[data, ptr], None);
-        catch.ret(bx.const_i32(1));
-    });
-
-    // Note that no invoke is used here because by definition this function
-    // can't panic (that's what it's catching).
-    let ret = bx.call(llfn, &[try_func, data, catch_func], None);
-    let i32_align = bx.tcx().data_layout.i32_align.abi;
-    bx.store(ret, dest, i32_align);*/
-}*/

@@ -32,22 +32,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
     fn static_addr_of(&self, cv: RValue<'gcc>, align: Align, kind: Option<&str>) -> RValue<'gcc> {
         if let Some(global_value) = self.const_globals.borrow().get(&cv) {
-            // TODO
-            /*unsafe {
-                // Upgrade the alignment in cases where the same constant is used with different
-                // alignment requirements
-                let llalign = align.bytes() as u32;
-                if llalign > llvm::LLVMGetAlignment(gv) {
-                    llvm::LLVMSetAlignment(gv, llalign);
-                }
-            }*/
+            // TODO(antoyo): upgrade alignment.
             return *global_value;
         }
         let global_value = self.static_addr_of_mut(cv, align, kind);
-        // TODO
-        /*unsafe {
-            llvm::LLVMSetGlobalConstant(global_value, True);
-        }*/
+        // TODO(antoyo): set global constant.
         self.const_globals.borrow_mut().insert(cv, global_value);
         global_value
     }
@@ -73,9 +62,7 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
         let val_llty = self.val_ty(value);
         let value =
             if val_llty == self.type_i1() {
-                //val_llty = self.type_i8();
                 unimplemented!();
-                //llvm::LLVMConstZExt(value, val_llty)
             }
             else {
                 value
@@ -92,16 +79,9 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
             else {
                 // If we created the global with the wrong type,
                 // correct the type.
-                /*let name = llvm::get_value_name(global).to_vec();
-                llvm::set_value_name(global, b"");
-
-                let linkage = llvm::LLVMRustGetLinkage(global);
-                let visibility = llvm::LLVMRustGetVisibility(global);*/
+                // TODO(antoyo): set value name, linkage and visibility.
 
                 let new_global = self.get_or_insert_global(&name, val_llty, is_tls, attrs.link_section);
-
-                /*llvm::LLVMRustSetLinkage(new_global, linkage);
-                  llvm::LLVMRustSetVisibility(new_global, visibility);*/
 
                 // To avoid breaking any invariants, we leave around the old
                 // global for the moment; we'll replace all references to it
@@ -109,9 +89,7 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
                 //self.statics_to_rauw.borrow_mut().push((global, new_global));
                 new_global
             };
-        // TODO
-        //set_global_alignment(&self, global, self.align_of(ty));
-        //llvm::LLVMSetInitializer(global, value);
+        // TODO(antoyo): set alignment and initializer.
         let value = self.rvalue_as_lvalue(value);
         let value = value.get_address(None);
         let dest_typ = global.get_type();
@@ -119,14 +97,14 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
 
         // NOTE: do not init the variables related to argc/argv because it seems we cannot
         // overwrite those variables.
-        // FIXME: correctly support global variable initialization.
+        // FIXME(antoyo): correctly support global variable initialization.
         let skip_init = [
             ARGV_INIT_ARRAY,
             ARGC,
             ARGV,
         ];
         if !skip_init.iter().any(|symbol_name| name.starts_with(symbol_name)) {
-            // TODO: switch to set_initializer when libgccjit supports that.
+            // TODO(antoyo): switch to set_initializer when libgccjit supports that.
             let memcpy = self.context.get_builtin_function("memcpy");
             let dst = self.context.new_cast(None, global, self.type_i8p());
             let src = self.context.new_cast(None, value, self.type_ptr_to(self.type_void()));
@@ -138,12 +116,9 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
         // mutability are placed into read-only memory.
         if !is_mutable {
             if self.type_is_freeze(ty) {
-                // TODO
-                //llvm::LLVMSetGlobalConstant(global, llvm::True);
+                // TODO(antoyo): set global constant.
             }
         }
-
-        //debuginfo::create_global_var_metadata(&self, def_id, global);
 
         if attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
             // Do not allow LLVM to change the alignment of a TLS on macOS.
@@ -184,19 +159,7 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
                 // happens to be zero. Instead, we should only check the value of defined bytes
                 // and set all undefined bytes to zero if this allocation is headed for the
                 // BSS.
-                /*let all_bytes_are_zero = alloc.relocations().is_empty()
-                    && alloc
-                        .inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len())
-                        .iter()
-                        .all(|&byte| byte == 0);
-
-                let sect_name = if all_bytes_are_zero {
-                    CStr::from_bytes_with_nul_unchecked(b"__DATA,__thread_bss\0")
-                } else {
-                    CStr::from_bytes_with_nul_unchecked(b"__DATA,__thread_data\0")
-                };*/
                 unimplemented!();
-                //llvm::LLVMSetSection(global, sect_name.as_ptr());
             }
         }
 
@@ -205,34 +168,9 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
         if self.tcx.sess.opts.target_triple.triple().starts_with("wasm32") {
             if let Some(_section) = attrs.link_section {
                 unimplemented!();
-                /*let section = llvm::LLVMMDStringInContext(
-                    self.llcx,
-                    section.as_str().as_ptr().cast(),
-                    section.as_str().len() as c_uint,
-                );
-                assert!(alloc.relocations().is_empty());
-
-                // The `inspect` method is okay here because we checked relocations, and
-                // because we are doing this access to inspect the final interpreter state (not
-                // as part of the interpreter execution).
-                let bytes =
-                    alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len());
-                let alloc = llvm::LLVMMDStringInContext(
-                    self.llcx,
-                    bytes.as_ptr().cast(),
-                    bytes.len() as c_uint,
-                );
-                let data = [section, alloc];
-                let meta = llvm::LLVMMDNodeInContext(self.llcx, data.as_ptr(), 2);
-                llvm::LLVMAddNamedMetadataOperand(
-                    self.llmod,
-                    "wasm.custom_sections\0".as_ptr().cast(),
-                    meta,
-                );*/
             }
         } else {
-            // TODO
-            //base::set_link_section(global, &attrs);
+            // TODO(antoyo): set link section.
         }
 
         if attrs.flags.contains(CodegenFnAttrFlags::USED) {
@@ -242,9 +180,7 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
 
     /// Add a global value to a list to be stored in the `llvm.used` variable, an array of i8*.
     fn add_used_global(&self, _global: RValue<'gcc>) {
-        // TODO
-        //let cast = self.context.new_cast(None, global, self.type_i8p());
-        //self.used_statics.borrow_mut().push(cast);
+        // TODO(antoyo)
     }
 }
 
@@ -254,13 +190,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             match kind {
                 Some(kind) if !self.tcx.sess.fewer_names() => {
                     let name = self.generate_local_symbol_name(kind);
-                    // TODO: check if it's okay that TLS is off here.
-                    // TODO: check if it's okay that link_section is None here.
-                    // TODO: set alignment here as well.
+                    // TODO(antoyo): check if it's okay that TLS is off here.
+                    // TODO(antoyo): check if it's okay that link_section is None here.
+                    // TODO(antoyo): set alignment here as well.
                     let gv = self.define_global(&name[..], self.val_ty(cv), false, None).unwrap_or_else(|| {
                         bug!("symbol `{}` is already defined", name);
                     });
-                    //llvm::LLVMRustSetLinkage(gv, llvm::Linkage::PrivateLinkage);
+                    // TODO(antoyo): set linkage.
                     (name, gv)
                 }
                 _ => {
@@ -271,13 +207,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                     (name, global)
                 },
             };
-        // FIXME: I think the name coming from generate_local_symbol_name() above cannot be used
+        // FIXME(antoyo): I think the name coming from generate_local_symbol_name() above cannot be used
         // globally.
         // NOTE: global seems to only be global in a module. So save the name instead of the value
         // to import it later.
         self.global_names.borrow_mut().insert(cv, name);
         self.global_init_block.add_assignment(None, gv.dereference(None), cv);
-        //llvm::SetUnnamedAddress(gv, llvm::UnnamedAddr::Global);
+        // TODO(antoyo): set unnamed address.
         gv
     }
 
@@ -285,19 +221,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let instance = Instance::mono(self.tcx, def_id);
         let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
         if let Some(&global) = self.instances.borrow().get(&instance) {
-            /*let attrs = self.tcx.codegen_fn_attrs(def_id);
-            let name = &*self.tcx.symbol_name(instance).name;
-            let name =
-                if let Some(linkage) = attrs.linkage {
-                    // This is to match what happens in check_and_apply_linkage.
-                    Cow::from(format!("_rust_extern_with_linkage_{}", name))
-                }
-                else {
-                    Cow::from(name)
-                };
-            let global = self.context.new_global(None, GlobalKind::Imported, global.get_type(), &name)
-                .get_address(None);
-            self.global_names.borrow_mut().insert(global, name.to_string());*/
             return global;
         }
 
@@ -312,8 +235,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
         let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
         let sym = self.tcx.symbol_name(instance).name;
-
-        //debug!("get_static: sym={} instance={:?}", sym, instance);
 
         let global =
             if let Some(def_id) = def_id.as_local() {
@@ -332,9 +253,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                         let global = self.declare_global(&sym, llty, is_tls, fn_attrs.link_section);
 
                         if !self.tcx.is_reachable_non_generic(def_id) {
-                            /*unsafe {
-                              llvm::LLVMRustSetVisibility(global, llvm::Visibility::Hidden);
-                              }*/
+                            // TODO(antoyo): set visibility.
                         }
 
                         global
@@ -352,8 +271,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                     item => bug!("get_static: expected static, found {:?}", item),
                 };
 
-                //debug!("get_static: sym={} attrs={:?}", sym, attrs);
-
                 global
             }
             else {
@@ -364,11 +281,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                 let span = self.tcx.def_span(def_id);
                 let global = check_and_apply_linkage(&self, &attrs, ty, sym, span);
 
-                let needs_dll_storage_attr = false; /*self.use_dll_storage_attrs && !self.tcx.is_foreign_item(def_id) &&
-                // ThinLTO can't handle this workaround in all cases, so we don't
-                // emit the attrs. Instead we make them unnecessary by disallowing
-                // dynamic linking when linker plugin based LTO is enabled.
-                !self.tcx.sess.opts.cg.linker_plugin_lto.enabled();*/
+                let needs_dll_storage_attr = false; // TODO(antoyo)
 
                 // If this assertion triggers, there's something wrong with commandline
                 // argument validation.
@@ -391,20 +304,12 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                     // is_codegened_item query.
                     if !self.tcx.is_codegened_item(def_id) {
                         unimplemented!();
-                        /*unsafe {
-                            llvm::LLVMSetDLLStorageClass(global, llvm::DLLStorageClass::DllImport);
-                        }*/
                     }
                 }
                 global
             };
 
-        /*if self.use_dll_storage_attrs && self.tcx.is_dllimport_foreign_item(def_id) {
-            // For foreign (native) libs we know the exact storage type to use.
-            unsafe {
-                llvm::LLVMSetDLLStorageClass(global, llvm::DLLStorageClass::DllImport);
-            }
-        }*/
+        // TODO(antoyo): set dll storage class.
 
         self.instances.borrow_mut().insert(instance, global);
         global
@@ -474,8 +379,6 @@ fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &Codeg
     let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
     let llty = cx.layout_of(ty).gcc_type(cx, true);
     if let Some(linkage) = attrs.linkage {
-        //debug!("get_static: sym={} linkage={:?}", sym, linkage);
-
         // If this is a static with a linkage specified, then we need to handle
         // it a little specially. The typesystem prevents things like &T and
         // extern "C" fn() from being non-null, so we can't just declare a
@@ -506,10 +409,10 @@ fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &Codeg
             cx.define_global(&real_name, llty, is_tls, attrs.link_section).unwrap_or_else(|| {
                 cx.sess().span_fatal(span, &format!("symbol `{}` is already defined", &sym))
             });
-        //llvm::LLVMRustSetLinkage(global2, llvm::Linkage::InternalLinkage);
+        // TODO(antoyo): set linkage.
         let lvalue = global2.dereference(None);
         cx.global_init_block.add_assignment(None, lvalue, global1);
-        //llvm::LLVMSetInitializer(global2, global1);
+        // TODO(antoyo): use global_set_initializer() when it will work.
         global2
     }
     else {

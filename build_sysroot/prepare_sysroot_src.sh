@@ -21,7 +21,7 @@ echo "[GIT] add"
 git add .
 echo "[GIT] commit"
 
-# This is needed on virgin system where nothing is configured.
+# This is needed on systems where nothing is configured.
 # git really needs something here, or it will fail.
 # Even using --author is not enough.
 git config user.email || git config user.email "none@example.com"

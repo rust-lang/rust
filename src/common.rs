@@ -27,7 +27,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     fn const_cstr(&self, symbol: Symbol, _null_terminated: bool) -> RValue<'gcc> {
-        // TODO: handle null_terminated.
+        // TODO(antoyo): handle null_terminated.
         if let Some(&value) = self.const_cstr_cache.borrow().get(&symbol) {
             return value.to_rvalue();
         }
@@ -39,7 +39,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     fn global_string(&self, string: &str) -> RValue<'gcc> {
-        // TODO: handle non-null-terminated strings.
+        // TODO(antoyo): handle non-null-terminated strings.
         let string = self.context.new_string_literal(&*string);
         let sym = self.generate_local_symbol_name("str");
         // NOTE: TLS is always off for a string litteral.
@@ -48,7 +48,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             .unwrap_or_else(|| bug!("symbol `{}` is already defined", sym));
         self.global_init_block.add_assignment(None, global.dereference(None), string);
         global.to_rvalue()
-        //llvm::LLVMRustSetLinkage(global, llvm::Linkage::InternalLinkage);
+        // TODO(antoyo): set linkage.
     }
 
     pub fn inttoptr(&self, block: Block<'gcc>, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
@@ -62,7 +62,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn ptrtoint(&self, block: Block<'gcc>, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        // TODO: when libgccjit allow casting from pointer to int, remove this.
+        // TODO(antoyo): when libgccjit allow casting from pointer to int, remove this.
         let func = block.get_function();
         let local = func.new_local(None, value.get_type(), "ptrLocal");
         block.add_assignment(None, local, value);
@@ -71,10 +71,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let ptr = self.context.new_cast(None, ptr_address, dest_ty.make_pointer());
         ptr.dereference(None).to_rvalue()
     }
-
-    /*pub fn const_vector(&self, elements: &[RValue<'gcc>]) -> RValue<'gcc> {
-        self.context.new_rvalue_from_vector(None, elements[0].get_type(), elements)
-    }*/
 }
 
 pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) -> RValue<'gcc> {
@@ -125,13 +121,13 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn const_uint_big(&self, typ: Type<'gcc>, num: u128) -> RValue<'gcc> {
         let num64: Result<i64, _> = num.try_into();
         if let Ok(num) = num64 {
-            // FIXME: workaround for a bug where libgccjit is expecting a constant.
+            // FIXME(antoyo): workaround for a bug where libgccjit is expecting a constant.
             // The operations >> 64 and | low are making the normal case a non-constant.
             return self.context.new_rvalue_from_long(typ, num as i64);
         }
 
         if num >> 64 != 0 {
-            // FIXME: use a new function new_rvalue_from_unsigned_long()?
+            // FIXME(antoyo): use a new function new_rvalue_from_unsigned_long()?
             let low = self.context.new_rvalue_from_long(self.u64_type, num as u64 as i64);
             let high = self.context.new_rvalue_from_long(typ, (num >> 64) as u64 as i64);
 
@@ -175,12 +171,10 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn const_u8(&self, _i: u8) -> RValue<'gcc> {
         unimplemented!();
-        //self.const_uint(self.type_i8(), i as u64)
     }
 
     fn const_real(&self, _t: Type<'gcc>, _val: f64) -> RValue<'gcc> {
         unimplemented!();
-        //unsafe { llvm::LLVMConstReal(t, val) }
     }
 
     fn const_str(&self, s: Symbol) -> (RValue<'gcc>, RValue<'gcc>) {
@@ -195,7 +189,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let fields: Vec<_> = values.iter()
             .map(|value| value.get_type())
             .collect();
-        // TODO: cache the type? It's anonymous, so probably not.
+        // TODO(antoyo): cache the type? It's anonymous, so probably not.
         let name = fields.iter().map(|typ| format!("{:?}", typ)).collect::<Vec<_>>().join("_");
         let typ = self.type_struct(&fields, packed);
         let structure = self.global_init_func.new_local(None, typ, &name);
@@ -209,19 +203,13 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn const_to_opt_uint(&self, _v: RValue<'gcc>) -> Option<u64> {
-        // TODO
+        // TODO(antoyo)
         None
-        //try_as_const_integral(v).map(|v| unsafe { llvm::LLVMConstIntGetZExtValue(v) })
     }
 
     fn const_to_opt_u128(&self, _v: RValue<'gcc>, _sign_ext: bool) -> Option<u128> {
-        // TODO
+        // TODO(antoyo)
         None
-        /*try_as_const_integral(v).and_then(|v| unsafe {
-            let (mut lo, mut hi) = (0u64, 0u64);
-            let success = llvm::LLVMRustConstInt128Get(v, sign_ext, &mut hi, &mut lo);
-            success.then_some(hi_lo_to_u128(lo, hi))
-        })*/
     }
 
     fn scalar_to_backend(&self, cv: Scalar, layout: &abi::Scalar, ty: Type<'gcc>) -> RValue<'gcc> {
@@ -234,7 +222,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             Scalar::Int(int) => {
                 let data = int.assert_bits(layout.value.size(self));
 
-                // FIXME: there's some issues with using the u128 code that follows, so hard-code
+                // FIXME(antoyo): there's some issues with using the u128 code that follows, so hard-code
                 // the paths for floating-point values.
                 if ty == self.float_type {
                     return self.context.new_rvalue_from_double(ty, f32::from_bits(data as u32) as f64);
@@ -262,8 +250,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                                     _ => self.static_addr_of(init, alloc.align, None),
                                 };
                             if !self.sess().fewer_names() {
-                                // TODO
-                                //llvm::set_value_name(value, format!("{:?}", ptr.alloc_id).as_bytes());
+                                // TODO(antoyo): set value name.
                             }
                             value
                         },

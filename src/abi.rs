@@ -11,8 +11,7 @@ use crate::type_of::LayoutGccExt;
 
 impl<'a, 'gcc, 'tcx> AbiBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn apply_attrs_callsite(&mut self, _fn_abi: &FnAbi<'tcx, Ty<'tcx>>, _callsite: Self::Value) {
-        // TODO
-        //fn_abi.apply_attrs_callsite(self, callsite)
+        // TODO(antoyo)
     }
 
     fn get_param(&self, index: usize) -> Self::Value {
@@ -87,12 +86,9 @@ impl GccType for Reg {
 }
 
 pub trait FnAbiGccExt<'gcc, 'tcx> {
-    // TODO: return a function pointer type instead?
+    // TODO(antoyo): return a function pointer type instead?
     fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> (Type<'gcc>, Vec<Type<'gcc>>, bool);
     fn ptr_to_gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
-    /*fn llvm_cconv(&self) -> llvm::CallConv;
-    fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value);
-    fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx>, callsite: &'ll Value);*/
 }
 
 impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
@@ -145,12 +141,7 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     continue;
                 }
                 PassMode::Indirect { extra_attrs: Some(_), .. } => {
-                    /*let ptr_ty = cx.tcx.mk_mut_ptr(arg.layout.ty);
-                    let ptr_layout = cx.layout_of(ptr_ty);
-                    argument_tys.push(ptr_layout.scalar_pair_element_gcc_type(cx, 0, true));
-                    argument_tys.push(ptr_layout.scalar_pair_element_gcc_type(cx, 1, true));*/
                     unimplemented!();
-                    //continue;
                 }
                 PassMode::Cast(cast) => cast.gcc_type(cx),
                 PassMode::Indirect { extra_attrs: None, .. } => cx.type_ptr_to(arg.memory_ty(cx)),
@@ -166,121 +157,4 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         let pointer_type = cx.context.new_function_pointer_type(None, return_type, &params, variadic);
         pointer_type
     }
-
-    /*fn llvm_cconv(&self) -> llvm::CallConv {
-        match self.conv {
-            Conv::C | Conv::Rust => llvm::CCallConv,
-            Conv::AmdGpuKernel => llvm::AmdGpuKernel,
-            Conv::ArmAapcs => llvm::ArmAapcsCallConv,
-            Conv::Msp430Intr => llvm::Msp430Intr,
-            Conv::PtxKernel => llvm::PtxKernel,
-            Conv::X86Fastcall => llvm::X86FastcallCallConv,
-            Conv::X86Intr => llvm::X86_Intr,
-            Conv::X86Stdcall => llvm::X86StdcallCallConv,
-            Conv::X86ThisCall => llvm::X86_ThisCall,
-            Conv::X86VectorCall => llvm::X86_VectorCall,
-            Conv::X86_64SysV => llvm::X86_64_SysV,
-            Conv::X86_64Win64 => llvm::X86_64_Win64,
-        }
-    }
-
-    fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value) {
-        // FIXME(eddyb) can this also be applied to callsites?
-        if self.ret.layout.abi.is_uninhabited() {
-            llvm::Attribute::NoReturn.apply_llfn(llvm::AttributePlace::Function, llfn);
-        }
-
-        // FIXME(eddyb, wesleywiser): apply this to callsites as well?
-        if !self.can_unwind {
-            llvm::Attribute::NoUnwind.apply_llfn(llvm::AttributePlace::Function, llfn);
-        }
-
-        let mut i = 0;
-        let mut apply = |attrs: &ArgAttributes, ty: Option<&Type>| {
-            attrs.apply_llfn(llvm::AttributePlace::Argument(i), llfn, ty);
-            i += 1;
-        };
-        match self.ret.mode {
-            PassMode::Direct(ref attrs) => {
-                attrs.apply_llfn(llvm::AttributePlace::ReturnValue, llfn, None);
-            }
-            PassMode::Indirect(ref attrs, _) => apply(attrs, Some(self.ret.layout.gcc_type(cx))),
-            _ => {}
-        }
-        for arg in &self.args {
-            if arg.pad.is_some() {
-                apply(&ArgAttributes::new(), None);
-            }
-            match arg.mode {
-                PassMode::Ignore => {}
-                PassMode::Direct(ref attrs) | PassMode::Indirect(ref attrs, None) => {
-                    apply(attrs, Some(arg.layout.gcc_type(cx)))
-                }
-                PassMode::Indirect(ref attrs, Some(ref extra_attrs)) => {
-                    apply(attrs, None);
-                    apply(extra_attrs, None);
-                }
-                PassMode::Pair(ref a, ref b) => {
-                    apply(a, None);
-                    apply(b, None);
-                }
-                PassMode::Cast(_) => apply(&ArgAttributes::new(), None),
-            }
-        }
-    }
-
-    fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx>, callsite: &'ll Value) {
-        // FIXME(wesleywiser, eddyb): We should apply `nounwind` and `noreturn` as appropriate to this callsite.
-
-        let mut i = 0;
-        let mut apply = |attrs: &ArgAttributes, ty: Option<&Type>| {
-            attrs.apply_callsite(llvm::AttributePlace::Argument(i), callsite, ty);
-            i += 1;
-        };
-        match self.ret.mode {
-            PassMode::Direct(ref attrs) => {
-                attrs.apply_callsite(llvm::AttributePlace::ReturnValue, callsite, None);
-            }
-            PassMode::Indirect(ref attrs, _) => apply(attrs, Some(self.ret.layout.gcc_type(bx))),
-            _ => {}
-        }
-        if let abi::Abi::Scalar(ref scalar) = self.ret.layout.abi {
-            // If the value is a boolean, the range is 0..2 and that ultimately
-            // become 0..0 when the type becomes i1, which would be rejected
-            // by the LLVM verifier.
-            if let Int(..) = scalar.value {
-                if !scalar.is_bool() {
-                    let range = scalar.valid_range_exclusive(bx);
-                    if range.start != range.end {
-                        bx.range_metadata(callsite, range);
-                    }
-                }
-            }
-        }
-        for arg in &self.args {
-            if arg.pad.is_some() {
-                apply(&ArgAttributes::new(), None);
-            }
-            match arg.mode {
-                PassMode::Ignore => {}
-                PassMode::Direct(ref attrs) | PassMode::Indirect(ref attrs, None) => {
-                    apply(attrs, Some(arg.layout.gcc_type(bx)))
-                }
-                PassMode::Indirect(ref attrs, Some(ref extra_attrs)) => {
-                    apply(attrs, None);
-                    apply(extra_attrs, None);
-                }
-                PassMode::Pair(ref a, ref b) => {
-                    apply(a, None);
-                    apply(b, None);
-                }
-                PassMode::Cast(_) => apply(&ArgAttributes::new(), None),
-            }
-        }
-
-        let cconv = self.llvm_cconv();
-        if cconv != llvm::CCallConv {
-            llvm::SetInstructionCallConv(callsite, cconv);
-        }
-    }*/
 }

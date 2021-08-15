@@ -26,12 +26,7 @@ impl<'gcc, 'tcx> PreDefineMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             )
         });
 
-        // TODO
-        /*unsafe {
-            llvm::LLVMRustSetLinkage(global, base::linkage_to_llvm(linkage));
-            llvm::LLVMRustSetVisibility(global, base::visibility_to_llvm(visibility));
-        }*/
-
+        // TODO(antoyo): set linkage and visibility.
         self.instances.borrow_mut().insert(instance, global);
     }
 
@@ -43,17 +38,8 @@ impl<'gcc, 'tcx> PreDefineMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let _decl = self.declare_fn(symbol_name, &fn_abi);
         //let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
 
-        // TODO: call set_link_section() to allow initializing argc/argv.
-        //base::set_link_section(decl, &attrs);
-        /*if linkage == Linkage::LinkOnceODR || linkage == Linkage::WeakODR {
-            llvm::SetUniqueComdat(self.llmod, decl);
-        }*/
-
-        //debug!("predefine_fn: instance = {:?}", instance);
-
-        // TODO: use inline attribute from there in linkage.set() above:
-        //attributes::from_fn_attrs(self, decl, instance);
-
-        //self.instances.borrow_mut().insert(instance, decl);
+        // TODO(antoyo): call set_link_section() to allow initializing argc/argv.
+        // TODO(antoyo): set unique comdat.
+        // TODO(antoyo): use inline attribute from there in linkage.set() above.
     }
 }

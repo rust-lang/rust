@@ -11,16 +11,12 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
                 cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
                 return func;
             },
-            // TODO: this doc specifies the equivalent GCC builtins: http://huonw.github.io/llvmint/llvmint/x86/index.html
+            // NOTE: this doc specifies the equivalent GCC builtins: http://huonw.github.io/llvmint/llvmint/x86/index.html
             "llvm.x86.sse2.cmp.pd" => "__builtin_ia32_cmppd",
             "llvm.x86.sse2.movmsk.pd" => "__builtin_ia32_movmskpd",
             "llvm.x86.sse2.pmovmskb.128" => "__builtin_ia32_pmovmskb128",
             _ => unimplemented!("unsupported LLVM intrinsic {}", name)
         };
 
-    println!("Get target builtin");
     unimplemented!();
-    /*let func = cx.context.get_target_builtin_function(gcc_name);
-    cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
-    func*/
 }
