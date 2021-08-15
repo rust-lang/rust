@@ -2038,7 +2038,11 @@ impl Path {
     /// If the path is a normal file, this is the file name. If it's the path of a directory, this
     /// is the directory name.
     ///
-    /// Returns [`None`] if the path terminates in `..`.
+    /// Returns [`None`] if path:
+    /// - Is empty.
+    /// - Terminates in `..` (double dots).
+    /// - Is root (e.g. `/`, `/.`, `/././.`).
+    /// - Only contains current directory (e.g. `.`, `././.`).
     ///
     /// # Examples
     ///
@@ -2051,7 +2055,11 @@ impl Path {
     /// assert_eq!(Some(OsStr::new("foo.txt")), Path::new("foo.txt/.").file_name());
     /// assert_eq!(Some(OsStr::new("foo.txt")), Path::new("foo.txt/.//").file_name());
     /// assert_eq!(None, Path::new("foo.txt/..").file_name());
+    /// assert_eq!(None, Path::new("..").file_name());
     /// assert_eq!(None, Path::new("/").file_name());
+    /// assert_eq!(None, Path::new("/.").file_name());
+    /// assert_eq!(None, Path::new("/././.").file_name());
+    /// assert_eq!(None, Path::new("././.").file_name());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn file_name(&self) -> Option<&OsStr> {
