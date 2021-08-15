@@ -1774,24 +1774,22 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usages of `splitn(2, _)`
+    /// **What it does:** Checks for usages of `str::splitn(2, _)`
     ///
-    /// **Why is this bad?** `split_once` is clearer.
+    /// **Why is this bad?** `split_once` is both clearer in intent and slightly more efficient.
     ///
     /// **Known problems:** None.
     ///
     /// **Example:**
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// // Bad
-    /// let some_str = "name=value";
-    /// let mut iter = some_str.splitn(2, '=');
-    /// let name = iter.next().unwrap();
-    /// let value = iter.next().unwrap_or("");
+    ///  let (key, value) = _.splitn(2, '=').next_tuple()?;
+    ///  let value = _.splitn(2, '=').nth(1)?;
     ///
     /// // Good
-    /// let some_str = "name=value";
-    /// let (name, value) = some_str.split_once('=').unwrap_or((some_str, ""));
+    /// let (key, value) = _.split_once('=')?;
+    /// let value = _.split_once('=')?.1;
     /// ```
     pub MANUAL_SPLIT_ONCE,
     complexity,
