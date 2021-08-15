@@ -15,106 +15,8 @@ use crate::type_of::LayoutGccExt;
 
 impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn codegen_llvm_inline_asm(&mut self, _ia: &LlvmInlineAsmInner, _outputs: Vec<PlaceRef<'tcx, RValue<'gcc>>>, mut _inputs: Vec<RValue<'gcc>>, _span: Span) -> bool {
-        // TODO
+        // TODO(antoyo)
         return true;
-
-        /*let mut ext_constraints = vec![];
-        let mut output_types = vec![];
-
-        // Prepare the output operands
-        let mut indirect_outputs = vec![];
-        for (i, (out, &place)) in ia.outputs.iter().zip(&outputs).enumerate() {
-            if out.is_rw {
-                let operand = self.load_operand(place);
-                if let OperandValue::Immediate(_) = operand.val {
-                    inputs.push(operand.immediate());
-                }
-                ext_constraints.push(i.to_string());
-            }
-            if out.is_indirect {
-                let operand = self.load_operand(place);
-                if let OperandValue::Immediate(_) = operand.val {
-                    indirect_outputs.push(operand.immediate());
-                }
-            } else {
-                output_types.push(place.layout.gcc_type(self.cx()));
-            }
-        }
-        if !indirect_outputs.is_empty() {
-            indirect_outputs.extend_from_slice(&inputs);
-            inputs = indirect_outputs;
-        }
-
-        let clobbers = ia.clobbers.iter().map(|s| format!("~{{{}}}", &s));
-
-        // Default per-arch clobbers
-        // Basically what clang does
-        let arch_clobbers = match &self.sess().target.target.arch[..] {
-            "x86" | "x86_64" => vec!["~{dirflag}", "~{fpsr}", "~{flags}"],
-            "mips" | "mips64" => vec!["~{$1}"],
-            _ => Vec::new(),
-        };
-
-        let all_constraints = ia
-            .outputs
-            .iter()
-            .map(|out| out.constraint.to_string())
-            .chain(ia.inputs.iter().map(|s| s.to_string()))
-            .chain(ext_constraints)
-            .chain(clobbers)
-            .chain(arch_clobbers.iter().map(|s| (*s).to_string()))
-            .collect::<Vec<String>>()
-            .join(",");
-
-        debug!("Asm Constraints: {}", &all_constraints);
-
-        // Depending on how many outputs we have, the return type is different
-        let num_outputs = output_types.len();
-        let output_type = match num_outputs {
-            0 => self.type_void(),
-            1 => output_types[0],
-            _ => self.type_struct(&output_types, false),
-        };
-
-        let asm = ia.asm.as_str();
-        let r = inline_asm_call(
-            self,
-            &asm,
-            &all_constraints,
-            &inputs,
-            output_type,
-            ia.volatile,
-            ia.alignstack,
-            ia.dialect,
-        );
-        if r.is_none() {
-            return false;
-        }
-        let r = r.unwrap();
-
-        // Again, based on how many outputs we have
-        let outputs = ia.outputs.iter().zip(&outputs).filter(|&(ref o, _)| !o.is_indirect);
-        for (i, (_, &place)) in outputs.enumerate() {
-            let v = if num_outputs == 1 { r } else { self.extract_value(r, i as u64) };
-            OperandValue::Immediate(v).store(self, place);
-        }
-
-        // Store mark in a metadata node so we can map LLVM errors
-        // back to source locations.  See #17552.
-        unsafe {
-            let key = "srcloc";
-            let kind = llvm::LLVMGetMDKindIDInContext(
-                self.llcx,
-                key.as_ptr() as *const c_char,
-                key.len() as c_uint,
-            );
-
-            let val: &'ll Value = self.const_i32(span.ctxt().outer_expn().as_u32() as i32);
-
-            llvm::LLVMSetMetadata(r, kind, llvm::LLVMMDNodeInContext(self.llcx, &val, 1));
-        }
-
-        true*/
     }
 
     fn codegen_inline_asm(&mut self, template: &[InlineAsmTemplatePiece], operands: &[InlineAsmOperandRef<'tcx, Self>], options: InlineAsmOptions, _span: &[Span]) {
@@ -127,7 +29,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
             };
 
         // Collect the types of output operands
-        // FIXME: we do this here instead of later because of a bug in libgccjit where creating the
+        // FIXME(antoyo): we do this here instead of later because of a bug in libgccjit where creating the
         // variable after the extended asm expression causes a segfault:
         // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100380
         let mut output_vars = FxHashMap::default();
@@ -160,11 +62,6 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         match out_place {
                             Some(place) => place.layout.gcc_type(self.cx, false),
                             None => {
-                                // If the output is discarded, we don't really care what
-                                // type is used. We're just using this to tell GCC to
-                                // reserve the register.
-                                //dummy_output_type(self.cx, reg.reg_class())
-
                                 // NOTE: if no output value, we should not create one.
                                 continue;
                             },
@@ -251,9 +148,9 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 template_str
             }
             else {
-                // FIXME: this might break the "m" memory constraint:
+                // FIXME(antoyo): this might break the "m" memory constraint:
                 // https://stackoverflow.com/a/9347957/389119
-                // TODO: only set on x86 platforms.
+                // TODO(antoyo): only set on x86 platforms.
                 format!(".att_syntax noprefix\n\t{}\n\t.intel_syntax noprefix", template_str)
             };
         let extended_asm = block.add_extended_asm(None, &template_str);
@@ -274,7 +171,6 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             },
                         };
                     output_types.push(ty);
-                    //op_idx.insert(idx, constraints.len());
                     let prefix = if late { "=" } else { "=&" };
                     let constraint = format!("{}{}", prefix, reg_to_gcc(reg));
 
@@ -295,14 +191,13 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             None => dummy_output_type(self.cx, reg.reg_class())
                         };
                     output_types.push(ty);
-                    //op_idx.insert(idx, constraints.len());
-                    // TODO: prefix of "+" for reading and writing?
+                    // TODO(antoyo): prefix of "+" for reading and writing?
                     let prefix = if late { "=" } else { "=&" };
                     let constraint = format!("{}{}", prefix, reg_to_gcc(reg));
 
                     if out_place.is_some() {
                         let var = output_vars[&idx];
-                        // TODO: also specify an output operand when out_place is none: that would
+                        // TODO(antoyo): also specify an output operand when out_place is none: that would
                         // be the clobber but clobbers do not support general constraint like reg;
                         // they only support named registers.
                         // Not sure how we can do this. And the LLVM backend does not seem to add a
@@ -321,63 +216,6 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
             }
         }
 
-        /*if !options.contains(InlineAsmOptions::PRESERVES_FLAGS) {
-            match asm_arch {
-                InlineAsmArch::AArch64 | InlineAsmArch::Arm => {
-                    constraints.push("~{cc}".to_string());
-                }
-                InlineAsmArch::X86 | InlineAsmArch::X86_64 => {
-                    constraints.extend_from_slice(&[
-                        "~{dirflag}".to_string(),
-                        "~{fpsr}".to_string(),
-                        "~{flags}".to_string(),
-                    ]);
-                }
-                InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {}
-            }
-        }
-        if !options.contains(InlineAsmOptions::NOMEM) {
-            // This is actually ignored by LLVM, but it's probably best to keep
-            // it just in case. LLVM instead uses the ReadOnly/ReadNone
-            // attributes on the call instruction to optimize.
-            constraints.push("~{memory}".to_string());
-        }
-        let volatile = !options.contains(InlineAsmOptions::PURE);
-        let alignstack = !options.contains(InlineAsmOptions::NOSTACK);
-        let output_type = match &output_types[..] {
-            [] => self.type_void(),
-            [ty] => ty,
-            tys => self.type_struct(&tys, false),
-        };*/
-
-        /*let result = inline_asm_call(
-            self,
-            &template_str,
-            &constraints.join(","),
-            &inputs,
-            output_type,
-            volatile,
-            alignstack,
-            dialect,
-            span,
-        )
-        .unwrap_or_else(|| span_bug!(span, "LLVM asm constraint validation failed"));
-
-        if options.contains(InlineAsmOptions::PURE) {
-            if options.contains(InlineAsmOptions::NOMEM) {
-                llvm::Attribute::ReadNone.apply_callsite(llvm::AttributePlace::Function, result);
-            } else if options.contains(InlineAsmOptions::READONLY) {
-                llvm::Attribute::ReadOnly.apply_callsite(llvm::AttributePlace::Function, result);
-            }
-        } else {
-            if options.contains(InlineAsmOptions::NOMEM) {
-                llvm::Attribute::InaccessibleMemOnly
-                    .apply_callsite(llvm::AttributePlace::Function, result);
-            } else {
-                // LLVM doesn't have an attribute to represent ReadOnly + SideEffect
-            }
-        }*/
-
         // Write results to outputs
         for (idx, op) in operands.iter().enumerate() {
             if let InlineAsmOperandRef::Out { place: Some(place), .. }
@@ -390,12 +228,12 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 }
 
 /// Converts a register class to a GCC constraint code.
-// TODO: return &'static str instead?
+// TODO(antoyo): return &'static str instead?
 fn reg_to_gcc(reg: InlineAsmRegOrRegClass) -> String {
     match reg {
         // For vector registers LLVM wants the register name to match the type size.
         InlineAsmRegOrRegClass::Reg(reg) => {
-            // TODO: add support for vector register.
+            // TODO(antoyo): add support for vector register.
             let constraint =
                 match reg.name() {
                     "ax" => "a",
@@ -404,11 +242,11 @@ fn reg_to_gcc(reg: InlineAsmRegOrRegClass) -> String {
                     "dx" => "d",
                     "si" => "S",
                     "di" => "D",
-                    // TODO: for registers like r11, we have to create a register variable: https://stackoverflow.com/a/31774784/389119
-                    // TODO: in this case though, it's a clobber, so it should work as r11.
+                    // TODO(antoyo): for registers like r11, we have to create a register variable: https://stackoverflow.com/a/31774784/389119
+                    // TODO(antoyo): in this case though, it's a clobber, so it should work as r11.
                     // Recent nightly supports clobber() syntax, so update to it. It does not seem
                     // like it's implemented yet.
-                    name => name, // FIXME: probably wrong.
+                    name => name, // FIXME(antoyo): probably wrong.
                 };
             constraint.to_string()
         },
@@ -570,7 +408,6 @@ fn modifier_to_gcc(arch: InlineAsmArch, reg: InlineAsmRegClass, modifier: Option
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg)
         | InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16) => {
             unimplemented!()
-            //if modifier == Some('v') { None } else { modifier }
         }
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg)
         | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg_thumb) => unimplemented!(),
@@ -583,11 +420,6 @@ fn modifier_to_gcc(arch: InlineAsmArch, reg: InlineAsmRegClass, modifier: Option
         | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg_low8)
         | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg_low4) => {
             unimplemented!()
-            /*if modifier.is_none() {
-                Some('q')
-            } else {
-                modifier
-            }*/
         }
         InlineAsmRegClass::Bpf(_) => unimplemented!(),
         InlineAsmRegClass::Hexagon(_) => unimplemented!(),
@@ -612,15 +444,7 @@ fn modifier_to_gcc(arch: InlineAsmArch, reg: InlineAsmRegClass, modifier: Option
         InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_byte) => unimplemented!(),
         InlineAsmRegClass::X86(X86InlineAsmRegClass::xmm_reg)
         | InlineAsmRegClass::X86(X86InlineAsmRegClass::ymm_reg)
-        | InlineAsmRegClass::X86(X86InlineAsmRegClass::zmm_reg) => unimplemented!() /*match (reg, modifier) {
-            (X86InlineAsmRegClass::xmm_reg, None) => Some('x'),
-            (X86InlineAsmRegClass::ymm_reg, None) => Some('t'),
-            (X86InlineAsmRegClass::zmm_reg, None) => Some('g'),
-            (_, Some('x')) => Some('x'),
-            (_, Some('y')) => Some('t'),
-            (_, Some('z')) => Some('g'),
-            _ => unreachable!(),
-        }*/,
+        | InlineAsmRegClass::X86(X86InlineAsmRegClass::zmm_reg) => unimplemented!(),
         InlineAsmRegClass::X86(X86InlineAsmRegClass::x87_reg) => unimplemented!(),
         InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) => unimplemented!(),
         InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => unimplemented!(),

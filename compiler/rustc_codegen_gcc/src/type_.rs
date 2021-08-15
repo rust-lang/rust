@@ -14,6 +14,9 @@ use crate::type_of::LayoutGccExt;
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn type_ix(&self, num_bits: u64) -> Type<'gcc> {
         // gcc only supports 1, 2, 4 or 8-byte integers.
+        // FIXME(antoyo): this is misleading to use the next power of two as rustc_codegen_ssa
+        // sometimes use 96-bit numbers and the following code will give an integer of a different
+        // size.
         let bytes = (num_bits / 8).next_power_of_two() as i32;
         match bytes {
             1 => self.i8_type,
@@ -23,16 +26,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             16 => self.i128_type,
             _ => panic!("unexpected num_bits: {}", num_bits),
         }
-        /*
-        let bytes = (num_bits / 8).next_power_of_two() as i32;
-        println!("num_bits: {}, bytes: {}", num_bits, bytes);
-        self.context.new_int_type(bytes, true) // TODO: check if it is indeed a signed integer.
-        */
     }
-
-    /*pub fn type_bool(&self) -> Type<'gcc> {
-        self.bool_type
-    }*/
 
     pub fn type_void(&self) -> Type<'gcc> {
         self.context.new_type::<()>()
@@ -67,39 +61,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let ity = Integer::approximate_align(self, align);
         self.type_from_integer(ity)
     }
-
-    /*pub fn type_int_from_ty(&self, t: ty::IntTy) -> Type<'gcc> {
-        match t {
-            ty::IntTy::Isize => self.type_isize(),
-            ty::IntTy::I8 => self.type_i8(),
-            ty::IntTy::I16 => self.type_i16(),
-            ty::IntTy::I32 => self.type_i32(),
-            ty::IntTy::I64 => self.type_i64(),
-            ty::IntTy::I128 => self.type_i128(),
-        }
-    }
-
-    pub fn type_uint_from_ty(&self, t: ty::UintTy) -> Type<'gcc> {
-        match t {
-            ty::UintTy::Usize => self.type_isize(),
-            ty::UintTy::U8 => self.type_i8(),
-            ty::UintTy::U16 => self.type_i16(),
-            ty::UintTy::U32 => self.type_i32(),
-            ty::UintTy::U64 => self.type_i64(),
-            ty::UintTy::U128 => self.type_i128(),
-        }
-    }
-
-    pub fn type_float_from_ty(&self, t: ty::FloatTy) -> Type<'gcc> {
-        match t {
-            ty::FloatTy::F32 => self.type_f32(),
-            ty::FloatTy::F64 => self.type_f64(),
-        }
-    }
-
-    pub fn type_vector(&self, ty: Type<'gcc>, len: u64) -> Type<'gcc> {
-        self.context.new_vector_type(ty, len)
-    }*/
 }
 
 impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
@@ -151,9 +112,7 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let fields: Vec<_> = fields.iter().enumerate()
             .map(|(index, field)| self.context.new_field(None, *field, &format!("field{}_TODO", index)))
             .collect();
-        // TODO: use packed.
-        //let name = types.iter().map(|typ| format!("{:?}", typ)).collect::<Vec<_>>().join("_");
-        //let typ = self.context.new_struct_type(None, format!("struct{}", name), &fields).as_type();
+        // TODO(antoyo): use packed.
         let typ = self.context.new_struct_type(None, "struct", &fields).as_type();
         self.struct_types.borrow_mut().insert(types, typ);
         typ
@@ -167,21 +126,17 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             TypeKind::Vector
         }
         else {
-            // TODO
+            // TODO(antoyo): support other types.
             TypeKind::Void
         }
     }
 
     fn type_ptr_to(&self, ty: Type<'gcc>) -> Type<'gcc> {
-        // TODO
-        /*assert_ne!(self.type_kind(ty), TypeKind::Function,
-            "don't call ptr_to on function types, use ptr_to_gcc_type on FnAbi instead"
-        );*/
         ty.make_pointer()
     }
 
     fn type_ptr_to_ext(&self, ty: Type<'gcc>, _address_space: AddressSpace) -> Type<'gcc> {
-        // TODO: use address_space
+        // TODO(antoyo): use address_space
         ty.make_pointer()
     }
 
@@ -202,7 +157,6 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn vector_length(&self, _ty: Type<'gcc>) -> usize {
         unimplemented!();
-        //unsafe { llvm::LLVMGetVectorSize(ty) as usize }
     }
 
     fn float_width(&self, typ: Type<'gcc>) -> usize {
@@ -217,14 +171,7 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         else {
             panic!("Cannot get width of float type {:?}", typ);
         }
-        // TODO: support other sizes.
-        /*match self.type_kind(ty) {
-            TypeKind::Float => 32,
-            TypeKind::Double => 64,
-            TypeKind::X86_FP80 => 80,
-            TypeKind::FP128 | TypeKind::PPC_FP128 => 128,
-            _ => bug!("llvm_float_width called on a non-float type"),
-        }*/
+        // TODO(antoyo): support other sizes.
     }
 
     fn int_width(&self, typ: Type<'gcc>) -> u64 {
@@ -263,20 +210,12 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn set_struct_body(&self, typ: Struct<'gcc>, fields: &[Type<'gcc>], _packed: bool) {
-        // TODO: use packed.
+        // TODO(antoyo): use packed.
         let fields: Vec<_> = fields.iter().enumerate()
             .map(|(index, field)| self.context.new_field(None, *field, &format!("field_{}", index)))
             .collect();
         typ.set_fields(None, &fields);
     }
-
-    /*fn type_struct(&self, fields: &[Type<'gcc>], packed: bool) -> Type<'gcc> {
-        // TODO: use packed.
-        let fields: Vec<_> = fields.iter().enumerate()
-            .map(|(index, field)| self.context.new_field(None, *field, &format!("field_{}", index)))
-            .collect();
-        return self.context.new_struct_type(None, "unnamedStruct", &fields).as_type();
-    }*/
 
     pub fn type_named_struct(&self, name: &str) -> Struct<'gcc> {
         self.context.new_opaque_struct_type(None, name)
@@ -288,7 +227,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                 // NOTE: since gccjit only supports i32 for the array size and libcore's tests uses a
                 // size of usize::MAX in test_binary_search, we workaround this by setting the size to
                 // zero for ZSTs.
-                // FIXME: fix gccjit API.
+                // FIXME(antoyo): fix gccjit API.
                 len = 0;
             }
         }
@@ -305,7 +244,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 }
 
 pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout<'tcx>) -> (Vec<Type<'gcc>>, bool) {
-    //debug!("struct_fields: {:#?}", layout);
     let field_count = layout.fields.count();
 
     let mut packed = false;
@@ -319,23 +257,13 @@ pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
             layout.align.abi.min(field.align.abi).restrict_for_offset(target_offset);
         packed |= effective_field_align < field.align.abi;
 
-        /*debug!(
-            "struct_fields: {}: {:?} offset: {:?} target_offset: {:?} \
-                effective_field_align: {}",
-            i,
-            field,
-            offset,
-            target_offset,
-            effective_field_align.bytes()
-        );*/
         assert!(target_offset >= offset);
         let padding = target_offset - offset;
         let padding_align = prev_effective_align.min(effective_field_align);
         assert_eq!(offset.align_to(padding_align) + padding, target_offset);
         result.push(cx.type_padding_filler(padding, padding_align));
-        //debug!("    padding before: {:?}", padding);
 
-        result.push(field.gcc_type(cx, !field.ty.is_any_ptr())); // FIXME: might need to check if the type is inside another, like Box<Type>.
+        result.push(field.gcc_type(cx, !field.ty.is_any_ptr())); // FIXME(antoyo): might need to check if the type is inside another, like Box<Type>.
         offset = target_offset + field.size;
         prev_effective_align = effective_field_align;
     }
@@ -346,14 +274,8 @@ pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
         let padding = layout.size - offset;
         let padding_align = prev_effective_align;
         assert_eq!(offset.align_to(padding_align) + padding, layout.size);
-        /*debug!(
-            "struct_fields: pad_bytes: {:?} offset: {:?} stride: {:?}",
-            padding, offset, layout.size
-        );*/
         result.push(cx.type_padding_filler(padding, padding_align));
         assert_eq!(result.len(), 1 + field_count * 2);
-    } else {
-        //debug!("struct_fields: offset: {:?} stride: {:?}", offset, layout.size);
     }
 
     (result, packed)

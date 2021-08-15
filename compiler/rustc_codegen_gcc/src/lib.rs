@@ -1,10 +1,8 @@
 /*
- * TODO: support #[inline] attributes.
- * TODO: support LTO.
+ * TODO(antoyo): support #[inline] attributes.
+ * TODO(antoyo): support LTO.
  *
- * TODO: remove the local gccjit LD_LIBRARY_PATH in config.sh.
- * TODO: remove the object dependency.
- * TODO: remove the patches.
+ * TODO(antoyo): remove the patches.
  */
 
 #![feature(rustc_private, decl_macro, associated_type_bounds, never_type, trusted_len)]
@@ -13,13 +11,10 @@
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 
-/*extern crate flate2;
-extern crate libc;*/
 extern crate rustc_ast;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
-//extern crate rustc_fs_util;
 extern crate rustc_hir;
 extern crate rustc_metadata;
 extern crate rustc_middle;
@@ -53,7 +48,6 @@ mod mangled_std_symbols;
 mod mono_item;
 mod type_;
 mod type_of;
-mod va_arg;
 
 use std::any::Any;
 use std::sync::Arc;
@@ -119,7 +113,7 @@ impl CodegenBackend for GccCodegenBackend {
     fn link(&self, sess: &Session, mut codegen_results: CodegenResults, outputs: &OutputFilenames) -> Result<(), ErrorReported> {
         use rustc_codegen_ssa::back::link::link_binary;
         if let Some(symbols) = codegen_results.crate_info.exported_symbols.get_mut(&CrateType::Dylib) {
-            // TODO: remove when global initializer work without calling a function at runtime.
+            // TODO:(antoyo): remove when global initializer work without calling a function at runtime.
             // HACK: since this codegen add some symbols (e.g. __gccGlobalCrateInit) and the UI
             // tests load libstd.so as a dynamic library, and rustc use a version-script to specify
             // the symbols visibility, we add * to export all symbols.
@@ -159,7 +153,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
     }
 
     fn target_machine_factory(&self, _sess: &Session, _opt_level: OptLevel) -> TargetMachineFactoryFn<Self> {
-        // TODO: set opt level.
+        // TODO(antoyo): set opt level.
         Arc::new(|_| {
             Ok(())
         })
@@ -171,8 +165,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
 
     fn tune_cpu<'b>(&self, _sess: &'b Session) -> Option<&'b str> {
         None
-        // TODO
-        //llvm_util::tune_cpu(sess)
+        // TODO(antoyo)
     }
 }
 
@@ -197,7 +190,7 @@ pub struct GccContext {
 }
 
 unsafe impl Send for GccContext {}
-// FIXME: that shouldn't be Sync. Parallel compilation is currently disabled with "-Zno-parallel-llvm". Try to disable it here.
+// FIXME(antoyo): that shouldn't be Sync. Parallel compilation is currently disabled with "-Zno-parallel-llvm". Try to disable it here.
 unsafe impl Sync for GccContext {}
 
 impl WriteBackendMethods for GccCodegenBackend {
@@ -209,16 +202,13 @@ impl WriteBackendMethods for GccCodegenBackend {
     type ThinBuffer = ThinBuffer;
 
     fn run_fat_lto(_cgcx: &CodegenContext<Self>, mut modules: Vec<FatLTOInput<Self>>, _cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>) -> Result<LtoModuleCodegen<Self>, FatalError> {
-        // TODO: implement LTO by sending -flto to libgccjit and adding the appropriate gcc linker plugins.
+        // TODO(antoyo): implement LTO by sending -flto to libgccjit and adding the appropriate gcc linker plugins.
         // NOTE: implemented elsewhere.
         let module =
             match modules.remove(0) {
                 FatLTOInput::InMemory(module) => module,
                 FatLTOInput::Serialized { .. } => {
                     unimplemented!();
-                    /*info!("pushing serialized module {:?}", name);
-                    let buffer = SerializedModule::Local(buffer);
-                    serialized_modules.push((buffer, CString::new(name).unwrap()));*/
                 }
             };
         Ok(LtoModuleCodegen::Fat { module: Some(module), _serialized_bitcode: vec![] })
@@ -233,9 +223,6 @@ impl WriteBackendMethods for GccCodegenBackend {
     }
 
     unsafe fn optimize(_cgcx: &CodegenContext<Self>, _diag_handler: &Handler, module: &ModuleCodegen<Self::Module>, config: &ModuleConfig) -> Result<(), FatalError> {
-        //if cgcx.lto == Lto::Fat {
-            //module.module_llvm.context.add_driver_option("-flto");
-        //}
         module.module_llvm.context.set_optimization_level(to_gcc_opt_level(config.opt_level));
         Ok(())
     }
@@ -257,7 +244,7 @@ impl WriteBackendMethods for GccCodegenBackend {
     }
 
     fn run_lto_pass_manager(_cgcx: &CodegenContext<Self>, _module: &ModuleCodegen<Self::Module>, _config: &ModuleConfig, _thin: bool) -> Result<(), FatalError> {
-        // TODO
+        // TODO(antoyo)
         Ok(())
     }
 
@@ -265,10 +252,6 @@ impl WriteBackendMethods for GccCodegenBackend {
         back::write::link(cgcx, diag_handler, modules)
     }
 }
-
-/*fn target_triple(sess: &Session) -> target_lexicon::Triple {
-    sess.target.llvm_target.parse().unwrap()
-}*/
 
 /// This is the entrypoint for a hot plugged rustc_codegen_gccjit
 #[no_mangle]
@@ -306,11 +289,6 @@ fn handle_native(name: &str) -> &str {
     }
 
     unimplemented!();
-    /*unsafe {
-        let mut len = 0;
-        let ptr = llvm::LLVMRustGetHostCPUName(&mut len);
-        str::from_utf8(slice::from_raw_parts(ptr as *const u8, len)).unwrap()
-    }*/
 }
 
 pub fn target_cpu(sess: &Session) -> &str {
@@ -327,14 +305,7 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
             },
         )
         .filter(|_feature| {
-            /*if feature.starts_with("sse") {
-                return true;
-            }*/
-            // TODO: implement a way to get enabled feature in libgccjit.
-            //println!("Feature: {}", feature);
-            /*let llvm_feature = to_llvm_feature(sess, feature);
-            let cstr = CString::new(llvm_feature).unwrap();
-            unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) }*/
+            // TODO(antoyo): implement a way to get enabled feature in libgccjit.
             false
         })
         .map(|feature| Symbol::intern(feature))

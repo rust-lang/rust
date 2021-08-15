@@ -35,7 +35,7 @@ pub fn global_linkage_to_gcc(linkage: Linkage) -> GlobalKind {
         Linkage::Appending => unimplemented!(),
         Linkage::Internal => GlobalKind::Internal,
         Linkage::Private => GlobalKind::Internal,
-        Linkage::ExternalWeak => GlobalKind::Imported, // TODO: should be weak linkage.
+        Linkage::ExternalWeak => GlobalKind::Imported, // TODO(antoyo): should be weak linkage.
         Linkage::Common => unimplemented!(),
     }
 }
@@ -46,7 +46,7 @@ pub fn linkage_to_gcc(linkage: Linkage) -> FunctionType {
         Linkage::AvailableExternally => FunctionType::Extern,
         Linkage::LinkOnceAny => unimplemented!(),
         Linkage::LinkOnceODR => unimplemented!(),
-        Linkage::WeakAny => FunctionType::Exported, // FIXME: should be similar to linkonce.
+        Linkage::WeakAny => FunctionType::Exported, // FIXME(antoyo): should be similar to linkonce.
         Linkage::WeakODR => unimplemented!(),
         Linkage::Appending => unimplemented!(),
         Linkage::Internal => FunctionType::Internal,
@@ -74,19 +74,25 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol) -> (Modul
         // Instantiate monomorphizations without filling out definitions yet...
         //let llvm_module = ModuleLlvm::new(tcx, &cgu_name.as_str());
         let context = Context::default();
-        // TODO: only set on x86 platforms.
+        // TODO(antoyo): only set on x86 platforms.
         context.add_command_line_option("-masm=intel");
         for arg in &tcx.sess.opts.cg.llvm_args {
             context.add_command_line_option(arg);
         }
         context.add_command_line_option("-fno-semantic-interposition");
-        //context.set_dump_code_on_compile(true);
+        if env::var("CG_GCCJIT_DUMP_CODE").as_deref() == Ok("1") {
+            context.set_dump_code_on_compile(true);
+        }
         if env::var("CG_GCCJIT_DUMP_GIMPLE").as_deref() == Ok("1") {
             context.set_dump_initial_gimple(true);
         }
         context.set_debug_info(true);
-        //context.set_dump_everything(true);
-        //context.set_keep_intermediates(true);
+        if env::var("CG_GCCJIT_DUMP_EVERYTHING").as_deref() == Ok("1") {
+            context.set_dump_everything(true);
+        }
+        if env::var("CG_GCCJIT_KEEP_INTERMEDIATES").as_deref() == Ok("1") {
+            context.set_keep_intermediates(true);
+        }
 
         {
             let cx = CodegenCx::new(&context, cgu, tcx);
@@ -100,7 +106,6 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol) -> (Modul
                 block.end_with_void_return(None);
             });
 
-            //println!("module_codegen: {:?} {:?}", cgu_name, &cx.context as *const _);
             let mono_items = cgu.items_in_deterministic_order(tcx);
             for &(mono_item, (linkage, visibility)) in &mono_items {
                 mono_item.predefine::<Builder<'_, '_, '_>>(&cx, linkage, visibility);

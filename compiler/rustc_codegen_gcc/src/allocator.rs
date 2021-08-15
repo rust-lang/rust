@@ -1,4 +1,3 @@
-//use crate::attributes;
 use gccjit::{FunctionType, ToRValue};
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 use rustc_middle::bug;
@@ -50,11 +49,10 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, kind: Alloc
         let func = context.new_function(None, FunctionType::Exported, output.unwrap_or(void), &args, name, false);
 
         if tcx.sess.target.options.default_hidden_visibility {
-            //llvm::LLVMRustSetVisibility(func, llvm::Visibility::Hidden);
+            // TODO(antoyo): set visibility.
         }
         if tcx.sess.must_emit_unwind_tables() {
-            // TODO
-            //attributes::emit_uwtable(func, true);
+            // TODO(antoyo): emit unwind tables.
         }
 
         let callee = kind.fn_name(method.name);
@@ -62,7 +60,7 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, kind: Alloc
             .map(|(index, typ)| context.new_parameter(None, *typ, &format!("param{}", index)))
             .collect();
         let callee = context.new_function(None, FunctionType::Extern, output.unwrap_or(void), &args, callee, false);
-        //llvm::LLVMRustSetVisibility(callee, llvm::Visibility::Hidden);
+        // TODO(antoyo): set visibility.
 
         let block = func.new_block("entry");
 

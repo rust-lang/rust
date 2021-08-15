@@ -71,7 +71,7 @@ pub fn uncached_gcc_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLa
             // If `Some` is returned then a named struct is created in LLVM. Name collisions are
             // avoided by LLVM (with increasing suffixes). If rustc doesn't generate names then that
             // can improve perf.
-            // FIXME: I don't think that's true for libgccjit.
+            // FIXME(antoyo): I don't think that's true for libgccjit.
             Some(String::new())
         }
         _ => None,
@@ -144,6 +144,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     /// with the inner-most trailing unsized field using the "minimal unit"
     /// of that field's type - this is useful for taking the address of
     /// that field and ensuring the struct has the right alignment.
+    //TODO(antoyo): do we still need the set_fields parameter?
     fn gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, set_fields: bool) -> Type<'gcc> {
         if let Abi::Scalar(ref scalar) = self.abi {
             // Use a different cache for scalars because pointers to DSTs
@@ -184,8 +185,6 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             return ty;
         }
 
-        //debug!("gcc_type({:#?})", self);
-
         assert!(!self.ty.has_escaping_bound_vars(), "{:?} has escaping bound vars", self.ty);
 
         // Make sure lifetimes are erased, to avoid generating distinct LLVM
@@ -204,22 +203,12 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             else {
                 uncached_gcc_type(cx, *self, &mut defer)
             };
-        //debug!("--> mapped {:#?} to ty={:?}", self, ty);
 
         cx.types.borrow_mut().insert((self.ty, variant_index), ty);
 
         if let Some((ty, layout)) = defer {
-            //TODO: do we still need this conditions and the set_fields parameter?
-            //if set_fields {
-                let (fields, packed) = struct_fields(cx, layout);
-                cx.set_struct_body(ty, &fields, packed);
-            /*}
-            else {
-                // Since we might be trying to generate a type containing another type which is not
-                // completely generated yet, we don't set the fields right now, but we save the
-                // type to set the fields later.
-                cx.types_with_fields_to_set.borrow_mut().insert(ty.as_type(), (ty, layout));
-            }*/
+            let (fields, packed) = struct_fields(cx, layout);
+            cx.set_struct_body(ty, &fields, packed);
         }
 
         ty
@@ -255,7 +244,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     }
 
     fn scalar_pair_element_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, index: usize, immediate: bool) -> Type<'gcc> {
-        // TODO: remove llvm hack:
+        // TODO(antoyo): remove llvm hack:
         // HACK(eddyb) special-case fat pointers until LLVM removes
         // pointee types, to avoid bitcasting every `OperandRef::deref`.
         match self.ty.kind() {
@@ -281,8 +270,8 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         // immediate, just like `bool` is typically `i8` in memory and only `i1`
         // when immediate.  We need to load/store `bool` as `i8` to avoid
         // crippling LLVM optimizations or triggering other LLVM bugs with `i1`.
-        // TODO: this bugs certainly don't happen in this case since the bool type is used instead of i1.
-        if /*immediate &&*/ scalar.is_bool() {
+        // TODO(antoyo): this bugs certainly don't happen in this case since the bool type is used instead of i1.
+        if scalar.is_bool() {
             return cx.type_i1();
         }
 
@@ -361,12 +350,10 @@ impl<'gcc, 'tcx> LayoutTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn reg_backend_type(&self, _ty: &Reg) -> Type<'gcc> {
         unimplemented!();
-        //ty.gcc_type(self)
     }
 
     fn fn_decl_backend_type(&self, _fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Type<'gcc> {
-        // FIXME: return correct type.
+        // FIXME(antoyo): return correct type.
         self.type_void()
-        //fn_abi.gcc_type(self)
     }
 }
