@@ -15,6 +15,16 @@ fn baz() -> i32 {
     -3
 }
 
+struct AssocFn;
+
+impl AssocFn {
+    #[no_mangle]
+    fn qux() -> i32 {
+        -4
+    }
+}
+
+
 fn main() {
     // Repeat calls to make sure the `Instance` cache is not broken.
     for _ in 0..3 {
@@ -32,10 +42,12 @@ fn main() {
         extern "Rust" {
             fn bar() -> i32;
             fn baz() -> i32;
+            fn qux() -> i32;
         }
 
         assert_eq!(unsafe { bar() }, -2);
         assert_eq!(unsafe { baz() }, -3);
+        assert_eq!(unsafe { qux() }, -4);
 
         #[allow(clashing_extern_declarations)]
         {
@@ -53,6 +65,7 @@ fn main() {
             extern "C" {
                 fn bar() -> i32;
                 fn baz() -> i32;
+                fn qux() -> i32;
             }
 
             unsafe {
@@ -61,6 +74,7 @@ fn main() {
                 };
                 assert_eq!(transmute(bar)(), -2);
                 assert_eq!(transmute(baz)(), -3);
+                assert_eq!(transmute(qux)(), -4);
             }
         }
     }
