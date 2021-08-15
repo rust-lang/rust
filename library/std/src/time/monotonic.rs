@@ -34,14 +34,14 @@ pub mod inner {
         let packed = (secs << 32) | nanos;
         let old = MONO.load(Relaxed);
 
-        if packed == UNINITIALIZED || packed.wrapping_sub(old) < u64::MAX / 2 {
+        if old == UNINITIALIZED || packed.wrapping_sub(old) < u64::MAX / 2 {
             MONO.store(packed, Relaxed);
             raw
         } else {
             // Backslide occurred. We reconstruct monotonized time by assuming the clock will never
             // backslide more than 2`32 seconds which means we can reuse the upper 32bits from
             // the seconds.
-            let secs = (secs & 0xffff_ffff << 32) | old >> 32;
+            let secs = (secs & 0xffff_ffff_0000_0000) | old >> 32;
             let nanos = old as u32;
             ZERO.checked_add_duration(&Duration::new(secs, nanos)).unwrap()
         }
