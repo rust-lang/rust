@@ -283,7 +283,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             hir::ItemKind::Mod(ref m) => {
                 om.mods.push(self.visit_mod_contents(&item.vis, item.hir_id(), m, name));
             }
-            hir::ItemKind::Macro { ref macro_def, .. } => {
+            hir::ItemKind::Macro(ref macro_def) => {
                 // `#[macro_export] macro_rules!` items are handled seperately in `visit()`,
                 // above, since they need to be documented at the module top level. Accordingly,
                 // we only want to handle macros if one of three conditions holds:
