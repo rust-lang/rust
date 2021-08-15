@@ -583,6 +583,9 @@ impl InitMask {
 
     #[inline]
     fn bit_index(bits: Size) -> (usize, usize) {
+        // BLOCK_SIZE is the number of bits that can fit in a `Block`.
+        // Each bit in a `Block` represents the initialization state of one byte of an allocation,
+        // so we use `.bytes()` here.
         let bits = bits.bytes();
         let a = bits / InitMask::BLOCK_SIZE;
         let b = bits % InitMask::BLOCK_SIZE;
@@ -721,23 +724,23 @@ impl InitMask {
                 is_init: bool,
             ) -> Option<Size> {
                 // For the following examples, assume this function was called with:
-                //   bits = 11011100
+                //   bits = 0b00111011
                 //   start_bit = 3
                 //   is_init = false
-                // Note again that the least significant bit is written first,
-                // which is backwards compared to how we normally write numbers.
+                // Note that, for the examples in this function, the most significant bit is written first,
+                // which is backwards compared to the comments in `find_bit`/`find_bit_fast`.
 
                 // Invert bits so we're always looking for the first set bit.
-                //        ! 11011100
-                //   bits = 00100011
+                //        ! 0b00111011
+                //   bits = 0b11000100
                 let bits = if is_init { bits } else { !bits };
                 // Mask off unused start bits.
-                //          00100011
-                //        & 00011111
-                //   bits = 00000011
+                //          0b11000100
+                //        & 0b11111000
+                //   bits = 0b11000000
                 let bits = bits & (!0 << start_bit);
                 // Find set bit, if any.
-                //   bit = trailing_zeros(00000011)
+                //   bit = trailing_zeros(0b11000000)
                 //   bit = 6
                 if bits == 0 {
                     None
@@ -772,6 +775,7 @@ impl InitMask {
             // For (a), the block index of `end_inclusive` is 1, and for (b), it's 0.
             // This provides the desired behavior of searching blocks 0 and 1 for (a),
             // and searching only block 0 for (b).
+            // There is no concern of overflows since we checked for `start >= end` above.
             let (start_block, start_bit) = InitMask::bit_index(start);
             let end_inclusive = Size::from_bytes(end.bytes() - 1);
             let (end_block_inclusive, _) = InitMask::bit_index(end_inclusive);
@@ -1046,6 +1050,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
         let mut ranges = smallvec::SmallVec::<[u64; 1]>::new();
         let initial = self.init_mask.get(range.start);
 
+        // Here we rely on `range_as_init_chunks` to yield alternating init/uninit chunks.
         for chunk in self.init_mask.range_as_init_chunks(range.start, range.end()) {
             let len = chunk.range().end.bytes() - chunk.range().start.bytes();
             ranges.push(len);
