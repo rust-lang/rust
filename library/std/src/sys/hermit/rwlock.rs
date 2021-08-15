@@ -8,7 +8,7 @@ pub struct RWLock {
     state: UnsafeCell<State>,
 }
 
-pub type MovableRWLock = Box<RWLock>;
+pub type MovableRWLock = RWLock;
 
 enum State {
     Unlocked,
