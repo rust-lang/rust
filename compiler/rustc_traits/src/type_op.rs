@@ -6,9 +6,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{GenericArg, Subst, UserSelfTy, UserSubsts};
-use rustc_middle::ty::{
-    self, FnSig, Lift, PolyFnSig, PredicateKind, Ty, TyCtxt, TypeFoldable, Variance,
-};
+use rustc_middle::ty::{self, FnSig, Lift, PolyFnSig, Ty, TyCtxt, TypeFoldable, Variance};
 use rustc_middle::ty::{ParamEnv, ParamEnvAnd, Predicate, ToPredicate};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
@@ -87,16 +85,7 @@ impl AscribeUserTypeCx<'me, 'tcx> {
         Ok(())
     }
 
-    fn prove_predicate(&mut self, mut predicate: Predicate<'tcx>) {
-        if let PredicateKind::Trait(mut tr) = predicate.kind().skip_binder() {
-            if let hir::Constness::Const = tr.constness {
-                // FIXME check if we actually want to prove const predicates inside AscribeUserType
-                tr.constness = hir::Constness::NotConst;
-                predicate =
-                    predicate.kind().rebind(PredicateKind::Trait(tr)).to_predicate(self.tcx());
-            }
-        }
-
+    fn prove_predicate(&mut self, predicate: Predicate<'tcx>) {
         self.fulfill_cx.register_predicate_obligation(
             self.infcx,
             Obligation::new(ObligationCause::dummy(), self.param_env, predicate),
