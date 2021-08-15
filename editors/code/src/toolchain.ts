@@ -3,7 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as readline from 'readline';
 import * as vscode from 'vscode';
-import { execute, log, memoize } from './util';
+import { execute, log, memoize, memoizeAsync } from './util';
 
 interface CompilationArtifact {
     fileName: string;
@@ -89,13 +89,14 @@ export class Cargo {
         return artifacts[0].fileName;
     }
 
-    private runCargo(
+    private async runCargo(
         cargoArgs: string[],
         onStdoutJson: (obj: any) => void,
         onStderrString: (data: string) => void
     ): Promise<number> {
-        return new Promise((resolve, reject) => {
-            const cargo = cp.spawn(cargoPath(), cargoArgs, {
+        const path = await cargoPath();
+        return await new Promise((resolve, reject) => {
+            const cargo = cp.spawn(path, cargoArgs, {
                 stdio: ['ignore', 'pipe', 'pipe'],
                 cwd: this.rootFolder
             });
@@ -121,15 +122,15 @@ export class Cargo {
 }
 
 /** Mirrors `project_model::sysroot::discover_sysroot_dir()` implementation*/
-export function getSysroot(dir: string): Promise<string> {
-    const rustcPath = getPathForExecutable("rustc");
+export async function getSysroot(dir: string): Promise<string> {
+    const rustcPath = await getPathForExecutable("rustc");
 
     // do not memoize the result because the toolchain may change between runs
-    return execute(`${rustcPath} --print sysroot`, { cwd: dir });
+    return await execute(`${rustcPath} --print sysroot`, { cwd: dir });
 }
 
 export async function getRustcId(dir: string): Promise<string> {
-    const rustcPath = getPathForExecutable("rustc");
+    const rustcPath = await getPathForExecutable("rustc");
 
     // do not memoize the result because the toolchain may change between runs
     const data = await execute(`${rustcPath} -V -v`, { cwd: dir });
@@ -139,27 +140,28 @@ export async function getRustcId(dir: string): Promise<string> {
 }
 
 /** Mirrors `toolchain::cargo()` implementation */
-export function cargoPath(): string {
+export function cargoPath(): Promise<string> {
     return getPathForExecutable("cargo");
 }
 
 /** Mirrors `toolchain::get_path_for_executable()` implementation */
-export const getPathForExecutable = memoize(
+export const getPathForExecutable = memoizeAsync(
     // We apply caching to decrease file-system interactions
-    (executableName: "cargo" | "rustc" | "rustup"): string => {
+    async (executableName: "cargo" | "rustc" | "rustup"): Promise<string> => {
         {
             const envVar = process.env[executableName.toUpperCase()];
             if (envVar) return envVar;
         }
 
-        if (lookupInPath(executableName)) return executableName;
+        if (await lookupInPath(executableName)) return executableName;
 
         try {
             // hmm, `os.homedir()` seems to be infallible
             // it is not mentioned in docs and cannot be infered by the type signature...
             const standardPath = vscode.Uri.joinPath(vscode.Uri.file(os.homedir()), ".cargo", "bin", executableName);
 
-            if (isFileAtUri(standardPath)) return standardPath.fsPath;
+            const exist = await isFileAtUri(standardPath);
+            if (exist) return standardPath.fsPath;
         } catch (err) {
             log.error("Failed to read the fs info", err);
         }
@@ -167,7 +169,7 @@ export const getPathForExecutable = memoize(
     }
 );
 
-function lookupInPath(exec: string): boolean {
+async function lookupInPath(exec: string): Promise<boolean> {
     const paths = process.env.PATH ?? "";;
 
     const candidates = paths.split(path.delimiter).flatMap(dirInPath => {
@@ -177,7 +179,12 @@ function lookupInPath(exec: string): boolean {
             : [candidate];
     });
 
-    return candidates.some(isFileAtPath);
+    for await (const isFile of candidates.map(isFileAtPath)) {
+        if (isFile) {
+            return true;
+        }
+    }
+    return false;
 }
 
 async function isFileAtPath(path: string): Promise<boolean> {
