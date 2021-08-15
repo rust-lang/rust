@@ -1,6 +1,7 @@
 use std::cell::Cell;
 use std::cmp::Ordering::{self, Equal, Greater, Less};
 use std::convert::identity;
+use std::fmt;
 use std::mem;
 use std::panic;
 use std::rc::Rc;
@@ -991,6 +992,66 @@ fn test_rsplitnator() {
     let splits: &[&[i32]] = &[&[]];
     assert_eq!(xs.rsplitn(2, |x| *x == 5).collect::<Vec<&[i32]>>(), splits);
     assert!(xs.rsplitn(0, |x| *x % 2 == 0).next().is_none());
+}
+
+#[test]
+fn test_split_iterators_size_hint() {
+    #[derive(Copy, Clone)]
+    enum Bounds {
+        Lower,
+        Upper,
+    }
+    fn assert_tight_size_hints(mut it: impl Iterator, which: Bounds, ctx: impl fmt::Display) {
+        match which {
+            Bounds::Lower => {
+                let mut lower_bounds = vec![it.size_hint().0];
+                while let Some(_) = it.next() {
+                    lower_bounds.push(it.size_hint().0);
+                }
+                let target: Vec<_> = (0..lower_bounds.len()).rev().collect();
+                assert_eq!(lower_bounds, target, "lower bounds incorrect or not tight: {}", ctx);
+            }
+            Bounds::Upper => {
+                let mut upper_bounds = vec![it.size_hint().1];
+                while let Some(_) = it.next() {
+                    upper_bounds.push(it.size_hint().1);
+                }
+                let target: Vec<_> = (0..upper_bounds.len()).map(Some).rev().collect();
+                assert_eq!(upper_bounds, target, "upper bounds incorrect or not tight: {}", ctx);
+            }
+        }
+    }
+
+    for len in 0..=2 {
+        let mut v: Vec<u8> = (0..len).collect();
+
+        // p: predicate, b: bound selection
+        for (p, b) in [
+            // with a predicate always returning false, the split*-iterators
+            // become maximally short, so the size_hint lower bounds are tight
+            ((|_| false) as fn(&_) -> _, Bounds::Lower),
+            // with a predicate always returning true, the split*-iterators
+            // become maximally long, so the size_hint upper bounds are tight
+            ((|_| true) as fn(&_) -> _, Bounds::Upper),
+        ] {
+            use assert_tight_size_hints as a;
+            use format_args as f;
+
+            a(v.split(p), b, "split");
+            a(v.split_mut(p), b, "split_mut");
+            a(v.split_inclusive(p), b, "split_inclusive");
+            a(v.split_inclusive_mut(p), b, "split_inclusive_mut");
+            a(v.rsplit(p), b, "rsplit");
+            a(v.rsplit_mut(p), b, "rsplit_mut");
+
+            for n in 0..=3 {
+                a(v.splitn(n, p), b, f!("splitn, n = {}", n));
+                a(v.splitn_mut(n, p), b, f!("splitn_mut, n = {}", n));
+                a(v.rsplitn(n, p), b, f!("rsplitn, n = {}", n));
+                a(v.rsplitn_mut(n, p), b, f!("rsplitn_mut, n = {}", n));
+            }
+        }
+    }
 }
 
 #[test]

@@ -400,7 +400,13 @@ where
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.finished { (0, Some(0)) } else { (1, Some(self.v.len() + 1)) }
+        if self.finished {
+            (0, Some(0))
+        } else {
+            // If the predicate doesn't match anything, we yield one slice.
+            // If it matches every element, we yield `len() + 1` empty slices.
+            (1, Some(self.v.len() + 1))
+        }
     }
 }
 
@@ -525,7 +531,14 @@ where
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.finished { (0, Some(0)) } else { (1, Some(self.v.len() + 1)) }
+        if self.finished {
+            (0, Some(0))
+        } else {
+            // If the predicate doesn't match anything, we yield one slice.
+            // If it matches every element, we yield `len()` one-element slices,
+            // or a single empty slice.
+            (1, Some(cmp::max(1, self.v.len())))
+        }
     }
 }
 
@@ -647,8 +660,8 @@ where
         if self.finished {
             (0, Some(0))
         } else {
-            // if the predicate doesn't match anything, we yield one slice
-            // if it matches every element, we yield len+1 empty slices.
+            // If the predicate doesn't match anything, we yield one slice.
+            // If it matches every element, we yield `len() + 1` empty slices.
             (1, Some(self.v.len() + 1))
         }
     }
@@ -763,9 +776,10 @@ where
         if self.finished {
             (0, Some(0))
         } else {
-            // if the predicate doesn't match anything, we yield one slice
-            // if it matches every element, we yield len+1 empty slices.
-            (1, Some(self.v.len() + 1))
+            // If the predicate doesn't match anything, we yield one slice.
+            // If it matches every element, we yield `len()` one-element slices,
+            // or a single empty slice.
+            (1, Some(cmp::max(1, self.v.len())))
         }
     }
 }
@@ -1008,7 +1022,10 @@ impl<T, I: SplitIter<Item = T>> Iterator for GenericSplitN<I> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (lower, upper_opt) = self.iter.size_hint();
-        (lower, upper_opt.map(|upper| cmp::min(self.count, upper)))
+        (
+            cmp::min(self.count, lower),
+            Some(upper_opt.map_or(self.count, |upper| cmp::min(self.count, upper))),
+        )
     }
 }
 
