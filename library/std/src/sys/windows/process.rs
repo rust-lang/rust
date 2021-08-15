@@ -4,7 +4,7 @@
 mod tests;
 
 use crate::cmp;
-use crate::collections::BTreeMap;
+use crate::collections::{btree_map, BTreeMap};
 use crate::convert::{TryFrom, TryInto};
 use crate::env;
 use crate::env::split_paths;
@@ -26,7 +26,6 @@ use crate::sys::handle::Handle;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::stdio;
 use crate::sys_common::mutex::StaticMutex;
-use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::sys_common::{AsInner, IntoInner};
 
 use libc::{c_void, EXIT_FAILURE, EXIT_SUCCESS};
@@ -144,6 +143,70 @@ impl From<&OsStr> for EnvKey {
 impl AsRef<OsStr> for EnvKey {
     fn as_ref(&self) -> &OsStr {
         &self.os_string
+    }
+}
+
+// An iterator over environment key/values.
+pub type CommandEnvs<'a> = btree_map::Iter<'a, EnvKey, Option<OsString>>;
+
+// Stores a set of changes to an environment
+#[derive(Clone, Debug)]
+pub struct CommandEnv {
+    clear: bool,
+    vars: BTreeMap<EnvKey, Option<OsString>>,
+}
+
+impl Default for CommandEnv {
+    fn default() -> Self {
+        CommandEnv { clear: false, vars: Default::default() }
+    }
+}
+
+impl CommandEnv {
+    // The following functions build up changes
+    pub fn set(&mut self, key: &OsStr, value: &OsStr) {
+        let key = EnvKey::from(key);
+        self.vars.insert(key, Some(value.to_owned()));
+    }
+
+    pub fn remove(&mut self, key: &OsStr) {
+        let key = EnvKey::from(key);
+        if self.clear {
+            self.vars.remove(&key);
+        } else {
+            self.vars.insert(key, None);
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.clear = true;
+        self.vars.clear();
+    }
+
+    pub fn iter(&self) -> CommandEnvs<'_> {
+        self.vars.iter()
+    }
+
+    // Capture the current environment with these changes applied if the have been changed.
+    fn capture_if_changed(&self) -> Option<BTreeMap<EnvKey, OsString>> {
+        if self.clear || !self.vars.is_empty() {
+            let mut result = BTreeMap::<EnvKey, OsString>::new();
+            if !self.clear {
+                for (k, v) in env::vars_os() {
+                    result.insert(k.into(), v);
+                }
+            }
+            for (k, maybe_v) in &self.vars {
+                if let &Some(ref v) = maybe_v {
+                    result.insert(k.clone(), v.clone());
+                } else {
+                    result.remove(k);
+                }
+            }
+            Some(result)
+        } else {
+            None
+        }
     }
 }
 

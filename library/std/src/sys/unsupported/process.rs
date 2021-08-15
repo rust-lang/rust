@@ -1,4 +1,5 @@
-use crate::ffi::OsStr;
+use crate::collections::{btree_map, BTreeMap};
+use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
@@ -7,7 +8,6 @@ use crate::path::Path;
 use crate::sys::fs::File;
 use crate::sys::pipe::AnonPipe;
 use crate::sys::unsupported;
-use crate::sys_common::process::{CommandEnv, CommandEnvs};
 
 pub use crate::ffi::OsString as EnvKey;
 
@@ -92,6 +92,33 @@ impl From<File> for Stdio {
 impl fmt::Debug for Command {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Ok(())
+    }
+}
+
+// An iterator over environment key/values.
+pub type CommandEnvs<'a> = btree_map::Iter<'a, EnvKey, Option<OsString>>;
+
+// Stores a set of changes to an environment
+#[derive(Clone, Debug, Default)]
+pub struct CommandEnv {
+    vars: BTreeMap<EnvKey, Option<OsString>>,
+}
+
+impl CommandEnv {
+    pub fn set(&mut self, key: &OsStr, value: &OsStr) {
+        self.vars.insert(key.to_owned().into(), Some(value.to_owned()));
+    }
+
+    pub fn remove(&mut self, key: &OsStr) {
+        self.vars.remove(key);
+    }
+
+    pub fn clear(&mut self) {
+        self.vars.clear();
+    }
+
+    pub fn iter(&self) -> CommandEnvs<'_> {
+        self.vars.iter()
     }
 }
 

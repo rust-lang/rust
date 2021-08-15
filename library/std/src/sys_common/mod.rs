@@ -26,7 +26,6 @@ pub mod fs;
 pub mod io;
 pub mod memchr;
 pub mod mutex;
-pub mod process;
 pub mod remutex;
 #[macro_use]
 pub mod rt;
