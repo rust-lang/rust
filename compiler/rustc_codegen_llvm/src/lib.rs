@@ -352,8 +352,8 @@ impl ModuleLlvm {
 impl Drop for ModuleLlvm {
     fn drop(&mut self) {
         unsafe {
-            llvm::LLVMContextDispose(&mut *(self.llcx as *mut _));
             llvm::LLVMRustDisposeTargetMachine(&mut *(self.tm as *mut _));
+            llvm::LLVMContextDispose(&mut *(self.llcx as *mut _));
         }
     }
 }
