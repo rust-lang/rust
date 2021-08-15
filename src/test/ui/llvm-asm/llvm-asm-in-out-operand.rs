@@ -1,6 +1,7 @@
 // run-pass
 
 #![feature(llvm_asm)]
+#![allow(deprecated)] // llvm_asm!
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 unsafe fn next_power_of_2(n: u32) -> u32 {

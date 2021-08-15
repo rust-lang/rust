@@ -2,6 +2,7 @@
 // ignore-emscripten
 
 #![feature(llvm_asm)]
+#![allow(deprecated)] // llvm_asm!
 
 macro_rules! interrupt_handler {
     () => {

@@ -1,5 +1,5 @@
 error[E0384]: cannot assign twice to immutable variable `x`
-  --> $DIR/llvm-asm-out-assign-imm.rs:25:39
+  --> $DIR/llvm-asm-out-assign-imm.rs:26:39
    |
 LL |     let x: isize;
    |         - help: consider making this binding mutable: `mut x`

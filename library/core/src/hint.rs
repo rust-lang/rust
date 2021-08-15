@@ -155,6 +155,7 @@ pub fn spin_loop() {
 #[inline]
 #[unstable(feature = "bench_black_box", issue = "64102")]
 #[cfg_attr(not(bootstrap), allow(unused_mut))]
+#[cfg_attr(bootstrap, allow(deprecated))]
 pub fn black_box<T>(mut dummy: T) -> T {
     #[cfg(bootstrap)]
     // SAFETY: the inline assembly is a no-op.

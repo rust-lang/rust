@@ -3,6 +3,7 @@
 // ignore-emscripten no asm
 
 #![feature(llvm_asm)]
+#![allow(deprecated)] // llvm_asm!
 
 pub fn main() {
     unsafe { llvm_asm!(concat!("", "")) };

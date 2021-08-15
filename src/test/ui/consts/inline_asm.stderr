@@ -1,10 +1,8 @@
 error[E0015]: inline assembly is not allowed in constants
   --> $DIR/inline_asm.rs:3:24
    |
-LL | const _: () = unsafe { llvm_asm!("nop") };
-   |                        ^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the macro `llvm_asm` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL | const _: () = unsafe { asm!("nop") };
+   |                        ^^^^^^^^^^^
 
 error: aborting due to previous error
 

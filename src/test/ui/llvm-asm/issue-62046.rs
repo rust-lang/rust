@@ -2,6 +2,7 @@
 // ignore-emscripten no asm! support
 
 #![feature(llvm_asm)]
+#![allow(deprecated)] // llvm_asm!
 
 fn main() {
     unsafe {

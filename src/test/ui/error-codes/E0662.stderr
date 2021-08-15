@@ -1,5 +1,5 @@
 error[E0662]: input operand constraint contains '='
-  --> $DIR/E0662.rs:8:17
+  --> $DIR/E0662.rs:9:17
    |
 LL |               : "=test"("a")
    |                 ^^^^^^^

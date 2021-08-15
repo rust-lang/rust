@@ -3,6 +3,7 @@
 // Regression test for #69092
 
 #![feature(llvm_asm)]
+#![allow(deprecated)] // llvm_asm!
 
 fn main() {
     unsafe { llvm_asm!(".ascii \"Xen\0\""); }

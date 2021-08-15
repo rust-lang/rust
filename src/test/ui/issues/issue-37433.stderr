@@ -1,5 +1,5 @@
 error[E0669]: invalid value for constraint in inline assembly
-  --> $DIR/issue-37433.rs:8:29
+  --> $DIR/issue-37433.rs:9:29
    |
 LL |         llvm_asm!("" :: "r"(""));
    |                             ^^

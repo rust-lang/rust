@@ -7,6 +7,7 @@
 #![feature(trace_macros, concat_idents)]
 #![feature(stmt_expr_attributes, arbitrary_enum_discriminant)]
 #![feature(derive_default_enum)]
+#![allow(deprecated)] // llvm_asm!
 
 #[derive(Default)]
 struct DefaultInnerAttrStruct {
