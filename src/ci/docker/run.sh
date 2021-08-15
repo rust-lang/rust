@@ -220,11 +220,13 @@ else
 fi
 
 if [ "$CI" != "" ]; then
-    # Get some needed information for $BASE_COMMIT
-    git fetch "https://github.com/$GITHUB_REPOSITORY" "$GITHUB_BASE_REF"
-    BASE_COMMIT="$(git merge-base FETCH_HEAD HEAD)"
+  # Get some needed information for $BASE_COMMIT
+  #
+  # This command gets the last merge commit which we'll use as base to list
+  # deleted files since then.
+  BASE_COMMIT="$(git log --author=bors@rust-lang.org -n 2 --pretty=format:%H | tail -n 1)"
 else
-    BASE_COMMIT=""
+  BASE_COMMIT=""
 fi
 
 docker \
