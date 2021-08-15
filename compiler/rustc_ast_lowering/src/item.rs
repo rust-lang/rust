@@ -443,23 +443,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
             ),
             ItemKind::MacroDef(MacroDef { ref body, macro_rules }) => {
-                let is_exported = !macro_rules
-                    || attrs.map_or(false, |a| self.sess.contains_name(a, sym::macro_export));
-
                 let body = P(self.lower_mac_args(body));
 
-                hir::ItemKind::Macro {
-                    // `is_exported` is duplicated, to make matching more convenient.
-                    is_exported,
-                    macro_def: hir::MacroDef {
-                        is_exported,
-                        ident: *ident,
-                        vis: *vis,
-                        def_id: hir_id.expect_owner(),
-                        span,
-                        ast: MacroDef { body, macro_rules },
-                    },
-                }
+                hir::ItemKind::Macro(hir::MacroDef {
+                    ident: *ident,
+                    vis: *vis,
+                    def_id: hir_id.expect_owner(),
+                    span,
+                    ast: MacroDef { body, macro_rules },
+                })
             }
             ItemKind::MacCall(..) => {
                 panic!("`TyMac` should have been expanded by now")

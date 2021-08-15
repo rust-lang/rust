@@ -593,7 +593,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             visitor.visit_id(item.hir_id());
             walk_list!(visitor, visit_foreign_item_ref, items);
         }
-        ItemKind::Macro { ref macro_def, .. } => {
+        ItemKind::Macro(ref macro_def) => {
             visitor.visit_id(item.hir_id());
             visitor.visit_macro_def(macro_def)
         }

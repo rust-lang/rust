@@ -25,7 +25,7 @@ use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{self, Const, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
-use rustc_span::symbol::{kw, Ident};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::traits::const_evaluatable::{self, AbstractConst};
 
@@ -507,11 +507,7 @@ impl EmbargoVisitor<'tcx> {
         }
         match def_kind {
             // No type privacy, so can be directly marked as reachable.
-            DefKind::Const
-            | DefKind::Macro(_)
-            | DefKind::Static
-            | DefKind::TraitAlias
-            | DefKind::TyAlias => {
+            DefKind::Const | DefKind::Static | DefKind::TraitAlias | DefKind::TyAlias => {
                 if vis.is_accessible_from(module.to_def_id(), self.tcx) {
                     self.update(def_id, level);
                 }
@@ -566,6 +562,7 @@ impl EmbargoVisitor<'tcx> {
             | DefKind::ExternCrate
             | DefKind::Use
             | DefKind::ForeignMod
+            | DefKind::Macro(_)
             | DefKind::AnonConst
             | DefKind::Field
             | DefKind::GlobalAsm
@@ -642,11 +639,23 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             }
             // Foreign modules inherit level from parents.
             hir::ItemKind::ForeignMod { .. } => self.prev_level,
-            // Non-exported macros can't be visible by definition;
-            hir::ItemKind::Macro { is_exported: false, .. } => None,
+            hir::ItemKind::Macro(ref macro_def) => {
+                let def_id = item.def_id.to_def_id();
+                let is_macro_export = self.tcx.has_attr(def_id, sym::macro_export);
+                match (macro_def.ast.macro_rules, is_macro_export) {
+                    (true, true) => Some(AccessLevel::Public),
+                    (true, false) => None,
+                    (false, _) => {
+                        if item.vis.node.is_pub() {
+                            self.prev_level
+                        } else {
+                            None
+                        }
+                    }
+                }
+            }
             // Other `pub` items inherit levels from parents.
-            hir::ItemKind::Macro { is_exported: true, .. }
-            | hir::ItemKind::Const(..)
+            hir::ItemKind::Const(..)
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::GlobalAsm(..)
@@ -714,17 +723,15 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     }
                 }
             }
-            hir::ItemKind::Macro { macro_def: ref md, .. } => {
+            hir::ItemKind::Macro(ref md) => {
+                // We have to make sure that the items that macros might reference
+                // are reachable, since they might be exported transitively.
+
                 // Non-opaque macros cannot make other items more accessible than they already are.
                 let attrs = self.tcx.hir().attrs(md.hir_id());
                 if attr::find_transparency(&self.tcx.sess, &attrs, md.ast.macro_rules).0
                     != Transparency::Opaque
                 {
-                    // `#[macro_export]`-ed `macro_rules!` are `Public` since they
-                    // ignore their containing path to always appear at the crate root.
-                    if md.ast.macro_rules {
-                        self.update(item.def_id, Some(AccessLevel::Public));
-                    }
                     return;
                 }
 

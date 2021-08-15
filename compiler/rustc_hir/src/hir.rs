@@ -772,7 +772,6 @@ impl Crate<'_> {
 /// Not parsed directly, but created on macro import or `macro_rules!` expansion.
 #[derive(Debug)]
 pub struct MacroDef<'hir> {
-    pub is_exported: bool,
     pub ident: Ident,
     pub vis: Visibility<'hir>,
     pub def_id: LocalDefId,
@@ -2781,7 +2780,7 @@ pub enum ItemKind<'hir> {
     /// An external module, e.g. `extern { .. }`.
     ForeignMod { abi: Abi, items: &'hir [ForeignItemRef<'hir>] },
     /// A MBE macro (`macro_rules!` or `macro`).
-    Macro { is_exported: bool, macro_def: MacroDef<'hir> },
+    Macro(MacroDef<'hir>),
     /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm(&'hir InlineAsm<'hir>),
     /// A type alias, e.g., `type Foo = Bar<u8>`.

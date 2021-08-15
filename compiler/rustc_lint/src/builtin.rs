@@ -617,7 +617,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                 return;
             }
 
-            hir::ItemKind::Macro { is_exported: true, .. }
+            hir::ItemKind::Macro { .. }
             | hir::ItemKind::TyAlias(..)
             | hir::ItemKind::Fn(..)
             | hir::ItemKind::Mod(..)

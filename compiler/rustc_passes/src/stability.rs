@@ -622,7 +622,6 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
             i.kind,
             hir::ItemKind::Impl(hir::Impl { of_trait: None, .. })
                 | hir::ItemKind::ForeignMod { .. }
-                | hir::ItemKind::Macro { is_exported: false, .. }
         ) {
             self.check_missing_stability(i.def_id, i.span);
         }

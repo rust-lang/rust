@@ -660,7 +660,7 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span);
             }
-            hir::ItemKind::Macro { ref macro_def, .. } => {
+            hir::ItemKind::Macro(ref macro_def) => {
                 let (kw, has_bang) = if macro_def.ast.macro_rules {
                     ("macro_rules", true)
                 } else {
