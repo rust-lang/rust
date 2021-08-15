@@ -5,6 +5,7 @@
 // ```
 const fs = require("fs");
 const path = require("path");
+const os = require('os');
 const {Options, runTest} = require('browser-ui-test');
 
 function showHelp() {
@@ -70,12 +71,49 @@ function parseOptions(args) {
     return null;
 }
 
+/// Print single char status information without \n
+function char_printer(n_tests) {
+    const max_per_line = 10;
+    let current = 0;
+    return {
+        successful: function() {
+            current += 1;
+            if (current % max_per_line === 0) {
+                process.stdout.write(`. (${current}/${n_tests})${os.EOL}`);
+            } else {
+                process.stdout.write(".");
+            }
+        },
+        erroneous: function() {
+            current += 1;
+            if (current % max_per_line === 0) {
+                process.stderr.write(`F (${current}/${n_tests})${os.EOL}`);
+            } else {
+                process.stderr.write("F");
+            }
+        },
+        finish: function() {
+            const spaces = " ".repeat(max_per_line - (current % max_per_line));
+            process.stdout.write(`${spaces} (${current}/${n_tests})${os.EOL}${os.EOL}`);
+        },
+    };
+}
+
+/// Sort array by .file_name property
+function by_filename(a, b) {
+    return a.file_name - b.file_name;
+}
+
 async function main(argv) {
     let opts = parseOptions(argv.slice(2));
     if (opts === null) {
         process.exit(1);
     }
 
+    // Print successful tests too
+    let debug = false;
+    // Run tests in sequentially
+    let no_headless = false;
     const options = new Options();
     try {
         // This is more convenient that setting fields one by one.
@@ -84,6 +122,7 @@ async function main(argv) {
             "--variable", "DOC_PATH", opts["doc_folder"],
         ];
         if (opts["debug"]) {
+            debug = true;
             args.push("--debug");
         }
         if (opts["show_text"]) {
@@ -91,6 +130,7 @@ async function main(argv) {
         }
         if (opts["no_headless"]) {
             args.push("--no-headless");
+            no_headless = true;
         }
         options.parseArguments(args);
     } catch (error) {
@@ -101,25 +141,85 @@ async function main(argv) {
     let failed = false;
     let files;
     if (opts["files"].length === 0) {
-        files = fs.readdirSync(opts["tests_folder"]).filter(file => path.extname(file) == ".goml");
+        files = fs.readdirSync(opts["tests_folder"]);
     } else {
-        files = opts["files"].filter(file => path.extname(file) == ".goml");
+        files = opts["files"];
     }
-
+    files = files.filter(file => path.extname(file) == ".goml");
+    if (files.length === 0) {
+        console.error("rustdoc-gui: No test selected");
+        process.exit(2);
+    }
     files.sort();
-    for (var i = 0; i < files.length; ++i) {
-        const testPath = path.join(opts["tests_folder"], files[i]);
-        await runTest(testPath, options).then(out => {
-            const [output, nb_failures] = out;
-            console.log(output);
-            if (nb_failures > 0) {
+
+    console.log(`Running ${files.length} rustdoc-gui tests...`);
+    process.setMaxListeners(files.length + 1);
+    let tests = [];
+    let results = {
+        successful: [],
+        failed: [],
+        errored: [],
+    };
+    const status_bar = char_printer(files.length);
+    for (let i = 0; i < files.length; ++i) {
+        const file_name = files[i];
+        const testPath = path.join(opts["tests_folder"], file_name);
+        tests.push(
+            runTest(testPath, options)
+            .then(out => {
+                const [output, nb_failures] = out;
+                results[nb_failures === 0 ? "successful" : "failed"].push({
+                    file_name: file_name,
+                    output: output,
+                });
+                if (nb_failures > 0) {
+                    status_bar.erroneous()
+                    failed = true;
+                } else {
+                    status_bar.successful()
+                }
+            })
+            .catch(err => {
+                results.errored.push({
+                    file_name: file_name,
+                    output: err,
+                });
+                status_bar.erroneous();
                 failed = true;
-            }
-        }).catch(err => {
-            console.error(err);
-            failed = true;
+            })
+        );
+        if (no_headless) {
+            await tests[i];
+        }
+    }
+    if (!no_headless) {
+        await Promise.all(tests);
+    }
+    status_bar.finish();
+
+    if (debug) {
+        results.successful.sort(by_filename);
+        results.successful.forEach(r => {
+            console.log(r.output);
         });
     }
+
+    if (results.failed.length > 0) {
+        console.log("");
+        results.failed.sort(by_filename);
+        results.failed.forEach(r => {
+            console.log(r.output);
+        });
+    }
+    if (results.errored.length > 0) {
+        console.log(os.EOL);
+        // print run errors on the bottom so developers see them better
+        results.errored.sort(by_filename);
+        results.errored.forEach(r => {
+            console.error(r.output);
+        });
+    }
+
     if (failed) {
         process.exit(1);
     }
