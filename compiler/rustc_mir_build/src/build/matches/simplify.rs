@@ -155,12 +155,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ascription: thir::Ascription { variance, user_ty, user_ty_span },
             } => {
                 // Apply the type ascription to the value at `match_pair.place`, which is the
-                candidate.ascriptions.push(Ascription {
-                    span: user_ty_span,
-                    user_ty,
-                    source: match_pair.place.clone().into_place(self.tcx, self.typeck_results),
-                    variance,
-                });
+                if let Ok(place_resolved) =
+                    match_pair.place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
+                {
+                    candidate.ascriptions.push(Ascription {
+                        span: user_ty_span,
+                        user_ty,
+                        source: place_resolved.into_place(self.tcx, self.typeck_results),
+                        variance,
+                    });
+                }
 
                 candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern));
 
@@ -173,15 +177,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatKind::Binding { name, mutability, mode, var, ty, ref subpattern, is_primary: _ } => {
-                candidate.bindings.push(Binding {
-                    name,
-                    mutability,
-                    span: match_pair.pattern.span,
-                    source: match_pair.place.clone().into_place(self.tcx, self.typeck_results),
-                    var_id: var,
-                    var_ty: ty,
-                    binding_mode: mode,
-                });
+                if let Ok(place_resolved) =
+                    match_pair.place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
+                {
+                    candidate.bindings.push(Binding {
+                        name,
+                        mutability,
+                        span: match_pair.pattern.span,
+                        source: place_resolved.into_place(self.tcx, self.typeck_results),
+                        var_id: var,
+                        var_ty: ty,
+                        binding_mode: mode,
+                    });
+                }
 
                 if let Some(subpattern) = subpattern.as_ref() {
                     // this is the `x @ P` case; have to keep matching against `P` now
