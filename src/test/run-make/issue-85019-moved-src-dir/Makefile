@@ -4,6 +4,9 @@ INCR=$(TMPDIR)/incr
 FIRST_SRC=$(TMPDIR)/first_src
 SECOND_SRC=$(TMPDIR)/second_src
 
+# ignore-none no-std is not supported
+# ignore-nvptx64-nvidia-cuda FIXME: can't find crate for 'std'
+
 # Tests that we don't get an ICE when the working directory
 # (but not the build directory!) changes between compilation
 # sessions
