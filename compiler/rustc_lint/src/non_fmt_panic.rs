@@ -120,13 +120,26 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 );
             }
         } else {
+            let ty = cx.typeck_results().expr_ty(arg);
+            // If this is a &str or String, we can confidently give the `"{}", ` suggestion.
+            let is_str = matches!(
+                ty.kind(),
+                ty::Ref(_, r, _) if *r.kind() == ty::Str,
+            ) || matches!(
+                ty.ty_adt_def(),
+                Some(ty_def) if cx.tcx.is_diagnostic_item(sym::string_type, ty_def.did),
+            );
             l.span_suggestion_verbose(
                 arg_span.shrink_to_lo(),
                 "add a \"{}\" format string to Display the message",
                 "\"{}\", ".into(),
-                Applicability::MaybeIncorrect,
+                if is_str {
+                    Applicability::MachineApplicable
+                } else {
+                    Applicability::MaybeIncorrect
+                },
             );
-            if panic == sym::std_panic_macro {
+            if !is_str && panic == sym::std_panic_macro {
                 if let Some((open, close, del)) = find_delimiters(cx, span) {
                     l.multipart_suggestion(
                         "or use std::panic::panic_any instead",
