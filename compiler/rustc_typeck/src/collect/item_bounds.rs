@@ -29,6 +29,8 @@ fn associated_type_bounds<'tcx>(
         &ItemCtxt::new(tcx, assoc_item_def_id),
         item_ty,
         &bounds,
+        None,
+        None,
         SizedByDefault::Yes,
         span,
     );
@@ -70,6 +72,8 @@ fn opaque_type_bounds<'tcx>(
             &ItemCtxt::new(tcx, opaque_def_id),
             item_ty,
             &bounds,
+            None,
+            None,
             SizedByDefault::Yes,
             span,
         )

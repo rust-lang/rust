@@ -854,7 +854,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     }
 
     // Returns `true` if a bounds list includes `?Sized`.
-    pub fn is_unsized(&self, ast_bounds: &[hir::GenericBound<'_>], span: Span) -> bool {
+    fn is_unsized(
+        &self,
+        ast_bounds: &[hir::GenericBound<'_>],
+        self_ty: Option<hir::HirId>,
+        where_clause: Option<&[hir::WherePredicate<'_>]>,
+        span: Span,
+    ) -> bool {
         let tcx = self.tcx();
 
         // Try to find an unbound in bounds.
@@ -868,11 +874,38 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
             }
         }
+        if let (Some(self_ty), Some(where_clause)) = (self_ty, where_clause) {
+            let self_ty_def_id = tcx.hir().local_def_id(self_ty).to_def_id();
+            for clause in where_clause {
+                match clause {
+                    hir::WherePredicate::BoundPredicate(pred) => {
+                        match pred.bounded_ty.kind {
+                            hir::TyKind::Path(hir::QPath::Resolved(_, path)) => match path.res {
+                                Res::Def(DefKind::TyParam, def_id) if def_id == self_ty_def_id => {}
+                                _ => continue,
+                            },
+                            _ => continue,
+                        }
+                        for ab in pred.bounds {
+                            if let hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::Maybe) =
+                                ab
+                            {
+                                if unbound.is_none() {
+                                    unbound = Some(&ptr.trait_ref);
+                                } else {
+                                    tcx.sess.emit_err(MultipleRelaxedDefaultBounds { span });
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
 
         let kind_id = tcx.lang_items().require(LangItem::Sized);
         match unbound {
             Some(tpb) => {
-                // FIXME(#8559) currently requires the unbound to be built-in.
                 if let Ok(kind_id) = kind_id {
                     if tpb.path.res != Res::Def(DefKind::Trait, kind_id) {
                         tcx.sess.span_warn(
@@ -940,8 +973,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         false,
                     );
                 }
-                hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe)
-                | hir::GenericBound::Unsized(_) => {}
+                hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe) => {}
                 hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => self
                     .instantiate_lang_item_trait_ref(
                         lang_item, span, hir_id, args, param_ty, bounds,
@@ -970,22 +1002,33 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// example above, but is not true in supertrait listings like `trait Foo: Bar + Baz`.
     ///
     /// `span` should be the declaration size of the parameter.
-    pub fn compute_bounds(
+    pub(crate) fn compute_bounds(
         &self,
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound<'_>],
+        self_ty: Option<hir::HirId>,
+        where_clause: Option<&[hir::WherePredicate<'_>]>,
         sized_by_default: SizedByDefault,
         span: Span,
     ) -> Bounds<'tcx> {
-        self.compute_bounds_inner(param_ty, &ast_bounds, sized_by_default, span)
+        self.compute_bounds_inner(
+            param_ty,
+            &ast_bounds,
+            self_ty,
+            where_clause,
+            sized_by_default,
+            span,
+        )
     }
 
     /// Convert the bounds in `ast_bounds` that refer to traits which define an associated type
     /// named `assoc_name` into ty::Bounds. Ignore the rest.
-    pub fn compute_bounds_that_match_assoc_type(
+    pub(crate) fn compute_bounds_that_match_assoc_type(
         &self,
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound<'_>],
+        self_ty: Option<hir::HirId>,
+        where_clause: Option<&[hir::WherePredicate<'_>]>,
         sized_by_default: SizedByDefault,
         span: Span,
         assoc_name: Ident,
@@ -1002,13 +1045,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        self.compute_bounds_inner(param_ty, &result, sized_by_default, span)
+        self.compute_bounds_inner(param_ty, &result, self_ty, where_clause, sized_by_default, span)
     }
 
     fn compute_bounds_inner(
         &self,
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound<'_>],
+        self_ty: Option<hir::HirId>,
+        where_clause: Option<&[hir::WherePredicate<'_>]>,
         sized_by_default: SizedByDefault,
         span: Span,
     ) -> Bounds<'tcx> {
@@ -1017,7 +1062,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self.add_bounds(param_ty, ast_bounds, &mut bounds, ty::List::empty());
 
         bounds.implicitly_sized = if let SizedByDefault::Yes = sized_by_default {
-            if !self.is_unsized(ast_bounds, span) { Some(span) } else { None }
+            if !self.is_unsized(ast_bounds, self_ty, where_clause, span) {
+                Some(span)
+            } else {
+                None
+            }
         } else {
             None
         };
