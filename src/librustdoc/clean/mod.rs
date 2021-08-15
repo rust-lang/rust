@@ -129,7 +129,6 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> GenericBound {
         match *self {
             hir::GenericBound::Outlives(lt) => GenericBound::Outlives(lt.clean(cx)),
-            hir::GenericBound::Unsized(_) => GenericBound::maybe_sized(cx),
             hir::GenericBound::LangItemTrait(lang_item, span, _, generic_args) => {
                 let def_id = cx.tcx.require_lang_item(lang_item, Some(span));
 
@@ -557,19 +556,13 @@ impl Clean<Generics> for hir::Generics<'_> {
                 WherePredicate::BoundPredicate {
                     ty: Generic(ref name), ref mut bounds, ..
                 } => {
-                    if let [] | [GenericBound::TraitBound(_, hir::TraitBoundModifier::Maybe)] =
-                        &bounds[..]
-                    {
+                    if bounds.is_empty() {
                         for param in &mut generics.params {
                             match param.kind {
                                 GenericParamDefKind::Lifetime { .. } => {}
                                 GenericParamDefKind::Type { bounds: ref mut ty_bounds, .. } => {
                                     if &param.name == name {
                                         mem::swap(bounds, ty_bounds);
-                                        // We now keep track of `?Sized` obligations in the HIR.
-                                        // If we don't clear `ty_bounds` we end up with
-                                        // `fn foo<X: ?Sized>(_: X) where X: ?Sized`.
-                                        ty_bounds.clear();
                                         break;
                                     }
                                 }

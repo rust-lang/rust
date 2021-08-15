@@ -693,6 +693,61 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         )
     }
 
+    fn instantiate_poly_trait_ref_inner(
+        &self,
+        hir_id: hir::HirId,
+        span: Span,
+        binding_span: Option<Span>,
+        constness: ty::BoundConstness,
+        bounds: &mut Bounds<'tcx>,
+        speculative: bool,
+        trait_ref_span: Span,
+        trait_def_id: DefId,
+        trait_segment: &hir::PathSegment<'_>,
+        args: &GenericArgs<'_>,
+        infer_args: bool,
+        self_ty: Ty<'tcx>,
+    ) -> GenericArgCountResult {
+        let (substs, arg_count) = self.create_substs_for_ast_path(
+            trait_ref_span,
+            trait_def_id,
+            &[],
+            trait_segment,
+            args,
+            infer_args,
+            Some(self_ty),
+        );
+
+        let tcx = self.tcx();
+        let bound_vars = tcx.late_bound_vars(hir_id);
+        debug!(?bound_vars);
+
+        let assoc_bindings = self.create_assoc_bindings_for_generic_args(args);
+
+        let poly_trait_ref =
+            ty::Binder::bind_with_vars(ty::TraitRef::new(trait_def_id, substs), bound_vars);
+
+        debug!(?poly_trait_ref, ?assoc_bindings);
+        bounds.trait_bounds.push((poly_trait_ref, span, constness));
+
+        let mut dup_bindings = FxHashMap::default();
+        for binding in &assoc_bindings {
+            // Specify type to assert that error was already reported in `Err` case.
+            let _: Result<_, ErrorReported> = self.add_predicates_for_ast_type_binding(
+                hir_id,
+                poly_trait_ref,
+                binding,
+                bounds,
+                speculative,
+                &mut dup_bindings,
+                binding_span.unwrap_or(binding.span),
+            );
+            // Okay to ignore `Err` because of `ErrorReported` (see above).
+        }
+
+        arg_count
+    }
+
     /// Given a trait bound like `Debug`, applies that trait bound the given self-type to construct
     /// a full trait reference. The resulting trait reference is returned. This may also generate
     /// auxiliary bounds, which are added to `bounds`.
@@ -713,7 +768,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// `Bar<'a>`. The returned poly-trait-ref will have this binder instantiated explicitly,
     /// however.
     #[tracing::instrument(level = "debug", skip(self, span, constness, bounds, speculative))]
-    pub fn instantiate_poly_trait_ref(
+    pub(crate) fn instantiate_poly_trait_ref(
         &self,
         trait_ref: &hir::TraitRef<'_>,
         span: Span,
@@ -722,48 +777,34 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
     ) -> GenericArgCountResult {
+        let hir_id = trait_ref.hir_ref_id;
+        let binding_span = None;
+        let trait_ref_span = trait_ref.path.span;
         let trait_def_id = trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise());
+        let trait_segment = trait_ref.path.segments.last().unwrap();
+        let args = trait_segment.args();
+        let infer_args = trait_segment.infer_args;
 
         self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1);
+        self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment);
 
-        let tcx = self.tcx();
-        let bound_vars = tcx.late_bound_vars(trait_ref.hir_ref_id);
-        debug!(?bound_vars);
-
-        let (substs, arg_count) = self.create_substs_for_ast_trait_ref(
-            trait_ref.path.span,
+        self.instantiate_poly_trait_ref_inner(
+            hir_id,
+            span,
+            binding_span,
+            constness,
+            bounds,
+            speculative,
+            trait_ref_span,
             trait_def_id,
+            trait_segment,
+            args,
+            infer_args,
             self_ty,
-            trait_ref.path.segments.last().unwrap(),
-        );
-        let assoc_bindings = self
-            .create_assoc_bindings_for_generic_args(trait_ref.path.segments.last().unwrap().args());
-
-        let poly_trait_ref =
-            ty::Binder::bind_with_vars(ty::TraitRef::new(trait_def_id, substs), bound_vars);
-
-        debug!(?poly_trait_ref, ?assoc_bindings);
-        bounds.trait_bounds.push((poly_trait_ref, span, constness));
-
-        let mut dup_bindings = FxHashMap::default();
-        for binding in &assoc_bindings {
-            // Specify type to assert that error was already reported in `Err` case.
-            let _: Result<_, ErrorReported> = self.add_predicates_for_ast_type_binding(
-                trait_ref.hir_ref_id,
-                poly_trait_ref,
-                binding,
-                bounds,
-                speculative,
-                &mut dup_bindings,
-                binding.span,
-            );
-            // Okay to ignore `Err` because of `ErrorReported` (see above).
-        }
-
-        arg_count
+        )
     }
 
-    pub fn instantiate_lang_item_trait_ref(
+    pub(crate) fn instantiate_lang_item_trait_ref(
         &self,
         lang_item: hir::LangItem,
         span: Span,
@@ -772,36 +813,28 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
     ) {
+        let binding_span = Some(span);
+        let constness = ty::BoundConstness::NotConst;
+        let speculative = false;
+        let trait_ref_span = span;
         let trait_def_id = self.tcx().require_lang_item(lang_item, Some(span));
+        let trait_segment = &hir::PathSegment::invalid();
+        let infer_args = false;
 
-        let (substs, _) = self.create_substs_for_ast_path(
+        self.instantiate_poly_trait_ref_inner(
+            hir_id,
             span,
+            binding_span,
+            constness,
+            bounds,
+            speculative,
+            trait_ref_span,
             trait_def_id,
-            &[],
-            &hir::PathSegment::invalid(),
+            trait_segment,
             args,
-            false,
-            Some(self_ty),
+            infer_args,
+            self_ty,
         );
-        let assoc_bindings = self.create_assoc_bindings_for_generic_args(args);
-        let tcx = self.tcx();
-        let bound_vars = tcx.late_bound_vars(hir_id);
-        let poly_trait_ref =
-            ty::Binder::bind_with_vars(ty::TraitRef::new(trait_def_id, substs), bound_vars);
-        bounds.trait_bounds.push((poly_trait_ref, span, ty::BoundConstness::NotConst));
-
-        let mut dup_bindings = FxHashMap::default();
-        for binding in assoc_bindings {
-            let _: Result<_, ErrorReported> = self.add_predicates_for_ast_type_binding(
-                hir_id,
-                poly_trait_ref,
-                &binding,
-                bounds,
-                false,
-                &mut dup_bindings,
-                span,
-            );
-        }
     }
 
     fn ast_path_to_mono_trait_ref(
@@ -935,45 +968,43 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// **A note on binders:** there is an implied binder around
     /// `param_ty` and `ast_bounds`. See `instantiate_poly_trait_ref`
     /// for more details.
-    #[tracing::instrument(level = "debug", skip(self, bounds))]
-    fn add_bounds(
+    #[tracing::instrument(level = "debug", skip(self, ast_bounds, bounds))]
+    pub(crate) fn add_bounds<'hir, I: Iterator<Item = &'hir hir::GenericBound<'hir>>>(
         &self,
         param_ty: Ty<'tcx>,
-        ast_bounds: &[hir::GenericBound<'_>],
+        ast_bounds: I,
         bounds: &mut Bounds<'tcx>,
         bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
     ) {
         for ast_bound in ast_bounds {
-            match *ast_bound {
-                hir::GenericBound::Trait(ref b, hir::TraitBoundModifier::None) => {
-                    self.instantiate_poly_trait_ref(
-                        &b.trait_ref,
-                        b.span,
-                        ty::BoundConstness::NotConst,
+            match ast_bound {
+                hir::GenericBound::Trait(poly_trait_ref, modifier) => {
+                    let constness = match modifier {
+                        hir::TraitBoundModifier::MaybeConst => ty::BoundConstness::ConstIfConst,
+                        hir::TraitBoundModifier::None => ty::BoundConstness::NotConst,
+                        hir::TraitBoundModifier::Maybe => continue,
+                    };
+
+                    let _ = self.instantiate_poly_trait_ref(
+                        &poly_trait_ref.trait_ref,
+                        poly_trait_ref.span,
+                        constness,
                         param_ty,
                         bounds,
                         false,
                     );
                 }
-                hir::GenericBound::Trait(ref b, hir::TraitBoundModifier::MaybeConst) => {
-                    self.instantiate_poly_trait_ref(
-                        &b.trait_ref,
-                        b.span,
-                        ty::BoundConstness::ConstIfConst,
-                        param_ty,
-                        bounds,
-                        false,
-                    );
-                }
-                hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe) => {}
-                hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => self
-                    .instantiate_lang_item_trait_ref(
+                &hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => {
+                    self.instantiate_lang_item_trait_ref(
                         lang_item, span, hir_id, args, param_ty, bounds,
-                    ),
-                hir::GenericBound::Outlives(ref l) => bounds.region_bounds.push((
-                    ty::Binder::bind_with_vars(self.ast_region_to_region(l, None), bound_vars),
-                    l.span,
-                )),
+                    );
+                }
+                hir::GenericBound::Outlives(lifetime) => {
+                    let region = self.ast_region_to_region(lifetime, None);
+                    bounds
+                        .region_bounds
+                        .push((ty::Binder::bind_with_vars(region, bound_vars), lifetime.span));
+                }
             }
         }
     }
@@ -1032,7 +1063,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ) -> Bounds<'tcx> {
         let mut bounds = Bounds::default();
 
-        self.add_bounds(param_ty, ast_bounds, &mut bounds, ty::List::empty());
+        self.add_bounds(param_ty, ast_bounds.iter(), &mut bounds, ty::List::empty());
 
         bounds
     }
@@ -1224,7 +1255,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // Calling `skip_binder` is okay, because `add_bounds` expects the `param_ty`
                 // parameter to have a skipped binder.
                 let param_ty = tcx.mk_ty(ty::Projection(projection_ty.skip_binder()));
-                self.add_bounds(param_ty, ast_bounds, bounds, candidate.bound_vars());
+                self.add_bounds(param_ty, ast_bounds.iter(), bounds, candidate.bound_vars());
             }
         }
         Ok(())
