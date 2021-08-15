@@ -1,7 +1,7 @@
 mod sip;
 
 use std::default::Default;
-use std::hash::{Hash, Hasher};
+use std::hash::{BuildHasher, Hash, Hasher};
 use std::rc::Rc;
 
 struct MyHasher {
@@ -138,4 +138,11 @@ fn test_indirect_hasher() {
         5u32.hash(&mut indirect_hasher);
     }
     assert_eq!(hasher.hash, 5);
+}
+
+#[test]
+fn test_build_hasher_object_safe() {
+    use std::collections::hash_map::{DefaultHasher, RandomState};
+
+    let _: &dyn BuildHasher<Hasher = DefaultHasher> = &RandomState::new();
 }
