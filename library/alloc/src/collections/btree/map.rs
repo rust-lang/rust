@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt::{self, Debug};
@@ -2220,5 +2223,52 @@ impl<K, V> BTreeMap<K, V> {
     }
 }
 
-#[cfg(test)]
-mod tests;
+#[allow(dead_code)]
+fn assert_covariance() {
+    // Lifetime and both type parameters should be covariant for these types.
+    fn map<'new>(v: BTreeMap<&'static str, &'static str>) -> BTreeMap<&'new str, &'new str> {
+        v
+    }
+    fn iter<'new>(
+        v: Iter<'static, &'static str, &'static str>,
+    ) -> Iter<'new, &'new str, &'new str> {
+        v
+    }
+    fn into_iter<'new>(v: IntoIter<&'static str, &'static str>) -> IntoIter<&'new str, &'new str> {
+        v
+    }
+    fn keys<'new>(
+        v: Keys<'static, &'static str, &'static str>,
+    ) -> Keys<'new, &'new str, &'new str> {
+        v
+    }
+    fn values<'new>(
+        v: Values<'static, &'static str, &'static str>,
+    ) -> Values<'new, &'new str, &'new str> {
+        v
+    }
+    fn into_keys<'new>(v: IntoKeys<&'static str, &'static str>) -> IntoKeys<&'new str, &'new str> {
+        v
+    }
+    fn into_values<'new>(
+        v: IntoValues<&'static str, &'static str>,
+    ) -> IntoValues<&'new str, &'new str> {
+        v
+    }
+    fn range<'new>(
+        v: Range<'static, &'static str, &'static str>,
+    ) -> Range<'new, &'new str, &'new str> {
+        v
+    }
+
+    // Lifetime should be covariant for these types.
+    fn iter_mut<'new>(v: IterMut<'static, u8, u8>) -> IterMut<'new, u8, u8> {
+        v
+    }
+    fn values_mut<'new>(v: ValuesMut<'static, u8, u8>) -> ValuesMut<'new, u8, u8> {
+        v
+    }
+    fn range_mut<'new>(v: RangeMut<'static, u8, u8>) -> RangeMut<'new, u8, u8> {
+        v
+    }
+}

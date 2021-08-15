@@ -1,6 +1,9 @@
 // This is pretty much entirely stolen from TreeSet, since BTreeMap has an identical interface
 // to TreeMap
 
+#[cfg(test)]
+mod tests;
+
 use core::borrow::Borrow;
 use core::cmp::Ordering::{Equal, Greater, Less};
 use core::cmp::{max, min};
@@ -1601,5 +1604,18 @@ impl<'a, T: Ord> Iterator for Union<'a, T> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T: Ord> FusedIterator for Union<'_, T> {}
 
-#[cfg(test)]
-mod tests;
+#[allow(dead_code)]
+fn assert_covariance() {
+    fn set<'new>(v: BTreeSet<&'static str>) -> BTreeSet<&'new str> {
+        v
+    }
+    fn iter<'new>(v: Iter<'static, &'static str>) -> Iter<'new, &'new str> {
+        v
+    }
+    fn into_iter<'new>(v: IntoIter<&'static str>) -> IntoIter<&'new str> {
+        v
+    }
+    fn range<'new>(v: Range<'static, &'static str>) -> Range<'new, &'new str> {
+        v
+    }
+}
