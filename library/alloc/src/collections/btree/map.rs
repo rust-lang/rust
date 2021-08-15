@@ -233,9 +233,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
         }
 
         if self.is_empty() {
-            // Ideally we'd call `BTreeMap::new` here, but that has the `K:
-            // Ord` constraint, which this method lacks.
-            BTreeMap { root: None, length: 0 }
+            BTreeMap::new()
         } else {
             clone_subtree(self.root.as_ref().unwrap().reborrow()) // unwrap succeeds because not empty
         }
@@ -499,10 +497,7 @@ impl<K, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
-    pub const fn new() -> BTreeMap<K, V>
-    where
-        K: Ord,
-    {
+    pub const fn new() -> BTreeMap<K, V> {
         BTreeMap { root: None, length: 0 }
     }
 
@@ -522,7 +517,7 @@ impl<K, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
-        *self = BTreeMap { root: None, length: 0 };
+        *self = BTreeMap::new();
     }
 
     /// Returns a reference to the value corresponding to the key.
@@ -1957,7 +1952,7 @@ impl<K: Hash, V: Hash> Hash for BTreeMap<K, V> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K: Ord, V> Default for BTreeMap<K, V> {
+impl<K, V> Default for BTreeMap<K, V> {
     /// Creates an empty `BTreeMap`.
     fn default() -> BTreeMap<K, V> {
         BTreeMap::new()
