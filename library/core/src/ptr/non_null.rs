@@ -634,6 +634,107 @@ impl<T> NonNull<[T]> {
     }
 }
 
+#[cfg(not(bootstrap))]
+impl NonNull<str> {
+    /// Returns the length of a non-null raw slice.
+    ///
+    /// The returned value is the number of **bytes**, not the number of characters.
+    ///
+    /// This function is safe, even when the non-null raw slice cannot be dereferenced to a slice
+    /// because the pointer does not have a valid address.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(str_ptr_len)]
+    /// use std::ptr::NonNull;
+    ///
+    /// let slice: NonNull<str> = NonNull::from("abc");
+    /// assert_eq!(slice.len(), 3);
+    /// ```
+    #[unstable(feature = "str_ptr_len", issue = "71146")]
+    #[rustc_const_unstable(feature = "const_str_ptr_len", issue = "71146")]
+    #[inline]
+    pub const fn len(self) -> usize {
+        self.as_ptr().len()
+    }
+
+    /// Returns a non-null pointer to the string slice's buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(str_ptr_as_ptr)]
+    /// use std::ptr::NonNull;
+    ///
+    /// let s: &str = "abc";
+    /// let str: NonNull<str> = NonNull::from("abc");
+    /// assert_eq!(str.as_non_null_ptr(), NonNull::new(s.as_ptr() as *mut u8).unwrap());
+    /// ```
+    #[inline]
+    #[unstable(feature = "str_ptr_as_ptr", issue = "74265")]
+    #[rustc_const_unstable(feature = "str_ptr_as_ptr", issue = "74265")]
+    pub const fn as_non_null_ptr(self) -> NonNull<u8> {
+        // SAFETY: We know `self` is non-null.
+        unsafe { NonNull::new_unchecked(self.as_ptr().as_mut_ptr()) }
+    }
+
+    /// Returns a raw pointer to the string slice's buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(str_ptr_as_ptr)]
+    /// use std::ptr::NonNull;
+    ///
+    /// let s: &str = "abc";
+    /// let str: NonNull<str> = NonNull::from("abc");
+    /// assert_eq!(str.as_mut_ptr(), s.as_ptr() as *mut u8);
+    /// ```
+    #[inline]
+    #[unstable(feature = "str_ptr_as_ptr", issue = "74265")]
+    #[rustc_const_unstable(feature = "str_ptr_as_ptr", issue = "74265")]
+    pub const fn as_mut_ptr(self) -> *mut u8 {
+        self.as_non_null_ptr().as_ptr()
+    }
+
+    /// Returns a raw pointer to an element or substring, without doing bounds
+    /// checking.
+    ///
+    /// # Safety
+    ///
+    /// Calling this method with an out-of-bounds index or when `self` is not dereferenceable
+    /// is *[undefined behavior]* even if the resulting pointer is not used.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// Note that calling this function with an index that does not lie on an UTF-8 sequence boundaries
+    /// is safe, but dereferencing the pointer returned by such call is unsound.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(str_ptr_get, str_ptr_as_ptr)]
+    /// use std::ptr::NonNull;
+    ///
+    /// let x = NonNull::from("abc");
+    ///
+    /// unsafe {
+    ///     assert_eq!(x.get_unchecked_mut(1..).as_mut_ptr(), x.as_mut_ptr().add(1));
+    /// }
+    /// ```
+    #[unstable(feature = "str_ptr_get", issue = "74265")]
+    #[inline]
+    pub unsafe fn get_unchecked_mut<I>(self, index: I) -> NonNull<I::Output>
+    where
+        I: SliceIndex<str>,
+    {
+        // SAFETY: the caller ensures that `self` is dereferencable and `index` in-bounds.
+        // As a consequence, the resulting pointer cannot be null.
+        unsafe { NonNull::new_unchecked(self.as_ptr().get_unchecked_mut(index)) }
+    }
+}
+
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> Clone for NonNull<T> {
     #[inline]
