@@ -132,7 +132,7 @@ impl<T: ?Sized> Unique<T> {
 
     /// Casts to a pointer of another type.
     #[inline]
-    pub const fn cast<U>(self) -> Unique<U> {
+    pub const fn cast<U: ?Sized>(self) -> Unique<U> {
         // SAFETY: Unique::new_unchecked() creates a new unique and needs
         // the given pointer to not be null.
         // Since we are passing self as a pointer, it cannot be null.

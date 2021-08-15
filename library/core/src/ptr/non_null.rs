@@ -382,7 +382,7 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull_cast", since = "1.27.0")]
     #[rustc_const_stable(feature = "const_nonnull_cast", since = "1.36.0")]
     #[inline]
-    pub const fn cast<U>(self) -> NonNull<U> {
+    pub const fn cast<U: ?Sized>(self) -> NonNull<U> {
         // SAFETY: `self` is a `NonNull` pointer which is necessarily non-null
         unsafe { NonNull::new_unchecked(self.as_ptr() as *mut U) }
     }

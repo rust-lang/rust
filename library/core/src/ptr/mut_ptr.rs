@@ -43,7 +43,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "ptr_cast", since = "1.38.0")]
     #[rustc_const_stable(feature = "const_ptr_cast", since = "1.38.0")]
     #[inline(always)]
-    pub const fn cast<U>(self) -> *mut U {
+    pub const fn cast<U: ?Sized>(self) -> *mut U {
         self as _
     }
 
