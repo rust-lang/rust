@@ -13,15 +13,15 @@ generate_mod::check!(); //~ ERROR cannot find type `FromOutside` in this scope
                             //~| ERROR cannot find type `OuterAttr` in this scope
 struct S;
 
-#[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside` in this scope
-                                     //~| WARN cannot find type `OuterDerive` in this scope
+#[derive(generate_mod::CheckDerive)] //~ ERROR cannot find type `FromOutside` in this scope
+                                     //~| ERROR cannot find type `OuterDerive` in this scope
                                      //~| WARN this was previously accepted
                                      //~| WARN this was previously accepted
 struct Z;
 
 fn inner_block() {
-    #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside` in this scope
-                                        //~| WARN cannot find type `OuterDerive` in this scope
+    #[derive(generate_mod::CheckDerive)] //~ ERROR cannot find type `FromOutside` in this scope
+                                        //~| ERROR cannot find type `OuterDerive` in this scope
                                         //~| WARN this was previously accepted
                                         //~| WARN this was previously accepted
     struct InnerZ;

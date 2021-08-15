@@ -3,20 +3,20 @@ PRINT-DERIVE RE-COLLECTED (DISPLAY): enum ProceduralMasqueradeDummyType { Input 
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "enum",
-        span: #0 bytes(100..104),
+        span: #0 bytes(86..90),
     },
     Ident {
         ident: "ProceduralMasqueradeDummyType",
-        span: #0 bytes(105..134),
+        span: #0 bytes(91..120),
     },
     Group {
         delimiter: Brace,
         stream: TokenStream [
             Ident {
                 ident: "Input",
-                span: #0 bytes(186..191),
+                span: #0 bytes(173..178),
             },
         ],
-        span: #0 bytes(135..193),
+        span: #0 bytes(121..180),
     },
 ]
