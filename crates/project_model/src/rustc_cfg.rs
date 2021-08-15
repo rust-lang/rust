@@ -20,7 +20,7 @@ pub(crate) fn get(cargo_toml: Option<&ManifestPath>, target: Option<&str>) -> Ve
 
     match get_rust_cfgs(cargo_toml, target) {
         Ok(rustc_cfgs) => res.extend(rustc_cfgs.lines().map(|it| it.parse().unwrap())),
-        Err(e) => log::error!("failed to get rustc cfgs: {:#}", e),
+        Err(e) => tracing::error!("failed to get rustc cfgs: {:#}", e),
     }
 
     res

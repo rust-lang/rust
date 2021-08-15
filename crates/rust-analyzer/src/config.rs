@@ -432,7 +432,7 @@ impl Config {
         }
     }
     pub fn update(&mut self, mut json: serde_json::Value) {
-        log::info!("updating config from JSON: {:#}", json);
+        tracing::info!("updating config from JSON: {:#}", json);
         if json.is_null() || json.as_object().map_or(false, |it| it.is_empty()) {
             return;
         }
@@ -478,7 +478,9 @@ impl Config {
                         ManifestOrProjectJson::Manifest(it) => {
                             let path = self.root_path.join(it);
                             ProjectManifest::from_manifest_file(path)
-                                .map_err(|e| log::error!("failed to load linked project: {}", e))
+                                .map_err(|e| {
+                                    tracing::error!("failed to load linked project: {}", e)
+                                })
                                 .ok()?
                                 .into()
                         }

@@ -85,7 +85,7 @@ pub fn load_workspace(
         version: 0,
     });
 
-    log::debug!("crate graph: {:?}", crate_graph);
+    tracing::debug!("crate graph: {:?}", crate_graph);
     let host =
         load_crate_graph(crate_graph, project_folders.source_root_config, &mut vfs, &receiver);
 

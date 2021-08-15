@@ -163,7 +163,7 @@ impl FlycheckActor {
                     self.cancel_check_process();
 
                     let mut command = self.check_command();
-                    log::info!("restart flycheck {:?}", command);
+                    tracing::info!("restart flycheck {:?}", command);
                     command.stdout(Stdio::piped()).stderr(Stdio::null()).stdin(Stdio::null());
                     if let Ok(child) = command.spawn().map(JodChild) {
                         self.cargo_handle = Some(CargoHandle::spawn(child));
@@ -176,7 +176,7 @@ impl FlycheckActor {
                     let cargo_handle = self.cargo_handle.take().unwrap();
                     let res = cargo_handle.join();
                     if res.is_err() {
-                        log::error!(
+                        tracing::error!(
                             "Flycheck failed to run the following command: {:?}",
                             self.check_command()
                         )
@@ -319,7 +319,7 @@ impl CargoActor {
             let message = match message {
                 Ok(message) => message,
                 Err(err) => {
-                    log::error!("Invalid json from cargo check, ignoring ({})", err);
+                    tracing::error!("Invalid json from cargo check, ignoring ({})", err);
                     continue;
                 }
             };

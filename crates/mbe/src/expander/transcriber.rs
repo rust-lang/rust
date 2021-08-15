@@ -174,7 +174,11 @@ fn expand_repeat(
 
         counter += 1;
         if counter == limit {
-            log::warn!("expand_tt in repeat pattern exceed limit => {:#?}\n{:#?}", template, ctx);
+            tracing::warn!(
+                "expand_tt in repeat pattern exceed limit => {:#?}\n{:#?}",
+                template,
+                ctx
+            );
             return ExpandResult {
                 value: Fragment::Tokens(Subtree::default().into()),
                 err: Some(ExpandError::Other("Expand exceed limit".to_string())),

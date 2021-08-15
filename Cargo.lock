@@ -325,15 +325,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "env_logger"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b2cf0344971ee6c64c31be0d530793fba457d322dfec2810c453d0ef228f9c3"
-dependencies = [
- "log",
-]
-
-[[package]]
 name = "expect-test"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -380,12 +371,12 @@ dependencies = [
  "cargo_metadata",
  "crossbeam-channel",
  "jod-thread",
- "log",
  "paths",
  "serde",
  "serde_json",
  "stdx",
  "toolchain",
+ "tracing",
 ]
 
 [[package]]
@@ -462,7 +453,6 @@ dependencies = [
  "hir_ty",
  "indexmap",
  "itertools",
- "log",
  "once_cell",
  "profile",
  "rustc-hash",
@@ -490,7 +480,6 @@ dependencies = [
  "itertools",
  "la-arena",
  "limit",
- "log",
  "mbe",
  "once_cell",
  "profile",
@@ -499,6 +488,7 @@ dependencies = [
  "stdx",
  "syntax",
  "test_utils",
+ "tracing",
  "tt",
 ]
 
@@ -514,13 +504,13 @@ dependencies = [
  "itertools",
  "la-arena",
  "limit",
- "log",
  "mbe",
  "parser",
  "profile",
  "rustc-hash",
  "syntax",
  "test_utils",
+ "tracing",
  "tt",
 ]
 
@@ -541,7 +531,6 @@ dependencies = [
  "itertools",
  "la-arena",
  "limit",
- "log",
  "once_cell",
  "profile",
  "rustc-hash",
@@ -581,7 +570,6 @@ dependencies = [
  "ide_ssr",
  "indexmap",
  "itertools",
- "log",
  "oorandom",
  "profile",
  "pulldown-cmark",
@@ -591,6 +579,7 @@ dependencies = [
  "syntax",
  "test_utils",
  "text_edit",
+ "tracing",
  "url",
 ]
 
@@ -625,7 +614,6 @@ dependencies = [
  "hir",
  "ide_db",
  "itertools",
- "log",
  "once_cell",
  "profile",
  "rustc-hash",
@@ -634,6 +622,7 @@ dependencies = [
  "syntax",
  "test_utils",
  "text_edit",
+ "tracing",
  "xshell",
 ]
 
@@ -649,7 +638,6 @@ dependencies = [
  "hir",
  "itertools",
  "limit",
- "log",
  "once_cell",
  "profile",
  "rayon",
@@ -658,6 +646,7 @@ dependencies = [
  "syntax",
  "test_utils",
  "text_edit",
+ "tracing",
 ]
 
 [[package]]
@@ -889,7 +878,6 @@ version = "0.0.0"
 dependencies = [
  "cov-mark",
  "expect-test",
- "log",
  "parser",
  "profile",
  "rustc-hash",
@@ -897,6 +885,7 @@ dependencies = [
  "stdx",
  "syntax",
  "test_utils",
+ "tracing",
  "tt",
 ]
 
@@ -1121,7 +1110,6 @@ version = "0.0.0"
 dependencies = [
  "crossbeam-channel",
  "jod-thread",
- "log",
  "memmap2",
  "object",
  "paths",
@@ -1130,6 +1118,7 @@ dependencies = [
  "serde_json",
  "snap",
  "stdx",
+ "tracing",
  "tt",
 ]
 
@@ -1188,7 +1177,6 @@ dependencies = [
  "cfg",
  "expect-test",
  "la-arena",
- "log",
  "paths",
  "profile",
  "rustc-hash",
@@ -1197,6 +1185,7 @@ dependencies = [
  "serde_json",
  "stdx",
  "toolchain",
+ "tracing",
 ]
 
 [[package]]
@@ -1308,7 +1297,6 @@ dependencies = [
  "cfg",
  "crossbeam-channel",
  "dissimilar",
- "env_logger",
  "expect-test",
  "flycheck",
  "hir",
@@ -1319,7 +1307,6 @@ dependencies = [
  "ide_ssr",
  "itertools",
  "jod-thread",
- "log",
  "lsp-server",
  "lsp-types",
  "mbe",
@@ -1343,6 +1330,7 @@ dependencies = [
  "tikv-jemallocator",
  "toolchain",
  "tracing",
+ "tracing-log",
  "tracing-subscriber",
  "tracing-tree",
  "tt",
@@ -1737,6 +1725,7 @@ dependencies = [
  "thread_local",
  "tracing",
  "tracing-core",
+ "tracing-log",
 ]
 
 [[package]]
@@ -1838,10 +1827,10 @@ version = "0.0.0"
 dependencies = [
  "crossbeam-channel",
  "jod-thread",
- "log",
  "notify",
  "paths",
  "rustc-hash",
+ "tracing",
  "vfs",
  "walkdir",
 ]

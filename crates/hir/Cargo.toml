@@ -9,7 +9,6 @@ edition = "2018"
 doctest = false
 
 [dependencies]
-log = "0.4.8"
 rustc-hash = "1.1.0"
 either = "1.5.3"
 arrayvec = "0.7"

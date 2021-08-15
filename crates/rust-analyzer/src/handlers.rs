@@ -1651,7 +1651,7 @@ fn run_rustfmt(
                     }
                 }
                 Err(_) => {
-                    log::error!(
+                    tracing::error!(
                         "Unable to get file path for {}, rustfmt.toml might be ignored",
                         text_document.uri
                     );
@@ -1721,7 +1721,7 @@ fn run_rustfmt(
                 // formatting because otherwise an error is surfaced to the user on top of the
                 // syntax error diagnostics they're already receiving. This is especially jarring
                 // if they have format on save enabled.
-                log::info!("rustfmt exited with status 1, assuming parse error and ignoring");
+                tracing::info!("rustfmt exited with status 1, assuming parse error and ignoring");
                 Ok(None)
             }
             _ => {

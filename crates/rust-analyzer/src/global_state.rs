@@ -271,7 +271,7 @@ impl GlobalState {
             }
 
             let duration = start.elapsed();
-            log::info!("handled {} - ({}) in {:0.2?}", method, response.id, duration);
+            tracing::info!("handled {} - ({}) in {:0.2?}", method, response.id, duration);
             self.send(response.into());
         }
     }

@@ -384,9 +384,9 @@ impl ProjectWorkspace {
             }
         };
         if crate_graph.patch_cfg_if() {
-            log::debug!("Patched std to depend on cfg-if")
+            tracing::debug!("Patched std to depend on cfg-if")
         } else {
-            log::debug!("Did not patch std to depend on cfg-if")
+            tracing::debug!("Did not patch std to depend on cfg-if")
         }
         crate_graph
     }
@@ -623,7 +623,7 @@ fn detached_files_to_crate_graph(
         let file_id = match load(detached_file) {
             Some(file_id) => file_id,
             None => {
-                log::error!("Failed to load detached file {:?}", detached_file);
+                tracing::error!("Failed to load detached file {:?}", detached_file);
                 continue;
             }
         };
@@ -847,7 +847,7 @@ fn sysroot_to_crate_graph(
 
 fn add_dep(graph: &mut CrateGraph, from: CrateId, name: CrateName, to: CrateId) {
     if let Err(err) = graph.add_dep(from, name, to) {
-        log::error!("{}", err)
+        tracing::error!("{}", err)
     }
 }
 

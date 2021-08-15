@@ -35,7 +35,7 @@ fn main() {
     }
 
     if let Err(err) = try_main() {
-        log::error!("Unexpected error: {}", err);
+        tracing::error!("Unexpected error: {}", err);
         eprintln!("{}", err);
         process::exit(101);
     }
@@ -60,7 +60,7 @@ fn try_main() -> Result<()> {
         log_file = Some(Path::new(env_log_file));
     }
 
-    setup_logging(log_file, flags.no_log_buffering)?;
+    setup_logging(log_file)?;
     let verbosity = flags.verbosity();
 
     match flags.subcommand {
@@ -91,7 +91,7 @@ fn try_main() -> Result<()> {
     Ok(())
 }
 
-fn setup_logging(log_file: Option<&Path>, no_buffering: bool) -> Result<()> {
+fn setup_logging(log_file: Option<&Path>) -> Result<()> {
     env::set_var("RUST_BACKTRACE", "short");
 
     let log_file = match log_file {
@@ -104,42 +104,20 @@ fn setup_logging(log_file: Option<&Path>, no_buffering: bool) -> Result<()> {
         None => None,
     };
     let filter = env::var("RA_LOG").ok();
-    logger::Logger::new(log_file, no_buffering, filter.as_deref()).install();
-
-    tracing_setup::setup_tracing()?;
+    logger::Logger::new(log_file, filter.as_deref()).install()?;
 
     profile::init();
 
     Ok(())
 }
 
-mod tracing_setup {
-    use tracing::subscriber;
-    use tracing_subscriber::layer::SubscriberExt;
-    use tracing_subscriber::EnvFilter;
-    use tracing_subscriber::Registry;
-    use tracing_tree::HierarchicalLayer;
-
-    pub(crate) fn setup_tracing() -> super::Result<()> {
-        let filter = EnvFilter::from_env("CHALK_DEBUG");
-        let layer = HierarchicalLayer::default()
-            .with_indent_lines(true)
-            .with_ansi(false)
-            .with_indent_amount(2)
-            .with_writer(std::io::stderr);
-        let subscriber = Registry::default().with(filter).with(layer);
-        subscriber::set_global_default(subscriber)?;
-        Ok(())
-    }
-}
-
 fn run_server() -> Result<()> {
-    log::info!("server version {} will start", env!("REV"));
+    tracing::info!("server version {} will start", env!("REV"));
 
     let (connection, io_threads) = Connection::stdio();
 
     let (initialize_id, initialize_params) = connection.initialize_start()?;
-    log::info!("InitializeParams: {}", initialize_params);
+    tracing::info!("InitializeParams: {}", initialize_params);
     let initialize_params =
         from_json::<lsp_types::InitializeParams>("InitializeParams", initialize_params)?;
 
@@ -176,7 +154,7 @@ fn run_server() -> Result<()> {
     connection.initialize_finish(initialize_id, initialize_result)?;
 
     if let Some(client_info) = initialize_params.client_info {
-        log::info!("Client '{}' {}", client_info.name, client_info.version.unwrap_or_default());
+        tracing::info!("Client '{}' {}", client_info.name, client_info.version.unwrap_or_default());
     }
 
     if config.linked_projects().is_empty() && config.detached_files().is_empty() {
@@ -193,9 +171,9 @@ fn run_server() -> Result<()> {
             .unwrap_or_else(|| vec![config.root_path.clone()]);
 
         let discovered = ProjectManifest::discover_all(&workspace_roots);
-        log::info!("discovered projects: {:?}", discovered);
+        tracing::info!("discovered projects: {:?}", discovered);
         if discovered.is_empty() {
-            log::error!("failed to find any projects in {:?}", workspace_roots);
+            tracing::error!("failed to find any projects in {:?}", workspace_roots);
         }
         config.discovered_projects = Some(discovered);
     }
@@ -203,6 +181,6 @@ fn run_server() -> Result<()> {
     rust_analyzer::main_loop(config, connection)?;
 
     io_threads.join()?;
-    log::info!("server did shut down");
+    tracing::info!("server did shut down");
     Ok(())
 }

@@ -14,7 +14,7 @@ itertools = "0.10.0"
 arrayvec = "0.7"
 smallvec = "1.2.0"
 ena = "0.14.0"
-log = "0.4.8"
+tracing = "0.1"
 rustc-hash = "1.1.0"
 scoped-tls = "1"
 chalk-solve = { version = "0.70", default-features = false }

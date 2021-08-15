@@ -283,7 +283,7 @@ impl CargoWorkspace {
             let meta = from_value::<PackageMetadata>(metadata.clone()).unwrap_or_default();
             let is_member = ws_members.contains(id);
             let edition = edition.parse::<Edition>().unwrap_or_else(|err| {
-                log::error!("Failed to parse edition {}", err);
+                tracing::error!("Failed to parse edition {}", err);
                 Edition::CURRENT
             });
 
@@ -322,7 +322,7 @@ impl CargoWorkspace {
                 // https://github.com/rust-lang/cargo/issues/7841
                 // is fixed and hits stable (around 1.43-is probably?).
                 None => {
-                    log::error!("Node id do not match in cargo metadata, ignoring {}", node.id);
+                    tracing::error!("Node id do not match in cargo metadata, ignoring {}", node.id);
                     continue;
                 }
             };
@@ -335,7 +335,7 @@ impl CargoWorkspace {
                 let pkg = match pkg_by_id.get(&dep_node.pkg) {
                     Some(&pkg) => pkg,
                     None => {
-                        log::error!(
+                        tracing::error!(
                             "Dep node id do not match in cargo metadata, ignoring {}",
                             dep_node.pkg
                         );
@@ -385,7 +385,7 @@ impl CargoWorkspace {
 fn rustc_discover_host_triple(cargo_toml: &ManifestPath) -> Option<String> {
     let mut rustc = Command::new(toolchain::rustc());
     rustc.current_dir(cargo_toml.parent()).arg("-vV");
-    log::debug!("Discovering host platform by {:?}", rustc);
+    tracing::debug!("Discovering host platform by {:?}", rustc);
     match utf8_stdout(rustc) {
         Ok(stdout) => {
             let field = "host: ";
@@ -394,12 +394,12 @@ fn rustc_discover_host_triple(cargo_toml: &ManifestPath) -> Option<String> {
                 Some(target.to_string())
             } else {
                 // If we fail to resolve the host platform, it's not the end of the world.
-                log::info!("rustc -vV did not report host platform, got:\n{}", stdout);
+                tracing::info!("rustc -vV did not report host platform, got:\n{}", stdout);
                 None
             }
         }
         Err(e) => {
-            log::warn!("Failed to discover host platform: {}", e);
+            tracing::warn!("Failed to discover host platform: {}", e);
             None
         }
     }
@@ -412,7 +412,7 @@ fn cargo_config_build_target(cargo_toml: &ManifestPath) -> Option<String> {
         .args(&["-Z", "unstable-options", "config", "get", "build.target"])
         .env("RUSTC_BOOTSTRAP", "1");
     // if successful we receive `build.target = "target-triple"`
-    log::debug!("Discovering cargo config target by {:?}", cargo_config);
+    tracing::debug!("Discovering cargo config target by {:?}", cargo_config);
     match utf8_stdout(cargo_config) {
         Ok(stdout) => stdout
             .strip_prefix("build.target = \"")

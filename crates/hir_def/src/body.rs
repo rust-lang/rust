@@ -135,7 +135,7 @@ impl Expander {
             None => {
                 // Only `None` if the macro expansion produced no usable AST.
                 if err.is_none() {
-                    log::warn!("no error despite `parse_or_expand` failing");
+                    tracing::warn!("no error despite `parse_or_expand` failing");
                 }
 
                 return Ok(ExpandResult::only_err(err.unwrap_or_else(|| {
@@ -152,7 +152,7 @@ impl Expander {
             }
         };
 
-        log::debug!("macro expansion {:#?}", node.syntax());
+        tracing::debug!("macro expansion {:#?}", node.syntax());
 
         self.recursion_limit += 1;
         let mark = Mark {

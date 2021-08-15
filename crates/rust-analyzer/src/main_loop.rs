@@ -27,7 +27,7 @@ use crate::{
 };
 
 pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
-    log::info!("initial config: {:#?}", config);
+    tracing::info!("initial config: {:#?}", config);
 
     // Windows scheduler implements priority boosts: if thread waits for an
     // event (like a condvar), and event fires, priority of the thread is
@@ -182,10 +182,10 @@ impl GlobalState {
         // NOTE: don't count blocking select! call as a loop-turn time
         let _p = profile::span("GlobalState::handle_event");
 
-        log::info!("handle_event({:?})", event);
+        tracing::info!("handle_event({:?})", event);
         let task_queue_len = self.task_pool.handle.len();
         if task_queue_len > 0 {
-            log::info!("task queue len: {}", task_queue_len);
+            tracing::info!("task queue len: {}", task_queue_len);
         }
 
         let was_quiescent = self.is_quiescent();
@@ -359,7 +359,7 @@ impl GlobalState {
                                         diag.fixes,
                                     ),
                                     Err(err) => {
-                                        log::error!(
+                                        tracing::error!(
                                             "File with cargo diagnostic not found in VFS: {}",
                                             err
                                         );
@@ -380,7 +380,7 @@ impl GlobalState {
                                 flycheck::Progress::DidCancel => (Progress::End, None),
                                 flycheck::Progress::DidFinish(result) => {
                                     if let Err(err) = result {
-                                        log::error!("cargo check failed: {}", err)
+                                        tracing::error!("cargo check failed: {}", err)
                                     }
                                     (Progress::End, None)
                                 }
@@ -486,7 +486,7 @@ impl GlobalState {
 
         let loop_duration = loop_start.elapsed();
         if loop_duration > Duration::from_millis(100) {
-            log::warn!("overly long loop turn: {:?}", loop_duration);
+            tracing::warn!("overly long loop turn: {:?}", loop_duration);
             self.poke_rust_analyzer_developer(format!(
                 "overly long loop turn: {:?}",
                 loop_duration
@@ -617,7 +617,7 @@ impl GlobalState {
                         .insert(path.clone(), DocumentData::new(params.text_document.version))
                         .is_err()
                     {
-                        log::error!("duplicate DidOpenTextDocument: {}", path)
+                        tracing::error!("duplicate DidOpenTextDocument: {}", path)
                     }
                     this.vfs
                         .write()
@@ -635,7 +635,7 @@ impl GlobalState {
                             doc.version = params.text_document.version;
                         }
                         None => {
-                            log::error!("expected DidChangeTextDocument: {}", path);
+                            tracing::error!("expected DidChangeTextDocument: {}", path);
                             return Ok(());
                         }
                     };
@@ -652,7 +652,7 @@ impl GlobalState {
             .on::<lsp_types::notification::DidCloseTextDocument>(|this, params| {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
                     if this.mem_docs.remove(&path).is_err() {
-                        log::error!("orphan DidCloseTextDocument: {}", path);
+                        tracing::error!("orphan DidCloseTextDocument: {}", path);
                     }
 
                     this.semantic_tokens_cache.lock().remove(&params.text_document.uri);
@@ -683,12 +683,12 @@ impl GlobalState {
                         }],
                     },
                     |this, resp| {
-                        log::debug!("config update response: '{:?}", resp);
+                        tracing::debug!("config update response: '{:?}", resp);
                         let lsp_server::Response { error, result, .. } = resp;
 
                         match (error, result) {
                             (Some(err), _) => {
-                                log::error!("failed to fetch the server settings: {:?}", err)
+                                tracing::error!("failed to fetch the server settings: {:?}", err)
                             }
                             (None, Some(mut configs)) => {
                                 if let Some(json) = configs.get_mut(0) {
@@ -699,7 +699,7 @@ impl GlobalState {
                                     this.update_configuration(config);
                                 }
                             }
-                            (None, None) => log::error!(
+                            (None, None) => tracing::error!(
                                 "received empty server settings response from the client"
                             ),
                         }
@@ -727,7 +727,7 @@ impl GlobalState {
             .map(|path| self.vfs.read().0.file_id(path).unwrap())
             .collect::<Vec<_>>();
 
-        log::trace!("updating notifications for {:?}", subscriptions);
+        tracing::trace!("updating notifications for {:?}", subscriptions);
 
         let snapshot = self.snapshot();
         self.task_pool.handle.spawn(move || {
@@ -737,7 +737,7 @@ impl GlobalState {
                     handlers::publish_diagnostics(&snapshot, file_id)
                         .map_err(|err| {
                             if !is_cancelled(&*err) {
-                                log::error!("failed to compute diagnostics: {:?}", err);
+                                tracing::error!("failed to compute diagnostics: {:?}", err);
                             }
                             ()
                         })

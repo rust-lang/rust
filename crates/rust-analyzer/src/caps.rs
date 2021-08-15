@@ -131,7 +131,7 @@ fn completions_resolve_provider(client_caps: &ClientCapabilities) -> Option<bool
     if completion_item_edit_resolve(client_caps) {
         Some(true)
     } else {
-        log::info!("No `additionalTextEdits` completion resolve capability was found in the client capabilities, autoimport completion is disabled");
+        tracing::info!("No `additionalTextEdits` completion resolve capability was found in the client capabilities, autoimport completion is disabled");
         None
     }
 }

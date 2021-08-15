@@ -93,7 +93,7 @@ fn read_json<'a>(
         // Some ill behaved macro try to use stdout for debugging
         // We ignore it here
         if !buf.starts_with('{') {
-            log::error!("proc-macro tried to print : {}", buf);
+            tracing::error!("proc-macro tried to print : {}", buf);
             continue;
         }
 
@@ -102,7 +102,7 @@ fn read_json<'a>(
 }
 
 fn write_json(out: &mut impl Write, msg: &str) -> io::Result<()> {
-    log::debug!("> {}", msg);
+    tracing::debug!("> {}", msg);
     out.write_all(msg.as_bytes())?;
     out.write_all(b"\n")?;
     out.flush()?;

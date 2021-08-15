@@ -561,7 +561,7 @@ impl<'a> InFile<&'a SyntaxNode> {
             Some(range) => {
                 let original_file = range.file_id.original_file(db);
                 if range.file_id != original_file.into() {
-                    log::error!("Failed mapping up more for {:?}", range);
+                    tracing::error!("Failed mapping up more for {:?}", range);
                 }
                 Some(FileRange { file_id: original_file, range: range.value })
             }

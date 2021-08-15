@@ -9,7 +9,7 @@ edition = "2018"
 doctest = false
 
 [dependencies]
-log = "0.4.8"
+tracing = "0.1"
 rustc-hash = "1.0"
 jod-thread = "0.1.0"
 walkdir = "2.3.1"

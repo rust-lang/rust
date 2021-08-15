@@ -28,7 +28,10 @@ impl ConstExt for Const {
             chalk_ir::ConstValue::Concrete(..) => false,
 
             _ => {
-                log::error!("is_unknown was called on a non-concrete constant value! {:?}", self);
+                tracing::error!(
+                    "is_unknown was called on a non-concrete constant value! {:?}",
+                    self
+                );
                 true
             }
         }

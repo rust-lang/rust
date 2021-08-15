@@ -10,7 +10,7 @@ use chalk_ir::{cast::Cast, fold::Fold, interner::HasInterner, VariableKind};
 use hir_def::lang_item::LangItemTarget;
 use hir_expand::name::name;
 use limit::Limit;
-use log::{info, warn};
+use tracing::{info, warn};
 
 use crate::{
     db::HirDatabase, static_lifetime, AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds,
