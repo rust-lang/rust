@@ -14,7 +14,7 @@ pub struct Condvar {
     sem2: *const c_void,
 }
 
-pub type MovableCondvar = Box<Condvar>;
+pub type MovableCondvar = Condvar;
 
 unsafe impl Send for Condvar {}
 unsafe impl Sync for Condvar {}
