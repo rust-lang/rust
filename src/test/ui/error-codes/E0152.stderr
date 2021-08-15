@@ -1,8 +1,8 @@
 error[E0152]: found duplicate lang item `owned_box`
   --> $DIR/E0152.rs:5:1
    |
-LL | struct Foo;
-   | ^^^^^^^^^^^
+LL | struct Foo<T>(T);
+   | ^^^^^^^^^^^^^^^^^
    |
    = note: the lang item is first defined in crate `alloc` (which `std` depends on)
    = note: first definition in `alloc` loaded from SYSROOT/liballoc-*.rlib
