@@ -18,11 +18,11 @@ all:
 	cp my_lib.rs $(FIRST_SRC)/my_lib.rs
 	cp main.rs $(FIRST_SRC)/main.rs
 	cd $(FIRST_SRC) && \
-		$(RUSTC) -C incremental=$(INCR) --crate-type lib my_lib.rs && \
-		$(RUSTC) -C incremental=$(INCR) --extern my_lib=$(TMPDIR)/libmy_lib.rlib main.rs
+		$(RUSTC) -C incremental=$(INCR) --crate-type lib my_lib.rs --target $(TARGET) && \
+		$(RUSTC) -C incremental=$(INCR) --extern my_lib=$(TMPDIR)/libmy_lib.rlib main.rs --target $(TARGET)
 	# Build from 'SECOND_SRC', keeping the output directory and incremental directory
 	# the same
 	mv $(FIRST_SRC) $(SECOND_SRC)
 	cd $(SECOND_SRC) && \
-		$(RUSTC) -C incremental=$(INCR) --crate-type lib my_lib.rs && \
-		$(RUSTC) -C incremental=$(INCR) --extern my_lib=$(TMPDIR)/libmy_lib.rlib main.rs
+		$(RUSTC) -C incremental=$(INCR) --crate-type lib my_lib.rs --target $(TARGET) && \
+		$(RUSTC) -C incremental=$(INCR) --extern my_lib=$(TMPDIR)/libmy_lib.rlib main.rs --target $(TARGET)
