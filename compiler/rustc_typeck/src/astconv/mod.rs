@@ -111,11 +111,6 @@ pub trait AstConv<'tcx> {
     fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span);
 }
 
-pub enum SizedByDefault {
-    Yes,
-    No,
-}
-
 #[derive(Debug)]
 struct ConvertedBinding<'a, 'tcx> {
     hir_id: hir::HirId,
@@ -853,28 +848,31 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .is_some()
     }
 
-    // Returns `true` if a bounds list includes `?Sized`.
-    fn is_unsized(
+    // Sets `implicitly_sized` to true on `Bounds` if necessary
+    pub(crate) fn add_implicitly_sized<'hir>(
         &self,
-        ast_bounds: &[hir::GenericBound<'_>],
-        self_ty: Option<hir::HirId>,
-        where_clause: Option<&[hir::WherePredicate<'_>]>,
+        bounds: &mut Bounds<'hir>,
+        ast_bounds: &'hir [hir::GenericBound<'hir>],
+        self_ty_where_predicates: Option<(hir::HirId, &'hir [hir::WherePredicate<'hir>])>,
         span: Span,
-    ) -> bool {
+    ) {
         let tcx = self.tcx();
 
         // Try to find an unbound in bounds.
         let mut unbound = None;
-        for ab in ast_bounds {
-            if let hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::Maybe) = ab {
-                if unbound.is_none() {
-                    unbound = Some(&ptr.trait_ref);
-                } else {
-                    tcx.sess.emit_err(MultipleRelaxedDefaultBounds { span });
+        let mut search_bounds = |ast_bounds: &'hir [hir::GenericBound<'hir>]| {
+            for ab in ast_bounds {
+                if let hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::Maybe) = ab {
+                    if unbound.is_none() {
+                        unbound = Some(&ptr.trait_ref);
+                    } else {
+                        tcx.sess.emit_err(MultipleRelaxedDefaultBounds { span });
+                    }
                 }
             }
-        }
-        if let (Some(self_ty), Some(where_clause)) = (self_ty, where_clause) {
+        };
+        search_bounds(ast_bounds);
+        if let Some((self_ty, where_clause)) = self_ty_where_predicates {
             let self_ty_def_id = tcx.hir().local_def_id(self_ty).to_def_id();
             for clause in where_clause {
                 match clause {
@@ -886,46 +884,40 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             },
                             _ => continue,
                         }
-                        for ab in pred.bounds {
-                            if let hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::Maybe) =
-                                ab
-                            {
-                                if unbound.is_none() {
-                                    unbound = Some(&ptr.trait_ref);
-                                } else {
-                                    tcx.sess.emit_err(MultipleRelaxedDefaultBounds { span });
-                                }
-                            }
-                        }
+                        search_bounds(pred.bounds);
                     }
                     _ => {}
                 }
             }
         }
 
-        let kind_id = tcx.lang_items().require(LangItem::Sized);
-        match unbound {
-            Some(tpb) => {
-                if let Ok(kind_id) = kind_id {
-                    if tpb.path.res != Res::Def(DefKind::Trait, kind_id) {
-                        tcx.sess.span_warn(
-                            span,
-                            "default bound relaxed for a type parameter, but \
-                             this does nothing because the given bound is not \
-                             a default; only `?Sized` is supported",
-                        );
-                        return false;
-                    }
-                }
+        let sized_def_id = tcx.lang_items().require(LangItem::Sized);
+        match (&sized_def_id, unbound) {
+            (Ok(sized_def_id), Some(tpb))
+                if tpb.path.res == Res::Def(DefKind::Trait, *sized_def_id) =>
+            {
+                // There was in fact a `?Sized` bound, return without doing anything
+                return;
             }
-            _ if kind_id.is_ok() => {
-                return false;
+            (_, Some(_)) => {
+                // There was a `?Trait` bound, but it was not `?Sized`; warn.
+                tcx.sess.span_warn(
+                    span,
+                    "default bound relaxed for a type parameter, but \
+                        this does nothing because the given bound is not \
+                        a default; only `?Sized` is supported",
+                );
+                // Otherwise, add implicitly sized if `Sized` is available.
             }
-            // No lang item for `Sized`, so we can't add it as a bound.
-            None => {}
+            _ => {
+                // There was no `?Sized` bound; add implicitly sized if `Sized` is available.
+            }
         }
-
-        true
+        if sized_def_id.is_err() {
+            // No lang item for `Sized`, so we can't add it as a bound.
+            return;
+        }
+        bounds.implicitly_sized = Some(span);
     }
 
     /// This helper takes a *converted* parameter type (`param_ty`)
@@ -1006,19 +998,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound<'_>],
-        self_ty: Option<hir::HirId>,
-        where_clause: Option<&[hir::WherePredicate<'_>]>,
-        sized_by_default: SizedByDefault,
-        span: Span,
     ) -> Bounds<'tcx> {
-        self.compute_bounds_inner(
-            param_ty,
-            &ast_bounds,
-            self_ty,
-            where_clause,
-            sized_by_default,
-            span,
-        )
+        self.compute_bounds_inner(param_ty, &ast_bounds)
     }
 
     /// Convert the bounds in `ast_bounds` that refer to traits which define an associated type
@@ -1027,10 +1008,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound<'_>],
-        self_ty: Option<hir::HirId>,
-        where_clause: Option<&[hir::WherePredicate<'_>]>,
-        sized_by_default: SizedByDefault,
-        span: Span,
         assoc_name: Ident,
     ) -> Bounds<'tcx> {
         let mut result = Vec::new();
@@ -1045,31 +1022,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        self.compute_bounds_inner(param_ty, &result, self_ty, where_clause, sized_by_default, span)
+        self.compute_bounds_inner(param_ty, &result)
     }
 
     fn compute_bounds_inner(
         &self,
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound<'_>],
-        self_ty: Option<hir::HirId>,
-        where_clause: Option<&[hir::WherePredicate<'_>]>,
-        sized_by_default: SizedByDefault,
-        span: Span,
     ) -> Bounds<'tcx> {
         let mut bounds = Bounds::default();
 
         self.add_bounds(param_ty, ast_bounds, &mut bounds, ty::List::empty());
-
-        bounds.implicitly_sized = if let SizedByDefault::Yes = sized_by_default {
-            if !self.is_unsized(ast_bounds, self_ty, where_clause, span) {
-                Some(span)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
 
         bounds
     }

@@ -14,7 +14,7 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
-use crate::astconv::{AstConv, SizedByDefault};
+use crate::astconv::AstConv;
 use crate::bounds::Bounds;
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::constrained_generic_params as cgp;
@@ -1156,22 +1156,10 @@ fn super_predicates_that_define_assoc_type(
                 &icx,
                 self_param_ty,
                 &bounds,
-                None,
-                None,
-                SizedByDefault::No,
-                item.span,
                 assoc_name,
             )
         } else {
-            <dyn AstConv<'_>>::compute_bounds(
-                &icx,
-                self_param_ty,
-                &bounds,
-                None,
-                None,
-                SizedByDefault::No,
-                item.span,
-            )
+            <dyn AstConv<'_>>::compute_bounds(&icx, self_param_ty, &bounds)
         };
 
         let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
@@ -2180,14 +2168,13 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 let param_ty = ty::ParamTy::new(index, name).to_ty(tcx);
                 index += 1;
 
-                let sized = SizedByDefault::Yes;
-                let bounds = <dyn AstConv<'_>>::compute_bounds(
+                let mut bounds = <dyn AstConv<'_>>::compute_bounds(&icx, param_ty, &param.bounds);
+                // Params are implicitly sized unless a `?Sized` bound is found
+                <dyn AstConv<'_>>::add_implicitly_sized(
                     &icx,
-                    param_ty,
+                    &mut bounds,
                     &param.bounds,
-                    Some(param.hir_id),
-                    Some(ast_generics.where_clause.predicates),
-                    sized,
+                    Some((param.hir_id, ast_generics.where_clause.predicates)),
                     param.span,
                 );
                 predicates.extend(bounds.predicates(tcx, param_ty));
