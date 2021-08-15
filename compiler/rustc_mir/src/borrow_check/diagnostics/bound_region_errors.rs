@@ -3,12 +3,13 @@ use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc_infer::infer::region_constraints::Constraint;
 use rustc_infer::infer::{InferCtxt, RegionResolutionError, SubregionOrigin, TyCtxtInferExt as _};
-use rustc_infer::traits::{Normalized, Obligation, ObligationCause, TraitEngine, TraitEngineExt};
+use rustc_infer::traits::{Normalized, ObligationCause, TraitEngine, TraitEngineExt};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op;
 use rustc_trait_selection::traits::{SelectionContext, TraitEngineExt as _};
+use rustc_traits::type_op_prove_predicate_with_span;
 
 use std::fmt;
 use std::rc::Rc;
@@ -209,17 +210,7 @@ impl TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
     ) -> Option<DiagnosticBuilder<'tcx>> {
         tcx.infer_ctxt().enter_with_canonical(span, &self.canonical_query, |ref infcx, key, _| {
             let mut fulfill_cx = <dyn TraitEngine<'_>>::new(tcx);
-
-            let (param_env, prove_predicate) = key.into_parts();
-            fulfill_cx.register_predicate_obligation(
-                infcx,
-                Obligation::new(
-                    ObligationCause::dummy_with_span(span),
-                    param_env,
-                    prove_predicate.predicate,
-                ),
-            );
-
+            type_op_prove_predicate_with_span(infcx, &mut *fulfill_cx, key, Some(span));
             try_extract_error_from_fulfill_cx(fulfill_cx, infcx, placeholder_region, error_region)
         })
     }

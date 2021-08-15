@@ -19,6 +19,8 @@ mod normalize_erasing_regions;
 mod normalize_projection_ty;
 mod type_op;
 
+pub use type_op::type_op_prove_predicate_with_span;
+
 use rustc_middle::ty::query::Providers;
 
 pub fn provide(p: &mut Providers) {
