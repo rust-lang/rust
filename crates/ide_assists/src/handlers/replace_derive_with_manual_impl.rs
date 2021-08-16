@@ -305,6 +305,71 @@ impl core::fmt::Debug for Foo {
 "#,
         )
     }
+
+    #[test]
+    fn add_custom_impl_debug_tuple_enum() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: fmt
+#[derive(Debu$0g)]
+enum Foo {
+    Bar(usize, usize),
+    Baz,
+}
+"#,
+            r#"
+enum Foo {
+    Bar(usize, usize),
+    Baz,
+}
+
+impl core::fmt::Debug for Foo {
+    $0fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Bar(arg0, arg1) => f.debug_tuple("Bar").field(arg0).field(arg1).finish(),
+            Self::Baz => write!(f, "Baz"),
+        }
+    }
+}
+"#,
+        )
+    }
+    #[test]
+    fn add_custom_impl_debug_record_enum() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: fmt
+#[derive(Debu$0g)]
+enum Foo {
+    Bar {
+        baz: usize,
+        qux: usize,
+    },
+    Baz,
+}
+"#,
+            r#"
+enum Foo {
+    Bar {
+        baz: usize,
+        qux: usize,
+    },
+    Baz,
+}
+
+impl core::fmt::Debug for Foo {
+    $0fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Bar { baz, qux } => f.debug_struct("Bar").field("baz", baz).field("qux", qux).finish(),
+            Self::Baz => write!(f, "Baz"),
+        }
+    }
+}
+"#,
+        )
+    }
     #[test]
     fn add_custom_impl_default_record_struct() {
         check_assist(
