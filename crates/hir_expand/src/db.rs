@@ -336,35 +336,17 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<TokenExpander>>
 }
 
 fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Arc<tt::Subtree>>> {
-    macro_expand_with_arg(db, id, None)
-}
-
-fn macro_expand_error(db: &dyn AstDatabase, macro_call: MacroCallId) -> Option<ExpandError> {
-    db.macro_expand(macro_call).err
-}
-
-fn macro_expand_with_arg(
-    db: &dyn AstDatabase,
-    id: MacroCallId,
-    arg: Option<Arc<(tt::Subtree, mbe::TokenMap)>>,
-) -> ExpandResult<Option<Arc<tt::Subtree>>> {
     let _p = profile::span("macro_expand");
     let loc: MacroCallLoc = db.lookup_intern_macro(id);
     if let Some(eager) = &loc.eager {
-        if arg.is_some() {
-            return ExpandResult::str_err(
-                "speculative macro expansion not implemented for eager macro".to_owned(),
-            );
-        } else {
-            return ExpandResult {
-                value: Some(eager.arg_or_expansion.clone()),
-                // FIXME: There could be errors here!
-                err: None,
-            };
-        }
+        return ExpandResult {
+            value: Some(eager.arg_or_expansion.clone()),
+            // FIXME: There could be errors here!
+            err: None,
+        };
     }
 
-    let macro_arg = match arg.or_else(|| db.macro_arg(id)) {
+    let macro_arg = match db.macro_arg(id) {
         Some(it) => it,
         None => return ExpandResult::str_err("Fail to args in to tt::TokenTree".into()),
     };
@@ -386,6 +368,10 @@ fn macro_expand_with_arg(
     }
 
     ExpandResult { value: Some(Arc::new(tt)), err }
+}
+
+fn macro_expand_error(db: &dyn AstDatabase, macro_call: MacroCallId) -> Option<ExpandError> {
+    db.macro_expand(macro_call).err
 }
 
 fn expand_proc_macro(
