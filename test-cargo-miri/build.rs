@@ -1,4 +1,4 @@
-#![feature(llvm_asm)]
+#![feature(asm)]
 
 use std::env;
 
@@ -7,9 +7,9 @@ compile_error!("`miri` cfg should not be set in build script");
 
 fn not_in_miri() -> i32 {
     // Inline assembly definitely does not work in Miri.
-    let dummy = 42;
+    let mut dummy = 42;
     unsafe {
-        llvm_asm!("" : : "r"(&dummy));
+        asm!("/* {} */", in(reg) &mut dummy);
     }
     return dummy;
 }
