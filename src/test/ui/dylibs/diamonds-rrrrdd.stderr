@@ -1,0 +1,18 @@
+error: cannot satisfy dependencies so `m_middle` only shows up once (two static copies from multiple different locations, via [`s_upper`, `t_upper`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `i_ground` only shows up once (two static copies from multiple different locations, via [`s_upper`, `t_upper`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `a_basement` only shows up once (two static copies from multiple different locations, via [`s_upper`, `t_upper`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `j_ground` only shows up once (two static copies from multiple different locations, via [`s_upper`, `t_upper`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,6 @@
+error: cannot satisfy dependencies so `a_basement` only shows up once (two static copies from multiple different locations, via [`i_ground`, `j_ground`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: aborting due to previous error
+
