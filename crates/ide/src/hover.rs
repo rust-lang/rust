@@ -117,8 +117,6 @@ pub(crate) fn hover(
     let node = token.parent()?;
     let definition = match_ast! {
         match node {
-            // We don't use NameClass::referenced_or_defined here as we do not want to resolve
-            // field pattern shorthands to their definition.
             ast::Name(name) => NameClass::classify(&sema, &name).map(|class| match class {
                 NameClass::Definition(it) | NameClass::ConstReference(it) => it,
                 NameClass::PatFieldShorthand { local_def, field_ref: _ } => Definition::Local(local_def),
@@ -139,6 +137,7 @@ pub(crate) fn hover(
                 NameClass::defined,
             ),
             _ => {
+                // intra-doc links
                 if ast::Comment::cast(token.clone()).is_some() {
                     cov_mark::hit!(no_highlight_on_comment_hover);
                     let (attributes, def) = doc_attributes(&sema, &node)?;
@@ -153,9 +152,12 @@ pub(crate) fn hover(
                         Either::Left(it) => Definition::ModuleDef(it),
                         Either::Right(it) => Definition::Macro(it),
                     })
+                // attributes, require special machinery as they are mere ident tokens
                 } else if let Some(attr) = token.ancestors().find_map(ast::Attr::cast) {
+                    // lints
                     if let res@Some(_) = try_hover_for_lint(&attr, &token) {
                         return res;
+                    // derives
                     } else {
                         range_override = Some(token.text_range());
                         try_resolve_derive_input_at(&sema, &attr, &token).map(Definition::Macro)
@@ -276,7 +278,7 @@ fn hover_type_info(
             "```text\nType: {:>apad$}\nCoerced to: {:>opad$}\n```\n",
             uncoerced = original,
             coerced = adjusted,
-            // 6 base padding for static text prefix of each line
+            // 6 base padding for difference of length of the two text prefixes
             apad = 6 + adjusted.len().max(original.len()),
             opad = original.len(),
         )

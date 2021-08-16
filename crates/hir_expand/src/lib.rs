@@ -376,7 +376,7 @@ impl ExpansionInfo {
                     db::TokenExpander::MacroRules { def_site_token_map, .. }
                     | db::TokenExpander::MacroDef { def_site_token_map, .. },
                     Some(tt),
-                ) => (def_site_token_map, tt.as_ref().map(|tt| tt.syntax().clone())),
+                ) => (def_site_token_map, tt.syntax().cloned()),
                 _ => panic!("`Origin::Def` used with non-`macro_rules!` macro"),
             },
         };
