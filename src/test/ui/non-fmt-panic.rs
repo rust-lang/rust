@@ -17,11 +17,16 @@ fn main() {
     //~^ WARN panic message contains unused formatting placeholders
     assert!(false, S);
     //~^ WARN panic message is not a string literal
+    assert!(false, 123);
+    //~^ WARN panic message is not a string literal
+    assert!(false, Some(123));
+    //~^ WARN panic message is not a string literal
     debug_assert!(false, "{{}} bla"); //~ WARN panic message contains braces
     panic!(C); //~ WARN panic message is not a string literal
     panic!(S); //~ WARN panic message is not a string literal
     std::panic!(123); //~ WARN panic message is not a string literal
     core::panic!(&*"abc"); //~ WARN panic message is not a string literal
+    panic!(Some(123)); //~ WARN panic message is not a string literal
     panic!(concat!("{", "}")); //~ WARN panic message contains an unused formatting placeholder
     panic!(concat!("{", "{")); //~ WARN panic message contains braces
 
