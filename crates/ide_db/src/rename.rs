@@ -320,6 +320,7 @@ pub fn source_edit_from_references(
         .unwrap_or_else(|| (reference.range, new_name.to_string()));
         edit.replace(range, replacement);
     }
+
     edit.finish()
 }
 
@@ -334,6 +335,7 @@ fn source_edit_from_name(name: &ast::Name, new_name: &str) -> Option<(TextRange,
             ));
         }
     }
+
     None
 }
 
@@ -387,7 +389,9 @@ fn source_edit_from_name_ref(
         let rcf_pat = record_field.pat();
         match (rcf_name_ref, rcf_pat) {
             // field: rename
-            (Some(field_name), Some(ast::Pat::IdentPat(pat))) if field_name == *name_ref => {
+            (Some(field_name), Some(ast::Pat::IdentPat(pat)))
+                if field_name == *name_ref && pat.at_token().is_none() =>
+            {
                 // field name is being renamed
                 if pat.name().map_or(false, |it| it.text() == new_name) {
                     cov_mark::hit!(test_rename_field_put_init_shorthand_pat);
@@ -412,32 +416,52 @@ fn source_edit_from_def(
     def: Definition,
     new_name: &str,
 ) -> Result<(FileId, TextEdit)> {
-    let frange = def
+    let FileRange { file_id, range } = def
         .range_for_rename(sema)
         .ok_or_else(|| format_err!("No identifier available to rename"))?;
 
-    let mut replacement_text = String::new();
-    let mut repl_range = frange.range;
+    let mut edit = TextEdit::builder();
     if let Definition::Local(local) = def {
         if let Either::Left(pat) = local.source(sema.db).value {
-            if matches!(
-                pat.syntax().parent().and_then(ast::RecordPatField::cast),
-                Some(pat_field) if pat_field.name_ref().is_none()
-            ) {
-                replacement_text.push_str(": ");
-                replacement_text.push_str(new_name);
-                repl_range = TextRange::new(
-                    pat.syntax().text_range().end(),
-                    pat.syntax().text_range().end(),
-                );
+            // special cases required for renaming fields/locals in Record patterns
+            if let Some(pat_field) = pat.syntax().parent().and_then(ast::RecordPatField::cast) {
+                let name_range = pat.name().unwrap().syntax().text_range();
+                if let Some(name_ref) = pat_field.name_ref() {
+                    if new_name == name_ref.text() && pat.at_token().is_none() {
+                        // Foo { field: ref mut local } -> Foo { ref mut field }
+                        //       ^^^^^^ delete this
+                        //                      ^^^^^ replace this with `field`
+                        cov_mark::hit!(test_rename_local_put_init_shorthand_pat);
+                        edit.delete(
+                            name_ref
+                                .syntax()
+                                .text_range()
+                                .cover_offset(pat.syntax().text_range().start()),
+                        );
+                        edit.replace(name_range, name_ref.text().to_string());
+                    } else {
+                        // Foo { field: ref mut local @ local 2} -> Foo { field: ref mut new_name @ local2 }
+                        // Foo { field: ref mut local } -> Foo { field: ref mut new_name }
+                        //                      ^^^^^ replace this with `new_name`
+                        edit.replace(name_range, new_name.to_string());
+                    }
+                } else {
+                    // Foo { ref mut field } -> Foo { field: ref mut new_name }
+                    //      ^ insert `field: `
+                    //               ^^^^^ replace this with `new_name`
+                    edit.insert(
+                        pat.syntax().text_range().start(),
+                        format!("{}: ", pat_field.field_name().unwrap()),
+                    );
+                    edit.replace(name_range, new_name.to_string());
+                }
             }
         }
     }
-    if replacement_text.is_empty() {
-        replacement_text.push_str(new_name);
+    if edit.is_empty() {
+        edit.replace(range, new_name.to_string());
     }
-    let edit = TextEdit::replace(repl_range, replacement_text);
-    Ok((frange.file_id, edit))
+    Ok((file_id, edit.finish()))
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]

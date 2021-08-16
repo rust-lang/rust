@@ -159,6 +159,9 @@ impl<'a> IntoIterator for &'a TextEdit {
 }
 
 impl TextEditBuilder {
+    pub fn is_empty(&self) -> bool {
+        self.indels.is_empty()
+    }
     pub fn replace(&mut self, range: TextRange, replace_with: String) {
         self.indel(Indel::replace(range, replace_with))
     }

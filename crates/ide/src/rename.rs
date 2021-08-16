@@ -1332,8 +1332,70 @@ fn foo(foo: Foo) {
 struct Foo { baz: i32 }
 
 fn foo(foo: Foo) {
-    let Foo { ref baz @ qux } = foo;
+    let Foo { baz: ref baz @ qux } = foo;
     let _ = qux;
+}
+"#,
+        );
+        check(
+            "baz",
+            r#"
+struct Foo { i$0: i32 }
+
+fn foo(foo: Foo) {
+    let Foo { i: ref baz } = foo;
+    let _ = qux;
+}
+"#,
+            r#"
+struct Foo { baz: i32 }
+
+fn foo(foo: Foo) {
+    let Foo { ref baz } = foo;
+    let _ = qux;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_struct_local_pat_into_shorthand() {
+        cov_mark::check!(test_rename_local_put_init_shorthand_pat);
+        check(
+            "field",
+            r#"
+struct Foo { field: i32 }
+
+fn foo(foo: Foo) {
+    let Foo { field: qux$0 } = foo;
+    let _ = qux;
+}
+"#,
+            r#"
+struct Foo { field: i32 }
+
+fn foo(foo: Foo) {
+    let Foo { field } = foo;
+    let _ = field;
+}
+"#,
+        );
+        check(
+            "field",
+            r#"
+struct Foo { field: i32 }
+
+fn foo(foo: Foo) {
+    let Foo { field: x @ qux$0 } = foo;
+    let _ = qux;
+}
+"#,
+            r#"
+struct Foo { field: i32 }
+
+fn foo(foo: Foo) {
+    let Foo { field: x @ field } = foo;
+    let _ = field;
 }
 "#,
         );
@@ -1390,7 +1452,7 @@ struct Foo {
     i: i32
 }
 
-fn foo(Foo { i }: foo) -> i32 {
+fn foo(Foo { i }: Foo) -> i32 {
     i$0
 }
 "#,
@@ -1399,7 +1461,7 @@ struct Foo {
     i: i32
 }
 
-fn foo(Foo { i: bar }: foo) -> i32 {
+fn foo(Foo { i: bar }: Foo) -> i32 {
     bar
 }
 "#,
