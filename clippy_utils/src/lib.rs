@@ -70,7 +70,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{self, walk_expr, ErasedMap, FnKind, NestedVisitorMap, Visitor};
-use rustc_hir::LangItem::{ResultErr, ResultOk};
+use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
 use rustc_hir::{
     def, Arm, BindingAnnotation, Block, Body, Constness, Destination, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl,
     ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource, Mutability, Node, Param, Pat,
@@ -642,6 +642,65 @@ pub fn can_mut_borrow_both(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>) -
         }
     }
     false
+}
+
+/// Returns true if the `def_id` associated with the `path` is recognized as a "default-equivalent"
+/// constructor from the std library
+fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<'_>) -> bool {
+    let std_types_symbols = &[
+        sym::string_type,
+        sym::vec_type,
+        sym::vecdeque_type,
+        sym::LinkedList,
+        sym::hashmap_type,
+        sym::BTreeMap,
+        sym::hashset_type,
+        sym::BTreeSet,
+        sym::BinaryHeap,
+    ];
+
+    if let QPath::TypeRelative(_, method) = path {
+        if method.ident.name == sym::new {
+            if let Some(impl_did) = cx.tcx.impl_of_method(def_id) {
+                if let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def() {
+                    return std_types_symbols
+                        .iter()
+                        .any(|&symbol| cx.tcx.is_diagnostic_item(symbol, adt.did));
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Returns true if the expr is equal to `Default::default()` of it's type when evaluated.
+/// It doesn't cover all cases, for example indirect function calls (some of std
+/// functions are supported) but it is the best we have.
+pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
+    match &e.kind {
+        ExprKind::Lit(lit) => match lit.node {
+            LitKind::Bool(false) | LitKind::Int(0, _) => true,
+            LitKind::Str(s, _) => s.is_empty(),
+            _ => false,
+        },
+        ExprKind::Tup(items) | ExprKind::Array(items) => items.iter().all(|x| is_default_equivalent(cx, x)),
+        ExprKind::Repeat(x, _) => is_default_equivalent(cx, x),
+        ExprKind::Call(repl_func, _) => if_chain! {
+            if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
+            if let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
+            if is_diag_trait_item(cx, repl_def_id, sym::Default)
+                || is_default_equivalent_ctor(cx, repl_def_id, repl_func_qpath);
+            then {
+                true
+            }
+            else {
+                false
+            }
+        },
+        ExprKind::Path(qpath) => is_lang_ctor(cx, qpath, OptionNone),
+        ExprKind::AddrOf(rustc_hir::BorrowKind::Ref, _, expr) => matches!(expr.kind, ExprKind::Array([])),
+        _ => false,
+    }
 }
 
 /// Checks if the top level expression can be moved into a closure as is.

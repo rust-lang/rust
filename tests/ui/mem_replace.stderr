@@ -98,5 +98,23 @@ error: replacing a value of type `T` with `T::default()` is better expressed usi
 LL |     let _ = std::mem::replace(&mut binary_heap, BinaryHeap::new());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut binary_heap)`
 
-error: aborting due to 16 previous errors
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> $DIR/mem_replace.rs:56:13
+   |
+LL |     let _ = std::mem::replace(&mut tuple, (vec![], BinaryHeap::new()));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut tuple)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> $DIR/mem_replace.rs:59:13
+   |
+LL |     let _ = std::mem::replace(&mut refstr, "");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut refstr)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> $DIR/mem_replace.rs:62:13
+   |
+LL |     let _ = std::mem::replace(&mut slice, &[]);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut slice)`
+
+error: aborting due to 19 previous errors
 

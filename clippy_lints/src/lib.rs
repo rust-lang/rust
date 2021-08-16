@@ -187,6 +187,7 @@ mod dbg_macro;
 mod default;
 mod default_numeric_fallback;
 mod dereference;
+mod derivable_impls;
 mod derive;
 mod disallowed_method;
 mod disallowed_script_idents;
@@ -586,6 +587,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         default::FIELD_REASSIGN_WITH_DEFAULT,
         default_numeric_fallback::DEFAULT_NUMERIC_FALLBACK,
         dereference::EXPLICIT_DEREF_METHODS,
+        derivable_impls::DERIVABLE_IMPLS,
         derive::DERIVE_HASH_XOR_EQ,
         derive::DERIVE_ORD_XOR_PARTIAL_ORD,
         derive::EXPL_IMPL_CLONE_ON_COPY,
@@ -1204,6 +1206,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(copies::IFS_SAME_COND),
         LintId::of(copies::IF_SAME_THEN_ELSE),
         LintId::of(default::FIELD_REASSIGN_WITH_DEFAULT),
+        LintId::of(derivable_impls::DERIVABLE_IMPLS),
         LintId::of(derive::DERIVE_HASH_XOR_EQ),
         LintId::of(derive::DERIVE_ORD_XOR_PARTIAL_ORD),
         LintId::of(doc::MISSING_SAFETY_DOC),
@@ -1589,6 +1592,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(booleans::NONMINIMAL_BOOL),
         LintId::of(casts::CHAR_LIT_AS_U8),
         LintId::of(casts::UNNECESSARY_CAST),
+        LintId::of(derivable_impls::DERIVABLE_IMPLS),
         LintId::of(double_comparison::DOUBLE_COMPARISONS),
         LintId::of(double_parens::DOUBLE_PARENS),
         LintId::of(duration_subsec::DURATION_SUBSEC),
@@ -1937,6 +1941,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(panic_unimplemented::PanicUnimplemented));
     store.register_late_pass(|| Box::new(strings::StringLitAsBytes));
     store.register_late_pass(|| Box::new(derive::Derive));
+    store.register_late_pass(|| Box::new(derivable_impls::DerivableImpls));
     store.register_late_pass(|| Box::new(get_last_with_len::GetLastWithLen));
     store.register_late_pass(|| Box::new(drop_forget_ref::DropForgetRef));
     store.register_late_pass(|| Box::new(empty_enum::EmptyEnum));
