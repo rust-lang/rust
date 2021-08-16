@@ -1,10 +1,10 @@
 macro_rules! impl_fmt_trait {
     { $($trait:ident,)* } => {
         $(
-            impl<Element, const LANES: usize> core::fmt::$trait for crate::Simd<Element, LANES>
+            impl<T, const LANES: usize> core::fmt::$trait for crate::Simd<T, LANES>
             where
                 crate::LaneCount<LANES>: crate::SupportedLaneCount,
-                Element: crate::SimdElement + core::fmt::$trait,
+                T: crate::SimdElement + core::fmt::$trait,
             {
                 fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
                     #[repr(transparent)]

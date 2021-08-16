@@ -11,34 +11,34 @@ pub trait Select<Mask>: Sealed {
     fn select(mask: Mask, true_values: Self, false_values: Self) -> Self;
 }
 
-impl<Element, const LANES: usize> Sealed for Simd<Element, LANES>
+impl<T, const LANES: usize> Sealed for Simd<T, LANES>
 where
-    Element: SimdElement,
+    T: SimdElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
 }
 
-impl<Element, const LANES: usize> Select<Mask<Element::Mask, LANES>> for Simd<Element, LANES>
+impl<T, const LANES: usize> Select<Mask<T::Mask, LANES>> for Simd<T, LANES>
 where
-    Element: SimdElement,
+    T: SimdElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
     #[inline]
-    fn select(mask: Mask<Element::Mask, LANES>, true_values: Self, false_values: Self) -> Self {
+    fn select(mask: Mask<T::Mask, LANES>, true_values: Self, false_values: Self) -> Self {
         unsafe { crate::intrinsics::simd_select(mask.to_int(), true_values, false_values) }
     }
 }
 
-impl<Element, const LANES: usize> Sealed for Mask<Element, LANES>
+impl<T, const LANES: usize> Sealed for Mask<T, LANES>
 where
-    Element: MaskElement,
+    T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
 }
 
-impl<Element, const LANES: usize> Select<Self> for Mask<Element, LANES>
+impl<T, const LANES: usize> Select<Self> for Mask<T, LANES>
 where
-    Element: MaskElement,
+    T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
     #[doc(hidden)]
@@ -48,9 +48,9 @@ where
     }
 }
 
-impl<Element, const LANES: usize> Mask<Element, LANES>
+impl<T, const LANES: usize> Mask<T, LANES>
 where
-    Element: MaskElement,
+    T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
     /// Choose lanes from two vectors.

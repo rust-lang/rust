@@ -1,10 +1,10 @@
 use crate::{LaneCount, Simd, SimdElement, SupportedLaneCount};
 
-impl<I, Element, const LANES: usize> core::ops::Index<I> for Simd<Element, LANES>
+impl<I, T, const LANES: usize> core::ops::Index<I> for Simd<T, LANES>
 where
-    Element: SimdElement,
+    T: SimdElement,
     LaneCount<LANES>: SupportedLaneCount,
-    I: core::slice::SliceIndex<[Element]>,
+    I: core::slice::SliceIndex<[T]>,
 {
     type Output = I::Output;
     fn index(&self, index: I) -> &Self::Output {
@@ -12,11 +12,11 @@ where
     }
 }
 
-impl<I, Element, const LANES: usize> core::ops::IndexMut<I> for Simd<Element, LANES>
+impl<I, T, const LANES: usize> core::ops::IndexMut<I> for Simd<T, LANES>
 where
-    Element: SimdElement,
+    T: SimdElement,
     LaneCount<LANES>: SupportedLaneCount,
-    I: core::slice::SliceIndex<[Element]>,
+    I: core::slice::SliceIndex<[T]>,
 {
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         &mut self.as_mut_array()[index]

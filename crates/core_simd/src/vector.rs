@@ -11,40 +11,40 @@ pub(crate) mod ptr;
 
 use crate::{LaneCount, Mask, MaskElement, SupportedLaneCount};
 
-/// A SIMD vector of `LANES` elements of type `Element`.
+/// A SIMD vector of `LANES` elements of type `T`.
 #[repr(simd)]
-pub struct Simd<Element, const LANES: usize>([Element; LANES])
+pub struct Simd<T, const LANES: usize>([T; LANES])
 where
-    Element: SimdElement,
+    T: SimdElement,
     LaneCount<LANES>: SupportedLaneCount;
 
-impl<Element, const LANES: usize> Simd<Element, LANES>
+impl<T, const LANES: usize> Simd<T, LANES>
 where
     LaneCount<LANES>: SupportedLaneCount,
-    Element: SimdElement,
+    T: SimdElement,
 {
     /// Construct a SIMD vector by setting all lanes to the given value.
-    pub const fn splat(value: Element) -> Self {
+    pub const fn splat(value: T) -> Self {
         Self([value; LANES])
     }
 
     /// Returns an array reference containing the entire SIMD vector.
-    pub const fn as_array(&self) -> &[Element; LANES] {
+    pub const fn as_array(&self) -> &[T; LANES] {
         &self.0
     }
 
     /// Returns a mutable array reference containing the entire SIMD vector.
-    pub fn as_mut_array(&mut self) -> &mut [Element; LANES] {
+    pub fn as_mut_array(&mut self) -> &mut [T; LANES] {
         &mut self.0
     }
 
     /// Converts an array to a SIMD vector.
-    pub const fn from_array(array: [Element; LANES]) -> Self {
+    pub const fn from_array(array: [T; LANES]) -> Self {
         Self(array)
     }
 
     /// Converts a SIMD vector to an array.
-    pub const fn to_array(self) -> [Element; LANES] {
+    pub const fn to_array(self) -> [T; LANES] {
         self.0
     }
 
@@ -62,7 +62,7 @@ where
     /// ```
     #[must_use]
     #[inline]
-    pub fn gather_or(slice: &[Element], idxs: Simd<usize, LANES>, or: Self) -> Self {
+    pub fn gather_or(slice: &[T], idxs: Simd<usize, LANES>, or: Self) -> Self {
         Self::gather_select(slice, Mask::splat(true), idxs, or)
     }
 
@@ -79,11 +79,11 @@ where
     /// ```
     #[must_use]
     #[inline]
-    pub fn gather_or_default(slice: &[Element], idxs: Simd<usize, LANES>) -> Self
+    pub fn gather_or_default(slice: &[T], idxs: Simd<usize, LANES>) -> Self
     where
-        Element: Default,
+        T: Default,
     {
-        Self::gather_or(slice, idxs, Self::splat(Element::default()))
+        Self::gather_or(slice, idxs, Self::splat(T::default()))
     }
 
     /// SIMD gather: construct a SIMD vector by reading from a slice, using potentially discontiguous indices.
@@ -102,7 +102,7 @@ where
     #[must_use]
     #[inline]
     pub fn gather_select(
-        slice: &[Element],
+        slice: &[T],
         mask: Mask<isize, LANES>,
         idxs: Simd<usize, LANES>,
         or: Self,
@@ -129,7 +129,7 @@ where
     /// assert_eq!(vec, vec![124, 11, 12, 82, 14, 15, 16, 17, 18]);
     /// ```
     #[inline]
-    pub fn scatter(self, slice: &mut [Element], idxs: Simd<usize, LANES>) {
+    pub fn scatter(self, slice: &mut [T], idxs: Simd<usize, LANES>) {
         self.scatter_select(slice, Mask::splat(true), idxs)
     }
 
@@ -150,7 +150,7 @@ where
     #[inline]
     pub fn scatter_select(
         self,
-        slice: &mut [Element],
+        slice: &mut [T],
         mask: Mask<isize, LANES>,
         idxs: Simd<usize, LANES>,
     ) {
@@ -178,16 +178,16 @@ where
     }
 }
 
-impl<Element, const LANES: usize> Copy for Simd<Element, LANES>
+impl<T, const LANES: usize> Copy for Simd<T, LANES>
 where
-    Element: SimdElement,
+    T: SimdElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
 }
 
-impl<Element, const LANES: usize> Clone for Simd<Element, LANES>
+impl<T, const LANES: usize> Clone for Simd<T, LANES>
 where
-    Element: SimdElement,
+    T: SimdElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
     fn clone(&self) -> Self {
@@ -195,21 +195,21 @@ where
     }
 }
 
-impl<Element, const LANES: usize> Default for Simd<Element, LANES>
+impl<T, const LANES: usize> Default for Simd<T, LANES>
 where
     LaneCount<LANES>: SupportedLaneCount,
-    Element: SimdElement + Default,
+    T: SimdElement + Default,
 {
     #[inline]
     fn default() -> Self {
-        Self::splat(Element::default())
+        Self::splat(T::default())
     }
 }
 
-impl<Element, const LANES: usize> PartialEq for Simd<Element, LANES>
+impl<T, const LANES: usize> PartialEq for Simd<T, LANES>
 where
     LaneCount<LANES>: SupportedLaneCount,
-    Element: SimdElement + PartialEq,
+    T: SimdElement + PartialEq,
 {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -218,10 +218,10 @@ where
     }
 }
 
-impl<Element, const LANES: usize> PartialOrd for Simd<Element, LANES>
+impl<T, const LANES: usize> PartialOrd for Simd<T, LANES>
 where
     LaneCount<LANES>: SupportedLaneCount,
-    Element: SimdElement + PartialOrd,
+    T: SimdElement + PartialOrd,
 {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
@@ -230,17 +230,17 @@ where
     }
 }
 
-impl<Element, const LANES: usize> Eq for Simd<Element, LANES>
+impl<T, const LANES: usize> Eq for Simd<T, LANES>
 where
     LaneCount<LANES>: SupportedLaneCount,
-    Element: SimdElement + Eq,
+    T: SimdElement + Eq,
 {
 }
 
-impl<Element, const LANES: usize> Ord for Simd<Element, LANES>
+impl<T, const LANES: usize> Ord for Simd<T, LANES>
 where
     LaneCount<LANES>: SupportedLaneCount,
-    Element: SimdElement + Ord,
+    T: SimdElement + Ord,
 {
     #[inline]
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
@@ -249,10 +249,10 @@ where
     }
 }
 
-impl<Element, const LANES: usize> core::hash::Hash for Simd<Element, LANES>
+impl<T, const LANES: usize> core::hash::Hash for Simd<T, LANES>
 where
     LaneCount<LANES>: SupportedLaneCount,
-    Element: SimdElement + core::hash::Hash,
+    T: SimdElement + core::hash::Hash,
 {
     #[inline]
     fn hash<H>(&self, state: &mut H)
@@ -264,68 +264,68 @@ where
 }
 
 // array references
-impl<Element, const LANES: usize> AsRef<[Element; LANES]> for Simd<Element, LANES>
+impl<T, const LANES: usize> AsRef<[T; LANES]> for Simd<T, LANES>
 where
     LaneCount<LANES>: SupportedLaneCount,
-    Element: SimdElement,
+    T: SimdElement,
 {
     #[inline]
-    fn as_ref(&self) -> &[Element; LANES] {
+    fn as_ref(&self) -> &[T; LANES] {
         &self.0
     }
 }
 
-impl<Element, const LANES: usize> AsMut<[Element; LANES]> for Simd<Element, LANES>
+impl<T, const LANES: usize> AsMut<[T; LANES]> for Simd<T, LANES>
 where
     LaneCount<LANES>: SupportedLaneCount,
-    Element: SimdElement,
+    T: SimdElement,
 {
     #[inline]
-    fn as_mut(&mut self) -> &mut [Element; LANES] {
+    fn as_mut(&mut self) -> &mut [T; LANES] {
         &mut self.0
     }
 }
 
 // slice references
-impl<Element, const LANES: usize> AsRef<[Element]> for Simd<Element, LANES>
+impl<T, const LANES: usize> AsRef<[T]> for Simd<T, LANES>
 where
     LaneCount<LANES>: SupportedLaneCount,
-    Element: SimdElement,
+    T: SimdElement,
 {
     #[inline]
-    fn as_ref(&self) -> &[Element] {
+    fn as_ref(&self) -> &[T] {
         &self.0
     }
 }
 
-impl<Element, const LANES: usize> AsMut<[Element]> for Simd<Element, LANES>
+impl<T, const LANES: usize> AsMut<[T]> for Simd<T, LANES>
 where
     LaneCount<LANES>: SupportedLaneCount,
-    Element: SimdElement,
+    T: SimdElement,
 {
     #[inline]
-    fn as_mut(&mut self) -> &mut [Element] {
+    fn as_mut(&mut self) -> &mut [T] {
         &mut self.0
     }
 }
 
 // vector/array conversion
-impl<Element, const LANES: usize> From<[Element; LANES]> for Simd<Element, LANES>
+impl<T, const LANES: usize> From<[T; LANES]> for Simd<T, LANES>
 where
     LaneCount<LANES>: SupportedLaneCount,
-    Element: SimdElement,
+    T: SimdElement,
 {
-    fn from(array: [Element; LANES]) -> Self {
+    fn from(array: [T; LANES]) -> Self {
         Self(array)
     }
 }
 
-impl<Element, const LANES: usize> From<Simd<Element, LANES>> for [Element; LANES]
+impl<T, const LANES: usize> From<Simd<T, LANES>> for [T; LANES]
 where
     LaneCount<LANES>: SupportedLaneCount,
-    Element: SimdElement,
+    T: SimdElement,
 {
-    fn from(vector: Simd<Element, LANES>) -> Self {
+    fn from(vector: Simd<T, LANES>) -> Self {
         vector.to_array()
     }
 }

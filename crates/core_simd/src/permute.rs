@@ -1,8 +1,8 @@
 macro_rules! impl_shuffle_lane {
     { $fn:ident, $n:literal } => {
-        impl<Element> crate::Simd<Element, $n>
+        impl<T> crate::Simd<T, $n>
         where
-            Element: crate::SimdElement,
+            T: crate::SimdElement,
         {
             /// A const SIMD shuffle that takes 2 SIMD vectors and produces another vector, using
             /// the indices in the const parameter. The first or "self" vector will have its lanes
