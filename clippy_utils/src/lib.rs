@@ -709,6 +709,11 @@ pub enum CaptureKind {
     Value,
     Ref(Mutability),
 }
+impl CaptureKind {
+    pub fn is_imm_ref(self) -> bool {
+        self == Self::Ref(Mutability::Not)
+    }
+}
 impl std::ops::BitOr for CaptureKind {
     type Output = Self;
     fn bitor(self, rhs: Self) -> Self::Output {

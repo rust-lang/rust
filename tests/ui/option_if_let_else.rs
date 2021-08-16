@@ -105,4 +105,52 @@ fn main() {
     test_map_or_else(None);
     let _ = negative_tests(None);
     let _ = impure_else(None);
+
+    let _ = if let Some(x) = Some(0) {
+        loop {
+            if x == 0 {
+                break x;
+            }
+        }
+    } else {
+        0
+    };
+
+    // #7576
+    const fn _f(x: Option<u32>) -> u32 {
+        // Don't lint, `map_or` isn't const
+        if let Some(x) = x { x } else { 10 }
+    }
+
+    // #5822
+    let s = String::new();
+    // Don't lint, `Some` branch consumes `s`, but else branch uses `s`
+    let _ = if let Some(x) = Some(0) {
+        let s = s;
+        s.len() + x
+    } else {
+        s.len()
+    };
+
+    let s = String::new();
+    // Lint, both branches immutably borrow `s`.
+    let _ = if let Some(x) = Some(0) { s.len() + x } else { s.len() };
+
+    let s = String::new();
+    // Lint, `Some` branch consumes `s`, but else branch doesn't use `s`.
+    let _ = if let Some(x) = Some(0) {
+        let s = s;
+        s.len() + x
+    } else {
+        1
+    };
+
+    let s = Some(String::new());
+    // Don't lint, `Some` branch borrows `s`, but else branch consumes `s`
+    let _ = if let Some(x) = &s {
+        x.len()
+    } else {
+        let _s = s;
+        10
+    };
 }

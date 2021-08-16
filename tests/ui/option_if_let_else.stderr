@@ -148,5 +148,53 @@ error: use Option::map_or instead of an if let/else
 LL |     let _ = if let Some(x) = optional { x + 2 } else { 5 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `optional.map_or(5, |x| x + 2)`
 
-error: aborting due to 11 previous errors
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:109:13
+   |
+LL |       let _ = if let Some(x) = Some(0) {
+   |  _____________^
+LL | |         loop {
+LL | |             if x == 0 {
+LL | |                 break x;
+...  |
+LL | |         0
+LL | |     };
+   | |_____^
+   |
+help: try
+   |
+LL ~     let _ = Some(0).map_or(0, |x| loop {
+LL +             if x == 0 {
+LL +                 break x;
+LL +             }
+LL ~         });
+   |
+
+error: use Option::map_or_else instead of an if let/else
+  --> $DIR/option_if_let_else.rs:137:13
+   |
+LL |     let _ = if let Some(x) = Some(0) { s.len() + x } else { s.len() };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(0).map_or_else(|| s.len(), |x| s.len() + x)`
+
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:141:13
+   |
+LL |       let _ = if let Some(x) = Some(0) {
+   |  _____________^
+LL | |         let s = s;
+LL | |         s.len() + x
+LL | |     } else {
+LL | |         1
+LL | |     };
+   | |_____^
+   |
+help: try
+   |
+LL ~     let _ = Some(0).map_or(1, |x| {
+LL +         let s = s;
+LL +         s.len() + x
+LL ~     });
+   |
+
+error: aborting due to 14 previous errors
 
