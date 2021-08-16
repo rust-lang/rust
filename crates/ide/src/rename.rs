@@ -1470,6 +1470,7 @@ fn foo(Foo { i: bar }: Foo) -> i32 {
 
     #[test]
     fn test_struct_field_complex_ident_pat() {
+        cov_mark::check!(rename_record_pat_field_name_split);
         check(
             "baz",
             r#"

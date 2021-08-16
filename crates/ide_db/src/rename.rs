@@ -326,12 +326,16 @@ pub fn source_edit_from_references(
 
 fn source_edit_from_name(name: &ast::Name, new_name: &str) -> Option<(TextRange, String)> {
     if let Some(_) = ast::RecordPatField::for_field_name(name) {
-        // FIXME: instead of splitting the shorthand, recursively trigger a rename of the
-        // other name https://github.com/rust-analyzer/rust-analyzer/issues/6547
         if let Some(ident_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
+            cov_mark::hit!(rename_record_pat_field_name_split);
+            // Foo { ref mut field } -> Foo { new_name: ref mut field }
+            //      ^ insert `new_name: `
+
+            // FIXME: instead of splitting the shorthand, recursively trigger a rename of the
+            // other name https://github.com/rust-analyzer/rust-analyzer/issues/6547
             return Some((
                 TextRange::empty(ident_pat.syntax().text_range().start()),
-                [new_name, ": "].concat(),
+                format!("{}: ", new_name),
             ));
         }
     }
@@ -347,21 +351,29 @@ fn source_edit_from_name_ref(
     if let Some(record_field) = ast::RecordExprField::for_name_ref(name_ref) {
         let rcf_name_ref = record_field.name_ref();
         let rcf_expr = record_field.expr();
-        match (rcf_name_ref, rcf_expr.and_then(|it| it.name_ref())) {
+        match &(rcf_name_ref, rcf_expr.and_then(|it| it.name_ref())) {
             // field: init-expr, check if we can use a field init shorthand
             (Some(field_name), Some(init)) => {
-                if field_name == *name_ref {
+                if field_name == name_ref {
                     if init.text() == new_name {
                         cov_mark::hit!(test_rename_field_put_init_shorthand);
+                        // Foo { field: local } -> Foo { local }
+                        //      ^^^^^^^^ delete this
+                        // FIXME: Actually delete this instead of replacing the entire thing
+
                         // same names, we can use a shorthand here instead.
                         // we do not want to erase attributes hence this range start
                         let s = field_name.syntax().text_range().start();
                         let e = record_field.syntax().text_range().end();
                         return Some((TextRange::new(s, e), new_name.to_owned()));
                     }
-                } else if init == *name_ref {
+                } else if init == name_ref {
                     if field_name.text() == new_name {
                         cov_mark::hit!(test_rename_local_put_init_shorthand);
+                        // Foo { field: local } -> Foo { field }
+                        //            ^^^^^^^ delete this
+                        // FIXME: Actually delete this instead of replacing the entire thing
+
                         // same names, we can use a shorthand here instead.
                         // we do not want to erase attributes hence this range start
                         let s = field_name.syntax().text_range().start();
@@ -374,11 +386,15 @@ fn source_edit_from_name_ref(
             // init shorthand
             (None, Some(_)) if matches!(def, Definition::Field(_)) => {
                 cov_mark::hit!(test_rename_field_in_field_shorthand);
+                // Foo { field } -> Foo { new_name: field }
+                //       ^ insert `new_name: `
                 let s = name_ref.syntax().text_range().start();
                 Some((TextRange::empty(s), format!("{}: ", new_name)))
             }
             (None, Some(_)) if matches!(def, Definition::Local(_)) => {
                 cov_mark::hit!(test_rename_local_in_field_shorthand);
+                // Foo { field } -> Foo { field: new_name }
+                //            ^ insert `: new_name`
                 let s = name_ref.syntax().text_range().end();
                 Some((TextRange::empty(s), format!(": {}", new_name)))
             }
@@ -395,6 +411,11 @@ fn source_edit_from_name_ref(
                 // field name is being renamed
                 if pat.name().map_or(false, |it| it.text() == new_name) {
                     cov_mark::hit!(test_rename_field_put_init_shorthand_pat);
+                    // Foo { field: ref mut local } -> Foo { ref mut field }
+                    //       ^^^^^^^ delete this
+                    //                      ^^^^^ replace this with `field`
+                    // FIXME: do this the way its written here
+
                     // same names, we can use a shorthand here instead/
                     // we do not want to erase attributes hence this range start
                     let s = field_name.syntax().text_range().start();
