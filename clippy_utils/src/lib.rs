@@ -733,16 +733,18 @@ impl std::ops::BitOrAssign for CaptureKind {
 pub fn capture_local_usage(cx: &LateContext<'tcx>, e: &Expr<'_>) -> CaptureKind {
     fn pat_capture_kind(cx: &LateContext<'_>, pat: &Pat<'_>) -> CaptureKind {
         let mut capture = CaptureKind::Ref(Mutability::Not);
-        pat.each_binding(|_, id, span, _| {
-            match cx.typeck_results().extract_binding_mode(cx.sess(), id, span).unwrap() {
-                BindingMode::BindByValue(_) if !is_copy(cx, cx.typeck_results().node_type(id)) => {
-                    capture = CaptureKind::Value;
-                },
-                BindingMode::BindByReference(Mutability::Mut) if capture != CaptureKind::Value => {
-                    capture = CaptureKind::Ref(Mutability::Mut);
-                },
-                _ => (),
-            }
+        pat.each_binding_or_first(&mut |_, id, span, _| match cx
+            .typeck_results()
+            .extract_binding_mode(cx.sess(), id, span)
+            .unwrap()
+        {
+            BindingMode::BindByValue(_) if !is_copy(cx, cx.typeck_results().node_type(id)) => {
+                capture = CaptureKind::Value;
+            },
+            BindingMode::BindByReference(Mutability::Mut) if capture != CaptureKind::Value => {
+                capture = CaptureKind::Ref(Mutability::Mut);
+            },
+            _ => (),
         });
         capture
     }
