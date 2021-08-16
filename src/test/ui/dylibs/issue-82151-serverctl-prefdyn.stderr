@@ -1,0 +1,12 @@
+error: linking with `cc` failed: exit status: 1
+   |
+   = note: $CC_INVOCATION
+   = note: undefined reference to `bar::bar'
+           collect2: error: ld returned 1 exit status
+           
+   = help: some `extern` functions couldn't be found; some native libraries may need to be installed or have their path specified
+   = note: use the `-l` flag to specify native libraries to link
+   = note: use the `cargo:rustc-link-lib` directive to specify the native libraries to link with Cargo (see https://doc.rust-lang.org/cargo/reference/build-scripts.html#cargorustc-link-libkindname)
+
+error: aborting due to previous error
+

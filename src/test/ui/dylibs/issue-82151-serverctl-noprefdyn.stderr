@@ -1,0 +1,78 @@
+error: cannot satisfy dependencies so `std` only shows up once (previously required dynamic, via [`issue_82151_serverctl_noprefdyn`], and now also requires static, via [`shared`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `core` only shows up once (two static copies from multiple different locations, via [`std`, `shared`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `compiler_builtins` only shows up once (two static copies from multiple different locations, via [`std`, `shared`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `rustc_std_workspace_core` only shows up once (two static copies from multiple different locations, via [`std`, `shared`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `alloc` only shows up once (two static copies from multiple different locations, via [`std`, `shared`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `libc` only shows up once (two static copies from multiple different locations, via [`std`, `shared`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `unwind` only shows up once (two static copies from multiple different locations, via [`std`, `shared`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `cfg_if` only shows up once (two static copies from multiple different locations, via [`std`, `shared`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `hashbrown` only shows up once (two static copies from multiple different locations, via [`std`, `shared`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `rustc_std_workspace_alloc` only shows up once (two static copies from multiple different locations, via [`std`, `shared`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `rustc_demangle` only shows up once (two static copies from multiple different locations, via [`std`, `shared`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `std_detect` only shows up once (two static copies from multiple different locations, via [`std`, `shared`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `addr2line` only shows up once (two static copies from multiple different locations, via [`std`, `shared`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `gimli` only shows up once (two static copies from multiple different locations, via [`std`, `shared`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `object` only shows up once (two static copies from multiple different locations, via [`std`, `shared`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `miniz_oxide` only shows up once (two static copies from multiple different locations, via [`std`, `shared`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `adler` only shows up once (two static copies from multiple different locations, via [`std`, `shared`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `panic_unwind` only shows up once (two static copies from multiple different locations, via [`std`, `shared`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: cannot satisfy dependencies so `bar` only shows up once (previously required static, via [`shared`], and now also requires dynamic, via [`issue_82151_serverctl_noprefdyn`])
+   |
+   = help: having upstream crates all available in one format will likely make this go away
+
+error: aborting due to 19 previous errors
+
