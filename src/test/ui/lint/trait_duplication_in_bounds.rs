@@ -1,8 +1,10 @@
-#![deny(clippy::trait_duplication_in_bounds)]
+#![deny(trait_duplication_in_bounds)]
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
+//~^ ERROR this trait bound is already specified in the where clause
+//~| ERROR this trait bound is already specified in the where clause
 where
     T: Clone,
     T: Default,

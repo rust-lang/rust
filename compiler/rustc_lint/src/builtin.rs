@@ -3140,3 +3140,101 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
         }
     }
 }
+
+declare_lint! {
+    /// ### what it does
+    /// checks for cases where generics are being used and multiple
+    /// syntax specifications for trait bounds are used simultaneously.
+    ///
+    /// ### why is this bad?
+    /// duplicate bounds makes the code
+    /// less readable than specifing them only once.
+    ///
+    /// ### example
+    /// ```rust
+    /// fn func<t: clone + default>(arg: t) where t: clone + default {}
+    /// ```
+    ///
+    /// could be written as:
+    ///
+    /// ```rust
+    /// fn func<T: Clone + Default>(arg: T) {}
+    /// ```
+    /// or
+    ///
+    /// ```rust
+    /// fn func<T>(arg: T) where T: Clone + Default {}
+    /// ```
+    pub TRAIT_DUPLICATION_IN_BOUNDS,
+    Warn,
+    "Check if the same trait bounds are specified twice during a function declaration"
+}
+
+declare_lint_pass!(TraitDuplicationInBounds => [TRAIT_DUPLICATION_IN_BOUNDS]);
+
+impl<'tcx> LateLintPass<'tcx> for TraitDuplicationInBounds {
+    fn check_generics(&mut self, cx: &LateContext<'tcx>, gen: &'tcx hir::Generics<'_>) {
+        fn get_trait_res_span_from_bound(bound: &hir::GenericBound<'_>) -> Option<(Res, Span)> {
+            if let hir::GenericBound::Trait(t, _) = bound {
+                Some((t.trait_ref.path.res, t.span))
+            } else {
+                None
+            }
+        }
+        if gen.span.from_expansion()
+            || gen.params.is_empty()
+            || gen.where_clause.predicates.is_empty()
+        {
+            return;
+        }
+
+        let mut map = FxHashMap::default();
+        for param in gen.params {
+            if let hir::ParamName::Plain(ref ident) = param.name {
+                let res = param
+                    .bounds
+                    .iter()
+                    .filter_map(get_trait_res_span_from_bound)
+                    .collect::<Vec<_>>();
+                map.insert(*ident, res);
+            }
+        }
+
+        for predicate in gen.where_clause.predicates {
+            if let hir::WherePredicate::BoundPredicate(ref bound_predicate) = predicate {
+                if !bound_predicate.span.from_expansion() {
+                    if let hir::TyKind::Path(hir::QPath::Resolved(_, hir::Path { segments, .. })) =
+                        bound_predicate.bounded_ty.kind
+                    {
+                        if let Some(segment) = segments.first() {
+                            if let Some(trait_resolutions_direct) = map.get(&segment.ident) {
+                                for (res_where, _) in bound_predicate
+                                    .bounds
+                                    .iter()
+                                    .filter_map(get_trait_res_span_from_bound)
+                                {
+                                    if let Some((_, span_direct)) = trait_resolutions_direct
+                                        .iter()
+                                        .find(|(res_direct, _)| *res_direct == res_where)
+                                    {
+                                        cx.struct_span_lint(
+                                            TRAIT_DUPLICATION_IN_BOUNDS,
+                                            *span_direct,
+                                            |lint| {
+                                                lint.build(
+                                                "this trait bound is already specified in the where clause"
+                                                )
+                                                .help("consider removing this trait bound")
+                                                .emit()
+                                            },
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
