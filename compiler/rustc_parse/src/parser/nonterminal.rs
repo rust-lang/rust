@@ -143,15 +143,16 @@ impl<'a> Parser<'a> {
                 token::NtTy(self.collect_tokens_no_attrs(|this| this.parse_ty())?)
             }
             // this could be handled like a token, since it is one
+            NonterminalKind::Ident
+                if let Some((ident, is_raw)) = get_macro_ident(&self.token) =>
+            {
+                self.bump();
+                token::NtIdent(ident, is_raw)
+            }
             NonterminalKind::Ident => {
-                if let Some((ident, is_raw)) = get_macro_ident(&self.token) {
-                    self.bump();
-                    token::NtIdent(ident, is_raw)
-                } else {
-                    let token_str = pprust::token_to_string(&self.token);
-                    let msg = &format!("expected ident, found {}", &token_str);
-                    return Err(self.struct_span_err(self.token.span, msg));
-                }
+                let token_str = pprust::token_to_string(&self.token);
+                let msg = &format!("expected ident, found {}", &token_str);
+                return Err(self.struct_span_err(self.token.span, msg));
             }
             NonterminalKind::Path => token::NtPath(
                 self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?,

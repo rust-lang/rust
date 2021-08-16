@@ -493,21 +493,19 @@ impl<'a> Parser<'a> {
                 }
             }
             StmtKind::Expr(_) | StmtKind::MacCall(_) => {}
-            StmtKind::Local(ref mut local) => {
-                if let Err(e) = self.expect_semi() {
-                    // We might be at the `,` in `let x = foo<bar, baz>;`. Try to recover.
-                    match &mut local.init {
-                        Some(ref mut expr) => {
-                            self.check_mistyped_turbofish_with_multiple_type_params(e, expr)?;
-                            // We found `foo<bar, baz>`, have we fully recovered?
-                            self.expect_semi()?;
-                        }
-                        None => return Err(e),
+            StmtKind::Local(ref mut local) if let Err(e) = self.expect_semi() => {
+                // We might be at the `,` in `let x = foo<bar, baz>;`. Try to recover.
+                match &mut local.init {
+                    Some(ref mut expr) => {
+                        self.check_mistyped_turbofish_with_multiple_type_params(e, expr)?;
+                        // We found `foo<bar, baz>`, have we fully recovered?
+                        self.expect_semi()?;
                     }
+                    None => return Err(e),
                 }
                 eat_semi = false;
             }
-            StmtKind::Empty | StmtKind::Item(_) | StmtKind::Semi(_) => eat_semi = false,
+            StmtKind::Empty | StmtKind::Item(_) | StmtKind::Local(_) | StmtKind::Semi(_) => eat_semi = false,
         }
 
         if eat_semi && self.eat(&token::Semi) {

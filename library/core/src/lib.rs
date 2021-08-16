@@ -69,6 +69,7 @@
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
 #![allow(explicit_outlives_requirements)]
+#![cfg_attr(bootstrap, allow(incomplete_features))] // if_let_guard
 //
 // Library features for const fns:
 #![feature(const_align_of_val)]
@@ -134,6 +135,7 @@
 #![feature(exhaustive_patterns)]
 #![feature(extern_types)]
 #![feature(fundamental)]
+#![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
 #![feature(lang_items)]

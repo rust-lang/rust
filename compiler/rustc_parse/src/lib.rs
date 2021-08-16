@@ -2,8 +2,10 @@
 
 #![feature(array_windows)]
 #![feature(crate_visibility_modifier)]
+#![feature(if_let_guard)]
 #![cfg_attr(bootstrap, feature(bindings_after_at))]
 #![feature(box_patterns)]
+#![cfg_attr(bootstrap, allow(incomplete_features))] // if_let_guard
 #![recursion_limit = "256"]
 
 use rustc_ast as ast;
@@ -262,20 +264,17 @@ pub fn nt_to_tokenstream(
     let tokens = match *nt {
         Nonterminal::NtItem(ref item) => prepend_attrs(&item.attrs, item.tokens.as_ref()),
         Nonterminal::NtBlock(ref block) => convert_tokens(block.tokens.as_ref()),
-        Nonterminal::NtStmt(ref stmt) => {
-            if let ast::StmtKind::Empty = stmt.kind {
-                let tokens = AttrAnnotatedTokenStream::new(vec![(
-                    tokenstream::AttrAnnotatedTokenTree::Token(Token::new(
-                        TokenKind::Semi,
-                        stmt.span,
-                    )),
-                    Spacing::Alone,
-                )]);
-                prepend_attrs(&stmt.attrs(), Some(&LazyTokenStream::new(tokens)))
-            } else {
-                prepend_attrs(&stmt.attrs(), stmt.tokens())
-            }
+        Nonterminal::NtStmt(ref stmt) if let ast::StmtKind::Empty = stmt.kind => {
+            let tokens = AttrAnnotatedTokenStream::new(vec![(
+                tokenstream::AttrAnnotatedTokenTree::Token(Token::new(
+                    TokenKind::Semi,
+                    stmt.span,
+                )),
+                Spacing::Alone,
+            )]);
+            prepend_attrs(&stmt.attrs(), Some(&LazyTokenStream::new(tokens)))
         }
+        Nonterminal::NtStmt(ref stmt) => prepend_attrs(&stmt.attrs(), stmt.tokens()),
         Nonterminal::NtPat(ref pat) => convert_tokens(pat.tokens.as_ref()),
         Nonterminal::NtTy(ref ty) => convert_tokens(ty.tokens.as_ref()),
         Nonterminal::NtIdent(ident, is_raw) => {

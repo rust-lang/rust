@@ -564,11 +564,11 @@ impl NestedMetaItem {
         I: Iterator<Item = TokenTree>,
     {
         match tokens.peek() {
-            Some(TokenTree::Token(token)) => {
-                if let Ok(lit) = Lit::from_token(token) {
-                    tokens.next();
-                    return Some(NestedMetaItem::Literal(lit));
-                }
+            Some(TokenTree::Token(token))
+                if let Ok(lit) = Lit::from_token(token) =>
+            {
+                tokens.next();
+                return Some(NestedMetaItem::Literal(lit));
             }
             Some(TokenTree::Delimited(_, token::NoDelim, inner_tokens)) => {
                 let inner_tokens = inner_tokens.clone();

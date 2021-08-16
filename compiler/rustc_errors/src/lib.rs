@@ -5,9 +5,11 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(crate_visibility_modifier)]
 #![feature(backtrace)]
+#![feature(if_let_guard)]
 #![feature(format_args_capture)]
 #![feature(iter_zip)]
 #![feature(nll)]
+#![cfg_attr(bootstrap, allow(incomplete_features))] // if_let_guard
 
 #[macro_use]
 extern crate rustc_macros;
@@ -1027,15 +1029,15 @@ impl HandlerInner {
             let mut error_codes = self
                 .emitted_diagnostic_codes
                 .iter()
-                .filter_map(|x| match &x {
-                    DiagnosticId::Error(s) => {
-                        if let Ok(Some(_explanation)) = registry.try_find_description(s) {
-                            Some(s.clone())
-                        } else {
-                            None
-                        }
+                .filter_map(|x| {
+                    match &x {
+                    DiagnosticId::Error(s)
+                        if let Ok(Some(_explanation)) = registry.try_find_description(s) =>
+                    {
+                        Some(s.clone())
                     }
                     _ => None,
+                }
                 })
                 .collect::<Vec<_>>();
             if !error_codes.is_empty() {

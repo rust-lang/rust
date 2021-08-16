@@ -616,32 +616,30 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let lang_items = self.tcx.lang_items();
 
         match *self_ty.value.value.kind() {
-            ty::Dynamic(ref data, ..) => {
-                if let Some(p) = data.principal() {
-                    // Subtle: we can't use `instantiate_query_response` here: using it will
-                    // commit to all of the type equalities assumed by inference going through
-                    // autoderef (see the `method-probe-no-guessing` test).
-                    //
-                    // However, in this code, it is OK if we end up with an object type that is
-                    // "more general" than the object type that we are evaluating. For *every*
-                    // object type `MY_OBJECT`, a function call that goes through a trait-ref
-                    // of the form `<MY_OBJECT as SuperTraitOf(MY_OBJECT)>::func` is a valid
-                    // `ObjectCandidate`, and it should be discoverable "exactly" through one
-                    // of the iterations in the autoderef loop, so there is no problem with it
-                    // being discoverable in another one of these iterations.
-                    //
-                    // Using `instantiate_canonical_with_fresh_inference_vars` on our
-                    // `Canonical<QueryResponse<Ty<'tcx>>>` and then *throwing away* the
-                    // `CanonicalVarValues` will exactly give us such a generalization - it
-                    // will still match the original object type, but it won't pollute our
-                    // type variables in any form, so just do that!
-                    let (QueryResponse { value: generalized_self_ty, .. }, _ignored_var_values) =
-                        self.fcx
-                            .instantiate_canonical_with_fresh_inference_vars(self.span, &self_ty);
+            ty::Dynamic(ref data, ..) if let Some(p) = data.principal() => {
+                // Subtle: we can't use `instantiate_query_response` here: using it will
+                // commit to all of the type equalities assumed by inference going through
+                // autoderef (see the `method-probe-no-guessing` test).
+                //
+                // However, in this code, it is OK if we end up with an object type that is
+                // "more general" than the object type that we are evaluating. For *every*
+                // object type `MY_OBJECT`, a function call that goes through a trait-ref
+                // of the form `<MY_OBJECT as SuperTraitOf(MY_OBJECT)>::func` is a valid
+                // `ObjectCandidate`, and it should be discoverable "exactly" through one
+                // of the iterations in the autoderef loop, so there is no problem with it
+                // being discoverable in another one of these iterations.
+                //
+                // Using `instantiate_canonical_with_fresh_inference_vars` on our
+                // `Canonical<QueryResponse<Ty<'tcx>>>` and then *throwing away* the
+                // `CanonicalVarValues` will exactly give us such a generalization - it
+                // will still match the original object type, but it won't pollute our
+                // type variables in any form, so just do that!
+                let (QueryResponse { value: generalized_self_ty, .. }, _ignored_var_values) =
+                    self.fcx
+                        .instantiate_canonical_with_fresh_inference_vars(self.span, &self_ty);
 
-                    self.assemble_inherent_candidates_from_object(generalized_self_ty);
-                    self.assemble_inherent_impl_candidates_for_type(p.def_id());
-                }
+                self.assemble_inherent_candidates_from_object(generalized_self_ty);
+                self.assemble_inherent_impl_candidates_for_type(p.def_id());
             }
             ty::Adt(def, _) => {
                 self.assemble_inherent_impl_candidates_for_type(def.did);

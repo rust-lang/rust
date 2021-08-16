@@ -236,13 +236,8 @@ pub fn dec2flt<F: RawFloat>(s: &str) -> Result<F, ParseFloatError> {
 
     let num = match parse_number(s, negative) {
         Some(r) => r,
-        None => {
-            if let Some(value) = parse_inf_nan(s, negative) {
-                return Ok(value);
-            } else {
-                return Err(pfe_invalid());
-            }
-        }
+        None if let Some(value) = parse_inf_nan(s, negative) => return Ok(value),
+        None => return Err(pfe_invalid()),
     };
     if let Some(value) = num.try_fast_path::<F>() {
         return Ok(value);

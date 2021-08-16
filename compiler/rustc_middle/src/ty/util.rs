@@ -225,13 +225,11 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 }
 
-                ty::Tuple(tys) => {
-                    if let Some((&last_ty, _)) = tys.split_last() {
-                        ty = last_ty.expect_ty();
-                    } else {
-                        break;
-                    }
+                ty::Tuple(tys) if let Some((&last_ty, _)) = tys.split_last() => {
+                    ty = last_ty.expect_ty();
                 }
+
+                ty::Tuple(_) => break,
 
                 ty::Projection(_) | ty::Opaque(..) => {
                     let normalized = normalize(ty);

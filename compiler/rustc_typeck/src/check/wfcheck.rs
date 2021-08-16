@@ -1049,25 +1049,23 @@ fn check_opaque_types<'fcx, 'tcx>(
                     let arg_is_param = match arg.unpack() {
                         GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
 
-                        GenericArgKind::Lifetime(region) => {
-                            if let ty::ReStatic = region {
-                                tcx.sess
-                                    .struct_span_err(
-                                        span,
-                                        "non-defining opaque type use in defining scope",
-                                    )
-                                    .span_label(
-                                        tcx.def_span(generics.param_at(i, tcx).def_id),
-                                        "cannot use static lifetime; use a bound lifetime \
-                                                 instead or remove the lifetime parameter from the \
-                                                 opaque type",
-                                    )
-                                    .emit();
-                                continue;
-                            }
-
-                            true
+                        GenericArgKind::Lifetime(region) if let ty::ReStatic = region => {
+                            tcx.sess
+                                .struct_span_err(
+                                    span,
+                                    "non-defining opaque type use in defining scope",
+                                )
+                                .span_label(
+                                    tcx.def_span(generics.param_at(i, tcx).def_id),
+                                    "cannot use static lifetime; use a bound lifetime \
+                                                instead or remove the lifetime parameter from the \
+                                                opaque type",
+                                )
+                                .emit();
+                            continue;
                         }
+
+                        GenericArgKind::Lifetime(_) => true,
 
                         GenericArgKind::Const(ct) => matches!(ct.val, ty::ConstKind::Param(_)),
                     };

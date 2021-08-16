@@ -31,6 +31,7 @@
 #![feature(box_patterns)]
 #![feature(core_intrinsics)]
 #![feature(discriminant_kind)]
+#![feature(if_let_guard)]
 #![feature(never_type)]
 #![feature(extern_types)]
 #![feature(new_uninit)]
@@ -52,6 +53,7 @@
 #![feature(try_reserve)]
 #![feature(try_reserve_kind)]
 #![feature(nonzero_ops)]
+#![cfg_attr(bootstrap, allow(incomplete_features))] // if_let_guard
 #![recursion_limit = "512"]
 
 #[macro_use]
