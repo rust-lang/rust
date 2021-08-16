@@ -438,7 +438,7 @@ impl HasChildSource<LocalConstParamId> for GenericDefId {
 }
 
 impl ChildBySource for GenericDefId {
-    fn child_by_source_to(&self, db: &dyn DefDatabase, _: HirFileId, res: &mut DynMap) {
+    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, _: HirFileId) {
         let (_, sm) = GenericParams::new(db, *self);
 
         let sm = sm.as_ref();
