@@ -311,5 +311,67 @@ help: or use std::panic::panic_any instead
 LL |     std::panic::panic_any(123);
    |     ~~~~~~~~~~~~~~~~~~~~~~   ~
 
-warning: 22 warnings emitted
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:67:12
+   |
+LL |     panic!(v);
+   |     ------ ^
+   |     |
+   |     help: use std::panic::panic_any instead: `std::panic::panic_any`
+   |
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:71:12
+   |
+LL |     panic!(v);
+   |            ^
+   |
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+help: add a "{:?}" format string to use the Debug implementation of `T`
+   |
+LL |     panic!("{:?}", v);
+   |            +++++++
+help: or use std::panic::panic_any instead
+   |
+LL |     std::panic::panic_any(v);
+   |     ~~~~~~~~~~~~~~~~~~~~~
+
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:75:12
+   |
+LL |     panic!(v);
+   |            ^
+   |
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+help: add a "{}" format string to Display the message
+   |
+LL |     panic!("{}", v);
+   |            +++++
+help: or use std::panic::panic_any instead
+   |
+LL |     std::panic::panic_any(v);
+   |     ~~~~~~~~~~~~~~~~~~~~~
+
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:79:12
+   |
+LL |     panic!(v);
+   |            ^
+   |
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+help: add a "{}" format string to Display the message
+   |
+LL |     panic!("{}", v);
+   |            +++++
+help: or use std::panic::panic_any instead
+   |
+LL |     std::panic::panic_any(v);
+   |     ~~~~~~~~~~~~~~~~~~~~~
+
+warning: 26 warnings emitted
 
