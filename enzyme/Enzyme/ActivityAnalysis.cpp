@@ -181,6 +181,8 @@ const std::set<std::string> KnownInactiveFunctions = {
 /// This tool can only be used when in DOWN mode
 bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
   assert(directions & DOWN);
+  if (CI->hasFnAttr("enzyme_inactive"))
+    return true;
 
   Function *F = getFunctionFromCall(CI);
 
@@ -971,6 +973,11 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
           }
         }
       } else if (auto op = dyn_cast<CallInst>(TmpOrig)) {
+        if (op->hasFnAttr("enzyme_inactive")) {
+          InsertConstantValue(TR, Val);
+          insertConstantsFrom(TR, *UpHypothesis);
+          return true;
+        }
         Function *called = getFunctionFromCall(op);
 
         if (called) {
@@ -1128,6 +1135,8 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
         // If this is a malloc or free, this doesn't impact the activity
         if (auto CI = dyn_cast<CallInst>(&I)) {
+          if (CI->hasFnAttr("enzyme_inactive"))
+            continue;
 
 #if LLVM_VERSION_MAJOR >= 11
           if (auto iasm = dyn_cast<InlineAsm>(CI->getCalledOperand()))
@@ -1595,6 +1604,9 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
   }
 
   if (auto op = dyn_cast<CallInst>(inst)) {
+    if (op->hasFnAttr("enzyme_inactive")) {
+      return true;
+    }
     // Calls to print/assert/cxa guard are definitionally inactive
     llvm::Value *callVal;
 #if LLVM_VERSION_MAJOR >= 11

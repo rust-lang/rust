@@ -211,42 +211,56 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %call3 = call i32 @MPI_Wait(%struct.ompi_request_t** nonnull %r2, %struct.ompi_status_public_t* nonnull %s2)
 ; CHECK-NEXT:   %32 = bitcast %struct.ompi_request_t** %"r2'ipa" to { i8*, i64, i8*, i64, i64, i8*, i8 }**
 ; CHECK-NEXT:   %33 = load { i8*, i64, i8*, i64, i64, i8*, i8 }*, { i8*, i64, i8*, i64, i64, i8*, i8 }** %32
-; CHECK-NEXT:   %34 = load { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %33
-; CHECK-NEXT:   %35 = bitcast { i8*, i64, i8*, i64, i64, i8*, i8 }* %33 to i8*
-; CHECK-NEXT:   tail call void @free(i8* nonnull %35)
-; CHECK-NEXT:   %36 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %34, 0
-; CHECK-NEXT:   %37 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %34, 1
-; CHECK-NEXT:   %38 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %34, 2
-; CHECK-NEXT:   %39 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %34, 3
-; CHECK-NEXT:   %40 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %34, 4
-; CHECK-NEXT:   %41 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %34, 5
-; CHECK-NEXT:   %42 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %34, 6
-; CHECK-NEXT:   call void @__enzyme_differential_mpi_wait(i8* %36, i64 %37, i8* %38, i64 %39, i64 %40, i8* %41, i8 %42, %struct.ompi_request_t** %"r2'ipa")
-; CHECK-NEXT:   %43 = call i32 @MPI_Wait(%struct.ompi_request_t** %"r2'ipa", %struct.ompi_status_public_t* %0)
-; CHECK-NEXT:   %44 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %1)
-; CHECK-NEXT:   %45 = load i32, i32* %1
-; CHECK-NEXT:   %46 = zext i32 %45 to i64
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %"'ipc", i8 0, i64 %46, i1 false)
-; CHECK-NEXT:   %47 = bitcast %struct.ompi_request_t** %"r1'ipa" to { i8*, i64, i8*, i64, i64, i8*, i8 }**
-; CHECK-NEXT:   %48 = load { i8*, i64, i8*, i64, i64, i8*, i8 }*, { i8*, i64, i8*, i64, i64, i8*, i8 }** %47
-; CHECK-NEXT:   %49 = load { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %48
-; CHECK-NEXT:   %50 = bitcast { i8*, i64, i8*, i64, i64, i8*, i8 }* %48 to i8*
-; CHECK-NEXT:   tail call void @free(i8* nonnull %50)
-; CHECK-NEXT:   %51 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %49, 0
-; CHECK-NEXT:   %52 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %49, 1
-; CHECK-NEXT:   %53 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %49, 2
-; CHECK-NEXT:   %54 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %49, 3
-; CHECK-NEXT:   %55 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %49, 4
-; CHECK-NEXT:   %56 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %49, 5
-; CHECK-NEXT:   %57 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %49, 6
-; CHECK-NEXT:   call void @__enzyme_differential_mpi_wait(i8* %51, i64 %52, i8* %53, i64 %54, i64 %55, i8* %56, i8 %57, %struct.ompi_request_t** %"r1'ipa")
-; CHECK-NEXT:   %58 = call i32 @MPI_Wait(%struct.ompi_request_t** %"r1'ipa", %struct.ompi_status_public_t* %3)
-; CHECK-NEXT:   %59 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %4)
-; CHECK-NEXT:   %60 = load i32, i32* %4
-; CHECK-NEXT:   %61 = zext i32 %60 to i64
-; CHECK-NEXT:   %62 = bitcast i8* %malloccall4 to float*
-; CHECK-NEXT:   %63 = udiv i64 %61, 4
-; CHECK-NEXT:   call void @__enzyme_memcpyadd_floatda1sa1(float* %62, float* %"val1'", i64 %63)
+; CHECK-NEXT:   %34 = icmp eq { i8*, i64, i8*, i64, i64, i8*, i8 }* %33, null
+; CHECK-NEXT:   br i1 %34, label %invertentry_end, label %invertentry_nonnull
+
+; CHECK:  invertentry_nonnull:                              ; preds = %entry
+; CHECK-NEXT:   %35 = load { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %33
+; CHECK-NEXT:   %36 = bitcast { i8*, i64, i8*, i64, i64, i8*, i8 }* %33 to i8*
+; CHECK-NEXT:   tail call void @free(i8* nonnull %36)
+; CHECK-NEXT:   %37 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %35, 0
+; CHECK-NEXT:   %38 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %35, 1
+; CHECK-NEXT:   %39 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %35, 2
+; CHECK-NEXT:   %40 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %35, 3
+; CHECK-NEXT:   %41 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %35, 4
+; CHECK-NEXT:   %42 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %35, 5
+; CHECK-NEXT:   %43 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %35, 6
+; CHECK-NEXT:   call void @__enzyme_differential_mpi_wait(i8* %37, i64 %38, i8* %39, i64 %40, i64 %41, i8* %42, i8 %43, %struct.ompi_request_t** %"r2'ipa")
+; CHECK-NEXT:   br label %invertentry_end
+
+; CHECK: invertentry_end:
+; CHECK-NEXT:   %44 = call i32 @MPI_Wait(%struct.ompi_request_t** %"r2'ipa", %struct.ompi_status_public_t* %0)
+; CHECK-NEXT:   %45 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %1)
+; CHECK-NEXT:   %46 = load i32, i32* %1
+; CHECK-NEXT:   %47 = zext i32 %46 to i64
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %"'ipc", i8 0, i64 %47, i1 false)
+; CHECK-NEXT:   %48 = bitcast %struct.ompi_request_t** %"r1'ipa" to { i8*, i64, i8*, i64, i64, i8*, i8 }**
+; CHECK-NEXT:   %49 = load { i8*, i64, i8*, i64, i64, i8*, i8 }*, { i8*, i64, i8*, i64, i64, i8*, i8 }** %48
+; CHECK-NEXT:   %50 = icmp eq { i8*, i64, i8*, i64, i64, i8*, i8 }* %49, null
+; CHECK-NEXT:   br i1 %50, label %invertentry_end_end, label %invertentry_end_nonnull
+
+; CHECK: invertentry_end_nonnull:
+; CHECK-NEXT:   %51 = load { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %49
+; CHECK-NEXT:   %52 = bitcast { i8*, i64, i8*, i64, i64, i8*, i8 }* %49 to i8*
+; CHECK-NEXT:   tail call void @free(i8* nonnull %52)
+; CHECK-NEXT:   %53 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %51, 0
+; CHECK-NEXT:   %54 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %51, 1
+; CHECK-NEXT:   %55 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %51, 2
+; CHECK-NEXT:   %56 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %51, 3
+; CHECK-NEXT:   %57 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %51, 4
+; CHECK-NEXT:   %58 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %51, 5
+; CHECK-NEXT:   %59 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %51, 6
+; CHECK-NEXT:   call void @__enzyme_differential_mpi_wait(i8* %53, i64 %54, i8* %55, i64 %56, i64 %57, i8* %58, i8 %59, %struct.ompi_request_t** %"r1'ipa")
+; CHECK-NEXT:   br label %invertentry_end_end
+
+; CHECK: invertentry_end_end:
+; CHECK-NEXT:   %60 = call i32 @MPI_Wait(%struct.ompi_request_t** %"r1'ipa", %struct.ompi_status_public_t* %3)
+; CHECK-NEXT:   %61 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %4)
+; CHECK-NEXT:   %62 = load i32, i32* %4
+; CHECK-NEXT:   %63 = zext i32 %62 to i64
+; CHECK-NEXT:   %64 = bitcast i8* %malloccall4 to float*
+; CHECK-NEXT:   %65 = udiv i64 %63, 4
+; CHECK-NEXT:   call void @__enzyme_memcpyadd_floatda1sa1(float* %64, float* %"val1'", i64 %65)
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall4)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

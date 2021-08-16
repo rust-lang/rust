@@ -3719,10 +3719,10 @@ public:
           Value *args[] = {/*req*/ d_req,
                            /*status*/ IRBuilder<>(gutils->inversionAllocs)
                                .CreateAlloca(statusType)};
-#if LLVM_VERSION_MAJOR >= 8
+#if LLVM_VERSION_MAJOR >= 9
           FunctionCallee waitFunc = nullptr;
 #else
-          Function *waitFunc = nullptr;
+          Constant *waitFunc = nullptr;
 #endif
           for (auto name : {"PMPI_Wait", "MPI_Wait"})
             if (Function *recvfn = called->getParent()->getFunction(name)) {
@@ -3746,11 +3746,12 @@ public:
           assert(waitFunc);
           auto fcall = Builder2.CreateCall(waitFunc, args);
           fcall->setDebugLoc(gutils->getNewFromOriginal(call.getDebugLoc()));
-#if LLVM_VERSION_MAJOR >= 8
+#if LLVM_VERSION_MAJOR >= 9
           if (auto F = dyn_cast<Function>(waitFunc.getCallee()))
             fcall->setCallingConv(F->getCallingConv());
 #else
-          fcall->setCallingConv(waitFunc->getCallingConv());
+          if (auto F = dyn_cast<Function>(waitFunc))
+            fcall->setCallingConv(F->getCallingConv());
 #endif
           auto len_arg = Builder2.CreateZExtOrTrunc(
               lookup(gutils->getNewFromOriginal(call.getOperand(1)), Builder2),
