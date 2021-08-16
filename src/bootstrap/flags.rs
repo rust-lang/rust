@@ -78,9 +78,6 @@ pub enum Subcommand {
         paths: Vec<PathBuf>,
     },
     Check {
-        // Whether to run checking over all targets (e.g., unit / integration
-        // tests).
-        all_targets: bool,
         paths: Vec<PathBuf>,
     },
     Clippy {
@@ -553,7 +550,12 @@ Arguments:
         let cmd = match subcommand.as_str() {
             "build" | "b" => Subcommand::Build { paths },
             "check" | "c" => {
-                Subcommand::Check { paths, all_targets: matches.opt_present("all-targets") }
+                if matches.opt_present("all-targets") {
+                    eprintln!(
+                        "Warning: --all-targets is now on by default and does not need to be passed explicitly."
+                    );
+                }
+                Subcommand::Check { paths }
             }
             "clippy" => Subcommand::Clippy { paths, fix: matches.opt_present("fix") },
             "fix" => Subcommand::Fix { paths },
