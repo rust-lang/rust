@@ -96,5 +96,11 @@ error: lint `clippy::wrong_pub_self_convention` has been removed: set the `avoid
 LL | #[warn(clippy::wrong_pub_self_convention)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 16 previous errors
+error: lint `clippy::invalid_atomic_ordering` has been renamed to `invalid_atomic_ordering`
+  --> $DIR/deprecated.rs:17:8
+   |
+LL | #[warn(clippy::invalid_atomic_ordering)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `invalid_atomic_ordering`
+
+error: aborting due to 17 previous errors
 
