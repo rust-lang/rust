@@ -316,7 +316,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx.tcx
     }
 
-    /// returns `true` if the predicate is considered `const` to
+    /// Returns `true` if the predicate is considered `const` to
     /// this selection context.
     pub fn is_predicate_const(&self, pred: ty::Predicate<'_>) -> bool {
         match pred.kind().skip_binder() {

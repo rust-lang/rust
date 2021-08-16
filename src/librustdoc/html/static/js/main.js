@@ -986,7 +986,7 @@ function hideThemeButtonState() {
         });
 
         var el = document.createElement('textarea');
-        el.value = 'use ' + path.join('::') + ';';
+        el.value = path.join('::');
         el.setAttribute('readonly', '');
         // To not make it appear on the screen.
         el.style.position = 'absolute';

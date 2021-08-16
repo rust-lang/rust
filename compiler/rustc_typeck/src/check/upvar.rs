@@ -47,7 +47,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::lint;
 use rustc_span::sym;
-use rustc_span::{MultiSpan, Span, Symbol, DUMMY_SP};
+use rustc_span::{BytePos, MultiSpan, Pos, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use rustc_data_structures::stable_map::FxHashMap;
@@ -645,6 +645,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     diagnostics_builder.note("for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>");
 
+                    let diagnostic_msg = format!(
+                        "add a dummy let to cause {} to be fully captured",
+                        migrated_variables_concat
+                    );
+
                     let mut closure_body_span = self.tcx.hir().span(body_id.hir_id);
 
                     // If the body was entirely expanded from a macro
@@ -655,43 +660,54 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         closure_body_span = closure_body_span.parent().unwrap_or(DUMMY_SP);
                     }
 
-                    let (span, sugg, app) =
-                        match self.tcx.sess.source_map().span_to_snippet(closure_body_span) {
-                            Ok(s) => {
-                                let trimmed = s.trim_start();
-                                let mut lines = trimmed.lines();
-                                let line1 = lines.next().unwrap_or_default();
+                    if let Ok(s) = self.tcx.sess.source_map().span_to_snippet(closure_body_span) {
+                        let mut lines = s.lines();
+                        let line1 = lines.next().unwrap_or_default();
 
-                                // If the closure contains a block then replace the opening brace
-                                // with "{ let _ = (..); "
-                                let sugg = if line1.trim_end() == "{" {
-                                    // This is a multi-line closure with just a `{` on the first line,
-                                    // so we put the `let` on its own line.
-                                    // We take the indentation from the next non-empty line.
-                                    let line2 = lines.filter(|line| !line.is_empty()).next().unwrap_or_default();
-                                    let indent = line2.split_once(|c: char| !c.is_whitespace()).unwrap_or_default().0;
-                                    format!("{{\n{}{};{}", indent, migration_string, &trimmed[line1.len()..])
-                                } else if line1.starts_with('{') {
-                                    format!("{{ {}; {}", migration_string, &trimmed[1..].trim_start())
-                                } else {
-                                    format!("{{ {}; {} }}", migration_string, s)
-                                };
-                                (closure_body_span, sugg, Applicability::MachineApplicable)
-                            }
-                            Err(_) => (closure_span, migration_string.clone(), Applicability::HasPlaceholders),
-                        };
+                        if line1.trim_end() == "{" {
+                            // This is a multi-line closure with just a `{` on the first line,
+                            // so we put the `let` on its own line.
+                            // We take the indentation from the next non-empty line.
+                            let line2 = lines.filter(|line| !line.is_empty()).next().unwrap_or_default();
+                            let indent = line2.split_once(|c: char| !c.is_whitespace()).unwrap_or_default().0;
+                            diagnostics_builder.span_suggestion(
+                                closure_body_span.with_lo(closure_body_span.lo() + BytePos::from_usize(line1.len())).shrink_to_lo(),
+                                &diagnostic_msg,
+                                format!("\n{}{};", indent, migration_string),
+                                Applicability::MachineApplicable,
+                            );
+                        } else if line1.starts_with('{') {
+                            // This is a closure with its body wrapped in
+                            // braces, but with more than just the opening
+                            // brace on the first line. We put the `let`
+                            // directly after the `{`.
+                            diagnostics_builder.span_suggestion(
+                                closure_body_span.with_lo(closure_body_span.lo() + BytePos(1)).shrink_to_lo(),
+                                &diagnostic_msg,
+                                format!(" {};", migration_string),
+                                Applicability::MachineApplicable,
+                            );
+                        } else {
+                            // This is a closure without braces around the body.
+                            // We add braces to add the `let` before the body.
+                            diagnostics_builder.multipart_suggestion(
+                                &diagnostic_msg,
+                                vec![
+                                    (closure_body_span.shrink_to_lo(), format!("{{ {}; ", migration_string)),
+                                    (closure_body_span.shrink_to_hi(), " }".to_string()),
+                                ],
+                                Applicability::MachineApplicable
+                            );
+                        }
+                    } else {
+                        diagnostics_builder.span_suggestion(
+                            closure_span,
+                            &diagnostic_msg,
+                            migration_string,
+                            Applicability::HasPlaceholders
+                        );
+                    }
 
-                    let diagnostic_msg = format!(
-                        "add a dummy let to cause {} to be fully captured",
-                        migrated_variables_concat
-                    );
-
-                    diagnostics_builder.span_suggestion(
-                        span,
-                        &diagnostic_msg,
-                        sugg,
-                        app,
-                    );
                     diagnostics_builder.emit();
                 },
             );
