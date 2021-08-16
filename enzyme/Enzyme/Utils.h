@@ -821,7 +821,7 @@ public:
   virtual ~AssertingReplacingVH() {}
 };
 
-static inline llvm::Function *getFunctionFromCall(llvm::CallInst *op) {
+template <typename T> static inline llvm::Function *getFunctionFromCall(T *op) {
   llvm::Function *called = nullptr;
   using namespace llvm;
   llvm::Value *callVal;

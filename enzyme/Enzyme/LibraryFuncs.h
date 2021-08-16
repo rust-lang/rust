@@ -369,19 +369,7 @@ static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
          maybeWriter->getParent()->getParent());
   using namespace llvm;
   if (auto call = dyn_cast<CallInst>(maybeWriter)) {
-    Function *called = call->getCalledFunction();
-#if LLVM_VERSION_MAJOR >= 11
-    if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledOperand()))
-#else
-    if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledValue()))
-#endif
-    {
-      if (castinst->isCast()) {
-        if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-          called = fn;
-        }
-      }
-    }
+    Function *called = getFunctionFromCall(call);
     if (called && isCertainPrintMallocOrFree(called)) {
       return false;
     }
@@ -414,19 +402,7 @@ static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
     }
   }
   if (auto call = dyn_cast<CallInst>(maybeReader)) {
-    Function *called = call->getCalledFunction();
-#if LLVM_VERSION_MAJOR >= 11
-    if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledOperand()))
-#else
-    if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledValue()))
-#endif
-    {
-      if (castinst->isCast()) {
-        if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-          called = fn;
-        }
-      }
-    }
+    Function *called = getFunctionFromCall(call);
     if (called && isCertainMallocOrFree(called)) {
       return false;
     }
@@ -447,19 +423,7 @@ static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
     }
   }
   if (auto call = dyn_cast<InvokeInst>(maybeWriter)) {
-    Function *called = call->getCalledFunction();
-#if LLVM_VERSION_MAJOR >= 11
-    if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledOperand()))
-#else
-    if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledValue()))
-#endif
-    {
-      if (castinst->isCast()) {
-        if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-          called = fn;
-        }
-      }
-    }
+    Function *called = getFunctionFromCall(call);
     if (called && isCertainMallocOrFree(called)) {
       return false;
     }
@@ -480,19 +444,7 @@ static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
     }
   }
   if (auto call = dyn_cast<InvokeInst>(maybeReader)) {
-    Function *called = call->getCalledFunction();
-#if LLVM_VERSION_MAJOR >= 11
-    if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledOperand()))
-#else
-    if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledValue()))
-#endif
-    {
-      if (castinst->isCast()) {
-        if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-          called = fn;
-        }
-      }
-    }
+    Function *called = getFunctionFromCall(call);
     if (called && isCertainMallocOrFree(called)) {
       return false;
     }

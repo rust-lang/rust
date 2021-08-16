@@ -2607,19 +2607,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
             if (isa<IntrinsicInst>(CI))
               continue;
             if (!isConstantInstruction(CI)) {
-              Function *F = CI->getCalledFunction();
-#if LLVM_VERSION_MAJOR >= 11
-              if (auto castinst =
-                      dyn_cast<ConstantExpr>(CI->getCalledOperand()))
-#else
-              if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
-#endif
-              {
-                if (castinst->isCast())
-                  if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-                    F = fn;
-                  }
-              }
+              Function *F = getFunctionFromCall(CI);
               if (F && (isMemFreeLibMFunction(F->getName()) ||
                         F->getName() == "__fd_sincos_1")) {
                 continue;
@@ -4769,20 +4757,7 @@ void GradientUtils::computeMinCache(
             }
           }
         } else if (auto CI = dyn_cast<CallInst>(&I)) {
-          Function *F = CI->getCalledFunction();
-
-#if LLVM_VERSION_MAJOR >= 11
-          if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand()))
-#else
-          if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
-#endif
-          {
-            if (castinst->isCast())
-              if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-                F = fn;
-              }
-          }
-
+          Function *F = getFunctionFromCall(CI);
           if (F && isAllocationFunction(*F, TLI))
             Available[CI] = CI;
         }

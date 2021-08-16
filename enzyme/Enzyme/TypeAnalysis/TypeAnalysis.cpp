@@ -2429,6 +2429,10 @@ void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst &MTI) {
 }
 
 void TypeAnalyzer::visitMemTransferCommon(llvm::CallInst &MTI) {
+  if (MTI.getType()->isIntegerTy()) {
+    updateAnalysis(&MTI, TypeTree(BaseType::Integer).Only(-1), &MTI);
+  }
+
   if (!(direction & UP))
     return;
 
