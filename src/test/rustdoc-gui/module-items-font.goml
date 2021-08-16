@@ -2,3 +2,22 @@
 goto: file://|DOC_PATH|/test_docs/index.html
 assert-css: (".item-table .module-item a", {"font-family": '"Fira Sans", Arial, sans-serif'}, ALL)
 assert-css: (".item-table .docblock-short", {"font-family": '"Source Serif 4", "Noto Sans KR", serif'}, ALL)
+
+// modules
+assert-css: ("#modules + .item-table .item-left a", {"font-family": '"Fira Sans", Arial, sans-serif'})
+assert-css: ("#modules + .item-table .item-right.docblock-short", {"font-family": '"Source Serif 4", "Noto Sans KR", serif'})
+// structs
+assert-css: ("#structs + .item-table .item-left a", {"font-family": '"Fira Sans", Arial, sans-serif'})
+assert-css: ("#structs + .item-table .item-right.docblock-short", {"font-family": '"Source Serif 4", "Noto Sans KR", serif'})
+// enums
+assert-css: ("#enums + .item-table .item-left a", {"font-family": '"Fira Sans", Arial, sans-serif'})
+assert-css: ("#enums + .item-table .item-right.docblock-short", {"font-family": '"Source Serif 4", "Noto Sans KR", serif'})
+// traits
+assert-css: ("#traits + .item-table .item-left a", {"font-family": '"Fira Sans", Arial, sans-serif'})
+assert-css: ("#traits + .item-table .item-right.docblock-short", {"font-family": '"Source Serif 4", "Noto Sans KR", serif'})
+// functions
+assert-css: ("#functions + .item-table .item-left a", {"font-family": '"Fira Sans", Arial, sans-serif'})
+assert-css: ("#functions + .item-table .item-right.docblock-short", {"font-family": '"Source Serif 4", "Noto Sans KR", serif'})
+// keywords
+assert-css: ("#keywords + .item-table .item-left a", {"font-family": '"Fira Sans", Arial, sans-serif'})
+assert-css: ("#keywords + .item-table .item-right.docblock-short", {"font-family": '"Source Serif 4", "Noto Sans KR", serif'})
