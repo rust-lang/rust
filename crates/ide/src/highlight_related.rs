@@ -31,8 +31,10 @@ pub struct HighlightRelatedConfig {
 // Highlights constructs related to the thing under the cursor:
 // - if on an identifier, highlights all references to that identifier in the current file
 // - if on an `async` or `await token, highlights all yield points for that async context
-// - if on a `return` token, `?` character or `->` return type arrow, highlights all exit points for that context
+// - if on a `return` or `fn` keyword, `?` character or `->` return type arrow, highlights all exit points for that context
 // - if on a `break`, `loop`, `while` or `for` token, highlights all break points for that loop or block context
+//
+// Note: `?` and `->` do not currently trigger this behavior in the VSCode editor.
 pub(crate) fn highlight_related(
     sema: &Semantics<RootDatabase>,
     config: HighlightRelatedConfig,
@@ -42,20 +44,16 @@ pub(crate) fn highlight_related(
     let syntax = sema.parse(position.file_id).syntax().clone();
 
     let token = pick_best_token(syntax.token_at_offset(position.offset), |kind| match kind {
-        T![?] => 2, // prefer `?` when the cursor is sandwiched like `await$0?`
-        T![await]
-        | T![async]
-        | T![return]
-        | T![break]
-        | T![loop]
-        | T![for]
-        | T![while]
-        | T![->] => 1,
+        T![?] => 3, // prefer `?` when the cursor is sandwiched like in `await$0?`
+        T![->] => 2,
+        kind if kind.is_keyword() => 1,
         _ => 0,
     })?;
 
     match token.kind() {
-        T![return] | T![?] | T![->] if config.exit_points => highlight_exit_points(sema, token),
+        T![fn] | T![return] | T![?] | T![->] if config.exit_points => {
+            highlight_exit_points(sema, token)
+        }
         T![await] | T![async] if config.yield_points => highlight_yield_points(token),
         T![break] | T![loop] | T![for] | T![while] if config.break_points => {
             highlight_break_points(token)
@@ -460,6 +458,25 @@ fn foo() -> u32 {
         check(
             r#"
 fn foo() ->$0 u32 {
+    if true {
+        return 0;
+     // ^^^^^^
+    }
+
+    0?;
+  // ^
+    0xDEAD_BEEF
+ // ^^^^^^^^^^^
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_exit_points3() {
+        check(
+            r#"
+fn$0 foo() -> u32 {
     if true {
         return 0;
      // ^^^^^^
