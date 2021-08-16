@@ -1643,7 +1643,8 @@ void TypeAnalyzer::visitSelectInst(SelectInst &I) {
   if (direction & DOWN) {
     // special case for min/max result is still that operand [even if something is 0]
     if (auto cmpI = dyn_cast<CmpInst>(I.getCondition())) {
-      if (cmpI->isRelational())
+      // is relational equiv to not is equality
+      if (!cmpI->isEquality())
       if (cmpI->getOperand(0) == I.getTrueValue() && cmpI->getOperand(1) == I.getFalseValue() ||
 		      cmpI->getOperand(1) == I.getTrueValue() && cmpI->getOperand(0) == I.getFalseValue()) {
         auto vd = getAnalysis(I.getTrueValue()).Inner0();

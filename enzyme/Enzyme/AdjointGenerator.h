@@ -2089,7 +2089,12 @@ public:
     visitMemTransferCommon(MTI.getIntrinsicID(), srcAlign, dstAlign, MTI, isVolatile);
   }
 
-  void visitMemTransferCommon(Intrinsic::ID ID, MaybeAlign srcAlign, MaybeAlign dstAlign, llvm::CallInst& MTI, Value* isVolatile) {
+#if LLVM_VERSION_MAJOR >= 10
+  void visitMemTransferCommon(Intrinsic::ID ID, MaybeAlign srcAlign, MaybeAlign dstAlign, llvm::CallInst& MTI, Value* isVolatile)
+#else
+  void visitMemTransferCommon(Intrinsic::ID ID, unsigned srcAlign, unsigned dstAlign, llvm::CallInst& MTI, Value* isVolatile)
+#endif
+  {
     if (gutils->isConstantValue(MTI.getOperand(0))) {
       eraseIfUnused(MTI);
       return;
