@@ -14,7 +14,7 @@ jobs:
     if: github.repository == 'rust-lang/rustc-dev-guide'
     runs-on: ubuntu-latest
     env:
-      MDBOOK_VERSION: 0.4.7
+      MDBOOK_VERSION: 0.4.12
       MDBOOK_LINKCHECK_VERSION: 0.7.2
       MDBOOK_TOC_VERSION: 0.6.1
       DEPLOY_DIR: book/html
