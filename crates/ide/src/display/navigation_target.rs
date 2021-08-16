@@ -92,7 +92,7 @@ impl NavigationTarget {
     pub(crate) fn from_module_to_decl(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
         let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
         if let Some(src) = module.declaration_source(db) {
-            let node = src.as_ref().map(|it| it.syntax());
+            let node = src.syntax();
             let full_range = node.original_file_range(db);
             let focus_range = src
                 .value
@@ -298,7 +298,7 @@ impl TryToNav for hir::Impl {
         let frange = if let Some(item) = &derive_attr {
             item.syntax().original_file_range(db)
         } else {
-            src.as_ref().map(|it| it.syntax()).original_file_range(db)
+            src.syntax().original_file_range(db)
         };
         let focus_range = if derive_attr.is_some() {
             None

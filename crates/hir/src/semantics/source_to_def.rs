@@ -131,13 +131,8 @@ impl SourceToDefCtx<'_, '_> {
 
     pub(super) fn module_to_def(&mut self, src: InFile<ast::Module>) -> Option<ModuleId> {
         let _p = profile::span("module_to_def");
-        let parent_declaration = src
-            .as_ref()
-            .map(|it| it.syntax())
-            .cloned()
-            .ancestors_with_macros(self.db.upcast())
-            .skip(1)
-            .find_map(|it| {
+        let parent_declaration =
+            src.syntax().cloned().ancestors_with_macros(self.db.upcast()).skip(1).find_map(|it| {
                 let m = ast::Module::cast(it.value.clone())?;
                 Some(it.with_value(m))
             });
@@ -217,7 +212,7 @@ impl SourceToDefCtx<'_, '_> {
         &mut self,
         src: InFile<ast::IdentPat>,
     ) -> Option<(DefWithBodyId, PatId)> {
-        let container = self.find_pat_or_label_container(src.as_ref().map(|it| it.syntax()))?;
+        let container = self.find_pat_or_label_container(src.syntax())?;
         let (_body, source_map) = self.db.body_with_source_map(container);
         let src = src.map(ast::Pat::from);
         let pat_id = source_map.node_pat(src.as_ref())?;
@@ -227,7 +222,7 @@ impl SourceToDefCtx<'_, '_> {
         &mut self,
         src: InFile<ast::SelfParam>,
     ) -> Option<(DefWithBodyId, PatId)> {
-        let container = self.find_pat_or_label_container(src.as_ref().map(|it| it.syntax()))?;
+        let container = self.find_pat_or_label_container(src.syntax())?;
         let (_body, source_map) = self.db.body_with_source_map(container);
         let pat_id = source_map.node_self_param(src.as_ref())?;
         Some((container, pat_id))
@@ -236,7 +231,7 @@ impl SourceToDefCtx<'_, '_> {
         &mut self,
         src: InFile<ast::Label>,
     ) -> Option<(DefWithBodyId, LabelId)> {
-        let container = self.find_pat_or_label_container(src.as_ref().map(|it| it.syntax()))?;
+        let container = self.find_pat_or_label_container(src.syntax())?;
         let (_body, source_map) = self.db.body_with_source_map(container);
         let label_id = source_map.node_label(src.as_ref())?;
         Some((container, label_id))
@@ -264,8 +259,7 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     pub(super) fn type_param_to_def(&mut self, src: InFile<ast::TypeParam>) -> Option<TypeParamId> {
-        let container: ChildContainer =
-            self.find_generic_param_container(src.as_ref().map(|it| it.syntax()))?.into();
+        let container: ChildContainer = self.find_generic_param_container(src.syntax())?.into();
         let db = self.db;
         let dyn_map =
             &*self.cache.entry(container).or_insert_with(|| container.child_by_source(db));
@@ -276,8 +270,7 @@ impl SourceToDefCtx<'_, '_> {
         &mut self,
         src: InFile<ast::LifetimeParam>,
     ) -> Option<LifetimeParamId> {
-        let container: ChildContainer =
-            self.find_generic_param_container(src.as_ref().map(|it| it.syntax()))?.into();
+        let container: ChildContainer = self.find_generic_param_container(src.syntax())?.into();
         let db = self.db;
         let dyn_map =
             &*self.cache.entry(container).or_insert_with(|| container.child_by_source(db));
@@ -288,8 +281,7 @@ impl SourceToDefCtx<'_, '_> {
         &mut self,
         src: InFile<ast::ConstParam>,
     ) -> Option<ConstParamId> {
-        let container: ChildContainer =
-            self.find_generic_param_container(src.as_ref().map(|it| it.syntax()))?.into();
+        let container: ChildContainer = self.find_generic_param_container(src.syntax())?.into();
         let db = self.db;
         let dyn_map =
             &*self.cache.entry(container).or_insert_with(|| container.child_by_source(db));
