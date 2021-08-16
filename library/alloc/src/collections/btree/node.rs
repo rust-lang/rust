@@ -1058,7 +1058,9 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>
 
 impl<K, V, NodeType> Handle<NodeRef<marker::Dying, K, V, NodeType>, marker::KV> {
     /// Extracts the key and value that the KV handle refers to.
-    pub fn into_key_val(mut self) -> (K, V) {
+    /// # Safety
+    /// The node that the handle refers to must not yet have been deallocated.
+    pub unsafe fn into_key_val(mut self) -> (K, V) {
         debug_assert!(self.idx < self.node.len());
         let leaf = self.node.as_leaf_dying();
         unsafe {
@@ -1069,8 +1071,10 @@ impl<K, V, NodeType> Handle<NodeRef<marker::Dying, K, V, NodeType>, marker::KV> 
     }
 
     /// Drops the key and value that the KV handle refers to.
+    /// # Safety
+    /// The node that the handle refers to must not yet have been deallocated.
     #[inline]
-    pub fn drop_key_val(mut self) {
+    pub unsafe fn drop_key_val(mut self) {
         debug_assert!(self.idx < self.node.len());
         let leaf = self.node.as_leaf_dying();
         unsafe {

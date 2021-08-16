@@ -167,8 +167,7 @@ impl<'a, K, V> LazyLeafRange<marker::ValMut<'a>, K, V> {
 }
 
 impl<K, V> LazyLeafRange<marker::Dying, K, V> {
-    #[inline]
-    pub fn take_front(
+    fn take_front(
         &mut self,
     ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>> {
         match self.front.take()? {
@@ -193,6 +192,13 @@ impl<K, V> LazyLeafRange<marker::Dying, K, V> {
         debug_assert!(self.back.is_some());
         let back = self.init_back().unwrap();
         unsafe { back.deallocating_next_back_unchecked() }
+    }
+
+    #[inline]
+    pub fn deallocating_end(&mut self) {
+        if let Some(front) = self.take_front() {
+            front.deallocating_end()
+        }
     }
 }
 
@@ -488,7 +494,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     /// both sides of the tree, and have hit the same edge. As it is intended
     /// only to be called when all keys and values have been returned,
     /// no cleanup is done on any of the keys or values.
-    pub fn deallocating_end(self) {
+    fn deallocating_end(self) {
         let mut edge = self.forget_node_type();
         while let Some(parent_edge) = unsafe { edge.into_node().deallocate_and_ascend() } {
             edge = parent_edge.forget_node_type();
@@ -565,7 +571,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     ///
     /// The only safe way to proceed with the updated handle is to compare it, drop it,
     /// or call this method or counterpart `deallocating_next_back_unchecked` again.
-    pub unsafe fn deallocating_next_unchecked(
+    unsafe fn deallocating_next_unchecked(
         &mut self,
     ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
         super::mem::replace(self, |leaf_edge| unsafe { leaf_edge.deallocating_next().unwrap() })
