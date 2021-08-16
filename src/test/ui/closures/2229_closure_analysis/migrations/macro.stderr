@@ -18,7 +18,7 @@ LL | #![deny(rust_2021_incompatible_closure_captures)]
 help: add a dummy let to cause `a` to be fully captured
    |
 LL |     let _ = || { let _ = &a; dbg!(a.0) };
-   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                +++++++++++++           +
 
 error: aborting due to previous error
 

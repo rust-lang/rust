@@ -23,11 +23,7 @@ help: add a dummy let to cause `f1`, `f2` to be fully captured
    |
 LL ~     let c = || {
 LL +         let _ = (&f1, &f2);
-LL +
-LL +
-LL +
-LL +
- ...
+   |
 
 error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure
   --> $DIR/multi_diagnostics.rs:42:13
@@ -43,11 +39,7 @@ help: add a dummy let to cause `f1` to be fully captured
    |
 LL ~     let c = || {
 LL +         let _ = &f1;
-LL +
-LL +
-LL +
-LL +
- ...
+   |
 
 error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure
   --> $DIR/multi_diagnostics.rs:67:13
@@ -69,11 +61,7 @@ help: add a dummy let to cause `f1` to be fully captured
    |
 LL ~     let c = || {
 LL +         let _ = &f1;
-LL +
-LL +
-LL +
-LL +
- ...
+   |
 
 error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure and drop order
   --> $DIR/multi_diagnostics.rs:86:13
@@ -98,11 +86,7 @@ help: add a dummy let to cause `f1` to be fully captured
    |
 LL ~     let c = || {
 LL +         let _ = &f1;
-LL +
-LL +
-LL +
-LL +
- ...
+   |
 
 error: changes to closure capture in Rust 2021 will affect `Sync`, `Send` trait implementation for closure
   --> $DIR/multi_diagnostics.rs:119:19
@@ -123,11 +107,11 @@ LL |         *fptr2.0 = 20;
 help: add a dummy let to cause `fptr1`, `fptr2` to be fully captured
    |
 LL ~     thread::spawn(move || { let _ = (&fptr1, &fptr2); unsafe {
-LL +
-LL +
-LL +
-LL +
-LL +
+LL |
+LL |
+LL |
+LL |
+LL |
  ...
 
 error: aborting due to 5 previous errors
