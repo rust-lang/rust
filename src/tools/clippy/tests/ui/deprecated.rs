@@ -15,5 +15,6 @@
 #[warn(clippy::pub_enum_variant_names)]
 #[warn(clippy::wrong_pub_self_convention)]
 #[warn(clippy::invalid_atomic_ordering)]
+#[warn(clippy::trait_duplication_in_bounds)]
 
 fn main() {}
