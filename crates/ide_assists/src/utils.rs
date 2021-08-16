@@ -464,7 +464,7 @@ pub(crate) fn add_method_to_adt(
 }
 
 pub fn useless_type_special_case(field_name: &str, field_ty: &String) -> Option<(String, String)> {
-    if field_ty.to_string() == "String" {
+    if field_ty == "String" {
         cov_mark::hit!(useless_type_special_case);
         return Some(("&str".to_string(), format!("self.{}.as_str()", field_name)));
     }
