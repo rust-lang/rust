@@ -1,0 +1,18 @@
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/ruby_style_closure.rs:13:14
+   |
+LL |         Some(x * 2)
+   |              ^ not found in this scope
+
+error[E0277]: expected a `FnOnce<({integer},)>` closure, found `Option<_>`
+  --> $DIR/ruby_style_closure.rs:10:22
+   |
+LL |     let p = Some(45).and_then({
+   |                      ^^^^^^^^ expected an `FnOnce<({integer},)>` closure, found `Option<_>`
+   |
+   = help: the trait `FnOnce<({integer},)>` is not implemented for `Option<_>`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0425.
+For more information about an error, try `rustc --explain E0277`.

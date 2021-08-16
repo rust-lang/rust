@@ -1,9 +1,12 @@
 use super::pat::{RecoverColon, RecoverComma, PARAM_EXPECTED};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{AttrWrapper, BlockMode, ForceCollect, Parser, PathStyle, Restrictions, TokenType};
+use super::{
+    AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Restrictions, TokenType,
+};
 use super::{SemiColonMode, SeqSep, TokenExpectType, TrailingToken};
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
+use ast::token::DelimToken;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::tokenstream::Spacing;
@@ -91,6 +94,8 @@ impl<'a> Parser<'a> {
     /// Parses an expression.
     #[inline]
     pub fn parse_expr(&mut self) -> PResult<'a, P<Expr>> {
+        self.current_closure.take();
+
         self.parse_expr_res(Restrictions::empty(), None)
     }
 
@@ -1736,7 +1741,7 @@ impl<'a> Parser<'a> {
         let capture_clause = self.parse_capture_clause()?;
         let decl = self.parse_fn_block_decl()?;
         let decl_hi = self.prev_token.span;
-        let body = match decl.output {
+        let mut body = match decl.output {
             FnRetTy::Default(_) => {
                 let restrictions = self.restrictions - Restrictions::STMT_EXPR;
                 self.parse_expr_res(restrictions, None)?
@@ -1753,11 +1758,28 @@ impl<'a> Parser<'a> {
             self.sess.gated_spans.gate(sym::async_closure, span);
         }
 
-        Ok(self.mk_expr(
+        if self.token.kind == TokenKind::Semi && self.token_cursor.frame.delim == DelimToken::Paren
+        {
+            // It is likely that the closure body is a block but where the
+            // braces have been removed. We will recover and eat the next
+            // statements later in the parsing process.
+            body = self.mk_expr_err(body.span);
+        }
+
+        let body_span = body.span;
+
+        let closure = self.mk_expr(
             lo.to(body.span),
             ExprKind::Closure(capture_clause, asyncness, movability, decl, body, lo.to(decl_hi)),
             attrs,
-        ))
+        );
+
+        // Disable recovery for closure body
+        let spans =
+            ClosureSpans { whole_closure: closure.span, closing_pipe: decl_hi, body: body_span };
+        self.current_closure = Some(spans);
+
+        Ok(closure)
     }
 
     /// Parses an optional `move` prefix to a closure-like construct.
