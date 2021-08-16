@@ -269,7 +269,7 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
 ) -> Option<DiagnosticBuilder<'tcx>> {
     let tcx = infcx.tcx;
 
-    // We generally shouldn't have here because the query was
+    // We generally shouldn't have errors here because the query was
     // already run, but there's no point using `delay_span_bug`
     // when we're going to emit an error here anyway.
     let _errors = fulfill_cx.select_all_or_error(infcx).err().unwrap_or_else(Vec::new);
