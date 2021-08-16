@@ -10,7 +10,7 @@ cfg_if::cfg_if! {
         pub fn stdout_isatty() -> bool {
             type DWORD = u32;
             type BOOL = i32;
-            type HANDLE = *mut u8;
+            type HANDLE = *mut core::ffi::c_void;
             type LPDWORD = *mut u32;
             const STD_OUTPUT_HANDLE: DWORD = -11i32 as DWORD;
             extern "system" {
