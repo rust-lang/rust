@@ -527,6 +527,35 @@ fn $0fun_name(n: i32) {
 }
 
 #[test]
+fn doctest_extract_module() {
+    check_doc_test(
+        "extract_module",
+        r#####"
+$0
+fn foo(name: i32) -> i32 {
+    name + 1
+}
+$0
+
+fn bar(name: i32) -> i32 {
+    name + 2
+}
+"#####,
+        r#####"
+mod modname {
+    pub(crate) fn foo(name: i32) -> i32 {
+        name + 1
+    }
+}
+
+fn bar(name: i32) -> i32 {
+    name + 2
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_extract_struct_from_enum_variant() {
     check_doc_test(
         "extract_struct_from_enum_variant",

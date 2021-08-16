@@ -196,6 +196,12 @@ pub fn path_from_segments(
         format!("use {};", segments)
     })
 }
+
+pub fn join_paths(paths: impl IntoIterator<Item = ast::Path>) -> ast::Path {
+    let paths = paths.into_iter().map(|it| it.syntax().clone()).join("::");
+    ast_from_text(&format!("use {};", paths))
+}
+
 // FIXME: should not be pub
 pub fn path_from_text(text: &str) -> ast::Path {
     ast_from_text(&format!("fn main() {{ let test = {}; }}", text))
