@@ -334,12 +334,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     match op {
                         hir::InlineAsmOperand::In { expr, .. }
                         | hir::InlineAsmOperand::Sym { expr, .. } => self.consume_expr(expr),
-                        hir::InlineAsmOperand::Out { expr, .. } => {
-                            if let Some(expr) = expr {
-                                self.mutate_expr(expr);
-                            }
-                        }
-                        hir::InlineAsmOperand::InOut { expr, .. } => {
+                        hir::InlineAsmOperand::Out { expr: Some(expr), .. }
+                        | hir::InlineAsmOperand::InOut { expr, .. } => {
                             self.mutate_expr(expr);
                         }
                         hir::InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
@@ -348,7 +344,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                                 self.mutate_expr(out_expr);
                             }
                         }
-                        hir::InlineAsmOperand::Const { .. } => {}
+                        hir::InlineAsmOperand::Out { expr: None, .. }
+                        | hir::InlineAsmOperand::Const { .. } => {}
                     }
                 }
             }

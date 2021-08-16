@@ -1179,13 +1179,10 @@ fn noop_visit_inline_asm<T: MutVisitor>(asm: &mut InlineAsm, vis: &mut T) {
     for (op, _) in &mut asm.operands {
         match op {
             InlineAsmOperand::In { expr, .. }
+            | InlineAsmOperand::Out { expr: Some(expr), .. }
             | InlineAsmOperand::InOut { expr, .. }
             | InlineAsmOperand::Sym { expr, .. } => vis.visit_expr(expr),
-            InlineAsmOperand::Out { expr, .. } => {
-                if let Some(expr) = expr {
-                    vis.visit_expr(expr);
-                }
-            }
+            InlineAsmOperand::Out { expr: None, .. } => {}
             InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
                 vis.visit_expr(in_expr);
                 if let Some(out_expr) = out_expr {

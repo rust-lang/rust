@@ -1,3 +1,4 @@
+#![cfg_attr(bootstrap, feature(bindings_after_at))]
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
 #![feature(destructuring_assignment)]
