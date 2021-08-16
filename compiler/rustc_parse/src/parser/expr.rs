@@ -4,6 +4,7 @@ use super::{AttrWrapper, BlockMode, ForceCollect, Parser, PathStyle, Restriction
 use super::{SemiColonMode, SeqSep, TokenExpectType, TrailingToken};
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
+use ast::token::DelimToken;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::tokenstream::Spacing;
@@ -91,6 +92,8 @@ impl<'a> Parser<'a> {
     /// Parses an expression.
     #[inline]
     pub fn parse_expr(&mut self) -> PResult<'a, P<Expr>> {
+        self.last_closure_body.take();
+
         self.parse_expr_res(Restrictions::empty(), None)
     }
 
@@ -1731,6 +1734,18 @@ impl<'a> Parser<'a> {
         if let Async::Yes { span, .. } = asyncness {
             // Feature-gate `async ||` closures.
             self.sess.gated_spans.gate(sym::async_closure, span);
+        }
+
+        // Disable recovery for closure body
+        self.last_closure_body = Some(decl_hi);
+
+        if self.token.kind == TokenKind::Semi && self.token_cursor.frame.delim == DelimToken::Paren
+        {
+            // It is likely that the closure body is a block but where the
+            // braces have been removed. We will recover and eat the next
+            // statements later in the parsing process.
+
+            return Ok(self.mk_expr_err(lo.to(body.span)));
         }
 
         Ok(self.mk_expr(

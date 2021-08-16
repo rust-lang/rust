@@ -1,0 +1,25 @@
+error: closure body that contain statements must be surrounded by braces
+  --> $DIR/missing_braces_around_block.rs:14:26
+   |
+LL |     (1..num).reduce(|a, b|
+   |                          ^
+...
+LL |     ).unwrap();
+   |     ^
+   |
+help: This `;` turns the expression into a statement, which must be placed in a block
+  --> $DIR/missing_braces_around_block.rs:16:26
+   |
+LL |         println!("{}", a);
+   |                          ^
+help: try adding braces
+   |
+LL ~     (1..num).reduce(|a, b| {
+LL |
+LL |         println!("{}", a);
+LL |         a * b
+LL ~     }).unwrap();
+   |
+
+error: aborting due to previous error
+
