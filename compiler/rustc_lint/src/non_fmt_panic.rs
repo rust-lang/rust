@@ -101,7 +101,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
         let mut l = lint.build("panic message is not a string literal");
         l.note("this usage of panic!() is deprecated; it will be a hard error in Rust 2021");
         l.note("for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>");
-        if !span.contains(arg_span) {
+        if !is_arg_inside_call(arg_span, span) {
             // No clue where this argument is coming from.
             l.emit();
             return;
@@ -204,7 +204,7 @@ fn check_panic_str<'tcx>(
                 _ => "panic message contains unused formatting placeholders",
             });
             l.note("this message is not used as a format string when given without arguments, but will be in Rust 2021");
-            if span.contains(arg.span) {
+            if is_arg_inside_call(arg.span, span) {
                 l.span_suggestion(
                     arg.span.shrink_to_hi(),
                     &format!("add the missing argument{}", pluralize!(n_arguments)),
@@ -235,7 +235,7 @@ fn check_panic_str<'tcx>(
         cx.struct_span_lint(NON_FMT_PANICS, brace_spans.unwrap_or_else(|| vec![span]), |lint| {
             let mut l = lint.build(msg);
             l.note("this message is not used as a format string, but will be in Rust 2021");
-            if span.contains(arg.span) {
+            if is_arg_inside_call(arg.span, span) {
                 l.span_suggestion(
                     arg.span.shrink_to_lo(),
                     "add a \"{}\" format string to use the message literally",
@@ -282,4 +282,12 @@ fn panic_call<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>) -> (Span, 
     let macro_symbol =
         if let hygiene::ExpnKind::Macro(_, symbol) = expn.kind { symbol } else { sym::panic };
     (expn.call_site, panic_macro, macro_symbol.as_str())
+}
+
+fn is_arg_inside_call(arg: Span, call: Span) -> bool {
+    // We only add suggestions if the argument we're looking at appears inside the
+    // panic call in the source file, to avoid invalid suggestions when macros are involved.
+    // We specifically check for the spans to not be identical, as that happens sometimes when
+    // proc_macros lie about spans and apply the same span to all the tokens they produce.
+    call.contains(arg) && !call.source_equal(&arg)
 }
