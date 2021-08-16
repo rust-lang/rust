@@ -149,16 +149,60 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             let mut arms = vec![];
             for variant in list.variants() {
                 let name = variant.name()?;
-                let variant_name =
-                    make::path_pat(make::ext::path_from_idents(["Self", &format!("{}", name)])?);
-
+                let variant_name = make::ext::path_from_idents(["Self", &format!("{}", name)])?;
                 let target = make::expr_path(make::ext::ident_path("f").into());
-                let fmt_string = make::expr_literal(&(format!("\"{}\"", name))).into();
-                let args = make::arg_list(vec![target, fmt_string]);
-                let macro_name = make::expr_path(make::ext::ident_path("write"));
-                let macro_call = make::expr_macro_call(macro_name, args);
 
-                arms.push(make::match_arm(Some(variant_name.into()), None, macro_call.into()));
+                match variant.field_list() {
+                    Some(ast::FieldList::RecordFieldList(list)) => {
+                        let mut pats = vec![];
+
+                        // => f.debug_struct(name)
+                        let target = make::expr_path(make::ext::ident_path("f"));
+                        let method = make::name_ref("debug_struct");
+                        let struct_name = format!("\"{}\"", name);
+                        let args = make::arg_list(Some(make::expr_literal(&struct_name).into()));
+                        let mut expr = make::expr_method_call(target, method, args);
+
+                        for field in list.fields() {
+                            let name = field.name()?;
+
+                            // => MyStruct { field_name }
+                            let field_name = field.name()?;
+                            let pat = make::ident_pat(false, false, field_name.clone());
+                            pats.push(pat.into());
+
+                            // => <expr>.field("field_name", field)
+                            let method_name = make::name_ref("field");
+                            let field_name = make::expr_literal(&(format!("\"{}\"", name))).into();
+                            let field_path = &format!("{}", name);
+                            let field_path = make::expr_path(make::ext::ident_path(field_path));
+                            let args = make::arg_list(vec![field_name, field_path]);
+                            expr = make::expr_method_call(expr, method_name, args);
+                        }
+
+                        // => <expr>.finish()
+                        let method = make::name_ref("finish");
+                        let expr = make::expr_method_call(expr, method, make::arg_list(None));
+
+                        // => MyStruct { fields.. } => f.debug_struct()...finish(),
+                        let pat = make::record_pat(variant_name.clone(), pats.into_iter());
+                        arms.push(make::match_arm(Some(pat.into()), None, expr));
+                    }
+                    Some(ast::FieldList::TupleFieldList(_list)) => todo!(),
+                    None => {
+                        let fmt_string = make::expr_literal(&(format!("\"{}\"", name))).into();
+                        let args = make::arg_list(vec![target, fmt_string]);
+                        let macro_name = make::expr_path(make::ext::ident_path("write"));
+                        let macro_call = make::expr_macro_call(macro_name, args);
+
+                        let variant_name = make::path_pat(variant_name);
+                        arms.push(make::match_arm(
+                            Some(variant_name.into()),
+                            None,
+                            macro_call.into(),
+                        ));
+                    }
+                }
             }
 
             let match_target = make::expr_path(make::ext::ident_path("self"));
