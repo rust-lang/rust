@@ -3173,56 +3173,76 @@ declare_lint_pass!(DuplicateBounds => [DUPLICATE_BOUNDS]);
 
 impl<'tcx> LateLintPass<'tcx> for DuplicateBounds {
     fn check_generics(&mut self, cx: &LateContext<'tcx>, gen: &'tcx hir::Generics<'_>) {
-        struct TraitRes {
-            res: Res,
+        struct Bound {
+            kind: BoundKind,
             span: Span,
         }
 
-        impl TraitRes {
-            fn from_bound(bound: &hir::GenericBound<'_>) -> Option<Self> {
-                if let hir::GenericBound::Trait(t, _) = bound {
-                    Some(Self { res: t.trait_ref.path.res, span: t.span })
-                } else {
-                    None
+        #[derive(Hash, PartialEq, Eq)]
+        enum BoundKind {
+            Trait(Res),
+            Lifetime(hir::LifetimeName),
+        }
+
+        impl BoundKind {
+            fn as_str(&self) -> &'static str {
+                match self {
+                    BoundKind::Trait(_) => "trait",
+                    BoundKind::Lifetime(_) => "lifetime",
                 }
             }
         }
 
-        impl PartialEq for TraitRes {
+        impl Bound {
+            fn from_generic(bound: &hir::GenericBound<'_>) -> Option<Self> {
+                match bound {
+                    hir::GenericBound::Trait(t, _) => {
+                        Some(Self { kind: BoundKind::Trait(t.trait_ref.path.res), span: t.span })
+                    }
+                    hir::GenericBound::Outlives(lifetime) => {
+                        Some(Self { kind: BoundKind::Lifetime(lifetime.name), span: lifetime.span })
+                    }
+                    _ => None,
+                }
+            }
+        }
+
+        impl PartialEq for Bound {
             fn eq(&self, other: &Self) -> bool {
-                self.res == other.res
+                self.kind == other.kind
             }
         }
 
-        impl Hash for TraitRes {
+        impl Hash for Bound {
             fn hash<H: Hasher>(&self, state: &mut H) {
-                self.res.hash(state)
+                self.kind.hash(state)
             }
         }
 
-        impl Eq for TraitRes {}
+        impl Eq for Bound {}
 
         if gen.span.from_expansion() {
             return;
         }
 
-        let mut trait_resolutions = FxHashMap::default();
+        let mut bounds = FxHashMap::default();
         for param in gen.params {
             if let hir::ParamName::Plain(ref ident) = param.name {
-                let mut uniq = FxHashSet::default();
+                let mut uniq_bounds = FxHashSet::default();
 
-                for res in param.bounds.iter().filter_map(TraitRes::from_bound) {
+                for res in param.bounds.iter().filter_map(Bound::from_generic) {
                     let span = res.span.clone();
-                    if !uniq.insert(res) {
+                    let kind = res.kind.as_str();
+                    if !uniq_bounds.insert(res) {
                         cx.struct_span_lint(DUPLICATE_BOUNDS, span, |lint| {
-                            lint.build("this trait bound has already been specified")
-                                .help("consider removing this trait bound")
+                            lint.build(&format!("this {} bound has already been specified", kind))
+                                .help(&format!("consider removing this {} bound", kind))
                                 .emit()
                         });
                     }
                 }
 
-                trait_resolutions.insert(*ident, uniq);
+                bounds.insert(*ident, uniq_bounds);
             }
         }
 
@@ -3232,16 +3252,19 @@ impl<'tcx> LateLintPass<'tcx> for DuplicateBounds {
                     bound_predicate.bounded_ty.kind
                 {
                     if let Some(segment) = segments.first() {
-                        if let Some(trait_resolutions) = trait_resolutions.get_mut(&segment.ident) {
-                            for res in
-                                bound_predicate.bounds.iter().filter_map(TraitRes::from_bound)
+                        if let Some(bounds) = bounds.get_mut(&segment.ident) {
+                            for res in bound_predicate.bounds.iter().filter_map(Bound::from_generic)
                             {
                                 let span = res.span.clone();
-                                if !trait_resolutions.insert(res) {
+                                let kind = res.kind.as_str();
+                                if !bounds.insert(res) {
                                     cx.struct_span_lint(DUPLICATE_BOUNDS, span, |lint| {
-                                        lint.build("this trait bound has already been specified")
-                                            .help("consider removing this trait bound")
-                                            .emit()
+                                        lint.build(&format!(
+                                            "this {} bound has already been specified",
+                                            kind
+                                        ))
+                                        .help(&format!("consider removing this {} bound", kind))
+                                        .emit()
                                     });
                                 }
                             }
