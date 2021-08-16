@@ -129,7 +129,7 @@ impl SourceAnalyzer {
             .and_then(|adjusts| adjusts.last().map(|adjust| adjust.target.clone()));
         let ty = infer[expr_id].clone();
         let mk_ty = |ty| Type::new_with_resolver(db, &self.resolver, ty);
-        mk_ty(ty.clone()).zip(Some(coerced.and_then(mk_ty)))
+        mk_ty(ty).zip(Some(coerced.and_then(mk_ty)))
     }
 
     pub(crate) fn type_of_pat(
@@ -145,7 +145,7 @@ impl SourceAnalyzer {
             .and_then(|adjusts| adjusts.last().map(|adjust| adjust.target.clone()));
         let ty = infer[pat_id].clone();
         let mk_ty = |ty| Type::new_with_resolver(db, &self.resolver, ty);
-        mk_ty(ty.clone()).zip(Some(coerced.and_then(mk_ty)))
+        mk_ty(ty).zip(Some(coerced.and_then(mk_ty)))
     }
 
     pub(crate) fn type_of_self(
