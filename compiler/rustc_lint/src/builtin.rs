@@ -3247,27 +3247,43 @@ impl<'tcx> LateLintPass<'tcx> for DuplicateBounds {
         }
 
         for predicate in gen.where_clause.predicates {
-            if let hir::WherePredicate::BoundPredicate(ref bound_predicate) = predicate {
-                if let hir::TyKind::Path(hir::QPath::Resolved(_, hir::Path { segments, .. })) =
-                    bound_predicate.bounded_ty.kind
-                {
-                    if let Some(segment) = segments.first() {
-                        if let Some(bounds) = bounds.get_mut(&segment.ident) {
-                            for res in bound_predicate.bounds.iter().filter_map(Bound::from_generic)
-                            {
-                                let span = res.span.clone();
-                                let kind = res.kind.as_str();
-                                if !bounds.insert(res) {
-                                    cx.struct_span_lint(DUPLICATE_BOUNDS, span, |lint| {
-                                        lint.build(&format!(
-                                            "this {} bound has already been specified",
-                                            kind
-                                        ))
-                                        .help(&format!("consider removing this {} bound", kind))
-                                        .emit()
-                                    });
-                                }
-                            }
+            let res = match &predicate {
+                hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+                    bounded_ty:
+                        hir::Ty {
+                            kind:
+                                hir::TyKind::Path(hir::QPath::Resolved(_, hir::Path { segments, .. })),
+                            ..
+                        },
+                    bounds,
+                    ..
+                }) => segments.first().map(|s| (s.ident, *bounds)),
+                hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
+                    lifetime:
+                        hir::Lifetime {
+                            name: hir::LifetimeName::Param(hir::ParamName::Plain(ident)),
+                            ..
+                        },
+                    bounds,
+                    ..
+                }) => Some((*ident, *bounds)),
+                _ => None,
+            };
+
+            if let Some((ident, where_predicate_bounds)) = res {
+                if let Some(bounds) = bounds.get_mut(&ident) {
+                    for res in where_predicate_bounds.iter().filter_map(Bound::from_generic) {
+                        let span = res.span.clone();
+                        let kind = res.kind.as_str();
+                        if !bounds.insert(res) {
+                            cx.struct_span_lint(DUPLICATE_BOUNDS, span, |lint| {
+                                lint.build(&format!(
+                                    "this {} bound has already been specified",
+                                    kind
+                                ))
+                                .help(&format!("consider removing this {} bound", kind))
+                                .emit()
+                            });
                         }
                     }
                 }

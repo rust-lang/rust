@@ -38,29 +38,37 @@ LL |     T: DupWhere + DupWhere,
 error: this lifetime bound has already been specified
   --> $DIR/duplicate_bounds.rs:34:31
    |
-LL | fn dup_lifetimes<'a, 'b: 'a + 'a>() {}
+LL | fn dup_lifetimes<'a, 'b: 'a + 'a>()
    |                               ^^
    |
    = help: consider removing this lifetime bound
 
 error: this lifetime bound has already been specified
-  --> $DIR/duplicate_bounds.rs:37:38
+  --> $DIR/duplicate_bounds.rs:37:9
    |
-LL | fn dup_lifetimes_generic<'a, T: 'a + 'a>() {}
+LL |     'b: 'a,
+   |         ^^
+   |
+   = help: consider removing this lifetime bound
+
+error: this lifetime bound has already been specified
+  --> $DIR/duplicate_bounds.rs:42:38
+   |
+LL | fn dup_lifetimes_generic<'a, T: 'a + 'a>()
    |                                      ^^
    |
    = help: consider removing this lifetime bound
 
 error: this lifetime bound has already been specified
-  --> $DIR/duplicate_bounds.rs:42:8
+  --> $DIR/duplicate_bounds.rs:45:8
    |
-LL |     T: 'static,
-   |        ^^^^^^^
+LL |     T: 'a,
+   |        ^^
    |
    = help: consider removing this lifetime bound
 
 error: this trait bound has already been specified
-  --> $DIR/duplicate_bounds.rs:48:31
+  --> $DIR/duplicate_bounds.rs:51:31
    |
 LL | fn everything<T: Everything + Everything, U: Everything + Everything>((t, u): (T, U))
    |                               ^^^^^^^^^^
@@ -68,7 +76,7 @@ LL | fn everything<T: Everything + Everything, U: Everything + Everything>((t, u
    = help: consider removing this trait bound
 
 error: this trait bound has already been specified
-  --> $DIR/duplicate_bounds.rs:48:59
+  --> $DIR/duplicate_bounds.rs:51:59
    |
 LL | fn everything<T: Everything + Everything, U: Everything + Everything>((t, u): (T, U))
    |                                                           ^^^^^^^^^^
@@ -76,7 +84,7 @@ LL | fn everything<T: Everything + Everything, U: Everything + Everything>((t, u
    = help: consider removing this trait bound
 
 error: this trait bound has already been specified
-  --> $DIR/duplicate_bounds.rs:52:8
+  --> $DIR/duplicate_bounds.rs:55:8
    |
 LL |     T: Everything + Everything + Everything,
    |        ^^^^^^^^^^
@@ -84,7 +92,7 @@ LL |     T: Everything + Everything + Everything,
    = help: consider removing this trait bound
 
 error: this trait bound has already been specified
-  --> $DIR/duplicate_bounds.rs:52:21
+  --> $DIR/duplicate_bounds.rs:55:21
    |
 LL |     T: Everything + Everything + Everything,
    |                     ^^^^^^^^^^
@@ -92,7 +100,7 @@ LL |     T: Everything + Everything + Everything,
    = help: consider removing this trait bound
 
 error: this trait bound has already been specified
-  --> $DIR/duplicate_bounds.rs:52:34
+  --> $DIR/duplicate_bounds.rs:55:34
    |
 LL |     T: Everything + Everything + Everything,
    |                                  ^^^^^^^^^^
@@ -100,12 +108,52 @@ LL |     T: Everything + Everything + Everything,
    = help: consider removing this trait bound
 
 error: this trait bound has already been specified
-  --> $DIR/duplicate_bounds.rs:56:8
+  --> $DIR/duplicate_bounds.rs:59:8
    |
 LL |     U: Everything,
    |        ^^^^^^^^^^
    |
    = help: consider removing this trait bound
 
-error: aborting due to 13 previous errors
+error: this trait bound has already been specified
+  --> $DIR/duplicate_bounds.rs:66:38
+   |
+LL | struct DupStruct<T: DupStructBound + DupStructBound>(T)
+   |                                      ^^^^^^^^^^^^^^
+   |
+   = help: consider removing this trait bound
+
+error: this trait bound has already been specified
+  --> $DIR/duplicate_bounds.rs:69:8
+   |
+LL |     T: DupStructBound;
+   |        ^^^^^^^^^^^^^^
+   |
+   = help: consider removing this trait bound
+
+error: this trait bound has already been specified
+  --> $DIR/duplicate_bounds.rs:72:35
+   |
+LL | impl<'a, T: 'a + DupStructBound + DupStructBound> DupStruct<T>
+   |                                   ^^^^^^^^^^^^^^
+   |
+   = help: consider removing this trait bound
+
+error: this lifetime bound has already been specified
+  --> $DIR/duplicate_bounds.rs:75:8
+   |
+LL |     T: 'a + DupStructBound,
+   |        ^^
+   |
+   = help: consider removing this lifetime bound
+
+error: this trait bound has already been specified
+  --> $DIR/duplicate_bounds.rs:75:13
+   |
+LL |     T: 'a + DupStructBound,
+   |             ^^^^^^^^^^^^^^
+   |
+   = help: consider removing this trait bound
+
+error: aborting due to 19 previous errors
 
