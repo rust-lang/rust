@@ -1,4 +1,4 @@
-#![deny(trait_duplication_in_bounds)]
+#![deny(duplicate_bounds)]
 
 trait DupDirectAndWhere {}
 fn dup_direct_and_where<T: DupDirectAndWhere>(t: T)

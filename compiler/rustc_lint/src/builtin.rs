@@ -3143,17 +3143,15 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
 }
 
 declare_lint! {
-    /// ### what it does
-    /// checks for cases where generics are being used and multiple
-    /// syntax specifications for trait bounds are used simultaneously.
+    /// ### What it does
+    /// Checks for cases where the same trait bound is specified more than once.
     ///
-    /// ### why is this bad?
-    /// duplicate bounds makes the code
-    /// less readable than specifing them only once.
+    /// ### Why is this bad?
+    /// Duplicate bounds makes the code less readable than specifing them only once.
     ///
-    /// ### example
+    /// ### Example
     /// ```rust
-    /// fn func<t: clone + default>(arg: t) where t: clone + default {}
+    /// fn func<T: Clone + Default>(arg: T) where T: Clone + Default {}
     /// ```
     ///
     /// could be written as:
@@ -3166,14 +3164,14 @@ declare_lint! {
     /// ```rust
     /// fn func<T>(arg: T) where T: Clone + Default {}
     /// ```
-    pub TRAIT_DUPLICATION_IN_BOUNDS,
+    pub DUPLICATE_BOUNDS,
     Warn,
-    "Check if the same trait bounds are specified twice during a function declaration"
+    "Check if the same bounds is specified more than once"
 }
 
-declare_lint_pass!(TraitDuplicationInBounds => [TRAIT_DUPLICATION_IN_BOUNDS]);
+declare_lint_pass!(DuplicateBounds => [DUPLICATE_BOUNDS]);
 
-impl<'tcx> LateLintPass<'tcx> for TraitDuplicationInBounds {
+impl<'tcx> LateLintPass<'tcx> for DuplicateBounds {
     fn check_generics(&mut self, cx: &LateContext<'tcx>, gen: &'tcx hir::Generics<'_>) {
         struct TraitRes {
             res: Res,
@@ -3216,7 +3214,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitDuplicationInBounds {
                 for res in param.bounds.iter().filter_map(TraitRes::from_bound) {
                     let span = res.span.clone();
                     if !uniq.insert(res) {
-                        cx.struct_span_lint(TRAIT_DUPLICATION_IN_BOUNDS, span, |lint| {
+                        cx.struct_span_lint(DUPLICATE_BOUNDS, span, |lint| {
                             lint.build("this trait bound has already been specified")
                                 .help("consider removing this trait bound")
                                 .emit()
@@ -3240,17 +3238,11 @@ impl<'tcx> LateLintPass<'tcx> for TraitDuplicationInBounds {
                             {
                                 let span = res.span.clone();
                                 if !trait_resolutions.insert(res) {
-                                    cx.struct_span_lint(
-                                        TRAIT_DUPLICATION_IN_BOUNDS,
-                                        span,
-                                        |lint| {
-                                            lint.build(
-                                                "this trait bound has already been specified",
-                                            )
+                                    cx.struct_span_lint(DUPLICATE_BOUNDS, span, |lint| {
+                                        lint.build("this trait bound has already been specified")
                                             .help("consider removing this trait bound")
                                             .emit()
-                                        },
-                                    );
+                                    });
                                 }
                             }
                         }

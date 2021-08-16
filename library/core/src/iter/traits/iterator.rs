@@ -2434,7 +2434,7 @@ pub trait Iterator {
     /// assert!(result.is_err());
     /// ```
     #[inline]
-    #[cfg_attr(not(bootstrap), allow(trait_duplication_in_bounds))]
+    #[cfg_attr(not(bootstrap), allow(duplicate_bounds))]
     #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
     fn try_find<F, R, E>(&mut self, f: F) -> Result<Option<Self::Item>, E>
     where

@@ -197,7 +197,7 @@ macro_rules! late_lint_mod_passes {
                 // Depends on referenced function signatures in expressions
                 MutableTransmutes: MutableTransmutes,
                 TypeAliasBounds: TypeAliasBounds,
-                TraitDuplicationInBounds: TraitDuplicationInBounds,
+                DuplicateBounds: DuplicateBounds,
                 TrivialConstraints: TrivialConstraints,
                 TypeLimits: TypeLimits::new(),
                 NonSnakeCase: NonSnakeCase,
