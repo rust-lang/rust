@@ -6,19 +6,12 @@ use syntax::{
 };
 
 use crate::{
-    db::AstDatabase,
     name::{name, AsName},
-    MacroCallId, MacroCallKind, MacroCallLoc,
+    MacroCallKind,
 };
 
-pub(crate) fn process_macro_input(
-    db: &dyn AstDatabase,
-    node: SyntaxNode,
-    id: MacroCallId,
-) -> SyntaxNode {
-    let loc: MacroCallLoc = db.lookup_intern_macro(id);
-
-    match loc.kind {
+pub(crate) fn process_macro_input(macro_call_kind: &MacroCallKind, node: SyntaxNode) -> SyntaxNode {
+    match macro_call_kind {
         MacroCallKind::FnLike { .. } => node,
         MacroCallKind::Derive { derive_attr_index, .. } => {
             let item = match ast::Item::cast(node.clone()) {
@@ -26,7 +19,7 @@ pub(crate) fn process_macro_input(
                 None => return node,
             };
 
-            remove_derives_up_to(item, derive_attr_index as usize).syntax().clone()
+            remove_derives_up_to(item, *derive_attr_index as usize).syntax().clone()
         }
         MacroCallKind::Attr { invoc_attr_index, .. } => {
             let item = match ast::Item::cast(node.clone()) {
@@ -34,7 +27,7 @@ pub(crate) fn process_macro_input(
                 None => return node,
             };
 
-            remove_attr_invoc(item, invoc_attr_index as usize).syntax().clone()
+            remove_attr_invoc(item, *invoc_attr_index as usize).syntax().clone()
         }
     }
 }

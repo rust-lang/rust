@@ -272,7 +272,7 @@ fn macro_arg(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(tt::Subtree, 
 fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {
     let loc = db.lookup_intern_macro(id);
     let arg = loc.kind.arg(db)?;
-    let arg = process_macro_input(db, arg, id);
+    let arg = process_macro_input(&loc.kind, arg);
     if matches!(loc.kind, MacroCallKind::FnLike { .. }) {
         let first = arg.first_child_or_token().map_or(T![.], |it| it.kind());
         let last = arg.last_child_or_token().map_or(T![.], |it| it.kind());
