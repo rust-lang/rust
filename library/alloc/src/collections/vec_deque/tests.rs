@@ -87,8 +87,6 @@ fn bench_pop_front_100(b: &mut test::Bencher) {
     })
 }
 
-
-
 #[test]
 fn test_swap_front_back_remove() {
     fn test(back: bool) {
