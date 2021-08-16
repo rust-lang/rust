@@ -42,6 +42,39 @@ fn bench_pop_back_100(b: &mut test::Bencher) {
 
 #[bench]
 #[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
+fn bench_retain_whole_10000(b: &mut test::Bencher) {
+    let v = (1..100000).collect::<VecDeque<u32>>();
+
+    b.iter(|| {
+        let mut v = v.clone();
+        v.retain(|x| *x > 0)
+    })
+}
+
+#[bench]
+#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
+fn bench_retain_odd_10000(b: &mut test::Bencher) {
+    let v = (1..100000).collect::<VecDeque<u32>>();
+
+    b.iter(|| {
+        let mut v = v.clone();
+        v.retain(|x| x & 1 == 0)
+    })
+}
+
+#[bench]
+#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
+fn bench_retain_half_10000(b: &mut test::Bencher) {
+    let v = (1..100000).collect::<VecDeque<u32>>();
+
+    b.iter(|| {
+        let mut v = v.clone();
+        v.retain(|x| *x > 50000)
+    })
+}
+
+#[bench]
+#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
 fn bench_pop_front_100(b: &mut test::Bencher) {
     let mut deq = VecDeque::<i32>::with_capacity(101);
 
@@ -53,6 +86,8 @@ fn bench_pop_front_100(b: &mut test::Bencher) {
         }
     })
 }
+
+
 
 #[test]
 fn test_swap_front_back_remove() {
