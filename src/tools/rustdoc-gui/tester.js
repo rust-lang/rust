@@ -93,8 +93,13 @@ function char_printer(n_tests) {
             }
         },
         finish: function() {
-            const spaces = " ".repeat(max_per_line - (current % max_per_line));
-            process.stdout.write(`${spaces} (${current}/${n_tests})${os.EOL}${os.EOL}`);
+            if (current % max_per_line === 0) {
+                // Don't output if we are already at a matching line end
+                console.log("");
+            } else {
+                const spaces = " ".repeat(max_per_line - (current % max_per_line));
+                process.stdout.write(`${spaces} (${current}/${n_tests})${os.EOL}${os.EOL}`);
+            }
         },
     };
 }
