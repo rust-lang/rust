@@ -7,7 +7,7 @@ use base_db::FileId;
 use either::Either;
 use hir_expand::{
     name::{name, AsName, Name},
-    InFile,
+    HirFileId, InFile,
 };
 use la_arena::{Arena, ArenaMap};
 use syntax::ast::{self, GenericParamsOwner, NameOwner, TypeBoundsOwner};
@@ -438,7 +438,7 @@ impl HasChildSource<LocalConstParamId> for GenericDefId {
 }
 
 impl ChildBySource for GenericDefId {
-    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap) {
+    fn child_by_source_to(&self, db: &dyn DefDatabase, _: HirFileId, res: &mut DynMap) {
         let (_, sm) = GenericParams::new(db, *self);
 
         let sm = sm.as_ref();
