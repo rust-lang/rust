@@ -1,0 +1,20 @@
+// This test ensures that items and documentation code blocks are wrapped in <pre><code>
+goto: file://|DOC_PATH|/test_docs/fn.foo.html
+size: (1080, 600)
+// There should be three doc codeblocks
+// Check that their content is inside <pre><code>
+assert-count: (".example-wrap pre > code", 3)
+// Check that function signature is inside <pre><code>
+assert: "pre.rust.fn > code"
+
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+assert: "pre.rust.struct > code"
+
+goto: file://|DOC_PATH|/test_docs/enum.AnEnum.html
+assert: "pre.rust.enum > code"
+
+goto: file://|DOC_PATH|/test_docs/trait.AnotherOne.html
+assert: "pre.rust.trait > code"
+
+goto: file://|DOC_PATH|/test_docs/type.SomeType.html
+assert: "pre.rust.typedef > code"

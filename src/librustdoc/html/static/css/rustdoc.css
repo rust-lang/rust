@@ -249,7 +249,6 @@ code, pre, a.test-arrow, .code-header {
 }
 .docblock pre code, .docblock-short pre code {
 	padding: 0;
-	padding-right: 1ex;
 }
 pre {
 	padding: 14px;
