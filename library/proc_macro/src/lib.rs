@@ -1233,6 +1233,7 @@ pub mod tracked_env {
     /// Besides the dependency tracking this function should be equivalent to `env::var` from the
     /// standard library, except that the argument must be UTF-8.
     #[unstable(feature = "proc_macro_tracked_env", issue = "74690")]
+    #[cfg_attr(not(bootstrap), allow(trait_duplication_in_bounds))]
     pub fn var<K: AsRef<OsStr> + AsRef<str>>(key: K) -> Result<String, VarError> {
         let key: &str = key.as_ref();
         let value = env::var(key);

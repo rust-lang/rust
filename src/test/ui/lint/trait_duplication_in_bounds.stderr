@@ -1,8 +1,8 @@
-error: this trait bound is already specified in the where clause
-  --> $DIR/trait_duplication_in_bounds.rs:5:15
+error: this trait bound has already been specified
+  --> $DIR/trait_duplication_in_bounds.rs:6:8
    |
-LL | fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
-   |               ^^^^^
+LL |     T: DupDirectAndWhere,
+   |        ^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/trait_duplication_in_bounds.rs:1:9
@@ -11,13 +11,77 @@ LL | #![deny(trait_duplication_in_bounds)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: consider removing this trait bound
 
-error: this trait bound is already specified in the where clause
-  --> $DIR/trait_duplication_in_bounds.rs:5:23
+error: this trait bound has already been specified
+  --> $DIR/trait_duplication_in_bounds.rs:8:8
    |
-LL | fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
-   |                       ^^^^^^^
+LL |     T: DupDirectAndWhere,
+   |        ^^^^^^^^^^^^^^^^^
    |
    = help: consider removing this trait bound
 
-error: aborting due to 2 previous errors
+error: this trait bound has already been specified
+  --> $DIR/trait_duplication_in_bounds.rs:15:30
+   |
+LL | fn dup_direct<T: DupDirect + DupDirect>(t: T) {
+   |                              ^^^^^^^^^
+   |
+   = help: consider removing this trait bound
+
+error: this trait bound has already been specified
+  --> $DIR/trait_duplication_in_bounds.rs:23:19
+   |
+LL |     T: DupWhere + DupWhere,
+   |                   ^^^^^^^^
+   |
+   = help: consider removing this trait bound
+
+error: this trait bound has already been specified
+  --> $DIR/trait_duplication_in_bounds.rs:35:31
+   |
+LL | fn everything<T: Everything + Everything, U: Everything + Everything>((t, u): (T, U))
+   |                               ^^^^^^^^^^
+   |
+   = help: consider removing this trait bound
+
+error: this trait bound has already been specified
+  --> $DIR/trait_duplication_in_bounds.rs:35:59
+   |
+LL | fn everything<T: Everything + Everything, U: Everything + Everything>((t, u): (T, U))
+   |                                                           ^^^^^^^^^^
+   |
+   = help: consider removing this trait bound
+
+error: this trait bound has already been specified
+  --> $DIR/trait_duplication_in_bounds.rs:39:8
+   |
+LL |     T: Everything + Everything + Everything,
+   |        ^^^^^^^^^^
+   |
+   = help: consider removing this trait bound
+
+error: this trait bound has already been specified
+  --> $DIR/trait_duplication_in_bounds.rs:39:21
+   |
+LL |     T: Everything + Everything + Everything,
+   |                     ^^^^^^^^^^
+   |
+   = help: consider removing this trait bound
+
+error: this trait bound has already been specified
+  --> $DIR/trait_duplication_in_bounds.rs:39:34
+   |
+LL |     T: Everything + Everything + Everything,
+   |                                  ^^^^^^^^^^
+   |
+   = help: consider removing this trait bound
+
+error: this trait bound has already been specified
+  --> $DIR/trait_duplication_in_bounds.rs:43:8
+   |
+LL |     U: Everything,
+   |        ^^^^^^^^^^
+   |
+   = help: consider removing this trait bound
+
+error: aborting due to 10 previous errors
 

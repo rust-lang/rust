@@ -1,31 +1,47 @@
 #![deny(trait_duplication_in_bounds)]
 
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
-
-fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
-//~^ ERROR this trait bound is already specified in the where clause
-//~| ERROR this trait bound is already specified in the where clause
+trait DupDirectAndWhere {}
+fn dup_direct_and_where<T: DupDirectAndWhere>(t: T)
 where
-    T: Clone,
-    T: Default,
+    T: DupDirectAndWhere,
+    //~^ ERROR this trait bound has already been specified
+    T: DupDirectAndWhere,
+    //~^ ERROR this trait bound has already been specified
 {
     unimplemented!();
 }
 
-fn good_bar<T: Clone + Default>(arg: T) {
+trait DupDirect {}
+fn dup_direct<T: DupDirect + DupDirect>(t: T) {
+    //~^ ERROR this trait bound has already been specified
     unimplemented!();
 }
 
-fn good_foo<T>(arg: T)
+trait DupWhere {}
+fn dup_where<T>(t: T)
 where
-    T: Clone + Default,
+    T: DupWhere + DupWhere,
+    //~^ ERROR this trait bound has already been specified
 {
     unimplemented!();
 }
 
-fn good_foobar<T: Default>(arg: T)
+trait NotDup {}
+fn not_dup<T: NotDup, U: NotDup>((t, u): (T, U)) {
+    unimplemented!();
+}
+
+trait Everything {}
+fn everything<T: Everything + Everything, U: Everything + Everything>((t, u): (T, U))
+//~^ ERROR this trait bound has already been specified
+//~| ERROR this trait bound has already been specified
 where
-    T: Clone,
+    T: Everything + Everything + Everything,
+    //~^ ERROR this trait bound has already been specified
+    //~| ERROR this trait bound has already been specified
+    //~| ERROR this trait bound has already been specified
+    U: Everything,
+    //~^ ERROR this trait bound has already been specified
 {
     unimplemented!();
 }
