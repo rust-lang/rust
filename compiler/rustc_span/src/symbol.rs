@@ -538,6 +538,7 @@ symbols! {
         doc_keyword,
         doc_masked,
         doc_notable_trait,
+        doc_primitive,
         doc_spotlight,
         doctest,
         document_private_items,

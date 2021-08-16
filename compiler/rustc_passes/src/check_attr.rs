@@ -794,8 +794,23 @@ impl CheckAttrVisitor<'tcx> {
                         | sym::notable_trait
                         | sym::passes
                         | sym::plugins
-                        | sym::primitive
                         | sym::test => {}
+
+                        sym::primitive => {
+                            if !self.tcx.features().doc_primitive {
+                                self.tcx.struct_span_lint_hir(
+                                    INVALID_DOC_ATTRIBUTES,
+                                    hir_id,
+                                    i_meta.span,
+                                    |lint| {
+                                        let mut diag = lint.build(
+                                            "`doc(primitive)` should never have been stable",
+                                        );
+                                        diag.emit();
+                                    },
+                                );
+                            }
+                        }
 
                         _ => {
                             self.tcx.struct_span_lint_hir(
