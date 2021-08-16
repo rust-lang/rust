@@ -106,7 +106,7 @@ use syntax::{
 
 use crate::{db::HirDatabase, InFile};
 
-pub(super) type SourceToDefCache = FxHashMap<ChildContainer, FxHashMap<HirFileId, DynMap>>;
+pub(super) type SourceToDefCache = FxHashMap<(ChildContainer, HirFileId), DynMap>;
 
 pub(super) struct SourceToDefCtx<'a, 'b> {
     pub(super) db: &'b dyn HirDatabase,
@@ -257,8 +257,9 @@ impl SourceToDefCtx<'_, '_> {
 
     fn cache_for(&mut self, container: ChildContainer, file_id: HirFileId) -> &DynMap {
         let db = self.db;
-        let dyn_maps = self.cache.entry(container).or_default();
-        dyn_maps.entry(file_id).or_insert_with(|| container.child_by_source(db, file_id))
+        self.cache
+            .entry((container, file_id))
+            .or_insert_with(|| container.child_by_source(db, file_id))
     }
 
     pub(super) fn type_param_to_def(&mut self, src: InFile<ast::TypeParam>) -> Option<TypeParamId> {
