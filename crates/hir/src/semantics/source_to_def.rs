@@ -95,7 +95,7 @@ use hir_def::{
     GenericDefId, ImplId, LifetimeParamId, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
     TypeParamId, UnionId, VariantId,
 };
-use hir_expand::{name::AsName, AstId, MacroCallId, MacroDefId, MacroDefKind};
+use hir_expand::{name::AsName, AstId, HirFileId, MacroCallId, MacroDefId, MacroDefKind};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use stdx::impl_from;
@@ -106,7 +106,7 @@ use syntax::{
 
 use crate::{db::HirDatabase, InFile};
 
-pub(super) type SourceToDefCache = FxHashMap<ChildContainer, DynMap>;
+pub(super) type SourceToDefCache = FxHashMap<(ChildContainer, HirFileId), DynMap>;
 
 pub(super) struct SourceToDefCtx<'a, 'b> {
     pub(super) db: &'b dyn HirDatabase,
@@ -252,17 +252,19 @@ impl SourceToDefCtx<'_, '_> {
 
     fn dyn_map<Ast: AstNode + 'static>(&mut self, src: InFile<&Ast>) -> Option<&DynMap> {
         let container = self.find_container(src.map(|it| it.syntax()))?;
+        Some(self.cache_for(container, src.file_id))
+    }
+
+    fn cache_for(&mut self, container: ChildContainer, file_id: HirFileId) -> &DynMap {
         let db = self.db;
-        let dyn_map =
-            &*self.cache.entry(container).or_insert_with(|| container.child_by_source(db));
-        Some(dyn_map)
+        self.cache
+            .entry((container, file_id))
+            .or_insert_with(|| container.child_by_source(db, file_id))
     }
 
     pub(super) fn type_param_to_def(&mut self, src: InFile<ast::TypeParam>) -> Option<TypeParamId> {
         let container: ChildContainer = self.find_generic_param_container(src.syntax())?.into();
-        let db = self.db;
-        let dyn_map =
-            &*self.cache.entry(container).or_insert_with(|| container.child_by_source(db));
+        let dyn_map = self.cache_for(container, src.file_id);
         dyn_map[keys::TYPE_PARAM].get(&src).copied()
     }
 
@@ -271,9 +273,7 @@ impl SourceToDefCtx<'_, '_> {
         src: InFile<ast::LifetimeParam>,
     ) -> Option<LifetimeParamId> {
         let container: ChildContainer = self.find_generic_param_container(src.syntax())?.into();
-        let db = self.db;
-        let dyn_map =
-            &*self.cache.entry(container).or_insert_with(|| container.child_by_source(db));
+        let dyn_map = self.cache_for(container, src.file_id);
         dyn_map[keys::LIFETIME_PARAM].get(&src).copied()
     }
 
@@ -282,9 +282,7 @@ impl SourceToDefCtx<'_, '_> {
         src: InFile<ast::ConstParam>,
     ) -> Option<ConstParamId> {
         let container: ChildContainer = self.find_generic_param_container(src.syntax())?.into();
-        let db = self.db;
-        let dyn_map =
-            &*self.cache.entry(container).or_insert_with(|| container.child_by_source(db));
+        let dyn_map = self.cache_for(container, src.file_id);
         dyn_map[keys::CONST_PARAM].get(&src).copied()
     }
 
@@ -422,17 +420,17 @@ impl_from! {
 }
 
 impl ChildContainer {
-    fn child_by_source(self, db: &dyn HirDatabase) -> DynMap {
+    fn child_by_source(self, db: &dyn HirDatabase, file_id: HirFileId) -> DynMap {
         let db = db.upcast();
         match self {
-            ChildContainer::DefWithBodyId(it) => it.child_by_source(db),
-            ChildContainer::ModuleId(it) => it.child_by_source(db),
-            ChildContainer::TraitId(it) => it.child_by_source(db),
-            ChildContainer::ImplId(it) => it.child_by_source(db),
-            ChildContainer::EnumId(it) => it.child_by_source(db),
-            ChildContainer::VariantId(it) => it.child_by_source(db),
+            ChildContainer::DefWithBodyId(it) => it.child_by_source(db, file_id),
+            ChildContainer::ModuleId(it) => it.child_by_source(db, file_id),
+            ChildContainer::TraitId(it) => it.child_by_source(db, file_id),
+            ChildContainer::ImplId(it) => it.child_by_source(db, file_id),
+            ChildContainer::EnumId(it) => it.child_by_source(db, file_id),
+            ChildContainer::VariantId(it) => it.child_by_source(db, file_id),
             ChildContainer::TypeAliasId(_) => DynMap::default(),
-            ChildContainer::GenericDefId(it) => it.child_by_source(db),
+            ChildContainer::GenericDefId(it) => it.child_by_source(db, file_id),
         }
     }
 }
