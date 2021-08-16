@@ -63,7 +63,7 @@ pub trait TraitEngine<'tcx>: 'tcx {
         infcx: &InferCtxt<'_, 'tcx>,
     ) -> Result<(), Vec<FulfillmentError<'tcx>>>;
 
-    // FIXME this should not provide a default body for chalk as chalk should be updated
+    // FIXME(fee1-dead) this should not provide a default body for chalk as chalk should be updated
     fn select_with_constness_where_possible(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
