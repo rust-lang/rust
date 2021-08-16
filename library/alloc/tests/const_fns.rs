@@ -10,7 +10,7 @@ pub const MY_VEC: Vec<usize> = Vec::new();
 #[allow(dead_code)]
 pub const MY_STRING: String = String::new();
 
-// FIXME remove this struct once we put `K: ?const Ord` on BTreeMap::new.
+// FIXME(fee1-dead) remove this struct once we put `K: ?const Ord` on BTreeMap::new.
 #[derive(PartialEq, Eq, PartialOrd)]
 pub struct MyType;
 
