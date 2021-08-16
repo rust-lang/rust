@@ -102,7 +102,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
 
     cx.struct_span_lint(NON_FMT_PANICS, arg_span, |lint| {
         let mut l = lint.build("panic message is not a string literal");
-        l.note("this usage of panic!() is deprecated; it will be a hard error in Rust 2021");
+        l.note(&format!("this usage of {}!() is deprecated; it will be a hard error in Rust 2021", symbol_str));
         l.note("for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>");
         if !span.contains(arg_span) {
             // No clue where this argument is coming from.
