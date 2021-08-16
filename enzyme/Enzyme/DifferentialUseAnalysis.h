@@ -239,7 +239,6 @@ static inline bool is_value_needed_in_reverse(
           continue;
       }
 
-
       if (auto MTI = dyn_cast<MemTransferInst>(user)) {
         if (MTI->getArgOperand(0) != inst && MTI->getArgOperand(1) != inst)
           continue;
@@ -255,7 +254,8 @@ static inline bool is_value_needed_in_reverse(
         if (auto F = CI->getCalledFunction()) {
           // Use in a write barrier requires the shadow in the forward, even
           // though the instruction is active.
-          if (mode != DerivativeMode::ReverseModeGradient && F->getName() == "julia.write_barrier") {
+          if (mode != DerivativeMode::ReverseModeGradient &&
+              F->getName() == "julia.write_barrier") {
             return seen[idx] = true;
           }
         }

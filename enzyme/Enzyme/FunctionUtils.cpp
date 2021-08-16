@@ -670,7 +670,7 @@ static void SimplifyMPIQueries(Function &NewF) {
         if (Fn == nullptr)
           continue;
         if (Fn->getName() == "MPI_Comm_rank" ||
-	    Fn->getName() == "PMPI_Comm_rank" ||
+            Fn->getName() == "PMPI_Comm_rank" ||
             Fn->getName() == "MPI_Comm_size") {
           if (!CI->use_empty()) {
             continue;

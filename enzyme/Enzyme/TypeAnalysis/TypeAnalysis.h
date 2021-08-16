@@ -330,6 +330,7 @@ public:
   void visitCallInst(llvm::CallInst &call);
 
   void visitMemTransferInst(llvm::MemTransferInst &MTI);
+  void visitMemTransferCommon(llvm::CallInst &MTI);
 
   void visitIntrinsicInst(llvm::IntrinsicInst &II);
 

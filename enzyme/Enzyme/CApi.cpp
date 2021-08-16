@@ -444,9 +444,10 @@ const char *EnzymeTypeTreeToString(CTypeTreeRef src) {
 void EnzymeTypeTreeToStringFree(const char *cstr) { delete[] cstr; }
 
 void EnzymeMoveBefore(LLVMValueRef inst1, LLVMValueRef inst2) {
-	Instruction *I1 = cast<Instruction>(unwrap(inst1));
-	Instruction *I2 = cast<Instruction>(unwrap(inst2));
-	if (I1 != I2) I1->moveBefore(I2);
+  Instruction *I1 = cast<Instruction>(unwrap(inst1));
+  Instruction *I2 = cast<Instruction>(unwrap(inst2));
+  if (I1 != I2)
+    I1->moveBefore(I2);
 }
 
 #if LLVM_VERSION_MAJOR >= 9

@@ -183,11 +183,11 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
   assert(directions & DOWN);
 
   Function *F = getFunctionFromCall(CI);
-  
+
   // Indirect function calls may actively use the argument
   if (F == nullptr)
     return false;
-  
+
   if (F->hasFnAttribute("enzyme_inactive")) {
     return true;
   }
@@ -1141,10 +1141,9 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
           }
 
           Function *F = getFunctionFromCall(CI);
-          
 
           if (F) {
-	    if (F->hasFnAttribute("enzyme_inactive")) {
+            if (F->hasFnAttribute("enzyme_inactive")) {
               continue;
             }
             if (isAllocationFunction(*F, TLI) ||
@@ -1596,12 +1595,12 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
   }
 
   if (auto op = dyn_cast<CallInst>(inst)) {
-  // Calls to print/assert/cxa guard are definitionally inactive
-	llvm::Value* callVal;
+    // Calls to print/assert/cxa guard are definitionally inactive
+    llvm::Value *callVal;
 #if LLVM_VERSION_MAJOR >= 11
-        callVal = op->getCalledOperand();
+    callVal = op->getCalledOperand();
 #else
-        callVal = op->getCalledValue();
+    callVal = op->getCalledValue();
 #endif
     if (Function *called = getFunctionFromCall(op)) {
       if (called->hasFnAttribute("enzyme_inactive")) {
@@ -1640,8 +1639,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
                        << *inst << "\n";
         return true;
       }
-    } else if (!isa<Constant>(callVal) &&
-               isConstantValue(TR, callVal)) {
+    } else if (!isa<Constant>(callVal) && isConstantValue(TR, callVal)) {
       if (EnzymePrintActivity)
         llvm::errs() << "constant(" << (int)directions << ") up-constfn "
                      << *inst << " - " << *callVal << "\n";

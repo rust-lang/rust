@@ -821,35 +821,34 @@ public:
   virtual ~AssertingReplacingVH() {}
 };
 
-static inline llvm::Function* getFunctionFromCall(llvm::CallInst* op) {
-	llvm::Function *called = nullptr;
-using namespace llvm;
-	llvm::Value* callVal;
+static inline llvm::Function* getFunctionFromCall(llvm::CallInst *op) {
+  llvm::Function *called = nullptr;
+  using namespace llvm;
+  llvm::Value *callVal;
 #if LLVM_VERSION_MAJOR >= 11
-        callVal = op->getCalledOperand();
+  callVal = op->getCalledOperand();
 #else
-        callVal = op->getCalledValue();
+  callVal = op->getCalledValue();
 #endif
 
-        while (!called)
-        {
-	  if (auto castinst = dyn_cast<ConstantExpr>(callVal))
-            if (castinst->isCast()) {
-	      callVal = castinst->getOperand(0);
-	      continue;
-	    }
-          if (auto fn = dyn_cast<Function>(callVal)) {
-            called = fn;
-	    break;
-	  }
+  while (!called) {
+    if (auto castinst = dyn_cast<ConstantExpr>(callVal))
+      if (castinst->isCast()) {
+        callVal = castinst->getOperand(0);
+        continue;
+      }
+    if (auto fn = dyn_cast<Function>(callVal)) {
+      called = fn;
+      break;
+    }
 #if LLVM_VERSION_MAJOR >= 11
     if (auto alias = dyn_cast<GlobalAlias>(callVal)) {
       callVal = dyn_cast<Function>(alias->getAliasee());
       continue;
     }
 #endif
-	  break;
-        }
-	return called;
+    break;
+  }
+  return called;
 }
 #endif

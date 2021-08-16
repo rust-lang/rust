@@ -1641,19 +1641,22 @@ void TypeAnalyzer::visitSelectInst(SelectInst &I) {
     updateAnalysis(I.getFalseValue(), getAnalysis(&I).PurgeAnything(), &I);
 
   if (direction & DOWN) {
-    // special case for min/max result is still that operand [even if something is 0]
+    // special case for min/max result is still that operand [even if something
+    // is 0]
     if (auto cmpI = dyn_cast<CmpInst>(I.getCondition())) {
       // is relational equiv to not is equality
       if (!cmpI->isEquality())
-      if (cmpI->getOperand(0) == I.getTrueValue() && cmpI->getOperand(1) == I.getFalseValue() ||
-		      cmpI->getOperand(1) == I.getTrueValue() && cmpI->getOperand(0) == I.getFalseValue()) {
-        auto vd = getAnalysis(I.getTrueValue()).Inner0();
-	vd &= getAnalysis(I.getFalseValue()).Inner0();
-	if (vd.isKnown()) {
-		updateAnalysis(&I, TypeTree(vd).Only(-1), &I);
-		return;
-	}
-      }
+        if (cmpI->getOperand(0) == I.getTrueValue() &&
+                cmpI->getOperand(1) == I.getFalseValue() ||
+            cmpI->getOperand(1) == I.getTrueValue() &&
+                cmpI->getOperand(0) == I.getFalseValue()) {
+          auto vd = getAnalysis(I.getTrueValue()).Inner0();
+          vd &= getAnalysis(I.getFalseValue()).Inner0();
+          if (vd.isKnown()) {
+            updateAnalysis(&I, TypeTree(vd).Only(-1), &I);
+            return;
+          }
+        }
     }
     // If getTrueValue and getFalseValue are the same type (per the and)
     // it is safe to assume the result is as well
@@ -2422,6 +2425,10 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
 }
 
 void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst &MTI) {
+  visitMemTransferCommon(MTI);
+}
+
+void TypeAnalyzer::visitMemTransferCommon(llvm::CallInst &MTI) {
   if (!(direction & UP))
     return;
 
@@ -2433,11 +2440,6 @@ void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst &MTI) {
     assert(val >= 0);
     sz = max(sz, (size_t)val);
   }
-
-  updateAnalysis(MTI.getArgOperand(0), TypeTree(BaseType::Pointer).Only(-1),
-                 &MTI);
-  updateAnalysis(MTI.getArgOperand(1), TypeTree(BaseType::Pointer).Only(-1),
-                 &MTI);
 
   TypeTree res = getAnalysis(MTI.getArgOperand(0)).AtMost(sz).PurgeAnything();
   TypeTree res2 = getAnalysis(MTI.getArgOperand(1)).AtMost(sz).PurgeAnything();
@@ -2456,6 +2458,7 @@ void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst &MTI) {
     assert(0 && "Performed illegal visitMemTransferInst::orIn");
     llvm_unreachable("Performed illegal visitMemTransferInst::orIn");
   }
+  res.insert({-1}, BaseType::Pointer);
   updateAnalysis(MTI.getArgOperand(0), res, &MTI);
   updateAnalysis(MTI.getArgOperand(1), res, &MTI);
   for (unsigned i = 2; i < MTI.getNumArgOperands(); ++i) {
@@ -3659,10 +3662,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     /// END MPI
     if (funcName == "memcpy" || funcName == "memmove") {
       // TODO have this call common mem transfer to copy data
-      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(2), TypeTree(BaseType::Integer).Only(-1), &call);
+      visitMemTransferCommon(call);
       return;
     }
     if (funcName == "posix_memalign") {

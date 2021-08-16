@@ -3153,9 +3153,8 @@ end:;
   assert(oval);
 
   llvm::errs() << *newFunc->getParent() << "\n";
-  llvm::errs() << "fn:" << *newFunc
-               << "\noval=" << *oval << " icv=" << isConstantValue(oval)
-               << "\n";
+  llvm::errs() << "fn:" << *newFunc << "\noval=" << *oval
+               << " icv=" << isConstantValue(oval) << "\n";
   for (auto z : invertedPointers) {
     llvm::errs() << "available inversion for " << *z.first << " of "
                  << *z.second << "\n";
