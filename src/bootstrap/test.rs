@@ -933,6 +933,8 @@ impl Step for RustdocGUI {
         let mut command = Command::new(&nodejs);
         command
             .arg(builder.build.src.join("src/tools/rustdoc-gui/tester.js"))
+            .arg("--jobs")
+            .arg(&builder.jobs().to_string())
             .arg("--doc-folder")
             .arg(out_dir.join("doc"))
             .arg("--tests-folder")
