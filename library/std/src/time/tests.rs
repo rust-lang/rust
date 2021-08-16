@@ -1,4 +1,5 @@
 use super::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use core::sync::atomic::AtomicU64;
 use test::{black_box, Bencher};
 
 macro_rules! assert_almost_eq {
@@ -188,6 +189,23 @@ fn since_epoch() {
     // Should give us ~70 years to fix this!
     let hundred_twenty_years = thirty_years * 4;
     assert!(a < hundred_twenty_years);
+}
+
+#[cfg(all(target_has_atomic = "64", not(target_has_atomic = "128")))]
+#[test]
+fn monotonizer_wrapping_backslide() {
+    use super::monotonic::inner::{monotonize_impl, ZERO};
+
+    let reference = AtomicU64::new(0);
+
+    let time = ZERO.checked_add_duration(&Duration::from_secs(0xffff_ffff)).unwrap();
+
+    let monotonized = monotonize_impl(&reference, time);
+    let expected = ZERO.checked_add_duration(&Duration::from_secs(1 << 32)).unwrap();
+    assert_eq!(
+        monotonized, expected,
+        "64bit monotonizer should handle overflows in the seconds part"
+    );
 }
 
 macro_rules! bench_instant_threaded {
