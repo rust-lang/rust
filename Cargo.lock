@@ -3924,6 +3924,7 @@ dependencies = [
 name = "rustc_lint"
 version = "0.0.0"
 dependencies = [
+ "if_chain",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",

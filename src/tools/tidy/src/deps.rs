@@ -121,6 +121,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "hashbrown",
     "hermit-abi",
     "humantime",
+    "if_chain",
     "indexmap",
     "instant",
     "itertools",

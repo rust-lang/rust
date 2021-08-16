@@ -113,6 +113,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![cfg_attr(not(target_has_atomic_load_store = "8"), allow(dead_code))]
 #![cfg_attr(not(target_has_atomic_load_store = "8"), allow(unused_imports))]
+#![rustc_diagnostic_item = "atomic_mod"]
 
 use self::Ordering::*;
 
@@ -198,6 +199,7 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[non_exhaustive]
+#[rustc_diagnostic_item = "Ordering"]
 pub enum Ordering {
     /// No ordering constraints, only atomic operations.
     ///
@@ -2664,6 +2666,7 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "fence"]
 pub fn fence(order: Ordering) {
     // SAFETY: using an atomic fence is safe.
     unsafe {
@@ -2745,6 +2748,7 @@ pub fn fence(order: Ordering) {
 /// [memory barriers]: https://www.kernel.org/doc/Documentation/memory-barriers.txt
 #[inline]
 #[stable(feature = "compiler_fences", since = "1.21.0")]
+#[rustc_diagnostic_item = "compiler_fence"]
 pub fn compiler_fence(order: Ordering) {
     // SAFETY: using an atomic fence is safe.
     unsafe {
