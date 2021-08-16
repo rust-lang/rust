@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 /// on anything defined in the crate, apart from the `Debug` trait.
 #[derive(Debug)]
 pub struct CrashTestDummy {
-    id: usize,
+    pub id: usize,
     cloned: AtomicUsize,
     dropped: AtomicUsize,
     queried: AtomicUsize,

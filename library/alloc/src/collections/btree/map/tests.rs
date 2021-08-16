@@ -1494,33 +1494,40 @@ fn test_clone() {
     map.check();
 }
 
+fn test_clone_panic_leak(size: usize) {
+    for i in 0..size {
+        let dummies: Vec<CrashTestDummy> = (0..size).map(|id| CrashTestDummy::new(id)).collect();
+        let map: BTreeMap<_, ()> = dummies
+            .iter()
+            .map(|dummy| {
+                let panic = if dummy.id == i { Panic::InClone } else { Panic::Never };
+                (dummy.spawn(panic), ())
+            })
+            .collect();
+
+        catch_unwind(|| map.clone()).unwrap_err();
+        for d in &dummies {
+            assert_eq!(d.cloned(), if d.id <= i { 1 } else { 0 }, "id={}/{}", d.id, i);
+            assert_eq!(d.dropped(), if d.id < i { 1 } else { 0 }, "id={}/{}", d.id, i);
+        }
+        assert_eq!(map.len(), size);
+
+        drop(map);
+        for d in &dummies {
+            assert_eq!(d.cloned(), if d.id <= i { 1 } else { 0 }, "id={}/{}", d.id, i);
+            assert_eq!(d.dropped(), if d.id < i { 2 } else { 1 }, "id={}/{}", d.id, i);
+        }
+    }
+}
+
 #[test]
-fn test_clone_panic_leak() {
-    let a = CrashTestDummy::new(0);
-    let b = CrashTestDummy::new(1);
-    let c = CrashTestDummy::new(2);
+fn test_clone_panic_leak_height_0() {
+    test_clone_panic_leak(3)
+}
 
-    let mut map = BTreeMap::new();
-    map.insert(a.spawn(Panic::Never), ());
-    map.insert(b.spawn(Panic::InClone), ());
-    map.insert(c.spawn(Panic::Never), ());
-
-    catch_unwind(|| map.clone()).unwrap_err();
-    assert_eq!(a.cloned(), 1);
-    assert_eq!(b.cloned(), 1);
-    assert_eq!(c.cloned(), 0);
-    assert_eq!(a.dropped(), 1);
-    assert_eq!(b.dropped(), 0);
-    assert_eq!(c.dropped(), 0);
-    assert_eq!(map.len(), 3);
-
-    drop(map);
-    assert_eq!(a.cloned(), 1);
-    assert_eq!(b.cloned(), 1);
-    assert_eq!(c.cloned(), 0);
-    assert_eq!(a.dropped(), 2);
-    assert_eq!(b.dropped(), 1);
-    assert_eq!(c.dropped(), 1);
+#[test]
+fn test_clone_panic_leak_height_1() {
+    test_clone_panic_leak(MIN_INSERTS_HEIGHT_1)
 }
 
 #[test]
