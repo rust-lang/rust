@@ -14,7 +14,7 @@ pub(super) fn check(cx: &LateContext<'_>, arg: &Expr<'_>, body: &Expr<'_>) {
         start: Some(start),
         end: Some(end),
         ..
-    }) = higher::range(arg)
+    }) = higher::Range::hir(arg)
     {
         let mut_ids = vec![check_for_mutability(cx, start), check_for_mutability(cx, end)];
         if mut_ids[0].is_some() || mut_ids[1].is_some() {

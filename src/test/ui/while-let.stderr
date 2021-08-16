@@ -1,8 +1,8 @@
 warning: irrefutable `while let` pattern
-  --> $DIR/while-let.rs:7:13
+  --> $DIR/while-let.rs:7:19
    |
 LL |               while let $p = $e $b
-   |               ^^^^^^^^^^^^^^^^^^^^
+   |                     ^^^
 ...
 LL | /     foo!(_a, 1, {
 LL | |         println!("irrefutable pattern");
@@ -15,10 +15,10 @@ LL | |     });
    = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: irrefutable `while let` pattern
-  --> $DIR/while-let.rs:7:13
+  --> $DIR/while-let.rs:7:19
    |
 LL |               while let $p = $e $b
-   |               ^^^^^^^^^^^^^^^^^^^^
+   |                     ^^^
 ...
 LL | /     bar!(_a, 1, {
 LL | |         println!("irrefutable pattern");
@@ -30,13 +30,10 @@ LL | |     });
    = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: irrefutable `while let` pattern
-  --> $DIR/while-let.rs:27:5
+  --> $DIR/while-let.rs:27:11
    |
-LL | /     while let _a = 1 {
-LL | |         println!("irrefutable pattern");
-LL | |         break;
-LL | |     }
-   | |_____^
+LL |     while let _a = 1 {
+   |           ^^^^^^^^^^
    |
    = note: this pattern will always match, so the loop will never exit
    = help: consider instead using a `loop { ... }` with a `let` inside it

@@ -86,32 +86,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let ohs = self.lower_expr(ohs);
                     hir::ExprKind::AddrOf(k, m, ohs)
                 }
-                ExprKind::Let(ref pat, ref scrutinee) => {
-                    self.lower_expr_let(e.span, pat, scrutinee)
+                ExprKind::Let(ref pat, ref scrutinee, span) => {
+                    hir::ExprKind::Let(self.lower_pat(pat), self.lower_expr(scrutinee), span)
                 }
-                ExprKind::If(ref cond, ref then, ref else_opt) => match cond.kind {
-                    ExprKind::Let(ref pat, ref scrutinee) => {
-                        self.lower_expr_if_let(e.span, pat, scrutinee, then, else_opt.as_deref())
-                    }
-                    ExprKind::Paren(ref paren) => match paren.peel_parens().kind {
-                        ExprKind::Let(ref pat, ref scrutinee) => {
-                            // A user has written `if (let Some(x) = foo) {`, we want to avoid
-                            // confusing them with mentions of nightly features.
-                            // If this logic is changed, you will also likely need to touch
-                            // `unused::UnusedParens::check_expr`.
-                            self.if_let_expr_with_parens(cond, &paren.peel_parens());
-                            self.lower_expr_if_let(
-                                e.span,
-                                pat,
-                                scrutinee,
-                                then,
-                                else_opt.as_deref(),
-                            )
-                        }
-                        _ => self.lower_expr_if(cond, then, else_opt.as_deref()),
-                    },
-                    _ => self.lower_expr_if(cond, then, else_opt.as_deref()),
-                },
+                ExprKind::If(ref cond, ref then, ref else_opt) => {
+                    self.lower_expr_if(cond, then, else_opt.as_deref())
+                }
                 ExprKind::While(ref cond, ref body, opt_label) => self
                     .with_loop_scope(e.id, |this| {
                         this.lower_expr_while_in_loop_scope(e.span, cond, body, opt_label)
@@ -368,115 +348,51 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ExprKind::Call(f, self.lower_exprs(&real_args))
     }
 
-    fn if_let_expr_with_parens(&mut self, cond: &Expr, paren: &Expr) {
-        let start = cond.span.until(paren.span);
-        let end = paren.span.shrink_to_hi().until(cond.span.shrink_to_hi());
-        self.sess
-            .struct_span_err(
-                vec![start, end],
-                "invalid parentheses around `let` expression in `if let`",
-            )
-            .multipart_suggestion(
-                "`if let` needs to be written without parentheses",
-                vec![(start, String::new()), (end, String::new())],
-                rustc_errors::Applicability::MachineApplicable,
-            )
-            .emit();
-        // Ideally, we'd remove the feature gating of a `let` expression since we are already
-        // complaining about it here, but `feature_gate::check_crate` has already run by now:
-        // self.sess.parse_sess.gated_spans.ungate_last(sym::let_chains, paren.span);
-    }
-
-    /// Emit an error and lower `ast::ExprKind::Let(pat, scrutinee)` into:
-    /// ```rust
-    /// match scrutinee { pats => true, _ => false }
-    /// ```
-    fn lower_expr_let(&mut self, span: Span, pat: &Pat, scrutinee: &Expr) -> hir::ExprKind<'hir> {
-        // If we got here, the `let` expression is not allowed.
-
-        if self.sess.opts.unstable_features.is_nightly_build() {
-            self.sess
-                .struct_span_err(span, "`let` expressions are not supported here")
-                .note(
-                    "only supported directly without parentheses in conditions of `if`- and \
-                     `while`-expressions, as well as in `let` chains within parentheses",
-                )
-                .emit();
-        } else {
-            self.sess
-                .struct_span_err(span, "expected expression, found statement (`let`)")
-                .note("variable declaration using `let` is a statement")
-                .emit();
-        }
-
-        // For better recovery, we emit:
-        // ```
-        // match scrutinee { pat => true, _ => false }
-        // ```
-        // While this doesn't fully match the user's intent, it has key advantages:
-        // 1. We can avoid using `abort_if_errors`.
-        // 2. We can typeck both `pat` and `scrutinee`.
-        // 3. `pat` is allowed to be refutable.
-        // 4. The return type of the block is `bool` which seems like what the user wanted.
-        let scrutinee = self.lower_expr(scrutinee);
-        let then_arm = {
-            let pat = self.lower_pat(pat);
-            let expr = self.expr_bool(span, true);
-            self.arm(pat, expr)
-        };
-        let else_arm = {
-            let pat = self.pat_wild(span);
-            let expr = self.expr_bool(span, false);
-            self.arm(pat, expr)
-        };
-        hir::ExprKind::Match(
-            scrutinee,
-            arena_vec![self; then_arm, else_arm],
-            hir::MatchSource::Normal,
-        )
-    }
-
     fn lower_expr_if(
         &mut self,
         cond: &Expr,
         then: &Block,
         else_opt: Option<&Expr>,
     ) -> hir::ExprKind<'hir> {
-        let cond = self.lower_expr(cond);
-        let then = self.arena.alloc(self.lower_block_expr(then));
-        let els = else_opt.map(|els| self.lower_expr(els));
-        hir::ExprKind::If(cond, then, els)
-    }
-
-    fn lower_expr_if_let(
-        &mut self,
-        span: Span,
-        pat: &Pat,
-        scrutinee: &Expr,
-        then: &Block,
-        else_opt: Option<&Expr>,
-    ) -> hir::ExprKind<'hir> {
-        // FIXME(#53667): handle lowering of && and parens.
-
-        // `_ => else_block` where `else_block` is `{}` if there's `None`:
-        let else_pat = self.pat_wild(span);
-        let (else_expr, contains_else_clause) = match else_opt {
-            None => (self.expr_block_empty(span.shrink_to_hi()), false),
-            Some(els) => (self.lower_expr(els), true),
-        };
-        let else_arm = self.arm(else_pat, else_expr);
-
-        // Handle then + scrutinee:
-        let scrutinee = self.lower_expr(scrutinee);
-        let then_pat = self.lower_pat(pat);
-
+        let lowered_cond = self.lower_expr(cond);
+        let new_cond = self.manage_let_cond(lowered_cond);
         let then_expr = self.lower_block_expr(then);
-        let then_arm = self.arm(then_pat, self.arena.alloc(then_expr));
-
-        let desugar = hir::MatchSource::IfLetDesugar { contains_else_clause };
-        hir::ExprKind::Match(scrutinee, arena_vec![self; then_arm, else_arm], desugar)
+        if let Some(rslt) = else_opt {
+            hir::ExprKind::If(new_cond, self.arena.alloc(then_expr), Some(self.lower_expr(rslt)))
+        } else {
+            hir::ExprKind::If(new_cond, self.arena.alloc(then_expr), None)
+        }
     }
 
+    // If `cond` kind is `let`, returns `let`. Otherwise, wraps and returns `cond`
+    // in a temporary block.
+    fn manage_let_cond(&mut self, cond: &'hir hir::Expr<'hir>) -> &'hir hir::Expr<'hir> {
+        match cond.kind {
+            hir::ExprKind::Let(..) => cond,
+            _ => {
+                let span_block =
+                    self.mark_span_with_reason(DesugaringKind::CondTemporary, cond.span, None);
+                self.expr_drop_temps(span_block, cond, AttrVec::new())
+            }
+        }
+    }
+
+    // We desugar: `'label: while $cond $body` into:
+    //
+    // ```
+    // 'label: loop {
+    //   if { let _t = $cond; _t } {
+    //     $body
+    //   }
+    //   else {
+    //     break;
+    //   }
+    // }
+    // ```
+    //
+    // Wrap in a construct equivalent to `{ let _t = $cond; _t }`
+    // to preserve drop semantics since `while $cond { ... }` does not
+    // let temporaries live outside of `cond`.
     fn lower_expr_while_in_loop_scope(
         &mut self,
         span: Span,
@@ -484,72 +400,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Block,
         opt_label: Option<Label>,
     ) -> hir::ExprKind<'hir> {
-        // FIXME(#53667): handle lowering of && and parens.
-
-        // Note that the block AND the condition are evaluated in the loop scope.
-        // This is done to allow `break` from inside the condition of the loop.
-
-        // `_ => break`:
-        let else_arm = {
-            let else_pat = self.pat_wild(span);
-            let else_expr = self.expr_break(span, ThinVec::new());
-            self.arm(else_pat, else_expr)
-        };
-
-        // Handle then + scrutinee:
-        let (then_pat, scrutinee, desugar, source) = match cond.kind {
-            ExprKind::Let(ref pat, ref scrutinee) => {
-                // to:
-                //
-                //   [opt_ident]: loop {
-                //     match <sub_expr> {
-                //       <pat> => <body>,
-                //       _ => break
-                //     }
-                //   }
-                let scrutinee = self.with_loop_condition_scope(|t| t.lower_expr(scrutinee));
-                let pat = self.lower_pat(pat);
-                (pat, scrutinee, hir::MatchSource::WhileLetDesugar, hir::LoopSource::WhileLet)
-            }
-            _ => {
-                // We desugar: `'label: while $cond $body` into:
-                //
-                // ```
-                // 'label: loop {
-                //     match drop-temps { $cond } {
-                //         true => $body,
-                //         _ => break,
-                //     }
-                // }
-                // ```
-
-                // Lower condition:
-                let cond = self.with_loop_condition_scope(|this| this.lower_expr(cond));
-                let span_block =
-                    self.mark_span_with_reason(DesugaringKind::CondTemporary, cond.span, None);
-                // Wrap in a construct equivalent to `{ let _t = $cond; _t }`
-                // to preserve drop semantics since `while cond { ... }` does not
-                // let temporaries live outside of `cond`.
-                let cond = self.expr_drop_temps(span_block, cond, ThinVec::new());
-                // `true => <then>`:
-                let pat = self.pat_bool(span, true);
-                (pat, cond, hir::MatchSource::WhileDesugar, hir::LoopSource::While)
-            }
-        };
-        let then_expr = self.lower_block_expr(body);
-        let then_arm = self.arm(then_pat, self.arena.alloc(then_expr));
-
-        // `match <scrutinee> { ... }`
-        let match_expr =
-            self.expr_match(span, scrutinee, arena_vec![self; then_arm, else_arm], desugar);
-
-        // `[opt_ident]: loop { ... }`
-        hir::ExprKind::Loop(
-            self.block_expr(self.arena.alloc(match_expr)),
-            opt_label,
-            source,
-            span.with_hi(cond.span.hi()),
-        )
+        let lowered_cond = self.with_loop_condition_scope(|t| t.lower_expr(cond));
+        let new_cond = self.manage_let_cond(lowered_cond);
+        let then = self.lower_block_expr(body);
+        let expr_break = self.expr_break(span, ThinVec::new());
+        let stmt_break = self.stmt_expr(span, expr_break);
+        let else_blk = self.block_all(span, arena_vec![self; stmt_break], None);
+        let else_expr = self.arena.alloc(self.expr_block(else_blk, ThinVec::new()));
+        let if_kind = hir::ExprKind::If(new_cond, self.arena.alloc(then), Some(else_expr));
+        let if_expr = self.expr(span, if_kind, ThinVec::new());
+        let block = self.block_expr(self.arena.alloc(if_expr));
+        hir::ExprKind::Loop(block, opt_label, hir::LoopSource::While, span.with_hi(cond.span.hi()))
     }
 
     /// Desugar `try { <stmts>; <expr> }` into `{ <stmts>; ::std::ops::Try::from_output(<expr>) }`,
@@ -609,7 +470,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm<'hir> {
         let pat = self.lower_pat(&arm.pat);
         let guard = arm.guard.as_ref().map(|cond| {
-            if let ExprKind::Let(ref pat, ref scrutinee) = cond.kind {
+            if let ExprKind::Let(ref pat, ref scrutinee, _) = cond.kind {
                 hir::Guard::IfLet(self.lower_pat(pat), self.lower_expr(scrutinee))
             } else {
                 hir::Guard::If(self.lower_expr(cond))
@@ -1457,7 +1318,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `::std::option::Option::None => break`
         let break_arm = {
             let break_expr =
-                self.with_loop_scope(e.id, |this| this.expr_break(e.span, ThinVec::new()));
+                self.with_loop_scope(e.id, |this| this.expr_break_alloc(e.span, ThinVec::new()));
             let pat = self.pat_none(e.span);
             self.arm(pat, break_expr)
         };
@@ -1670,12 +1531,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
     // Helper methods for building HIR.
     // =========================================================================
 
-    /// Constructs a `true` or `false` literal expression.
-    pub(super) fn expr_bool(&mut self, span: Span, val: bool) -> &'hir hir::Expr<'hir> {
-        let lit = Spanned { span, node: LitKind::Bool(val) };
-        self.arena.alloc(self.expr(span, hir::ExprKind::Lit(lit), ThinVec::new()))
-    }
-
     /// Wrap the given `expr` in a terminating scope using `hir::ExprKind::DropTemps`.
     ///
     /// In terms of drop order, it has the same effect as wrapping `expr` in
@@ -1710,9 +1565,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.expr(span, hir::ExprKind::Match(arg, arms, source), ThinVec::new())
     }
 
-    fn expr_break(&mut self, span: Span, attrs: AttrVec) -> &'hir hir::Expr<'hir> {
+    fn expr_break(&mut self, span: Span, attrs: AttrVec) -> hir::Expr<'hir> {
         let expr_break = hir::ExprKind::Break(self.lower_loop_destination(None), None);
-        self.arena.alloc(self.expr(span, expr_break, attrs))
+        self.expr(span, expr_break, attrs)
+    }
+
+    fn expr_break_alloc(&mut self, span: Span, attrs: AttrVec) -> &'hir hir::Expr<'hir> {
+        let expr_break = self.expr_break(span, attrs);
+        self.arena.alloc(expr_break)
     }
 
     fn expr_mut_addr_of(&mut self, span: Span, e: &'hir hir::Expr<'hir>) -> hir::Expr<'hir> {

@@ -1,7 +1,7 @@
 // check-pass
 
 fn macros() {
-    macro_rules! foo{
+    macro_rules! foo {
         ($p:pat, $e:expr, $b:block) => {{
             if let $p = $e $b
             //~^ WARN irrefutable `if let`

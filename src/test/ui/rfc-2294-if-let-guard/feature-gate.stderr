@@ -1,5 +1,5 @@
 error: no rules expected the token `let`
-  --> $DIR/feature-gate.rs:80:15
+  --> $DIR/feature-gate.rs:64:15
    |
 LL |     macro_rules! use_expr {
    |     --------------------- when calling this macro
@@ -18,7 +18,7 @@ LL |         () if let 0 = 1 => {}
    = help: you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`
 
 error[E0658]: `if let` guards are experimental
-  --> $DIR/feature-gate.rs:76:12
+  --> $DIR/feature-gate.rs:60:12
    |
 LL |         () if let 0 = 1 => {}
    |            ^^^^^^^^^^^^
@@ -38,7 +38,7 @@ LL |         () if (let 0 = 1) => {}
    = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:14:18
+  --> $DIR/feature-gate.rs:13:18
    |
 LL |         () if (((let 0 = 1))) => {}
    |                  ^^^^^^^^^
@@ -48,7 +48,7 @@ LL |         () if (((let 0 = 1))) => {}
    = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:18:23
+  --> $DIR/feature-gate.rs:16:23
    |
 LL |         () if true && let 0 = 1 => {}
    |                       ^^^^^^^^^
@@ -58,7 +58,7 @@ LL |         () if true && let 0 = 1 => {}
    = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:22:15
+  --> $DIR/feature-gate.rs:19:15
    |
 LL |         () if let 0 = 1 && true => {}
    |               ^^^^^^^^^
@@ -68,7 +68,7 @@ LL |         () if let 0 = 1 && true => {}
    = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:26:16
+  --> $DIR/feature-gate.rs:22:16
    |
 LL |         () if (let 0 = 1) && true => {}
    |                ^^^^^^^^^
@@ -78,7 +78,7 @@ LL |         () if (let 0 = 1) && true => {}
    = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:30:24
+  --> $DIR/feature-gate.rs:25:24
    |
 LL |         () if true && (let 0 = 1) => {}
    |                        ^^^^^^^^^
@@ -88,7 +88,7 @@ LL |         () if true && (let 0 = 1) => {}
    = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:34:16
+  --> $DIR/feature-gate.rs:28:16
    |
 LL |         () if (let 0 = 1) && (let 0 = 1) => {}
    |                ^^^^^^^^^
@@ -98,7 +98,7 @@ LL |         () if (let 0 = 1) && (let 0 = 1) => {}
    = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:34:31
+  --> $DIR/feature-gate.rs:28:31
    |
 LL |         () if (let 0 = 1) && (let 0 = 1) => {}
    |                               ^^^^^^^^^
@@ -108,7 +108,7 @@ LL |         () if (let 0 = 1) && (let 0 = 1) => {}
    = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:40:15
+  --> $DIR/feature-gate.rs:32:15
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |               ^^^^^^^^^
@@ -118,7 +118,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:40:28
+  --> $DIR/feature-gate.rs:32:28
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                            ^^^^^^^^^
@@ -128,7 +128,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:40:42
+  --> $DIR/feature-gate.rs:32:42
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                                          ^^^^^^^^^
@@ -138,7 +138,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:40:55
+  --> $DIR/feature-gate.rs:32:55
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                                                       ^^^^^^^^^
@@ -148,7 +148,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:40:68
+  --> $DIR/feature-gate.rs:32:68
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                                                                    ^^^^^^^^^
@@ -158,7 +158,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:52:15
+  --> $DIR/feature-gate.rs:39:15
    |
 LL |         () if let Range { start: _, end: _ } = (true..true) && false => {}
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -168,7 +168,7 @@ LL |         () if let Range { start: _, end: _ } = (true..true) && false => {}
    = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:68:16
+  --> $DIR/feature-gate.rs:54:16
    |
 LL |     use_expr!((let 0 = 1 && 0 == 0));
    |                ^^^^^^^^^
@@ -178,7 +178,7 @@ LL |     use_expr!((let 0 = 1 && 0 == 0));
    = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:71:16
+  --> $DIR/feature-gate.rs:56:16
    |
 LL |     use_expr!((let 0 = 1));
    |                ^^^^^^^^^
@@ -187,134 +187,6 @@ LL |     use_expr!((let 0 = 1));
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
    = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:10:16
-   |
-LL |         () if (let 0 = 1) => {}
-   |                ^^^^^^^^^
-   |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
-
-error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:14:18
-   |
-LL |         () if (((let 0 = 1))) => {}
-   |                  ^^^^^^^^^
-   |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
-
-error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:18:23
-   |
-LL |         () if true && let 0 = 1 => {}
-   |                       ^^^^^^^^^
-   |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
-
-error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:22:15
-   |
-LL |         () if let 0 = 1 && true => {}
-   |               ^^^^^^^^^
-   |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
-
-error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:26:16
-   |
-LL |         () if (let 0 = 1) && true => {}
-   |                ^^^^^^^^^
-   |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
-
-error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:30:24
-   |
-LL |         () if true && (let 0 = 1) => {}
-   |                        ^^^^^^^^^
-   |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
-
-error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:34:16
-   |
-LL |         () if (let 0 = 1) && (let 0 = 1) => {}
-   |                ^^^^^^^^^
-   |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
-
-error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:34:31
-   |
-LL |         () if (let 0 = 1) && (let 0 = 1) => {}
-   |                               ^^^^^^^^^
-   |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
-
-error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:40:15
-   |
-LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
-   |               ^^^^^^^^^
-   |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
-
-error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:40:28
-   |
-LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
-   |                            ^^^^^^^^^
-   |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
-
-error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:40:42
-   |
-LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
-   |                                          ^^^^^^^^^
-   |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
-
-error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:40:55
-   |
-LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
-   |                                                       ^^^^^^^^^
-   |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
-
-error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:40:68
-   |
-LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
-   |                                                                    ^^^^^^^^^
-   |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
-
-error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:52:15
-   |
-LL |         () if let Range { start: _, end: _ } = (true..true) && false => {}
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
-
-error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:68:16
-   |
-LL |     use_expr!((let 0 = 1 && 0 == 0));
-   |                ^^^^^^^^^
-   |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
-
-error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:71:16
-   |
-LL |     use_expr!((let 0 = 1));
-   |                ^^^^^^^^^
-   |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
-
-error: aborting due to 35 previous errors
+error: aborting due to 19 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

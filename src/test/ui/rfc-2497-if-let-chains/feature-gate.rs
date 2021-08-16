@@ -13,33 +13,25 @@ fn _if() {
 
     if (let 0 = 1) {}
     //~^ ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR invalid parentheses around `let` expression in `if let`
 
     if (((let 0 = 1))) {}
     //~^ ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR invalid parentheses around `let` expression in `if let`
 
     if true && let 0 = 1 {}
     //~^ ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR `let` expressions are not supported here
 
     if let 0 = 1 && true {}
     //~^ ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR `let` expressions are not supported here
 
     if (let 0 = 1) && true {}
     //~^ ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR `let` expressions are not supported here
 
     if true && (let 0 = 1) {}
     //~^ ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR `let` expressions are not supported here
 
     if (let 0 = 1) && (let 0 = 1) {}
     //~^ ERROR `let` expressions in this position are experimental [E0658]
     //~| ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR `let` expressions are not supported here
-    //~| ERROR `let` expressions are not supported here
 
     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
     //~^ ERROR `let` expressions in this position are experimental [E0658]
@@ -47,15 +39,9 @@ fn _if() {
     //~| ERROR `let` expressions in this position are experimental [E0658]
     //~| ERROR `let` expressions in this position are experimental [E0658]
     //~| ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR `let` expressions are not supported here
-    //~| ERROR `let` expressions are not supported here
-    //~| ERROR `let` expressions are not supported here
-    //~| ERROR `let` expressions are not supported here
-    //~| ERROR `let` expressions are not supported here
 
     if let Range { start: _, end: _ } = (true..true) && false {}
     //~^ ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR `let` expressions are not supported here
 }
 
 fn _while() {
@@ -63,33 +49,25 @@ fn _while() {
 
     while (let 0 = 1) {}
     //~^ ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR `let` expressions are not supported here
 
     while (((let 0 = 1))) {}
     //~^ ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR `let` expressions are not supported here
 
     while true && let 0 = 1 {}
     //~^ ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR `let` expressions are not supported here
 
     while let 0 = 1 && true {}
     //~^ ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR `let` expressions are not supported here
 
     while (let 0 = 1) && true {}
     //~^ ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR `let` expressions are not supported here
 
     while true && (let 0 = 1) {}
     //~^ ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR `let` expressions are not supported here
 
     while (let 0 = 1) && (let 0 = 1) {}
     //~^ ERROR `let` expressions in this position are experimental [E0658]
     //~| ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR `let` expressions are not supported here
-    //~| ERROR `let` expressions are not supported here
 
     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
     //~^ ERROR `let` expressions in this position are experimental [E0658]
@@ -97,15 +75,9 @@ fn _while() {
     //~| ERROR `let` expressions in this position are experimental [E0658]
     //~| ERROR `let` expressions in this position are experimental [E0658]
     //~| ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR `let` expressions are not supported here
-    //~| ERROR `let` expressions are not supported here
-    //~| ERROR `let` expressions are not supported here
-    //~| ERROR `let` expressions are not supported here
-    //~| ERROR `let` expressions are not supported here
 
     while let Range { start: _, end: _ } = (true..true) && false {}
     //~^ ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR `let` expressions are not supported here
 }
 
 fn _macros() {
@@ -122,12 +94,8 @@ fn _macros() {
     }
     use_expr!((let 0 = 1 && 0 == 0));
     //~^ ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR `let` expressions are not supported here
-    //~| ERROR `let` expressions are not supported here
     use_expr!((let 0 = 1));
     //~^ ERROR `let` expressions in this position are experimental [E0658]
-    //~| ERROR invalid parentheses around `let` expression in `if let`
-    //~| ERROR `let` expressions are not supported here
     #[cfg(FALSE)] (let 0 = 1);
     //~^ ERROR `let` expressions in this position are experimental [E0658]
     use_expr!(let 0 = 1);

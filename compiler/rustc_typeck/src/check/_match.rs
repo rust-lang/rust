@@ -24,27 +24,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
 
-        use hir::MatchSource::*;
-        let (source_if, if_no_else, force_scrutinee_bool) = match match_src {
-            IfLetDesugar { contains_else_clause, .. } => (true, !contains_else_clause, false),
-            WhileDesugar => (false, false, true),
-            _ => (false, false, false),
-        };
-
-        // Type check the discriminant and get its type.
-        let scrutinee_ty = if force_scrutinee_bool {
-            // Here we want to ensure:
-            //
-            // 1. That default match bindings are *not* accepted in the condition of an
-            //    `if` expression. E.g. given `fn foo() -> &bool;` we reject `if foo() { .. }`.
-            //
-            // 2. By expecting `bool` for `expr` we get nice diagnostics for e.g. `if x = y { .. }`.
-            //
-            // FIXME(60707): Consider removing hack with principled solution.
-            self.check_expr_has_type_or_error(scrut, self.tcx.types.bool, |_| {})
-        } else {
-            self.demand_scrutinee_type(scrut, arms_contain_ref_bindings(arms), arms.is_empty())
-        };
+        let acrb = arms_contain_ref_bindings(arms);
+        let scrutinee_ty = self.demand_scrutinee_type(scrut, acrb, arms.is_empty());
 
         // If there are no arms, that is a diverging match; a special case.
         if arms.is_empty() {
@@ -52,7 +33,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return tcx.types.never;
         }
 
-        self.warn_arms_when_scrutinee_diverges(arms, match_src);
+        self.warn_arms_when_scrutinee_diverges(arms);
 
         // Otherwise, we have to union together the types that the arms produce and so forth.
         let scrut_diverges = self.diverges.replace(Diverges::Maybe);
@@ -112,128 +93,95 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             self.diverges.set(Diverges::Maybe);
-            let arm_ty = if source_if
-                && if_no_else
-                && i != 0
-                && self.if_fallback_coercion(
-                    expr.span,
-                    &arms[0].body,
-                    &mut coercion,
-                    |hir_id, span| self.coercion_reason_match(hir_id, span),
-                ) {
-                tcx.ty_error()
-            } else {
-                // Only call this if this is not an `if` expr with an expected type and no `else`
-                // clause to avoid duplicated type errors. (#60254)
-                self.check_expr_with_expectation(&arm.body, expected)
-            };
+
+            let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
             all_arms_diverge &= self.diverges.get();
 
             let opt_suggest_box_span =
                 self.opt_suggest_box_span(arm.body.span, arm_ty, orig_expected);
 
-            if source_if {
-                let then_expr = &arms[0].body;
-                match (i, if_no_else) {
-                    (0, _) => coercion.coerce(self, &self.misc(expr.span), &arm.body, arm_ty),
-                    (_, true) => {} // Handled above to avoid duplicated type errors (#60254).
-                    (_, _) => {
-                        let then_ty = prior_arm_ty.unwrap();
-                        let cause = self.if_cause(
-                            expr.span,
-                            then_expr,
-                            &arm.body,
-                            then_ty,
-                            arm_ty,
-                            opt_suggest_box_span,
-                        );
-                        coercion.coerce(self, &cause, &arm.body, arm_ty);
-                    }
-                }
-            } else {
-                let (arm_span, semi_span) =
-                    self.get_appropriate_arm_semicolon_removal_span(&arms, i, prior_arm_ty, arm_ty);
-                let (span, code) = match i {
-                    // The reason for the first arm to fail is not that the match arms diverge,
-                    // but rather that there's a prior obligation that doesn't hold.
-                    0 => (arm_span, ObligationCauseCode::BlockTailExpression(arm.body.hir_id)),
-                    _ => (
-                        expr.span,
-                        ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
-                            arm_span,
-                            scrut_span: scrut.span,
-                            semi_span,
-                            source: match_src,
-                            prior_arms: other_arms.clone(),
-                            last_ty: prior_arm_ty.unwrap(),
-                            scrut_hir_id: scrut.hir_id,
-                            opt_suggest_box_span,
-                        }),
-                    ),
-                };
-                let cause = self.cause(span, code);
-
-                // This is the moral equivalent of `coercion.coerce(self, cause, arm.body, arm_ty)`.
-                // We use it this way to be able to expand on the potential error and detect when a
-                // `match` tail statement could be a tail expression instead. If so, we suggest
-                // removing the stray semicolon.
-                coercion.coerce_inner(
-                    self,
-                    &cause,
-                    Some(&arm.body),
-                    arm_ty,
-                    Some(&mut |err: &mut DiagnosticBuilder<'_>| {
-                        let can_coerce_to_return_ty = match self.ret_coercion.as_ref() {
-                            Some(ret_coercion) if self.in_tail_expr => {
-                                let ret_ty = ret_coercion.borrow().expected_ty();
-                                let ret_ty = self.inh.infcx.shallow_resolve(ret_ty);
-                                self.can_coerce(arm_ty, ret_ty)
-                                    && prior_arm_ty.map_or(true, |t| self.can_coerce(t, ret_ty))
-                                    // The match arms need to unify for the case of `impl Trait`.
-                                    && !matches!(ret_ty.kind(), ty::Opaque(..))
-                            }
-                            _ => false,
-                        };
-                        if let (Expectation::IsLast(stmt), Some(ret), true) =
-                            (orig_expected, self.ret_type_span, can_coerce_to_return_ty)
-                        {
-                            let semi_span = expr.span.shrink_to_hi().with_hi(stmt.hi());
-                            let mut ret_span: MultiSpan = semi_span.into();
-                            ret_span.push_span_label(
-                                expr.span,
-                                "this could be implicitly returned but it is a statement, not a \
-                                 tail expression"
-                                    .to_owned(),
-                            );
-                            ret_span.push_span_label(
-                                ret,
-                                "the `match` arms can conform to this return type".to_owned(),
-                            );
-                            ret_span.push_span_label(
-                                semi_span,
-                                "the `match` is a statement because of this semicolon, consider \
-                                 removing it"
-                                    .to_owned(),
-                            );
-                            err.span_note(
-                                ret_span,
-                                "you might have meant to return the `match` expression",
-                            );
-                            err.tool_only_span_suggestion(
-                                semi_span,
-                                "remove this semicolon",
-                                String::new(),
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
+            let (arm_span, semi_span) =
+                self.get_appropriate_arm_semicolon_removal_span(&arms, i, prior_arm_ty, arm_ty);
+            let (span, code) = match i {
+                // The reason for the first arm to fail is not that the match arms diverge,
+                // but rather that there's a prior obligation that doesn't hold.
+                0 => (arm_span, ObligationCauseCode::BlockTailExpression(arm.body.hir_id)),
+                _ => (
+                    expr.span,
+                    ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
+                        arm_span,
+                        scrut_span: scrut.span,
+                        semi_span,
+                        source: match_src,
+                        prior_arms: other_arms.clone(),
+                        last_ty: prior_arm_ty.unwrap(),
+                        scrut_hir_id: scrut.hir_id,
+                        opt_suggest_box_span,
                     }),
-                    false,
-                );
+                ),
+            };
+            let cause = self.cause(span, code);
 
-                other_arms.push(arm_span);
-                if other_arms.len() > 5 {
-                    other_arms.remove(0);
-                }
+            // This is the moral equivalent of `coercion.coerce(self, cause, arm.body, arm_ty)`.
+            // We use it this way to be able to expand on the potential error and detect when a
+            // `match` tail statement could be a tail expression instead. If so, we suggest
+            // removing the stray semicolon.
+            coercion.coerce_inner(
+                self,
+                &cause,
+                Some(&arm.body),
+                arm_ty,
+                Some(&mut |err: &mut DiagnosticBuilder<'_>| {
+                    let can_coerce_to_return_ty = match self.ret_coercion.as_ref() {
+                        Some(ret_coercion) if self.in_tail_expr => {
+                            let ret_ty = ret_coercion.borrow().expected_ty();
+                            let ret_ty = self.inh.infcx.shallow_resolve(ret_ty);
+                            self.can_coerce(arm_ty, ret_ty)
+                                && prior_arm_ty.map_or(true, |t| self.can_coerce(t, ret_ty))
+                                // The match arms need to unify for the case of `impl Trait`.
+                                && !matches!(ret_ty.kind(), ty::Opaque(..))
+                        }
+                        _ => false,
+                    };
+                    if let (Expectation::IsLast(stmt), Some(ret), true) =
+                        (orig_expected, self.ret_type_span, can_coerce_to_return_ty)
+                    {
+                        let semi_span = expr.span.shrink_to_hi().with_hi(stmt.hi());
+                        let mut ret_span: MultiSpan = semi_span.into();
+                        ret_span.push_span_label(
+                            expr.span,
+                            "this could be implicitly returned but it is a statement, not a \
+                                tail expression"
+                                .to_owned(),
+                        );
+                        ret_span.push_span_label(
+                            ret,
+                            "the `match` arms can conform to this return type".to_owned(),
+                        );
+                        ret_span.push_span_label(
+                            semi_span,
+                            "the `match` is a statement because of this semicolon, consider \
+                                removing it"
+                                .to_owned(),
+                        );
+                        err.span_note(
+                            ret_span,
+                            "you might have meant to return the `match` expression",
+                        );
+                        err.tool_only_span_suggestion(
+                            semi_span,
+                            "remove this semicolon",
+                            String::new(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }),
+                false,
+            );
+
+            other_arms.push(arm_span);
+            if other_arms.len() > 5 {
+                other_arms.remove(0);
             }
             prior_arm_ty = Some(arm_ty);
         }
@@ -283,39 +231,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// When the previously checked expression (the scrutinee) diverges,
     /// warn the user about the match arms being unreachable.
-    fn warn_arms_when_scrutinee_diverges(
-        &self,
-        arms: &'tcx [hir::Arm<'tcx>],
-        source: hir::MatchSource,
-    ) {
-        use hir::MatchSource::*;
-        let msg = match source {
-            IfLetDesugar { .. } => "block in `if` expression",
-            WhileDesugar { .. } | WhileLetDesugar { .. } => "block in `while` expression",
-            _ => "arm",
-        };
+    fn warn_arms_when_scrutinee_diverges(&self, arms: &'tcx [hir::Arm<'tcx>]) {
         for arm in arms {
-            self.warn_if_unreachable(arm.body.hir_id, arm.body.span, msg);
+            self.warn_if_unreachable(arm.body.hir_id, arm.body.span, "arm");
         }
     }
 
     /// Handle the fallback arm of a desugared if(-let) like a missing else.
     ///
     /// Returns `true` if there was an error forcing the coercion to the `()` type.
-    pub(crate) fn if_fallback_coercion<F, T>(
+    pub(super) fn if_fallback_coercion<T>(
         &self,
         span: Span,
         then_expr: &'tcx hir::Expr<'tcx>,
         coercion: &mut CoerceMany<'tcx, '_, T>,
-        ret_reason: F,
     ) -> bool
     where
-        F: Fn(hir::HirId, Span) -> Option<(Span, String)>,
         T: AsCoercionSite,
     {
         // If this `if` expr is the parent's function return expr,
         // the cause of the type coercion is the return type, point at it. (#25228)
-        let ret_reason = ret_reason(then_expr.hir_id, span);
+        let ret_reason = self.maybe_get_coercion_reason(then_expr.hir_id, span);
         let cause = self.cause(span, ObligationCauseCode::IfExpressionWithNoElse);
         let mut error = false;
         coercion.coerce_forced_unit(
@@ -338,55 +274,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error
     }
 
-    pub(crate) fn coercion_reason_if(
-        &self,
-        hir_id: hir::HirId,
-        span: Span,
-    ) -> Option<(Span, String)> {
-        self.coercion_reason_inner(hir_id, span, 1)
-    }
-
-    pub(crate) fn coercion_reason_match(
-        &self,
-        hir_id: hir::HirId,
-        span: Span,
-    ) -> Option<(Span, String)> {
-        self.coercion_reason_inner(hir_id, span, 2)
-    }
-
-    fn coercion_reason_inner(
-        &self,
-        hir_id: hir::HirId,
-        span: Span,
-        parent_index: usize,
-    ) -> Option<(Span, String)> {
-        let hir = self.tcx.hir();
-        let mut parent_iter = hir.parent_iter(hir_id);
-        let (_, node) = parent_iter.nth(parent_index)?;
-        match node {
-            hir::Node::Block(block) => {
-                let expr = block.expr?;
-                // check that the body's parent is an fn
-                let (_, parent) = parent_iter.nth(1)?;
-                if let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. }) = parent {
-                    // check that the `if` expr without `else` is the fn body's expr
-                    if expr.span == span {
-                        let (fn_decl, _) = self.get_fn_decl(hir_id)?;
+    fn maybe_get_coercion_reason(&self, hir_id: hir::HirId, sp: Span) -> Option<(Span, String)> {
+        let node = {
+            let rslt = self.tcx.hir().get_parent_node(self.tcx.hir().get_parent_node(hir_id));
+            self.tcx.hir().get(rslt)
+        };
+        if let hir::Node::Block(block) = node {
+            // check that the body's parent is an fn
+            let parent = self
+                .tcx
+                .hir()
+                .get(self.tcx.hir().get_parent_node(self.tcx.hir().get_parent_node(block.hir_id)));
+            if let (Some(expr), hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })) =
+                (&block.expr, parent)
+            {
+                // check that the `if` expr without `else` is the fn body's expr
+                if expr.span == sp {
+                    return self.get_fn_decl(hir_id).and_then(|(fn_decl, _)| {
                         let span = fn_decl.output.span();
                         let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok()?;
-                        return Some((
-                            span,
-                            format!("expected `{}` because of this return type", snippet),
-                        ));
-                    }
+                        Some((span, format!("expected `{}` because of this return type", snippet)))
+                    });
                 }
-                None
             }
-            hir::Node::Local(hir::Local { ty: Some(_), pat, .. }) => {
-                Some((pat.span, "expected because of this assignment".to_string()))
-            }
-            _ => None,
         }
+        if let hir::Node::Local(hir::Local { ty: Some(_), pat, .. }) = node {
+            return Some((pat.span, "expected because of this assignment".to_string()));
+        }
+        None
     }
 
     pub(crate) fn if_cause(
@@ -492,7 +407,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
     }
 
-    fn demand_scrutinee_type(
+    pub(super) fn demand_scrutinee_type(
         &self,
         scrut: &'tcx hir::Expr<'tcx>,
         contains_ref_bindings: Option<hir::Mutability>,

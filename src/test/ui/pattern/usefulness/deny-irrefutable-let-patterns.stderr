@@ -1,8 +1,8 @@
 error: irrefutable `if let` pattern
-  --> $DIR/deny-irrefutable-let-patterns.rs:7:5
+  --> $DIR/deny-irrefutable-let-patterns.rs:7:8
    |
 LL |     if let _ = 5 {}
-   |     ^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/deny-irrefutable-let-patterns.rs:4:9
@@ -13,12 +13,10 @@ LL | #![deny(irrefutable_let_patterns)]
    = help: consider replacing the `if let` with a `let`
 
 error: irrefutable `while let` pattern
-  --> $DIR/deny-irrefutable-let-patterns.rs:9:5
+  --> $DIR/deny-irrefutable-let-patterns.rs:9:11
    |
-LL | /     while let _ = 5 {
-LL | |         break;
-LL | |     }
-   | |_____^
+LL |     while let _ = 5 {
+   |           ^^^^^^^^^
    |
    = note: this pattern will always match, so the loop will never exit
    = help: consider instead using a `loop { ... }` with a `let` inside it

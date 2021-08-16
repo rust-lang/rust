@@ -35,6 +35,46 @@ use std::convert::TryFrom;
 use std::mem;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
+    pub(crate) fn then_else_blocks(
+        &mut self,
+        mut block: BasicBlock,
+        expr: &Expr<'tcx>,
+        scope: region::Scope,
+        source_info: SourceInfo,
+    ) -> (BasicBlock, BasicBlock) {
+        let this = self;
+        let expr_span = expr.span;
+
+        match expr.kind {
+            ExprKind::Scope { region_scope, lint_level, value } => {
+                let region_scope = (region_scope, source_info);
+                let then_block;
+                let else_block = unpack!(
+                    then_block = this.in_scope(region_scope, lint_level, |this| {
+                        let (then_block, else_block) =
+                            this.then_else_blocks(block, &this.thir[value], scope, source_info);
+                        then_block.and(else_block)
+                    })
+                );
+                (then_block, else_block)
+            }
+            ExprKind::Let { expr, ref pat } => {
+                // FIXME: Use correct span.
+                this.lower_let(block, &this.thir[expr], pat, expr_span)
+            }
+            _ => {
+                let mutability = Mutability::Mut;
+                let place = unpack!(block = this.as_temp(block, Some(scope), expr, mutability));
+                let operand = Operand::Move(Place::from(place));
+                let then_block = this.cfg.start_new_block();
+                let else_block = this.cfg.start_new_block();
+                let term = TerminatorKind::if_(this.tcx, operand, then_block, else_block);
+                this.cfg.terminate(block, source_info, term);
+                (then_block, else_block)
+            }
+        }
+    }
+
     /// Generates MIR for a `match` expression.
     ///
     /// The MIR that we generate for a match looks like this.
@@ -1658,6 +1698,46 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 // Pat binding - used for `let` and function parameters as well.
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
+    pub fn lower_let(
+        &mut self,
+        mut block: BasicBlock,
+        expr: &Expr<'tcx>,
+        pat: &Pat<'tcx>,
+        span: Span,
+    ) -> (BasicBlock, BasicBlock) {
+        let expr_span = expr.span;
+        let expr_place_builder = unpack!(block = self.lower_scrutinee(block, expr, expr_span));
+        let mut guard_candidate = Candidate::new(expr_place_builder.clone(), &pat, false);
+        let wildcard = Pat::wildcard_from_ty(pat.ty);
+        let mut otherwise_candidate = Candidate::new(expr_place_builder.clone(), &wildcard, false);
+        let fake_borrow_temps = self.lower_match_tree(
+            block,
+            pat.span,
+            false,
+            &mut [&mut guard_candidate, &mut otherwise_candidate],
+        );
+        let mut opt_expr_place: Option<(Option<&Place<'tcx>>, Span)> = None;
+        let expr_place: Place<'tcx>;
+        if let Ok(expr_builder) =
+            expr_place_builder.try_upvars_resolved(self.tcx, self.typeck_results)
+        {
+            expr_place = expr_builder.into_place(self.tcx, self.typeck_results);
+            opt_expr_place = Some((Some(&expr_place), expr_span));
+        }
+        self.declare_bindings(None, pat.span.to(span), pat, ArmHasGuard(false), opt_expr_place);
+        let post_guard_block = self.bind_pattern(
+            self.source_info(pat.span),
+            guard_candidate,
+            None,
+            &fake_borrow_temps,
+            expr.span,
+            None,
+            None,
+        );
+        let otherwise_post_guard_block = otherwise_candidate.pre_binding_block.unwrap();
+        (post_guard_block, otherwise_post_guard_block)
+    }
+
     /// Initializes each of the bindings from the candidate by
     /// moving/copying/ref'ing the source as appropriate. Tests the guard, if
     /// any, and then branches to the arm. Returns the block for the case where
@@ -1811,48 +1891,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     (e.span, self.test_bool(block, e, source_info))
                 }
                 Guard::IfLet(ref pat, scrutinee) => {
-                    let scrutinee = &self.thir[scrutinee];
-                    let scrutinee_span = scrutinee.span;
-                    let scrutinee_place_builder =
-                        unpack!(block = self.lower_scrutinee(block, scrutinee, scrutinee_span));
-                    let mut guard_candidate =
-                        Candidate::new(scrutinee_place_builder.clone(), &pat, false);
-                    let wildcard = Pat::wildcard_from_ty(pat.ty);
-                    let mut otherwise_candidate =
-                        Candidate::new(scrutinee_place_builder.clone(), &wildcard, false);
-                    let fake_borrow_temps = self.lower_match_tree(
-                        block,
-                        pat.span,
-                        false,
-                        &mut [&mut guard_candidate, &mut otherwise_candidate],
-                    );
-                    let mut opt_scrutinee_place: Option<(Option<&Place<'tcx>>, Span)> = None;
-                    let scrutinee_place: Place<'tcx>;
-                    if let Ok(scrutinee_builder) =
-                        scrutinee_place_builder.try_upvars_resolved(self.tcx, self.typeck_results)
-                    {
-                        scrutinee_place =
-                            scrutinee_builder.into_place(self.tcx, self.typeck_results);
-                        opt_scrutinee_place = Some((Some(&scrutinee_place), scrutinee_span));
-                    }
-                    self.declare_bindings(
-                        None,
-                        pat.span.to(arm_span.unwrap()),
-                        pat,
-                        ArmHasGuard(false),
-                        opt_scrutinee_place,
-                    );
-                    let post_guard_block = self.bind_pattern(
-                        self.source_info(pat.span),
-                        guard_candidate,
-                        None,
-                        &fake_borrow_temps,
-                        scrutinee_span,
-                        None,
-                        None,
-                    );
-                    let otherwise_post_guard_block = otherwise_candidate.pre_binding_block.unwrap();
-                    (scrutinee_span, (post_guard_block, otherwise_post_guard_block))
+                    let s = &self.thir[scrutinee];
+                    (s.span, self.lower_let(block, s, pat, arm_span.unwrap()))
                 }
             };
             let source_info = self.source_info(guard_span);

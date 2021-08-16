@@ -1867,7 +1867,7 @@ impl<'a> Parser<'a> {
         })?;
         let span = lo.to(expr.span);
         self.sess.gated_spans.gate(sym::let_chains, span);
-        Ok(self.mk_expr(span, ExprKind::Let(pat, expr), attrs))
+        Ok(self.mk_expr(span, ExprKind::Let(pat, expr, span), attrs))
     }
 
     /// Parses an `else { ... }` expression (`else` token already eaten).

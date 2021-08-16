@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::higher;
 use clippy_utils::is_lang_ctor;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
@@ -7,7 +8,7 @@ use clippy_utils::{eq_expr_value, path_to_local_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
-use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, MatchSource, PatKind, StmtKind};
+use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, PatKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -50,10 +51,10 @@ impl QuestionMark {
     /// If it matches, it will suggest to use the question mark operator instead
     fn check_is_none_and_early_return_none(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
-            if let ExprKind::If(if_expr, body, else_) = &expr.kind;
-            if let ExprKind::MethodCall(segment, _, args, _) = &if_expr.kind;
+            if let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr);
+            if let ExprKind::MethodCall(segment, _, args, _) = &cond.kind;
             if segment.ident.name == sym!(is_none);
-            if Self::expression_returns_none(cx, body);
+            if Self::expression_returns_none(cx, then);
             if let Some(subject) = args.get(0);
             if Self::is_option(cx, subject);
 
@@ -61,9 +62,9 @@ impl QuestionMark {
                 let mut applicability = Applicability::MachineApplicable;
                 let receiver_str = &Sugg::hir_with_applicability(cx, subject, "..", &mut applicability);
                 let mut replacement: Option<String> = None;
-                if let Some(else_) = else_ {
+                if let Some(else_inner) = r#else {
                     if_chain! {
-                        if let ExprKind::Block(block, None) = &else_.kind;
+                        if let ExprKind::Block(block, None) = &else_inner.kind;
                         if block.stmts.is_empty();
                         if let Some(block_expr) = &block.expr;
                         if eq_expr_value(cx, subject, block_expr);
@@ -96,25 +97,23 @@ impl QuestionMark {
 
     fn check_if_let_some_and_early_return_none(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
-            if let ExprKind::Match(subject, arms, source) = &expr.kind;
-            if *source == MatchSource::IfLetDesugar { contains_else_clause: true };
-            if Self::is_option(cx, subject);
+            if let Some(higher::IfLet { let_pat, let_expr, if_then, if_else: Some(if_else) }) = higher::IfLet::hir(expr);
+            if Self::is_option(cx, let_expr);
 
-            if let PatKind::TupleStruct(path1, fields, None) = &arms[0].pat.kind;
+            if let PatKind::TupleStruct(ref path1, fields, None) = let_pat.kind;
             if is_lang_ctor(cx, path1, OptionSome);
             if let PatKind::Binding(annot, bind_id, _, _) = fields[0].kind;
             let by_ref = matches!(annot, BindingAnnotation::Ref | BindingAnnotation::RefMut);
 
-            if let ExprKind::Block(block, None) = &arms[0].body.kind;
+            if let ExprKind::Block(ref block, None) = if_then.kind;
             if block.stmts.is_empty();
             if let Some(trailing_expr) = &block.expr;
             if path_to_local_id(trailing_expr, bind_id);
 
-            if let PatKind::Wild = arms[1].pat.kind;
-            if Self::expression_returns_none(cx, arms[1].body);
+            if Self::expression_returns_none(cx, if_else);
             then {
                 let mut applicability = Applicability::MachineApplicable;
-                let receiver_str = snippet_with_applicability(cx, subject.span, "..", &mut applicability);
+                let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
                 let replacement = format!(
                     "{}{}?",
                     receiver_str,

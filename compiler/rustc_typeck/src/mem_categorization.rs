@@ -368,6 +368,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             | hir::ExprKind::Tup(..)
             | hir::ExprKind::Binary(..)
             | hir::ExprKind::Block(..)
+            | hir::ExprKind::Let(..)
             | hir::ExprKind::Loop(..)
             | hir::ExprKind::Match(..)
             | hir::ExprKind::Lit(..)

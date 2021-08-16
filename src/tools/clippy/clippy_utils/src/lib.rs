@@ -961,17 +961,6 @@ pub fn is_else_clause(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     let map = tcx.hir();
     let mut iter = map.parent_iter(expr.hir_id);
     match iter.next() {
-        Some((arm_id, Node::Arm(..))) => matches!(
-            iter.next(),
-            Some((
-                _,
-                Node::Expr(Expr {
-                    kind: ExprKind::Match(_, [_, else_arm], MatchSource::IfLetDesugar { .. }),
-                    ..
-                })
-            ))
-            if else_arm.hir_id == arm_id
-        ),
         Some((
             _,
             Node::Expr(Expr {
@@ -1370,15 +1359,15 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
     let mut conds = Vec::new();
     let mut blocks: Vec<&Block<'_>> = Vec::new();
 
-    while let ExprKind::If(cond, then_expr, ref else_expr) = expr.kind {
-        conds.push(cond);
-        if let ExprKind::Block(block, _) = then_expr.kind {
+    while let Some(higher::IfOrIfLet { cond, then, r#else }) = higher::IfOrIfLet::hir(expr) {
+        conds.push(&*cond);
+        if let ExprKind::Block(ref block, _) = then.kind {
             blocks.push(block);
         } else {
             panic!("ExprKind::If node is not an ExprKind::Block");
         }
 
-        if let Some(else_expr) = *else_expr {
+        if let Some(ref else_expr) = r#else {
             expr = else_expr;
         } else {
             break;

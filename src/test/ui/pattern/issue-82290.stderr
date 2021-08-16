@@ -1,13 +1,5 @@
-error: `let` expressions are not supported here
-  --> $DIR/issue-82290.rs:4:16
-   |
-LL |     if true && let x = 1 {
-   |                ^^^^^^^^^
-   |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
-
 warning: the feature `let_chains` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/issue-82290.rs:1:12
+  --> $DIR/issue-82290.rs:3:12
    |
 LL | #![feature(let_chains)]
    |            ^^^^^^^^^^
@@ -15,5 +7,15 @@ LL | #![feature(let_chains)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
 
-error: aborting due to previous error; 1 warning emitted
+warning: irrefutable `let` pattern
+  --> $DIR/issue-82290.rs:6:16
+   |
+LL |     if true && let x = 1 {
+   |                ^^^^^^^^^
+   |
+   = note: `#[warn(irrefutable_let_patterns)]` on by default
+   = note: this pattern will always match, so the `let` is useless
+   = help: consider removing `let`
+
+warning: 2 warnings emitted
 

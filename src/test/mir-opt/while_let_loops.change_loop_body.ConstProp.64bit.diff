@@ -9,6 +9,8 @@
       let mut _4: isize;                   // in scope 0 at $DIR/while_let_loops.rs:7:15: 7:25
       let mut _5: !;                       // in scope 0 at $DIR/while_let_loops.rs:7:33: 10:6
       let mut _6: !;                       // in scope 0 at $DIR/while_let_loops.rs:7:5: 10:6
+      let _7: ();                          // in scope 0 at $DIR/while_let_loops.rs:7:5: 10:6
+      let mut _8: !;                       // in scope 0 at $DIR/while_let_loops.rs:7:5: 10:6
       scope 1 {
           debug _x => _1;                  // in scope 1 at $DIR/while_let_loops.rs:6:9: 6:15
       }
@@ -25,8 +27,10 @@
       }
   
       bb1: {
+          StorageLive(_7);                 // scope 1 at $DIR/while_let_loops.rs:7:5: 10:6
           nop;                             // scope 1 at $DIR/while_let_loops.rs:7:5: 10:6
-          goto -> bb4;                     // scope 1 at $DIR/while_let_loops.rs:7:5: 10:6
+          StorageDead(_7);                 // scope 1 at $DIR/while_let_loops.rs:10:5: 10:6
+          goto -> bb4;                     // scope 1 at no-location
       }
   
       bb2: {
