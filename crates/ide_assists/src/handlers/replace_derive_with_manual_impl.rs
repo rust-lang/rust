@@ -327,7 +327,7 @@ enum Foo {
 impl core::fmt::Debug for Foo {
     $0fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::Bar(arg1, arg2) => f.debug_tuple("Bar").field(arg1).field(arg2).finish(),
+            Self::Bar(arg0, arg1) => f.debug_tuple("Bar").field(arg0).field(arg1).finish(),
             Self::Baz => write!(f, "Baz"),
         }
     }
