@@ -10,15 +10,5 @@ error: arbitrary expressions aren't allowed in patterns
 LL |     Arith = 1 + 1,
    |             ^^^^^
 
-error[E0029]: only `char` and numeric types are allowed in range patterns
-  --> $DIR/patkind-litrange-no-expr.rs:20:13
-   |
-LL |                 $( $value ..= 42 => Some($name::$variant), )* // PatKind::Range
-   |                               -- this is of type `{integer}`
-...
-LL |     Arith = 1 + 1,
-   |             ^^^^^ this is of type `_` but it should be `char` or numeric
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0029`.
