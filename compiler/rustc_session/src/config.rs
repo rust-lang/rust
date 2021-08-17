@@ -21,6 +21,7 @@ use rustc_feature::UnstableFeatures;
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
 use rustc_span::source_map::{FileName, FilePathMapping};
 use rustc_span::symbol::{sym, Symbol};
+use rustc_span::RealFileName;
 use rustc_span::SourceFileHashAlgorithm;
 
 use rustc_errors::emitter::HumanReadableErrorType;
@@ -707,6 +708,7 @@ impl Default for Options {
             json_artifact_notifications: false,
             json_unused_externs: false,
             pretty: None,
+            working_dir: RealFileName::LocalPath(std::env::current_dir().unwrap()),
         }
     }
 }
@@ -2132,6 +2134,18 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         if candidate.join("library/std/src/lib.rs").is_file() { Some(candidate) } else { None }
     };
 
+    let working_dir = std::env::current_dir().unwrap_or_else(|e| {
+        early_error(error_format, &format!("Current directory is invalid: {}", e));
+    });
+
+    let (path, remapped) =
+        FilePathMapping::new(remap_path_prefix.clone()).map_prefix(working_dir.clone());
+    let working_dir = if remapped {
+        RealFileName::Remapped { local_path: Some(working_dir), virtual_name: path }
+    } else {
+        RealFileName::LocalPath(path)
+    };
+
     Options {
         crate_types,
         optimize: opt_level,
@@ -2167,6 +2181,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         json_artifact_notifications,
         json_unused_externs,
         pretty,
+        working_dir,
     }
 }
 
@@ -2413,6 +2428,7 @@ crate mod dep_tracking {
     use crate::utils::{NativeLib, NativeLibKind};
     use rustc_feature::UnstableFeatures;
     use rustc_span::edition::Edition;
+    use rustc_span::RealFileName;
     use rustc_target::spec::{CodeModel, MergeFunctions, PanicStrategy, RelocModel};
     use rustc_target::spec::{RelroLevel, SanitizerSet, SplitDebuginfo, TargetTriple, TlsModel};
     use std::collections::hash_map::DefaultHasher;
@@ -2494,6 +2510,7 @@ crate mod dep_tracking {
         TrimmedDefPaths,
         Option<LdImpl>,
         OutputType,
+        RealFileName,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)

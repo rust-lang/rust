@@ -23,8 +23,8 @@ use rustc_errors::registry::Registry;
 use rustc_errors::{DiagnosticBuilder, DiagnosticId, ErrorReported};
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
+use rustc_span::edition::Edition;
 use rustc_span::source_map::{FileLoader, MultiSpan, RealFileLoader, SourceMap, Span};
-use rustc_span::{edition::Edition, RealFileName};
 use rustc_span::{sym, SourceFileHashAlgorithm, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
@@ -139,8 +139,6 @@ pub struct Session {
     /// The name of the root source file of the crate, in the local file system.
     /// `None` means that there is no source file.
     pub local_crate_source_file: Option<PathBuf>,
-    /// The directory the compiler has been executed in
-    pub working_dir: RealFileName,
 
     /// Set of `(DiagnosticId, Option<Span>, message)` tuples tracking
     /// (sub)diagnostics that have been set once, but should not be set again,
@@ -1304,16 +1302,6 @@ pub fn build_session(
     let print_fuel_crate = sopts.debugging_opts.print_fuel.clone();
     let print_fuel = AtomicU64::new(0);
 
-    let working_dir = env::current_dir().unwrap_or_else(|e| {
-        parse_sess.span_diagnostic.fatal(&format!("Current directory is invalid: {}", e)).raise()
-    });
-    let (path, remapped) = file_path_mapping.map_prefix(working_dir.clone());
-    let working_dir = if remapped {
-        RealFileName::Remapped { local_path: Some(working_dir), virtual_name: path }
-    } else {
-        RealFileName::LocalPath(path)
-    };
-
     let cgu_reuse_tracker = if sopts.debugging_opts.query_dep_graph {
         CguReuseTracker::new()
     } else {
@@ -1344,7 +1332,6 @@ pub fn build_session(
         parse_sess,
         sysroot,
         local_crate_source_file,
-        working_dir,
         one_time_diagnostics: Default::default(),
         crate_types: OnceCell::new(),
         stable_crate_id: OnceCell::new(),
