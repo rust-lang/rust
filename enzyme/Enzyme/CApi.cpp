@@ -121,7 +121,7 @@ CConcreteType ewrap(const ConcreteType &CT) {
 IntList ewrap(const std::vector<int> &offsets) {
   IntList IL;
   IL.size = offsets.size();
-  IL.data = (int64_t *)malloc(IL.size * sizeof(*IL.data));
+  IL.data = new int64_t[IL.size];
   for (size_t i = 0; i < offsets.size(); i++) {
     IL.data[i] = offsets[i];
   }
@@ -195,7 +195,7 @@ EnzymeTypeAnalysisRef CreateTypeAnalysis(char *TripleStr,
       for (size_t i = 0; i < argTrees.size(); ++i) {
         cargs[i] = (CTypeTreeRef)(&(argTrees[i]));
         kvs[i].size = knownValues[i].size();
-        kvs[i].data = (int64_t *)malloc(kvs[i].size * sizeof(*kvs[i].data));
+        kvs[i].data = new int64_t[kvs[i].size];
         size_t j = 0;
         for (auto val : knownValues[i]) {
           kvs[i].data[j] = val;
@@ -206,7 +206,7 @@ EnzymeTypeAnalysisRef CreateTypeAnalysis(char *TripleStr,
           rule(direction, creturnTree, cargs, kvs, argTrees.size(), wrap(call));
       delete[] cargs;
       for (size_t i = 0; i < argTrees.size(); ++i) {
-        free(kvs[i].data);
+        delete[] kvs[i].data;
       }
       delete[] kvs;
       return result;
