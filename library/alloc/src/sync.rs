@@ -782,6 +782,52 @@ impl<T> Arc<[mem::MaybeUninit<T>]> {
 }
 
 impl<T: ?Sized> Arc<T> {
+    /// Locks this `Arc`'s strong count, if it is the only strong reference.
+    ///
+    /// Returns `true` if the operation succeeded, `false` otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::Arc;
+    ///
+    /// let x = Arc::new("hello".to_owned());
+    /// if Arc::lock_strong_count(&mut x) {
+    ///     // SAFETY: String is 'static and this is the only strong reference
+    ///     unsafe { *Arc::get_mut_unchecked(&mut x) = "goodbye".to_owned(); }
+    ///     Arc::unlock_strong_count(&mut x);
+    /// }
+    /// assert_eq!(*x, "goodbye");
+    /// ```
+    #[unstable(feature = "lock_arc", issue = "none")]
+    pub fn lock_strong_count(this: &mut Self) -> bool {
+        // Same invariants as in make_mut
+        this.inner().strong.compare_exchange(1, 0, Acquire, Relaxed).is_ok()
+    }
+
+    /// Unlocks this `Arc`'s strong count, if it is locked.
+    ///
+    /// Returns `true` if the operation succeeded, `false` otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::Arc;
+    ///
+    /// let x = Arc::new("hello".to_owned());
+    /// if Arc::lock_strong_count(&mut x) {
+    ///     // SAFETY: String is 'static and this is the only strong reference
+    ///     unsafe { *Arc::get_mut_unchecked(&mut x) = "goodbye".to_owned(); }
+    ///     Arc::unlock_strong_count(&mut x);
+    /// }
+    /// assert_eq!(*x, "goodbye");
+    /// ```
+    #[unstable(feature = "lock_arc", issue = "none")]
+    pub fn unlock_strong_count(this: &mut Self) -> bool {
+        // Same invariants as in make_mut
+        this.inner().strong.compare_exchange(0, 1, Acquire, Relaxed).is_ok()
+    }
+
     /// Consumes the `Arc`, returning the wrapped pointer.
     ///
     /// To avoid a memory leak the pointer must be converted back to an `Arc` using
@@ -1300,6 +1346,12 @@ impl<T: ?Sized> Clone for Arc<T> {
     /// ```
     #[inline]
     fn clone(&self) -> Arc<T> {
+        // Check if we're locked. Relaxed is fine here because if this branch
+        // is taken, we're the only possible strong reference.
+        if self.inner().strong.load(Relaxed) == 0 {
+            panic!("Not allowed to clone a locked Arc");
+        }
+
         // Using a relaxed ordering is alright here, as knowledge of the
         // original reference prevents other threads from erroneously deleting
         // the object.
