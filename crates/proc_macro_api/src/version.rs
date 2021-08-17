@@ -42,19 +42,19 @@ pub fn read_dylib_info(dylib_path: &AbsPath) -> io::Result<RustCInfo> {
         Some(commit) => {
             match commit.len() {
                 0 => None,
-                _ => Some(commit[1..].to_string() /* remove ( */)
+                _ => Some(commit[1..].to_string() /* remove ( */),
             }
-        },
-        None => None
+        }
+        None => None,
     };
     let date = match items.next() {
         Some(date) => {
             match date.len() {
                 0 => None,
-                _ => Some(date[0..date.len() - 2].to_string() /* remove ) */)
+                _ => Some(date[0..date.len() - 2].to_string() /* remove ) */),
             }
-        },
-        None => None
+        }
+        None => None,
     };
 
     let version_numbers = version
