@@ -3144,7 +3144,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
 
 declare_lint! {
     /// ### What it does
-    /// Checks for cases where the same trait bound is specified more than once.
+    /// Checks for cases where the same trait or lifetime bound is specified more than once.
     ///
     /// ### Why is this bad?
     /// Duplicate bounds makes the code less readable than specifing them only once.
@@ -3166,7 +3166,7 @@ declare_lint! {
     /// ```
     pub DUPLICATE_BOUNDS,
     Warn,
-    "Check if the same bounds is specified more than once"
+    "Check if the same bound is specified more than once"
 }
 
 declare_lint_pass!(DuplicateBounds => [DUPLICATE_BOUNDS]);

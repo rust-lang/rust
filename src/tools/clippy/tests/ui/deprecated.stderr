@@ -102,5 +102,11 @@ error: lint `clippy::invalid_atomic_ordering` has been renamed to `invalid_atomi
 LL | #[warn(clippy::invalid_atomic_ordering)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `invalid_atomic_ordering`
 
+error: lint `clippy::trait_duplication_in_bounds` has been renamed to `duplicate_bounds`
+  --> $DIR/deprecated.rs:17:8
+   |
+LL | #[warn(clippy::trait_duplication_in_bounds)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `duplicate_bounds`
+
 error: aborting due to 17 previous errors
 
