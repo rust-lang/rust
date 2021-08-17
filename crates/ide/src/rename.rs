@@ -274,6 +274,7 @@ mod tests {
 
     use super::{RangeInfo, RenameError};
 
+    #[track_caller]
     fn check(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, position) = fixture::position(ra_fixture_before);
