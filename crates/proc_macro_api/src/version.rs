@@ -14,8 +14,8 @@ use snap::read::FrameDecoder as SnapDecoder;
 pub struct RustCInfo {
     pub version: (usize, usize, usize),
     pub channel: String,
-    pub commit: String,
-    pub date: String,
+    pub commit: Option<String>,
+    pub date: Option<String>,
 }
 
 /// Read rustc dylib information
@@ -38,18 +38,24 @@ pub fn read_dylib_info(dylib_path: &AbsPath) -> io::Result<RustCInfo> {
     let version = version_parts.next().ok_or_else(|| err!("no version"))?;
     let channel = version_parts.next().unwrap_or_default().to_string();
 
-    let commit = items.next().ok_or_else(|| err!("no commit info"))?;
-    // remove (
-    if commit.len() == 0 {
-        return Err(err!("commit format error"));
-    }
-    let commit = commit[1..].to_string();
-    let date = items.next().ok_or_else(|| err!("no date info"))?;
-    // remove )
-    if date.len() == 0 {
-        return Err(err!("date format error"));
-    }
-    let date = date[0..date.len() - 2].to_string();
+    let commit = match items.next() {
+        Some(commit) => {
+            match commit.len() {
+                0 => None,
+                _ => Some(commit[1..].to_string() /* remove ( */),
+            }
+        }
+        None => None,
+    };
+    let date = match items.next() {
+        Some(date) => {
+            match date.len() {
+                0 => None,
+                _ => Some(date[0..date.len() - 2].to_string() /* remove ) */),
+            }
+        }
+        None => None,
+    };
 
     let version_numbers = version
         .split('.')
