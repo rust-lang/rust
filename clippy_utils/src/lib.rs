@@ -2,6 +2,7 @@
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
 #![feature(rustc_private)]
+#![feature(control_flow_enum)]
 #![recursion_limit = "512"]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
