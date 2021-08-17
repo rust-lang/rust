@@ -297,11 +297,11 @@ impl CodeSuggestion {
                             count -= 1;
                         }
                     } else {
+                        acc = 0;
                         highlights.push(std::mem::take(&mut line_highlight));
                         let mut count = push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, None);
                         while count > 0 {
                             highlights.push(std::mem::take(&mut line_highlight));
-                            acc = 0;
                             count -= 1;
                         }
                         // push lines between the previous and current span (if any)
@@ -310,7 +310,6 @@ impl CodeSuggestion {
                                 buf.push_str(line.as_ref());
                                 buf.push('\n');
                                 highlights.push(std::mem::take(&mut line_highlight));
-                                acc = 0;
                             }
                         }
                         if let Some(cur_line) = sf.get_line(cur_lo.line - 1) {
