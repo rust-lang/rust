@@ -5,8 +5,8 @@ use ide_db::{
 };
 use itertools::Itertools;
 use syntax::{
-    ast::{self, AstNode, IdentPat, NameOwner},
-    TextRange,
+    ast::{self, AstNode, FieldExpr, IdentPat, MethodCallExpr, NameOwner},
+    match_ast, TextRange,
 };
 
 use crate::assist_context::{AssistBuilder, AssistContext, Assists};
@@ -64,7 +64,7 @@ pub(crate) fn destructure_tuple_binding_impl(
             "Destructure tuple in sub-pattern",
             data.range,
             |builder| {
-                edit_tuple_assignment(&data, builder, ctx, true);
+                edit_tuple_assignment(ctx, builder, &data, true);
                 edit_tuple_usages(&data, builder, ctx, true);
             },
         );
@@ -75,7 +75,7 @@ pub(crate) fn destructure_tuple_binding_impl(
         if with_sub_pattern { "Destructure tuple in place" } else { "Destructure tuple" },
         data.range,
         |builder| {
-            edit_tuple_assignment(&data, builder, ctx, false);
+            edit_tuple_assignment(ctx, builder, &data, false);
             edit_tuple_usages(&data, builder, ctx, false);
         },
     );
@@ -85,16 +85,23 @@ pub(crate) fn destructure_tuple_binding_impl(
 
 fn collect_data(ident_pat: IdentPat, ctx: &AssistContext) -> Option<TupleData> {
     if ident_pat.at_token().is_some() {
-        // cannot destructure pattern with sub-pattern:
+        // Cannot destructure pattern with sub-pattern:
         // Only IdentPat can have sub-pattern,
-        // but not TuplePat (`(a,b)`)
+        // but not TuplePat (`(a,b)`).
         cov_mark::hit!(destructure_tuple_subpattern);
         return None;
     }
 
-    let ty = ctx.sema.type_of_pat(&ident_pat.clone().into())?;
+    let ty = ctx.sema.type_of_pat(&ident_pat.clone().into())?.adjusted();
+    let ref_type = if ty.is_mutable_reference() {
+        Some(RefType::Mutable)
+    } else if ty.is_reference() {
+        Some(RefType::ReadOnly)
+    } else {
+        None
+    };
     // might be reference
-    let ty = ty.adjusted().strip_references();
+    let ty = ty.strip_references();
     // must be tuple
     let field_types = ty.tuple_fields(ctx.db());
     if field_types.is_empty() {
@@ -113,35 +120,40 @@ fn collect_data(ident_pat: IdentPat, ctx: &AssistContext) -> Option<TupleData> {
     });
 
     let field_names = (0..field_types.len())
-        .map(|i| generate_name(i, &name, &ident_pat, &usages, ctx))
+        .map(|i| generate_name(ctx, i, &name, &ident_pat, &usages))
         .collect_vec();
 
-    Some(TupleData { ident_pat, range, field_names, usages })
+    Some(TupleData { ident_pat, range, ref_type, field_names, usages })
 }
 
 fn generate_name(
+    _ctx: &AssistContext,
     index: usize,
     _tuple_name: &str,
     _ident_pat: &IdentPat,
     _usages: &Option<UsageSearchResult>,
-    _ctx: &AssistContext,
 ) -> String {
     // FIXME: detect if name already used
     format!("_{}", index)
 }
 
+enum RefType {
+    ReadOnly,
+    Mutable,
+}
 struct TupleData {
     ident_pat: IdentPat,
     // name: String,
     range: TextRange,
+    ref_type: Option<RefType>,
     field_names: Vec<String>,
     // field_types: Vec<Type>,
     usages: Option<UsageSearchResult>,
 }
 fn edit_tuple_assignment(
-    data: &TupleData,
-    builder: &mut AssistBuilder,
     ctx: &AssistContext,
+    builder: &mut AssistBuilder,
+    data: &TupleData,
     in_sub_pattern: bool,
 ) {
     let tuple_pat = {
@@ -193,23 +205,20 @@ fn edit_tuple_usages(
             builder.edit_file(*file_id);
 
             for r in refs {
-                edit_tuple_usage(r, data, builder, ctx, in_sub_pattern);
+                edit_tuple_usage(ctx, builder, r, data, in_sub_pattern);
             }
         }
     }
 }
 fn edit_tuple_usage(
+    ctx: &AssistContext,
+    builder: &mut AssistBuilder,
     usage: &FileReference,
     data: &TupleData,
-    builder: &mut AssistBuilder,
-    _ctx: &AssistContext,
     in_sub_pattern: bool,
 ) {
     match detect_tuple_index(usage, data) {
-        Some(index) => {
-            let text = &data.field_names[index.index];
-            builder.replace(index.range, text);
-        }
+        Some(index) => edit_tuple_field_usage(ctx, builder, data, index),
         None => {
             if in_sub_pattern {
                 cov_mark::hit!(destructure_tuple_call_with_subpattern);
@@ -224,11 +233,26 @@ fn edit_tuple_usage(
     }
 }
 
+fn edit_tuple_field_usage(
+    ctx: &AssistContext,
+    builder: &mut AssistBuilder,
+    data: &TupleData,
+    index: TupleIndex,
+) {
+    let field_name = &data.field_names[index.index];
+
+    if data.ref_type.is_some() {
+        let ref_data = handle_ref_field_usage(ctx, &index.field_expr);
+        builder.replace(ref_data.range, ref_data.format(field_name));
+    } else {
+        builder.replace(index.range, field_name);
+    }
+}
 struct TupleIndex {
     index: usize,
     range: TextRange,
+    field_expr: FieldExpr,
 }
-
 fn detect_tuple_index(usage: &FileReference, data: &TupleData) -> Option<TupleIndex> {
     // usage is IDENT
     // IDENT
@@ -268,7 +292,7 @@ fn detect_tuple_index(usage: &FileReference, data: &TupleData) -> Option<TupleIn
                 return None;
             }
 
-            Some(TupleIndex { index: idx, range: field_expr.syntax().text_range() })
+            Some(TupleIndex { index: idx, range: field_expr.syntax().text_range(), field_expr })
         } else {
             // tuple index out of range
             None
@@ -276,6 +300,115 @@ fn detect_tuple_index(usage: &FileReference, data: &TupleData) -> Option<TupleIn
     } else {
         None
     }
+}
+
+struct RefData {
+    range: TextRange,
+    needs_deref: bool,
+    needs_parentheses: bool,
+}
+impl RefData {
+    fn format(&self, field_name: &str) -> String {
+        match (self.needs_deref, self.needs_parentheses) {
+            (true, true) => format!("(*{})", field_name),
+            (true, false) => format!("*{}", field_name),
+            (false, true) => format!("({})", field_name),
+            (false, false) => field_name.to_string(),
+        }
+    }
+}
+fn handle_ref_field_usage(ctx: &AssistContext, field_expr: &FieldExpr) -> RefData {
+    let s = field_expr.syntax();
+    let mut ref_data =
+        RefData { range: s.text_range(), needs_deref: true, needs_parentheses: true };
+
+    let parent = match s.parent() {
+        Some(parent) => parent,
+        None => return ref_data,
+    };
+
+    match_ast! {
+        match parent {
+            ast::ParenExpr(it) => {
+                // already parens in place -> don't replace
+                ref_data.needs_parentheses = false;
+                // there might be a ref outside: `&(t.0)` -> can be removed
+                if let Some(it) = it.syntax().parent().and_then(ast::RefExpr::cast) {
+                    ref_data.needs_deref = false;
+                    ref_data.range =  it.syntax().text_range();
+                }
+            },
+            ast::RefExpr(it) => {
+                // `&*` -> cancel each other out
+                ref_data.needs_deref = false;
+                ref_data.needs_parentheses = false;
+                // might be surrounded by parens -> can be removed too
+                match it.syntax().parent().and_then(ast::ParenExpr::cast) {
+                    Some(parent) => ref_data.range = parent.syntax().text_range(),
+                    None => ref_data.range = it.syntax().text_range(),
+                };
+            },
+            // higher precedence than deref `*`
+            // https://doc.rust-lang.org/reference/expressions.html#expression-precedence
+            // -> requires parentheses
+            ast::PathExpr(_it) => {},
+            ast::MethodCallExpr(it) => {
+                // `field_expr` is `self_param` (otherwise it would be in `ArgList`)
+
+                // test if there's already auto-ref in place (`value` -> `&value`)
+                // -> no method accepting `self`, but `&self` -> no need for deref
+                //
+                // other combinations (`&value` -> `value`, `&&value` -> `&value`, `&value` -> `&&value`) might or might not be able to auto-ref/deref,
+                // but there might be trait implementations an added `&` might resolve to
+                // -> ONLY handle auto-ref from `value` to `&value`
+                fn is_auto_ref(ctx: &AssistContext, call_expr: &MethodCallExpr) -> bool {
+                    fn impl_(ctx: &AssistContext, call_expr: &MethodCallExpr) -> Option<bool> {
+                        let rec = call_expr.receiver()?;
+                        let rec_ty = ctx.sema.type_of_expr(&rec)?.adjusted();
+                        // input must be actual value
+                        if rec_ty.is_reference() {
+                            return Some(false);
+                        }
+
+                        // doesn't resolve trait impl
+                        let f = ctx.sema.resolve_method_call(call_expr)?;
+                        let self_param = f.self_param(ctx.db())?;
+                        // self must be ref
+                        match self_param.access(ctx.db()) {
+                            hir::Access::Shared | hir::Access::Exclusive => Some(true),
+                            hir::Access::Owned => Some(false),
+                        }
+                    }
+                    impl_(ctx, call_expr).unwrap_or(false)
+                }
+
+                if is_auto_ref(ctx, &it) {
+                    ref_data.needs_deref = false;
+                    ref_data.needs_parentheses = false;
+                }
+            },
+            ast::FieldExpr(_it) => {
+                // `t.0.my_field`
+                ref_data.needs_deref = false;
+                ref_data.needs_parentheses = false;
+            },
+            ast::IndexExpr(_it) => {
+                // `t.0[1]`
+                ref_data.needs_deref = false;
+                ref_data.needs_parentheses = false;
+            },
+            ast::TryExpr(_it) => {
+                // `t.0?`
+                // requires deref and parens: `(*_0)`
+            },
+            // lower precedence than deref `*` -> no parens
+            _ => {
+                ref_data.needs_parentheses = false;
+            },
+        }
+    };
+
+    ref_data
 }
 
 #[cfg(test)]
@@ -495,9 +628,6 @@ fn main() {
 
     #[test]
     fn destructure_reference() {
-        //Note: `v` has different types:
-        // * in 1st: `i32`
-        // * in 2nd: `&i32`
         check_assist(
             assist,
             r#"
@@ -511,7 +641,7 @@ fn main() {
 fn main() {
     let t = (1,2);
     let ($0_0, _1) = &t;
-    let v = _0;
+    let v = *_0;
 }
             "#,
         )
@@ -532,7 +662,7 @@ fn main() {
 fn main() {
     let t = (1,2);
     let ($0_0, _1) = &&t;
-    let v = _0;
+    let v = *_0;
 }
             "#,
         )
@@ -561,9 +691,6 @@ fn foo(t: &(usize, usize)) -> usize {
 
     #[test]
     fn with_ref() {
-        //Note: `v` has different types:
-        // * in 1st: `i32`
-        // * in 2nd: `&i32`
         check_assist(
             assist,
             r#"
@@ -575,7 +702,7 @@ fn main() {
             r#"
 fn main() {
     let (ref $0_0, ref _1) = (1,2);
-    let v = _0;
+    let v = *_0;
 }
             "#,
         )
@@ -604,10 +731,6 @@ fn main() {
 
     #[test]
     fn with_ref_mut() {
-        //Note: `v` has different types:
-        // * in 1st: `i32`
-        // * in 2nd: `&mut i32`
-        // Note: 2nd `_0 = 42` isn't valid; requires dereferencing (`*_0`), but isn't handled here!
         check_assist(
             assist,
             r#"
@@ -620,8 +743,8 @@ fn main() {
             r#"
 fn main() {
     let (ref mut $0_0, ref mut _1) = (1,2);
-    _0 = 42;
-    let v = _0;
+    *_0 = 42;
+    let v = *_0;
 }
             "#,
         )
@@ -915,7 +1038,7 @@ fn main() {
 fn main() {
     let t = (1,2);
     match Some(&t) {
-        Some(($0_0, _1)) => _1,
+        Some(($0_0, _1)) => *_1,
         _ => 0,
     };
 }
@@ -1065,13 +1188,17 @@ fn main {
         fn assist(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             destructure_tuple_binding_impl(acc, ctx, true)
         }
+        fn in_place_assist(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+            destructure_tuple_binding_impl(acc, ctx, false)
+        }
 
         pub(crate) fn check_in_place_assist(ra_fixture_before: &str, ra_fixture_after: &str) {
             check_assist_by_label(
-                assist,
+                in_place_assist,
                 ra_fixture_before,
                 ra_fixture_after,
-                "Destructure tuple in place",
+                // "Destructure tuple in place",
+                "Destructure tuple",
             );
         }
 
@@ -1243,7 +1370,7 @@ fn main() {
                 r#"
 fn main() {
     let ref t @ (ref $0_0, ref _1) = (1,2);
-    let v = _1;
+    let v = *_1;
     let f = t.into();
 }
                 "#,
@@ -1281,7 +1408,7 @@ fn main() {
                 r#"
 fn main() {
     let ref mut t @ (ref mut $0_0, ref mut _1) = (1,2);
-    let v = _1;
+    let v = *_1;
     let f = t.into();
 }
                 "#,
@@ -1532,6 +1659,480 @@ macro_rules! m {
 fn main() {
     let t @ ($0_0, _1) = (1,2);
     m!(t, t.0);
+}
+                "#,
+            )
+        }
+    }
+
+    mod refs {
+        use super::assist::*;
+
+        #[test]
+        fn no_ref() {
+            check_in_place_assist(
+                r#"
+fn main() {
+    let $0t = &(1,2);
+    let v: i32 = t.0;
+}
+                "#,
+                r#"
+fn main() {
+    let ($0_0, _1) = &(1,2);
+    let v: i32 = *_0;
+}
+                "#,
+            )
+        }
+        #[test]
+        fn no_ref_with_parens() {
+            check_in_place_assist(
+                r#"
+fn main() {
+    let $0t = &(1,2);
+    let v: i32 = (t.0);
+}
+                "#,
+                r#"
+fn main() {
+    let ($0_0, _1) = &(1,2);
+    let v: i32 = (*_0);
+}
+                "#,
+            )
+        }
+        #[test]
+        fn with_ref() {
+            check_in_place_assist(
+                r#"
+fn main() {
+    let $0t = &(1,2);
+    let v: &i32 = &t.0;
+}
+                "#,
+                r#"
+fn main() {
+    let ($0_0, _1) = &(1,2);
+    let v: &i32 = _0;
+}
+                "#,
+            )
+        }
+        #[test]
+        fn with_ref_in_parens_ref() {
+            check_in_place_assist(
+                r#"
+fn main() {
+    let $0t = &(1,2);
+    let v: &i32 = &(t.0);
+}
+                "#,
+                r#"
+fn main() {
+    let ($0_0, _1) = &(1,2);
+    let v: &i32 = _0;
+}
+                "#,
+            )
+        }
+        #[test]
+        fn with_ref_in_ref_parens() {
+            check_in_place_assist(
+                r#"
+fn main() {
+    let $0t = &(1,2);
+    let v: &i32 = (&t.0);
+}
+                "#,
+                r#"
+fn main() {
+    let ($0_0, _1) = &(1,2);
+    let v: &i32 = _0;
+}
+                "#,
+            )
+        }
+
+        #[test]
+        fn deref_and_parentheses() {
+            // Operator/Expressions with higher precedence than deref (`*`):
+            // https://doc.rust-lang.org/reference/expressions.html#expression-precedence
+            // * Path
+            // * Method call
+            // * Field expression
+            // * Function calls, array indexing
+            // * `?`
+            check_in_place_assist(
+                r#"
+//- minicore: option
+fn f1(v: i32) {}
+fn f2(v: &i32) {}
+trait T {
+    fn do_stuff(self) {}
+}
+impl T for i32 {
+    fn do_stuff(self) {}
+}
+impl T for &i32 {
+    fn do_stuff(self) {}
+}
+struct S4 {
+    value: i32,
+}
+
+fn foo() -> Option<()> {
+    let $0t = &(0, (1,"1"), Some(2), [3;3], S4 { value: 4 }, &5);
+    let v: i32 = t.0;           // deref, no parens
+    let v: &i32 = &t.0;         // no deref, no parens, remove `&`
+    f1(t.0);                    // deref, no parens
+    f2(&t.0);                   // `&*` -> cancel out -> no deref, no parens
+    // https://github.com/rust-analyzer/rust-analyzer/issues/1109#issuecomment-658868639
+    // let v: i32 = t.1.0;      // no deref, no parens
+    let v: i32 = t.4.value;     // no deref, no parens
+    t.0.do_stuff();             // deref, parens
+    let v: i32 = t.2?;          // deref, parens
+    let v: i32 = t.3[0];        // no deref, no parens
+    (t.0).do_stuff();           // deref, no additional parens
+    let v: i32 = *t.5;          // deref (-> 2), no parens
+
+    None
+}
+                "#,
+                r#"
+fn f1(v: i32) {}
+fn f2(v: &i32) {}
+trait T {
+    fn do_stuff(self) {}
+}
+impl T for i32 {
+    fn do_stuff(self) {}
+}
+impl T for &i32 {
+    fn do_stuff(self) {}
+}
+struct S4 {
+    value: i32,
+}
+
+fn foo() -> Option<()> {
+    let ($0_0, _1, _2, _3, _4, _5) = &(0, (1,"1"), Some(2), [3;3], S4 { value: 4 }, &5);
+    let v: i32 = *_0;           // deref, no parens
+    let v: &i32 = _0;         // no deref, no parens, remove `&`
+    f1(*_0);                    // deref, no parens
+    f2(_0);                   // `&*` -> cancel out -> no deref, no parens
+    // https://github.com/rust-analyzer/rust-analyzer/issues/1109#issuecomment-658868639
+    // let v: i32 = t.1.0;      // no deref, no parens
+    let v: i32 = _4.value;     // no deref, no parens
+    (*_0).do_stuff();             // deref, parens
+    let v: i32 = (*_2)?;          // deref, parens
+    let v: i32 = _3[0];        // no deref, no parens
+    (*_0).do_stuff();           // deref, no additional parens
+    let v: i32 = **_5;          // deref (-> 2), no parens
+
+    None
+}
+                "#,
+            )
+        }
+
+        // ---------
+        // auto-ref/deref
+
+        #[test]
+        fn self_auto_ref_doesnt_need_deref() {
+            check_in_place_assist(
+                r#"
+#[derive(Clone, Copy)]
+struct S;
+impl S {
+  fn f(&self) {}
+}
+
+fn main() {
+    let $0t = &(S,2);
+    let s = t.0.f();
+}
+                "#,
+                r#"
+#[derive(Clone, Copy)]
+struct S;
+impl S {
+  fn f(&self) {}
+}
+
+fn main() {
+    let ($0_0, _1) = &(S,2);
+    let s = _0.f();
+}
+                "#,
+            )
+        }
+
+        #[test]
+        fn self_owned_requires_deref() {
+            check_in_place_assist(
+                r#"
+#[derive(Clone, Copy)]
+struct S;
+impl S {
+  fn f(self) {}
+}
+
+fn main() {
+    let $0t = &(S,2);
+    let s = t.0.f();
+}
+                "#,
+                r#"
+#[derive(Clone, Copy)]
+struct S;
+impl S {
+  fn f(self) {}
+}
+
+fn main() {
+    let ($0_0, _1) = &(S,2);
+    let s = (*_0).f();
+}
+                "#,
+            )
+        }
+
+        #[test]
+        fn self_auto_ref_in_trait_call_doesnt_require_deref() {
+            check_in_place_assist(
+                r#"
+trait T {
+    fn f(self);
+}
+#[derive(Clone, Copy)]
+struct S;
+impl T for &S {
+    fn f(self) {}
+}
+
+fn main() {
+    let $0t = &(S,2);
+    let s = t.0.f();
+}
+                "#,
+                // FIXME: doesn't need deref * parens. But `ctx.sema.resolve_method_call` doesn't resolve trait implementations
+                r#"
+trait T {
+    fn f(self);
+}
+#[derive(Clone, Copy)]
+struct S;
+impl T for &S {
+    fn f(self) {}
+}
+
+fn main() {
+    let ($0_0, _1) = &(S,2);
+    let s = (*_0).f();
+}
+                "#,
+            )
+        }
+        #[test]
+        fn no_auto_deref_because_of_owned_and_ref_trait_impl() {
+            check_in_place_assist(
+                r#"
+trait T {
+    fn f(self);
+}
+#[derive(Clone, Copy)]
+struct S;
+impl T for S {
+    fn f(self) {}
+}
+impl T for &S {
+    fn f(self) {}
+}
+
+fn main() {
+    let $0t = &(S,2);
+    let s = t.0.f();
+}
+                "#,
+                r#"
+trait T {
+    fn f(self);
+}
+#[derive(Clone, Copy)]
+struct S;
+impl T for S {
+    fn f(self) {}
+}
+impl T for &S {
+    fn f(self) {}
+}
+
+fn main() {
+    let ($0_0, _1) = &(S,2);
+    let s = (*_0).f();
+}
+                "#,
+            )
+        }
+
+        #[test]
+        fn no_outer_parens_when_ref_deref() {
+            check_in_place_assist(
+                r#"
+#[derive(Clone, Copy)]
+struct S;
+impl S {
+    fn do_stuff(&self) -> i32 { 42 }
+}
+fn main() {
+    let $0t = &(S,&S);
+    let v = (&t.0).do_stuff();
+}
+                "#,
+                r#"
+#[derive(Clone, Copy)]
+struct S;
+impl S {
+    fn do_stuff(&self) -> i32 { 42 }
+}
+fn main() {
+    let ($0_0, _1) = &(S,&S);
+    let v = _0.do_stuff();
+}
+                "#,
+            )
+        }
+
+        #[test]
+        fn auto_ref_deref() {
+            check_in_place_assist(
+                r#"
+#[derive(Clone, Copy)]
+struct S;
+impl S {
+    fn do_stuff(&self) -> i32 { 42 }
+}
+fn main() {
+    let $0t = &(S,&S);
+    let v = (&t.0).do_stuff();      // no deref, remove parens
+    // `t.0` gets auto-refed -> no deref needed -> no parens
+    let v = t.0.do_stuff();         // no deref, no parens
+    let v = &t.0.do_stuff();        // `&` is for result -> no deref, no parens
+    // deref: `_1` is `&&S`, but method called is on `&S` -> there might be a method accepting `&&S`
+    let v = t.1.do_stuff();         // deref, parens
+}
+                "#,
+                r#"
+#[derive(Clone, Copy)]
+struct S;
+impl S {
+    fn do_stuff(&self) -> i32 { 42 }
+}
+fn main() {
+    let ($0_0, _1) = &(S,&S);
+    let v = _0.do_stuff();      // no deref, remove parens
+    // `t.0` gets auto-refed -> no deref needed -> no parens
+    let v = _0.do_stuff();         // no deref, no parens
+    let v = &_0.do_stuff();        // `&` is for result -> no deref, no parens
+    // deref: `_1` is `&&S`, but method called is on `&S` -> there might be a method accepting `&&S`
+    let v = (*_1).do_stuff();         // deref, parens
+}
+                "#,
+            )
+        }
+
+        #[test]
+        fn mutable() {
+            check_in_place_assist(
+                r#"
+fn f_owned(v: i32) {}
+fn f(v: &i32) {}
+fn f_mut(v: &mut i32) { *v = 42; }
+
+fn main() {
+    let $0t = &mut (1,2);
+    let v = t.0;
+    t.0 = 42;
+    f_owned(t.0);
+    f(&t.0);
+    f_mut(&mut t.0);
+}
+                "#,
+                r#"
+fn f_owned(v: i32) {}
+fn f(v: &i32) {}
+fn f_mut(v: &mut i32) { *v = 42; }
+
+fn main() {
+    let ($0_0, _1) = &mut (1,2);
+    let v = *_0;
+    *_0 = 42;
+    f_owned(*_0);
+    f(_0);
+    f_mut(_0);
+}
+                "#,
+            )
+        }
+
+        #[test]
+        fn with_ref_keyword() {
+            check_in_place_assist(
+                r#"
+fn f_owned(v: i32) {}
+fn f(v: &i32) {}
+
+fn main() {
+    let ref $0t = (1,2);
+    let v = t.0;
+    f_owned(t.0);
+    f(&t.0);
+}
+                "#,
+                r#"
+fn f_owned(v: i32) {}
+fn f(v: &i32) {}
+
+fn main() {
+    let (ref $0_0, ref _1) = (1,2);
+    let v = *_0;
+    f_owned(*_0);
+    f(_0);
+}
+                "#,
+            )
+        }
+        #[test]
+        fn with_ref_mut_keywords() {
+            check_in_place_assist(
+                r#"
+fn f_owned(v: i32) {}
+fn f(v: &i32) {}
+fn f_mut(v: &mut i32) { *v = 42; }
+
+fn main() {
+    let ref mut $0t = (1,2);
+    let v = t.0;
+    t.0 = 42;
+    f_owned(t.0);
+    f(&t.0);
+    f_mut(&mut t.0);
+}
+                "#,
+                r#"
+fn f_owned(v: i32) {}
+fn f(v: &i32) {}
+fn f_mut(v: &mut i32) { *v = 42; }
+
+fn main() {
+    let (ref mut $0_0, ref mut _1) = (1,2);
+    let v = *_0;
+    *_0 = 42;
+    f_owned(*_0);
+    f(_0);
+    f_mut(_0);
 }
                 "#,
             )
