@@ -66,7 +66,7 @@ impl Edition {
         match *self {
             Edition::Edition2015 => true,
             Edition::Edition2018 => true,
-            Edition::Edition2021 => false,
+            Edition::Edition2021 => true,
         }
     }
 }
