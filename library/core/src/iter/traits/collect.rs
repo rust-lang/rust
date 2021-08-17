@@ -374,16 +374,18 @@ where
     /// # Examples
     /// ```
     /// let mut tuple = (vec![0], vec![1]);
-    /// tuple.extend(vec![(2, 3), (4, 5), (6, 7)]);
-    /// assert_eq!(tuple.0, vec![0, 2, 4, 6]);
-    /// assert_eq!(tuple.1, vec![1, 3, 5, 7]);
+    /// tuple.extend([(2, 3), (4, 5), (6, 7)]);
+    /// assert_eq!(tuple.0, [0, 2, 4, 6]);
+    /// assert_eq!(tuple.1, [1, 3, 5, 7]);
     ///
-    /// // also allows for arbitrarily nested tuples
-    /// let mut nested_tuple = (vec![(1, -1)], vec![(2, -2)]);
-    /// nested_tuple.extend(vec![((3, -3), (4, -4)), ((5, -5), (6, -6))]);
+    /// // also allows for arbitrarily nested tuples as elements
+    /// let mut nested_tuple = (vec![1], (vec![2], vec![3]));
+    /// nested_tuple.extend([(4, (5, 6)), (7, (8, 9))]);
     ///
-    /// assert_eq!(nested_tuple.0, vec![(1, -1), (3, -3), (5, -5)]);
-    /// assert_eq!(nested_tuple.1, vec![(2, -2), (4, -4), (6, -6)]);
+    /// let (a, (b, c)) = nested_tuple;
+    /// assert_eq!(a, [1, 4, 7]);
+    /// assert_eq!(b, [2, 5, 8]);
+    /// assert_eq!(c, [3, 6, 9]);
     /// ```
     fn extend<T: IntoIterator<Item = (A, B)>>(&mut self, into_iter: T) {
         let (a, b) = self;
