@@ -31,9 +31,6 @@ impl TryConf {
     }
 }
 
-/// Note that the configuration parsing currently doesn't support documentation that will
-/// that spans over several lines. This will be possible with the new implementation
-/// See (rust-clippy#7172)
 macro_rules! define_Conf {
     ($(
         $(#[doc = $doc:literal])+
@@ -130,7 +127,6 @@ macro_rules! define_Conf {
     };
 }
 
-// N.B., this macro is parsed by util/lintlib.py
 define_Conf! {
     /// Lint: ENUM_VARIANT_NAMES, LARGE_TYPES_PASSED_BY_VALUE, TRIVIALLY_COPY_PASS_BY_REF, UNNECESSARY_WRAPS, UPPER_CASE_ACRONYMS, WRONG_SELF_CONVENTION, BOX_VEC, REDUNDANT_ALLOCATION, RC_BUFFER, VEC_BOX, OPTION_OPTION, LINKEDLIST, RC_MUTEX.
     ///
