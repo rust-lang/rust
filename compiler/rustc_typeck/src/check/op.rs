@@ -19,6 +19,7 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 
+use std::borrow::Borrow;
 use std::ops::ControlFlow;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -276,71 +277,58 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             lhs_expr.span,
                             format!("cannot use `{}=` on type `{}`", op.node.as_str(), lhs_ty),
                         );
-                        let missing_trait = match op.node {
-                            hir::BinOpKind::Add => Some("std::ops::AddAssign"),
-                            hir::BinOpKind::Sub => Some("std::ops::SubAssign"),
-                            hir::BinOpKind::Mul => Some("std::ops::MulAssign"),
-                            hir::BinOpKind::Div => Some("std::ops::DivAssign"),
-                            hir::BinOpKind::Rem => Some("std::ops::RemAssign"),
-                            hir::BinOpKind::BitAnd => Some("std::ops::BitAndAssign"),
-                            hir::BinOpKind::BitXor => Some("std::ops::BitXorAssign"),
-                            hir::BinOpKind::BitOr => Some("std::ops::BitOrAssign"),
-                            hir::BinOpKind::Shl => Some("std::ops::ShlAssign"),
-                            hir::BinOpKind::Shr => Some("std::ops::ShrAssign"),
-                            _ => None,
-                        };
-                        (err, missing_trait, false, false)
+                        (err, Some(STDImplementationMissing::BinOpAssign(op.node)), false, false)
                     }
                     IsAssign::No => {
                         let (message, missing_trait, use_output) = match op.node {
                             hir::BinOpKind::Add => (
                                 format!("cannot add `{}` to `{}`", rhs_ty, lhs_ty),
-                                Some("std::ops::Add"),
+                                Some(op.node),
                                 true,
                             ),
                             hir::BinOpKind::Sub => (
                                 format!("cannot subtract `{}` from `{}`", rhs_ty, lhs_ty),
-                                Some("std::ops::Sub"),
+                                Some(op.node),
                                 true,
                             ),
                             hir::BinOpKind::Mul => (
                                 format!("cannot multiply `{}` by `{}`", lhs_ty, rhs_ty),
-                                Some("std::ops::Mul"),
+                                Some(op.node),
                                 true,
                             ),
                             hir::BinOpKind::Div => (
                                 format!("cannot divide `{}` by `{}`", lhs_ty, rhs_ty),
-                                Some("std::ops::Div"),
+                                Some(op.node),
                                 true,
                             ),
                             hir::BinOpKind::Rem => (
                                 format!("cannot mod `{}` by `{}`", lhs_ty, rhs_ty),
-                                Some("std::ops::Rem"),
+                                Some(op.node),
                                 true,
                             ),
                             hir::BinOpKind::BitAnd => (
                                 format!("no implementation for `{} & {}`", lhs_ty, rhs_ty),
-                                Some("std::ops::BitAnd"),
+                                Some(op.node),
                                 true,
                             ),
                             hir::BinOpKind::BitXor => (
                                 format!("no implementation for `{} ^ {}`", lhs_ty, rhs_ty),
-                                Some("std::ops::BitXor"),
+                                Some(op.node),
                                 true,
                             ),
                             hir::BinOpKind::BitOr => (
                                 format!("no implementation for `{} | {}`", lhs_ty, rhs_ty),
-                                Some("std::ops::BitOr"),
+                                Some(op.node),
                                 true,
                             ),
                             hir::BinOpKind::Shl => (
                                 format!("no implementation for `{} << {}`", lhs_ty, rhs_ty),
-                                Some("std::ops::Shl"),
+                                Some(op.node),
                                 true,
                             ),
                             hir::BinOpKind::Shr => (
                                 format!("no implementation for `{} >> {}`", lhs_ty, rhs_ty),
-                                Some("std::ops::Shr"),
+                                Some(op.node),
                                 true,
                             ),
                             hir::BinOpKind::Eq | hir::BinOpKind::Ne => (
@@ -349,7 +337,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     op.node.as_str(),
                                     lhs_ty
                                 ),
-                                Some("std::cmp::PartialEq"),
+                                Some(op.node),
                                 false,
                             ),
                             hir::BinOpKind::Lt
@@ -361,7 +349,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     op.node.as_str(),
                                     lhs_ty
                                 ),
-                                Some("std::cmp::PartialOrd"),
+                                Some(op.node),
                                 false,
                             ),
                             _ => (
@@ -428,6 +416,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 if let Some(missing_trait) = missing_trait {
+                    let missing_trait_str = missing_trait.as_std_trait();
                     let mut visitor = TypeParamVisitor(vec![]);
                     visitor.visit_ty(lhs_ty);
 
@@ -459,7 +448,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     &mut err,
                                     ty,
                                     rhs_ty,
-                                    missing_trait,
+                                    missing_trait_str,
                                     p,
                                     use_output,
                                 );
@@ -468,7 +457,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 // this note as it is redundant.
                                 err.note(&format!(
                                     "the trait `{}` is not implemented for `{}`",
-                                    missing_trait, lhs_ty
+                                    missing_trait_str, lhs_ty
                                 ));
                             }
                         } else {
@@ -710,12 +699,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Str | Never | Char | Tuple(_) | Array(_, _) => {}
                         Ref(_, ref lty, _) if *lty.kind() == Str => {}
                         _ => {
-                            let missing_trait = match op {
-                                hir::UnOp::Neg => "std::ops::Neg",
-                                hir::UnOp::Not => "std::ops::Not",
-                                hir::UnOp::Deref => "std::ops::UnDerf",
-                            };
-                            suggest_impl_missing(&mut err, operand_ty, &missing_trait);
+                            suggest_impl_missing(
+                                &mut err,
+                                operand_ty,
+                                &STDImplementationMissing::Unop(op),
+                            );
                         }
                     }
                     err.emit();
@@ -951,25 +939,55 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool 
     }
 }
 
+enum STDImplementationMissing {
+    Unop(hir::UnOp),
+    BinOp(hir::BinOpKind),
+    BinOpAssign(hir::BinOpKind),
+}
+
+impl STDImplementationMissing {
+    fn as_std_trait(&self) -> Option<&'static str> {
+        match self {
+            Self::Unop(e) => Some(e.as_std_trait()),
+            Self::BinOpAssign(e) => e.as_std_trait(true),
+            Self::BinOp(e) => e.as_std_trait(false),
+        }
+    }
+}
+
 /// If applicable, note that an implementation of `trait` for `ty` may fix the error.
-fn suggest_impl_missing(err: &mut DiagnosticBuilder<'_>, ty: Ty<'_>, missing_trait: &str) {
+fn suggest_impl_missing(
+    err: &mut DiagnosticBuilder<'_>,
+    ty: Ty<'_>,
+    missing_trait: STDImplementationMissing,
+) {
     if let Adt(def, _) = ty.peel_refs().kind() {
         if def.did.is_local() {
-            err.note(&format!(
-                "an implementation of `{}` might be missing for `{}`",
-                missing_trait, ty
-            ));
+            if let Some(missing_trait_name) = missing_trait.as_std_trait() {
+                err.note(&format!(
+                    "an implementation of `{}` might be missing for `{}`",
+                    missing_trait, ty
+                ));
+            }
             // This checks if the missing trait is PartialEq to suggest adding a derive
-            if missing_trait == "std::cmp::PartialEq" {
-                err.note(&format!(
-                    "add `#[derive(PartialEq)]` or manually implement `PartialEq` for `{}`",
-                    ty
-                ));
-            } else if missing_trait == "std::cmp::PartialOrd" {
-                err.note(&format!(
-                    "add `#[derive(PartialOrd)]` or manually implement `PartialOrd` for `{}`",
-                    ty
-                ));
+            if let ImplementationMissing::BinOp(binary_op_trait) = missing_trait {
+                if matches!(binary_op_trait, hir::BinOpKind::Eq | hir::BinOpKind::Ne) {
+                    err.note(&format!(
+                        "add `#[derive(PartialEq)]` or manually implement `PartialEq` for `{}`",
+                        ty
+                    ));
+                } else if matches!(
+                    binary_op_trait,
+                    hir::BinOpKind::Lt
+                        | hir::BinOpKind::Le
+                        | hir::BinOpKind::Ge
+                        | hir::BinOpKind::Gt
+                ) {
+                    err.note(&format!(
+                        "add `#[derive(PartialOrd)]` or manually implement `PartialOrd` for `{}`",
+                        ty
+                    ));
+                }
             }
         }
     }

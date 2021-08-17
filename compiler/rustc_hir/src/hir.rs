@@ -1042,6 +1042,49 @@ impl BinOpKind {
         }
     }
 
+    pub fn as_std_trait(self, assign: bool) -> Option<&'static str> {
+        Some(if assign {
+            match self {
+                BinOpKind::Add => "std::ops::AddAssign",
+                BinOpKind::Sub => "std::ops::SubAssign",
+                BinOpKind::Mul => "std::ops::MulAssign",
+                BinOpKind::Div => "std::ops::DivAssign",
+                BinOpKind::Rem => "std::ops::RemAssign",
+                BinOpKind::BitAnd => "std::ops::BitAndAssign",
+                BinOpKind::BitXor => "std::ops::BitXorAssign",
+                BinOpKind::BitOr => "std::ops::BitOrAssign",
+                BinOpKind::Shl => "std::ops::ShlAssign",
+                BinOpKind::Shr => "std::ops::ShrAssign",
+                BinOpKind::Eq
+                | BinOpKind::Ne
+                | BinOpKind::Lt
+                | BinOpKind::Le
+                | BinOpKind::Ge
+                | BinOpKind::Gt
+                | BinOpKind::And
+                | BinOpKind::Or => return None,
+            }
+        } else {
+            match self {
+                BinOpKind::Add => "std::ops::Add",
+                BinOpKind::Sub => "std::ops::Sub",
+                BinOpKind::Mul => "std::ops::Mul",
+                BinOpKind::Div => "std::ops::Div",
+                BinOpKind::Rem => "std::ops::Rem",
+                BinOpKind::BitAnd => "std::ops::BitAnd",
+                BinOpKind::BitXor => "std::ops::BitXor",
+                BinOpKind::BitOr => "std::ops::BitOr",
+                BinOpKind::Shl => "std::ops::Shl",
+                BinOpKind::Shr => "std::ops::Shr",
+                BinOpKind::Eq | BinOpKind::Ne => "std::cmp::PartialEq",
+                BinOpKind::Lt | BinOpKind::Le | BinOpKind::Ge | BinOpKind::Gt => {
+                    "std::cmp::PartialOrd"
+                }
+                BinOpKind::And | BinOpKind::Or => return None,
+            }
+        })
+    }
+
     pub fn is_lazy(self) -> bool {
         matches!(self, BinOpKind::And | BinOpKind::Or)
     }
@@ -1122,6 +1165,13 @@ impl UnOp {
             Self::Deref => "*",
             Self::Not => "!",
             Self::Neg => "-",
+        }
+    }
+    pub fn as_std_trait(self) -> &'static str {
+        match self {
+            Self::Neg => "std::ops::Neg",
+            Self::Not => "std::ops::Not",
+            Self::Deref => "std::ops::UnDerf",
         }
     }
 
