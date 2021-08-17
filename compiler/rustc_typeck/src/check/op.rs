@@ -415,7 +415,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 if let Some(missing_trait) = missing_trait {
-                    let missing_trait_str = missing_trait.as_std_trait();
+                    let missing_trait_str = missing_trait.as_std_trait().unwrap_or_default();
                     let mut visitor = TypeParamVisitor(vec![]);
                     visitor.visit_ty(lhs_ty);
 
@@ -463,7 +463,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             bug!("type param visitor stored a non type param: {:?}", ty.kind());
                         }
                     } else if !suggested_deref && !involves_fn {
-                        suggest_impl_missing(&mut err, lhs_ty, &missing_trait);
+                        suggest_impl_missing(&mut err, lhs_ty, missing_trait);
                     }
                 }
                 err.emit();
@@ -701,7 +701,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             suggest_impl_missing(
                                 &mut err,
                                 operand_ty,
-                                &STDImplementationMissing::Unop(op),
+                                STDImplementationMissing::Unop(op),
                             );
                         }
                     }
@@ -965,7 +965,7 @@ fn suggest_impl_missing(
             if let Some(missing_trait_name) = missing_trait.as_std_trait() {
                 err.note(&format!(
                     "an implementation of `{}` might be missing for `{}`",
-                    missing_trait, ty
+                    missing_trait_name, ty
                 ));
             }
             // This checks if the missing trait is PartialEq to suggest adding a derive
