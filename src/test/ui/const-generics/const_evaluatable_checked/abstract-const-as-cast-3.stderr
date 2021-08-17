@@ -1,9 +1,6 @@
 error: unconstrained generic constant
   --> $DIR/abstract-const-as-cast-3.rs:17:5
    |
-LL |     fn assert_impl<T: Trait>() {}
-   |                       ----- required by this bound in `use_trait_impl::assert_impl`
-...
 LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
@@ -13,6 +10,11 @@ note: required because of the requirements on the impl of `Trait` for `HasCastIn
    |
 LL | impl<const O: usize> Trait for HasCastInTraitImpl<O, { O as u128 }> {}
    |                      ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `use_trait_impl::assert_impl`
+  --> $DIR/abstract-const-as-cast-3.rs:14:23
+   |
+LL |     fn assert_impl<T: Trait>() {}
+   |                       ^^^^^ required by this bound in `use_trait_impl::assert_impl`
 
 error[E0308]: mismatched types
   --> $DIR/abstract-const-as-cast-3.rs:17:5
@@ -26,9 +28,6 @@ LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
 error: unconstrained generic constant
   --> $DIR/abstract-const-as-cast-3.rs:20:5
    |
-LL |     fn assert_impl<T: Trait>() {}
-   |                       ----- required by this bound in `use_trait_impl::assert_impl`
-...
 LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as _ }>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
@@ -38,6 +37,11 @@ note: required because of the requirements on the impl of `Trait` for `HasCastIn
    |
 LL | impl<const O: usize> Trait for HasCastInTraitImpl<O, { O as u128 }> {}
    |                      ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `use_trait_impl::assert_impl`
+  --> $DIR/abstract-const-as-cast-3.rs:14:23
+   |
+LL |     fn assert_impl<T: Trait>() {}
+   |                       ^^^^^ required by this bound in `use_trait_impl::assert_impl`
 
 error[E0308]: mismatched types
   --> $DIR/abstract-const-as-cast-3.rs:20:5
@@ -69,9 +73,6 @@ LL |     assert_impl::<HasCastInTraitImpl<14, 13>>();
 error: unconstrained generic constant
   --> $DIR/abstract-const-as-cast-3.rs:35:5
    |
-LL |     fn assert_impl<T: Trait>() {}
-   |                       ----- required by this bound in `use_trait_impl_2::assert_impl`
-...
 LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
@@ -81,6 +82,11 @@ note: required because of the requirements on the impl of `Trait` for `HasCastIn
    |
 LL | impl<const O: usize> Trait for HasCastInTraitImpl<O, { O as u128 }> {}
    |                      ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `use_trait_impl_2::assert_impl`
+  --> $DIR/abstract-const-as-cast-3.rs:32:23
+   |
+LL |     fn assert_impl<T: Trait>() {}
+   |                       ^^^^^ required by this bound in `use_trait_impl_2::assert_impl`
 
 error[E0308]: mismatched types
   --> $DIR/abstract-const-as-cast-3.rs:35:5
@@ -94,9 +100,6 @@ LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
 error: unconstrained generic constant
   --> $DIR/abstract-const-as-cast-3.rs:38:5
    |
-LL |     fn assert_impl<T: Trait>() {}
-   |                       ----- required by this bound in `use_trait_impl_2::assert_impl`
-...
 LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as _ }>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
@@ -106,6 +109,11 @@ note: required because of the requirements on the impl of `Trait` for `HasCastIn
    |
 LL | impl<const O: usize> Trait for HasCastInTraitImpl<O, { O as u128 }> {}
    |                      ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `use_trait_impl_2::assert_impl`
+  --> $DIR/abstract-const-as-cast-3.rs:32:23
+   |
+LL |     fn assert_impl<T: Trait>() {}
+   |                       ^^^^^ required by this bound in `use_trait_impl_2::assert_impl`
 
 error[E0308]: mismatched types
   --> $DIR/abstract-const-as-cast-3.rs:38:5

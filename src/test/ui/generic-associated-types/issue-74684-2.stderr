@@ -1,11 +1,14 @@
 error[E0271]: type mismatch resolving `<{integer} as Fun>::F<'_> == [u8]`
   --> $DIR/issue-74684-2.rs:23:5
    |
-LL | fn bug<'a, T: ?Sized + Fun<F<'a> = [u8]>>(t: Box<T>) -> &'static T::F<'a> {
-   |                            ------------ required by this bound in `bug`
-...
 LL |     bug(Box::new(x));
    |     ^^^ expected slice `[u8]`, found `i32`
+   |
+note: required by a bound in `bug`
+  --> $DIR/issue-74684-2.rs:13:28
+   |
+LL | fn bug<'a, T: ?Sized + Fun<F<'a> = [u8]>>(t: Box<T>) -> &'static T::F<'a> {
+   |                            ^^^^^^^^^^^^ required by this bound in `bug`
 
 error: aborting due to previous error
 

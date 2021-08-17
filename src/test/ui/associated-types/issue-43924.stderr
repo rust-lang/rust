@@ -2,10 +2,13 @@ error[E0277]: the trait bound `(dyn ToString + 'static): Default` is not satisfi
   --> $DIR/issue-43924.rs:7:5
    |
 LL |     type Out: Default + ToString + ?Sized = dyn ToString;
-   |     ^^^^^^^^^^-------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |     |         |
-   |     |         required by this bound in `Foo::Out`
-   |     the trait `Default` is not implemented for `(dyn ToString + 'static)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `(dyn ToString + 'static)`
+   |
+note: required by a bound in `Foo::Out`
+  --> $DIR/issue-43924.rs:7:15
+   |
+LL |     type Out: Default + ToString + ?Sized = dyn ToString;
+   |               ^^^^^^^ required by this bound in `Foo::Out`
 
 error[E0599]: no function or associated item named `default` found for trait object `(dyn ToString + 'static)` in the current scope
   --> $DIR/issue-43924.rs:14:39

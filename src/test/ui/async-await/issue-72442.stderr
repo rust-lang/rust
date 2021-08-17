@@ -4,10 +4,11 @@ error[E0277]: the trait bound `Option<&str>: AsRef<Path>` is not satisfied
 LL |             let mut f = File::open(path.to_str())?;
    |                                    ^^^^^^^^^^^^^ the trait `AsRef<Path>` is not implemented for `Option<&str>`
    |
-  ::: $SRC_DIR/std/src/fs.rs:LL:COL
+note: required by a bound in `File::open`
+  --> $SRC_DIR/std/src/fs.rs:LL:COL
    |
 LL |     pub fn open<P: AsRef<Path>>(path: P) -> io::Result<File> {
-   |                    ----------- required by this bound in `File::open`
+   |                    ^^^^^^^^^^^ required by this bound in `File::open`
 
 error: aborting due to previous error
 

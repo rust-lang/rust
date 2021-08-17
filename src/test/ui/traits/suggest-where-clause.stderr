@@ -7,11 +7,11 @@ LL |     // suggest a where-clause, if needed
 LL |     mem::size_of::<U>();
    |                    ^ doesn't have a size known at compile-time
    |
-  ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
+note: required by a bound in `std::mem::size_of`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub const fn size_of<T>() -> usize {
-   |                      - required by this bound in `std::mem::size_of`
-   |
+   |                      ^ required by this bound in `std::mem::size_of`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn check<T: Iterator, U: ?Sized>() {
@@ -27,16 +27,16 @@ LL | fn check<T: Iterator, U: ?Sized>() {
 LL |     mem::size_of::<Misc<U>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-  ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
-   |
-LL | pub const fn size_of<T>() -> usize {
-   |                      - required by this bound in `std::mem::size_of`
-   |
 note: required because it appears within the type `Misc<U>`
   --> $DIR/suggest-where-clause.rs:3:8
    |
 LL | struct Misc<T:?Sized>(T);
    |        ^^^^
+note: required by a bound in `std::mem::size_of`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+LL | pub const fn size_of<T>() -> usize {
+   |                      ^ required by this bound in `std::mem::size_of`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn check<T: Iterator, U: ?Sized>() {
@@ -93,12 +93,12 @@ error[E0277]: the size for values of type `[T]` cannot be known at compilation t
 LL |     mem::size_of::<[T]>();
    |                    ^^^ doesn't have a size known at compile-time
    |
-  ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   = help: the trait `Sized` is not implemented for `[T]`
+note: required by a bound in `std::mem::size_of`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub const fn size_of<T>() -> usize {
-   |                      - required by this bound in `std::mem::size_of`
-   |
-   = help: the trait `Sized` is not implemented for `[T]`
+   |                      ^ required by this bound in `std::mem::size_of`
 
 error[E0277]: the size for values of type `[&U]` cannot be known at compilation time
   --> $DIR/suggest-where-clause.rs:31:5
@@ -106,12 +106,12 @@ error[E0277]: the size for values of type `[&U]` cannot be known at compilation 
 LL |     mem::size_of::<[&U]>();
    |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-  ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   = help: the trait `Sized` is not implemented for `[&U]`
+note: required by a bound in `std::mem::size_of`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub const fn size_of<T>() -> usize {
-   |                      - required by this bound in `std::mem::size_of`
-   |
-   = help: the trait `Sized` is not implemented for `[&U]`
+   |                      ^ required by this bound in `std::mem::size_of`
 
 error: aborting due to 7 previous errors
 

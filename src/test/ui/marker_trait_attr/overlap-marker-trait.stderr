@@ -1,11 +1,14 @@
 error[E0277]: the trait bound `NotDebugOrDisplay: Marker` is not satisfied
   --> $DIR/overlap-marker-trait.rs:27:17
    |
-LL | fn is_marker<T: Marker>() { }
-   |                 ------ required by this bound in `is_marker`
-...
 LL |     is_marker::<NotDebugOrDisplay>();
    |                 ^^^^^^^^^^^^^^^^^ the trait `Marker` is not implemented for `NotDebugOrDisplay`
+   |
+note: required by a bound in `is_marker`
+  --> $DIR/overlap-marker-trait.rs:15:17
+   |
+LL | fn is_marker<T: Marker>() { }
+   |                 ^^^^^^ required by this bound in `is_marker`
 
 error: aborting due to previous error
 

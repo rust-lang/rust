@@ -1,11 +1,14 @@
 error[E0271]: type mismatch resolving `<i8 as Trait>::AssociatedType == u32`
   --> $DIR/E0271.rs:10:5
    |
-LL | fn foo<T>(t: T) where T: Trait<AssociatedType=u32> {
-   |                                ------------------ required by this bound in `foo`
-...
 LL |     foo(3_i8);
    |     ^^^ expected `u32`, found `&str`
+   |
+note: required by a bound in `foo`
+  --> $DIR/E0271.rs:3:32
+   |
+LL | fn foo<T>(t: T) where T: Trait<AssociatedType=u32> {
+   |                                ^^^^^^^^^^^^^^^^^^ required by this bound in `foo`
 
 error: aborting due to previous error
 

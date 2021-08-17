@@ -11,12 +11,14 @@ LL | #![feature(specialization)]
 error[E0277]: the trait bound `U: Eq` is not satisfied
   --> $DIR/specialization-wfcheck.rs:7:17
    |
-LL | trait Foo<'a, T: Eq + 'a> { }
-   |                  -- required by this bound in `Foo`
-LL | 
 LL | default impl<U> Foo<'static, U> for () {}
    |                 ^^^^^^^^^^^^^^^ the trait `Eq` is not implemented for `U`
    |
+note: required by a bound in `Foo`
+  --> $DIR/specialization-wfcheck.rs:5:18
+   |
+LL | trait Foo<'a, T: Eq + 'a> { }
+   |                  ^^ required by this bound in `Foo`
 help: consider restricting type parameter `U`
    |
 LL | default impl<U: std::cmp::Eq> Foo<'static, U> for () {}

@@ -4,10 +4,11 @@ error[E0284]: type annotations needed: cannot satisfy `the constant `foo::{opaqu
 LL |     generics_of_parent_impl_trait::foo([()]);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot satisfy `the constant `foo::{opaque#0}::{constant#0}` can be evaluated`
    |
-  ::: $DIR/auxiliary/generics_of_parent_impl_trait.rs:6:48
+note: required by a bound in `foo`
+  --> $DIR/auxiliary/generics_of_parent_impl_trait.rs:6:48
    |
 LL | pub fn foo<const N: usize>(foo: impl Into<[(); N + 1]>) {
-   |                                                ----- required by this bound in `foo`
+   |                                                ^^^^^ required by this bound in `foo`
 
 error: aborting due to previous error
 

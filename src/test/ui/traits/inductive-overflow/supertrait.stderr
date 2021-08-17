@@ -1,9 +1,6 @@
 error[E0275]: overflow evaluating the requirement `NoClone: Magic`
   --> $DIR/supertrait.rs:13:18
    |
-LL | fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
-   |            ----- required by this bound in `copy`
-...
 LL |     let (a, b) = copy(NoClone);
    |                  ^^^^
    |
@@ -12,6 +9,11 @@ note: required because of the requirements on the impl of `Magic` for `NoClone`
    |
 LL | impl<T: Magic> Magic for T {}
    |                ^^^^^     ^
+note: required by a bound in `copy`
+  --> $DIR/supertrait.rs:7:12
+   |
+LL | fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
+   |            ^^^^^ required by this bound in `copy`
 
 error: aborting due to previous error
 

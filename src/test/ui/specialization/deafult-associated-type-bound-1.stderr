@@ -11,11 +11,14 @@ LL | #![feature(specialization)]
 error[E0277]: the trait bound `str: Clone` is not satisfied
   --> $DIR/deafult-associated-type-bound-1.rs:19:5
    |
-LL |     type U: Clone;
-   |             ----- required by this bound in `X::U`
-...
 LL |     default type U = str;
    |     ^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `str`
+   |
+note: required by a bound in `X::U`
+  --> $DIR/deafult-associated-type-bound-1.rs:9:13
+   |
+LL |     type U: Clone;
+   |             ^^^^^ required by this bound in `X::U`
 
 error: aborting due to previous error; 1 warning emitted
 

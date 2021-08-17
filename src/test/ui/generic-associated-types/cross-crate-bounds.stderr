@@ -4,10 +4,11 @@ error[E0277]: the trait bound `(): AsRef<()>` is not satisfied
 LL |     type Bar = ();
    |     ^^^^^^^^^^^^^^ the trait `AsRef<()>` is not implemented for `()`
    |
-  ::: $DIR/auxiliary/foo_defn.rs:6:15
+note: required by a bound in `foo_defn::Foo::Bar`
+  --> $DIR/auxiliary/foo_defn.rs:6:15
    |
 LL |     type Bar: AsRef<()>;
-   |               --------- required by this bound in `foo_defn::Foo::Bar`
+   |               ^^^^^^^^^ required by this bound in `foo_defn::Foo::Bar`
 
 error: aborting due to previous error
 

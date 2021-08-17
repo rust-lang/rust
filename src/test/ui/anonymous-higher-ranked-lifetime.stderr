@@ -5,9 +5,12 @@ LL |     f1(|_: (), _: ()| {});
    |     ^^ -------------- found signature of `fn((), ()) -> _`
    |     |
    |     expected signature of `for<'r, 's> fn(&'r (), &'s ()) -> _`
-...
+   |
+note: required by a bound in `f1`
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:16:25
+   |
 LL | fn f1<F>(_: F) where F: Fn(&(), &()) {}
-   |                         ------------ required by this bound in `f1`
+   |                         ^^^^^^^^^^^^ required by this bound in `f1`
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:3:5
@@ -16,9 +19,12 @@ LL |     f2(|_: (), _: ()| {});
    |     ^^ -------------- found signature of `fn((), ()) -> _`
    |     |
    |     expected signature of `for<'a, 'r> fn(&'a (), &'r ()) -> _`
-...
+   |
+note: required by a bound in `f2`
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:17:25
+   |
 LL | fn f2<F>(_: F) where F: for<'a> Fn(&'a (), &()) {}
-   |                         ----------------------- required by this bound in `f2`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `f2`
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:4:5
@@ -27,9 +33,12 @@ LL |     f3(|_: (), _: ()| {});
    |     ^^ -------------- found signature of `fn((), ()) -> _`
    |     |
    |     expected signature of `for<'r> fn(&(), &'r ()) -> _`
-...
+   |
+note: required by a bound in `f3`
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:18:29
+   |
 LL | fn f3<'a, F>(_: F) where F: Fn(&'a (), &()) {}
-   |                             --------------- required by this bound in `f3`
+   |                             ^^^^^^^^^^^^^^^ required by this bound in `f3`
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:5:5
@@ -38,9 +47,12 @@ LL |     f4(|_: (), _: ()| {});
    |     ^^ -------------- found signature of `fn((), ()) -> _`
    |     |
    |     expected signature of `for<'s, 'r> fn(&'s (), &'r ()) -> _`
-...
+   |
+note: required by a bound in `f4`
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:19:25
+   |
 LL | fn f4<F>(_: F) where F: for<'r> Fn(&(), &'r ()) {}
-   |                         ----------------------- required by this bound in `f4`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `f4`
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:6:5
@@ -49,9 +61,12 @@ LL |     f5(|_: (), _: ()| {});
    |     ^^ -------------- found signature of `fn((), ()) -> _`
    |     |
    |     expected signature of `for<'r> fn(&'r (), &'r ()) -> _`
-...
+   |
+note: required by a bound in `f5`
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:20:25
+   |
 LL | fn f5<F>(_: F) where F: for<'r> Fn(&'r (), &'r ()) {}
-   |                         -------------------------- required by this bound in `f5`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `f5`
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:7:5
@@ -60,9 +75,12 @@ LL |     g1(|_: (), _: ()| {});
    |     ^^ -------------- found signature of `fn((), ()) -> _`
    |     |
    |     expected signature of `for<'r> fn(&'r (), Box<(dyn for<'s> Fn(&'s ()) + 'static)>) -> _`
-...
+   |
+note: required by a bound in `g1`
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:23:25
+   |
 LL | fn g1<F>(_: F) where F: Fn(&(), Box<dyn Fn(&())>) {}
-   |                         ------------------------- required by this bound in `g1`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `g1`
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:8:5
@@ -71,9 +89,12 @@ LL |     g2(|_: (), _: ()| {});
    |     ^^ -------------- found signature of `fn((), ()) -> _`
    |     |
    |     expected signature of `for<'r> fn(&'r (), for<'s> fn(&'s ())) -> _`
-...
+   |
+note: required by a bound in `g2`
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:24:25
+   |
 LL | fn g2<F>(_: F) where F: Fn(&(), fn(&())) {}
-   |                         ---------------- required by this bound in `g2`
+   |                         ^^^^^^^^^^^^^^^^ required by this bound in `g2`
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:9:5
@@ -82,9 +103,12 @@ LL |     g3(|_: (), _: ()| {});
    |     ^^ -------------- found signature of `fn((), ()) -> _`
    |     |
    |     expected signature of `for<'s> fn(&'s (), Box<(dyn for<'r> Fn(&'r ()) + 'static)>) -> _`
-...
+   |
+note: required by a bound in `g3`
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:25:25
+   |
 LL | fn g3<F>(_: F) where F: for<'s> Fn(&'s (), Box<dyn Fn(&())>) {}
-   |                         ------------------------------------ required by this bound in `g3`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `g3`
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:10:5
@@ -93,9 +117,12 @@ LL |     g4(|_: (), _: ()| {});
    |     ^^ -------------- found signature of `fn((), ()) -> _`
    |     |
    |     expected signature of `for<'s> fn(&'s (), for<'r> fn(&'r ())) -> _`
-...
+   |
+note: required by a bound in `g4`
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:26:25
+   |
 LL | fn g4<F>(_: F) where F: Fn(&(), for<'r> fn(&'r ())) {}
-   |                         --------------------------- required by this bound in `g4`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `g4`
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:11:5
@@ -104,9 +131,12 @@ LL |     h1(|_: (), _: (), _: (), _: ()| {});
    |     ^^ ---------------------------- found signature of `fn((), (), (), ()) -> _`
    |     |
    |     expected signature of `for<'r, 's> fn(&'r (), Box<(dyn for<'t0> Fn(&'t0 ()) + 'static)>, &'s (), for<'t0, 't1> fn(&'t0 (), &'t1 ())) -> _`
-...
+   |
+note: required by a bound in `h1`
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:29:25
+   |
 LL | fn h1<F>(_: F) where F: Fn(&(), Box<dyn Fn(&())>, &(), fn(&(), &())) {}
-   |                         -------------------------------------------- required by this bound in `h1`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `h1`
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:12:5
@@ -115,9 +145,12 @@ LL |     h2(|_: (), _: (), _: (), _: ()| {});
    |     ^^ ---------------------------- found signature of `fn((), (), (), ()) -> _`
    |     |
    |     expected signature of `for<'r, 't0> fn(&'r (), Box<(dyn for<'s> Fn(&'s ()) + 'static)>, &'t0 (), for<'s, 't1> fn(&'s (), &'t1 ())) -> _`
-...
+   |
+note: required by a bound in `h2`
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:30:25
+   |
 LL | fn h2<F>(_: F) where F: for<'t0> Fn(&(), Box<dyn Fn(&())>, &'t0 (), fn(&(), &())) {}
-   |                         --------------------------------------------------------- required by this bound in `h2`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `h2`
 
 error: aborting due to 11 previous errors
 

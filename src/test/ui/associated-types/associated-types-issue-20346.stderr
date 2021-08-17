@@ -1,9 +1,6 @@
 error[E0271]: type mismatch resolving `<Adapter<I> as Iterator>::Item == Option<T>`
   --> $DIR/associated-types-issue-20346.rs:34:5
    |
-LL | fn is_iterator_of<A, I: Iterator<Item=A>>(_: &I) {}
-   |                                  ------ required by this bound in `is_iterator_of`
-...
 LL | fn test_adapter<T, I: Iterator<Item=Option<T>>>(it: I) {
    |                 - this type parameter
 ...
@@ -12,6 +9,11 @@ LL |     is_iterator_of::<Option<T>, _>(&adapter);
    |
    = note: expected enum `Option<T>`
               found type `T`
+note: required by a bound in `is_iterator_of`
+  --> $DIR/associated-types-issue-20346.rs:15:34
+   |
+LL | fn is_iterator_of<A, I: Iterator<Item=A>>(_: &I) {}
+   |                                  ^^^^^^ required by this bound in `is_iterator_of`
 
 error: aborting due to previous error
 

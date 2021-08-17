@@ -1,11 +1,14 @@
 error[E0275]: overflow evaluating the requirement `<T as Foo>::Item: Sized`
   --> $DIR/projection-bound-cycle.rs:46:18
    |
-LL |     type Item: Sized where <Self as Foo>::Item: Sized;
-   |                                                 ----- required by this bound in `Foo::Item`
-...
 LL |     type Assoc = OnlySized<<T as Foo>::Item>;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: required by a bound in `Foo::Item`
+  --> $DIR/projection-bound-cycle.rs:13:49
+   |
+LL |     type Item: Sized where <Self as Foo>::Item: Sized;
+   |                                                 ^^^^^ required by this bound in `Foo::Item`
 
 error: aborting due to previous error
 
