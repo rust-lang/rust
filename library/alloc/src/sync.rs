@@ -789,6 +789,9 @@ impl<T: ?Sized> Arc<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(get_mut_unchecked)]
+    /// #![feature(lock_arc)]
+    ///
     /// use std::sync::Arc;
     ///
     /// let x = Arc::new("hello".to_owned());
@@ -812,6 +815,9 @@ impl<T: ?Sized> Arc<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(get_mut_unchecked)]
+    /// #![feature(lock_arc)]
+    ///
     /// use std::sync::Arc;
     ///
     /// let x = Arc::new("hello".to_owned());
