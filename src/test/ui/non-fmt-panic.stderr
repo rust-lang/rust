@@ -61,15 +61,41 @@ warning: panic message is not a string literal
 LL |     assert!(false, S);
    |                    ^
    |
-   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: this usage of assert!() is deprecated; it will be a hard error in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
 help: add a "{}" format string to Display the message
    |
 LL |     assert!(false, "{}", S);
    |                    +++++
 
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:20:20
+   |
+LL |     assert!(false, 123);
+   |                    ^^^
+   |
+   = note: this usage of assert!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+help: add a "{}" format string to Display the message
+   |
+LL |     assert!(false, "{}", 123);
+   |                    +++++
+
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:22:20
+   |
+LL |     assert!(false, Some(123));
+   |                    ^^^^^^^^^
+   |
+   = note: this usage of assert!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+help: add a "{:?}" format string to use the Debug implementation of `Option<i32>`
+   |
+LL |     assert!(false, "{:?}", Some(123));
+   |                    +++++++
+
 warning: panic message contains braces
-  --> $DIR/non-fmt-panic.rs:20:27
+  --> $DIR/non-fmt-panic.rs:24:27
    |
 LL |     debug_assert!(false, "{{}} bla");
    |                           ^^^^
@@ -81,7 +107,7 @@ LL |     debug_assert!(false, "{}", "{{}} bla");
    |                          +++++
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:21:12
+  --> $DIR/non-fmt-panic.rs:25:12
    |
 LL |     panic!(C);
    |            ^
@@ -94,7 +120,7 @@ LL |     panic!("{}", C);
    |            +++++
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:22:12
+  --> $DIR/non-fmt-panic.rs:26:12
    |
 LL |     panic!(S);
    |            ^
@@ -107,12 +133,12 @@ LL |     panic!("{}", S);
    |            +++++
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:23:17
+  --> $DIR/non-fmt-panic.rs:27:17
    |
 LL |     std::panic!(123);
    |                 ^^^
    |
-   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: this usage of std::panic!() is deprecated; it will be a hard error in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
 help: add a "{}" format string to Display the message
    |
@@ -124,20 +150,37 @@ LL |     std::panic::panic_any(123);
    |     ~~~~~~~~~~~~~~~~~~~~~
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:24:18
+  --> $DIR/non-fmt-panic.rs:28:18
    |
 LL |     core::panic!(&*"abc");
    |                  ^^^^^^^
    |
-   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: this usage of core::panic!() is deprecated; it will be a hard error in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
 help: add a "{}" format string to Display the message
    |
 LL |     core::panic!("{}", &*"abc");
    |                  +++++
 
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:29:12
+   |
+LL |     panic!(Some(123));
+   |            ^^^^^^^^^
+   |
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+help: add a "{:?}" format string to use the Debug implementation of `Option<i32>`
+   |
+LL |     panic!("{:?}", Some(123));
+   |            +++++++
+help: or use std::panic::panic_any instead
+   |
+LL |     std::panic::panic_any(Some(123));
+   |     ~~~~~~~~~~~~~~~~~~~~~
+
 warning: panic message contains an unused formatting placeholder
-  --> $DIR/non-fmt-panic.rs:25:12
+  --> $DIR/non-fmt-panic.rs:30:12
    |
 LL |     panic!(concat!("{", "}"));
    |            ^^^^^^^^^^^^^^^^^
@@ -153,7 +196,7 @@ LL |     panic!("{}", concat!("{", "}"));
    |            +++++
 
 warning: panic message contains braces
-  --> $DIR/non-fmt-panic.rs:26:5
+  --> $DIR/non-fmt-panic.rs:31:5
    |
 LL |     panic!(concat!("{", "{"));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -165,7 +208,7 @@ LL |     panic!("{}", concat!("{", "{"));
    |            +++++
 
 warning: panic message contains an unused formatting placeholder
-  --> $DIR/non-fmt-panic.rs:28:37
+  --> $DIR/non-fmt-panic.rs:33:37
    |
 LL |     fancy_panic::fancy_panic!("test {} 123");
    |                                     ^^
@@ -173,7 +216,7 @@ LL |     fancy_panic::fancy_panic!("test {} 123");
    = note: this message is not used as a format string when given without arguments, but will be in Rust 2021
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:38:12
+  --> $DIR/non-fmt-panic.rs:43:12
    |
 LL |     panic!(a!());
    |            ^^^^
@@ -190,7 +233,7 @@ LL |     std::panic::panic_any(a!());
    |     ~~~~~~~~~~~~~~~~~~~~~
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:40:12
+  --> $DIR/non-fmt-panic.rs:45:12
    |
 LL |     panic!(format!("{}", 1));
    |            ^^^^^^^^^^^^^^^^
@@ -205,12 +248,12 @@ LL +     panic!("{}", 1);
    | 
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:41:20
+  --> $DIR/non-fmt-panic.rs:46:20
    |
 LL |     assert!(false, format!("{}", 1));
    |                    ^^^^^^^^^^^^^^^^
    |
-   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: this usage of assert!() is deprecated; it will be a hard error in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
    = note: the assert!() macro supports formatting, so there's no need for the format!() macro here
 help: remove the `format!(..)` macro call
@@ -220,12 +263,12 @@ LL +     assert!(false, "{}", 1);
    | 
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:42:26
+  --> $DIR/non-fmt-panic.rs:47:26
    |
 LL |     debug_assert!(false, format!("{}", 1));
    |                          ^^^^^^^^^^^^^^^^
    |
-   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: this usage of debug_assert!() is deprecated; it will be a hard error in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
    = note: the debug_assert!() macro supports formatting, so there's no need for the format!() macro here
 help: remove the `format!(..)` macro call
@@ -235,7 +278,7 @@ LL +     debug_assert!(false, "{}", 1);
    | 
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:44:12
+  --> $DIR/non-fmt-panic.rs:49:12
    |
 LL |     panic![123];
    |            ^^^
@@ -252,7 +295,7 @@ LL |     std::panic::panic_any(123);
    |     ~~~~~~~~~~~~~~~~~~~~~~   ~
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:45:12
+  --> $DIR/non-fmt-panic.rs:50:12
    |
 LL |     panic!{123};
    |            ^^^
@@ -268,5 +311,115 @@ help: or use std::panic::panic_any instead
 LL |     std::panic::panic_any(123);
    |     ~~~~~~~~~~~~~~~~~~~~~~   ~
 
-warning: 19 warnings emitted
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:67:12
+   |
+LL |     panic!(v);
+   |     ------ ^
+   |     |
+   |     help: use std::panic::panic_any instead: `std::panic::panic_any`
+   |
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:68:20
+   |
+LL |     assert!(false, v);
+   |                    ^
+   |
+   = note: this usage of assert!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:72:12
+   |
+LL |     panic!(v);
+   |            ^
+   |
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+help: add a "{:?}" format string to use the Debug implementation of `T`
+   |
+LL |     panic!("{:?}", v);
+   |            +++++++
+help: or use std::panic::panic_any instead
+   |
+LL |     std::panic::panic_any(v);
+   |     ~~~~~~~~~~~~~~~~~~~~~
+
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:73:20
+   |
+LL |     assert!(false, v);
+   |                    ^
+   |
+   = note: this usage of assert!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+help: add a "{:?}" format string to use the Debug implementation of `T`
+   |
+LL |     assert!(false, "{:?}", v);
+   |                    +++++++
+
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:77:12
+   |
+LL |     panic!(v);
+   |            ^
+   |
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+help: add a "{}" format string to Display the message
+   |
+LL |     panic!("{}", v);
+   |            +++++
+help: or use std::panic::panic_any instead
+   |
+LL |     std::panic::panic_any(v);
+   |     ~~~~~~~~~~~~~~~~~~~~~
+
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:78:20
+   |
+LL |     assert!(false, v);
+   |                    ^
+   |
+   = note: this usage of assert!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+help: add a "{}" format string to Display the message
+   |
+LL |     assert!(false, "{}", v);
+   |                    +++++
+
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:82:12
+   |
+LL |     panic!(v);
+   |            ^
+   |
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+help: add a "{}" format string to Display the message
+   |
+LL |     panic!("{}", v);
+   |            +++++
+help: or use std::panic::panic_any instead
+   |
+LL |     std::panic::panic_any(v);
+   |     ~~~~~~~~~~~~~~~~~~~~~
+
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:83:20
+   |
+LL |     assert!(false, v);
+   |                    ^
+   |
+   = note: this usage of assert!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+help: add a "{}" format string to Display the message
+   |
+LL |     assert!(false, "{}", v);
+   |                    +++++
+
+warning: 30 warnings emitted
 

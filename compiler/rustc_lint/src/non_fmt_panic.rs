@@ -2,12 +2,15 @@ use crate::{LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_errors::{pluralize, Applicability};
 use rustc_hir as hir;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
+use rustc_middle::ty::subst::InternalSubsts;
 use rustc_parse_format::{ParseMode, Parser, Piece};
 use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_span::edition::Edition;
 use rustc_span::{hygiene, sym, symbol::kw, symbol::SymbolStr, InnerSpan, Span, Symbol};
+use rustc_trait_selection::infer::InferCtxtExt;
 
 declare_lint! {
     /// The `non_fmt_panics` lint detects `panic!(..)` invocations where the first
@@ -99,7 +102,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
 
     cx.struct_span_lint(NON_FMT_PANICS, arg_span, |lint| {
         let mut l = lint.build("panic message is not a string literal");
-        l.note("this usage of panic!() is deprecated; it will be a hard error in Rust 2021");
+        l.note(&format!("this usage of {}!() is deprecated; it will be a hard error in Rust 2021", symbol_str));
         l.note("for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>");
         if !is_arg_inside_call(arg_span, span) {
             // No clue where this argument is coming from.
@@ -129,20 +132,57 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 ty.ty_adt_def(),
                 Some(ty_def) if cx.tcx.is_diagnostic_item(sym::string_type, ty_def.did),
             );
-            l.span_suggestion_verbose(
-                arg_span.shrink_to_lo(),
-                "add a \"{}\" format string to Display the message",
-                "\"{}\", ".into(),
-                if is_str {
-                    Applicability::MachineApplicable
-                } else {
-                    Applicability::MaybeIncorrect
-                },
-            );
-            if !is_str && panic == sym::std_panic_macro {
+
+            let (suggest_display, suggest_debug) = cx.tcx.infer_ctxt().enter(|infcx| {
+                let display = is_str || cx.tcx.get_diagnostic_item(sym::display_trait).map(|t| {
+                    infcx.type_implements_trait(t, ty, InternalSubsts::empty(), cx.param_env).may_apply()
+                }) == Some(true);
+                let debug = !display && cx.tcx.get_diagnostic_item(sym::debug_trait).map(|t| {
+                    infcx.type_implements_trait(t, ty, InternalSubsts::empty(), cx.param_env).may_apply()
+                }) == Some(true);
+                (display, debug)
+            });
+
+            let suggest_panic_any = !is_str && panic == sym::std_panic_macro;
+
+            let fmt_applicability = if suggest_panic_any {
+                // If we can use panic_any, use that as the MachineApplicable suggestion.
+                Applicability::MaybeIncorrect
+            } else {
+                // If we don't suggest panic_any, using a format string is our best bet.
+                Applicability::MachineApplicable
+            };
+
+            if suggest_display {
+                l.span_suggestion_verbose(
+                    arg_span.shrink_to_lo(),
+                    "add a \"{}\" format string to Display the message",
+                    "\"{}\", ".into(),
+                    fmt_applicability,
+                );
+            } else if suggest_debug {
+                l.span_suggestion_verbose(
+                    arg_span.shrink_to_lo(),
+                    &format!(
+                        "add a \"{{:?}}\" format string to use the Debug implementation of `{}`",
+                        ty,
+                    ),
+                    "\"{:?}\", ".into(),
+                    fmt_applicability,
+                );
+            }
+
+            if suggest_panic_any {
                 if let Some((open, close, del)) = find_delimiters(cx, span) {
                     l.multipart_suggestion(
-                        "or use std::panic::panic_any instead",
+                        &format!(
+                            "{}use std::panic::panic_any instead",
+                            if suggest_display || suggest_debug {
+                                "or "
+                            } else {
+                                ""
+                            },
+                        ),
                         if del == '(' {
                             vec![(span.until(open), "std::panic::panic_any".into())]
                         } else {
