@@ -22,22 +22,26 @@ LL |         (1, 2, .., 3, 4) => {}
               found tuple `(_, _, _, _)`
 
 error[E0023]: this pattern has 4 fields, but the corresponding tuple struct has 3 fields
-  --> $DIR/pat-tuple-overfield.rs:10:9
+  --> $DIR/pat-tuple-overfield.rs:10:10
    |
 LL | struct S(u8, u8, u8);
    | --------------------- tuple struct defined here
 ...
 LL |         S(1, 2, 3, 4) => {}
-   |         ^^^^^^^^^^^^^ expected 3 fields, found 4
+   |         -^^^^^^^^^^^^ expected 3 fields, found 4
+   |         |
+   |         this tuple struct
 
 error[E0023]: this pattern has 4 fields, but the corresponding tuple struct has 3 fields
-  --> $DIR/pat-tuple-overfield.rs:12:9
+  --> $DIR/pat-tuple-overfield.rs:12:10
    |
 LL | struct S(u8, u8, u8);
    | --------------------- tuple struct defined here
 ...
 LL |         S(1, 2, .., 3, 4) => {}
-   |         ^^^^^^^^^^^^^^^^^ expected 3 fields, found 4
+   |         -^^^^^^^^^^^^^^^^ expected 3 fields, found 4
+   |         |
+   |         this tuple struct
 
 error: aborting due to 4 previous errors
 

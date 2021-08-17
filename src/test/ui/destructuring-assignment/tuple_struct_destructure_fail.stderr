@@ -15,22 +15,26 @@ LL |     Enum::SingleVariant(a, .., b, ..) = Enum::SingleVariant(0, 1);
    |                            previously used here
 
 error[E0023]: this pattern has 3 fields, but the corresponding tuple struct has 2 fields
-  --> $DIR/tuple_struct_destructure_fail.rs:30:5
+  --> $DIR/tuple_struct_destructure_fail.rs:30:16
    |
 LL | struct TupleStruct<S, T>(S, T);
    | ------------------------------- tuple struct defined here
 ...
 LL |     TupleStruct(a, a, b) = TupleStruct(1, 2);
-   |     ^^^^^^^^^^^^^^^^^^^^ expected 2 fields, found 3
+   |     -----------^^^^^^^^^ expected 2 fields, found 3
+   |     |
+   |     this tuple struct
 
 error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 2 fields
-  --> $DIR/tuple_struct_destructure_fail.rs:32:5
+  --> $DIR/tuple_struct_destructure_fail.rs:32:16
    |
 LL | struct TupleStruct<S, T>(S, T);
    | ------------------------------- tuple struct defined here
 ...
 LL |     TupleStruct(_) = TupleStruct(1, 2);
-   |     ^^^^^^^^^^^^^^ expected 2 fields, found 1
+   |     -----------^^^ expected 2 fields, found 1
+   |     |
+   |     this tuple struct
    |
 help: use `_` to explicitly ignore each field
    |
@@ -42,22 +46,26 @@ LL |     TupleStruct(..) = TupleStruct(1, 2);
    |                 ~~
 
 error[E0023]: this pattern has 3 fields, but the corresponding tuple variant has 2 fields
-  --> $DIR/tuple_struct_destructure_fail.rs:34:5
+  --> $DIR/tuple_struct_destructure_fail.rs:34:24
    |
 LL |     SingleVariant(S, T)
    |     ------------------- tuple variant defined here
 ...
 LL |     Enum::SingleVariant(a, a, b) = Enum::SingleVariant(1, 2);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 2 fields, found 3
+   |     -------------------^^^^^^^^^ expected 2 fields, found 3
+   |     |
+   |     this tuple variant
 
 error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 2 fields
-  --> $DIR/tuple_struct_destructure_fail.rs:36:5
+  --> $DIR/tuple_struct_destructure_fail.rs:36:24
    |
 LL |     SingleVariant(S, T)
    |     ------------------- tuple variant defined here
 ...
 LL |     Enum::SingleVariant(_) = Enum::SingleVariant(1, 2);
-   |     ^^^^^^^^^^^^^^^^^^^^^^ expected 2 fields, found 1
+   |     -------------------^^^ expected 2 fields, found 1
+   |     |
+   |     this tuple variant
    |
 help: use `_` to explicitly ignore each field
    |

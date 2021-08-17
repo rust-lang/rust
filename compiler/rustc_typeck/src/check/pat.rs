@@ -990,10 +990,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let subpats_ending = pluralize!(subpats.len());
         let fields_ending = pluralize!(fields.len());
+        let fields_span = pat_span.trim_start(qpath.span()).unwrap_or(pat_span);
         let res_span = self.tcx.def_span(res.def_id());
         let mut err = struct_span_err!(
             self.tcx.sess,
-            pat_span,
+            fields_span,
             E0023,
             "this pattern has {} field{}, but the corresponding {} has {} field{}",
             subpats.len(),
@@ -1003,9 +1004,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fields_ending,
         );
         err.span_label(
-            pat_span,
+            fields_span,
             format!("expected {} field{}, found {}", fields.len(), fields_ending, subpats.len(),),
         )
+        .span_label(qpath.span(), format!("this {}", res.descr()))
         .span_label(res_span, format!("{} defined here", res.descr()));
 
         // Identify the case `Some(x, y)` where the expected type is e.g. `Option<(T, U)>`.
