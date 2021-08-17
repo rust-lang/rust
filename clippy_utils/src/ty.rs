@@ -10,12 +10,12 @@ use rustc_hir::{TyKind, Unsafety};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, AdtDef, IntTy, Ty, TyCtxt, TypeFoldable, UintTy};
-use rustc_span::sym;
-use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::DUMMY_SP;
+use rustc_middle::ty::{self, AdtDef, IntTy, Predicate, Ty, TyCtxt, TypeFoldable, UintTy};
+use rustc_span::symbol::Ident;
+use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::normalize::AtExt;
+use std::iter;
 
 use crate::{match_def_path, must_use_attr};
 
@@ -390,4 +390,17 @@ pub fn is_uninit_value_valid_for_ty(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
         ty::Adt(adt, _) => cx.tcx.lang_items().maybe_uninit() == Some(adt.did),
         _ => false,
     }
+}
+
+/// Gets an iterator over all predicates which apply to the given item.
+pub fn all_predicates_of(tcx: TyCtxt<'_>, id: DefId) -> impl Iterator<Item = &(Predicate<'_>, Span)> {
+    let mut next_id = Some(id);
+    iter::from_fn(move || {
+        next_id.take().map(|id| {
+            let preds = tcx.predicates_of(id);
+            next_id = preds.parent;
+            preds.predicates.iter()
+        })
+    })
+    .flatten()
 }

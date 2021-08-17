@@ -121,7 +121,7 @@ fn main() {
 
     let s = String::new();
     // Lint, both branches immutably borrow `s`.
-    let _ = Some(0).map_or_else(|| s.len(), |x| s.len() + x);
+    let _ = Some(0).map_or(s.len(), |x| s.len() + x);
 
     let s = String::new();
     // Lint, `Some` branch consumes `s`, but else branch doesn't use `s`.
