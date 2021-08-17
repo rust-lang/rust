@@ -14,7 +14,7 @@ pub mod inner {
 
     pub(in crate::time) const ZERO: time::Instant = time::Instant::zero();
 
-    // bits 30 and 31 are never used since the seconds part never exceeds 10^9
+    // bits 30 and 31 are never used since the nanoseconds part never exceeds 10^9
     const UNINITIALIZED: u64 = 0b11 << 30;
     static MONO: AtomicU64 = AtomicU64::new(UNINITIALIZED);
 
