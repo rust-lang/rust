@@ -1128,26 +1128,20 @@ struct HasTypeFlagsVisitor<'tcx> {
 impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor<'tcx> {
     type BreakTy = FoundFlags;
     fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-        self.tcx
+        bug!("we shouldn't call this method as we manually look at ct substs");
     }
 
     #[inline]
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        debug!(
-            "HasTypeFlagsVisitor: t={:?} t.flags={:?} self.flags={:?}",
-            t,
-            t.flags(),
-            self.flags
-        );
-        if t.flags().intersects(self.flags) {
+        let flags = t.flags();
+        debug!("HasTypeFlagsVisitor: t={:?} flags={:?} self.flags={:?}", t, flags, self.flags);
+        if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
-        } else if t.flags().intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS)
-            && self.flags.intersects(TypeFlags::MAY_NEED_DEFAULT_CONST_SUBSTS)
-            && self.tcx.is_some()
-        {
-            t.super_visit_with(self)
         } else {
-            ControlFlow::CONTINUE
+            match flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS) {
+                true if self.tcx.is_some() => UnknownConstSubstsVisitor::search(&self, t),
+                _ => ControlFlow::CONTINUE,
+            }
         }
     }
 
@@ -1168,13 +1162,11 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor<'tcx> {
         debug!("HasTypeFlagsVisitor: c={:?} c.flags={:?} self.flags={:?}", c, flags, self.flags);
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
-        } else if flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS)
-            && self.flags.intersects(TypeFlags::MAY_NEED_DEFAULT_CONST_SUBSTS)
-            && self.tcx.is_some()
-        {
-            c.super_visit_with(self)
         } else {
-            ControlFlow::CONTINUE
+            match flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS) {
+                true if self.tcx.is_some() => UnknownConstSubstsVisitor::search(&self, c),
+                _ => ControlFlow::CONTINUE,
+            }
         }
     }
 
@@ -1184,11 +1176,76 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor<'tcx> {
         debug!("HasTypeFlagsVisitor: uv={:?} uv.flags={:?} self.flags={:?}", uv, flags, self.flags);
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
-        } else if flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS)
-            && self.flags.intersects(TypeFlags::MAY_NEED_DEFAULT_CONST_SUBSTS)
-            && self.tcx.is_some()
-        {
-            uv.super_visit_with(self)
+        } else {
+            match flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS) {
+                true if self.tcx.is_some() => UnknownConstSubstsVisitor::search(&self, uv),
+                _ => ControlFlow::CONTINUE,
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
+        let flags = predicate.inner.flags;
+        debug!(
+            "HasTypeFlagsVisitor: predicate={:?} flags={:?} self.flags={:?}",
+            predicate, flags, self.flags
+        );
+        if flags.intersects(self.flags) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            match flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS) {
+                true if self.tcx.is_some() => UnknownConstSubstsVisitor::search(&self, predicate),
+                _ => ControlFlow::CONTINUE,
+            }
+        }
+    }
+}
+
+struct UnknownConstSubstsVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    flags: ty::TypeFlags,
+}
+
+impl<'tcx> UnknownConstSubstsVisitor<'tcx> {
+    /// This is fairly cold and we don't want to
+    /// bloat the size of the `HasTypeFlagsVisitor`.
+    #[inline(never)]
+    pub fn search<T: TypeFoldable<'tcx>>(
+        visitor: &HasTypeFlagsVisitor<'tcx>,
+        v: T,
+    ) -> ControlFlow<FoundFlags> {
+        if visitor.flags.intersects(TypeFlags::MAY_NEED_DEFAULT_CONST_SUBSTS) {
+            v.super_visit_with(&mut UnknownConstSubstsVisitor {
+                tcx: visitor.tcx.unwrap(),
+                flags: visitor.flags,
+            })
+        } else {
+            ControlFlow::CONTINUE
+        }
+    }
+}
+
+impl<'tcx> TypeVisitor<'tcx> for UnknownConstSubstsVisitor<'tcx> {
+    type BreakTy = FoundFlags;
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        bug!("we shouldn't call this method as we manually look at ct substs");
+    }
+
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        if t.flags().intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS) {
+            t.super_visit_with(self)
+        } else {
+            ControlFlow::CONTINUE
+        }
+    }
+
+    #[inline]
+    fn visit_unevaluated_const(&mut self, uv: ty::Unevaluated<'tcx>) -> ControlFlow<Self::BreakTy> {
+        if uv.substs_.is_none() {
+            self.tcx
+                .default_anon_const_substs(uv.def.did)
+                .visit_with(&mut HasTypeFlagsVisitor { tcx: Some(self.tcx), flags: self.flags })
         } else {
             ControlFlow::CONTINUE
         }
@@ -1196,16 +1253,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor<'tcx> {
 
     #[inline]
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
-        debug!(
-            "HasTypeFlagsVisitor: predicate={:?} predicate.flags={:?} self.flags={:?}",
-            predicate, predicate.inner.flags, self.flags
-        );
-        if predicate.inner.flags.intersects(self.flags) {
-            ControlFlow::Break(FoundFlags)
-        } else if predicate.inner.flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS)
-            && self.flags.intersects(TypeFlags::MAY_NEED_DEFAULT_CONST_SUBSTS)
-            && self.tcx.is_some()
-        {
+        if predicate.inner.flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS) {
             predicate.super_visit_with(self)
         } else {
             ControlFlow::CONTINUE
