@@ -138,7 +138,8 @@ pub struct AtomicBool {
 
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Default for AtomicBool {
+#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+impl const Default for AtomicBool {
     /// Creates an `AtomicBool` initialized to `false`.
     #[inline]
     fn default() -> Self {
@@ -168,7 +169,8 @@ pub struct AtomicPtr<T> {
 
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Default for AtomicPtr<T> {
+#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+impl<T> const Default for AtomicPtr<T> {
     /// Creates a null `AtomicPtr<T>`.
     fn default() -> AtomicPtr<T> {
         AtomicPtr::new(crate::ptr::null_mut())
@@ -1351,7 +1353,8 @@ macro_rules! atomic_int {
         pub const $atomic_init: $atomic_type = $atomic_type::new(0);
 
         #[$stable]
-        impl Default for $atomic_type {
+        #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+        impl const Default for $atomic_type {
             #[inline]
             fn default() -> Self {
                 Self::new(Default::default())

@@ -95,6 +95,7 @@
 #![feature(const_fn_trait_bound)]
 #![feature(cow_is_borrowed)]
 #![feature(const_cow_is_borrowed)]
+#![feature(const_trait_impl)]
 #![feature(destructuring_assignment)]
 #![feature(dispatch_from_dyn)]
 #![feature(core_intrinsics)]

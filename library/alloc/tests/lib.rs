@@ -24,6 +24,7 @@
 #![feature(vec_spare_capacity)]
 #![feature(string_remove_matches)]
 #![feature(const_btree_new)]
+#![feature(const_default_impls)]
 #![feature(const_trait_impl)]
 
 use std::collections::hash_map::DefaultHasher;

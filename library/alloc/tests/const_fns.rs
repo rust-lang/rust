@@ -1,16 +1,8 @@
-// Test several functions can be used for constants
-// 1. Vec::new()
-// 2. String::new()
-// 3. BTreeMap::new()
-// 4. BTreeSet::new()
+// Test const functions in the library
 
-#[allow(dead_code)]
-pub const MY_VEC: Vec<usize> = Vec::new();
+use core::cmp::Ordering;
 
-#[allow(dead_code)]
-pub const MY_STRING: String = String::new();
-
-// FIXME(fee1-dead) remove this struct once we put `K: ?const Ord` on BTreeMap::new.
+// FIXME remove this struct once we put `K: ?const Ord` on BTreeMap::new.
 #[derive(PartialEq, Eq, PartialOrd)]
 pub struct MyType;
 
@@ -32,7 +24,12 @@ impl const Ord for MyType {
     }
 }
 
-use core::cmp::Ordering;
+pub const MY_VEC: Vec<usize> = Vec::new();
+pub const MY_VEC2: Vec<usize> = Default::default();
+
+pub const MY_STRING: String = String::new();
+pub const MY_STRING2: String = Default::default();
+
 use std::collections::{BTreeMap, BTreeSet};
 
 pub const MY_BTREEMAP: BTreeMap<MyType, MyType> = BTreeMap::new();
@@ -47,7 +44,10 @@ pub const SET_IS_EMPTY: bool = SET.is_empty();
 
 #[test]
 fn test_const() {
+    assert_eq!(MY_VEC, MY_VEC2);
+    assert_eq!(MY_STRING, MY_STRING2);
+
     assert_eq!(MAP_LEN, 0);
     assert_eq!(SET_LEN, 0);
-    assert!(MAP_IS_EMPTY && SET_IS_EMPTY)
+    assert!(MAP_IS_EMPTY && SET_IS_EMPTY);
 }
