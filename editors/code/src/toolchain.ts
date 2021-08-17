@@ -160,8 +160,7 @@ export const getPathForExecutable = memoizeAsync(
             // it is not mentioned in docs and cannot be infered by the type signature...
             const standardPath = vscode.Uri.joinPath(vscode.Uri.file(os.homedir()), ".cargo", "bin", executableName);
 
-            const exist = await isFileAtUri(standardPath);
-            if (exist) return standardPath.fsPath;
+            if (await isFileAtUri(standardPath)) return standardPath.fsPath;
         } catch (err) {
             log.error("Failed to read the fs info", err);
         }
