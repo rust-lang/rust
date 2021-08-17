@@ -344,7 +344,6 @@ extern "Rust" {
     // This is the magic symbol to call the global alloc error handler.  rustc generates
     // it to call `__rg_oom` if there is a `#[alloc_error_handler]`, or to call the
     // default implementations below (`__rdl_oom`) otherwise.
-    #[rustc_allocator_nounwind]
     fn __rust_alloc_error_handler(size: usize, align: usize) -> !;
 }
 
@@ -362,7 +361,6 @@ extern "Rust" {
 /// [`take_alloc_error_hook`]: ../../std/alloc/fn.take_alloc_error_hook.html
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[cfg(all(not(no_global_oom_handling), not(test)))]
-#[rustc_allocator_nounwind]
 #[cold]
 pub fn handle_alloc_error(layout: Layout) -> ! {
     unsafe {
