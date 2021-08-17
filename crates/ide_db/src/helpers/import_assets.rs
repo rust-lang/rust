@@ -120,11 +120,11 @@ impl ImportAssets {
     }
 
     pub fn for_ident_pat(pat: &ast::IdentPat, sema: &Semantics<RootDatabase>) -> Option<Self> {
-        let name = pat.name()?;
-        let candidate_node = pat.syntax().clone();
         if !pat.is_simple_ident() {
             return None;
         }
+        let name = pat.name()?;
+        let candidate_node = pat.syntax().clone();
         Some(Self {
             import_candidate: ImportCandidate::for_name(sema, &name)?,
             module_with_candidate: sema.scope(&candidate_node).module()?,

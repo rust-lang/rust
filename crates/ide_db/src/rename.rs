@@ -30,7 +30,7 @@ use syntax::{
     ast::{self, NameOwner},
     lex_single_syntax_kind, AstNode, SyntaxKind, TextRange, T,
 };
-use text_edit::TextEdit;
+use text_edit::{TextEdit, TextEditBuilder};
 
 use crate::{
     defs::Definition,
@@ -303,108 +303,134 @@ pub fn source_edit_from_references(
 ) -> TextEdit {
     let mut edit = TextEdit::builder();
     for reference in references {
-        let (range, replacement) = match &reference.name {
+        let has_emitted_edit = match &reference.name {
             // if the ranges differ then the node is inside a macro call, we can't really attempt
             // to make special rewrites like shorthand syntax and such, so just rename the node in
             // the macro input
             ast::NameLike::NameRef(name_ref)
                 if name_ref.syntax().text_range() == reference.range =>
             {
-                source_edit_from_name_ref(name_ref, new_name, def)
+                source_edit_from_name_ref(&mut edit, name_ref, new_name, def)
             }
             ast::NameLike::Name(name) if name.syntax().text_range() == reference.range => {
-                source_edit_from_name(name, new_name)
+                source_edit_from_name(&mut edit, name, new_name)
             }
-            _ => None,
+            _ => false,
+        };
+        if !has_emitted_edit {
+            edit.replace(reference.range, new_name.to_string());
         }
-        .unwrap_or_else(|| (reference.range, new_name.to_string()));
-        edit.replace(range, replacement);
     }
+
     edit.finish()
 }
 
-fn source_edit_from_name(name: &ast::Name, new_name: &str) -> Option<(TextRange, String)> {
+fn source_edit_from_name(edit: &mut TextEditBuilder, name: &ast::Name, new_name: &str) -> bool {
     if let Some(_) = ast::RecordPatField::for_field_name(name) {
-        // FIXME: instead of splitting the shorthand, recursively trigger a rename of the
-        // other name https://github.com/rust-analyzer/rust-analyzer/issues/6547
         if let Some(ident_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
-            return Some((
-                TextRange::empty(ident_pat.syntax().text_range().start()),
-                [new_name, ": "].concat(),
-            ));
+            cov_mark::hit!(rename_record_pat_field_name_split);
+            // Foo { ref mut field } -> Foo { new_name: ref mut field }
+            //      ^ insert `new_name: `
+
+            // FIXME: instead of splitting the shorthand, recursively trigger a rename of the
+            // other name https://github.com/rust-analyzer/rust-analyzer/issues/6547
+            edit.insert(ident_pat.syntax().text_range().start(), format!("{}: ", new_name));
+            return true;
         }
     }
-    None
+
+    false
 }
 
 fn source_edit_from_name_ref(
+    edit: &mut TextEditBuilder,
     name_ref: &ast::NameRef,
     new_name: &str,
     def: Definition,
-) -> Option<(TextRange, String)> {
+) -> bool {
     if let Some(record_field) = ast::RecordExprField::for_name_ref(name_ref) {
         let rcf_name_ref = record_field.name_ref();
         let rcf_expr = record_field.expr();
-        match (rcf_name_ref, rcf_expr.and_then(|it| it.name_ref())) {
+        match &(rcf_name_ref, rcf_expr.and_then(|it| it.name_ref())) {
             // field: init-expr, check if we can use a field init shorthand
             (Some(field_name), Some(init)) => {
-                if field_name == *name_ref {
+                if field_name == name_ref {
                     if init.text() == new_name {
                         cov_mark::hit!(test_rename_field_put_init_shorthand);
+                        // Foo { field: local } -> Foo { local }
+                        //       ^^^^^^^ delete this
+
                         // same names, we can use a shorthand here instead.
                         // we do not want to erase attributes hence this range start
                         let s = field_name.syntax().text_range().start();
-                        let e = record_field.syntax().text_range().end();
-                        return Some((TextRange::new(s, e), new_name.to_owned()));
+                        let e = init.syntax().text_range().start();
+                        edit.delete(TextRange::new(s, e));
+                        return true;
                     }
-                } else if init == *name_ref {
+                } else if init == name_ref {
                     if field_name.text() == new_name {
                         cov_mark::hit!(test_rename_local_put_init_shorthand);
+                        // Foo { field: local } -> Foo { field }
+                        //            ^^^^^^^ delete this
+
                         // same names, we can use a shorthand here instead.
                         // we do not want to erase attributes hence this range start
-                        let s = field_name.syntax().text_range().start();
-                        let e = record_field.syntax().text_range().end();
-                        return Some((TextRange::new(s, e), new_name.to_owned()));
+                        let s = field_name.syntax().text_range().end();
+                        let e = init.syntax().text_range().end();
+                        edit.delete(TextRange::new(s, e));
+                        return true;
                     }
                 }
-                None
             }
             // init shorthand
             (None, Some(_)) if matches!(def, Definition::Field(_)) => {
                 cov_mark::hit!(test_rename_field_in_field_shorthand);
-                let s = name_ref.syntax().text_range().start();
-                Some((TextRange::empty(s), format!("{}: ", new_name)))
+                // Foo { field } -> Foo { new_name: field }
+                //       ^ insert `new_name: `
+                let offset = name_ref.syntax().text_range().start();
+                edit.insert(offset, format!("{}: ", new_name));
+                return true;
             }
             (None, Some(_)) if matches!(def, Definition::Local(_)) => {
                 cov_mark::hit!(test_rename_local_in_field_shorthand);
-                let s = name_ref.syntax().text_range().end();
-                Some((TextRange::empty(s), format!(": {}", new_name)))
+                // Foo { field } -> Foo { field: new_name }
+                //            ^ insert `: new_name`
+                let offset = name_ref.syntax().text_range().end();
+                edit.insert(offset, format!(": {}", new_name));
+                return true;
             }
-            _ => None,
+            _ => (),
         }
     } else if let Some(record_field) = ast::RecordPatField::for_field_name_ref(name_ref) {
         let rcf_name_ref = record_field.name_ref();
         let rcf_pat = record_field.pat();
         match (rcf_name_ref, rcf_pat) {
             // field: rename
-            (Some(field_name), Some(ast::Pat::IdentPat(pat))) if field_name == *name_ref => {
+            (Some(field_name), Some(ast::Pat::IdentPat(pat)))
+                if field_name == *name_ref && pat.at_token().is_none() =>
+            {
                 // field name is being renamed
-                if pat.name().map_or(false, |it| it.text() == new_name) {
-                    cov_mark::hit!(test_rename_field_put_init_shorthand_pat);
-                    // same names, we can use a shorthand here instead/
-                    // we do not want to erase attributes hence this range start
-                    let s = field_name.syntax().text_range().start();
-                    let e = record_field.syntax().text_range().end();
-                    Some((TextRange::new(s, e), pat.to_string()))
-                } else {
-                    None
+                if let Some(name) = pat.name() {
+                    if name.text() == new_name {
+                        cov_mark::hit!(test_rename_field_put_init_shorthand_pat);
+                        // Foo { field: ref mut local } -> Foo { ref mut field }
+                        //       ^^^^^^^ delete this
+                        //                      ^^^^^ replace this with `field`
+
+                        // same names, we can use a shorthand here instead/
+                        // we do not want to erase attributes hence this range start
+                        let s = field_name.syntax().text_range().start();
+                        let e = pat.syntax().text_range().start();
+                        edit.delete(TextRange::new(s, e));
+                        edit.replace(name.syntax().text_range(), new_name.to_string());
+                        return true;
+                    }
                 }
             }
-            _ => None,
+            _ => (),
         }
-    } else {
-        None
     }
+    false
 }
 
 fn source_edit_from_def(
@@ -412,32 +438,52 @@ fn source_edit_from_def(
     def: Definition,
     new_name: &str,
 ) -> Result<(FileId, TextEdit)> {
-    let frange = def
+    let FileRange { file_id, range } = def
         .range_for_rename(sema)
         .ok_or_else(|| format_err!("No identifier available to rename"))?;
 
-    let mut replacement_text = String::new();
-    let mut repl_range = frange.range;
+    let mut edit = TextEdit::builder();
     if let Definition::Local(local) = def {
         if let Either::Left(pat) = local.source(sema.db).value {
-            if matches!(
-                pat.syntax().parent().and_then(ast::RecordPatField::cast),
-                Some(pat_field) if pat_field.name_ref().is_none()
-            ) {
-                replacement_text.push_str(": ");
-                replacement_text.push_str(new_name);
-                repl_range = TextRange::new(
-                    pat.syntax().text_range().end(),
-                    pat.syntax().text_range().end(),
-                );
+            // special cases required for renaming fields/locals in Record patterns
+            if let Some(pat_field) = pat.syntax().parent().and_then(ast::RecordPatField::cast) {
+                let name_range = pat.name().unwrap().syntax().text_range();
+                if let Some(name_ref) = pat_field.name_ref() {
+                    if new_name == name_ref.text() && pat.at_token().is_none() {
+                        // Foo { field: ref mut local } -> Foo { ref mut field }
+                        //       ^^^^^^ delete this
+                        //                      ^^^^^ replace this with `field`
+                        cov_mark::hit!(test_rename_local_put_init_shorthand_pat);
+                        edit.delete(
+                            name_ref
+                                .syntax()
+                                .text_range()
+                                .cover_offset(pat.syntax().text_range().start()),
+                        );
+                        edit.replace(name_range, name_ref.text().to_string());
+                    } else {
+                        // Foo { field: ref mut local @ local 2} -> Foo { field: ref mut new_name @ local2 }
+                        // Foo { field: ref mut local } -> Foo { field: ref mut new_name }
+                        //                      ^^^^^ replace this with `new_name`
+                        edit.replace(name_range, new_name.to_string());
+                    }
+                } else {
+                    // Foo { ref mut field } -> Foo { field: ref mut new_name }
+                    //      ^ insert `field: `
+                    //               ^^^^^ replace this with `new_name`
+                    edit.insert(
+                        pat.syntax().text_range().start(),
+                        format!("{}: ", pat_field.field_name().unwrap()),
+                    );
+                    edit.replace(name_range, new_name.to_string());
+                }
             }
         }
     }
-    if replacement_text.is_empty() {
-        replacement_text.push_str(new_name);
+    if edit.is_empty() {
+        edit.replace(range, new_name.to_string());
     }
-    let edit = TextEdit::replace(repl_range, replacement_text);
-    Ok((frange.file_id, edit))
+    Ok((file_id, edit.finish()))
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
