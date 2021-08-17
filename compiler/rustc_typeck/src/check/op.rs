@@ -19,7 +19,6 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 
-use std::borrow::Borrow;
 use std::ops::ControlFlow;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -283,52 +282,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let (message, missing_trait, use_output) = match op.node {
                             hir::BinOpKind::Add => (
                                 format!("cannot add `{}` to `{}`", rhs_ty, lhs_ty),
-                                Some(op.node),
+                                Some(STDImplementationMissing::BinOp(op.node)),
                                 true,
                             ),
                             hir::BinOpKind::Sub => (
                                 format!("cannot subtract `{}` from `{}`", rhs_ty, lhs_ty),
-                                Some(op.node),
+                                Some(STDImplementationMissing::BinOp(op.node)),
                                 true,
                             ),
                             hir::BinOpKind::Mul => (
                                 format!("cannot multiply `{}` by `{}`", lhs_ty, rhs_ty),
-                                Some(op.node),
+                                Some(STDImplementationMissing::BinOp(op.node)),
                                 true,
                             ),
                             hir::BinOpKind::Div => (
                                 format!("cannot divide `{}` by `{}`", lhs_ty, rhs_ty),
-                                Some(op.node),
+                                Some(STDImplementationMissing::BinOp(op.node)),
                                 true,
                             ),
                             hir::BinOpKind::Rem => (
                                 format!("cannot mod `{}` by `{}`", lhs_ty, rhs_ty),
-                                Some(op.node),
+                                Some(STDImplementationMissing::BinOp(op.node)),
                                 true,
                             ),
                             hir::BinOpKind::BitAnd => (
                                 format!("no implementation for `{} & {}`", lhs_ty, rhs_ty),
-                                Some(op.node),
+                                Some(STDImplementationMissing::BinOp(op.node)),
                                 true,
                             ),
                             hir::BinOpKind::BitXor => (
                                 format!("no implementation for `{} ^ {}`", lhs_ty, rhs_ty),
-                                Some(op.node),
+                                Some(STDImplementationMissing::BinOp(op.node)),
                                 true,
                             ),
                             hir::BinOpKind::BitOr => (
                                 format!("no implementation for `{} | {}`", lhs_ty, rhs_ty),
-                                Some(op.node),
+                                Some(STDImplementationMissing::BinOp(op.node)),
                                 true,
                             ),
                             hir::BinOpKind::Shl => (
                                 format!("no implementation for `{} << {}`", lhs_ty, rhs_ty),
-                                Some(op.node),
+                                Some(STDImplementationMissing::BinOp(op.node)),
                                 true,
                             ),
                             hir::BinOpKind::Shr => (
                                 format!("no implementation for `{} >> {}`", lhs_ty, rhs_ty),
-                                Some(op.node),
+                                Some(STDImplementationMissing::BinOp(op.node)),
                                 true,
                             ),
                             hir::BinOpKind::Eq | hir::BinOpKind::Ne => (
@@ -337,7 +336,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     op.node.as_str(),
                                     lhs_ty
                                 ),
-                                Some(op.node),
+                                Some(STDImplementationMissing::BinOp(op.node)),
                                 false,
                             ),
                             hir::BinOpKind::Lt
@@ -349,7 +348,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     op.node.as_str(),
                                     lhs_ty
                                 ),
-                                Some(op.node),
+                                Some(STDImplementationMissing::BinOp(op.node)),
                                 false,
                             ),
                             _ => (
@@ -970,7 +969,7 @@ fn suggest_impl_missing(
                 ));
             }
             // This checks if the missing trait is PartialEq to suggest adding a derive
-            if let ImplementationMissing::BinOp(binary_op_trait) = missing_trait {
+            if let STDImplementationMissing::BinOp(binary_op_trait) = missing_trait {
                 if matches!(binary_op_trait, hir::BinOpKind::Eq | hir::BinOpKind::Ne) {
                     err.note(&format!(
                         "add `#[derive(PartialEq)]` or manually implement `PartialEq` for `{}`",
