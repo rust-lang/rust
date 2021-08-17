@@ -9,7 +9,7 @@ include ../tools.mk
 DRIVER_BINARY := "$(TMPDIR)"/driver
 SYSROOT := $(shell $(RUSTC) --print sysroot)
 
-ifdef IS_MSVC
+ifdef IS_WINDOWS
 LIBSTD := -L "$(SYSROOT)\\lib\\rustlib\\$(TARGET)\\lib"
 else
 LIBSTD :=
