@@ -1127,6 +1127,8 @@ pub fn test_stem_ext() {
 
     t!(".x.y.z", file_stem: Some(".x.y"), extension: Some("z"));
 
+    t!("..x.y.z", file_stem: Some("..x.y"), extension: Some("z"));
+
     t!("", file_stem: None, extension: None);
 }
 
@@ -1167,6 +1169,8 @@ pub fn test_prefix_ext() {
     t!("..", file_prefix: None, extension: None);
 
     t!(".x.y.z", file_prefix: Some(".x"), extension: Some("z"));
+
+    t!("..x.y.z", file_prefix: Some("."), extension: Some("z"));
 
     t!("", file_prefix: None, extension: None);
 }

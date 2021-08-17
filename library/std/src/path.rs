@@ -2217,9 +2217,7 @@ impl Path {
     ///
     #[unstable(feature = "path_file_prefix", issue = "86319")]
     pub fn file_prefix(&self) -> Option<&OsStr> {
-        self.file_name()
-            .map(split_file_at_dot)
-            .and_then(|(before, after)| if before.is_empty() { after } else { Some(before) })
+        self.file_name().map(split_file_at_dot).and_then(|(before, _after)| Some(before))
     }
 
     /// Extracts the extension of [`self.file_name`], if possible.
