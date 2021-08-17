@@ -350,10 +350,7 @@ pub fn walk_enum_def<'a, V: Visitor<'a>>(
     walk_list!(visitor, visit_variant, &enum_definition.variants);
 }
 
-pub fn walk_variant<'a, V: Visitor<'a>>(visitor: &mut V, variant: &'a Variant)
-where
-    V: Visitor<'a>,
-{
+pub fn walk_variant<'a, V: Visitor<'a>>(visitor: &mut V, variant: &'a Variant) {
     visitor.visit_ident(variant.ident);
     visitor.visit_vis(&variant.vis);
     visitor.visit_variant_data(&variant.data);
