@@ -1500,6 +1500,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | FnPointerCandidate
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
+                | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { .. }
                 | TraitAliasCandidate(..)
                 | ObjectCandidate(_)
@@ -1517,6 +1518,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | FnPointerCandidate
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
+                | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { has_nested: true }
                 | TraitAliasCandidate(..),
                 ParamCandidate(ref cand),
@@ -1546,6 +1548,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | FnPointerCandidate
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
+                | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { .. }
                 | TraitAliasCandidate(..),
             ) => true,
@@ -1557,6 +1560,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | FnPointerCandidate
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
+                | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { .. }
                 | TraitAliasCandidate(..),
                 ObjectCandidate(_) | ProjectionCandidate(_),
@@ -1630,6 +1634,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | FnPointerCandidate
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
+                | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { has_nested: true }
                 | TraitAliasCandidate(..),
                 ImplCandidate(_)
@@ -1638,6 +1643,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | FnPointerCandidate
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
+                | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { has_nested: true }
                 | TraitAliasCandidate(..),
             ) => false,

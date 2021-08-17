@@ -135,6 +135,11 @@ pub enum SelectionCandidate<'tcx> {
     /// `rustc_infer::traits::util::supertraits`.
     ObjectCandidate(usize),
 
+    /// Perform trait upcasting coercion of `dyn Trait` to a supertrait of `Trait`.
+    /// The index is the position in the iterator returned by
+    /// `rustc_infer::traits::util::supertraits`.
+    TraitUpcastingUnsizeCandidate(usize),
+
     BuiltinObjectCandidate,
 
     BuiltinUnsizeCandidate,

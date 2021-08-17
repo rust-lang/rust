@@ -9,12 +9,8 @@ trait Bar<T> {
 }
 
 fn test_specific(x: &dyn Foo) {
-    let _ = x as &dyn Bar<i32>; // FIXME: OK, eventually
-                                //~^ ERROR non-primitive cast
-                                //~^^ ERROR the trait bound `&dyn Foo: Bar<i32>` is not satisfied
-    let _ = x as &dyn Bar<u32>; // FIXME: OK, eventually
-                                //~^ ERROR non-primitive cast
-                                //~^^ ERROR the trait bound `&dyn Foo: Bar<u32>` is not satisfied
+    let _ = x as &dyn Bar<i32>; // OK
+    let _ = x as &dyn Bar<u32>; // OK
 }
 
 fn test_unknown_version(x: &dyn Foo) {
@@ -24,9 +20,7 @@ fn test_unknown_version(x: &dyn Foo) {
 }
 
 fn test_infer_version(x: &dyn Foo) {
-    let a = x as &dyn Bar<_>; // FIXME: OK, eventually
-                              //~^ ERROR non-primitive cast
-                              //~^^ ERROR the trait bound `&dyn Foo: Bar<u32>` is not satisfied
+    let a = x as &dyn Bar<_>; // OK
     let _: Option<u32> = a.bar();
 }
 
