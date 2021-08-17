@@ -2,4 +2,4 @@
 
 #[macro_use]
 mod ops_macros;
-impl_signed_tests! { SimdI64, i64 }
+impl_signed_tests! { i64 }

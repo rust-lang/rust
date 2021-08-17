@@ -1,6 +1,8 @@
+use crate::{LaneCount, Simd, SupportedLaneCount};
+
 macro_rules! impl_uint_arith {
-    ($(($name:ident, $n:ident)),+) => {
-        $( impl<const LANES: usize> $name<LANES> where crate::LaneCount<LANES>: crate::SupportedLaneCount {
+    ($($ty:ty),+) => {
+        $( impl<const LANES: usize> Simd<$ty, LANES> where LaneCount<LANES>: SupportedLaneCount {
 
             /// Lanewise saturating add.
             ///
@@ -8,9 +10,9 @@ macro_rules! impl_uint_arith {
             /// ```
             /// # #![feature(portable_simd)]
             /// # use core_simd::*;
-            #[doc = concat!("# use core::", stringify!($n), "::MAX;")]
-            #[doc = concat!("let x = ", stringify!($name), "::from_array([2, 1, 0, MAX]);")]
-            #[doc = concat!("let max = ", stringify!($name), "::splat(MAX);")]
+            #[doc = concat!("# use core::", stringify!($ty), "::MAX;")]
+            /// let x = Simd::from_array([2, 1, 0, MAX]);
+            /// let max = Simd::splat(MAX);
             /// let unsat = x + max;
             /// let sat = x.saturating_add(max);
             /// assert_eq!(x - 1, unsat);
@@ -27,13 +29,13 @@ macro_rules! impl_uint_arith {
             /// ```
             /// # #![feature(portable_simd)]
             /// # use core_simd::*;
-            #[doc = concat!("# use core::", stringify!($n), "::MAX;")]
-            #[doc = concat!("let x = ", stringify!($name), "::from_array([2, 1, 0, MAX]);")]
-            #[doc = concat!("let max = ", stringify!($name), "::splat(MAX);")]
+            #[doc = concat!("# use core::", stringify!($ty), "::MAX;")]
+            /// let x = Simd::from_array([2, 1, 0, MAX]);
+            /// let max = Simd::splat(MAX);
             /// let unsat = x - max;
             /// let sat = x.saturating_sub(max);
             /// assert_eq!(unsat, x + 1);
-            #[doc = concat!("assert_eq!(sat, ", stringify!($name), "::splat(0));")]
+            /// assert_eq!(sat, Simd::splat(0));
             #[inline]
             pub fn saturating_sub(self, second: Self) -> Self {
                 unsafe { crate::intrinsics::simd_saturating_sub(self, second) }
@@ -43,8 +45,8 @@ macro_rules! impl_uint_arith {
 }
 
 macro_rules! impl_int_arith {
-    ($(($name:ident, $n:ident)),+) => {
-        $( impl<const LANES: usize> $name<LANES> where crate::LaneCount<LANES>: crate::SupportedLaneCount {
+    ($($ty:ty),+) => {
+        $( impl<const LANES: usize> Simd<$ty, LANES> where LaneCount<LANES>: SupportedLaneCount {
 
             /// Lanewise saturating add.
             ///
@@ -52,13 +54,13 @@ macro_rules! impl_int_arith {
             /// ```
             /// # #![feature(portable_simd)]
             /// # use core_simd::*;
-            #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
-            #[doc = concat!("let x = ", stringify!($name), "::from_array([MIN, 0, 1, MAX]);")]
-            #[doc = concat!("let max = ", stringify!($name), "::splat(MAX);")]
+            #[doc = concat!("# use core::", stringify!($ty), "::{MIN, MAX};")]
+            /// let x = Simd::from_array([MIN, 0, 1, MAX]);
+            /// let max = Simd::splat(MAX);
             /// let unsat = x + max;
             /// let sat = x.saturating_add(max);
-            #[doc = concat!("assert_eq!(unsat, ", stringify!($name), "::from_array([-1, MAX, MIN, -2]));")]
-            #[doc = concat!("assert_eq!(sat, ", stringify!($name), "::from_array([-1, MAX, MAX, MAX]));")]
+            /// assert_eq!(unsat, Simd::from_array([-1, MAX, MIN, -2]));
+            /// assert_eq!(sat, Simd::from_array([-1, MAX, MAX, MAX]));
             /// ```
             #[inline]
             pub fn saturating_add(self, second: Self) -> Self {
@@ -71,13 +73,13 @@ macro_rules! impl_int_arith {
             /// ```
             /// # #![feature(portable_simd)]
             /// # use core_simd::*;
-            #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
-            #[doc = concat!("let x = ", stringify!($name), "::from_array([MIN, -2, -1, MAX]);")]
-            #[doc = concat!("let max = ", stringify!($name), "::splat(MAX);")]
+            #[doc = concat!("# use core::", stringify!($ty), "::{MIN, MAX};")]
+            /// let x = Simd::from_array([MIN, -2, -1, MAX]);
+            /// let max = Simd::splat(MAX);
             /// let unsat = x - max;
             /// let sat = x.saturating_sub(max);
-            #[doc = concat!("assert_eq!(unsat, ", stringify!($name), "::from_array([1, MAX, MIN, 0]));")]
-            #[doc = concat!("assert_eq!(sat, ", stringify!($name), "::from_array([MIN, MIN, MIN, 0]));")]
+            /// assert_eq!(unsat, Simd::from_array([1, MAX, MIN, 0]));
+            /// assert_eq!(sat, Simd::from_array([MIN, MIN, MIN, 0]));
             #[inline]
             pub fn saturating_sub(self, second: Self) -> Self {
                 unsafe { crate::intrinsics::simd_saturating_sub(self, second) }
@@ -90,13 +92,13 @@ macro_rules! impl_int_arith {
             /// ```
             /// # #![feature(portable_simd)]
             /// # use core_simd::*;
-            #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
-            #[doc = concat!("let xs = ", stringify!($name), "::from_array([MIN, MIN +1, -5, 0]);")]
-            #[doc = concat!("assert_eq!(xs.abs(), ", stringify!($name), "::from_array([MIN, MAX, 5, 0]));")]
+            #[doc = concat!("# use core::", stringify!($ty), "::{MIN, MAX};")]
+            /// let xs = Simd::from_array([MIN, MIN +1, -5, 0]);
+            /// assert_eq!(xs.abs(), Simd::from_array([MIN, MAX, 5, 0]));
             /// ```
             #[inline]
             pub fn abs(self) -> Self {
-                const SHR: $n = <$n>::BITS as $n - 1;
+                const SHR: $ty = <$ty>::BITS as $ty - 1;
                 let m = self >> SHR;
                 (self^m) - m
             }
@@ -108,17 +110,17 @@ macro_rules! impl_int_arith {
             /// ```
             /// # #![feature(portable_simd)]
             /// # use core_simd::*;
-            #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
-            #[doc = concat!("let xs = ", stringify!($name), "::from_array([MIN, -2, 0, 3]);")]
+            #[doc = concat!("# use core::", stringify!($ty), "::{MIN, MAX};")]
+            /// let xs = Simd::from_array([MIN, -2, 0, 3]);
             /// let unsat = xs.abs();
             /// let sat = xs.saturating_abs();
-            #[doc = concat!("assert_eq!(unsat, ", stringify!($name), "::from_array([MIN, 2, 0, 3]));")]
-            #[doc = concat!("assert_eq!(sat, ", stringify!($name), "::from_array([MAX, 2, 0, 3]));")]
+            /// assert_eq!(unsat, Simd::from_array([MIN, 2, 0, 3]));
+            /// assert_eq!(sat, Simd::from_array([MAX, 2, 0, 3]));
             /// ```
             #[inline]
             pub fn saturating_abs(self) -> Self {
                 // arith shift for -1 or 0 mask based on sign bit, giving 2s complement
-                const SHR: $n = <$n>::BITS as $n - 1;
+                const SHR: $ty = <$ty>::BITS as $ty - 1;
                 let m = self >> SHR;
                 (self^m).saturating_sub(m)
             }
@@ -130,12 +132,12 @@ macro_rules! impl_int_arith {
             /// ```
             /// # #![feature(portable_simd)]
             /// # use core_simd::*;
-            #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
-            #[doc = concat!("let x = ", stringify!($name), "::from_array([MIN, -2, 3, MAX]);")]
+            #[doc = concat!("# use core::", stringify!($ty), "::{MIN, MAX};")]
+            /// let x = Simd::from_array([MIN, -2, 3, MAX]);
             /// let unsat = -x;
             /// let sat = x.saturating_neg();
-            #[doc = concat!("assert_eq!(unsat, ", stringify!($name), "::from_array([MIN, 2, -3, MIN + 1]));")]
-            #[doc = concat!("assert_eq!(sat, ", stringify!($name), "::from_array([MAX, 2, -3, MIN + 1]));")]
+            /// assert_eq!(unsat, Simd::from_array([MIN, 2, -3, MIN + 1]));
+            /// assert_eq!(sat, Simd::from_array([MAX, 2, -3, MIN + 1]));
             /// ```
             #[inline]
             pub fn saturating_neg(self) -> Self {
@@ -145,7 +147,5 @@ macro_rules! impl_int_arith {
     }
 }
 
-use crate::vector::*;
-
-impl_uint_arith! { (SimdU8, u8), (SimdU16, u16), (SimdU32, u32), (SimdU64, u64), (SimdUsize, usize) }
-impl_int_arith! { (SimdI8, i8), (SimdI16, i16), (SimdI32, i32), (SimdI64, i64), (SimdIsize, isize) }
+impl_uint_arith! { u8, u16, u32, u64, usize }
+impl_int_arith! { i8, i16, i32, i64, isize }

@@ -1,9 +1,9 @@
 #![feature(portable_simd)]
 
 macro_rules! float_rounding_test {
-    { $vector:ident, $scalar:tt, $int_scalar:tt } => {
+    { $scalar:tt, $int_scalar:tt } => {
         mod $scalar {
-            type Vector<const LANES: usize> = core_simd::$vector<LANES>;
+            type Vector<const LANES: usize> = core_simd::Simd<$scalar, LANES>;
             type Scalar = $scalar;
             type IntScalar = $int_scalar;
 
@@ -88,5 +88,5 @@ macro_rules! float_rounding_test {
     }
 }
 
-float_rounding_test! { SimdF32, f32, i32 }
-float_rounding_test! { SimdF64, f64, i64 }
+float_rounding_test! { f32, i32 }
+float_rounding_test! { f64, i64 }

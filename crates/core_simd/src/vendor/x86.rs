@@ -45,10 +45,10 @@ mod p32 {
     use super::*;
     from_transmute! { unsafe usizex4 => __m128i }
     from_transmute! { unsafe usizex8 => __m256i }
-    from_transmute! { unsafe SimdUsize<16> => __m512i }
+    from_transmute! { unsafe Simd<usize, 16> => __m512i }
     from_transmute! { unsafe isizex4 => __m128i }
     from_transmute! { unsafe isizex8 => __m256i }
-    from_transmute! { unsafe SimdIsize<16> => __m512i }
+    from_transmute! { unsafe Simd<isize, 16> => __m512i }
 }
 
 #[cfg(target_pointer_width = "64")]

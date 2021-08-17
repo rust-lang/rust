@@ -2,6 +2,7 @@
 #![allow(incomplete_features)]
 #![feature(
     const_evaluatable_checked,
+    const_fn_trait_bound,
     const_generics,
     platform_intrinsics,
     repr_simd,

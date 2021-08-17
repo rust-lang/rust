@@ -1,77 +1,49 @@
-use crate::{LaneCount, SupportedLaneCount};
+use crate::{LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
 
-macro_rules! implement_mask_ops {
-    { $($vector:ident => $mask:ident ($inner_ty:ident),)* } => {
-        $(
-            impl<const LANES: usize> crate::$vector<LANES>
-            where
-                LaneCount<LANES>: SupportedLaneCount,
-            {
-                /// Test if each lane is equal to the corresponding lane in `other`.
-                #[inline]
-                pub fn lanes_eq(self, other: Self) -> crate::$mask<LANES> {
-                    unsafe {
-                        crate::$mask::from_int_unchecked(crate::intrinsics::simd_eq(self, other))
-                    }
-                }
+impl<T, const LANES: usize> Simd<T, LANES>
+where
+    T: SimdElement + PartialEq,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    /// Test if each lane is equal to the corresponding lane in `other`.
+    #[inline]
+    pub fn lanes_eq(self, other: Self) -> Mask<T::Mask, LANES> {
+        unsafe { Mask::from_int_unchecked(crate::intrinsics::simd_eq(self, other)) }
+    }
 
-                /// Test if each lane is not equal to the corresponding lane in `other`.
-                #[inline]
-                pub fn lanes_ne(self, other: Self) -> crate::$mask<LANES> {
-                    unsafe {
-                        crate::$mask::from_int_unchecked(crate::intrinsics::simd_ne(self, other))
-                    }
-                }
-
-                /// Test if each lane is less than the corresponding lane in `other`.
-                #[inline]
-                pub fn lanes_lt(self, other: Self) -> crate::$mask<LANES> {
-                    unsafe {
-                        crate::$mask::from_int_unchecked(crate::intrinsics::simd_lt(self, other))
-                    }
-                }
-
-                /// Test if each lane is greater than the corresponding lane in `other`.
-                #[inline]
-                pub fn lanes_gt(self, other: Self) -> crate::$mask<LANES> {
-                    unsafe {
-                        crate::$mask::from_int_unchecked(crate::intrinsics::simd_gt(self, other))
-                    }
-                }
-
-                /// Test if each lane is less than or equal to the corresponding lane in `other`.
-                #[inline]
-                pub fn lanes_le(self, other: Self) -> crate::$mask<LANES> {
-                    unsafe {
-                        crate::$mask::from_int_unchecked(crate::intrinsics::simd_le(self, other))
-                    }
-                }
-
-                /// Test if each lane is greater than or equal to the corresponding lane in `other`.
-                #[inline]
-                pub fn lanes_ge(self, other: Self) -> crate::$mask<LANES> {
-                    unsafe {
-                        crate::$mask::from_int_unchecked(crate::intrinsics::simd_ge(self, other))
-                    }
-                }
-            }
-        )*
+    /// Test if each lane is not equal to the corresponding lane in `other`.
+    #[inline]
+    pub fn lanes_ne(self, other: Self) -> Mask<T::Mask, LANES> {
+        unsafe { Mask::from_int_unchecked(crate::intrinsics::simd_ne(self, other)) }
     }
 }
 
-implement_mask_ops! {
-    SimdI8 => Mask8 (SimdI8),
-    SimdI16 => Mask16 (SimdI16),
-    SimdI32 => Mask32 (SimdI32),
-    SimdI64 => Mask64 (SimdI64),
-    SimdIsize => MaskSize (SimdIsize),
+impl<T, const LANES: usize> Simd<T, LANES>
+where
+    T: SimdElement + PartialOrd,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    /// Test if each lane is less than the corresponding lane in `other`.
+    #[inline]
+    pub fn lanes_lt(self, other: Self) -> Mask<T::Mask, LANES> {
+        unsafe { Mask::from_int_unchecked(crate::intrinsics::simd_lt(self, other)) }
+    }
 
-    SimdU8 => Mask8 (SimdI8),
-    SimdU16 => Mask16 (SimdI16),
-    SimdU32 => Mask32 (SimdI32),
-    SimdU64 => Mask64 (SimdI64),
-    SimdUsize => MaskSize (SimdIsize),
+    /// Test if each lane is greater than the corresponding lane in `other`.
+    #[inline]
+    pub fn lanes_gt(self, other: Self) -> Mask<T::Mask, LANES> {
+        unsafe { Mask::from_int_unchecked(crate::intrinsics::simd_gt(self, other)) }
+    }
 
-    SimdF32 => Mask32 (SimdI32),
-    SimdF64 => Mask64 (SimdI64),
+    /// Test if each lane is less than or equal to the corresponding lane in `other`.
+    #[inline]
+    pub fn lanes_le(self, other: Self) -> Mask<T::Mask, LANES> {
+        unsafe { Mask::from_int_unchecked(crate::intrinsics::simd_le(self, other)) }
+    }
+
+    /// Test if each lane is greater than or equal to the corresponding lane in `other`.
+    #[inline]
+    pub fn lanes_ge(self, other: Self) -> Mask<T::Mask, LANES> {
+        unsafe { Mask::from_int_unchecked(crate::intrinsics::simd_ge(self, other)) }
+    }
 }

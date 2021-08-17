@@ -3,19 +3,19 @@
 /// Compares the vector operation to the equivalent scalar operation.
 #[macro_export]
 macro_rules! impl_unary_op_test {
-    { $vector:ty, $scalar:ty, $trait:ident :: $fn:ident, $scalar_fn:expr } => {
+    { $scalar:ty, $trait:ident :: $fn:ident, $scalar_fn:expr } => {
         test_helpers::test_lanes! {
             fn $fn<const LANES: usize>() {
                 test_helpers::test_unary_elementwise(
-                    &<$vector as core::ops::$trait>::$fn,
+                    &<core_simd::Simd<$scalar, LANES> as core::ops::$trait>::$fn,
                     &$scalar_fn,
                     &|_| true,
                 );
             }
         }
     };
-    { $vector:ty, $scalar:ty, $trait:ident :: $fn:ident } => {
-        impl_unary_op_test! { $vector, $scalar, $trait::$fn, <$scalar as core::ops::$trait>::$fn }
+    { $scalar:ty, $trait:ident :: $fn:ident } => {
+        impl_unary_op_test! { $scalar, $trait::$fn, <$scalar as core::ops::$trait>::$fn }
     };
 }
 
@@ -24,14 +24,15 @@ macro_rules! impl_unary_op_test {
 /// Compares the vector operation to the equivalent scalar operation.
 #[macro_export]
 macro_rules! impl_binary_op_test {
-    { $vector:ty, $scalar:ty, $trait:ident :: $fn:ident, $trait_assign:ident :: $fn_assign:ident, $scalar_fn:expr } => {
+    { $scalar:ty, $trait:ident :: $fn:ident, $trait_assign:ident :: $fn_assign:ident, $scalar_fn:expr } => {
         mod $fn {
             use super::*;
+            use core_simd::Simd;
 
             test_helpers::test_lanes! {
                 fn normal<const LANES: usize>() {
                     test_helpers::test_binary_elementwise(
-                        &<$vector as core::ops::$trait>::$fn,
+                        &<Simd<$scalar, LANES> as core::ops::$trait>::$fn,
                         &$scalar_fn,
                         &|_, _| true,
                     );
@@ -39,7 +40,7 @@ macro_rules! impl_binary_op_test {
 
                 fn scalar_rhs<const LANES: usize>() {
                     test_helpers::test_binary_scalar_rhs_elementwise(
-                        &<$vector as core::ops::$trait<$scalar>>::$fn,
+                        &<Simd<$scalar, LANES> as core::ops::$trait<$scalar>>::$fn,
                         &$scalar_fn,
                         &|_, _| true,
                     );
@@ -47,7 +48,7 @@ macro_rules! impl_binary_op_test {
 
                 fn scalar_lhs<const LANES: usize>() {
                     test_helpers::test_binary_scalar_lhs_elementwise(
-                        &<$scalar as core::ops::$trait<$vector>>::$fn,
+                        &<$scalar as core::ops::$trait<Simd<$scalar, LANES>>>::$fn,
                         &$scalar_fn,
                         &|_, _| true,
                     );
@@ -55,7 +56,7 @@ macro_rules! impl_binary_op_test {
 
                 fn assign<const LANES: usize>() {
                     test_helpers::test_binary_elementwise(
-                        &|mut a, b| { <$vector as core::ops::$trait_assign>::$fn_assign(&mut a, b); a },
+                        &|mut a, b| { <Simd<$scalar, LANES> as core::ops::$trait_assign>::$fn_assign(&mut a, b); a },
                         &$scalar_fn,
                         &|_, _| true,
                     );
@@ -63,7 +64,7 @@ macro_rules! impl_binary_op_test {
 
                 fn assign_scalar_rhs<const LANES: usize>() {
                     test_helpers::test_binary_scalar_rhs_elementwise(
-                        &|mut a, b| { <$vector as core::ops::$trait_assign<$scalar>>::$fn_assign(&mut a, b); a },
+                        &|mut a, b| { <Simd<$scalar, LANES> as core::ops::$trait_assign<$scalar>>::$fn_assign(&mut a, b); a },
                         &$scalar_fn,
                         &|_, _| true,
                     );
@@ -71,8 +72,8 @@ macro_rules! impl_binary_op_test {
             }
         }
     };
-    { $vector:ty, $scalar:ty, $trait:ident :: $fn:ident, $trait_assign:ident :: $fn_assign:ident } => {
-        impl_binary_op_test! { $vector, $scalar, $trait::$fn, $trait_assign::$fn_assign, <$scalar as core::ops::$trait>::$fn }
+    { $scalar:ty, $trait:ident :: $fn:ident, $trait_assign:ident :: $fn_assign:ident } => {
+        impl_binary_op_test! { $scalar, $trait::$fn, $trait_assign::$fn_assign, <$scalar as core::ops::$trait>::$fn }
     };
 }
 
@@ -84,14 +85,15 @@ macro_rules! impl_binary_op_test {
 /// Compares the vector operation to the equivalent scalar operation.
 #[macro_export]
 macro_rules! impl_binary_checked_op_test {
-    { $vector:ty, $scalar:ty, $trait:ident :: $fn:ident, $trait_assign:ident :: $fn_assign:ident, $scalar_fn:expr, $check_fn:expr } => {
+    { $scalar:ty, $trait:ident :: $fn:ident, $trait_assign:ident :: $fn_assign:ident, $scalar_fn:expr, $check_fn:expr } => {
         mod $fn {
             use super::*;
+            use core_simd::Simd;
 
             test_helpers::test_lanes! {
                 fn normal<const LANES: usize>() {
                     test_helpers::test_binary_elementwise(
-                        &<$vector as core::ops::$trait>::$fn,
+                        &<Simd<$scalar, LANES> as core::ops::$trait>::$fn,
                         &$scalar_fn,
                         &|x, y| x.iter().zip(y.iter()).all(|(x, y)| $check_fn(*x, *y)),
                     );
@@ -99,7 +101,7 @@ macro_rules! impl_binary_checked_op_test {
 
                 fn scalar_rhs<const LANES: usize>() {
                     test_helpers::test_binary_scalar_rhs_elementwise(
-                        &<$vector as core::ops::$trait<$scalar>>::$fn,
+                        &<Simd<$scalar, LANES> as core::ops::$trait<$scalar>>::$fn,
                         &$scalar_fn,
                         &|x, y| x.iter().all(|x| $check_fn(*x, y)),
                     );
@@ -107,7 +109,7 @@ macro_rules! impl_binary_checked_op_test {
 
                 fn scalar_lhs<const LANES: usize>() {
                     test_helpers::test_binary_scalar_lhs_elementwise(
-                        &<$scalar as core::ops::$trait<$vector>>::$fn,
+                        &<$scalar as core::ops::$trait<Simd<$scalar, LANES>>>::$fn,
                         &$scalar_fn,
                         &|x, y| y.iter().all(|y| $check_fn(x, *y)),
                     );
@@ -115,7 +117,7 @@ macro_rules! impl_binary_checked_op_test {
 
                 fn assign<const LANES: usize>() {
                     test_helpers::test_binary_elementwise(
-                        &|mut a, b| { <$vector as core::ops::$trait_assign>::$fn_assign(&mut a, b); a },
+                        &|mut a, b| { <Simd<$scalar, LANES> as core::ops::$trait_assign>::$fn_assign(&mut a, b); a },
                         &$scalar_fn,
                         &|x, y| x.iter().zip(y.iter()).all(|(x, y)| $check_fn(*x, *y)),
                     )
@@ -123,7 +125,7 @@ macro_rules! impl_binary_checked_op_test {
 
                 fn assign_scalar_rhs<const LANES: usize>() {
                     test_helpers::test_binary_scalar_rhs_elementwise(
-                        &|mut a, b| { <$vector as core::ops::$trait_assign<$scalar>>::$fn_assign(&mut a, b); a },
+                        &|mut a, b| { <Simd<$scalar, LANES> as core::ops::$trait_assign<$scalar>>::$fn_assign(&mut a, b); a },
                         &$scalar_fn,
                         &|x, y| x.iter().all(|x| $check_fn(*x, y)),
                     )
@@ -131,8 +133,8 @@ macro_rules! impl_binary_checked_op_test {
             }
         }
     };
-    { $vector:ty, $scalar:ty, $trait:ident :: $fn:ident, $trait_assign:ident :: $fn_assign:ident, $check_fn:expr } => {
-        impl_binary_nonzero_rhs_op_test! { $vector, $scalar, $trait::$fn, $trait_assign::$fn_assign, <$scalar as core::ops::$trait>::$fn, $check_fn }
+    { $scalar:ty, $trait:ident :: $fn:ident, $trait_assign:ident :: $fn_assign:ident, $check_fn:expr } => {
+        impl_binary_checked_op_test! { $scalar, $trait::$fn, $trait_assign::$fn_assign, <$scalar as core::ops::$trait>::$fn, $check_fn }
     };
 }
 
@@ -216,9 +218,9 @@ macro_rules! impl_common_integer_tests {
 /// Implement tests for signed integers.
 #[macro_export]
 macro_rules! impl_signed_tests {
-    { $vector:ident, $scalar:tt } => {
+    { $scalar:tt } => {
         mod $scalar {
-            type Vector<const LANES: usize> = core_simd::$vector<LANES>;
+            type Vector<const LANES: usize> = core_simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
             impl_common_integer_tests! { Vector, Scalar }
@@ -305,18 +307,18 @@ macro_rules! impl_signed_tests {
                 }
             }
 
-            impl_binary_op_test!(Vector<LANES>, Scalar, Add::add, AddAssign::add_assign, Scalar::wrapping_add);
-            impl_binary_op_test!(Vector<LANES>, Scalar, Sub::sub, SubAssign::sub_assign, Scalar::wrapping_sub);
-            impl_binary_op_test!(Vector<LANES>, Scalar, Mul::mul, MulAssign::mul_assign, Scalar::wrapping_mul);
+            impl_binary_op_test!(Scalar, Add::add, AddAssign::add_assign, Scalar::wrapping_add);
+            impl_binary_op_test!(Scalar, Sub::sub, SubAssign::sub_assign, Scalar::wrapping_sub);
+            impl_binary_op_test!(Scalar, Mul::mul, MulAssign::mul_assign, Scalar::wrapping_mul);
 
             // Exclude Div and Rem panicking cases
-            impl_binary_checked_op_test!(Vector<LANES>, Scalar, Div::div, DivAssign::div_assign, Scalar::wrapping_div, |x, y| y != 0 && !(x == Scalar::MIN && y == -1));
-            impl_binary_checked_op_test!(Vector<LANES>, Scalar, Rem::rem, RemAssign::rem_assign, Scalar::wrapping_rem, |x, y| y != 0 && !(x == Scalar::MIN && y == -1));
+            impl_binary_checked_op_test!(Scalar, Div::div, DivAssign::div_assign, Scalar::wrapping_div, |x, y| y != 0 && !(x == Scalar::MIN && y == -1));
+            impl_binary_checked_op_test!(Scalar, Rem::rem, RemAssign::rem_assign, Scalar::wrapping_rem, |x, y| y != 0 && !(x == Scalar::MIN && y == -1));
 
-            impl_unary_op_test!(Vector<LANES>, Scalar, Not::not);
-            impl_binary_op_test!(Vector<LANES>, Scalar, BitAnd::bitand, BitAndAssign::bitand_assign);
-            impl_binary_op_test!(Vector<LANES>, Scalar, BitOr::bitor, BitOrAssign::bitor_assign);
-            impl_binary_op_test!(Vector<LANES>, Scalar, BitXor::bitxor, BitXorAssign::bitxor_assign);
+            impl_unary_op_test!(Scalar, Not::not);
+            impl_binary_op_test!(Scalar, BitAnd::bitand, BitAndAssign::bitand_assign);
+            impl_binary_op_test!(Scalar, BitOr::bitor, BitOrAssign::bitor_assign);
+            impl_binary_op_test!(Scalar, BitXor::bitxor, BitXorAssign::bitxor_assign);
         }
     }
 }
@@ -324,9 +326,9 @@ macro_rules! impl_signed_tests {
 /// Implement tests for unsigned integers.
 #[macro_export]
 macro_rules! impl_unsigned_tests {
-    { $vector:ident, $scalar:tt } => {
+    { $scalar:tt } => {
         mod $scalar {
-            type Vector<const LANES: usize> = core_simd::$vector<LANES>;
+            type Vector<const LANES: usize> = core_simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
             impl_common_integer_tests! { Vector, Scalar }
@@ -339,18 +341,18 @@ macro_rules! impl_unsigned_tests {
                 }
             }
 
-            impl_binary_op_test!(Vector<LANES>, Scalar, Add::add, AddAssign::add_assign, Scalar::wrapping_add);
-            impl_binary_op_test!(Vector<LANES>, Scalar, Sub::sub, SubAssign::sub_assign, Scalar::wrapping_sub);
-            impl_binary_op_test!(Vector<LANES>, Scalar, Mul::mul, MulAssign::mul_assign, Scalar::wrapping_mul);
+            impl_binary_op_test!(Scalar, Add::add, AddAssign::add_assign, Scalar::wrapping_add);
+            impl_binary_op_test!(Scalar, Sub::sub, SubAssign::sub_assign, Scalar::wrapping_sub);
+            impl_binary_op_test!(Scalar, Mul::mul, MulAssign::mul_assign, Scalar::wrapping_mul);
 
             // Exclude Div and Rem panicking cases
-            impl_binary_checked_op_test!(Vector<LANES>, Scalar, Div::div, DivAssign::div_assign, Scalar::wrapping_div, |_, y| y != 0);
-            impl_binary_checked_op_test!(Vector<LANES>, Scalar, Rem::rem, RemAssign::rem_assign, Scalar::wrapping_rem, |_, y| y != 0);
+            impl_binary_checked_op_test!(Scalar, Div::div, DivAssign::div_assign, Scalar::wrapping_div, |_, y| y != 0);
+            impl_binary_checked_op_test!(Scalar, Rem::rem, RemAssign::rem_assign, Scalar::wrapping_rem, |_, y| y != 0);
 
-            impl_unary_op_test!(Vector<LANES>, Scalar, Not::not);
-            impl_binary_op_test!(Vector<LANES>, Scalar, BitAnd::bitand, BitAndAssign::bitand_assign);
-            impl_binary_op_test!(Vector<LANES>, Scalar, BitOr::bitor, BitOrAssign::bitor_assign);
-            impl_binary_op_test!(Vector<LANES>, Scalar, BitXor::bitxor, BitXorAssign::bitxor_assign);
+            impl_unary_op_test!(Scalar, Not::not);
+            impl_binary_op_test!(Scalar, BitAnd::bitand, BitAndAssign::bitand_assign);
+            impl_binary_op_test!(Scalar, BitOr::bitor, BitOrAssign::bitor_assign);
+            impl_binary_op_test!(Scalar, BitXor::bitxor, BitXorAssign::bitxor_assign);
         }
     }
 }
@@ -358,17 +360,17 @@ macro_rules! impl_unsigned_tests {
 /// Implement tests for floating point numbers.
 #[macro_export]
 macro_rules! impl_float_tests {
-    { $vector:ident, $scalar:tt, $int_scalar:tt } => {
+    { $scalar:tt, $int_scalar:tt } => {
         mod $scalar {
-            type Vector<const LANES: usize> = core_simd::$vector<LANES>;
+            type Vector<const LANES: usize> = core_simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
-            impl_unary_op_test!(Vector<LANES>, Scalar, Neg::neg);
-            impl_binary_op_test!(Vector<LANES>, Scalar, Add::add, AddAssign::add_assign);
-            impl_binary_op_test!(Vector<LANES>, Scalar, Sub::sub, SubAssign::sub_assign);
-            impl_binary_op_test!(Vector<LANES>, Scalar, Mul::mul, MulAssign::mul_assign);
-            impl_binary_op_test!(Vector<LANES>, Scalar, Div::div, DivAssign::div_assign);
-            impl_binary_op_test!(Vector<LANES>, Scalar, Rem::rem, RemAssign::rem_assign);
+            impl_unary_op_test!(Scalar, Neg::neg);
+            impl_binary_op_test!(Scalar, Add::add, AddAssign::add_assign);
+            impl_binary_op_test!(Scalar, Sub::sub, SubAssign::sub_assign);
+            impl_binary_op_test!(Scalar, Mul::mul, MulAssign::mul_assign);
+            impl_binary_op_test!(Scalar, Div::div, DivAssign::div_assign);
+            impl_binary_op_test!(Scalar, Rem::rem, RemAssign::rem_assign);
 
             test_helpers::test_lanes! {
                 fn is_sign_positive<const LANES: usize>() {

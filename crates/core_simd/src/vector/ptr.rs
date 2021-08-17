@@ -1,5 +1,5 @@
 //! Private implementation details of public gather/scatter APIs.
-use crate::{LaneCount, SimdUsize, SupportedLaneCount};
+use crate::{LaneCount, Simd, SupportedLaneCount};
 use core::mem;
 
 /// A vector of *const T.
@@ -20,9 +20,9 @@ where
 
     #[inline]
     #[must_use]
-    pub fn wrapping_add(self, addend: SimdUsize<LANES>) -> Self {
+    pub fn wrapping_add(self, addend: Simd<usize, LANES>) -> Self {
         unsafe {
-            let x: SimdUsize<LANES> = mem::transmute_copy(&self);
+            let x: Simd<usize, LANES> = mem::transmute_copy(&self);
             mem::transmute_copy(&{ x + (addend * mem::size_of::<T>()) })
         }
     }
@@ -46,9 +46,9 @@ where
 
     #[inline]
     #[must_use]
-    pub fn wrapping_add(self, addend: SimdUsize<LANES>) -> Self {
+    pub fn wrapping_add(self, addend: Simd<usize, LANES>) -> Self {
         unsafe {
-            let x: SimdUsize<LANES> = mem::transmute_copy(&self);
+            let x: Simd<usize, LANES> = mem::transmute_copy(&self);
             mem::transmute_copy(&{ x + (addend * mem::size_of::<T>()) })
         }
     }

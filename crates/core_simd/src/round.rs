@@ -1,11 +1,13 @@
+use crate::{LaneCount, Simd, SupportedLaneCount};
+
 macro_rules! implement {
     {
-        $type:ident, $int_type:ident
+        $type:ty, $int_type:ty
     } => {
         #[cfg(feature = "std")]
-        impl<const LANES: usize> crate::$type<LANES>
+        impl<const LANES: usize> Simd<$type, LANES>
         where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
+            LaneCount<LANES>: SupportedLaneCount,
         {
             /// Returns the smallest integer greater than or equal to each lane.
             #[must_use = "method returns a new vector and does not mutate the original value"]
@@ -43,9 +45,9 @@ macro_rules! implement {
             }
         }
 
-        impl<const LANES: usize> crate::$type<LANES>
+        impl<const LANES: usize> Simd<$type, LANES>
         where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
+            LaneCount<LANES>: SupportedLaneCount,
         {
             /// Rounds toward zero and converts to the same-width integer type, assuming that
             /// the value is finite and fits in that type.
@@ -57,19 +59,19 @@ macro_rules! implement {
             /// * Not be infinite
             /// * Be representable in the return type, after truncating off its fractional part
             #[inline]
-            pub unsafe fn to_int_unchecked(self) -> crate::$int_type<LANES> {
+            pub unsafe fn to_int_unchecked(self) -> Simd<$int_type, LANES> {
                 crate::intrinsics::simd_cast(self)
             }
 
             /// Creates a floating-point vector from an integer vector.  Rounds values that are
             /// not exactly representable.
             #[inline]
-            pub fn round_from_int(value: crate::$int_type<LANES>) -> Self {
+            pub fn round_from_int(value: Simd<$int_type, LANES>) -> Self {
                 unsafe { crate::intrinsics::simd_cast(value) }
             }
         }
     }
 }
 
-implement! { SimdF32, SimdI32 }
-implement! { SimdF64, SimdI64 }
+implement! { f32, i32 }
+implement! { f64, i64 }

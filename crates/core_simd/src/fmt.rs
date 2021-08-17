@@ -1,88 +1,36 @@
-macro_rules! debug_wrapper {
-    { $($trait:ident => $name:ident,)* } => {
+macro_rules! impl_fmt_trait {
+    { $($trait:ident,)* } => {
         $(
-            pub(crate) fn $name<T: core::fmt::$trait>(slice: &[T], f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                #[repr(transparent)]
-                struct Wrapper<'a, T: core::fmt::$trait>(&'a T);
+            impl<T, const LANES: usize> core::fmt::$trait for crate::Simd<T, LANES>
+            where
+                crate::LaneCount<LANES>: crate::SupportedLaneCount,
+                T: crate::SimdElement + core::fmt::$trait,
+            {
+                fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+                    #[repr(transparent)]
+                    struct Wrapper<'a, T: core::fmt::$trait>(&'a T);
 
-                impl<T: core::fmt::$trait> core::fmt::Debug for Wrapper<'_, T> {
-                    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                        self.0.fmt(f)
+                    impl<T: core::fmt::$trait> core::fmt::Debug for Wrapper<'_, T> {
+                        fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+                            self.0.fmt(f)
+                        }
                     }
-                }
 
-                f.debug_list()
-                    .entries(slice.iter().map(|x| Wrapper(x)))
-                    .finish()
+                    f.debug_list()
+                        .entries(self.as_array().iter().map(|x| Wrapper(x)))
+                        .finish()
+                }
             }
         )*
     }
 }
 
-debug_wrapper! {
-    Debug => format,
-    Binary => format_binary,
-    LowerExp => format_lower_exp,
-    UpperExp => format_upper_exp,
-    Octal => format_octal,
-    LowerHex => format_lower_hex,
-    UpperHex => format_upper_hex,
-}
-
-macro_rules! impl_fmt_trait {
-    { $($type:ident => $(($trait:ident, $format:ident)),*;)* } => {
-        $( // repeat type
-            $( // repeat trait
-                impl<const LANES: usize> core::fmt::$trait for crate::$type<LANES>
-                where
-                    crate::LaneCount<LANES>: crate::SupportedLaneCount,
-                {
-                    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                        $format(self.as_ref(), f)
-                    }
-                }
-            )*
-        )*
-    };
-    { integers: $($type:ident,)* } => {
-        impl_fmt_trait! {
-            $($type =>
-              (Debug, format),
-              (Binary, format_binary),
-              (LowerExp, format_lower_exp),
-              (UpperExp, format_upper_exp),
-              (Octal, format_octal),
-              (LowerHex, format_lower_hex),
-              (UpperHex, format_upper_hex);
-            )*
-        }
-    };
-    { floats: $($type:ident,)* } => {
-        impl_fmt_trait! {
-            $($type =>
-              (Debug, format),
-              (LowerExp, format_lower_exp),
-              (UpperExp, format_upper_exp);
-            )*
-        }
-    };
-    { masks: $($type:ident,)* } => {
-        impl_fmt_trait! {
-            $($type =>
-              (Debug, format);
-            )*
-        }
-    }
-}
-
 impl_fmt_trait! {
-    integers:
-        SimdU8, SimdU16, SimdU32, SimdU64,
-        SimdI8, SimdI16, SimdI32, SimdI64,
-        SimdUsize, SimdIsize,
-}
-
-impl_fmt_trait! {
-    floats:
-        SimdF32, SimdF64,
+    Debug,
+    Binary,
+    LowerExp,
+    UpperExp,
+    Octal,
+    LowerHex,
+    UpperHex,
 }
