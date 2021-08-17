@@ -4,7 +4,7 @@
 
 use crate::ffi::OsStr;
 use crate::io;
-use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
+use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::process;
 use crate::sealed::Sealed;
 use crate::sys;
@@ -322,6 +322,16 @@ impl FromRawFd for process::Stdio {
     #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> process::Stdio {
         let fd = sys::fd::FileDesc::from_raw_fd(fd);
+        let io = sys::process::Stdio::Fd(fd);
+        process::Stdio::from_inner(io)
+    }
+}
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl From<OwnedFd> for process::Stdio {
+    #[inline]
+    fn from(fd: OwnedFd) -> process::Stdio {
+        let fd = sys::fd::FileDesc::from_inner(fd);
         let io = sys::process::Stdio::Fd(fd);
         process::Stdio::from_inner(io)
     }

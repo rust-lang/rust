@@ -3,7 +3,7 @@
 #![stable(feature = "process_extensions", since = "1.2.0")]
 
 use crate::ffi::OsStr;
-use crate::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle, RawHandle};
+use crate::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle};
 use crate::process;
 use crate::sealed::Sealed;
 use crate::sys;
@@ -18,6 +18,15 @@ impl FromRawHandle for process::Stdio {
     }
 }
 
+#[unstable(feature = "io_safety", issue = "87074")]
+impl From<OwnedHandle> for process::Stdio {
+    fn from(handle: OwnedHandle) -> process::Stdio {
+        let handle = sys::handle::Handle::from_handle(handle);
+        let io = sys::process::Stdio::Handle(handle);
+        process::Stdio::from_inner(io)
+    }
+}
+
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl AsRawHandle for process::Child {
     #[inline]
@@ -26,10 +35,25 @@ impl AsRawHandle for process::Child {
     }
 }
 
+#[unstable(feature = "io_safety", issue = "87074")]
+impl AsHandle for process::Child {
+    #[inline]
+    fn as_handle(&self) -> BorrowedHandle<'_> {
+        self.as_inner().handle().as_handle()
+    }
+}
+
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawHandle for process::Child {
     fn into_raw_handle(self) -> RawHandle {
         self.into_inner().into_handle().into_raw_handle() as *mut _
+    }
+}
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl IntoHandle for process::Child {
+    fn into_handle(self) -> BorrowedHandle<'_> {
+        self.into_inner().into_handle().into_handle()
     }
 }
 
