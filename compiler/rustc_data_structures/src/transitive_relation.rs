@@ -77,7 +77,7 @@ impl<T: Eq + Hash> TransitiveRelation<T> {
     pub fn maybe_map<F, U>(&self, mut f: F) -> Option<TransitiveRelation<U>>
     where
         F: FnMut(&T) -> Option<U>,
-        U: Clone + Debug + Eq + Hash + Clone,
+        U: Clone + Debug + Eq + Hash,
     {
         let mut result = TransitiveRelation::default();
         for edge in &self.edges {
