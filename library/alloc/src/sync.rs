@@ -794,7 +794,7 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// use std::sync::Arc;
     ///
-    /// let x = Arc::new("hello".to_owned());
+    /// let mut x = Arc::new("hello".to_owned());
     /// if Arc::lock_strong_count(&mut x) {
     ///     // SAFETY: String is 'static and this is the only strong reference
     ///     unsafe { *Arc::get_mut_unchecked(&mut x) = "goodbye".to_owned(); }
@@ -820,7 +820,7 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// use std::sync::Arc;
     ///
-    /// let x = Arc::new("hello".to_owned());
+    /// let mut x = Arc::new("hello".to_owned());
     /// if Arc::lock_strong_count(&mut x) {
     ///     // SAFETY: String is 'static and this is the only strong reference
     ///     unsafe { *Arc::get_mut_unchecked(&mut x) = "goodbye".to_owned(); }
