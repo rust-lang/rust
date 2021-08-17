@@ -47,6 +47,9 @@ mod shim;
 pub mod transform;
 pub mod util;
 
+// A public API provided for the Rust compiler consumers.
+pub use self::borrow_check::consumers;
+
 use rustc_middle::ty::query::Providers;
 
 pub fn provide(providers: &mut Providers) {
