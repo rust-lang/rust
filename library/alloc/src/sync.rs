@@ -786,6 +786,11 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// Returns `true` if the operation succeeded, `false` otherwise.
     ///
+    /// # Failing to unlock
+    ///
+    /// Note that dropping a locked `Arc` will leak its contents and may lead to
+    /// an abort if an attempt to `upgrade` a related `Weak` is made.
+    ///
     /// # Examples
     ///
     /// ```
@@ -811,6 +816,11 @@ impl<T: ?Sized> Arc<T> {
     /// Unlocks this `Arc`'s strong count, if it is locked.
     ///
     /// Returns `true` if the operation succeeded, `false` otherwise.
+    ///
+    /// # Failing to unlock
+    ///
+    /// Note that dropping a locked `Arc` will leak its contents and may lead to
+    /// an abort if an attempt to `upgrade` a related `Weak` is made.
     ///
     /// # Examples
     ///
@@ -1353,7 +1363,8 @@ impl<T: ?Sized> Clone for Arc<T> {
     #[inline]
     fn clone(&self) -> Arc<T> {
         // Check if we're locked. Relaxed is fine here because if this branch
-        // is taken, we're the only possible strong reference.
+        // is taken, we're the only possible strong reference and we diverge,
+        // so there's nothing to race with.
         if self.inner().strong.load(Relaxed) == 0 {
             panic!("Not allowed to clone a locked Arc");
         }
