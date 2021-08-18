@@ -1,6 +1,6 @@
 use ide_db::helpers::FamousDefs;
 use syntax::{
-    ast::{self, edit::AstNodeEdit, make, ArgListOwner},
+    ast::{self, edit_in_place::Indent, make, ArgListOwner},
     AstNode,
 };
 
@@ -46,24 +46,25 @@ pub(crate) fn convert_iter_for_each_to_for(acc: &mut Assists, ctx: &AssistContex
     let body = closure.body()?;
 
     let stmt = method.syntax().parent().and_then(ast::ExprStmt::cast);
-    let syntax = stmt.as_ref().map_or(method.syntax(), |stmt| stmt.syntax());
+    let range = stmt.as_ref().map_or_else(|| method.syntax(), AstNode::syntax).text_range();
 
     acc.add(
         AssistId("convert_iter_for_each_to_for", AssistKind::RefactorRewrite),
         "Replace this `Iterator::for_each` with a for loop",
-        syntax.text_range(),
+        range,
         |builder| {
-            let indent = stmt.as_ref().map_or(method.indent_level(), |stmt| stmt.indent_level());
+            let indent =
+                stmt.as_ref().map_or_else(|| method.indent_level(), ast::ExprStmt::indent_level);
 
             let block = match body {
                 ast::Expr::BlockExpr(block) => block,
                 _ => make::block_expr(Vec::new(), Some(body)),
             }
-            .reset_indent()
-            .indent(indent);
+            .clone_for_update();
+            block.reset_indent().indent(indent);
 
             let expr_for_loop = make::expr_for_loop(param, receiver, block);
-            builder.replace(syntax.text_range(), expr_for_loop.syntax().text())
+            builder.replace(range, expr_for_loop.to_string())
         },
     )
 }
