@@ -3,6 +3,7 @@
 use super::fd::WasiFd;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::mem::ManuallyDrop;
+use crate::os::raw;
 
 pub struct Stdin;
 pub struct Stdout;
@@ -14,7 +15,7 @@ impl Stdin {
     }
 
     #[inline]
-    pub fn as_raw_fd(&self) -> u32 {
+    pub fn as_raw_fd(&self) -> raw::c_int {
         0
     }
 }
@@ -40,7 +41,7 @@ impl Stdout {
     }
 
     #[inline]
-    pub fn as_raw_fd(&self) -> u32 {
+    pub fn as_raw_fd(&self) -> raw::c_int {
         1
     }
 }
@@ -69,7 +70,7 @@ impl Stderr {
     }
 
     #[inline]
-    pub fn as_raw_fd(&self) -> u32 {
+    pub fn as_raw_fd(&self) -> raw::c_int {
         2
     }
 }

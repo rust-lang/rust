@@ -6,6 +6,7 @@ use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut, SeekFrom};
 use crate::iter;
 use crate::mem::{self, ManuallyDrop};
+use crate::os::raw::c_int;
 use crate::os::wasi::ffi::{OsStrExt, OsStringExt};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
@@ -454,8 +455,8 @@ impl File {
     }
 }
 
-impl FromInner<u32> for File {
-    fn from_inner(fd: u32) -> File {
+impl FromInner<c_int> for File {
+    fn from_inner(fd: c_int) -> File {
         unsafe { File { fd: WasiFd::from_raw(fd) } }
     }
 }
@@ -653,7 +654,7 @@ fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
             let relative = CStr::from_ptr(relative_path).to_bytes().to_vec();
 
             return Ok((
-                ManuallyDrop::new(WasiFd::from_raw(fd as u32)),
+                ManuallyDrop::new(WasiFd::from_raw(fd as c_int)),
                 PathBuf::from(OsString::from_vec(relative)),
             ));
         }
