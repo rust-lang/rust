@@ -54,7 +54,18 @@ impl TokenExpander {
             TokenExpander::MacroDef { mac, .. } => mac.expand(tt),
             TokenExpander::Builtin(it) => it.expand(db, id, tt),
             // FIXME switch these to ExpandResult as well
-            TokenExpander::BuiltinAttr(it) => it.expand(db, id, tt).into(),
+            TokenExpander::BuiltinAttr(it) => {
+                let macro_arg = match db.macro_arg(id) {
+                    Some(it) => it,
+                    None => {
+                        return mbe::ExpandResult::only_err(
+                            mbe::ExpandError::Other("No item argument for attribute".to_string())
+                                .into(),
+                        );
+                    }
+                };
+                it.expand(db, id, tt, &macro_arg.0).into()
+            }
             TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt).into(),
             TokenExpander::ProcMacro(_) => {
                 // We store the result in salsa db to prevent non-deterministic behavior in

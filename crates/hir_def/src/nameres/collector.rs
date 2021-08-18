@@ -1712,27 +1712,24 @@ impl ModCollector<'_, '_> {
         if path.kind == PathKind::Plain {
             if let Some(tool_module) = path.segments().first() {
                 let tool_module = tool_module.to_string();
-                if builtin_attr::TOOL_MODULES
+                let is_tool = builtin_attr::TOOL_MODULES
                     .iter()
                     .copied()
-                    .chain(self.def_collector.registered_tools.iter().map(|s| &**s))
-                    .any(|m| tool_module == *m)
-                {
+                    .chain(self.def_collector.registered_tools.iter().map(AsRef::as_ref))
+                    .any(|m| tool_module == *m);
+                if is_tool {
                     return true;
                 }
             }
 
             if let Some(name) = path.as_ident() {
                 let name = name.to_string();
-                if builtin_attr::INERT_ATTRIBUTES
+                let is_inert = builtin_attr::INERT_ATTRIBUTES
                     .iter()
-                    .chain(builtin_attr::EXTRA_ATTRIBUTES)
                     .copied()
-                    .chain(self.def_collector.registered_attrs.iter().map(|s| &**s))
-                    .any(|attr| name == *attr)
-                {
-                    return true;
-                }
+                    .chain(self.def_collector.registered_attrs.iter().map(AsRef::as_ref))
+                    .any(|attr| name == *attr);
+                return is_inert;
             }
         }
 
