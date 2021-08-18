@@ -7,7 +7,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 use rustc_middle::middle::privacy::AccessLevel;
-use rustc_middle::ty::{TyCtxt, Visibility};
+use rustc_middle::ty::TyCtxt;
 use rustc_span;
 use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_span::source_map::Spanned;
@@ -228,7 +228,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         debug!("visiting item {:?}", item);
         let name = renamed.unwrap_or(item.ident.name);
 
-        let is_pub = self.cx.tcx.visibility(item.def_id) == Visibility::Public;
+        let def_id = item.def_id.to_def_id();
+        let is_pub = item.vis.node.is_pub() || self.cx.tcx.has_attr(def_id, sym::macro_export);
 
         if is_pub {
             self.store_path(item.def_id.to_def_id());
