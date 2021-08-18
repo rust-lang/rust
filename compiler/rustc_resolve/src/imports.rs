@@ -16,7 +16,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir::def::{self, PartialRes};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_middle::hir::exports::Export;
 use rustc_middle::span_bug;
 use rustc_middle::ty;
@@ -1392,9 +1392,23 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             // FIXME: Implement actual cross-crate hygiene.
             let is_good_import =
                 binding.is_import() && !binding.is_ambiguity() && !ident.span.from_expansion();
-            if is_good_import || binding.is_macro_def() {
-                let res = binding.res().map_id(|id| this.local_def_id(id));
-                if res != def::Res::Err {
+            let res = binding.res();
+            if res == Res::Err {
+                // Do not insert failed resolutions.
+                return;
+            } else if is_good_import {
+                let res = res.map_id(|id| this.local_def_id(id));
+                reexports.push(Export { ident, res, span: binding.span, vis: binding.vis });
+            } else if let NameBindingKind::Res(Res::Def(def_kind, macro_def_id), true) =
+                binding.kind
+            {
+                let macro_is_at_root = macro_def_id
+                    .as_local()
+                    .and_then(|macro_def_id| this.definitions.def_key(macro_def_id).parent)
+                    == Some(CRATE_DEF_INDEX);
+                // Insert a re-export at crate root for exported macro_rules defined elsewhere.
+                if module.parent.is_none() && !macro_is_at_root {
+                    let res = def::Res::Def(def_kind, macro_def_id);
                     reexports.push(Export { ident, res, span: binding.span, vis: binding.vis });
                 }
             }

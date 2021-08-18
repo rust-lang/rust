@@ -1102,9 +1102,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     let def_id = self.local_def_id(child_index);
                     let res = Res::Def(kind, def_id);
 
-                    if !kind.is_macro() {
-                        callback(Export { res, ident, vis, span });
-                    }
+                    callback(Export { res, ident, vis, span });
 
                     // For non-re-export structs and variants add their constructors to children.
                     // Re-export lists automatically contain constructors when necessary.
