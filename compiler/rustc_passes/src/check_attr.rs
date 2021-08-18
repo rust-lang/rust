@@ -717,6 +717,42 @@ impl CheckAttrVisitor<'tcx> {
         true
     }
 
+    /// Checks that `doc(test(...))` attribute contains only valid attributes. Returns `true` if
+    /// valid.
+    fn check_test_attr(&self, meta: &NestedMetaItem, hir_id: HirId) -> bool {
+        let mut is_valid = true;
+        if let Some(metas) = meta.meta_item_list() {
+            for i_meta in metas {
+                match i_meta.name_or_empty() {
+                    sym::attr | sym::no_crate_inject => {}
+                    _ => {
+                        self.tcx.struct_span_lint_hir(
+                            INVALID_DOC_ATTRIBUTES,
+                            hir_id,
+                            i_meta.span(),
+                            |lint| {
+                                lint.build(&format!(
+                                    "unknown `doc(test)` attribute `{}`",
+                                    rustc_ast_pretty::pprust::path_to_string(
+                                        &i_meta.meta_item().unwrap().path
+                                    ),
+                                ))
+                                .emit();
+                            },
+                        );
+                        is_valid = false;
+                    }
+                }
+            }
+        } else {
+            self.tcx.struct_span_lint_hir(INVALID_DOC_ATTRIBUTES, hir_id, meta.span(), |lint| {
+                lint.build("`#[doc(test(...)]` takes a list of attributes").emit();
+            });
+            is_valid = false;
+        }
+        is_valid
+    }
+
     /// Runs various checks on `#[doc]` attributes. Returns `true` if valid.
     ///
     /// `specified_inline` should be initialized to `None` and kept for the scope
@@ -793,8 +829,13 @@ impl CheckAttrVisitor<'tcx> {
                         | sym::no_inline
                         | sym::notable_trait
                         | sym::passes
-                        | sym::plugins
-                        | sym::test => {}
+                        | sym::plugins => {}
+
+                        sym::test => {
+                            if !self.check_test_attr(&meta, hir_id) {
+                                is_valid = false;
+                            }
+                        }
 
                         sym::primitive => {
                             if !self.tcx.features().doc_primitive {
