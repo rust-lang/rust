@@ -174,7 +174,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
                 0,
                 Statement {
                     source_info,
-                    kind: StatementKind::Retag(RetagKind::Raw, box (dropee_ptr)),
+                    kind: StatementKind::Retag(RetagKind::Raw, Box::new(dropee_ptr)),
                 },
             );
         }
@@ -388,10 +388,10 @@ impl CloneShimBuilder<'tcx> {
 
     fn copy_shim(&mut self) {
         let rcvr = self.tcx.mk_place_deref(Place::from(Local::new(1 + 0)));
-        let ret_statement = self.make_statement(StatementKind::Assign(box (
+        let ret_statement = self.make_statement(StatementKind::Assign(Box::new((
             Place::return_place(),
             Rvalue::Use(Operand::Copy(rcvr)),
-        )));
+        ))));
         self.block(vec![ret_statement], TerminatorKind::Return, false);
     }
 
@@ -418,11 +418,11 @@ impl CloneShimBuilder<'tcx> {
 
         // `func == Clone::clone(&ty) -> ty`
         let func_ty = tcx.mk_fn_def(self.def_id, substs);
-        let func = Operand::Constant(box Constant {
+        let func = Operand::Constant(Box::new(Constant {
             span: self.span,
             user_ty: None,
             literal: ty::Const::zero_sized(tcx, func_ty).into(),
-        });
+        }));
 
         let ref_loc = self.make_place(
             Mutability::Not,
@@ -430,10 +430,10 @@ impl CloneShimBuilder<'tcx> {
         );
 
         // `let ref_loc: &ty = &src;`
-        let statement = self.make_statement(StatementKind::Assign(box (
+        let statement = self.make_statement(StatementKind::Assign(Box::new((
             ref_loc,
             Rvalue::Ref(tcx.lifetimes.re_erased, BorrowKind::Shared, src),
-        )));
+        ))));
 
         // `let loc = Clone::clone(ref_loc);`
         self.block(
@@ -461,10 +461,10 @@ impl CloneShimBuilder<'tcx> {
         let tcx = self.tcx;
 
         let cond = self.make_place(Mutability::Mut, tcx.types.bool);
-        let compute_cond = self.make_statement(StatementKind::Assign(box (
+        let compute_cond = self.make_statement(StatementKind::Assign(Box::new((
             cond,
-            Rvalue::BinaryOp(BinOp::Ne, box (Operand::Copy(end), Operand::Copy(beg))),
-        )));
+            Rvalue::BinaryOp(BinOp::Ne, Box::new((Operand::Copy(end), Operand::Copy(beg)))),
+        ))));
 
         // `if end != beg { goto loop_body; } else { goto loop_end; }`
         self.block(
@@ -475,11 +475,11 @@ impl CloneShimBuilder<'tcx> {
     }
 
     fn make_usize(&self, value: u64) -> Box<Constant<'tcx>> {
-        box Constant {
+        Box::new(Constant {
             span: self.span,
             user_ty: None,
             literal: ty::Const::from_usize(self.tcx, value).into(),
-        }
+        })
     }
 
     fn array_shim(
@@ -500,18 +500,18 @@ impl CloneShimBuilder<'tcx> {
         // `let end = len;`
         // `goto #1;`
         let inits = vec![
-            self.make_statement(StatementKind::Assign(box (
+            self.make_statement(StatementKind::Assign(Box::new((
                 Place::from(beg),
                 Rvalue::Use(Operand::Constant(self.make_usize(0))),
-            ))),
-            self.make_statement(StatementKind::Assign(box (
+            )))),
+            self.make_statement(StatementKind::Assign(Box::new((
                 end,
-                Rvalue::Use(Operand::Constant(box Constant {
+                Rvalue::Use(Operand::Constant(Box::new(Constant {
                     span: self.span,
                     user_ty: None,
                     literal: len.into(),
-                })),
-            ))),
+                }))),
+            )))),
         ];
         self.block(inits, TerminatorKind::Goto { target: BasicBlock::new(1) }, false);
 
@@ -532,13 +532,13 @@ impl CloneShimBuilder<'tcx> {
         // BB #3
         // `beg = beg + 1;`
         // `goto #1`;
-        let statements = vec![self.make_statement(StatementKind::Assign(box (
+        let statements = vec![self.make_statement(StatementKind::Assign(Box::new((
             Place::from(beg),
             Rvalue::BinaryOp(
                 BinOp::Add,
-                box (Operand::Copy(Place::from(beg)), Operand::Constant(self.make_usize(1))),
+                Box::new((Operand::Copy(Place::from(beg)), Operand::Constant(self.make_usize(1)))),
             ),
-        )))];
+        ))))];
         self.block(statements, TerminatorKind::Goto { target: BasicBlock::new(1) }, false);
 
         // BB #4
@@ -551,10 +551,10 @@ impl CloneShimBuilder<'tcx> {
         // goto #6;
         let end = beg;
         let beg = self.local_decls.push(LocalDecl::new(tcx.types.usize, span));
-        let init = self.make_statement(StatementKind::Assign(box (
+        let init = self.make_statement(StatementKind::Assign(Box::new((
             Place::from(beg),
             Rvalue::Use(Operand::Constant(self.make_usize(0))),
-        )));
+        ))));
         self.block(vec![init], TerminatorKind::Goto { target: BasicBlock::new(6) }, true);
 
         // BB #6 (cleanup): loop {
@@ -585,13 +585,13 @@ impl CloneShimBuilder<'tcx> {
         // BB #8 (cleanup)
         // `beg = beg + 1;`
         // `goto #6;`
-        let statement = self.make_statement(StatementKind::Assign(box (
+        let statement = self.make_statement(StatementKind::Assign(Box::new((
             Place::from(beg),
             Rvalue::BinaryOp(
                 BinOp::Add,
-                box (Operand::Copy(Place::from(beg)), Operand::Constant(self.make_usize(1))),
+                Box::new((Operand::Copy(Place::from(beg)), Operand::Constant(self.make_usize(1)))),
             ),
-        )));
+        ))));
         self.block(vec![statement], TerminatorKind::Goto { target: BasicBlock::new(6) }, true);
 
         // BB #9 (resume)
@@ -748,10 +748,10 @@ fn build_call_shim<'tcx>(
             let borrow_kind = BorrowKind::Mut { allow_two_phase_borrow: false };
             statements.push(Statement {
                 source_info,
-                kind: StatementKind::Assign(box (
+                kind: StatementKind::Assign(Box::new((
                     Place::from(ref_rcvr),
                     Rvalue::Ref(tcx.lifetimes.re_erased, borrow_kind, rcvr_place()),
-                )),
+                ))),
             });
             Operand::Move(Place::from(ref_rcvr))
         }
@@ -765,11 +765,11 @@ fn build_call_shim<'tcx>(
         CallKind::Direct(def_id) => {
             let ty = tcx.type_of(def_id);
             (
-                Operand::Constant(box Constant {
+                Operand::Constant(Box::new(Constant {
                     span,
                     user_ty: None,
                     literal: ty::Const::zero_sized(tcx, ty).into(),
-                }),
+                })),
                 rcvr.into_iter().collect::<Vec<_>>(),
             )
         }

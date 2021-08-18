@@ -44,11 +44,11 @@ const TEMP_BLOCK: BasicBlock = BasicBlock::MAX;
 
 fn dummy_ty() -> &'static TyS<'static> {
     thread_local! {
-        static DUMMY_TYS: &'static TyS<'static> = Box::leak(box TyS::make_for_test(
+        static DUMMY_TYS: &'static TyS<'static> = Box::leak(Box::new(TyS::make_for_test(
             ty::Bool,
             TypeFlags::empty(),
             DebruijnIndex::from_usize(0),
-        ));
+        )));
     }
 
     &DUMMY_TYS.with(|tys| *tys)

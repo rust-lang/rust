@@ -29,7 +29,6 @@
 #![cfg_attr(test, feature(test))]
 #![feature(array_windows)]
 #![feature(bool_to_option)]
-#![feature(box_syntax)]
 #![feature(box_patterns)]
 #![feature(crate_visibility_modifier)]
 #![feature(format_args_capture)]
@@ -246,7 +245,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
     macro_rules! register_pass {
         ($method:ident, $ty:ident, $constructor:expr) => {
             store.register_lints(&$ty::get_lints());
-            store.$method(|| box $constructor);
+            store.$method(|| Box::new($constructor));
         };
     }
 
@@ -478,13 +477,13 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
 
 fn register_internals(store: &mut LintStore) {
     store.register_lints(&LintPassImpl::get_lints());
-    store.register_early_pass(|| box LintPassImpl);
+    store.register_early_pass(|| Box::new(LintPassImpl));
     store.register_lints(&DefaultHashTypes::get_lints());
-    store.register_late_pass(|| box DefaultHashTypes);
+    store.register_late_pass(|| Box::new(DefaultHashTypes));
     store.register_lints(&ExistingDocKeyword::get_lints());
-    store.register_late_pass(|| box ExistingDocKeyword);
+    store.register_late_pass(|| Box::new(ExistingDocKeyword));
     store.register_lints(&TyTyKind::get_lints());
-    store.register_late_pass(|| box TyTyKind);
+    store.register_late_pass(|| Box::new(TyTyKind));
     store.register_group(
         false,
         "rustc::internal",

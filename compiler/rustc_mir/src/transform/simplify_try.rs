@@ -420,10 +420,10 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
 
                 let stmt = &mut bb.statements[opt_info.stmt_to_overwrite];
                 stmt.source_info = opt_info.source_info;
-                stmt.kind = StatementKind::Assign(box (
+                stmt.kind = StatementKind::Assign(Box::new((
                     opt_info.local_0.into(),
                     Rvalue::Use(Operand::Move(opt_info.local_1.into())),
-                ));
+                )));
 
                 bb.statements.retain(|stmt| stmt.kind != StatementKind::Nop);
 

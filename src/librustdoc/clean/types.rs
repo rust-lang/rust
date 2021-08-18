@@ -416,7 +416,7 @@ impl Item {
             def_id,
             name,
             kind,
-            box ast_attrs.clean(cx),
+            Box::new(ast_attrs.clean(cx)),
             cx,
             ast_attrs.cfg(cx.sess()),
         )
@@ -434,7 +434,7 @@ impl Item {
 
         Item {
             def_id: def_id.into(),
-            kind: box kind,
+            kind: Box::new(kind),
             name,
             attrs,
             visibility: cx.tcx.visibility(def_id).clean(cx),

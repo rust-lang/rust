@@ -111,7 +111,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match category {
             Category::Constant => {
                 let constant = this.as_constant(expr);
-                block.and(Operand::Constant(box constant))
+                block.and(Operand::Constant(Box::new(constant)))
             }
             Category::Place | Category::Rvalue(..) => {
                 let operand = unpack!(block = this.as_temp(block, scope, expr, Mutability::Mut));

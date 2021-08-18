@@ -2,7 +2,6 @@
 //!
 //! This crate also contains the match exhaustiveness and usefulness checking.
 #![feature(box_patterns)]
-#![feature(box_syntax)]
 #![feature(control_flow_enum)]
 #![feature(crate_visibility_modifier)]
 #![feature(bool_to_option)]

@@ -274,7 +274,7 @@ impl TransformVisitor<'tcx> {
         Statement {
             source_info,
             kind: StatementKind::SetDiscriminant {
-                place: box self_place,
+                place: Box::new(self_place),
                 variant_index: state_disc,
             },
         }
@@ -289,7 +289,7 @@ impl TransformVisitor<'tcx> {
         let self_place = Place::from(SELF_ARG);
         let assign = Statement {
             source_info: SourceInfo::outermost(body.span),
-            kind: StatementKind::Assign(box (temp, Rvalue::Discriminant(self_place))),
+            kind: StatementKind::Assign(Box::new((temp, Rvalue::Discriminant(self_place)))),
         };
         (assign, temp)
     }
@@ -954,7 +954,7 @@ fn create_generator_drop_shim<'tcx>(
             0,
             Statement {
                 source_info,
-                kind: StatementKind::Retag(RetagKind::Raw, box Place::from(SELF_ARG)),
+                kind: StatementKind::Retag(RetagKind::Raw, Box::new(Place::from(SELF_ARG))),
             },
         )
     }
@@ -984,11 +984,11 @@ fn insert_panic_block<'tcx>(
 ) -> BasicBlock {
     let assert_block = BasicBlock::new(body.basic_blocks().len());
     let term = TerminatorKind::Assert {
-        cond: Operand::Constant(box Constant {
+        cond: Operand::Constant(Box::new(Constant {
             span: body.span,
             user_ty: None,
             literal: ty::Const::from_bool(tcx, false).into(),
-        }),
+        })),
         expected: true,
         msg: message,
         target: assert_block,
@@ -1207,10 +1207,10 @@ fn create_cases<'tcx>(
                     let resume_arg = Local::new(2); // 0 = return, 1 = self
                     statements.push(Statement {
                         source_info,
-                        kind: StatementKind::Assign(box (
+                        kind: StatementKind::Assign(Box::new((
                             point.resume_arg,
                             Rvalue::Use(Operand::Move(resume_arg.into())),
-                        )),
+                        ))),
                     });
                 }
 
@@ -1287,10 +1287,10 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             0,
             Statement {
                 source_info,
-                kind: StatementKind::Assign(box (
+                kind: StatementKind::Assign(Box::new((
                     new_resume_local.into(),
                     Rvalue::Use(Operand::Move(resume_local.into())),
-                )),
+                ))),
             },
         );
 

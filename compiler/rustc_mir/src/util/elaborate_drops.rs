@@ -680,12 +680,12 @@ where
         let (ptr_next, cur_next) = if ptr_based {
             (
                 Rvalue::Use(copy(cur.into())),
-                Rvalue::BinaryOp(BinOp::Offset, box (move_(cur.into()), one)),
+                Rvalue::BinaryOp(BinOp::Offset, Box::new((move_(cur.into()), one))),
             )
         } else {
             (
                 Rvalue::AddressOf(Mutability::Mut, tcx.mk_place_index(self.place, cur)),
-                Rvalue::BinaryOp(BinOp::Add, box (move_(cur.into()), one)),
+                Rvalue::BinaryOp(BinOp::Add, Box::new((move_(cur.into()), one))),
             )
         };
 
@@ -703,7 +703,10 @@ where
         let loop_block = BasicBlockData {
             statements: vec![self.assign(
                 can_go,
-                Rvalue::BinaryOp(BinOp::Eq, box (copy(Place::from(cur)), copy(length_or_end))),
+                Rvalue::BinaryOp(
+                    BinOp::Eq,
+                    Box::new((copy(Place::from(cur)), copy(length_or_end))),
+                ),
             )],
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
@@ -821,7 +824,7 @@ where
                     length_or_end,
                     Rvalue::BinaryOp(
                         BinOp::Offset,
-                        box (Operand::Copy(cur), Operand::Move(length)),
+                        Box::new((Operand::Copy(cur), Operand::Move(length))),
                     ),
                 ),
             ]
@@ -1032,14 +1035,17 @@ where
     }
 
     fn constant_usize(&self, val: u16) -> Operand<'tcx> {
-        Operand::Constant(box Constant {
+        Operand::Constant(Box::new(Constant {
             span: self.source_info.span,
             user_ty: None,
             literal: ty::Const::from_usize(self.tcx(), val.into()).into(),
-        })
+        }))
     }
 
     fn assign(&self, lhs: Place<'tcx>, rhs: Rvalue<'tcx>) -> Statement<'tcx> {
-        Statement { source_info: self.source_info, kind: StatementKind::Assign(box (lhs, rhs)) }
+        Statement {
+            source_info: self.source_info,
+            kind: StatementKind::Assign(Box::new((lhs, rhs))),
+        }
     }
 }

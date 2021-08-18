@@ -2061,11 +2061,11 @@ impl<'tcx> Operand<'tcx> {
         span: Span,
     ) -> Self {
         let ty = tcx.type_of(def_id).subst(tcx, substs);
-        Operand::Constant(box Constant {
+        Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,
             literal: ConstantKind::Ty(ty::Const::zero_sized(tcx, ty)),
-        })
+        }))
     }
 
     pub fn is_move(&self) -> bool {
@@ -2092,11 +2092,11 @@ impl<'tcx> Operand<'tcx> {
             };
             scalar_size == type_size
         });
-        Operand::Constant(box Constant {
+        Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,
             literal: ConstantKind::Val(ConstValue::Scalar(val), ty),
-        })
+        }))
     }
 
     pub fn to_copy(&self) -> Self {

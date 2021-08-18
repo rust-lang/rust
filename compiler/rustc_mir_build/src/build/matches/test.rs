@@ -346,7 +346,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let result = self.temp(bool_ty, source_info.span);
 
         // result = op(left, right)
-        self.cfg.push_assign(block, source_info, result, Rvalue::BinaryOp(op, box (left, right)));
+        self.cfg.push_assign(
+            block,
+            source_info,
+            result,
+            Rvalue::BinaryOp(op, Box::new((left, right))),
+        );
 
         // branch based on result
         self.cfg.terminate(
@@ -429,7 +434,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block,
             source_info,
             TerminatorKind::Call {
-                func: Operand::Constant(box Constant {
+                func: Operand::Constant(Box::new(Constant {
                     span: source_info.span,
 
                     // FIXME(#54571): This constant comes from user input (a
@@ -439,7 +444,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     user_ty: None,
 
                     literal: method.into(),
-                }),
+                })),
                 args: vec![val, expect],
                 destination: Some((eq_result, eq_block)),
                 cleanup: None,

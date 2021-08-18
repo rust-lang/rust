@@ -719,7 +719,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         let data = &mut self.promoted[last];
         data.statements.push(Statement {
             source_info: SourceInfo::outermost(span),
-            kind: StatementKind::Assign(box (Place::from(dest), rvalue)),
+            kind: StatementKind::Assign(Box::new((Place::from(dest), rvalue))),
         });
     }
 
@@ -774,11 +774,11 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     if self.keep_original {
                         rhs.clone()
                     } else {
-                        let unit = Rvalue::Use(Operand::Constant(box Constant {
+                        let unit = Rvalue::Use(Operand::Constant(Box::new(Constant {
                             span: statement.source_info.span,
                             user_ty: None,
                             literal: ty::Const::zero_sized(self.tcx, self.tcx.types.unit).into(),
-                        }));
+                        })));
                         mem::replace(rhs, unit)
                     },
                     statement.source_info,

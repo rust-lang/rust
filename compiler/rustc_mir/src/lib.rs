@@ -11,7 +11,6 @@ Rust MIR: a lowered representation of Rust.
 #![cfg_attr(bootstrap, feature(bindings_after_at))]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
-#![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
 #![feature(exact_size_is_empty)]

@@ -679,6 +679,6 @@ impl<S: Encoder, T: ?Sized + Encodable<S>> Encodable<S> for Box<T> {
 }
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Box<T> {
     fn decode(d: &mut D) -> Result<Box<T>, D::Error> {
-        Ok(box Decodable::decode(d)?)
+        Ok(Box::new(Decodable::decode(d)?))
     }
 }

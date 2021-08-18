@@ -105,7 +105,7 @@ impl TypeRelation<'tcx> for Equate<'combine, 'infcx, 'tcx> {
         b: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         debug!("{}.regions({:?}, {:?})", self.tag(), a, b);
-        let origin = Subtype(box self.fields.trace.clone());
+        let origin = Subtype(Box::new(self.fields.trace.clone()));
         self.fields
             .infcx
             .inner

@@ -112,7 +112,7 @@ impl<'tcx> MirPatch<'tcx> {
     }
 
     pub fn add_assign(&mut self, loc: Location, place: Place<'tcx>, rv: Rvalue<'tcx>) {
-        self.add_statement(loc, StatementKind::Assign(box (place, rv)));
+        self.add_statement(loc, StatementKind::Assign(Box::new((place, rv))));
     }
 
     pub fn apply(self, body: &mut Body<'tcx>) {

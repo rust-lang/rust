@@ -980,19 +980,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         self.local_decls[local].mutability = mutability;
                         self.local_decls[local].source_info.scope = self.source_scope;
                         self.local_decls[local].local_info = if let Some(kind) = self_binding {
-                            Some(box LocalInfo::User(ClearCrossCrate::Set(
+                            Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(
                                 BindingForm::ImplicitSelf(*kind),
-                            )))
+                            ))))
                         } else {
                             let binding_mode = ty::BindingMode::BindByValue(mutability);
-                            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                            Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
                                 VarBindingForm {
                                     binding_mode,
                                     opt_ty_info,
                                     opt_match_place: Some((Some(place), span)),
                                     pat_span: span,
                                 },
-                            ))))
+                            )))))
                         };
                         self.var_indices.insert(var, LocalsForNode::One(local));
                     }

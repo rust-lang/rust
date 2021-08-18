@@ -85,8 +85,12 @@ impl AllocFnFactory<'_, '_> {
         let header = FnHeader { unsafety: Unsafe::Yes(self.span), ..FnHeader::default() };
         let sig = FnSig { decl, header, span: self.span };
         let block = Some(self.cx.block_expr(output_expr));
-        let kind =
-            ItemKind::Fn(box FnKind(ast::Defaultness::Final, sig, Generics::default(), block));
+        let kind = ItemKind::Fn(Box::new(FnKind(
+            ast::Defaultness::Final,
+            sig,
+            Generics::default(),
+            block,
+        )));
         let item = self.cx.item(
             self.span,
             Ident::from_str_and_span(&self.kind.fn_name(method.name), self.span),

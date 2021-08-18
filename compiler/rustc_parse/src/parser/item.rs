@@ -221,7 +221,7 @@ impl<'a> Parser<'a> {
         } else if self.check_fn_front_matter(def_final) {
             // FUNCTION ITEM
             let (ident, sig, generics, body) = self.parse_fn(attrs, req_name, lo)?;
-            (ident, ItemKind::Fn(box FnKind(def(), sig, generics, body)))
+            (ident, ItemKind::Fn(Box::new(FnKind(def(), sig, generics, body))))
         } else if self.eat_keyword(kw::Extern) {
             if self.eat_keyword(kw::Crate) {
                 // EXTERN CRATE
@@ -548,7 +548,7 @@ impl<'a> Parser<'a> {
                 };
                 let trait_ref = TraitRef { path, ref_id: ty_first.id };
 
-                ItemKind::Impl(box ImplKind {
+                ItemKind::Impl(Box::new(ImplKind {
                     unsafety,
                     polarity,
                     defaultness,
@@ -557,11 +557,11 @@ impl<'a> Parser<'a> {
                     of_trait: Some(trait_ref),
                     self_ty: ty_second,
                     items: impl_items,
-                })
+                }))
             }
             None => {
                 // impl Type
-                ItemKind::Impl(box ImplKind {
+                ItemKind::Impl(Box::new(ImplKind {
                     unsafety,
                     polarity,
                     defaultness,
@@ -570,7 +570,7 @@ impl<'a> Parser<'a> {
                     of_trait: None,
                     self_ty: ty_first,
                     items: impl_items,
-                })
+                }))
             }
         };
 
@@ -710,7 +710,7 @@ impl<'a> Parser<'a> {
             // It's a normal trait.
             tps.where_clause = self.parse_where_clause()?;
             let items = self.parse_item_list(attrs, |p| p.parse_trait_item(ForceCollect::No))?;
-            Ok((ident, ItemKind::Trait(box TraitKind(is_auto, unsafety, tps, bounds, items))))
+            Ok((ident, ItemKind::Trait(Box::new(TraitKind(is_auto, unsafety, tps, bounds, items)))))
         }
     }
 
@@ -769,7 +769,7 @@ impl<'a> Parser<'a> {
         let default = if self.eat(&token::Eq) { Some(self.parse_ty()?) } else { None };
         self.expect_semi()?;
 
-        Ok((ident, ItemKind::TyAlias(box TyAliasKind(def, generics, bounds, default))))
+        Ok((ident, ItemKind::TyAlias(Box::new(TyAliasKind(def, generics, bounds, default)))))
     }
 
     /// Parses a `UseTree`.

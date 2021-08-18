@@ -123,11 +123,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     Statement {
                         source_info,
-                        kind: StatementKind::LlvmInlineAsm(box LlvmInlineAsm {
+                        kind: StatementKind::LlvmInlineAsm(Box::new(LlvmInlineAsm {
                             asm: asm.clone(),
                             outputs,
                             inputs,
-                        }),
+                        })),
                     },
                 );
                 this.block_context.pop();

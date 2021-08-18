@@ -494,7 +494,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Statement {
                         source_info: ty_source_info,
                         kind: StatementKind::AscribeUserType(
-                            box (place, user_ty),
+                            Box::new((place, user_ty)),
                             // We always use invariant as the variance here. This is because the
                             // variance field from the ascription refers to the variance to use
                             // when applying the type to the value being matched, but this
@@ -2004,7 +2004,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Statement {
                     source_info,
                     kind: StatementKind::AscribeUserType(
-                        box (ascription.source, user_ty),
+                        Box::new((ascription.source, user_ty)),
                         ascription.variance,
                     ),
                 },
@@ -2133,11 +2133,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let local = LocalDecl::<'tcx> {
             mutability,
             ty: var_ty,
-            user_ty: if user_ty.is_empty() { None } else { Some(box user_ty) },
+            user_ty: if user_ty.is_empty() { None } else { Some(Box::new(user_ty)) },
             source_info,
             internal: false,
             is_block_tail: None,
-            local_info: Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+            local_info: Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
                 VarBindingForm {
                     binding_mode,
                     // hypothetically, `visit_primary_bindings` could try to unzip
@@ -2148,7 +2148,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     opt_match_place,
                     pat_span,
                 },
-            )))),
+            ))))),
         };
         let for_arm_body = self.local_decls.push(local);
         self.var_debug_info.push(VarDebugInfo {
@@ -2166,9 +2166,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 source_info,
                 internal: false,
                 is_block_tail: None,
-                local_info: Some(box LocalInfo::User(ClearCrossCrate::Set(
+                local_info: Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(
                     BindingForm::RefForGuard,
-                ))),
+                )))),
             });
             self.var_debug_info.push(VarDebugInfo {
                 name,

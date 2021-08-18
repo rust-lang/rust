@@ -600,7 +600,7 @@ crate trait PatternFolder<'tcx>: Sized {
 impl<'tcx, T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Box<T> {
     fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
         let content: T = (**self).fold_with(folder);
-        box content
+        Box::new(content)
     }
 }
 

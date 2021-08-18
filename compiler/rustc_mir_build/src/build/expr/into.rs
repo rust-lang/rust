@@ -346,13 +346,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         inferred_ty,
                     })
                 });
-                let adt = box AggregateKind::Adt(
+                let adt = Box::new(AggregateKind::Adt(
                     adt_def,
                     variant_index,
                     substs,
                     user_ty,
                     active_field_index,
-                );
+                ));
                 this.cfg.push_assign(
                     block,
                     source_info,
@@ -403,11 +403,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                         thir::InlineAsmOperand::Const { value, span } => {
                             mir::InlineAsmOperand::Const {
-                                value: box Constant { span, user_ty: None, literal: value.into() },
+                                value: Box::new(Constant {
+                                    span,
+                                    user_ty: None,
+                                    literal: value.into(),
+                                }),
                             }
                         }
                         thir::InlineAsmOperand::SymFn { expr } => mir::InlineAsmOperand::SymFn {
-                            value: box this.as_constant(&this.thir[expr]),
+                            value: Box::new(this.as_constant(&this.thir[expr])),
                         },
                         thir::InlineAsmOperand::SymStatic { def_id } => {
                             mir::InlineAsmOperand::SymStatic { def_id }
