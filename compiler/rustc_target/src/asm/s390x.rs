@@ -3,13 +3,13 @@ use rustc_macros::HashStable_Generic;
 use std::fmt;
 
 def_reg_class! {
-    s390x s390xInlineAsmRegClass {
+    S390x S390xInlineAsmRegClass {
         reg,
         freg,
     }
 }
 
-impl s390xInlineAsmRegClass {
+impl S390xInlineAsmRegClass {
     pub fn valid_modifiers(self, _arch: super::InlineAsmArch) -> &'static [char] {
         &[]
     }
@@ -42,8 +42,8 @@ impl s390xInlineAsmRegClass {
 }
 
 def_regs! {
-    s390x s390xInlineAsmReg s390xInlineAsmRegClass {
-        r0: req = ["r0"],
+    S390x S390xInlineAsmReg S390xInlineAsmRegClass {
+        r0: reg = ["r0"],
         r1: reg = ["r1"],
         r2: reg = ["r2"],
         r3: reg = ["r3"],
@@ -144,7 +144,7 @@ def_regs! {
     }
 }
 
-impl s390xInlineAsmReg {
+impl S390xInlineAsmReg {
     pub fn emit(
         self,
         out: &mut dyn fmt::Write,
