@@ -296,7 +296,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 //    should be inlined even if it is also documented at the top level.
 
                 let def_id = item.def_id.to_def_id();
-                let is_macro_2_0 = !macro_def.ast.macro_rules;
+                let is_macro_2_0 = !macro_def.macro_rules;
                 let nonexported = !self.cx.tcx.has_attr(def_id, sym::macro_export);
 
                 if is_macro_2_0 || nonexported || self.inlining {

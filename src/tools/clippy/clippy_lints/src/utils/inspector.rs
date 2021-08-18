@@ -409,7 +409,7 @@ fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
         hir::ItemKind::Mod(..) => println!("module"),
         hir::ItemKind::ForeignMod { abi, .. } => println!("foreign module with abi: {}", abi),
         hir::ItemKind::Macro(ref macro_def) => {
-            if macro_def.ast.macro_rules {
+            if macro_def.macro_rules {
                 println!("macro introduced by `macro_rules!`");
             } else {
                 println!("macro introduced by `macro`");

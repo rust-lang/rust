@@ -1860,7 +1860,7 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                     clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
                 }
                 ItemKind::Macro(ref macro_def) => MacroItem(Macro {
-                    source: display_macro_source(cx, name, &macro_def.ast, def_id, &item.vis),
+                    source: display_macro_source(cx, name, &macro_def, def_id, &item.vis),
                     imported_from: None,
                 }),
                 ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref item_ids) => {
