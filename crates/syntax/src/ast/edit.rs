@@ -117,7 +117,7 @@ impl IndentLevel {
     /// }
     /// ```
     /// if you indent the block, the `{` token would stay put.
-    pub(in super) fn increase_indent(self, node: &SyntaxNode) {
+    pub(super) fn increase_indent(self, node: &SyntaxNode) {
         let tokens = node.preorder_with_tokens().filter_map(|event| match event {
             rowan::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
             _ => None,
@@ -132,7 +132,7 @@ impl IndentLevel {
         }
     }
 
-    pub(in super) fn decrease_indent(self, node: &SyntaxNode) {
+    pub(super) fn decrease_indent(self, node: &SyntaxNode) {
         let tokens = node.preorder_with_tokens().filter_map(|event| match event {
             rowan::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
             _ => None,

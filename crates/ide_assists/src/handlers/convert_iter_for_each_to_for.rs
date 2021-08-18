@@ -46,7 +46,7 @@ pub(crate) fn convert_iter_for_each_to_for(acc: &mut Assists, ctx: &AssistContex
     let body = closure.body()?;
 
     let stmt = method.syntax().parent().and_then(ast::ExprStmt::cast);
-    let range = stmt.as_ref().map_or_else(|| method.syntax(), AstNode::syntax).text_range();
+    let range = stmt.as_ref().map_or(method.syntax(), AstNode::syntax).text_range();
 
     acc.add(
         AssistId("convert_iter_for_each_to_for", AssistKind::RefactorRewrite),
@@ -61,7 +61,8 @@ pub(crate) fn convert_iter_for_each_to_for(acc: &mut Assists, ctx: &AssistContex
                 _ => make::block_expr(Vec::new(), Some(body)),
             }
             .clone_for_update();
-            block.reset_indent().indent(indent);
+            block.reset_indent();
+            block.indent(indent);
 
             let expr_for_loop = make::expr_for_loop(param, receiver, block);
             builder.replace(range, expr_for_loop.to_string())
