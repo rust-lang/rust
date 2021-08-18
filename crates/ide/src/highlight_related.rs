@@ -51,13 +51,15 @@ pub(crate) fn highlight_related(
     })?;
 
     match token.kind() {
-        T![fn] | T![return] | T![?] | T![->] if config.exit_points => {
+        T![?] if config.exit_points && token.parent().and_then(ast::TryExpr::cast).is_some() => {
             highlight_exit_points(sema, token)
         }
+        T![fn] | T![return] | T![->] if config.exit_points => highlight_exit_points(sema, token),
         T![await] | T![async] if config.yield_points => highlight_yield_points(token),
-        T![break] | T![loop] | T![for] | T![while] if config.break_points => {
+        T![for] if config.break_points && token.parent().and_then(ast::ForExpr::cast).is_some() => {
             highlight_break_points(token)
         }
+        T![break] | T![loop] | T![while] if config.break_points => highlight_break_points(token),
         _ if config.references => highlight_references(sema, &syntax, position),
         _ => None,
     }
