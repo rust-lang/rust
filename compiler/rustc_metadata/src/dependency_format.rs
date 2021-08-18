@@ -46,10 +46,10 @@
 //! all dynamic. This isn't currently very well battle tested, so it will likely
 //! fall short in some use cases.
 //!
-//! Currently, there is no way to specify the preference of linkage with a
-//! particular library (other than a global dynamic/static switch).
-//! Additionally, the algorithm is geared towards finding *any* solution rather
-//! than finding a number of solutions (there are normally quite a few).
+//! The algorithm is geared towards finding *any* solution rather than finding a
+//! number of solutions (there are normally quite a few). One can specify the
+//! preference of linkage for a particular list of crates by specifying that
+//! list via `-C prefer-dynamic=crate1,crate2,...`.
 
 use crate::creader::CStore;
 
