@@ -1,5 +1,5 @@
 warning: any use of this value will cause an error
-  --> $DIR/force-deny-by-default-lint.rs:4:16
+  --> $DIR/allowed-deny-by-default-lint.rs:7:16
    |
 LL | const C: i32 = 1 / 0;
    | ---------------^^^^^-

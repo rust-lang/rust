@@ -1,4 +1,6 @@
-// compile-flags: --force-warn bare_trait_objects -Zunstable-options
+// --force-warn $LINT_GROUP causes $LINT to warn despite
+// $LINT_GROUP being allowed in module
+// compile-flags: --force-warn rust_2018_idioms -Zunstable-options
 // check-pass
 
 #![allow(rust_2018_idioms)]

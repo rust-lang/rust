@@ -1,10 +1,10 @@
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/force-warn-group.rs:8:25
+  --> $DIR/allowed-group-warn-by-default-lint.rs:10:25
    |
 LL | pub fn function(_x: Box<SomeTrait>) {}
    |                         ^^^^^^^^^ help: use `dyn`: `dyn SomeTrait`
    |
-   = note: `--force-warn bare-trait-objects` implied by `--force-warn rust-2018-idioms`
+   = note: requested on the command line with `--force-warn bare-trait-objects`
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
