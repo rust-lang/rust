@@ -172,8 +172,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
             if_chain! {
                 if let ExprKind::MethodCall(method_name, _, args, _) = expr.kind;
                 if let ExprKind::Path(QPath::Resolved(None, path)) = args[0].kind;
-                if [sym::unwrap, sym!(unwrap_err)].contains(&method_name.ident.name);
-                let call_to_unwrap = method_name.ident.name == sym::unwrap;
+                if [sym::unwrap, sym::expect, sym!(unwrap_err)].contains(&method_name.ident.name);
+                let call_to_unwrap = [sym::unwrap, sym::expect].contains(&method_name.ident.name);
                 if let Some(unwrappable) = self.unwrappables.iter()
                     .find(|u| u.ident.res == path.res);
                 // Span contexts should not differ with the conditional branch
