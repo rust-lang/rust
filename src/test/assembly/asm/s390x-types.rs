@@ -75,6 +75,7 @@ macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
 // systemz: brasl %r14, extern_func@PLT
 // systemz: #NO_APP
 #[cfg(s390x)]
+#[no_mangle]
 pub unsafe fn sym_fn_32() {
     asm!("brasl %r14, {}", sym extern_func);
 }
@@ -83,4 +84,5 @@ pub unsafe fn sym_fn_32() {
 // CHECK: #APP
 // CHECK: lgr r{{[0-15]+}}, r{{[0-15]+}}
 // CHECK: #NO_APP
+#[no_mangle]
 check!(reg_i32, i32, reg, "lgr");
