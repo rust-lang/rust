@@ -247,12 +247,17 @@ impl CrateGraph {
         to: CrateId,
     ) -> Result<(), CyclicDependenciesError> {
         let _p = profile::span("add_dep");
-        if self.dfs_find(from, to, &mut FxHashSet::default()) {
-            return Err(CyclicDependenciesError {
-                from: (from, self[from].display_name.clone()),
-                to: (to, self[to].display_name.clone()),
-            });
+
+        // Check if adding a dep from `from` to `to` creates a cycle. To figure
+        // that out, look for a  path in the *opposite* direction, from `to` to
+        // `from`.
+        if let Some(path) = self.find_path(&mut FxHashSet::default(), to, from) {
+            let path = path.into_iter().map(|it| (it, self[it].display_name.clone())).collect();
+            let err = CyclicDependenciesError { path };
+            assert!(err.from().0 == from && err.to().0 == to);
+            return Err(err);
         }
+
         self.arena.get_mut(&from).unwrap().add_dep(name, to);
         Ok(())
     }
@@ -361,22 +366,29 @@ impl CrateGraph {
         start
     }
 
-    fn dfs_find(&self, target: CrateId, from: CrateId, visited: &mut FxHashSet<CrateId>) -> bool {
+    fn find_path(
+        &self,
+        visited: &mut FxHashSet<CrateId>,
+        from: CrateId,
+        to: CrateId,
+    ) -> Option<Vec<CrateId>> {
         if !visited.insert(from) {
-            return false;
+            return None;
         }
 
-        if target == from {
-            return true;
+        if from == to {
+            return Some(vec![to]);
         }
 
         for dep in &self[from].dependencies {
             let crate_id = dep.crate_id;
-            if self.dfs_find(target, crate_id, visited) {
-                return true;
+            if let Some(mut path) = self.find_path(visited, crate_id, to) {
+                path.push(from);
+                return Some(path);
             }
         }
-        false
+
+        None
     }
 
     // Work around for https://github.com/rust-analyzer/rust-analyzer/issues/6038.
@@ -481,8 +493,16 @@ impl std::error::Error for ParseEditionError {}
 
 #[derive(Debug)]
 pub struct CyclicDependenciesError {
-    from: (CrateId, Option<CrateDisplayName>),
-    to: (CrateId, Option<CrateDisplayName>),
+    path: Vec<(CrateId, Option<CrateDisplayName>)>,
+}
+
+impl CyclicDependenciesError {
+    fn from(&self) -> &(CrateId, Option<CrateDisplayName>) {
+        self.path.first().unwrap()
+    }
+    fn to(&self) -> &(CrateId, Option<CrateDisplayName>) {
+        self.path.last().unwrap()
+    }
 }
 
 impl fmt::Display for CyclicDependenciesError {
@@ -491,7 +511,14 @@ impl fmt::Display for CyclicDependenciesError {
             Some(it) => format!("{}({:?})", it, id),
             None => format!("{:?}", id),
         };
-        write!(f, "cyclic deps: {} -> {}", render(&self.from), render(&self.to))
+        let path = self.path.iter().rev().map(render).collect::<Vec<String>>().join(" -> ");
+        write!(
+            f,
+            "cyclic deps: {} -> {}, alternative path: {}",
+            render(&self.from()),
+            render(&self.to()),
+            path
+        )
     }
 }
 
