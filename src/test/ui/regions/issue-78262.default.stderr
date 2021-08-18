@@ -1,13 +1,13 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-78262.rs:12:28
+  --> $DIR/issue-78262.rs:14:28
    |
 LL |     let f = |x: &dyn TT| x.func();
    |                            ^^^^ lifetime mismatch
    |
    = note: expected reference `&(dyn TT + 'static)`
               found reference `&dyn TT`
-note: the anonymous lifetime #1 defined on the body at 12:13...
-  --> $DIR/issue-78262.rs:12:13
+note: the anonymous lifetime #1 defined on the body at 14:13...
+  --> $DIR/issue-78262.rs:14:13
    |
 LL |     let f = |x: &dyn TT| x.func();
    |             ^^^^^^^^^^^^^^^^^^^^^

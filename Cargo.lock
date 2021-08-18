@@ -2618,9 +2618,9 @@ checksum = "d36492546b6af1463394d46f0c834346f31548646f6ba10849802c9c9a27ac33"
 
 [[package]]
 name = "polonius-engine"
-version = "0.12.1"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef2558a4b464e185b36ee08a2937ebb62ea5464c38856cfb1465c97cb38db52d"
+checksum = "c4e8e505342045d397d0b6674dcb82d6faf5cf40484d30eeb88fc82ef14e903f"
 dependencies = [
  "datafrog",
  "log",

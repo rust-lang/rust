@@ -1,0 +1,26 @@
+warning: function cannot return without recursing
+  --> $DIR/issue-8727.rs:7:1
+   |
+LL | fn generic<T>() {
+   | ^^^^^^^^^^^^^^^ cannot return without recursing
+LL |     generic::<Option<T>>();
+   |     ---------------------- recursive call site
+   |
+   = note: `#[warn(unconditional_recursion)]` on by default
+   = help: a `loop` may express intention better if this is on purpose
+
+error: reached the recursion limit while instantiating `generic::<Option<Option<Option<O...>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>`
+  --> $DIR/issue-8727.rs:8:5
+   |
+LL |     generic::<Option<T>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `generic` defined here
+  --> $DIR/issue-8727.rs:7:1
+   |
+LL | fn generic<T>() {
+   | ^^^^^^^^^^^^^^^
+   = note: the full type name has been written to '$TEST_BUILD_DIR/issues/issue-8727.polonius/issue-8727.long-type.txt'
+
+error: aborting due to previous error; 1 warning emitted
+

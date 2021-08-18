@@ -273,7 +273,7 @@ fn translate_outlives_facts(typeck: &mut TypeChecker<'_, '_>) {
     if let Some(facts) = cx.all_facts {
         let _prof_timer = typeck.infcx.tcx.prof.generic_activity("polonius_fact_generation");
         let location_table = cx.location_table;
-        facts.outlives.extend(cx.constraints.outlives_constraints.outlives().iter().flat_map(
+        facts.subset_base.extend(cx.constraints.outlives_constraints.outlives().iter().flat_map(
             |constraint: &OutlivesConstraint<'_>| {
                 if let Some(from_location) = constraint.locations.from_location() {
                     Either::Left(iter::once((
@@ -2446,7 +2446,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let BorrowCheckContext { borrow_set, location_table, all_facts, constraints, .. } =
             self.borrowck_context;
 
-        // In Polonius mode, we also push a `borrow_region` fact
+        // In Polonius mode, we also push a `loan_issued_at` fact
         // linking the loan to the region (in some cases, though,
         // there is no loan associated with this borrow expression --
         // that occurs when we are borrowing an unsafe place, for
@@ -2455,7 +2455,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let _prof_timer = self.infcx.tcx.prof.generic_activity("polonius_fact_generation");
             if let Some(borrow_index) = borrow_set.get_index_of(&location) {
                 let region_vid = borrow_region.to_region_vid();
-                all_facts.borrow_region.push((
+                all_facts.loan_issued_at.push((
                     region_vid,
                     borrow_index,
                     location_table.mid_index(location),

@@ -224,7 +224,7 @@ impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
 
                             if places_conflict {
                                 let location_index = self.location_table.mid_index(location);
-                                all_facts.killed.push((borrow_index, location_index));
+                                all_facts.loan_killed_at.push((borrow_index, location_index));
                             }
                         }
                     }
@@ -243,10 +243,10 @@ fn record_killed_borrows_for_local(
     location: Location,
 ) {
     if let Some(borrow_indices) = borrow_set.local_map.get(&local) {
-        all_facts.killed.reserve(borrow_indices.len());
+        all_facts.loan_killed_at.reserve(borrow_indices.len());
         for &borrow_index in borrow_indices {
             let location_index = location_table.mid_index(location);
-            all_facts.killed.push((borrow_index, location_index));
+            all_facts.loan_killed_at.push((borrow_index, location_index));
         }
     }
 }

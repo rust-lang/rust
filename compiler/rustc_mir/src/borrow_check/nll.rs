@@ -217,14 +217,15 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         }
 
         // 2: the universal region relations `outlives` constraints are emitted as
-        //  `known_subset` facts.
+        //  `known_placeholder_subset` facts.
         for (fr1, fr2) in universal_region_relations.known_outlives() {
             if fr1 != fr2 {
                 debug!(
-                    "compute_regions: emitting polonius `known_subset` fr1={:?}, fr2={:?}",
+                    "compute_regions: emitting polonius `known_placeholder_subset` \
+                     fr1={:?}, fr2={:?}",
                     fr1, fr2
                 );
-                all_facts.known_subset.push((*fr1, *fr2));
+                all_facts.known_placeholder_subset.push((*fr1, *fr2));
             }
         }
     }
@@ -282,7 +283,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
 
         if infcx.tcx.sess.opts.debugging_opts.polonius {
             let algorithm =
-                env::var("POLONIUS_ALGORITHM").unwrap_or_else(|_| String::from("Naive"));
+                env::var("POLONIUS_ALGORITHM").unwrap_or_else(|_| String::from("Hybrid"));
             let algorithm = Algorithm::from_str(&algorithm).unwrap();
             debug!("compute_regions: using polonius algorithm {:?}", algorithm);
             let _prof_timer = infcx.tcx.prof.generic_activity("polonius_analysis");
