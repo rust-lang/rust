@@ -7,11 +7,7 @@ use rowan::SyntaxElement;
 
 use crate::{
     algo::neighbor,
-    ast::{
-        self,
-        edit::{AstNodeEdit, IndentLevel},
-        make, GenericParamsOwner,
-    },
+    ast::{self, edit::IndentLevel, make, GenericParamsOwner},
     ted::{self, Position},
     AstNode, AstToken, Direction,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
@@ -20,7 +16,7 @@ use crate::{
 
 use super::NameOwner;
 
-pub trait GenericParamsOwnerEdit: ast::GenericParamsOwner + AstNodeEdit {
+pub trait GenericParamsOwnerEdit: ast::GenericParamsOwner {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList;
     fn get_or_create_where_clause(&self) -> ast::WhereClause;
 }
@@ -198,7 +194,7 @@ fn create_generic_param_list(position: Position) -> ast::GenericParamList {
     gpl
 }
 
-pub trait AttrsOwnerEdit: ast::AttrsOwner + AstNodeEdit {
+pub trait AttrsOwnerEdit: ast::AttrsOwner {
     fn remove_attrs_and_docs(&self) {
         remove_attrs_and_docs(self.syntax());
 
@@ -222,7 +218,7 @@ pub trait AttrsOwnerEdit: ast::AttrsOwner + AstNodeEdit {
     }
 }
 
-impl<T: ast::AttrsOwner + AstNodeEdit> AttrsOwnerEdit for T {}
+impl<T: ast::AttrsOwner> AttrsOwnerEdit for T {}
 
 impl ast::GenericParamList {
     pub fn add_generic_param(&self, generic_param: ast::GenericParam) {
@@ -487,6 +483,26 @@ fn normalize_ws_between_braces(node: &SyntaxNode) -> Option<()> {
     Some(())
 }
 
+pub trait Indent: AstNode + Clone + Sized {
+    fn indent_level(&self) -> IndentLevel {
+        IndentLevel::from_node(self.syntax())
+    }
+    fn indent(&self, level: IndentLevel) -> &Self {
+        level.increase_indent(self.syntax());
+        self
+    }
+    fn dedent(&self, level: IndentLevel) -> &Self {
+        level.decrease_indent(self.syntax());
+        self
+    }
+    fn reset_indent(&self) -> &Self {
+        let level = IndentLevel::from_node(self.syntax());
+        self.dedent(level)
+    }
+}
+
+impl<N: AstNode + Clone> Indent for N {}
+
 #[cfg(test)]
 mod tests {
     use std::fmt;
@@ -525,5 +541,23 @@ mod tests {
 
         check_create_gpl::<ast::Enum>("enum E", "enum E<>");
         check_create_gpl::<ast::Enum>("enum E {", "enum E<> {");
+    }
+
+    #[test]
+    fn test_increase_indent() {
+        let arm_list = ast_mut_from_text::<ast::Fn>(
+            "fn foo() {
+    ;
+    ;
+}",
+        );
+        arm_list.indent(IndentLevel(2));
+        assert_eq!(
+            arm_list.to_string(),
+            "fn foo() {
+            ;
+            ;
+        }",
+        );
     }
 }

@@ -117,9 +117,8 @@ impl IndentLevel {
     /// }
     /// ```
     /// if you indent the block, the `{` token would stay put.
-    fn increase_indent(self, node: SyntaxNode) -> SyntaxNode {
-        let res = node.clone_subtree().clone_for_update();
-        let tokens = res.preorder_with_tokens().filter_map(|event| match event {
+    pub(in super) fn increase_indent(self, node: &SyntaxNode) {
+        let tokens = node.preorder_with_tokens().filter_map(|event| match event {
             rowan::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
             _ => None,
         });
@@ -131,12 +130,10 @@ impl IndentLevel {
                 }
             }
         }
-        res.clone_subtree()
     }
 
-    fn decrease_indent(self, node: SyntaxNode) -> SyntaxNode {
-        let res = node.clone_subtree().clone_for_update();
-        let tokens = res.preorder_with_tokens().filter_map(|event| match event {
+    pub(in super) fn decrease_indent(self, node: &SyntaxNode) {
+        let tokens = node.preorder_with_tokens().filter_map(|event| match event {
             rowan::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
             _ => None,
         });
@@ -150,7 +147,6 @@ impl IndentLevel {
                 }
             }
         }
-        res.clone_subtree()
     }
 }
 
@@ -158,17 +154,30 @@ fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
     iter::successors(Some(token), |token| token.prev_token())
 }
 
+/// Soft-deprecated in favor of mutable tree editing API `edit_in_place::Ident`.
 pub trait AstNodeEdit: AstNode + Clone + Sized {
     fn indent_level(&self) -> IndentLevel {
         IndentLevel::from_node(self.syntax())
     }
     #[must_use]
     fn indent(&self, level: IndentLevel) -> Self {
-        Self::cast(level.increase_indent(self.syntax().clone())).unwrap()
+        fn indent_inner(node: &SyntaxNode, level: IndentLevel) -> SyntaxNode {
+            let res = node.clone_subtree().clone_for_update();
+            level.increase_indent(&res);
+            res.clone_subtree()
+        }
+
+        Self::cast(indent_inner(self.syntax(), level)).unwrap()
     }
     #[must_use]
     fn dedent(&self, level: IndentLevel) -> Self {
-        Self::cast(level.decrease_indent(self.syntax().clone())).unwrap()
+        fn dedent_inner(node: &SyntaxNode, level: IndentLevel) -> SyntaxNode {
+            let res = node.clone_subtree().clone_for_update();
+            level.decrease_indent(&res);
+            res.clone_subtree()
+        }
+
+        Self::cast(dedent_inner(self.syntax(), level)).unwrap()
     }
     #[must_use]
     fn reset_indent(&self) -> Self {
