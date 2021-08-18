@@ -246,8 +246,14 @@ where
             let mut fulfill_cx = <dyn TraitEngine<'_>>::new(tcx);
 
             let mut selcx = SelectionContext::new(infcx);
-            let (param_env, value) = key.into_parts();
 
+            // FIXME(lqd): Unify and de-duplicate the following with the actual
+            // `rustc_traits::type_op::type_op_normalize` query to allow the span we need in the
+            // `ObligationCause`. The normalization results are currently different between
+            // `AtExt::normalize` used in the query and `normalize` called below: the former fails
+            // to normalize the `nll/relate_tys/impl-fn-ignore-binder-via-bottom.rs` test. Check
+            // after #85499 lands to see if its fixes have erased this difference.
+            let (param_env, value) = key.into_parts();
             let Normalized { value: _, obligations } = rustc_trait_selection::traits::normalize(
                 &mut selcx,
                 param_env,
