@@ -515,6 +515,7 @@ impl<T> Vec<T> {
     /// let p = v.as_mut_ptr();
     /// let len = v.len();
     /// let cap = v.capacity();
+    /// let _ = v;
     ///
     /// unsafe {
     ///     // Overwrite memory with 4, 5, 6
@@ -662,6 +663,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// let len = v.len();
     /// let cap = v.capacity();
     /// let alloc = v.allocator();
+    /// let _ = v;
     ///
     /// unsafe {
     ///     // Overwrite memory with 4, 5, 6
