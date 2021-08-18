@@ -2073,43 +2073,46 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         continue;
                     }
                 });
+                let span_unnamed_borrow = |span: Span| {
+                    let lo = span.lo() + BytePos(1);
+                    span.with_lo(lo).with_hi(lo)
+                };
+                let span_underscore_borrow = |span: Span| {
+                    let lo = span.lo() + BytePos(1);
+                    let hi = lo + BytePos(2);
+                    span.with_lo(lo).with_hi(hi)
+                };
+                let unnamed_borrow =
+                    |snippet: &str| snippet.starts_with('&') && !snippet.starts_with("&'");
                 for param in params {
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(param.span) {
-                        if snippet.starts_with('&') && !snippet.starts_with("&'") {
-                            let lo = param.span.lo() + BytePos(1);
-                            let span = param.span.with_lo(lo).with_hi(lo);
+                        if unnamed_borrow(&snippet) {
+                            let span = span_unnamed_borrow(param.span);
                             introduce_suggestion.push((span, "'a ".to_string()));
-                        } else if let Some(_) = snippet.strip_prefix("&'_ ") {
-                            let lo = param.span.lo() + BytePos(1);
-                            let hi = lo + BytePos(2);
-                            let span = param.span.with_lo(lo).with_hi(hi);
+                        } else if snippet.starts_with("&'_ ") {
+                            let span = span_underscore_borrow(param.span);
                             introduce_suggestion.push((span, "'a".to_string()));
                         }
                     }
                 }
-                for ((span, _), sugg) in spans_with_counts.iter().copied().zip(suggs.iter()) {
-                    match (sugg, self.tcx.sess.source_map().span_to_snippet(span)) {
-                        (Some(sugg), Ok(snippet))
-                            if snippet.starts_with('&')
-                                && !snippet.starts_with("&'")
-                                && sugg.starts_with("&") =>
-                        {
-                            let lo = span.lo() + BytePos(1);
-                            let span = span.with_lo(lo).with_hi(lo);
+                for (span, sugg) in spans_with_counts.iter().copied().zip(suggs.iter()).filter_map(
+                    |((span, _), sugg)| match sugg {
+                        Some(sugg) => Some((span, sugg)),
+                        _ => None,
+                    },
+                ) {
+                    match self.tcx.sess.source_map().span_to_snippet(span) {
+                        Ok(snippet) if unnamed_borrow(&snippet) && sugg.starts_with("&") => {
+                            let span = span_unnamed_borrow(span);
                             introduce_suggestion.push((span, sugg[1..].to_string()));
                         }
-                        (Some(sugg), Ok(snippet))
-                            if snippet.starts_with("&'_ ") && sugg.starts_with("&") =>
-                        {
-                            let lo = span.lo() + BytePos(1);
-                            let hi = lo + BytePos(2);
-                            let span = span.with_lo(lo).with_hi(hi);
+                        Ok(snippet) if snippet.starts_with("&'_ ") && sugg.starts_with("&") => {
+                            let span = span_underscore_borrow(span);
                             introduce_suggestion.push((span, sugg[1..].to_string()));
                         }
-                        (Some(sugg), _) => {
+                        _ => {
                             introduce_suggestion.push((span, sugg.to_string()));
                         }
-                        _ => {}
                     }
                 }
                 err.multipart_suggestion_with_style(
