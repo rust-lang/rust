@@ -171,87 +171,77 @@ LL |         (1, 2, .., 3, 4) => {}
               found tuple `(_, _, _, _)`
 
 error[E0023]: this pattern has 4 fields, but the corresponding tuple struct has 3 fields
-  --> $DIR/pat-tuple-overfield.rs:26:10
+  --> $DIR/pat-tuple-overfield.rs:26:11
    |
 LL | struct S(u8, u8, u8);
-   | --------------------- tuple struct defined here
+   |          --  --  -- tuple struct has 3 fields
 ...
 LL |         S(1, 2, 3, 4) => {}
-   |         -^^^^^^^^^^^^ expected 3 fields, found 4
-   |         |
-   |         this tuple struct
+   |         - ^  ^  ^  ^ expected 3 fields, found 4
 
 error[E0023]: this pattern has 4 fields, but the corresponding tuple struct has 3 fields
-  --> $DIR/pat-tuple-overfield.rs:28:10
+  --> $DIR/pat-tuple-overfield.rs:28:11
    |
 LL | struct S(u8, u8, u8);
-   | --------------------- tuple struct defined here
+   |          --  --  -- tuple struct has 3 fields
 ...
 LL |         S(1, 2, .., 3, 4) => {}
-   |         -^^^^^^^^^^^^^^^^ expected 3 fields, found 4
-   |         |
-   |         this tuple struct
+   |         - ^  ^      ^  ^ expected 3 fields, found 4
 
 error[E0023]: this pattern has 6 fields, but the corresponding tuple struct has 5 fields
-  --> $DIR/pat-tuple-overfield.rs:33:10
+  --> $DIR/pat-tuple-overfield.rs:33:11
    |
-LL | / struct M(
-LL | |     u8,
-LL | |     u8,
-LL | |     u8,
-LL | |     u8,
-LL | |     u8,
-LL | | );
-   | |__- tuple struct defined here
+LL | struct M(
+   |        - tuple struct defined here
+LL |     u8,
+   |     --
+LL |     u8,
+   |     --
+LL |     u8,
+   |     --
+LL |     u8,
+   |     --
+LL |     u8,
+   |     -- tuple struct has 5 fields
 ...
-LL |           M(1, 2, 3, 4, 5, 6) => {}
-   |           -^^^^^^^^^^^^^^^^^^ expected 5 fields, found 6
-   |           |
-   |           this tuple struct
+LL |         M(1, 2, 3, 4, 5, 6) => {}
+   |         - ^  ^  ^  ^  ^  ^ expected 5 fields, found 6
 
 error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 0 fields
-  --> $DIR/pat-tuple-overfield.rs:45:11
+  --> $DIR/pat-tuple-overfield.rs:45:12
    |
 LL | struct Z1();
-   | ------------ tuple struct defined here
+   |          --- tuple struct has 0 fields
 ...
 LL |         Z1(_) => {}
-   |         --^^^ expected 0 fields, found 1
-   |         |
-   |         this tuple struct
+   |         -- ^ expected 0 fields, found 1
 
 error[E0023]: this pattern has 2 fields, but the corresponding tuple struct has 0 fields
-  --> $DIR/pat-tuple-overfield.rs:46:11
+  --> $DIR/pat-tuple-overfield.rs:46:12
    |
 LL | struct Z1();
-   | ------------ tuple struct defined here
+   |          --- tuple struct has 0 fields
 ...
 LL |         Z1(_, _) => {}
-   |         --^^^^^^ expected 0 fields, found 2
-   |         |
-   |         this tuple struct
+   |         -- ^  ^ expected 0 fields, found 2
 
 error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 0 fields
-  --> $DIR/pat-tuple-overfield.rs:57:15
+  --> $DIR/pat-tuple-overfield.rs:57:16
    |
 LL |     Z1(),
-   |     ---- tuple variant defined here
+   |       -- tuple variant has 0 fields
 ...
 LL |         E1::Z1(_) => {}
-   |         ------^^^ expected 0 fields, found 1
-   |         |
-   |         this tuple variant
+   |         ------ ^ expected 0 fields, found 1
 
 error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has 0 fields
-  --> $DIR/pat-tuple-overfield.rs:58:15
+  --> $DIR/pat-tuple-overfield.rs:58:16
    |
 LL |     Z1(),
-   |     ---- tuple variant defined here
+   |       -- tuple variant has 0 fields
 ...
 LL |         E1::Z1(_, _) => {}
-   |         ------^^^^^^ expected 0 fields, found 2
-   |         |
-   |         this tuple variant
+   |         ------ ^  ^ expected 0 fields, found 2
 
 error: aborting due to 17 previous errors
 
