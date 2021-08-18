@@ -2,46 +2,44 @@ use crate::rmeta::DecodeContext;
 use crate::rmeta::EncodeContext;
 use crate::rmeta::MetadataBlob;
 use rustc_data_structures::owning_ref::OwningRef;
-use rustc_hir::def_path_hash_map::{
-    Config as HashMapConfig, DefPathHashMap as DefPathHashMapInner,
-};
+use rustc_hir::def_path_hash_map::{Config as HashMapConfig, DefPathHashMap};
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
 use rustc_span::def_id::{DefIndex, DefPathHash};
 
-crate enum DefPathHashMap<'tcx> {
+crate enum DefPathHashMapRef<'tcx> {
     OwnedFromMetadata(odht::HashTable<HashMapConfig, OwningRef<MetadataBlob, [u8]>>),
-    BorrowedFromTcx(&'tcx DefPathHashMapInner),
+    BorrowedFromTcx(&'tcx DefPathHashMap),
 }
 
-impl DefPathHashMap<'tcx> {
+impl DefPathHashMapRef<'tcx> {
     #[inline]
     pub fn def_path_hash_to_def_index(&self, def_path_hash: &DefPathHash) -> DefIndex {
         match *self {
-            DefPathHashMap::OwnedFromMetadata(ref map) => map.get(def_path_hash).unwrap(),
-            DefPathHashMap::BorrowedFromTcx(_) => {
+            DefPathHashMapRef::OwnedFromMetadata(ref map) => map.get(def_path_hash).unwrap(),
+            DefPathHashMapRef::BorrowedFromTcx(_) => {
                 panic!("DefPathHashMap::BorrowedFromTcx variant only exists for serialization")
             }
         }
     }
 }
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefPathHashMap<'tcx> {
+impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefPathHashMapRef<'tcx> {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
         match *self {
-            DefPathHashMap::BorrowedFromTcx(def_path_hash_map) => {
+            DefPathHashMapRef::BorrowedFromTcx(def_path_hash_map) => {
                 let bytes = def_path_hash_map.raw_bytes();
                 e.emit_usize(bytes.len())?;
                 e.emit_raw_bytes(bytes)
             }
-            DefPathHashMap::OwnedFromMetadata(_) => {
+            DefPathHashMapRef::OwnedFromMetadata(_) => {
                 panic!("DefPathHashMap::OwnedFromMetadata variant only exists for deserialization")
             }
         }
     }
 }
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefPathHashMap<'static> {
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Result<DefPathHashMap<'static>, String> {
+impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefPathHashMapRef<'static> {
+    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Result<DefPathHashMapRef<'static>, String> {
         // Import TyDecoder so we can access the DecodeContext::position() method
         use crate::rustc_middle::ty::codec::TyDecoder;
 
@@ -55,6 +53,6 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefPathHashMap<'static> {
         let _ = d.read_raw_bytes(len);
 
         let inner = odht::HashTable::from_raw_bytes(o).map_err(|e| format!("{}", e))?;
-        Ok(DefPathHashMap::OwnedFromMetadata(inner))
+        Ok(DefPathHashMapRef::OwnedFromMetadata(inner))
     }
 }

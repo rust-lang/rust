@@ -1,4 +1,4 @@
-use crate::rmeta::def_path_hash_map::DefPathHashMap;
+use crate::rmeta::def_path_hash_map::DefPathHashMapRef;
 use crate::rmeta::table::{FixedSizeEncoding, TableBuilder};
 use crate::rmeta::*;
 
@@ -473,8 +473,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_def_path_hash_map(&mut self) -> Lazy<DefPathHashMap<'tcx>> {
-        self.lazy(DefPathHashMap::BorrowedFromTcx(
+    fn encode_def_path_hash_map(&mut self) -> Lazy<DefPathHashMapRef<'tcx>> {
+        self.lazy(DefPathHashMapRef::BorrowedFromTcx(
             self.tcx.resolutions(()).definitions.def_path_hash_to_def_index_map(),
         ))
     }

@@ -55,7 +55,7 @@ mod cstore_impl;
 crate struct MetadataBlob(Lrc<MetadataRef>);
 
 // This is needed so we can create an OwningRef into the blob.
-// The data behind a `MetadataBlob` has a stable address because it
+// The data behind a `MetadataBlob` has a stable address because it is
 // contained within an Rc/Arc.
 unsafe impl rustc_data_structures::owning_ref::StableAddress for MetadataBlob {}
 
@@ -96,7 +96,7 @@ crate struct CrateMetadata {
     /// Source maps for code from the crate.
     source_map_import_info: OnceCell<Vec<ImportedSourceFile>>,
     /// For every definition in this crate, maps its `DefPathHash` to its `DefIndex`.
-    def_path_hash_map: DefPathHashMap<'static>,
+    def_path_hash_map: DefPathHashMapRef<'static>,
     /// Likewise for ExpnHash.
     expn_hash_map: OnceCell<UnhashMap<ExpnHash, ExpnIndex>>,
     /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.

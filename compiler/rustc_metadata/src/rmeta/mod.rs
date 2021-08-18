@@ -1,5 +1,5 @@
 use decoder::Metadata;
-use def_path_hash_map::DefPathHashMap;
+use def_path_hash_map::DefPathHashMapRef;
 use table::{Table, TableBuilder};
 
 use rustc_ast::{self as ast, MacroDef};
@@ -233,7 +233,7 @@ crate struct CrateRoot<'tcx> {
     expn_data: ExpnDataTable,
     expn_hashes: ExpnHashTable,
 
-    def_path_hash_map: Lazy<DefPathHashMap<'tcx>>,
+    def_path_hash_map: Lazy<DefPathHashMapRef<'tcx>>,
 
     source_map: Lazy<[rustc_span::SourceFile]>,
 
