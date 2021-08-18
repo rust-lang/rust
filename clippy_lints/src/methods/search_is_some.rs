@@ -1,17 +1,17 @@
-use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{is_trait_method, strip_pat_refs};
+use clippy_utils::{get_parent_expr_for_hir, is_trait_method, strip_pat_refs};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::{self, HirId, HirIdMap, HirIdSet, PatKind};
+use rustc_hir::{self, Expr, ExprKind, HirId, PatKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::hir::place::ProjectionKind;
-use rustc_middle::mir::FakeReadCause;
+use rustc_middle::mir::{FakeReadCause, Mutability};
 use rustc_middle::ty;
-use rustc_span::source_map::Span;
+use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::sym;
 use rustc_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 
@@ -46,42 +46,12 @@ pub(super) fn check<'tcx>(
                 if let hir::ExprKind::Closure(_, _, body_id, ..) = search_arg.kind;
                 let closure_body = cx.tcx.hir().body(body_id);
                 if let Some(closure_arg) = closure_body.params.get(0);
-
                 then {
                     if let hir::PatKind::Ref(..) = closure_arg.pat.kind {
-                        Some((search_snippet.replacen('&', "", 1), None))
+                        Some(search_snippet.replacen('&', "", 1))
                     } else if let PatKind::Binding(..) = strip_pat_refs(closure_arg.pat).kind {
-                        let mut visitor = DerefDelegate {
-                            cx,
-                            set: HirIdSet::default(),
-                            deref_suggs: HirIdMap::default(),
-                            borrow_suggs: HirIdMap::default()
-                        };
-
-                        let fn_def_id = cx.tcx.hir().local_def_id(search_arg.hir_id);
-                        cx.tcx.infer_ctxt().enter(|infcx| {
-                            ExprUseVisitor::new(
-                                &mut visitor, &infcx, fn_def_id, cx.param_env, cx.typeck_results()
-                            ).consume_body(closure_body);
-                        });
-
-                        let replacements = if visitor.set.is_empty() {
-                            None
-                        } else {
-                            let mut deref_suggs = Vec::new();
-                            let mut borrow_suggs = Vec::new();
-                            for node in visitor.set {
-                                let span = cx.tcx.hir().span(node);
-                                if let Some(sugg) = visitor.deref_suggs.get(&node) {
-                                    deref_suggs.push((span, sugg.clone()));
-                                }
-                                if let Some(sugg) = visitor.borrow_suggs.get(&node) {
-                                    borrow_suggs.push((span, sugg.clone()));
-                                }
-                            }
-                            Some((deref_suggs, borrow_suggs))
-                        };
-                        Some((search_snippet.to_string(), replacements))
+                        get_closure_suggestion(cx, search_arg, closure_body)
+                            .or_else(|| Some(search_snippet.to_string()))
                     } else {
                         None
                     }
@@ -90,38 +60,35 @@ pub(super) fn check<'tcx>(
                 }
             };
             // add note if not multi-line
-            let (closure_snippet, replacements) = any_search_snippet
-                .as_ref()
-                .map_or((&*search_snippet, None), |s| (&s.0, s.1.clone()));
-            let (span, help, sugg) = if is_some {
-                (
+            if is_some {
+                span_lint_and_sugg(
+                    cx,
+                    SEARCH_IS_SOME,
                     method_span.with_hi(expr.span.hi()),
+                    &msg,
                     "use `any()` instead",
-                    format!("any({})", closure_snippet),
-                )
+                    format!(
+                        "any({})",
+                        any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
+                    ),
+                    Applicability::MachineApplicable,
+                );
             } else {
                 let iter = snippet(cx, search_recv.span, "..");
-                (
+                span_lint_and_sugg(
+                    cx,
+                    SEARCH_IS_SOME,
                     expr.span,
+                    &msg,
                     "use `!_.any()` instead",
-                    format!("!{}.any({})", iter, closure_snippet),
-                )
-            };
-
-            span_lint_and_then(cx, SEARCH_IS_SOME, span, &msg, |db| {
-                if let Some((deref_suggs, borrow_suggs)) = replacements {
-                    db.span_suggestion(span, help, sugg, Applicability::MaybeIncorrect);
-
-                    if !deref_suggs.is_empty() {
-                        db.multipart_suggestion("...and remove deref", deref_suggs, Applicability::MaybeIncorrect);
-                    }
-                    if !borrow_suggs.is_empty() {
-                        db.multipart_suggestion("...and borrow variable", borrow_suggs, Applicability::MaybeIncorrect);
-                    }
-                } else {
-                    db.span_suggestion(span, help, sugg, Applicability::MachineApplicable);
-                }
-            });
+                    format!(
+                        "!{}.any({})",
+                        iter,
+                        any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
+                    ),
+                    Applicability::MachineApplicable,
+                );
+            }
         } else {
             let hint = format!(
                 "this is more succinctly expressed by calling `any()`{}",
@@ -184,53 +151,86 @@ pub(super) fn check<'tcx>(
     }
 }
 
+fn get_closure_suggestion<'tcx>(
+    cx: &LateContext<'_>,
+    search_arg: &'tcx hir::Expr<'_>,
+    closure_body: &hir::Body<'_>,
+) -> Option<String> {
+    let mut visitor = DerefDelegate {
+        cx,
+        closure_span: search_arg.span,
+        next_pos: None,
+        suggestion_start: String::new(),
+        suggestion_end: String::new(),
+    };
+
+    let fn_def_id = cx.tcx.hir().local_def_id(search_arg.hir_id);
+    cx.tcx.infer_ctxt().enter(|infcx| {
+        ExprUseVisitor::new(&mut visitor, &infcx, fn_def_id, cx.param_env, cx.typeck_results())
+            .consume_body(closure_body);
+    });
+
+    if visitor.suggestion_start.is_empty() {
+        None
+    } else {
+        Some(format!("{}{}", visitor.suggestion_start, visitor.suggestion_end))
+    }
+}
+
 struct DerefDelegate<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    set: HirIdSet,
-    deref_suggs: HirIdMap<String>,
-    borrow_suggs: HirIdMap<String>,
+    closure_span: Span,
+    next_pos: Option<BytePos>,
+    suggestion_start: String,
+    suggestion_end: String,
 }
 
 impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
-    fn consume(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
-        if let PlaceBase::Local(id) = cmt.place.base {
-            let map = self.cx.tcx.hir();
-            if cmt.place.projections.is_empty() {
-                self.set.insert(cmt.hir_id);
-            } else {
-                let mut replacement_str = map.name(id).to_string();
-                let last_deref = cmt
-                    .place
-                    .projections
-                    .iter()
-                    .rposition(|proj| proj.kind == ProjectionKind::Deref);
-
-                if let Some(pos) = last_deref {
-                    let mut projections = cmt.place.projections.clone();
-                    projections.truncate(pos);
-
-                    for item in projections {
-                        if item.kind == ProjectionKind::Deref {
-                            replacement_str = format!("*{}", replacement_str);
-                        }
-                    }
-
-                    self.set.insert(cmt.hir_id);
-                    self.deref_suggs.insert(cmt.hir_id, replacement_str);
-                }
-            }
-        }
-    }
+    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {
         if let PlaceBase::Local(id) = cmt.place.base {
             let map = self.cx.tcx.hir();
-            if cmt.place.projections.is_empty() {
-                let replacement_str = format!("&{}", map.name(id).to_string());
-                self.set.insert(cmt.hir_id);
-                self.borrow_suggs.insert(cmt.hir_id, replacement_str);
+            let ident_str = map.name(id).to_string();
+            let span = map.span(cmt.hir_id);
+            let start_span = if let Some(next_pos) = self.next_pos {
+                Span::new(next_pos, span.lo(), span.ctxt())
             } else {
-                let mut replacement_str = map.name(id).to_string();
+                self.closure_span.until(span)
+            };
+            let start_snip = snippet(self.cx, start_span, "..");
+            let end_span = Span::new(span.hi(), self.closure_span.hi(), span.ctxt());
+            let end_snip = snippet(self.cx, end_span, "..");
+
+            if cmt.place.projections.is_empty() {
+                self.suggestion_start.push_str(&format!("{}&{}", start_snip, ident_str));
+            } else {
+                let parent_expr = get_parent_expr_for_hir(self.cx, cmt.hir_id);
+                if let Some(Expr { hir_id: _, kind, .. }) = parent_expr {
+                    if let ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) = kind {
+                        let args_to_handle = args.iter().filter(|arg| arg.hir_id == cmt.hir_id).collect::<Vec<_>>();
+                        if !args_to_handle.is_empty() {
+                            for arg in &args_to_handle {
+                                let arg_ty_kind = self.cx.typeck_results().expr_ty(arg).kind();
+                                if matches!(arg_ty_kind, ty::Ref(_, _, Mutability::Not)) {
+                                    let start_span = if let Some(next_pos) = self.next_pos {
+                                        Span::new(next_pos, span.lo(), span.ctxt())
+                                    } else {
+                                        self.closure_span.until(span)
+                                    };
+                                    let start_snip = snippet(self.cx, start_span, "..");
+
+                                    self.suggestion_start.push_str(&format!("{}&{}", start_snip, ident_str));
+                                    self.suggestion_end = end_snip.to_string();
+                                    self.next_pos = Some(span.hi());
+                                }
+                            }
+                            return;
+                        }
+                    }
+                }
+
+                let mut replacement_str = ident_str;
                 let last_deref = cmt
                     .place
                     .projections
@@ -246,11 +246,13 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                             replacement_str = format!("*{}", replacement_str);
                         }
                     }
-
-                    self.set.insert(cmt.hir_id);
-                    self.deref_suggs.insert(cmt.hir_id, replacement_str);
                 }
+
+                self.suggestion_start
+                    .push_str(&format!("{}{}", start_snip, replacement_str));
+                self.suggestion_end = end_snip.to_string();
             }
+            self.next_pos = Some(span.hi());
         }
     }
 

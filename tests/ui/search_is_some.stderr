@@ -35,53 +35,8 @@ LL | |                    ).is_some();
    |
    = help: this is more succinctly expressed by calling `any()`
 
-error: called `is_some()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some.rs:41:20
-   |
-LL |     let _ = (0..1).find(|x| **y == *x).is_some(); // one dereference less
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: use `any()` instead
-   |
-LL |     let _ = (0..1).any(|x| **y == *x); // one dereference less
-   |                    ^^^^^^^^^^^^^^^^^^
-help: ...and remove deref
-   |
-LL |     let _ = (0..1).find(|x| **y == x).is_some(); // one dereference less
-   |                                    ^
-
-error: called `is_some()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some.rs:42:20
-   |
-LL |     let _ = (0..1).find(|x| *x == 0).is_some();
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: use `any()` instead
-   |
-LL |     let _ = (0..1).any(|x| *x == 0);
-   |                    ^^^^^^^^^^^^^^^^
-help: ...and remove deref
-   |
-LL |     let _ = (0..1).find(|x| x == 0).is_some();
-   |                             ^
-
-error: called `is_some()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some.rs:43:22
-   |
-LL |     let _ = v.iter().find(|x| **x == 0).is_some();
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: use `any()` instead
-   |
-LL |     let _ = v.iter().any(|x| **x == 0);
-   |                      ^^^^^^^^^^^^^^^^^
-help: ...and remove deref
-   |
-LL |     let _ = v.iter().find(|x| *x == 0).is_some();
-   |                               ^^
-
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some.rs:53:13
+  --> $DIR/search_is_some.rs:48:13
    |
 LL |       let _ = v.iter().find(|&x| {
    |  _____________^
@@ -93,7 +48,7 @@ LL | |                    ).is_none();
    = help: this is more succinctly expressed by calling `any()` with negation
 
 error: called `is_none()` after searching an `Iterator` with `position`
-  --> $DIR/search_is_some.rs:59:13
+  --> $DIR/search_is_some.rs:54:13
    |
 LL |       let _ = v.iter().position(|&x| {
    |  _____________^
@@ -105,7 +60,7 @@ LL | |                    ).is_none();
    = help: this is more succinctly expressed by calling `any()` with negation
 
 error: called `is_none()` after searching an `Iterator` with `rposition`
-  --> $DIR/search_is_some.rs:65:13
+  --> $DIR/search_is_some.rs:60:13
    |
 LL |       let _ = v.iter().rposition(|&x| {
    |  _____________^
@@ -116,80 +71,5 @@ LL | |                    ).is_none();
    |
    = help: this is more succinctly expressed by calling `any()` with negation
 
-error: called `is_none()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some.rs:80:13
-   |
-LL |     let _ = (0..1).find(|x| **y == *x).is_none(); // one dereference less
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: use `!_.any()` instead
-   |
-LL |     let _ = !(0..1).any(|x| **y == *x); // one dereference less
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: ...and remove deref
-   |
-LL |     let _ = (0..1).find(|x| **y == x).is_none(); // one dereference less
-   |                                    ^
-
-error: called `is_none()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some.rs:81:13
-   |
-LL |     let _ = (0..1).find(|x| *x == 0).is_none();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: use `!_.any()` instead
-   |
-LL |     let _ = !(0..1).any(|x| *x == 0);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^
-help: ...and remove deref
-   |
-LL |     let _ = (0..1).find(|x| x == 0).is_none();
-   |                             ^
-
-error: called `is_none()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some.rs:82:13
-   |
-LL |     let _ = v.iter().find(|x| **x == 0).is_none();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: use `!_.any()` instead
-   |
-LL |     let _ = !v.iter().any(|x| **x == 0);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: ...and remove deref
-   |
-LL |     let _ = v.iter().find(|x| *x == 0).is_none();
-   |                               ^^
-
-error: called `is_none()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some.rs:98:25
-   |
-LL |             .filter(|c| filter_hand.iter().find(|cc| c == cc).is_none())
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: use `!_.any()` instead
-   |
-LL |             .filter(|c| !filter_hand.iter().any(|cc| c == cc))
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: ...and borrow variable
-   |
-LL |             .filter(|c| filter_hand.iter().find(|cc| c == &cc).is_none())
-   |                                                           ^^^
-
-error: called `is_none()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some.rs:114:30
-   |
-LL |             .filter(|(c, _)| filter_hand.iter().find(|cc| c == *cc).is_none())
-   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: use `!_.any()` instead
-   |
-LL |             .filter(|(c, _)| !filter_hand.iter().any(|cc| c == *cc))
-   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: ...and remove deref
-   |
-LL |             .filter(|(c, _)| filter_hand.iter().find(|cc| c == cc).is_none())
-   |                                                                ^^
-
-error: aborting due to 14 previous errors
+error: aborting due to 6 previous errors
 
