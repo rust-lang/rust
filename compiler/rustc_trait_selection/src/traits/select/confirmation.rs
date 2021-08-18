@@ -26,12 +26,13 @@ use crate::traits::Normalized;
 use crate::traits::OutputTypeParameterMismatch;
 use crate::traits::Selection;
 use crate::traits::TraitNotObjectSafe;
+use crate::traits::VtblSegment;
 use crate::traits::{BuiltinDerivedObligation, ImplDerivedObligation};
 use crate::traits::{
     ImplSourceAutoImplData, ImplSourceBuiltinData, ImplSourceClosureData,
     ImplSourceDiscriminantKindData, ImplSourceFnPointerData, ImplSourceGeneratorData,
     ImplSourceObjectData, ImplSourcePointeeData, ImplSourceTraitAliasData,
-    ImplSourceUserDefinedData,
+    ImplSourceTraitUpcastingData, ImplSourceUserDefinedData,
 };
 use crate::traits::{ObjectCastObligation, PredicateObligation, TraitObligation};
 use crate::traits::{Obligation, ObligationCause};
@@ -42,6 +43,7 @@ use super::SelectionCandidate::{self, *};
 use super::SelectionContext;
 
 use std::iter;
+use std::ops::ControlFlow;
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(level = "debug", skip(self))]
@@ -121,7 +123,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             TraitUpcastingUnsizeCandidate(idx) => {
                 let data = self.confirm_trait_upcasting_unsize_candidate(obligation, idx)?;
-                Ok(ImplSource::Builtin(data))
+                Ok(ImplSource::TraitUpcasting(data))
             }
         }
     }
@@ -694,7 +696,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         idx: usize,
-    ) -> Result<ImplSourceBuiltinData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+    ) -> Result<ImplSourceTraitUpcastingData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>>
+    {
         let tcx = self.tcx();
 
         // `assemble_candidates_for_unsizing` should ensure there are no late-bound
@@ -706,16 +709,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?source, ?target, "confirm_trait_upcasting_unsize_candidate");
 
         let mut nested = vec![];
+        let source_trait_ref;
+        let upcast_trait_ref;
         match (source.kind(), target.kind()) {
             // TraitA+Kx+'a -> TraitB+Ky+'b (trait upcasting coercion).
             (&ty::Dynamic(ref data_a, r_a), &ty::Dynamic(ref data_b, r_b)) => {
                 // See `assemble_candidates_for_unsizing` for more info.
                 // We already checked the compatiblity of auto traits within `assemble_candidates_for_unsizing`.
                 let principal_a = data_a.principal().unwrap();
-                let source_trait_ref = principal_a.with_self_ty(tcx, source);
-                let target_trait_ref = util::supertraits(tcx, source_trait_ref).nth(idx).unwrap();
-                assert_eq!(data_b.principal_def_id(), Some(target_trait_ref.def_id()));
-                let existential_predicate = target_trait_ref.map_bound(|trait_ref| {
+                source_trait_ref = principal_a.with_self_ty(tcx, source);
+                upcast_trait_ref = util::supertraits(tcx, source_trait_ref).nth(idx).unwrap();
+                assert_eq!(data_b.principal_def_id(), Some(upcast_trait_ref.def_id()));
+                let existential_predicate = upcast_trait_ref.map_bound(|trait_ref| {
                     ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef::erase_self_ty(
                         tcx, trait_ref,
                     ))
@@ -762,7 +767,37 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => bug!(),
         };
 
-        Ok(ImplSourceBuiltinData { nested })
+        let vtable_segment_callback = {
+            let mut vptr_offset = 0;
+            move |segment| {
+                match segment {
+                    VtblSegment::MetadataDSA => {
+                        vptr_offset += ty::COMMON_VTABLE_ENTRIES.len();
+                    }
+                    VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
+                        vptr_offset += util::count_own_vtable_entries(tcx, trait_ref);
+                        if trait_ref == upcast_trait_ref {
+                            if emit_vptr {
+                                return ControlFlow::Break(Some(vptr_offset));
+                            } else {
+                                return ControlFlow::Break(None);
+                            }
+                        }
+
+                        if emit_vptr {
+                            vptr_offset += 1;
+                        }
+                    }
+                }
+                ControlFlow::Continue(())
+            }
+        };
+
+        let vtable_vptr_slot =
+            super::super::prepare_vtable_segments(tcx, source_trait_ref, vtable_segment_callback)
+                .unwrap();
+
+        Ok(ImplSourceTraitUpcastingData { upcast_trait_ref, vtable_vptr_slot, nested })
     }
 
     fn confirm_builtin_unsize_candidate(

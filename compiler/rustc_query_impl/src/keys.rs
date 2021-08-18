@@ -332,6 +332,16 @@ impl<'tcx> Key for Ty<'tcx> {
     }
 }
 
+impl<'tcx> Key for (Ty<'tcx>, Ty<'tcx>) {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 impl<'tcx> Key for &'tcx ty::List<ty::Predicate<'tcx>> {
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
