@@ -30,6 +30,6 @@ impl<T> Y for fn(T) {
 
 fn main() {
     let _x = <fn(&())>::make_f();
-    //~^ higher-ranked subtype error
-    //~| higher-ranked subtype error
+    //~^ ERROR implementation of `Y` is not general enough
+    //~| ERROR implementation of `Y` is not general enough
 }

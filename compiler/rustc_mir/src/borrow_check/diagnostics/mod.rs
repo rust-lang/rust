@@ -28,12 +28,14 @@ mod outlives_suggestion;
 mod region_name;
 mod var_name;
 
+mod bound_region_errors;
 mod conflict_errors;
 mod explain_borrow;
 mod move_errors;
 mod mutability_errors;
 mod region_errors;
 
+crate use bound_region_errors::{ToUniverseInfo, UniverseInfo};
 crate use mutability_errors::AccessKind;
 crate use outlives_suggestion::OutlivesSuggestionBuilder;
 crate use region_errors::{ErrorConstraintInfo, RegionErrorKind, RegionErrors};

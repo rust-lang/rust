@@ -4057,6 +4057,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
+ "rustc_traits",
  "smallvec",
  "tracing",
 ]

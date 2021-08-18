@@ -75,8 +75,8 @@ crate enum RegionErrorKind<'tcx> {
         longer_fr: RegionVid,
         /// The region element that erroneously must be outlived by `longer_fr`.
         error_element: RegionElement,
-        /// The origin of the placeholder region.
-        fr_origin: NllRegionVariableOrigin,
+        /// The placeholder region.
+        placeholder: ty::PlaceholderRegion,
     },
 
     /// Any other lifetime error.
@@ -210,25 +210,23 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 RegionErrorKind::BoundUniversalRegionError {
                     longer_fr,
-                    fr_origin,
+                    placeholder,
                     error_element,
                 } => {
-                    let error_region = self.regioncx.region_from_element(longer_fr, error_element);
+                    let error_vid = self.regioncx.region_from_element(longer_fr, &error_element);
 
                     // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
                     let (_, span) = self.regioncx.find_outlives_blame_span(
                         &self.body,
                         longer_fr,
-                        fr_origin,
-                        error_region,
+                        NllRegionVariableOrigin::Placeholder(placeholder),
+                        error_vid,
                     );
 
-                    // FIXME: improve this error message
-                    self.infcx
-                        .tcx
-                        .sess
-                        .struct_span_err(span, "higher-ranked subtype error")
-                        .buffer(&mut self.errors_buffer);
+                    let universe = placeholder.universe;
+                    let universe_info = self.regioncx.universe_info(universe);
+
+                    universe_info.report_error(self, placeholder, error_element, span);
                 }
 
                 RegionErrorKind::RegionError { fr_origin, longer_fr, shorter_fr, is_reported } => {
