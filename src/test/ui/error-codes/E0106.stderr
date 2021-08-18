@@ -59,7 +59,7 @@ LL | type MyStr = &str;
 help: consider introducing a named lifetime parameter
    |
 LL | type MyStr<'a> = &'a str;
-   |           ++++   ~~~
+   |           ++++    ++
 
 error: aborting due to 5 previous errors
 
