@@ -50,7 +50,7 @@ pub fn opts(os: &str, arch: Arch) -> TargetOptions {
     TargetOptions {
         abi: target_abi(arch),
         cpu: target_cpu(arch),
-        dynamic_linking: false,
+        dynamic_linking: true,
         executables: true,
         link_env_remove: link_env_remove(arch),
         has_elf_tls: false,
