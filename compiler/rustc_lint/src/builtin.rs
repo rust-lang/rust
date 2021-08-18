@@ -617,10 +617,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                 return;
             }
 
-            hir::ItemKind::Macro { .. }
-            | hir::ItemKind::TyAlias(..)
+            hir::ItemKind::TyAlias(..)
             | hir::ItemKind::Fn(..)
             | hir::ItemKind::Mod(..)
+            | hir::ItemKind::Macro(..)
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::Union(..)

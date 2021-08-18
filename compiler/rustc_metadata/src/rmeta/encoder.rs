@@ -1952,7 +1952,7 @@ impl EncodeContext<'a, 'tcx> {
             | hir::ItemKind::Fn(..)
             | hir::ItemKind::Mod(..)
             | hir::ItemKind::ForeignMod { .. }
-            | hir::ItemKind::Macro { .. }
+            | hir::ItemKind::Macro(..)
             | hir::ItemKind::GlobalAsm(..)
             | hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::Use(..)

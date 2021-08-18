@@ -613,11 +613,10 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     }
 
     fn visit_item(&mut self, i: &'tcx Item<'tcx>) {
-        // Inherent impls, foreign modules, and non exported macros serve only as
-        // containers for other items, they don't have their own stability. They still can
-        // be annotated as unstable and propagate this unstability to children, but this
-        // annotation is completely optional. They inherit stability from their parents
-        // when unannotated.
+        // Inherent impls and foreign modules serve only as containers for other items,
+        // they don't have their own stability. They still can be annotated as unstable
+        // and propagate this unstability to children, but this annotation is completely
+        // optional. They inherit stability from their parents when unannotated.
         if !matches!(
             i.kind,
             hir::ItemKind::Impl(hir::Impl { of_trait: None, .. })

@@ -778,7 +778,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
         // Mark all items in interfaces of reachable items as reachable.
         match item.kind {
             // The interface is empty.
-            hir::ItemKind::Macro { .. } | hir::ItemKind::ExternCrate(..) => {}
+            hir::ItemKind::Macro(..) | hir::ItemKind::ExternCrate(..) => {}
 
             // All nested items are checked by `visit_item`.
             hir::ItemKind::Mod(..) => {}
@@ -1988,7 +1988,7 @@ impl<'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'tcx> {
             // Checked in resolve.
             hir::ItemKind::Use(..) => {}
             // No subitems.
-            hir::ItemKind::GlobalAsm(..) | hir::ItemKind::Macro { .. } => {}
+            hir::ItemKind::Macro(..) | hir::ItemKind::GlobalAsm(..) => {}
             // Subitems of these items have inherited publicity.
             hir::ItemKind::Const(..)
             | hir::ItemKind::Static(..)

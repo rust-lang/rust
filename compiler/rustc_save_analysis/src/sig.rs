@@ -430,7 +430,7 @@ impl<'hir> Sig for hir::Item<'hir> {
 
                 Ok(Signature { text, defs, refs: vec![] })
             }
-            hir::ItemKind::Macro { .. } => {
+            hir::ItemKind::Macro(..) => {
                 let mut text = "macro".to_owned();
                 let name = self.ident.to_string();
                 text.push_str(&name);

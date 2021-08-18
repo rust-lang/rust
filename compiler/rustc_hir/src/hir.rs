@@ -2844,7 +2844,7 @@ impl ItemKind<'_> {
             ItemKind::Fn(..) => "function",
             ItemKind::Mod(..) => "module",
             ItemKind::ForeignMod { .. } => "extern block",
-            ItemKind::Macro { .. } => "macro",
+            ItemKind::Macro(..) => "macro",
             ItemKind::GlobalAsm(..) => "global asm item",
             ItemKind::TyAlias(..) => "type alias",
             ItemKind::OpaqueTy(..) => "opaque type",

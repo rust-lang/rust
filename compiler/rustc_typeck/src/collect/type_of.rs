@@ -404,7 +404,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 | ItemKind::TraitAlias(..)
                 | ItemKind::Mod(..)
                 | ItemKind::ForeignMod { .. }
-                | ItemKind::Macro { .. }
+                | ItemKind::Macro(..)
                 | ItemKind::GlobalAsm(..)
                 | ItemKind::ExternCrate(..)
                 | ItemKind::Use(..) => {
