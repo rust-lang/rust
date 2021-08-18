@@ -466,9 +466,6 @@ pub trait Visitor<'v>: Sized {
         walk_assoc_type_binding(self, type_binding)
     }
     fn visit_attribute(&mut self, _id: HirId, _attr: &'v Attribute) {}
-    fn visit_macro_def(&mut self, macro_def: &'v MacroDef<'v>) {
-        walk_macro_def(self, macro_def)
-    }
     fn visit_vis(&mut self, vis: &'v Visibility<'v>) {
         walk_vis(self, vis)
     }
@@ -489,11 +486,6 @@ pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate<'v>) {
             visitor.visit_attribute(id, a)
         }
     }
-}
-
-pub fn walk_macro_def<'v, V: Visitor<'v>>(visitor: &mut V, macro_def: &'v MacroDef<'v>) {
-    visitor.visit_id(macro_def.hir_id());
-    visitor.visit_ident(macro_def.ident);
 }
 
 pub fn walk_mod<'v, V: Visitor<'v>>(visitor: &mut V, module: &'v Mod<'v>, mod_hir_id: HirId) {
@@ -593,9 +585,8 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             visitor.visit_id(item.hir_id());
             walk_list!(visitor, visit_foreign_item_ref, items);
         }
-        ItemKind::Macro(ref macro_def) => {
+        ItemKind::Macro(_) => {
             visitor.visit_id(item.hir_id());
-            visitor.visit_macro_def(macro_def)
         }
         ItemKind::GlobalAsm(asm) => {
             visitor.visit_id(item.hir_id());

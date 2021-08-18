@@ -642,7 +642,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             hir::ItemKind::Macro(ref macro_def) => {
                 let def_id = item.def_id.to_def_id();
                 let is_macro_export = self.tcx.has_attr(def_id, sym::macro_export);
-                match (macro_def.ast.macro_rules, is_macro_export) {
+                match (macro_def.macro_rules, is_macro_export) {
                     (true, true) => Some(AccessLevel::Public),
                     (true, false) => None,
                     (false, _) => {
@@ -728,23 +728,22 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                 // are reachable, since they might be exported transitively.
 
                 // Non-opaque macros cannot make other items more accessible than they already are.
-                let attrs = self.tcx.hir().attrs(md.hir_id());
-                if attr::find_transparency(&self.tcx.sess, &attrs, md.ast.macro_rules).0
+                let attrs = self.tcx.hir().attrs(item.hir_id());
+                if attr::find_transparency(&self.tcx.sess, &attrs, md.macro_rules).0
                     != Transparency::Opaque
                 {
                     return;
                 }
 
+                let item_def_id = item.def_id.to_def_id();
                 let macro_module_def_id =
-                    ty::DefIdTree::parent(self.tcx, md.def_id.to_def_id()).unwrap().expect_local();
+                    ty::DefIdTree::parent(self.tcx, item_def_id).unwrap().expect_local();
                 if self.tcx.hir().opt_def_kind(macro_module_def_id) != Some(DefKind::Mod) {
                     // The macro's parent doesn't correspond to a `mod`, return early (#63164, #65252).
                     return;
                 }
 
-                let level = if md.vis.node.is_pub() { self.get(macro_module_def_id) } else { None };
-                let new_level = self.update(md.def_id, level);
-                if new_level.is_none() {
+                if self.get(item.def_id).is_none() {
                     return;
                 }
 

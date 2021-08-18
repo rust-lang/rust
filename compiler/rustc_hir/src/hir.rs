@@ -767,25 +767,6 @@ impl Crate<'_> {
     }
 }
 
-/// A macro definition, in this crate or imported from another.
-///
-/// Not parsed directly, but created on macro import or `macro_rules!` expansion.
-#[derive(Debug)]
-pub struct MacroDef<'hir> {
-    pub ident: Ident,
-    pub vis: Visibility<'hir>,
-    pub def_id: LocalDefId,
-    pub span: Span,
-    pub ast: ast::MacroDef,
-}
-
-impl MacroDef<'_> {
-    #[inline]
-    pub fn hir_id(&self) -> HirId {
-        HirId::make_owner(self.def_id)
-    }
-}
-
 /// A block of statements `{ .. }`, which may have a label (in this case the
 /// `targeted_by_break` field will be `true`) and may be `unsafe` by means of
 /// the `rules` being anything but `DefaultBlock`.
@@ -2780,7 +2761,7 @@ pub enum ItemKind<'hir> {
     /// An external module, e.g. `extern { .. }`.
     ForeignMod { abi: Abi, items: &'hir [ForeignItemRef<'hir>] },
     /// A MBE macro (`macro_rules!` or `macro`).
-    Macro(MacroDef<'hir>),
+    Macro(ast::MacroDef),
     /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm(&'hir InlineAsm<'hir>),
     /// A type alias, e.g., `type Foo = Bar<u8>`.

@@ -661,7 +661,7 @@ impl<'a> State<'a> {
                 self.bclose(item.span);
             }
             hir::ItemKind::Macro(ref macro_def) => {
-                let (kw, has_bang) = if macro_def.ast.macro_rules {
+                let (kw, has_bang) = if macro_def.macro_rules {
                     ("macro_rules", true)
                 } else {
                     self.print_visibility(&item.vis);
@@ -672,13 +672,13 @@ impl<'a> State<'a> {
                     Some(MacHeader::Keyword(kw)),
                     has_bang,
                     Some(item.ident),
-                    macro_def.ast.body.delim(),
-                    &macro_def.ast.body.inner_tokens(),
+                    macro_def.body.delim(),
+                    &macro_def.body.inner_tokens(),
                     true,
                     item.span,
                 );
 
-                if macro_def.ast.body.need_semicolon() {
+                if macro_def.body.need_semicolon() {
                     self.word(";");
                 }
             }

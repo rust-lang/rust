@@ -1514,7 +1514,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         // In the long run, the checks should be harmonized.
         if let ItemKind::Macro(ref macro_def) = item.kind {
             let def_id = item.def_id.to_def_id();
-            if macro_def.ast.macro_rules && !self.tcx.has_attr(def_id, sym::macro_export) {
+            if macro_def.macro_rules && !self.tcx.has_attr(def_id, sym::macro_export) {
                 check_non_exported_macro_for_invalid_attrs(self.tcx, item);
             }
         }

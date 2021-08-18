@@ -1375,7 +1375,7 @@ impl EncodeContext<'a, 'tcx> {
             }
             hir::ItemKind::ForeignMod { .. } => EntryKind::ForeignMod,
             hir::ItemKind::Macro(ref macro_def) => {
-                EntryKind::MacroDef(self.lazy(macro_def.ast.clone()))
+                EntryKind::MacroDef(self.lazy(macro_def.clone()))
             }
             hir::ItemKind::GlobalAsm(..) => EntryKind::GlobalAsm,
             hir::ItemKind::TyAlias(..) => EntryKind::Type,

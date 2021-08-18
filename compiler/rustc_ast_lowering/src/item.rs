@@ -445,13 +445,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::MacroDef(MacroDef { ref body, macro_rules }) => {
                 let body = P(self.lower_mac_args(body));
 
-                hir::ItemKind::Macro(hir::MacroDef {
-                    ident: *ident,
-                    vis: *vis,
-                    def_id: hir_id.expect_owner(),
-                    span,
-                    ast: MacroDef { body, macro_rules },
-                })
+                hir::ItemKind::Macro(ast::MacroDef { body, macro_rules })
             }
             ItemKind::MacCall(..) => {
                 panic!("`TyMac` should have been expanded by now")
