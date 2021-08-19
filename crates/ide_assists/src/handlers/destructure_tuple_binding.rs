@@ -227,6 +227,11 @@ fn edit_tuple_usage(
 
             // no index access -> make invalid -> requires handling by user
             // -> put usage in block comment
+            //
+            // Note: For macro invocations this might result in still valid code:
+            //   When a macro accepts the tuple as argument, as well as no arguments at all,
+            //   uncommenting the tuple still leaves the macro call working (see `tests::in_macro_call::empty_macro`).
+            //   But this is an unlikely case. Usually the resulting macro call will become erroneous.
             builder.insert(usage.range.start(), "/*");
             builder.insert(usage.range.end(), "*/");
         }
@@ -322,89 +327,91 @@ fn handle_ref_field_usage(ctx: &AssistContext, field_expr: &FieldExpr) -> RefDat
     let mut ref_data =
         RefData { range: s.text_range(), needs_deref: true, needs_parentheses: true };
 
-    let parent = match s.parent() {
-        Some(parent) => parent,
+    let parent = match s.parent().map(ast::Expr::cast) {
+        Some(Some(parent)) => parent,
+        Some(None) => {
+            ref_data.needs_parentheses = false;
+            return ref_data;
+        }
         None => return ref_data,
     };
 
-    match_ast! {
-        match parent {
-            ast::ParenExpr(it) => {
-                // already parens in place -> don't replace
-                ref_data.needs_parentheses = false;
-                // there might be a ref outside: `&(t.0)` -> can be removed
-                if let Some(it) = it.syntax().parent().and_then(ast::RefExpr::cast) {
-                    ref_data.needs_deref = false;
-                    ref_data.range =  it.syntax().text_range();
-                }
-            },
-            ast::RefExpr(it) => {
-                // `&*` -> cancel each other out
+    match parent {
+        ast::Expr::ParenExpr(it) => {
+            // already parens in place -> don't replace
+            ref_data.needs_parentheses = false;
+            // there might be a ref outside: `&(t.0)` -> can be removed
+            if let Some(it) = it.syntax().parent().and_then(ast::RefExpr::cast) {
                 ref_data.needs_deref = false;
-                ref_data.needs_parentheses = false;
-                // might be surrounded by parens -> can be removed too
-                match it.syntax().parent().and_then(ast::ParenExpr::cast) {
-                    Some(parent) => ref_data.range = parent.syntax().text_range(),
-                    None => ref_data.range = it.syntax().text_range(),
-                };
-            },
-            // higher precedence than deref `*`
-            // https://doc.rust-lang.org/reference/expressions.html#expression-precedence
-            // -> requires parentheses
-            ast::PathExpr(_it) => {},
-            ast::MethodCallExpr(it) => {
-                // `field_expr` is `self_param` (otherwise it would be in `ArgList`)
+                ref_data.range = it.syntax().text_range();
+            }
+        }
+        ast::Expr::RefExpr(it) => {
+            // `&*` -> cancel each other out
+            ref_data.needs_deref = false;
+            ref_data.needs_parentheses = false;
+            // might be surrounded by parens -> can be removed too
+            match it.syntax().parent().and_then(ast::ParenExpr::cast) {
+                Some(parent) => ref_data.range = parent.syntax().text_range(),
+                None => ref_data.range = it.syntax().text_range(),
+            };
+        }
+        // higher precedence than deref `*`
+        // https://doc.rust-lang.org/reference/expressions.html#expression-precedence
+        // -> requires parentheses
+        ast::Expr::PathExpr(_it) => {}
+        ast::Expr::MethodCallExpr(it) => {
+            // `field_expr` is `self_param` (otherwise it would be in `ArgList`)
 
-                // test if there's already auto-ref in place (`value` -> `&value`)
-                // -> no method accepting `self`, but `&self` -> no need for deref
-                //
-                // other combinations (`&value` -> `value`, `&&value` -> `&value`, `&value` -> `&&value`) might or might not be able to auto-ref/deref,
-                // but there might be trait implementations an added `&` might resolve to
-                // -> ONLY handle auto-ref from `value` to `&value`
-                fn is_auto_ref(ctx: &AssistContext, call_expr: &MethodCallExpr) -> bool {
-                    fn impl_(ctx: &AssistContext, call_expr: &MethodCallExpr) -> Option<bool> {
-                        let rec = call_expr.receiver()?;
-                        let rec_ty = ctx.sema.type_of_expr(&rec)?.adjusted();
-                        // input must be actual value
-                        if rec_ty.is_reference() {
-                            return Some(false);
-                        }
-
-                        // doesn't resolve trait impl
-                        let f = ctx.sema.resolve_method_call(call_expr)?;
-                        let self_param = f.self_param(ctx.db())?;
-                        // self must be ref
-                        match self_param.access(ctx.db()) {
-                            hir::Access::Shared | hir::Access::Exclusive => Some(true),
-                            hir::Access::Owned => Some(false),
-                        }
+            // test if there's already auto-ref in place (`value` -> `&value`)
+            // -> no method accepting `self`, but `&self` -> no need for deref
+            //
+            // other combinations (`&value` -> `value`, `&&value` -> `&value`, `&value` -> `&&value`) might or might not be able to auto-ref/deref,
+            // but there might be trait implementations an added `&` might resolve to
+            // -> ONLY handle auto-ref from `value` to `&value`
+            fn is_auto_ref(ctx: &AssistContext, call_expr: &MethodCallExpr) -> bool {
+                fn impl_(ctx: &AssistContext, call_expr: &MethodCallExpr) -> Option<bool> {
+                    let rec = call_expr.receiver()?;
+                    let rec_ty = ctx.sema.type_of_expr(&rec)?.adjusted();
+                    // input must be actual value
+                    if rec_ty.is_reference() {
+                        return Some(false);
                     }
-                    impl_(ctx, call_expr).unwrap_or(false)
-                }
 
-                if is_auto_ref(ctx, &it) {
-                    ref_data.needs_deref = false;
-                    ref_data.needs_parentheses = false;
+                    // doesn't resolve trait impl
+                    let f = ctx.sema.resolve_method_call(call_expr)?;
+                    let self_param = f.self_param(ctx.db())?;
+                    // self must be ref
+                    match self_param.access(ctx.db()) {
+                        hir::Access::Shared | hir::Access::Exclusive => Some(true),
+                        hir::Access::Owned => Some(false),
+                    }
                 }
-            },
-            ast::FieldExpr(_it) => {
-                // `t.0.my_field`
+                impl_(ctx, call_expr).unwrap_or(false)
+            }
+
+            if is_auto_ref(ctx, &it) {
                 ref_data.needs_deref = false;
                 ref_data.needs_parentheses = false;
-            },
-            ast::IndexExpr(_it) => {
-                // `t.0[1]`
-                ref_data.needs_deref = false;
-                ref_data.needs_parentheses = false;
-            },
-            ast::TryExpr(_it) => {
-                // `t.0?`
-                // requires deref and parens: `(*_0)`
-            },
-            // lower precedence than deref `*` -> no parens
-            _ => {
-                ref_data.needs_parentheses = false;
-            },
+            }
+        }
+        ast::Expr::FieldExpr(_it) => {
+            // `t.0.my_field`
+            ref_data.needs_deref = false;
+            ref_data.needs_parentheses = false;
+        }
+        ast::Expr::IndexExpr(_it) => {
+            // `t.0[1]`
+            ref_data.needs_deref = false;
+            ref_data.needs_parentheses = false;
+        }
+        ast::Expr::TryExpr(_it) => {
+            // `t.0?`
+            // requires deref and parens: `(*_0)`
+        }
+        // lower precedence than deref `*` -> no parens
+        _ => {
+            ref_data.needs_parentheses = false;
         }
     };
 
