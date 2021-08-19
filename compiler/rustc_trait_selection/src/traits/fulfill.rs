@@ -4,7 +4,6 @@ use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome}
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
-use rustc_infer::infer::canonical::OriginalQueryValues;
 use rustc_infer::traits::{SelectionError, TraitEngine, TraitEngineExt as _, TraitObligation};
 use rustc_middle::mir::abstract_const::NotConstEvaluatable;
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -553,13 +552,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
                             (c1.val, c2.val)
                         {
-                            let canonical = infcx.canonicalize_query(
-                                ((a.def, a.substs), (b.def, b.substs)),
-                                &mut OriginalQueryValues::default(),
-                            );
-                            debug!("canonical consts: {:?}", &canonical.value);
-
-                            if self.selcx.tcx().try_unify_abstract_consts(canonical.value) {
+                            if infcx.try_unify_abstract_consts(a, b) {
                                 return ProcessResult::Changed(vec![]);
                             }
                         }
