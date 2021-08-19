@@ -33,6 +33,7 @@ use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Constness;
+use rustc_infer::infer::canonical::OriginalQueryValues;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 use rustc_middle::mir::abstract_const::NotConstEvaluatable;
@@ -608,10 +609,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
                             (c1.val, c2.val)
                         {
-                            if self
-                                .tcx()
-                                .try_unify_abstract_consts(((a.def, a.substs), (b.def, b.substs)))
-                            {
+                            let canonical = self.infcx.canonicalize_query(
+                                ((a.def, a.substs), (b.def, b.substs)),
+                                &mut OriginalQueryValues::default(),
+                            );
+                            debug!("canonical consts: {:?}", &canonical.value);
+
+                            if self.tcx().try_unify_abstract_consts(canonical.value) {
                                 return Ok(EvaluatedToOk);
                             }
                         }
