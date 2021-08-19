@@ -1,5 +1,3 @@
-#![allow(clippy::blocks_in_if_conditions)]
-
 fn fn_val(i: i32) -> i32 {
     unimplemented!()
 }
