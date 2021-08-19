@@ -70,6 +70,7 @@ Cargo
 - [The package definition in `cargo metadata` now includes the `"default_run"`
   field from the manifest.][cargo/9550]
 - [Added `cargo d` as an alias for `cargo doc`.][cargo/9680]
+- [Added `{lib}` as formatting option for `cargo tree` to print the "lib_name" of packages.][cargo/9663]
 
 Rustdoc
 -------
