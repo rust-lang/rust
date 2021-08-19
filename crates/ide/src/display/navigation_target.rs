@@ -143,8 +143,11 @@ impl NavigationTarget {
         kind: SymbolKind,
     ) -> NavigationTarget {
         let name = node.value.name().map(|it| it.text().into()).unwrap_or_else(|| "_".into());
-        let focus_range =
-            node.value.name().map(|it| node.with_value(it.syntax()).original_file_range(db).range);
+        let focus_range = node
+            .value
+            .name()
+            .and_then(|it| node.with_value(it.syntax()).original_file_range_opt(db))
+            .map(|it| it.range);
         let frange = node.map(|it| it.syntax()).original_file_range(db);
 
         NavigationTarget::from_syntax(frange.file_id, name, focus_range, frange.range, kind)

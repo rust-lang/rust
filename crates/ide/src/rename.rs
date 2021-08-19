@@ -1869,8 +1869,7 @@ fn f() { <()>::BAR$0; }"#,
     }
 
     #[test]
-    fn macros_are_broken_lol() {
-        cov_mark::check!(macros_are_broken_lol);
+    fn defs_from_macros_arent_renamed() {
         check(
             "lol",
             r#"
@@ -1878,11 +1877,7 @@ macro_rules! m { () => { fn f() {} } }
 m!();
 fn main() { f$0()  }
 "#,
-            r#"
-macro_rules! m { () => { fn f() {} } }
-lol
-fn main() { lol()  }
-"#,
+            "error: No identifier available to rename",
         )
     }
 }
