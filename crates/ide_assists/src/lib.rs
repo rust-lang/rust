@@ -62,6 +62,7 @@ mod handlers {
     mod convert_iter_for_each_to_for;
     mod convert_tuple_struct_to_named_struct;
     mod convert_to_guarded_return;
+    mod destructure_tuple_binding;
     mod expand_glob_import;
     mod extract_function;
     mod extract_struct_from_enum_variant;
@@ -134,6 +135,7 @@ mod handlers {
             convert_iter_for_each_to_for::convert_iter_for_each_to_for,
             convert_to_guarded_return::convert_to_guarded_return,
             convert_tuple_struct_to_named_struct::convert_tuple_struct_to_named_struct,
+            destructure_tuple_binding::destructure_tuple_binding,
             expand_glob_import::expand_glob_import,
             extract_struct_from_enum_variant::extract_struct_from_enum_variant,
             extract_type_alias::extract_type_alias,
