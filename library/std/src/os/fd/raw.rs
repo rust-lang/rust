@@ -40,6 +40,7 @@ pub trait AsRawFd {
     ///
     /// let mut f = File::open("foo.txt")?;
     /// // Note that `raw_fd` is only valid as long as `f` exists.
+    /// #[cfg(any(unix, target_os = "wasi"))]
     /// let raw_fd: RawFd = f.as_raw_fd();
     /// # Ok::<(), io::Error>(())
     /// ```
@@ -75,9 +76,11 @@ pub trait FromRawFd {
     /// use std::os::wasi::io::{FromRawFd, IntoRawFd, RawFd};
     ///
     /// let f = File::open("foo.txt")?;
+    /// # #[cfg(any(unix, target_os = "wasi"))]
     /// let raw_fd: RawFd = f.into_raw_fd();
     /// // SAFETY: no other functions should call `from_raw_fd`, so there
     /// // is only one owner for the file descriptor.
+    /// # #[cfg(any(unix, target_os = "wasi"))]
     /// let f = unsafe { File::from_raw_fd(raw_fd) };
     /// # Ok::<(), io::Error>(())
     /// ```
@@ -106,6 +109,7 @@ pub trait IntoRawFd {
     /// use std::os::wasi::io::{IntoRawFd, RawFd};
     ///
     /// let f = File::open("foo.txt")?;
+    /// #[cfg(any(unix, target_os = "wasi"))]
     /// let raw_fd: RawFd = f.into_raw_fd();
     /// # Ok::<(), io::Error>(())
     /// ```

@@ -159,6 +159,7 @@ pub trait AsFd {
     /// # use std::os::unix::io::{AsFd, BorrowedFd};
     ///
     /// let mut f = File::open("foo.txt")?;
+    /// # #[cfg(any(unix, target_os = "wasi"))]
     /// let borrowed_fd: BorrowedFd<'_> = f.as_fd();
     /// # Ok::<(), io::Error>(())
     /// ```

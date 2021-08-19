@@ -237,9 +237,10 @@ pub trait AsHandle {
     /// # Example
     ///
     /// ```rust,no_run
+    /// # #![feature(io_safety)]
     /// use std::fs::File;
     /// # use std::io;
-    /// use std::os::windows::{AsHandle, BorrowedHandle};
+    /// use std::os::windows::io::{AsHandle, BorrowedHandle};
     ///
     /// let mut f = File::open("foo.txt")?;
     /// let borrowed_handle: BorrowedHandle<'_> = f.as_handle();
