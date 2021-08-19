@@ -269,6 +269,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                                     if def.variants.len() > 1 {
                                         needs_to_be_read = true;
                                     }
+                                } else {
+                                    // If it is not ty::Adt, then it should be read
+                                    needs_to_be_read = true;
                                 }
                             }
                             PatKind::Lit(_) | PatKind::Range(..) => {
