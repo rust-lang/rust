@@ -306,6 +306,7 @@ pub enum BuiltinLintDiagnostics {
     TrailingMacro(bool, Ident),
     BreakWithLabelAndLoop(Span),
     NamedAsmLabel(String),
+    UnicodeTextFlow(Span, String),
 }
 
 /// Lints that are buffered up early on in the `Session` before the

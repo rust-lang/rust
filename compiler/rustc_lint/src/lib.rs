@@ -48,6 +48,7 @@ mod array_into_iter;
 pub mod builtin;
 mod context;
 mod early;
+pub mod hidden_unicode_codepoints;
 mod internal;
 mod late;
 mod levels;
@@ -77,6 +78,7 @@ use rustc_span::Span;
 
 use array_into_iter::ArrayIntoIter;
 use builtin::*;
+use hidden_unicode_codepoints::*;
 use internal::*;
 use methods::*;
 use non_ascii_idents::*;
@@ -128,6 +130,7 @@ macro_rules! early_lint_passes {
                 DeprecatedAttr: DeprecatedAttr::new(),
                 WhileTrue: WhileTrue,
                 NonAsciiIdents: NonAsciiIdents,
+                HiddenUnicodeCodepoints: HiddenUnicodeCodepoints,
                 IncompleteFeatures: IncompleteFeatures,
                 RedundantSemicolons: RedundantSemicolons,
                 UnusedDocComment: UnusedDocComment,

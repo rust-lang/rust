@@ -18,3 +18,4 @@ rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_ast = { path = "../rustc_ast" }
 unicode-normalization = "0.1.11"
+unicode-width = "0.1.4"
