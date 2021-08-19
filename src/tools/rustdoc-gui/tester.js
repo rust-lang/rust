@@ -17,6 +17,11 @@ function showHelp() {
     console.log("  --no-headless              : disable headless mode");
     console.log("  --help                     : show this message then quit");
     console.log("  --tests-folder [PATH]      : location of the .GOML tests folder");
+    console.log("  --jobs [NUMBER]            : number of threads to run tests on");
+}
+
+function isNumeric(s) {
+    return /^\d+$/.test(s);
 }
 
 function parseOptions(args) {
@@ -27,6 +32,7 @@ function parseOptions(args) {
         "debug": false,
         "show_text": false,
         "no_headless": false,
+        "jobs": -1,
     };
     var correspondances = {
         "--doc-folder": "doc_folder",
@@ -39,13 +45,21 @@ function parseOptions(args) {
     for (var i = 0; i < args.length; ++i) {
         if (args[i] === "--doc-folder"
             || args[i] === "--tests-folder"
-            || args[i] === "--file") {
+            || args[i] === "--file"
+            || args[i] === "--jobs") {
             i += 1;
             if (i >= args.length) {
                 console.log("Missing argument after `" + args[i - 1] + "` option.");
                 return null;
             }
-            if (args[i - 1] !== "--file") {
+            if (args[i - 1] === "--jobs") {
+                if (!isNumeric(args[i])) {
+                    console.log(
+                        "`--jobs` option expects a positive number, found `" + args[i] + "`");
+                    return null;
+                }
+                opts["jobs"] = parseInt(args[i]);
+            } else if (args[i - 1] !== "--file") {
                 opts[correspondances[args[i - 1]]] = args[i];
             } else {
                 opts["files"].push(args[i]);
@@ -158,7 +172,11 @@ async function main(argv) {
     files.sort();
 
     console.log(`Running ${files.length} rustdoc-gui tests...`);
-    process.setMaxListeners(files.length + 1);
+    if (opts["jobs"] < 1) {
+        process.setMaxListeners(files.length + 1);
+    } else {
+        process.setMaxListeners(opts["jobs"]);
+    }
     let tests = [];
     let results = {
         successful: [],

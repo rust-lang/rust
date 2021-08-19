@@ -520,7 +520,10 @@ pub trait BuildHasher {
     /// );
     /// ```
     #[unstable(feature = "build_hasher_simple_hash_one", issue = "86161")]
-    fn hash_one<T: Hash>(&self, x: T) -> u64 {
+    fn hash_one<T: Hash>(&self, x: T) -> u64
+    where
+        Self: Sized,
+    {
         let mut hasher = self.build_hasher();
         x.hash(&mut hasher);
         hasher.finish()

@@ -172,6 +172,9 @@ nav.main .separator {
 a {
 	color: #000;
 }
+body.source .example-wrap pre.rust a {
+	background: #eee;
+}
 
 .docblock:not(.type-decl) a:not(.srclink):not(.test-arrow),
 .docblock-short a:not(.srclink):not(.test-arrow), .item-info a,

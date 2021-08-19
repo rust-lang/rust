@@ -2073,20 +2073,85 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         continue;
                     }
                 });
+
+                struct Lifetime(Span, String);
+                impl Lifetime {
+                    fn is_unnamed(&self) -> bool {
+                        self.1.starts_with('&') && !self.1.starts_with("&'")
+                    }
+                    fn is_underscore(&self) -> bool {
+                        self.1.starts_with("&'_ ")
+                    }
+                    fn is_named(&self) -> bool {
+                        self.1.starts_with("&'")
+                    }
+                    fn suggestion(&self, sugg: String) -> Option<(Span, String)> {
+                        Some(
+                            match (
+                                self.is_unnamed(),
+                                self.is_underscore(),
+                                self.is_named(),
+                                sugg.starts_with("&"),
+                            ) {
+                                (true, _, _, false) => (self.span_unnamed_borrow(), sugg),
+                                (true, _, _, true) => {
+                                    (self.span_unnamed_borrow(), sugg[1..].to_string())
+                                }
+                                (_, true, _, false) => {
+                                    (self.span_underscore_borrow(), sugg.trim().to_string())
+                                }
+                                (_, true, _, true) => {
+                                    (self.span_underscore_borrow(), sugg[1..].trim().to_string())
+                                }
+                                (_, _, true, false) => {
+                                    (self.span_named_borrow(), sugg.trim().to_string())
+                                }
+                                (_, _, true, true) => {
+                                    (self.span_named_borrow(), sugg[1..].trim().to_string())
+                                }
+                                _ => return None,
+                            },
+                        )
+                    }
+                    fn span_unnamed_borrow(&self) -> Span {
+                        let lo = self.0.lo() + BytePos(1);
+                        self.0.with_lo(lo).with_hi(lo)
+                    }
+                    fn span_named_borrow(&self) -> Span {
+                        let lo = self.0.lo() + BytePos(1);
+                        self.0.with_lo(lo)
+                    }
+                    fn span_underscore_borrow(&self) -> Span {
+                        let lo = self.0.lo() + BytePos(1);
+                        let hi = lo + BytePos(2);
+                        self.0.with_lo(lo).with_hi(hi)
+                    }
+                }
+
                 for param in params {
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(param.span) {
-                        if snippet.starts_with('&') && !snippet.starts_with("&'") {
-                            introduce_suggestion
-                                .push((param.span, format!("&'a {}", &snippet[1..])));
-                        } else if let Some(stripped) = snippet.strip_prefix("&'_ ") {
-                            introduce_suggestion.push((param.span, format!("&'a {}", &stripped)));
+                        if let Some((span, sugg)) =
+                            Lifetime(param.span, snippet).suggestion("'a ".to_string())
+                        {
+                            introduce_suggestion.push((span, sugg));
                         }
                     }
                 }
-                for ((span, _), sugg) in spans_with_counts.iter().copied().zip(suggs.iter()) {
-                    if let Some(sugg) = sugg {
-                        introduce_suggestion.push((span, sugg.to_string()));
-                    }
+                for (span, sugg) in spans_with_counts.iter().copied().zip(suggs.iter()).filter_map(
+                    |((span, _), sugg)| match &sugg {
+                        Some(sugg) => Some((span, sugg.to_string())),
+                        _ => None,
+                    },
+                ) {
+                    let (span, sugg) = self
+                        .tcx
+                        .sess
+                        .source_map()
+                        .span_to_snippet(span)
+                        .ok()
+                        .and_then(|snippet| Lifetime(span, snippet).suggestion(sugg.clone()))
+                        .unwrap_or((span, sugg));
+                    introduce_suggestion.push((span, sugg.to_string()));
                 }
                 err.multipart_suggestion_with_style(
                     &msg,
@@ -2159,7 +2224,8 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 for ((span, _), snippet) in spans_with_counts.iter().copied().zip(snippets.iter()) {
                     match snippet.as_deref() {
                         Some("") => spans_suggs.push((span, "'lifetime, ".to_string())),
-                        Some("&") => spans_suggs.push((span, "&'lifetime ".to_string())),
+                        Some("&") => spans_suggs
+                            .push((span.with_lo(span.lo() + BytePos(1)), "'lifetime ".to_string())),
                         _ => {}
                     }
                 }
