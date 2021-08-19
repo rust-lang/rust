@@ -6,7 +6,7 @@ use ide_db::{
 use itertools::Itertools;
 use syntax::{
     ast::{self, AstNode, FieldExpr, IdentPat, MethodCallExpr, NameOwner},
-    match_ast, TextRange,
+    TextRange,
 };
 
 use crate::assist_context::{AssistBuilder, AssistContext, Assists};
