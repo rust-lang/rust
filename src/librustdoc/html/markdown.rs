@@ -234,7 +234,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                     return Some(Event::Html(
                         format!(
                             "<div class=\"example-wrap\">\
-                                 <pre class=\"language-{}\">{}</pre>\
+                                 <pre class=\"language-{}\"><code>{}</code></pre>\
                              </div>",
                             lang,
                             Escape(&text),

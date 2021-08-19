@@ -65,10 +65,11 @@ fn write_header(out: &mut Buffer, class: Option<&str>, extra_content: Option<Buf
         out.push_buffer(extra);
     }
     if let Some(class) = class {
-        writeln!(out, "<pre class=\"rust {}\">", class);
+        write!(out, "<pre class=\"rust {}\">", class);
     } else {
-        writeln!(out, "<pre class=\"rust\">");
+        write!(out, "<pre class=\"rust\">");
     }
+    write!(out, "<code>");
 }
 
 /// Convert the given `src` source code into HTML by adding classes for highlighting.
@@ -101,7 +102,7 @@ fn write_code(
 }
 
 fn write_footer(out: &mut Buffer, playground_button: Option<&str>) {
-    writeln!(out, "</pre>{}</div>", playground_button.unwrap_or_default());
+    writeln!(out, "</code></pre>{}</div>", playground_button.unwrap_or_default());
 }
 
 /// How a span of text is classified. Mostly corresponds to token kinds.
