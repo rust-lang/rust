@@ -22,4 +22,14 @@ fn take_until(terminate: impl Fn() -> bool) {
 // CHECK-LABEL: @main
 fn main() {
     take_until(|| true);
+    f(None);
 }
+
+fn f(_a: Option<String>) -> Option<u32> {
+    loop {
+        g();
+        ()
+    }
+}
+
+fn g() -> Option<u32> { None }
