@@ -3,7 +3,9 @@
 #![stable(feature = "process_extensions", since = "1.2.0")]
 
 use crate::ffi::OsStr;
-use crate::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle};
+use crate::os::windows::io::{
+    AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
+};
 use crate::process;
 use crate::sealed::Sealed;
 use crate::sys;
@@ -21,7 +23,7 @@ impl FromRawHandle for process::Stdio {
 #[unstable(feature = "io_safety", issue = "87074")]
 impl From<OwnedHandle> for process::Stdio {
     fn from(handle: OwnedHandle) -> process::Stdio {
-        let handle = sys::handle::Handle::from_handle(handle);
+        let handle = sys::handle::Handle::from_inner(handle);
         let io = sys::process::Stdio::Handle(handle);
         process::Stdio::from_inner(io)
     }
@@ -51,9 +53,9 @@ impl IntoRawHandle for process::Child {
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl IntoHandle for process::Child {
-    fn into_handle(self) -> BorrowedHandle<'_> {
-        self.into_inner().into_handle().into_handle()
+impl From<process::Child> for OwnedHandle {
+    fn from(child: process::Child) -> OwnedHandle {
+        child.into_inner().into_handle().into_inner()
     }
 }
 

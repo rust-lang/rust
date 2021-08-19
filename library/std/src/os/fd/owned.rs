@@ -3,15 +3,11 @@
 #![unstable(feature = "io_safety", issue = "87074")]
 #![deny(unsafe_op_in_unsafe_fn)]
 
-#[cfg(unix)]
-use super::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
-#[cfg(target_os = "wasi")]
-use super::wasi::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
+use super::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::fmt;
 use crate::fs;
 use crate::marker::PhantomData;
 use crate::mem::forget;
-use crate::os::raw;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 /// A borrowed file descriptor.
@@ -123,7 +119,7 @@ impl Drop for OwnedFd {
             // the file descriptor was closed or not, and if we retried (for
             // something like EINTR), we might close another valid file descriptor
             // opened after we closed ours.
-            let _ = libc::close(self.fd as raw::c_int);
+            let _ = libc::close(self.fd);
         }
     }
 }

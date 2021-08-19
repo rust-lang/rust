@@ -6,4 +6,4 @@
 #[cfg(test)]
 mod tests;
 
-pub use super::super::super::super::fd::*;
+pub use crate::os::fd::owned::*;
