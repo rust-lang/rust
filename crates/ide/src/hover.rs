@@ -12,8 +12,8 @@ use ide_db::{
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
-    algo, ast, display::fn_as_proc_macro_label, match_ast, AstNode, AstToken, Direction,
-    SyntaxKind::*, SyntaxNode, SyntaxToken, T,
+    algo, ast, display::fn_as_proc_macro_label, match_ast, AstNode, Direction, SyntaxKind::*,
+    SyntaxNode, SyntaxToken, T,
 };
 
 use crate::{
@@ -112,9 +112,8 @@ pub(crate) fn hover(
         _ => 1,
     })?;
     let token = sema.descend_into_macros(token);
-
-    let mut range_override = None;
     let node = token.parent()?;
+    let mut range_override = None;
     let definition = match_ast! {
         match node {
             ast::Name(name) => NameClass::classify(&sema, &name).map(|class| match class {
@@ -138,7 +137,7 @@ pub(crate) fn hover(
             ),
             _ => {
                 // intra-doc links
-                if ast::Comment::cast(token.clone()).is_some() {
+                if token.kind() == COMMENT {
                     cov_mark::hit!(no_highlight_on_comment_hover);
                     let (attributes, def) = doc_attributes(&sema, &node)?;
                     let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
@@ -233,7 +232,7 @@ fn hover_ranged(
     sema: &Semantics<RootDatabase>,
     config: &HoverConfig,
 ) -> Option<RangeInfo<HoverResult>> {
-    let expr = file.covering_element(range).ancestors().find_map(|it| {
+    let expr_or_pat = file.covering_element(range).ancestors().find_map(|it| {
         match_ast! {
             match it {
                 ast::Expr(expr) => Some(Either::Left(expr)),
@@ -242,13 +241,108 @@ fn hover_ranged(
             }
         }
     })?;
-    hover_type_info(sema, config, &expr).map(|it| {
-        let range = match expr {
+    let res = match &expr_or_pat {
+        Either::Left(ast::Expr::TryExpr(try_expr)) => hover_try_expr(sema, config, try_expr),
+        _ => None,
+    };
+    let res = res.or_else(|| hover_type_info(sema, config, &expr_or_pat));
+    res.map(|it| {
+        let range = match expr_or_pat {
             Either::Left(it) => it.syntax().text_range(),
             Either::Right(it) => it.syntax().text_range(),
         };
         RangeInfo::new(range, it)
     })
+}
+
+fn hover_try_expr(
+    sema: &Semantics<RootDatabase>,
+    config: &HoverConfig,
+    try_expr: &ast::TryExpr,
+) -> Option<HoverResult> {
+    let inner_ty = sema.type_of_expr(&try_expr.expr()?)?.original;
+    let mut ancestors = try_expr.syntax().ancestors();
+    let mut body_ty = loop {
+        let next = ancestors.next()?;
+        break match_ast! {
+            match next {
+                ast::Fn(fn_) => sema.to_def(&fn_)?.ret_type(sema.db),
+                ast::Item(__) => return None,
+                ast::ClosureExpr(closure) => sema.type_of_expr(&closure.body()?)?.original,
+                ast::EffectExpr(effect) => if matches!(effect.effect(), ast::Effect::Async(_) | ast::Effect::Try(_)| ast::Effect::Const(_)) {
+                    sema.type_of_expr(&effect.block_expr()?.into())?.original
+                } else {
+                    continue;
+                },
+                _ => continue,
+            }
+        };
+    };
+
+    if inner_ty == body_ty {
+        return None;
+    }
+
+    let mut inner_ty = inner_ty;
+    let mut s = "Try Target".to_owned();
+
+    let adts = inner_ty.as_adt().zip(body_ty.as_adt());
+    if let Some((hir::Adt::Enum(inner), hir::Adt::Enum(body))) = adts {
+        let famous_defs = FamousDefs(sema, sema.scope(&try_expr.syntax()).krate());
+        // special case for two options, there is no value in showing them
+        if let Some(option_enum) = famous_defs.core_option_Option() {
+            if inner == option_enum && body == option_enum {
+                return None;
+            }
+        }
+
+        // special case two results to show the error variants only
+        if let Some(result_enum) = famous_defs.core_result_Result() {
+            if inner == result_enum && body == result_enum {
+                let error_type_args =
+                    inner_ty.type_arguments().nth(1).zip(body_ty.type_arguments().nth(1));
+                if let Some((inner, body)) = error_type_args {
+                    inner_ty = inner;
+                    body_ty = body;
+                    s = "Try Error".to_owned();
+                }
+            }
+        }
+    }
+
+    let mut res = HoverResult::default();
+
+    let mut targets: Vec<hir::ModuleDef> = Vec::new();
+    let mut push_new_def = |item: hir::ModuleDef| {
+        if !targets.contains(&item) {
+            targets.push(item);
+        }
+    };
+    walk_and_push_ty(sema.db, &inner_ty, &mut push_new_def);
+    walk_and_push_ty(sema.db, &body_ty, &mut push_new_def);
+    res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
+
+    let inner_ty = inner_ty.display(sema.db).to_string();
+    let body_ty = body_ty.display(sema.db).to_string();
+    let ty_len_max = inner_ty.len().max(body_ty.len());
+
+    // "Propagated as: ".len() - " Type: ".len() = 8
+    let static_test_len_diff = 8 - s.len() as isize;
+    let tpad = static_test_len_diff.max(0) as usize;
+    let ppad = static_test_len_diff.min(0).abs() as usize;
+
+    res.markup = format!(
+        "{bt_start}{} Type: {:>pad0$}\nPropagated as: {:>pad1$}\n{bt_end}",
+        s,
+        inner_ty,
+        body_ty,
+        pad0 = ty_len_max + tpad,
+        pad1 = ty_len_max + ppad,
+        bt_start = if config.markdown() { "```text\n" } else { "" },
+        bt_end = if config.markdown() { "```\n" } else { "" }
+    )
+    .into();
+    Some(res)
 }
 
 fn hover_type_info(
@@ -275,12 +369,14 @@ fn hover_type_info(
         let original = original.display(sema.db).to_string();
         let adjusted = adjusted_ty.display(sema.db).to_string();
         format!(
-            "```text\nType: {:>apad$}\nCoerced to: {:>opad$}\n```\n",
-            uncoerced = original,
-            coerced = adjusted,
+            "{bt_start}Type: {:>apad$}\nCoerced to: {:>opad$}\n{bt_end}",
+            original,
+            adjusted,
             // 6 base padding for difference of length of the two text prefixes
             apad = 6 + adjusted.len().max(original.len()),
             opad = original.len(),
+            bt_start = if config.markdown() { "```text\n" } else { "" },
+            bt_end = if config.markdown() { "```\n" } else { "" }
         )
         .into()
     } else {
@@ -4255,6 +4351,97 @@ fn foo() {
                     ),
                 ]
             "#]],
+        );
+    }
+
+    #[test]
+    fn hover_try_expr_res() {
+        check_hover_range(
+            r#"
+//- minicore:result
+struct FooError;
+
+fn foo() -> Result<(), FooError> {
+    Ok($0Result::<(), FooError>::Ok(())?$0)
+}
+"#,
+            expect![[r#"
+                ```rust
+                ()
+                ```"#]],
+        );
+        check_hover_range(
+            r#"
+//- minicore:result
+struct FooError;
+struct BarError;
+
+fn foo() -> Result<(), FooError> {
+    Ok($0Result::<(), BarError>::Ok(())?$0)
+}
+"#,
+            expect![[r#"
+                ```text
+                Try Error Type: BarError
+                Propagated as:  FooError
+                ```
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hover_try_expr() {
+        check_hover_range(
+            r#"
+struct NotResult<T, U>(T, U);
+struct Short;
+struct Looooong;
+
+fn foo() -> NotResult<(), Looooong> {
+    $0NotResult((), Short)?$0;
+}
+"#,
+            expect![[r#"
+                ```text
+                Try Target Type:    NotResult<(), Short>
+                Propagated as:   NotResult<(), Looooong>
+                ```
+            "#]],
+        );
+        check_hover_range(
+            r#"
+struct NotResult<T, U>(T, U);
+struct Short;
+struct Looooong;
+
+fn foo() -> NotResult<(), Short> {
+    $0NotResult((), Looooong)?$0;
+}
+"#,
+            expect![[r#"
+                ```text
+                Try Target Type: NotResult<(), Looooong>
+                Propagated as:      NotResult<(), Short>
+                ```
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hover_try_expr_option() {
+        check_hover_range(
+            r#"
+//- minicore: option, try
+
+fn foo() -> Option<()> {
+    $0Some(0)?$0;
+    None
+}
+"#,
+            expect![[r#"
+                ```rust
+                <Option<i32> as Try>::Output
+                ```"#]],
         );
     }
 }
