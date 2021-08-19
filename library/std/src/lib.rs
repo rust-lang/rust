@@ -308,6 +308,7 @@
 #![feature(ptr_internals)]
 #![feature(rustc_attrs)]
 #![feature(rustc_private)]
+#![feature(saturating_div)]
 #![feature(saturating_int_impl)]
 #![feature(slice_concat_ext)]
 #![feature(slice_internals)]

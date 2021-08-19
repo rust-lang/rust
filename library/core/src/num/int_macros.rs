@@ -926,21 +926,34 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
+        /// #![feature(saturating_div)]
+        ///
+        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".saturating_div(2), 2);")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.saturating_div(-1), ", stringify!($SelfT), "::MIN + 1);")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.saturating_div(-1), ", stringify!($SelfT), "::MAX);")]
         ///
         /// ```
-        #[unstable(feature = "saturating_int_impl", issue = "87920")]
-        #[rustc_const_unstable(feature = "saturating_int_impl", issue = "87920")]
+        ///
+        /// ```should_panic
+        /// #![feature(saturating_div)]
+        ///
+        #[doc = concat!("let _ = 1", stringify!($SelfT), ".saturating_div(0);")]
+        ///
+        /// ```
+        #[unstable(feature = "saturating_div", issue = "87920")]
+        #[rustc_const_unstable(feature = "saturating_div", issue = "87920")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         pub const fn saturating_div(self, rhs: Self) -> Self {
-            match self.checked_div(rhs) {
-                Some(x) => x,
-                None => if (self < 0) == (rhs < 0) {
-                    Self::MAX
-                } else {
-                    Self::MIN
-                }
+            let (result, overflowed) = self.overflowing_div(rhs);
+
+            if !overflowed {
+                result
+            } else if (self < 0) == (rhs < 0) {
+                Self::MAX
+            } else {
+                Self::MIN
             }
         }
 
