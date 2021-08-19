@@ -389,9 +389,9 @@ pub fn struct_lint_level<'s, 'd>(
 pub fn in_external_macro(sess: &Session, span: Span) -> bool {
     let expn_data = span.ctxt().outer_expn_data();
     match expn_data.kind {
-        ExpnKind::Inlined | ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop(_)) => {
-            false
-        }
+        ExpnKind::Inlined
+        | ExpnKind::Root
+        | ExpnKind::Desugaring(DesugaringKind::ForLoop(_) | DesugaringKind::WhileLoop) => false,
         ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
         ExpnKind::Macro(MacroKind::Bang, _) => {
             // Dummy span for the `def_site` means it's an external macro.
