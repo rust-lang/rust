@@ -26,6 +26,46 @@ pub enum GeneratorState<Y, R> {
     Complete(R),
 }
 
+impl<Y, R> GeneratorState<Y, R> {
+    /// Returns `true` if the generator state is [`Yielded`].
+    ///
+    /// [`Yielded`]: GeneratorState::Yielded
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(generator_trait)]
+    ///
+    /// use std::ops::GeneratorState;
+    ///
+    /// assert!(GeneratorState::Yielded::<i32, &str>(1).is_yielded());
+    /// assert!(!GeneratorState::Complete::<i32, &str>("foo").is_yielded());
+    /// ```
+    #[unstable(feature = "generator_trait", issue = "43122")]
+    pub fn is_yielded(&self) -> bool {
+        matches!(self, Self::Yielded(..))
+    }
+
+    /// Returns `true` if the generator state is [`Complete`].
+    ///
+    /// [`Complete`]: GeneratorState::Complete
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(generator_trait)]
+    ///
+    /// use std::ops::GeneratorState;
+    ///
+    /// assert!(!GeneratorState::Yielded::<i32, &str>(1).is_complete());
+    /// assert!(GeneratorState::Complete::<i32, &str>("foo").is_complete());
+    /// ```
+    #[unstable(feature = "generator_trait", issue = "43122")]
+    pub fn is_complete(&self) -> bool {
+        matches!(self, Self::Complete(..))
+    }
+}
+
 /// The trait implemented by builtin generator types.
 ///
 /// Generators, also commonly referred to as coroutines, are currently an
