@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use proc_macro2::{Delimiter, TokenTree};
-use quote::quote;
+use quote::{quote, quote_spanned};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
@@ -42,19 +42,19 @@ enum QueryModifier {
     LoadCached(Ident, Ident, Block),
 
     /// A cycle error for this query aborting the compilation with a fatal error.
-    FatalCycle,
+    FatalCycle(Ident),
 
     /// A cycle error results in a delay_bug call
-    CycleDelayBug,
+    CycleDelayBug(Ident),
 
     /// Don't hash the result, instead just mark a query red if it runs
-    NoHash,
+    NoHash(Ident),
 
     /// Generate a dep node based on the dependencies of the query
-    Anon,
+    Anon(Ident),
 
     /// Always evaluate the query, ignoring its dependencies
-    EvalAlways,
+    EvalAlways(Ident),
 }
 
 impl Parse for QueryModifier {
@@ -111,15 +111,15 @@ impl Parse for QueryModifier {
             let ty = args.parse()?;
             Ok(QueryModifier::Storage(ty))
         } else if modifier == "fatal_cycle" {
-            Ok(QueryModifier::FatalCycle)
+            Ok(QueryModifier::FatalCycle(modifier))
         } else if modifier == "cycle_delay_bug" {
-            Ok(QueryModifier::CycleDelayBug)
+            Ok(QueryModifier::CycleDelayBug(modifier))
         } else if modifier == "no_hash" {
-            Ok(QueryModifier::NoHash)
+            Ok(QueryModifier::NoHash(modifier))
         } else if modifier == "anon" {
-            Ok(QueryModifier::Anon)
+            Ok(QueryModifier::Anon(modifier))
         } else if modifier == "eval_always" {
-            Ok(QueryModifier::EvalAlways)
+            Ok(QueryModifier::EvalAlways(modifier))
         } else {
             Err(Error::new(modifier.span(), "unknown query modifier"))
         }
@@ -203,19 +203,19 @@ struct QueryModifiers {
     load_cached: Option<(Ident, Ident, Block)>,
 
     /// A cycle error for this query aborting the compilation with a fatal error.
-    fatal_cycle: bool,
+    fatal_cycle: Option<Ident>,
 
     /// A cycle error results in a delay_bug call
-    cycle_delay_bug: bool,
+    cycle_delay_bug: Option<Ident>,
 
     /// Don't hash the result, instead just mark a query red if it runs
-    no_hash: bool,
+    no_hash: Option<Ident>,
 
     /// Generate a dep node based on the dependencies of the query
-    anon: bool,
+    anon: Option<Ident>,
 
     // Always evaluate the query, ignoring its dependencies
-    eval_always: bool,
+    eval_always: Option<Ident>,
 }
 
 /// Process query modifiers into a struct, erroring on duplicates
@@ -224,11 +224,11 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
     let mut storage = None;
     let mut cache = None;
     let mut desc = None;
-    let mut fatal_cycle = false;
-    let mut cycle_delay_bug = false;
-    let mut no_hash = false;
-    let mut anon = false;
-    let mut eval_always = false;
+    let mut fatal_cycle = None;
+    let mut cycle_delay_bug = None;
+    let mut no_hash = None;
+    let mut anon = None;
+    let mut eval_always = None;
     for modifier in query.modifiers.0.drain(..) {
         match modifier {
             QueryModifier::LoadCached(tcx, id, block) => {
@@ -289,35 +289,35 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
                 }
                 desc = Some((tcx, list));
             }
-            QueryModifier::FatalCycle => {
-                if fatal_cycle {
+            QueryModifier::FatalCycle(ident) => {
+                if fatal_cycle.is_some() {
                     panic!("duplicate modifier `fatal_cycle` for query `{}`", query.name);
                 }
-                fatal_cycle = true;
+                fatal_cycle = Some(ident);
             }
-            QueryModifier::CycleDelayBug => {
-                if cycle_delay_bug {
+            QueryModifier::CycleDelayBug(ident) => {
+                if cycle_delay_bug.is_some() {
                     panic!("duplicate modifier `cycle_delay_bug` for query `{}`", query.name);
                 }
-                cycle_delay_bug = true;
+                cycle_delay_bug = Some(ident);
             }
-            QueryModifier::NoHash => {
-                if no_hash {
+            QueryModifier::NoHash(ident) => {
+                if no_hash.is_some() {
                     panic!("duplicate modifier `no_hash` for query `{}`", query.name);
                 }
-                no_hash = true;
+                no_hash = Some(ident);
             }
-            QueryModifier::Anon => {
-                if anon {
+            QueryModifier::Anon(ident) => {
+                if anon.is_some() {
                     panic!("duplicate modifier `anon` for query `{}`", query.name);
                 }
-                anon = true;
+                anon = Some(ident);
             }
-            QueryModifier::EvalAlways => {
-                if eval_always {
+            QueryModifier::EvalAlways(ident) => {
+                if eval_always.is_some() {
                     panic!("duplicate modifier `eval_always` for query `{}`", query.name);
                 }
-                eval_always = true;
+                eval_always = Some(ident);
             }
         }
     }
@@ -454,31 +454,39 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         let mut attributes = Vec::new();
 
         // Pass on the fatal_cycle modifier
-        if modifiers.fatal_cycle {
-            attributes.push(quote! { fatal_cycle });
+        if let Some(fatal_cycle) = &modifiers.fatal_cycle {
+            attributes.push(quote! { #fatal_cycle });
         };
         // Pass on the storage modifier
         if let Some(ref ty) = modifiers.storage {
-            attributes.push(quote! { storage(#ty) });
+            let span = ty.span();
+            attributes.push(quote_spanned! {span=> storage(#ty) });
         };
         // Pass on the cycle_delay_bug modifier
-        if modifiers.cycle_delay_bug {
-            attributes.push(quote! { cycle_delay_bug });
+        if let Some(cycle_delay_bug) = &modifiers.cycle_delay_bug {
+            attributes.push(quote! { #cycle_delay_bug });
         };
         // Pass on the no_hash modifier
-        if modifiers.no_hash {
-            attributes.push(quote! { no_hash });
+        if let Some(no_hash) = &modifiers.no_hash {
+            attributes.push(quote! { #no_hash });
         };
         // Pass on the anon modifier
-        if modifiers.anon {
-            attributes.push(quote! { anon });
+        if let Some(anon) = &modifiers.anon {
+            attributes.push(quote! { #anon });
         };
         // Pass on the eval_always modifier
-        if modifiers.eval_always {
-            attributes.push(quote! { eval_always });
+        if let Some(eval_always) = &modifiers.eval_always {
+            attributes.push(quote! { #eval_always });
         };
 
-        let attribute_stream = quote! {#(#attributes),*};
+        // This uses the span of the query definition for the commas,
+        // which can be important if we later encounter any ambiguity
+        // errors with any of the numerous macro_rules! macros that
+        // we use. Using the call-site span would result in a span pointing
+        // at the entire `rustc_queries!` invocation, which wouldn't
+        // be very useful.
+        let span = name.span();
+        let attribute_stream = quote_spanned! {span=> #(#attributes),*};
         let doc_comments = query.doc_comments.iter();
         // Add the query to the group
         query_stream.extend(quote! {
