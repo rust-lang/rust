@@ -23,11 +23,11 @@ hashbrown = { version = "0.11", default-features = false, features = ['rustc-dep
 std_detect = { path = "../stdarch/crates/std_detect", default-features = false, features = ['rustc-dep-of-std'] }
 
 # Dependencies of the `backtrace` crate
-addr2line = { version = "0.14.0", optional = true, default-features = false }
+addr2line = { version = "0.16.0", optional = true, default-features = false }
 rustc-demangle = { version = "0.1.18", features = ['rustc-dep-of-std'] }
 miniz_oxide = { version = "0.4.0", optional = true, default-features = false }
 [dependencies.object]
-version = "0.22"
+version = "0.26.1"
 optional = true
 default-features = false
 features = ['read_core', 'elf', 'macho', 'pe', 'unaligned', 'archive']
