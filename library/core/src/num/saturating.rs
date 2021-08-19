@@ -266,6 +266,37 @@ macro_rules! saturating_impl {
         }
         forward_ref_op_assign! { impl MulAssign, mul_assign for Saturating<$t>, Saturating<$t> }
 
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(saturating_int_impl, saturating_div)]
+        /// use std::num::Saturating;
+        ///
+        #[doc = concat!("assert_eq!(Saturating(2", stringify!($t), "), Saturating(5", stringify!($t), ") / Saturating(2));")]
+        #[doc = concat!("assert_eq!(Saturating(", stringify!($t), "::MAX), Saturating(", stringify!($t), "::MAX) / Saturating(1));")]
+        #[doc = concat!("assert_eq!(Saturating(", stringify!($t), "::MIN), Saturating(", stringify!($t), "::MIN) / Saturating(1));")]
+        /// ```
+        ///
+        /// ```should_panic
+        /// #![feature(saturating_int_impl, saturating_div)]
+        /// use std::num::Saturating;
+        ///
+        #[doc = concat!("let _ = Saturating(0", stringify!($t), ") / Saturating(0);")]
+        /// ```
+        #[unstable(feature = "saturating_int_impl", issue = "87920")]
+        impl Div for Saturating<$t> {
+            type Output = Saturating<$t>;
+
+            #[inline]
+            fn div(self, other: Saturating<$t>) -> Saturating<$t> {
+                Saturating(self.0.saturating_div(other.0))
+            }
+        }
+        forward_ref_binop! { impl Div, div for Saturating<$t>, Saturating<$t>,
+                #[unstable(feature = "saturating_int_impl", issue = "87920")] }
+
         #[unstable(feature = "saturating_int_impl", issue = "87920")]
         impl DivAssign for Saturating<$t> {
             #[inline]
@@ -851,31 +882,6 @@ macro_rules! saturating_int_impl_signed {
         }
         forward_ref_unop! { impl Neg, neg for Saturating<$t>,
                 #[unstable(feature = "saturating_int_impl", issue = "87920")] }
-
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// #![feature(saturating_int_impl)]
-        /// use std::num::Saturating;
-        ///
-        #[doc = concat!("assert_eq!(Saturating(", stringify!($t), "::MIN + 1), Saturating(", stringify!($t), "::MAX) / Saturating(-1));")]
-        #[doc = concat!("assert_eq!(Saturating(", stringify!($t), "::MAX), Saturating(", stringify!($t), "::MIN) / Saturating(-1));")]
-        #[doc = concat!("assert_eq!(Saturating(", stringify!($t), "::MAX), Saturating(", stringify!($t), "::MAX) / Saturating(1));")]
-        #[doc = concat!("assert_eq!(Saturating(", stringify!($t), "::MIN), Saturating(", stringify!($t), "::MIN) / Saturating(1));")]
-        /// ```
-        #[unstable(feature = "saturating_int_impl", issue = "87920")]
-        impl Div for Saturating<$t> {
-            type Output = Saturating<$t>;
-
-            #[inline]
-            fn div(self, other: Saturating<$t>) -> Saturating<$t> {
-                Saturating(self.0.saturating_div(other.0))
-            }
-        }
-        forward_ref_binop! { impl Div, div for Saturating<$t>, Saturating<$t>,
-                #[unstable(feature = "saturating_int_impl", issue = "87920")] }
     )*)
 }
 
@@ -924,18 +930,6 @@ macro_rules! saturating_int_impl_unsigned {
             }
 
         }
-
-        #[unstable(feature = "saturating_int_impl", issue = "87920")]
-        impl Div for Saturating<$t> {
-            type Output = Saturating<$t>;
-
-            #[inline]
-            fn div(self, other: Saturating<$t>) -> Saturating<$t> {
-                Saturating(self.0.div(other.0))
-            }
-        }
-        forward_ref_binop! { impl Div, div for Saturating<$t>, Saturating<$t>,
-                #[unstable(feature = "saturating_int_impl", issue = "87920")] }
     )*)
 }
 
