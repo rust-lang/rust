@@ -3,6 +3,7 @@
 #![feature(hash_raw_entry)]
 #![feature(iter_zip)]
 #![feature(min_specialization)]
+#![feature(thread_local_const_init)]
 
 #[macro_use]
 extern crate tracing;

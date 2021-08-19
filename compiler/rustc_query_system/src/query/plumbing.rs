@@ -20,6 +20,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::DiagnosticBuilder;
 use rustc_errors::{Diagnostic, FatalError};
 use rustc_span::{Span, DUMMY_SP};
+use std::cell::Cell;
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
@@ -618,12 +619,32 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
         } else {
             "`cargo clean`".to_string()
         };
-        tcx.sess().struct_err(&format!("internal compiler error: encountered incremental compilation error with {:?}", dep_node))
-            .help(&format!("This is a known issue with the compiler. Run {} to allow your project to compile", run_cmd))
-            .note(&"Please follow the instructions below to create a bug report with the provided information")
-            .note(&"See <https://github.com/rust-lang/rust/issues/84970> for more information")
-            .emit();
-        panic!("Found unstable fingerprints for {:?}: {:?}", dep_node, result);
+
+        // When we emit an error message and panic, we try to debug-print the `DepNode`
+        // and query result. Unforunately, this can cause us to run additional queries,
+        // which may result in another fingerprint mismatch while we're in the middle
+        // of processing this one. To avoid a double-panic (which kills the process
+        // before we can print out the query static), we print out a terse
+        // but 'safe' message if we detect a re-entrant call to this method.
+        thread_local! {
+            static INSIDE_VERIFY_PANIC: Cell<bool> = const { Cell::new(false) };
+        };
+
+        let old_in_panic = INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.replace(true));
+
+        if old_in_panic {
+            tcx.sess().struct_err("internal compiler error: re-entrant incremental verify failure, suppressing message")
+                .emit();
+        } else {
+            tcx.sess().struct_err(&format!("internal compiler error: encountered incremental compilation error with {:?}", dep_node))
+                .help(&format!("This is a known issue with the compiler. Run {} to allow your project to compile", run_cmd))
+                .note(&"Please follow the instructions below to create a bug report with the provided information")
+                .note(&"See <https://github.com/rust-lang/rust/issues/84970> for more information")
+                .emit();
+            panic!("Found unstable fingerprints for {:?}: {:?}", dep_node, result);
+        }
+
+        INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.set(old_in_panic));
     }
 }
 
