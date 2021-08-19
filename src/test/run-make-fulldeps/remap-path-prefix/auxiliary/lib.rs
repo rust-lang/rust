@@ -1,3 +1,3 @@
-fn lib() {
+pub fn lib() {
     panic!("calm");
 }
