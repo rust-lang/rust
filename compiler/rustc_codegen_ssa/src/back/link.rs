@@ -36,6 +36,7 @@ use regex::Regex;
 use tempfile::Builder as TempFileBuilder;
 
 use std::ffi::OsString;
+use std::lazy::OnceCell;
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{ascii, char, env, fmt, fs, io, mem, str};
@@ -2328,6 +2329,7 @@ fn add_upstream_native_libraries(
         .find(|(ty, _)| *ty == crate_type)
         .expect("failed to find crate type in dependency format list");
 
+    let search_path = OnceCell::new();
     let crates = &codegen_results.crate_info.used_crates;
     let mut last = (NativeLibKind::Unspecified, None);
     for &cnum in crates {
@@ -2352,19 +2354,34 @@ fn add_upstream_native_libraries(
                 NativeLibKind::Framework { as_needed } => {
                     cmd.link_framework(name, as_needed.unwrap_or(true))
                 }
-                NativeLibKind::Static { bundle: Some(false), .. } => {
+                NativeLibKind::Static { bundle: Some(false), whole_archive } => {
                     // Link "static-nobundle" native libs only if the crate they originate from
                     // is being linked statically to the current crate.  If it's linked dynamically
                     // or is an rlib already included via some other dylib crate, the symbols from
                     // native libs will have already been included in that dylib.
                     if data[cnum.as_usize() - 1] == Linkage::Static {
-                        cmd.link_staticlib(name, verbatim)
+                        if whole_archive == Some(true) {
+                            cmd.link_whole_staticlib(
+                                name,
+                                verbatim,
+                                search_path.get_or_init(|| archive_search_paths(sess)),
+                            );
+                        } else {
+                            cmd.link_staticlib(name, verbatim)
+                        }
                     }
                 }
                 // ignore statically included native libraries here as we've
                 // already included them when we included the rust library
                 // previously
-                NativeLibKind::Static { bundle: None | Some(true), .. } => {}
+                NativeLibKind::Static { bundle: None | Some(true), whole_archive } => {
+                    if whole_archive == Some(true) {
+                        bug!(
+                            "Combining `+bundle` with `+whole-archive` is not allowed. \
+                              This should have been caught by an earlier validation step already."
+                        )
+                    }
+                }
                 NativeLibKind::RawDylib => {}
             }
         }
