@@ -389,6 +389,10 @@ impl Checker {
 
     /// Load a file from disk, or from the cache if available.
     fn load_file(&mut self, file: &Path, report: &mut Report) -> (String, &FileEntry) {
+        // https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-
+        #[cfg(windows)]
+        const ERROR_INVALID_NAME: i32 = 123;
+
         let pretty_path =
             file.strip_prefix(&self.root).unwrap_or(&file).to_str().unwrap().to_string();
 
@@ -405,6 +409,14 @@ impl Checker {
                 }
                 Err(e) if e.kind() == ErrorKind::NotFound => FileEntry::Missing,
                 Err(e) => {
+                    // If a broken intra-doc link contains `::`, on windows, it will cause `ERROR_INVALID_NAME` rather than `NotFound`.
+                    // Explicitly check for that so that the broken link can be allowed in `LINKCHECK_EXCEPTIONS`.
+                    #[cfg(windows)]
+                    if e.raw_os_error() == Some(ERROR_INVALID_NAME)
+                        && file.as_os_str().to_str().map_or(false, |s| s.contains("::"))
+                    {
+                        return FileEntry::Missing;
+                    }
                     panic!("unexpected read error for {}: {}", file.display(), e);
                 }
             });
