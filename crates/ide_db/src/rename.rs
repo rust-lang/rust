@@ -81,14 +81,6 @@ impl Definition {
     /// `Definition`. Note that some definitions, like buitin types, can't be
     /// renamed.
     pub fn range_for_rename(self, sema: &Semantics<RootDatabase>) -> Option<FileRange> {
-        // FIXME: the `original_file_range` calls here are wrong -- they never fail,
-        // and _fall back_ to the entirety of the macro call. Such fall back is
-        // incorrect for renames. The safe behavior would be to return an error for
-        // such cases. The correct behavior would be to return an auxiliary list of
-        // "can't rename these occurrences in macros" items, and then show some kind
-        // of a dialog to the user. See:
-        cov_mark::hit!(macros_are_broken_lol);
-
         let res = match self {
             Definition::Macro(mac) => {
                 let src = mac.source(sema.db)?;
@@ -96,38 +88,35 @@ impl Definition {
                     Either::Left(it) => it.name()?,
                     Either::Right(it) => it.name()?,
                 };
-                src.with_value(name.syntax()).original_file_range(sema.db)
+                src.with_value(name.syntax()).original_file_range_opt(sema.db)
             }
             Definition::Field(field) => {
                 let src = field.source(sema.db)?;
-
                 match &src.value {
                     FieldSource::Named(record_field) => {
                         let name = record_field.name()?;
-                        src.with_value(name.syntax()).original_file_range(sema.db)
+                        src.with_value(name.syntax()).original_file_range_opt(sema.db)
                     }
-                    FieldSource::Pos(_) => {
-                        return None;
-                    }
+                    FieldSource::Pos(_) => None,
                 }
             }
             Definition::ModuleDef(module_def) => match module_def {
                 hir::ModuleDef::Module(module) => {
                     let src = module.declaration_source(sema.db)?;
                     let name = src.value.name()?;
-                    src.with_value(name.syntax()).original_file_range(sema.db)
+                    src.with_value(name.syntax()).original_file_range_opt(sema.db)
                 }
-                hir::ModuleDef::Function(it) => name_range(it, sema)?,
+                hir::ModuleDef::Function(it) => name_range(it, sema),
                 hir::ModuleDef::Adt(adt) => match adt {
-                    hir::Adt::Struct(it) => name_range(it, sema)?,
-                    hir::Adt::Union(it) => name_range(it, sema)?,
-                    hir::Adt::Enum(it) => name_range(it, sema)?,
+                    hir::Adt::Struct(it) => name_range(it, sema),
+                    hir::Adt::Union(it) => name_range(it, sema),
+                    hir::Adt::Enum(it) => name_range(it, sema),
                 },
-                hir::ModuleDef::Variant(it) => name_range(it, sema)?,
-                hir::ModuleDef::Const(it) => name_range(it, sema)?,
-                hir::ModuleDef::Static(it) => name_range(it, sema)?,
-                hir::ModuleDef::Trait(it) => name_range(it, sema)?,
-                hir::ModuleDef::TypeAlias(it) => name_range(it, sema)?,
+                hir::ModuleDef::Variant(it) => name_range(it, sema),
+                hir::ModuleDef::Const(it) => name_range(it, sema),
+                hir::ModuleDef::Static(it) => name_range(it, sema),
+                hir::ModuleDef::Trait(it) => name_range(it, sema),
+                hir::ModuleDef::TypeAlias(it) => name_range(it, sema),
                 hir::ModuleDef::BuiltinType(_) => return None,
             },
             Definition::SelfType(_) => return None,
@@ -137,7 +126,7 @@ impl Definition {
                     Either::Left(bind_pat) => bind_pat.name()?,
                     Either::Right(_) => return None,
                 };
-                src.with_value(name.syntax()).original_file_range(sema.db)
+                src.with_value(name.syntax()).original_file_range_opt(sema.db)
             }
             Definition::GenericParam(generic_param) => match generic_param {
                 hir::GenericParam::TypeParam(type_param) => {
@@ -146,22 +135,22 @@ impl Definition {
                         Either::Left(type_param) => type_param.name()?,
                         Either::Right(_trait) => return None,
                     };
-                    src.with_value(name.syntax()).original_file_range(sema.db)
+                    src.with_value(name.syntax()).original_file_range_opt(sema.db)
                 }
                 hir::GenericParam::LifetimeParam(lifetime_param) => {
                     let src = lifetime_param.source(sema.db)?;
                     let lifetime = src.value.lifetime()?;
-                    src.with_value(lifetime.syntax()).original_file_range(sema.db)
+                    src.with_value(lifetime.syntax()).original_file_range_opt(sema.db)
                 }
-                hir::GenericParam::ConstParam(it) => name_range(it, sema)?,
+                hir::GenericParam::ConstParam(it) => name_range(it, sema),
             },
             Definition::Label(label) => {
                 let src = label.source(sema.db);
                 let lifetime = src.value.lifetime()?;
-                src.with_value(lifetime.syntax()).original_file_range(sema.db)
+                src.with_value(lifetime.syntax()).original_file_range_opt(sema.db)
             }
         };
-        return Some(res);
+        return res;
 
         fn name_range<D>(def: D, sema: &Semantics<RootDatabase>) -> Option<FileRange>
         where
@@ -170,8 +159,7 @@ impl Definition {
         {
             let src = def.source(sema.db)?;
             let name = src.value.name()?;
-            let res = src.with_value(name.syntax()).original_file_range(sema.db);
-            Some(res)
+            src.with_value(name.syntax()).original_file_range_opt(sema.db)
         }
     }
 }
