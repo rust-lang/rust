@@ -50,6 +50,8 @@ pub(super) fn check<'tcx>(
                     if let hir::PatKind::Ref(..) = closure_arg.pat.kind {
                         Some(search_snippet.replacen('&', "", 1))
                     } else if let PatKind::Binding(..) = strip_pat_refs(closure_arg.pat).kind {
+                        // `find()` provides a reference to the item, but `any` does not,
+                        // so we should fix item usages for suggestion
                         get_closure_suggestion(cx, search_arg, closure_body)
                             .or_else(|| Some(search_snippet.to_string()))
                     } else {
@@ -151,6 +153,9 @@ pub(super) fn check<'tcx>(
     }
 }
 
+// Build suggestion gradually by handling closure arg specific usages,
+// such as explicit deref and borrowing cases.
+// Returns `None` if no such use cases have been triggered in closure body
 fn get_closure_suggestion<'tcx>(
     cx: &LateContext<'_>,
     search_arg: &'tcx hir::Expr<'_>,
@@ -203,8 +208,12 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
             let end_snip = snippet(self.cx, end_span, "..");
 
             if cmt.place.projections.is_empty() {
+                // handle item without any projection, that needs an explicit borrowing
+                // i.e.: suggest `&x` instead of `x`
                 self.suggestion_start.push_str(&format!("{}&{}", start_snip, ident_str));
             } else {
+                // cases where a parent call is using the item
+                // i.e.: suggest `.contains(&x)` for `.find(|x| [1, 2, 3].contains(x)).is_none()`
                 let parent_expr = get_parent_expr_for_hir(self.cx, cmt.hir_id);
                 if let Some(Expr { hir_id: _, kind, .. }) = parent_expr {
                     if let ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) = kind {
@@ -230,6 +239,8 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                     }
                 }
 
+                // handle item projections by removing one explicit deref
+                // i.e.: suggest `*x` instead of `**x`
                 let mut replacement_str = ident_str;
                 let last_deref = cmt
                     .place
