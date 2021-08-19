@@ -735,17 +735,21 @@ a {
 .anchor {
 	display: none;
 	position: absolute;
-	left: -7px;
+	left: 0;
+	background: none !important;
 }
 .anchor.field {
 	left: -5px;
 }
 .small-section-header > .anchor {
-	left: -28px;
-	padding-right: 10px; /* avoid gap that causes hover to disappear */
+	left: -15px;
+	padding-right: 8px;
 }
-.anchor:before {
-	content: '\2002\00a7\2002';
+h2.small-section-header > .anchor {
+	padding-right: 6px;
+}
+.anchor::before {
+	content: '§';
 }
 
 .docblock a:not(.srclink):not(.test-arrow):hover,
