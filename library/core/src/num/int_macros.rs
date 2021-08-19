@@ -918,6 +918,32 @@ macro_rules! int_impl {
             }
         }
 
+        /// Saturating integer division. Computes `self / rhs`, saturating at the
+        /// numeric bounds instead of overflowing.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        ///
+        /// ```
+        #[unstable(feature = "saturating_int_impl", issue = "87920")]
+        #[rustc_const_unstable(feature = "saturating_int_impl", issue = "87920")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn saturating_div(self, rhs: Self) -> Self {
+            match self.checked_div(rhs) {
+                Some(x) => x,
+                None => if (self < 0) == (rhs < 0) {
+                    Self::MAX
+                } else {
+                    Self::MIN
+                }
+            }
+        }
+
         /// Saturating integer exponentiation. Computes `self.pow(exp)`,
         /// saturating at the numeric bounds instead of overflowing.
         ///

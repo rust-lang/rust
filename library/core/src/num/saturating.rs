@@ -871,16 +871,7 @@ macro_rules! saturating_int_impl_signed {
 
             #[inline]
             fn div(self, other: Saturating<$t>) -> Saturating<$t> {
-                let expected_signum = self.0.signum() * other.0.signum();
-                let (result, overflowed) = self.0.overflowing_div(other.0);
-
-                if !overflowed {
-                    Saturating(result)
-                } else if expected_signum < 0 {
-                    Saturating(<$t>::MIN)
-                } else {
-                    Saturating(<$t>::MAX)
-                }
+                Saturating(self.0.saturating_div(other.0))
             }
         }
         forward_ref_binop! { impl Div, div for Saturating<$t>, Saturating<$t>,
