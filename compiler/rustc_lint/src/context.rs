@@ -16,6 +16,7 @@
 
 use self::TargetLint::*;
 
+use crate::hidden_unicode_codepoints::UNICODE_TEXT_FLOW_CHARS;
 use crate::levels::{is_known_lint_tool, LintLevelsBuilder};
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 use rustc_ast as ast;
@@ -39,7 +40,7 @@ use rustc_session::lint::{BuiltinLintDiagnostics, ExternDepSpec};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
 use rustc_span::lev_distance::find_best_match_for_name;
-use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
+use rustc_span::{symbol::Symbol, BytePos, MultiSpan, Span, DUMMY_SP};
 use rustc_target::abi;
 use tracing::debug;
 
@@ -597,6 +598,42 @@ pub trait LintContext: Sized {
             // Now, set up surrounding context.
             let sess = self.sess();
             match diagnostic {
+                BuiltinLintDiagnostics::UnicodeTextFlow(span, content) => {
+                    let spans: Vec<_> = content
+                        .char_indices()
+                        .filter_map(|(i, c)| {
+                            UNICODE_TEXT_FLOW_CHARS.contains(&c).then(|| {
+                                let lo = span.lo() + BytePos(2 + i as u32);
+                                (c, span.with_lo(lo).with_hi(lo + BytePos(c.len_utf8() as u32)))
+                            })
+                        })
+                        .collect();
+                    let (an, s) = match spans.len() {
+                        1 => ("an ", ""),
+                        _ => ("", "s"),
+                    };
+                    db.span_label(span, &format!(
+                        "this comment contains {}invisible unicode text flow control codepoint{}",
+                        an,
+                        s,
+                    ));
+                    for (c, span) in &spans {
+                        db.span_label(*span, format!("{:?}", c));
+                    }
+                    db.note(
+                        "these kind of unicode codepoints change the way text flows on \
+                         applications that support them, but can cause confusion because they \
+                         change the order of characters on the screen",
+                    );
+                    if !spans.is_empty() {
+                        db.multipart_suggestion_with_style(
+                            "if their presence wasn't intentional, you can remove them",
+                            spans.into_iter().map(|(_, span)| (span, "".to_string())).collect(),
+                            Applicability::MachineApplicable,
+                            SuggestionStyle::HideCodeAlways,
+                        );
+                    }
+                },
                 BuiltinLintDiagnostics::Normal => (),
                 BuiltinLintDiagnostics::BareTraitObject(span, is_global) => {
                     let (sugg, app) = match sess.source_map().span_to_snippet(span) {
