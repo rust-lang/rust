@@ -17,7 +17,7 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_block: &'
             let_expr,
             if_else: Some(if_else),
             ..
-        }) = higher::IfLet::hir(inner)
+        }) = higher::IfLet::hir(cx, inner)
         {
             if is_simple_break_expr(if_else) {
                 could_be_while_let(cx, expr, let_pat, let_expr);
