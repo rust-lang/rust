@@ -28,6 +28,8 @@ use crate::{
 //
 // impl Version {
 //     /// Returns `true` if the version is [`Minor`].
+//     ///
+//     /// [`Minor`]: Version::Minor
 //     fn is_minor(&self) -> bool {
 //         matches!(self, Self::Minor)
 //     }
@@ -43,7 +45,8 @@ pub(crate) fn generate_enum_is_method(acc: &mut Assists, ctx: &AssistContext) ->
         ast::StructKind::Unit => "",
     };
 
-    let enum_lowercase_name = to_lower_snake_case(&parent_enum.name()?.to_string());
+    let enum_name = parent_enum.name()?;
+    let enum_lowercase_name = to_lower_snake_case(&enum_name.to_string()).replace('_', " ");
     let fn_name = format!("is_{}", &to_lower_snake_case(&variant_name.text()));
 
     // Return early if we've found an existing new fn
@@ -57,11 +60,18 @@ pub(crate) fn generate_enum_is_method(acc: &mut Assists, ctx: &AssistContext) ->
         |builder| {
             let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{} ", v));
             let method = format!(
-                "    /// Returns `true` if the {} is [`{}`].
+                "    /// Returns `true` if the {} is [`{variant}`].
+    ///
+    /// [`{variant}`]: {}::{variant}
     {}fn {}(&self) -> bool {{
-        matches!(self, Self::{}{})
+        matches!(self, Self::{variant}{})
     }}",
-                enum_lowercase_name, variant_name, vis, fn_name, variant_name, pattern_suffix,
+                enum_lowercase_name,
+                enum_name,
+                vis,
+                fn_name,
+                pattern_suffix,
+                variant = variant_name
             );
 
             add_method_to_adt(builder, &parent_enum, impl_def, &method);
@@ -93,6 +103,8 @@ enum Variant {
 
 impl Variant {
     /// Returns `true` if the variant is [`Minor`].
+    ///
+    /// [`Minor`]: Variant::Minor
     fn is_minor(&self) -> bool {
         matches!(self, Self::Minor)
     }
@@ -137,6 +149,8 @@ enum Variant {
 
 impl Variant {
     /// Returns `true` if the variant is [`Minor`].
+    ///
+    /// [`Minor`]: Variant::Minor
     fn is_minor(&self) -> bool {
         matches!(self, Self::Minor(..))
     }
@@ -162,6 +176,8 @@ enum Variant {
 
 impl Variant {
     /// Returns `true` if the variant is [`Minor`].
+    ///
+    /// [`Minor`]: Variant::Minor
     fn is_minor(&self) -> bool {
         matches!(self, Self::Minor { .. })
     }
@@ -179,6 +195,8 @@ enum Variant { Undefined }
 
 impl Variant {
     /// Returns `true` if the variant is [`Undefined`].
+    ///
+    /// [`Undefined`]: Variant::Undefined
     fn is_undefined(&self) -> bool {
         matches!(self, Self::Undefined)
     }
@@ -204,6 +222,8 @@ pub(crate) enum Variant {
 
 impl Variant {
     /// Returns `true` if the variant is [`Minor`].
+    ///
+    /// [`Minor`]: Variant::Minor
     pub(crate) fn is_minor(&self) -> bool {
         matches!(self, Self::Minor)
     }
@@ -224,6 +244,8 @@ enum Variant {
 
 impl Variant {
     /// Returns `true` if the variant is [`Minor`].
+    ///
+    /// [`Minor`]: Variant::Minor
     fn is_minor(&self) -> bool {
         matches!(self, Self::Minor)
     }
@@ -236,13 +258,44 @@ impl Variant {
 
 impl Variant {
     /// Returns `true` if the variant is [`Minor`].
+    ///
+    /// [`Minor`]: Variant::Minor
     fn is_minor(&self) -> bool {
         matches!(self, Self::Minor)
     }
 
     /// Returns `true` if the variant is [`Major`].
+    ///
+    /// [`Major`]: Variant::Major
     fn is_major(&self) -> bool {
         matches!(self, Self::Major)
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_enum_is_variant_names() {
+        check_assist(
+            generate_enum_is_method,
+            r#"
+enum GeneratorState {
+    Yielded,
+    Complete$0,
+    Major,
+}"#,
+            r#"enum GeneratorState {
+    Yielded,
+    Complete,
+    Major,
+}
+
+impl GeneratorState {
+    /// Returns `true` if the generator state is [`Complete`].
+    ///
+    /// [`Complete`]: GeneratorState::Complete
+    fn is_complete(&self) -> bool {
+        matches!(self, Self::Complete)
     }
 }"#,
         );
