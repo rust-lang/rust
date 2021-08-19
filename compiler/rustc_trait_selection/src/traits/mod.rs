@@ -765,8 +765,8 @@ pub fn vtable_trait_upcasting_coercion_new_vptr_slot(
     ),
 ) -> Option<usize> {
     let (source, target) = key;
-    debug_assert!(matches!(&source.kind(), &ty::Dynamic(..)));
-    debug_assert!(matches!(&target.kind(), &ty::Dynamic(..)));
+    assert!(matches!(&source.kind(), &ty::Dynamic(..)) && !source.needs_infer());
+    assert!(matches!(&target.kind(), &ty::Dynamic(..)) && !target.needs_infer());
 
     // this has been typecked-before, so diagnostics is not really needed.
     let unsize_trait_did = tcx.require_lang_item(LangItem::Unsize, None);
