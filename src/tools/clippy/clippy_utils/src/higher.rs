@@ -79,15 +79,7 @@ pub struct IfLet<'hir> {
 }
 
 impl<'hir> IfLet<'hir> {
-    #[inline]
-    pub fn ast(cx: &LateContext<'tcx>, expr: &Expr<'hir>) -> Option<Self> {
-        let rslt = Self::hir(expr)?;
-        Self::is_not_within_while_context(cx, expr)?;
-        Some(rslt)
-    }
-
-    #[inline]
-    pub const fn hir(expr: &Expr<'hir>) -> Option<Self> {
+    pub fn hir(cx: &LateContext<'_>, expr: &Expr<'hir>) -> Option<Self> {
         if let ExprKind::If(
             Expr {
                 kind: ExprKind::Let(let_pat, let_expr, _),
@@ -97,6 +89,14 @@ impl<'hir> IfLet<'hir> {
             if_else,
         ) = expr.kind
         {
+            let hir = cx.tcx.hir();
+            let mut iter = hir.parent_iter(expr.hir_id);
+            if let Some((_, Node::Block(Block { stmts: [], .. }))) = iter.next() {
+                if let Some((_, Node::Expr(Expr { kind: ExprKind::Loop(_, _, LoopSource::While, _), .. }))) = iter.next() {
+                    // while loop desugar
+                    return None;
+                }
+            }
             return Some(Self {
                 let_pat,
                 let_expr,
@@ -105,22 +105,6 @@ impl<'hir> IfLet<'hir> {
             });
         }
         None
-    }
-
-    #[inline]
-    fn is_not_within_while_context(cx: &LateContext<'tcx>, expr: &Expr<'hir>) -> Option<()> {
-        let hir = cx.tcx.hir();
-        let parent = hir.get_parent_node(expr.hir_id);
-        let parent_parent = hir.get_parent_node(parent);
-        let parent_parent_node = hir.get(parent_parent);
-        if let Node::Expr(Expr {
-            kind: ExprKind::Loop(_, _, LoopSource::While, _),
-            ..
-        }) = parent_parent_node
-        {
-            return None;
-        }
-        Some(())
     }
 }
 

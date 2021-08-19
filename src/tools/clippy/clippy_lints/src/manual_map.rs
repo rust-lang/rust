@@ -49,7 +49,7 @@ impl LateLintPass<'_> for ManualMap {
             let_expr,
             if_then,
             if_else: Some(if_else),
-        }) = higher::IfLet::hir(expr)
+        }) = higher::IfLet::hir(cx, expr)
         {
             manage_lint(cx, expr, (&let_pat.kind, if_then), (&PatKind::Wild, if_else), let_expr);
         }
