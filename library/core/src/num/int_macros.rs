@@ -946,14 +946,9 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn saturating_div(self, rhs: Self) -> Self {
-            let (result, overflowed) = self.overflowing_div(rhs);
-
-            if !overflowed {
-                result
-            } else if (self < 0) == (rhs < 0) {
-                Self::MAX
-            } else {
-                Self::MIN
+            match self.overflowing_div(rhs) {
+                (result, false) => result,
+                (_result, true) => Self::MAX, // MIN / -1 is the only possible saturating overflow
             }
         }
 
