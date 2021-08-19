@@ -1,0 +1,138 @@
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:10:22
+   |
+LL |     let _ = v.iter().find(|&x| *x < 0).is_some();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x| *x < 0)`
+   |
+   = note: `-D clippy::search-is-some` implied by `-D warnings`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:11:20
+   |
+LL |     let _ = (0..1).find(|x| **y == *x).is_some(); // one dereference less
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x| **y == x)`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:12:20
+   |
+LL |     let _ = (0..1).find(|x| *x == 0).is_some();
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x| x == 0)`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:13:22
+   |
+LL |     let _ = v.iter().find(|x| **x == 0).is_some();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x| *x == 0)`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:14:20
+   |
+LL |     let _ = (4..5).find(|x| *x == 1 || *x == 3 || *x == 5).is_some();
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x| x == 1 || x == 3 || x == 5)`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:15:20
+   |
+LL |     let _ = (1..3).find(|x| [1, 2, 3].contains(x)).is_some();
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x| [1, 2, 3].contains(&x))`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:16:20
+   |
+LL |     let _ = (1..3).find(|x| *x == 0 || [1, 2, 3].contains(x)).is_some();
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x| x == 0 || [1, 2, 3].contains(&x))`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:17:20
+   |
+LL |     let _ = (1..3).find(|x| [1, 2, 3].contains(x) || *x == 0).is_some();
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x| [1, 2, 3].contains(&x) || x == 0)`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:19:10
+   |
+LL |           .find(|x| [1, 2, 3].contains(x) || *x == 0 || [4, 5, 6].contains(x) || *x == -1)
+   |  __________^
+LL | |         .is_some();
+   | |__________________^ help: use `any()` instead: `any(|x| [1, 2, 3].contains(&x) || x == 0 || [4, 5, 6].contains(&x) || x == -1)`
+
+error: called `is_some()` after searching an `Iterator` with `position`
+  --> $DIR/search_is_some_fixable_some.rs:23:22
+   |
+LL |     let _ = v.iter().position(|&x| x < 0).is_some();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|&x| x < 0)`
+
+error: called `is_some()` after searching an `Iterator` with `rposition`
+  --> $DIR/search_is_some_fixable_some.rs:26:22
+   |
+LL |     let _ = v.iter().rposition(|&x| x < 0).is_some();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|&x| x < 0)`
+
+error: called `is_some()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable_some.rs:31:27
+   |
+LL |     let _ = "hello world".find("world").is_some();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^ help: use `contains()` instead: `contains("world")`
+
+error: called `is_some()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable_some.rs:32:27
+   |
+LL |     let _ = "hello world".find(&s2).is_some();
+   |                           ^^^^^^^^^^^^^^^^^^^ help: use `contains()` instead: `contains(&s2)`
+
+error: called `is_some()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable_some.rs:33:27
+   |
+LL |     let _ = "hello world".find(&s2[2..]).is_some();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^ help: use `contains()` instead: `contains(&s2[2..])`
+
+error: called `is_some()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable_some.rs:35:16
+   |
+LL |     let _ = s1.find("world").is_some();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^ help: use `contains()` instead: `contains("world")`
+
+error: called `is_some()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable_some.rs:36:16
+   |
+LL |     let _ = s1.find(&s2).is_some();
+   |                ^^^^^^^^^^^^^^^^^^^ help: use `contains()` instead: `contains(&s2)`
+
+error: called `is_some()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable_some.rs:37:16
+   |
+LL |     let _ = s1.find(&s2[2..]).is_some();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^ help: use `contains()` instead: `contains(&s2[2..])`
+
+error: called `is_some()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable_some.rs:39:21
+   |
+LL |     let _ = s1[2..].find("world").is_some();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^ help: use `contains()` instead: `contains("world")`
+
+error: called `is_some()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable_some.rs:40:21
+   |
+LL |     let _ = s1[2..].find(&s2).is_some();
+   |                     ^^^^^^^^^^^^^^^^^^^ help: use `contains()` instead: `contains(&s2)`
+
+error: called `is_some()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable_some.rs:41:21
+   |
+LL |     let _ = s1[2..].find(&s2[2..]).is_some();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: use `contains()` instead: `contains(&s2[2..])`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:57:44
+   |
+LL |             .filter(|c| filter_hand.iter().find(|cc| c == cc).is_some())
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|cc| c == &cc)`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:73:49
+   |
+LL |             .filter(|(c, _)| filter_hand.iter().find(|cc| c == *cc).is_some())
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|cc| c == cc)`
+
+error: aborting due to 22 previous errors
+
