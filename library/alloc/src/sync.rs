@@ -1346,18 +1346,17 @@ impl<T: ?Sized> Receiver for Arc<T> {}
 impl<T: Clone> Arc<T> {
     /// Makes a mutable reference into the given `Arc`.
     ///
-    /// If there are other `Arc` or [`Weak`] pointers to the same allocation,
-    /// then `make_mut` will create a new allocation and invoke [`clone`][clone] on the inner value
-    /// to ensure unique ownership. This is also referred to as clone-on-write.
+    /// If there are other `Arc` pointers to the same allocation, then `make_mut` will
+    /// [`clone`] the inner value to a new allocation to ensure unique ownership.  This is also
+    /// referred to as clone-on-write.
     ///
-    /// Note that this differs from the behavior of [`Rc::make_mut`] which disassociates
-    /// any remaining `Weak` pointers.
+    /// If there are no other `Arc` pointers to this allocation, then [`Weak`]
+    /// pointers to this allocation will be disassociated.
     ///
-    /// See also [`get_mut`][get_mut], which will fail rather than cloning.
+    /// See also [`get_mut`], which will fail rather than cloning.
     ///
-    /// [clone]: Clone::clone
-    /// [get_mut]: Arc::get_mut
-    /// [`Rc::make_mut`]: super::rc::Rc::make_mut
+    /// [`clone`]: Clone::clone
+    /// [`get_mut`]: Arc::get_mut
     ///
     /// # Examples
     ///
@@ -1375,6 +1374,23 @@ impl<T: Clone> Arc<T> {
     /// // Now `data` and `other_data` point to different allocations.
     /// assert_eq!(*data, 8);
     /// assert_eq!(*other_data, 12);
+    /// ```
+    ///
+    /// [`Weak`] pointers will be disassociated:
+    ///
+    /// ```
+    /// use std::sync::Arc;
+    ///
+    /// let mut data = Arc::new(75);
+    /// let weak = Arc::downgrade(&data);
+    ///
+    /// assert!(75 == *data);
+    /// assert!(75 == *weak.upgrade().unwrap());
+    ///
+    /// *Arc::make_mut(&mut data) += 1;
+    ///
+    /// assert!(76 == *data);
+    /// assert!(weak.upgrade().is_none());
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
