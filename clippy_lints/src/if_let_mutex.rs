@@ -59,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for IfLetMutex {
             if_then,
             if_else: Some(if_else),
             ..
-        }) = higher::IfLet::hir(expr)
+        }) = higher::IfLet::hir(cx, expr)
         {
             op_visit.visit_expr(let_expr);
             if op_visit.mutex_lock_called {

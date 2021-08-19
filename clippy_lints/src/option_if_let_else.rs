@@ -125,7 +125,7 @@ fn format_option_in_sugg(cx: &LateContext<'_>, cond_expr: &Expr<'_>, as_ref: boo
 fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<OptionIfLetElseOccurence> {
     if_chain! {
         if !in_macro(expr.span); // Don't lint macros, because it behaves weirdly
-        if let Some(higher::IfLet { let_pat, let_expr, if_then, if_else: Some(if_else) }) = higher::IfLet::hir(expr);
+        if let Some(higher::IfLet { let_pat, let_expr, if_then, if_else: Some(if_else) }) = higher::IfLet::hir(cx, expr);
         if !is_else_clause(cx.tcx, expr);
         if !is_result_ok(cx, let_expr); // Don't lint on Result::ok because a different lint does it already
         if let PatKind::TupleStruct(struct_qpath, [inner_pat], _) = &let_pat.kind;
