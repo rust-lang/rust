@@ -12,4 +12,4 @@ assert-attribute: (".line-numbers > span:nth-child(5)", {"class": "line-highligh
 assert-attribute: (".line-numbers > span:nth-child(6)", {"class": "line-highlighted"})
 assert-attribute-false: (".line-numbers > span:nth-child(7)", {"class": "line-highlighted"})
 // This is to ensure that the content is correctly align with the line numbers.
-compare-elements-position: ("//*[@id='1']", ".rust > span", ("y"))
+compare-elements-position: ("//*[@id='1']", ".rust > code > span", ("y"))
