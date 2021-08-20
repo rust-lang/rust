@@ -62,6 +62,11 @@ verify_cherries() {
     # Check each commit in <current>..<upstream>
     backport_sha=$(get_backport "$sha")
 
+    if [[ "$backport_sha" == "nothing" ]]; then
+      echo "✓ \`$sha\` backports nothing"
+      continue
+    fi
+
     if [[ -z "$backport_sha" ]]; then
       no_backports+=("$sha")
       continue
@@ -88,8 +93,8 @@ verify_cherries() {
         done
         echo
         echo "do not match any commits in \`$1\`. If this was intended, add the text"
-        echo '\`backport-of: <SHA of a commit already in master>\` somewhere in the'
-        echo 'message of each of these commits.'
+        echo '\`backport-of: <SHA of a commit already in master>\`'
+        echo 'somewhere in the message of each of these commits.'
         echo
         failure=1
   fi
@@ -112,12 +117,27 @@ verify_cherries() {
   return $failure
 }
 
-# Get the backport of a commit, or empty string if it does not exist.
+# Get the backport of a commit. It echoes one of:
+#
+# 1. A SHA of the backported commit
+# 2. The string "nothing"
+# 3. An empty string
 #
 # $1 = <sha>
 get_backport() {
+  # This regex is:
+  #
+  # ^.* - throw away any extra starting characters
+  # backport-of: - prefix
+  # \s\? - optional space
+  # \(\) - capture group
+  # [a-f0-9]\+\|nothing - a SHA or the text 'nothing'
+  # .* - throw away any extra ending characters
+  # \1 - replace it with the first match
+  # {s//\1/p;q} - print the first occurrence and quit
+  #
   git show -s --format=%B "$1" \
-    | sed -n 's/^.*backport-of:\s\?\([a-f0-9]\+\).*/\1/p'
+    | sed -n '/^.*backport-of:\s\?\([a-f0-9]\+\|nothing\).*/{s//\1/p;q}'
 }
 
 # Check if a commit is in master.
