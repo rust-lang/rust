@@ -420,12 +420,12 @@ impl GlobalState {
                 self.prime_caches_queue.request_op();
                 if self.prime_caches_queue.should_start_op() {
                     self.task_pool.handle.spawn_with_sender({
-                        let snap = self.snapshot();
+                        let analysis = self.snapshot().analysis;
                         move |sender| {
                             let cb = |progress| {
                                 sender.send(Task::PrimeCaches(progress)).unwrap();
                             };
-                            match snap.analysis.prime_caches(cb) {
+                            match analysis.prime_caches(cb) {
                                 Ok(()) => (),
                                 Err(_canceled) => (),
                             }
