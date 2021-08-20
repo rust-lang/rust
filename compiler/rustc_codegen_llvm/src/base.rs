@@ -162,10 +162,12 @@ pub fn compile_codegen_unit(
                 cx.coverageinfo_finalize();
             }
 
-            // Create the llvm.compiler.used variable
-            // This variable has type [N x i8*] and is stored in the llvm.metadata section
+            // Create the llvm.used and llvm.compiler.used variables.
             if !cx.used_statics().borrow().is_empty() {
                 cx.create_used_variable()
+            }
+            if !cx.compiler_used_statics().borrow().is_empty() {
+                cx.create_compiler_used_variable()
             }
 
             // Finalize debuginfo
