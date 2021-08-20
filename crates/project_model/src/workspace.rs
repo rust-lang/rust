@@ -41,7 +41,7 @@ pub enum ProjectWorkspace {
     Cargo {
         cargo: CargoWorkspace,
         build_scripts: WorkspaceBuildScripts,
-        sysroot: Sysroot,
+        sysroot: Option<Sysroot>,
         rustc: Option<CargoWorkspace>,
         /// Holds cfg flags for the current target. We get those by running
         /// `rustc --print cfg`.
@@ -82,7 +82,7 @@ impl fmt::Debug for ProjectWorkspace {
                 .debug_struct("Cargo")
                 .field("root", &cargo.workspace_root().file_name())
                 .field("n_packages", &cargo.packages().len())
-                .field("n_sysroot_crates", &sysroot.crates().len())
+                .field("sysroot", &sysroot.is_some())
                 .field(
                     "n_rustc_compiler_crates",
                     &rustc.as_ref().map_or(0, |rc| rc.packages().len()),
@@ -145,14 +145,14 @@ impl ProjectWorkspace {
                 let cargo = CargoWorkspace::new(meta);
 
                 let sysroot = if config.no_sysroot {
-                    Sysroot::default()
+                    None
                 } else {
-                    Sysroot::discover(cargo_toml.parent()).with_context(|| {
+                    Some(Sysroot::discover(cargo_toml.parent()).with_context(|| {
                         format!(
                             "Failed to find sysroot for Cargo.toml file {}. Is rust-src installed?",
                             cargo_toml.display()
                         )
-                    })?
+                    })?)
                 };
 
                 let rustc_dir = match &config.rustc_source {
@@ -194,7 +194,7 @@ impl ProjectWorkspace {
         target: Option<&str>,
     ) -> Result<ProjectWorkspace> {
         let sysroot = match &project_json.sysroot_src {
-            Some(path) => Some(Sysroot::load(path)?),
+            Some(path) => Some(Sysroot::load(path.clone())?),
             None => None,
         };
         let rustc_cfg = rustc_cfg::get(None, target);
@@ -304,9 +304,9 @@ impl ProjectWorkspace {
                         }
                         PackageRoot { is_member, include, exclude }
                     })
-                    .chain(sysroot.crates().map(|krate| PackageRoot {
+                    .chain(sysroot.into_iter().map(|sysroot| PackageRoot {
                         is_member: false,
-                        include: vec![sysroot[krate].root.parent().to_path_buf()],
+                        include: vec![sysroot.root().to_path_buf()],
                         exclude: Vec::new(),
                     }))
                     .chain(rustc.into_iter().flat_map(|rustc| {
@@ -338,8 +338,9 @@ impl ProjectWorkspace {
         match self {
             ProjectWorkspace::Json { project, .. } => project.n_crates(),
             ProjectWorkspace::Cargo { cargo, sysroot, rustc, .. } => {
-                let rustc_package_len = rustc.as_ref().map_or(0, |rc| rc.packages().len());
-                cargo.packages().len() + sysroot.crates().len() + rustc_package_len
+                let rustc_package_len = rustc.as_ref().map_or(0, |it| it.packages().len());
+                let sysroot_package_len = sysroot.as_ref().map_or(0, |it| it.crates().len());
+                cargo.packages().len() + sysroot_package_len + rustc_package_len
             }
             ProjectWorkspace::DetachedFiles { sysroot, files, .. } => {
                 sysroot.crates().len() + files.len()
@@ -380,7 +381,7 @@ impl ProjectWorkspace {
                 load,
                 cargo,
                 build_scripts,
-                sysroot,
+                sysroot.as_ref(),
                 rustc,
             ),
             ProjectWorkspace::DetachedFiles { files, sysroot, rustc_cfg } => {
@@ -479,13 +480,15 @@ fn cargo_to_crate_graph(
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     cargo: &CargoWorkspace,
     build_scripts: &WorkspaceBuildScripts,
-    sysroot: &Sysroot,
+    sysroot: Option<&Sysroot>,
     rustc: &Option<CargoWorkspace>,
 ) -> CrateGraph {
     let _p = profile::span("cargo_to_crate_graph");
     let mut crate_graph = CrateGraph::default();
-    let (public_deps, libproc_macro) =
-        sysroot_to_crate_graph(&mut crate_graph, sysroot, rustc_cfg.clone(), load);
+    let (public_deps, libproc_macro) = match sysroot {
+        Some(sysroot) => sysroot_to_crate_graph(&mut crate_graph, sysroot, rustc_cfg.clone(), load),
+        None => (Vec::new(), None),
+    };
 
     let mut cfg_options = CfgOptions::default();
     cfg_options.extend(rustc_cfg);

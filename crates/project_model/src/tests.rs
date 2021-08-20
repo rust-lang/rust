@@ -5,7 +5,7 @@ use std::{
 
 use base_db::{CrateGraph, FileId};
 use expect_test::{expect, Expect};
-use paths::AbsPath;
+use paths::{AbsPath, AbsPathBuf};
 use serde::de::DeserializeOwned;
 
 use crate::{
@@ -19,7 +19,7 @@ fn load_cargo(file: &str) -> CrateGraph {
     let project_workspace = ProjectWorkspace::Cargo {
         cargo: cargo_workspace,
         build_scripts: WorkspaceBuildScripts::default(),
-        sysroot: Sysroot::default(),
+        sysroot: None,
         rustc: None,
         rustc_cfg: Vec::new(),
         cfg_overrides: CfgOverrides::default(),
@@ -71,8 +71,8 @@ fn get_test_path(file: &str) -> PathBuf {
 
 fn get_fake_sysroot() -> Sysroot {
     let sysroot_path = get_test_path("fake-sysroot");
-    let sysroot_src_dir = AbsPath::assert(&sysroot_path);
-    Sysroot::load(&sysroot_src_dir).unwrap()
+    let sysroot_src_dir = AbsPathBuf::assert(sysroot_path);
+    Sysroot::load(sysroot_src_dir).unwrap()
 }
 
 fn rooted_project_json(data: ProjectJsonData) -> ProjectJson {
