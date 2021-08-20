@@ -174,3 +174,10 @@ Send
     + DDDDDDDD
     + DDDDDDDDD
     + EEEEEEE;
+
+trait Visible {
+    pub const C: i32;
+    pub type T;
+    pub fn f();
+    pub fn g() {}
+}

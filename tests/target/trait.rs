@@ -211,3 +211,10 @@ where
         + DDDDDDDD
         + DDDDDDDDD
         + EEEEEEE;
+
+trait Visible {
+    const C: i32;
+    pub type T;
+    fn f();
+    fn g() {}
+}
