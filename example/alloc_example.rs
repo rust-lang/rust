@@ -1,4 +1,4 @@
-#![feature(start, core_intrinsics, alloc_prelude, alloc_error_handler)]
+#![feature(start, core_intrinsics, alloc_prelude, alloc_error_handler, box_syntax)]
 #![no_std]
 
 extern crate alloc;
