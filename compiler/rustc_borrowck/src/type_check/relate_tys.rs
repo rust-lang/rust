@@ -3,6 +3,7 @@ use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{self, Const, Ty};
+use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::query::Fallible;
 
 use crate::constraints::OutlivesConstraint;
@@ -63,6 +64,13 @@ impl<'me, 'bccx, 'tcx> NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
 }
 
 impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
+    fn span(&self) -> Span {
+        match self.locations {
+            Locations::All(span) => span,
+            Locations::Single(_) => DUMMY_SP,
+        }
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.type_checker.param_env
     }

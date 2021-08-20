@@ -26,6 +26,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, BoundVar, Const, ToPredicate, Ty, TyCtxt};
+use rustc_span::Span;
 use std::fmt::Debug;
 use std::iter;
 
@@ -631,6 +632,10 @@ struct QueryTypeRelatingDelegate<'a, 'tcx> {
 }
 
 impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
+    fn span(&self) -> Span {
+        self.cause.span
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }

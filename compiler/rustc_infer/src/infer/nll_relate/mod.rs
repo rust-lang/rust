@@ -29,6 +29,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::{TypeFoldable, TypeVisitor};
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
+use rustc_span::Span;
 use std::fmt::Debug;
 use std::ops::ControlFlow;
 
@@ -75,6 +76,7 @@ where
 
 pub trait TypeRelatingDelegate<'tcx> {
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
+    fn span(&self) -> Span;
 
     /// Push a constraint `sup: sub` -- this constraint must be
     /// satisfied for the two types to be related. `sub` and `sup` may
