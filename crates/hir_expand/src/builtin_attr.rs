@@ -1,5 +1,6 @@
 //! Builtin attributes.
 
+use mbe::ExpandResult;
 use syntax::ast;
 
 use crate::{db::AstDatabase, name, AstId, CrateId, MacroCallId, MacroDefId, MacroDefKind};
@@ -18,7 +19,7 @@ macro_rules! register_builtin {
                 id: MacroCallId,
                 tt: &tt::Subtree,
                 item: &tt::Subtree,
-            ) -> Result<tt::Subtree, mbe::ExpandError> {
+            ) -> ExpandResult<tt::Subtree> {
                 let expander = match *self {
                     $( BuiltinAttrExpander::$variant => $expand, )*
                 };
@@ -64,6 +65,6 @@ fn dummy_attr_expand(
     _id: MacroCallId,
     _tt: &tt::Subtree,
     item: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
-    Ok(item.clone())
+) -> ExpandResult<tt::Subtree> {
+    ExpandResult::ok(item.clone())
 }
