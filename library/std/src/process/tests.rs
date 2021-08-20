@@ -405,6 +405,42 @@ fn test_creation_flags() {
     }
     assert!(events > 0);
 }
+/// Tests proc thread attributes by spawning a process with a custom parent process,
+/// then comparing the parent process ID with the expected parent process ID.
+#[test]
+#[cfg(windows)]
+fn test_proc_thread_attributes() {
+    use crate::os::windows::io::AsRawHandle;
+    use crate::os::windows::process::CommandExt;
+    use crate::sys::c::{DWORD_PTR, HANDLE};
+    const PROC_THREAD_ATTRIBUTE_PARENT_PROCESS: DWORD_PTR = 0x00020000;
+    let mut parent = Command::new("cmd.exe").spawn().unwrap();
+    let mut parent_handle: HANDLE = parent.as_raw_handle();
+
+    let mut child_cmd = Command::new("cmd.exe");
+    unsafe {
+        child_cmd.process_thread_attribute(
+            PROC_THREAD_ATTRIBUTE_PARENT_PROCESS,
+            &mut parent_handle as *mut _ as *mut _,
+            crate::mem::size_of::<HANDLE>(),
+        );
+    }
+    let mut child = child_cmd.spawn().unwrap();
+
+    let wmic = format!("wmic process where processid={} get parentprocessid", child.id());
+    assert_eq!(
+        parent.id(),
+        String::from_utf8(Command::new("cmd.exe").args(["/c", &wmic]).output().unwrap().stdout)
+            .unwrap()
+            .lines()
+            .skip(1)
+            .map(|line| line.trim().parse().unwrap())
+            .next()
+            .unwrap()
+    );
+    child.kill().unwrap();
+    parent.kill().unwrap();
+}
 
 #[test]
 fn test_command_implements_send_sync() {

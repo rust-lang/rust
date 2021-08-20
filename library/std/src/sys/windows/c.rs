@@ -51,6 +51,7 @@ pub type LPCWSTR = *const WCHAR;
 pub type LPDWORD = *mut DWORD;
 pub type LPHANDLE = *mut HANDLE;
 pub type LPOVERLAPPED = *mut OVERLAPPED;
+pub type LPPROC_THREAD_ATTRIBUTE_LIST = *mut c_void;
 pub type LPPROCESS_INFORMATION = *mut PROCESS_INFORMATION;
 pub type LPSECURITY_ATTRIBUTES = *mut SECURITY_ATTRIBUTES;
 pub type LPSTARTUPINFO = *mut STARTUPINFO;
@@ -68,6 +69,7 @@ pub type LPWSAOVERLAPPED_COMPLETION_ROUTINE = *mut c_void;
 
 pub type PCONDITION_VARIABLE = *mut CONDITION_VARIABLE;
 pub type PLARGE_INTEGER = *mut c_longlong;
+pub type PSIZE_T = *mut usize;
 pub type PSRWLOCK = *mut SRWLOCK;
 
 pub type SOCKET = crate::os::windows::raw::SOCKET;
@@ -196,6 +198,7 @@ pub const SRWLOCK_INIT: SRWLOCK = SRWLOCK { ptr: ptr::null_mut() };
 pub const DETACHED_PROCESS: DWORD = 0x00000008;
 pub const CREATE_NEW_PROCESS_GROUP: DWORD = 0x00000200;
 pub const CREATE_UNICODE_ENVIRONMENT: DWORD = 0x00000400;
+pub const EXTENDED_STARTUPINFO_PRESENT: DWORD = 0x00080000;
 pub const STARTF_USESTDHANDLES: DWORD = 0x00000100;
 
 pub const AF_INET: c_int = 2;
@@ -585,6 +588,12 @@ pub struct STARTUPINFO {
     pub hStdInput: HANDLE,
     pub hStdOutput: HANDLE,
     pub hStdError: HANDLE,
+}
+
+#[repr(C)]
+pub struct STARTUPINFOEX {
+    pub StartupInfo: STARTUPINFO,
+    pub lpAttributeList: LPPROC_THREAD_ATTRIBUTE_LIST,
 }
 
 #[repr(C)]
@@ -1078,6 +1087,22 @@ extern "system" {
         lpFilePart: *mut LPWSTR,
     ) -> DWORD;
     pub fn GetFileAttributesW(lpFileName: LPCWSTR) -> DWORD;
+    pub fn InitializeProcThreadAttributeList(
+        lpAttributeList: LPPROC_THREAD_ATTRIBUTE_LIST,
+        dwAttributeCount: DWORD,
+        dwFlags: DWORD,
+        lpSize: PSIZE_T,
+    ) -> BOOL;
+    pub fn UpdateProcThreadAttribute(
+        lpAttributeList: LPPROC_THREAD_ATTRIBUTE_LIST,
+        dwFlags: DWORD,
+        Attribute: DWORD_PTR,
+        lpValue: LPVOID,
+        cbSize: SIZE_T,
+        lpPreviousValue: LPVOID,
+        lpReturnSize: PSIZE_T,
+    ) -> BOOL;
+    pub fn DeleteProcThreadAttributeList(lpAttributeList: LPPROC_THREAD_ATTRIBUTE_LIST);
 }
 
 #[link(name = "ws2_32")]

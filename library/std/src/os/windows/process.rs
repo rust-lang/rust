@@ -4,7 +4,7 @@
 
 #![stable(feature = "process_extensions", since = "1.2.0")]
 
-use crate::ffi::OsStr;
+use crate::ffi::{c_void, OsStr};
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
 };
@@ -161,6 +161,23 @@ pub trait CommandExt: Sealed {
     /// `CommandLineToArgvW` escaping rules.
     #[unstable(feature = "windows_process_extensions_raw_arg", issue = "29494")]
     fn raw_arg<S: AsRef<OsStr>>(&mut self, text_to_append_as_is: S) -> &mut process::Command;
+
+    /// Attach the specified proc thread attribute. Multiple attributes may be attached.
+    ///
+    /// # Safety
+    ///
+    /// - The data pointed to by `value` pointer must not be moved or aliased for the entire lifetime of
+    ///   the `Command`.
+    /// - The data pointed to by `value` pointer must be initialized.
+    /// - `size` must not exceed the size of the object pointed to by the `value` pointer.
+    /// - It must be safe to read the data pointed to by `value` from another thread.
+    #[unstable(feature = "windows_process_extensions_proc_thread_attributes", issue = "none")]
+    unsafe fn process_thread_attribute(
+        &mut self,
+        attribute: usize,
+        value: *mut c_void,
+        size: usize,
+    ) -> &mut process::Command;
 }
 
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
@@ -177,6 +194,15 @@ impl CommandExt for process::Command {
 
     fn raw_arg<S: AsRef<OsStr>>(&mut self, raw_text: S) -> &mut process::Command {
         self.as_inner_mut().raw_arg(raw_text.as_ref());
+        self
+    }
+    unsafe fn process_thread_attribute(
+        &mut self,
+        attribute: usize,
+        value: *mut c_void,
+        size: usize,
+    ) -> &mut process::Command {
+        self.as_inner_mut().process_thread_attribute(attribute, value, size);
         self
     }
 }

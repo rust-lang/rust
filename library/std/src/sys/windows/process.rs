@@ -16,6 +16,7 @@ use crate::num::NonZeroI32;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle};
 use crate::path::{Path, PathBuf};
+use crate::pin::Pin;
 use crate::ptr;
 use crate::sys::c;
 use crate::sys::c::NonZeroDWORD;
@@ -166,6 +167,7 @@ pub struct Command {
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
     force_quotes_enabled: bool,
+    proc_thread_attributes: BTreeMap<usize, ProcThreadAttributeValue>,
 }
 
 pub enum Stdio {
@@ -202,6 +204,7 @@ impl Command {
             stdout: None,
             stderr: None,
             force_quotes_enabled: false,
+            proc_thread_attributes: Default::default(),
         }
     }
 
@@ -251,6 +254,9 @@ impl Command {
     pub fn get_current_dir(&self) -> Option<&Path> {
         self.cwd.as_ref().map(|cwd| Path::new(cwd))
     }
+    pub fn process_thread_attribute(&mut self, attribute: usize, ptr: *mut c_void, size: usize) {
+        self.proc_thread_attributes.insert(attribute, ProcThreadAttributeValue { ptr, size });
+    }
 
     pub fn spawn(
         &mut self,
@@ -259,9 +265,9 @@ impl Command {
     ) -> io::Result<(Process, StdioPipes)> {
         let maybe_env = self.env.capture_if_changed();
 
-        let mut si = zeroed_startupinfo();
-        si.cb = mem::size_of::<c::STARTUPINFO>() as c::DWORD;
-        si.dwFlags = c::STARTF_USESTDHANDLES;
+        let mut si = zeroed_startupinfo_ex();
+        si.StartupInfo.cb = mem::size_of::<c::STARTUPINFO>() as c::DWORD;
+        si.StartupInfo.dwFlags = c::STARTF_USESTDHANDLES;
 
         let child_paths = if let Some(env) = maybe_env.as_ref() {
             env.get(&EnvKey::new("PATH")).map(|s| s.as_os_str())
@@ -305,9 +311,24 @@ impl Command {
         let stdin = stdin.to_handle(c::STD_INPUT_HANDLE, &mut pipes.stdin)?;
         let stdout = stdout.to_handle(c::STD_OUTPUT_HANDLE, &mut pipes.stdout)?;
         let stderr = stderr.to_handle(c::STD_ERROR_HANDLE, &mut pipes.stderr)?;
-        si.hStdInput = stdin.as_raw_handle();
-        si.hStdOutput = stdout.as_raw_handle();
-        si.hStdError = stderr.as_raw_handle();
+        si.StartupInfo.hStdInput = stdin.as_raw_handle();
+        si.StartupInfo.hStdOutput = stdout.as_raw_handle();
+        si.StartupInfo.hStdError = stderr.as_raw_handle();
+
+        let mut attributes = if !self.proc_thread_attributes.is_empty() {
+            Some(make_proc_thread_attributes(&self.proc_thread_attributes)?)
+        } else {
+            None
+        };
+        si.lpAttributeList = attributes.as_mut().map_or(ptr::null_mut(), |buf| {
+            // Indicate that lpAttributeList is present by setting
+            // EXTENDED_STARTUPINFO_PRESENT and adjusting the size
+            // value of the struct.
+            flags |= c::EXTENDED_STARTUPINFO_PRESENT;
+            si.StartupInfo.cb = mem::size_of::<c::STARTUPINFOEX>() as u32;
+
+            buf.0.as_mut_ptr().cast()
+        });
 
         let program = to_u16s(&program)?;
         unsafe {
@@ -320,7 +341,7 @@ impl Command {
                 flags,
                 envp,
                 dirp,
-                &mut si,
+                &mut si as *mut _ as *mut _,
                 &mut pi,
             ))
         }?;
@@ -687,26 +708,29 @@ impl From<u8> for ExitCode {
     }
 }
 
-fn zeroed_startupinfo() -> c::STARTUPINFO {
-    c::STARTUPINFO {
-        cb: 0,
-        lpReserved: ptr::null_mut(),
-        lpDesktop: ptr::null_mut(),
-        lpTitle: ptr::null_mut(),
-        dwX: 0,
-        dwY: 0,
-        dwXSize: 0,
-        dwYSize: 0,
-        dwXCountChars: 0,
-        dwYCountCharts: 0,
-        dwFillAttribute: 0,
-        dwFlags: 0,
-        wShowWindow: 0,
-        cbReserved2: 0,
-        lpReserved2: ptr::null_mut(),
-        hStdInput: c::INVALID_HANDLE_VALUE,
-        hStdOutput: c::INVALID_HANDLE_VALUE,
-        hStdError: c::INVALID_HANDLE_VALUE,
+fn zeroed_startupinfo_ex() -> c::STARTUPINFOEX {
+    c::STARTUPINFOEX {
+        StartupInfo: c::STARTUPINFO {
+            cb: 0,
+            lpReserved: ptr::null_mut(),
+            lpDesktop: ptr::null_mut(),
+            lpTitle: ptr::null_mut(),
+            dwX: 0,
+            dwY: 0,
+            dwXSize: 0,
+            dwYSize: 0,
+            dwXCountChars: 0,
+            dwYCountCharts: 0,
+            dwFillAttribute: 0,
+            dwFlags: 0,
+            wShowWindow: 0,
+            cbReserved2: 0,
+            lpReserved2: ptr::null_mut(),
+            hStdInput: c::INVALID_HANDLE_VALUE,
+            hStdOutput: c::INVALID_HANDLE_VALUE,
+            hStdError: c::INVALID_HANDLE_VALUE,
+        },
+        lpAttributeList: ptr::null_mut(),
     }
 }
 
@@ -841,6 +865,57 @@ fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
         }
         None => Ok((ptr::null(), Vec::new())),
     }
+}
+
+/// Wrapper around a u8 buffer which ensures that a ProcThreadAttributeList
+/// is not moved during use and is not freed before calling Delete.
+struct ProcThreadAttributeList(Pin<Vec<u8>>);
+impl Drop for ProcThreadAttributeList {
+    fn drop(&mut self) {
+        unsafe { c::DeleteProcThreadAttributeList(self.0.as_mut_ptr().cast()) }
+    }
+}
+/// Wrapper around the value data to be used as a Process Thread Attribute.
+/// This exists primarily to force the raw pointer type to be `Send` and `Sync`
+/// without needing to `unsafe impl` them for `Command`.
+#[derive(Copy, Clone)]
+struct ProcThreadAttributeValue {
+    ptr: *mut c_void,
+    size: usize,
+}
+unsafe impl Send for ProcThreadAttributeValue {}
+unsafe impl Sync for ProcThreadAttributeValue {}
+
+fn make_proc_thread_attributes(
+    attributes: &BTreeMap<usize, ProcThreadAttributeValue>,
+) -> io::Result<ProcThreadAttributeList> {
+    let mut buffer_size = 0;
+    let count = attributes.len() as u32;
+    // First call to get required size. Error is expected.
+    unsafe { c::InitializeProcThreadAttributeList(ptr::null_mut(), count, 0, &mut buffer_size) };
+    let mut buf = Pin::new(crate::vec::from_elem(0u8, buffer_size as usize));
+    // Second call to really initialize the buffer.
+    cvt(unsafe {
+        c::InitializeProcThreadAttributeList(buf.as_mut_ptr().cast(), count, 0, &mut buffer_size)
+    })?;
+    let mut attribute_list = ProcThreadAttributeList(buf);
+    // Add our attributes to the buffer.
+    // It's theoretically possible for the count to overflow a u32. Therefore, make
+    // sure we don't add more attributes than we actually initialized the buffer for.
+    for (&attribute, &value) in attributes.iter().take(count as usize) {
+        cvt(unsafe {
+            c::UpdateProcThreadAttribute(
+                attribute_list.0.as_mut_ptr().cast(),
+                0,
+                attribute,
+                value.ptr,
+                value.size,
+                ptr::null_mut(),
+                ptr::null_mut(),
+            )
+        })?;
+    }
+    Ok(attribute_list)
 }
 
 pub struct CommandArgs<'a> {
