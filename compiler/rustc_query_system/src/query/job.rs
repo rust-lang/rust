@@ -1,6 +1,6 @@
 use crate::dep_graph::DepContext;
 use crate::query::plumbing::CycleError;
-use crate::query::{QueryContext, QueryStackFrame};
+use crate::query::{QueryContext, QueryStackFrame, SimpleDefKind};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, Handler, Level};
@@ -598,6 +598,18 @@ pub(crate) fn report_cycle<'a>(
             "...which again requires {}, completing the cycle",
             stack[0].query.description
         ));
+    }
+
+    if !stack.is_empty()
+        && stack.iter().all(|entry| {
+            entry.query.def_kind.map_or(false, |def_kind| {
+                matches!(def_kind, SimpleDefKind::TyAlias | SimpleDefKind::TraitAlias)
+            })
+        })
+    {
+        err.note("type aliases cannot be recursive");
+        err.help("consider using a struct, enum, or union instead to break the cycle");
+        err.help("see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information");
     }
 
     if let Some((span, query)) = usage {

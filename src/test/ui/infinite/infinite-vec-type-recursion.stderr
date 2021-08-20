@@ -5,6 +5,9 @@ LL | type X = Vec<X>;
    |              ^
    |
    = note: ...which immediately requires expanding type alias `X` again
+   = note: type aliases cannot be recursive
+   = help: consider using a struct, enum, or union instead to break the cycle
+   = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
 note: cycle used when collecting item types in top-level module
   --> $DIR/infinite-vec-type-recursion.rs:1:1
    |

@@ -337,6 +337,11 @@ macro_rules! define_queries {
                 } else {
                     Some(key.default_span(*tcx))
                 };
+                let def_id = key.key_as_def_id();
+                let def_kind = def_id.map(|def_id| {
+                    let def_kind = tcx.def_kind(def_id);
+                    $crate::util::def_kind_to_simple_def_kind(def_kind)
+                });
                 let hash = || {
                     let mut hcx = tcx.create_stable_hashing_context();
                     let mut hasher = StableHasher::new();
@@ -345,7 +350,7 @@ macro_rules! define_queries {
                     hasher.finish::<u64>()
                 };
 
-                QueryStackFrame::new(name, description, span, hash)
+                QueryStackFrame::new(name, description, span, def_kind, hash)
             })*
         }
 
