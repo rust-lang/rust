@@ -1195,13 +1195,13 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         false
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn report_fulfillment_error(
         &self,
         error: &FulfillmentError<'tcx>,
         body_id: Option<hir::BodyId>,
         fallback_has_occurred: bool,
     ) {
-        debug!("report_fulfillment_error({:?})", error);
         match error.code {
             FulfillmentErrorCode::CodeSelectionError(ref selection_error) => {
                 self.report_selection_error(
@@ -1528,6 +1528,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         )
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn maybe_report_ambiguity(
         &self,
         obligation: &PredicateObligation<'tcx>,
@@ -1542,8 +1543,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         let span = obligation.cause.span;
 
         debug!(
-            "maybe_report_ambiguity(predicate={:?}, obligation={:?} body_id={:?}, code={:?})",
-            predicate, obligation, body_id, obligation.cause.code,
+            ?predicate, ?obligation.cause.code,
         );
 
         // Ambiguity errors are often caused as fallout from earlier
@@ -1556,7 +1556,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         let mut err = match bound_predicate.skip_binder() {
             ty::PredicateKind::Trait(data) => {
                 let trait_ref = bound_predicate.rebind(data.trait_ref);
-                debug!("trait_ref {:?}", trait_ref);
+                debug!(?trait_ref);
 
                 if predicate.references_error() {
                     return;

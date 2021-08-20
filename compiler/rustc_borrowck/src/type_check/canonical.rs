@@ -23,6 +23,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// **Any `rustc_infer::infer` operations that might generate region
     /// constraints should occur within this method so that those
     /// constraints can be properly localized!**
+    #[instrument(skip(self, category, op), level = "trace")]
     pub(super) fn fully_perform_op<R, Op>(
         &mut self,
         locations: Locations,
@@ -123,14 +124,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub(super) fn prove_predicate(
         &mut self,
         predicate: ty::Predicate<'tcx>,
         locations: Locations,
         category: ConstraintCategory,
     ) {
-        debug!("prove_predicate(predicate={:?}, location={:?})", predicate, locations,);
-
         let param_env = self.param_env;
         self.fully_perform_op(
             locations,
@@ -142,11 +142,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         })
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub(super) fn normalize<T>(&mut self, value: T, location: impl NormalizeLocation) -> T
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
     {
-        debug!("normalize(value={:?}, location={:?})", value, location);
         let param_env = self.param_env;
         self.fully_perform_op(
             location.to_locations(),

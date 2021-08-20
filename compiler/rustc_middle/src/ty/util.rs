@@ -516,6 +516,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Expands the given impl trait type, stopping if the type is recursive.
+    #[instrument(skip(self), level = "debug")]
     pub fn try_expand_impl_trait_type(
         self,
         def_id: DefId,
@@ -532,6 +533,7 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         let expanded_type = visitor.expand_opaque_ty(def_id, substs).unwrap();
+        trace!(?expanded_type);
         if visitor.found_recursion { Err(expanded_type) } else { Ok(expanded_type) }
     }
 }

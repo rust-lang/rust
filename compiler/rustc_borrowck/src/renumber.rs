@@ -7,13 +7,13 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.
+#[instrument(skip(infcx, body, promoted), level = "debug")]
 pub fn renumber_mir<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
     body: &mut Body<'tcx>,
     promoted: &mut IndexVec<Promoted, Body<'tcx>>,
 ) {
-    debug!("renumber_mir()");
-    debug!("renumber_mir: body.arg_count={:?}", body.arg_count);
+    debug!(?body.arg_count);
 
     let mut visitor = NllVisitor { infcx };
 
@@ -26,12 +26,11 @@ pub fn renumber_mir<'tcx>(
 
 /// Replaces all regions appearing in `value` with fresh inference
 /// variables.
+#[instrument(skip(infcx), level = "debug")]
 pub fn renumber_regions<'tcx, T>(infcx: &InferCtxt<'_, 'tcx>, value: T) -> T
 where
     T: TypeFoldable<'tcx>,
 {
-    debug!("renumber_regions(value={:?})", value);
-
     infcx.tcx.fold_regions(value, &mut false, |_region, _depth| {
         let origin = NllRegionVariableOrigin::Existential { from_forall: false };
         infcx.next_nll_region_var(origin)
@@ -56,12 +55,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
         self.infcx.tcx
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, ty_context: TyContext) {
-        debug!("visit_ty(ty={:?}, ty_context={:?})", ty, ty_context);
-
         *ty = self.renumber_regions(ty);
 
-        debug!("visit_ty: ty={:?}", ty);
+        debug!(?ty);
     }
 
     fn process_projection_elem(
@@ -80,21 +78,19 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
         None
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn visit_substs(&mut self, substs: &mut SubstsRef<'tcx>, location: Location) {
-        debug!("visit_substs(substs={:?}, location={:?})", substs, location);
-
         *substs = self.renumber_regions(*substs);
 
-        debug!("visit_substs: substs={:?}", substs);
+        debug!(?substs);
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn visit_region(&mut self, region: &mut ty::Region<'tcx>, location: Location) {
-        debug!("visit_region(region={:?}, location={:?})", region, location);
-
         let old_region = *region;
         *region = self.renumber_regions(&old_region);
 
-        debug!("visit_region: region={:?}", region);
+        debug!(?region);
     }
 
     fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, _location: Location) {
