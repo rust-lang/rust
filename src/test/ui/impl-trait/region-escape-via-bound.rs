@@ -13,10 +13,10 @@ trait Trait<'a> { }
 impl Trait<'b> for Cell<&'a u32> { }
 
 fn foo(x: Cell<&'x u32>) -> impl Trait<'y>
-    //~^ ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds [E0700]
 where 'x: 'y
 {
     x
+    //~^ ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds [E0700]
 }
 
 fn main() { }

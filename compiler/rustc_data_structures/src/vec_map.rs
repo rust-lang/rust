@@ -44,6 +44,15 @@ where
         self.0.iter().find(|(key, _)| k == key.borrow()).map(|elem| &elem.1)
     }
 
+    /// Gets a mutable reference to the value in the entry.
+    pub fn get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut V>
+    where
+        K: Borrow<Q>,
+        Q: Eq,
+    {
+        self.0.iter_mut().find(|(key, _)| k == key.borrow()).map(|elem| &mut elem.1)
+    }
+
     /// Returns the any value corresponding to the supplied predicate filter.
     ///
     /// The supplied predicate will be applied to each (key, value) pair and it will return a
@@ -63,7 +72,7 @@ where
         // This should return just one element, otherwise it's a bug
         assert!(
             filter.next().is_none(),
-            "Collection {:?} should have just one matching element",
+            "Collection {:#?} should have just one matching element",
             self
         );
         Some(value)

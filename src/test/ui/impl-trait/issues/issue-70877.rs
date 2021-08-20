@@ -1,10 +1,12 @@
 #![feature(type_alias_impl_trait)]
 
+// check-pass
+
 type FooArg<'a> = &'a dyn ToString;
 type FooRet = impl std::fmt::Debug;
 
 type FooItem = Box<dyn Fn(FooArg) -> FooRet>;
-type Foo = impl Iterator<Item = FooItem>; //~ ERROR: type mismatch
+type Foo = impl Iterator<Item = FooItem>;
 
 #[repr(C)]
 struct Bar(u8);

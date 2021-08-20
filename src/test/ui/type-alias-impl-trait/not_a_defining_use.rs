@@ -8,8 +8,8 @@ type Two<T, U> = impl Debug;
 //~^ ERROR `T` doesn't implement `Debug`
 
 fn two<T: Debug>(t: T) -> Two<T, u32> {
-    //~^ ERROR non-defining opaque type use in defining scope
     (t, 4i8)
+    //~^ ERROR non-defining opaque type use in defining scope
 }
 
 fn three<T: Debug, U>(t: T) -> Two<T, U> {

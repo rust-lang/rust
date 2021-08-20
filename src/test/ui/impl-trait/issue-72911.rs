@@ -5,7 +5,7 @@ pub struct Lint {}
 impl Lint {}
 
 pub fn gather_all() -> impl Iterator<Item = Lint> {
-    //~^ ERROR: cannot resolve opaque type
+    //~^ ERROR `()` is not an iterator
     lint_files().flat_map(|f| gather_from_file(&f))
 }
 
@@ -16,6 +16,7 @@ fn gather_from_file(dir_entry: &foo::MissingItem) -> impl Iterator<Item = Lint> 
 
 fn lint_files() -> impl Iterator<Item = foo::MissingItem> {
     //~^ ERROR: failed to resolve
+    //~| ERROR `()` is not an iterator
     unimplemented!()
 }
 

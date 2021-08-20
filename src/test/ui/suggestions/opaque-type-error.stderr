@@ -1,6 +1,9 @@
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/opaque-type-error.rs:20:9
    |
+LL |   fn thing_one() -> impl Future<Output = Result<(), ()>> {
+   |                     ------------------------------------ the expected opaque type
+...
 LL |   fn thing_two() -> impl Future<Output = Result<(), ()>> {
    |                     ------------------------------------ the found opaque type
 ...
@@ -13,8 +16,8 @@ LL | |         thing_two()
 LL | |     }.await
    | |_____- `if` and `else` have incompatible types
    |
-   = note:     expected type `impl Future<Output = Result<(), ()>>` (opaque type at <$DIR/opaque-type-error.rs:8:19>)
-           found opaque type `impl Future<Output = Result<(), ()>>` (opaque type at <$DIR/opaque-type-error.rs:12:19>)
+   = note: expected opaque type `impl Future<Output = Result<(), ()>>` (opaque type at <$DIR/opaque-type-error.rs:8:19>)
+              found opaque type `impl Future<Output = Result<(), ()>>` (opaque type at <$DIR/opaque-type-error.rs:12:19>)
    = note: distinct uses of `impl Trait` result in different opaque types
 help: consider `await`ing on both `Future`s
    |

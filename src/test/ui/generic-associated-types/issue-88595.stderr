@@ -16,10 +16,10 @@ LL |     type B<'b> = impl Clone;
    |            ^^
 
 error: non-defining opaque type use in defining scope
-  --> $DIR/issue-88595.rs:23:23
+  --> $DIR/issue-88595.rs:23:35
    |
 LL |     fn a(&'a self) -> Self::B<'a> {}
-   |                       ^^^^^^^^^^^
+   |                                   ^^
    |
 note: lifetime used multiple times
   --> $DIR/issue-88595.rs:18:6

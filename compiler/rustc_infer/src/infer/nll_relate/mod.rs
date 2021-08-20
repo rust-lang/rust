@@ -24,6 +24,7 @@
 use crate::infer::combine::ConstEquateRelation;
 use crate::infer::InferCtxt;
 use crate::infer::{ConstVarValue, ConstVariableValue};
+use crate::infer::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::{TypeFoldable, TypeVisitor};
@@ -88,6 +89,8 @@ pub trait TypeRelatingDelegate<'tcx> {
         sub: ty::Region<'tcx>,
         info: ty::VarianceDiagInfo<'tcx>,
     );
+
+    fn constrain_opaque_type(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, a_is_expected: bool);
 
     fn const_equate(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>);
 
@@ -279,7 +282,6 @@ where
         projection_ty: ty::ProjectionTy<'tcx>,
         value_ty: Ty<'tcx>,
     ) -> Ty<'tcx> {
-        use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
         use rustc_span::DUMMY_SP;
 
         match *value_ty.kind() {
@@ -288,6 +290,8 @@ where
                     kind: TypeVariableOriginKind::MiscVariable,
                     span: DUMMY_SP,
                 });
+                // FIXME(lazy-normalization): This will always ICE, because the recursive
+                // call will end up in the _ arm below.
                 self.relate_projection_ty(projection_ty, var);
                 self.relate_projection_ty(other_projection_ty, var);
                 var
@@ -533,6 +537,8 @@ where
 
     #[instrument(skip(self), level = "debug")]
     fn tys(&mut self, a: Ty<'tcx>, mut b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        let infcx = self.infcx;
+
         let a = self.infcx.shallow_resolve(a);
 
         if !D::forbid_inference_vars() {
@@ -560,6 +566,35 @@ where
             }
 
             (&ty::Infer(ty::TyVar(vid)), _) => self.relate_ty_var((vid, b)),
+
+            (&ty::Opaque(a_def_id, _), &ty::Opaque(b_def_id, _)) if a_def_id == b_def_id => {
+                self.infcx.super_combine_tys(self, a, b)
+            }
+            (&ty::Opaque(did, ..), _) | (_, &ty::Opaque(did, ..)) if did.is_local() => {
+                let (a, b) = if self.a_is_expected() { (a, b) } else { (b, a) };
+                let mut generalize = |ty, ty_is_expected| {
+                    let var = infcx.next_ty_var_id_in_universe(
+                        TypeVariableOrigin {
+                            kind: TypeVariableOriginKind::MiscVariable,
+                            span: self.delegate.span(),
+                        },
+                        ty::UniverseIndex::ROOT,
+                    );
+                    if ty_is_expected {
+                        self.relate_ty_var((ty, var))
+                    } else {
+                        self.relate_ty_var((var, ty))
+                    }
+                };
+                let (a, b) = match (a.kind(), b.kind()) {
+                    (&ty::Opaque(..), _) => (a, generalize(b, false)?),
+                    (_, &ty::Opaque(..)) => (generalize(a, true)?, b),
+                    _ => unreachable!(),
+                };
+                self.delegate.constrain_opaque_type(a, b, true);
+                trace!(a = ?a.kind(), b = ?b.kind(), "opaque type instantiated");
+                Ok(a)
+            }
 
             (&ty::Projection(projection_ty), _)
                 if D::normalization() == NormalizationStrategy::Lazy =>

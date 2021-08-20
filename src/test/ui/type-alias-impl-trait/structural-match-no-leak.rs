@@ -11,7 +11,7 @@ const fn leak_free() -> Bar {
 const LEAK_FREE: Bar = leak_free();
 
 fn leak_free_test() {
-    match todo!() {
+    match LEAK_FREE {
         LEAK_FREE => (),
         //~^ `impl Send` cannot be used in patterns
         _ => (),

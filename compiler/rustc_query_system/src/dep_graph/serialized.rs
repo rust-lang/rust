@@ -186,7 +186,6 @@ impl<K: DepKind> EncoderState<K> {
         }
     }
 
-    #[instrument(level = "debug", skip(self, record_graph))]
     fn encode_node(
         &mut self,
         node: &NodeInfo<K>,
@@ -213,7 +212,6 @@ impl<K: DepKind> EncoderState<K> {
             stat.edge_counter += edge_count as u64;
         }
 
-        debug!(?index, ?node);
         let encoder = &mut self.encoder;
         if self.result.is_ok() {
             self.result = node.encode(encoder);

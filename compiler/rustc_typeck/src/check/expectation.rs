@@ -1,5 +1,6 @@
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::{self, Ty};
+use rustc_span::DUMMY_SP;
 use rustc_span::{self, Span};
 
 use super::Expectation::*;
@@ -43,7 +44,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     // when checking the 'then' block which are incompatible with the
     // 'else' branch.
     pub(super) fn adjust_for_branches(&self, fcx: &FnCtxt<'a, 'tcx>) -> Expectation<'tcx> {
-        match *self {
+        match self.strip_opaque(fcx) {
             ExpectHasType(ety) => {
                 let ety = fcx.shallow_resolve(ety);
                 if !ety.is_ty_var() { ExpectHasType(ety) } else { NoExpectation }
@@ -104,11 +105,32 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// for the program to type-check). `only_has_type` will return
     /// such a constraint, if it exists.
     pub(super) fn only_has_type(self, fcx: &FnCtxt<'a, 'tcx>) -> Option<Ty<'tcx>> {
-        match self {
-            ExpectHasType(ty) => Some(fcx.resolve_vars_if_possible(ty)),
+        match self.strip_opaque(fcx) {
+            ExpectHasType(ty) => Some(ty),
             NoExpectation | ExpectCastableToType(_) | ExpectRvalueLikeUnsized(_) | IsLast(_) => {
                 None
             }
+        }
+    }
+
+    /// We must not treat opaque types as expected types in their defining scope, as that
+    /// will break `fn foo() -> impl Trait { if cond { a } else { b } }` if `a` and `b` are
+    /// only "equal" if they coerce to a common target, like two different function items
+    /// coercing to a function pointer if they have the same signature.
+    fn strip_opaque(self, fcx: &FnCtxt<'a, 'tcx>) -> Self {
+        match self {
+            ExpectHasType(ty) => {
+                let ty = fcx.resolve_vars_if_possible(ty);
+                match *ty.kind() {
+                    ty::Opaque(def_id, _)
+                        if fcx.infcx.opaque_type_origin(def_id, DUMMY_SP).is_some() =>
+                    {
+                        NoExpectation
+                    }
+                    _ => self,
+                }
+            }
+            _ => self,
         }
     }
 

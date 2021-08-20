@@ -504,20 +504,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // provide a structured suggestion in that case.
     pub(crate) fn opt_suggest_box_span(
         &self,
-        span: Span,
+        _span: Span,
         outer_ty: &'tcx TyS<'tcx>,
         orig_expected: Expectation<'tcx>,
     ) -> Option<Span> {
         match (orig_expected, self.ret_coercion_impl_trait.map(|ty| (self.body_id.owner, ty))) {
-            (Expectation::ExpectHasType(expected), Some((_id, ty)))
+            (Expectation::ExpectHasType(expected), Some((_id, _ty)))
                 if self.in_tail_expr && self.can_coerce(outer_ty, expected) =>
             {
-                let impl_trait_ret_ty =
-                    self.infcx.instantiate_opaque_types(self.body_id, self.param_env, ty, span);
-                assert!(
-                    impl_trait_ret_ty.obligations.is_empty(),
-                    "we should never get new obligations here"
-                );
                 let obligations = self.fulfillment_cx.borrow().pending_obligations();
                 let mut suggest_box = !obligations.is_empty();
                 for o in obligations {

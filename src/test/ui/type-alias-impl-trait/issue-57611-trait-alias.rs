@@ -15,10 +15,11 @@ struct X;
 
 impl Foo for X {
     type Bar = impl Baz<Self, Self>;
+    //~^ ERROR could not find defining uses
 
     fn bar(&self) -> Self::Bar {
-        //~^ ERROR implementation of `FnOnce` is not general enough
         |x| x
+        //~^ ERROR implementation of `FnOnce` is not general enough
     }
 }
 

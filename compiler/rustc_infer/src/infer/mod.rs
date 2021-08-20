@@ -227,7 +227,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
-    fn opaque_types(&mut self) -> opaque_types::OpaqueTypeTable<'_, 'tcx> {
+    pub fn opaque_types(&mut self) -> opaque_types::OpaqueTypeTable<'_, 'tcx> {
         self.opaque_type_storage.with_log(&mut self.undo_log)
     }
 
@@ -290,6 +290,10 @@ pub struct InferCtxt<'a, 'tcx> {
     /// short lived InferCtxt within queries. The opaque type obligations are forwarded
     /// to the outside until the end up in an `InferCtxt` for typeck or borrowck.
     pub defining_use_anchor: Option<LocalDefId>,
+
+    /// Used by WF-checking to not have to figure out hidden types itself, but
+    /// to just invoke type_of to get the already computed hidden type from typeck.
+    pub reveal_defining_opaque_types: bool,
 
     /// During type-checking/inference of a body, `in_progress_typeck_results`
     /// contains a reference to the typeck results being built up, which are
@@ -546,6 +550,7 @@ pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
     fresh_typeck_results: Option<RefCell<ty::TypeckResults<'tcx>>>,
     defining_use_anchor: Option<LocalDefId>,
+    reveal_defining_opaque_types: bool,
 }
 
 pub trait TyCtxtInferExt<'tcx> {
@@ -554,7 +559,12 @@ pub trait TyCtxtInferExt<'tcx> {
 
 impl<'tcx> TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
     fn infer_ctxt(self) -> InferCtxtBuilder<'tcx> {
-        InferCtxtBuilder { tcx: self, defining_use_anchor: None, fresh_typeck_results: None }
+        InferCtxtBuilder {
+            tcx: self,
+            defining_use_anchor: None,
+            fresh_typeck_results: None,
+            reveal_defining_opaque_types: false,
+        }
     }
 }
 
@@ -575,6 +585,13 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// in mir borrowck.
     pub fn with_opaque_type_inference(mut self, defining_use_anchor: LocalDefId) -> Self {
         self.defining_use_anchor = Some(defining_use_anchor);
+        self
+    }
+
+    /// WF-checking doesn't need to recompute opaque types and can instead use
+    /// the type_of query to get them from typeck.
+    pub fn reveal_defining_opaque_types(mut self) -> Self {
+        self.reveal_defining_opaque_types = true;
         self
     }
 
@@ -602,11 +619,17 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     }
 
     pub fn enter<R>(&mut self, f: impl for<'a> FnOnce(InferCtxt<'a, 'tcx>) -> R) -> R {
-        let InferCtxtBuilder { tcx, defining_use_anchor, ref fresh_typeck_results } = *self;
+        let InferCtxtBuilder {
+            tcx,
+            defining_use_anchor,
+            reveal_defining_opaque_types,
+            ref fresh_typeck_results,
+        } = *self;
         let in_progress_typeck_results = fresh_typeck_results.as_ref();
         f(InferCtxt {
             tcx,
             defining_use_anchor,
+            reveal_defining_opaque_types,
             in_progress_typeck_results,
             inner: RefCell::new(InferCtxtInner::new()),
             lexical_region_resolutions: RefCell::new(None),
@@ -728,6 +751,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &'a self,
         trace: TypeTrace<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
+        define_opaque_types: bool,
     ) -> CombineFields<'a, 'tcx> {
         CombineFields {
             infcx: self,
@@ -735,6 +759,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             cause: None,
             param_env,
             obligations: PredicateObligations::new(),
+            define_opaque_types,
         }
     }
 
@@ -1050,12 +1075,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.tcx.mk_ty_var(self.next_ty_var_id(origin))
     }
 
+    pub fn next_ty_var_id_in_universe(
+        &self,
+        origin: TypeVariableOrigin,
+        universe: ty::UniverseIndex,
+    ) -> TyVid {
+        self.inner.borrow_mut().type_variables().new_var(universe, origin)
+    }
+
     pub fn next_ty_var_in_universe(
         &self,
         origin: TypeVariableOrigin,
         universe: ty::UniverseIndex,
     ) -> Ty<'tcx> {
-        let vid = self.inner.borrow_mut().type_variables().new_var(universe, origin);
+        let vid = self.next_ty_var_id_in_universe(origin, universe);
         self.tcx.mk_ty_var(vid)
     }
 

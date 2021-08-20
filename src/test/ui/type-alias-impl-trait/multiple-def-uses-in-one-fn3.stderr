@@ -6,7 +6,9 @@ LL | fn g<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<A
    |      |
    |      expected type parameter
 LL |     (a, b)
-   |         ^ expected type parameter `A`, found type parameter `B`
+   |      -  ^ expected type parameter `A`, found type parameter `B`
+   |      |
+   |      type expected due to this
    |
    = note: expected type parameter `A`
               found type parameter `B`

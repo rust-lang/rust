@@ -1275,7 +1275,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
     /// Returns the current "merged type", representing our best-guess
     /// at the LUB of the expressions we've seen so far (if any). This
-    /// isn't *final* until you call `self.final()`, which will return
+    /// isn't *final* until you call `self.complete()`, which will return
     /// the merged type.
     pub fn merged_ty(&self) -> Ty<'tcx> {
         self.final_ty.unwrap_or(self.expected_ty)

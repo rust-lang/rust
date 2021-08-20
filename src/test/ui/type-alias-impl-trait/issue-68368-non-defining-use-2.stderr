@@ -1,8 +1,8 @@
 error: non-defining opaque type use in defining scope
-  --> $DIR/issue-68368-non-defining-use-2.rs:9:15
+  --> $DIR/issue-68368-non-defining-use-2.rs:9:29
    |
 LL | fn f<'a>() -> Alias<'a, ()> {}
-   |               ^^^^^^^^^^^^^
+   |                             ^^
    |
 note: used non-generic type `()` for generic parameter
   --> $DIR/issue-68368-non-defining-use-2.rs:7:16

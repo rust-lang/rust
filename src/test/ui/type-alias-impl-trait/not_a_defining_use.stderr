@@ -1,8 +1,8 @@
 error: non-defining opaque type use in defining scope
-  --> $DIR/not_a_defining_use.rs:10:27
+  --> $DIR/not_a_defining_use.rs:11:5
    |
-LL | fn two<T: Debug>(t: T) -> Two<T, u32> {
-   |                           ^^^^^^^^^^^
+LL |     (t, 4i8)
+   |     ^^^^^^^^
    |
 note: used non-generic type `u32` for generic parameter
   --> $DIR/not_a_defining_use.rs:7:13

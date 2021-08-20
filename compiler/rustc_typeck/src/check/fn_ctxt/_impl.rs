@@ -274,7 +274,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for a in &adj {
             if let Adjust::NeverToAny = a.kind {
                 if a.target.is_ty_var() {
-                    self.diverging_type_vars.borrow_mut().insert(a.target);
+                    self.diverging_type_vars.borrow_mut().insert(a.target, expr.span);
                     debug!("apply_adjustments: adding `{:?}` as diverging type var", a.target);
                 }
             }
@@ -365,23 +365,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             bounds, substs, result, spans,
         );
         (result, spans)
-    }
-
-    /// Replaces the opaque types from the given value with type variables,
-    /// and records the `OpaqueTypeMap` for later use during writeback. See
-    /// `InferCtxt::instantiate_opaque_types` for more details.
-    #[instrument(skip(self, value_span), level = "debug")]
-    pub(in super::super) fn instantiate_opaque_types_from_value<T: TypeFoldable<'tcx>>(
-        &self,
-        value: T,
-        value_span: Span,
-    ) -> T {
-        self.register_infer_ok_obligations(self.instantiate_opaque_types(
-            self.body_id,
-            self.param_env,
-            value,
-            value_span,
-        ))
     }
 
     /// Convenience method which tracks extra diagnostic information for normalization
@@ -720,6 +703,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // inference variable.
                     ty::PredicateKind::ClosureKind(..) => None,
                     ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
+                    ty::PredicateKind::OpaqueType(..) => None,
                 }
             })
             .filter(move |(tr, _)| self.self_type_matches_expected_vid(*tr, ty_var_root))

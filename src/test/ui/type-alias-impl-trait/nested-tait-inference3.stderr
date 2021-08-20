@@ -1,0 +1,8 @@
+error: could not find defining uses
+  --> $DIR/nested-tait-inference3.rs:6:13
+   |
+LL | type FooX = impl Debug;
+   |             ^^^^^^^^^^
+
+error: aborting due to previous error
+

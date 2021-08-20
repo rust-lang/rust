@@ -18,5 +18,5 @@ fn main() {
     // this is an `*mut fmt::Debug` in practice
     let mut b_raw = Box::into_raw(b);
     // ... and they should not be mixable
-    b_raw = f_raw as *mut _; //~ ERROR is invalid
+    b_raw = f_raw as *mut _; //~ ERROR mismatched types
 }

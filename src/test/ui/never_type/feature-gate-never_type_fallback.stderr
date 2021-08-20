@@ -1,8 +1,14 @@
 error[E0277]: the trait bound `(): T` is not satisfied
-  --> $DIR/feature-gate-never_type_fallback.rs:9:25
+  --> $DIR/feature-gate-never_type_fallback.rs:10:5
    |
-LL | fn should_ret_unit() -> impl T {
-   |                         ^^^^^^ the trait `T` is not implemented for `()`
+LL |     foo(panic!())
+   |     ^^^ the trait `T` is not implemented for `()`
+   |
+note: required by a bound in `foo`
+  --> $DIR/feature-gate-never_type_fallback.rs:13:16
+   |
+LL | fn foo(_: impl T) {}
+   |                ^ required by this bound in `foo`
 
 error: aborting due to previous error
 

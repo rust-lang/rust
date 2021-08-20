@@ -1,5 +1,5 @@
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/impl-trait-captures.rs:10:25
+  --> $DIR/impl-trait-captures.rs:11:5
    |
 LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> {
    |                  --     ^^^^^^^^^^^^

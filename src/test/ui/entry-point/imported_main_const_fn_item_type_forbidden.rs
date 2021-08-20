@@ -4,11 +4,9 @@
 //~^^^ ERROR `main` function not found in crate
 pub mod foo {
     type MainFn = impl Fn();
-    //~^ ERROR could not find defining uses
 
     fn bar() {}
     pub const BAR: MainFn = bar;
-    //~^ ERROR mismatched types [E0308]
 }
 
 use foo::BAR as main;

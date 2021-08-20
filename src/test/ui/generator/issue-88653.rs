@@ -6,10 +6,10 @@
 use std::ops::Generator;
 
 fn foo(bar: bool) -> impl Generator<(bool,)> {
-//~^ ERROR: type mismatch in generator arguments [E0631]
-//~| NOTE: expected signature of `fn((bool,)) -> _`
     |bar| {
     //~^ NOTE: found signature of `fn(bool) -> _`
+    //~| ERROR: type mismatch in generator arguments [E0631]
+    //~| NOTE: expected signature of `fn((bool,)) -> _`
         if bar {
             yield bar;
         }

@@ -3,6 +3,7 @@
 #![feature(type_alias_impl_trait)]
 
 type Test = impl Copy;
+//~^ ERROR could not find defining uses
 
 fn test() -> Test {
     let y = || -> Test { () };

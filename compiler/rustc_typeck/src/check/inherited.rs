@@ -1,7 +1,7 @@
 use super::callee::DeferredCallResolution;
 use super::MaybeInProgressTables;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefIdMap, LocalDefId};
 use rustc_hir::HirIdMap;
@@ -58,7 +58,7 @@ pub struct Inherited<'a, 'tcx> {
     /// Whenever we introduce an adjustment from `!` into a type variable,
     /// we record that type variable here. This is later used to inform
     /// fallback. See the `fallback` module for details.
-    pub(super) diverging_type_vars: RefCell<FxHashSet<Ty<'tcx>>>,
+    pub(super) diverging_type_vars: RefCell<FxHashMap<Ty<'tcx>, Span>>,
 }
 
 impl<'a, 'tcx> Deref for Inherited<'a, 'tcx> {
@@ -95,6 +95,13 @@ impl<'tcx> InheritedBuilder<'tcx> {
         let def_id = self.def_id;
         self.infcx.enter(|infcx| f(Inherited::new(infcx, def_id)))
     }
+
+    /// WF-checking doesn't need to recompute opaque types and can instead use
+    /// the type_of query to get them from typeck.
+    pub fn reveal_defining_opaque_types(mut self) -> Self {
+        self.infcx = self.infcx.reveal_defining_opaque_types();
+        self
+    }
 }
 
 impl<'a, 'tcx> Inherited<'a, 'tcx> {
@@ -119,8 +126,8 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub(super) fn register_predicate(&self, obligation: traits::PredicateObligation<'tcx>) {
-        debug!("register_predicate({:?})", obligation);
         if obligation.has_escaping_bound_vars() {
             span_bug!(obligation.cause.span, "escaping bound vars in predicate {:?}", obligation);
         }

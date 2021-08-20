@@ -1,11 +1,11 @@
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::undo_log::UndoLogs;
+use rustc_hir::OpaqueTyOrigin;
 use rustc_middle::ty::{self, OpaqueTypeKey, Ty};
 use rustc_span::DUMMY_SP;
 
-use crate::infer::InferCtxtUndoLogs;
+use crate::infer::{InferCtxtUndoLogs, UndoLog};
 
-use super::{OpaqueTypeDecl, OpaqueTypeMap};
+use super::{OpaqueHiddenType, OpaqueTypeDecl, OpaqueTypeMap};
 
 #[derive(Default, Debug)]
 pub struct OpaqueTypeStorage<'tcx> {
@@ -14,30 +14,23 @@ pub struct OpaqueTypeStorage<'tcx> {
     // variables to get the concrete type, which can be used to
     // 'de-opaque' OpaqueTypeDecl, after typeck is done with all functions.
     pub opaque_types: OpaqueTypeMap<'tcx>,
-
-    /// A map from inference variables created from opaque
-    /// type instantiations (`ty::Infer`) to the actual opaque
-    /// type (`ty::Opaque`). Used during fallback to map unconstrained
-    /// opaque type inference variables to their corresponding
-    /// opaque type.
-    pub opaque_types_vars: FxHashMap<Ty<'tcx>, Ty<'tcx>>,
 }
 
 impl<'tcx> OpaqueTypeStorage<'tcx> {
     #[instrument(level = "debug")]
-    pub(crate) fn remove(&mut self, key: OpaqueTypeKey<'tcx>) {
-        match self.opaque_types.remove(&key) {
-            None => bug!("reverted opaque type inference that was never registered"),
-            Some(decl) => assert_ne!(self.opaque_types_vars.remove(decl.concrete_ty), None),
+    pub(crate) fn remove(&mut self, key: OpaqueTypeKey<'tcx>, idx: usize) {
+        if idx == 0 {
+            match self.opaque_types.remove(&key) {
+                None => bug!("reverted opaque type inference that was never registered: {:?}", key),
+                Some(_) => {}
+            }
+        } else {
+            self.opaque_types.get_mut(&key).unwrap().hidden_types.drain(idx..);
         }
     }
 
     pub fn get_decl(&self, key: &OpaqueTypeKey<'tcx>) -> Option<&OpaqueTypeDecl<'tcx>> {
         self.opaque_types.get(key)
-    }
-
-    pub fn get_opaque_type_for_infer_var(&self, key: Ty<'tcx>) -> Option<Ty<'tcx>> {
-        self.opaque_types_vars.get(key).copied()
     }
 
     pub fn opaque_types(&self) -> OpaqueTypeMap<'tcx> {
@@ -76,9 +69,20 @@ pub struct OpaqueTypeTable<'a, 'tcx> {
 
 impl<'a, 'tcx> OpaqueTypeTable<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
-    pub fn register(&mut self, key: OpaqueTypeKey<'tcx>, decl: OpaqueTypeDecl<'tcx>) {
-        self.undo_log.push(key);
+    pub fn register(
+        &mut self,
+        key: OpaqueTypeKey<'tcx>,
+        opaque_type: Ty<'tcx>,
+        ty: OpaqueHiddenType<'tcx>,
+        origin: OpaqueTyOrigin,
+    ) {
+        if let Some(decl) = self.storage.opaque_types.get_mut(&key) {
+            decl.hidden_types.push(ty);
+            self.undo_log.push(UndoLog::OpaqueTypes(key, decl.hidden_types.len()));
+            return;
+        }
+        let decl = OpaqueTypeDecl { opaque_type, hidden_types: vec![ty], origin };
         self.storage.opaque_types.insert(key, decl);
-        self.storage.opaque_types_vars.insert(decl.concrete_ty, decl.opaque_type);
+        self.undo_log.push(UndoLog::OpaqueTypes(key, 0));
     }
 }

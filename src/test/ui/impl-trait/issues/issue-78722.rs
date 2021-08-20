@@ -10,7 +10,8 @@ struct Bug {
             async {}
         }
         let f: F = async { 1 };
-        //~^ ERROR mismatched types [E0308]
+        //~^ ERROR `async` blocks are not allowed in constants
+        //~| ERROR destructors cannot be evaluated at compile-time
         1
     }],
 }

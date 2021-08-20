@@ -13,16 +13,16 @@ type TwoConsts<const X: usize, const Y: usize> = impl Debug;
 //~^ ERROR could not find defining uses
 
 fn one_ty<T: Debug>(t: T) -> TwoTys<T, T> {
-    //~^ ERROR non-defining opaque type use in defining scope
     t
+    //~^ ERROR non-defining opaque type use in defining scope
 }
 
 fn one_lifetime<'a>(t: &'a u32) -> TwoLifetimes<'a, 'a> {
-    //~^ ERROR non-defining opaque type use in defining scope
     t
+    //~^ ERROR non-defining opaque type use in defining scope
 }
 
 fn one_const<const N: usize>(t: *mut [u8; N]) -> TwoConsts<N, N> {
-    //~^ ERROR non-defining opaque type use in defining scope
     t
+    //~^ ERROR non-defining opaque type use in defining scope
 }

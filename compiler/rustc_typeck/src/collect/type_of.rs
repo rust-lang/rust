@@ -389,13 +389,6 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         .get_value_matching(|(key, _)| key.def_id == def_id.to_def_id())
                         .copied()
                         .unwrap_or_else(|| {
-                            tcx.sess.delay_span_bug(
-                                DUMMY_SP,
-                                &format!(
-                                    "owner {:?} has no opaque type for {:?} in its typeck results",
-                                    owner, def_id,
-                                ),
-                            );
                             if let Some(ErrorReported) =
                                 tcx.typeck(owner).tainted_by_errors
                             {
@@ -405,12 +398,12 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                 tcx.ty_error()
                             } else {
                                 // We failed to resolve the opaque type or it
-                                // resolves to itself. Return the non-revealed
-                                // type, which should result in E0720.
-                                tcx.mk_opaque(
-                                    def_id.to_def_id(),
-                                    InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
-                                )
+                                // resolves to itself. We interpret this as the
+                                // no values of the hidden type ever being constructed,
+                                // so we can just make the hidden type be `!`.
+                                // For backwards compatibility reasons, we fall back to
+                                // `()` until we the diverging default is changed.
+                                tcx.mk_diverging_default()
                             }
                         });
                     debug!("concrete_ty = {:?}", concrete_ty);
@@ -658,7 +651,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             intravisit::walk_expr(self, ex);
         }
         fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
-            debug!("find_existential_constraints: visiting {:?}", it);
+            trace!(?it.def_id);
             // The opaque type itself or its children are not within its reveal scope.
             if it.def_id.to_def_id() != self.def_id {
                 self.check(it.def_id);
@@ -666,7 +659,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             }
         }
         fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) {
-            debug!("find_existential_constraints: visiting {:?}", it);
+            trace!(?it.def_id);
             // The opaque type itself or its children are not within its reveal scope.
             if it.def_id.to_def_id() != self.def_id {
                 self.check(it.def_id);
@@ -674,7 +667,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             }
         }
         fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
-            debug!("find_existential_constraints: visiting {:?}", it);
+            trace!(?it.def_id);
             self.check(it.def_id);
             intravisit::walk_trait_item(self, it);
         }
@@ -684,12 +677,12 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
     let scope = tcx.hir().get_defining_scope(hir_id);
     let mut locator = ConstraintLocator { def_id: def_id.to_def_id(), tcx, found: None };
 
-    debug!("find_opaque_ty_constraints: scope={:?}", scope);
+    debug!(?scope);
 
     if scope == hir::CRATE_HIR_ID {
         tcx.hir().walk_toplevel_module(&mut locator);
     } else {
-        debug!("find_opaque_ty_constraints: scope={:?}", tcx.hir().get(scope));
+        trace!("scope={:#?}", tcx.hir().get(scope));
         match tcx.hir().get(scope) {
             // We explicitly call `visit_*` methods, instead of using `intravisit::walk_*` methods
             // This allows our visitor to process the defining item itself, causing

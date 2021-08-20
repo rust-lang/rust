@@ -1,10 +1,11 @@
 error[E0277]: the trait bound `(): Bar` is not satisfied
-  --> $DIR/impl-trait-return-trailing-semicolon.rs:3:13
+  --> $DIR/impl-trait-return-trailing-semicolon.rs:3:22
    |
-LL | fn foo() -> impl Bar {
-   |             ^^^^^^^^ the trait `Bar` is not implemented for `()`
-LL |     5;
-   |      - consider removing this semicolon
+LL |   fn foo() -> impl Bar {
+   |  ______________________^
+LL | |     5;
+LL | | }
+   | |_^ the trait `Bar` is not implemented for `()`
 
 error: aborting due to previous error
 

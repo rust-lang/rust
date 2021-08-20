@@ -1,8 +1,8 @@
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_duplicate_param_use3.rs:11:27
+  --> $DIR/generic_duplicate_param_use3.rs:12:5
    |
-LL | fn one<T: Debug>(t: T) -> Two<T, T> {
-   |                           ^^^^^^^^^
+LL |     t
+   |     ^
    |
 note: type used multiple times
   --> $DIR/generic_duplicate_param_use3.rs:8:10

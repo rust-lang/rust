@@ -1,11 +1,8 @@
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/issue-87258_a.rs:19:21
+error: could not find defining uses
+  --> $DIR/issue-87258_a.rs:18:26
    |
-LL |     fn foo<'a>() -> Self::FooFuture<'a> {
-   |                     ^^^^^^^^^^^^^^^^^^^
-   |
-   = note: hidden type `Struct<'_>` captures lifetime '_#7r
+LL |     type FooFuture<'a> = impl Trait1;
+   |                          ^^^^^^^^^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0700`.

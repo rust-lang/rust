@@ -895,7 +895,7 @@ fn for_item<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'_>) -> CheckWfFcxBuilder<
 
 fn for_id(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) -> CheckWfFcxBuilder<'_> {
     CheckWfFcxBuilder {
-        inherited: Inherited::build(tcx, def_id),
+        inherited: Inherited::build(tcx, def_id).reveal_defining_opaque_types(),
         id: hir::HirId::make_owner(def_id),
         span,
         param_env: tcx.param_env(def_id),

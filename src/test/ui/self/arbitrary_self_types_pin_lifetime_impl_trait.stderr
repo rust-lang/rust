@@ -1,8 +1,8 @@
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait.rs:6:31
+  --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait.rs:6:44
    |
 LL |     fn f(self: Pin<&Self>) -> impl Clone { self }
-   |                    -----      ^^^^^^^^^^
+   |                    -----                   ^^^^
    |                    |
    |                    hidden type `Pin<&Foo>` captures the anonymous lifetime defined here
    |

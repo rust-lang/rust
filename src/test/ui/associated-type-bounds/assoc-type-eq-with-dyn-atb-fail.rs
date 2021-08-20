@@ -28,9 +28,10 @@ impl Bar for AssocNoCopy {
 
 impl Thing for AssocNoCopy {
     type Out = Box<dyn Bar<Assoc: Copy>>;
+    //~^ ERROR could not find defining uses
 
     fn func() -> Self::Out {
-        //~^ ERROR the trait bound `String: Copy` is not satisfied
         Box::new(AssocNoCopy)
+        //~^ ERROR the trait bound `String: Copy` is not satisfied
     }
 }

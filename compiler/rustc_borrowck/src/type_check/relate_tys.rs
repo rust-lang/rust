@@ -1,14 +1,15 @@
 use rustc_infer::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
 use rustc_infer::infer::NllRegionVariableOrigin;
+use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{self, Const, Ty};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use rustc_trait_selection::traits::query::Fallible;
 
 use crate::constraints::OutlivesConstraint;
 use crate::diagnostics::UniverseInfo;
-use crate::type_check::{Locations, TypeChecker};
+use crate::type_check::{CustomTypeOp, Locations, TypeChecker};
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// Adds sufficient constraints to ensure that `a R b` where `R` depends on `v`:
@@ -65,10 +66,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
 
 impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
     fn span(&self) -> Span {
-        match self.locations {
-            Locations::All(span) => span,
-            Locations::Single(_) => DUMMY_SP,
-        }
+        self.locations.span(self.type_checker.body)
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
@@ -136,5 +134,55 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
 
     fn forbid_inference_vars() -> bool {
         true
+    }
+
+    fn constrain_opaque_type(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, a_is_expected: bool) {
+        let param_env = self.param_env();
+        let span = self.span();
+        let def_id = self.type_checker.body.source.def_id().expect_local();
+        let body_id = self.type_checker.tcx().hir().local_def_id_to_hir_id(def_id);
+        let cause = ObligationCause::misc(span, body_id);
+        self.type_checker
+            .fully_perform_op(
+                self.locations,
+                self.category,
+                CustomTypeOp::new(
+                    |infcx| {
+                        let (concrete_ty, opaque_type_key) =
+                            match (a.kind(), b.kind(), a_is_expected) {
+                                (ty::Opaque(..), ty::Opaque(..), true) => {
+                                    (b, a.expect_opaque_type())
+                                }
+                                (ty::Opaque(..), ty::Opaque(..), false) => {
+                                    (a, b.expect_opaque_type())
+                                }
+                                (ty::Opaque(..), _, _) => (b, a.expect_opaque_type()),
+                                (_, ty::Opaque(..), _) => (a, b.expect_opaque_type()),
+                                _ => span_bug!(
+                                    span,
+                                    "no opaque types in constrain_opaque_type {:?}, {:?}",
+                                    a,
+                                    b
+                                ),
+                            };
+                        let mut result = self.type_checker.infcx.constrain_opaque_type(
+                            param_env,
+                            opaque_type_key,
+                            concrete_ty,
+                            span,
+                        )?;
+                        result.obligations.push(infcx.opaque_ty_obligation(
+                            a,
+                            b,
+                            a_is_expected,
+                            param_env,
+                            cause,
+                        ));
+                        Ok(result)
+                    },
+                    || "constrain_opaque_type".to_string(),
+                ),
+            )
+            .unwrap();
     }
 }

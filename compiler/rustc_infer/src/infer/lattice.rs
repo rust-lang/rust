@@ -22,7 +22,7 @@
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::InferCtxt;
 
-use crate::traits::ObligationCause;
+use crate::traits::{ObligationCause, PredicateObligation};
 use rustc_middle::ty::relate::{RelateResult, TypeRelation};
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty};
@@ -31,6 +31,10 @@ pub trait LatticeDir<'f, 'tcx>: TypeRelation<'tcx> {
     fn infcx(&self) -> &'f InferCtxt<'f, 'tcx>;
 
     fn cause(&self) -> &ObligationCause<'tcx>;
+
+    fn add_obligations(&mut self, obligations: Vec<PredicateObligation<'tcx>>);
+
+    fn define_opaque_types(&self) -> bool;
 
     // Relates the type `v` to `a` and `b` such that `v` represents
     // the LUB/GLB of `a` and `b` as appropriate.
@@ -41,6 +45,7 @@ pub trait LatticeDir<'f, 'tcx>: TypeRelation<'tcx> {
     fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()>;
 }
 
+#[instrument(skip(this), level = "debug")]
 pub fn super_lattice_tys<'a, 'tcx: 'a, L>(
     this: &mut L,
     a: Ty<'tcx>,
@@ -49,15 +54,17 @@ pub fn super_lattice_tys<'a, 'tcx: 'a, L>(
 where
     L: LatticeDir<'a, 'tcx>,
 {
-    debug!("{}.lattice_tys({:?}, {:?})", this.tag(), a, b);
+    debug!("{}", this.tag());
 
     if a == b {
         return Ok(a);
     }
 
     let infcx = this.infcx();
+
     let a = infcx.inner.borrow_mut().type_variables().replace_if_possible(a);
     let b = infcx.inner.borrow_mut().type_variables().replace_if_possible(b);
+
     match (a.kind(), b.kind()) {
         // If one side is known to be a variable and one is not,
         // create a variable (`v`) to represent the LUB. Make sure to
@@ -92,6 +99,22 @@ where
             });
             this.relate_bound(v, a, b)?;
             Ok(v)
+        }
+
+        (&ty::Opaque(a_def_id, _), &ty::Opaque(b_def_id, _)) if a_def_id == b_def_id => {
+            infcx.super_combine_tys(this, a, b)
+        }
+        (&ty::Opaque(did, ..), _) | (_, &ty::Opaque(did, ..))
+            if this.define_opaque_types() && did.is_local() =>
+        {
+            this.add_obligations(vec![infcx.opaque_ty_obligation(
+                a,
+                b,
+                this.a_is_expected(),
+                this.param_env(),
+                this.cause().clone(),
+            )]);
+            Ok(a)
         }
 
         _ => infcx.super_combine_tys(this, a, b),

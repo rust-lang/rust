@@ -6,8 +6,8 @@ trait Future {
 use std::error::Error;
 
 fn foo() -> impl Future<Item=(), Error=Box<dyn Error>> {
-//~^ ERROR not satisfied
     Ok(())
+    //~^ ERROR not satisfied
 }
 
 fn main() {}

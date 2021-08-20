@@ -1,8 +1,8 @@
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/must_outlive_least_region_or_bound.rs:3:23
+  --> $DIR/must_outlive_least_region_or_bound.rs:3:35
    |
 LL | fn elided(x: &i32) -> impl Copy { x }
-   |              ----     ^^^^^^^^^
+   |              ----                 ^
    |              |
    |              hidden type `&i32` captures the anonymous lifetime defined here
    |
@@ -12,10 +12,10 @@ LL | fn elided(x: &i32) -> impl Copy + '_ { x }
    |                                 ++++
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/must_outlive_least_region_or_bound.rs:6:32
+  --> $DIR/must_outlive_least_region_or_bound.rs:6:44
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
-   |             --                 ^^^^^^^^^
+   |             --                             ^
    |             |
    |             hidden type `&'a i32` captures the lifetime `'a` as defined here
    |
@@ -28,15 +28,10 @@ error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'sta
   --> $DIR/must_outlive_least_region_or_bound.rs:9:46
    |
 LL | fn elided2(x: &i32) -> impl Copy + 'static { x }
-   |               ----                           ^ ...is used here...
+   |               ----                           ^ ...is used and required to live as long as `'static` here
    |               |
    |               this data with an anonymous lifetime `'_`...
    |
-note: ...and is required to live as long as `'static` here
-  --> $DIR/must_outlive_least_region_or_bound.rs:9:24
-   |
-LL | fn elided2(x: &i32) -> impl Copy + 'static { x }
-   |                        ^^^^^^^^^^^^^^^^^^^
 help: consider changing the `impl Trait`'s explicit `'static` bound to the lifetime of argument `x`
    |
 LL | fn elided2(x: &i32) -> impl Copy + '_ { x }
@@ -50,15 +45,10 @@ error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:11:55
    |
 LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
-   |                     -------                           ^ ...is used here...
+   |                     -------                           ^ ...is used and required to live as long as `'static` here
    |                     |
    |                     this data with lifetime `'a`...
    |
-note: ...and is required to live as long as `'static` here
-  --> $DIR/must_outlive_least_region_or_bound.rs:11:33
-   |
-LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
-   |                                 ^^^^^^^^^^^^^^^^^^^
 help: consider changing the `impl Trait`'s explicit `'static` bound to the lifetime of argument `x`
    |
 LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'a { x }
@@ -69,10 +59,10 @@ LL | fn explicit2<'a>(x: &'static i32) -> impl Copy + 'static { x }
    |                     ~~~~~~~~~~~~
 
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/must_outlive_least_region_or_bound.rs:13:24
+  --> $DIR/must_outlive_least_region_or_bound.rs:13:41
    |
 LL | fn foo<'a>(x: &i32) -> impl Copy + 'a { x }
-   |               ----     ^^^^^^^^^^^^^^ lifetime `'a` required
+   |               ----                      ^ lifetime `'a` required
    |               |
    |               help: add explicit lifetime `'a` to the type of `x`: `&'a i32`
 
@@ -95,13 +85,8 @@ error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:29:69
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
-   |                      ------- this data with lifetime `'a`...        ^ ...is used here...
+   |                      ------- this data with lifetime `'a`...        ^ ...is used and required to live as long as `'static` here
    |
-note: ...and is required to live as long as `'static` here
-  --> $DIR/must_outlive_least_region_or_bound.rs:29:34
-   |
-LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
-   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider changing the `impl Trait`'s explicit `'static` bound to the lifetime of argument `x`
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'a { x }
@@ -112,12 +97,12 @@ LL | fn with_bound<'a>(x: &'static i32) -> impl LifetimeTrait<'a> + 'static { x 
    |                      ~~~~~~~~~~~~
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/must_outlive_least_region_or_bound.rs:33:61
+  --> $DIR/must_outlive_least_region_or_bound.rs:34:5
    |
 LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32) {
-   |                              --                             ^^^^^^^^^^^^^^^^
-   |                              |
-   |                              hidden type `[closure@$DIR/must_outlive_least_region_or_bound.rs:35:5: 35:31]` captures the lifetime `'b` as defined here
+   |                              -- hidden type `[closure@$DIR/must_outlive_least_region_or_bound.rs:34:5: 34:31]` captures the lifetime `'b` as defined here
+LL |     move |_| println!("{}", y)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: to declare that the `impl Trait` captures `'b`, you can add an explicit `'b` lifetime bound
    |
@@ -125,12 +110,12 @@ LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32
    |                                                                              ++++
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/must_outlive_least_region_or_bound.rs:38:51
+  --> $DIR/must_outlive_least_region_or_bound.rs:39:5
    |
 LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
-   |                                 --                ^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
-   |                                 |
-   |                                 help: consider adding an explicit lifetime bound...: `T: 'static +`
+   |                                 -- help: consider adding an explicit lifetime bound...: `T: 'static +`
+LL |     x
+   |     ^ ...so that the type `T` will meet its required lifetime bounds
 
 error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/must_outlive_least_region_or_bound.rs:16:50

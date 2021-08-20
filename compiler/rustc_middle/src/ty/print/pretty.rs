@@ -2607,6 +2607,9 @@ define_print_and_forward_display! {
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 p!("the type `", print(ty), "` is found in the environment")
             }
+            ty::PredicateKind::OpaqueType(a, b) => {
+                p!("opaque type assigment with `", print(a), "` == `", print(b) ,"`")
+            }
         }
     }
 

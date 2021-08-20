@@ -61,6 +61,12 @@ bitflags! {
                                           | TypeFlags::HAS_CT_INFER.bits
                                           | TypeFlags::HAS_TY_PLACEHOLDER.bits
                                           | TypeFlags::HAS_CT_PLACEHOLDER.bits
+                                          // Opaque types may get resolved in the current scope and must
+                                          // thus not be transported to other queries if it can be avoided.
+                                          // FIXME: differentiate between crate-local opaque types
+                                          // and opaque types from other crates, as only opaque types
+                                          // from the local crate can possibly be a local name
+                                          | TypeFlags::HAS_TY_OPAQUE.bits
                                           // We consider 'freshened' types and constants
                                           // to depend on a particular fn.
                                           // The freshening process throws away information,

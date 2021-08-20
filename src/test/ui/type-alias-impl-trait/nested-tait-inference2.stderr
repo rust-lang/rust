@@ -1,12 +1,22 @@
-error[E0277]: the trait bound `(): Foo<impl Debug>` is not satisfied
-  --> $DIR/nested-tait-inference2.rs:14:13
+error[E0282]: type annotations needed
+  --> $DIR/nested-tait-inference2.rs:15:5
    |
-LL | fn foo() -> impl Foo<FooX> {
-   |             ^^^^^^^^^^^^^^ the trait `Foo<impl Debug>` is not implemented for `()`
+LL |     ()
+   |     ^^ cannot infer type
+
+error[E0283]: type annotations needed
+  --> $DIR/nested-tait-inference2.rs:15:5
    |
-   = help: the following implementations were found:
-             <() as Foo<()>>
-             <() as Foo<u32>>
+LL |     ()
+   |     ^^ cannot infer type
+   |
+note: multiple `impl`s satisfying `(): Foo<_>` found
+  --> $DIR/nested-tait-inference2.rs:11:1
+   |
+LL | impl Foo<()> for () {}
+   | ^^^^^^^^^^^^^^^^^^^
+LL | impl Foo<u32> for () {}
+   | ^^^^^^^^^^^^^^^^^^^^
 
 error: could not find defining uses
   --> $DIR/nested-tait-inference2.rs:6:13
@@ -14,6 +24,7 @@ error: could not find defining uses
 LL | type FooX = impl Debug;
    |             ^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0282, E0283.
+For more information about an error, try `rustc --explain E0282`.
