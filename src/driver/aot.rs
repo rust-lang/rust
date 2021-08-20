@@ -267,9 +267,7 @@ pub(crate) fn run_aot(
             let tmp_file =
                 tcx.output_filenames(()).temp_path(OutputType::Metadata, Some(&metadata_cgu_name));
 
-            let obj = crate::backend::with_object(tcx.sess, &metadata_cgu_name, |object| {
-                crate::metadata::write_metadata(tcx, object);
-            });
+            let obj = crate::metadata::new_metadata_object(tcx, &metadata_cgu_name);
 
             if let Err(err) = std::fs::write(&tmp_file, obj) {
                 tcx.sess.fatal(&format!("error writing metadata object file: {}", err));

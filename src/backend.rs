@@ -9,36 +9,12 @@ use cranelift_codegen::isa::TargetIsa;
 use cranelift_module::FuncId;
 use cranelift_object::{ObjectBuilder, ObjectModule, ObjectProduct};
 
-use object::write::*;
-use object::{RelocationEncoding, SectionKind, SymbolFlags};
+use object::write::{Relocation, StandardSegment};
+use object::{RelocationEncoding, SectionKind};
 
 use gimli::SectionId;
 
 use crate::debuginfo::{DebugReloc, DebugRelocName};
-
-pub(crate) trait WriteMetadata {
-    fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>);
-}
-
-impl WriteMetadata for object::write::Object {
-    fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>) {
-        let segment = self.segment_name(object::write::StandardSegment::Data).to_vec();
-        let section_id = self.add_section(segment, b".rustc".to_vec(), object::SectionKind::Data);
-        let offset = self.append_section_data(section_id, &data, 1);
-        // For MachO and probably PE this is necessary to prevent the linker from throwing away the
-        // .rustc section. For ELF this isn't necessary, but it also doesn't harm.
-        self.add_symbol(object::write::Symbol {
-            name: symbol_name.into_bytes(),
-            value: offset,
-            size: data.len() as u64,
-            kind: object::SymbolKind::Data,
-            scope: object::SymbolScope::Dynamic,
-            weak: false,
-            section: SymbolSection::Section(section_id),
-            flags: SymbolFlags::None,
-        });
-    }
-}
 
 pub(crate) trait WriteDebugInfo {
     type SectionId: Copy;
@@ -110,48 +86,6 @@ impl WriteDebugInfo for ObjectProduct {
             )
             .unwrap();
     }
-}
-
-pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object)) -> Vec<u8> {
-    let triple = crate::target_triple(sess);
-
-    let binary_format = match triple.binary_format {
-        target_lexicon::BinaryFormat::Elf => object::BinaryFormat::Elf,
-        target_lexicon::BinaryFormat::Coff => object::BinaryFormat::Coff,
-        target_lexicon::BinaryFormat::Macho => object::BinaryFormat::MachO,
-        binary_format => sess.fatal(&format!("binary format {} is unsupported", binary_format)),
-    };
-    let architecture = match triple.architecture {
-        target_lexicon::Architecture::Aarch64(_) => object::Architecture::Aarch64,
-        target_lexicon::Architecture::Arm(_) => object::Architecture::Arm,
-        target_lexicon::Architecture::Avr => object::Architecture::Avr,
-        target_lexicon::Architecture::Hexagon => object::Architecture::Hexagon,
-        target_lexicon::Architecture::Mips32(_) => object::Architecture::Mips,
-        target_lexicon::Architecture::Mips64(_) => object::Architecture::Mips64,
-        target_lexicon::Architecture::Msp430 => object::Architecture::Msp430,
-        target_lexicon::Architecture::Powerpc => object::Architecture::PowerPc,
-        target_lexicon::Architecture::Powerpc64 => object::Architecture::PowerPc64,
-        target_lexicon::Architecture::Powerpc64le => todo!(),
-        target_lexicon::Architecture::Riscv32(_) => object::Architecture::Riscv32,
-        target_lexicon::Architecture::Riscv64(_) => object::Architecture::Riscv64,
-        target_lexicon::Architecture::S390x => object::Architecture::S390x,
-        target_lexicon::Architecture::Sparc64 => object::Architecture::Sparc64,
-        target_lexicon::Architecture::Sparcv9 => object::Architecture::Sparc64,
-        target_lexicon::Architecture::X86_32(_) => object::Architecture::I386,
-        target_lexicon::Architecture::X86_64 => object::Architecture::X86_64,
-        architecture => {
-            sess.fatal(&format!("target architecture {:?} is unsupported", architecture,))
-        }
-    };
-    let endian = match triple.endianness().unwrap() {
-        target_lexicon::Endianness::Little => object::Endianness::Little,
-        target_lexicon::Endianness::Big => object::Endianness::Big,
-    };
-
-    let mut metadata_object = object::write::Object::new(binary_format, architecture, endian);
-    metadata_object.add_file_symbol(name.as_bytes().to_vec());
-    f(&mut metadata_object);
-    metadata_object.write().unwrap()
 }
 
 pub(crate) fn make_module(sess: &Session, isa: Box<dyn TargetIsa>, name: String) -> ObjectModule {
