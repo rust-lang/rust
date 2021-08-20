@@ -25,7 +25,7 @@ pub impl Foo for Bar {
 impl Visible for Bar {
     pub const C: i32;
     pub type T;
-    fn f();
+    pub fn f();
     pub fn g() {}
 }
 

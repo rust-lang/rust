@@ -213,8 +213,8 @@ where
         + EEEEEEE;
 
 trait Visible {
-    const C: i32;
+    pub const C: i32;
     pub type T;
-    fn f();
-    fn g() {}
+    pub fn f();
+    pub fn g() {}
 }

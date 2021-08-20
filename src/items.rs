@@ -168,14 +168,14 @@ pub(crate) struct FnSig<'a> {
     constness: ast::Const,
     defaultness: ast::Defaultness,
     unsafety: ast::Unsafe,
-    visibility: ast::Visibility,
+    visibility: &'a ast::Visibility,
 }
 
 impl<'a> FnSig<'a> {
     pub(crate) fn from_method_sig(
         method_sig: &'a ast::FnSig,
         generics: &'a ast::Generics,
-        visibility: ast::Visibility,
+        visibility: &'a ast::Visibility,
     ) -> FnSig<'a> {
         FnSig {
             unsafety: method_sig.header.unsafety,
@@ -198,7 +198,7 @@ impl<'a> FnSig<'a> {
         match *fn_kind {
             visit::FnKind::Fn(fn_ctxt, _, fn_sig, vis, _) => match fn_ctxt {
                 visit::FnCtxt::Assoc(..) => {
-                    let mut fn_sig = FnSig::from_method_sig(fn_sig, generics, vis.clone());
+                    let mut fn_sig = FnSig::from_method_sig(fn_sig, generics, vis);
                     fn_sig.defaultness = defaultness;
                     fn_sig
                 }
@@ -210,7 +210,7 @@ impl<'a> FnSig<'a> {
                     is_async: Cow::Borrowed(&fn_sig.header.asyncness),
                     defaultness,
                     unsafety: fn_sig.header.unsafety,
-                    visibility: vis.clone(),
+                    visibility: vis,
                 },
             },
             _ => unreachable!(),
@@ -317,6 +317,7 @@ impl<'a> FmtVisitor<'a> {
         indent: Indent,
         ident: symbol::Ident,
         sig: &ast::FnSig,
+        vis: &ast::Visibility,
         generics: &ast::Generics,
         span: Span,
     ) -> Option<String> {
@@ -328,7 +329,7 @@ impl<'a> FmtVisitor<'a> {
             &context,
             indent,
             ident,
-            &FnSig::from_method_sig(sig, generics, DEFAULT_VISIBILITY),
+            &FnSig::from_method_sig(sig, generics, vis),
             span,
             FnBraceStyle::None,
         )?;
@@ -1754,7 +1755,7 @@ impl<'a> StaticParts<'a> {
         };
         StaticParts {
             prefix: "const",
-            vis: &DEFAULT_VISIBILITY,
+            vis: &ti.vis,
             ident: ti.ident,
             ty,
             mutability: ast::Mutability::Not,
@@ -3110,7 +3111,7 @@ impl Rewrite for ast::ForeignItem {
                         context,
                         shape.indent,
                         self.ident,
-                        &FnSig::from_method_sig(&fn_sig, generics, self.vis.clone()),
+                        &FnSig::from_method_sig(&fn_sig, generics, &self.vis),
                         span,
                         FnBraceStyle::None,
                     )
