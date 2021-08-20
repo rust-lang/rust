@@ -2,20 +2,12 @@
 
 use crate::db::AstDatabase;
 use base_db::{CrateId, ProcMacroId};
+use mbe::ExpandResult;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct ProcMacroExpander {
     krate: CrateId,
     proc_macro_id: Option<ProcMacroId>,
-}
-
-macro_rules! err {
-    ($fmt:literal, $($tt:tt),*) => {
-        mbe::ExpandError::ProcMacroError(tt::ExpansionError::Unknown(format!($fmt, $($tt),*)))
-    };
-    ($fmt:literal) => {
-        mbe::ExpandError::ProcMacroError(tt::ExpansionError::Unknown($fmt.to_string()))
-    }
 }
 
 impl ProcMacroExpander {
@@ -38,21 +30,21 @@ impl ProcMacroExpander {
         calling_crate: CrateId,
         tt: &tt::Subtree,
         attr_arg: Option<&tt::Subtree>,
-    ) -> Result<tt::Subtree, mbe::ExpandError> {
+    ) -> ExpandResult<tt::Subtree> {
         match self.proc_macro_id {
             Some(id) => {
                 let krate_graph = db.crate_graph();
-                let proc_macro = krate_graph[self.krate]
-                    .proc_macro
-                    .get(id.0 as usize)
-                    .ok_or_else(|| err!("No derive macro found."))?;
+                let proc_macro = match krate_graph[self.krate].proc_macro.get(id.0 as usize) {
+                    Some(proc_macro) => proc_macro,
+                    None => return ExpandResult::str_err("No derive macro found.".to_string()),
+                };
 
                 // Proc macros have access to the environment variables of the invoking crate.
                 let env = &krate_graph[calling_crate].env;
 
-                proc_macro.expander.expand(tt, attr_arg, env).map_err(mbe::ExpandError::from)
+                proc_macro.expander.expand(tt, attr_arg, env).map_err(mbe::ExpandError::from).into()
             }
-            None => Err(mbe::ExpandError::UnresolvedProcMacro),
+            None => ExpandResult::only_err(mbe::ExpandError::UnresolvedProcMacro),
         }
     }
 }

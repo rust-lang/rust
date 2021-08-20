@@ -53,19 +53,16 @@ impl TokenExpander {
             TokenExpander::MacroRules { mac, .. } => mac.expand(tt),
             TokenExpander::MacroDef { mac, .. } => mac.expand(tt),
             TokenExpander::Builtin(it) => it.expand(db, id, tt),
-            // FIXME switch these to ExpandResult as well
             TokenExpander::BuiltinAttr(it) => match db.macro_arg(id) {
-                Some(macro_arg) => it.expand(db, id, tt, &macro_arg.0).into(),
-                None => mbe::ExpandResult::only_err(
-                    mbe::ExpandError::Other("No item argument for attribute".to_string()).into(),
-                ),
+                Some(macro_arg) => it.expand(db, id, tt, &macro_arg.0),
+                None => mbe::ExpandResult::str_err("No item argument for attribute".to_string()),
             },
             TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt),
             TokenExpander::ProcMacro(_) => {
                 // We store the result in salsa db to prevent non-deterministic behavior in
                 // some proc-macro implementation
                 // See #4315 for details
-                db.expand_proc_macro(id).into()
+                db.expand_proc_macro(id)
             }
         }
     }
@@ -133,7 +130,7 @@ pub trait AstDatabase: SourceDatabase {
     /// proc macros, since they are not deterministic in general, and
     /// non-determinism breaks salsa in a very, very, very bad way. @edwin0cheng
     /// heroically debugged this once!
-    fn expand_proc_macro(&self, call: MacroCallId) -> Result<tt::Subtree, mbe::ExpandError>;
+    fn expand_proc_macro(&self, call: MacroCallId) -> ExpandResult<tt::Subtree>;
     /// Firewall query that returns the error from the `macro_expand` query.
     fn macro_expand_error(&self, macro_call: MacroCallId) -> Option<ExpandError>;
 
@@ -379,18 +376,11 @@ fn macro_expand_error(db: &dyn AstDatabase, macro_call: MacroCallId) -> Option<E
     db.macro_expand(macro_call).err
 }
 
-fn expand_proc_macro(
-    db: &dyn AstDatabase,
-    id: MacroCallId,
-) -> Result<tt::Subtree, mbe::ExpandError> {
+fn expand_proc_macro(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<tt::Subtree> {
     let loc: MacroCallLoc = db.lookup_intern_macro(id);
     let macro_arg = match db.macro_arg(id) {
         Some(it) => it,
-        None => {
-            return Err(
-                tt::ExpansionError::Unknown("No arguments for proc-macro".to_string()).into()
-            )
-        }
+        None => return ExpandResult::str_err("No arguments for proc-macro".to_string()),
     };
 
     let expander = match loc.def.kind {
