@@ -117,6 +117,9 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
 
     // We don't have to worry about the equality of consts during borrow checking
     // as consts always have a static lifetime.
+    // FIXME(oli-obk): is this really true? We can at least have HKL and with
+    // inline consts we may have further lifetimes that may be unsound to treat as
+    // 'static.
     fn const_equate(&mut self, _a: &'tcx Const<'tcx>, _b: &'tcx Const<'tcx>) {}
 
     fn normalization() -> NormalizationStrategy {
