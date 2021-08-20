@@ -152,6 +152,7 @@ pub enum TyKind<'tcx> {
 
     /// The anonymous type of a closure. Used to represent the type of
     /// `|a| a`.
+    /// For the order of the substs see the `ClosureSubsts` type's documentation.
     Closure(DefId, SubstsRef<'tcx>),
 
     /// The anonymous type of a generator. Used to represent the type of
