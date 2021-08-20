@@ -255,6 +255,19 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     // metadata of the rlib we're generating somehow.
     for lib in codegen_results.crate_info.used_libraries.iter() {
         match lib.kind {
+            NativeLibKind::Static { bundle: None | Some(true), whole_archive: Some(true) }
+                if flavor == RlibFlavor::Normal =>
+            {
+                // Don't allow mixing +bundle with +whole_archive since an rlib may contain
+                // multiple native libs, some of which are +whole-archive and some of which are
+                // -whole-archive and it isn't clear how we can currently handle such a
+                // situation correctly.
+                // See https://github.com/rust-lang/rust/issues/88085#issuecomment-901050897
+                sess.err(
+                    "the linking modifiers `+bundle` and `+whole-archive` are not compatible \
+                        with each other when generating rlibs",
+                );
+            }
             NativeLibKind::Static { bundle: None | Some(true), .. } => {}
             NativeLibKind::Static { bundle: Some(false), .. }
             | NativeLibKind::Dylib { .. }
@@ -1223,6 +1236,7 @@ pub fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
     sess.target_filesearch(PathKind::Native).search_path_dirs()
 }
 
+#[derive(PartialEq)]
 enum RlibFlavor {
     Normal,
     StaticlibBase,
