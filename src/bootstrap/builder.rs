@@ -1288,7 +1288,7 @@ impl<'a> Builder<'a> {
         // requirement, but the `-L` library path is not propagated across
         // separate Cargo projects. We can add LLVM's library path to the
         // platform-specific environment variable as a workaround.
-        if mode == Mode::ToolRustc {
+        if mode == Mode::ToolRustc || mode == Mode::Codegen {
             if let Some(llvm_config) = self.llvm_config(target) {
                 let llvm_libdir = output(Command::new(&llvm_config).arg("--libdir"));
                 add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cargo);
