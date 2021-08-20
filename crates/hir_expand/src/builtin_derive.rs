@@ -2,6 +2,7 @@
 
 use log::debug;
 
+use mbe::ExpandResult;
 use parser::FragmentKind;
 use syntax::{
     ast::{self, AstNode, GenericParamsOwner, ModuleItemOwner, NameOwner},
@@ -23,7 +24,7 @@ macro_rules! register_builtin {
                 db: &dyn AstDatabase,
                 id: MacroCallId,
                 tt: &tt::Subtree,
-            ) -> Result<tt::Subtree, mbe::ExpandError> {
+            ) -> ExpandResult<tt::Subtree> {
                 let expander = match *self {
                     $( BuiltinDeriveExpander::$trait => $expand, )*
                 };
@@ -147,11 +148,11 @@ fn make_type_args(n: usize, bound: Vec<tt::TokenTree>) -> Vec<tt::TokenTree> {
     result
 }
 
-fn expand_simple_derive(
-    tt: &tt::Subtree,
-    trait_path: tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
-    let info = parse_adt(tt)?;
+fn expand_simple_derive(tt: &tt::Subtree, trait_path: tt::Subtree) -> ExpandResult<tt::Subtree> {
+    let info = match parse_adt(tt) {
+        Ok(info) => info,
+        Err(e) => return ExpandResult::only_err(e),
+    };
     let name = info.name;
     let trait_path_clone = trait_path.token_trees.clone();
     let bound = (quote! { : ##trait_path_clone }).token_trees;
@@ -161,7 +162,7 @@ fn expand_simple_derive(
     let expanded = quote! {
         impl ##type_params ##trait_path for #name ##type_args {}
     };
-    Ok(expanded)
+    ExpandResult::ok(expanded)
 }
 
 fn find_builtin_crate(db: &dyn AstDatabase, id: MacroCallId) -> tt::TokenTree {
@@ -186,7 +187,7 @@ fn copy_expand(
     db: &dyn AstDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
+) -> ExpandResult<tt::Subtree> {
     let krate = find_builtin_crate(db, id);
     expand_simple_derive(tt, quote! { #krate::marker::Copy })
 }
@@ -195,7 +196,7 @@ fn clone_expand(
     db: &dyn AstDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
+) -> ExpandResult<tt::Subtree> {
     let krate = find_builtin_crate(db, id);
     expand_simple_derive(tt, quote! { #krate::clone::Clone })
 }
@@ -204,7 +205,7 @@ fn default_expand(
     db: &dyn AstDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
+) -> ExpandResult<tt::Subtree> {
     let krate = find_builtin_crate(db, id);
     expand_simple_derive(tt, quote! { #krate::default::Default })
 }
@@ -213,7 +214,7 @@ fn debug_expand(
     db: &dyn AstDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
+) -> ExpandResult<tt::Subtree> {
     let krate = find_builtin_crate(db, id);
     expand_simple_derive(tt, quote! { #krate::fmt::Debug })
 }
@@ -222,16 +223,12 @@ fn hash_expand(
     db: &dyn AstDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
+) -> ExpandResult<tt::Subtree> {
     let krate = find_builtin_crate(db, id);
     expand_simple_derive(tt, quote! { #krate::hash::Hash })
 }
 
-fn eq_expand(
-    db: &dyn AstDatabase,
-    id: MacroCallId,
-    tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
+fn eq_expand(db: &dyn AstDatabase, id: MacroCallId, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
     let krate = find_builtin_crate(db, id);
     expand_simple_derive(tt, quote! { #krate::cmp::Eq })
 }
@@ -240,7 +237,7 @@ fn partial_eq_expand(
     db: &dyn AstDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
+) -> ExpandResult<tt::Subtree> {
     let krate = find_builtin_crate(db, id);
     expand_simple_derive(tt, quote! { #krate::cmp::PartialEq })
 }
@@ -249,7 +246,7 @@ fn ord_expand(
     db: &dyn AstDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
+) -> ExpandResult<tt::Subtree> {
     let krate = find_builtin_crate(db, id);
     expand_simple_derive(tt, quote! { #krate::cmp::Ord })
 }
@@ -258,7 +255,7 @@ fn partial_ord_expand(
     db: &dyn AstDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
+) -> ExpandResult<tt::Subtree> {
     let krate = find_builtin_crate(db, id);
     expand_simple_derive(tt, quote! { #krate::cmp::PartialOrd })
 }

@@ -60,7 +60,7 @@ impl TokenExpander {
                     mbe::ExpandError::Other("No item argument for attribute".to_string()).into(),
                 ),
             },
-            TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt).into(),
+            TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt),
             TokenExpander::ProcMacro(_) => {
                 // We store the result in salsa db to prevent non-deterministic behavior in
                 // some proc-macro implementation
