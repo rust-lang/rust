@@ -17,11 +17,12 @@ macro_rules! register_builtin {
                 db: &dyn AstDatabase,
                 id: MacroCallId,
                 tt: &tt::Subtree,
+                item: &tt::Subtree,
             ) -> Result<tt::Subtree, mbe::ExpandError> {
                 let expander = match *self {
                     $( BuiltinAttrExpander::$variant => $expand, )*
                 };
-                expander(db, id, tt)
+                expander(db, id, tt, item)
             }
 
             fn find_by_name(name: &name::Name) -> Option<Self> {
@@ -61,7 +62,8 @@ pub fn find_builtin_attr(
 fn dummy_attr_expand(
     _db: &dyn AstDatabase,
     _id: MacroCallId,
-    tt: &tt::Subtree,
+    _tt: &tt::Subtree,
+    item: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
-    Ok(tt.clone())
+    Ok(item.clone())
 }

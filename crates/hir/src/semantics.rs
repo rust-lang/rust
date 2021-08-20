@@ -173,6 +173,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.descend_node_at_offset(node, offset).find_map(N::cast)
     }
 
+    pub fn hir_file_for(&self, syntax_node: &SyntaxNode) -> HirFileId {
+        self.imp.find_file(syntax_node.clone()).file_id
+    }
+
     pub fn original_range(&self, node: &SyntaxNode) -> FileRange {
         self.imp.original_range(node)
     }

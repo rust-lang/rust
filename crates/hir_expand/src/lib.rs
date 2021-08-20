@@ -22,7 +22,7 @@ use either::Either;
 pub use mbe::{ExpandError, ExpandResult};
 pub use parser::FragmentKind;
 
-use std::{hash::Hash, sync::Arc};
+use std::{hash::Hash, iter, sync::Arc};
 
 use base_db::{impl_intern_key, salsa, CrateId, FileId, FileRange};
 use syntax::{
@@ -454,7 +454,7 @@ impl InFile<SyntaxNode> {
         self,
         db: &dyn db::AstDatabase,
     ) -> impl Iterator<Item = InFile<SyntaxNode>> + '_ {
-        std::iter::successors(Some(self), move |node| match node.value.parent() {
+        iter::successors(Some(self), move |node| match node.value.parent() {
             Some(parent) => Some(node.with_value(parent)),
             None => {
                 let parent_node = node.file_id.call_node(db)?;
@@ -561,6 +561,23 @@ impl<N: AstNode> InFile<N> {
 
     pub fn syntax(&self) -> InFile<&SyntaxNode> {
         self.with_value(self.value.syntax())
+    }
+
+    pub fn nodes_with_attributes<'db>(
+        self,
+        db: &'db dyn db::AstDatabase,
+    ) -> impl Iterator<Item = InFile<N>> + 'db
+    where
+        N: 'db,
+    {
+        iter::successors(Some(self), move |node| {
+            let InFile { file_id, value } = node.file_id.call_node(db)?;
+            N::cast(value).map(|n| InFile::new(file_id, n))
+        })
+    }
+
+    pub fn node_with_attributes(self, db: &dyn db::AstDatabase) -> InFile<N> {
+        self.nodes_with_attributes(db).last().unwrap()
     }
 }
 
