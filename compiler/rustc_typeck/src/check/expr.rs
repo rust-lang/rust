@@ -313,6 +313,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => NoExpectation,
         });
         let referent_ty = self.check_expr_with_expectation(expr, expected_inner);
+        self.require_type_is_sized(referent_ty, expr.span, traits::SizedBoxType);
         self.tcx.mk_box(referent_ty)
     }
 

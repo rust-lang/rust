@@ -1,8 +1,8 @@
-error[E0161]: cannot move a value of type [i32]: the size of [i32] cannot be statically determined
-  --> $DIR/E0161.rs:22:9
+error[E0161]: cannot move a value of type dyn Bar: the size of dyn Bar cannot be statically determined
+  --> $DIR/E0161.rs:29:5
    |
-LL |     box *x;
-   |         ^^
+LL |     x.f();
+   |     ^
 
 error: aborting due to previous error
 
