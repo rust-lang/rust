@@ -1,6 +1,7 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::undo_log::UndoLogs;
-use rustc_middle::ty::{OpaqueTypeKey, Ty};
+use rustc_middle::ty::{self, OpaqueTypeKey, Ty};
+use rustc_span::DUMMY_SP;
 
 use crate::infer::InferCtxtUndoLogs;
 
@@ -59,7 +60,11 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
 
 impl<'tcx> Drop for OpaqueTypeStorage<'tcx> {
     fn drop(&mut self) {
-        assert!(self.opaque_types.is_empty(), "{:?}", self.opaque_types);
+        if !self.opaque_types.is_empty() {
+            ty::tls::with(|tcx| {
+                tcx.sess.delay_span_bug(DUMMY_SP, &format!("{:?}", self.opaque_types))
+            });
+        }
     }
 }
 
