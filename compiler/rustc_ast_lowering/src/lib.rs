@@ -760,6 +760,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         result
     }
 
+    /// Intercept all spans entering HIR.
+    /// For now we are not doing anything with the intercepted spans.
+    fn lower_span(&self, span: Span) -> Span {
+        span
+    }
+
+    fn lower_ident(&self, ident: Ident) -> Ident {
+        Ident::new(ident.name, self.lower_span(ident.span))
+    }
+
     /// Creates a new `hir::GenericParam` for every new lifetime and
     /// type parameter encountered while evaluating `f`. Definitions
     /// are created with the parent provided. If no `parent_id` is
@@ -828,7 +838,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir_id: self.lower_node_id(node_id),
             name: hir_name,
             bounds: &[],
-            span,
+            span: self.lower_span(span),
             pure_wrt_drop: false,
             kind: hir::GenericParamKind::Lifetime { kind },
         }
@@ -989,7 +999,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AttrKind::DocComment(comment_kind, data) => AttrKind::DocComment(comment_kind, data),
         };
 
-        Attribute { kind, id: attr.id, style: attr.style, span: attr.span }
+        Attribute { kind, id: attr.id, style: attr.style, span: self.lower_span(attr.span) }
     }
 
     fn alias_attrs(&mut self, id: hir::HirId, target_id: hir::HirId) {
@@ -1117,7 +1127,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     .0
                 }
             };
-            self.arena.alloc(gen_args_ctor.into_generic_args(&self.arena))
+            gen_args_ctor.into_generic_args(self)
         } else {
             self.arena.alloc(hir::GenericArgs::none())
         };
@@ -1198,7 +1208,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             &Ty {
                                 id: node_id,
                                 kind: TyKind::ImplTrait(impl_trait_node_id, bounds.clone()),
-                                span: constraint.span,
+                                span: this.lower_span(constraint.span),
                                 tokens: None,
                             },
                             itctx,
@@ -1218,10 +1228,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         hir::TypeBinding {
             hir_id: self.lower_node_id(constraint.id),
-            ident: constraint.ident,
+            ident: self.lower_ident(constraint.ident),
             gen_args,
             kind,
-            span: constraint.span,
+            span: self.lower_span(constraint.span),
         }
     }
 
@@ -1235,10 +1245,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ast::GenericArg::Type(ty) => {
                 match ty.kind {
                     TyKind::Infer if self.sess.features_untracked().generic_arg_infer => {
-                        let hir_id = self.lower_node_id(ty.id);
                         return GenericArg::Infer(hir::InferArg {
-                            hir_id,
-                            span: ty.span,
+                            hir_id: self.lower_node_id(ty.id),
+                            span: self.lower_span(ty.span),
                             kind: InferKind::Type,
                         });
                     }
@@ -1269,10 +1278,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     ty.span,
                                 );
 
+                                let span = self.lower_span(ty.span);
                                 let path_expr = Expr {
                                     id: ty.id,
                                     kind: ExprKind::Path(qself.clone(), path.clone()),
-                                    span: ty.span,
+                                    span,
                                     attrs: AttrVec::new(),
                                     tokens: None,
                                 };
@@ -1281,7 +1291,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     hir_id: this.lower_node_id(node_id),
                                     body: this.lower_const_body(path_expr.span, Some(&path_expr)),
                                 });
-                                return GenericArg::Const(ConstArg { value: ct, span: ty.span });
+                                return GenericArg::Const(ConstArg { value: ct, span });
                             }
                         }
                     }
@@ -1291,7 +1301,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             ast::GenericArg::Const(ct) => GenericArg::Const(ConstArg {
                 value: self.lower_anon_const(&ct),
-                span: ct.value.span,
+                span: self.lower_span(ct.value.span),
             }),
         }
     }
@@ -1318,7 +1328,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn ty(&mut self, span: Span, kind: hir::TyKind<'hir>) -> hir::Ty<'hir> {
-        hir::Ty { hir_id: self.next_id(), kind, span }
+        hir::Ty { hir_id: self.next_id(), kind, span: self.lower_span(span) }
     }
 
     fn ty_tup(&mut self, span: Span, tys: &'hir [hir::Ty<'hir>]) -> hir::Ty<'hir> {
@@ -1386,7 +1396,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         segments: arena_vec![self; hir::PathSegment::from_ident(
                             Ident::with_dummy_span(kw::SelfUpper)
                         )],
-                        span: t.span,
+                        span: self.lower_span(t.span),
                     }),
                 ))
             }
@@ -1467,10 +1477,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
                         in_band_ty_params.push(hir::GenericParam {
                             hir_id: self.lower_node_id(def_node_id),
-                            name: ParamName::Plain(ident),
+                            name: ParamName::Plain(self.lower_ident(ident)),
                             pure_wrt_drop: false,
                             bounds: hir_bounds,
-                            span,
+                            span: self.lower_span(span),
                             kind: hir::GenericParamKind::Type {
                                 default: None,
                                 synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
@@ -1480,9 +1490,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         hir::TyKind::Path(hir::QPath::Resolved(
                             None,
                             self.arena.alloc(hir::Path {
-                                span,
+                                span: self.lower_span(span),
                                 res: Res::Def(DefKind::TyParam, def_id.to_def_id()),
-                                segments: arena_vec![self; hir::PathSegment::from_ident(ident)],
+                                segments: arena_vec![self; hir::PathSegment::from_ident(self.lower_ident(ident))],
                             }),
                         ))
                     }
@@ -1509,7 +1519,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         };
 
-        hir::Ty { kind, span: t.span, hir_id: self.lower_node_id(t.id) }
+        hir::Ty { kind, span: self.lower_span(t.span), hir_id: self.lower_node_id(t.id) }
     }
 
     fn lower_opaque_impl_trait(
@@ -1554,8 +1564,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let opaque_ty_item = hir::OpaqueTy {
                 generics: hir::Generics {
                     params: lifetime_defs,
-                    where_clause: hir::WhereClause { predicates: &[], span },
-                    span,
+                    where_clause: hir::WhereClause { predicates: &[], span: lctx.lower_span(span) },
+                    span: lctx.lower_span(span),
                 },
                 bounds: hir_bounds,
                 impl_trait_fn: fn_def_id,
@@ -1586,8 +1596,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             def_id: opaque_ty_id,
             ident: Ident::invalid(),
             kind: opaque_ty_item_kind,
-            vis: respan(span.shrink_to_lo(), hir::VisibilityKind::Inherited),
-            span: opaque_ty_span,
+            vis: respan(self.lower_span(span.shrink_to_lo()), hir::VisibilityKind::Inherited),
+            span: self.lower_span(opaque_ty_span),
         };
 
         // Insert the item into the global item list. This usually happens
@@ -1714,7 +1724,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                     self.output_lifetimes.push(hir::GenericArg::Lifetime(hir::Lifetime {
                         hir_id: self.context.next_id(),
-                        span: lifetime.span,
+                        span: self.context.lower_span(lifetime.span),
                         name,
                     }));
 
@@ -1739,11 +1749,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                         _ => panic!("expected `LifetimeName::Param` or `ParamName::Plain`"),
                     };
+                    let name = match name {
+                        hir::ParamName::Plain(ident) => {
+                            hir::ParamName::Plain(self.context.lower_ident(ident))
+                        }
+                        name => name,
+                    };
 
                     self.output_lifetime_params.push(hir::GenericParam {
                         hir_id,
                         name,
-                        span: lifetime.span,
+                        span: self.context.lower_span(lifetime.span),
                         pure_wrt_drop: false,
                         bounds: &[],
                         kind: hir::GenericParamKind::Lifetime { kind },
@@ -1790,7 +1806,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ty,
             pat: self.lower_pat(&l.pat),
             init,
-            span: l.span,
+            span: self.lower_span(l.span),
             source: hir::LocalSource::Normal,
         }
     }
@@ -1804,8 +1820,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             inputs = &inputs[..inputs.len() - 1];
         }
         self.arena.alloc_from_iter(inputs.iter().map(|param| match param.pat.kind {
-            PatKind::Ident(_, ident, _) => ident,
-            _ => Ident::new(kw::Empty, param.pat.span),
+            PatKind::Ident(_, ident, _) => self.lower_ident(ident),
+            _ => Ident::new(kw::Empty, self.lower_span(param.pat.span)),
         }))
     }
 
@@ -1889,7 +1905,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     };
                     hir::FnRetTy::Return(self.lower_ty(ty, context))
                 }
-                FnRetTy::Default(span) => hir::FnRetTy::DefaultReturn(span),
+                FnRetTy::Default(span) => hir::FnRetTy::DefaultReturn(self.lower_span(span)),
             }
         };
 
@@ -2046,8 +2062,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let opaque_ty_item = hir::OpaqueTy {
                 generics: hir::Generics {
                     params: generic_params,
-                    where_clause: hir::WhereClause { predicates: &[], span },
-                    span,
+                    where_clause: hir::WhereClause { predicates: &[], span: this.lower_span(span) },
+                    span: this.lower_span(span),
                 },
                 bounds: arena_vec![this; future_bound],
                 impl_trait_fn: Some(fn_def_id),
@@ -2082,7 +2098,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // Input lifetime like `'a` or `'1`:
                 GenericArg::Lifetime(hir::Lifetime {
                     hir_id: self.next_id(),
-                    span,
+                    span: self.lower_span(span),
                     name: hir::LifetimeName::Param(hir_name),
                 })
             },
@@ -2091,7 +2107,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // Output lifetime like `'_`.
             GenericArg::Lifetime(hir::Lifetime {
                 hir_id: self.next_id(),
-                span,
+                span: self.lower_span(span),
                 name: hir::LifetimeName::Implicit,
             })));
         let generic_args = self.arena.alloc_from_iter(generic_args);
@@ -2139,7 +2155,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::GenericBound::LangItemTrait(
             // ::std::future::Future<future_params>
             hir::LangItem::Future,
-            span,
+            self.lower_span(span),
             self.next_id(),
             future_args,
         )
@@ -2162,7 +2178,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_lifetime(&mut self, l: &Lifetime) -> hir::Lifetime {
-        let span = l.ident.span;
+        let span = self.lower_span(l.ident.span);
         match l.ident {
             ident if ident.name == kw::StaticLifetime => {
                 self.new_named_lifetime(l.id, span, hir::LifetimeName::Static)
@@ -2181,7 +2197,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             },
             ident => {
                 self.maybe_collect_in_band_lifetime(ident);
-                let param_name = ParamName::Plain(ident);
+                let param_name = ParamName::Plain(self.lower_ident(ident));
                 self.new_named_lifetime(l.id, span, hir::LifetimeName::Param(param_name))
             }
         }
@@ -2193,7 +2209,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         name: hir::LifetimeName,
     ) -> hir::Lifetime {
-        hir::Lifetime { hir_id: self.lower_node_id(id), span, name }
+        hir::Lifetime { hir_id: self.lower_node_id(id), span: self.lower_span(span), name }
     }
 
     fn lower_generic_params_mut<'s>(
@@ -2276,7 +2292,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         .next(),
                 };
 
-                (hir::ParamName::Plain(param.ident), kind)
+                (hir::ParamName::Plain(self.lower_ident(param.ident)), kind)
             }
             GenericParamKind::Const { ref ty, kw_span: _, ref default } => {
                 let ty = self
@@ -2284,8 +2300,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         this.lower_ty(&ty, ImplTraitContext::disallowed())
                     });
                 let default = default.as_ref().map(|def| self.lower_anon_const(def));
-                (hir::ParamName::Plain(param.ident), hir::GenericParamKind::Const { ty, default })
+                (
+                    hir::ParamName::Plain(self.lower_ident(param.ident)),
+                    hir::GenericParamKind::Const { ty, default },
+                )
             }
+        };
+        let name = match name {
+            hir::ParamName::Plain(ident) => hir::ParamName::Plain(self.lower_ident(ident)),
+            name => name,
         };
 
         let hir_id = self.lower_node_id(param.id);
@@ -2293,7 +2316,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::GenericParam {
             hir_id,
             name,
-            span: param.ident.span,
+            span: self.lower_span(param.ident.span),
             pure_wrt_drop: self.sess.contains_name(&param.attrs, sym::may_dangle),
             bounds: self.arena.alloc_from_iter(bounds),
             kind,
@@ -2350,7 +2373,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             res
         });
 
-        hir::PolyTraitRef { bound_generic_params, trait_ref, span: p.span }
+        hir::PolyTraitRef { bound_generic_params, trait_ref, span: self.lower_span(p.span) }
     }
 
     fn lower_mt(&mut self, mt: &MutTy, itctx: ImplTraitContext<'_, 'hir>) -> hir::MutTy<'hir> {
@@ -2387,7 +2410,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let rules = self.lower_block_check_mode(&b.rules);
         let hir_id = self.lower_node_id(b.id);
 
-        hir::Block { hir_id, stmts, expr, rules, span: b.span, targeted_by_break }
+        hir::Block { hir_id, stmts, expr, rules, span: self.lower_span(b.span), targeted_by_break }
     }
 
     /// Lowers a block directly to an expression, presuming that it
@@ -2413,7 +2436,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 return smallvec![hir::Stmt {
                     hir_id,
                     kind: hir::StmtKind::Local(self.arena.alloc(l)),
-                    span: s.span,
+                    span: self.lower_span(s.span),
                 }];
             }
             StmtKind::Item(ref it) => {
@@ -2428,7 +2451,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             .map(|id| self.lower_node_id(id))
                             .unwrap_or_else(|| self.next_id());
 
-                        hir::Stmt { hir_id, kind: hir::StmtKind::Item(item_id), span: s.span }
+                        hir::Stmt {
+                            hir_id,
+                            kind: hir::StmtKind::Item(item_id),
+                            span: self.lower_span(s.span),
+                        }
                     })
                     .collect();
             }
@@ -2447,7 +2474,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             StmtKind::Empty => return smallvec![],
             StmtKind::MacCall(..) => panic!("shouldn't exist here"),
         };
-        smallvec![hir::Stmt { hir_id, kind, span: s.span }]
+        smallvec![hir::Stmt { hir_id, kind, span: self.lower_span(s.span) }]
     }
 
     fn lower_block_check_mode(&mut self, b: &BlockCheckMode) -> hir::BlockCheckMode {
@@ -2482,7 +2509,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // Helper methods for building HIR.
 
     fn stmt(&mut self, span: Span, kind: hir::StmtKind<'hir>) -> hir::Stmt<'hir> {
-        hir::Stmt { span, kind, hir_id: self.next_id() }
+        hir::Stmt { span: self.lower_span(span), kind, hir_id: self.next_id() }
     }
 
     fn stmt_expr(&mut self, span: Span, expr: hir::Expr<'hir>) -> hir::Stmt<'hir> {
@@ -2502,7 +2529,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug_assert!(!a.is_empty());
             self.attrs.insert(hir_id, a);
         }
-        let local = hir::Local { hir_id, init, pat, source, span, ty: None };
+        let local = hir::Local { hir_id, init, pat, source, span: self.lower_span(span), ty: None };
         self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local)))
     }
 
@@ -2521,7 +2548,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             expr,
             hir_id: self.next_id(),
             rules: hir::BlockCheckMode::DefaultBlock,
-            span,
+            span: self.lower_span(span),
             targeted_by_break: false,
         };
         self.arena.alloc(blk)
@@ -2553,10 +2580,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> &'hir [hir::PatField<'hir>] {
         let field = hir::PatField {
             hir_id: self.next_id(),
-            ident: Ident::new(sym::integer(0), span),
+            ident: Ident::new(sym::integer(0), self.lower_span(span)),
             is_shorthand: false,
             pat,
-            span,
+            span: self.lower_span(span),
         };
         arena_vec![self; field]
     }
@@ -2567,7 +2594,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         lang_item: hir::LangItem,
         fields: &'hir [hir::PatField<'hir>],
     ) -> &'hir hir::Pat<'hir> {
-        let qpath = hir::QPath::LangItem(lang_item, span);
+        let qpath = hir::QPath::LangItem(lang_item, self.lower_span(span));
         self.pat(span, hir::PatKind::Struct(qpath, fields, false))
     }
 
@@ -2600,8 +2627,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         (
             hir::Pat {
                 hir_id,
-                kind: hir::PatKind::Binding(bm, hir_id, ident.with_span_pos(span), None),
-                span,
+                kind: hir::PatKind::Binding(bm, hir_id, self.lower_ident(ident), None),
+                span: self.lower_span(span),
                 default_binding_modes: true,
             },
             hir_id,
@@ -2612,13 +2639,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(hir::Pat {
             hir_id: self.next_id(),
             kind,
-            span,
+            span: self.lower_span(span),
             default_binding_modes: true,
         })
     }
 
     fn pat_without_dbm(&mut self, span: Span, kind: hir::PatKind<'hir>) -> hir::Pat<'hir> {
-        hir::Pat { hir_id: self.next_id(), kind, span, default_binding_modes: false }
+        hir::Pat {
+            hir_id: self.next_id(),
+            kind,
+            span: self.lower_span(span),
+            default_binding_modes: false,
+        }
     }
 
     fn ty_path(
@@ -2635,7 +2667,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         let principal = hir::PolyTraitRef {
                             bound_generic_params: &[],
                             trait_ref: hir::TraitRef { path, hir_ref_id: hir_id },
-                            span,
+                            span: self.lower_span(span),
                         };
 
                         // The original ID is taken by the `PolyTraitRef`,
@@ -2653,7 +2685,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             _ => hir::TyKind::Path(qpath),
         };
 
-        hir::Ty { hir_id, kind, span }
+        hir::Ty { hir_id, kind, span: self.lower_span(span) }
     }
 
     /// Invoked to create the lifetime argument for a type `&T`
@@ -2668,7 +2700,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let fresh_name = self.collect_fresh_in_band_lifetime(span);
                 hir::Lifetime {
                     hir_id: self.next_id(),
-                    span,
+                    span: self.lower_span(span),
                     name: hir::LifetimeName::Param(fresh_name),
                 }
             }
@@ -2763,7 +2795,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let r = hir::Lifetime {
             hir_id: self.next_id(),
-            span,
+            span: self.lower_span(span),
             name: hir::LifetimeName::ImplicitObjectLifetimeDefault,
         };
         debug!("elided_dyn_bound: r={:?}", r);
@@ -2771,7 +2803,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn new_implicit_lifetime(&mut self, span: Span) -> hir::Lifetime {
-        hir::Lifetime { hir_id: self.next_id(), span, name: hir::LifetimeName::Implicit }
+        hir::Lifetime {
+            hir_id: self.next_id(),
+            span: self.lower_span(span),
+            name: hir::LifetimeName::Implicit,
+        }
     }
 
     fn maybe_lint_bare_trait(&mut self, span: Span, id: NodeId, is_global: bool) {
@@ -2849,12 +2885,13 @@ impl<'hir> GenericArgsCtor<'hir> {
         self.args.is_empty() && self.bindings.is_empty() && !self.parenthesized
     }
 
-    fn into_generic_args(self, arena: &'hir Arena<'hir>) -> hir::GenericArgs<'hir> {
-        hir::GenericArgs {
-            args: arena.alloc_from_iter(self.args),
+    fn into_generic_args(self, this: &LoweringContext<'_, 'hir>) -> &'hir hir::GenericArgs<'hir> {
+        let ga = hir::GenericArgs {
+            args: this.arena.alloc_from_iter(self.args),
             bindings: self.bindings,
             parenthesized: self.parenthesized,
-            span_ext: self.span,
-        }
+            span_ext: this.lower_span(self.span),
+        };
+        this.arena.alloc(ga)
     }
 }
