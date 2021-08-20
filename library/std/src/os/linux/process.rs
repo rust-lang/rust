@@ -3,7 +3,7 @@
 #![unstable(feature = "linux_pidfd", issue = "82971")]
 
 use crate::io::Result;
-use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
+use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::process;
 use crate::sealed::Sealed;
 #[cfg(not(doc))]
@@ -69,19 +69,37 @@ impl IntoInner<FileDesc> for PidFd {
 
 impl AsRawFd for PidFd {
     fn as_raw_fd(&self) -> RawFd {
-        self.as_inner().raw()
+        self.as_inner().as_raw_fd()
     }
 }
 
 impl FromRawFd for PidFd {
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
-        Self::from_inner(FileDesc::new(fd))
+        Self::from_inner(FileDesc::from_raw_fd(fd))
     }
 }
 
 impl IntoRawFd for PidFd {
     fn into_raw_fd(self) -> RawFd {
-        self.into_inner().into_raw()
+        self.into_inner().into_raw_fd()
+    }
+}
+
+impl AsFd for PidFd {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.as_inner().as_fd()
+    }
+}
+
+impl From<OwnedFd> for PidFd {
+    fn from(fd: OwnedFd) -> Self {
+        Self::from_inner(FileDesc::from_inner(fd))
+    }
+}
+
+impl From<PidFd> for OwnedFd {
+    fn from(pid_fd: PidFd) -> Self {
+        pid_fd.into_inner().into_inner()
     }
 }
 

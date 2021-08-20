@@ -1,6 +1,7 @@
 use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZeroUsize;
+use crate::os::windows::io::{AsRawHandle, FromRawHandle};
 use crate::ptr;
 use crate::sys::c;
 use crate::sys::handle::Handle;
@@ -45,7 +46,7 @@ impl Thread {
             drop(Box::from_raw(p));
             Err(io::Error::last_os_error())
         } else {
-            Ok(Thread { handle: Handle::new(ret) })
+            Ok(Thread { handle: Handle::from_raw_handle(ret) })
         };
 
         extern "system" fn thread_start(main: *mut c_void) -> c::DWORD {
@@ -71,7 +72,7 @@ impl Thread {
     }
 
     pub fn join(self) {
-        let rc = unsafe { c::WaitForSingleObject(self.handle.raw(), c::INFINITE) };
+        let rc = unsafe { c::WaitForSingleObject(self.handle.as_raw_handle(), c::INFINITE) };
         if rc == c::WAIT_FAILED {
             panic!("failed to join on thread: {}", io::Error::last_os_error());
         }

@@ -97,7 +97,9 @@ impl Command {
         drop(env_lock);
         drop(output);
 
-        let mut p = Process::new(pid, pidfd);
+        // Safety: We obtained the pidfd from calling `clone3` with
+        // `CLONE_PIDFD` so it's valid an otherwise unowned.
+        let mut p = unsafe { Process::new(pid, pidfd) };
         let mut bytes = [0; 8];
 
         // loop to handle EINTR
@@ -446,7 +448,8 @@ impl Command {
             None => None,
         };
 
-        let mut p = Process::new(0, -1);
+        // Safety: -1 indicates we don't have a pidfd.
+        let mut p = unsafe { Process::new(0, -1) };
 
         struct PosixSpawnFileActions<'a>(&'a mut MaybeUninit<libc::posix_spawn_file_actions_t>);
 
@@ -545,14 +548,17 @@ pub struct Process {
 
 impl Process {
     #[cfg(target_os = "linux")]
-    fn new(pid: pid_t, pidfd: pid_t) -> Self {
+    unsafe fn new(pid: pid_t, pidfd: pid_t) -> Self {
+        use crate::os::unix::io::FromRawFd;
         use crate::sys_common::FromInner;
-        let pidfd = (pidfd >= 0).then(|| PidFd::from_inner(sys::fd::FileDesc::new(pidfd)));
+        // Safety: If `pidfd` is nonnegative, we assume it's valid and otherwise unowned.
+        let pidfd = (pidfd >= 0)
+            .then(|| PidFd::from_inner(unsafe { sys::fd::FileDesc::from_raw_fd(pidfd) }));
         Process { pid, status: None, pidfd }
     }
 
     #[cfg(not(target_os = "linux"))]
-    fn new(pid: pid_t, _pidfd: pid_t) -> Self {
+    unsafe fn new(pid: pid_t, _pidfd: pid_t) -> Self {
         Process { pid, status: None }
     }
 

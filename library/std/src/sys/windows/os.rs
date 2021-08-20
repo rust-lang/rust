@@ -288,7 +288,7 @@ fn home_dir_crt() -> Option<PathBuf> {
         if c::OpenProcessToken(me, c::TOKEN_READ, &mut token) == 0 {
             return None;
         }
-        let _handle = Handle::new(token);
+        let _handle = Handle::from_raw_handle(token);
         super::fill_utf16_buf(
             |buf, mut sz| {
                 match c::GetUserProfileDirectoryW(token, buf, &mut sz) {

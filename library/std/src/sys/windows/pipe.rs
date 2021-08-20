@@ -12,6 +12,7 @@ use crate::sys::c;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
 use crate::sys::hashmap_random_keys;
+use crate::sys_common::IntoInner;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Anonymous pipes
@@ -19,6 +20,12 @@ use crate::sys::hashmap_random_keys;
 
 pub struct AnonPipe {
     inner: Handle,
+}
+
+impl IntoInner<Handle> for AnonPipe {
+    fn into_inner(self) -> Handle {
+        self.inner
+    }
 }
 
 pub struct Pipes {
@@ -123,7 +130,7 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
                 }
                 return Err(err);
             }
-            ours = Handle::new(handle);
+            ours = Handle::from_raw_handle(handle);
             break;
         }
 
@@ -146,11 +153,11 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
         };
         opts.security_attributes(&mut sa);
         let theirs = File::open(Path::new(&name), &opts)?;
-        let theirs = AnonPipe { inner: theirs.into_handle() };
+        let theirs = AnonPipe { inner: theirs.into_inner() };
 
         Ok(Pipes {
             ours: AnonPipe { inner: ours },
-            theirs: AnonPipe { inner: theirs.into_handle() },
+            theirs: AnonPipe { inner: theirs.into_inner() },
         })
     }
 }
@@ -207,7 +214,7 @@ pub fn read2(p1: AnonPipe, v1: &mut Vec<u8>, p2: AnonPipe, v2: &mut Vec<u8>) -> 
 
     let mut p1 = AsyncPipe::new(p1, v1)?;
     let mut p2 = AsyncPipe::new(p2, v2)?;
-    let objs = [p1.event.raw(), p2.event.raw()];
+    let objs = [p1.event.as_raw_handle(), p2.event.as_raw_handle()];
 
     // In a loop we wait for either pipe's scheduled read operation to complete.
     // If the operation completes with 0 bytes, that means EOF was reached, in
@@ -262,7 +269,7 @@ impl<'a> AsyncPipe<'a> {
         // I/O operation is successfully scheduled (what we want).
         let event = Handle::new_event(true, true)?;
         let mut overlapped: Box<c::OVERLAPPED> = unsafe { Box::new(mem::zeroed()) };
-        overlapped.hEvent = event.raw();
+        overlapped.hEvent = event.as_raw_handle();
         Ok(AsyncPipe { pipe, overlapped, event, dst, state: State::NotReading })
     }
 

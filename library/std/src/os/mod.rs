@@ -121,3 +121,6 @@ mod imp {
 #[cfg(not(doc))]
 #[stable(feature = "os", since = "1.0.0")]
 pub use imp::*;
+
+#[cfg(any(unix, target_os = "wasi", doc))]
+mod fd;

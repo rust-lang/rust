@@ -1,7 +1,9 @@
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::mem;
+use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys::fd::FileDesc;
 use crate::sys::{cvt, cvt_r};
+use crate::sys_common::IntoInner;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Anonymous pipes
@@ -24,16 +26,20 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
             target_os = "openbsd",
             target_os = "redox"
         ))] {
-            cvt(unsafe { libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC) })?;
-            Ok((AnonPipe(FileDesc::new(fds[0])), AnonPipe(FileDesc::new(fds[1]))))
+            unsafe {
+                cvt(libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC))?;
+                Ok((AnonPipe(FileDesc::from_raw_fd(fds[0])), AnonPipe(FileDesc::from_raw_fd(fds[1]))))
+            }
         } else {
-            cvt(unsafe { libc::pipe(fds.as_mut_ptr()) })?;
+            unsafe {
+                cvt(libc::pipe(fds.as_mut_ptr()))?;
 
-            let fd0 = FileDesc::new(fds[0]);
-            let fd1 = FileDesc::new(fds[1]);
-            fd0.set_cloexec()?;
-            fd1.set_cloexec()?;
-            Ok((AnonPipe(fd0), AnonPipe(fd1)))
+                let fd0 = FileDesc::from_raw_fd(fds[0]);
+                let fd1 = FileDesc::from_raw_fd(fds[1]);
+                fd0.set_cloexec()?;
+                fd1.set_cloexec()?;
+                Ok((AnonPipe(fd0), AnonPipe(fd1)))
+            }
         }
     }
 }
@@ -64,11 +70,10 @@ impl AnonPipe {
     pub fn is_write_vectored(&self) -> bool {
         self.0.is_write_vectored()
     }
+}
 
-    pub fn fd(&self) -> &FileDesc {
-        &self.0
-    }
-    pub fn into_fd(self) -> FileDesc {
+impl IntoInner<FileDesc> for AnonPipe {
+    fn into_inner(self) -> FileDesc {
         self.0
     }
 }
@@ -76,15 +81,15 @@ impl AnonPipe {
 pub fn read2(p1: AnonPipe, v1: &mut Vec<u8>, p2: AnonPipe, v2: &mut Vec<u8>) -> io::Result<()> {
     // Set both pipes into nonblocking mode as we're gonna be reading from both
     // in the `select` loop below, and we wouldn't want one to block the other!
-    let p1 = p1.into_fd();
-    let p2 = p2.into_fd();
+    let p1 = p1.into_inner();
+    let p2 = p2.into_inner();
     p1.set_nonblocking(true)?;
     p2.set_nonblocking(true)?;
 
     let mut fds: [libc::pollfd; 2] = unsafe { mem::zeroed() };
-    fds[0].fd = p1.raw();
+    fds[0].fd = p1.as_raw_fd();
     fds[0].events = libc::POLLIN;
-    fds[1].fd = p2.raw();
+    fds[1].fd = p2.as_raw_fd();
     fds[1].events = libc::POLLIN;
     loop {
         // wait for either pipe to become readable using `poll`
@@ -118,5 +123,29 @@ pub fn read2(p1: AnonPipe, v1: &mut Vec<u8>, p2: AnonPipe, v2: &mut Vec<u8>) -> 
                 }
             }
         }
+    }
+}
+
+impl AsRawFd for AnonPipe {
+    fn as_raw_fd(&self) -> RawFd {
+        self.0.as_raw_fd()
+    }
+}
+
+impl AsFd for AnonPipe {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.0.as_fd()
+    }
+}
+
+impl IntoRawFd for AnonPipe {
+    fn into_raw_fd(self) -> RawFd {
+        self.0.into_raw_fd()
+    }
+}
+
+impl FromRawFd for AnonPipe {
+    unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
+        Self(FromRawFd::from_raw_fd(raw_fd))
     }
 }

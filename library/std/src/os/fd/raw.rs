@@ -1,23 +1,25 @@
-//! Unix-specific extensions to general I/O primitives.
+//! Raw Unix-like file descriptors.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fs;
 use crate::io;
 use crate::os::raw;
-use crate::sys;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+#[cfg(unix)]
+use crate::os::unix::io::OwnedFd;
+#[cfg(target_os = "wasi")]
+use crate::os::wasi::io::OwnedFd;
+use crate::sys_common::{AsInner, IntoInner};
 
 /// Raw file descriptors.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type RawFd = raw::c_int;
 
-/// A trait to extract the raw unix file descriptor from an underlying
-/// object.
+/// A trait to extract the raw file descriptor from an underlying object.
 ///
-/// This is only available on unix platforms and must be imported in order
-/// to call the method. Windows platforms have a corresponding `AsRawHandle`
-/// and `AsRawSocket` set of traits.
+/// This is only available on unix and WASI platforms and must be imported in
+/// order to call the method. Windows platforms have a corresponding
+/// `AsRawHandle` and `AsRawSocket` set of traits.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsRawFd {
     /// Extracts the raw file descriptor.
@@ -31,10 +33,14 @@ pub trait AsRawFd {
     /// ```no_run
     /// use std::fs::File;
     /// # use std::io;
+    /// #[cfg(unix)]
     /// use std::os::unix::io::{AsRawFd, RawFd};
+    /// #[cfg(target_os = "wasi")]
+    /// use std::os::wasi::io::{AsRawFd, RawFd};
     ///
     /// let mut f = File::open("foo.txt")?;
     /// // Note that `raw_fd` is only valid as long as `f` exists.
+    /// #[cfg(any(unix, target_os = "wasi"))]
     /// let raw_fd: RawFd = f.as_raw_fd();
     /// # Ok::<(), io::Error>(())
     /// ```
@@ -64,12 +70,17 @@ pub trait FromRawFd {
     /// ```no_run
     /// use std::fs::File;
     /// # use std::io;
+    /// #[cfg(unix)]
     /// use std::os::unix::io::{FromRawFd, IntoRawFd, RawFd};
+    /// #[cfg(target_os = "wasi")]
+    /// use std::os::wasi::io::{FromRawFd, IntoRawFd, RawFd};
     ///
     /// let f = File::open("foo.txt")?;
+    /// # #[cfg(any(unix, target_os = "wasi"))]
     /// let raw_fd: RawFd = f.into_raw_fd();
     /// // SAFETY: no other functions should call `from_raw_fd`, so there
     /// // is only one owner for the file descriptor.
+    /// # #[cfg(any(unix, target_os = "wasi"))]
     /// let f = unsafe { File::from_raw_fd(raw_fd) };
     /// # Ok::<(), io::Error>(())
     /// ```
@@ -92,9 +103,13 @@ pub trait IntoRawFd {
     /// ```no_run
     /// use std::fs::File;
     /// # use std::io;
+    /// #[cfg(unix)]
     /// use std::os::unix::io::{IntoRawFd, RawFd};
+    /// #[cfg(target_os = "wasi")]
+    /// use std::os::wasi::io::{IntoRawFd, RawFd};
     ///
     /// let f = File::open("foo.txt")?;
+    /// #[cfg(any(unix, target_os = "wasi"))]
     /// let raw_fd: RawFd = f.into_raw_fd();
     /// # Ok::<(), io::Error>(())
     /// ```
@@ -128,21 +143,21 @@ impl FromRawFd for RawFd {
 impl AsRawFd for fs::File {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        self.as_inner().fd().raw()
+        self.as_inner().as_raw_fd()
     }
 }
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawFd for fs::File {
     #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> fs::File {
-        fs::File::from_inner(sys::fs::File::from_inner(fd))
+        unsafe { fs::File::from(OwnedFd::from_raw_fd(fd)) }
     }
 }
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawFd for fs::File {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
-        self.into_inner().into_fd().into_raw()
+        self.into_inner().into_inner().into_raw_fd()
     }
 }
 

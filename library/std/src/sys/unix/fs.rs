@@ -4,13 +4,14 @@ use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::io::{self, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
+use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
 use crate::sync::Arc;
 use crate::sys::fd::FileDesc;
 use crate::sys::time::SystemTime;
 use crate::sys::{cvt, cvt_r};
-use crate::sys_common::{AsInner, FromInner};
+use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
 #[cfg(any(
     all(target_os = "linux", target_env = "gnu"),
@@ -764,11 +765,11 @@ impl File {
         // However, since this is a variadic function, C integer promotion rules mean that on
         // the ABI level, this still gets passed as `c_int` (aka `u32` on Unix platforms).
         let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as c_int) })?;
-        Ok(File(FileDesc::new(fd)))
+        Ok(File(unsafe { FileDesc::from_raw_fd(fd) }))
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
-        let fd = self.0.raw();
+        let fd = self.as_raw_fd();
 
         cfg_has_statx! {
             if let Some(ret) = unsafe { try_statx(
@@ -787,7 +788,7 @@ impl File {
     }
 
     pub fn fsync(&self) -> io::Result<()> {
-        cvt_r(|| unsafe { os_fsync(self.0.raw()) })?;
+        cvt_r(|| unsafe { os_fsync(self.as_raw_fd()) })?;
         return Ok(());
 
         #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -801,7 +802,7 @@ impl File {
     }
 
     pub fn datasync(&self) -> io::Result<()> {
-        cvt_r(|| unsafe { os_datasync(self.0.raw()) })?;
+        cvt_r(|| unsafe { os_datasync(self.as_raw_fd()) })?;
         return Ok(());
 
         #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -834,14 +835,14 @@ impl File {
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
         #[cfg(target_os = "android")]
-        return crate::sys::android::ftruncate64(self.0.raw(), size);
+        return crate::sys::android::ftruncate64(self.as_raw_fd(), size);
 
         #[cfg(not(target_os = "android"))]
         {
             use crate::convert::TryInto;
             let size: off64_t =
                 size.try_into().map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
-            cvt_r(|| unsafe { ftruncate64(self.0.raw(), size) }).map(drop)
+            cvt_r(|| unsafe { ftruncate64(self.as_raw_fd(), size) }).map(drop)
         }
     }
 
@@ -891,7 +892,7 @@ impl File {
             SeekFrom::End(off) => (libc::SEEK_END, off),
             SeekFrom::Current(off) => (libc::SEEK_CUR, off),
         };
-        let n = cvt(unsafe { lseek64(self.0.raw(), pos, whence) })?;
+        let n = cvt(unsafe { lseek64(self.as_raw_fd(), pos, whence) })?;
         Ok(n as u64)
     }
 
@@ -899,16 +900,8 @@ impl File {
         self.0.duplicate().map(File)
     }
 
-    pub fn fd(&self) -> &FileDesc {
-        &self.0
-    }
-
-    pub fn into_fd(self) -> FileDesc {
-        self.0
-    }
-
     pub fn set_permissions(&self, perm: FilePermissions) -> io::Result<()> {
-        cvt_r(|| unsafe { libc::fchmod(self.0.raw(), perm.mode) })?;
+        cvt_r(|| unsafe { libc::fchmod(self.as_raw_fd(), perm.mode) })?;
         Ok(())
     }
 }
@@ -933,9 +926,51 @@ fn cstr(path: &Path) -> io::Result<CString> {
     Ok(CString::new(path.as_os_str().as_bytes())?)
 }
 
-impl FromInner<c_int> for File {
-    fn from_inner(fd: c_int) -> File {
-        File(FileDesc::new(fd))
+impl AsInner<FileDesc> for File {
+    fn as_inner(&self) -> &FileDesc {
+        &self.0
+    }
+}
+
+impl AsInnerMut<FileDesc> for File {
+    fn as_inner_mut(&mut self) -> &mut FileDesc {
+        &mut self.0
+    }
+}
+
+impl IntoInner<FileDesc> for File {
+    fn into_inner(self) -> FileDesc {
+        self.0
+    }
+}
+
+impl FromInner<FileDesc> for File {
+    fn from_inner(file_desc: FileDesc) -> Self {
+        Self(file_desc)
+    }
+}
+
+impl AsFd for File {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.0.as_fd()
+    }
+}
+
+impl AsRawFd for File {
+    fn as_raw_fd(&self) -> RawFd {
+        self.0.as_raw_fd()
+    }
+}
+
+impl IntoRawFd for File {
+    fn into_raw_fd(self) -> RawFd {
+        self.0.into_raw_fd()
+    }
+}
+
+impl FromRawFd for File {
+    unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
+        Self(FromRawFd::from_raw_fd(raw_fd))
     }
 }
 
@@ -1009,7 +1044,7 @@ impl fmt::Debug for File {
             None
         }
 
-        let fd = self.0.raw();
+        let fd = self.as_raw_fd();
         let mut b = f.debug_struct("File");
         b.field("fd", &fd);
         if let Some(path) = get_path(fd) {

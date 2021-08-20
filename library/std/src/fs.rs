@@ -587,6 +587,12 @@ impl File {
     }
 }
 
+// In addition to the `impl`s here, `File` also has `impl`s for
+// `AsFd`/`From<OwnedFd>`/`Into<OwnedFd>` and
+// `AsRawFd`/`IntoRawFd`/`FromRawFd`, on Unix and WASI, and
+// `AsHandle`/`From<OwnedHandle>`/`Into<OwnedHandle>` and
+// `AsRawHandle`/`IntoRawHandle`/`FromRawHandle` on Windows.
+
 impl AsInner<fs_imp::File> for File {
     fn as_inner(&self) -> &fs_imp::File {
         &self.inner

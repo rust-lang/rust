@@ -32,8 +32,11 @@ pub mod prelude {
     pub use super::fs::{MetadataExt, OpenOptionsExt};
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub use super::io::{AsRawHandle, AsRawSocket, RawHandle, RawSocket};
+    pub use super::io::{
+        AsHandle, AsSocket, BorrowedHandle, BorrowedSocket, FromRawHandle, FromRawSocket,
+        HandleOrInvalid, IntoRawHandle, IntoRawSocket, OwnedHandle, OwnedSocket,
+    };
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub use super::io::{FromRawHandle, FromRawSocket, IntoRawHandle, IntoRawSocket};
+    pub use super::io::{AsRawHandle, AsRawSocket, RawHandle, RawSocket};
 }
