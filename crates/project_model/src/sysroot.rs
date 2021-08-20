@@ -12,8 +12,9 @@ use paths::{AbsPath, AbsPathBuf};
 
 use crate::{utf8_stdout, ManifestPath};
 
-#[derive(Default, Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Sysroot {
+    root: AbsPathBuf,
     crates: Arena<SysrootCrateData>,
 }
 
@@ -34,6 +35,10 @@ impl ops::Index<SysrootCrate> for Sysroot {
 }
 
 impl Sysroot {
+    pub fn root(&self) -> &AbsPath {
+        &self.root
+    }
+
     pub fn public_deps(&self) -> impl Iterator<Item = (&'static str, SysrootCrate)> + '_ {
         // core is added as a dependency before std in order to
         // mimic rustcs dependency order
@@ -52,7 +57,7 @@ impl Sysroot {
         log::debug!("Discovering sysroot for {}", dir.display());
         let sysroot_dir = discover_sysroot_dir(dir)?;
         let sysroot_src_dir = discover_sysroot_src_dir(&sysroot_dir, dir)?;
-        let res = Sysroot::load(&sysroot_src_dir)?;
+        let res = Sysroot::load(sysroot_src_dir)?;
         Ok(res)
     }
 
@@ -62,14 +67,14 @@ impl Sysroot {
         discover_sysroot_dir(current_dir).ok().and_then(|sysroot_dir| get_rustc_src(&sysroot_dir))
     }
 
-    pub fn load(sysroot_src_dir: &AbsPath) -> Result<Sysroot> {
-        let mut sysroot = Sysroot { crates: Arena::default() };
+    pub fn load(sysroot_src_dir: AbsPathBuf) -> Result<Sysroot> {
+        let mut sysroot = Sysroot { root: sysroot_src_dir, crates: Arena::default() };
 
         for path in SYSROOT_CRATES.trim().lines() {
             let name = path.split('/').last().unwrap();
             let root = [format!("{}/src/lib.rs", path), format!("lib{}/lib.rs", path)]
                 .iter()
-                .map(|it| sysroot_src_dir.join(it))
+                .map(|it| sysroot.root.join(it))
                 .filter_map(|it| ManifestPath::try_from(it).ok())
                 .find(|it| fs::metadata(it).is_ok());
 
@@ -110,7 +115,7 @@ impl Sysroot {
             };
             anyhow::bail!(
                 "could not find libcore in sysroot path `{}`{}",
-                sysroot_src_dir.as_ref().display(),
+                sysroot.root.as_path().display(),
                 var_note,
             );
         }
