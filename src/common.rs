@@ -90,9 +90,6 @@ fn clif_pair_type_from_ty<'tcx>(
             let mut types = substs.types();
             let a = clif_type_from_ty(tcx, types.next().unwrap())?;
             let b = clif_type_from_ty(tcx, types.next().unwrap())?;
-            if a.is_vector() || b.is_vector() {
-                return None;
-            }
             (a, b)
         }
         ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {
