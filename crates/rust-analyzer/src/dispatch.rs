@@ -30,16 +30,18 @@ impl<'a> RequestDispatcher<'a> {
             Some(it) => it,
             None => return Ok(self),
         };
-        let world = panic::AssertUnwindSafe(&mut *self.global_state);
+        let global_state = panic::AssertUnwindSafe(&mut *self.global_state);
 
         let response = panic::catch_unwind(move || {
+            let _ = &global_state;
+            let panic::AssertUnwindSafe(global_state) = global_state;
             let _pctx = stdx::panic_context::enter(format!(
                 "\nversion: {}\nrequest: {} {:#?}",
                 env!("REV"),
                 R::METHOD,
                 params
             ));
-            let result = f(world.0, params);
+            let result = f(global_state, params);
             result_to_response::<R>(id, result)
         })
         .map_err(|_err| format!("sync task {:?} panicked", R::METHOD))?;
