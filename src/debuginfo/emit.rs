@@ -6,8 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use gimli::write::{Address, AttributeValue, EndianVec, Result, Sections, Writer};
 use gimli::{RunTimeEndian, SectionId};
 
-use crate::backend::WriteDebugInfo;
-
+use super::object::WriteDebugInfo;
 use super::DebugContext;
 
 impl DebugContext<'_> {

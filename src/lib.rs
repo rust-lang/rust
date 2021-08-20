@@ -45,7 +45,6 @@ mod abi;
 mod allocator;
 mod analyze;
 mod archive;
-mod backend;
 mod base;
 mod cast;
 mod codegen_i128;

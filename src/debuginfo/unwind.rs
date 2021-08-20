@@ -8,7 +8,7 @@ use cranelift_object::ObjectProduct;
 use gimli::write::{Address, CieId, EhFrame, FrameTable, Section};
 use gimli::RunTimeEndian;
 
-use crate::backend::WriteDebugInfo;
+use super::object::WriteDebugInfo;
 
 pub(crate) struct UnwindContext {
     endian: RunTimeEndian,

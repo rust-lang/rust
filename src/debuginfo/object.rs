@@ -1,13 +1,9 @@
-//! Abstraction around the object writing crate
-
 use std::convert::{TryFrom, TryInto};
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_session::Session;
 
-use cranelift_codegen::isa::TargetIsa;
 use cranelift_module::FuncId;
-use cranelift_object::{ObjectBuilder, ObjectModule, ObjectProduct};
+use cranelift_object::ObjectProduct;
 
 use object::write::{Relocation, StandardSegment};
 use object::{RelocationEncoding, SectionKind};
@@ -16,7 +12,7 @@ use gimli::SectionId;
 
 use crate::debuginfo::{DebugReloc, DebugRelocName};
 
-pub(crate) trait WriteDebugInfo {
+pub(super) trait WriteDebugInfo {
     type SectionId: Copy;
 
     fn add_debug_section(&mut self, name: SectionId, data: Vec<u8>) -> Self::SectionId;
@@ -86,14 +82,4 @@ impl WriteDebugInfo for ObjectProduct {
             )
             .unwrap();
     }
-}
-
-pub(crate) fn make_module(sess: &Session, isa: Box<dyn TargetIsa>, name: String) -> ObjectModule {
-    let mut builder =
-        ObjectBuilder::new(isa, name + ".o", cranelift_module::default_libcall_names()).unwrap();
-    // Unlike cg_llvm, cg_clif defaults to disabling -Zfunction-sections. For cg_llvm binary size
-    // is important, while cg_clif cares more about compilation times. Enabling -Zfunction-sections
-    // can easily double the amount of time necessary to perform linking.
-    builder.per_function_section(sess.opts.debugging_opts.function_sections.unwrap_or(false));
-    ObjectModule::new(builder)
 }
