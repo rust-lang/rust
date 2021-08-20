@@ -235,12 +235,14 @@ fn pick_pattern_and_expr_order(
 ) -> Option<(ast::Pat, ast::Expr, ast::Expr)> {
     let res = match (pat, pat2) {
         (ast::Pat::WildcardPat(_), _) => return None,
-        (pat, sad_pat) if is_sad_pat(sema, &sad_pat) => (pat, expr, expr2),
-        (sad_pat, pat) if is_sad_pat(sema, &sad_pat) => (pat, expr2, expr),
+        (pat, _) if expr2.syntax().first_child().is_none() => (pat, expr, expr2),
+        (_, pat) if expr.syntax().first_child().is_none() => (pat, expr2, expr),
         (pat, pat2) => match (binds_name(&pat), binds_name(&pat2)) {
-            (true, true) => return None,
             (true, false) => (pat, expr, expr2),
             (false, true) => (pat2, expr2, expr),
+            _ if is_sad_pat(sema, &pat2) => (pat, expr, expr2),
+            _ if is_sad_pat(sema, &pat) => (pat2, expr2, expr),
+            (true, true) => return None,
             (false, false) => (pat, expr, expr2),
         },
     };
@@ -756,6 +758,46 @@ fn foo() {
 fn foo() {
     if let Bar(bar) = Foo(0) {
         println!("bar {}", bar)
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn replace_match_with_if_let_prefer_nonempty_body() {
+        check_assist(
+            replace_match_with_if_let,
+            r#"
+fn foo() {
+    match $0Ok(0) {
+        Ok(value) => {},
+        Err(err) => eprintln!("{}", err),
+    }
+}
+"#,
+            r#"
+fn foo() {
+    if let Err(err) = Ok(0) {
+        eprintln!("{}", err)
+    }
+}
+"#,
+        );
+        check_assist(
+            replace_match_with_if_let,
+            r#"
+fn foo() {
+    match $0Ok(0) {
+        Err(err) => eprintln!("{}", err),
+        Ok(value) => {},
+    }
+}
+"#,
+            r#"
+fn foo() {
+    if let Err(err) = Ok(0) {
+        eprintln!("{}", err)
     }
 }
 "#,
