@@ -1,0 +1,24 @@
+warning: unused variable: `props_2`
+  --> $DIR/issue-87987.rs:11:9
+   |
+LL |     let props_2 = Props {
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_props_2`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: field is never read: `field_1`
+  --> $DIR/issue-87987.rs:5:5
+   |
+LL |     field_1: u32,
+   |     ^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: field is never read: `field_2`
+  --> $DIR/issue-87987.rs:6:5
+   |
+LL |     field_2: u32,
+   |     ^^^^^^^^^^^^
+
+warning: 3 warnings emitted
+
