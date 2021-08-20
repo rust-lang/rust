@@ -3,7 +3,7 @@ use std::fmt;
 use ast::NameOwner;
 use cfg::CfgExpr;
 use either::Either;
-use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, Semantics};
+use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, InFile, Semantics};
 use ide_assists::utils::test_related_attribute;
 use ide_db::{
     base_db::{FilePosition, FileRange},
@@ -232,22 +232,21 @@ fn find_related_tests(
             let functions = refs.iter().filter_map(|(range, _)| {
                 let token = file.token_at_offset(range.start()).next()?;
                 let token = sema.descend_into_macros(token);
-                // FIXME: This is the wrong file_id
                 token
                     .ancestors()
                     .find_map(ast::Fn::cast)
-                    .map(|f| hir::InFile::new(file_id.into(), f))
+                    .map(|f| hir::InFile::new(sema.hir_file_for(f.syntax()), f))
             });
 
             for fn_def in functions {
                 // #[test/bench] expands to just the item causing us to lose the attribute, so recover them by going out of the attribute
-                let fn_def = fn_def.node_with_attributes(sema.db);
-                if let Some(runnable) = as_test_runnable(sema, &fn_def.value) {
+                let InFile { value: fn_def, .. } = &fn_def.node_with_attributes(sema.db);
+                if let Some(runnable) = as_test_runnable(sema, fn_def) {
                     // direct test
                     tests.insert(runnable);
-                } else if let Some(module) = parent_test_module(sema, &fn_def.value) {
+                } else if let Some(module) = parent_test_module(sema, fn_def) {
                     // indirect test
-                    find_related_tests_in_module(sema, &fn_def.value, &module, tests);
+                    find_related_tests_in_module(sema, fn_def, &module, tests);
                 }
             }
         }
