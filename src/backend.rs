@@ -122,10 +122,23 @@ pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object
         binary_format => sess.fatal(&format!("binary format {} is unsupported", binary_format)),
     };
     let architecture = match triple.architecture {
+        target_lexicon::Architecture::Aarch64(_) => object::Architecture::Aarch64,
+        target_lexicon::Architecture::Arm(_) => object::Architecture::Arm,
+        target_lexicon::Architecture::Avr => object::Architecture::Avr,
+        target_lexicon::Architecture::Hexagon => object::Architecture::Hexagon,
+        target_lexicon::Architecture::Mips32(_) => object::Architecture::Mips,
+        target_lexicon::Architecture::Mips64(_) => object::Architecture::Mips64,
+        target_lexicon::Architecture::Msp430 => object::Architecture::Msp430,
+        target_lexicon::Architecture::Powerpc => object::Architecture::PowerPc,
+        target_lexicon::Architecture::Powerpc64 => object::Architecture::PowerPc64,
+        target_lexicon::Architecture::Powerpc64le => todo!(),
+        target_lexicon::Architecture::Riscv32(_) => object::Architecture::Riscv32,
+        target_lexicon::Architecture::Riscv64(_) => object::Architecture::Riscv64,
+        target_lexicon::Architecture::S390x => object::Architecture::S390x,
+        target_lexicon::Architecture::Sparc64 => object::Architecture::Sparc64,
+        target_lexicon::Architecture::Sparcv9 => object::Architecture::Sparc64,
         target_lexicon::Architecture::X86_32(_) => object::Architecture::I386,
         target_lexicon::Architecture::X86_64 => object::Architecture::X86_64,
-        target_lexicon::Architecture::Arm(_) => object::Architecture::Arm,
-        target_lexicon::Architecture::Aarch64(_) => object::Architecture::Aarch64,
         architecture => {
             sess.fatal(&format!("target architecture {:?} is unsupported", architecture,))
         }
