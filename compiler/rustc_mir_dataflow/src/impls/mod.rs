@@ -602,6 +602,7 @@ impl<'tcx> AnalysisDomain<'tcx> for EverInitializedPlaces<'_, 'tcx> {
 impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
     type Idx = InitIndex;
 
+    #[instrument(skip(self, trans), level = "debug")]
     fn statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -613,24 +614,19 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         let init_loc_map = &move_data.init_loc_map;
         let rev_lookup = &move_data.rev_lookup;
 
-        debug!(
-            "statement {:?} at loc {:?} initializes move_indexes {:?}",
-            stmt, location, &init_loc_map[location]
-        );
+        debug!("initializes move_indexes {:?}", &init_loc_map[location]);
         trans.gen_all(init_loc_map[location].iter().copied());
 
         if let mir::StatementKind::StorageDead(local) = stmt.kind {
             // End inits for StorageDead, so that an immutable variable can
             // be reinitialized on the next iteration of the loop.
             let move_path_index = rev_lookup.find_local(local);
-            debug!(
-                "stmt {:?} at loc {:?} clears the ever initialized status of {:?}",
-                stmt, location, &init_path_map[move_path_index]
-            );
+            debug!("clears the ever initialized status of {:?}", init_path_map[move_path_index]);
             trans.kill_all(init_path_map[move_path_index].iter().copied());
         }
     }
 
+    #[instrument(skip(self, trans, _terminator), level = "debug")]
     fn terminator_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -640,10 +636,8 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         let (body, move_data) = (self.body, self.move_data());
         let term = body[location.block].terminator();
         let init_loc_map = &move_data.init_loc_map;
-        debug!(
-            "terminator {:?} at loc {:?} initializes move_indexes {:?}",
-            term, location, &init_loc_map[location]
-        );
+        debug!(?term);
+        debug!("initializes move_indexes {:?}", init_loc_map[location]);
         trans.gen_all(
             init_loc_map[location]
                 .iter()

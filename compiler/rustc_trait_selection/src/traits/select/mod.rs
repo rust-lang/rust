@@ -451,6 +451,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Evaluates the predicates in `predicates` recursively. Note that
     /// this applies projections in the predicates, and therefore
     /// is run within an inference probe.
+    #[instrument(skip(self, stack), level = "debug")]
     fn evaluate_predicates_recursively<'o, I>(
         &mut self,
         stack: TraitObligationStackList<'o, 'tcx>,
@@ -460,7 +461,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         I: IntoIterator<Item = PredicateObligation<'tcx>> + std::fmt::Debug,
     {
         let mut result = EvaluatedToOk;
-        debug!(?predicates, "evaluate_predicates_recursively");
         for obligation in predicates {
             let eval = self.evaluate_predicate_recursively(stack, obligation.clone())?;
             if let EvaluatedToErr = eval {
@@ -683,13 +683,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         result
     }
 
+    #[instrument(skip(self, previous_stack), level = "debug")]
     fn evaluate_trait_predicate_recursively<'o>(
         &mut self,
         previous_stack: TraitObligationStackList<'o, 'tcx>,
         mut obligation: TraitObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        debug!(?obligation, "evaluate_trait_predicate_recursively");
-
         if !self.intercrate
             && obligation.is_global(self.tcx())
             && obligation
@@ -701,7 +700,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // If a param env has no global bounds, global obligations do not
             // depend on its particular value in order to work, so we can clear
             // out the param env and get better caching.
-            debug!("evaluate_trait_predicate_recursively - in global");
+            debug!("in global");
             obligation.param_env = obligation.param_env.without_caller_bounds();
         }
 
@@ -753,7 +752,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         } else {
             debug!(?result, "PROVISIONAL");
             debug!(
-                "evaluate_trait_predicate_recursively: caching provisionally because {:?} \
+                "caching provisionally because {:?} \
                  is a cycle participant (at depth {}, reached depth {})",
                 fresh_trait_ref, stack.depth, reached_depth,
             );
@@ -2124,13 +2123,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     /// Returns `Ok` if `poly_trait_ref` being true implies that the
     /// obligation is satisfied.
+    #[instrument(skip(self), level = "debug")]
     fn match_poly_trait_ref(
         &mut self,
         obligation: &TraitObligation<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, ()> {
-        debug!(?obligation, ?poly_trait_ref, "match_poly_trait_ref");
-
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .sup(obligation.predicate.to_poly_trait_ref(), poly_trait_ref)
@@ -2174,12 +2172,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn closure_trait_ref_unnormalized(
         &mut self,
         obligation: &TraitObligation<'tcx>,
         substs: SubstsRef<'tcx>,
     ) -> ty::PolyTraitRef<'tcx> {
-        debug!(?obligation, ?substs, "closure_trait_ref_unnormalized");
         let closure_sig = substs.as_closure().sig();
 
         debug!(?closure_sig);

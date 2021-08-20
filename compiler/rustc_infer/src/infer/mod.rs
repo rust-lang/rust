@@ -807,8 +807,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
+    #[instrument(skip(self, snapshot), level = "debug")]
     fn rollback_to(&self, cause: &str, snapshot: CombinedSnapshot<'a, 'tcx>) {
-        debug!("rollback_to(cause={})", cause);
         let CombinedSnapshot {
             undo_snapshot,
             region_constraints_snapshot,
@@ -825,8 +825,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         inner.unwrap_region_constraints().rollback_to(region_constraints_snapshot);
     }
 
+    #[instrument(skip(self, snapshot), level = "debug")]
     fn commit_from(&self, snapshot: CombinedSnapshot<'a, 'tcx>) {
-        debug!("commit_from()");
         let CombinedSnapshot {
             undo_snapshot,
             region_constraints_snapshot: _,
@@ -841,11 +841,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// Executes `f` and commit the bindings.
+    #[instrument(skip(self, f), level = "debug")]
     pub fn commit_unconditionally<R, F>(&self, f: F) -> R
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
     {
-        debug!("commit_unconditionally()");
         let snapshot = self.start_snapshot();
         let r = f(&snapshot);
         self.commit_from(snapshot);
@@ -853,11 +853,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// Execute `f` and commit the bindings if closure `f` returns `Ok(_)`.
+    #[instrument(skip(self, f), level = "debug")]
     pub fn commit_if_ok<T, E, F>(&self, f: F) -> Result<T, E>
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> Result<T, E>,
     {
-        debug!("commit_if_ok()");
         let snapshot = self.start_snapshot();
         let r = f(&snapshot);
         debug!("commit_if_ok() -- r.is_ok() = {}", r.is_ok());
@@ -873,11 +873,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// Execute `f` then unroll any bindings it creates.
+    #[instrument(skip(self, f), level = "debug")]
     pub fn probe<R, F>(&self, f: F) -> R
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
     {
-        debug!("probe()");
         let snapshot = self.start_snapshot();
         let r = f(&snapshot);
         self.rollback_to("probe", snapshot);
@@ -885,11 +885,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// If `should_skip` is true, then execute `f` then unroll any bindings it creates.
+    #[instrument(skip(self, f), level = "debug")]
     pub fn probe_maybe_skip_leak_check<R, F>(&self, should_skip: bool, f: F) -> R
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
     {
-        debug!("probe()");
         let snapshot = self.start_snapshot();
         let was_skip_leak_check = self.skip_leak_check.get();
         if should_skip {
@@ -946,18 +946,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         })
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub fn sub_regions(
         &self,
         origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
     ) {
-        debug!("sub_regions({:?} <: {:?})", a, b);
         self.inner.borrow_mut().unwrap_region_constraints().make_subregion(origin, a, b);
     }
 
     /// Require that the region `r` be equal to one of the regions in
     /// the set `regions`.
+    #[instrument(skip(self), level = "debug")]
     pub fn member_constraint(
         &self,
         opaque_type_def_id: DefId,
@@ -966,7 +967,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         region: ty::Region<'tcx>,
         in_regions: &Lrc<Vec<ty::Region<'tcx>>>,
     ) {
-        debug!("member_constraint({:?} <: {:?})", region, in_regions);
         self.inner.borrow_mut().unwrap_region_constraints().member_constraint(
             opaque_type_def_id,
             definition_span,

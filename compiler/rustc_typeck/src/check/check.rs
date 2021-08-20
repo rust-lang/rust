@@ -70,6 +70,7 @@ pub(super) fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Ab
 ///
 /// * ...
 /// * inherited: other fields inherited from the enclosing fn (if any)
+#[instrument(skip(inherited, body), level = "debug")]
 pub(super) fn check_fn<'a, 'tcx>(
     inherited: &'a Inherited<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -81,8 +82,6 @@ pub(super) fn check_fn<'a, 'tcx>(
     return_type_pre_known: bool,
 ) -> (FnCtxt<'a, 'tcx>, Option<GeneratorTypes<'tcx>>) {
     let mut fn_sig = fn_sig;
-
-    debug!("check_fn(sig={:?}, fn_id={}, param_env={:?})", fn_sig, fn_id, param_env);
 
     // Create the function context. This is either derived from scratch or,
     // in the case of closures, based on the outer context.

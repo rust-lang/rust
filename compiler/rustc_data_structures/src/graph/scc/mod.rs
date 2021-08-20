@@ -405,6 +405,7 @@ where
     /// Call this method when `inspect_node` has returned `None`. Having the
     /// caller decide avoids mutual recursion between the two methods and allows
     /// us to maintain an allocated stack for nodes on the path between calls.
+    #[instrument(skip(self, initial), level = "debug")]
     fn walk_unvisited_node(&mut self, initial: G::Node) -> WalkReturn<S> {
         struct VisitingNodeFrame<G: DirectedGraph, Successors> {
             node: G::Node,
@@ -451,7 +452,7 @@ where
                 Some(iter) => iter,
                 None => {
                     // This None marks that we still have the initialize this node's frame.
-                    debug!("walk_unvisited_node(depth = {:?}, node = {:?})", depth, node);
+                    debug!(?depth, ?node);
 
                     debug_assert!(matches!(self.node_states[node], NodeState::NotVisited));
 
@@ -478,10 +479,7 @@ where
                 return_value.take().into_iter().map(|walk| (*successor_node, Some(walk)));
 
             let successor_walk = successors.by_ref().map(|successor_node| {
-                debug!(
-                    "walk_unvisited_node: node = {:?} successor_ode = {:?}",
-                    node, successor_node
-                );
+                debug!(?node, ?successor_node);
                 (successor_node, self.inspect_node(successor_node))
             });
 
@@ -491,10 +489,7 @@ where
                         // Track the minimum depth we can reach.
                         assert!(successor_min_depth <= depth);
                         if successor_min_depth < *min_depth {
-                            debug!(
-                                "walk_unvisited_node: node = {:?} successor_min_depth = {:?}",
-                                node, successor_min_depth
-                            );
+                            debug!(?node, ?successor_min_depth);
                             *min_depth = successor_min_depth;
                             *min_cycle_root = successor_node;
                         }
@@ -503,16 +498,13 @@ where
                     Some(WalkReturn::Complete { scc_index: successor_scc_index }) => {
                         // Push the completed SCC indices onto
                         // the `successors_stack` for later.
-                        debug!(
-                            "walk_unvisited_node: node = {:?} successor_scc_index = {:?}",
-                            node, successor_scc_index
-                        );
+                        debug!(?node, ?successor_scc_index);
                         successors_stack.push(successor_scc_index);
                     }
 
                     None => {
                         let depth = depth + 1;
-                        debug!("walk_node(depth = {:?}, node = {:?})", depth, successor_node);
+                        debug!(?depth, ?successor_node);
                         // Remember which node the return value will come from.
                         frame.successor_node = successor_node;
                         // Start a new stack frame the step into it.

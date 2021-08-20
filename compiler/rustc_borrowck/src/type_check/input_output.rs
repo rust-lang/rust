@@ -20,6 +20,7 @@ use crate::universal_regions::UniversalRegions;
 use super::{Locations, TypeChecker};
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
+    #[instrument(skip(self, body, universal_regions), level = "debug")]
     pub(super) fn equate_inputs_and_outputs(
         &mut self,
         body: &Body<'tcx>,
@@ -64,10 +65,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             );
         }
 
-        debug!(
-            "equate_inputs_and_outputs: normalized_input_tys = {:?}, local_decls = {:?}",
-            normalized_input_tys, body.local_decls
-        );
+        debug!(?normalized_input_tys, ?body.local_decls);
 
         // Equate expected input tys with those in the MIR.
         for (argument_index, &normalized_input_ty) in normalized_input_tys.iter().enumerate() {
@@ -160,9 +158,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
+    #[instrument(skip(self, span), level = "debug")]
     fn equate_normalized_input_or_output(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, span: Span) {
-        debug!("equate_normalized_input_or_output(a={:?}, b={:?})", a, b);
-
         if let Err(_) =
             self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
         {

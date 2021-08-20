@@ -87,23 +87,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.resolve_vars_with_obligations_and_mutate_fulfillment(ty, |_| {})
     }
 
+    #[instrument(skip(self, mutate_fulfillment_errors), level = "debug")]
     pub(in super::super) fn resolve_vars_with_obligations_and_mutate_fulfillment(
         &self,
         mut ty: Ty<'tcx>,
         mutate_fulfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
     ) -> Ty<'tcx> {
-        debug!("resolve_vars_with_obligations(ty={:?})", ty);
-
         // No Infer()? Nothing needs doing.
         if !ty.has_infer_types_or_consts() {
-            debug!("resolve_vars_with_obligations: ty={:?}", ty);
+            debug!("no inference var, nothing needs doing");
             return ty;
         }
 
         // If `ty` is a type variable, see whether we already know what it is.
         ty = self.resolve_vars_if_possible(ty);
         if !ty.has_infer_types_or_consts() {
-            debug!("resolve_vars_with_obligations: ty={:?}", ty);
+            debug!(?ty);
             return ty;
         }
 
@@ -114,7 +113,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.select_obligations_where_possible(false, mutate_fulfillment_errors);
         ty = self.resolve_vars_if_possible(ty);
 
-        debug!("resolve_vars_with_obligations: ty={:?}", ty);
+        debug!(?ty);
         ty
     }
 
@@ -230,6 +229,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// This should be invoked **before any unifications have
     /// occurred**, so that annotations like `Vec<_>` are preserved
     /// properly.
+    #[instrument(skip(self), level = "debug")]
     pub fn write_user_type_annotation_from_substs(
         &self,
         hir_id: hir::HirId,
@@ -237,37 +237,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         substs: SubstsRef<'tcx>,
         user_self_ty: Option<UserSelfTy<'tcx>>,
     ) {
-        debug!(
-            "write_user_type_annotation_from_substs: hir_id={:?} def_id={:?} substs={:?} \
-             user_self_ty={:?} in fcx {}",
-            hir_id,
-            def_id,
-            substs,
-            user_self_ty,
-            self.tag(),
-        );
+        debug!("fcx {}", self.tag());
 
         if self.can_contain_user_lifetime_bounds((substs, user_self_ty)) {
             let canonicalized = self.infcx.canonicalize_user_type_annotation(UserType::TypeOf(
                 def_id,
                 UserSubsts { substs, user_self_ty },
             ));
-            debug!("write_user_type_annotation_from_substs: canonicalized={:?}", canonicalized);
+            debug!(?canonicalized);
             self.write_user_type_annotation(hir_id, canonicalized);
         }
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub fn write_user_type_annotation(
         &self,
         hir_id: hir::HirId,
         canonical_user_type_annotation: CanonicalUserType<'tcx>,
     ) {
-        debug!(
-            "write_user_type_annotation: hir_id={:?} canonical_user_type_annotation={:?} tag={}",
-            hir_id,
-            canonical_user_type_annotation,
-            self.tag(),
-        );
+        debug!("fcx {}", self.tag());
 
         if !canonical_user_type_annotation.is_identity() {
             self.typeck_results
@@ -275,12 +263,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .user_provided_types_mut()
                 .insert(hir_id, canonical_user_type_annotation);
         } else {
-            debug!("write_user_type_annotation: skipping identity substs");
+            debug!("skipping identity substs");
         }
     }
 
+    #[instrument(skip(self, expr), level = "debug")]
     pub fn apply_adjustments(&self, expr: &hir::Expr<'_>, adj: Vec<Adjustment<'tcx>>) {
-        debug!("apply_adjustments(expr={:?}, adj={:?})", expr, adj);
+        debug!("expr = {:#?}", expr);
 
         if adj.is_empty() {
             return;
@@ -652,8 +641,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub(in super::super) fn select_all_obligations_or_error(&self) {
-        debug!("select_all_obligations_or_error");
         if let Err(errors) = self
             .fulfillment_cx
             .borrow_mut()
@@ -694,16 +683,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ret_ty.builtin_deref(true).unwrap()
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn self_type_matches_expected_vid(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
         expected_vid: ty::TyVid,
     ) -> bool {
         let self_ty = self.shallow_resolve(trait_ref.skip_binder().self_ty());
-        debug!(
-            "self_type_matches_expected_vid(trait_ref={:?}, self_ty={:?}, expected_vid={:?})",
-            trait_ref, self_ty, expected_vid
-        );
+        debug!(?self_ty);
+
         match *self_ty.kind() {
             ty::Infer(ty::TyVar(found_vid)) => {
                 // FIXME: consider using `sub_root_var` here so we
@@ -716,6 +704,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub(in super::super) fn obligations_for_self_ty<'b>(
         &'b self,
         self_ty: ty::TyVid,
@@ -725,12 +714,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // FIXME: consider using `sub_root_var` here so we
         // can see through subtyping.
         let ty_var_root = self.root_var(self_ty);
-        debug!(
-            "obligations_for_self_ty: self_ty={:?} ty_var_root={:?} pending_obligations={:?}",
-            self_ty,
-            ty_var_root,
-            self.fulfillment_cx.borrow().pending_obligations()
-        );
+        trace!("pending_obligations = {:#?}", self.fulfillment_cx.borrow().pending_obligations());
 
         self.fulfillment_cx
             .borrow()
@@ -780,6 +764,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Unifies the output type with the expected type early, for more coercions
     /// and forward type information on the input expressions.
+    #[instrument(skip(self, call_span), level = "debug")]
     pub(in super::super) fn expected_inputs_for_expected_output(
         &self,
         call_span: Span,
@@ -826,10 +811,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ok(formal_args.iter().map(|&ty| self.resolve_vars_if_possible(ty)).collect())
             })
             .unwrap_or_default();
-        debug!(
-            "expected_inputs_for_expected_output(formal={:?} -> {:?}, expected={:?} -> {:?})",
-            formal_args, formal_ret, expect_args, expected_ret
-        );
+        debug!(?formal_args, ?formal_ret, ?expect_args, ?expected_ret);
         expect_args
     }
 
@@ -1195,6 +1177,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     // Instantiates the given path, which must refer to an item with the given
     // number of type parameters and type.
+    #[instrument(skip(self, span), level = "debug")]
     pub fn instantiate_value_path(
         &self,
         segments: &[hir::PathSegment<'_>],
@@ -1203,11 +1186,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         hir_id: hir::HirId,
     ) -> (Ty<'tcx>, Res) {
-        debug!(
-            "instantiate_value_path(segments={:?}, self_ty={:?}, res={:?}, hir_id={})",
-            segments, self_ty, res, hir_id,
-        );
-
         let tcx = self.tcx;
 
         let path_segs = match res {
@@ -1230,7 +1208,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Res::Def(DefKind::AssocFn | DefKind::AssocConst, def_id) => {
                 let container = tcx.associated_item(def_id).container;
-                debug!("instantiate_value_path: def_id={:?} container={:?}", def_id, container);
+                debug!(?def_id, ?container);
                 match container {
                     ty::TraitContainer(trait_did) => {
                         callee::check_legal_trait_for_method_call(tcx, span, None, span, trait_did)

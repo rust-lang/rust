@@ -482,12 +482,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     // &[T; n] or &mut [T; n] -> &[T]
     // or &mut [T; n] -> &mut [T]
     // or &Concrete -> &Trait, etc.
+    #[instrument(skip(self), level = "debug")]
     fn coerce_unsized(&self, mut source: Ty<'tcx>, mut target: Ty<'tcx>) -> CoerceResult<'tcx> {
-        debug!("coerce_unsized(source={:?}, target={:?})", source, target);
-
         source = self.shallow_resolve(source);
         target = self.shallow_resolve(target);
-        debug!("coerce_unsized: resolved source={:?} target={:?}", source, target);
+        debug!(?source, ?target);
 
         // These 'if' statements require some explanation.
         // The `CoerceUnsized` trait is special - it is only
