@@ -1,31 +1,21 @@
-error[E0161]: cannot move a value of type str: the size of str cannot be statically determined
+error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/dst-rvalue.rs:6:28
    |
 LL |     let _x: Box<str> = box *"hello world";
-   |                            ^^^^^^^^^^^^^^
+   |                            ^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: the type of a box expression must have a statically known size
 
-error[E0161]: cannot move a value of type [isize]: the size of [isize] cannot be statically determined
-  --> $DIR/dst-rvalue.rs:11:32
+error[E0277]: the size for values of type `[isize]` cannot be known at compilation time
+  --> $DIR/dst-rvalue.rs:10:32
    |
 LL |     let _x: Box<[isize]> = box *array;
-   |                                ^^^^^^
-
-error[E0507]: cannot move out of a shared reference
-  --> $DIR/dst-rvalue.rs:6:28
+   |                                ^^^^^^ doesn't have a size known at compile-time
    |
-LL |     let _x: Box<str> = box *"hello world";
-   |                            ^^^^^^^^^^^^^^ move occurs because value has type `str`, which does not implement the `Copy` trait
+   = help: the trait `Sized` is not implemented for `[isize]`
+   = note: the type of a box expression must have a statically known size
 
-error[E0508]: cannot move out of type `[isize]`, a non-copy slice
-  --> $DIR/dst-rvalue.rs:11:32
-   |
-LL |     let _x: Box<[isize]> = box *array;
-   |                                ^^^^^^
-   |                                |
-   |                                cannot move out of here
-   |                                move occurs because `*array` has type `[isize]`, which does not implement the `Copy` trait
+error: aborting due to 2 previous errors
 
-error: aborting due to 4 previous errors
-
-Some errors have detailed explanations: E0161, E0507, E0508.
-For more information about an error, try `rustc --explain E0161`.
+For more information about this error, try `rustc --explain E0277`.
