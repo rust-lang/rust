@@ -6,7 +6,7 @@ use crate::infer::InferCtxtUndoLogs;
 
 use super::{OpaqueTypeDecl, OpaqueTypeMap};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct OpaqueTypeStorage<'tcx> {
     // Opaque types found in explicit return types and their
     // associated fresh inference variable. Writeback resolves these
@@ -23,6 +23,7 @@ pub struct OpaqueTypeStorage<'tcx> {
 }
 
 impl<'tcx> OpaqueTypeStorage<'tcx> {
+    #[instrument(level = "debug")]
     pub(crate) fn remove(&mut self, key: OpaqueTypeKey<'tcx>) {
         match self.opaque_types.remove(&key) {
             None => bug!("reverted opaque type inference that was never registered"),
@@ -42,6 +43,7 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         self.opaque_types.clone()
     }
 
+    #[instrument(level = "debug")]
     pub fn take_opaque_types(&mut self) -> OpaqueTypeMap<'tcx> {
         std::mem::take(&mut self.opaque_types)
     }
@@ -54,6 +56,13 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         OpaqueTypeTable { storage: self, undo_log }
     }
 }
+
+impl<'tcx> Drop for OpaqueTypeStorage<'tcx> {
+    fn drop(&mut self) {
+        assert!(self.opaque_types.is_empty(), "{:?}", self.opaque_types);
+    }
+}
+
 pub struct OpaqueTypeTable<'a, 'tcx> {
     storage: &'a mut OpaqueTypeStorage<'tcx>,
 
@@ -61,6 +70,7 @@ pub struct OpaqueTypeTable<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> OpaqueTypeTable<'a, 'tcx> {
+    #[instrument(skip(self), level = "debug")]
     pub fn register(&mut self, key: OpaqueTypeKey<'tcx>, decl: OpaqueTypeDecl<'tcx>) {
         self.undo_log.push(key);
         self.storage.opaque_types.insert(key, decl);
