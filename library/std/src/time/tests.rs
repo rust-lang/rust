@@ -1,4 +1,6 @@
 use super::{Duration, Instant, SystemTime, UNIX_EPOCH};
+#[cfg(not(target_arch = "wasm32"))]
+use test::{black_box, Bencher};
 
 macro_rules! assert_almost_eq {
     ($a:expr, $b:expr) => {{
@@ -13,8 +15,34 @@ macro_rules! assert_almost_eq {
 #[test]
 fn instant_monotonic() {
     let a = Instant::now();
-    let b = Instant::now();
-    assert!(b >= a);
+    loop {
+        let b = Instant::now();
+        assert!(b >= a);
+        if b > a {
+            break;
+        }
+    }
+}
+
+#[test]
+#[cfg(not(target_arch = "wasm32"))]
+fn instant_monotonic_concurrent() -> crate::thread::Result<()> {
+    let threads: Vec<_> = (0..8)
+        .map(|_| {
+            crate::thread::spawn(|| {
+                let mut old = Instant::now();
+                for _ in 0..5_000_000 {
+                    let new = Instant::now();
+                    assert!(new >= old);
+                    old = new;
+                }
+            })
+        })
+        .collect();
+    for t in threads {
+        t.join()?;
+    }
+    Ok(())
 }
 
 #[test]
@@ -163,3 +191,71 @@ fn since_epoch() {
     let hundred_twenty_years = thirty_years * 4;
     assert!(a < hundred_twenty_years);
 }
+
+#[cfg(all(target_has_atomic = "64", not(target_has_atomic = "128")))]
+#[test]
+fn monotonizer_wrapping_backslide() {
+    use super::monotonic::inner::{monotonize_impl, ZERO};
+    use core::sync::atomic::AtomicU64;
+
+    let reference = AtomicU64::new(0);
+
+    let time = match ZERO.checked_add_duration(&Duration::from_secs(0xffff_ffff)) {
+        Some(time) => time,
+        None => {
+            // platform cannot represent u32::MAX seconds so it won't have to deal with this kind
+            // of overflow either
+            return;
+        }
+    };
+
+    let monotonized = monotonize_impl(&reference, time);
+    let expected = ZERO.checked_add_duration(&Duration::from_secs(1 << 32)).unwrap();
+    assert_eq!(
+        monotonized, expected,
+        "64bit monotonizer should handle overflows in the seconds part"
+    );
+}
+
+macro_rules! bench_instant_threaded {
+    ($bench_name:ident, $thread_count:expr) => {
+        #[bench]
+        #[cfg(not(target_arch = "wasm32"))]
+        fn $bench_name(b: &mut Bencher) -> crate::thread::Result<()> {
+            use crate::sync::atomic::{AtomicBool, Ordering};
+            use crate::sync::Arc;
+
+            let running = Arc::new(AtomicBool::new(true));
+
+            let threads: Vec<_> = (0..$thread_count)
+                .map(|_| {
+                    let flag = Arc::clone(&running);
+                    crate::thread::spawn(move || {
+                        while flag.load(Ordering::Relaxed) {
+                            black_box(Instant::now());
+                        }
+                    })
+                })
+                .collect();
+
+            b.iter(|| {
+                let a = Instant::now();
+                let b = Instant::now();
+                assert!(b >= a);
+            });
+
+            running.store(false, Ordering::Relaxed);
+
+            for t in threads {
+                t.join()?;
+            }
+            Ok(())
+        }
+    };
+}
+
+bench_instant_threaded!(instant_contention_01_threads, 0);
+bench_instant_threaded!(instant_contention_02_threads, 1);
+bench_instant_threaded!(instant_contention_04_threads, 3);
+bench_instant_threaded!(instant_contention_08_threads, 7);
+bench_instant_threaded!(instant_contention_16_threads, 15);
