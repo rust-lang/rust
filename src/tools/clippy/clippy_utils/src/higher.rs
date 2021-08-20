@@ -90,7 +90,7 @@ impl<'hir> IfLet<'hir> {
     pub const fn hir(expr: &Expr<'hir>) -> Option<Self> {
         if let ExprKind::If(
             Expr {
-                kind: ExprKind::Let(let_pat, let_expr, _),
+                kind: ExprKind::Let(let_pat, let_expr, ..),
                 ..
             },
             if_then,
@@ -329,7 +329,7 @@ impl<'hir> WhileLet<'hir> {
                 kind:
                     ExprKind::If(
                         Expr {
-                            kind: ExprKind::Let(let_pat, let_expr, _),
+                            kind: ExprKind::Let(let_pat, let_expr, ..),
                             ..
                         },
                         if_then,
