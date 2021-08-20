@@ -1893,9 +1893,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                 // While this is located in `nll::typeck` this error is not
                 // an NLL error, it's a required check to prevent creation
-                // of unsized rvalues in certain cases:
-                // * operand of a box expression
-                // * callee in a call expression
+                // of unsized rvalues in a call expression.
                 diag.emit();
             }
         }
