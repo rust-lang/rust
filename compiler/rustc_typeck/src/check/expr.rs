@@ -266,7 +266,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             ExprKind::Ret(ref expr_opt) => self.check_expr_return(expr_opt.as_deref(), expr),
-            ExprKind::Let(pat, let_expr, _) => self.check_expr_let(let_expr, pat),
+            ExprKind::Let(pat, let_expr, ..) => self.check_expr_let(let_expr, pat),
             ExprKind::Loop(body, _, source, _) => {
                 self.check_expr_loop(body, source, expected, expr)
             }

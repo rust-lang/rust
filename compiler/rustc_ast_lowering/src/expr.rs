@@ -1,4 +1,6 @@
-use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
+use super::{
+    ConditionScope, ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs,
+};
 
 use rustc_ast::attr;
 use rustc_ast::ptr::P as AstP;
@@ -14,6 +16,8 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{hygiene::ForLoopLoc, DUMMY_SP};
+
+use std::mem;
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -87,7 +91,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ExprKind::AddrOf(k, m, ohs)
                 }
                 ExprKind::Let(ref pat, ref scrutinee, span) => {
-                    hir::ExprKind::Let(self.lower_pat(pat), self.lower_expr(scrutinee), span)
+                    let source = match self.condition_scope {
+                        Some(ConditionScope::Guard) => hir::LetSource::Guard,
+                        Some(ConditionScope::If) => hir::LetSource::If,
+                        Some(ConditionScope::While) => hir::LetSource::While,
+                        _ => hir::LetSource::Local,
+                    };
+                    hir::ExprKind::Let(
+                        self.lower_pat(pat),
+                        self.lower_expr(scrutinee),
+                        span,
+                        source,
+                    )
                 }
                 ExprKind::If(ref cond, ref then, ref else_opt) => {
                     self.lower_expr_if(cond, then, else_opt.as_deref())
@@ -354,14 +369,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         then: &Block,
         else_opt: Option<&Expr>,
     ) -> hir::ExprKind<'hir> {
-        let lowered_cond = self.lower_expr(cond);
+        let lowered_cond = self.with_condition_scope(ConditionScope::If, |t| t.lower_expr(cond));
         let new_cond = self.manage_let_cond(lowered_cond);
-        let then_expr = self.lower_block_expr(then);
-        if let Some(rslt) = else_opt {
-            hir::ExprKind::If(new_cond, self.arena.alloc(then_expr), Some(self.lower_expr(rslt)))
-        } else {
-            hir::ExprKind::If(new_cond, self.arena.alloc(then_expr), None)
-        }
+        let then_expr = self.arena.alloc(self.lower_block_expr(then));
+        let else_opt = else_opt.map(|e| self.lower_expr(e));
+        hir::ExprKind::If(new_cond, then_expr, else_opt)
     }
 
     // If `cond` kind is `let`, returns `let`. Otherwise, wraps and returns `cond`
@@ -400,7 +412,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Block,
         opt_label: Option<Label>,
     ) -> hir::ExprKind<'hir> {
-        let lowered_cond = self.with_loop_condition_scope(|t| t.lower_expr(cond));
+        let lowered_cond = self.with_condition_scope(ConditionScope::While, |t| t.lower_expr(cond));
         let new_cond = self.manage_let_cond(lowered_cond);
         let then = self.lower_block_expr(body);
         let expr_break = self.expr_break(span, ThinVec::new());
@@ -473,7 +485,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             if let ExprKind::Let(ref pat, ref scrutinee, _) = cond.kind {
                 hir::Guard::IfLet(self.lower_pat(pat), self.lower_expr(scrutinee))
             } else {
-                hir::Guard::If(self.lower_expr(cond))
+                let cond = self.with_condition_scope(ConditionScope::Guard, |t| t.lower_expr(cond));
+                hir::Guard::If(cond)
             }
         });
         let hir_id = self.next_id();
@@ -732,7 +745,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (body_id, generator_option)
         });
 
-        // Lower outside new scope to preserve `is_in_loop_condition`.
+        // Lower outside new scope to preserve `condition_scope`.
         let fn_decl = self.lower_fn_decl(decl, None, false, None);
 
         hir::ExprKind::Closure(capture_clause, fn_decl, body_id, fn_decl_span, generator_option)
@@ -1132,7 +1145,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_jump_destination(&mut self, id: NodeId, opt_label: Option<Label>) -> hir::Destination {
-        if self.is_in_loop_condition && opt_label.is_none() {
+        if opt_label.is_none() && self.condition_scope == Some(ConditionScope::While) {
             hir::Destination {
                 label: None,
                 target_id: Err(hir::LoopIdError::UnlabeledCfInWhileCondition),
@@ -1160,8 +1173,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn with_loop_scope<T>(&mut self, loop_id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
         // We're no longer in the base loop's condition; we're in another loop.
-        let was_in_loop_condition = self.is_in_loop_condition;
-        self.is_in_loop_condition = false;
+        let condition_scope = mem::take(&mut self.condition_scope);
 
         let len = self.loop_scopes.len();
         self.loop_scopes.push(loop_id);
@@ -1175,19 +1187,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         self.loop_scopes.pop().unwrap();
 
-        self.is_in_loop_condition = was_in_loop_condition;
+        self.condition_scope = condition_scope;
 
         result
     }
 
-    fn with_loop_condition_scope<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
-        let was_in_loop_condition = self.is_in_loop_condition;
-        self.is_in_loop_condition = true;
-
+    fn with_condition_scope<T>(
+        &mut self,
+        condition_scope: ConditionScope,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        let condition_scope = mem::replace(&mut self.condition_scope, Some(condition_scope));
         let result = f(self);
-
-        self.is_in_loop_condition = was_in_loop_condition;
-
+        self.condition_scope = condition_scope;
         result
     }
 

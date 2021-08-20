@@ -857,7 +857,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 })
             }
 
-            hir::ExprKind::Let(ref pat, ref scrutinee, _) => {
+            hir::ExprKind::Let(ref pat, ref scrutinee, ..) => {
                 let succ = self.propagate_through_expr(scrutinee, succ);
                 self.define_bindings_in_pat(pat, succ)
             }

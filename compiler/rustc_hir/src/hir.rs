@@ -1732,7 +1732,7 @@ pub enum ExprKind<'hir> {
     ///
     /// These are not `Local` and only occur as expressions.
     /// The `let Some(x) = foo()` in `if let Some(x) = foo()` is an example of `Let(..)`.
-    Let(&'hir Pat<'hir>, &'hir Expr<'hir>, Span),
+    Let(&'hir Pat<'hir>, &'hir Expr<'hir>, Span, LetSource),
     /// An `if` block, with an optional else block.
     ///
     /// I.e., `if <expr> { <expr> } else { <expr> }`.
@@ -1884,6 +1884,15 @@ pub enum LocalSource {
     /// A desugared `expr = expr`, where the LHS is a tuple, struct or array.
     /// The span is that of the `=` sign.
     AssignDesugar(Span),
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Hash, Debug)]
+#[derive(HashStable_Generic)]
+pub enum LetSource {
+    Guard,
+    If,
+    Local,
+    While,
 }
 
 /// Hints at the original code for a `match _ { .. }`.

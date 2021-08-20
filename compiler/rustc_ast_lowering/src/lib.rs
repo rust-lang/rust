@@ -122,8 +122,8 @@ struct LoweringContext<'a, 'hir: 'a> {
     current_item: Option<Span>,
 
     catch_scopes: Vec<NodeId>,
+    condition_scope: Option<ConditionScope>,
     loop_scopes: Vec<NodeId>,
-    is_in_loop_condition: bool,
     is_in_trait_impl: bool,
     is_in_dyn_type: bool,
 
@@ -332,8 +332,8 @@ pub fn lower_crate<'a, 'hir>(
         attrs: BTreeMap::default(),
         non_exported_macro_attrs: Vec::new(),
         catch_scopes: Vec::new(),
+        condition_scope: None,
         loop_scopes: Vec::new(),
-        is_in_loop_condition: false,
         is_in_trait_impl: false,
         is_in_dyn_type: false,
         anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
@@ -417,6 +417,13 @@ enum AnonymousLifetimeMode {
 
     /// Pass responsibility to `resolve_lifetime` code for all cases.
     PassThrough,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum ConditionScope {
+    Guard,
+    If,
+    While,
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
@@ -957,17 +964,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn with_new_scopes<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
-        let was_in_loop_condition = self.is_in_loop_condition;
-        self.is_in_loop_condition = false;
-
         let catch_scopes = mem::take(&mut self.catch_scopes);
+        let condition_scope = mem::take(&mut self.condition_scope);
         let loop_scopes = mem::take(&mut self.loop_scopes);
         let ret = f(self);
         self.catch_scopes = catch_scopes;
+        self.condition_scope = condition_scope;
         self.loop_scopes = loop_scopes;
-
-        self.is_in_loop_condition = was_in_loop_condition;
-
         ret
     }
 

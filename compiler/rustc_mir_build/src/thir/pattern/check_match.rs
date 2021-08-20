@@ -55,9 +55,11 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
 
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
         intravisit::walk_expr(self, ex);
-        match &ex.kind {
-            hir::ExprKind::Match(scrut, arms, source) => self.check_match(scrut, arms, *source),
-            hir::ExprKind::Let(pat, scrut, span) => self.check_let(pat, scrut, *span),
+        match ex.kind {
+            hir::ExprKind::Match(scrut, arms, source) => self.check_match(scrut, arms, source),
+            hir::ExprKind::Let(pat, scrut, span, source) => {
+                self.check_let(pat, scrut, span, source)
+            }
             _ => {}
         }
     }
@@ -118,31 +120,6 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         check_for_bindings_named_same_as_variants(self, pat);
     }
 
-    fn let_source(&mut self, pat: &'tcx hir::Pat<'tcx>, _expr: &hir::Expr<'_>) -> LetSource {
-        let hir = self.tcx.hir();
-        let parent = hir.get_parent_node(pat.hir_id);
-        let parent_parent = hir.get_parent_node(parent);
-        let parent_parent_node = hir.get(parent_parent);
-
-        let parent_parent_parent = hir.get_parent_node(parent_parent);
-        let parent_parent_parent_parent = hir.get_parent_node(parent_parent_parent);
-        let parent_parent_parent_parent_node = hir.get(parent_parent_parent_parent);
-
-        if let hir::Node::Expr(hir::Expr {
-            kind: hir::ExprKind::Loop(_, _, hir::LoopSource::While, _),
-            ..
-        }) = parent_parent_parent_parent_node
-        {
-            LetSource::WhileLet
-        } else if let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::If { .. }, .. }) =
-            parent_parent_node
-        {
-            LetSource::IfLet
-        } else {
-            LetSource::GenericLet
-        }
-    }
-
     fn lower_pattern<'p>(
         &self,
         cx: &mut MatchCheckCtxt<'p, 'tcx>,
@@ -170,12 +147,17 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         }
     }
 
-    fn check_let(&mut self, pat: &'tcx hir::Pat<'tcx>, expr: &hir::Expr<'_>, span: Span) {
+    fn check_let(
+        &mut self,
+        pat: &'tcx hir::Pat<'tcx>,
+        expr: &hir::Expr<'_>,
+        span: Span,
+        source: hir::LetSource,
+    ) {
         self.check_patterns(pat);
-        let ls = self.let_source(pat, expr);
         let mut cx = self.new_cx(expr.hir_id);
         let tpat = self.lower_pattern(&mut cx, pat, &mut false).0;
-        check_let_reachability(&mut cx, ls, pat.hir_id, &tpat, span);
+        check_let_reachability(&mut cx, source, pat.hir_id, &tpat, span);
     }
 
     fn check_match(
@@ -194,7 +176,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                 let tpat = self.lower_pattern(&mut cx, pat, &mut false).0;
                 check_let_reachability(
                     &mut cx,
-                    LetSource::IfLetGuard,
+                    hir::LetSource::Guard,
                     pat.hir_id,
                     &tpat,
                     tpat.span,
@@ -397,7 +379,7 @@ fn unreachable_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, catchall: Option<
     });
 }
 
-fn irrefutable_let_pattern(id: HirId, ls: LetSource, span: Span, tcx: TyCtxt<'_>) {
+fn irrefutable_let_pattern(id: HirId, ls: hir::LetSource, span: Span, tcx: TyCtxt<'_>) {
     macro_rules! emit_diag {
         (
             $lint:expr,
@@ -412,11 +394,14 @@ fn irrefutable_let_pattern(id: HirId, ls: LetSource, span: Span, tcx: TyCtxt<'_>
         }};
     }
 
+    let is_if_let = || {
+        matches!(
+            tcx.hir().parent_iter(id).nth(1).unwrap().1,
+            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::If { .. }, .. })
+        )
+    };
     tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, id, span, |lint| match ls {
-        LetSource::GenericLet => {
-            emit_diag!(lint, "`let`", "`let` is useless", "removing `let`");
-        }
-        LetSource::IfLet => {
+        hir::LetSource::If if is_if_let() => {
             emit_diag!(
                 lint,
                 "`if let`",
@@ -424,7 +409,10 @@ fn irrefutable_let_pattern(id: HirId, ls: LetSource, span: Span, tcx: TyCtxt<'_>
                 "replacing the `if let` with a `let`"
             );
         }
-        LetSource::IfLetGuard => {
+        hir::LetSource::If | hir::LetSource::Local => {
+            emit_diag!(lint, "`let`", "`let` is useless", "removing `let`");
+        }
+        hir::LetSource::Guard => {
             emit_diag!(
                 lint,
                 "`if let` guard",
@@ -432,7 +420,7 @@ fn irrefutable_let_pattern(id: HirId, ls: LetSource, span: Span, tcx: TyCtxt<'_>
                 "removing the guard and adding a `let` inside the match arm"
             );
         }
-        LetSource::WhileLet => {
+        hir::LetSource::While => {
             emit_diag!(
                 lint,
                 "`while let`",
@@ -445,7 +433,7 @@ fn irrefutable_let_pattern(id: HirId, ls: LetSource, span: Span, tcx: TyCtxt<'_>
 
 fn check_let_reachability<'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'p, 'tcx>,
-    ls: LetSource,
+    ls: hir::LetSource,
     pat_id: HirId,
     pat: &'p super::Pat<'tcx>,
     span: Span,
@@ -455,7 +443,7 @@ fn check_let_reachability<'p, 'tcx>(
 
     report_arm_reachability(&cx, &report, |arm_index, arm_span, arm_hir_id, _| {
         match ls {
-            LetSource::IfLet | LetSource::WhileLet => {
+            hir::LetSource::If | hir::LetSource::While => {
                 match arm_index {
                     // The arm with the user-specified pattern.
                     0 => unreachable_pattern(cx.tcx, arm_span, arm_hir_id, None),
@@ -464,7 +452,7 @@ fn check_let_reachability<'p, 'tcx>(
                     _ => bug!(),
                 }
             }
-            LetSource::IfLetGuard if arm_index == 0 => {
+            hir::LetSource::Guard if arm_index == 0 => {
                 unreachable_pattern(cx.tcx, arm_span, arm_hir_id, None);
             }
             _ => {}
@@ -780,12 +768,4 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_
         }
         err.emit();
     }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum LetSource {
-    GenericLet,
-    IfLet,
-    IfLetGuard,
-    WhileLet,
 }
