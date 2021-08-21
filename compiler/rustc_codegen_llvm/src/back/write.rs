@@ -296,39 +296,8 @@ unsafe extern "C" fn inline_asm_handler(diag: &SMDiagnostic, user: *const c_void
     }
     let (cgcx, _) = *(user as *const (&CodegenContext<LlvmCodegenBackend>, &Handler));
 
-    // Recover the post-substitution assembly code from LLVM for better
-    // diagnostics.
-    let mut have_source = false;
-    let mut buffer = String::new();
-    let mut level = llvm::DiagnosticLevel::Error;
-    let mut loc = 0;
-    let mut ranges = [0; 8];
-    let mut num_ranges = ranges.len() / 2;
-    let msg = llvm::build_string(|msg| {
-        buffer = llvm::build_string(|buffer| {
-            have_source = llvm::LLVMRustUnpackSMDiagnostic(
-                diag,
-                msg,
-                buffer,
-                &mut level,
-                &mut loc,
-                ranges.as_mut_ptr(),
-                &mut num_ranges,
-            );
-        })
-        .expect("non-UTF8 inline asm");
-    })
-    .expect("non-UTF8 SMDiagnostic");
-
-    let source = have_source.then(|| {
-        let mut spans = vec![InnerSpan::new(loc as usize, loc as usize)];
-        for i in 0..num_ranges {
-            spans.push(InnerSpan::new(ranges[i * 2] as usize, ranges[i * 2 + 1] as usize));
-        }
-        (buffer, spans)
-    });
-
-    report_inline_asm(cgcx, msg, level, cookie, source);
+    let smdiag = llvm::diagnostic::SrcMgrDiagnostic::unpack(diag);
+    report_inline_asm(cgcx, smdiag.message, smdiag.level, cookie, smdiag.source);
 }
 
 unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void) {
@@ -339,13 +308,7 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
 
     match llvm::diagnostic::Diagnostic::unpack(info) {
         llvm::diagnostic::InlineAsm(inline) => {
-            report_inline_asm(
-                cgcx,
-                llvm::twine_to_string(inline.message),
-                inline.level,
-                inline.cookie,
-                None,
-            );
+            report_inline_asm(cgcx, inline.message, inline.level, inline.cookie, inline.source);
         }
 
         llvm::diagnostic::Optimization(opt) => {

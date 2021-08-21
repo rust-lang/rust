@@ -32,7 +32,7 @@ pub fn target() -> Target {
     Target {
         llvm_target: "wasm64-unknown-unknown".to_string(),
         pointer_width: 64,
-        data_layout: "e-m:e-p:64:64-i64:64-n32:64-S128".to_string(),
+        data_layout: "e-m:e-p:64:64-i64:64-n32:64-S128-ni:1:10:20".to_string(),
         arch: "wasm64".to_string(),
         options,
     }

@@ -474,7 +474,13 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
             }
 
             if attrs.flags.contains(CodegenFnAttrFlags::USED) {
-                self.add_used_global(g);
+                // The semantics of #[used] in Rust only require the symbol to make it into the
+                // object file. It is explicitly allowed for the linker to strip the symbol if it
+                // is dead. As such, use llvm.compiler.used instead of llvm.used.
+                // Additionally, https://reviews.llvm.org/D97448 in LLVM 13 started emitting unique
+                // sections with SHF_GNU_RETAIN flag for llvm.used symbols, which may trigger bugs
+                // in some versions of the gold linker.
+                self.add_compiler_used_global(g);
             }
         }
     }
@@ -483,5 +489,12 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
     fn add_used_global(&self, global: &'ll Value) {
         let cast = unsafe { llvm::LLVMConstPointerCast(global, self.type_i8p()) };
         self.used_statics.borrow_mut().push(cast);
+    }
+
+    /// Add a global value to a list to be stored in the `llvm.compiler.used` variable,
+    /// an array of i8*.
+    fn add_compiler_used_global(&self, global: &'ll Value) {
+        let cast = unsafe { llvm::LLVMConstPointerCast(global, self.type_i8p()) };
+        self.compiler_used_statics.borrow_mut().push(cast);
     }
 }

@@ -6,7 +6,8 @@ pub use self::OptimizationDiagnosticKind::*;
 use crate::value::Value;
 use libc::c_uint;
 
-use super::{DiagnosticInfo, Twine};
+use super::{DiagnosticInfo, SMDiagnostic};
+use rustc_span::InnerSpan;
 
 #[derive(Copy, Clone)]
 pub enum OptimizationDiagnosticKind {
@@ -86,36 +87,91 @@ impl OptimizationDiagnostic<'ll> {
     }
 }
 
-#[derive(Copy, Clone)]
-pub struct InlineAsmDiagnostic<'ll> {
+pub struct SrcMgrDiagnostic {
     pub level: super::DiagnosticLevel,
-    pub cookie: c_uint,
-    pub message: &'ll Twine,
-    pub instruction: Option<&'ll Value>,
+    pub message: String,
+    pub source: Option<(String, Vec<InnerSpan>)>,
 }
 
-impl InlineAsmDiagnostic<'ll> {
-    unsafe fn unpack(di: &'ll DiagnosticInfo) -> Self {
+impl SrcMgrDiagnostic {
+    pub unsafe fn unpack(diag: &SMDiagnostic) -> SrcMgrDiagnostic {
+        // Recover the post-substitution assembly code from LLVM for better
+        // diagnostics.
+        let mut have_source = false;
+        let mut buffer = String::new();
+        let mut level = super::DiagnosticLevel::Error;
+        let mut loc = 0;
+        let mut ranges = [0; 8];
+        let mut num_ranges = ranges.len() / 2;
+        let message = super::build_string(|message| {
+            buffer = super::build_string(|buffer| {
+                have_source = super::LLVMRustUnpackSMDiagnostic(
+                    diag,
+                    message,
+                    buffer,
+                    &mut level,
+                    &mut loc,
+                    ranges.as_mut_ptr(),
+                    &mut num_ranges,
+                );
+            })
+            .expect("non-UTF8 inline asm");
+        })
+        .expect("non-UTF8 SMDiagnostic");
+
+        SrcMgrDiagnostic {
+            message,
+            level,
+            source: have_source.then(|| {
+                let mut spans = vec![InnerSpan::new(loc as usize, loc as usize)];
+                for i in 0..num_ranges {
+                    spans.push(InnerSpan::new(ranges[i * 2] as usize, ranges[i * 2 + 1] as usize));
+                }
+                (buffer, spans)
+            }),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct InlineAsmDiagnostic {
+    pub level: super::DiagnosticLevel,
+    pub cookie: c_uint,
+    pub message: String,
+    pub source: Option<(String, Vec<InnerSpan>)>,
+}
+
+impl InlineAsmDiagnostic {
+    unsafe fn unpackInlineAsm(di: &'ll DiagnosticInfo) -> Self {
         let mut cookie = 0;
         let mut message = None;
-        let mut instruction = None;
         let mut level = super::DiagnosticLevel::Error;
 
-        super::LLVMRustUnpackInlineAsmDiagnostic(
-            di,
-            &mut level,
-            &mut cookie,
-            &mut message,
-            &mut instruction,
-        );
+        super::LLVMRustUnpackInlineAsmDiagnostic(di, &mut level, &mut cookie, &mut message);
 
-        InlineAsmDiagnostic { level, cookie, message: message.unwrap(), instruction }
+        InlineAsmDiagnostic {
+            level,
+            cookie,
+            message: super::twine_to_string(message.unwrap()),
+            source: None,
+        }
+    }
+
+    unsafe fn unpackSrcMgr(di: &'ll DiagnosticInfo) -> Self {
+        let mut cookie = 0;
+        let smdiag = SrcMgrDiagnostic::unpack(super::LLVMRustGetSMDiagnostic(di, &mut cookie));
+        InlineAsmDiagnostic {
+            level: smdiag.level,
+            cookie,
+            message: smdiag.message,
+            source: smdiag.source,
+        }
     }
 }
 
 pub enum Diagnostic<'ll> {
     Optimization(OptimizationDiagnostic<'ll>),
-    InlineAsm(InlineAsmDiagnostic<'ll>),
+    InlineAsm(InlineAsmDiagnostic),
     PGO(&'ll DiagnosticInfo),
     Linker(&'ll DiagnosticInfo),
     Unsupported(&'ll DiagnosticInfo),
@@ -130,7 +186,7 @@ impl Diagnostic<'ll> {
         let kind = super::LLVMRustGetDiagInfoKind(di);
 
         match kind {
-            Dk::InlineAsm => InlineAsm(InlineAsmDiagnostic::unpack(di)),
+            Dk::InlineAsm => InlineAsm(InlineAsmDiagnostic::unpackInlineAsm(di)),
 
             Dk::OptimizationRemark => {
                 Optimization(OptimizationDiagnostic::unpack(OptimizationRemark, di))
@@ -161,6 +217,8 @@ impl Diagnostic<'ll> {
             Dk::PGOProfile => PGO(di),
             Dk::Linker => Linker(di),
             Dk::Unsupported => Unsupported(di),
+
+            Dk::SrcMgr => InlineAsm(InlineAsmDiagnostic::unpackSrcMgr(di)),
 
             _ => UnknownDiagnostic(di),
         }

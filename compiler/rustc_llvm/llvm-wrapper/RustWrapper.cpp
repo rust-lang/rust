@@ -1114,15 +1114,13 @@ extern "C" void
 LLVMRustUnpackInlineAsmDiagnostic(LLVMDiagnosticInfoRef DI,
                                   LLVMRustDiagnosticLevel *LevelOut,
                                   unsigned *CookieOut,
-                                  LLVMTwineRef *MessageOut,
-                                  LLVMValueRef *InstructionOut) {
+                                  LLVMTwineRef *MessageOut) {
   // Undefined to call this not on an inline assembly diagnostic!
   llvm::DiagnosticInfoInlineAsm *IA =
       static_cast<llvm::DiagnosticInfoInlineAsm *>(unwrap(DI));
 
   *CookieOut = IA->getLocCookie();
   *MessageOut = wrap(&IA->getMsgStr());
-  *InstructionOut = wrap(IA->getInstruction());
 
   switch (IA->getSeverity()) {
     case DS_Error:
@@ -1165,6 +1163,7 @@ enum class LLVMRustDiagnosticKind {
   PGOProfile,
   Linker,
   Unsupported,
+  SrcMgr,
 };
 
 static LLVMRustDiagnosticKind toRust(DiagnosticKind Kind) {
@@ -1193,6 +1192,10 @@ static LLVMRustDiagnosticKind toRust(DiagnosticKind Kind) {
     return LLVMRustDiagnosticKind::Linker;
   case DK_Unsupported:
     return LLVMRustDiagnosticKind::Unsupported;
+#if LLVM_VERSION_GE(13, 0)
+  case DK_SrcMgr:
+    return LLVMRustDiagnosticKind::SrcMgr;
+#endif
   default:
     return (Kind >= DK_FirstRemark && Kind <= DK_LastRemark)
                ? LLVMRustDiagnosticKind::OptimizationRemarkOther
@@ -1277,6 +1280,17 @@ extern "C" void LLVMRustSetInlineAsmDiagnosticHandler(
   // with LLVM 13 this function is gone.
 #if LLVM_VERSION_LT(13, 0)
   unwrap(C)->setInlineAsmDiagnosticHandler(H, CX);
+#endif
+}
+
+extern "C" LLVMSMDiagnosticRef LLVMRustGetSMDiagnostic(
+    LLVMDiagnosticInfoRef DI, unsigned *Cookie) {
+#if LLVM_VERSION_GE(13, 0)
+  llvm::DiagnosticInfoSrcMgr *SM = static_cast<llvm::DiagnosticInfoSrcMgr *>(unwrap(DI));
+  *Cookie = SM->getLocCookie();
+  return wrap(&SM->getSMDiag());
+#else
+  report_fatal_error("Shouldn't get called on older versions");
 #endif
 }
 
