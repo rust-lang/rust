@@ -251,7 +251,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Modules, prelude, and resolution:
     ungated!(path, Normal, template!(NameValueStr: "file")),
     ungated!(no_std, CrateLevel, template!(Word)),
-    ungated!(no_implicit_prelude, CrateLevel, template!(Word)),
+    ungated!(no_implicit_prelude, Normal, template!(Word)),
     ungated!(non_exhaustive, Normal, template!(Word)),
 
     // Runtime

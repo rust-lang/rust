@@ -130,6 +130,12 @@ impl CheckAttrVisitor<'tcx> {
                 sym::ignore | sym::should_panic | sym::proc_macro_derive => {
                     self.check_generic_attr(hir_id, attr, target, &[Target::Fn])
                 }
+                sym::automatically_derived => {
+                    self.check_generic_attr(hir_id, attr, target, &[Target::Impl])
+                }
+                sym::no_implicit_prelude => {
+                    self.check_generic_attr(hir_id, attr, target, &[Target::Mod])
+                }
                 _ => {}
             }
 
@@ -290,7 +296,6 @@ impl CheckAttrVisitor<'tcx> {
                 b.push_str(&(allowed_target.to_string() + "s"));
                 b
             });
-            //let supported_names = allowed_targets.iter().fold(String::new(), |msg, t| msg + ", " + &t.to_string());
             self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
                 lint.build(&format!("`#[{name}]` only has an effect on {}", supported_names))
                     .emit();

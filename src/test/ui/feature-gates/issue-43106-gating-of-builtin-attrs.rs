@@ -275,18 +275,20 @@ mod path {
     //~^ WARN `#[path]` only has an effect
 }
 
-// Don't warn on `automatically_derived` - a custom derive
-// could reasonally annotate anything that it emits with
-// this attribute
 #[automatically_derived]
+//~^ WARN `#[automatically_derived]` only has an effect
 mod automatically_derived {
     mod inner { #![automatically_derived] }
+    //~^ WARN `#[automatically_derived]
 
     #[automatically_derived] fn f() { }
+    //~^ WARN `#[automatically_derived]
 
     #[automatically_derived] struct S;
+    //~^ WARN `#[automatically_derived]
 
     #[automatically_derived] type T = S;
+    //~^ WARN `#[automatically_derived]
 
     #[automatically_derived] impl S { }
 }
@@ -368,22 +370,20 @@ mod ignore {
 }
 
 #[no_implicit_prelude]
-//~^ WARN crate-level attribute
 mod no_implicit_prelude {
     mod inner { #![no_implicit_prelude] }
-    //~^ WARN crate-level attribute
 
     #[no_implicit_prelude] fn f() { }
-    //~^ WARN crate-level attribute
+    //~^ WARN `#[no_implicit_prelude]` only has an effect
 
     #[no_implicit_prelude] struct S;
-    //~^ WARN crate-level attribute
+    //~^ WARN `#[no_implicit_prelude]` only has an effect
 
     #[no_implicit_prelude] type T = S;
-    //~^ WARN crate-level attribute
+    //~^ WARN `#[no_implicit_prelude]` only has an effect
 
     #[no_implicit_prelude] impl S { }
-    //~^ WARN crate-level attribute
+    //~^ WARN `#[no_implicit_prelude]` only has an effect
 }
 
 #[reexport_test_harness_main = "2900"]
