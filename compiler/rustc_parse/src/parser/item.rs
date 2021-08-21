@@ -1938,33 +1938,62 @@ impl<'a> Parser<'a> {
                 Ok(false) => unreachable!(),
                 Err(mut err) => {
                     // Qualifier keywords ordering check
+                    enum WrongKw {
+                        Duplicated(Span),
+                        Misplaced(Span),
+                    }
 
-                    // This will allow the machine fix to directly place the keyword in the correct place
-                    let current_qual_sp = if self.check_keyword(kw::Const) {
-                        Some(async_start_sp)
+                    // This will allow the machine fix to directly place the keyword in the correct place or to indicate
+                    // that the keyword is already present and the second instance should be removed.
+                    let wrong_kw = if self.check_keyword(kw::Const) {
+                        match constness {
+                            Const::Yes(sp) => Some(WrongKw::Duplicated(sp)),
+                            Const::No => Some(WrongKw::Misplaced(async_start_sp)),
+                        }
                     } else if self.check_keyword(kw::Async) {
-                        Some(unsafe_start_sp)
+                        match asyncness {
+                            Async::Yes { span, .. } => Some(WrongKw::Duplicated(span)),
+                            Async::No => Some(WrongKw::Misplaced(unsafe_start_sp)),
+                        }
                     } else if self.check_keyword(kw::Unsafe) {
-                        Some(ext_start_sp)
+                        match unsafety {
+                            Unsafe::Yes(sp) => Some(WrongKw::Duplicated(sp)),
+                            Unsafe::No => Some(WrongKw::Misplaced(ext_start_sp)),
+                        }
                     } else {
                         None
                     };
 
-                    if let Some(current_qual_sp) = current_qual_sp {
-                        let current_qual_sp = current_qual_sp.to(self.prev_token.span);
-                        if let Ok(current_qual) = self.span_to_snippet(current_qual_sp) {
-                            let invalid_qual_sp = self.token.uninterpolated_span();
-                            let invalid_qual = self.span_to_snippet(invalid_qual_sp).unwrap();
+                    // The keyword is already present, suggest removal of the second instance
+                    if let Some(WrongKw::Duplicated(original_sp)) = wrong_kw {
+                        let original_kw = self
+                            .span_to_snippet(original_sp)
+                            .expect("Span extracted directly from keyword should always work");
+
+                        err.span_suggestion(
+                            self.token.uninterpolated_span(),
+                            &format!("`{}` already used earlier, remove this one", original_kw),
+                            "".to_string(),
+                            Applicability::MachineApplicable,
+                        )
+                        .span_note(original_sp, &format!("`{}` first seen here", original_kw));
+                    }
+                    // The keyword has not been seen yet, suggest correct placement in the function front matter
+                    else if let Some(WrongKw::Misplaced(correct_pos_sp)) = wrong_kw {
+                        let correct_pos_sp = correct_pos_sp.to(self.prev_token.span);
+                        if let Ok(current_qual) = self.span_to_snippet(correct_pos_sp) {
+                            let misplaced_qual_sp = self.token.uninterpolated_span();
+                            let misplaced_qual = self.span_to_snippet(misplaced_qual_sp).unwrap();
 
                             err.span_suggestion(
-                                current_qual_sp.to(invalid_qual_sp),
-                                &format!("`{}` must come before `{}`", invalid_qual, current_qual),
-                                format!("{} {}", invalid_qual, current_qual),
-                                Applicability::MachineApplicable,
-                            ).note("keyword order for functions declaration is `default`, `pub`, `const`, `async`, `unsafe`, `extern`");
+                                    correct_pos_sp.to(misplaced_qual_sp),
+                                    &format!("`{}` must come before `{}`", misplaced_qual, current_qual),
+                                    format!("{} {}", misplaced_qual, current_qual),
+                                    Applicability::MachineApplicable,
+                                ).note("keyword order for functions declaration is `default`, `pub`, `const`, `async`, `unsafe`, `extern`");
                         }
                     }
-                    // Recover incorrect visibility order such as `async pub`.
+                    // Recover incorrect visibility order such as `async pub`
                     else if self.check_keyword(kw::Pub) {
                         let orig_vis = vis.unwrap_or(&Visibility {
                             span: rustc_span::DUMMY_SP,
