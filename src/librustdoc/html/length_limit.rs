@@ -29,8 +29,18 @@ pub(super) struct HtmlWithLimit {
 impl HtmlWithLimit {
     /// Create a new buffer, with a limit of `length_limit`.
     pub(super) fn new(length_limit: usize) -> Self {
+        let buf = if length_limit > 1000 {
+            // If the length limit is really large, don't preallocate tons of memory.
+            String::new()
+        } else {
+            // The length limit is actually a good heuristic for initial allocation size.
+            // Measurements showed that using it as the initial capacity ended up using less memory
+            // than `String::new`.
+            // See https://github.com/rust-lang/rust/pull/88173#discussion_r692531631 for more.
+            String::with_capacity(length_limit)
+        };
         Self {
-            buf: String::new(),
+            buf,
             len: 0,
             limit: length_limit,
             unclosed_tags: Vec::new(),

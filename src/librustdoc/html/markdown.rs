@@ -1096,7 +1096,6 @@ fn markdown_summary_with_limit(
     let p = Parser::new_with_broken_link_callback(md, opts(), Some(&mut replacer));
     let mut p = LinkReplacer::new(p, link_names);
 
-    // FIXME: capacity
     let mut buf = HtmlWithLimit::new(length_limit);
     let mut stopped_early = false;
     p.try_for_each(|event| {
