@@ -85,9 +85,10 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         None => None,
     };
 
-    let function_builder = FunctionBuilder::from_call(ctx, &call, &path, target_module)?;
+    let (function_builder, inserting_offset, file) =
+        FunctionBuilder::from_call(ctx, &call, &path, target_module)?;
     let target = call.syntax().text_range();
-    add_func_to_accumulator(acc, ctx, target, function_builder, None)
+    add_func_to_accumulator(acc, ctx, target, function_builder, inserting_offset, file, None)
 }
 
 fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -108,7 +109,7 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         ctx.sema.find_node_at_offset_with_macros(file.syntax(), range.range.start())?;
     let impl_ = find_struct_impl(ctx, &adt_source, fn_name.text().as_str())?;
 
-    let function_builder = FunctionBuilder::from_method_call(
+    let (function_builder, inserting_offset, file) = FunctionBuilder::from_method_call(
         ctx,
         &call,
         &fn_name,
@@ -119,7 +120,7 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     )?;
     let target = call.syntax().text_range();
     let adt_name = if impl_.is_none() { Some(adt.name(ctx.sema.db)) } else { None };
-    add_func_to_accumulator(acc, ctx, target, function_builder, adt_name)
+    add_func_to_accumulator(acc, ctx, target, function_builder, inserting_offset, file, adt_name)
 }
 
 fn add_func_to_accumulator(
@@ -127,6 +128,8 @@ fn add_func_to_accumulator(
     ctx: &AssistContext,
     target: TextRange,
     function_builder: FunctionBuilder,
+    insert_offset: TextSize,
+    file: FileId,
     adt_name: Option<hir::Name>,
 ) -> Option<()> {
     acc.add(
@@ -134,7 +137,7 @@ fn add_func_to_accumulator(
         format!("Generate `{}` method", function_builder.fn_name),
         target,
         |builder| {
-            let (function_template, insert_offset, file) = function_builder.render();
+            let function_template = function_builder.render();
             let mut func = function_template.to_string(ctx.config.snippet_cap);
             if let Some(name) = adt_name {
                 func = format!("\nimpl {} {{\n{}\n}}", name, func);
@@ -204,7 +207,7 @@ impl FunctionBuilder {
         call: &ast::CallExpr,
         path: &ast::Path,
         target_module: Option<hir::Module>,
-    ) -> Option<Self> {
+    ) -> Option<(Self, TextSize, FileId)> {
         let mut file = ctx.frange.file_id;
         let target = match &target_module {
             Some(target_module) => {
@@ -226,17 +229,28 @@ impl FunctionBuilder {
         let (ret_type, should_focus_return_type) =
             make_return_type(ctx, &ast::Expr::CallExpr(call.clone()), target_module);
 
-        Some(Self {
-            target,
-            fn_name,
-            type_params,
-            params,
-            ret_type,
-            should_focus_return_type,
+        let insert_offset = match &target {
+            GeneratedFunctionTarget::BehindItem(it) => it.text_range().end(),
+            GeneratedFunctionTarget::InEmptyItemList(it) => {
+                it.text_range().start() + TextSize::of('{')
+            }
+        };
+
+        Some((
+            Self {
+                target,
+                fn_name,
+                type_params,
+                params,
+                ret_type,
+                should_focus_return_type,
+                file,
+                needs_pub,
+                is_async,
+            },
+            insert_offset,
             file,
-            needs_pub,
-            is_async,
-        })
+        ))
     }
 
     fn from_method_call(
@@ -247,7 +261,7 @@ impl FunctionBuilder {
         file: FileId,
         target_module: Module,
         current_module: Module,
-    ) -> Option<Self> {
+    ) -> Option<(Self, TextSize, FileId)> {
         let target = match impl_ {
             Some(impl_) => next_space_for_fn_in_impl(&impl_)?,
             None => {
@@ -269,20 +283,31 @@ impl FunctionBuilder {
         let (ret_type, should_focus_return_type) =
             make_return_type(ctx, &ast::Expr::MethodCallExpr(call.clone()), target_module);
 
-        Some(Self {
-            target,
-            fn_name,
-            type_params,
-            params,
-            ret_type,
-            should_focus_return_type,
+        let insert_offset = match &target {
+            GeneratedFunctionTarget::BehindItem(it) => it.text_range().end(),
+            GeneratedFunctionTarget::InEmptyItemList(it) => {
+                it.text_range().start() + TextSize::of('{')
+            }
+        };
+
+        Some((
+            Self {
+                target,
+                fn_name,
+                type_params,
+                params,
+                ret_type,
+                should_focus_return_type,
+                file,
+                needs_pub,
+                is_async,
+            },
+            insert_offset,
             file,
-            needs_pub,
-            is_async,
-        })
+        ))
     }
 
-    fn render(self) -> (FunctionTemplate, TextSize, FileId) {
+    fn render(self) -> FunctionTemplate {
         let placeholder_expr = make::ext::expr_todo();
         let fn_body = make::block_expr(vec![], Some(placeholder_expr));
         let visibility = if self.needs_pub { Some(make::visibility_pub_crate()) } else { None };
@@ -298,36 +323,30 @@ impl FunctionBuilder {
         let leading_ws;
         let trailing_ws;
 
-        let insert_offset = match self.target {
+        match self.target {
             GeneratedFunctionTarget::BehindItem(it) => {
                 let indent = IndentLevel::from_node(&it);
                 leading_ws = format!("\n\n{}", indent);
                 fn_def = fn_def.indent(indent);
                 trailing_ws = String::new();
-                it.text_range().end()
             }
             GeneratedFunctionTarget::InEmptyItemList(it) => {
                 let indent = IndentLevel::from_node(&it);
                 leading_ws = format!("\n{}", indent + 1);
                 fn_def = fn_def.indent(indent + 1);
                 trailing_ws = format!("\n{}", indent);
-                it.text_range().start() + TextSize::of('{')
             }
         };
 
-        (
-            FunctionTemplate {
-                leading_ws,
-                ret_type: fn_def.ret_type(),
-                // PANIC: we guarantee we always create a function body with a tail expr
-                tail_expr: fn_def.body().unwrap().tail_expr().unwrap(),
-                should_focus_return_type: self.should_focus_return_type,
-                fn_def,
-                trailing_ws,
-            },
-            insert_offset,
-            self.file,
-        )
+        FunctionTemplate {
+            leading_ws,
+            ret_type: fn_def.ret_type(),
+            // PANIC: we guarantee we always create a function body with a tail expr
+            tail_expr: fn_def.body().unwrap().tail_expr().unwrap(),
+            should_focus_return_type: self.should_focus_return_type,
+            fn_def,
+            trailing_ws,
+        }
     }
 }
 
