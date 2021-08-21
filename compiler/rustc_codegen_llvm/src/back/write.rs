@@ -370,8 +370,9 @@ fn get_pgo_use_path(config: &ModuleConfig) -> Option<CString> {
 }
 
 pub(crate) fn should_use_new_llvm_pass_manager(config: &ModuleConfig) -> bool {
-    // The new pass manager is disabled by default.
-    config.new_llvm_pass_manager.unwrap_or(false)
+    // The new pass manager is enabled by default for LLVM >= 13.
+    // This matches Clang, which also enables it since Clang 13.
+    config.new_llvm_pass_manager.unwrap_or_else(|| llvm_util::get_version() >= (13, 0, 0))
 }
 
 pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
