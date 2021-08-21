@@ -235,24 +235,36 @@ fn pick_pattern_and_expr_order(
 ) -> Option<(ast::Pat, ast::Expr, ast::Expr)> {
     let res = match (pat, pat2) {
         (ast::Pat::WildcardPat(_), _) => return None,
-        (pat, _) if expr2.syntax().first_child().is_none() => (pat, expr, expr2),
-        (_, pat) if expr.syntax().first_child().is_none() => (pat, expr2, expr),
+        (pat, _) if is_empty_expr(&expr2) => (pat, expr, expr2),
+        (_, pat) if is_empty_expr(&expr) => (pat, expr2, expr),
         (pat, pat2) => match (binds_name(&pat), binds_name(&pat2)) {
+            (true, true) => return None,
             (true, false) => (pat, expr, expr2),
             (false, true) => (pat2, expr2, expr),
             _ if is_sad_pat(sema, &pat2) => (pat, expr, expr2),
             _ if is_sad_pat(sema, &pat) => (pat2, expr2, expr),
-            (true, true) => return None,
             (false, false) => (pat, expr, expr2),
         },
     };
     Some(res)
 }
 
+fn is_empty_expr(expr: &ast::Expr) -> bool {
+    match expr {
+        ast::Expr::BlockExpr(expr) => {
+            expr.statements().next().is_none() && expr.tail_expr().is_none()
+        }
+        ast::Expr::TupleExpr(expr) => expr.fields().next().is_none(),
+        _ => false,
+    }
+}
+
 fn binds_name(pat: &ast::Pat) -> bool {
     let binds_name_v = |pat| binds_name(&pat);
     match pat {
-        ast::Pat::IdentPat(_) => true,
+        ast::Pat::IdentPat(pat) => {
+            pat.to_string().starts_with(|c: char| c.is_lowercase() && c != '_')
+        }
         ast::Pat::MacroPat(_) => true,
         ast::Pat::OrPat(pat) => pat.pats().any(binds_name_v),
         ast::Pat::SlicePat(pat) => pat.pats().any(binds_name_v),
@@ -698,6 +710,28 @@ fn main() {
 fn main() {
     if let Ok(rel_path) = path.strip_prefix(root_path) {
         println!("{}", rel_path)
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_match_with_if_let_number_body() {
+        check_assist(
+            replace_match_with_if_let,
+            r#"
+fn main() {
+    $0match Ok(()) {
+        Ok(()) => {},
+        Err(_) => 0,
+    }
+}
+"#,
+            r#"
+fn main() {
+    if let Err(_) = Ok(()) {
+        0
     }
 }
 "#,
