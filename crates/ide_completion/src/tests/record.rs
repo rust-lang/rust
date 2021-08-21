@@ -182,4 +182,24 @@ fn main() {
             sn Foo {…}              Foo { foo1: ${1:()}, foo2: ${2:()} }$0
         "#]],
     );
+    check(
+        r#"
+//- minicore:default
+struct Foo { foo1: u32, foo2: u32 }
+impl Default for Foo {
+    fn default() -> Self { loop {} }
+}
+
+fn main() {
+    let thing = 1;
+    let foo = Foo { foo1: 0, foo2: 0 };
+    let foo2 = Foo { thing, ..Default::$0 }
+}
+"#,
+        expect![[r#"
+            fn default() (as Default) fn() -> Self
+            fd foo1                   u32
+            fd foo2                   u32
+        "#]],
+    );
 }

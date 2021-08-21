@@ -20,7 +20,7 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
             });
 
             let missing_fields = ctx.sema.record_literal_missing_fields(record_expr);
-            if impl_default_trait && !missing_fields.is_empty() {
+            if impl_default_trait && !missing_fields.is_empty() && ctx.path_qual().is_none() {
                 let completion_text = "..Default::default()";
                 let mut item = CompletionItem::new(
                     CompletionKind::Snippet,
