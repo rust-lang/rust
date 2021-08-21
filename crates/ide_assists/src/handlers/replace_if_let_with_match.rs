@@ -241,7 +241,6 @@ fn pick_pattern_and_expr_order(
             (true, true) => return None,
             (true, false) => (pat, expr, expr2),
             (false, true) => (pat2, expr2, expr),
-            _ if is_sad_pat(sema, &pat2) => (pat, expr, expr2),
             _ if is_sad_pat(sema, &pat) => (pat2, expr2, expr),
             (false, false) => (pat, expr, expr2),
         },
@@ -251,9 +250,7 @@ fn pick_pattern_and_expr_order(
 
 fn is_empty_expr(expr: &ast::Expr) -> bool {
     match expr {
-        ast::Expr::BlockExpr(expr) => {
-            expr.statements().next().is_none() && expr.tail_expr().is_none()
-        }
+        ast::Expr::BlockExpr(expr) => expr.is_empty(),
         ast::Expr::TupleExpr(expr) => expr.fields().next().is_none(),
         _ => false,
     }
@@ -262,12 +259,10 @@ fn is_empty_expr(expr: &ast::Expr) -> bool {
 fn binds_name(sema: &hir::Semantics<RootDatabase>, pat: &ast::Pat) -> bool {
     let binds_name_v = |pat| binds_name(&sema, &pat);
     match pat {
-        ast::Pat::IdentPat(pat) => {
-            match pat.name().and_then(|name| NameClass::classify(sema, &name)) {
-                Some(NameClass::ConstReference(_)) => false,
-                _ => true,
-            }
-        }
+        ast::Pat::IdentPat(pat) => !matches!(
+            pat.name().and_then(|name| NameClass::classify(sema, &name)),
+            Some(NameClass::ConstReference(_))
+        ),
         ast::Pat::MacroPat(_) => true,
         ast::Pat::OrPat(pat) => pat.pats().any(binds_name_v),
         ast::Pat::SlicePat(pat) => pat.pats().any(binds_name_v),
