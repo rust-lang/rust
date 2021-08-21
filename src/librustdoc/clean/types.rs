@@ -168,6 +168,7 @@ impl ExternalCrate {
     crate fn location(
         &self,
         extern_url: Option<&str>,
+        extern_url_takes_precedence: bool,
         dst: &std::path::Path,
         tcx: TyCtxt<'_>,
     ) -> ExternalLocation {
@@ -189,8 +190,10 @@ impl ExternalCrate {
             return Local;
         }
 
-        if let Some(url) = extern_url {
-            return to_remote(url);
+        if extern_url_takes_precedence {
+            if let Some(url) = extern_url {
+                return to_remote(url);
+            }
         }
 
         // Failing that, see if there's an attribute specifying where to find this
@@ -202,6 +205,7 @@ impl ExternalCrate {
             .filter_map(|a| a.value_str())
             .map(to_remote)
             .next()
+            .or(extern_url.map(to_remote)) // NOTE: only matters if `extern_url_takes_precedence` is false
             .unwrap_or(Unknown) // Well, at least we tried.
     }
 
