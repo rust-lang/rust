@@ -866,8 +866,9 @@ impl Expectation {
     /// which still is useful, because it informs integer literals and the like.
     /// See the test case `test/ui/coerce-expect-unsized.rs` and #20169
     /// for examples of where this comes up,.
-    fn rvalue_hint(ty: Ty) -> Self {
-        match ty.strip_references().kind(&Interner) {
+    fn rvalue_hint(table: &mut unify::InferenceTable, ty: Ty) -> Self {
+        // FIXME: do struct_tail_without_normalization
+        match table.resolve_ty_shallow(&ty).kind(&Interner) {
             TyKind::Slice(_) | TyKind::Str | TyKind::Dyn(_) => Expectation::RValueLikeUnsized(ty),
             _ => Expectation::has_type(ty),
         }
