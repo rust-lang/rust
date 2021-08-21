@@ -10,7 +10,7 @@ use crate::html::escape::Escape;
 /// This buffer ensures that:
 ///
 /// * all tags are closed,
-/// * only the most recently opened tag is closed,
+/// * tags are closed in the reverse order of when they were opened (i.e., the correct HTML order),
 /// * no tags are left empty (e.g., `<em></em>`) due to the length limit being reached,
 /// * all text is escaped.
 #[derive(Debug)]
