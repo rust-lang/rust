@@ -1,4 +1,4 @@
-use hir::{HasSource, HirDisplay, Module, TypeInfo};
+use hir::{HasSource, HirDisplay, InFile, Module, TypeInfo};
 use ide_db::{base_db::FileId, helpers::SnippetCap};
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::to_lower_snake_case;
@@ -109,7 +109,7 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let fn_name = call.name_ref()?;
     let adt = ctx.sema.type_of_expr(&call.receiver()?)?.original().strip_references().as_adt()?;
 
-    let current_module = ctx.sema.scope(call.syntax()).module()?;
+    let current_module = current_module(call.syntax(), ctx)?;
     let target_module = adt.module(ctx.sema.db);
 
     if current_module.krate() != target_module.krate() {
@@ -150,6 +150,22 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             }
         },
     )
+}
+
+fn get_impl(
+    adt: InFile<&SyntaxNode>,
+    fn_name: &ast::NameRef,
+    ctx: &AssistContext,
+) -> Option<(Option<ast::Impl>, FileId)> {
+    let file = adt.file_id.original_file(ctx.sema.db);
+    let adt = adt.value;
+    let adt = ast::Adt::cast(adt.clone())?;
+    let r = find_struct_impl(ctx, &adt, fn_name.text().as_str())?;
+    Some((r, file))
+}
+
+fn current_module(current_node: &SyntaxNode, ctx: &AssistContext) -> Option<Module> {
+    ctx.sema.scope(current_node).module()
 }
 
 struct FunctionTemplate {
@@ -218,7 +234,7 @@ impl FunctionBuilder {
             None => next_space_for_fn_after_call_site(FuncExpr::Func(call.clone()))?,
         };
         let needs_pub = target_module.is_some();
-        let target_module = target_module.or_else(|| ctx.sema.scope(target.syntax()).module())?;
+        let target_module = target_module.or_else(|| current_module(target.syntax(), ctx))?;
         let fn_name = fn_name(path)?;
         let (type_params, params) = fn_args(ctx, target_module, FuncExpr::Func(call.clone()))?;
 
@@ -250,8 +266,6 @@ impl FunctionBuilder {
         target_module: Module,
         current_module: Module,
     ) -> Option<Self> {
-        // let mut file = ctx.frange.file_id;
-        // let target_module = ctx.sema.scope(call.syntax()).module()?;
         let target = match impl_ {
             Some(impl_) => next_space_for_fn_in_impl(&impl_)?,
             None => {
