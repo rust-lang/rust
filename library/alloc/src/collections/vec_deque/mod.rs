@@ -2129,16 +2129,32 @@ impl<T, A: Allocator> VecDeque<T, A> {
         F: FnMut(&T) -> bool,
     {
         let len = self.len();
-        let mut del = 0;
-        for i in 0..len {
-            if !f(&self[i]) {
-                del += 1;
-            } else if del > 0 {
-                self.swap(i - del, i);
+        let mut idx = 0;
+        let mut cur = 0;
+
+        // Stage 1: All values are retained.
+        while cur < len {
+            if !f(&self[cur]) {
+                cur += 1;
+                break;
             }
+            cur += 1;
+            idx += 1;
         }
-        if del > 0 {
-            self.truncate(len - del);
+        // Stage 2: Swap retained value into current idx.
+        while cur < len {
+            if !f(&self[cur]) {
+                cur += 1;
+                continue;
+            }
+
+            self.swap(idx, cur);
+            cur += 1;
+            idx += 1;
+        }
+        // Stage 3: Trancate all values after idx.
+        if cur != idx {
+            self.truncate(idx);
         }
     }
 
