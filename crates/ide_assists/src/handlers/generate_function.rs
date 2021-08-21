@@ -1,4 +1,4 @@
-use hir::{HasSource, HirDisplay, InFile, Module, TypeInfo};
+use hir::{HasSource, HirDisplay, Module, TypeInfo};
 use ide_db::{base_db::FileId, helpers::SnippetCap};
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::to_lower_snake_case;
@@ -8,7 +8,7 @@ use syntax::{
         edit::{AstNodeEdit, IndentLevel},
         make, ArgListOwner, AstNode, ModuleItemOwner,
     },
-    SyntaxKind, SyntaxNode, TextSize,
+    SyntaxKind, SyntaxNode, TextRange, TextSize,
 };
 
 use crate::{
@@ -87,21 +87,7 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 
     let function_builder = FunctionBuilder::from_call(ctx, &call, &path, target_module)?;
     let target = call.syntax().text_range();
-
-    acc.add(
-        AssistId("generate_function", AssistKind::Generate),
-        format!("Generate `{}` function", function_builder.fn_name),
-        target,
-        |builder| {
-            let function_template = function_builder.render();
-            builder.edit_file(function_template.file);
-            let new_fn = function_template.to_string(ctx.config.snippet_cap);
-            match ctx.config.snippet_cap {
-                Some(cap) => builder.insert_snippet(cap, function_template.insert_offset, new_fn),
-                None => builder.insert(function_template.insert_offset, new_fn),
-            }
-        },
-    )
+    add_func_to_accumulator(acc, ctx, target, function_builder, None)
 }
 
 fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -132,36 +118,34 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         current_module,
     )?;
     let target = call.syntax().text_range();
+    let adt_name = if impl_.is_none() { Some(adt.name(ctx.sema.db)) } else { None };
+    add_func_to_accumulator(acc, ctx, target, function_builder, adt_name)
+}
 
+fn add_func_to_accumulator(
+    acc: &mut Assists,
+    ctx: &AssistContext,
+    target: TextRange,
+    function_builder: FunctionBuilder,
+    adt_name: Option<hir::Name>,
+) -> Option<()> {
     acc.add(
         AssistId("generate_function", AssistKind::Generate),
         format!("Generate `{}` method", function_builder.fn_name),
         target,
         |builder| {
-            let function_template = function_builder.render();
-            builder.edit_file(function_template.file);
-            let mut new_fn = function_template.to_string(ctx.config.snippet_cap);
-            if impl_.is_none() {
-                new_fn = format!("\nimpl {} {{\n{}\n}}", adt.name(ctx.sema.db), new_fn,);
+            let (function_template, insert_offset, file) = function_builder.render();
+            let mut func = function_template.to_string(ctx.config.snippet_cap);
+            if let Some(name) = adt_name {
+                func = format!("\nimpl {} {{\n{}\n}}", name, func);
             }
+            builder.edit_file(file);
             match ctx.config.snippet_cap {
-                Some(cap) => builder.insert_snippet(cap, function_template.insert_offset, new_fn),
-                None => builder.insert(function_template.insert_offset, new_fn),
+                Some(cap) => builder.insert_snippet(cap, insert_offset, func),
+                None => builder.insert(insert_offset, func),
             }
         },
     )
-}
-
-fn get_impl(
-    adt: InFile<&SyntaxNode>,
-    fn_name: &ast::NameRef,
-    ctx: &AssistContext,
-) -> Option<(Option<ast::Impl>, FileId)> {
-    let file = adt.file_id.original_file(ctx.sema.db);
-    let adt = adt.value;
-    let adt = ast::Adt::cast(adt.clone())?;
-    let r = find_struct_impl(ctx, &adt, fn_name.text().as_str())?;
-    Some((r, file))
 }
 
 fn current_module(current_node: &SyntaxNode, ctx: &AssistContext) -> Option<Module> {
@@ -169,13 +153,11 @@ fn current_module(current_node: &SyntaxNode, ctx: &AssistContext) -> Option<Modu
 }
 
 struct FunctionTemplate {
-    insert_offset: TextSize,
     leading_ws: String,
     fn_def: ast::Fn,
     ret_type: Option<ast::RetType>,
     should_focus_return_type: bool,
     trailing_ws: String,
-    file: FileId,
     tail_expr: ast::Expr,
 }
 
@@ -300,7 +282,7 @@ impl FunctionBuilder {
         })
     }
 
-    fn render(self) -> FunctionTemplate {
+    fn render(self) -> (FunctionTemplate, TextSize, FileId) {
         let placeholder_expr = make::ext::expr_todo();
         let fn_body = make::block_expr(vec![], Some(placeholder_expr));
         let visibility = if self.needs_pub { Some(make::visibility_pub_crate()) } else { None };
@@ -333,17 +315,19 @@ impl FunctionBuilder {
             }
         };
 
-        FunctionTemplate {
+        (
+            FunctionTemplate {
+                leading_ws,
+                ret_type: fn_def.ret_type(),
+                // PANIC: we guarantee we always create a function body with a tail expr
+                tail_expr: fn_def.body().unwrap().tail_expr().unwrap(),
+                should_focus_return_type: self.should_focus_return_type,
+                fn_def,
+                trailing_ws,
+            },
             insert_offset,
-            leading_ws,
-            ret_type: fn_def.ret_type(),
-            // PANIC: we guarantee we always create a function body with a tail expr
-            tail_expr: fn_def.body().unwrap().tail_expr().unwrap(),
-            should_focus_return_type: self.should_focus_return_type,
-            fn_def,
-            trailing_ws,
-            file: self.file,
-        }
+            self.file,
+        )
     }
 }
 
