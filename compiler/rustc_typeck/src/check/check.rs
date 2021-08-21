@@ -1384,12 +1384,17 @@ fn check_enum<'tcx>(
     }
 
     if tcx.adt_def(def_id).repr.int.is_none() {
-        let is_unit = |var: &hir::Variant<'_>| matches!(var.data, hir::VariantData::Unit(..));
+        let is_fieldless = |var: &hir::Variant<'_>| match var.data {
+            hir::VariantData::Unit(_) => true,
+            hir::VariantData::Tuple(fields, _) | hir::VariantData::Struct(fields, _) => {
+                fields.is_empty()
+            }
+        };
 
         let has_disr = |var: &hir::Variant<'_>| var.disr_expr.is_some();
-        let has_non_units = vs.iter().any(|var| !is_unit(var));
-        let disr_units = vs.iter().any(|var| is_unit(&var) && has_disr(&var));
-        let disr_non_unit = vs.iter().any(|var| !is_unit(&var) && has_disr(&var));
+        let has_non_units = vs.iter().any(|var| !is_fieldless(var));
+        let disr_units = vs.iter().any(|var| is_fieldless(&var) && has_disr(&var));
+        let disr_non_unit = vs.iter().any(|var| !is_fieldless(&var) && has_disr(&var));
 
         if disr_non_unit || (disr_units && has_non_units) {
             let mut err =
