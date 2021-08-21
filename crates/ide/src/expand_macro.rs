@@ -34,11 +34,9 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     let mut name = None;
     for node in tok.ancestors() {
         if let Some(item) = ast::Item::cast(node.clone()) {
-            expanded = sema.expand_attr_macro(&item);
-            if expanded.is_some() {
-                // FIXME: add the macro name
-                // FIXME: make this recursive too
-                name = Some("?".to_string());
+            if let Some(def) = sema.resolve_attr_macro_call(&item) {
+                name = def.name(db).map(|name| name.to_string());
+                expanded = expand_attr_macro_recur(&sema, &item);
                 break;
             }
         }
@@ -54,7 +52,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     // macro expansion may lose all white space information
     // But we hope someday we can use ra_fmt for that
     let expansion = insert_whitespaces(expanded?);
-    Some(ExpandedMacro { name: name?, expansion })
+    Some(ExpandedMacro { name: name.unwrap_or_else(|| "???".to_owned()), expansion })
 }
 
 fn expand_macro_recur(
@@ -62,12 +60,25 @@ fn expand_macro_recur(
     macro_call: &ast::MacroCall,
 ) -> Option<SyntaxNode> {
     let expanded = sema.expand(macro_call)?.clone_for_update();
+    expand(sema, expanded, ast::MacroCall::cast, expand_macro_recur)
+}
 
-    let children = expanded.descendants().filter_map(ast::MacroCall::cast);
+fn expand_attr_macro_recur(sema: &Semantics<RootDatabase>, item: &ast::Item) -> Option<SyntaxNode> {
+    let expanded = sema.expand_attr_macro(item)?.clone_for_update();
+    expand(sema, expanded, ast::Item::cast, expand_attr_macro_recur)
+}
+
+fn expand<T: AstNode>(
+    sema: &Semantics<RootDatabase>,
+    expanded: SyntaxNode,
+    f: impl FnMut(SyntaxNode) -> Option<T>,
+    exp: impl Fn(&Semantics<RootDatabase>, &T) -> Option<SyntaxNode>,
+) -> Option<SyntaxNode> {
+    let children = expanded.descendants().filter_map(f);
     let mut replacements = Vec::new();
 
     for child in children {
-        if let Some(new_node) = expand_macro_recur(sema, &child) {
+        if let Some(new_node) = exp(sema, &child) {
             // check if the whole original syntax is replaced
             if expanded == *child.syntax() {
                 return Some(new_node);
