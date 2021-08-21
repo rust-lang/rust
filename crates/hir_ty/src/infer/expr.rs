@@ -679,7 +679,8 @@ impl<'a> InferenceContext<'a> {
                     let lhs_ty = self.infer_expr(*lhs, &lhs_expectation);
                     let lhs_ty = self.resolve_ty_shallow(&lhs_ty);
                     let rhs_expectation = op::binary_op_rhs_expectation(*op, lhs_ty.clone());
-                    let rhs_ty = self.infer_expr(*rhs, &Expectation::has_type(rhs_expectation));
+                    let rhs_ty =
+                        self.infer_expr_coerce(*rhs, &Expectation::has_type(rhs_expectation));
                     let rhs_ty = self.resolve_ty_shallow(&rhs_ty);
 
                     let ret = op::binary_op_return_ty(*op, lhs_ty.clone(), rhs_ty.clone());
