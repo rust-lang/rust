@@ -1114,3 +1114,34 @@ fn test() {
         "#,
     );
 }
+
+#[test]
+fn coerce_diesel_panic() {
+    check_no_mismatches(
+        r#"
+//- minicore: option
+
+trait TypeMetadata {
+    type MetadataLookup;
+}
+
+pub struct Output<'a, T, DB>
+where
+    DB: TypeMetadata,
+    DB::MetadataLookup: 'a,
+{
+    out: T,
+    metadata_lookup: Option<&'a DB::MetadataLookup>,
+}
+
+impl<'a, T, DB: TypeMetadata> Output<'a, T, DB> {
+    pub fn new(out: T, metadata_lookup: &'a DB::MetadataLookup) -> Self {
+        Output {
+            out,
+            metadata_lookup: Some(metadata_lookup),
+        }
+    }
+}
+        "#,
+    );
+}

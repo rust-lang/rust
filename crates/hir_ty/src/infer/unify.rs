@@ -11,9 +11,9 @@ use ena::unify::UnifyKey;
 
 use super::{InferOk, InferResult, InferenceContext, TypeError};
 use crate::{
-    db::HirDatabase, fold_tys, static_lifetime, AliasEq, AliasTy, BoundVar, Canonical,
-    DebruijnIndex, GenericArg, Goal, Guidance, InEnvironment, InferenceVar, Interner, ProjectionTy,
-    Scalar, Solution, Substitution, TraitEnvironment, Ty, TyKind, VariableKind,
+    db::HirDatabase, fold_tys, static_lifetime, AliasEq, AliasTy, BoundVar, Canonical, Const,
+    DebruijnIndex, GenericArg, Goal, Guidance, InEnvironment, InferenceVar, Interner, Lifetime,
+    ProjectionTy, Scalar, Solution, Substitution, TraitEnvironment, Ty, TyKind, VariableKind,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -273,6 +273,16 @@ impl<'a> InferenceTable<'a> {
         self.new_var(TyVariableKind::General, true)
     }
 
+    pub(crate) fn new_const_var(&mut self, ty: Ty) -> Const {
+        let var = self.var_unification_table.new_variable(UniverseIndex::ROOT);
+        var.to_const(&Interner, ty)
+    }
+
+    pub(crate) fn new_lifetime_var(&mut self) -> Lifetime {
+        let var = self.var_unification_table.new_variable(UniverseIndex::ROOT);
+        var.to_lifetime(&Interner)
+    }
+
     pub(crate) fn resolve_with_fallback<T>(
         &mut self,
         t: T,
@@ -386,6 +396,76 @@ impl<'a> InferenceTable<'a> {
                 self.register_obligation_in_env(uncanonical);
             }
         }
+    }
+
+    pub(crate) fn fudge_inference<T: Fold<Interner>>(
+        &mut self,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T::Result {
+        use chalk_ir::fold::Folder;
+        struct VarFudger<'a, 'b> {
+            table: &'a mut InferenceTable<'b>,
+            highest_known_var: InferenceVar,
+        }
+        impl<'a, 'b> Folder<'static, Interner> for VarFudger<'a, 'b> {
+            fn as_dyn(&mut self) -> &mut dyn Folder<'static, Interner> {
+                self
+            }
+
+            fn interner(&self) -> &'static Interner {
+                &Interner
+            }
+
+            fn fold_inference_ty(
+                &mut self,
+                var: chalk_ir::InferenceVar,
+                kind: TyVariableKind,
+                _outer_binder: chalk_ir::DebruijnIndex,
+            ) -> chalk_ir::Fallible<chalk_ir::Ty<Interner>> {
+                Ok(if var < self.highest_known_var {
+                    var.to_ty(&Interner, kind)
+                } else {
+                    self.table.new_type_var()
+                })
+            }
+
+            fn fold_inference_lifetime(
+                &mut self,
+                var: chalk_ir::InferenceVar,
+                _outer_binder: chalk_ir::DebruijnIndex,
+            ) -> chalk_ir::Fallible<chalk_ir::Lifetime<Interner>> {
+                Ok(if var < self.highest_known_var {
+                    var.to_lifetime(&Interner)
+                } else {
+                    self.table.new_lifetime_var()
+                })
+            }
+
+            fn fold_inference_const(
+                &mut self,
+                ty: chalk_ir::Ty<Interner>,
+                var: chalk_ir::InferenceVar,
+                _outer_binder: chalk_ir::DebruijnIndex,
+            ) -> chalk_ir::Fallible<chalk_ir::Const<Interner>> {
+                Ok(if var < self.highest_known_var {
+                    var.to_const(&Interner, ty)
+                } else {
+                    self.table.new_const_var(ty)
+                })
+            }
+        }
+
+        let snapshot = self.snapshot();
+        let highest_known_var =
+            self.new_type_var().inference_var(&Interner).expect("inference_var");
+        let result = f(self);
+        self.rollback_to(snapshot);
+
+        let result = result
+            .fold_with(&mut VarFudger { table: self, highest_known_var }, DebruijnIndex::INNERMOST)
+            .expect("fold_with with VarFudger");
+
+        result
     }
 
     /// This checks whether any of the free variables in the `canonicalized`
