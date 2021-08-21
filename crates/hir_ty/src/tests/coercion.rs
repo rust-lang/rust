@@ -258,6 +258,24 @@ fn foo() {
 }
 
 #[test]
+fn assign_coerce() {
+    check_no_mismatches(
+        r"
+//- minicore: deref
+struct String;
+impl core::ops::Deref for String { type Target = str; }
+fn g(_text: &str) {}
+fn f(text: &str) {
+    let mut text = text;
+    let tmp = String;
+    text = &tmp;
+    g(text);
+}
+",
+    );
+}
+
+#[test]
 fn coerce_fn_item_to_fn_ptr() {
     check_no_mismatches(
         r"
