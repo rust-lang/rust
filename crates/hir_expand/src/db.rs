@@ -223,7 +223,7 @@ fn parse_macro_expansion(
         Ok(it) => it,
         Err(err) => {
             log::debug!(
-                "failed to parse expanstion to {:?} = {}",
+                "failed to parse expansion to {:?} = {}",
                 fragment_kind,
                 tt.as_debug_string()
             );
@@ -386,11 +386,15 @@ fn expand_proc_macro(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<tt::
     };
 
     let attr_arg = match &loc.kind {
-        MacroCallKind::Attr { attr_args, .. } => Some(attr_args),
+        MacroCallKind::Attr { attr_args, .. } => {
+            let mut attr_args = attr_args.tree.clone();
+            mbe::Shift::new(&macro_arg.0).shift_all(&mut attr_args);
+            Some(attr_args)
+        }
         _ => None,
     };
 
-    expander.expand(db, loc.krate, &macro_arg.0, attr_arg)
+    expander.expand(db, loc.krate, &macro_arg.0, attr_arg.as_ref())
 }
 
 fn is_self_replicating(from: &SyntaxNode, to: &SyntaxNode) -> bool {

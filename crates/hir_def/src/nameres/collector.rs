@@ -289,7 +289,7 @@ impl DefCollector<'_> {
                     || *attr_name == hir_expand::name![register_tool]
                 {
                     match attr.input.as_deref() {
-                        Some(AttrInput::TokenTree(subtree)) => match &*subtree.token_trees {
+                        Some(AttrInput::TokenTree(subtree)) => match &*subtree.tree.token_trees {
                             [tt::TokenTree::Leaf(tt::Leaf::Ident(name))] => name.as_name(),
                             _ => continue,
                         },

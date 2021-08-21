@@ -786,13 +786,13 @@ fn attr_macro_as_call_id(
         .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
     let mut arg = match &macro_attr.input {
         Some(input) => match &**input {
-            attr::AttrInput::Literal(_) => tt::Subtree::default(),
+            attr::AttrInput::Literal(_) => Default::default(),
             attr::AttrInput::TokenTree(tt) => tt.clone(),
         },
-        None => tt::Subtree::default(),
+        None => Default::default(),
     };
     // The parentheses are always disposed here.
-    arg.delimiter = None;
+    arg.tree.delimiter = None;
 
     let res = def.as_lazy_macro(
         db.upcast(),

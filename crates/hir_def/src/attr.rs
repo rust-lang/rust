@@ -2,7 +2,9 @@
 
 use std::{
     convert::{TryFrom, TryInto},
-    fmt, ops,
+    fmt,
+    hash::Hash,
+    ops,
     sync::Arc,
 };
 
@@ -12,7 +14,7 @@ use either::Either;
 use hir_expand::{hygiene::Hygiene, name::AsName, AstId, InFile};
 use itertools::Itertools;
 use la_arena::ArenaMap;
-use mbe::{syntax_node_to_token_tree, DelimiterKind};
+use mbe::{syntax_node_to_token_tree, DelimiterKind, MappedSubTree};
 use smallvec::{smallvec, SmallVec};
 use syntax::{
     ast::{self, AstNode, AttrsOwner},
@@ -165,11 +167,11 @@ impl RawAttrs {
                 // Input subtree is: `(cfg, $(attr),+)`
                 // Split it up into a `cfg` subtree and the `attr` subtrees.
                 // FIXME: There should be a common API for this.
-                let mut parts = subtree.token_trees.split(
+                let mut parts = subtree.tree.token_trees.split(
                     |tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(p)) if p.char == ','),
                 );
                 let cfg = parts.next().unwrap();
-                let cfg = Subtree { delimiter: subtree.delimiter, token_trees: cfg.to_vec() };
+                let cfg = Subtree { delimiter: subtree.tree.delimiter, token_trees: cfg.to_vec() };
                 let cfg = CfgExpr::parse(&cfg);
                 let index = attr.id;
                 let attrs = parts.filter(|a| !a.is_empty()).filter_map(|attr| {
@@ -652,14 +654,14 @@ pub enum AttrInput {
     /// `#[attr = "string"]`
     Literal(SmolStr),
     /// `#[attr(subtree)]`
-    TokenTree(Subtree),
+    TokenTree(mbe::MappedSubTree),
 }
 
 impl fmt::Display for AttrInput {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AttrInput::Literal(lit) => write!(f, " = \"{}\"", lit.escape_debug()),
-            AttrInput::TokenTree(subtree) => subtree.fmt(f),
+            AttrInput::TokenTree(subtree) => subtree.tree.fmt(f),
         }
     }
 }
@@ -679,7 +681,8 @@ impl Attr {
             };
             Some(Interned::new(AttrInput::Literal(value)))
         } else if let Some(tt) = ast.token_tree() {
-            Some(Interned::new(AttrInput::TokenTree(syntax_node_to_token_tree(tt.syntax()).0)))
+            let (tree, map) = syntax_node_to_token_tree(tt.syntax());
+            Some(Interned::new(AttrInput::TokenTree(MappedSubTree { tree, map })))
         } else {
             None
         };
@@ -712,6 +715,7 @@ impl Attr {
             Some(AttrInput::TokenTree(args)) => {
                 let mut counter = 0;
                 let paths = args
+                    .tree
                     .token_trees
                     .iter()
                     .group_by(move |tt| {
@@ -756,7 +760,7 @@ pub struct AttrQuery<'a> {
 impl<'a> AttrQuery<'a> {
     pub fn tt_values(self) -> impl Iterator<Item = &'a Subtree> {
         self.attrs().filter_map(|attr| match attr.input.as_deref()? {
-            AttrInput::TokenTree(it) => Some(it),
+            AttrInput::TokenTree(it) => Some(&it.tree),
             _ => None,
         })
     }
