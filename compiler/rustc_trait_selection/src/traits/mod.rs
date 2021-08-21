@@ -28,6 +28,7 @@ use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::{
@@ -759,48 +760,38 @@ fn vtable_trait_first_method_offset<'tcx>(
 pub fn vtable_trait_upcasting_coercion_new_vptr_slot(
     tcx: TyCtxt<'tcx>,
     key: (
-        ty::PolyTraitRef<'tcx>, // trait owning vtable
-        ty::PolyTraitRef<'tcx>, // super trait ref
+        Ty<'tcx>, // trait object type whose trait owning vtable
+        Ty<'tcx>, // trait object for supertrait
     ),
 ) -> Option<usize> {
-    let (trait_owning_vtable, super_trait_ref) = key;
-    let super_trait_did = super_trait_ref.def_id();
-    // FIXME: take substsref part into account here after upcasting coercion allows the same def_id occur
-    // multiple times.
+    let (source, target) = key;
+    assert!(matches!(&source.kind(), &ty::Dynamic(..)) && !source.needs_infer());
+    assert!(matches!(&target.kind(), &ty::Dynamic(..)) && !target.needs_infer());
 
-    let vtable_segment_callback = {
-        let mut vptr_offset = 0;
-        move |segment| {
-            match segment {
-                VtblSegment::MetadataDSA => {
-                    vptr_offset += COMMON_VTABLE_ENTRIES.len();
-                }
-                VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
-                    vptr_offset += util::count_own_vtable_entries(tcx, trait_ref);
-                    if trait_ref.def_id() == super_trait_did {
-                        if emit_vptr {
-                            return ControlFlow::Break(Some(vptr_offset));
-                        } else {
-                            return ControlFlow::Break(None);
-                        }
-                    }
+    // this has been typecked-before, so diagnostics is not really needed.
+    let unsize_trait_did = tcx.require_lang_item(LangItem::Unsize, None);
 
-                    if emit_vptr {
-                        vptr_offset += 1;
-                    }
-                }
-            }
-            ControlFlow::Continue(())
-        }
+    let trait_ref = ty::TraitRef {
+        def_id: unsize_trait_did,
+        substs: tcx.mk_substs_trait(source, &[target.into()]),
+    };
+    let obligation = Obligation::new(
+        ObligationCause::dummy(),
+        ty::ParamEnv::reveal_all(),
+        ty::Binder::dummy(ty::TraitPredicate { trait_ref, constness: hir::Constness::NotConst }),
+    );
+
+    let implsrc = tcx.infer_ctxt().enter(|infcx| {
+        let mut selcx = SelectionContext::new(&infcx);
+        selcx.select(&obligation).unwrap()
+    });
+
+    let implsrc_traitcasting = match implsrc {
+        Some(ImplSource::TraitUpcasting(data)) => data,
+        _ => bug!(),
     };
 
-    if let Some(vptr_offset) =
-        prepare_vtable_segments(tcx, trait_owning_vtable, vtable_segment_callback)
-    {
-        vptr_offset
-    } else {
-        bug!("Failed to find info for expected trait in vtable");
-    }
+    implsrc_traitcasting.vtable_vptr_slot
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {

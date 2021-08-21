@@ -150,19 +150,8 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             // trait upcasting coercion
 
-            // if both of the two `principal`s are `None`, this function would have returned early above.
-            // and if one of the two `principal`s is `None`, typechecking would have rejected this case.
-            let principal_a = data_a
-                .principal()
-                .expect("unsized_info: missing principal trait for trait upcasting coercion");
-            let principal_b = data_b
-                .principal()
-                .expect("unsized_info: missing principal trait for trait upcasting coercion");
-
-            let vptr_entry_idx = cx.tcx().vtable_trait_upcasting_coercion_new_vptr_slot((
-                principal_a.with_self_ty(cx.tcx(), source),
-                principal_b.with_self_ty(cx.tcx(), source),
-            ));
+            let vptr_entry_idx =
+                cx.tcx().vtable_trait_upcasting_coercion_new_vptr_slot((source, target));
 
             if let Some(entry_idx) = vptr_entry_idx {
                 let ptr_ty = cx.type_i8p();

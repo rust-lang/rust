@@ -13,9 +13,7 @@ fn test_specific(x: &dyn Foo<i32>) {
 }
 
 fn test_specific2(x: &dyn Foo<u32>) {
-    let _ = x as &dyn Bar<i32>; // FIXME: OK, eventually
-                                //~^ ERROR non-primitive cast
-                                //~^^ ERROR the trait bound `&dyn Foo<u32>: Bar<i32>` is not satisfied
+    let _ = x as &dyn Bar<i32>; // OK
 }
 
 fn test_specific3(x: &dyn Foo<i32>) {

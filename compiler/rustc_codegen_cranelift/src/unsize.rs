@@ -31,21 +31,10 @@ pub(crate) fn unsized_info<'tcx>(
             if data_a.principal_def_id() == data_b.principal_def_id() {
                 return old_info;
             }
+
             // trait upcasting coercion
-
-            // if both of the two `principal`s are `None`, this function would have returned early above.
-            // and if one of the two `principal`s is `None`, typechecking would have rejected this case.
-            let principal_a = data_a
-                .principal()
-                .expect("unsized_info: missing principal trait for trait upcasting coercion");
-            let principal_b = data_b
-                .principal()
-                .expect("unsized_info: missing principal trait for trait upcasting coercion");
-
-            let vptr_entry_idx = fx.tcx.vtable_trait_upcasting_coercion_new_vptr_slot((
-                principal_a.with_self_ty(fx.tcx, source),
-                principal_b.with_self_ty(fx.tcx, source),
-            ));
+            let vptr_entry_idx =
+                fx.tcx.vtable_trait_upcasting_coercion_new_vptr_slot((source, target));
 
             if let Some(entry_idx) = vptr_entry_idx {
                 let entry_idx = u32::try_from(entry_idx).unwrap();
