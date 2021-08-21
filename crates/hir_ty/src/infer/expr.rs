@@ -985,20 +985,21 @@ impl<'a> InferenceContext<'a> {
         inputs: Vec<Ty>,
     ) -> Vec<Ty> {
         if let Some(expected_ty) = expected_output.to_option(&mut self.table) {
-            let snapshot = self.table.snapshot();
-            let result = if self.table.try_unify(&expected_ty, &output).is_ok() {
-                // FIXME: the unification could introduce lifetime variables, which we'd need to handle here
-                self.table.resolve_with_fallback(inputs, |var, kind, _, _| match kind {
-                    chalk_ir::VariableKind::Ty(tk) => var.to_ty(&Interner, tk).cast(&Interner),
-                    chalk_ir::VariableKind::Lifetime => var.to_lifetime(&Interner).cast(&Interner),
-                    chalk_ir::VariableKind::Const(ty) => {
-                        var.to_const(&Interner, ty).cast(&Interner)
-                    }
-                })
-            } else {
-                Vec::new()
-            };
-            self.table.rollback_to(snapshot);
+            let result = self.table.fudge_inference(|table| {
+                if table.try_unify(&expected_ty, &output).is_ok() {
+                    table.resolve_with_fallback(inputs, |var, kind, _, _| match kind {
+                        chalk_ir::VariableKind::Ty(tk) => var.to_ty(&Interner, tk).cast(&Interner),
+                        chalk_ir::VariableKind::Lifetime => {
+                            var.to_lifetime(&Interner).cast(&Interner)
+                        }
+                        chalk_ir::VariableKind::Const(ty) => {
+                            var.to_const(&Interner, ty).cast(&Interner)
+                        }
+                    })
+                } else {
+                    Vec::new()
+                }
+            });
             result
         } else {
             Vec::new()
