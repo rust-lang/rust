@@ -80,7 +80,7 @@
 -         StorageDead(_7);                 // scope 3 at $DIR/remove_storage_markers.rs:8:18: 8:19
 -         StorageDead(_6);                 // scope 2 at $DIR/remove_storage_markers.rs:10:5: 10:6
 -         StorageDead(_4);                 // scope 1 at $DIR/remove_storage_markers.rs:10:5: 10:6
--         StorageDead(_2);                 // scope 1 at $DIR/remove_storage_markers.rs:8:18: 8:19
+-         StorageDead(_2);                 // scope 1 at $DIR/remove_storage_markers.rs:10:5: 10:6
 -         StorageDead(_1);                 // scope 0 at $DIR/remove_storage_markers.rs:11:1: 11:2
           return;                          // scope 0 at $DIR/remove_storage_markers.rs:11:2: 11:2
       }
