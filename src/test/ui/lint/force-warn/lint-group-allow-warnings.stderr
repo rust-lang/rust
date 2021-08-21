@@ -1,5 +1,5 @@
 warning: function `FUNCTION` should have a snake case name
-  --> $DIR/force-lint-group-allow-all-warnings.rs:6:8
+  --> $DIR/lint-group-allow-warnings.rs:9:8
    |
 LL | pub fn FUNCTION() {}
    |        ^^^^^^^^ help: convert the identifier to snake case: `function`

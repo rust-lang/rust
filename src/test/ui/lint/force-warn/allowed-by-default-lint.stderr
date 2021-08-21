@@ -1,5 +1,5 @@
 warning: hidden lifetime parameters in types are deprecated
-  --> $DIR/force-allowed-by-default-lint.rs:8:12
+  --> $DIR/allowed-by-default-lint.rs:9:12
    |
 LL | fn foo(x: &Foo) {}
    |            ^^^- help: indicate the anonymous lifetime: `<'_>`

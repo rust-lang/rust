@@ -332,7 +332,16 @@ impl LintStore {
         crate_attrs: &[ast::Attribute],
     ) {
         let (tool_name, lint_name_only) = parse_lint_and_tool_name(lint_name);
-
+        if lint_name_only == crate::WARNINGS.name_lower() && level == Level::ForceWarn {
+            return struct_span_err!(
+                sess,
+                DUMMY_SP,
+                E0602,
+                "`{}` lint group is not supported with ´--force-warn´",
+                crate::WARNINGS.name_lower()
+            )
+            .emit();
+        }
         let db = match self.check_lint_name(sess, lint_name_only, tool_name, crate_attrs) {
             CheckLintNameResult::Ok(_) => None,
             CheckLintNameResult::Warning(ref msg, _) => Some(sess.struct_warn(msg)),

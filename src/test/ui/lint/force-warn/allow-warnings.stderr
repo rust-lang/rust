@@ -1,5 +1,5 @@
 warning: function is never used: `dead_function`
-  --> $DIR/force-allowed-warning.rs:6:4
+  --> $DIR/allow-warnings.rs:8:4
    |
 LL | fn dead_function() {}
    |    ^^^^^^^^^^^^^

@@ -1,4 +1,6 @@
-// compile-flags: --force-warn rust_2018_idioms -Zunstable-options
+// --force-warn $LINT causes $LINT (which is warn-by-default) to warn
+// despite $LINT_GROUP (which contains $LINT) being allowed
+// compile-flags: --force-warn bare_trait_objects -Zunstable-options
 // check-pass
 
 #![allow(rust_2018_idioms)]
