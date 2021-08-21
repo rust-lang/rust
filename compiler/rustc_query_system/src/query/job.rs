@@ -600,16 +600,23 @@ pub(crate) fn report_cycle<'a>(
         ));
     }
 
-    if !stack.is_empty()
-        && stack.iter().all(|entry| {
-            entry.query.def_kind.map_or(false, |def_kind| {
-                matches!(def_kind, SimpleDefKind::TyAlias | SimpleDefKind::TraitAlias)
-            })
+    if stack.iter().all(|entry| {
+        entry.query.def_kind.map_or(false, |def_kind| {
+            matches!(def_kind, SimpleDefKind::TyAlias | SimpleDefKind::TraitAlias)
         })
-    {
-        err.note("type aliases cannot be recursive");
-        err.help("consider using a struct, enum, or union instead to break the cycle");
-        err.help("see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information");
+    }) {
+        if stack.iter().all(|entry| {
+            entry
+                .query
+                .def_kind
+                .map_or(false, |def_kind| matches!(def_kind, SimpleDefKind::TyAlias))
+        }) {
+            err.note("type aliases cannot be recursive");
+            err.help("consider using a struct, enum, or union instead to break the cycle");
+            err.help("see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information");
+        } else {
+            err.note("trait aliases cannot be recursive");
+        }
     }
 
     if let Some((span, query)) = usage {

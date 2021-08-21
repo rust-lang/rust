@@ -178,6 +178,10 @@ impl Key for (DefId, Option<Ident>) {
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         tcx.def_span(self.0)
     }
+    #[inline(always)]
+    fn key_as_def_id(&self) -> Option<DefId> {
+        Some(self.0)
+    }
 }
 
 impl Key for (DefId, LocalDefId, Ident) {
