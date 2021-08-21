@@ -4,7 +4,7 @@ use crate::astconv::{
 };
 use crate::check::callee::{self, DeferredCallResolution};
 use crate::check::method::{self, MethodCallee, SelfSource};
-use crate::check::{BreakableCtxt, Diverges, Expectation, FallbackMode, FnCtxt, LocalTy};
+use crate::check::{BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy};
 
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::captures::Captures;
@@ -635,83 +635,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    // Tries to apply a fallback to `ty` if it is an unsolved variable.
-    //
-    // - Unconstrained ints are replaced with `i32`.
-    //
-    // - Unconstrained floats are replaced with with `f64`.
-    //
-    // - Non-numerics get replaced with `!` when `#![feature(never_type_fallback)]`
-    //   is enabled. Otherwise, they are replaced with `()`.
-    //
-    // Fallback becomes very dubious if we have encountered type-checking errors.
-    // In that case, fallback to Error.
-    // The return value indicates whether fallback has occurred.
-    pub(in super::super) fn fallback_if_possible(&self, ty: Ty<'tcx>, mode: FallbackMode) -> bool {
-        use rustc_middle::ty::error::UnconstrainedNumeric::Neither;
-        use rustc_middle::ty::error::UnconstrainedNumeric::{UnconstrainedFloat, UnconstrainedInt};
-
-        assert!(ty.is_ty_infer());
-        let fallback = match self.type_is_unconstrained_numeric(ty) {
-            _ if self.is_tainted_by_errors() => self.tcx().ty_error(),
-            UnconstrainedInt => self.tcx.types.i32,
-            UnconstrainedFloat => self.tcx.types.f64,
-            Neither if self.type_var_diverges(ty) => self.tcx.mk_diverging_default(),
-            Neither => {
-                // This type variable was created from the instantiation of an opaque
-                // type. The fact that we're attempting to perform fallback for it
-                // means that the function neither constrained it to a concrete
-                // type, nor to the opaque type itself.
-                //
-                // For example, in this code:
-                //
-                //```
-                // type MyType = impl Copy;
-                // fn defining_use() -> MyType { true }
-                // fn other_use() -> MyType { defining_use() }
-                // ```
-                //
-                // `defining_use` will constrain the instantiated inference
-                // variable to `bool`, while `other_use` will constrain
-                // the instantiated inference variable to `MyType`.
-                //
-                // When we process opaque types during writeback, we
-                // will handle cases like `other_use`, and not count
-                // them as defining usages
-                //
-                // However, we also need to handle cases like this:
-                //
-                // ```rust
-                // pub type Foo = impl Copy;
-                // fn produce() -> Option<Foo> {
-                //     None
-                //  }
-                //  ```
-                //
-                // In the above snippet, the inference variable created by
-                // instantiating `Option<Foo>` will be completely unconstrained.
-                // We treat this as a non-defining use by making the inference
-                // variable fall back to the opaque type itself.
-                if let FallbackMode::All = mode {
-                    if let Some(opaque_ty) = self.infcx.inner.borrow().opaque_types_vars.get(ty) {
-                        debug!(
-                            "fallback_if_possible: falling back opaque type var {:?} to {:?}",
-                            ty, opaque_ty
-                        );
-                        *opaque_ty
-                    } else {
-                        return false;
-                    }
-                } else {
-                    return false;
-                }
-            }
-        };
-        debug!("fallback_if_possible: defaulting `{:?}` to `{:?}`", ty, fallback);
-        self.demand_eqtype(rustc_span::DUMMY_SP, ty, fallback);
-        true
-    }
-
     pub(in super::super) fn select_all_obligations_or_error(&self) {
         debug!("select_all_obligations_or_error");
         if let Err(errors) = self
@@ -807,6 +730,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Some((bound_predicate.rebind(data).to_poly_trait_ref(), obligation))
                     }
                     ty::PredicateKind::Subtype(..) => None,
+                    ty::PredicateKind::Coerce(..) => None,
                     ty::PredicateKind::RegionOutlives(..) => None,
                     ty::PredicateKind::TypeOutlives(..) => None,
                     ty::PredicateKind::WellFormed(..) => None,

@@ -420,8 +420,8 @@ impl Checker<'mir, 'tcx> {
                     ty::PredicateKind::ClosureKind(..) => {
                         bug!("closure kind predicate on function: {:#?}", predicate)
                     }
-                    ty::PredicateKind::Subtype(_) => {
-                        bug!("subtype predicate on function: {:#?}", predicate)
+                    ty::PredicateKind::Subtype(_) | ty::PredicateKind::Coerce(_) => {
+                        bug!("subtype/coerce predicate on function: {:#?}", predicate)
                     }
                     ty::PredicateKind::Trait(pred) => {
                         if Some(pred.def_id()) == tcx.lang_items().sized_trait() {

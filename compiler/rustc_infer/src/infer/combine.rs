@@ -22,7 +22,6 @@
 // is also useful to track which value is the "expected" value in
 // terms of error reporting.
 
-use super::equate::Equate;
 use super::glb::Glb;
 use super::lub::Lub;
 use super::sub::Sub;
@@ -30,6 +29,7 @@ use super::type_variable::TypeVariableValue;
 use super::unify_key::replace_if_possible;
 use super::unify_key::{ConstVarValue, ConstVariableValue};
 use super::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use super::{equate::Equate, type_variable::Diverging};
 use super::{InferCtxt, MiscVariable, TypeTrace};
 
 use crate::traits::{Obligation, PredicateObligations};
@@ -643,8 +643,13 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                                 .inner
                                 .borrow_mut()
                                 .type_variables()
-                                .new_var(self.for_universe, false, origin);
+                                .new_var(self.for_universe, Diverging::NotDiverging, origin);
                             let u = self.tcx().mk_ty_var(new_var_id);
+
+                            // Record that we replaced `vid` with `new_var_id` as part of a generalization
+                            // operation. This is needed to detect cyclic types. To see why, see the
+                            // docs in the `type_variables` module.
+                            self.infcx.inner.borrow_mut().type_variables().sub(vid, new_var_id);
                             debug!("generalize: replacing original vid={:?} with new={:?}", vid, u);
                             Ok(u)
                         }
@@ -881,7 +886,7 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                             *self.infcx.inner.borrow_mut().type_variables().var_origin(vid);
                         let new_var_id = self.infcx.inner.borrow_mut().type_variables().new_var(
                             self.for_universe,
-                            false,
+                            Diverging::NotDiverging,
                             origin,
                         );
                         let u = self.tcx().mk_ty_var(new_var_id);

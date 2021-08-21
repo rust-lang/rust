@@ -407,6 +407,7 @@ fn trait_predicate_kind<'tcx>(
         | ty::PredicateKind::Projection(_)
         | ty::PredicateKind::WellFormed(_)
         | ty::PredicateKind::Subtype(_)
+        | ty::PredicateKind::Coerce(_)
         | ty::PredicateKind::ObjectSafe(_)
         | ty::PredicateKind::ClosureKind(..)
         | ty::PredicateKind::ConstEvaluatable(..)

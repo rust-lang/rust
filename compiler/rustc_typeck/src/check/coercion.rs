@@ -42,6 +42,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, InferOk, InferResult};
+use rustc_infer::traits::Obligation;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
@@ -50,7 +51,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, Ty, TypeAndMut};
+use rustc_middle::ty::{self, ToPredicate, Ty, TypeAndMut};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{self, BytePos, Span};
@@ -146,7 +147,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 
     fn coerce(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+        // First, remove any resolved type variables (at the top level, at least):
         let a = self.shallow_resolve(a);
+        let b = self.shallow_resolve(b);
         debug!("Coerce.tys({:?} => {:?})", a, b);
 
         // Just ignore error types.
@@ -154,6 +157,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             return success(vec![], self.fcx.tcx.ty_error(), vec![]);
         }
 
+        // Coercing from `!` to any type is allowed:
         if a.is_never() {
             // Subtle: If we are coercing from `!` to `?T`, where `?T` is an unbound
             // type variable, we want `?T` to fallback to `!` if not
@@ -162,18 +166,24 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             //     let _: Option<?T> = Some({ return; });
             //
             // here, we would coerce from `!` to `?T`.
-            let b = self.shallow_resolve(b);
-            return if self.shallow_resolve(b).is_ty_var() {
+            return if b.is_ty_var() {
                 // Micro-optimization: no need for this if `b` is
                 // already resolved in some way.
                 let diverging_ty = self.next_diverging_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::AdjustmentType,
                     span: self.cause.span,
                 });
-                self.unify_and(&b, &diverging_ty, simple(Adjust::NeverToAny))
+                self.coerce_from_inference_variable(diverging_ty, b, simple(Adjust::NeverToAny))
             } else {
                 success(simple(Adjust::NeverToAny)(b), b, vec![])
             };
+        }
+
+        // Coercing *from* an unresolved inference variable means that
+        // we have no information about the source type. This will always
+        // ultimately fall back to some form of subtyping.
+        if a.is_ty_var() {
+            return self.coerce_from_inference_variable(a, b, identity);
         }
 
         // Consider coercing the subtype to a DST
@@ -196,9 +206,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug!("coerce: unsize failed");
 
         // Examine the supertype and consider auto-borrowing.
-        //
-        // Note: does not attempt to resolve type variables we encounter.
-        // See above for details.
         match *b.kind() {
             ty::RawPtr(mt_b) => {
                 return self.coerce_unsafe_ptr(a, b, mt_b.mutbl);
@@ -233,6 +240,58 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // Otherwise, just use unification rules.
                 self.unify_and(a, b, identity)
             }
+        }
+    }
+
+    /// Coercing *from* an inference variable. In this case, we have no information
+    /// about the source type, so we can't really do a true coercion and we always
+    /// fall back to subtyping (`unify_and`).
+    fn coerce_from_inference_variable(
+        &self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        make_adjustments: impl FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
+    ) -> CoerceResult<'tcx> {
+        debug!("coerce_from_inference_variable(a={:?}, b={:?})", a, b);
+        assert!(a.is_ty_var() && self.infcx.shallow_resolve(a) == a);
+        assert!(self.infcx.shallow_resolve(b) == b);
+
+        if b.is_ty_var() {
+            // Two unresolved type variables: create a `Coerce` predicate.
+            let target_ty = if self.use_lub {
+                self.infcx.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::LatticeVariable,
+                    span: self.cause.span,
+                })
+            } else {
+                b
+            };
+
+            let mut obligations = Vec::with_capacity(2);
+            for &source_ty in &[a, b] {
+                if source_ty != target_ty {
+                    obligations.push(Obligation::new(
+                        self.cause.clone(),
+                        self.param_env,
+                        ty::PredicateKind::Coerce(ty::CoercePredicate {
+                            a: source_ty,
+                            b: target_ty,
+                        })
+                        .to_predicate(self.tcx()),
+                    ));
+                }
+            }
+
+            debug!(
+                "coerce_from_inference_variable: two inference variables, target_ty={:?}, obligations={:?}",
+                target_ty, obligations
+            );
+            let adjustments = make_adjustments(target_ty);
+            InferResult::Ok(InferOk { value: (adjustments, target_ty), obligations })
+        } else {
+            // One unresolved type variable: just apply subtyping, we may be able
+            // to do something useful.
+            self.unify_and(a, b, make_adjustments)
         }
     }
 

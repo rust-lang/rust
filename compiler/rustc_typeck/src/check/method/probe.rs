@@ -841,6 +841,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     }
                 }
                 ty::PredicateKind::Subtype(..)
+                | ty::PredicateKind::Coerce(..)
                 | ty::PredicateKind::Projection(..)
                 | ty::PredicateKind::RegionOutlives(..)
                 | ty::PredicateKind::WellFormed(..)
