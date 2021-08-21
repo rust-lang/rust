@@ -4,13 +4,17 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::HirId;
 use rustc_hir::intravisit;
+use rustc_hir::LangItem;
 use rustc_hir::Node;
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::{UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
+use rustc_trait_selection::traits::{SelectionContext, SelectionError};
 
 use std::ops::Bound;
 
@@ -132,6 +136,42 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     self.register_violations(&violations, &unsafe_blocks);
                 }
             },
+            Rvalue::Cast(kind, source, target_ty) => {
+                if let CastKind::Pointer(ty::adjustment::PointerCast::Unsize) = kind {
+                    let tcx = self.tcx;
+                    let source_ty = source.ty(self.body, tcx);
+                    let def_id = tcx.require_lang_item(LangItem::CoerceUnsized, None);
+                    let trait_ref = ty::Binder::dummy(ty::TraitRef {
+                        def_id,
+                        substs: tcx.mk_substs_trait(source_ty, &[(*target_ty).into()]),
+                    });
+
+                    let trait_ref = tcx.erase_regions(trait_ref);
+                    let param_env = self.param_env;
+                    tcx.infer_ctxt().enter(|infcx| {
+                        let mut selcx = SelectionContext::new(&infcx);
+
+                        let obligation_cause = ObligationCause::dummy();
+                        let obligation = Obligation::new(
+                            obligation_cause,
+                            param_env,
+                            trait_ref.to_poly_trait_predicate(),
+                        );
+                        match selcx.select(&obligation) {
+                            Ok(None) | Err(SelectionError::Unimplemented) => {
+                                self.require_unsafe(
+                                    UnsafetyViolationKind::General,
+                                    UnsafetyViolationDetails::UnsafeCoerceUnsized,
+                                );
+                            }
+                            Ok(Some(_)) => {}
+                            Err(e) => {
+                                bug!("Encountered error `{:?}` selecting `{:?}` during unsafety checking", e, trait_ref);
+                            }
+                        }
+                    });
+                }
+            }
             _ => {}
         }
         self.super_rvalue(rvalue, location);

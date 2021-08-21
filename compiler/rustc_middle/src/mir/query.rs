@@ -41,6 +41,7 @@ pub enum UnsafetyViolationDetails {
     MutationOfLayoutConstrainedField,
     BorrowOfLayoutConstrainedField,
     CallToFunctionWith,
+    UnsafeCoerceUnsized,
 }
 
 impl UnsafetyViolationDetails {
@@ -101,6 +102,11 @@ impl UnsafetyViolationDetails {
             CallToFunctionWith => (
                 "call to function with `#[target_feature]`",
                 "can only be called if the required target features are available",
+            ),
+            UnsafeCoerceUnsized => (
+                "performing unsizing coercion",
+                "unsizing coercion performed on a type that did not implement `CoerceUnsized` \
+                 will cause undefined behavior if data is invalid",
             ),
         }
     }
