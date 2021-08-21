@@ -16,6 +16,14 @@ const WORD_COPY_THRESHOLD: usize = if 2 * WORD_SIZE > 16 {
     16
 };
 
+#[cfg(feature = "mem-unaligned")]
+unsafe fn read_usize_unaligned(x: *const usize) -> usize {
+    // Do not use `core::ptr::read_unaligned` here, since it calls `copy_nonoverlapping` which
+    // is translated to memcpy in LLVM.
+    let x_read = (x as *const [u8; core::mem::size_of::<usize>()]).read();
+    core::mem::transmute(x_read)
+}
+
 #[inline(always)]
 pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) {
     #[inline(always)]
@@ -41,6 +49,7 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
         }
     }
 
+    #[cfg(not(feature = "mem-unaligned"))]
     #[inline(always)]
     unsafe fn copy_forward_misaligned_words(dest: *mut u8, src: *const u8, n: usize) {
         let mut dest_usize = dest as *mut usize;
@@ -66,6 +75,20 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
 
             *dest_usize = resembled;
             dest_usize = dest_usize.add(1);
+        }
+    }
+
+    #[cfg(feature = "mem-unaligned")]
+    #[inline(always)]
+    unsafe fn copy_forward_misaligned_words(dest: *mut u8, src: *const u8, n: usize) {
+        let mut dest_usize = dest as *mut usize;
+        let mut src_usize = src as *mut usize;
+        let dest_end = dest.add(n) as *mut usize;
+
+        while dest_usize < dest_end {
+            *dest_usize = read_usize_unaligned(src_usize);
+            dest_usize = dest_usize.add(1);
+            src_usize = src_usize.add(1);
         }
     }
 
@@ -119,6 +142,7 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
         }
     }
 
+    #[cfg(not(feature = "mem-unaligned"))]
     #[inline(always)]
     unsafe fn copy_backward_misaligned_words(dest: *mut u8, src: *const u8, n: usize) {
         let mut dest_usize = dest as *mut usize;
@@ -144,6 +168,20 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
 
             dest_usize = dest_usize.sub(1);
             *dest_usize = resembled;
+        }
+    }
+
+    #[cfg(feature = "mem-unaligned")]
+    #[inline(always)]
+    unsafe fn copy_backward_misaligned_words(dest: *mut u8, src: *const u8, n: usize) {
+        let mut dest_usize = dest as *mut usize;
+        let mut src_usize = src as *mut usize;
+        let dest_start = dest.sub(n) as *mut usize;
+
+        while dest_start < dest_usize {
+            dest_usize = dest_usize.sub(1);
+            src_usize = src_usize.sub(1);
+            *dest_usize = read_usize_unaligned(src_usize);
         }
     }
 

@@ -33,6 +33,11 @@ fn main() {
         println!("cargo:rustc-cfg=feature=\"mem\"");
     }
 
+    // These targets have hardware unaligned access support.
+    if target.contains("x86_64") || target.contains("i686") || target.contains("aarch64") {
+        println!("cargo:rustc-cfg=feature=\"mem-unaligned\"");
+    }
+
     // NOTE we are going to assume that llvm-target, what determines our codegen option, matches the
     // target triple. This is usually correct for our built-in targets but can break in presence of
     // custom targets, which can have arbitrary names.
