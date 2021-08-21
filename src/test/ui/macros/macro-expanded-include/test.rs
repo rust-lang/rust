@@ -1,4 +1,4 @@
-// ignore-emscripten no llvm_asm! support
+// needs-asm-support
 // build-pass (FIXME(62277): could be check-pass?)
 #![feature(asm)]
 #![allow(unused)]

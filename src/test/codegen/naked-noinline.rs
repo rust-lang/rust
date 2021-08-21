@@ -1,5 +1,6 @@
 // Checks that naked functions are never inlined.
 // compile-flags: -O -Zmir-opt-level=3
+// needs-asm-support
 // ignore-wasm32
 #![crate_type = "lib"]
 #![feature(asm)]
