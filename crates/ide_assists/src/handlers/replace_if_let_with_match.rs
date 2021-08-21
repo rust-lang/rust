@@ -1,12 +1,12 @@
 use std::iter::{self, successors};
 
 use either::Either;
-use ide_db::{ty_filter::TryEnum, RootDatabase};
+use ide_db::{defs::NameClass, ty_filter::TryEnum, RootDatabase};
 use syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
-        make,
+        make, NameOwner,
     },
     AstNode,
 };
@@ -237,7 +237,7 @@ fn pick_pattern_and_expr_order(
         (ast::Pat::WildcardPat(_), _) => return None,
         (pat, _) if is_empty_expr(&expr2) => (pat, expr, expr2),
         (_, pat) if is_empty_expr(&expr) => (pat, expr2, expr),
-        (pat, pat2) => match (binds_name(&pat), binds_name(&pat2)) {
+        (pat, pat2) => match (binds_name(sema, &pat), binds_name(sema, &pat2)) {
             (true, true) => return None,
             (true, false) => (pat, expr, expr2),
             (false, true) => (pat2, expr2, expr),
@@ -259,11 +259,14 @@ fn is_empty_expr(expr: &ast::Expr) -> bool {
     }
 }
 
-fn binds_name(pat: &ast::Pat) -> bool {
-    let binds_name_v = |pat| binds_name(&pat);
+fn binds_name(sema: &hir::Semantics<RootDatabase>, pat: &ast::Pat) -> bool {
+    let binds_name_v = |pat| binds_name(&sema, &pat);
     match pat {
         ast::Pat::IdentPat(pat) => {
-            pat.to_string().starts_with(|c: char| c.is_lowercase() && c != '_')
+            match pat.name().and_then(|name| NameClass::classify(sema, &name)) {
+                Some(NameClass::ConstReference(_)) => false,
+                _ => true,
+            }
         }
         ast::Pat::MacroPat(_) => true,
         ast::Pat::OrPat(pat) => pat.pats().any(binds_name_v),
