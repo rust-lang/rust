@@ -194,7 +194,7 @@ pub(crate) use self::try_trait::Try as TryV2;
 pub use self::generator::{Generator, GeneratorState};
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-pub use self::unsize::CoerceUnsized;
+pub use self::unsize::{CoerceUnsized, UnsafeCoerceUnsized};
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 pub use self::unsize::DispatchFromDyn;

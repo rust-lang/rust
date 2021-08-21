@@ -146,6 +146,7 @@ use core::marker::{Unpin, Unsize};
 use core::mem;
 use core::ops::{
     CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Generator, GeneratorState, Receiver,
+    UnsafeCoerceUnsized,
 };
 use core::pin::Pin;
 use core::ptr::{self, Unique};
@@ -1652,7 +1653,10 @@ impl<Args, F: Fn<Args> + ?Sized, A: Allocator> Fn<Args> for Box<F, A> {
 }
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> for Box<T, A> {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> UnsafeCoerceUnsized<Box<U, A>> for Box<T, A> {}
+
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+unsafe impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> for Box<T, A> {}
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U>> for Box<T, Global> {}

@@ -196,7 +196,7 @@ use crate::cmp::Ordering;
 use crate::fmt::{self, Debug, Display};
 use crate::marker::Unsize;
 use crate::mem;
-use crate::ops::{CoerceUnsized, Deref, DerefMut};
+use crate::ops::{CoerceUnsized, Deref, DerefMut, UnsafeCoerceUnsized};
 use crate::ptr;
 
 /// A mutable memory location.
@@ -553,7 +553,10 @@ impl<T: Default> Cell<T> {
 }
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: CoerceUnsized<U>, U> CoerceUnsized<Cell<U>> for Cell<T> {}
+impl<T: UnsafeCoerceUnsized<U>, U> UnsafeCoerceUnsized<Cell<U>> for Cell<T> {}
+
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+unsafe impl<T: CoerceUnsized<U>, U> CoerceUnsized<Cell<U>> for Cell<T> {}
 
 impl<T> Cell<[T]> {
     /// Returns a `&[Cell<T>]` from a `&Cell<[T]>`
@@ -1223,7 +1226,10 @@ impl<T> From<T> for RefCell<T> {
 }
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: CoerceUnsized<U>, U> CoerceUnsized<RefCell<U>> for RefCell<T> {}
+impl<T: UnsafeCoerceUnsized<U>, U> UnsafeCoerceUnsized<RefCell<U>> for RefCell<T> {}
+
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+unsafe impl<T: CoerceUnsized<U>, U> CoerceUnsized<RefCell<U>> for RefCell<T> {}
 
 struct BorrowRef<'b> {
     borrow: &'b Cell<BorrowFlag>,
@@ -1441,7 +1447,10 @@ impl<'b, T: ?Sized> Ref<'b, T> {
 }
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Ref<'b, U>> for Ref<'b, T> {}
+impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> UnsafeCoerceUnsized<Ref<'b, U>> for Ref<'b, T> {}
+
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+unsafe impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Ref<'b, U>> for Ref<'b, T> {}
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for Ref<'_, T> {
@@ -1683,7 +1692,10 @@ impl<T: ?Sized> DerefMut for RefMut<'_, T> {
 }
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefMut<'b, U>> for RefMut<'b, T> {}
+impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> UnsafeCoerceUnsized<RefMut<'b, U>> for RefMut<'b, T> {}
+
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+unsafe impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefMut<'b, U>> for RefMut<'b, T> {}
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
@@ -1953,7 +1965,10 @@ impl<T> From<T> for UnsafeCell<T> {
 }
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafeCell<U>> for UnsafeCell<T> {}
+impl<T: UnsafeCoerceUnsized<U>, U> UnsafeCoerceUnsized<UnsafeCell<U>> for UnsafeCell<T> {}
+
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+unsafe impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafeCell<U>> for UnsafeCell<T> {}
 
 #[allow(unused)]
 fn assert_coerce_unsized(a: UnsafeCell<&i32>, b: Cell<&i32>, c: RefCell<&i32>) {

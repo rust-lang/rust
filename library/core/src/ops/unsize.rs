@@ -32,41 +32,78 @@ use crate::marker::Unsize;
 /// [unsize]: crate::marker::Unsize
 /// [nomicon-coerce]: ../../nomicon/coercions.html
 #[unstable(feature = "coerce_unsized", issue = "27732")]
+#[cfg_attr(not(bootstrap), lang = "unsafe_coerce_unsized")]
+pub trait UnsafeCoerceUnsized<T: ?Sized> {
+    // Empty.
+}
+
+/// Trait that indicates that this is a pointer or a wrapper for one,
+/// where unsizing can be performed on the pointee.
+///
+/// See the [DST coercion RFC][dst-coerce] and [the nomicon entry on coercion][nomicon-coerce]
+/// for more details.
+///
+/// When this trait is implemented in addition to [`UnsafeCoerceUnsized`](unsafe-coerce-unsized),
+/// performing this unsizing doesn't need to happen inside an unsafe block.
+///
+/// [dst-coerce]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
+/// [nomicon-coerce]: ../../nomicon/coercions.html
+/// [unsafe-coerce-unsized]: crate::ops::UnsafeCoerceUnsized
+#[unstable(feature = "coerce_unsized", issue = "27732")]
 #[lang = "coerce_unsized"]
-pub trait CoerceUnsized<T: ?Sized> {
+pub unsafe trait CoerceUnsized<T: ?Sized>: UnsafeCoerceUnsized<T> {
     // Empty.
 }
 
 // &mut T -> &mut U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a mut U> for &'a mut T {}
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> UnsafeCoerceUnsized<&'a mut U> for &'a mut T {}
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+unsafe impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a mut U> for &'a mut T {}
 // &mut T -> &U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b mut T {}
+impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> UnsafeCoerceUnsized<&'a U> for &'b mut T {}
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+unsafe impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b mut T {}
 // &mut T -> *mut U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for &'a mut T {}
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> UnsafeCoerceUnsized<*mut U> for &'a mut T {}
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+unsafe impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for &'a mut T {}
 // &mut T -> *const U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a mut T {}
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> UnsafeCoerceUnsized<*const U> for &'a mut T {}
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+unsafe impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a mut T {}
 
 // &T -> &U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> UnsafeCoerceUnsized<&'a U> for &'b T {}
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+unsafe impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
 // &T -> *const U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a T {}
-
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> UnsafeCoerceUnsized<*const U> for &'a T {}
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+unsafe impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a T {}
 // *mut T -> *mut U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> UnsafeCoerceUnsized<*mut U> for *mut T {}
+#[cfg(bootstrap)]
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+unsafe impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
 // *mut T -> *const U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut T {}
-
+impl<T: ?Sized + Unsize<U>, U: ?Sized> UnsafeCoerceUnsized<*const U> for *mut T {}
+#[cfg(bootstrap)]
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+unsafe impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut T {}
 // *const T -> *const U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> UnsafeCoerceUnsized<*const U> for *const T {}
+#[cfg(bootstrap)]
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+unsafe impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
 
 /// This is used for object safety, to check that a method's receiver type can be dispatched on.
 ///

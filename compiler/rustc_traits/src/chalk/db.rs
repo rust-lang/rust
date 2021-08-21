@@ -139,7 +139,8 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             Some(chalk_solve::rust_ir::WellKnownTrait::Unsize)
         } else if lang_items.unpin_trait() == Some(def_id) {
             Some(chalk_solve::rust_ir::WellKnownTrait::Unpin)
-        } else if lang_items.coerce_unsized_trait() == Some(def_id) {
+        } else if lang_items.unsafe_coerce_unsized_trait() == Some(def_id) {
+            // FIXME: Rename to UnsafeCoerceUnsized
             Some(chalk_solve::rust_ir::WellKnownTrait::CoerceUnsized)
         } else {
             None
@@ -566,7 +567,8 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             FnOnce => lang_items.fn_once_trait(),
             Unsize => lang_items.unsize_trait(),
             Unpin => lang_items.unpin_trait(),
-            CoerceUnsized => lang_items.coerce_unsized_trait(),
+            // FIXME: Should actually be UnsafeCoerceUnsized here.
+            CoerceUnsized => lang_items.unsafe_coerce_unsized_trait(),
             DiscriminantKind => lang_items.discriminant_kind_trait(),
         };
         def_id.map(chalk_ir::TraitId)

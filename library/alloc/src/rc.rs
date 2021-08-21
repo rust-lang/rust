@@ -261,7 +261,7 @@ use core::marker::{self, PhantomData, Unpin, Unsize};
 #[cfg(not(no_global_oom_handling))]
 use core::mem::size_of_val;
 use core::mem::{self, align_of_val_raw, forget};
-use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
+use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver, UnsafeCoerceUnsized};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 #[cfg(not(no_global_oom_handling))]
 use core::pin::Pin;
@@ -319,7 +319,10 @@ impl<T: ?Sized> !marker::Sync for Rc<T> {}
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Rc<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> UnsafeCoerceUnsized<Rc<U>> for Rc<T> {}
+
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+unsafe impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T> {}
@@ -2026,7 +2029,10 @@ impl<T: ?Sized> !marker::Send for Weak<T> {}
 impl<T: ?Sized> !marker::Sync for Weak<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> UnsafeCoerceUnsized<Weak<U>> for Weak<T> {}
+
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+unsafe impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}

@@ -4,7 +4,7 @@ use crate::fmt;
 use crate::hash;
 use crate::marker::Unsize;
 use crate::mem::{self, MaybeUninit};
-use crate::ops::{CoerceUnsized, DispatchFromDyn};
+use crate::ops::{DispatchFromDyn, UnsafeCoerceUnsized};
 use crate::ptr::Unique;
 use crate::slice::{self, SliceIndex};
 
@@ -630,7 +630,14 @@ impl<T: ?Sized> Clone for NonNull<T> {
 impl<T: ?Sized> Copy for NonNull<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
+impl<T: ?Sized, U: ?Sized> UnsafeCoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
+
+#[cfg(bootstrap)]
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+unsafe impl<T: ?Sized, U: ?Sized> crate::ops::CoerceUnsized<NonNull<U>> for NonNull<T> where
+    T: Unsize<U>
+{
+}
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: Unsize<U> {}

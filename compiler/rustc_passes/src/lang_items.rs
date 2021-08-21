@@ -225,6 +225,7 @@ impl LanguageItemCollector<'tcx> {
 
             // Miscellaneous
             | LangItem::Unsize
+            | LangItem::UnsafeCoerceUnsized
             | LangItem::CoerceUnsized
             | LangItem::DispatchFromDyn
             | LangItem::Fn

@@ -14,7 +14,7 @@ fn custom_coerce_unsize_info<'tcx>(
     source_ty: Ty<'tcx>,
     target_ty: Ty<'tcx>,
 ) -> CustomCoerceUnsized {
-    let def_id = tcx.require_lang_item(LangItem::CoerceUnsized, None);
+    let def_id = tcx.require_lang_item(LangItem::UnsafeCoerceUnsized, None);
 
     let trait_ref = ty::Binder::dummy(ty::TraitRef {
         def_id,

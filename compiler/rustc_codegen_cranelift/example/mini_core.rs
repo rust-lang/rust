@@ -12,13 +12,18 @@ pub trait Sized {}
 #[lang = "unsize"]
 pub trait Unsize<T: ?Sized> {}
 
-#[lang = "coerce_unsized"]
-pub trait CoerceUnsized<T> {}
+#[lang = "unsafe_coerce_unsized"]
+pub trait UnsafeCoerceUnsized<T> {}
 
-impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a mut U> for &'a mut T {}
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
+#[lang = "coerce_unsized"]
+pub unsafe trait CoerceUnsized<T>: UnsafeCoerceUnsized<T> {}
+
+impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> UnsafeCoerceUnsized<&'a U> for &'b T {}
+unsafe impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> UnsafeCoerceUnsized<&'a mut U> for &'a mut T {}
+unsafe impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a mut U> for &'a mut T {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> UnsafeCoerceUnsized<*const U> for *const T {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> UnsafeCoerceUnsized<*mut U> for *mut T {}
 
 #[lang = "dispatch_from_dyn"]
 pub trait DispatchFromDyn<T> {}

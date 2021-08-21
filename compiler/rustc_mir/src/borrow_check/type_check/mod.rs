@@ -2109,8 +2109,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     CastKind::Pointer(PointerCast::Unsize) => {
                         let &ty = ty;
                         let trait_ref = ty::TraitRef {
-                            def_id: tcx
-                                .require_lang_item(LangItem::CoerceUnsized, Some(self.last_span)),
+                            def_id: tcx.require_lang_item(
+                                LangItem::UnsafeCoerceUnsized,
+                                Some(self.last_span),
+                            ),
                             substs: tcx.mk_substs_trait(op.ty(body, tcx), &[ty.into()]),
                         };
 

@@ -1361,6 +1361,7 @@ symbols! {
         unrestricted_attribute_tokens,
         unsafe_block_in_unsafe_fn,
         unsafe_cell,
+        unsafe_coerce_unsized,
         unsafe_no_drop_flag,
         unsize,
         unsized_fn_params,

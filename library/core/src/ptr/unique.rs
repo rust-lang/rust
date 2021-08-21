@@ -2,7 +2,7 @@ use crate::convert::From;
 use crate::fmt;
 use crate::marker::{PhantomData, Unsize};
 use crate::mem;
-use crate::ops::{CoerceUnsized, DispatchFromDyn};
+use crate::ops::{DispatchFromDyn, UnsafeCoerceUnsized};
 
 /// A wrapper around a raw non-null `*mut T` that indicates that the possessor
 /// of this wrapper owns the referent. Useful for building abstractions like
@@ -152,7 +152,14 @@ impl<T: ?Sized> Clone for Unique<T> {
 impl<T: ?Sized> Copy for Unique<T> {}
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> {}
+impl<T: ?Sized, U: ?Sized> UnsafeCoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> {}
+
+#[cfg(bootstrap)]
+#[unstable(feature = "ptr_internals", issue = "none")]
+unsafe impl<T: ?Sized, U: ?Sized> crate::ops::CoerceUnsized<Unique<U>> for Unique<T> where
+    T: Unsize<U>
+{
+}
 
 #[unstable(feature = "ptr_internals", issue = "none")]
 impl<T: ?Sized, U: ?Sized> DispatchFromDyn<Unique<U>> for Unique<T> where T: Unsize<U> {}

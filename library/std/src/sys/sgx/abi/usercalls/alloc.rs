@@ -2,7 +2,7 @@
 
 use crate::cell::UnsafeCell;
 use crate::mem;
-use crate::ops::{CoerceUnsized, Deref, DerefMut, Index, IndexMut};
+use crate::ops::{CoerceUnsized, Deref, DerefMut, Index, IndexMut, UnsafeCoerceUnsized};
 use crate::ptr::{self, NonNull};
 use crate::slice;
 use crate::slice::SliceIndex;
@@ -565,7 +565,10 @@ where
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T: CoerceUnsized<U>, U> CoerceUnsized<UserRef<U>> for UserRef<T> {}
+impl<T: UnsafeCoerceUnsized<U>, U> UnsafeCoerceUnsized<UserRef<U>> for UserRef<T> {}
+
+#[unstable(feature = "sgx_platform", issue = "56975")]
+unsafe impl<T: CoerceUnsized<U>, U> CoerceUnsized<UserRef<U>> for UserRef<T> {}
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
 impl<T, I> Index<I> for UserRef<[T]>

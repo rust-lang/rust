@@ -111,12 +111,13 @@ pub trait Sized {
 ///   - `T` is not part of the type of any other fields
 ///   - `Bar<T>: Unsize<Bar<U>>`, if the last field of `Foo` has type `Bar<T>`
 ///
-/// `Unsize` is used along with [`ops::CoerceUnsized`] to allow
+/// `Unsize` is used along with [`ops::CoerceUnsized`] and [`ops::UnsafeCoerceUnsized`] to allow
 /// "user-defined" containers such as [`Rc`] to contain dynamically-sized
 /// types. See the [DST coercion RFC][RFC982] and [the nomicon entry on coercion][nomicon-coerce]
 /// for more details.
 ///
 /// [`ops::CoerceUnsized`]: crate::ops::CoerceUnsized
+/// [`ops::UnsafeCoerceUnsized`]: crate::ops::UnsafeCoerceUnsized
 /// [`Rc`]: ../../std/rc/struct.Rc.html
 /// [RFC982]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
 /// [nomicon-coerce]: ../../nomicon/coercions.html

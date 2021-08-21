@@ -385,7 +385,7 @@ use crate::cmp::{self, PartialEq, PartialOrd};
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::marker::{Sized, Unpin};
-use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
+use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver, UnsafeCoerceUnsized};
 
 /// A pinned pointer.
 ///
@@ -893,13 +893,16 @@ impl<P: fmt::Pointer> fmt::Pointer for Pin<P> {
     }
 }
 
-// Note: this means that any impl of `CoerceUnsized` that allows coercing from
+// Note: this means that any impl of `UnsafeCoerceUnsized` that allows coercing from
 // a type that impls `Deref<Target=impl !Unpin>` to a type that impls
 // `Deref<Target=Unpin>` is unsound. Any such impl would probably be unsound
 // for other reasons, though, so we just need to take care not to allow such
 // impls to land in std.
 #[stable(feature = "pin", since = "1.33.0")]
-impl<P, U> CoerceUnsized<Pin<U>> for Pin<P> where P: CoerceUnsized<U> {}
+impl<P, U> UnsafeCoerceUnsized<Pin<U>> for Pin<P> where P: UnsafeCoerceUnsized<U> {}
+
+#[stable(feature = "pin", since = "1.33.0")]
+unsafe impl<P, U> CoerceUnsized<Pin<U>> for Pin<P> where P: CoerceUnsized<U> {}
 
 #[stable(feature = "pin", since = "1.33.0")]
 impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}

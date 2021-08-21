@@ -1437,10 +1437,10 @@ impl EncodeContext<'a, 'tcx> {
                     None
                 };
 
-                // if this is an impl of `CoerceUnsized`, create its
+                // if this is an impl of `UnsafeCoerceUnsized`, create its
                 // "unsized info", else just store None
                 let coerce_unsized_info = trait_ref.and_then(|t| {
-                    if Some(t.def_id) == self.tcx.lang_items().coerce_unsized_trait() {
+                    if Some(t.def_id) == self.tcx.lang_items().unsafe_coerce_unsized_trait() {
                         Some(self.tcx.at(item.span).coerce_unsized_info(def_id))
                     } else {
                         None

@@ -492,6 +492,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     }
 }
 
+#[cfg_attr(bootstrap, allow(unused_unsafe))]
 impl<'a, K, V, Type> NodeRef<marker::ValMut<'a>, K, V, Type> {
     /// # Safety
     /// - The node has more than `idx` initialized elements.
@@ -503,8 +504,8 @@ impl<'a, K, V, Type> NodeRef<marker::ValMut<'a>, K, V, Type> {
         let keys = unsafe { ptr::addr_of!((*leaf).keys) };
         let vals = unsafe { ptr::addr_of_mut!((*leaf).vals) };
         // We must coerce to unsized array pointers because of Rust issue #74679.
-        let keys: *const [_] = keys;
-        let vals: *mut [_] = vals;
+        let keys: *const [_] = unsafe { keys };
+        let vals: *mut [_] = unsafe { vals };
         let key = unsafe { (&*keys.get_unchecked(idx)).assume_init_ref() };
         let val = unsafe { (&mut *vals.get_unchecked_mut(idx)).assume_init_mut() };
         (key, val)

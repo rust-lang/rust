@@ -23,7 +23,10 @@ pub fn check_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) {
     Checker { tcx, trait_def_id }
         .check(lang_items.drop_trait(), visit_implementation_of_drop)
         .check(lang_items.copy_trait(), visit_implementation_of_copy)
-        .check(lang_items.coerce_unsized_trait(), visit_implementation_of_coerce_unsized)
+        .check(
+            lang_items.unsafe_coerce_unsized_trait(),
+            visit_implementation_of_unsafe_coerce_unsized,
+        )
         .check(lang_items.dispatch_from_dyn_trait(), visit_implementation_of_dispatch_from_dyn);
 }
 
@@ -109,8 +112,8 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     }
 }
 
-fn visit_implementation_of_coerce_unsized(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) {
-    debug!("visit_implementation_of_coerce_unsized: impl_did={:?}", impl_did);
+fn visit_implementation_of_unsafe_coerce_unsized(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) {
+    debug!("visit_implementation_of_unsafe_coerce_unsized: impl_did={:?}", impl_did);
 
     // Just compute this for the side-effects, in particular reporting
     // errors; other parts of the code may demand it for the info of
@@ -294,7 +297,8 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
     let impl_hir_id = tcx.hir().local_def_id_to_hir_id(impl_did.expect_local());
     let span = tcx.hir().span(impl_hir_id);
 
-    let coerce_unsized_trait = tcx.require_lang_item(LangItem::CoerceUnsized, Some(span));
+    let unsafe_coerce_unsized_trait =
+        tcx.require_lang_item(LangItem::UnsafeCoerceUnsized, Some(span));
 
     let unsize_trait = tcx.lang_items().require(LangItem::Unsize).unwrap_or_else(|err| {
         tcx.sess.fatal(&format!("`CoerceUnsized` implementation {}", err));
@@ -302,7 +306,7 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
 
     let source = tcx.type_of(impl_did);
     let trait_ref = tcx.impl_trait_ref(impl_did).unwrap();
-    assert_eq!(trait_ref.def_id, coerce_unsized_trait);
+    assert_eq!(trait_ref.def_id, unsafe_coerce_unsized_trait);
     let target = trait_ref.substs.type_at(1);
     debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (bound)", source, target);
 
@@ -434,7 +438,7 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
                         }
 
                         // Collect up all fields that were significantly changed
-                        // i.e., those that contain T in coerce_unsized T -> U
+                        // i.e., those that contain T in unsafe_coerce_unsized T -> U
                         Some((i, a, b))
                     })
                     .collect::<Vec<_>>();
@@ -444,7 +448,7 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
                         tcx.sess,
                         span,
                         E0374,
-                        "the trait `CoerceUnsized` may only be implemented \
+                        "the trait `UnsafeCoerceUnsized` may only be implemented \
                                for a coercion between structures with one field \
                                being coerced, none found"
                     )
@@ -465,11 +469,11 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
                         span,
                         E0375,
                         "implementing the trait \
-                                                    `CoerceUnsized` requires multiple \
+                                                    `UnsafeCoerceUnsized` requires multiple \
                                                     coercions"
                     )
                     .note(
-                        "`CoerceUnsized` may only be implemented for \
+                        "`UnsafeCoerceUnsized` may only be implemented for \
                               a coercion between structures with one field being coerced",
                     )
                     .note(&format!(
@@ -490,7 +494,7 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
 
                 let (i, a, b) = diff_fields[0];
                 let kind = ty::adjustment::CustomCoerceUnsized::Struct(i);
-                (a, b, coerce_unsized_trait, Some(kind))
+                (a, b, unsafe_coerce_unsized_trait, Some(kind))
             }
 
             _ => {
@@ -498,7 +502,7 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
                     tcx.sess,
                     span,
                     E0376,
-                    "the trait `CoerceUnsized` may only be implemented \
+                    "the trait `UnsafeCoerceUnsized` may only be implemented \
                            for a coercion between structures"
                 )
                 .emit();

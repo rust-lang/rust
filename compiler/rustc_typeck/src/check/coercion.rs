@@ -507,20 +507,20 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug!("coerce_unsized: resolved source={:?} target={:?}", source, target);
 
         // These 'if' statements require some explanation.
-        // The `CoerceUnsized` trait is special - it is only
-        // possible to write `impl CoerceUnsized<B> for A` where
+        // The `UnsafeCoerceUnsized` trait is special - it is only
+        // possible to write `impl UnsafeCoerceUnsized<B> for A` where
         // A and B have 'matching' fields. This rules out the following
         // two types of blanket impls:
         //
-        // `impl<T> CoerceUnsized<T> for SomeType`
-        // `impl<T> CoerceUnsized<SomeType> for T`
+        // `impl<T> UnsafeCoerceUnsized<T> for SomeType`
+        // `impl<T> UnsafeCoerceUnsized<SomeType> for T`
         //
-        // Both of these trigger a special `CoerceUnsized`-related error (E0376)
+        // Both of these trigger a special `UnsafeCoerceUnsized`-related error (E0376)
         //
         // We can take advantage of this fact to avoid performing unnecessary work.
         // If either `source` or `target` is a type variable, then any applicable impl
-        // would need to be generic over the self-type (`impl<T> CoerceUnsized<SomeType> for T`)
-        // or generic over the `CoerceUnsized` type parameter (`impl<T> CoerceUnsized<T> for
+        // would need to be generic over the self-type (`impl<T> UnsafeCoerceUnsized<SomeType> for T`)
+        // or generic over the `UnsafeCoerceUnsized` type parameter (`impl<T> UnsafeCoerceUnsized<T> for
         // SomeType`).
         //
         // However, these are exactly the kinds of impls which are forbidden by
@@ -536,12 +536,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             return Err(TypeError::Mismatch);
         }
 
-        let traits =
-            (self.tcx.lang_items().unsize_trait(), self.tcx.lang_items().coerce_unsized_trait());
-        let (unsize_did, coerce_unsized_did) = if let (Some(u), Some(cu)) = traits {
+        let traits = (
+            self.tcx.lang_items().unsize_trait(),
+            self.tcx.lang_items().unsafe_coerce_unsized_trait(),
+        );
+        let (unsize_did, unsafe_coerce_unsized_did) = if let (Some(u), Some(cu)) = traits {
             (u, cu)
         } else {
-            debug!("missing Unsize or CoerceUnsized traits");
+            debug!("missing Unsize or UnsafeCoerceUnsized traits");
             return Err(TypeError::Mismatch);
         };
 
@@ -550,7 +552,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // we can't unify [T] with U. But to properly support DST, we need to allow
         // that, at which point we will need extra checks on the target here.
 
-        // Handle reborrows before selecting `Source: CoerceUnsized<Target>`.
+        // Handle reborrows before selecting `Source: UnsafeCoerceUnsized<Target>`.
         let reborrow = match (source.kind(), target.kind()) {
             (&ty::Ref(_, ty_a, mutbl_a), &ty::Ref(_, _, mutbl_b)) => {
                 coerce_mutbls(mutbl_a, mutbl_b)?;
@@ -592,7 +594,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let coerce_source = reborrow.as_ref().map_or(source, |&(_, ref r)| r.target);
 
         // Setup either a subtyping or a LUB relationship between
-        // the `CoerceUnsized` target type and the expected type.
+        // the `UnsafeCoerceUnsized` target type and the expected type.
         // We only have the latter, so we use an inference variable
         // for the former and let type inference do the rest.
         let origin = TypeVariableOrigin {
@@ -610,7 +612,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         let mut selcx = traits::SelectionContext::new(self);
 
-        // Create an obligation for `Source: CoerceUnsized<Target>`.
+        // Create an obligation for `Source: UnsafeCoerceUnsized<Target>`.
         let cause = ObligationCause::new(
             self.cause.span,
             self.body_id,
@@ -628,7 +630,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             self.tcx,
             self.fcx.param_env,
             cause,
-            coerce_unsized_did,
+            unsafe_coerce_unsized_did,
             0,
             coerce_source,
             &[coerce_target.into()]
@@ -637,10 +639,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let mut has_unsized_tuple_coercion = false;
         let mut has_trait_upcasting_coercion = false;
 
-        // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
+        // Keep resolving `UnsafeCoerceUnsized` and `Unsize` predicates to avoid
         // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
         // inference might unify those two inner type variables later.
-        let traits = [coerce_unsized_did, unsize_did];
+        let traits = [unsafe_coerce_unsized_did, unsize_did];
         while !queue.is_empty() {
             let obligation = queue.remove(0);
             debug!("coerce_unsized resolve step: {:?}", obligation);

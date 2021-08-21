@@ -503,8 +503,9 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     struct StrPanicPayload(&'static str);
 
     unsafe impl BoxMeUp for StrPanicPayload {
+        #[cfg_attr(bootstrap, allow(unused_unsafe))]
         fn take_box(&mut self) -> *mut (dyn Any + Send) {
-            Box::into_raw(Box::new(self.0))
+            unsafe { Box::into_raw(Box::new(self.0)) }
         }
 
         fn get(&mut self) -> &(dyn Any + Send) {
@@ -555,6 +556,7 @@ pub fn begin_panic<M: Any + Send>(msg: M) -> ! {
     }
 
     unsafe impl<A: Send + 'static> BoxMeUp for PanicPayload<A> {
+        #[cfg_attr(bootstrap, allow(unused_unsafe))]
         fn take_box(&mut self) -> *mut (dyn Any + Send) {
             // Note that this should be the only allocation performed in this code path. Currently
             // this means that panic!() on OOM will invoke this code path, but then again we're not
@@ -565,7 +567,7 @@ pub fn begin_panic<M: Any + Send>(msg: M) -> ! {
                 Some(a) => Box::new(a) as Box<dyn Any + Send>,
                 None => process::abort(),
             };
-            Box::into_raw(data)
+            unsafe { Box::into_raw(data) }
         }
 
         fn get(&mut self) -> &(dyn Any + Send) {
@@ -650,8 +652,9 @@ pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
     struct RewrapBox(Box<dyn Any + Send>);
 
     unsafe impl BoxMeUp for RewrapBox {
+        #[cfg_attr(bootstrap, allow(unused_unsafe))]
         fn take_box(&mut self) -> *mut (dyn Any + Send) {
-            Box::into_raw(mem::replace(&mut self.0, Box::new(())))
+            unsafe { Box::into_raw(mem::replace(&mut self.0, Box::new(()))) }
         }
 
         fn get(&mut self) -> &(dyn Any + Send) {
