@@ -1,4 +1,3 @@
-use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_driver::abort_on_err;
@@ -307,10 +306,7 @@ crate fn create_resolver<'a>(
     let (krate, resolver, _) = &*abort_on_err(queries.expansion(), sess).peek();
     let resolver = resolver.clone();
 
-    let mut loader = crate::passes::collect_intra_doc_links::IntraLinkCrateLoader::new(resolver);
-    ast::visit::walk_crate(&mut loader, krate);
-
-    loader.resolver
+    crate::passes::collect_intra_doc_links::load_intra_link_crates(resolver, krate)
 }
 
 crate fn run_global_ctxt(
