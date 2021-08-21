@@ -278,6 +278,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_macro_call(macro_call)
     }
 
+    pub fn resolve_attr_macro_call(&self, item: &ast::Item) -> Option<MacroDef> {
+        self.imp.resolve_attr_macro_call(item)
+    }
+
     pub fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
         self.imp.resolve_path(path)
     }
@@ -632,6 +636,12 @@ impl<'db> SemanticsImpl<'db> {
         let sa = self.analyze(macro_call.syntax());
         let macro_call = self.find_file(macro_call.syntax().clone()).with_value(macro_call);
         sa.resolve_macro_call(self.db, macro_call)
+    }
+
+    fn resolve_attr_macro_call(&self, item: &ast::Item) -> Option<MacroDef> {
+        let item_in_file = self.find_file(item.syntax().clone()).with_value(item.clone());
+        let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(item_in_file))?;
+        Some(MacroDef { id: self.db.lookup_intern_macro(macro_call_id).def })
     }
 
     fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
