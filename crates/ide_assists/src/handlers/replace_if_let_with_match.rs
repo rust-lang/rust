@@ -1,12 +1,12 @@
 use std::iter::{self, successors};
 
 use either::Either;
-use ide_db::{ty_filter::TryEnum, RootDatabase};
+use ide_db::{defs::NameClass, ty_filter::TryEnum, RootDatabase};
 use syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
-        make,
+        make, NameOwner,
     },
     AstNode,
 };
@@ -235,22 +235,34 @@ fn pick_pattern_and_expr_order(
 ) -> Option<(ast::Pat, ast::Expr, ast::Expr)> {
     let res = match (pat, pat2) {
         (ast::Pat::WildcardPat(_), _) => return None,
-        (pat, sad_pat) if is_sad_pat(sema, &sad_pat) => (pat, expr, expr2),
-        (sad_pat, pat) if is_sad_pat(sema, &sad_pat) => (pat, expr2, expr),
-        (pat, pat2) => match (binds_name(&pat), binds_name(&pat2)) {
+        (pat, _) if is_empty_expr(&expr2) => (pat, expr, expr2),
+        (_, pat) if is_empty_expr(&expr) => (pat, expr2, expr),
+        (pat, pat2) => match (binds_name(sema, &pat), binds_name(sema, &pat2)) {
             (true, true) => return None,
             (true, false) => (pat, expr, expr2),
             (false, true) => (pat2, expr2, expr),
+            _ if is_sad_pat(sema, &pat) => (pat2, expr2, expr),
             (false, false) => (pat, expr, expr2),
         },
     };
     Some(res)
 }
 
-fn binds_name(pat: &ast::Pat) -> bool {
-    let binds_name_v = |pat| binds_name(&pat);
+fn is_empty_expr(expr: &ast::Expr) -> bool {
+    match expr {
+        ast::Expr::BlockExpr(expr) => expr.is_empty(),
+        ast::Expr::TupleExpr(expr) => expr.fields().next().is_none(),
+        _ => false,
+    }
+}
+
+fn binds_name(sema: &hir::Semantics<RootDatabase>, pat: &ast::Pat) -> bool {
+    let binds_name_v = |pat| binds_name(&sema, &pat);
     match pat {
-        ast::Pat::IdentPat(_) => true,
+        ast::Pat::IdentPat(pat) => !matches!(
+            pat.name().and_then(|name| NameClass::classify(sema, &name)),
+            Some(NameClass::ConstReference(_))
+        ),
         ast::Pat::MacroPat(_) => true,
         ast::Pat::OrPat(pat) => pat.pats().any(binds_name_v),
         ast::Pat::SlicePat(pat) => pat.pats().any(binds_name_v),
@@ -703,6 +715,28 @@ fn main() {
     }
 
     #[test]
+    fn replace_match_with_if_let_number_body() {
+        check_assist(
+            replace_match_with_if_let,
+            r#"
+fn main() {
+    $0match Ok(()) {
+        Ok(()) => {},
+        Err(_) => 0,
+    }
+}
+"#,
+            r#"
+fn main() {
+    if let Err(_) = Ok(()) {
+        0
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
     fn replace_match_with_if_let_exhaustive() {
         check_assist(
             replace_match_with_if_let,
@@ -756,6 +790,46 @@ fn foo() {
 fn foo() {
     if let Bar(bar) = Foo(0) {
         println!("bar {}", bar)
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn replace_match_with_if_let_prefer_nonempty_body() {
+        check_assist(
+            replace_match_with_if_let,
+            r#"
+fn foo() {
+    match $0Ok(0) {
+        Ok(value) => {},
+        Err(err) => eprintln!("{}", err),
+    }
+}
+"#,
+            r#"
+fn foo() {
+    if let Err(err) = Ok(0) {
+        eprintln!("{}", err)
+    }
+}
+"#,
+        );
+        check_assist(
+            replace_match_with_if_let,
+            r#"
+fn foo() {
+    match $0Ok(0) {
+        Err(err) => eprintln!("{}", err),
+        Ok(value) => {},
+    }
+}
+"#,
+            r#"
+fn foo() {
+    if let Err(err) = Ok(0) {
+        eprintln!("{}", err)
     }
 }
 "#,
