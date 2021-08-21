@@ -6,7 +6,7 @@ use syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
-        make, ArgListOwner, AstNode, ModuleItemOwner,
+        make, ArgListOwner, AstNode, CallExpr, ModuleItemOwner,
     },
     SyntaxKind, SyntaxNode, TextRange, TextSize,
 };
@@ -85,10 +85,10 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         None => None,
     };
 
-    let (function_builder, inserting_offset, file) =
-        FunctionBuilder::from_call(ctx, &call, &path, target_module)?;
+    let (target, file, insert_offset) = get_fn_target(ctx, &target_module, call.clone())?;
+    let function_builder = FunctionBuilder::from_call(ctx, &call, &path, target_module, target)?;
     let target = call.syntax().text_range();
-    add_func_to_accumulator(acc, ctx, target, function_builder, inserting_offset, file, None)
+    add_func_to_accumulator(acc, ctx, target, function_builder, insert_offset, file, None)
 }
 
 fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -109,24 +109,26 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         ctx.sema.find_node_at_offset_with_macros(file.syntax(), range.range.start())?;
     let impl_ = find_struct_impl(ctx, &adt_source, fn_name.text().as_str())?;
 
-    let (function_builder, inserting_offset, file) = FunctionBuilder::from_method_call(
-        ctx,
-        &call,
-        &fn_name,
-        &impl_,
-        range.file_id,
-        target_module,
-        current_module,
-    )?;
-    let target = call.syntax().text_range();
+    let (target, insert_offset) = get_method_target(ctx, &target_module, &impl_)?;
+    let function_builder =
+        FunctionBuilder::from_method_call(ctx, &call, &fn_name, target_module, target)?;
+    let text_range = call.syntax().text_range();
     let adt_name = if impl_.is_none() { Some(adt.name(ctx.sema.db)) } else { None };
-    add_func_to_accumulator(acc, ctx, target, function_builder, inserting_offset, file, adt_name)
+    add_func_to_accumulator(
+        acc,
+        ctx,
+        text_range,
+        function_builder,
+        insert_offset,
+        range.file_id,
+        adt_name,
+    )
 }
 
 fn add_func_to_accumulator(
     acc: &mut Assists,
     ctx: &AssistContext,
-    target: TextRange,
+    text_range: TextRange,
     function_builder: FunctionBuilder,
     insert_offset: TextSize,
     file: FileId,
@@ -135,7 +137,7 @@ fn add_func_to_accumulator(
     acc.add(
         AssistId("generate_function", AssistKind::Generate),
         format!("Generate `{}` method", function_builder.fn_name),
-        target,
+        text_range,
         |builder| {
             let function_template = function_builder.render();
             let mut func = function_template.to_string(ctx.config.snippet_cap);
@@ -194,7 +196,6 @@ struct FunctionBuilder {
     params: ast::ParamList,
     ret_type: Option<ast::RetType>,
     should_focus_return_type: bool,
-    file: FileId,
     needs_pub: bool,
     is_async: bool,
 }
@@ -207,17 +208,8 @@ impl FunctionBuilder {
         call: &ast::CallExpr,
         path: &ast::Path,
         target_module: Option<hir::Module>,
-    ) -> Option<(Self, TextSize, FileId)> {
-        let mut file = ctx.frange.file_id;
-        let target = match &target_module {
-            Some(target_module) => {
-                let module_source = target_module.definition_source(ctx.db());
-                let (in_file, target) = next_space_for_fn_in_module(ctx.sema.db, &module_source)?;
-                file = in_file;
-                target
-            }
-            None => next_space_for_fn_after_call_site(FuncExpr::Func(call.clone()))?,
-        };
+        target: GeneratedFunctionTarget,
+    ) -> Option<Self> {
         let needs_pub = target_module.is_some();
         let target_module = target_module.or_else(|| current_module(target.syntax(), ctx))?;
         let fn_name = fn_name(path)?;
@@ -229,51 +221,27 @@ impl FunctionBuilder {
         let (ret_type, should_focus_return_type) =
             make_return_type(ctx, &ast::Expr::CallExpr(call.clone()), target_module);
 
-        let insert_offset = match &target {
-            GeneratedFunctionTarget::BehindItem(it) => it.text_range().end(),
-            GeneratedFunctionTarget::InEmptyItemList(it) => {
-                it.text_range().start() + TextSize::of('{')
-            }
-        };
-
-        Some((
-            Self {
-                target,
-                fn_name,
-                type_params,
-                params,
-                ret_type,
-                should_focus_return_type,
-                file,
-                needs_pub,
-                is_async,
-            },
-            insert_offset,
-            file,
-        ))
+        Some(Self {
+            target,
+            fn_name,
+            type_params,
+            params,
+            ret_type,
+            should_focus_return_type,
+            needs_pub,
+            is_async,
+        })
     }
 
     fn from_method_call(
         ctx: &AssistContext,
         call: &ast::MethodCallExpr,
         name: &ast::NameRef,
-        impl_: &Option<ast::Impl>,
-        file: FileId,
         target_module: Module,
-        current_module: Module,
-    ) -> Option<(Self, TextSize, FileId)> {
-        let target = match impl_ {
-            Some(impl_) => next_space_for_fn_in_impl(&impl_)?,
-            None => {
-                next_space_for_fn_in_module(
-                    ctx.sema.db,
-                    &target_module.definition_source(ctx.sema.db),
-                )?
-                .1
-            }
-        };
-        let needs_pub = !module_is_descendant(&current_module, &target_module, ctx);
-
+        target: GeneratedFunctionTarget,
+    ) -> Option<Self> {
+        let needs_pub =
+            !module_is_descendant(&current_module(call.syntax(), ctx)?, &target_module, ctx);
         let fn_name = make::name(&name.text());
         let (type_params, params) = fn_args(ctx, target_module, FuncExpr::Method(call.clone()))?;
 
@@ -283,28 +251,16 @@ impl FunctionBuilder {
         let (ret_type, should_focus_return_type) =
             make_return_type(ctx, &ast::Expr::MethodCallExpr(call.clone()), target_module);
 
-        let insert_offset = match &target {
-            GeneratedFunctionTarget::BehindItem(it) => it.text_range().end(),
-            GeneratedFunctionTarget::InEmptyItemList(it) => {
-                it.text_range().start() + TextSize::of('{')
-            }
-        };
-
-        Some((
-            Self {
-                target,
-                fn_name,
-                type_params,
-                params,
-                ret_type,
-                should_focus_return_type,
-                file,
-                needs_pub,
-                is_async,
-            },
-            insert_offset,
-            file,
-        ))
+        Some(Self {
+            target,
+            fn_name,
+            type_params,
+            params,
+            ret_type,
+            should_focus_return_type,
+            needs_pub,
+            is_async,
+        })
     }
 
     fn render(self) -> FunctionTemplate {
@@ -382,6 +338,47 @@ fn make_return_type(
     (ret_type, should_focus_return_type)
 }
 
+fn get_fn_target(
+    ctx: &AssistContext,
+    target_module: &Option<Module>,
+    call: CallExpr,
+) -> Option<(GeneratedFunctionTarget, FileId, TextSize)> {
+    let mut file = ctx.frange.file_id;
+    let target = match target_module {
+        Some(target_module) => {
+            let module_source = target_module.definition_source(ctx.db());
+            let (in_file, target) = next_space_for_fn_in_module(ctx.sema.db, &module_source)?;
+            file = in_file;
+            target
+        }
+        None => next_space_for_fn_after_call_site(FuncExpr::Func(call.clone()))?,
+    };
+    Some((target.clone(), file, get_insert_offset(&target)))
+}
+
+fn get_method_target(
+    ctx: &AssistContext,
+    target_module: &Module,
+    impl_: &Option<ast::Impl>,
+) -> Option<(GeneratedFunctionTarget, TextSize)> {
+    let target = match impl_ {
+        Some(impl_) => next_space_for_fn_in_impl(&impl_)?,
+        None => {
+            next_space_for_fn_in_module(ctx.sema.db, &target_module.definition_source(ctx.sema.db))?
+                .1
+        }
+    };
+    Some((target.clone(), get_insert_offset(&target)))
+}
+
+fn get_insert_offset(target: &GeneratedFunctionTarget) -> TextSize {
+    match &target {
+        GeneratedFunctionTarget::BehindItem(it) => it.text_range().end(),
+        GeneratedFunctionTarget::InEmptyItemList(it) => it.text_range().start() + TextSize::of('{'),
+    }
+}
+
+#[derive(Clone)]
 enum GeneratedFunctionTarget {
     BehindItem(SyntaxNode),
     InEmptyItemList(SyntaxNode),
