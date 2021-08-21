@@ -387,7 +387,7 @@ fn expand_proc_macro(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<tt::
 
     let attr_arg = match &loc.kind {
         MacroCallKind::Attr { attr_args, .. } => {
-            let mut attr_args = attr_args.tree.clone();
+            let mut attr_args = attr_args.0.clone();
             mbe::Shift::new(&macro_arg.0).shift_all(&mut attr_args);
             Some(attr_args)
         }

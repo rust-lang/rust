@@ -787,12 +787,12 @@ fn attr_macro_as_call_id(
     let mut arg = match &macro_attr.input {
         Some(input) => match &**input {
             attr::AttrInput::Literal(_) => Default::default(),
-            attr::AttrInput::TokenTree(tt) => tt.clone(),
+            attr::AttrInput::TokenTree(tt, map) => (tt.clone(), map.clone()),
         },
         None => Default::default(),
     };
     // The parentheses are always disposed here.
-    arg.tree.delimiter = None;
+    arg.0.delimiter = None;
 
     let res = def.as_lazy_macro(
         db.upcast(),

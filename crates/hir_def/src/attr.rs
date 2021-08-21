@@ -14,7 +14,7 @@ use either::Either;
 use hir_expand::{hygiene::Hygiene, name::AsName, AstId, InFile};
 use itertools::Itertools;
 use la_arena::ArenaMap;
-use mbe::{syntax_node_to_token_tree, DelimiterKind, MappedSubTree};
+use mbe::{syntax_node_to_token_tree, DelimiterKind};
 use smallvec::{smallvec, SmallVec};
 use syntax::{
     ast::{self, AstNode, AttrsOwner},
@@ -160,18 +160,18 @@ impl RawAttrs {
                 }
 
                 let subtree = match attr.input.as_deref() {
-                    Some(AttrInput::TokenTree(it)) => it,
+                    Some(AttrInput::TokenTree(it, _)) => it,
                     _ => return smallvec![attr.clone()],
                 };
 
                 // Input subtree is: `(cfg, $(attr),+)`
                 // Split it up into a `cfg` subtree and the `attr` subtrees.
                 // FIXME: There should be a common API for this.
-                let mut parts = subtree.tree.token_trees.split(
+                let mut parts = subtree.token_trees.split(
                     |tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(p)) if p.char == ','),
                 );
                 let cfg = parts.next().unwrap();
-                let cfg = Subtree { delimiter: subtree.tree.delimiter, token_trees: cfg.to_vec() };
+                let cfg = Subtree { delimiter: subtree.delimiter, token_trees: cfg.to_vec() };
                 let cfg = CfgExpr::parse(&cfg);
                 let index = attr.id;
                 let attrs = parts.filter(|a| !a.is_empty()).filter_map(|attr| {
@@ -260,7 +260,7 @@ impl Attrs {
     pub fn docs(&self) -> Option<Documentation> {
         let docs = self.by_key("doc").attrs().flat_map(|attr| match attr.input.as_deref()? {
             AttrInput::Literal(s) => Some(s),
-            AttrInput::TokenTree(_) => None,
+            AttrInput::TokenTree(..) => None,
         });
         let indent = docs
             .clone()
@@ -465,7 +465,7 @@ impl AttrsWithOwner {
         // FIXME: code duplication in `docs` above
         let docs = self.by_key("doc").attrs().flat_map(|attr| match attr.input.as_deref()? {
             AttrInput::Literal(s) => Some((s, attr.id)),
-            AttrInput::TokenTree(_) => None,
+            AttrInput::TokenTree(..) => None,
         });
         let indent = docs
             .clone()
@@ -654,14 +654,14 @@ pub enum AttrInput {
     /// `#[attr = "string"]`
     Literal(SmolStr),
     /// `#[attr(subtree)]`
-    TokenTree(mbe::MappedSubTree),
+    TokenTree(tt::Subtree, mbe::TokenMap),
 }
 
 impl fmt::Display for AttrInput {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AttrInput::Literal(lit) => write!(f, " = \"{}\"", lit.escape_debug()),
-            AttrInput::TokenTree(subtree) => subtree.tree.fmt(f),
+            AttrInput::TokenTree(subtree, _) => subtree.fmt(f),
         }
     }
 }
@@ -682,7 +682,7 @@ impl Attr {
             Some(Interned::new(AttrInput::Literal(value)))
         } else if let Some(tt) = ast.token_tree() {
             let (tree, map) = syntax_node_to_token_tree(tt.syntax());
-            Some(Interned::new(AttrInput::TokenTree(MappedSubTree { tree, map })))
+            Some(Interned::new(AttrInput::TokenTree(tree, map)))
         } else {
             None
         };
@@ -712,10 +712,9 @@ impl Attr {
         }
 
         match self.input.as_deref() {
-            Some(AttrInput::TokenTree(args)) => {
+            Some(AttrInput::TokenTree(args, _)) => {
                 let mut counter = 0;
                 let paths = args
-                    .tree
                     .token_trees
                     .iter()
                     .group_by(move |tt| {
@@ -760,7 +759,7 @@ pub struct AttrQuery<'a> {
 impl<'a> AttrQuery<'a> {
     pub fn tt_values(self) -> impl Iterator<Item = &'a Subtree> {
         self.attrs().filter_map(|attr| match attr.input.as_deref()? {
-            AttrInput::TokenTree(it) => Some(&it.tree),
+            AttrInput::TokenTree(it, _) => Some(it),
             _ => None,
         })
     }

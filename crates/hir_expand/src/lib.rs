@@ -283,7 +283,7 @@ pub enum MacroCallKind {
     Attr {
         ast_id: AstId<ast::Item>,
         attr_name: String,
-        attr_args: mbe::MappedSubTree,
+        attr_args: (tt::Subtree, mbe::TokenMap),
         /// Syntactical index of the invoking `#[attribute]`.
         ///
         /// Outer attributes are counted first, then inner attributes. This does not support
@@ -390,7 +390,7 @@ impl ExpansionInfo {
                                 token_tree.left_delimiter_token()?.text_range().start();
                             let range = token.value.text_range().checked_sub(attr_input_start)?;
                             let token_id =
-                                self.macro_arg_shift.shift(attr_args.map.token_by_range(range)?);
+                                self.macro_arg_shift.shift(attr_args.1.token_by_range(range)?);
                             Some(token_id)
                         }
                         _ => None,
@@ -437,7 +437,7 @@ impl ExpansionInfo {
             MacroCallKind::Attr { attr_args, .. } => match self.macro_arg_shift.unshift(token_id) {
                 Some(unshifted) => {
                     token_id = unshifted;
-                    (&attr_args.map, self.attr_input_or_mac_def.clone()?.syntax().cloned())
+                    (&attr_args.1, self.attr_input_or_mac_def.clone()?.syntax().cloned())
                 }
                 None => (&self.macro_arg.1, self.arg.clone()),
             },

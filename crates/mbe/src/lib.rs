@@ -69,7 +69,7 @@ pub use crate::{
         parse_exprs_with_sep, parse_to_token_tree, syntax_node_to_token_tree,
         token_tree_to_syntax_node,
     },
-    token_map::{MappedSubTree, TokenMap},
+    token_map::TokenMap,
 };
 
 /// This struct contains AST for a single `macro_rules` definition. What might

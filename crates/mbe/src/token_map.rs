@@ -5,7 +5,7 @@ use std::hash::Hash;
 use parser::{SyntaxKind, T};
 use syntax::{TextRange, TextSize};
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 enum TokenTextRange {
     Token(TextRange),
     Delimiter(TextRange),
@@ -26,27 +26,8 @@ impl TokenTextRange {
     }
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct MappedSubTree {
-    pub tree: tt::Subtree,
-    pub map: TokenMap,
-}
-
-impl Eq for MappedSubTree {}
-impl PartialEq for MappedSubTree {
-    fn eq(&self, other: &Self) -> bool {
-        self.tree == other.tree && self.map == other.map
-    }
-}
-
-impl Hash for MappedSubTree {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.tree.hash(state);
-    }
-}
-
 /// Maps `tt::TokenId` to the relative range of the original token.
-#[derive(Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default, Hash)]
 pub struct TokenMap {
     /// Maps `tt::TokenId` to the *relative* source range.
     entries: Vec<(tt::TokenId, TokenTextRange)>,
