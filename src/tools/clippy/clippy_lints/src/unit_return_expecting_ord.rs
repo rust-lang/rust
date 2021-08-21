@@ -127,7 +127,7 @@ fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Spa
                 then {
                     let data = stmt.span.data();
                     // Make a span out of the semicolon for the help message
-                    Some((span, Some(Span::new(data.hi-BytePos(1), data.hi, data.ctxt))))
+                    Some((span, Some(data.with_lo(data.hi-BytePos(1)))))
                 } else {
                     Some((span, None))
                 }

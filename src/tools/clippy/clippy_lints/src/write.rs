@@ -299,7 +299,7 @@ impl EarlyLintPass for Write {
                     let nl_span = match (dest, only_nl) {
                         // Special case of `write!(buf, "\n")`: Mark everything from the end of
                         // `buf` for removal so no trailing comma [`writeln!(buf, )`] remains.
-                        (Some(dest_expr), true) => Span::new(dest_expr.span.hi(), nl_span.hi(), nl_span.ctxt()),
+                        (Some(dest_expr), true) => nl_span.with_lo(dest_expr.span.hi()),
                         _ => nl_span,
                     };
                     span_lint_and_then(
