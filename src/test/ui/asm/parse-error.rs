@@ -76,6 +76,12 @@ fn main() {
         //~^ ERROR asm template must be a string literal
         asm!("{1}", format!("{{{}}}", 0), in(reg) foo, out(reg) bar);
         //~^ ERROR asm template must be a string literal
+        asm!("{}", in(reg) _);
+        //~^ ERROR _ cannot be used for input operands
+        asm!("{}", inout(reg) _);
+        //~^ ERROR _ cannot be used for input operands
+        asm!("{}", inlateout(reg) _);
+        //~^ ERROR _ cannot be used for input operands
     }
 }
 
