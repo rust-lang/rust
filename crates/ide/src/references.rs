@@ -1,6 +1,6 @@
 //! This module implements a reference search.
 //! First, the element at the cursor position must be either an `ast::Name`
-//! or `ast::NameRef`. If it's a `ast::NameRef`, at the classification step we
+//! or `ast::NameRef`. If it's an `ast::NameRef`, at the classification step we
 //! try to resolve the direct tree parent of this element, otherwise we
 //! already have a definition and just need to get its HIR together with
 //! some information that is needed for further steps of searching.
