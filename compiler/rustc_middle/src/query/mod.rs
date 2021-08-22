@@ -648,7 +648,7 @@ rustc_queries! {
         }
     }
 
-    /// HACK: when evaluated, this reports a "unsafe derive on repr(packed)" error.
+    /// HACK: when evaluated, this reports an "unsafe derive on repr(packed)" error.
     ///
     /// Unsafety checking is executed for each method separately, but we only want
     /// to emit this error once per derive. As there are some impls with multiple

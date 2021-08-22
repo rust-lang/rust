@@ -86,7 +86,7 @@ impl NonConstOp for FnCallNonConst {
     }
 }
 
-/// A call to a `#[unstable]` const fn or `#[rustc_const_unstable]` function.
+/// A call to an `#[unstable]` const fn or `#[rustc_const_unstable]` function.
 ///
 /// Contains the name of the feature that would allow the use of this function.
 #[derive(Debug)]

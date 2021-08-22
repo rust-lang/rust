@@ -3161,7 +3161,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    /// This function adds a suggestion to remove a unnecessary binding from an import that is
+    /// This function adds a suggestion to remove an unnecessary binding from an import that is
     /// nested. In the following example, this function will be invoked to remove the `a` binding
     /// in the second use statement:
     ///

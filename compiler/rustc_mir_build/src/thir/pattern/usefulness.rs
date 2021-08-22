@@ -762,7 +762,7 @@ impl<'p, 'tcx> SubPatSet<'p, 'tcx> {
                     for i in 0..*alt_count {
                         let sub_set = subpats.get(&i).unwrap_or(&SubPatSet::Empty);
                         if sub_set.is_empty() {
-                            // Found a unreachable subpattern.
+                            // Found an unreachable subpattern.
                             spans.push(expanded[i].span);
                         } else {
                             fill_spans(sub_set, spans);

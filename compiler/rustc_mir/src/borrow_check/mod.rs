@@ -2003,7 +2003,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
 
             if let Some((prefix, mpi)) = shortest_uninit_seen {
-                // Check for a reassignment into a uninitialized field of a union (for example,
+                // Check for a reassignment into an uninitialized field of a union (for example,
                 // after a move out). In this case, do not report an error here. There is an
                 // exception, if this is the first assignment into the union (that is, there is
                 // no move out from an earlier location) then this is an attempt at initialization

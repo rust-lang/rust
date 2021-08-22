@@ -486,7 +486,7 @@ fn make_token_stream(
         if let AttrAnnotatedTokenTree::Token(last_token) = last_token {
             let unglued_first = last_token.kind.break_two_token_op().unwrap().0;
 
-            // A 'unglued' token is always two ASCII characters
+            // An 'unglued' token is always two ASCII characters
             let mut first_span = last_token.span.shrink_to_lo();
             first_span = first_span.with_hi(first_span.lo() + rustc_span::BytePos(1));
 

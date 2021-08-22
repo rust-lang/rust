@@ -307,7 +307,7 @@ where
     /// relations between `'0` and `'a`).
     ///
     /// The variable `pair` can be either a `(vid, ty)` or `(ty, vid)`
-    /// -- in other words, it is always a (unresolved) inference
+    /// -- in other words, it is always an (unresolved) inference
     /// variable `vid` and a type `ty` that are being related, but the
     /// vid may appear either as the "a" type or the "b" type,
     /// depending on where it appears in the tuple. The trait
