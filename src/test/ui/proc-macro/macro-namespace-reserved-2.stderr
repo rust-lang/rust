@@ -94,7 +94,7 @@ error: cannot find macro `my_macro_attr` in this scope
 LL |     my_macro_attr!();
    |     ^^^^^^^^^^^^^
    |
-   = note: `my_macro_attr` is in scope, but it is an attribute
+   = note: `my_macro_attr` is in scope, but it is an attribute: `#[my_macro_attr]`
 
 error: cannot find macro `MyTrait` in this scope
   --> $DIR/macro-namespace-reserved-2.rs:33:5
@@ -102,7 +102,7 @@ error: cannot find macro `MyTrait` in this scope
 LL |     MyTrait!();
    |     ^^^^^^^
    |
-   = note: `MyTrait` is in scope, but it is a derive macro
+   = note: `MyTrait` is in scope, but it is a derive macro: `#[derive(MyTrait)]`
 
 error: cannot find attribute `my_macro` in this scope
   --> $DIR/macro-namespace-reserved-2.rs:38:3

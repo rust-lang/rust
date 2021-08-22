@@ -16,7 +16,7 @@ error: cannot find macro `test` in this scope
 LL |     test!();
    |     ^^^^
    |
-   = note: `test` is in scope, but it is an attribute
+   = note: `test` is in scope, but it is an attribute: `#[test]`
 
 error: cannot find macro `Copy` in this scope
   --> $DIR/issue-88206.rs:56:5
@@ -24,7 +24,7 @@ error: cannot find macro `Copy` in this scope
 LL |     Copy!();
    |     ^^^^
    |
-   = note: `Copy` is in scope, but it is a derive macro
+   = note: `Copy` is in scope, but it is a derive macro: `#[derive(Copy)]`
 
 error: cannot find macro `Box` in this scope
   --> $DIR/issue-88206.rs:52:5

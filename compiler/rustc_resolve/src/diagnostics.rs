@@ -973,7 +973,8 @@ impl<'a> Resolver<'a> {
             ) {
                 let desc = match binding.macro_kind() {
                     Some(MacroKind::Bang) => "a function-like macro".to_string(),
-                    Some(kind) => format!("{} {}", kind.article(), kind.descr_expected()),
+                    Some(MacroKind::Attr) => format!("an attribute: `#[{}]`", ident),
+                    Some(MacroKind::Derive) => format!("a derive macro: `#[derive({})]`", ident),
                     None => {
                         let res = binding.res();
                         format!("{} {}", res.article(), res.descr())

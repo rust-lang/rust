@@ -4,7 +4,7 @@ error: cannot find macro `test` in this scope
 LL |     concat!(test!());
    |             ^^^^
    |
-   = note: `test` is in scope, but it is an attribute
+   = note: `test` is in scope, but it is an attribute: `#[test]`
 
 error: aborting due to previous error
 
