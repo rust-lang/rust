@@ -11,7 +11,7 @@ use proc_macro_api::ProcMacroClient;
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, WorkspaceBuildScripts};
 use vfs::{loader::Handle, AbsPath, AbsPathBuf};
 
-use crate::reload::{ProjectFolders, SourceRootConfig};
+use crate::reload::{load_proc_macro, ProjectFolders, SourceRootConfig};
 
 // Note: Since this type is used by external tools that use rust-analyzer as a library
 // what otherwise would be `pub(crate)` has to be `pub` here instead.
@@ -69,9 +69,7 @@ pub fn load_workspace(
     });
 
     let crate_graph = ws.to_crate_graph(
-        &mut |path: &AbsPath| {
-            proc_macro_client.as_ref().map(|it| it.by_dylib_path(path)).unwrap_or_default()
-        },
+        &mut |path: &AbsPath| load_proc_macro(proc_macro_client.as_ref(), path),
         &mut |path: &AbsPath| {
             let contents = loader.load_sync(path);
             let path = vfs::VfsPath::from(path.to_path_buf());

@@ -15,17 +15,16 @@ log = "0.4.8"
 crossbeam-channel = "0.5.0"
 jod-thread = "0.1.1"
 memmap2 = "0.3.0"
-object = { version = "0.26", default-features = false, features = [
-    "std",
-    "read_core",
-    "elf",
-    "macho",
-    "pe",
-] }
 snap = "1.0"
 
 paths = { path = "../paths", version = "0.0.0" }
 tt = { path = "../tt", version = "0.0.0" }
-base_db = { path = "../base_db", version = "0.0.0" }
 stdx = { path = "../stdx", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }
+# Intentionally *not* depend on anything salsa-related
+# base_db = { path = "../base_db", version = "0.0.0" }
+
+[dependencies.object]
+version = "0.26"
+default-features = false
+features = [ "std", "read_core", "elf", "macho", "pe" ]

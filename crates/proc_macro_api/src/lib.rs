@@ -10,7 +10,6 @@ mod process;
 mod rpc;
 mod version;
 
-use base_db::{Env, ProcMacro};
 use paths::{AbsPath, AbsPathBuf};
 use std::{
     ffi::OsStr,
@@ -26,34 +25,44 @@ pub use rpc::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask, 
 pub use version::{read_dylib_info, RustCInfo};
 
 #[derive(Debug, Clone)]
-struct ProcMacroProcessExpander {
+pub struct ProcMacroProcessExpander {
     process: Arc<Mutex<ProcMacroProcessSrv>>,
     dylib_path: AbsPathBuf,
     name: SmolStr,
+    kind: ProcMacroKind,
 }
 
 impl Eq for ProcMacroProcessExpander {}
 impl PartialEq for ProcMacroProcessExpander {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
+            && self.kind == other.kind
             && self.dylib_path == other.dylib_path
             && Arc::ptr_eq(&self.process, &other.process)
     }
 }
 
-impl base_db::ProcMacroExpander for ProcMacroProcessExpander {
-    fn expand(
+impl ProcMacroProcessExpander {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn kind(&self) -> ProcMacroKind {
+        self.kind
+    }
+
+    pub fn expand(
         &self,
         subtree: &Subtree,
         attr: Option<&Subtree>,
-        env: &Env,
+        env: Vec<(String, String)>,
     ) -> Result<Subtree, tt::ExpansionError> {
         let task = ExpansionTask {
             macro_body: subtree.clone(),
             macro_name: self.name.to_string(),
             attributes: attr.cloned(),
             lib: self.dylib_path.to_path_buf(),
-            env: env.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
+            env,
         };
 
         let result: ExpansionResult = self
@@ -86,7 +95,7 @@ impl ProcMacroClient {
         Ok(ProcMacroClient { process: Arc::new(Mutex::new(process)) })
     }
 
-    pub fn by_dylib_path(&self, dylib_path: &AbsPath) -> Vec<ProcMacro> {
+    pub fn by_dylib_path(&self, dylib_path: &AbsPath) -> Vec<ProcMacroProcessExpander> {
         let _p = profile::span("ProcMacroClient::by_dylib_path");
         match version::read_dylib_info(dylib_path) {
             Ok(info) => {
@@ -118,20 +127,11 @@ impl ProcMacroClient {
 
         macros
             .into_iter()
-            .map(|(name, kind)| {
-                let name = SmolStr::new(&name);
-                let kind = match kind {
-                    ProcMacroKind::CustomDerive => base_db::ProcMacroKind::CustomDerive,
-                    ProcMacroKind::FuncLike => base_db::ProcMacroKind::FuncLike,
-                    ProcMacroKind::Attr => base_db::ProcMacroKind::Attr,
-                };
-                let expander = Arc::new(ProcMacroProcessExpander {
-                    process: self.process.clone(),
-                    name: name.clone(),
-                    dylib_path: dylib_path.to_path_buf(),
-                });
-
-                ProcMacro { name, kind, expander }
+            .map(|(name, kind)| ProcMacroProcessExpander {
+                process: self.process.clone(),
+                name: name.into(),
+                kind,
+                dylib_path: dylib_path.to_path_buf(),
             })
             .collect()
     }

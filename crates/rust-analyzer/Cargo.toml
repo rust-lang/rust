@@ -52,6 +52,7 @@ vfs = { path = "../vfs", version = "0.0.0" }
 vfs-notify = { path = "../vfs-notify", version = "0.0.0" }
 cfg = { path = "../cfg", version = "0.0.0" }
 toolchain = { path = "../toolchain", version = "0.0.0" }
+tt = { path = "../tt", version = "0.0.0" }
 proc_macro_api = { path = "../proc_macro_api", version = "0.0.0" }
 
 # This should only be used in CLI
