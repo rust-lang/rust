@@ -1413,15 +1413,17 @@ fn check_enum<'tcx>(
                 Some(ref expr) => tcx.hir().span(expr.hir_id),
                 None => v.span,
             };
+            let display_discr = display_discriminant_value(tcx, v, discr.val);
+            let display_discr_i = display_discriminant_value(tcx, variant_i, disr_vals[i].val);
             struct_span_err!(
                 tcx.sess,
                 span,
                 E0081,
                 "discriminant value `{}` already exists",
-                disr_vals[i]
+                discr.val,
             )
-            .span_label(i_span, format!("first use of `{}`", disr_vals[i]))
-            .span_label(span, format!("enum already has `{}`", disr_vals[i]))
+            .span_label(i_span, format!("first use of {}", display_discr_i))
+            .span_label(span, format!("enum already has {}", display_discr))
             .emit();
         }
         disr_vals.push(discr);
@@ -1429,6 +1431,25 @@ fn check_enum<'tcx>(
 
     check_representable(tcx, sp, def_id);
     check_transparent(tcx, sp, def);
+}
+
+/// Format an enum discriminant value for use in a diagnostic message.
+fn display_discriminant_value<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    variant: &hir::Variant<'_>,
+    evaluated: u128,
+) -> String {
+    if let Some(expr) = &variant.disr_expr {
+        let body = &tcx.hir().body(expr.body).value;
+        if let hir::ExprKind::Lit(lit) = &body.kind {
+            if let rustc_ast::LitKind::Int(lit_value, _int_kind) = &lit.node {
+                if evaluated != *lit_value {
+                    return format!("`{}` (overflowed from `{}`)", evaluated, lit_value);
+                }
+            }
+        }
+    }
+    format!("`{}`", evaluated)
 }
 
 pub(super) fn check_type_params_are_used<'tcx>(
