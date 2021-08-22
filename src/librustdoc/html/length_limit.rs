@@ -79,17 +79,13 @@ impl HtmlWithLimit {
     /// Close the most recently opened HTML tag.
     pub(super) fn close_tag(&mut self) {
         let tag_name = self.unclosed_tags.pop().unwrap();
-        self.buf.push_str("</");
-        self.buf.push_str(tag_name);
-        self.buf.push('>');
+        write!(self.buf, "</{}>", tag_name).unwrap();
     }
 
     /// Write all queued tags and add them to the `unclosed_tags` list.
     fn flush_queue(&mut self) {
         for tag_name in self.queued_tags.drain(..) {
-            self.buf.push('<');
-            self.buf.push_str(tag_name);
-            self.buf.push('>');
+            write!(self.buf, "<{}>", tag_name).unwrap();
 
             self.unclosed_tags.push(tag_name);
         }
