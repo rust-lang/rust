@@ -101,7 +101,7 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
                 break;
             }
             ast::PathSegmentKind::SelfKw => {
-                // don't break out if `self` is the last segment of a path, this mean we got an
+                // don't break out if `self` is the last segment of a path, this mean we got a
                 // use tree like `foo::{self}` which we want to resolve as `foo`
                 if !segments.is_empty() {
                     kind = PathKind::Super(0);

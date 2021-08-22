@@ -93,7 +93,7 @@ pub(crate) fn expand_rules(
 ///
 /// In other words, `Bindings` is a *multi* mapping from `SmolStr` to
 /// `tt::TokenTree`, where the index to select a particular `TokenTree` among
-/// many is not a plain `usize`, but an `&[usize]`.
+/// many is not a plain `usize`, but a `&[usize]`.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct Bindings {
     inner: FxHashMap<SmolStr, Binding>,
