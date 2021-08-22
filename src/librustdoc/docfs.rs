@@ -11,7 +11,7 @@
 
 use std::fs;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::string::ToString;
 use std::sync::mpsc::Sender;
 
@@ -55,17 +55,17 @@ impl DocFS {
         fs::create_dir_all(path)
     }
 
-    crate fn write<P, C, E>(&self, path: P, contents: C) -> Result<(), E>
+    crate fn write<E>(
+        &self,
+        path: PathBuf,
+        contents: impl 'static + Send + AsRef<[u8]>,
+    ) -> Result<(), E>
     where
-        P: AsRef<Path>,
-        C: AsRef<[u8]>,
         E: PathError,
     {
         if !self.sync_only && cfg!(windows) {
             // A possible future enhancement after more detailed profiling would
             // be to create the file sync so errors are reported eagerly.
-            let path = path.as_ref().to_path_buf();
-            let contents = contents.as_ref().to_vec();
             let sender = self.errors.clone().expect("can't write after closing");
             rayon::spawn(move || {
                 fs::write(&path, contents).unwrap_or_else(|e| {
