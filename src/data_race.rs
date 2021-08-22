@@ -42,7 +42,7 @@
 //!    order exists in which all threads observe all modifications in the same
 //!    order (see Sequentially-consistent ordering below) "
 //! So in the absence of weak memory effects a seq-cst load & a seq-cst store is identical
-//! to a acquire load and a release store given the global sequentially consistent order
+//! to an acquire load and a release store given the global sequentially consistent order
 //! of the schedule.
 //!
 //! The timestamps used in the data-race detector assign each sequence of non-atomic operations
@@ -142,7 +142,7 @@ impl ThreadClockSet {
         self.fence_release.clone_from(&self.clock);
     }
 
-    /// Apply the effects of a acquire fence to this
+    /// Apply the effects of an acquire fence to this
     /// set of thread vector clocks.
     #[inline]
     fn apply_acquire_fence(&mut self) {
@@ -503,7 +503,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         this.validate_atomic_store(dest, atomic)
     }
 
-    /// Perform a atomic operation on a memory location.
+    /// Perform an atomic operation on a memory location.
     fn atomic_op_immediate(
         &mut self,
         place: &MPlaceTy<'tcx, Tag>,
@@ -695,7 +695,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
                 log::trace!("Atomic fence on {:?} with ordering {:?}", index, atomic);
 
                 // Apply data-race detection for the current fences
-                // this treats AcqRel and SeqCst as the same as a acquire
+                // this treats AcqRel and SeqCst as the same as an acquire
                 // and release fence applied in the same timestamp.
                 if atomic != AtomicFenceOp::Release {
                     // Either Acquire | AcqRel | SeqCst
