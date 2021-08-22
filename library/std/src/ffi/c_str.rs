@@ -939,7 +939,7 @@ impl<'a> From<&'a CString> for Cow<'a, CStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<CString> for Arc<CStr> {
-    /// Converts a [`CString`] into a [`Arc`]`<CStr>` without copying or allocating.
+    /// Converts a [`CString`] into an [`Arc`]`<CStr>` without copying or allocating.
     #[inline]
     fn from(s: CString) -> Arc<CStr> {
         let arc: Arc<[u8]> = Arc::from(s.into_inner());

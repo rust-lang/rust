@@ -897,7 +897,7 @@ impl Clone for Box<OsStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Arc<OsStr> {
-    /// Converts an [`OsString`] into a [`Arc`]`<OsStr>` without copying or allocating.
+    /// Converts an [`OsString`] into an [`Arc`]`<OsStr>` without copying or allocating.
     #[inline]
     fn from(s: OsString) -> Arc<OsStr> {
         let arc = s.inner.into_arc();

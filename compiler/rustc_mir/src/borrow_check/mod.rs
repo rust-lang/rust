@@ -1889,7 +1889,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ProjectionElem::Downcast(_/*adt_def*/, _/*variant_idx*/) =>
                 // assigning to (P->variant) is okay if assigning to `P` is okay
                 //
-                // FIXME: is this true even if P is a adt with a dtor?
+                // FIXME: is this true even if P is an adt with a dtor?
                 { }
 
                 // assigning to (*P) requires P to be initialized

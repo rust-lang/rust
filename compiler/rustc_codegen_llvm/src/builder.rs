@@ -558,7 +558,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn range_metadata(&mut self, load: &'ll Value, range: Range<u128>) {
         if self.sess().target.arch == "amdgpu" {
-            // amdgpu/LLVM does something weird and thinks a i64 value is
+            // amdgpu/LLVM does something weird and thinks an i64 value is
             // split into a v2i32, halving the bitwidth LLVM expects,
             // tripping an assertion. So, for now, just disable this
             // optimization.

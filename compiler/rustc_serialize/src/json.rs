@@ -1202,7 +1202,7 @@ impl Json {
         matches!(*self, Json::I64(_) | Json::U64(_) | Json::F64(_))
     }
 
-    /// Returns `true` if the Json value is a `i64`.
+    /// Returns `true` if the Json value is an `i64`.
     pub fn is_i64(&self) -> bool {
         matches!(*self, Json::I64(_))
     }
@@ -1217,7 +1217,7 @@ impl Json {
         matches!(*self, Json::F64(_))
     }
 
-    /// If the Json value is a number, returns or cast it to a `i64`;
+    /// If the Json value is a number, returns or cast it to an `i64`;
     /// returns `None` otherwise.
     pub fn as_i64(&self) -> Option<i64> {
         match *self {

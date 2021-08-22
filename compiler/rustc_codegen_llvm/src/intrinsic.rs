@@ -139,7 +139,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                                 if self.cx().size_of(ret_ty).bytes() < 4 {
                                     // `va_arg` should not be called on an integer type
                                     // less than 4 bytes in length. If it is, promote
-                                    // the integer to a `i32` and truncate the result
+                                    // the integer to an `i32` and truncate the result
                                     // back to the smaller type.
                                     let promoted_result = emit_va_arg(self, args[0], tcx.types.i32);
                                     self.trunc(promoted_result, llret_ty)
