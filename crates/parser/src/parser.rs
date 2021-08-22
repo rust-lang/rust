@@ -182,7 +182,7 @@ impl<'t> Parser<'t> {
 
     /// Advances the parser by one token, remapping its kind.
     /// This is useful to create contextual keywords from
-    /// identifiers. For example, the lexer creates an `union`
+    /// identifiers. For example, the lexer creates a `union`
     /// *identifier* token, but the parser remaps it to the
     /// `union` keyword, and keyword is what ends up in the
     /// final tree.

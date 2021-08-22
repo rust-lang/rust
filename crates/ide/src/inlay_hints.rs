@@ -331,7 +331,7 @@ fn should_hide_param_name_hint(
     // - exact argument<->parameter match(ignoring leading underscore) or parameter is a prefix/suffix
     //   of argument with _ splitting it off
     // - param starts with `ra_fixture`
-    // - param is a well known name in an unary function
+    // - param is a well known name in a unary function
 
     let param_name = param_name.trim_start_matches('_');
     if param_name.is_empty() {
@@ -369,7 +369,7 @@ fn is_argument_similar_to_param_name(argument: &ast::Expr, param_name: &str) -> 
     argument == param_name
 }
 
-/// Hide the parameter name of an unary function if it is a `_` - prefixed suffix of the function's name, or equal.
+/// Hide the parameter name of a unary function if it is a `_` - prefixed suffix of the function's name, or equal.
 ///
 /// `fn strip_suffix(suffix)` will be hidden.
 /// `fn stripsuffix(suffix)` will not be hidden.
