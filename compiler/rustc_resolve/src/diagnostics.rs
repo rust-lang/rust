@@ -971,14 +971,24 @@ impl<'a> Resolver<'a> {
                 false,
                 ident.span,
             ) {
-                let res = binding.res();
-                let desc = match res.macro_kind() {
-                    Some(MacroKind::Bang) => "a function-like macro".to_string(),
-                    Some(MacroKind::Attr) => format!("an attribute: `#[{}]`", ident),
-                    Some(MacroKind::Derive) => format!("a derive macro: `#[derive({})]`", ident),
-                    // Don't confuse the user with tool modules.
-                    None if res == Res::ToolMod => continue,
-                    None => format!(
+                let desc = match binding.res() {
+                    Res::Def(DefKind::Macro(MacroKind::Bang), _) => {
+                        "a function-like macro".to_string()
+                    }
+                    Res::Def(DefKind::Macro(MacroKind::Attr), _) | Res::NonMacroAttr(..) => {
+                        format!("an attribute: `#[{}]`", ident)
+                    }
+                    Res::Def(DefKind::Macro(MacroKind::Derive), _) => {
+                        format!("a derive macro: `#[derive({})]`", ident)
+                    }
+                    Res::ToolMod => {
+                        // Don't confuse the user with tool modules.
+                        continue;
+                    }
+                    Res::Def(DefKind::Trait, _) if macro_kind == MacroKind::Derive => {
+                        "only a trait, without a derive macro".to_string()
+                    }
+                    res => format!(
                         "{} {}, not {} {}",
                         res.article(),
                         res.descr(),

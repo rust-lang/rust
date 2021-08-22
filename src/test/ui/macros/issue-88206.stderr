@@ -104,7 +104,7 @@ error: cannot find derive macro `Serialize` in this scope
 LL | #[derive(Serialize)]
    |          ^^^^^^^^^
    |
-note: `Serialize` is imported here, but it is a trait, not a derive macro
+note: `Serialize` is imported here, but it is only a trait, without a derive macro
   --> $DIR/issue-88206.rs:17:11
    |
 LL | use hey::{Serialize, Deserialize, X};

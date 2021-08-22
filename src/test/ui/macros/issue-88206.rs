@@ -15,7 +15,7 @@ mod hey {
 }
 
 use hey::{Serialize, Deserialize, X};
-//~^ NOTE `Serialize` is imported here, but it is a trait
+//~^ NOTE `Serialize` is imported here, but it is only a trait, without a derive macro
 //~| NOTE `Deserialize` is imported here, but it is a trait
 //~| NOTE `X` is imported here, but it is a struct
 
