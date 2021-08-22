@@ -39,6 +39,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.2", default-features = false, features = ["env-filter", "registry"] }
 tracing-tree = { version = "0.1.4" }
 always-assert = "0.1"
+
 stdx = { path = "../stdx", version = "0.0.0" }
 flycheck = { path = "../flycheck", version = "0.0.0" }
 ide = { path = "../ide", version = "0.0.0" }
@@ -51,6 +52,7 @@ vfs = { path = "../vfs", version = "0.0.0" }
 vfs-notify = { path = "../vfs-notify", version = "0.0.0" }
 cfg = { path = "../cfg", version = "0.0.0" }
 toolchain = { path = "../toolchain", version = "0.0.0" }
+proc_macro_api = { path = "../proc_macro_api", version = "0.0.0" }
 
 # This should only be used in CLI
 ide_ssr = { path = "../ide_ssr", version = "0.0.0" }

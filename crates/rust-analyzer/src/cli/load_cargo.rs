@@ -7,9 +7,8 @@ use crossbeam_channel::{unbounded, Receiver};
 use hir::db::DefDatabase;
 use ide::{AnalysisHost, Change};
 use ide_db::base_db::CrateGraph;
-use project_model::{
-    CargoConfig, ProcMacroClient, ProjectManifest, ProjectWorkspace, WorkspaceBuildScripts,
-};
+use proc_macro_api::ProcMacroClient;
+use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, WorkspaceBuildScripts};
 use vfs::{loader::Handle, AbsPath, AbsPathBuf};
 
 use crate::reload::{ProjectFolders, SourceRootConfig};
@@ -69,12 +68,17 @@ pub fn load_workspace(
         WorkspaceBuildScripts::default()
     });
 
-    let crate_graph = ws.to_crate_graph(proc_macro_client.as_ref(), &mut |path: &AbsPath| {
-        let contents = loader.load_sync(path);
-        let path = vfs::VfsPath::from(path.to_path_buf());
-        vfs.set_file_contents(path.clone(), contents);
-        vfs.file_id(&path)
-    });
+    let crate_graph = ws.to_crate_graph(
+        &mut |path: &AbsPath| {
+            proc_macro_client.as_ref().map(|it| it.by_dylib_path(path)).unwrap_or_default()
+        },
+        &mut |path: &AbsPath| {
+            let contents = loader.load_sync(path);
+            let path = vfs::VfsPath::from(path.to_path_buf());
+            vfs.set_file_contents(path.clone(), contents);
+            vfs.file_id(&path)
+        },
+    );
 
     let project_folders = ProjectFolders::new(&[ws], &[]);
     loader.set_config(vfs::loader::Config {

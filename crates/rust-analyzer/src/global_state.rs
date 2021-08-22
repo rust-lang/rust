@@ -11,9 +11,8 @@ use ide::{Analysis, AnalysisHost, Cancellable, Change, FileId};
 use ide_db::base_db::CrateId;
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
-use project_model::{
-    CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target, WorkspaceBuildScripts,
-};
+use proc_macro_api::ProcMacroClient;
+use project_model::{CargoWorkspace, ProjectWorkspace, Target, WorkspaceBuildScripts};
 use rustc_hash::FxHashMap;
 use vfs::AnchoredPathBuf;
 
