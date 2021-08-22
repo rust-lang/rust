@@ -208,7 +208,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                     this.diverge_from(loop_block);
 
-                    // The “return” value of the loop body must always be an unit. We therefore
+                    // The “return” value of the loop body must always be a unit. We therefore
                     // introduce a unit temporary as the destination for the loop body.
                     let tmp = this.get_unit_temp();
                     // Execute the body, branching back to the test.

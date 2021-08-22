@@ -1031,7 +1031,7 @@ fn generic_simd_intrinsic(
         // vector mask and returns an unsigned integer containing the most
         // significant bit (MSB) of each lane.
 
-        // If the vector has less than 8 lanes, an u8 is returned with zeroed
+        // If the vector has less than 8 lanes, a u8 is returned with zeroed
         // trailing bits.
         let expected_int_bits = in_len.max(8);
         match ret_ty.kind() {

@@ -376,27 +376,27 @@ impl<'tcx, Tag: Provenance> Scalar<Tag> {
         self.to_bits(sz)
     }
 
-    /// Converts the scalar to produce an `u8`. Fails if the scalar is a pointer.
+    /// Converts the scalar to produce a `u8`. Fails if the scalar is a pointer.
     pub fn to_u8(self) -> InterpResult<'static, u8> {
         self.to_unsigned_with_bit_width(8).map(|v| u8::try_from(v).unwrap())
     }
 
-    /// Converts the scalar to produce an `u16`. Fails if the scalar is a pointer.
+    /// Converts the scalar to produce a `u16`. Fails if the scalar is a pointer.
     pub fn to_u16(self) -> InterpResult<'static, u16> {
         self.to_unsigned_with_bit_width(16).map(|v| u16::try_from(v).unwrap())
     }
 
-    /// Converts the scalar to produce an `u32`. Fails if the scalar is a pointer.
+    /// Converts the scalar to produce a `u32`. Fails if the scalar is a pointer.
     pub fn to_u32(self) -> InterpResult<'static, u32> {
         self.to_unsigned_with_bit_width(32).map(|v| u32::try_from(v).unwrap())
     }
 
-    /// Converts the scalar to produce an `u64`. Fails if the scalar is a pointer.
+    /// Converts the scalar to produce a `u64`. Fails if the scalar is a pointer.
     pub fn to_u64(self) -> InterpResult<'static, u64> {
         self.to_unsigned_with_bit_width(64).map(|v| u64::try_from(v).unwrap())
     }
 
-    /// Converts the scalar to produce an `u128`. Fails if the scalar is a pointer.
+    /// Converts the scalar to produce a `u128`. Fails if the scalar is a pointer.
     pub fn to_u128(self) -> InterpResult<'static, u128> {
         self.to_unsigned_with_bit_width(128)
     }

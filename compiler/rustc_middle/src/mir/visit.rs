@@ -1202,7 +1202,7 @@ pub enum NonUseContext {
     StorageDead,
     /// User type annotation assertions for NLL.
     AscribeUserTy,
-    /// The data of an user variable, for debug info.
+    /// The data of a user variable, for debug info.
     VarDebugInfo,
 }
 

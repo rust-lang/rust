@@ -1733,7 +1733,7 @@ rustc_queries! {
     }
 
     /// Performs an HIR-based well-formed check on the item with the given `HirId`. If
-    /// we get an `Umimplemented` error that matches the provided `Predicate`, return
+    /// we get an `Unimplemented` error that matches the provided `Predicate`, return
     /// the cause of the newly created obligation.
     ///
     /// This is only used by error-reporting code to get a better cause (in particular, a better

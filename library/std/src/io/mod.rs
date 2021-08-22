@@ -1150,7 +1150,7 @@ impl<'a> DerefMut for IoSliceMut<'a> {
 
 /// A buffer type used with `Write::write_vectored`.
 ///
-/// It is semantically a wrapper around an `&[u8]`, but is guaranteed to be
+/// It is semantically a wrapper around a `&[u8]`, but is guaranteed to be
 /// ABI compatible with the `iovec` type on Unix platforms and `WSABUF` on
 /// Windows.
 #[stable(feature = "iovec", since = "1.36.0")]

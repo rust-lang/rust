@@ -434,7 +434,7 @@ impl BorrowKind {
             ImmBorrow => hir::Mutability::Not,
 
             // We have no type corresponding to a unique imm borrow, so
-            // use `&mut`. It gives all the capabilities of an `&uniq`
+            // use `&mut`. It gives all the capabilities of a `&uniq`
             // and hence is a safe "over approximation".
             UniqueImmBorrow => hir::Mutability::Mut,
         }

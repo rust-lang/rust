@@ -1013,7 +1013,7 @@ extern "rust-intrinsic" {
     /// let val_casts = unsafe { &mut *(ptr as *mut i32 as *mut u32) };
     /// ```
     ///
-    /// Turning an `&str` into an `&[u8]`:
+    /// Turning an `&str` into a `&[u8]`:
     ///
     /// ```
     /// // this is not a good way to do this.

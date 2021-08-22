@@ -239,7 +239,7 @@ static_assert_size!(TyKind<'_>, 32);
 ///   implements `CK<(u32, u32), Output = u32>`, where `CK` is the trait
 ///   specified above.
 /// - U is a type parameter representing the types of its upvars, tupled up
-///   (borrowed, if appropriate; that is, if an U field represents a by-ref upvar,
+///   (borrowed, if appropriate; that is, if a U field represents a by-ref upvar,
 ///    and the up-var has the type `Foo`, then that field of U will be `&Foo`).
 ///
 /// So, for example, given this function:

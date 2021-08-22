@@ -3371,7 +3371,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `unsupported_calling_conventions` lint is output whenever there is an use of the
+    /// The `unsupported_calling_conventions` lint is output whenever there is a use of the
     /// `stdcall`, `fastcall`, `thiscall`, `vectorcall` calling conventions (or their unwind
     /// variants) on targets that cannot meaningfully be supported for the requested target.
     ///

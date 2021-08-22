@@ -660,7 +660,7 @@ pub unsafe fn zeroed<T>() -> T {
 #[rustc_diagnostic_item = "mem_uninitialized"]
 #[track_caller]
 pub unsafe fn uninitialized<T>() -> T {
-    // SAFETY: the caller must guarantee that an unitialized value is valid for `T`.
+    // SAFETY: the caller must guarantee that an uninitialized value is valid for `T`.
     unsafe {
         intrinsics::assert_uninit_valid::<T>();
         MaybeUninit::uninit().assume_init()

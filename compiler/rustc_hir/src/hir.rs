@@ -974,7 +974,7 @@ pub enum PatKind<'hir> {
     /// Invariant: `pats.len() >= 2`.
     Or(&'hir [Pat<'hir>]),
 
-    /// A path pattern for an unit struct/variant or a (maybe-associated) constant.
+    /// A path pattern for a unit struct/variant or a (maybe-associated) constant.
     Path(QPath<'hir>),
 
     /// A tuple pattern (e.g., `(a, b)`).

@@ -66,7 +66,7 @@ enum LIUState {
     EXP_END,
 }
 
-/// Returns `true` if `line` appears to be a line comment containing an URL,
+/// Returns `true` if `line` appears to be a line comment containing a URL,
 /// possibly with a Markdown link label in front, and nothing else.
 /// The Markdown link label, if present, may not contain whitespace.
 /// Lines of this form are allowed to be overlength, because Markdown
