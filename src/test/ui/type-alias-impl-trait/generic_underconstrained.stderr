@@ -1,11 +1,5 @@
-error: at least one trait must be specified
-  --> $DIR/generic_underconstrained.rs:6:35
-   |
-LL | type Underconstrained<T: Trait> = impl 'static;
-   |                                   ^^^^^^^^^^^^
-
 error[E0277]: the trait bound `T: Trait` is not satisfied
-  --> $DIR/generic_underconstrained.rs:10:31
+  --> $DIR/generic_underconstrained.rs:9:31
    |
 LL | fn underconstrain<T>(_: T) -> Underconstrained<T> {
    |                               ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`
@@ -13,13 +7,13 @@ LL | fn underconstrain<T>(_: T) -> Underconstrained<T> {
 note: required by a bound in `Underconstrained`
   --> $DIR/generic_underconstrained.rs:6:26
    |
-LL | type Underconstrained<T: Trait> = impl 'static;
+LL | type Underconstrained<T: Trait> = impl Send;
    |                          ^^^^^ required by this bound in `Underconstrained`
 help: consider restricting type parameter `T`
    |
 LL | fn underconstrain<T: Trait>(_: T) -> Underconstrained<T> {
    |                    +++++++
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0277`.

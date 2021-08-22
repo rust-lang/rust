@@ -11,7 +11,6 @@ fn main() {
     assert_eq!(bar2().to_string(), "bar2");
     let mut x = bar1();
     x = bar2();
-    assert_eq!(boo::boo().to_string(), "boo");
     assert_eq!(my_iter(42u8).collect::<Vec<u8>>(), vec![42u8]);
 }
 
@@ -31,15 +30,6 @@ fn bar1() -> Bar {
 
 fn bar2() -> Bar {
     "bar2"
-}
-
-// definition in submodule
-type Boo = impl std::fmt::Display;
-
-mod boo {
-    pub fn boo() -> super::Boo {
-        "boo"
-    }
 }
 
 type MyIter<T> = impl Iterator<Item = T>;

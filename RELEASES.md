@@ -70,6 +70,7 @@ Cargo
 - [The package definition in `cargo metadata` now includes the `"default_run"`
   field from the manifest.][cargo/9550]
 - [Added `cargo d` as an alias for `cargo doc`.][cargo/9680]
+- [Added `{lib}` as formatting option for `cargo tree` to print the "lib_name" of packages.][cargo/9663]
 
 Rustdoc
 -------
@@ -146,17 +147,12 @@ Version 1.54.0 (2021-07-29)
 Language
 -----------------------
 
-- [You can now use macros for values in built-in attribute macros.][83366]
-  While a seemingly minor addition on its own, this enables a lot of
-  powerful functionality when combined correctly. Most notably you can
-  now include external documentation in your crate by writing the following.
+- [You can now use macros for values in some built-in attributes.][83366]
+  This primarily allows you to call macros within the `#[doc]` attribute. For
+  example, to include external documentation in your crate, you can now write
+  the following:
   ```rust
   #![doc = include_str!("README.md")]
-  ```
-  You can also use this to include auto-generated modules:
-  ```rust
-  #[path = concat!(env!("OUT_DIR"), "/generated.rs")]
-  mod generated;
   ```
 
 - [You can now cast between unsized slice types (and types which contain
