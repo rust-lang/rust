@@ -1157,9 +1157,9 @@ pub type RefRef<'a, T, U = T> = OwningRef<Ref<'a, T>, U>;
 pub type RefMutRef<'a, T, U = T> = OwningRef<RefMut<'a, T>, U>;
 /// Typedef of an owning reference that uses a `MutexGuard` as the owner.
 pub type MutexGuardRef<'a, T, U = T> = OwningRef<MutexGuard<'a, T>, U>;
-/// Typedef of an owning reference that uses a `RwLockReadGuard` as the owner.
+/// Typedef of an owning reference that uses an `RwLockReadGuard` as the owner.
 pub type RwLockReadGuardRef<'a, T, U = T> = OwningRef<RwLockReadGuard<'a, T>, U>;
-/// Typedef of an owning reference that uses a `RwLockWriteGuard` as the owner.
+/// Typedef of an owning reference that uses an `RwLockWriteGuard` as the owner.
 pub type RwLockWriteGuardRef<'a, T, U = T> = OwningRef<RwLockWriteGuard<'a, T>, U>;
 
 /// Typedef of a mutable owning reference that uses a `Box` as the owner.
@@ -1173,7 +1173,7 @@ pub type StringRefMut = OwningRefMut<String, str>;
 pub type RefMutRefMut<'a, T, U = T> = OwningRefMut<RefMut<'a, T>, U>;
 /// Typedef of a mutable owning reference that uses a `MutexGuard` as the owner.
 pub type MutexGuardRefMut<'a, T, U = T> = OwningRefMut<MutexGuard<'a, T>, U>;
-/// Typedef of a mutable owning reference that uses a `RwLockWriteGuard` as the owner.
+/// Typedef of a mutable owning reference that uses an `RwLockWriteGuard` as the owner.
 pub type RwLockWriteGuardRefMut<'a, T, U = T> = OwningRef<RwLockWriteGuard<'a, T>, U>;
 
 unsafe impl<'a, T: 'a> IntoErased<'a> for Box<T> {
