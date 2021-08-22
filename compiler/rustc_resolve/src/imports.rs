@@ -303,7 +303,7 @@ impl<'a> Resolver<'a> {
                     if self.last_import_segment && check_usable(self, binding).is_err() {
                         Err((Determined, Weak::No))
                     } else {
-                        self.record_use(ident, ns, binding, restricted_shadowing);
+                        self.record_use(ident, binding, restricted_shadowing);
 
                         if let Some(shadowed_glob) = resolution.shadowed_glob {
                             // Forbid expanded shadowing to avoid time travel.
@@ -609,9 +609,9 @@ impl<'a> Resolver<'a> {
             self.per_ns(|this, ns| {
                 let key = this.new_key(target, ns);
                 let _ = this.try_define(import.parent_scope.module, key, dummy_binding);
-                // Consider erroneous imports used to avoid duplicate diagnostics.
-                this.record_use(target, ns, dummy_binding, false);
             });
+            // Consider erroneous imports used to avoid duplicate diagnostics.
+            self.record_use(target, dummy_binding, false);
         }
     }
 }
@@ -709,7 +709,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 }
             } else if is_indeterminate {
                 // Consider erroneous imports used to avoid duplicate diagnostics.
-                self.r.used_imports.insert((import.id, TypeNS));
+                self.r.used_imports.insert(import.id);
                 let path = import_path_to_string(
                     &import.module_path.iter().map(|seg| seg.ident).collect::<Vec<_>>(),
                     &import.kind,
@@ -902,7 +902,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         import.vis.set(orig_vis);
         if let PathResult::Failed { .. } | PathResult::NonModule(..) = path_res {
             // Consider erroneous imports used to avoid duplicate diagnostics.
-            self.r.used_imports.insert((import.id, TypeNS));
+            self.r.used_imports.insert(import.id);
         }
         let module = match path_res {
             PathResult::Module(module) => {
@@ -1043,7 +1043,6 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                                 {
                                     this.record_use(
                                         ident,
-                                        ns,
                                         target_binding,
                                         import.module_path.is_empty(),
                                     );

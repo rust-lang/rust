@@ -1738,7 +1738,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // whether they can be shadowed by fresh bindings or not, so force an error.
                 // issues/33118#issuecomment-233962221 (see below) still applies here,
                 // but we have to ignore it for backward compatibility.
-                self.r.record_use(ident, ValueNS, binding, false);
+                self.r.record_use(ident, binding, false);
                 return None;
             }
             LexicalScopeBinding::Item(binding) => (binding.res(), Some(binding)),
@@ -1753,7 +1753,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ) if is_syntactic_ambiguity => {
                 // Disambiguate in favor of a unit struct/variant or constant pattern.
                 if let Some(binding) = binding {
-                    self.r.record_use(ident, ValueNS, binding, false);
+                    self.r.record_use(ident, binding, false);
                 }
                 Some(res)
             }
