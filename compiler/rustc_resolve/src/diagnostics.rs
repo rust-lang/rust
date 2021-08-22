@@ -986,6 +986,9 @@ impl<'a> Resolver<'a> {
                             import.span,
                             &format!("`{}` is imported here, but {}", ident, it_is),
                         );
+                        // Silence the 'unused import' warning we might get,
+                        // since this diagnostic already covers that import.
+                        self.record_use(ident, binding, false);
                         return;
                     }
                 }

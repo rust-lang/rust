@@ -1,11 +1,9 @@
 // compile-flags: -Z deduplicate-diagnostics=yes
 
 #![warn(unused_imports)]
-//~^ NOTE lint level
 
 use std::str::*;
-//~^ WARNING unused import
-//~| NOTE `from_utf8` is imported here, but it is not a macro
+//~^ NOTE `from_utf8` is imported here, but it is not a macro
 //~| NOTE `from_utf8_mut` is imported here, but it is not a derive macro
 //~| NOTE `from_utf8_unchecked` is imported here, but it is not an attribute
 
@@ -15,8 +13,7 @@ mod hey {
 }
 
 use hey::{Serialize, Deserialize};
-//~^ WARNING unused import
-//~| NOTE `Serialize` is imported here, but it is not a derive macro
+//~^ NOTE `Serialize` is imported here, but it is not a derive macro
 //~| NOTE `Deserialize` is imported here, but it is not an attribute
 
 #[derive(Serialize)]
