@@ -50,8 +50,6 @@ pub use crate::{
     workspace::{CfgOverrides, PackageRoot, ProjectWorkspace},
 };
 
-pub use proc_macro_api::ProcMacroClient;
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum ProjectManifest {
     ProjectJson(ManifestPath),

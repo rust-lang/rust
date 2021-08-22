@@ -5,7 +5,8 @@ use flycheck::{FlycheckConfig, FlycheckHandle};
 use hir::db::DefDatabase;
 use ide::Change;
 use ide_db::base_db::{CrateGraph, SourceRoot, VfsPath};
-use project_model::{ProcMacroClient, ProjectWorkspace, WorkspaceBuildScripts};
+use proc_macro_api::ProcMacroClient;
+use project_model::{ProjectWorkspace, WorkspaceBuildScripts};
 use vfs::{file_set::FileSetConfig, AbsPath, AbsPathBuf, ChangeKind};
 
 use crate::{
@@ -396,11 +397,15 @@ impl GlobalState {
 
         // Create crate graph from all the workspaces
         let crate_graph = {
-            let mut crate_graph = CrateGraph::default();
+            let proc_macro_client = self.proc_macro_client.as_ref();
+            let mut load_proc_macro = move |path: &AbsPath| {
+                proc_macro_client.map(|it| it.by_dylib_path(path)).unwrap_or_default()
+            };
+
             let vfs = &mut self.vfs.write().0;
             let loader = &mut self.loader;
             let mem_docs = &self.mem_docs;
-            let mut load = |path: &AbsPath| {
+            let mut load = move |path: &AbsPath| {
                 let _p = profile::span("GlobalState::load");
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
                 if !mem_docs.contains(&vfs_path) {
@@ -413,10 +418,11 @@ impl GlobalState {
                 }
                 res
             };
-            for ws in self.workspaces.iter() {
-                crate_graph.extend(ws.to_crate_graph(self.proc_macro_client.as_ref(), &mut load));
-            }
 
+            let mut crate_graph = CrateGraph::default();
+            for ws in self.workspaces.iter() {
+                crate_graph.extend(ws.to_crate_graph(&mut load_proc_macro, &mut load));
+            }
             crate_graph
         };
         change.set_crate_graph(crate_graph);

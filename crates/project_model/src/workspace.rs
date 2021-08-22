@@ -8,7 +8,6 @@ use anyhow::{format_err, Context, Result};
 use base_db::{CrateDisplayName, CrateGraph, CrateId, CrateName, Edition, Env, FileId, ProcMacro};
 use cfg::{CfgDiff, CfgOptions};
 use paths::{AbsPath, AbsPathBuf};
-use proc_macro_api::ProcMacroClient;
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::always;
 
@@ -350,19 +349,15 @@ impl ProjectWorkspace {
 
     pub fn to_crate_graph(
         &self,
-        proc_macro_client: Option<&ProcMacroClient>,
+        load_proc_macro: &mut dyn FnMut(&AbsPath) -> Vec<ProcMacro>,
         load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     ) -> CrateGraph {
         let _p = profile::span("ProjectWorkspace::to_crate_graph");
-        let proc_macro_loader = &mut |path: &AbsPath| match proc_macro_client {
-            Some(client) => client.by_dylib_path(path),
-            None => Vec::new(),
-        };
 
         let mut crate_graph = match self {
             ProjectWorkspace::Json { project, sysroot, rustc_cfg } => project_json_to_crate_graph(
                 rustc_cfg.clone(),
-                proc_macro_loader,
+                load_proc_macro,
                 load,
                 project,
                 sysroot,
@@ -377,7 +372,7 @@ impl ProjectWorkspace {
             } => cargo_to_crate_graph(
                 rustc_cfg.clone(),
                 cfg_overrides,
-                proc_macro_loader,
+                load_proc_macro,
                 load,
                 cargo,
                 build_scripts,
@@ -399,7 +394,7 @@ impl ProjectWorkspace {
 
 fn project_json_to_crate_graph(
     rustc_cfg: Vec<CfgFlag>,
-    proc_macro_loader: &mut dyn FnMut(&AbsPath) -> Vec<ProcMacro>,
+    load_proc_macro: &mut dyn FnMut(&AbsPath) -> Vec<ProcMacro>,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     project: &ProjectJson,
     sysroot: &Option<Sysroot>,
@@ -419,7 +414,7 @@ fn project_json_to_crate_graph(
         })
         .map(|(crate_id, krate, file_id)| {
             let env = krate.env.clone().into_iter().collect();
-            let proc_macro = krate.proc_macro_dylib_path.clone().map(|it| proc_macro_loader(&it));
+            let proc_macro = krate.proc_macro_dylib_path.clone().map(|it| load_proc_macro(&it));
 
             let target_cfgs = match krate.target.as_deref() {
                 Some(target) => {
@@ -476,7 +471,7 @@ fn project_json_to_crate_graph(
 fn cargo_to_crate_graph(
     rustc_cfg: Vec<CfgFlag>,
     override_cfg: &CfgOverrides,
-    proc_macro_loader: &mut dyn FnMut(&AbsPath) -> Vec<ProcMacro>,
+    load_proc_macro: &mut dyn FnMut(&AbsPath) -> Vec<ProcMacro>,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     cargo: &CargoWorkspace,
     build_scripts: &WorkspaceBuildScripts,
@@ -528,7 +523,7 @@ fn cargo_to_crate_graph(
                     &cargo[pkg],
                     build_scripts.outputs.get(pkg),
                     &cfg_options,
-                    proc_macro_loader,
+                    load_proc_macro,
                     file_id,
                     &cargo[tgt].name,
                 );
@@ -599,7 +594,7 @@ fn cargo_to_crate_graph(
                 load,
                 &mut crate_graph,
                 &cfg_options,
-                proc_macro_loader,
+                load_proc_macro,
                 &mut pkg_to_lib_crate,
                 &public_deps,
                 cargo,
@@ -658,7 +653,7 @@ fn handle_rustc_crates(
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     crate_graph: &mut CrateGraph,
     cfg_options: &CfgOptions,
-    proc_macro_loader: &mut dyn FnMut(&AbsPath) -> Vec<ProcMacro>,
+    load_proc_macro: &mut dyn FnMut(&AbsPath) -> Vec<ProcMacro>,
     pkg_to_lib_crate: &mut FxHashMap<la_arena::Idx<crate::PackageData>, CrateId>,
     public_deps: &[(CrateName, CrateId)],
     cargo: &CargoWorkspace,
@@ -694,7 +689,7 @@ fn handle_rustc_crates(
                         &rustc_workspace[pkg],
                         None,
                         cfg_options,
-                        proc_macro_loader,
+                        load_proc_macro,
                         file_id,
                         &rustc_workspace[tgt].name,
                     );
@@ -750,7 +745,7 @@ fn add_target_crate_root(
     pkg: &PackageData,
     build_data: Option<&BuildScriptOutput>,
     cfg_options: &CfgOptions,
-    proc_macro_loader: &mut dyn FnMut(&AbsPath) -> Vec<ProcMacro>,
+    load_proc_macro: &mut dyn FnMut(&AbsPath) -> Vec<ProcMacro>,
     file_id: FileId,
     cargo_name: &str,
 ) -> CrateId {
@@ -778,7 +773,7 @@ fn add_target_crate_root(
     let proc_macro = build_data
         .as_ref()
         .and_then(|it| it.proc_macro_dylib_path.as_ref())
-        .map(|it| proc_macro_loader(it))
+        .map(|it| load_proc_macro(it))
         .unwrap_or_default();
 
     let display_name = CrateDisplayName::from_canonical_name(cargo_name.to_string());
