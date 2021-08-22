@@ -29,10 +29,6 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     let krate = cx.tcx.hir().krate();
     let module = crate::visit_ast::RustdocVisitor::new(cx).visit(krate);
 
-    cx.cache.deref_trait_did = cx.tcx.lang_items().deref_trait();
-    cx.cache.deref_mut_trait_did = cx.tcx.lang_items().deref_mut_trait();
-    cx.cache.owned_box_did = cx.tcx.lang_items().owned_box();
-
     let mut externs = Vec::new();
     for &cnum in cx.tcx.crates(()).iter() {
         externs.push(ExternalCrate { crate_num: cnum });
