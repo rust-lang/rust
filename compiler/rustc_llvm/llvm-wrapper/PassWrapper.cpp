@@ -922,9 +922,17 @@ LLVMRustOptimizeWithNewPassManager(
           MPM.addPass(RequireAnalysisPass<ASanGlobalsMetadataAnalysis, Module>());
           MPM.addPass(ModuleAddressSanitizerPass(
               /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover));
+#if LLVM_VERSION_GE(14, 0)
+          AddressSanitizerOptions opts(/*CompileKernel=*/false,
+                                       SanitizerOptions->SanitizeAddressRecover,
+                                       /*UseAfterScope=*/true,
+                                       AsanDetectStackUseAfterReturnMode::Runtime);
+          MPM.addPass(createModuleToFunctionPassAdaptor(AddressSanitizerPass(opts)));
+#else
           MPM.addPass(createModuleToFunctionPassAdaptor(AddressSanitizerPass(
               /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover,
               /*UseAfterScope=*/true)));
+#endif
         }
       );
 #else
@@ -952,8 +960,15 @@ LLVMRustOptimizeWithNewPassManager(
 #if LLVM_VERSION_GE(11, 0)
       OptimizerLastEPCallbacks.push_back(
         [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level) {
+#if LLVM_VERSION_GE(14, 0)
+          HWAddressSanitizerOptions opts(
+              /*CompileKernel=*/false, SanitizerOptions->SanitizeHWAddressRecover,
+              /*DisableOptimization=*/false);
+          MPM.addPass(HWAddressSanitizerPass(opts));
+#else
           MPM.addPass(HWAddressSanitizerPass(
               /*CompileKernel=*/false, SanitizerOptions->SanitizeHWAddressRecover));
+#endif
         }
       );
 #else
