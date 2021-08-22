@@ -643,7 +643,7 @@ impl<'a> Linker for GccLinker<'a> {
         // Symbol visibility in object files typically takes care of this.
         if crate_type == CrateType::Executable {
             if self.sess.target.override_export_symbols.is_none()
-                && !self.sess.opts.cg.export_executable_symbols
+                && !self.sess.opts.debugging_opts.export_executable_symbols
             {
                 return;
             }
@@ -973,7 +973,7 @@ impl<'a> Linker for MsvcLinker<'a> {
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]) {
         // Symbol visibility takes care of this typically
         if crate_type == CrateType::Executable {
-            if !self.sess.opts.cg.export_executable_symbols {
+            if !self.sess.opts.debugging_opts.export_executable_symbols {
                 return;
             }
         }

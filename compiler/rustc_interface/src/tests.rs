@@ -574,7 +574,6 @@ fn test_codegen_options_tracking_hash() {
     tracked!(debug_assertions, Some(true));
     tracked!(debuginfo, 0xdeadbeef);
     tracked!(embed_bitcode, false);
-    tracked!(export_executable_symbols, true);
     tracked!(force_frame_pointers, Some(false));
     tracked!(force_unwind_tables, Some(true));
     tracked!(inline_threshold, Some(0xf007ba11));
@@ -733,6 +732,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(debug_macros, true);
     tracked!(dep_info_omit_d_target, true);
     tracked!(drop_tracking, true);
+    tracked!(export_executable_symbols, true);
     tracked!(dual_proc_macros, true);
     tracked!(fewer_names, Some(true));
     tracked!(force_unstable_if_unmarked, true);
