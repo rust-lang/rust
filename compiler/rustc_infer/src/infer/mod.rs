@@ -671,6 +671,22 @@ pub struct CombinedSnapshot<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+    /// calls `tcx.try_unify_abstract_consts` after
+    /// canonicalizing the consts.
+    pub fn try_unify_abstract_consts(
+        &self,
+        a: ty::Unevaluated<'tcx>,
+        b: ty::Unevaluated<'tcx>,
+    ) -> bool {
+        let canonical = self.canonicalize_query(
+            ((a.def, a.substs), (b.def, b.substs)),
+            &mut OriginalQueryValues::default(),
+        );
+        debug!("canonical consts: {:?}", &canonical.value);
+
+        self.tcx.try_unify_abstract_consts(canonical.value)
+    }
+
     pub fn is_in_snapshot(&self) -> bool {
         self.in_snapshot.get()
     }
