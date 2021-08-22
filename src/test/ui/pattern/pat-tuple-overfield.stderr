@@ -1,5 +1,5 @@
 error[E0530]: match bindings cannot shadow tuple structs
-  --> $DIR/pat-tuple-overfield.rs:43:9
+  --> $DIR/pat-tuple-overfield.rs:41:9
    |
 LL | struct Z1();
    | ------------ the tuple struct `Z1` is defined here
@@ -8,7 +8,7 @@ LL |         Z1 => {}
    |         ^^ cannot be named the same as a tuple struct
 
 error[E0532]: expected tuple struct or tuple variant, found unit struct `Z0`
-  --> $DIR/pat-tuple-overfield.rs:38:9
+  --> $DIR/pat-tuple-overfield.rs:36:9
    |
 LL | struct Z0;
    | ---------- `Z0` defined here
@@ -28,7 +28,7 @@ LL |         Z1() => {}
    |         ~~
 
 error[E0532]: expected tuple struct or tuple variant, found unit struct `Z0`
-  --> $DIR/pat-tuple-overfield.rs:39:9
+  --> $DIR/pat-tuple-overfield.rs:37:9
    |
 LL | struct Z0;
    | ---------- `Z0` defined here
@@ -48,7 +48,7 @@ LL |         Z1(_) => {}
    |         ~~
 
 error[E0532]: expected tuple struct or tuple variant, found unit struct `Z0`
-  --> $DIR/pat-tuple-overfield.rs:40:9
+  --> $DIR/pat-tuple-overfield.rs:38:9
    |
 LL | struct Z0;
    | ---------- `Z0` defined here
@@ -68,7 +68,7 @@ LL |         Z1(_, _) => {}
    |         ~~
 
 error[E0532]: expected tuple struct or tuple variant, found unit variant `E1::Z0`
-  --> $DIR/pat-tuple-overfield.rs:50:9
+  --> $DIR/pat-tuple-overfield.rs:48:9
    |
 LL |     Z0,
    |     -- `E1::Z0` defined here
@@ -88,7 +88,7 @@ LL |         E1::Z1() => {}
    |             ~~
 
 error[E0532]: expected tuple struct or tuple variant, found unit variant `E1::Z0`
-  --> $DIR/pat-tuple-overfield.rs:51:9
+  --> $DIR/pat-tuple-overfield.rs:49:9
    |
 LL |     Z0,
    |     -- `E1::Z0` defined here
@@ -108,7 +108,7 @@ LL |         E1::Z1(_) => {}
    |             ~~
 
 error[E0532]: expected tuple struct or tuple variant, found unit variant `E1::Z0`
-  --> $DIR/pat-tuple-overfield.rs:52:9
+  --> $DIR/pat-tuple-overfield.rs:50:9
    |
 LL |     Z0,
    |     -- `E1::Z0` defined here
@@ -128,7 +128,7 @@ LL |         E1::Z1(_, _) => {}
    |             ~~
 
 error[E0532]: expected unit struct, unit variant or constant, found tuple variant `E1::Z1`
-  --> $DIR/pat-tuple-overfield.rs:55:9
+  --> $DIR/pat-tuple-overfield.rs:53:9
    |
 LL |     Z0,
    |     -- similarly named unit variant `Z0` defined here
@@ -148,7 +148,7 @@ LL |         E1::Z0 => {}
    |             ~~
 
 error[E0308]: mismatched types
-  --> $DIR/pat-tuple-overfield.rs:21:9
+  --> $DIR/pat-tuple-overfield.rs:19:9
    |
 LL |     match (1, 2, 3) {
    |           --------- this expression has type `({integer}, {integer}, {integer})`
@@ -159,7 +159,7 @@ LL |         (1, 2, 3, 4) => {}
               found tuple `(_, _, _, _)`
 
 error[E0308]: mismatched types
-  --> $DIR/pat-tuple-overfield.rs:22:9
+  --> $DIR/pat-tuple-overfield.rs:20:9
    |
 LL |     match (1, 2, 3) {
    |           --------- this expression has type `({integer}, {integer}, {integer})`
@@ -171,7 +171,7 @@ LL |         (1, 2, .., 3, 4) => {}
               found tuple `(_, _, _, _)`
 
 error[E0023]: this pattern has 4 fields, but the corresponding tuple struct has 3 fields
-  --> $DIR/pat-tuple-overfield.rs:26:11
+  --> $DIR/pat-tuple-overfield.rs:24:11
    |
 LL | struct S(u8, u8, u8);
    |          --  --  -- tuple struct has 3 fields
@@ -180,7 +180,7 @@ LL |         S(1, 2, 3, 4) => {}
    |         - ^  ^  ^  ^ expected 3 fields, found 4
 
 error[E0023]: this pattern has 4 fields, but the corresponding tuple struct has 3 fields
-  --> $DIR/pat-tuple-overfield.rs:28:11
+  --> $DIR/pat-tuple-overfield.rs:26:11
    |
 LL | struct S(u8, u8, u8);
    |          --  --  -- tuple struct has 3 fields
@@ -189,7 +189,7 @@ LL |         S(1, 2, .., 3, 4) => {}
    |         - ^  ^      ^  ^ expected 3 fields, found 4
 
 error[E0023]: this pattern has 6 fields, but the corresponding tuple struct has 5 fields
-  --> $DIR/pat-tuple-overfield.rs:33:11
+  --> $DIR/pat-tuple-overfield.rs:31:11
    |
 LL | struct M(
    |        - tuple struct defined here
@@ -208,7 +208,7 @@ LL |         M(1, 2, 3, 4, 5, 6) => {}
    |         - ^  ^  ^  ^  ^  ^ expected 5 fields, found 6
 
 error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 0 fields
-  --> $DIR/pat-tuple-overfield.rs:45:12
+  --> $DIR/pat-tuple-overfield.rs:43:12
    |
 LL | struct Z1();
    |          --- tuple struct has 0 fields
@@ -217,7 +217,7 @@ LL |         Z1(_) => {}
    |         -- ^ expected 0 fields, found 1
 
 error[E0023]: this pattern has 2 fields, but the corresponding tuple struct has 0 fields
-  --> $DIR/pat-tuple-overfield.rs:46:12
+  --> $DIR/pat-tuple-overfield.rs:44:12
    |
 LL | struct Z1();
    |          --- tuple struct has 0 fields
@@ -226,7 +226,7 @@ LL |         Z1(_, _) => {}
    |         -- ^  ^ expected 0 fields, found 2
 
 error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 0 fields
-  --> $DIR/pat-tuple-overfield.rs:57:16
+  --> $DIR/pat-tuple-overfield.rs:55:16
    |
 LL |     Z1(),
    |       -- tuple variant has 0 fields
@@ -235,7 +235,7 @@ LL |         E1::Z1(_) => {}
    |         ------ ^ expected 0 fields, found 1
 
 error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has 0 fields
-  --> $DIR/pat-tuple-overfield.rs:58:16
+  --> $DIR/pat-tuple-overfield.rs:56:16
    |
 LL |     Z1(),
    |       -- tuple variant has 0 fields
