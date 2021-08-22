@@ -2311,89 +2311,24 @@ fn generic_default_depending_on_other_type_arg_forward() {
 
 #[test]
 fn infer_operator_overload() {
-    cov_mark::check!(infer_expr_inner_binary_operator_overload);
-
-    check_infer(
+    check_types(
         r#"
-        struct V2([f32; 2]);
+//- minicore: add
+struct V2([f32; 2]);
 
-        #[lang = "add"]
-        pub trait Add<Rhs = Self> {
-            /// The resulting type after applying the `+` operator.
-            type Output;
+impl core::ops::Add<V2> for V2 {
+    type Output = V2;
+}
 
-            /// Performs the `+` operation.
-            #[must_use]
-            fn add(self, rhs: Rhs) -> Self::Output;
-        }
+fn test() {
+    let va = V2([0.0, 1.0]);
+    let vb = V2([0.0, 1.0]);
 
-        impl Add<V2> for V2 {
-            type Output = V2;
-
-            fn add(self, rhs: V2) -> V2 {
-                let x = self.0[0] + rhs.0[0];
-                let y = self.0[1] + rhs.0[1];
-                V2([x, y])
-            }
-        }
-
-        fn test() {
-            let va = V2([0.0, 1.0]);
-            let vb = V2([0.0, 1.0]);
-
-            let r = va + vb;
-        }
+    let r = va + vb;
+    //      ^^^^^^^ V2
+}
 
         "#,
-        expect![[r#"
-            207..211 'self': Self
-            213..216 'rhs': Rhs
-            299..303 'self': V2
-            305..308 'rhs': V2
-            320..422 '{     ...     }': V2
-            334..335 'x': f32
-            338..342 'self': V2
-            338..344 'self.0': [f32; 2]
-            338..347 'self.0[0]': {unknown}
-            338..358 'self.0...s.0[0]': f32
-            345..346 '0': i32
-            350..353 'rhs': V2
-            350..355 'rhs.0': [f32; 2]
-            350..358 'rhs.0[0]': {unknown}
-            356..357 '0': i32
-            372..373 'y': f32
-            376..380 'self': V2
-            376..382 'self.0': [f32; 2]
-            376..385 'self.0[1]': {unknown}
-            376..396 'self.0...s.0[1]': f32
-            383..384 '1': i32
-            388..391 'rhs': V2
-            388..393 'rhs.0': [f32; 2]
-            388..396 'rhs.0[1]': {unknown}
-            394..395 '1': i32
-            406..408 'V2': V2([f32; 2]) -> V2
-            406..416 'V2([x, y])': V2
-            409..415 '[x, y]': [f32; 2]
-            410..411 'x': f32
-            413..414 'y': f32
-            436..519 '{     ... vb; }': ()
-            446..448 'va': V2
-            451..453 'V2': V2([f32; 2]) -> V2
-            451..465 'V2([0.0, 1.0])': V2
-            454..464 '[0.0, 1.0]': [f32; 2]
-            455..458 '0.0': f32
-            460..463 '1.0': f32
-            475..477 'vb': V2
-            480..482 'V2': V2([f32; 2]) -> V2
-            480..494 'V2([0.0, 1.0])': V2
-            483..493 '[0.0, 1.0]': [f32; 2]
-            484..487 '0.0': f32
-            489..492 '1.0': f32
-            505..506 'r': V2
-            509..511 'va': V2
-            509..516 'va + vb': V2
-            514..516 'vb': V2
-        "#]],
     );
 }
 

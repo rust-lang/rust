@@ -630,3 +630,27 @@ fn test() {
 "#,
     )
 }
+
+#[test]
+fn coerce_overloaded_binary_op_rhs() {
+    check_types(
+        r#"
+//- minicore: deref, add
+
+struct String {}
+impl core::ops::Deref for String { type Target = str; }
+
+impl core::ops::Add<&str> for String {
+    type Output = String;
+}
+
+fn test() {
+    let s1 = String {};
+    let s2 = String {};
+    s1 + &s2;
+  //^^^^^^^^ String
+}
+
+        "#,
+    );
+}

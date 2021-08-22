@@ -8,10 +8,13 @@ use std::{
 
 use chalk_ir::{cast::Cast, fold::Shift, Mutability, TyVariableKind};
 use hir_def::{
-    expr::{Array, BinaryOp, Expr, ExprId, Literal, MatchGuard, Statement, UnaryOp},
+    expr::{
+        ArithOp, Array, BinaryOp, CmpOp, Expr, ExprId, Literal, MatchGuard, Ordering, Statement,
+        UnaryOp,
+    },
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
-    AssocContainerId, FieldId, Lookup,
+    AssocContainerId, FieldId, FunctionId, Lookup,
 };
 use hir_expand::name::{name, Name};
 use stdx::always;
@@ -23,7 +26,7 @@ use crate::{
     infer::coerce::CoerceMany,
     lower::lower_to_chalk_mutability,
     mapping::from_chalk,
-    method_resolution, op,
+    method_resolution,
     primitive::{self, UintTy},
     static_lifetime, to_chalk_trait_id,
     traits::FnTrait,
@@ -669,34 +672,21 @@ impl<'a> InferenceContext<'a> {
                 }
             }
             Expr::BinaryOp { lhs, rhs, op } => match op {
-                Some(op) => {
-                    let lhs_expectation = match op {
-                        BinaryOp::LogicOp(..) => {
-                            Expectation::has_type(TyKind::Scalar(Scalar::Bool).intern(&Interner))
-                        }
-                        _ => Expectation::none(),
-                    };
-                    let lhs_ty = self.infer_expr(*lhs, &lhs_expectation);
-                    let lhs_ty = self.resolve_ty_shallow(&lhs_ty);
-                    let rhs_expectation = op::binary_op_rhs_expectation(*op, lhs_ty.clone());
-                    let rhs_ty =
-                        self.infer_expr_coerce(*rhs, &Expectation::has_type(rhs_expectation));
-                    let rhs_ty = self.resolve_ty_shallow(&rhs_ty);
-
-                    let ret = op::binary_op_return_ty(*op, lhs_ty.clone(), rhs_ty.clone());
-
-                    if ret.is_unknown() {
-                        cov_mark::hit!(infer_expr_inner_binary_operator_overload);
-
-                        self.resolve_associated_type_with_params(
-                            lhs_ty,
-                            self.resolve_binary_op_output(op),
-                            &[rhs_ty],
-                        )
-                    } else {
-                        ret
-                    }
+                Some(BinaryOp::Assignment { op: None }) => {
+                    let lhs_ty = self.infer_expr(*lhs, &Expectation::none());
+                    self.infer_expr_coerce(*rhs, &Expectation::has_type(lhs_ty));
+                    self.result.standard_types.unit.clone()
                 }
+                Some(BinaryOp::LogicOp(_)) => {
+                    let bool_ty = self.result.standard_types.bool_.clone();
+                    self.infer_expr_coerce(*lhs, &Expectation::HasType(bool_ty.clone()));
+                    let lhs_diverges = self.diverges;
+                    self.infer_expr_coerce(*rhs, &Expectation::HasType(bool_ty.clone()));
+                    // Depending on the LHS' value, the RHS can never execute.
+                    self.diverges = lhs_diverges;
+                    bool_ty
+                }
+                Some(op) => self.infer_overloadable_binop(*lhs, *op, *rhs, tgt_expr),
                 _ => self.err_ty(),
             },
             Expr::Range { lhs, rhs, range_type } => {
@@ -860,6 +850,62 @@ impl<'a> InferenceContext<'a> {
         let ty = self.insert_type_vars_shallow(ty);
         self.write_expr_ty(tgt_expr, ty.clone());
         ty
+    }
+
+    fn infer_overloadable_binop(
+        &mut self,
+        lhs: ExprId,
+        op: BinaryOp,
+        rhs: ExprId,
+        tgt_expr: ExprId,
+    ) -> Ty {
+        let lhs_expectation = Expectation::none();
+        let lhs_ty = self.infer_expr(lhs, &lhs_expectation);
+        let rhs_ty = self.table.new_type_var();
+
+        let func = self.resolve_binop_method(op);
+        let func = match func {
+            Some(func) => func,
+            None => {
+                let rhs_ty = self.builtin_binary_op_rhs_expectation(op, lhs_ty.clone());
+                let rhs_ty = self.infer_expr_coerce(rhs, &Expectation::from_option(rhs_ty));
+                return self
+                    .builtin_binary_op_return_ty(op, lhs_ty, rhs_ty)
+                    .unwrap_or_else(|| self.err_ty());
+            }
+        };
+
+        let subst = TyBuilder::subst_for_def(self.db, func)
+            .push(lhs_ty.clone())
+            .push(rhs_ty.clone())
+            .build();
+        self.write_method_resolution(tgt_expr, func, subst.clone());
+
+        let method_ty = self.db.value_ty(func.into()).substitute(&Interner, &subst);
+        self.register_obligations_for_call(&method_ty);
+
+        self.infer_expr_coerce(rhs, &Expectation::has_type(rhs_ty.clone()));
+
+        let ret_ty = match method_ty.callable_sig(self.db) {
+            Some(sig) => sig.ret().clone(),
+            None => self.err_ty(),
+        };
+
+        let ret_ty = self.normalize_associated_types_in(ret_ty);
+
+        // FIXME: record autoref adjustments
+
+        // use knowledge of built-in binary ops, which can sometimes help inference
+        if let Some(builtin_rhs) = self.builtin_binary_op_rhs_expectation(op, lhs_ty.clone()) {
+            self.unify(&builtin_rhs, &rhs_ty);
+        }
+        if let Some(builtin_ret) =
+            self.builtin_binary_op_return_ty(op, lhs_ty.clone(), rhs_ty.clone())
+        {
+            self.unify(&builtin_ret, &ret_ty);
+        }
+
+        ret_ty
     }
 
     fn infer_block(
@@ -1135,5 +1181,142 @@ impl<'a> InferenceContext<'a> {
                 CallableDefId::StructId(_) | CallableDefId::EnumVariantId(_) => {}
             }
         }
+    }
+
+    fn builtin_binary_op_return_ty(&mut self, op: BinaryOp, lhs_ty: Ty, rhs_ty: Ty) -> Option<Ty> {
+        let lhs_ty = self.resolve_ty_shallow(&lhs_ty);
+        let rhs_ty = self.resolve_ty_shallow(&rhs_ty);
+        match op {
+            BinaryOp::LogicOp(_) | BinaryOp::CmpOp(_) => {
+                Some(TyKind::Scalar(Scalar::Bool).intern(&Interner))
+            }
+            BinaryOp::Assignment { .. } => Some(TyBuilder::unit()),
+            BinaryOp::ArithOp(ArithOp::Shl | ArithOp::Shr) => {
+                // all integer combinations are valid here
+                if matches!(
+                    lhs_ty.kind(&Interner),
+                    TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_))
+                        | TyKind::InferenceVar(_, TyVariableKind::Integer)
+                ) && matches!(
+                    rhs_ty.kind(&Interner),
+                    TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_))
+                        | TyKind::InferenceVar(_, TyVariableKind::Integer)
+                ) {
+                    Some(lhs_ty)
+                } else {
+                    None
+                }
+            }
+            BinaryOp::ArithOp(_) => match (lhs_ty.kind(&Interner), rhs_ty.kind(&Interner)) {
+                // (int, int) | (uint, uint) | (float, float)
+                (TyKind::Scalar(Scalar::Int(_)), TyKind::Scalar(Scalar::Int(_)))
+                | (TyKind::Scalar(Scalar::Uint(_)), TyKind::Scalar(Scalar::Uint(_)))
+                | (TyKind::Scalar(Scalar::Float(_)), TyKind::Scalar(Scalar::Float(_))) => {
+                    Some(rhs_ty)
+                }
+                // ({int}, int) | ({int}, uint)
+                (
+                    TyKind::InferenceVar(_, TyVariableKind::Integer),
+                    TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_)),
+                ) => Some(rhs_ty),
+                // (int, {int}) | (uint, {int})
+                (
+                    TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_)),
+                    TyKind::InferenceVar(_, TyVariableKind::Integer),
+                ) => Some(lhs_ty),
+                // ({float} | float)
+                (
+                    TyKind::InferenceVar(_, TyVariableKind::Float),
+                    TyKind::Scalar(Scalar::Float(_)),
+                ) => Some(rhs_ty),
+                // (float, {float})
+                (
+                    TyKind::Scalar(Scalar::Float(_)),
+                    TyKind::InferenceVar(_, TyVariableKind::Float),
+                ) => Some(lhs_ty),
+                // ({int}, {int}) | ({float}, {float})
+                (
+                    TyKind::InferenceVar(_, TyVariableKind::Integer),
+                    TyKind::InferenceVar(_, TyVariableKind::Integer),
+                )
+                | (
+                    TyKind::InferenceVar(_, TyVariableKind::Float),
+                    TyKind::InferenceVar(_, TyVariableKind::Float),
+                ) => Some(rhs_ty),
+                _ => None,
+            },
+        }
+    }
+
+    fn builtin_binary_op_rhs_expectation(&mut self, op: BinaryOp, lhs_ty: Ty) -> Option<Ty> {
+        Some(match op {
+            BinaryOp::LogicOp(..) => TyKind::Scalar(Scalar::Bool).intern(&Interner),
+            BinaryOp::Assignment { op: None } => lhs_ty,
+            BinaryOp::CmpOp(CmpOp::Eq { .. }) => match self
+                .resolve_ty_shallow(&lhs_ty)
+                .kind(&Interner)
+            {
+                TyKind::Scalar(_) | TyKind::Str => lhs_ty,
+                TyKind::InferenceVar(_, TyVariableKind::Integer | TyVariableKind::Float) => lhs_ty,
+                _ => return None,
+            },
+            BinaryOp::ArithOp(ArithOp::Shl | ArithOp::Shr) => return None,
+            BinaryOp::CmpOp(CmpOp::Ord { .. })
+            | BinaryOp::Assignment { op: Some(_) }
+            | BinaryOp::ArithOp(_) => match self.resolve_ty_shallow(&lhs_ty).kind(&Interner) {
+                TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_) | Scalar::Float(_)) => lhs_ty,
+                TyKind::InferenceVar(_, TyVariableKind::Integer | TyVariableKind::Float) => lhs_ty,
+                _ => return None,
+            },
+        })
+    }
+
+    fn resolve_binop_method(&self, op: BinaryOp) -> Option<FunctionId> {
+        let (name, lang_item) = match op {
+            BinaryOp::LogicOp(_) => return None,
+            BinaryOp::ArithOp(aop) => match aop {
+                ArithOp::Add => (name!(add), "add"),
+                ArithOp::Mul => (name!(mul), "mul"),
+                ArithOp::Sub => (name!(sub), "sub"),
+                ArithOp::Div => (name!(div), "div"),
+                ArithOp::Rem => (name!(rem), "rem"),
+                ArithOp::Shl => (name!(shl), "shl"),
+                ArithOp::Shr => (name!(shr), "shr"),
+                ArithOp::BitXor => (name!(bitxor), "bitxor"),
+                ArithOp::BitOr => (name!(bitor), "bitor"),
+                ArithOp::BitAnd => (name!(bitand), "bitand"),
+            },
+            BinaryOp::Assignment { op: Some(aop) } => match aop {
+                ArithOp::Add => (name!(add_assign), "add_assign"),
+                ArithOp::Mul => (name!(mul_assign), "mul_assign"),
+                ArithOp::Sub => (name!(sub_assign), "sub_assign"),
+                ArithOp::Div => (name!(div_assign), "div_assign"),
+                ArithOp::Rem => (name!(rem_assign), "rem_assign"),
+                ArithOp::Shl => (name!(shl_assign), "shl_assign"),
+                ArithOp::Shr => (name!(shr_assign), "shr_assign"),
+                ArithOp::BitXor => (name!(bitxor_assign), "bitxor_assign"),
+                ArithOp::BitOr => (name!(bitor_assign), "bitor_assign"),
+                ArithOp::BitAnd => (name!(bitand_assign), "bitand_assign"),
+            },
+            BinaryOp::CmpOp(cop) => match cop {
+                CmpOp::Eq { negated: false } => (name!(eq), "eq"),
+                CmpOp::Eq { negated: true } => (name!(ne), "eq"),
+                CmpOp::Ord { ordering: Ordering::Less, strict: false } => {
+                    (name!(le), "partial_ord")
+                }
+                CmpOp::Ord { ordering: Ordering::Less, strict: true } => (name!(lt), "partial_ord"),
+                CmpOp::Ord { ordering: Ordering::Greater, strict: false } => {
+                    (name!(ge), "partial_ord")
+                }
+                CmpOp::Ord { ordering: Ordering::Greater, strict: true } => {
+                    (name!(gt), "partial_ord")
+                }
+            },
+            BinaryOp::Assignment { op: None } => return None,
+        };
+
+        let trait_ = self.resolve_lang_item(lang_item)?.as_trait()?;
+
+        self.db.trait_data(trait_).method_by_name(&name)
     }
 }

@@ -199,6 +199,13 @@ impl TraitData {
             _ => None,
         })
     }
+
+    pub fn method_by_name(&self, name: &Name) -> Option<FunctionId> {
+        self.items.iter().find_map(|(item_name, item)| match item {
+            AssocItemId::FunctionId(t) if item_name == name => Some(*t),
+            _ => None,
+        })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -1798,66 +1798,32 @@ fn test() {
 
 #[test]
 fn closure_2() {
-    check_infer_with_mismatches(
+    check_types(
         r#"
-#[lang = "add"]
-pub trait Add<Rhs = Self> {
-    type Output;
-    fn add(self, rhs: Rhs) -> Self::Output;
-}
+//- minicore: add, fn
 
-trait FnOnce<Args> {
-    type Output;
-}
-
-impl Add for u64 {
+impl core::ops::Add for u64 {
     type Output = Self;
     fn add(self, rhs: u64) -> Self::Output {0}
 }
 
-impl Add for u128 {
+impl core::ops::Add for u128 {
     type Output = Self;
     fn add(self, rhs: u128) -> Self::Output {0}
 }
 
 fn test<F: FnOnce(u32) -> u64>(f: F) {
     f(1);
+  //  ^ u32
+  //^^^^ u64
     let g = |v| v + 1;
+              //^^^^^ u64
+          //^^^^^^^^^ |u64| -> u64
     g(1u64);
+  //^^^^^^^ u64
     let h = |v| 1u128 + v;
+          //^^^^^^^^^^^^^ |u128| -> u128
 }"#,
-        expect![[r#"
-            72..76 'self': Self
-            78..81 'rhs': Rhs
-            203..207 'self': u64
-            209..212 'rhs': u64
-            235..238 '{0}': u64
-            236..237 '0': u64
-            297..301 'self': u128
-            303..306 'rhs': u128
-            330..333 '{0}': u128
-            331..332 '0': u128
-            368..369 'f': F
-            374..450 '{     ...+ v; }': ()
-            380..381 'f': F
-            380..384 'f(1)': {unknown}
-            382..383 '1': i32
-            394..395 'g': |u64| -> u64
-            398..407 '|v| v + 1': |u64| -> u64
-            399..400 'v': u64
-            402..403 'v': u64
-            402..407 'v + 1': u64
-            406..407 '1': u64
-            413..414 'g': |u64| -> u64
-            413..420 'g(1u64)': u64
-            415..419 '1u64': u64
-            430..431 'h': |u128| -> u128
-            434..447 '|v| 1u128 + v': |u128| -> u128
-            435..436 'v': u128
-            438..443 '1u128': u128
-            438..447 '1u128 + v': u128
-            446..447 'v': u128
-        "#]],
     );
 }
 
