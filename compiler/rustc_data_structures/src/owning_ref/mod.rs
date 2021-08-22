@@ -1146,7 +1146,7 @@ pub type VecRef<T, U = T> = OwningRef<Vec<T>, U>;
 /// Typedef of an owning reference that uses a `String` as the owner.
 pub type StringRef = OwningRef<String, str>;
 
-/// Typedef of an owning reference that uses a `Rc` as the owner.
+/// Typedef of an owning reference that uses an `Rc` as the owner.
 pub type RcRef<T, U = T> = OwningRef<Rc<T>, U>;
 /// Typedef of an owning reference that uses an `Arc` as the owner.
 pub type ArcRef<T, U = T> = OwningRef<Arc<T>, U>;

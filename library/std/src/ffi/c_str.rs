@@ -958,7 +958,7 @@ impl From<&CStr> for Arc<CStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<CString> for Rc<CStr> {
-    /// Converts a [`CString`] into a [`Rc`]`<CStr>` without copying or allocating.
+    /// Converts a [`CString`] into an [`Rc`]`<CStr>` without copying or allocating.
     #[inline]
     fn from(s: CString) -> Rc<CStr> {
         let rc: Rc<[u8]> = Rc::from(s.into_inner());
