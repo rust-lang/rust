@@ -971,20 +971,19 @@ impl<'a> Resolver<'a> {
                 false,
                 ident.span,
             ) {
-                let it_is = match binding.macro_kind() {
-                    Some(MacroKind::Bang) => "it is a function-like macro".to_string(),
-                    Some(kind) => format!("it is {} {}", kind.article(), kind.descr_expected()),
-                    None => format!(
-                        "it is not {} {}",
-                        macro_kind.article(),
-                        macro_kind.descr_expected()
-                    ),
+                let desc = match binding.macro_kind() {
+                    Some(MacroKind::Bang) => "a function-like macro".to_string(),
+                    Some(kind) => format!("{} {}", kind.article(), kind.descr_expected()),
+                    None => {
+                        let res = binding.res();
+                        format!("{} {}", res.article(), res.descr())
+                    }
                 };
                 if let crate::NameBindingKind::Import { import, .. } = binding.kind {
                     if !import.span.is_dummy() {
                         err.span_note(
                             import.span,
-                            &format!("`{}` is imported here, but {}", ident, it_is),
+                            &format!("`{}` is imported here, but it is {}", ident, desc),
                         );
                         // Silence the 'unused import' warning we might get,
                         // since this diagnostic already covers that import.
@@ -992,7 +991,7 @@ impl<'a> Resolver<'a> {
                         return;
                     }
                 }
-                err.note(&format!("`{}` is in scope, but {}", ident, it_is));
+                err.note(&format!("`{}` is in scope, but it is {}", ident, desc));
                 return;
             }
         }
