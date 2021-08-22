@@ -1,0 +1,120 @@
+error: cannot find macro `test` in this scope
+  --> $DIR/issue-88206.rs:60:5
+   |
+LL |     test!();
+   |     ^^^^
+   |
+   = note: `test` is in scope, but it is an attribute
+
+error: cannot find macro `Copy` in this scope
+  --> $DIR/issue-88206.rs:56:5
+   |
+LL |     Copy!();
+   |     ^^^^
+   |
+   = note: `Copy` is in scope, but it is a derive macro
+
+error: cannot find macro `Box` in this scope
+  --> $DIR/issue-88206.rs:52:5
+   |
+LL |     Box!();
+   |     ^^^
+   |
+   = note: `Box` is in scope, but it is not a macro
+
+error: cannot find macro `from_utf8` in this scope
+  --> $DIR/issue-88206.rs:49:5
+   |
+LL |     from_utf8!();
+   |     ^^^^^^^^^
+   |
+note: `from_utf8` is imported here, but it is not a macro
+  --> $DIR/issue-88206.rs:6:5
+   |
+LL | use std::str::*;
+   |     ^^^^^^^^^^^
+
+error: cannot find attribute `println` in this scope
+  --> $DIR/issue-88206.rs:43:3
+   |
+LL | #[println]
+   |   ^^^^^^^
+   |
+   = note: `println` is in scope, but it is a function-like macro
+
+error: cannot find attribute `from_utf8_unchecked` in this scope
+  --> $DIR/issue-88206.rs:39:3
+   |
+LL | #[from_utf8_unchecked]
+   |   ^^^^^^^^^^^^^^^^^^^
+   |
+note: `from_utf8_unchecked` is imported here, but it is not an attribute
+  --> $DIR/issue-88206.rs:6:5
+   |
+LL | use std::str::*;
+   |     ^^^^^^^^^^^
+
+error: cannot find attribute `Deserialize` in this scope
+  --> $DIR/issue-88206.rs:35:3
+   |
+LL | #[Deserialize]
+   |   ^^^^^^^^^^^
+   |
+note: `Deserialize` is imported here, but it is not an attribute
+  --> $DIR/issue-88206.rs:17:22
+   |
+LL | use hey::{Serialize, Deserialize};
+   |                      ^^^^^^^^^^^
+
+error: cannot find derive macro `println` in this scope
+  --> $DIR/issue-88206.rs:30:10
+   |
+LL | #[derive(println)]
+   |          ^^^^^^^
+   |
+   = note: `println` is in scope, but it is a function-like macro
+
+error: cannot find derive macro `from_utf8_mut` in this scope
+  --> $DIR/issue-88206.rs:26:10
+   |
+LL | #[derive(from_utf8_mut)]
+   |          ^^^^^^^^^^^^^
+   |
+note: `from_utf8_mut` is imported here, but it is not a derive macro
+  --> $DIR/issue-88206.rs:6:5
+   |
+LL | use std::str::*;
+   |     ^^^^^^^^^^^
+
+error: cannot find derive macro `Serialize` in this scope
+  --> $DIR/issue-88206.rs:22:10
+   |
+LL | #[derive(Serialize)]
+   |          ^^^^^^^^^
+   |
+note: `Serialize` is imported here, but it is not a derive macro
+  --> $DIR/issue-88206.rs:17:11
+   |
+LL | use hey::{Serialize, Deserialize};
+   |           ^^^^^^^^^
+
+warning: unused import: `std::str::*`
+  --> $DIR/issue-88206.rs:6:5
+   |
+LL | use std::str::*;
+   |     ^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-88206.rs:3:9
+   |
+LL | #![warn(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+warning: unused imports: `Deserialize`, `Serialize`
+  --> $DIR/issue-88206.rs:17:11
+   |
+LL | use hey::{Serialize, Deserialize};
+   |           ^^^^^^^^^  ^^^^^^^^^^^
+
+error: aborting due to 10 previous errors; 2 warnings emitted
+
