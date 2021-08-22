@@ -2,8 +2,15 @@ use super::apple_sdk_base::{opts, Arch};
 use crate::spec::{FramePointer, Target, TargetOptions};
 
 pub fn target() -> Target {
+    // Clang automatically chooses a more specific target based on
+    // IPHONEOS_DEPLOYMENT_TARGET.
+    // This is required for the target to pick the right
+    // MACH-O commands, so we do too.
+    let arch = "arm64";
+    let llvm_target = super::apple_base::ios_llvm_target(arch);
+
     Target {
-        llvm_target: "arm64-apple-ios".to_string(),
+        llvm_target,
         pointer_width: 64,
         data_layout: "e-m:o-i64:64-i128:128-n32:64-S128".to_string(),
         arch: "aarch64".to_string(),
