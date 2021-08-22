@@ -42,6 +42,25 @@ impl GlobalState {
         )
     }
 
+    /// rust-analyzer is resilient -- if it fails, this doesn't usually affect
+    /// the user experience. Part of that is that we deliberately hide panics
+    /// from the user.
+    ///
+    /// We do however want to pester rust-analyzer developers with panics and
+    /// other "you really gotta fix that" messages. The current strategy is to
+    /// be noisy for "from source" builds or when profiling is enabled.
+    ///
+    /// It's unclear if making from source `cargo xtask install` builds more
+    /// panicky is a good idea, let's see if we can keep our awesome bleeding
+    /// edge users from being upset!
+    pub(crate) fn poke_rust_analyzer_developer(&mut self, message: String) {
+        let from_source_build = env!("REV").contains("dev");
+        let profiling_enabled = std::env::var("RA_PROFILE").is_ok();
+        if from_source_build || profiling_enabled {
+            self.show_message(lsp_types::MessageType::Error, message)
+        }
+    }
+
     pub(crate) fn report_progress(
         &mut self,
         title: &str,

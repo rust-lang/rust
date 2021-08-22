@@ -1,7 +1,7 @@
 //! The main loop of `rust-analyzer` responsible for dispatching LSP
 //! requests/replies and notifications back to the client.
 use std::{
-    env, fmt,
+    fmt,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -487,12 +487,10 @@ impl GlobalState {
         let loop_duration = loop_start.elapsed();
         if loop_duration > Duration::from_millis(100) {
             log::warn!("overly long loop turn: {:?}", loop_duration);
-            if env::var("RA_PROFILE").is_ok() {
-                self.show_message(
-                    lsp_types::MessageType::Error,
-                    format!("overly long loop turn: {:?}", loop_duration),
-                )
-            }
+            self.poke_rust_analyzer_developer(format!(
+                "overly long loop turn: {:?}",
+                loop_duration
+            ));
         }
         Ok(())
     }

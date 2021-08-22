@@ -1,5 +1,5 @@
 //! A visitor for downcasting arbitrary request (JSON) into a specific type.
-use std::{fmt, panic};
+use std::{fmt, panic, thread};
 
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -32,7 +32,7 @@ impl<'a> RequestDispatcher<'a> {
         };
         let global_state = panic::AssertUnwindSafe(&mut *self.global_state);
 
-        let response = panic::catch_unwind(move || {
+        let result = panic::catch_unwind(move || {
             let _ = &global_state;
             let panic::AssertUnwindSafe(global_state) = global_state;
             let _pctx = stdx::panic_context::enter(format!(
@@ -41,10 +41,10 @@ impl<'a> RequestDispatcher<'a> {
                 R::METHOD,
                 params
             ));
-            let result = f(global_state, params);
-            result_to_response::<R>(id, result)
-        })
-        .map_err(|_err| format!("sync task {:?} panicked", R::METHOD))?;
+            f(global_state, params)
+        });
+        let response = result_to_response::<R>(id, result);
+
         self.global_state.respond(response);
         Ok(self)
     }
@@ -56,7 +56,7 @@ impl<'a> RequestDispatcher<'a> {
     ) -> &mut Self
     where
         R: lsp_types::request::Request + 'static,
-        R::Params: DeserializeOwned + Send + fmt::Debug + 'static,
+        R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug + 'static,
         R::Result: Serialize + 'static,
     {
         let (id, params) = match self.parse::<R>() {
@@ -66,16 +66,18 @@ impl<'a> RequestDispatcher<'a> {
 
         self.global_state.task_pool.handle.spawn({
             let world = self.global_state.snapshot();
-
             move || {
-                let _pctx = stdx::panic_context::enter(format!(
-                    "\nversion: {}\nrequest: {} {:#?}",
-                    env!("REV"),
-                    R::METHOD,
-                    params
-                ));
-                let result = f(world, params);
-                Task::Response(result_to_response::<R>(id, result))
+                let result = panic::catch_unwind(move || {
+                    let _pctx = stdx::panic_context::enter(format!(
+                        "\nversion: {}\nrequest: {} {:#?}",
+                        env!("REV"),
+                        R::METHOD,
+                        params
+                    ));
+                    f(world, params)
+                });
+                let response = result_to_response::<R>(id, result);
+                Task::Response(response)
             }
         });
 
@@ -122,7 +124,7 @@ impl<'a> RequestDispatcher<'a> {
 
 fn result_to_response<R>(
     id: lsp_server::RequestId,
-    result: Result<R::Result>,
+    result: thread::Result<Result<R::Result>>,
 ) -> lsp_server::Response
 where
     R: lsp_types::request::Request + 'static,
@@ -130,8 +132,8 @@ where
     R::Result: Serialize + 'static,
 {
     match result {
-        Ok(resp) => lsp_server::Response::new_ok(id, &resp),
-        Err(e) => match e.downcast::<LspError>() {
+        Ok(Ok(resp)) => lsp_server::Response::new_ok(id, &resp),
+        Ok(Err(e)) => match e.downcast::<LspError>() {
             Ok(lsp_error) => lsp_server::Response::new_err(id, lsp_error.code, lsp_error.message),
             Err(e) => {
                 if is_cancelled(&*e) {
@@ -149,6 +151,21 @@ where
                 }
             }
         },
+        Err(panic) => {
+            let mut message = "server panicked".to_string();
+
+            let panic_message = panic
+                .downcast_ref::<String>()
+                .map(String::as_str)
+                .or_else(|| panic.downcast_ref::<&str>().copied());
+
+            if let Some(panic_message) = panic_message {
+                message.push_str(": ");
+                message.push_str(panic_message)
+            };
+
+            lsp_server::Response::new_err(id, lsp_server::ErrorCode::InternalError as i32, message)
+        }
     }
 }
 
