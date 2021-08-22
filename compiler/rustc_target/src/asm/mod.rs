@@ -257,7 +257,7 @@ impl InlineAsmReg {
             Self::PowerPC(r) => r.name(),
             Self::Hexagon(r) => r.name(),
             Self::Mips(r) => r.name(),
-	        Self::S390x(r) => r.name(),
+            Self::S390x(r) => r.name(),
             Self::Bpf(r) => r.name(),
             Self::Err => "<reg>",
         }
@@ -312,7 +312,7 @@ impl InlineAsmReg {
             InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
                 Self::Mips(MipsInlineAsmReg::parse(arch, has_feature, target, &name)?)
             }
-    	    InlineAsmArch::S390x => {
+            InlineAsmArch::S390x => {
                 Self::S390x(S390xInlineAsmReg::parse(arch, has_feature, target, &name)?)
             }
             InlineAsmArch::SpirV => {
@@ -715,11 +715,11 @@ pub fn allocatable_registers(
             mips::fill_reg_map(arch, has_feature, target, &mut map);
             map
         }
-	    InlineAsmArch::S390x => {
-	        let mut map = s390x::regclass_map();
+        InlineAsmArch::S390x => {
+            let mut map = s390x::regclass_map();
             s390x::fill_reg_map(arch, has_feature, target, &mut map);
             map
-	    }
+        }
         InlineAsmArch::SpirV => {
             let mut map = spirv::regclass_map();
             spirv::fill_reg_map(arch, has_feature, target, &mut map);

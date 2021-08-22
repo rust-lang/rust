@@ -113,7 +113,7 @@ def_regs! {
             "c14 is reserved by the kernel and cannot be used as an operand for inline asm",
         #error = ["c15"] =>
             "c15 is reserved by the kernel and cannot be used as an operand for inline asm",
-	    #error = ["a2"] =>
+        #error = ["a2"] =>
             "a2 is not supported by LLVM and cannot be used as an operand for inline asm",
         #error = ["a3"] =>
             "a3 is not supported by LLVM and cannot be used as an operand for inline asm",

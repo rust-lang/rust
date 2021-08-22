@@ -49,7 +49,7 @@ extern "Rust" {
 }
 
 macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
-    #[no_mangle]     
+    #[no_mangle]
     pub unsafe fn $func(x: $ty) -> $ty {
         dont_merge(stringify!(func));
 
@@ -60,7 +60,7 @@ macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
 };}
 
 macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
-    #[no_mangle]    
+    #[no_mangle]
     pub unsafe fn $func(x: $ty) -> $ty {
         dont_merge(stringify!(func));
 
