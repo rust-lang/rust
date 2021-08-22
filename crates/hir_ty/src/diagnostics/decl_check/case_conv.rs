@@ -43,7 +43,7 @@ pub(crate) fn to_camel_case(ident: &str) -> Option<String> {
         })
         .fold((String::new(), None), |(acc, prev): (_, Option<String>), next| {
             // separate two components with an underscore if their boundary cannot
-            // be distinguished using a uppercase/lowercase case distinction
+            // be distinguished using an uppercase/lowercase case distinction
             let join = prev
                 .and_then(|prev| {
                     let f = next.chars().next()?;
