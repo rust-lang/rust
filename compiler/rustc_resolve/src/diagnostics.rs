@@ -956,9 +956,42 @@ impl<'a> Resolver<'a> {
         if macro_kind == MacroKind::Derive && (ident.name == sym::Send || ident.name == sym::Sync) {
             let msg = format!("unsafe traits like `{}` should be implemented explicitly", ident);
             err.span_note(ident.span, &msg);
+            return;
         }
         if self.macro_names.contains(&ident.normalize_to_macros_2_0()) {
             err.help("have you added the `#[macro_use]` on the module/import?");
+            return;
+        }
+        for ns in [Namespace::MacroNS, Namespace::TypeNS, Namespace::ValueNS] {
+            if let Ok(binding) = self.early_resolve_ident_in_lexical_scope(
+                ident,
+                ScopeSet::All(ns, false),
+                &parent_scope,
+                false,
+                false,
+                ident.span,
+            ) {
+                let it_is = match binding.macro_kind() {
+                    Some(MacroKind::Bang) => "it is a function-like macro".to_string(),
+                    Some(kind) => format!("it is {} {}", kind.article(), kind.descr_expected()),
+                    None => format!(
+                        "it is not {} {}",
+                        macro_kind.article(),
+                        macro_kind.descr_expected()
+                    ),
+                };
+                if let crate::NameBindingKind::Import { import, .. } = binding.kind {
+                    if !import.span.is_dummy() {
+                        err.span_note(
+                            import.span,
+                            &format!("`{}` is imported here, but {}", ident, it_is),
+                        );
+                        return;
+                    }
+                }
+                err.note(&format!("`{}` is in scope, but {}", ident, it_is));
+                return;
+            }
         }
     }
 

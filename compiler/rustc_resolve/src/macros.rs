@@ -19,7 +19,7 @@ use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{AstFragment, Invocation, InvocationKind, SupportsMacroExpansion};
 use rustc_feature::is_builtin_attr_name;
-use rustc_hir::def::{self, DefKind, Namespace, NonMacroAttrKind};
+use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, LocalDefId};
 use rustc_hir::PrimTy;
 use rustc_middle::middle::stability;
@@ -1115,24 +1115,6 @@ impl<'a> Resolver<'a> {
                     let msg = format!("cannot find {} `{}` in this scope", expected, ident);
                     let mut err = self.session.struct_span_err(ident.span, &msg);
                     self.unresolved_macro_suggestions(&mut err, kind, &parent_scope, ident);
-                    if let Ok(binding) = self.early_resolve_ident_in_lexical_scope(
-                        ident,
-                        ScopeSet::All(Namespace::TypeNS, false),
-                        &parent_scope,
-                        false,
-                        false,
-                        ident.span,
-                    ) {
-                        if let crate::NameBindingKind::Import { import, .. } = binding.kind {
-                            err.span_note(
-                                import.span,
-                                &format!(
-                                    "`{}` is imported here, but it is not a {}",
-                                    ident, expected
-                                ),
-                            );
-                        }
-                    }
                     err.emit();
                 }
             }
