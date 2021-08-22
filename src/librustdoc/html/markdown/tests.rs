@@ -225,6 +225,7 @@ fn test_short_markdown_summary() {
         assert_eq!(output, expect, "original: {}", input);
     }
 
+    t("", "");
     t("hello [Rust](https://www.rust-lang.org) :)", "hello Rust :)");
     t("*italic*", "<em>italic</em>");
     t("**bold**", "<strong>bold</strong>");
@@ -264,6 +265,7 @@ fn test_plain_text_summary() {
         assert_eq!(output, expect, "original: {}", input);
     }
 
+    t("", "");
     t("hello [Rust](https://www.rust-lang.org) :)", "hello Rust :)");
     t("**bold**", "bold");
     t("Multi-line\nsummary", "Multi-line summary");

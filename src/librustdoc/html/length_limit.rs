@@ -98,3 +98,6 @@ impl HtmlWithLimit {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
