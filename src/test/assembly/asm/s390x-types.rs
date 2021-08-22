@@ -60,7 +60,7 @@ macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
 };}
 
 macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
-    
+    #[no_mangle]    
     pub unsafe fn $func(x: $ty) -> $ty {
         dont_merge(stringify!(func));
 
@@ -70,17 +70,57 @@ macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
     }
 };}
 
-// systemz-LABEL: sym_fn_32:
-// systemz: #APP
-// systemz: brasl %r14, extern_func@PLT
-// systemz: #NO_APP
+// CHECK-LABEL: sym_fn_32:
+// CHECK: #APP
+// CHECK: brasl %r14, extern_func
+// CHECK: #NO_APP
 #[cfg(s390x)]
+#[no_mangle]
 pub unsafe fn sym_fn_32() {
     asm!("brasl %r14, {}", sym extern_func);
 }
 
+// CHECK-LABEL: sym_static:
+// CHECK: #APP
+// CHECK: brasl %r14, extern_static
+// CHECK: #NO_APP
+#[no_mangle]
+pub unsafe fn sym_static() {
+    asm!("brasl %r14, {}", sym extern_static);
+}
+
+// CHECK-LABEL: reg_i8:
+// CHECK: #APP
+// CHECK: lgr %r{{[0-9]+}}, %r{{[0-9]+}}
+// CHECK: #NO_APP
+check!(reg_i8, i8, reg, "lgr");
+
+// CHECK-LABEL: reg_i16:
+// CHECK: #APP
+// CHECK: lgr %r{{[0-9]+}}, %r{{[0-9]+}}
+// CHECK: #NO_APP
+check!(reg_i16, i16, reg, "lgr");
+
 // CHECK-LABEL: reg_i32:
 // CHECK: #APP
-// CHECK: lgr r{{[0-15]+}}, r{{[0-15]+}}
+// CHECK: lgr %r{{[0-9]+}}, %r{{[0-9]+}}
 // CHECK: #NO_APP
 check!(reg_i32, i32, reg, "lgr");
+
+// CHECK-LABEL: reg_i64:
+// CHECK: #APP
+// CHECK: lgr %r{{[0-9]+}}, %r{{[0-9]+}}
+// CHECK: #NO_APP
+check!(reg_i64, i64, reg, "lgr");
+
+// CHECK-LABEL: reg_f32:
+// CHECK: #APP
+// CHECK: ler %f{{[0-9]+}}, %f{{[0-9]+}}
+// CHECK: #NO_APP
+check!(reg_f32, f32, freg, "ler");
+
+// CHECK-LABEL: reg_f64:
+// CHECK: #APP
+// CHECK: ldr %f{{[0-9]+}}, %f{{[0-9]+}}
+// CHECK: #NO_APP
+check!(reg_f64, f64, freg, "ldr");

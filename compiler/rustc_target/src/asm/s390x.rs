@@ -35,7 +35,7 @@ impl S390xInlineAsmRegClass {
         arch: InlineAsmArch,
     ) -> &'static [(InlineAsmType, Option<&'static str>)] {
         match (self, arch) {
-            (Self::reg, _) => types! { _: I8, I16, I32; },
+            (Self::reg, _) => types! { _: I8, I16, I32, I64; },
             (Self::freg, _) => types! { _: F32, F64; },
         }
     }
