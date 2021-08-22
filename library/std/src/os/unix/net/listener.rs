@@ -274,7 +274,7 @@ impl AsFd for UnixListener {
 impl From<OwnedFd> for UnixListener {
     #[inline]
     fn from(fd: OwnedFd) -> UnixListener {
-        UnixListener(Socket::from_inner(FromInner::from_inner(OwnedFd::from(fd))))
+        UnixListener(Socket::from_inner(FromInner::from_inner(fd)))
     }
 }
 
@@ -282,7 +282,7 @@ impl From<OwnedFd> for UnixListener {
 impl From<UnixListener> for OwnedFd {
     #[inline]
     fn from(listener: UnixListener) -> OwnedFd {
-        listener.0.into_inner().into_inner().into()
+        listener.0.into_inner().into_inner()
     }
 }
 
