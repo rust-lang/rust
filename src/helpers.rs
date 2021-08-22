@@ -78,7 +78,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         self.eval_context_mut().eval_path_scalar(&["std", "sys", "windows", module, name])
     }
 
-    /// Helper function to get a `windows` constant as an `u64`.
+    /// Helper function to get a `windows` constant as a `u64`.
     fn eval_windows_u64(&mut self, module: &str, name: &str) -> InterpResult<'tcx, u64> {
         // TODO: Cache the result.
         self.eval_windows(module, name)?.to_u64()
