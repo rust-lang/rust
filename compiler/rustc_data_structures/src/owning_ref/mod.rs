@@ -5,7 +5,7 @@
 
 This crate provides the _owning reference_ types `OwningRef` and `OwningRefMut`
 that enables it to bundle a reference together with the owner of the data it points to.
-This allows moving and dropping of a `OwningRef` without needing to recreate the reference.
+This allows moving and dropping of an `OwningRef` without needing to recreate the reference.
 
 This can sometimes be useful because Rust borrowing rules normally prevent
 moving a type that has been moved from. For example, this kind of code gets rejected:
