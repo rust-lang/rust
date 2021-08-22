@@ -978,7 +978,13 @@ impl<'a> Resolver<'a> {
                     Some(MacroKind::Derive) => format!("a derive macro: `#[derive({})]`", ident),
                     // Don't confuse the user with tool modules.
                     None if res == Res::ToolMod => continue,
-                    None => format!("{} {}", res.article(), res.descr()),
+                    None => format!(
+                        "{} {}, not {} {}",
+                        res.article(),
+                        res.descr(),
+                        macro_kind.article(),
+                        macro_kind.descr_expected(),
+                    ),
                 };
                 if let crate::NameBindingKind::Import { import, .. } = binding.kind {
                     if !import.span.is_dummy() {
