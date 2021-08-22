@@ -310,15 +310,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                                 let er = scalar.valid_range_exclusive(bx.cx());
                                 if er.end != er.start
-                                    && scalar.valid_range.end() >= scalar.valid_range.start()
+                                    && scalar.valid_range.end >= scalar.valid_range.start
                                 {
                                     // We want `table[e as usize ± k]` to not
                                     // have bound checks, and this is the most
                                     // convenient place to put the `assume`s.
-                                    if *scalar.valid_range.start() > 0 {
+                                    if scalar.valid_range.start > 0 {
                                         let enum_value_lower_bound = bx
                                             .cx()
-                                            .const_uint_big(ll_t_in, *scalar.valid_range.start());
+                                            .const_uint_big(ll_t_in, scalar.valid_range.start);
                                         let cmp_start = bx.icmp(
                                             IntPredicate::IntUGE,
                                             llval,
@@ -328,7 +328,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     }
 
                                     let enum_value_upper_bound =
-                                        bx.cx().const_uint_big(ll_t_in, *scalar.valid_range.end());
+                                        bx.cx().const_uint_big(ll_t_in, scalar.valid_range.end);
                                     let cmp_end = bx.icmp(
                                         IntPredicate::IntULE,
                                         llval,
