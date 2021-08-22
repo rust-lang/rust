@@ -189,7 +189,7 @@ impl Scope {
                 // To avoid issues with macro-generated spans, the span
                 // of the statement must be nested in that of the block.
                 if span.lo() <= stmt_span.lo() && stmt_span.lo() <= span.hi() {
-                    return Span::new(stmt_span.lo(), span.hi(), span.ctxt());
+                    return span.with_lo(stmt_span.lo());
                 }
             }
         }
