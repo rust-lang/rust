@@ -3,32 +3,24 @@ error: cannot find derive macro `rustfmt` in this scope
    |
 LL | #[derive(rustfmt)]
    |          ^^^^^^^
-   |
-   = note: `rustfmt` is in scope, but it is a tool module
 
 error: cannot find derive macro `rustfmt` in this scope
   --> $DIR/tool-attributes-misplaced-1.rs:4:10
    |
 LL | #[derive(rustfmt)]
    |          ^^^^^^^
-   |
-   = note: `rustfmt` is in scope, but it is a tool module
 
 error: cannot find attribute `rustfmt` in this scope
   --> $DIR/tool-attributes-misplaced-1.rs:9:3
    |
 LL | #[rustfmt]
    |   ^^^^^^^
-   |
-   = note: `rustfmt` is in scope, but it is a tool module
 
 error: cannot find macro `rustfmt` in this scope
   --> $DIR/tool-attributes-misplaced-1.rs:15:5
    |
 LL |     rustfmt!();
    |     ^^^^^^^
-   |
-   = note: `rustfmt` is in scope, but it is a tool module
 
 error[E0573]: expected type, found tool module `rustfmt`
   --> $DIR/tool-attributes-misplaced-1.rs:1:10

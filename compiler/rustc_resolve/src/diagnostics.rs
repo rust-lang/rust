@@ -971,14 +971,14 @@ impl<'a> Resolver<'a> {
                 false,
                 ident.span,
             ) {
-                let desc = match binding.macro_kind() {
+                let res = binding.res();
+                let desc = match res.macro_kind() {
                     Some(MacroKind::Bang) => "a function-like macro".to_string(),
                     Some(MacroKind::Attr) => format!("an attribute: `#[{}]`", ident),
                     Some(MacroKind::Derive) => format!("a derive macro: `#[derive({})]`", ident),
-                    None => {
-                        let res = binding.res();
-                        format!("{} {}", res.article(), res.descr())
-                    }
+                    // Don't confuse the user with tool modules.
+                    None if res == Res::ToolMod => continue,
+                    None => format!("{} {}", res.article(), res.descr()),
                 };
                 if let crate::NameBindingKind::Import { import, .. } = binding.kind {
                     if !import.span.is_dummy() {
