@@ -1042,8 +1042,6 @@ options! {
         "allow the linker to link its default libraries (default: no)"),
     embed_bitcode: bool = (true, parse_bool, [TRACKED],
         "emit bitcode in rlibs (default: yes)"),
-    export_executable_symbols: bool = (false, parse_bool, [TRACKED],
-        "export symbols from executables, as if they were dynamic libraries"),
     extra_filename: String = (String::new(), parse_string, [UNTRACKED],
         "extra data to put in each output filename"),
     force_frame_pointers: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -1232,6 +1230,8 @@ options! {
         an additional `.html` file showing the computed coverage spans."),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
+    export_executable_symbols: bool = (false, parse_bool, [TRACKED],
+        "export symbols from executables, as if they were dynamic libraries"),
     fewer_names: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),
