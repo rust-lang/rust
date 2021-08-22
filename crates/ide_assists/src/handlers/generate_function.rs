@@ -88,7 +88,8 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let (target, file, insert_offset) = get_fn_target(ctx, &target_module, call.clone())?;
     let function_builder = FunctionBuilder::from_call(ctx, &call, &path, target_module, target)?;
     let target = call.syntax().text_range();
-    add_func_to_accumulator(acc, ctx, target, function_builder, insert_offset, file, None)
+    let label = format!("Generate {} function", function_builder.fn_name.clone());
+    add_func_to_accumulator(acc, ctx, target, function_builder, insert_offset, file, None, label)
 }
 
 fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -114,6 +115,7 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         FunctionBuilder::from_method_call(ctx, &call, &fn_name, target_module, target)?;
     let text_range = call.syntax().text_range();
     let adt_name = if impl_.is_none() { Some(adt.name(ctx.sema.db)) } else { None };
+    let label = format!("Generate {} method", function_builder.fn_name.clone());
     add_func_to_accumulator(
         acc,
         ctx,
@@ -122,6 +124,7 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         insert_offset,
         range.file_id,
         adt_name,
+        label,
     )
 }
 
@@ -133,24 +136,20 @@ fn add_func_to_accumulator(
     insert_offset: TextSize,
     file: FileId,
     adt_name: Option<hir::Name>,
+    label: String,
 ) -> Option<()> {
-    acc.add(
-        AssistId("generate_function", AssistKind::Generate),
-        format!("Generate `{}` method", function_builder.fn_name),
-        text_range,
-        |builder| {
-            let function_template = function_builder.render();
-            let mut func = function_template.to_string(ctx.config.snippet_cap);
-            if let Some(name) = adt_name {
-                func = format!("\nimpl {} {{\n{}\n}}", name, func);
-            }
-            builder.edit_file(file);
-            match ctx.config.snippet_cap {
-                Some(cap) => builder.insert_snippet(cap, insert_offset, func),
-                None => builder.insert(insert_offset, func),
-            }
-        },
-    )
+    acc.add(AssistId("generate_function", AssistKind::Generate), label, text_range, |builder| {
+        let function_template = function_builder.render();
+        let mut func = function_template.to_string(ctx.config.snippet_cap);
+        if let Some(name) = adt_name {
+            func = format!("\nimpl {} {{\n{}\n}}", name, func);
+        }
+        builder.edit_file(file);
+        match ctx.config.snippet_cap {
+            Some(cap) => builder.insert_snippet(cap, insert_offset, func),
+            None => builder.insert(insert_offset, func),
+        }
+    })
 }
 
 fn current_module(current_node: &SyntaxNode, ctx: &AssistContext) -> Option<Module> {
