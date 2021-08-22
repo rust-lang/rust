@@ -63,8 +63,7 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
     // We have information about whether `use` (import) items are actually
     // used now. If an import is not used at all, we signal a lint error.
     fn check_import(&mut self, id: ast::NodeId) {
-        let mut used = false;
-        self.r.per_ns(|this, ns| used |= this.used_imports.contains(&(id, ns)));
+        let used = self.r.used_imports.contains(&id);
         let def_id = self.r.local_def_id(id);
         if !used {
             if self.r.maybe_unused_trait_imports.contains(&def_id) {

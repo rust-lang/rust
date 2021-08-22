@@ -942,7 +942,7 @@ pub struct Resolver<'a> {
     glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
     /// Visibilities in "lowered" form, for all entities that have them.
     visibilities: FxHashMap<LocalDefId, ty::Visibility>,
-    used_imports: FxHashSet<(NodeId, Namespace)>,
+    used_imports: FxHashSet<NodeId>,
     maybe_unused_trait_imports: FxHashSet<LocalDefId>,
     maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
 
@@ -1656,7 +1656,6 @@ impl<'a> Resolver<'a> {
     fn record_use(
         &mut self,
         ident: Ident,
-        ns: Namespace,
         used_binding: &'a NameBinding<'a>,
         is_lexical_scope: bool,
     ) {
@@ -1684,9 +1683,9 @@ impl<'a> Resolver<'a> {
             }
             used.set(true);
             import.used.set(true);
-            self.used_imports.insert((import.id, ns));
+            self.used_imports.insert(import.id);
             self.add_to_glob_map(&import, ident);
-            self.record_use(ident, ns, binding, false);
+            self.record_use(ident, binding, false);
         }
     }
 
@@ -3241,7 +3240,7 @@ impl<'a> Resolver<'a> {
         self.extern_prelude.get(&ident.normalize_to_macros_2_0()).cloned().and_then(|entry| {
             if let Some(binding) = entry.extern_crate_item {
                 if !speculative && entry.introduced_by_item {
-                    self.record_use(ident, TypeNS, binding, false);
+                    self.record_use(ident, binding, false);
                 }
                 Some(binding)
             } else {
@@ -3428,7 +3427,7 @@ impl<'a> Resolver<'a> {
         let is_import = name_binding.is_import();
         let span = name_binding.span;
         if let Res::Def(DefKind::Fn, _) = res {
-            self.record_use(ident, ValueNS, name_binding, false);
+            self.record_use(ident, name_binding, false);
         }
         self.main_def = Some(MainDefinition { res, is_import, span });
     }

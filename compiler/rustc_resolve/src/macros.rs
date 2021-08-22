@@ -1090,7 +1090,7 @@ impl<'a> Resolver<'a> {
             ) {
                 Ok(binding) => {
                     let initial_res = initial_binding.map(|initial_binding| {
-                        self.record_use(ident, MacroNS, initial_binding, false);
+                        self.record_use(ident, initial_binding, false);
                         initial_binding.res()
                     });
                     let res = binding.res();
