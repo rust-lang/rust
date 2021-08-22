@@ -24,7 +24,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, Self::QueryResponse>> {
         // FIXME this `unchecked_map` is only necessary because the
         // query is defined as taking a `ParamEnvAnd<Ty>`; it should
-        // take a `ImpliedOutlivesBounds` instead
+        // take an `ImpliedOutlivesBounds` instead
         let canonicalized = canonicalized.unchecked_map(|ParamEnvAnd { param_env, value }| {
             let ImpliedOutlivesBounds { ty } = value;
             param_env.and(ty)

@@ -389,7 +389,7 @@ where
     }
 }
 
-/// When we instantiate a inference variable with a value in
+/// When we instantiate an inference variable with a value in
 /// `relate_ty_var`, we always have the pair of a `TyVid` and a `Ty`,
 /// but the ordering may vary (depending on whether the inference
 /// variable was found on the `a` or `b` sides). Therefore, this trait

@@ -583,7 +583,7 @@ pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
 /// For example, if `e` represents the `v[0].a.b[x]`
 /// this method will return a tuple, composed of a `Vec`
 /// containing the `Expr`s for `v[0], v[0].a, v[0].a.b, v[0].a.b[x]`
-/// and a `Expr` for root of them, `v`
+/// and an `Expr` for root of them, `v`
 fn projection_stack<'a, 'hir>(mut e: &'a Expr<'hir>) -> (Vec<&'a Expr<'hir>>, &'a Expr<'hir>) {
     let mut result = vec![];
     let root = loop {

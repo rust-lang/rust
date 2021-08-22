@@ -575,7 +575,7 @@ impl EmbargoVisitor<'tcx> {
         }
     }
 
-    /// Given the path segments of a `ItemKind::Use`, then we need
+    /// Given the path segments of an `ItemKind::Use`, then we need
     /// to update the visibility of the intermediate use so that it isn't linted
     /// by `unreachable_pub`.
     ///

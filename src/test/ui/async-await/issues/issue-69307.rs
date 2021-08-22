@@ -1,6 +1,6 @@
 // Regression test for #69307
 //
-// Having a `async { .. foo.await .. }` block appear inside of a `+=`
+// Having an `async { .. foo.await .. }` block appear inside of a `+=`
 // expression was causing an ICE due to a failure to save/restore
 // state in the AST numbering pass when entering a nested body.
 //

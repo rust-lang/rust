@@ -297,7 +297,7 @@ pub fn check_explicit_predicates<'tcx>(
         // to apply the substs, and not filter this predicate, we might then falsely
         // conclude that e.g., `X: 'x` was a reasonable inferred requirement.
         //
-        // Another similar case is where we have a inferred
+        // Another similar case is where we have an inferred
         // requirement like `<Self as Trait>::Foo: 'b`. We presently
         // ignore such requirements as well (cc #54467)-- though
         // conceivably it might be better if we could extract the `Foo

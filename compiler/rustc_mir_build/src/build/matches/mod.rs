@@ -1936,7 +1936,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // }
             // ```
             //
-            // would yield a `arm_block` something like:
+            // would yield an `arm_block` something like:
             //
             // ```
             // StorageLive(_4);        // _4 is `x`

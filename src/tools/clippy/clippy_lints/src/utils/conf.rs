@@ -198,7 +198,7 @@ define_Conf! {
     (enum_variant_name_threshold: u64 = 3),
     /// Lint: LARGE_ENUM_VARIANT.
     ///
-    /// The maximum size of a enum's variant to avoid box suggestion
+    /// The maximum size of an enum's variant to avoid box suggestion
     (enum_variant_size_threshold: u64 = 200),
     /// Lint: VERBOSE_BIT_MASK.
     ///

@@ -1,4 +1,4 @@
-// Test a `exists<'a> { forall<'b> { 'a = 'b } }` pattern -- which should not compile!
+// Test an `exists<'a> { forall<'b> { 'a = 'b } }` pattern -- which should not compile!
 //
 // In particular, we test this pattern in trait solving, where it is not connected
 // to any part of the source code.

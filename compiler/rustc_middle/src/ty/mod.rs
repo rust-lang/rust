@@ -865,7 +865,7 @@ impl<'tcx> Predicate<'tcx> {
 
 /// Represents the bounds declared on a particular set of type
 /// parameters. Should eventually be generalized into a flag list of
-/// where-clauses. You can obtain a `InstantiatedPredicates` list from a
+/// where-clauses. You can obtain an `InstantiatedPredicates` list from a
 /// `GenericPredicates` by using the `instantiate` method. Note that this method
 /// reflects an important semantic invariant of `InstantiatedPredicates`: while
 /// the `GenericPredicates` are expressed in terms of the bound type
@@ -1371,7 +1371,7 @@ bitflags! {
     }
 }
 
-/// Definition of a variant -- a struct's fields or a enum variant.
+/// Definition of a variant -- a struct's fields or an enum variant.
 #[derive(Debug, HashStable)]
 pub struct VariantDef {
     /// `DefId` that identifies the variant itself.

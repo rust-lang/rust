@@ -279,7 +279,7 @@ pub enum AncillaryData<'a> {
 }
 
 impl<'a> AncillaryData<'a> {
-    /// Create a `AncillaryData::ScmRights` variant.
+    /// Create an `AncillaryData::ScmRights` variant.
     ///
     /// # Safety
     ///
@@ -291,7 +291,7 @@ impl<'a> AncillaryData<'a> {
         AncillaryData::ScmRights(scm_rights)
     }
 
-    /// Create a `AncillaryData::ScmCredentials` variant.
+    /// Create an `AncillaryData::ScmCredentials` variant.
     ///
     /// # Safety
     ///

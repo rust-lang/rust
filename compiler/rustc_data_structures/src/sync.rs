@@ -14,7 +14,7 @@
 //!
 //! `MTRef` is an immutable reference if cfg!(parallel_compiler), and a mutable reference otherwise.
 //!
-//! `rustc_erase_owner!` erases a OwningRef owner into Erased or Erased + Send + Sync
+//! `rustc_erase_owner!` erases an OwningRef owner into Erased or Erased + Send + Sync
 //! depending on the value of cfg!(parallel_compiler).
 
 use crate::owning_ref::{Erased, OwningRef};

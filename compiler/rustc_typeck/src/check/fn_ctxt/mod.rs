@@ -96,7 +96,7 @@ pub struct FnCtxt<'a, 'tcx> {
     ///   `foo(return)`; we warn on the `foo()` expression. (We then
     ///   update the flag to `WarnedAlways` to suppress duplicate
     ///   reports.) Similarly, if we traverse to a fresh statement (or
-    ///   tail expression) from a `Always` setting, we will issue a
+    ///   tail expression) from an `Always` setting, we will issue a
     ///   warning. This corresponds to something like `{return;
     ///   foo();}` or `{return; 22}`, where we would warn on the
     ///   `foo()` or `22`.

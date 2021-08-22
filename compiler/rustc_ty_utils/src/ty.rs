@@ -185,7 +185,7 @@ fn impl_constness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Constness {
 ///     - a type parameter or projection whose Sizedness can't be known
 ///     - a tuple of type parameters or projections, if there are multiple
 ///       such.
-///     - a Error, if a type contained itself. The representability
+///     - an Error, if a type contained itself. The representability
 ///       check should catch this case.
 fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtSizedConstraint<'_> {
     let def = tcx.adt_def(def_id);
@@ -253,7 +253,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // `<i32 as Foo>::Bar` where `i32` does not implement `Foo`. We
     // report these errors right here; this doesn't actually feel
     // right to me, because constructing the environment feels like a
-    // kind of a "idempotent" action, but I'm not sure where would be
+    // kind of an "idempotent" action, but I'm not sure where would be
     // a better place. In practice, we construct environments for
     // every fn once during type checking, and we'll abort if there
     // are any errors at that point, so after type checking you can be

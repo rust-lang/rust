@@ -359,7 +359,7 @@ impl OsString {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<String> for OsString {
-    /// Converts a [`String`] into a [`OsString`].
+    /// Converts a [`String`] into an [`OsString`].
     ///
     /// This conversion does not allocate or copy memory.
     #[inline]
@@ -880,7 +880,7 @@ impl From<Box<OsStr>> for OsString {
 
 #[stable(feature = "box_from_os_string", since = "1.20.0")]
 impl From<OsString> for Box<OsStr> {
-    /// Converts a [`OsString`] into a [`Box`]`<OsStr>` without copying or allocating.
+    /// Converts an [`OsString`] into a [`Box`]`<OsStr>` without copying or allocating.
     #[inline]
     fn from(s: OsString) -> Box<OsStr> {
         s.into_boxed_os_str()
@@ -897,7 +897,7 @@ impl Clone for Box<OsStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Arc<OsStr> {
-    /// Converts a [`OsString`] into a [`Arc`]`<OsStr>` without copying or allocating.
+    /// Converts an [`OsString`] into a [`Arc`]`<OsStr>` without copying or allocating.
     #[inline]
     fn from(s: OsString) -> Arc<OsStr> {
         let arc = s.inner.into_arc();
@@ -916,7 +916,7 @@ impl From<&OsStr> for Arc<OsStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Rc<OsStr> {
-    /// Converts a [`OsString`] into a [`Rc`]`<OsStr>` without copying or allocating.
+    /// Converts an [`OsString`] into a [`Rc`]`<OsStr>` without copying or allocating.
     #[inline]
     fn from(s: OsString) -> Rc<OsStr> {
         let rc = s.inner.into_rc();

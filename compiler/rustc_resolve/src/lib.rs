@@ -668,7 +668,7 @@ enum NameBindingKind<'a> {
 }
 
 impl<'a> NameBindingKind<'a> {
-    /// Is this a name binding of a import?
+    /// Is this a name binding of an import?
     fn is_import(&self) -> bool {
         matches!(*self, NameBindingKind::Import { .. })
     }
@@ -3066,7 +3066,7 @@ impl<'a> Resolver<'a> {
             self.extern_prelude.get(&ident).map_or(true, |entry| entry.introduced_by_item);
         // Only suggest removing an import if both bindings are to the same def, if both spans
         // aren't dummy spans. Further, if both bindings are imports, then the ident must have
-        // been introduced by a item.
+        // been introduced by an item.
         let should_remove_import = duplicate
             && !has_dummy_span
             && ((new_binding.is_extern_crate() || old_binding.is_extern_crate()) || from_item);
@@ -3213,7 +3213,7 @@ impl<'a> Resolver<'a> {
                     Applicability::MaybeIncorrect,
                 );
             } else {
-                // Remove the entire line if we cannot extend the span back, this indicates a
+                // Remove the entire line if we cannot extend the span back, this indicates an
                 // `issue_52891::{self}` case.
                 err.span_suggestion(
                     import.use_span_with_attributes,

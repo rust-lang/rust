@@ -1323,7 +1323,7 @@ pub type Region<'tcx> = &'tcx RegionKind;
 /// These are regions that are stored behind a binder and must be substituted
 /// with some concrete region before being used. There are two kind of
 /// bound regions: early-bound, which are bound in an item's `Generics`,
-/// and are substituted by a `InternalSubsts`, and late-bound, which are part of
+/// and are substituted by an `InternalSubsts`, and late-bound, which are part of
 /// higher-ranked types (e.g., `for<'a> fn(&'a ())`), and are substituted by
 /// the likes of `liberate_late_bound_regions`. The distinction exists
 /// because higher-ranked lifetimes aren't supported in all places. See [1][2].
@@ -1471,7 +1471,7 @@ pub type PolyExistentialProjection<'tcx> = Binder<'tcx, ExistentialProjection<'t
 impl<'tcx> ExistentialProjection<'tcx> {
     /// Extracts the underlying existential trait reference from this projection.
     /// For example, if this is a projection of `exists T. <T as Iterator>::Item == X`,
-    /// then this function would return a `exists T. T: Iterator` existential trait
+    /// then this function would return an `exists T. T: Iterator` existential trait
     /// reference.
     pub fn trait_ref(&self, tcx: TyCtxt<'tcx>) -> ty::ExistentialTraitRef<'tcx> {
         let def_id = tcx.associated_item(self.item_def_id).container.id();

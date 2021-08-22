@@ -61,7 +61,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     unpack!(this.expr_into_dest(destination, else_blk, &this.thir[else_opt]))
                 } else {
                     // Body of the `if` expression without an `else` clause must return `()`, thus
-                    // we implicitly generate a `else {}` if it is not specified.
+                    // we implicitly generate an `else {}` if it is not specified.
                     let correct_si = this.source_info(expr_span.shrink_to_hi());
                     this.cfg.push_assign_unit(else_blk, correct_si, destination, this.tcx);
                     else_blk

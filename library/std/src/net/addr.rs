@@ -561,8 +561,8 @@ impl From<SocketAddrV6> for SocketAddr {
 impl<I: Into<IpAddr>> From<(I, u16)> for SocketAddr {
     /// Converts a tuple struct (Into<[`IpAddr`]>, `u16`) into a [`SocketAddr`].
     ///
-    /// This conversion creates a [`SocketAddr::V4`] for a [`IpAddr::V4`]
-    /// and creates a [`SocketAddr::V6`] for a [`IpAddr::V6`].
+    /// This conversion creates a [`SocketAddr::V4`] for an [`IpAddr::V4`]
+    /// and creates a [`SocketAddr::V6`] for an [`IpAddr::V6`].
     ///
     /// `u16` is treated as port of the newly created [`SocketAddr`].
     fn from(pieces: (I, u16)) -> SocketAddr {

@@ -334,7 +334,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     /// process (via `take_counter()`).
     ///
     /// Any other counter associated with a `BasicCoverageBlock`, or its incoming edge, but not
-    /// associated with a `CoverageSpan`, should only exist if the counter is a `Expression`
+    /// associated with a `CoverageSpan`, should only exist if the counter is an `Expression`
     /// dependency (one of the expression operands). Collect them, and inject the additional
     /// counters into the MIR, without a reportable coverage span.
     fn inject_indirect_counters(

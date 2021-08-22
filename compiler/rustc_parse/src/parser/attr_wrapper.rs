@@ -301,7 +301,7 @@ impl<'a> Parser<'a> {
         // If we 'broke' the last token (e.g. breaking a '>>' token to two '>' tokens),
         // then extend the range of captured tokens to include it, since the parser
         // was not actually bumped past it. When the `LazyTokenStream` gets converted
-        // into a `AttrAnnotatedTokenStream`, we will create the proper token.
+        // into an `AttrAnnotatedTokenStream`, we will create the proper token.
         if self.token_cursor.break_last_token {
             assert_eq!(
                 trailing,
@@ -320,7 +320,7 @@ impl<'a> Parser<'a> {
         } else {
             // Grab any replace ranges that occur *inside* the current AST node.
             // We will perform the actual replacement when we convert the `LazyTokenStream`
-            // to a `AttrAnnotatedTokenStream`
+            // to an `AttrAnnotatedTokenStream`
             let start_calls: u32 = cursor_snapshot_next_calls.try_into().unwrap();
             self.capture_state.replace_ranges[replace_ranges_start..replace_ranges_end]
                 .iter()

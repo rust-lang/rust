@@ -1239,7 +1239,7 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
 }
 
 impl<'a, K, V> IterMut<'a, K, V> {
-    /// Returns a iterator of references over the remaining items.
+    /// Returns an iterator of references over the remaining items.
     #[inline]
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
         Iter { base: self.base.rustc_iter() }
@@ -1268,7 +1268,7 @@ pub struct IntoIter<K, V> {
 }
 
 impl<K, V> IntoIter<K, V> {
-    /// Returns a iterator of references over the remaining items.
+    /// Returns an iterator of references over the remaining items.
     #[inline]
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
         Iter { base: self.base.rustc_iter() }
@@ -1371,7 +1371,7 @@ pub struct Drain<'a, K: 'a, V: 'a> {
 }
 
 impl<'a, K, V> Drain<'a, K, V> {
-    /// Returns a iterator of references over the remaining items.
+    /// Returns an iterator of references over the remaining items.
     #[inline]
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
         Iter { base: self.base.rustc_iter() }

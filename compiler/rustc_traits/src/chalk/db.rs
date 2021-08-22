@@ -718,7 +718,7 @@ impl<'tcx> chalk_ir::UnificationDatabase<RustInterner<'tcx>> for RustIrDatabase<
     }
 }
 
-/// Creates a `InternalSubsts` that maps each generic parameter to a higher-ranked
+/// Creates an `InternalSubsts` that maps each generic parameter to a higher-ranked
 /// var bound at index `0`. For types, we use a `BoundVar` index equal to
 /// the type parameter index. For regions, we use the `BoundRegionKind::BrNamed`
 /// variant (which has a `DefId`).

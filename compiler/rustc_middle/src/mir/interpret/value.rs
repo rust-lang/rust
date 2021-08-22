@@ -17,7 +17,7 @@ use super::{
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
 #[derive(Copy, Clone, HashStable, TyEncodable, TyDecodable, Debug, Hash, Eq, PartialEq)]
 pub struct ConstAlloc<'tcx> {
-    // the value lives here, at offset 0, and that allocation definitely is a `AllocKind::Memory`
+    // the value lives here, at offset 0, and that allocation definitely is an `AllocKind::Memory`
     // (so you can use `AllocMap::unwrap_memory`).
     pub alloc_id: AllocId,
     pub ty: Ty<'tcx>,
@@ -113,7 +113,7 @@ impl<'tcx> ConstValue<'tcx> {
 }
 
 /// A `Scalar` represents an immediate, primitive value existing outside of a
-/// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 16 bytes in
+/// `memory::Allocation`. It is in many ways like a small chunk of an `Allocation`, up to 16 bytes in
 /// size. Like a range of bytes in an `Allocation`, a `Scalar` can either represent the raw bytes
 /// of a simple value or a pointer into another `Allocation`
 ///

@@ -22,7 +22,7 @@ use std::ops::ControlFlow;
 
 /// An entity in the Rust type system, which can be one of
 /// several kinds (types, lifetimes, and consts).
-/// To reduce memory usage, a `GenericArg` is a interned pointer,
+/// To reduce memory usage, a `GenericArg` is an interned pointer,
 /// with the lowest 2 bits being reserved for a tag to
 /// indicate the type (`Ty`, `Region`, or `Const`) it points to.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -204,12 +204,12 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
         GeneratorSubsts { substs: self }
     }
 
-    /// Creates a `InternalSubsts` that maps each generic parameter to itself.
+    /// Creates an `InternalSubsts` that maps each generic parameter to itself.
     pub fn identity_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> SubstsRef<'tcx> {
         Self::for_item(tcx, def_id, |param, _| tcx.mk_param_from_def(param))
     }
 
-    /// Creates a `InternalSubsts` for generic parameter definitions,
+    /// Creates an `InternalSubsts` for generic parameter definitions,
     /// by calling closures to obtain each kind.
     /// The closures get to observe the `InternalSubsts` as they're
     /// being built, which can be used to correctly

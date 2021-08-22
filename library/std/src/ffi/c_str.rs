@@ -46,7 +46,7 @@ use crate::sys_common::memchr;
 ///
 /// # Extracting a raw pointer to the whole C string
 ///
-/// `CString` implements a [`as_ptr`][`CStr::as_ptr`] method through the [`Deref`]
+/// `CString` implements an [`as_ptr`][`CStr::as_ptr`] method through the [`Deref`]
 /// trait. This method will give you a `*const c_char` which you can
 /// feed directly to extern functions that expect a nul-terminated
 /// string, like C's `strdup()`. Notice that [`as_ptr`][`CStr::as_ptr`] returns a
@@ -730,7 +730,7 @@ impl CString {
     /// );
     /// ```
     ///
-    /// A incorrectly formatted [`Vec`] will produce an error.
+    /// An incorrectly formatted [`Vec`] will produce an error.
     ///
     /// ```
     /// #![feature(cstring_from_vec_with_nul)]

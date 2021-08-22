@@ -186,7 +186,7 @@ pub enum GenericKind<'tcx> {
 ///        ('a: min) || ('b: min)
 ///     }
 ///
-/// This is described with a `AnyRegion('a, 'b)` node.
+/// This is described with an `AnyRegion('a, 'b)` node.
 #[derive(Debug, Clone)]
 pub enum VerifyBound<'tcx> {
     /// Given a kind K and a bound B, expands to a function like the

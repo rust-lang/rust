@@ -8,7 +8,7 @@
 // functions and the modules are enclosed in `[]`)
 //
 // In our specific instance, the earlier compilations were inlining the call
-// to`B` into `A`; thus `A` ended up with a external reference to the symbol `D`
+// to`B` into `A`; thus `A` ended up with an external reference to the symbol `D`
 // in its object code, to be resolved at subsequent link time. The LTO import
 // information provided by LLVM for those runs reflected that information: it
 // explicitly says during those runs, `B` definition and `D` declaration were

@@ -149,7 +149,7 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
     let penv = tcx.param_env(impl1_def_id);
     let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id).unwrap();
 
-    // Create a infcx, taking the predicates of impl1 as assumptions:
+    // Create an infcx, taking the predicates of impl1 as assumptions:
     tcx.infer_ctxt().enter(|infcx| {
         // Normalize the trait reference. The WF rules ought to ensure
         // that this always succeeds.

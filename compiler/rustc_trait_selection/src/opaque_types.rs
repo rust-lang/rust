@@ -77,7 +77,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ///     ?0: Iterator<Item = ?1>
     ///     ?1: Debug
     ///
-    /// Moreover, it returns a `OpaqueTypeMap` that would map `?0` to
+    /// Moreover, it returns an `OpaqueTypeMap` that would map `?0` to
     /// info about the `impl Iterator<..>` type and `?1` to info about
     /// the `impl Debug` type.
     ///
@@ -886,7 +886,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                     // }
                     // ```
                     //
-                    // Here, the return type of `foo` references a
+                    // Here, the return type of `foo` references an
                     // `Opaque` indeed, but not one whose value is
                     // presently being inferred. You can get into a
                     // similar situation with closure return types

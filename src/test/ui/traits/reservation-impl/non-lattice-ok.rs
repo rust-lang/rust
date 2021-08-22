@@ -5,7 +5,7 @@
 
 // Why did we ever want to do this?
 //
-// We want to eventually add a `impl<T> From<!> for T` impl. That impl conflicts
+// We want to eventually add an `impl<T> From<!> for T` impl. That impl conflicts
 // with existing impls - at least the `impl<T> From<T> for T` impl. There are
 // 2 ways we thought of for dealing with that conflict:
 //
@@ -23,7 +23,7 @@
 // actually cause any ambiguity.
 //
 // Now it turned out lattice specialization doesn't work it, because an
-// `impl<T> From<T> for Smaht<T>` would require a `impl From<!> for Smaht<!>`,
+// `impl<T> From<T> for Smaht<T>` would require an `impl From<!> for Smaht<!>`,
 // breaking backwards-compatibility in a fairly painful way. So if we want to
 // go with a known approach, we should go with a "marker trait overlap"-style
 // approach.
