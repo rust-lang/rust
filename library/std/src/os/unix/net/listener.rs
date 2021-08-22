@@ -1,5 +1,5 @@
 use super::{sockaddr_un, SocketAddr, UnixStream};
-use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
 use crate::sys::cvt;
 use crate::sys::net::Socket;
@@ -259,6 +259,30 @@ impl IntoRawFd for UnixListener {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
         self.0.into_inner().into_inner().into_raw_fd()
+    }
+}
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl AsFd for UnixListener {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.0.as_inner().as_fd()
+    }
+}
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl From<OwnedFd> for UnixListener {
+    #[inline]
+    fn from(fd: OwnedFd) -> UnixListener {
+        UnixListener(Socket::from_inner(FromInner::from_inner(OwnedFd::from(fd))))
+    }
+}
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl From<UnixListener> for OwnedFd {
+    #[inline]
+    fn from(listener: UnixListener) -> OwnedFd {
+        listener.0.into_inner().into_inner().into()
     }
 }
 
