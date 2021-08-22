@@ -116,6 +116,8 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
 }
 
+impl std::panic::UnwindSafe for GlobalStateSnapshot {}
+
 impl GlobalState {
     pub(crate) fn new(sender: Sender<lsp_server::Message>, config: Config) -> GlobalState {
         let loader = {
@@ -262,6 +264,12 @@ impl GlobalState {
     }
     pub(crate) fn respond(&mut self, response: lsp_server::Response) {
         if let Some((method, start)) = self.req_queue.incoming.complete(response.id.clone()) {
+            if let Some(err) = &response.error {
+                if err.message.starts_with("server panicked") {
+                    self.poke_rust_analyzer_developer(format!("{}, check the log", err.message))
+                }
+            }
+
             let duration = start.elapsed();
             log::info!("handled {} - ({}) in {:0.2?}", method, response.id, duration);
             self.send(response.into());
