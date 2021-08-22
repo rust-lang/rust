@@ -1586,12 +1586,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // See if we can toss out `victim` based on specialization.
                 // This requires us to know *for sure* that the `other` impl applies
                 // i.e., `EvaluatedToOk`.
+                //
+                // FIXME(@lcnr): Using `modulo_regions` here seems kind of scary
+                // to me but is required for `std` to compile, so I didn't change it
+                // for now.
+                let tcx = self.tcx();
                 if other.evaluation.must_apply_modulo_regions() {
-                    let tcx = self.tcx();
                     if tcx.specializes((other_def, victim_def)) {
                         return true;
                     }
-                    return match tcx.impls_are_allowed_to_overlap(other_def, victim_def) {
+                }
+
+                if other.evaluation.must_apply_considering_regions() {
+                    match tcx.impls_are_allowed_to_overlap(other_def, victim_def) {
                         Some(ty::ImplOverlapKind::Permitted { marker: true }) => {
                             // Subtle: If the predicate we are evaluating has inference
                             // variables, do *not* allow discarding candidates due to
@@ -1636,7 +1643,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                         Some(_) => true,
                         None => false,
-                    };
+                    }
                 } else {
                     false
                 }
