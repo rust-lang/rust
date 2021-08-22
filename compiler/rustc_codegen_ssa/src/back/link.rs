@@ -1803,15 +1803,16 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         add_local_native_libraries(cmd, sess, codegen_results);
     }
 
-    // Rust libraries.
+    // Upstream rust libraries and their nobundle static libraries
     add_upstream_rust_crates::<B>(cmd, sess, codegen_results, crate_type, tmpdir);
 
-    // Native libraries linked with `#[link]` attributes at and `-l` command line options.
+    // Upstream dymamic native libraries linked with `#[link]` attributes at and `-l`
+    // command line options.
     // If -Zlink-native-libraries=false is set, then the assumption is that an
     // external build system already has the native dependencies defined, and it
     // will provide them to the linker itself.
     if sess.opts.debugging_opts.link_native_libraries {
-        add_upstream_native_libraries(cmd, sess, codegen_results, crate_type);
+        add_upstream_native_libraries(cmd, sess, codegen_results);
     }
 
     // Library linking above uses some global state for things like `-Bstatic`/`-Bdynamic` to make
@@ -2033,7 +2034,7 @@ fn add_local_native_libraries(
     }
 }
 
-/// # Rust Crate linking
+/// # Linking Rust crates and their nobundle static libraries
 ///
 /// Rust crates are not considered at all when creating an rlib output. All dependencies will be
 /// linked when producing the final output (instead of the intermediate rlib version).
@@ -2138,6 +2139,29 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
             Linkage::Static => {
                 add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
+
+                // Link static native libs with "-bundle" modifier only if the crate they originate from
+                // is being linked statically to the current crate.  If it's linked dynamically
+                // or is an rlib already included via some other dylib crate, the symbols from
+                // native libs will have already been included in that dylib.
+                //
+                // If -Zlink-native-libraries=false is set, then the assumption is that an
+                // external build system already has the native dependencies defined, and it
+                // will provide them to the linker itself.
+                if sess.opts.debugging_opts.link_native_libraries {
+                    // Skip if this library is the same as the last.
+                    let mut last = None;
+                    for lib in &codegen_results.crate_info.native_libraries[&cnum] {
+                        if lib.name.is_some()
+                            && relevant_lib(sess, lib)
+                            && matches!(lib.kind, NativeLibKind::Static { bundle: Some(false), .. })
+                            && last != lib.name
+                        {
+                            cmd.link_staticlib(lib.name.unwrap(), lib.verbatim.unwrap_or(false));
+                            last = lib.name;
+                        }
+                    }
+                }
             }
             Linkage::Dynamic => add_dynamic_crate(cmd, sess, &src.dylib.as_ref().unwrap().0),
         }
@@ -2310,27 +2334,9 @@ fn add_upstream_native_libraries(
     cmd: &mut dyn Linker,
     sess: &Session,
     codegen_results: &CodegenResults,
-    crate_type: CrateType,
 ) {
-    // Be sure to use a topological sorting of crates because there may be
-    // interdependencies between native libraries. When passing -nodefaultlibs,
-    // for example, almost all native libraries depend on libc, so we have to
-    // make sure that's all the way at the right (liblibc is near the base of
-    // the dependency chain).
-    //
-    // This passes RequireStatic, but the actual requirement doesn't matter,
-    // we're just getting an ordering of crate numbers, we're not worried about
-    // the paths.
-    let (_, data) = codegen_results
-        .crate_info
-        .dependency_formats
-        .iter()
-        .find(|(ty, _)| *ty == crate_type)
-        .expect("failed to find crate type in dependency format list");
-
-    let crates = &codegen_results.crate_info.used_crates;
     let mut last = (NativeLibKind::Unspecified, None);
-    for &cnum in crates {
+    for &cnum in &codegen_results.crate_info.used_crates {
         for lib in codegen_results.crate_info.native_libraries[&cnum].iter() {
             let name = match lib.name {
                 Some(l) => l,
@@ -2352,19 +2358,10 @@ fn add_upstream_native_libraries(
                 NativeLibKind::Framework { as_needed } => {
                     cmd.link_framework(name, as_needed.unwrap_or(true))
                 }
-                NativeLibKind::Static { bundle: Some(false), .. } => {
-                    // Link "static-nobundle" native libs only if the crate they originate from
-                    // is being linked statically to the current crate.  If it's linked dynamically
-                    // or is an rlib already included via some other dylib crate, the symbols from
-                    // native libs will have already been included in that dylib.
-                    if data[cnum.as_usize() - 1] == Linkage::Static {
-                        cmd.link_staticlib(name, verbatim)
-                    }
-                }
-                // ignore statically included native libraries here as we've
-                // already included them when we included the rust library
-                // previously
-                NativeLibKind::Static { bundle: None | Some(true), .. } => {}
+                // ignore static native libraries here as we've
+                // already included them in add_local_native_libraries and
+                // add_upstream_rust_crates
+                NativeLibKind::Static { .. } => {}
                 NativeLibKind::RawDylib => {}
             }
         }
