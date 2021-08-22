@@ -318,6 +318,11 @@ Join lines removes trailing commas.
 --
 Join lines unwraps trivial blocks.
 --
+[[rust-analyzer.joinLines.joinAssignments]]rust-analyzer.joinLines.joinAssignments (default: `true`)::
++
+--
+Join lines merges consecutive declaration and initialization of an assignment.
+--
 [[rust-analyzer.lens.debug]]rust-analyzer.lens.debug (default: `true`)::
 +
 --

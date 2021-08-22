@@ -761,6 +761,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.joinLines.joinAssignments": {
+                    "markdownDescription": "Join lines merges consecutive declaration and initialization of an assignment.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.lens.debug": {
                     "markdownDescription": "Whether to show `Debug` lens. Only applies when\n`#rust-analyzer.lens.enable#` is set.",
                     "default": true,
