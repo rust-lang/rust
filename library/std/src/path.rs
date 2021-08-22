@@ -315,7 +315,7 @@ fn has_physical_root(s: &[u8], prefix: Option<Prefix<'_>>) -> bool {
 }
 
 // basic workhorse for splitting stem and extension
-fn split_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
+fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
     if os_str_as_u8_slice(file) == b".." {
         return (Some(file), None);
     }
@@ -332,6 +332,25 @@ fn split_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
     } else {
         unsafe { (before.map(|s| u8_slice_as_os_str(s)), after.map(|s| u8_slice_as_os_str(s))) }
     }
+}
+
+fn split_file_at_dot(file: &OsStr) -> (&OsStr, Option<&OsStr>) {
+    let slice = os_str_as_u8_slice(file);
+    if slice == b".." {
+        return (file, None);
+    }
+
+    // The unsafety here stems from converting between &OsStr and &[u8]
+    // and back. This is safe to do because (1) we only look at ASCII
+    // contents of the encoding and (2) new &OsStr values are produced
+    // only from ASCII-bounded slices of existing &OsStr values.
+    let i = match slice[1..].iter().position(|b| *b == b'.') {
+        Some(i) => i + 1,
+        None => return (file, None),
+    };
+    let before = &slice[..i];
+    let after = &slice[i + 1..];
+    unsafe { (u8_slice_as_os_str(before), Some(u8_slice_as_os_str(after))) }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2213,9 +2232,49 @@ impl Path {
     /// assert_eq!("foo", Path::new("foo.rs").file_stem().unwrap());
     /// assert_eq!("foo.tar", Path::new("foo.tar.gz").file_stem().unwrap());
     /// ```
+    ///
+    /// # See Also
+    /// This method is similar to [`Path::file_prefix`], which extracts the portion of the file name
+    /// before the *first* `.`
+    ///
+    /// [`Path::file_prefix`]: Path::file_prefix
+    ///
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn file_stem(&self) -> Option<&OsStr> {
-        self.file_name().map(split_file_at_dot).and_then(|(before, after)| before.or(after))
+        self.file_name().map(rsplit_file_at_dot).and_then(|(before, after)| before.or(after))
+    }
+
+    /// Extracts the prefix of [`self.file_name`].
+    ///
+    /// The prefix is:
+    ///
+    /// * [`None`], if there is no file name;
+    /// * The entire file name if there is no embedded `.`;
+    /// * The portion of the file name before the first non-beginning `.`;
+    /// * The entire file name if the file name begins with `.` and has no other `.`s within;
+    /// * The portion of the file name before the second `.` if the file name begins with `.`
+    ///
+    /// [`self.file_name`]: Path::file_name
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(path_file_prefix)]
+    /// use std::path::Path;
+    ///
+    /// assert_eq!("foo", Path::new("foo.rs").file_prefix().unwrap());
+    /// assert_eq!("foo", Path::new("foo.tar.gz").file_prefix().unwrap());
+    /// ```
+    ///
+    /// # See Also
+    /// This method is similar to [`Path::file_stem`], which extracts the portion of the file name
+    /// before the *last* `.`
+    ///
+    /// [`Path::file_stem`]: Path::file_stem
+    ///
+    #[unstable(feature = "path_file_prefix", issue = "86319")]
+    pub fn file_prefix(&self) -> Option<&OsStr> {
+        self.file_name().map(split_file_at_dot).and_then(|(before, _after)| Some(before))
     }
 
     /// Extracts the extension of [`self.file_name`], if possible.
@@ -2239,7 +2298,7 @@ impl Path {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn extension(&self) -> Option<&OsStr> {
-        self.file_name().map(split_file_at_dot).and_then(|(before, after)| before.and(after))
+        self.file_name().map(rsplit_file_at_dot).and_then(|(before, after)| before.and(after))
     }
 
     /// Creates an owned [`PathBuf`] with `path` adjoined to `self`.
