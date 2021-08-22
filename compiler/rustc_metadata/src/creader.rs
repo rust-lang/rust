@@ -308,7 +308,7 @@ impl<'a> CrateLoader<'a> {
             }
 
             // Alright, so we've gotten this far which means that `data` has the
-            // right name, we don't have a hash, and we don't have an --extern
+            // right name, we don't have a hash, and we don't have a --extern
             // pointing for ourselves. We're still not quite yet done because we
             // have to make sure that this crate was found in the crate lookup
             // path (this is a top-level dependency) as we don't want to
