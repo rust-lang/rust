@@ -329,7 +329,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
         vec.iter().map(|elem| self.expr(elem)).collect::<Option<_>>()
     }
 
-    /// Lookup a possibly constant expression from a `ExprKind::Path`.
+    /// Lookup a possibly constant expression from an `ExprKind::Path`.
     fn fetch_path(&mut self, qpath: &QPath<'_>, id: HirId, ty: Ty<'tcx>) -> Option<Constant> {
         let res = self.typeck_results.qpath_res(qpath, id);
         match res {

@@ -117,7 +117,7 @@ impl SelfType for AtomicUsize {
     const WRAPPED_SELF: Option<Self> = Some(AtomicUsize::new(21)); //~ ERROR interior mutable
 }
 
-// Even though a constant contains a generic type, if it also have a interior mutable type,
+// Even though a constant contains a generic type, if it also have an interior mutable type,
 // it should be linted at the definition site.
 trait BothOfCellAndGeneric<T> {
     // this is a false negative in the current implementation.

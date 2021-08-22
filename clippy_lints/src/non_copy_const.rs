@@ -293,7 +293,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                 }) => {
                     if_chain! {
                         // Lint a trait impl item only when the definition is a generic type,
-                        // assuming a assoc const is not meant to be a interior mutable type.
+                        // assuming an assoc const is not meant to be an interior mutable type.
                         if let Some(of_trait_def_id) = of_trait_ref.trait_def_id();
                         if let Some(of_assoc_item) = specialization_graph::Node::Trait(of_trait_def_id)
                             .item(cx.tcx, impl_item.ident, AssocKind::Const, of_trait_def_id);
