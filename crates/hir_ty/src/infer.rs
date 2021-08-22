@@ -16,11 +16,11 @@
 use std::ops::Index;
 use std::sync::Arc;
 
-use chalk_ir::{cast::Cast, DebruijnIndex, Mutability, Safety};
+use chalk_ir::{cast::Cast, DebruijnIndex, Mutability, Safety, Scalar};
 use hir_def::{
     body::Body,
     data::{ConstData, FunctionData, StaticData},
-    expr::{ArithOp, BinaryOp, BindingAnnotation, ExprId, PatId},
+    expr::{BindingAnnotation, ExprId, PatId},
     lang_item::LangItemTarget,
     path::{path, Path},
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
@@ -134,11 +134,17 @@ pub struct TypeMismatch {
 #[derive(Clone, PartialEq, Eq, Debug)]
 struct InternedStandardTypes {
     unknown: Ty,
+    bool_: Ty,
+    unit: Ty,
 }
 
 impl Default for InternedStandardTypes {
     fn default() -> Self {
-        InternedStandardTypes { unknown: TyKind::Error.intern(&Interner) }
+        InternedStandardTypes {
+            unknown: TyKind::Error.intern(&Interner),
+            bool_: TyKind::Scalar(Scalar::Bool).intern(&Interner),
+            unit: TyKind::Tuple(0, Substitution::empty(&Interner)).intern(&Interner),
+        }
     }
 }
 /// Represents coercing a value to a different type of value.
@@ -751,28 +757,6 @@ impl<'a> InferenceContext<'a> {
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 
-    fn resolve_binary_op_output(&self, bop: &BinaryOp) -> Option<TypeAliasId> {
-        let lang_item = match bop {
-            BinaryOp::ArithOp(aop) => match aop {
-                ArithOp::Add => "add",
-                ArithOp::Sub => "sub",
-                ArithOp::Mul => "mul",
-                ArithOp::Div => "div",
-                ArithOp::Shl => "shl",
-                ArithOp::Shr => "shr",
-                ArithOp::Rem => "rem",
-                ArithOp::BitXor => "bitxor",
-                ArithOp::BitOr => "bitor",
-                ArithOp::BitAnd => "bitand",
-            },
-            _ => return None,
-        };
-
-        let trait_ = self.resolve_lang_item(lang_item)?.as_trait();
-
-        self.db.trait_data(trait_?).associated_type_by_name(&name![Output])
-    }
-
     fn resolve_boxed_box(&self) -> Option<AdtId> {
         let struct_ = self.resolve_lang_item("owned_box")?.as_struct()?;
         Some(struct_.into())
@@ -844,6 +828,10 @@ impl Expectation {
         } else {
             Expectation::HasType(ty)
         }
+    }
+
+    fn from_option(ty: Option<Ty>) -> Self {
+        ty.map_or(Expectation::None, Expectation::HasType)
     }
 
     /// The following explanation is copied straight from rustc:

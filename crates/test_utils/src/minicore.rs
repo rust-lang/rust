@@ -34,6 +34,7 @@
 //!     derive:
 //!     fmt: result
 //!     bool_impl: option, fn
+//!     add:
 
 pub mod marker {
     // region:sized
@@ -302,6 +303,14 @@ pub mod ops {
     }
     pub use self::try_::{ControlFlow, FromResidual, Try};
     // endregion:try
+
+    // region:add
+    #[lang = "add"]
+    pub trait Add<Rhs = Self> {
+        type Output;
+        fn add(self, rhs: Rhs) -> Self::Output;
+    }
+    // endregion:add
 }
 
 // region:eq

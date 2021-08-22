@@ -2773,8 +2773,8 @@ fn foo() {
                                     file_id: FileId(
                                         1,
                                     ),
-                                    full_range: 253..435,
-                                    focus_range: 292..298,
+                                    full_range: 254..436,
+                                    focus_range: 293..299,
                                     name: "Future",
                                     kind: Trait,
                                     description: "pub trait Future",

@@ -15,7 +15,6 @@ mod infer;
 mod interner;
 mod lower;
 mod mapping;
-mod op;
 mod tls;
 mod utils;
 mod walk;
