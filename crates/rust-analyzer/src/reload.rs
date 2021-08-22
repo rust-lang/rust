@@ -4,7 +4,9 @@ use std::{mem, sync::Arc};
 use flycheck::{FlycheckConfig, FlycheckHandle};
 use hir::db::DefDatabase;
 use ide::Change;
-use ide_db::base_db::{CrateGraph, SourceRoot, VfsPath};
+use ide_db::base_db::{
+    CrateGraph, Env, ProcMacro, ProcMacroExpander, ProcMacroKind, SourceRoot, VfsPath,
+};
 use proc_macro_api::ProcMacroClient;
 use project_model::{ProjectWorkspace, WorkspaceBuildScripts};
 use vfs::{file_set::FileSetConfig, AbsPath, AbsPathBuf, ChangeKind};
@@ -398,9 +400,8 @@ impl GlobalState {
         // Create crate graph from all the workspaces
         let crate_graph = {
             let proc_macro_client = self.proc_macro_client.as_ref();
-            let mut load_proc_macro = move |path: &AbsPath| {
-                proc_macro_client.map(|it| it.by_dylib_path(path)).unwrap_or_default()
-            };
+            let mut load_proc_macro =
+                move |path: &AbsPath| load_proc_macro(proc_macro_client, path);
 
             let vfs = &mut self.vfs.write().0;
             let loader = &mut self.loader;
@@ -585,5 +586,40 @@ impl SourceRootConfig {
                 }
             })
             .collect()
+    }
+}
+
+pub(crate) fn load_proc_macro(client: Option<&ProcMacroClient>, path: &AbsPath) -> Vec<ProcMacro> {
+    return client
+        .map(|it| it.by_dylib_path(path))
+        .unwrap_or_default()
+        .into_iter()
+        .map(expander_to_proc_macro)
+        .collect();
+
+    fn expander_to_proc_macro(expander: proc_macro_api::ProcMacroProcessExpander) -> ProcMacro {
+        let name = expander.name().into();
+        let kind = match expander.kind() {
+            proc_macro_api::ProcMacroKind::CustomDerive => ProcMacroKind::CustomDerive,
+            proc_macro_api::ProcMacroKind::FuncLike => ProcMacroKind::FuncLike,
+            proc_macro_api::ProcMacroKind::Attr => ProcMacroKind::Attr,
+        };
+        let expander = Arc::new(Expander(expander));
+        ProcMacro { name, kind, expander }
+    }
+
+    #[derive(Debug)]
+    struct Expander(proc_macro_api::ProcMacroProcessExpander);
+
+    impl ProcMacroExpander for Expander {
+        fn expand(
+            &self,
+            subtree: &tt::Subtree,
+            attrs: Option<&tt::Subtree>,
+            env: &Env,
+        ) -> Result<tt::Subtree, tt::ExpansionError> {
+            let env = env.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+            self.0.expand(subtree, attrs, env)
+        }
     }
 }
