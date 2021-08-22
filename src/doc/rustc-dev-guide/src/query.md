@@ -60,7 +60,7 @@ method. The answer is that, for each query, the compiler maintains a
 cache – if your query has already been executed, then, the answer is
 simple: we clone the return value out of the cache and return it
 (therefore, you should try to ensure that the return types of queries
-are cheaply cloneable; insert a `Rc` if necessary).
+are cheaply cloneable; insert an `Rc` if necessary).
 
 #### Providers
 
