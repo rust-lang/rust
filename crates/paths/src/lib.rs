@@ -98,7 +98,7 @@ impl AbsPathBuf {
             .unwrap_or_else(|path| panic!("expected absolute path, got {}", path.display()))
     }
 
-    /// Coerces to a `AbsPath` slice.
+    /// Coerces to an `AbsPath` slice.
     ///
     /// Equivalent of [`PathBuf::as_path`] for `AbsPathBuf`.
     pub fn as_path(&self) -> &AbsPath {

@@ -203,7 +203,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.ancestors_at_offset_with_macros(node, offset)
     }
 
-    /// Find a AstNode by offset inside SyntaxNode, if it is inside *Macrofile*,
+    /// Find an AstNode by offset inside SyntaxNode, if it is inside *Macrofile*,
     /// search up until it is of the target AstNode type
     pub fn find_node_at_offset_with_macros<N: AstNode>(
         &self,
@@ -213,7 +213,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.ancestors_at_offset_with_macros(node, offset).find_map(N::cast)
     }
 
-    /// Find a AstNode by offset inside SyntaxNode, if it is inside *MacroCall*,
+    /// Find an AstNode by offset inside SyntaxNode, if it is inside *MacroCall*,
     /// descend it and find again
     pub fn find_node_at_offset_with_descend<N: AstNode>(
         &self,
