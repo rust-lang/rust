@@ -280,7 +280,7 @@ impl ExprValidator {
         for arm in arms {
             if let Some(pat_ty) = infer.type_of_pat.get(arm.pat) {
                 // We only include patterns whose type matches the type
-                // of the match expression. If we had a InvalidMatchArmPattern
+                // of the match expression. If we had an InvalidMatchArmPattern
                 // diagnostic or similar we could raise that in an else
                 // block here.
                 //

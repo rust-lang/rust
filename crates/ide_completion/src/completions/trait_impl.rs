@@ -1,7 +1,7 @@
 //! Completion for associated items in a trait implementation.
 //!
 //! This module adds the completion items related to implementing associated
-//! items within a `impl Trait for Struct` block. The current context node
+//! items within an `impl Trait for Struct` block. The current context node
 //! must be within either a `FN`, `TYPE_ALIAS`, or `CONST` node
 //! and an direct child of an `IMPL`.
 //!
