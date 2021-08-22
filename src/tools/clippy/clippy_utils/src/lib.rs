@@ -254,6 +254,10 @@ pub fn in_macro(span: Span) -> bool {
     }
 }
 
+pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
+    matches!(expr.kind, ExprKind::Block(Block { stmts: [], expr: None, .. }, _) | ExprKind::Tup([]))
+}
+
 /// Checks if given pattern is a wildcard (`_`)
 pub fn is_wild(pat: &Pat<'_>) -> bool {
     matches!(pat.kind, PatKind::Wild)

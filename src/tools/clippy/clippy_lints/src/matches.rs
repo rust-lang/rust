@@ -8,9 +8,9 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, match_type, peel_mid_ty_refs};
 use clippy_utils::visitors::LocalUsedVisitor;
 use clippy_utils::{
-    get_parent_expr, in_macro, is_expn_of, is_lang_ctor, is_lint_allowed, is_refutable, is_wild, meets_msrv, msrvs,
-    path_to_local, path_to_local_id, peel_hir_pat_refs, peel_n_hir_expr_refs, recurse_or_patterns, remove_blocks,
-    strip_pat_refs,
+    get_parent_expr, in_macro, is_expn_of, is_lang_ctor, is_lint_allowed, is_refutable, is_unit_expr, is_wild,
+    meets_msrv, msrvs, path_to_local, path_to_local_id, peel_hir_pat_refs, peel_n_hir_expr_refs, recurse_or_patterns,
+    remove_blocks, strip_pat_refs,
 };
 use clippy_utils::{paths, search_same, SpanlessEq, SpanlessHash};
 use core::array;
@@ -634,7 +634,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
         if let ExprKind::Match(ref ex, ref arms, _) = expr.kind {
             check_match_ref_pats(cx, ex, arms.iter().map(|el| el.pat), expr);
         }
-        if let Some(higher::IfLet { let_pat, let_expr, .. }) = higher::IfLet::hir(expr) {
+        if let Some(higher::IfLet { let_pat, let_expr, .. }) = higher::IfLet::hir(cx, expr) {
             check_match_ref_pats(cx, let_expr, once(let_pat), expr);
         }
     }
@@ -1298,7 +1298,7 @@ fn check_match_like_matches<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) 
         let_expr,
         if_then,
         if_else: Some(if_else),
-    }) = higher::IfLet::hir(expr)
+    }) = higher::IfLet::hir(cx, expr)
     {
         return find_matches_sugg(
             cx,
@@ -1672,14 +1672,6 @@ fn type_ranges(ranges: &[SpannedRange<Constant>]) -> TypedRanges {
         .collect()
 }
 
-fn is_unit_expr(expr: &Expr<'_>) -> bool {
-    match expr.kind {
-        ExprKind::Tup(v) if v.is_empty() => true,
-        ExprKind::Block(b, _) if b.stmts.is_empty() && b.expr.is_none() => true,
-        _ => false,
-    }
-}
-
 // Checks if arm has the form `None => None`
 fn is_none_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
     matches!(arm.pat.kind, PatKind::Path(ref qpath) if is_lang_ctor(cx, qpath, OptionNone))
@@ -1835,7 +1827,7 @@ mod redundant_pattern_match {
             let_pat,
             let_expr,
             ..
-        }) = higher::IfLet::ast(cx, expr)
+        }) = higher::IfLet::hir(cx, expr)
         {
             find_sugg_for_if_let(cx, expr, let_pat, let_expr, "if", if_else.is_some())
         }
