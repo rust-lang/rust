@@ -98,6 +98,11 @@ fn lint_cases(opt_opt: Option<Option<u32>>, res_opt: Result<Option<u32>, String>
 }
 
 fn negative_cases(res_opt: Result<Option<u32>, String>, res_res: Result<Result<u32, String>, String>) {
+    while let Some(x) = make() {
+        if let Some(1) = x {
+            todo!();
+        }
+    }
     // no wild pattern in outer match
     match res_opt {
         Ok(val) => match val {

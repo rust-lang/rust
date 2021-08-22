@@ -37,7 +37,7 @@ pub(super) fn check<'tcx>(
 
         if_chain! {
             if let Some(inner_expr) = inner_expr;
-            if let Some(higher::IfLet { let_pat, let_expr, if_else: None, .. }) = higher::IfLet::hir(inner_expr);
+            if let Some(higher::IfLet { let_pat, let_expr, if_else: None, .. }) = higher::IfLet::hir(cx, inner_expr);
             // Ensure match_expr in `if let` statement is the same as the pat from the for-loop
             if let PatKind::Binding(_, pat_hir_id, _, _) = pat.kind;
             if path_to_local_id(let_expr, pat_hir_id);
