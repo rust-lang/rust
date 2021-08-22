@@ -133,13 +133,13 @@ impl HirFileId {
                     };
                     Some(InFile::new(id.file_id, def_tt))
                 });
-                let def_or_attr_input = def.or_else(|| match loc.kind {
+                let attr_input_or_mac_def = def.or_else(|| match loc.kind {
                     MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
                         let tt = ast_id
                             .to_node(db)
                             .attrs()
-                            .nth(invoc_attr_index as usize)
-                            .and_then(|attr| attr.token_tree())?;
+                            .nth(invoc_attr_index as usize)?
+                            .token_tree()?;
                         Some(InFile::new(ast_id.file_id, tt))
                     }
                     _ => None,
@@ -152,7 +152,7 @@ impl HirFileId {
                 Some(ExpansionInfo {
                     expanded: InFile::new(self, parse.syntax_node()),
                     arg: InFile::new(loc.kind.file_id(), arg_tt),
-                    attr_input_or_mac_def: def_or_attr_input,
+                    attr_input_or_mac_def,
                     macro_arg_shift: mbe::Shift::new(&macro_arg.0),
                     macro_arg,
                     macro_def,
@@ -443,7 +443,7 @@ impl ExpansionInfo {
             },
             _ => match origin {
                 mbe::Origin::Call => (&self.macro_arg.1, self.arg.clone()),
-                mbe::Origin::Def => match (&*self.macro_def, self.attr_input_or_mac_def.as_ref()) {
+                mbe::Origin::Def => match (&*self.macro_def, &self.attr_input_or_mac_def) {
                     (
                         TokenExpander::MacroRules { def_site_token_map, .. }
                         | TokenExpander::MacroDef { def_site_token_map, .. },

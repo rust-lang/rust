@@ -9,12 +9,15 @@ use db::TokenExpander;
 use either::Either;
 use mbe::Origin;
 use parser::SyntaxKind;
-use syntax::{ast, AstNode, SyntaxNode, TextRange, TextSize};
+use syntax::{
+    ast::{self, AttrsOwner},
+    AstNode, SyntaxNode, TextRange, TextSize,
+};
 
 use crate::{
     db::{self, AstDatabase},
     name::{AsName, Name},
-    HirFileId, HirFileIdRepr, InFile, MacroCallLoc, MacroDefKind, MacroFile,
+    HirFileId, HirFileIdRepr, InFile, MacroCallKind, MacroCallLoc, MacroDefKind, MacroFile,
 };
 
 #[derive(Clone, Debug)]
@@ -121,11 +124,12 @@ impl HygieneFrames {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct HygieneInfo {
     file: MacroFile,
-    /// The `macro_rules!` arguments.
-    def_start: Option<InFile<TextSize>>,
+    /// The start offset of the `macro_rules!` arguments or attribute input.
+    attr_input_or_mac_def_start: Option<InFile<TextSize>>,
 
     macro_def: Arc<TokenExpander>,
     macro_arg: Arc<(tt::Subtree, mbe::TokenMap)>,
+    macro_arg_shift: mbe::Shift,
     exp_map: Arc<mbe::TokenMap>,
 }
 
@@ -136,22 +140,34 @@ impl HygieneInfo {
         token: TextRange,
     ) -> Option<(InFile<TextRange>, Origin)> {
         let token_id = self.exp_map.token_by_range(token)?;
+        let (mut token_id, origin) = self.macro_def.map_id_up(token_id);
 
-        let (token_id, origin) = self.macro_def.map_id_up(token_id);
-        let (token_map, tt) = match origin {
-            mbe::Origin::Call => {
-                let call_id = self.file.macro_call_id;
-                let loc: MacroCallLoc = db.lookup_intern_macro(call_id);
-                let arg_start = loc.kind.arg(db)?.text_range().start();
-                (&self.macro_arg.1, InFile::new(loc.kind.file_id(), arg_start))
-            }
-            mbe::Origin::Def => match (&*self.macro_def, self.def_start) {
-                (
-                    TokenExpander::MacroDef { def_site_token_map, .. }
-                    | TokenExpander::MacroRules { def_site_token_map, .. },
-                    Some(tt),
-                ) => (def_site_token_map, tt),
-                _ => panic!("`Origin::Def` used with non-`macro_rules!` macro"),
+        let loc = db.lookup_intern_macro(self.file.macro_call_id);
+
+        let (token_map, tt) = match &loc.kind {
+            MacroCallKind::Attr { attr_args, .. } => match self.macro_arg_shift.unshift(token_id) {
+                Some(unshifted) => {
+                    token_id = unshifted;
+                    (&attr_args.1, self.attr_input_or_mac_def_start?)
+                }
+                None => (
+                    &self.macro_arg.1,
+                    InFile::new(loc.kind.file_id(), loc.kind.arg(db)?.text_range().start()),
+                ),
+            },
+            _ => match origin {
+                mbe::Origin::Call => (
+                    &self.macro_arg.1,
+                    InFile::new(loc.kind.file_id(), loc.kind.arg(db)?.text_range().start()),
+                ),
+                mbe::Origin::Def => match (&*self.macro_def, &self.attr_input_or_mac_def_start) {
+                    (
+                        TokenExpander::MacroDef { def_site_token_map, .. }
+                        | TokenExpander::MacroRules { def_site_token_map, .. },
+                        Some(tt),
+                    ) => (def_site_token_map, *tt),
+                    _ => panic!("`Origin::Def` used with non-`macro_rules!` macro"),
+                },
             },
         };
 
@@ -165,19 +181,34 @@ fn make_hygiene_info(
     macro_file: MacroFile,
     loc: &MacroCallLoc,
 ) -> Option<HygieneInfo> {
-    let def_offset = loc.def.ast_id().left().and_then(|id| {
+    let def = loc.def.ast_id().left().and_then(|id| {
         let def_tt = match id.to_node(db) {
-            ast::Macro::MacroRules(mac) => mac.token_tree()?.syntax().text_range().start(),
-            ast::Macro::MacroDef(mac) => mac.body()?.syntax().text_range().start(),
+            ast::Macro::MacroRules(mac) => mac.token_tree()?,
+            ast::Macro::MacroDef(mac) => mac.body()?,
         };
         Some(InFile::new(id.file_id, def_tt))
+    });
+    let attr_input_or_mac_def = def.or_else(|| match loc.kind {
+        MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
+            let tt = ast_id.to_node(db).attrs().nth(invoc_attr_index as usize)?.token_tree()?;
+            Some(InFile::new(ast_id.file_id, tt))
+        }
+        _ => None,
     });
 
     let macro_def = db.macro_def(loc.def)?;
     let (_, exp_map) = db.parse_macro_expansion(macro_file).value?;
     let macro_arg = db.macro_arg(macro_file.macro_call_id)?;
 
-    Some(HygieneInfo { file: macro_file, def_start: def_offset, macro_arg, macro_def, exp_map })
+    Some(HygieneInfo {
+        file: macro_file,
+        attr_input_or_mac_def_start: attr_input_or_mac_def
+            .map(|it| it.map(|tt| tt.syntax().text_range().start())),
+        macro_arg_shift: mbe::Shift::new(&macro_arg.0),
+        macro_arg,
+        macro_def,
+        exp_map,
+    })
 }
 
 impl HygieneFrame {
@@ -214,7 +245,7 @@ impl HygieneFrame {
             Some(it) => it,
         };
 
-        let def_site = info.def_start.map(|it| db.hygiene_frame(it.file_id));
+        let def_site = info.attr_input_or_mac_def_start.map(|it| db.hygiene_frame(it.file_id));
         let call_site = Some(db.hygiene_frame(calling_file));
 
         HygieneFrame { expansion: Some(info), local_inner, krate, call_site, def_site }
