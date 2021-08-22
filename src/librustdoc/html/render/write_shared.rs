@@ -518,7 +518,8 @@ pub(super) fn write_shared(
 
     // Update the list of all implementors for traits
     let dst = cx.dst.join("implementors");
-    for (&did, imps) in &cx.cache.implementors {
+    let cache = cx.cache();
+    for (&did, imps) in &cache.implementors {
         // Private modules can leak through to this phase of rustdoc, which
         // could contain implementations for otherwise private types. In some
         // rare cases we could find an implementation for an item which wasn't
@@ -526,9 +527,9 @@ pub(super) fn write_shared(
         //
         // FIXME: this is a vague explanation for why this can't be a `get`, in
         //        theory it should be...
-        let &(ref remote_path, remote_item_type) = match cx.cache.paths.get(&did) {
+        let &(ref remote_path, remote_item_type) = match cache.paths.get(&did) {
             Some(p) => p,
-            None => match cx.cache.external_paths.get(&did) {
+            None => match cache.external_paths.get(&did) {
                 Some(p) => p,
                 None => continue,
             },
@@ -557,7 +558,7 @@ pub(super) fn write_shared(
                     Some(Implementor {
                         text: imp.inner_impl().print(false, cx).to_string(),
                         synthetic: imp.inner_impl().synthetic,
-                        types: collect_paths_for_type(imp.inner_impl().for_.clone(), cx.cache()),
+                        types: collect_paths_for_type(imp.inner_impl().for_.clone(), cache),
                     })
                 }
             })
@@ -566,7 +567,7 @@ pub(super) fn write_shared(
         // Only create a js file if we have impls to add to it. If the trait is
         // documented locally though we always create the file to avoid dead
         // links.
-        if implementors.is_empty() && !cx.cache.paths.contains_key(&did) {
+        if implementors.is_empty() && !cache.paths.contains_key(&did) {
             continue;
         }
 
