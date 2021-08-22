@@ -40,7 +40,7 @@ fn remove_derives_up_to(item: ast::Item, attr_index: usize) -> ast::Item {
             attr.path().and_then(|path| path.as_single_segment()).and_then(|seg| seg.name_ref())
         {
             if name.as_name() == name![derive] {
-                attr.syntax().detach();
+                replace_attr(&item, &attr);
             }
         }
     }
@@ -54,10 +54,14 @@ fn remove_attr_invoc(item: ast::Item, attr_index: usize) -> ast::Item {
         .attrs()
         .nth(attr_index)
         .unwrap_or_else(|| panic!("cannot find attribute #{}", attr_index));
+    replace_attr(&item, &attr);
+    item
+}
+
+fn replace_attr(item: &ast::Item, attr: &ast::Attr) {
     let syntax_index = attr.syntax().index();
     let ws = make::tokens::whitespace(&" ".repeat(u32::from(attr.syntax().text().len()) as usize));
     item.syntax().splice_children(syntax_index..syntax_index + 1, vec![ws.into()]);
-    item
 }
 
 #[cfg(test)]
@@ -78,7 +82,9 @@ mod tests {
         assert_eq!(items.len(), 1);
 
         let item = remove_derives_up_to(items.pop().unwrap(), attr);
-        expect.assert_eq(&item.to_string());
+        let res: String =
+            item.syntax().children_with_tokens().map(|e| format!("{:?}\n", e)).collect();
+        expect.assert_eq(&res);
     }
 
     #[test]
@@ -95,13 +101,20 @@ struct A {
 }
         "#,
             expect![[r#"
-#[allow(unused)]
-
-
-#[derive(Clone)]
-struct A {
-    bar: u32
-}"#]],
+                Node(ATTR@0..16)
+                Token(WHITESPACE@16..17 "\n")
+                Token(WHITESPACE@17..32 "               ")
+                Token(WHITESPACE@32..33 "\n")
+                Token(WHITESPACE@33..49 "                ")
+                Token(WHITESPACE@49..50 "\n")
+                Node(ATTR@50..66)
+                Token(WHITESPACE@66..67 "\n")
+                Token(STRUCT_KW@67..73 "struct")
+                Token(WHITESPACE@73..74 " ")
+                Node(NAME@74..75)
+                Token(WHITESPACE@75..76 " ")
+                Node(RECORD_FIELD_LIST@76..92)
+            "#]],
         );
     }
 }
