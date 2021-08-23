@@ -66,7 +66,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.copy_op(dest, &place.into())?;
             }
 
-            "write_bytes" => {
+            "write_bytes" | "volatile_set_memory" => {
                 let &[ref ptr, ref val_byte, ref count] = check_arg_count(args)?;
                 let ty = instance.substs.type_at(0);
                 let ty_layout = this.layout_of(ty)?;
@@ -74,7 +74,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let ptr = this.read_pointer(ptr)?;
                 let count = this.read_scalar(count)?.to_machine_usize(this)?;
                 let byte_count = ty_layout.size.checked_mul(count, this).ok_or_else(|| {
-                    err_ub_format!("overflow computing total size of `write_bytes`")
+                    err_ub_format!("overflow computing total size of `{}`", intrinsic_name)
                 })?;
                 this.memory
                     .write_bytes(ptr, iter::repeat(val_byte).take(byte_count.bytes() as usize))?;
