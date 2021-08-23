@@ -1,10 +1,10 @@
-use super::{AttrWrapper, Capturing, Parser, PathStyle};
+use super::{AttrWrapper, Capturing, ForceCollect, Parser, PathStyle};
 use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{error_code, PResult};
-use rustc_span::{sym, Span};
+use rustc_errors::{error_code, DiagnosticBuilder, PResult};
+use rustc_span::{sym, BytePos, Span};
 use std::convert::TryInto;
 
 use tracing::debug;
@@ -24,6 +24,12 @@ pub(super) const DEFAULT_INNER_ATTR_FORBIDDEN: InnerAttrPolicy<'_> = InnerAttrPo
     saw_doc_comment: false,
     prev_attr_sp: None,
 };
+
+enum OuterAttributeType {
+    DocComment,
+    DocBlockComment,
+    Attribute,
+}
 
 impl<'a> Parser<'a> {
     /// Parses attributes that appear before an item.
@@ -49,18 +55,32 @@ impl<'a> Parser<'a> {
                 Some(self.parse_attribute(inner_parse_policy)?)
             } else if let token::DocComment(comment_kind, attr_style, data) = self.token.kind {
                 if attr_style != ast::AttrStyle::Outer {
-                    self.sess
-                        .span_diagnostic
-                        .struct_span_err_with_code(
-                            self.token.span,
-                            "expected outer doc comment",
-                            error_code!(E0753),
-                        )
-                        .note(
-                            "inner doc comments like this (starting with \
-                         `//!` or `/*!`) can only appear before items",
-                        )
-                        .emit();
+                    let span = self.token.span;
+                    let mut err = self.sess.span_diagnostic.struct_span_err_with_code(
+                        span,
+                        "expected outer doc comment",
+                        error_code!(E0753),
+                    );
+                    if let Some(replacement_span) = self.annotate_following_item_if_applicable(
+                        &mut err,
+                        span,
+                        match comment_kind {
+                            token::CommentKind::Line => OuterAttributeType::DocComment,
+                            token::CommentKind::Block => OuterAttributeType::DocBlockComment,
+                        },
+                    ) {
+                        err.note(
+                            "inner doc comments like this (starting with `//!` or `/*!`) can \
+                            only appear before items",
+                        );
+                        err.span_suggestion_verbose(
+                            replacement_span,
+                            "you might have meant to write a regular comment",
+                            String::new(),
+                            rustc_errors::Applicability::MachineApplicable,
+                        );
+                    }
+                    err.emit();
                 }
                 self.bump();
                 just_parsed_doc_comment = true;
@@ -97,7 +117,7 @@ impl<'a> Parser<'a> {
             inner_parse_policy, self.token
         );
         let lo = self.token.span;
-        // Attributse can't have attributes of their own
+        // Attributes can't have attributes of their own [Editor's note: not with that attitude]
         self.collect_tokens_no_attrs(|this| {
             if this.eat(&token::Pound) {
                 let style = if this.eat(&token::Not) {
@@ -125,6 +145,75 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn annotate_following_item_if_applicable(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        span: Span,
+        attr_type: OuterAttributeType,
+    ) -> Option<Span> {
+        let mut snapshot = self.clone();
+        let lo = span.lo()
+            + BytePos(match attr_type {
+                OuterAttributeType::Attribute => 1,
+                _ => 2,
+            });
+        let hi = lo + BytePos(1);
+        let replacement_span = span.with_lo(lo).with_hi(hi);
+        if let OuterAttributeType::DocBlockComment | OuterAttributeType::DocComment = attr_type {
+            snapshot.bump();
+        }
+        loop {
+            // skip any other attributes, we want the item
+            if snapshot.token.kind == token::Pound {
+                if let Err(mut err) = snapshot.parse_attribute(InnerAttrPolicy::Permitted) {
+                    err.cancel();
+                    return Some(replacement_span);
+                }
+            } else {
+                break;
+            }
+        }
+        match snapshot.parse_item_common(
+            AttrWrapper::empty(),
+            true,
+            false,
+            |_| true,
+            ForceCollect::No,
+        ) {
+            Ok(Some(item)) => {
+                let attr_name = match attr_type {
+                    OuterAttributeType::Attribute => "attribute",
+                    _ => "doc comment",
+                };
+                err.span_label(
+                    item.span,
+                    &format!("the inner {} doesn't annotate this {}", attr_name, item.kind.descr()),
+                );
+                err.span_suggestion_verbose(
+                    replacement_span,
+                    &format!(
+                        "to annotate the {}, change the {} from inner to outer style",
+                        item.kind.descr(),
+                        attr_name
+                    ),
+                    (match attr_type {
+                        OuterAttributeType::Attribute => "",
+                        OuterAttributeType::DocBlockComment => "*",
+                        OuterAttributeType::DocComment => "/",
+                    })
+                    .to_string(),
+                    rustc_errors::Applicability::MachineApplicable,
+                );
+                return None;
+            }
+            Err(mut item_err) => {
+                item_err.cancel();
+            }
+            Ok(None) => {}
+        }
+        Some(replacement_span)
+    }
+
     pub(super) fn error_on_forbidden_inner_attr(&self, attr_sp: Span, policy: InnerAttrPolicy<'_>) {
         if let InnerAttrPolicy::Forbidden { reason, saw_doc_comment, prev_attr_sp } = policy {
             let prev_attr_note =
@@ -138,11 +227,20 @@ impl<'a> Parser<'a> {
             }
 
             diag.note(
-                "inner attributes, like `#![no_std]`, annotate the item enclosing them, \
-                and are usually found at the beginning of source files. \
-                Outer attributes, like `#[test]`, annotate the item following them.",
-            )
-            .emit();
+                "inner attributes, like `#![no_std]`, annotate the item enclosing them, and \
+                are usually found at the beginning of source files",
+            );
+            if self
+                .annotate_following_item_if_applicable(
+                    &mut diag,
+                    attr_sp,
+                    OuterAttributeType::Attribute,
+                )
+                .is_some()
+            {
+                diag.note("outer attributes, like `#[test]`, annotate the item following them");
+            };
+            diag.emit();
         }
     }
 
