@@ -127,7 +127,7 @@ impl FromWithTcx<clean::GenericArgs> for GenericArgs {
             },
             Parenthesized { inputs, output } => GenericArgs::Parenthesized {
                 inputs: inputs.into_iter().map(|a| a.into_tcx(tcx)).collect(),
-                output: output.map(|a| a.into_tcx(tcx)),
+                output: output.map(|a| (*a).into_tcx(tcx)),
             },
         }
     }
