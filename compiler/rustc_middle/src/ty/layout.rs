@@ -529,7 +529,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             }),
             ty::FnPtr(_) => {
                 let mut ptr = scalar_unit(Pointer);
-                ptr.valid_range = WrappingRange { start: 1, end: ptr.valid_range.end };
+                ptr.valid_range = ptr.valid_range.with_start(1);
                 tcx.intern_layout(Layout::scalar(self, ptr))
             }
 
@@ -547,8 +547,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let mut data_ptr = scalar_unit(Pointer);
                 if !ty.is_unsafe_ptr() {
-                    data_ptr.valid_range =
-                        WrappingRange { start: 1, end: data_ptr.valid_range.end };
+                    data_ptr.valid_range = data_ptr.valid_range.with_start(1);
                 }
 
                 let pointee = tcx.normalize_erasing_regions(param_env, pointee);
@@ -564,8 +563,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     ty::Slice(_) | ty::Str => scalar_unit(Int(dl.ptr_sized_integer(), false)),
                     ty::Dynamic(..) => {
                         let mut vtable = scalar_unit(Pointer);
-                        vtable.valid_range =
-                            WrappingRange { start: 1, end: vtable.valid_range.end };
+                        vtable.valid_range = vtable.valid_range.with_start(1);
                         vtable
                     }
                     _ => return Err(LayoutError::Unknown(unsized_part)),

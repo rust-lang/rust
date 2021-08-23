@@ -712,6 +712,16 @@ impl WrappingRange {
     pub fn contains_zero(&self) -> bool {
         !(self.start <= self.end && self.start != 0)
     }
+
+    /// Returns new `WrappingRange` with replaced `start`
+    pub fn with_start(&self, start: u128) -> Self {
+        Self { start, end: self.end }
+    }
+
+    /// Returns new `WrappingRange` with replaced `end`
+    pub fn with_end(&self, end: u128) -> Self {
+        Self { start: self.start, end }
+    }
 }
 
 impl fmt::Debug for WrappingRange {
@@ -1029,7 +1039,7 @@ impl Niche {
             return None;
         }
 
-        Some((start, Scalar { value, valid_range: WrappingRange { start: v.start, end } }))
+        Some((start, Scalar { value, valid_range: v.with_end(end) }))
     }
 }
 
