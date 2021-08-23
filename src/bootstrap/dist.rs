@@ -412,6 +412,8 @@ impl Step for Rustc {
                 let gcc_lld_dir = dst_dir.join("gcc-ld");
                 t!(fs::create_dir(&gcc_lld_dir));
                 builder.copy(&src_dir.join(&rust_lld), &gcc_lld_dir.join(exe("ld", compiler.host)));
+                builder
+                    .copy(&src_dir.join(&rust_lld), &gcc_lld_dir.join(exe("ld64", compiler.host)));
             }
 
             // Copy over llvm-dwp if it's there
