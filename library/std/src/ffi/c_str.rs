@@ -46,7 +46,7 @@ use crate::sys_common::memchr;
 ///
 /// # Extracting a raw pointer to the whole C string
 ///
-/// `CString` implements a [`as_ptr`][`CStr::as_ptr`] method through the [`Deref`]
+/// `CString` implements an [`as_ptr`][`CStr::as_ptr`] method through the [`Deref`]
 /// trait. This method will give you a `*const c_char` which you can
 /// feed directly to extern functions that expect a nul-terminated
 /// string, like C's `strdup()`. Notice that [`as_ptr`][`CStr::as_ptr`] returns a
@@ -730,7 +730,7 @@ impl CString {
     /// );
     /// ```
     ///
-    /// A incorrectly formatted [`Vec`] will produce an error.
+    /// An incorrectly formatted [`Vec`] will produce an error.
     ///
     /// ```
     /// #![feature(cstring_from_vec_with_nul)]
@@ -939,7 +939,7 @@ impl<'a> From<&'a CString> for Cow<'a, CStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<CString> for Arc<CStr> {
-    /// Converts a [`CString`] into a [`Arc`]`<CStr>` without copying or allocating.
+    /// Converts a [`CString`] into an [`Arc`]`<CStr>` without copying or allocating.
     #[inline]
     fn from(s: CString) -> Arc<CStr> {
         let arc: Arc<[u8]> = Arc::from(s.into_inner());

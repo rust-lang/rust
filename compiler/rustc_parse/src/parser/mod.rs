@@ -152,7 +152,7 @@ pub struct Parser<'a> {
 /// attribute, we parse a nested AST node that has `#[cfg]` or `#[cfg_attr]`
 /// In this case, we use a `ReplaceRange` to replace the entire inner AST node
 /// with `FlatToken::AttrTarget`, allowing us to perform eager cfg-expansion
-/// on a `AttrAnnotatedTokenStream`
+/// on an `AttrAnnotatedTokenStream`
 ///
 /// 2. When we parse an inner attribute while collecting tokens. We
 /// remove inner attributes from the token stream entirely, and
@@ -165,7 +165,7 @@ pub type ReplaceRange = (Range<u32>, Vec<(FlatToken, Spacing)>);
 
 /// Controls how we capture tokens. Capturing can be expensive,
 /// so we try to avoid performing capturing in cases where
-/// we will never need a `AttrAnnotatedTokenStream`
+/// we will never need an `AttrAnnotatedTokenStream`
 #[derive(Copy, Clone)]
 pub enum Capturing {
     /// We aren't performing any capturing - this is the default mode.
@@ -1362,10 +1362,10 @@ pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, sess: &Pa
     }
 }
 
-/// A helper struct used when building a `AttrAnnotatedTokenStream` from
+/// A helper struct used when building an `AttrAnnotatedTokenStream` from
 /// a `LazyTokenStream`. Both delimiter and non-delimited tokens
 /// are stored as `FlatToken::Token`. A vector of `FlatToken`s
-/// is then 'parsed' to build up a `AttrAnnotatedTokenStream` with nested
+/// is then 'parsed' to build up an `AttrAnnotatedTokenStream` with nested
 /// `AttrAnnotatedTokenTree::Delimited` tokens
 #[derive(Debug, Clone)]
 pub enum FlatToken {
@@ -1375,10 +1375,10 @@ pub enum FlatToken {
     /// Holds the `AttributesData` for an AST node. The
     /// `AttributesData` is inserted directly into the
     /// constructed `AttrAnnotatedTokenStream` as
-    /// a `AttrAnnotatedTokenTree::Attributes`
+    /// an `AttrAnnotatedTokenTree::Attributes`
     AttrTarget(AttributesData),
     /// A special 'empty' token that is ignored during the conversion
-    /// to a `AttrAnnotatedTokenStream`. This is used to simplify the
+    /// to an `AttrAnnotatedTokenStream`. This is used to simplify the
     /// handling of replace ranges.
     Empty,
 }

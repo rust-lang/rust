@@ -3,6 +3,7 @@
 // ```
 // npm install browser-ui-test
 // ```
+
 const fs = require("fs");
 const path = require("path");
 const os = require('os');
@@ -172,12 +173,14 @@ async function main(argv) {
     files.sort();
 
     console.log(`Running ${files.length} rustdoc-gui tests...`);
+
     if (opts["jobs"] < 1) {
         process.setMaxListeners(files.length + 1);
     } else {
-        process.setMaxListeners(opts["jobs"]);
+        process.setMaxListeners(opts["jobs"] + 1);
     }
-    let tests = [];
+
+    const tests_queue = [];
     let results = {
         successful: [],
         failed: [],
@@ -187,8 +190,7 @@ async function main(argv) {
     for (let i = 0; i < files.length; ++i) {
         const file_name = files[i];
         const testPath = path.join(opts["tests_folder"], file_name);
-        tests.push(
-            runTest(testPath, options)
+        const callback = runTest(testPath, options)
             .then(out => {
                 const [output, nb_failures] = out;
                 results[nb_failures === 0 ? "successful" : "failed"].push({
@@ -196,10 +198,10 @@ async function main(argv) {
                     output: output,
                 });
                 if (nb_failures > 0) {
-                    status_bar.erroneous()
+                    status_bar.erroneous();
                     failed = true;
                 } else {
-                    status_bar.successful()
+                    status_bar.successful();
                 }
             })
             .catch(err => {
@@ -210,13 +212,19 @@ async function main(argv) {
                 status_bar.erroneous();
                 failed = true;
             })
-        );
+            .finally(() => {
+                // We now remove the promise from the tests_queue.
+                tests_queue.splice(tests_queue.indexOf(callback), 1);
+            });
+        tests_queue.push(callback);
         if (no_headless) {
-            await tests[i];
+            await tests_queue[i];
+        } else if (opts["jobs"] > 0 && tests_queue.length >= opts["jobs"]) {
+            await Promise.race(tests_queue);
         }
     }
-    if (!no_headless) {
-        await Promise.all(tests);
+    if (!no_headless && tests_queue.length > 0) {
+        await Promise.all(tests_queue);
     }
     status_bar.finish();
 

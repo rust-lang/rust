@@ -423,7 +423,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         diag
     }
 
-    /// Reports a error specifically for when data is escaping a closure.
+    /// Reports an error specifically for when data is escaping a closure.
     ///
     /// ```text
     /// error: borrowed data escapes outside of function
@@ -566,7 +566,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         diag
     }
 
-    /// Adds a suggestion to errors where a `impl Trait` is returned.
+    /// Adds a suggestion to errors where an `impl Trait` is returned.
     ///
     /// ```text
     /// help: to allow this `impl Trait` to capture borrowed data with lifetime `'1`, add `'_` as

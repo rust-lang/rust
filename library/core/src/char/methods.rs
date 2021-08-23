@@ -958,7 +958,7 @@ impl char {
     /// Returns an iterator that yields the uppercase mapping of this `char` as one or more
     /// `char`s.
     ///
-    /// If this `char` does not have a uppercase mapping, the iterator yields the same `char`.
+    /// If this `char` does not have an uppercase mapping, the iterator yields the same `char`.
     ///
     /// If this `char` has a one-to-one uppercase mapping given by the [Unicode Character
     /// Database][ucd] [`UnicodeData.txt`], the iterator yields that `char`.

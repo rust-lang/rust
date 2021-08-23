@@ -8,7 +8,7 @@ pub mod mod_foo {
     pub struct Bar;
 }
 
-/// This is a struct with a `#[allow(missing_docs)]`
+/// This is a struct with an `#[allow(missing_docs)]`
 pub struct AllowTheMissingDocs {
     #[allow(missing_docs)]
     pub empty_str: String,

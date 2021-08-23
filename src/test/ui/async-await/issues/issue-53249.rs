@@ -8,7 +8,7 @@ use std::future::Future;
 use std::marker::Unpin;
 use std::pin::Pin;
 
-// This is a regression test for a ICE/unbounded recursion issue relating to async-await.
+// This is a regression test for an ICE/unbounded recursion issue relating to async-await.
 
 #[derive(Debug)]
 #[must_use = "futures do nothing unless polled"]

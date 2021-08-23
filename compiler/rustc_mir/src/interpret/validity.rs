@@ -857,7 +857,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // types above, in `visit_primitive`.
                 // In run-time mode, we accept pointers in here.  This is actually more
                 // permissive than a per-element check would be, e.g., we accept
-                // an &[u8] that contains a pointer even though bytewise checking would
+                // a &[u8] that contains a pointer even though bytewise checking would
                 // reject it.  However, that's good: We don't inherently want
                 // to reject those pointers, we just do not have the machinery to
                 // talk about parts of a pointer.

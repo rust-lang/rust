@@ -3070,16 +3070,19 @@ declare_lint! {
 
 declare_lint! {
     /// The `rust_2021_incompatible_closure_captures` lint detects variables that aren't completely
-    /// captured in Rust 2021 and affect the Drop order of at least one path starting at this variable.
-    /// It can also detect when a variable implements a trait, but one of its field does not and
-    /// the field is captured by a closure and used with the assumption that said field implements
+    /// captured in Rust 2021, such that the `Drop` order of their fields may differ between
+    /// Rust 2018 and 2021.
+    ///
+    /// It can also detect when a variable implements a trait like `Send`, but one of its fields does not,
+    /// and the field is captured by a closure and used with the assumption that said field implements
     /// the same trait as the root variable.
     ///
     /// ### Example of drop reorder
     ///
     /// ```rust,compile_fail
-    /// # #![deny(rust_2021_incompatible_closure_captures)]
+    /// #![deny(rust_2021_incompatible_closure_captures)]
     /// # #![allow(unused)]
+    ///
     /// struct FancyInteger(i32);
     ///
     /// impl Drop for FancyInteger {
@@ -3133,8 +3136,8 @@ declare_lint! {
     /// ### Explanation
     ///
     /// In the above example, only `fptr.0` is captured in Rust 2021.
-    /// The field is of type *mut i32 which doesn't implement Send, making the code invalid as the
-    /// field cannot be sent between thread safely.
+    /// The field is of type `*mut i32`, which doesn't implement `Send`,
+    /// making the code invalid as the field cannot be sent between threads safely.
     pub RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
     Allow,
     "detects closures affected by Rust 2021 changes",
@@ -3254,6 +3257,7 @@ declare_lint! {
     ///
     /// ```rust,compile_fail
     /// #![deny(rust_2021_incompatible_or_patterns)]
+    ///
     /// macro_rules! match_any {
     ///     ( $expr:expr , $( $( $pat:pat )|+ => $expr_arm:expr ),+ ) => {
     ///         match $expr {
@@ -3275,7 +3279,7 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// In Rust 2021, the pat matcher will match new patterns, which include the | character.
+    /// In Rust 2021, the `pat` matcher will match additional patterns, which include the `|` character.
     pub RUST_2021_INCOMPATIBLE_OR_PATTERNS,
     Allow,
     "detects usage of old versions of or-patterns",
@@ -3320,8 +3324,8 @@ declare_lint! {
     /// In Rust 2021, one of the important introductions is the [prelude changes], which add
     /// `TryFrom`, `TryInto`, and `FromIterator` into the standard library's prelude. Since this
     /// results in an ambiguity as to which method/function to call when an existing `try_into`
-    ///  method is called via dot-call syntax or a `try_from`/`from_iter` associated function
-    ///  is called directly on a type.
+    /// method is called via dot-call syntax or a `try_from`/`from_iter` associated function
+    /// is called directly on a type.
     ///
     /// [prelude changes]: https://blog.rust-lang.org/inside-rust/2021/03/04/planning-rust-2021.html#prelude-changes
     pub RUST_2021_PRELUDE_COLLISIONS,
@@ -3371,7 +3375,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `unsupported_calling_conventions` lint is output whenever there is an use of the
+    /// The `unsupported_calling_conventions` lint is output whenever there is a use of the
     /// `stdcall`, `fastcall`, `thiscall`, `vectorcall` calling conventions (or their unwind
     /// variants) on targets that cannot meaningfully be supported for the requested target.
     ///

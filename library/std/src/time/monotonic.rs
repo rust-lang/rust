@@ -84,7 +84,7 @@ pub mod inner {
     pub(super) fn monotonize(raw: time::Instant) -> time::Instant {
         let delta = raw.checked_sub_instant(&ZERO).unwrap();
         // Split into seconds and nanos since Duration doesn't have a
-        // constructor that takes an u128
+        // constructor that takes a u128
         let secs = delta.as_secs() as u128;
         let nanos = delta.subsec_nanos() as u128;
         let timestamp: u128 = secs << 64 | nanos;

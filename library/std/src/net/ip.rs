@@ -380,7 +380,7 @@ impl IpAddr {
         matches!(self, IpAddr::V6(_))
     }
 
-    /// Converts this address to an `IpAddr::V4` if it is a IPv4-mapped IPv6 addresses, otherwise it
+    /// Converts this address to an `IpAddr::V4` if it is an IPv4-mapped IPv6 addresses, otherwise it
     /// return `self` as-is.
     ///
     /// # Examples
@@ -1621,8 +1621,8 @@ impl Ipv6Addr {
         }
     }
 
-    /// Converts this address to an `IpAddr::V4` if it is a IPv4-mapped addresses, otherwise it
-    /// returns self wrapped in a `IpAddr::V6`.
+    /// Converts this address to an `IpAddr::V4` if it is an IPv4-mapped addresses, otherwise it
+    /// returns self wrapped in an `IpAddr::V6`.
     ///
     /// # Examples
     ///

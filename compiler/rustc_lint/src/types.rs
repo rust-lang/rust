@@ -1171,7 +1171,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     ty::Projection(..) => {
                         let ty = self.cx.tcx.normalize_erasing_regions(self.cx.param_env, ty);
 
-                        // If `ty` is a opaque type directly then `super_visit_with` won't invoke
+                        // If `ty` is an opaque type directly then `super_visit_with` won't invoke
                         // this function again.
                         if ty.has_opaque_types() {
                             self.visit_ty(ty)

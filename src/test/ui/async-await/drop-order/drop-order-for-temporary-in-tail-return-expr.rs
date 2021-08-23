@@ -10,7 +10,7 @@
 // Test the drop order for parameters relative to local variables and
 // temporaries created in the tail return expression of the function
 // body. In particular, check that this drop order is the same between
-// a `async fn` and an ordinary `fn`. See #64512.
+// an `async fn` and an ordinary `fn`. See #64512.
 
 extern crate arc_wake;
 

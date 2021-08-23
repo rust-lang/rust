@@ -30,7 +30,7 @@ fn main() {
     match enum_unit {
         NonExhaustiveEnum::Unit => 1,
         NonExhaustiveEnum::Tuple(_) => 2,
-        // This particular arm tests that a enum marked as non-exhaustive
+        // This particular arm tests that an enum marked as non-exhaustive
         // will not error if its variants are matched exhaustively.
         NonExhaustiveEnum::Struct { field } => field,
         _ => 0 // no error with wildcard

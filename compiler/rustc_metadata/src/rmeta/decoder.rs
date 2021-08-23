@@ -62,7 +62,7 @@ crate struct CrateMetadata {
     // --- Some data pre-decoded from the metadata blob, usually for performance ---
     /// Properties of the whole crate.
     /// NOTE(eddyb) we pass `'static` to a `'tcx` parameter because this
-    /// lifetime is only used behind `Lazy`, and therefore acts like an
+    /// lifetime is only used behind `Lazy`, and therefore acts like a
     /// universal (`for<'tcx>`), that is paired up with whichever `TyCtxt`
     /// is being used to decode those values.
     root: CrateRoot<'static>,

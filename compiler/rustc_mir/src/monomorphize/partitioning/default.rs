@@ -455,7 +455,7 @@ fn mono_item_visibility(
         def_id
     } else {
         return if export_generics && is_generic {
-            // If it is a upstream monomorphization and we export generics, we must make
+            // If it is an upstream monomorphization and we export generics, we must make
             // it available to downstream crates.
             *can_be_internalized = false;
             default_visibility(tcx, def_id, true)

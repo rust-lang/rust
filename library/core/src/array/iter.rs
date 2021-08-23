@@ -45,7 +45,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// use std::array;
     ///
     /// for value in array::IntoIter::new([1, 2, 3, 4, 5]) {
-    ///     // The type of `value` is a `i32` here, instead of `&i32`
+    ///     // The type of `value` is an `i32` here, instead of `&i32`
     ///     let _: i32 = value;
     /// }
     /// ```

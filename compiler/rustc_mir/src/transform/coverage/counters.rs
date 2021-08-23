@@ -100,7 +100,7 @@ impl CoverageCounters {
         CounterValueReference::from(next)
     }
 
-    /// Expression IDs start from u32::MAX and go down because a Expression can reference
+    /// Expression IDs start from u32::MAX and go down because an Expression can reference
     /// (add or subtract counts) of both Counter regions and Expression regions. The counter
     /// expression operand IDs must be unique across both types.
     fn next_expression(&mut self) -> InjectedExpressionId {

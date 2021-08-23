@@ -63,7 +63,7 @@ impl MaybeFnLike for hir::Expr<'_> {
     }
 }
 
-/// Carries either an FnLikeNode or a Expr, as these are the two
+/// Carries either an FnLikeNode or an Expr, as these are the two
 /// constructs that correspond to "code" (as in, something from which
 /// we can construct a control-flow graph).
 #[derive(Copy, Clone)]

@@ -1456,7 +1456,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // an immut-ref after on top of this.
                 ty::Ref(.., hir::Mutability::Mut) => is_mutbl = hir::Mutability::Mut,
 
-                // The place isn't mutable once we dereference a immutable reference.
+                // The place isn't mutable once we dereference an immutable reference.
                 ty::Ref(.., hir::Mutability::Not) => return hir::Mutability::Not,
 
                 // Dereferencing a box doesn't change mutability

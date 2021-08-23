@@ -489,7 +489,7 @@ impl Cursor<'_> {
         // Start is already eaten, eat the rest of identifier.
         self.eat_while(is_id_continue);
         // Known prefixes must have been handled earlier. So if
-        // we see a prefix here, it is definitely a unknown prefix.
+        // we see a prefix here, it is definitely an unknown prefix.
         match self.first() {
             '#' | '"' | '\'' => UnknownPrefix,
             _ => Ident,

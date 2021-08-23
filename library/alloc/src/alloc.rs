@@ -387,7 +387,7 @@ pub mod __alloc_error_handler {
         panic!("memory allocation of {} bytes failed", size)
     }
 
-    // if there is a `#[alloc_error_handler]`
+    // if there is an `#[alloc_error_handler]`
     #[rustc_std_internal_symbol]
     pub unsafe extern "C" fn __rg_oom(size: usize, align: usize) -> ! {
         let layout = unsafe { Layout::from_size_align_unchecked(size, align) };

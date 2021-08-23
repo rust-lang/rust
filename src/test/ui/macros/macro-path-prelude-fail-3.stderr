@@ -8,6 +8,8 @@ LL |     inline!();
    |
 LL |     macro_rules! line {
    |     ----------------- similarly named macro `line` defined here
+   |
+   = note: `inline` is in scope, but it is an attribute: `#[inline]`
 
 error: aborting due to previous error
 

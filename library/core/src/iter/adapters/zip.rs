@@ -563,7 +563,7 @@ where
 }
 
 unsafe trait SpecTrustedRandomAccess: Iterator {
-    /// If `Self: TrustedRandomAccess`, it must be safe to call a
+    /// If `Self: TrustedRandomAccess`, it must be safe to call
     /// `Iterator::__iterator_get_unchecked(self, index)`.
     unsafe fn try_get_unchecked(&mut self, index: usize) -> Self::Item;
 }

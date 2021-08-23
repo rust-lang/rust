@@ -313,7 +313,7 @@ pub trait Visitor<'v>: Sized {
     }
 
     /// When invoking `visit_all_item_likes()`, you need to supply an
-    /// item-like visitor. This method converts a "intra-visit"
+    /// item-like visitor. This method converts an "intra-visit"
     /// visitor into an item-like visitor that walks the entire tree.
     /// If you use this, you probably don't want to process the
     /// contents of nested item-like things, since the outer loop will

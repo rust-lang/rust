@@ -145,7 +145,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
 
         // FIXME(oli-obk, eddyb) Optimize locals (or even local paths) to hold
         // constants, instead of just checking for const-folding succeeding.
-        // That would require an uniform one-def no-mutation analysis
+        // That would require a uniform one-def no-mutation analysis
         // and RPO (or recursing when needing the value of a local).
         let mut optimization_finder = ConstPropagator::new(body, dummy_body, tcx);
         optimization_finder.visit_body(body);

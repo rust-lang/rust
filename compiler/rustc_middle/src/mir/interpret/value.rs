@@ -17,7 +17,7 @@ use super::{
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
 #[derive(Copy, Clone, HashStable, TyEncodable, TyDecodable, Debug, Hash, Eq, PartialEq)]
 pub struct ConstAlloc<'tcx> {
-    // the value lives here, at offset 0, and that allocation definitely is a `AllocKind::Memory`
+    // the value lives here, at offset 0, and that allocation definitely is an `AllocKind::Memory`
     // (so you can use `AllocMap::unwrap_memory`).
     pub alloc_id: AllocId,
     pub ty: Ty<'tcx>,
@@ -113,7 +113,7 @@ impl<'tcx> ConstValue<'tcx> {
 }
 
 /// A `Scalar` represents an immediate, primitive value existing outside of a
-/// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 16 bytes in
+/// `memory::Allocation`. It is in many ways like a small chunk of an `Allocation`, up to 16 bytes in
 /// size. Like a range of bytes in an `Allocation`, a `Scalar` can either represent the raw bytes
 /// of a simple value or a pointer into another `Allocation`
 ///
@@ -376,27 +376,27 @@ impl<'tcx, Tag: Provenance> Scalar<Tag> {
         self.to_bits(sz)
     }
 
-    /// Converts the scalar to produce an `u8`. Fails if the scalar is a pointer.
+    /// Converts the scalar to produce a `u8`. Fails if the scalar is a pointer.
     pub fn to_u8(self) -> InterpResult<'static, u8> {
         self.to_unsigned_with_bit_width(8).map(|v| u8::try_from(v).unwrap())
     }
 
-    /// Converts the scalar to produce an `u16`. Fails if the scalar is a pointer.
+    /// Converts the scalar to produce a `u16`. Fails if the scalar is a pointer.
     pub fn to_u16(self) -> InterpResult<'static, u16> {
         self.to_unsigned_with_bit_width(16).map(|v| u16::try_from(v).unwrap())
     }
 
-    /// Converts the scalar to produce an `u32`. Fails if the scalar is a pointer.
+    /// Converts the scalar to produce a `u32`. Fails if the scalar is a pointer.
     pub fn to_u32(self) -> InterpResult<'static, u32> {
         self.to_unsigned_with_bit_width(32).map(|v| u32::try_from(v).unwrap())
     }
 
-    /// Converts the scalar to produce an `u64`. Fails if the scalar is a pointer.
+    /// Converts the scalar to produce a `u64`. Fails if the scalar is a pointer.
     pub fn to_u64(self) -> InterpResult<'static, u64> {
         self.to_unsigned_with_bit_width(64).map(|v| u64::try_from(v).unwrap())
     }
 
-    /// Converts the scalar to produce an `u128`. Fails if the scalar is a pointer.
+    /// Converts the scalar to produce a `u128`. Fails if the scalar is a pointer.
     pub fn to_u128(self) -> InterpResult<'static, u128> {
         self.to_unsigned_with_bit_width(128)
     }

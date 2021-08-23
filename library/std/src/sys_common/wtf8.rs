@@ -785,7 +785,7 @@ pub fn is_code_point_boundary(slice: &Wtf8, index: usize) -> bool {
 /// Copied from core::str::raw::slice_unchecked
 #[inline]
 pub unsafe fn slice_unchecked(s: &Wtf8, begin: usize, end: usize) -> &Wtf8 {
-    // memory layout of an &[u8] and &Wtf8 are the same
+    // memory layout of a &[u8] and &Wtf8 are the same
     Wtf8::from_bytes_unchecked(slice::from_raw_parts(s.bytes.as_ptr().add(begin), end - begin))
 }
 

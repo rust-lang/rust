@@ -162,7 +162,7 @@ impl io::Read for Stdin {
         }
 
         let mut utf16_buf = [0u16; MAX_BUFFER_SIZE / 2];
-        // In the worst case, an UTF-8 string can take 3 bytes for every `u16` of an UTF-16. So
+        // In the worst case, a UTF-8 string can take 3 bytes for every `u16` of a UTF-16. So
         // we can read at most a third of `buf.len()` chars and uphold the guarantee no data gets
         // lost.
         let amount = cmp::min(buf.len() / 3, utf16_buf.len());

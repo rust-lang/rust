@@ -901,7 +901,7 @@ fn cast_float_to_int<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     //
     // Performance note: Unordered comparison can be lowered to a "flipped"
     // comparison and a negation, and the negation can be merged into the
-    // select. Therefore, it not necessarily any more expensive than a
+    // select. Therefore, it not necessarily any more expensive than an
     // ordered ("normal") comparison. Whether these optimizations will be
     // performed is ultimately up to the backend, but at least x86 does
     // perform them.

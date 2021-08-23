@@ -118,7 +118,7 @@ fn to_camel_case(s: &str) -> String {
         })
         .fold((String::new(), None), |(acc, prev): (String, Option<String>), next| {
             // separate two components with an underscore if their boundary cannot
-            // be distinguished using a uppercase/lowercase case distinction
+            // be distinguished using an uppercase/lowercase case distinction
             let join = if let Some(prev) = prev {
                 let l = prev.chars().last().unwrap();
                 let f = next.chars().next().unwrap();

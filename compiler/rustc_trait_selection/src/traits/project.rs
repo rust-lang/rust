@@ -62,7 +62,7 @@ enum ProjectionTyCandidate<'tcx> {
     /// Bounds specified on an object type
     Object(ty::PolyProjectionPredicate<'tcx>),
 
-    /// From a "impl" (or a "pseudo-impl" returned by select)
+    /// From an "impl" (or a "pseudo-impl" returned by select)
     Select(Selection<'tcx>),
 }
 
@@ -1011,7 +1011,7 @@ fn prune_cache_value_obligations<'a, 'tcx>(
 /// Note that we used to return `Error` here, but that was quite
 /// dubious -- the premise was that an error would *eventually* be
 /// reported, when the obligation was processed. But in general once
-/// you see a `Error` you are supposed to be able to assume that an
+/// you see an `Error` you are supposed to be able to assume that an
 /// error *has been* reported, so that you can take whatever heuristic
 /// paths you want to take. To make things worse, it was possible for
 /// cycles to arise, where you basically had a setup like `<MyType<$0>

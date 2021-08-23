@@ -151,7 +151,7 @@ rustc_index::newtype_index! {
 static_assert_size!(ScopeData, 4);
 
 impl Scope {
-    /// Returns a item-local ID associated with this scope.
+    /// Returns an item-local ID associated with this scope.
     ///
     /// N.B., likely to be replaced as API is refined; e.g., pnkfelix
     /// anticipates `fn entry_node_id` and `fn each_exit_node_id`.

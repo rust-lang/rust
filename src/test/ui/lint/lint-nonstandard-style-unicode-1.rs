@@ -30,7 +30,7 @@ struct 对__否;
 struct ヒ__χ;
 //~^ ERROR type `ヒ__χ` should have an upper camel case name
 
-// also cannot have lowercase letter next to a underscore.
+// also cannot have lowercase letter next to an underscore.
 // so this triggers the lint:
 
 struct Hello_你好;

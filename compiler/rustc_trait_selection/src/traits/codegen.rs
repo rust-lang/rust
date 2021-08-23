@@ -12,7 +12,7 @@ use rustc_errors::ErrorReported;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, TyCtxt};
 
-/// Attempts to resolve an obligation to a `ImplSource`. The result is
+/// Attempts to resolve an obligation to an `ImplSource`. The result is
 /// a shallow `ImplSource` resolution, meaning that we do not
 /// (necessarily) resolve all nested obligations on the impl. Note
 /// that type check should guarantee to us that all nested

@@ -22,7 +22,7 @@ use crate::html::render::IndexItem;
 ///
 /// This structure purposefully does not implement `Clone` because it's intended
 /// to be a fairly large and expensive structure to clone. Instead this adheres
-/// to `Send` so it may be stored in a `Arc` instance and shared among the various
+/// to `Send` so it may be stored in an `Arc` instance and shared among the various
 /// rendering threads.
 #[derive(Default)]
 crate struct Cache {

@@ -2571,14 +2571,14 @@ where
     /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
     ///
     /// NB: this doesn't handle virtual calls - those should use `FnAbi::of_instance`
-    /// instead, where the instance is a `InstanceDef::Virtual`.
+    /// instead, where the instance is an `InstanceDef::Virtual`.
     fn of_fn_ptr(cx: &C, sig: ty::PolyFnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
 
     /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for
     /// direct calls to an `fn`.
     ///
     /// NB: that includes virtual calls, which are represented by "direct calls"
-    /// to a `InstanceDef::Virtual` instance (of `<dyn Trait as Trait>::fn`).
+    /// to an `InstanceDef::Virtual` instance (of `<dyn Trait as Trait>::fn`).
     fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
 
     fn new_internal(
