@@ -7,12 +7,9 @@ use std::iter;
 #[test]
 fn test_hashset_insert_remove() {
     let mut m: HashSet<Vec<char>> = HashSet::new();
-    let seed: [u8; 32] = [
-        130, 220, 246, 217, 111, 124, 221, 189, 190, 234, 121, 93, 67, 95, 100, 43, // again
-        130, 220, 246, 217, 111, 124, 221, 189, 190, 234, 121, 93, 67, 95, 100, 43,
-    ];
+    let seed = u64::from_le_bytes(*b"testseed");
 
-    let rng = &mut SmallRng::from_seed(seed);
+    let rng = &mut SmallRng::seed_from_u64(seed);
     let tx: Vec<Vec<char>> = iter::repeat_with(|| {
         rng.sample_iter(&Alphanumeric)
             .take(32)
