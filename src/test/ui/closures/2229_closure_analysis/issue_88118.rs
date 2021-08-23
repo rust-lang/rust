@@ -2,6 +2,7 @@
 //
 // check-pass
 
+#![allow(incomplete_features)]
 #![feature(capture_disjoint_fields)]
 
 fn foo<MsU>(handler: impl FnOnce() -> MsU + Clone + 'static) {
