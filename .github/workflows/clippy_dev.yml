@@ -42,9 +42,6 @@ jobs:
       run: cargo build --features deny-warnings
       working-directory: clippy_dev
 
-    - name: Test limit_stderr_length
-      run: cargo dev limit_stderr_length
-
     - name: Test update_lints
       run: cargo dev update_lints --check
 

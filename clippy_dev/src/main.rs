@@ -3,7 +3,7 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
-use clippy_dev::{bless, fmt, new_lint, serve, setup, stderr_length_check, update_lints};
+use clippy_dev::{bless, fmt, new_lint, serve, setup, update_lints};
 fn main() {
     let matches = get_clap_config();
 
@@ -32,9 +32,6 @@ fn main() {
                 Ok(_) => update_lints::run(update_lints::UpdateMode::Change),
                 Err(e) => eprintln!("Unable to create lint: {}", e),
             }
-        },
-        ("limit_stderr_length", _) => {
-            stderr_length_check::check();
         },
         ("setup", Some(sub_command)) => match sub_command.subcommand() {
             ("intellij", Some(matches)) => setup::intellij::setup_rustc_src(
@@ -151,10 +148,6 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                         ])
                         .takes_value(true),
                 ),
-        )
-        .subcommand(
-            SubCommand::with_name("limit_stderr_length")
-                .about("Ensures that stderr files do not grow longer than a certain amount of lines."),
         )
         .subcommand(
             SubCommand::with_name("setup")
