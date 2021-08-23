@@ -34,8 +34,8 @@ fn simple_ref() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         *ref_s += 10;
-        //~^ NOTE: Capturing ref_s[Deref] -> UniqueImmBorrow
-        //~| NOTE: Min Capture ref_s[Deref] -> UniqueImmBorrow
+        //~^ NOTE: Capturing ref_s[Deref] -> MutBorrow
+        //~| NOTE: Min Capture ref_s[Deref] -> MutBorrow
     };
     c();
 }
@@ -55,8 +55,8 @@ fn struct_contains_ref_to_another_struct_1() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         t.0.0 = "new s".into();
-        //~^ NOTE: Capturing t[(0, 0),Deref,(0, 0)] -> UniqueImmBorrow
-        //~| NOTE: Min Capture t[(0, 0),Deref,(0, 0)] -> UniqueImmBorrow
+        //~^ NOTE: Capturing t[(0, 0),Deref,(0, 0)] -> MutBorrow
+        //~| NOTE: Min Capture t[(0, 0),Deref,(0, 0)] -> MutBorrow
     };
 
     c();
@@ -173,9 +173,9 @@ fn box_mut_1() {
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| First Pass analysis includes:
-    //~| NOTE: Capturing box_p_foo[Deref,Deref,(0, 0)] -> UniqueImmBorrow
+    //~| NOTE: Capturing box_p_foo[Deref,Deref,(0, 0)] -> MutBorrow
     //~| Min Capture analysis includes:
-    //~| NOTE: Min Capture box_p_foo[Deref,Deref,(0, 0)] -> UniqueImmBorrow
+    //~| NOTE: Min Capture box_p_foo[Deref,Deref,(0, 0)] -> MutBorrow
 }
 
 // Ensure that even in move closures, if the data is not owned by the root variable
@@ -190,9 +190,9 @@ fn box_mut_2() {
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| First Pass analysis includes:
-    //~| NOTE: Capturing p_foo[Deref,Deref,(0, 0)] -> UniqueImmBorrow
+    //~| NOTE: Capturing p_foo[Deref,Deref,(0, 0)] -> MutBorrow
     //~| Min Capture analysis includes:
-    //~| NOTE: Min Capture p_foo[Deref,Deref,(0, 0)] -> UniqueImmBorrow
+    //~| NOTE: Min Capture p_foo[Deref,Deref,(0, 0)] -> MutBorrow
 }
 
 // Test that move closures can take ownership of Copy type
