@@ -939,16 +939,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 // FIXME(eddyb) this might be incorrect - it doesn't
                                 // account for wrap-around (end < start) ranges.
                                 assert!(scalar.valid_range.start <= start);
-                                // scalar.valid_range =
-                                //     AllocationRange { start, end: scalar.valid_range.end };
                                 scalar.valid_range.start = start;
                             }
                             if let Bound::Included(end) = end {
                                 // FIXME(eddyb) this might be incorrect - it doesn't
                                 // account for wrap-around (end < start) ranges.
                                 assert!(scalar.valid_range.end >= end);
-                                // scalar.valid_range =
-                                //     AllocationRange { start: scalar.valid_range.start, end };
                                 scalar.valid_range.end = end;
                             }
 
