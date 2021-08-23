@@ -30,13 +30,9 @@ if retry rustup component add rustfmt ; then
 fi
 
 if retry rustup component add clippy ; then
-    cargo clippy --all -- -D clippy::pedantic
-fi
-
-if [ "${TRAVIS_OS_NAME}" = "linux" ]; then
-    if retry rustup component add clippy ; then
-        cargo clippy --all --target=i586-unknown-linux-gnu -- -D clippy::all -D clippy::pedantic
-    fi
+    cargo clippy --all --tests --features serde,rayon,bumpalo -- -D clippy::all -D clippy::pedantic
+    cargo clippy --all --tests --features raw -- -D clippy::all -D clippy::pedantic \
+        -A clippy::missing_safety_doc -A clippy::missing_errors_doc
 fi
 
 if command -v shellcheck ; then

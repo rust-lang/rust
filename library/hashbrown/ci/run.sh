@@ -12,7 +12,7 @@ else
     FEATURES="rustc-internal-api,serde,rayon,raw,bumpalo"
     OP="test"
 fi
-if [ "${TRAVIS_RUST_VERSION}" = "nightly" ]; then
+if [ "${CHANNEL}" = "nightly" ]; then
     FEATURES="${FEATURES},nightly"
     export RUSTFLAGS="$RUSTFLAGS -D warnings"
 fi
@@ -36,7 +36,7 @@ fi
 "${CARGO}" -vv ${OP} --target="${TARGET}" --release
 "${CARGO}" -vv ${OP} --target="${TARGET}" --release --features "${FEATURES}"
 
-if [ "${TRAVIS_RUST_VERSION}" = "nightly" ] && [ "${NO_STD}" != 1 ]; then
+if [ "${CHANNEL}" = "nightly" ] && [ "${NO_STD}" != 1 ]; then
     # Run benchmark on native targets, build them on non-native ones:
     NO_RUN=""
     if [ "${CROSS}" = "1" ]; then

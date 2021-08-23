@@ -1,0 +1,98 @@
+name: Rust
+
+on:
+  push:
+    branches-ignore:
+      - trying.tmp
+      - staging.tmp
+  pull_request:
+
+jobs:
+  miri:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - env:
+        TARGET: x86_64-unknown-linux-gnu
+      run: sh ci/miri.sh
+
+  rustfmt_clippy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - env:
+        TARGET: i586-unknown-linux-gnu
+      run: sh ci/tools.sh
+
+  test:
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ matrix.channel }}
+        override: true
+    - env:
+        TARGET: ${{ matrix.target }}
+        CHANNEL: ${{ matrix.channel }}
+        CROSS: ${{ matrix.target != 'x86_64-unknown-linux-gnu' && '1' || '0' }}
+        NO_STD: ${{ matrix.target == 'thumbv6m-none-eabi' && '1' || '0' }}
+      run: sh ci/run.sh
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        target: [
+          x86_64-unknown-linux-gnu,
+          i686-unknown-linux-gnu,
+          i586-unknown-linux-gnu,
+          armv7-unknown-linux-gnueabihf,
+          aarch64-unknown-linux-gnu,
+          thumbv6m-none-eabi,
+          x86_64-pc-windows-gnu,
+        ]
+        channel: [1.49.0, nightly]
+        include:
+        - os: macos-latest
+          target: x86_64-apple-darwin
+          channel: nightly
+        - os: windows-latest
+          target: x86_64-pc-windows-msvc
+          channel: nightly
+        - os: macos-latest
+          target: x86_64-apple-darwin
+          channel: 1.49.0
+        - os: windows-latest
+          target: x86_64-pc-windows-msvc
+          channel: 1.49.0
+        - os: ubuntu-latest
+          target: x86_64-unknown-linux-gnu
+          channel: beta
+        - os: ubuntu-latest
+          target: x86_64-unknown-linux-gnu
+          channel: stable
+
+  # These jobs doesn't actually test anything, but they're only used to tell
+  # bors the build completed, as there is no practical way to detect when a
+  # workflow is successful listening to webhooks only.
+  #
+  # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
+
+  end-success:
+    name: bors build finished
+    if: github.event.pusher.name == 'bors' && success()
+    runs-on: ubuntu-latest
+    needs: [miri, rustfmt_clippy, test]
+
+    steps:
+      - name: Mark the job as successful
+        run: exit 0
+
+  end-failure:
+    name: bors build finished
+    if: github.event.pusher.name == 'bors' && (failure() || cancelled())
+    runs-on: ubuntu-latest
+    needs: [miri, rustfmt_clippy, test]
+
+    steps:
+      - name: Mark the job as a failure
+        run: exit 1

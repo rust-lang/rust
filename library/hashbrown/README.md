@@ -1,7 +1,7 @@
 hashbrown
 =========
 
-[![Build Status](https://travis-ci.com/rust-lang/hashbrown.svg?branch=master)](https://travis-ci.com/rust-lang/hashbrown)
+[![Build Status](https://github.com/rust-lang/hashbrown/actions/workflows/rust.yml/badge.svg)](https://github.com/rust-lang/hashbrown/actions)
 [![Crates.io](https://img.shields.io/crates/v/hashbrown.svg)](https://crates.io/crates/hashbrown)
 [![Documentation](https://docs.rs/hashbrown/badge.svg)](https://docs.rs/hashbrown)
 [![Rust](https://img.shields.io/badge/rust-1.49.0%2B-blue.svg?maxAge=3600)](https://github.com/rust-lang/hashbrown)
@@ -114,8 +114,8 @@ this pre-generates seeds at compile time and embeds them as constants. See [aHas
 
 Licensed under either of:
 
- * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+ * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or https://www.apache.org/licenses/LICENSE-2.0)
+ * MIT license ([LICENSE-MIT](LICENSE-MIT) or https://opensource.org/licenses/MIT)
 
 at your option.
 

@@ -44,6 +44,6 @@ where
 {
     #[inline]
     fn drop(&mut self) {
-        (self.dropfn)(&mut self.value)
+        (self.dropfn)(&mut self.value);
     }
 }

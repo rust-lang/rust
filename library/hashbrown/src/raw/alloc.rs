@@ -47,7 +47,7 @@ mod inner {
         }
         #[inline]
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-            dealloc(ptr.as_ptr(), layout)
+            dealloc(ptr.as_ptr(), layout);
         }
     }
     impl Default for Global {
