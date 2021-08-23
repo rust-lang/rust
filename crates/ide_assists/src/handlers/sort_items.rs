@@ -92,15 +92,11 @@ pub(crate) fn sort_items(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     } else if let Some(impl_ast) = ctx.find_node_at_offset::<ast::Impl>() {
         add_sort_methods_assist(acc, impl_ast.assoc_item_list()?)
     } else if let Some(struct_ast) = ctx.find_node_at_offset::<ast::Struct>() {
-        match struct_ast.field_list() {
-            Some(ast::FieldList::RecordFieldList(it)) => add_sort_fields_assist(acc, it),
-            _ => {
-                cov_mark::hit!(not_applicable_if_sorted_or_empty_or_single);
-                None
-            }
-        }
+        add_sort_field_list_assist(acc, struct_ast.field_list())
     } else if let Some(union_ast) = ctx.find_node_at_offset::<ast::Union>() {
         add_sort_fields_assist(acc, union_ast.record_field_list()?)
+    } else if let Some(variant_ast) = ctx.find_node_at_offset::<ast::Variant>() {
+        add_sort_field_list_assist(acc, variant_ast.field_list())
     } else if let Some(enum_struct_variant_ast) = ctx.find_node_at_offset::<ast::RecordFieldList>()
     {
         // should be above enum and below struct
@@ -137,6 +133,16 @@ impl AddRewrite for Assists {
                 .zip(new)
                 .for_each(|(old, new)| ted::replace(old.syntax(), new.clone_for_update().syntax()));
         })
+    }
+}
+
+fn add_sort_field_list_assist(acc: &mut Assists, field_list: Option<ast::FieldList>) -> Option<()> {
+    match field_list {
+        Some(ast::FieldList::RecordFieldList(it)) => add_sort_fields_assist(acc, it),
+        _ => {
+            cov_mark::hit!(not_applicable_if_sorted_or_empty_or_single);
+            None
+        }
     }
 }
 
@@ -541,7 +547,7 @@ enum Bar {
     }
 
     #[test]
-    fn sort_struct_enum_variant() {
+    fn sort_struct_enum_variant_fields() {
         check_assist(
             sort_items,
             r#"
@@ -558,6 +564,23 @@ enum Bar {
     b = 14,
     a,
     c(u32, usize),
+}
+        "#,
+        )
+    }
+
+    #[test]
+    fn sort_struct_enum_variant() {
+        check_assist(
+            sort_items,
+            r#"
+enum Bar {
+    $0d$0{ second: usize, first: u32 },
+}
+        "#,
+            r#"
+enum Bar {
+    d{ first: u32, second: usize },
 }
         "#,
         )
