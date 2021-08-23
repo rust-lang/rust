@@ -1039,7 +1039,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let t_cast = self.to_ty_saving_user_provided_ty(t);
         let t_cast = self.resolve_vars_if_possible(t_cast);
         let t_expr = self.check_expr_with_expectation(e, ExpectCastableToType(t_cast));
-        let t_cast = self.resolve_vars_if_possible(t_cast);
+        let t_expr = self.resolve_vars_if_possible(t_expr);
 
         // Eagerly check for some obvious errors.
         if t_expr.references_error() || t_cast.references_error() {
