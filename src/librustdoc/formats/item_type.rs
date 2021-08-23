@@ -48,6 +48,7 @@ crate enum ItemType {
     ProcAttribute = 23,
     ProcDerive = 24,
     TraitAlias = 25,
+    Generic = 26,
 }
 
 impl Serialize for ItemType {
@@ -173,6 +174,7 @@ impl ItemType {
             ItemType::ProcAttribute => "attr",
             ItemType::ProcDerive => "derive",
             ItemType::TraitAlias => "traitalias",
+            ItemType::Generic => "generic",
         }
     }
 }

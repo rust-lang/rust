@@ -108,7 +108,7 @@ crate struct IndexItem {
 #[derive(Debug)]
 crate struct RenderType {
     name: Option<String>,
-    generics: Option<Vec<String>>,
+    generics: Option<Vec<TypeWithKind>>,
 }
 
 /// Full type of functions/methods in the search index.
@@ -2387,6 +2387,7 @@ fn item_ty_to_strs(ty: ItemType) -> (&'static str, &'static str) {
         ItemType::ProcAttribute => ("attributes", "Attribute Macros"),
         ItemType::ProcDerive => ("derives", "Derive Macros"),
         ItemType::TraitAlias => ("trait-aliases", "Trait aliases"),
+        ItemType::Generic => unreachable!(),
     }
 }
 
