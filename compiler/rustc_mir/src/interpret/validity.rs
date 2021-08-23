@@ -623,7 +623,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         scalar_layout: &ScalarAbi,
     ) -> InterpResult<'tcx> {
         let value = self.read_scalar(op)?;
-        let valid_range = scalar_layout.valid_range;
+        let valid_range = scalar_layout.valid_range.clone();
         let AllocationRange { start: lo, end: hi } = valid_range;
         // Determine the allowed range
         // `max_hi` is as big as the size fits

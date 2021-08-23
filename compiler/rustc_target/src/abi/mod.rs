@@ -985,7 +985,7 @@ impl Niche {
     }
 
     pub fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
-        let Scalar { value, valid_range: v } = self.scalar;
+        let Scalar { value, valid_range: ref v } = self.scalar;
         let bits = value.size(cx).bits();
         assert!(bits <= 128);
         let max_value = !0u128 >> (128 - bits);
@@ -998,7 +998,7 @@ impl Niche {
     pub fn reserve<C: HasDataLayout>(&self, cx: &C, count: u128) -> Option<(u128, Scalar)> {
         assert!(count > 0);
 
-        let Scalar { value, valid_range: v } = self.scalar;
+        let Scalar { value, valid_range: ref v } = self.scalar;
         let bits = value.size(cx).bits();
         assert!(bits <= 128);
         let max_value = !0u128 >> (128 - bits);
