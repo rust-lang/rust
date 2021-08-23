@@ -321,21 +321,42 @@ impl CodeSuggestion {
                         }
                     }
                     // Add a whole line highlight per line in the snippet.
-                    let len = part.snippet.split('\n').next().unwrap_or(&part.snippet).len();
+                    let len: isize = part
+                        .snippet
+                        .split('\n')
+                        .next()
+                        .unwrap_or(&part.snippet)
+                        .chars()
+                        .map(|c| match c {
+                            '\t' => 4,
+                            _ => 1,
+                        })
+                        .sum();
                     line_highlight.push(SubstitutionHighlight {
                         start: (cur_lo.col.0 as isize + acc) as usize,
-                        end: (cur_lo.col.0 as isize + acc + len as isize) as usize,
+                        end: (cur_lo.col.0 as isize + acc + len) as usize,
                     });
                     buf.push_str(&part.snippet);
-                    prev_hi = sm.lookup_char_pos(part.span.hi());
+                    let cur_hi = sm.lookup_char_pos(part.span.hi());
                     if prev_hi.line == cur_lo.line {
-                        acc += len as isize - (prev_hi.col.0 - cur_lo.col.0) as isize;
+                        // Account for the difference between the width of the current code and the
+                        // snippet being suggested, so that the *later* suggestions are correctly
+                        // aligned on the screen.
+                        acc += len as isize - (cur_hi.col.0 - cur_lo.col.0) as isize;
                     }
+                    prev_hi = cur_hi;
                     prev_line = sf.get_line(prev_hi.line - 1);
                     for line in part.snippet.split('\n').skip(1) {
                         acc = 0;
                         highlights.push(std::mem::take(&mut line_highlight));
-                        line_highlight.push(SubstitutionHighlight { start: 0, end: line.len() });
+                        let end: usize = line
+                            .chars()
+                            .map(|c| match c {
+                                '\t' => 4,
+                                _ => 1,
+                            })
+                            .sum();
+                        line_highlight.push(SubstitutionHighlight { start: 0, end });
                     }
                 }
                 highlights.push(std::mem::take(&mut line_highlight));
