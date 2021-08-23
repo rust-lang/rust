@@ -1,6 +1,6 @@
 use std::env;
 
-use crate::spec::{FramePointer, SplitDebuginfo, TargetOptions};
+use crate::spec::{FramePointer, LldFlavor, SplitDebuginfo, TargetOptions};
 
 pub fn opts(os: &str) -> TargetOptions {
     // ELF TLS is only available in macOS 10.7+. If you try to compile for 10.6
@@ -35,6 +35,7 @@ pub fn opts(os: &str) -> TargetOptions {
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
         eh_frame_header: false,
+        lld_flavor: LldFlavor::Ld64,
 
         // The historical default for macOS targets is to run `dsymutil` which
         // generates a packed version of debuginfo split from the main file.
