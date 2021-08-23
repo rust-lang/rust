@@ -111,6 +111,7 @@
 //
 // Language features:
 #![feature(abi_unadjusted)]
+#![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(asm)]
 #![feature(associated_type_bounds)]

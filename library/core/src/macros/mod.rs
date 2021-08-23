@@ -828,6 +828,7 @@ pub(crate) mod builtin {
     /// assert_eq!(s, format!("hello {}", "world"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow_internal_unsafe]
     #[allow_internal_unstable(fmt_internals)]
     #[rustc_builtin_macro]
     #[macro_export]

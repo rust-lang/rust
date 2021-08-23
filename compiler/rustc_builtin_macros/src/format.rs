@@ -3,8 +3,8 @@ use Position::*;
 
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::{token, BlockCheckMode, UnsafeSource};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_expand::base::{self, *};
@@ -838,12 +838,15 @@ impl<'a, 'b> Context<'a, 'b> {
         //
         // But the nested match expression is proved to perform not as well
         // as series of let's; the first approach does.
-        let pat = self.ecx.pat_tuple(self.macsp, pats);
-        let arm = self.ecx.arm(self.macsp, pat, args_array);
-        let head = self.ecx.expr(self.macsp, ast::ExprKind::Tup(heads));
-        let result = self.ecx.expr_match(self.macsp, head, vec![arm]);
+        let args_match = {
+            let pat = self.ecx.pat_tuple(self.macsp, pats);
+            let arm = self.ecx.arm(self.macsp, pat, args_array);
+            let head = self.ecx.expr(self.macsp, ast::ExprKind::Tup(heads));
+            self.ecx.expr_match(self.macsp, head, vec![arm])
+        };
 
-        let args_slice = self.ecx.expr_addr_of(self.macsp, result);
+        let ident = Ident::from_str_and_span("args", self.macsp);
+        let args_slice = self.ecx.expr_ident(self.macsp, ident);
 
         // Now create the fmt::Arguments struct with all our locals we created.
         let (fn_name, fn_args) = if self.all_pieces_simple {
@@ -857,7 +860,20 @@ impl<'a, 'b> Context<'a, 'b> {
         };
 
         let path = self.ecx.std_path(&[sym::fmt, sym::Arguments, Symbol::intern(fn_name)]);
-        self.ecx.expr_call_global(self.macsp, path, fn_args)
+        let arguments = self.ecx.expr_call_global(self.macsp, path, fn_args);
+        let body = self.ecx.expr_block(P(ast::Block {
+            stmts: vec![self.ecx.stmt_expr(arguments)],
+            id: ast::DUMMY_NODE_ID,
+            rules: BlockCheckMode::Unsafe(UnsafeSource::CompilerGenerated),
+            span: self.macsp,
+            tokens: None,
+        }));
+
+        let ident = Ident::from_str_and_span("args", self.macsp);
+        let binding_mode = ast::BindingMode::ByRef(ast::Mutability::Not);
+        let pat = self.ecx.pat_ident_binding_mode(self.macsp, ident, binding_mode);
+        let arm = self.ecx.arm(self.macsp, pat, body);
+        self.ecx.expr_match(self.macsp, args_match, vec![arm])
     }
 
     fn format_arg(
