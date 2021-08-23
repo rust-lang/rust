@@ -1200,7 +1200,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(collapsible_if::COLLAPSIBLE_IF),
         LintId::of(collapsible_match::COLLAPSIBLE_MATCH),
         LintId::of(comparison_chain::COMPARISON_CHAIN),
-        LintId::of(copies::BRANCHES_SHARING_CODE),
         LintId::of(copies::IFS_SAME_COND),
         LintId::of(copies::IF_SAME_THEN_ELSE),
         LintId::of(default::FIELD_REASSIGN_WITH_DEFAULT),
@@ -1589,7 +1588,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(booleans::NONMINIMAL_BOOL),
         LintId::of(casts::CHAR_LIT_AS_U8),
         LintId::of(casts::UNNECESSARY_CAST),
-        LintId::of(copies::BRANCHES_SHARING_CODE),
         LintId::of(double_comparison::DOUBLE_COMPARISONS),
         LintId::of(double_parens::DOUBLE_PARENS),
         LintId::of(duration_subsec::DURATION_SUBSEC),
@@ -1798,6 +1796,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
         LintId::of(attrs::EMPTY_LINE_AFTER_OUTER_ATTR),
         LintId::of(cognitive_complexity::COGNITIVE_COMPLEXITY),
+        LintId::of(copies::BRANCHES_SHARING_CODE),
         LintId::of(disallowed_method::DISALLOWED_METHOD),
         LintId::of(disallowed_type::DISALLOWED_TYPE),
         LintId::of(fallible_impl_from::FALLIBLE_IMPL_FROM),
