@@ -688,7 +688,7 @@ impl Primitive {
 ///
 /// This is intended specifically to mirror LLVM’s `!range` metadata,
 /// semantics.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub struct WrappingRange {
     pub start: u128,
@@ -711,6 +711,13 @@ impl WrappingRange {
     #[inline]
     pub fn contains_zero(&self) -> bool {
         !(self.start <= self.end && self.start != 0)
+    }
+}
+
+impl fmt::Debug for WrappingRange {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(fmt, "{}..={}", self.start, self.end)?;
+        Ok(())
     }
 }
 

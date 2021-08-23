@@ -15,10 +15,7 @@ error: layout_of(E) = Layout {
                 I32,
                 false,
             ),
-            valid_range: AllocationRange {
-                start: 0,
-                end: 0,
-            },
+            valid_range: 0..=0,
         },
         tag_encoding: Direct,
         tag_field: 0,
@@ -94,10 +91,7 @@ error: layout_of(E) = Layout {
                     I32,
                     false,
                 ),
-                valid_range: AllocationRange {
-                    start: 0,
-                    end: 0,
-                },
+                valid_range: 0..=0,
             },
         },
     ),
@@ -144,20 +138,14 @@ error: layout_of(S) = Layout {
                 I32,
                 true,
             ),
-            valid_range: AllocationRange {
-                start: 0,
-                end: 4294967295,
-            },
+            valid_range: 0..=4294967295,
         },
         Scalar {
             value: Int(
                 I32,
                 true,
             ),
-            valid_range: AllocationRange {
-                start: 0,
-                end: 4294967295,
-            },
+            valid_range: 0..=4294967295,
         },
     ),
     largest_niche: None,
@@ -219,10 +207,7 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
                 I32,
                 false,
             ),
-            valid_range: AllocationRange {
-                start: 0,
-                end: 1,
-            },
+            valid_range: 0..=1,
         },
         tag_encoding: Direct,
         tag_field: 0,
@@ -291,20 +276,14 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
                 I32,
                 false,
             ),
-            valid_range: AllocationRange {
-                start: 0,
-                end: 1,
-            },
+            valid_range: 0..=1,
         },
         Scalar {
             value: Int(
                 I32,
                 true,
             ),
-            valid_range: AllocationRange {
-                start: 0,
-                end: 4294967295,
-            },
+            valid_range: 0..=4294967295,
         },
     ),
     largest_niche: Some(
@@ -317,10 +296,7 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
                     I32,
                     false,
                 ),
-                valid_range: AllocationRange {
-                    start: 0,
-                    end: 1,
-                },
+                valid_range: 0..=1,
             },
         },
     ),
@@ -350,10 +326,7 @@ error: layout_of(i32) = Layout {
                 I32,
                 true,
             ),
-            valid_range: AllocationRange {
-                start: 0,
-                end: 4294967295,
-            },
+            valid_range: 0..=4294967295,
         },
     ),
     largest_niche: None,
