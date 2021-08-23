@@ -753,7 +753,7 @@ fn assoc_const(
 ) {
     write!(
         w,
-        "{}{}const <a href=\"{}\" class=\"constant\"><b>{}</b></a>: {}",
+        "{}{}const <a href=\"{}\" class=\"constant\">{}</a>: {}",
         extra,
         it.visibility.print_with_space(it.def_id, cx),
         naive_assoc_href(it, link, cx),
