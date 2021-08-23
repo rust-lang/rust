@@ -710,7 +710,7 @@ impl WrappingRange {
     /// Equal to `range.contains(0)` but should be faster.
     #[inline]
     pub fn contains_zero(&self) -> bool {
-        !(self.start <= self.end && self.start != 0)
+        self.start > self.end || self.start == 0
     }
 
     /// Returns new `WrappingRange` with replaced `start`
