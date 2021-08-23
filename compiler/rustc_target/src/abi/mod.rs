@@ -690,12 +690,12 @@ impl Primitive {
 /// semantics.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(HashStable_Generic)]
-pub struct AllocationRange {
+pub struct WrappingRange {
     pub start: u128,
     pub end: u128,
 }
 
-impl AllocationRange {
+impl WrappingRange {
     /// Returns `true` if `v` is contained in the range.
     #[inline]
     pub fn contains(&self, v: u128) -> bool {
@@ -723,13 +723,13 @@ pub struct Scalar {
     // FIXME(eddyb) always use the shortest range, e.g., by finding
     // the largest space between two consecutive valid values and
     // taking everything else as the (shortest) valid range.
-    pub valid_range: AllocationRange,
+    pub valid_range: WrappingRange,
 }
 
 impl Scalar {
     pub fn is_bool(&self) -> bool {
         matches!(self.value, Int(I8, false))
-            && matches!(self.valid_range, AllocationRange { start: 0, end: 1 })
+            && matches!(self.valid_range, WrappingRange { start: 0, end: 1 })
     }
 
     /// Returns the valid range as a `x..y` range.
@@ -1022,7 +1022,7 @@ impl Niche {
             return None;
         }
 
-        Some((start, Scalar { value, valid_range: AllocationRange { start: v.start, end } }))
+        Some((start, Scalar { value, valid_range: WrappingRange { start: v.start, end } }))
     }
 }
 

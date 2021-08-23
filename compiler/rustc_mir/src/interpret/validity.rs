@@ -15,7 +15,7 @@ use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{
-    Abi, AllocationRange, LayoutOf, Scalar as ScalarAbi, Size, VariantIdx, Variants,
+    Abi, LayoutOf, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
 };
 
 use std::hash::Hash;
@@ -184,8 +184,8 @@ fn write_path(out: &mut String, path: &[PathElem]) {
 
 // Formats such that a sentence like "expected something {}" to mean
 // "expected something <in the given range>" makes sense.
-fn wrapping_range_format(r: AllocationRange, max_hi: u128) -> String {
-    let AllocationRange { start: lo, end: hi } = r;
+fn wrapping_range_format(r: WrappingRange, max_hi: u128) -> String {
+    let WrappingRange { start: lo, end: hi } = r;
     assert!(hi <= max_hi);
     if lo > hi {
         format!("less or equal to {}, or greater or equal to {}", hi, lo)
@@ -624,7 +624,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     ) -> InterpResult<'tcx> {
         let value = self.read_scalar(op)?;
         let valid_range = scalar_layout.valid_range.clone();
-        let AllocationRange { start: lo, end: hi } = valid_range;
+        let WrappingRange { start: lo, end: hi } = valid_range;
         // Determine the allowed range
         // `max_hi` is as big as the size fits
         let max_hi = u128::MAX >> (128 - op.layout.size.bits());
