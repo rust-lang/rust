@@ -29,6 +29,7 @@ use std::slice;
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn check_casts(&self) {
         let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
+        debug!("FnCtxt::check_casts: {} deferred checks", deferred_cast_checks.len());
         for cast in deferred_cast_checks.drain(..) {
             cast.check(self);
         }
