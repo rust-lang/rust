@@ -1623,7 +1623,7 @@ impl EmitterWriter {
             let line_start = sm.lookup_char_pos(parts[0].span.lo()).line;
             draw_col_separator_no_space(&mut buffer, 1, max_line_num_len + 1);
             let mut lines = complete.lines();
-            for (line_pos, (line, parts)) in
+            for (line_pos, (line, highlight_parts)) in
                 lines.by_ref().zip(highlights).take(MAX_SUGGESTION_HIGHLIGHT_LINES).enumerate()
             {
                 // Print the span column to avoid confusion
@@ -1658,7 +1658,7 @@ impl EmitterWriter {
                     );
                     buffer.puts(row_num, max_line_num_len + 1, "+ ", Style::Addition);
                 } else if is_multiline {
-                    match &parts[..] {
+                    match &highlight_parts[..] {
                         [SubstitutionHighlight { start: 0, end }] if *end == line.len() => {
                             buffer.puts(row_num, max_line_num_len + 1, "+ ", Style::Addition);
                         }
@@ -1676,16 +1676,24 @@ impl EmitterWriter {
                 // print the suggestion
                 buffer.append(row_num, &replace_tabs(line), Style::NoStyle);
 
-                if is_multiline {
-                    for SubstitutionHighlight { start, end } in parts {
-                        buffer.set_style_range(
-                            row_num,
-                            max_line_num_len + 3 + start,
-                            max_line_num_len + 3 + end,
-                            Style::Addition,
-                            true,
-                        );
-                    }
+                // Colorize addition/replacements with green.
+                for &SubstitutionHighlight { start, end } in highlight_parts {
+                    // Account for tabs when highlighting (#87972).
+                    let tabs: usize = line
+                        .chars()
+                        .take(start)
+                        .map(|ch| match ch {
+                            '\t' => 3,
+                            _ => 0,
+                        })
+                        .sum();
+                    buffer.set_style_range(
+                        row_num,
+                        max_line_num_len + 3 + start + tabs,
+                        max_line_num_len + 3 + end + tabs,
+                        Style::Addition,
+                        true,
+                    );
                 }
                 row_num += 1;
             }
@@ -1723,13 +1731,6 @@ impl EmitterWriter {
                     assert!(underline_start >= 0 && underline_end >= 0);
                     let padding: usize = max_line_num_len + 3;
                     for p in underline_start..underline_end {
-                        // Colorize addition/replacements with green.
-                        buffer.set_style(
-                            row_num - 1,
-                            (padding as isize + p) as usize,
-                            Style::Addition,
-                            true,
-                        );
                         if !show_diff {
                             // If this is a replacement, underline with `^`, if this is an addition
                             // underline with `+`.
