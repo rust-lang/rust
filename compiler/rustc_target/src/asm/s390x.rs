@@ -101,6 +101,6 @@ impl S390xInlineAsmReg {
         _arch: InlineAsmArch,
         _modifier: Option<char>,
     ) -> fmt::Result {
-        out.write_str(&format!("%{}", self.name()))
+        write!(out, "%{}", self.name())
     }
 }
