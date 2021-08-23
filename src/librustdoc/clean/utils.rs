@@ -148,7 +148,6 @@ pub(super) fn external_path(
     let def_kind = cx.tcx.def_kind(did);
     let name = cx.tcx.item_name(did);
     Path {
-        global: false,
         res: Res::Def(def_kind, did),
         segments: vec![PathSegment {
             name,
@@ -199,7 +198,7 @@ crate fn strip_path(path: &Path) -> Path {
         })
         .collect();
 
-    Path { global: path.global, res: path.res, segments }
+    Path { res: path.res, segments }
 }
 
 crate fn qpath_to_string(p: &hir::QPath<'_>) -> String {

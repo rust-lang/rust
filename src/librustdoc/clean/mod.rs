@@ -1277,7 +1277,6 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
             let trait_segments = &segments[..segments.len() - 1];
             let trait_def = cx.tcx.associated_item(p.res.def_id()).container.id();
             let trait_path = self::Path {
-                global: p.is_global(),
                 res: Res::Def(DefKind::Trait, trait_def),
                 segments: trait_segments.clean(cx),
             };
@@ -1728,11 +1727,7 @@ impl Clean<Variant> for hir::VariantData<'_> {
 
 impl Clean<Path> for hir::Path<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Path {
-        Path {
-            global: self.is_global(),
-            res: self.res,
-            segments: if self.is_global() { &self.segments[1..] } else { &self.segments }.clean(cx),
-        }
+        Path { res: self.res, segments: self.segments.clean(cx) }
     }
 }
 

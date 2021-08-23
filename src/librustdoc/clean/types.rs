@@ -1967,7 +1967,6 @@ impl Span {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate struct Path {
-    crate global: bool,
     crate res: Res,
     crate segments: Vec<PathSegment>,
 }
@@ -1982,8 +1981,7 @@ impl Path {
     }
 
     crate fn whole_name(&self) -> String {
-        String::from(if self.global { "::" } else { "" })
-            + &self.segments.iter().map(|s| s.name.to_string()).collect::<Vec<_>>().join("::")
+        self.segments.iter().map(|s| s.name.to_string()).collect::<Vec<_>>().join("::")
     }
 
     /// Checks if this is a `T::Name` path for an associated type.

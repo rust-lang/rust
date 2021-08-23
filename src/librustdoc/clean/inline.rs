@@ -526,7 +526,6 @@ fn build_module(
                         item.ident.name,
                         clean::ImportSource {
                             path: clean::Path {
-                                global: false,
                                 res,
                                 segments: vec![clean::PathSegment {
                                     name: prim_ty.as_sym(),
