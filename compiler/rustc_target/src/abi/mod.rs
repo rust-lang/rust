@@ -1011,9 +1011,6 @@ impl Niche {
         let start = v.end.wrapping_add(1) & max_value;
         let end = v.end.wrapping_add(count) & max_value;
 
-        // If the `end` of our range is inside the valid range,
-        // then we ran out of invalid values.
-        // FIXME(eddyb) abstract this with a wraparound range type.
         if v.contains(end) {
             return None;
         }
