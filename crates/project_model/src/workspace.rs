@@ -21,7 +21,32 @@ use crate::{
     TargetKind, WorkspaceBuildScripts,
 };
 
-pub type CfgOverrides = FxHashMap<String, CfgDiff>;
+/// A set of cfg-overrides per crate.
+///
+/// `Wildcard(..)` is useful e.g. disabling `#[cfg(test)]` on all crates,
+/// without having to first obtain a list of all crates.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum CfgOverrides {
+    /// A single global set of overrides matching all crates.
+    Wildcard(CfgDiff),
+    /// A set of overrides matching specific crates.
+    Selective(FxHashMap<String, CfgDiff>),
+}
+
+impl Default for CfgOverrides {
+    fn default() -> Self {
+        Self::Selective(FxHashMap::default())
+    }
+}
+
+impl CfgOverrides {
+    pub fn len(&self) -> usize {
+        match self {
+            CfgOverrides::Wildcard(_) => 1,
+            CfgOverrides::Selective(hash_map) => hash_map.len(),
+        }
+    }
+}
 
 /// `PackageRoot` describes a package root folder.
 /// Which may be an external dependency, or a member of
@@ -501,7 +526,13 @@ fn cargo_to_crate_graph(
     for pkg in cargo.packages() {
         let mut cfg_options = &cfg_options;
         let mut replaced_cfg_options;
-        if let Some(overrides) = override_cfg.get(&cargo[pkg].name) {
+
+        let overrides = match override_cfg {
+            CfgOverrides::Wildcard(cfg_diff) => Some(cfg_diff),
+            CfgOverrides::Selective(cfg_overrides) => cfg_overrides.get(&cargo[pkg].name),
+        };
+
+        if let Some(overrides) = overrides {
             // FIXME: this is sort of a hack to deal with #![cfg(not(test))] vanishing such as seen
             // in ed25519_dalek (#7243), and libcore (#9203) (although you only hit that one while
             // working on rust-lang/rust as that's the only time it appears outside sysroot).
