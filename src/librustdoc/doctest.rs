@@ -361,7 +361,7 @@ fn run_test(
     for debugging_option_str in &options.debugging_opts_strs {
         compiler.arg("-Z").arg(&debugging_option_str);
     }
-    if no_run && !compile_fail {
+    if no_run && !compile_fail && options.persist_doctests.is_none() {
         compiler.arg("--emit=metadata");
     }
     compiler.arg("--target").arg(match target {
