@@ -78,27 +78,6 @@ conversions! {
 
 #[allow(improper_ctypes)]
 extern "C" {
-    #[link_name = "llvm.wasm.load32.zero"]
-    fn llvm_load32_zero(x: *const u32) -> simd::i32x4;
-    #[link_name = "llvm.wasm.load64.zero"]
-    fn llvm_load64_zero(x: *const u64) -> simd::i64x2;
-    #[link_name = "llvm.wasm.load8.lane"]
-    fn llvm_load8_lane(x: *const u8, v: simd::u8x16, l: usize) -> simd::u8x16;
-    #[link_name = "llvm.wasm.load16.lane"]
-    fn llvm_load16_lane(x: *const u16, v: simd::u16x8, l: usize) -> simd::u16x8;
-    #[link_name = "llvm.wasm.load32.lane"]
-    fn llvm_load32_lane(x: *const u32, v: simd::u32x4, l: usize) -> simd::u32x4;
-    #[link_name = "llvm.wasm.load64.lane"]
-    fn llvm_load64_lane(x: *const u64, v: simd::u64x2, l: usize) -> simd::u64x2;
-    #[link_name = "llvm.wasm.store8.lane"]
-    fn llvm_store8_lane(x: *mut u8, v: simd::u8x16, l: usize);
-    #[link_name = "llvm.wasm.store16.lane"]
-    fn llvm_store16_lane(x: *mut u16, v: simd::u16x8, l: usize);
-    #[link_name = "llvm.wasm.store32.lane"]
-    fn llvm_store32_lane(x: *mut u32, v: simd::u32x4, l: usize);
-    #[link_name = "llvm.wasm.store64.lane"]
-    fn llvm_store64_lane(x: *mut u64, v: simd::u64x2, l: usize);
-
     #[link_name = "llvm.wasm.swizzle"]
     fn llvm_swizzle(a: simd::i8x16, b: simd::i8x16) -> simd::i8x16;
 
@@ -109,7 +88,7 @@ extern "C" {
 
     #[link_name = "llvm.wasm.alltrue.v16i8"]
     fn llvm_i8x16_all_true(x: simd::i8x16) -> i32;
-    #[link_name = "llvm.wasm.popcnt"]
+    #[link_name = "llvm.ctpop.v16i8"]
     fn llvm_popcnt(a: simd::i8x16) -> simd::i8x16;
     #[link_name = "llvm.wasm.bitmask.v16i8"]
     fn llvm_bitmask_i8x16(a: simd::i8x16) -> i32;
@@ -152,14 +131,6 @@ extern "C" {
     fn llvm_i16x8_sub_sat_u(a: simd::i16x8, b: simd::i16x8) -> simd::i16x8;
     #[link_name = "llvm.wasm.avgr.unsigned.v8i16"]
     fn llvm_avgr_u_i16x8(a: simd::i16x8, b: simd::i16x8) -> simd::i16x8;
-    #[link_name = "llvm.wasm.extmul.low.signed.v8i16"]
-    fn llvm_i16x8_extmul_low_i8x16_s(a: simd::i8x16, b: simd::i8x16) -> simd::i16x8;
-    #[link_name = "llvm.wasm.extmul.high.signed.v8i16"]
-    fn llvm_i16x8_extmul_high_i8x16_s(a: simd::i8x16, b: simd::i8x16) -> simd::i16x8;
-    #[link_name = "llvm.wasm.extmul.low.unsigned.v8i16"]
-    fn llvm_i16x8_extmul_low_i8x16_u(a: simd::i8x16, b: simd::i8x16) -> simd::i16x8;
-    #[link_name = "llvm.wasm.extmul.high.unsigned.v8i16"]
-    fn llvm_i16x8_extmul_high_i8x16_u(a: simd::i8x16, b: simd::i8x16) -> simd::i16x8;
 
     #[link_name = "llvm.wasm.extadd.pairwise.signed.v16i8"]
     fn llvm_i32x4_extadd_pairwise_i16x8_s(x: simd::i16x8) -> simd::i32x4;
@@ -171,27 +142,11 @@ extern "C" {
     fn llvm_bitmask_i32x4(a: simd::i32x4) -> i32;
     #[link_name = "llvm.wasm.dot"]
     fn llvm_i32x4_dot_i16x8_s(a: simd::i16x8, b: simd::i16x8) -> simd::i32x4;
-    #[link_name = "llvm.wasm.extmul.low.signed.v4i32"]
-    fn llvm_i32x4_extmul_low_i16x8_s(a: simd::i16x8, b: simd::i16x8) -> simd::i32x4;
-    #[link_name = "llvm.wasm.extmul.high.signed.v4i32"]
-    fn llvm_i32x4_extmul_high_i16x8_s(a: simd::i16x8, b: simd::i16x8) -> simd::i32x4;
-    #[link_name = "llvm.wasm.extmul.low.unsigned.v4i32"]
-    fn llvm_i32x4_extmul_low_i16x8_u(a: simd::i16x8, b: simd::i16x8) -> simd::i32x4;
-    #[link_name = "llvm.wasm.extmul.high.unsigned.v4i32"]
-    fn llvm_i32x4_extmul_high_i16x8_u(a: simd::i16x8, b: simd::i16x8) -> simd::i32x4;
 
     #[link_name = "llvm.wasm.alltrue.v2i64"]
     fn llvm_i64x2_all_true(x: simd::i64x2) -> i32;
     #[link_name = "llvm.wasm.bitmask.v2i64"]
     fn llvm_bitmask_i64x2(a: simd::i64x2) -> i32;
-    #[link_name = "llvm.wasm.extmul.low.signed.v2i64"]
-    fn llvm_i64x2_extmul_low_i32x4_s(a: simd::i32x4, b: simd::i32x4) -> simd::i64x2;
-    #[link_name = "llvm.wasm.extmul.high.signed.v2i64"]
-    fn llvm_i64x2_extmul_high_i32x4_s(a: simd::i32x4, b: simd::i32x4) -> simd::i64x2;
-    #[link_name = "llvm.wasm.extmul.low.unsigned.v2i64"]
-    fn llvm_i64x2_extmul_low_i32x4_u(a: simd::i32x4, b: simd::i32x4) -> simd::i64x2;
-    #[link_name = "llvm.wasm.extmul.high.unsigned.v2i64"]
-    fn llvm_i64x2_extmul_high_i32x4_u(a: simd::i32x4, b: simd::i32x4) -> simd::i64x2;
 
     #[link_name = "llvm.ceil.v4f32"]
     fn llvm_f32x4_ceil(x: simd::f32x4) -> simd::f32x4;
@@ -209,10 +164,6 @@ extern "C" {
     fn llvm_f32x4_min(x: simd::f32x4, y: simd::f32x4) -> simd::f32x4;
     #[link_name = "llvm.maximum.v4f32"]
     fn llvm_f32x4_max(x: simd::f32x4, y: simd::f32x4) -> simd::f32x4;
-    #[link_name = "llvm.wasm.pmin.v4f32"]
-    fn llvm_f32x4_pmin(x: simd::f32x4, y: simd::f32x4) -> simd::f32x4;
-    #[link_name = "llvm.wasm.pmax.v4f32"]
-    fn llvm_f32x4_pmax(x: simd::f32x4, y: simd::f32x4) -> simd::f32x4;
 
     #[link_name = "llvm.ceil.v2f64"]
     fn llvm_f64x2_ceil(x: simd::f64x2) -> simd::f64x2;
@@ -230,10 +181,6 @@ extern "C" {
     fn llvm_f64x2_min(x: simd::f64x2, y: simd::f64x2) -> simd::f64x2;
     #[link_name = "llvm.maximum.v2f64"]
     fn llvm_f64x2_max(x: simd::f64x2, y: simd::f64x2) -> simd::f64x2;
-    #[link_name = "llvm.wasm.pmin.v2f64"]
-    fn llvm_f64x2_pmin(x: simd::f64x2, y: simd::f64x2) -> simd::f64x2;
-    #[link_name = "llvm.wasm.pmax.v2f64"]
-    fn llvm_f64x2_pmax(x: simd::f64x2, y: simd::f64x2) -> simd::f64x2;
 
     #[link_name = "llvm.fptosi.sat.v4i32.v4f32"]
     fn llvm_i32x4_trunc_sat_f32x4_s(x: simd::f32x4) -> simd::i32x4;
@@ -243,10 +190,6 @@ extern "C" {
     fn llvm_i32x2_trunc_sat_f64x2_s(x: simd::f64x2) -> simd::i32x2;
     #[link_name = "llvm.fptoui.sat.v2i32.v2f64"]
     fn llvm_i32x2_trunc_sat_f64x2_u(x: simd::f64x2) -> simd::i32x2;
-    #[link_name = "llvm.wasm.demote.zero"]
-    fn llvm_f32x4_demote_f64x2_zero(x: simd::f64x2) -> simd::f32x4;
-    #[link_name = "llvm.wasm.promote.low"]
-    fn llvm_f64x2_promote_low_f32x4(x: simd::f32x4) -> simd::f64x2;
 }
 
 #[repr(packed)]
@@ -425,7 +368,7 @@ pub use i64x2_load_extend_u32x2 as u64x2_load_extend_u32x2;
 #[doc(alias("v128.load8_splat"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn v128_load8_splat(m: *const u8) -> v128 {
-    simd::u8x16::splat(*m).v128()
+    u8x16_splat(*m)
 }
 
 /// Load a single element and splat to all lanes of a v128 vector.
@@ -446,8 +389,7 @@ pub unsafe fn v128_load8_splat(m: *const u8) -> v128 {
 #[doc(alias("v128.load16_splat"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn v128_load16_splat(m: *const u16) -> v128 {
-    let m = ptr::read_unaligned(m);
-    simd::u16x8::splat(m).v128()
+    u16x8_splat(ptr::read_unaligned(m))
 }
 
 /// Load a single element and splat to all lanes of a v128 vector.
@@ -468,8 +410,7 @@ pub unsafe fn v128_load16_splat(m: *const u16) -> v128 {
 #[doc(alias("v128.load32_splat"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn v128_load32_splat(m: *const u32) -> v128 {
-    let m = ptr::read_unaligned(m);
-    simd::u32x4::splat(m).v128()
+    u32x4_splat(ptr::read_unaligned(m))
 }
 
 /// Load a single element and splat to all lanes of a v128 vector.
@@ -490,18 +431,14 @@ pub unsafe fn v128_load32_splat(m: *const u32) -> v128 {
 #[doc(alias("v128.load64_splat"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn v128_load64_splat(m: *const u64) -> v128 {
-    let m = ptr::read_unaligned(m);
-    simd::u64x2::splat(m).v128()
+    u64x2_splat(ptr::read_unaligned(m))
 }
 
 /// Load a 32-bit element into the low bits of the vector and sets all other
 /// bits to zero.
 ///
 /// This intrinsic is provided for completeness and is equivalent to `u32x4(*m,
-/// 0, 0, 0)` (which doesn't require `unsafe`). Note, though, that at the time
-/// of this writing this equivalent pattern does not optimize to the same
-/// WebAssembly instruction that this function generates. This will be fixed in
-/// the LLVM 13 release.
+/// 0, 0, 0)` (which doesn't require `unsafe`).
 ///
 /// # Unsafety
 ///
@@ -515,17 +452,14 @@ pub unsafe fn v128_load64_splat(m: *const u64) -> v128 {
 #[doc(alias("v128.load32_zero"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn v128_load32_zero(m: *const u32) -> v128 {
-    llvm_load32_zero(m).v128()
+    u32x4(ptr::read_unaligned(m), 0, 0, 0)
 }
 
 /// Load a 64-bit element into the low bits of the vector and sets all other
 /// bits to zero.
 ///
-/// This intrinsic is provided for completeness and is equivalent to `u64x2(*m,
-/// 0)` (which doesn't require `unsafe`). Note, though, that at the time
-/// of this writing this equivalent pattern does not optimize to the same
-/// WebAssembly instruction that this function generates. This will be fixed in
-/// the LLVM 13 release.
+/// This intrinsic is provided for completeness and is equivalent to
+/// `u64x2_replace_lane::<0>(u64x2(0, 0), *m)` (which doesn't require `unsafe`).
 ///
 /// # Unsafety
 ///
@@ -539,7 +473,7 @@ pub unsafe fn v128_load32_zero(m: *const u32) -> v128 {
 #[doc(alias("v128.load64_zero"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn v128_load64_zero(m: *const u64) -> v128 {
-    llvm_load64_zero(m).v128()
+    u64x2_replace_lane::<0>(u64x2(0, 0), ptr::read_unaligned(m))
 }
 
 /// Stores a `v128` vector to the given heap address.
@@ -576,10 +510,7 @@ pub unsafe fn v128_store(m: *mut v128, a: v128) {
 /// Loads an 8-bit value from `m` and sets lane `L` of `v` to that value.
 ///
 /// This intrinsic is provided for completeness and is equivalent to
-/// `u8x16_replace_lane::<L>(v, *m)` (which doesn't require `unsafe`). Note,
-/// though, that at the time of this writing this equivalent pattern does not
-/// optimize to the same WebAssembly instruction that this function generates.
-/// This will be fixed in the LLVM 13 release.
+/// `u8x16_replace_lane::<L>(v, *m)` (which doesn't require `unsafe`).
 ///
 /// # Unsafety
 ///
@@ -593,17 +524,13 @@ pub unsafe fn v128_store(m: *mut v128, a: v128) {
 #[doc(alias("v128.load8_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn v128_load8_lane<const L: usize>(v: v128, m: *const u8) -> v128 {
-    static_assert!(L: usize where L < 16);
-    llvm_load8_lane(m, v.as_u8x16(), L).v128()
+    u8x16_replace_lane::<L>(v, *m)
 }
 
 /// Loads a 16-bit value from `m` and sets lane `L` of `v` to that value.
 ///
 /// This intrinsic is provided for completeness and is equivalent to
-/// `u16x8_replace_lane::<L>(v, *m)` (which doesn't require `unsafe`). Note,
-/// though, that at the time of this writing this equivalent pattern does not
-/// optimize to the same WebAssembly instruction that this function generates.
-/// This will be fixed in the LLVM 13 release.
+/// `u16x8_replace_lane::<L>(v, *m)` (which doesn't require `unsafe`).
 ///
 /// # Unsafety
 ///
@@ -617,17 +544,13 @@ pub unsafe fn v128_load8_lane<const L: usize>(v: v128, m: *const u8) -> v128 {
 #[doc(alias("v128.load16_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn v128_load16_lane<const L: usize>(v: v128, m: *const u16) -> v128 {
-    static_assert!(L: usize where L < 8);
-    llvm_load16_lane(m, v.as_u16x8(), L).v128()
+    u16x8_replace_lane::<L>(v, ptr::read_unaligned(m))
 }
 
 /// Loads a 32-bit value from `m` and sets lane `L` of `v` to that value.
 ///
 /// This intrinsic is provided for completeness and is equivalent to
-/// `u32x4_replace_lane::<L>(v, *m)` (which doesn't require `unsafe`). Note,
-/// though, that at the time of this writing this equivalent pattern does not
-/// optimize to the same WebAssembly instruction that this function generates.
-/// This will be fixed in the LLVM 13 release.
+/// `u32x4_replace_lane::<L>(v, *m)` (which doesn't require `unsafe`).
 ///
 /// # Unsafety
 ///
@@ -641,17 +564,13 @@ pub unsafe fn v128_load16_lane<const L: usize>(v: v128, m: *const u16) -> v128 {
 #[doc(alias("v128.load32_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn v128_load32_lane<const L: usize>(v: v128, m: *const u32) -> v128 {
-    static_assert!(L: usize where L < 4);
-    llvm_load32_lane(m, v.as_u32x4(), L).v128()
+    u32x4_replace_lane::<L>(v, ptr::read_unaligned(m))
 }
 
 /// Loads a 64-bit value from `m` and sets lane `L` of `v` to that value.
 ///
 /// This intrinsic is provided for completeness and is equivalent to
-/// `u64x2_replace_lane::<L>(v, *m)` (which doesn't require `unsafe`). Note,
-/// though, that at the time of this writing this equivalent pattern does not
-/// optimize to the same WebAssembly instruction that this function generates.
-/// This will be fixed in the LLVM 13 release.
+/// `u64x2_replace_lane::<L>(v, *m)` (which doesn't require `unsafe`).
 ///
 /// # Unsafety
 ///
@@ -665,17 +584,13 @@ pub unsafe fn v128_load32_lane<const L: usize>(v: v128, m: *const u32) -> v128 {
 #[doc(alias("v128.load64_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn v128_load64_lane<const L: usize>(v: v128, m: *const u64) -> v128 {
-    static_assert!(L: usize where L < 2);
-    llvm_load64_lane(m, v.as_u64x2(), L).v128()
+    u64x2_replace_lane::<L>(v, ptr::read_unaligned(m))
 }
 
 /// Stores the 8-bit value from lane `L` of `v` into `m`
 ///
 /// This intrinsic is provided for completeness and is equivalent to
-/// `*m = u8x16_extract_lane::<L>(v)` (which doesn't require `unsafe`). Note,
-/// though, that at the time of this writing this equivalent pattern does not
-/// optimize to the same WebAssembly instruction that this function generates.
-/// This will be fixed in the LLVM 13 release.
+/// `*m = u8x16_extract_lane::<L>(v)` (which doesn't require `unsafe`).
 ///
 /// # Unsafety
 ///
@@ -689,17 +604,13 @@ pub unsafe fn v128_load64_lane<const L: usize>(v: v128, m: *const u64) -> v128 {
 #[doc(alias("v128.store8_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn v128_store8_lane<const L: usize>(v: v128, m: *mut u8) {
-    static_assert!(L: usize where L < 16);
-    llvm_store8_lane(m, v.as_u8x16(), L);
+    *m = u8x16_extract_lane::<L>(v);
 }
 
 /// Stores the 16-bit value from lane `L` of `v` into `m`
 ///
 /// This intrinsic is provided for completeness and is equivalent to
-/// `*m = u16x8_extract_lane::<L>(v)` (which doesn't require `unsafe`). Note,
-/// though, that at the time of this writing this equivalent pattern does not
-/// optimize to the same WebAssembly instruction that this function generates.
-/// This will be fixed in the LLVM 13 release.
+/// `*m = u16x8_extract_lane::<L>(v)` (which doesn't require `unsafe`).
 ///
 /// # Unsafety
 ///
@@ -713,17 +624,13 @@ pub unsafe fn v128_store8_lane<const L: usize>(v: v128, m: *mut u8) {
 #[doc(alias("v128.store16_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn v128_store16_lane<const L: usize>(v: v128, m: *mut u16) {
-    static_assert!(L: usize where L < 8);
-    llvm_store16_lane(m, v.as_u16x8(), L)
+    ptr::write_unaligned(m, u16x8_extract_lane::<L>(v))
 }
 
 /// Stores the 32-bit value from lane `L` of `v` into `m`
 ///
 /// This intrinsic is provided for completeness and is equivalent to
-/// `*m = u32x4_extract_lane::<L>(v)` (which doesn't require `unsafe`). Note,
-/// though, that at the time of this writing this equivalent pattern does not
-/// optimize to the same WebAssembly instruction that this function generates.
-/// This will be fixed in the LLVM 13 release.
+/// `*m = u32x4_extract_lane::<L>(v)` (which doesn't require `unsafe`).
 ///
 /// # Unsafety
 ///
@@ -737,17 +644,13 @@ pub unsafe fn v128_store16_lane<const L: usize>(v: v128, m: *mut u16) {
 #[doc(alias("v128.store32_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn v128_store32_lane<const L: usize>(v: v128, m: *mut u32) {
-    static_assert!(L: usize where L < 4);
-    llvm_store32_lane(m, v.as_u32x4(), L)
+    ptr::write_unaligned(m, u32x4_extract_lane::<L>(v))
 }
 
 /// Stores the 64-bit value from lane `L` of `v` into `m`
 ///
 /// This intrinsic is provided for completeness and is equivalent to
-/// `*m = u64x2_extract_lane::<L>(v)` (which doesn't require `unsafe`). Note,
-/// though, that at the time of this writing this equivalent pattern does not
-/// optimize to the same WebAssembly instruction that this function generates.
-/// This will be fixed in the LLVM 13 release.
+/// `*m = u64x2_extract_lane::<L>(v)` (which doesn't require `unsafe`).
 ///
 /// # Unsafety
 ///
@@ -761,8 +664,7 @@ pub unsafe fn v128_store32_lane<const L: usize>(v: v128, m: *mut u32) {
 #[doc(alias("v128.store64_lane"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn v128_store64_lane<const L: usize>(v: v128, m: *mut u64) {
-    static_assert!(L: usize where L < 2);
-    llvm_store64_lane(m, v.as_u64x2(), L)
+    ptr::write_unaligned(m, u64x2_extract_lane::<L>(v))
 }
 
 /// Materializes a SIMD value from the provided operands.
@@ -3053,7 +2955,19 @@ pub fn u16x8_avgr(a: v128, b: v128) -> v128 {
 #[doc(alias("i16x8.extmul_low_i8x16_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i16x8_extmul_low_i8x16(a: v128, b: v128) -> v128 {
-    unsafe { llvm_i16x8_extmul_low_i8x16_s(a.as_i8x16(), b.as_i8x16()).v128() }
+    unsafe {
+        let lhs = simd_cast::<simd::i8x8, simd::i16x8>(simd_shuffle8!(
+            a.as_i8x16(),
+            a.as_i8x16(),
+            [0, 1, 2, 3, 4, 5, 6, 7],
+        ));
+        let rhs = simd_cast::<simd::i8x8, simd::i16x8>(simd_shuffle8!(
+            b.as_i8x16(),
+            b.as_i8x16(),
+            [0, 1, 2, 3, 4, 5, 6, 7],
+        ));
+        simd_mul(lhs, rhs).v128()
+    }
 }
 
 /// Lane-wise integer extended multiplication producing twice wider result than
@@ -3066,7 +2980,19 @@ pub fn i16x8_extmul_low_i8x16(a: v128, b: v128) -> v128 {
 #[doc(alias("i16x8.extmul_high_i8x16_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i16x8_extmul_high_i8x16(a: v128, b: v128) -> v128 {
-    unsafe { llvm_i16x8_extmul_high_i8x16_s(a.as_i8x16(), b.as_i8x16()).v128() }
+    unsafe {
+        let lhs = simd_cast::<simd::i8x8, simd::i16x8>(simd_shuffle8!(
+            a.as_i8x16(),
+            a.as_i8x16(),
+            [8, 9, 10, 11, 12, 13, 14, 15],
+        ));
+        let rhs = simd_cast::<simd::i8x8, simd::i16x8>(simd_shuffle8!(
+            b.as_i8x16(),
+            b.as_i8x16(),
+            [8, 9, 10, 11, 12, 13, 14, 15],
+        ));
+        simd_mul(lhs, rhs).v128()
+    }
 }
 
 /// Lane-wise integer extended multiplication producing twice wider result than
@@ -3079,7 +3005,19 @@ pub fn i16x8_extmul_high_i8x16(a: v128, b: v128) -> v128 {
 #[doc(alias("i16x8.extmul_low_i8x16_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i16x8_extmul_low_u8x16(a: v128, b: v128) -> v128 {
-    unsafe { llvm_i16x8_extmul_low_i8x16_u(a.as_i8x16(), b.as_i8x16()).v128() }
+    unsafe {
+        let lhs = simd_cast::<simd::u8x8, simd::u16x8>(simd_shuffle8!(
+            a.as_u8x16(),
+            a.as_u8x16(),
+            [0, 1, 2, 3, 4, 5, 6, 7],
+        ));
+        let rhs = simd_cast::<simd::u8x8, simd::u16x8>(simd_shuffle8!(
+            b.as_u8x16(),
+            b.as_u8x16(),
+            [0, 1, 2, 3, 4, 5, 6, 7],
+        ));
+        simd_mul(lhs, rhs).v128()
+    }
 }
 
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3095,7 +3033,19 @@ pub use i16x8_extmul_low_u8x16 as u16x8_extmul_low_u8x16;
 #[doc(alias("i16x8.extmul_high_i8x16_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i16x8_extmul_high_u8x16(a: v128, b: v128) -> v128 {
-    unsafe { llvm_i16x8_extmul_high_i8x16_u(a.as_i8x16(), b.as_i8x16()).v128() }
+    unsafe {
+        let lhs = simd_cast::<simd::u8x8, simd::u16x8>(simd_shuffle8!(
+            a.as_u8x16(),
+            a.as_u8x16(),
+            [8, 9, 10, 11, 12, 13, 14, 15],
+        ));
+        let rhs = simd_cast::<simd::u8x8, simd::u16x8>(simd_shuffle8!(
+            b.as_u8x16(),
+            b.as_u8x16(),
+            [8, 9, 10, 11, 12, 13, 14, 15],
+        ));
+        simd_mul(lhs, rhs).v128()
+    }
 }
 
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3412,7 +3362,19 @@ pub fn i32x4_dot_i16x8(a: v128, b: v128) -> v128 {
 #[doc(alias("i32x4.extmul_low_i16x8_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i32x4_extmul_low_i16x8(a: v128, b: v128) -> v128 {
-    unsafe { llvm_i32x4_extmul_low_i16x8_s(a.as_i16x8(), b.as_i16x8()).v128() }
+    unsafe {
+        let lhs = simd_cast::<simd::i16x4, simd::i32x4>(simd_shuffle4!(
+            a.as_i16x8(),
+            a.as_i16x8(),
+            [0, 1, 2, 3]
+        ));
+        let rhs = simd_cast::<simd::i16x4, simd::i32x4>(simd_shuffle4!(
+            b.as_i16x8(),
+            b.as_i16x8(),
+            [0, 1, 2, 3]
+        ));
+        simd_mul(lhs, rhs).v128()
+    }
 }
 
 /// Lane-wise integer extended multiplication producing twice wider result than
@@ -3425,7 +3387,19 @@ pub fn i32x4_extmul_low_i16x8(a: v128, b: v128) -> v128 {
 #[doc(alias("i32x4.extmul_high_i16x8_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i32x4_extmul_high_i16x8(a: v128, b: v128) -> v128 {
-    unsafe { llvm_i32x4_extmul_high_i16x8_s(a.as_i16x8(), b.as_i16x8()).v128() }
+    unsafe {
+        let lhs = simd_cast::<simd::i16x4, simd::i32x4>(simd_shuffle4!(
+            a.as_i16x8(),
+            a.as_i16x8(),
+            [4, 5, 6, 7]
+        ));
+        let rhs = simd_cast::<simd::i16x4, simd::i32x4>(simd_shuffle4!(
+            b.as_i16x8(),
+            b.as_i16x8(),
+            [4, 5, 6, 7]
+        ));
+        simd_mul(lhs, rhs).v128()
+    }
 }
 
 /// Lane-wise integer extended multiplication producing twice wider result than
@@ -3438,7 +3412,19 @@ pub fn i32x4_extmul_high_i16x8(a: v128, b: v128) -> v128 {
 #[doc(alias("i32x4.extmul_low_i16x8_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i32x4_extmul_low_u16x8(a: v128, b: v128) -> v128 {
-    unsafe { llvm_i32x4_extmul_low_i16x8_u(a.as_i16x8(), b.as_i16x8()).v128() }
+    unsafe {
+        let lhs = simd_cast::<simd::u16x4, simd::u32x4>(simd_shuffle4!(
+            a.as_u16x8(),
+            a.as_u16x8(),
+            [0, 1, 2, 3]
+        ));
+        let rhs = simd_cast::<simd::u16x4, simd::u32x4>(simd_shuffle4!(
+            b.as_u16x8(),
+            b.as_u16x8(),
+            [0, 1, 2, 3]
+        ));
+        simd_mul(lhs, rhs).v128()
+    }
 }
 
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3454,7 +3440,19 @@ pub use i32x4_extmul_low_u16x8 as u32x4_extmul_low_u16x8;
 #[doc(alias("i32x4.extmul_high_i16x8_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i32x4_extmul_high_u16x8(a: v128, b: v128) -> v128 {
-    unsafe { llvm_i32x4_extmul_high_i16x8_u(a.as_i16x8(), b.as_i16x8()).v128() }
+    unsafe {
+        let lhs = simd_cast::<simd::u16x4, simd::u32x4>(simd_shuffle4!(
+            a.as_u16x8(),
+            a.as_u16x8(),
+            [4, 5, 6, 7]
+        ));
+        let rhs = simd_cast::<simd::u16x4, simd::u32x4>(simd_shuffle4!(
+            b.as_u16x8(),
+            b.as_u16x8(),
+            [4, 5, 6, 7]
+        ));
+        simd_mul(lhs, rhs).v128()
+    }
 }
 
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3666,7 +3664,19 @@ pub use i64x2_mul as u64x2_mul;
 #[doc(alias("i64x2.extmul_low_i32x4_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i64x2_extmul_low_i32x4(a: v128, b: v128) -> v128 {
-    unsafe { llvm_i64x2_extmul_low_i32x4_s(a.as_i32x4(), b.as_i32x4()).v128() }
+    unsafe {
+        let lhs = simd_cast::<simd::i32x2, simd::i64x2>(simd_shuffle2!(
+            a.as_i32x4(),
+            a.as_i32x4(),
+            [0, 1]
+        ));
+        let rhs = simd_cast::<simd::i32x2, simd::i64x2>(simd_shuffle2!(
+            b.as_i32x4(),
+            b.as_i32x4(),
+            [0, 1]
+        ));
+        simd_mul(lhs, rhs).v128()
+    }
 }
 
 /// Lane-wise integer extended multiplication producing twice wider result than
@@ -3679,7 +3689,19 @@ pub fn i64x2_extmul_low_i32x4(a: v128, b: v128) -> v128 {
 #[doc(alias("i64x2.extmul_high_i32x4_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i64x2_extmul_high_i32x4(a: v128, b: v128) -> v128 {
-    unsafe { llvm_i64x2_extmul_high_i32x4_s(a.as_i32x4(), b.as_i32x4()).v128() }
+    unsafe {
+        let lhs = simd_cast::<simd::i32x2, simd::i64x2>(simd_shuffle2!(
+            a.as_i32x4(),
+            a.as_i32x4(),
+            [2, 3]
+        ));
+        let rhs = simd_cast::<simd::i32x2, simd::i64x2>(simd_shuffle2!(
+            b.as_i32x4(),
+            b.as_i32x4(),
+            [2, 3]
+        ));
+        simd_mul(lhs, rhs).v128()
+    }
 }
 
 /// Lane-wise integer extended multiplication producing twice wider result than
@@ -3692,7 +3714,19 @@ pub fn i64x2_extmul_high_i32x4(a: v128, b: v128) -> v128 {
 #[doc(alias("i64x2.extmul_low_i32x4_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i64x2_extmul_low_u32x4(a: v128, b: v128) -> v128 {
-    unsafe { llvm_i64x2_extmul_low_i32x4_u(a.as_i32x4(), b.as_i32x4()).v128() }
+    unsafe {
+        let lhs = simd_cast::<simd::u32x2, simd::u64x2>(simd_shuffle2!(
+            a.as_u32x4(),
+            a.as_u32x4(),
+            [0, 1]
+        ));
+        let rhs = simd_cast::<simd::u32x2, simd::u64x2>(simd_shuffle2!(
+            b.as_u32x4(),
+            b.as_u32x4(),
+            [0, 1]
+        ));
+        simd_mul(lhs, rhs).v128()
+    }
 }
 
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3708,7 +3742,19 @@ pub use i64x2_extmul_low_u32x4 as u64x2_extmul_low_u32x4;
 #[doc(alias("i64x2.extmul_high_i32x4_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i64x2_extmul_high_u32x4(a: v128, b: v128) -> v128 {
-    unsafe { llvm_i64x2_extmul_high_i32x4_u(a.as_i32x4(), b.as_i32x4()).v128() }
+    unsafe {
+        let lhs = simd_cast::<simd::u32x2, simd::u64x2>(simd_shuffle2!(
+            a.as_u32x4(),
+            a.as_u32x4(),
+            [2, 3]
+        ));
+        let rhs = simd_cast::<simd::u32x2, simd::u64x2>(simd_shuffle2!(
+            b.as_u32x4(),
+            b.as_u32x4(),
+            [2, 3]
+        ));
+        simd_mul(lhs, rhs).v128()
+    }
 }
 
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3862,7 +3908,14 @@ pub fn f32x4_max(a: v128, b: v128) -> v128 {
 #[doc(alias("f32x4.pmin"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f32x4_pmin(a: v128, b: v128) -> v128 {
-    unsafe { llvm_f32x4_pmin(a.as_f32x4(), b.as_f32x4()).v128() }
+    unsafe {
+        simd_select::<simd::m32x4, simd::f32x4>(
+            simd_lt(b.as_f32x4(), a.as_f32x4()),
+            b.as_f32x4(),
+            a.as_f32x4(),
+        )
+        .v128()
+    }
 }
 
 /// Lane-wise maximum value, defined as `a < b ? b : a`
@@ -3872,7 +3925,14 @@ pub fn f32x4_pmin(a: v128, b: v128) -> v128 {
 #[doc(alias("f32x4.pmax"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f32x4_pmax(a: v128, b: v128) -> v128 {
-    unsafe { llvm_f32x4_pmax(a.as_f32x4(), b.as_f32x4()).v128() }
+    unsafe {
+        simd_select::<simd::m32x4, simd::f32x4>(
+            simd_lt(a.as_f32x4(), b.as_f32x4()),
+            b.as_f32x4(),
+            a.as_f32x4(),
+        )
+        .v128()
+    }
 }
 
 /// Lane-wise rounding to the nearest integral value not smaller than the input.
@@ -4023,7 +4083,14 @@ pub fn f64x2_max(a: v128, b: v128) -> v128 {
 #[doc(alias("f64x2.pmin"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f64x2_pmin(a: v128, b: v128) -> v128 {
-    unsafe { llvm_f64x2_pmin(a.as_f64x2(), b.as_f64x2()).v128() }
+    unsafe {
+        simd_select::<simd::m64x2, simd::f64x2>(
+            simd_lt(b.as_f64x2(), a.as_f64x2()),
+            b.as_f64x2(),
+            a.as_f64x2(),
+        )
+        .v128()
+    }
 }
 
 /// Lane-wise maximum value, defined as `a < b ? b : a`
@@ -4033,7 +4100,14 @@ pub fn f64x2_pmin(a: v128, b: v128) -> v128 {
 #[doc(alias("f64x2.pmax"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f64x2_pmax(a: v128, b: v128) -> v128 {
-    unsafe { llvm_f64x2_pmax(a.as_f64x2(), b.as_f64x2()).v128() }
+    unsafe {
+        simd_select::<simd::m64x2, simd::f64x2>(
+            simd_lt(a.as_f64x2(), b.as_f64x2()),
+            b.as_f64x2(),
+            a.as_f64x2(),
+        )
+        .v128()
+    }
 }
 
 /// Converts a 128-bit vector interpreted as four 32-bit floating point numbers
@@ -4171,7 +4245,14 @@ pub fn f64x2_convert_low_u32x4(a: v128) -> v128 {
 #[doc(alias("f32x4.demote_f64x2_zero"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f32x4_demote_f64x2_zero(a: v128) -> v128 {
-    unsafe { llvm_f32x4_demote_f64x2_zero(a.as_f64x2()).v128() }
+    unsafe {
+        simd_cast::<simd::f64x4, simd::f32x4>(simd_shuffle4!(
+            a.as_f64x2(),
+            simd::f64x2::splat(0.0),
+            [0, 1, 2, 3]
+        ))
+        .v128()
+    }
 }
 
 /// Conversion of the two lower single-precision floating point lanes to the two
@@ -4182,7 +4263,10 @@ pub fn f32x4_demote_f64x2_zero(a: v128) -> v128 {
 #[doc(alias("f32x4.promote_low_f32x4"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f64x2_promote_low_f32x4(a: v128) -> v128 {
-    unsafe { llvm_f64x2_promote_low_f32x4(a.as_f32x4()).v128() }
+    unsafe {
+        simd_cast::<simd::f32x2, simd::f64x2>(simd_shuffle2!(a.as_f32x4(), a.as_f32x4(), [0, 1]))
+            .v128()
+    }
 }
 
 #[cfg(test)]
