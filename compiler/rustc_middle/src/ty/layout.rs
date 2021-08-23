@@ -2857,10 +2857,8 @@ where
                 return;
             }
 
-            if scalar.valid_range.start < scalar.valid_range.end {
-                if scalar.valid_range.start > 0 {
-                    attrs.set(ArgAttribute::NonNull);
-                }
+            if !scalar.valid_range.contains_zero() {
+                attrs.set(ArgAttribute::NonNull);
             }
 
             if let Some(pointee) = layout.pointee_info_at(cx, offset) {

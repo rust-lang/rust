@@ -688,7 +688,7 @@ impl Primitive {
 ///
 /// This is intended specifically to mirror LLVM’s `!range` metadata,
 /// semantics.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub struct AllocationRange {
     pub start: u128,
@@ -704,6 +704,13 @@ impl AllocationRange {
         } else {
             self.start <= v || v <= self.end
         }
+    }
+
+    /// Returns `true` if zero is contained in the range.
+    /// Equal to `range.contains(0)` but should be faster.
+    #[inline]
+    pub fn contains_zero(&self) -> bool {
+        !(self.start <= self.end && self.start != 0)
     }
 }
 
@@ -1222,9 +1229,8 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     {
         let scalar_allows_raw_init = move |s: &Scalar| -> bool {
             if zero {
-                let range = &s.valid_range;
                 // The range must contain 0.
-                range.contains(0) || (range.start > range.end) // wrap-around allows 0
+                s.valid_range.contains_zero()
             } else {
                 // The range must include all values. `valid_range_exclusive` handles
                 // the wrap-around using target arithmetic; with wrap-around then the full
