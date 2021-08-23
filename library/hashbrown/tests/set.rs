@@ -7,16 +7,17 @@ use std::iter;
 #[test]
 fn test_hashset_insert_remove() {
     let mut m: HashSet<Vec<char>> = HashSet::new();
+    let seed = u64::from_le_bytes(*b"testseed");
 
-    let seed: [u8; 16] = [
-        130, 220, 246, 217, 111, 124, 221, 189, 190, 234, 121, 93, 67, 95, 100, 43,
-    ];
-
-    let rng = &mut SmallRng::from_seed(seed);
-    let tx: Vec<Vec<char>> =
-        iter::repeat_with(|| rng.sample_iter(&Alphanumeric).take(32).collect())
-            .take(4096)
-            .collect();
+    let rng = &mut SmallRng::seed_from_u64(seed);
+    let tx: Vec<Vec<char>> = iter::repeat_with(|| {
+        rng.sample_iter(&Alphanumeric)
+            .take(32)
+            .map(char::from)
+            .collect()
+    })
+    .take(4096)
+    .collect();
 
     // more readable with explicit `true` / `false`
     #[allow(clippy::bool_assert_comparison)]
