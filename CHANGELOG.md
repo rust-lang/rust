@@ -2829,6 +2829,7 @@ Released 2018-09-13
 [`needless_update`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_update
 [`neg_cmp_op_on_partial_ord`]: https://rust-lang.github.io/rust-clippy/master/index.html#neg_cmp_op_on_partial_ord
 [`neg_multiply`]: https://rust-lang.github.io/rust-clippy/master/index.html#neg_multiply
+[`negative_feature_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#negative_feature_names
 [`never_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#never_loop
 [`new_ret_no_self`]: https://rust-lang.github.io/rust-clippy/master/index.html#new_ret_no_self
 [`new_without_default`]: https://rust-lang.github.io/rust-clippy/master/index.html#new_without_default
@@ -2882,6 +2883,7 @@ Released 2018-09-13
 [`redundant_closure_call`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure_call
 [`redundant_closure_for_method_calls`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure_for_method_calls
 [`redundant_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_else
+[`redundant_feature_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_feature_names
 [`redundant_field_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_field_names
 [`redundant_pattern`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_pattern
 [`redundant_pattern_matching`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_pattern_matching
