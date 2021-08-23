@@ -956,7 +956,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         Self { num_columns, rows: IndexVec::new() }
     }
 
-    fn ensure_row(&mut self, row: R) -> &mut HybridBitSet<C> {
+    pub fn ensure_row(&mut self, row: R) -> &mut HybridBitSet<C> {
         // Instantiate any missing rows up to and including row `row` with an
         // empty HybridBitSet.
         self.rows.ensure_contains_elem(row, || None);
