@@ -434,7 +434,7 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> 
         matches!(op, AssocOp::ShiftLeft | AssocOp::ShiftRight)
     }
 
-    /// Returns `true` if the operator is a arithmetic operator
+    /// Returns `true` if the operator is an arithmetic operator
     /// (i.e., `+`, `-`, `*`, `/`, `%`).
     fn is_arith(op: AssocOp) -> bool {
         matches!(
