@@ -1240,9 +1240,35 @@ pub fn check_type_bounds<'tcx>(
     // }
     //
     // - `impl_trait_ref` would be `<(A, B) as Foo<u32>>
-    // - `impl_ty_substs` would be `[A, B, ^0.0]`
+    // - `impl_ty_substs` would be `[A, B, ^0.0]` (`^0.0` here is the bound var with db 0 and index 0)
     // - `rebased_substs` would be `[(A, B), u32, ^0.0]`, combining the substs from
     //    the *trait* with the generic associated type parameters (as bound vars).
+    //
+    // A note regarding the use of bound vars here:
+    // Imagine as an example
+    // ```
+    // trait Family {
+    //     type Member<C: Eq>;
+    // }
+    //
+    // impl Family for VecFamily {
+    //     type Member<C: Eq> = i32;
+    // }
+    // ```
+    // Here, we would generate
+    // ```notrust
+    // forall<C> { Normalize(<VecFamily as Family>::Member<C> => i32) }
+    // ```
+    // when we really would like to generate
+    // ```notrust
+    // forall<C> { Normalize(<VecFamily as Family>::Member<C> => i32) :- Implemented(C: Eq) }
+    // ```
+    // But, this is probably fine, because although the first clause can be used with types C that
+    // do not implement Eq, for it to cause some kind of problem, there would have to be a
+    // VecFamily::Member<X> for some type X where !(X: Eq), that appears in the value of type
+    // Member<C: Eq> = .... That type would fail a well-formedness check that we ought to be doing
+    // elsewhere, which would check that any <T as Family>::Member<X> meets the bounds declared in
+    // the trait (notably, that X: Eq and T: Family).
     let defs: &ty::Generics = tcx.generics_of(impl_ty.def_id);
     let mut substs = smallvec::SmallVec::with_capacity(defs.count());
     if let Some(def_id) = defs.parent {
