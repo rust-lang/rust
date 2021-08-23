@@ -156,7 +156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Note that inspecting a type's structure *directly* may expose the fact
     /// that there are actually multiple representations for `Error`, so avoid
     /// that when err needs to be handled differently.
-    #[instrument(skip(self), level="debug")]
+    #[instrument(skip(self), level = "debug")]
     pub(super) fn check_expr_with_expectation(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
@@ -176,7 +176,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
-            }
+        }
 
         // True if `expr` is a `Try::from_ok(())` that is a result of desugaring a try block
         // without the final expr (e.g. `try { return; }`). We don't want to generate an
@@ -1066,9 +1066,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ok(cast_check) => {
                     debug!(
                         "check_expr_cast: deferring cast from {:?} to {:?}: {:?}",
-                        t_cast,
-                        t_expr,
-                        cast_check,
+                        t_cast, t_expr, cast_check,
                     );
                     deferred_cast_checks.push(cast_check);
                     t_cast

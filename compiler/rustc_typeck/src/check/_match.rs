@@ -14,7 +14,7 @@ use rustc_trait_selection::traits::{
 };
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    #[instrument(skip(self), level="debug")]
+    #[instrument(skip(self), level = "debug")]
     pub fn check_match(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
