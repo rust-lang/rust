@@ -11,7 +11,7 @@ use std::{
 use ast::NameOwner;
 use expect_test::expect_file;
 use rayon::prelude::*;
-use test_utils::{bench, bench_fixture, project_root, skip_slow_tests};
+use test_utils::{bench, bench_fixture, project_root};
 
 use crate::{ast, fuzz, tokenize, AstNode, SourceFile, SyntaxError, TextRange, TextSize, Token};
 
@@ -48,9 +48,10 @@ fn main() {
 
 #[test]
 fn benchmark_parser() {
-    if skip_slow_tests() {
+    if std::env::var("RUN_SLOW_BENCHES").is_err() {
         return;
     }
+
     let data = bench_fixture::glorious_old_parser();
     let tree = {
         let _b = bench("parsing");
