@@ -1792,7 +1792,7 @@ pub mod tls {
         if context == 0 {
             f(None)
         } else {
-            // We could get a `ImplicitCtxt` pointer from another thread.
+            // We could get an `ImplicitCtxt` pointer from another thread.
             // Ensure that `ImplicitCtxt` is `Sync`.
             sync::assert_sync::<ImplicitCtxt<'_, '_>>();
 

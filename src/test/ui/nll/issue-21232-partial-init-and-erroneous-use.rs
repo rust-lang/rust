@@ -1,4 +1,4 @@
-// This test enumerates various cases of interest where a ADT or tuple is
+// This test enumerates various cases of interest where an ADT or tuple is
 // partially initialized and then used in some way that is wrong *even*
 // after rust-lang/rust#54987 is implemented.
 //

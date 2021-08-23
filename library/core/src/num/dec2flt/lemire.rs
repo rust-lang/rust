@@ -9,7 +9,7 @@ use crate::num::dec2flt::table::{
 /// Compute a float using an extended-precision representation.
 ///
 /// Fast conversion of a the significant digits and decimal exponent
-/// a float to a extended representation with a binary float. This
+/// a float to an extended representation with a binary float. This
 /// algorithm will accurately parse the vast majority of cases,
 /// and uses a 128-bit representation (with a fallback 192-bit
 /// representation).

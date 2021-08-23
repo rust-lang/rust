@@ -74,7 +74,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for bindings that shadow other bindings already in
-    /// scope, either without a initialization or with one that does not even use
+    /// scope, either without an initialization or with one that does not even use
     /// the original value.
     ///
     /// ### Why is this bad?

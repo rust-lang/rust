@@ -1241,7 +1241,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
 
-        // Special case: you can assign a immutable local variable
+        // Special case: you can assign an immutable local variable
         // (e.g., `x = ...`) so long as it has never been initialized
         // before (at this point in the flow).
         if let Some(local) = place_span.0.as_local() {
@@ -1702,7 +1702,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // initialization state of `a.b` is all we need to inspect to
         // know if `a.b.c` is valid (and from that we infer that the
         // dereference and `.d` access is also valid, since we assume
-        // `a.b.c` is assigned a reference to a initialized and
+        // `a.b.c` is assigned a reference to an initialized and
         // well-formed record structure.)
 
         // Therefore, if we seek out the *closest* prefix for which we
@@ -1889,7 +1889,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ProjectionElem::Downcast(_/*adt_def*/, _/*variant_idx*/) =>
                 // assigning to (P->variant) is okay if assigning to `P` is okay
                 //
-                // FIXME: is this true even if P is a adt with a dtor?
+                // FIXME: is this true even if P is an adt with a dtor?
                 { }
 
                 // assigning to (*P) requires P to be initialized
@@ -2003,8 +2003,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
 
             if let Some((prefix, mpi)) = shortest_uninit_seen {
-                // Check for a reassignment into a uninitialized field of a union (for example,
-                // after a move out). In this case, do not report a error here. There is an
+                // Check for a reassignment into an uninitialized field of a union (for example,
+                // after a move out). In this case, do not report an error here. There is an
                 // exception, if this is the first assignment into the union (that is, there is
                 // no move out from an earlier location) then this is an attempt at initialization
                 // of the union - we should error in that case.

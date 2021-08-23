@@ -469,7 +469,7 @@ impl InlineAsmRegClass {
         }
     }
 
-    /// Returns a list of supported types for this register class, each with a
+    /// Returns a list of supported types for this register class, each with an
     /// options target feature required to use this type.
     pub fn supported_types(
         self,

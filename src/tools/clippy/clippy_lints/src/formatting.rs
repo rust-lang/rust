@@ -164,7 +164,7 @@ fn check_unop(cx: &EarlyContext<'_>, expr: &Expr) {
         if !differing_macro_contexts(lhs.span, rhs.span) && !lhs.span.from_expansion();
         // span between BinOp LHS and RHS
         let binop_span = lhs.span.between(rhs.span);
-        // if RHS is a UnOp
+        // if RHS is an UnOp
         if let ExprKind::Unary(op, ref un_rhs) = rhs.kind;
         // from UnOp operator to UnOp operand
         let unop_operand_span = rhs.span.until(un_rhs.span);

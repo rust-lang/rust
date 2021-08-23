@@ -1826,7 +1826,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         err.emit();
     }
 
-    // FIXME(const_generics): This patches over a ICE caused by non-'static lifetimes in const
+    // FIXME(const_generics): This patches over an ICE caused by non-'static lifetimes in const
     // generics. We are disallowing this until we can decide on how we want to handle non-'static
     // lifetimes in const generics. See issue #74052 for discussion.
     crate fn emit_non_static_lt_in_const_generic_error(&self, lifetime_ref: &hir::Lifetime) {

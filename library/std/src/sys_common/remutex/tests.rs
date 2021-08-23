@@ -30,7 +30,7 @@ fn smoke() {
 #[test]
 fn is_mutex() {
     let m = unsafe {
-        // FIXME: Simplify this if Arc gets a Arc::get_pin_mut.
+        // FIXME: Simplify this if Arc gets an Arc::get_pin_mut.
         let mut m = Arc::new(ReentrantMutex::new(RefCell::new(0)));
         Pin::new_unchecked(Arc::get_mut_unchecked(&mut m)).init();
         Pin::new_unchecked(m)
@@ -52,7 +52,7 @@ fn is_mutex() {
 #[test]
 fn trylock_works() {
     let m = unsafe {
-        // FIXME: Simplify this if Arc gets a Arc::get_pin_mut.
+        // FIXME: Simplify this if Arc gets an Arc::get_pin_mut.
         let mut m = Arc::new(ReentrantMutex::new(()));
         Pin::new_unchecked(Arc::get_mut_unchecked(&mut m)).init();
         Pin::new_unchecked(m)

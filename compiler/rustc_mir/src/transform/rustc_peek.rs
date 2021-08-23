@@ -88,11 +88,11 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
 /// For each such call, determines what the dataflow bit-state is for
 /// the L-value corresponding to `expr`; if the bit-state is a 1, then
 /// that call to `rustc_peek` is ignored by the sanity check. If the
-/// bit-state is a 0, then this pass emits a error message saying
+/// bit-state is a 0, then this pass emits an error message saying
 /// "rustc_peek: bit not set".
 ///
 /// The intention is that one can write unit tests for dataflow by
-/// putting code into an UI test and using `rustc_peek` to
+/// putting code into a UI test and using `rustc_peek` to
 /// make observations about the results of dataflow static analyses.
 ///
 /// (If there are any calls to `rustc_peek` that do not match the

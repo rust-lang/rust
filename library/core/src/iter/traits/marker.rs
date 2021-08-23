@@ -25,7 +25,7 @@ impl<I: FusedIterator + ?Sized> FusedIterator for &mut I {}
 /// (lower bound is equal to upper bound), or the upper bound is [`None`].
 /// The upper bound must only be [`None`] if the actual iterator length is
 /// larger than [`usize::MAX`]. In that case, the lower bound must be
-/// [`usize::MAX`], resulting in a [`Iterator::size_hint()`] of
+/// [`usize::MAX`], resulting in an [`Iterator::size_hint()`] of
 /// `(usize::MAX, None)`.
 ///
 /// The iterator must produce exactly the number of elements it reported

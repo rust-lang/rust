@@ -767,7 +767,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 ///
 /// # Examples
 ///
-/// Read an usize value from a byte buffer:
+/// Read a usize value from a byte buffer:
 ///
 /// ```
 /// use std::mem;
@@ -960,7 +960,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// # Examples
 ///
-/// Write an usize value to a byte buffer:
+/// Write a usize value to a byte buffer:
 ///
 /// ```
 /// use std::mem;
@@ -1232,7 +1232,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     let smoda = stride & a_minus_one;
     // SAFETY: a is power-of-two hence non-zero. stride == 0 case is handled above.
     let gcdpow = unsafe { intrinsics::cttz_nonzero(stride).min(intrinsics::cttz_nonzero(a)) };
-    // SAFETY: gcdpow has an upper-bound that’s at most the number of bits in an usize.
+    // SAFETY: gcdpow has an upper-bound that’s at most the number of bits in a usize.
     let gcd = unsafe { unchecked_shl(1usize, gcdpow) };
 
     // SAFETY: gcd is always greater or equal to 1.

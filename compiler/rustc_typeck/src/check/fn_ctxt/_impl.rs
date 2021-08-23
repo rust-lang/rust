@@ -743,7 +743,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // possibly be referring to the current closure,
                     // because we haven't produced the `Closure` for
                     // this closure yet; this is exactly why the other
-                    // code is looking for a self type of a unresolved
+                    // code is looking for a self type of an unresolved
                     // inference variable.
                     ty::PredicateKind::ClosureKind(..) => None,
                     ty::PredicateKind::TypeWellFormedFromEnv(..) => None,

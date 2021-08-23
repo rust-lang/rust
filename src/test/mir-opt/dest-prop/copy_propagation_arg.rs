@@ -7,7 +7,7 @@ fn dummy(x: u8) -> u8 {
 
 // EMIT_MIR copy_propagation_arg.foo.DestinationPropagation.diff
 fn foo(mut x: u8) {
-    // calling `dummy` to make an use of `x` that copyprop cannot eliminate
+    // calling `dummy` to make a use of `x` that copyprop cannot eliminate
     x = dummy(x); // this will assign a local to `x`
 }
 

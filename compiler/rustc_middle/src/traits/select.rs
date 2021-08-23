@@ -111,7 +111,7 @@ pub enum SelectionCandidate<'tcx> {
     ProjectionCandidate(usize),
 
     /// Implementation of a `Fn`-family trait by one of the anonymous types
-    /// generated for a `||` expression.
+    /// generated for an `||` expression.
     ClosureCandidate,
 
     /// Implementation of a `Generator` trait by one of the anonymous types

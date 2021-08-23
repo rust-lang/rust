@@ -819,7 +819,7 @@ fn copy_or_move<'a, 'tcx>(
 }
 
 // - If a place is used in a `ByValue` context then move it if it's not a `Copy` type.
-// - If the place that is a `Copy` type consider it a `ImmBorrow`.
+// - If the place that is a `Copy` type consider it an `ImmBorrow`.
 fn delegate_consume<'a, 'tcx>(
     mc: &mc::MemCategorizationContext<'a, 'tcx>,
     delegate: &mut (dyn Delegate<'tcx> + 'a),

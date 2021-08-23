@@ -1331,7 +1331,7 @@ window.initSearch = function(rawSearchIndex) {
             // an array of [(Number) item type,
             //              (String) name]
             var paths = rawSearchIndex[crate].p;
-            // a array of [(String) alias name
+            // an array of [(String) alias name
             //             [Number] index to items]
             var aliases = rawSearchIndex[crate].a;
 

@@ -262,7 +262,7 @@ pub mod token_stream {
 }
 
 /// `quote!(..)` accepts arbitrary tokens and expands into a `TokenStream` describing the input.
-/// For example, `quote!(a + b)` will produce a expression, that, when evaluated, constructs
+/// For example, `quote!(a + b)` will produce an expression, that, when evaluated, constructs
 /// the `TokenStream` `[Ident("a"), Punct('+', Alone), Ident("b")]`.
 ///
 /// Unquoting is done with `$`, and works by taking the single next ident as the unquoted term.

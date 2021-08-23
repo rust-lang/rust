@@ -495,7 +495,7 @@ impl Token {
         self.lifetime().is_some()
     }
 
-    /// Returns `true` if the token is a identifier whose name is the given
+    /// Returns `true` if the token is an identifier whose name is the given
     /// string slice.
     pub fn is_ident_named(&self, name: Symbol) -> bool {
         self.ident().map_or(false, |(ident, _)| ident.name == name)

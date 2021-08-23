@@ -307,7 +307,7 @@ where
     /// relations between `'0` and `'a`).
     ///
     /// The variable `pair` can be either a `(vid, ty)` or `(ty, vid)`
-    /// -- in other words, it is always a (unresolved) inference
+    /// -- in other words, it is always an (unresolved) inference
     /// variable `vid` and a type `ty` that are being related, but the
     /// vid may appear either as the "a" type or the "b" type,
     /// depending on where it appears in the tuple. The trait
@@ -389,7 +389,7 @@ where
     }
 }
 
-/// When we instantiate a inference variable with a value in
+/// When we instantiate an inference variable with a value in
 /// `relate_ty_var`, we always have the pair of a `TyVid` and a `Ty`,
 /// but the ordering may vary (depending on whether the inference
 /// variable was found on the `a` or `b` sides). Therefore, this trait

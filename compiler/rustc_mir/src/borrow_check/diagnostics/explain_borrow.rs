@@ -606,7 +606,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     /// Checks if a borrowed value was captured by a trait object. We do this by
     /// looking forward in the MIR from the reserve location and checking if we see
-    /// a unsized cast to a trait object on our data.
+    /// an unsized cast to a trait object on our data.
     fn was_captured_by_trait_object(&self, borrow: &BorrowData<'tcx>) -> bool {
         // Start at the reserve location, find the place that we want to see cast to a trait object.
         let location = borrow.reserve_location;
@@ -666,7 +666,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             }
                             _ => {}
                         },
-                        // If we see a unsized cast, then if it is our data we should check
+                        // If we see an unsized cast, then if it is our data we should check
                         // whether it is being cast to a trait object.
                         Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), operand, ty) => {
                             match operand {

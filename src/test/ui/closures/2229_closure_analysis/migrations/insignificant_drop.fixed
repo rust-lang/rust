@@ -3,7 +3,7 @@
 #![deny(rust_2021_incompatible_closure_captures)]
 //~^ NOTE: the lint level is defined here
 
-// Test cases for types that implement a insignificant drop (stlib defined)
+// Test cases for types that implement an insignificant drop (stlib defined)
 
 // `t` needs Drop because one of its elements needs drop,
 // therefore precise capture might affect drop ordering

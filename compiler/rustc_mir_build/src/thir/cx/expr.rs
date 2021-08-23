@@ -788,7 +788,7 @@ impl<'tcx> Cx<'tcx> {
                 self.user_substs_applied_to_ty_of_hir_id(hir_id)
             }
 
-            // `Self` is used in expression as a tuple struct constructor or an unit struct constructor
+            // `Self` is used in expression as a tuple struct constructor or a unit struct constructor
             Res::SelfCtor(_) => self.user_substs_applied_to_ty_of_hir_id(hir_id),
 
             _ => bug!("user_substs_applied_to_res: unexpected res {:?} at {:?}", res, hir_id),

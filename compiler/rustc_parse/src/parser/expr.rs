@@ -1092,7 +1092,7 @@ impl<'a> Parser<'a> {
         // added to the return value after the fact.
         //
         // Therefore, prevent sub-parser from parsing
-        // attributes by giving them a empty "already-parsed" list.
+        // attributes by giving them an empty "already-parsed" list.
         let attrs = AttrVec::new();
 
         // Note: when adding new syntax here, don't forget to adjust `TokenKind::can_begin_expr()`.

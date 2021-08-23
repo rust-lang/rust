@@ -220,7 +220,7 @@ impl SelfProfilerRef {
         VerboseTimingGuard::start(message, self.generic_activity(event_label))
     }
 
-    /// Start profiling a extra verbose generic activity. Profiling continues until the
+    /// Start profiling an extra verbose generic activity. Profiling continues until the
     /// VerboseTimingGuard returned from this call is dropped. In addition to recording
     /// a measureme event, "extra verbose" generic activities also print a timing entry to
     /// stdout if the compiler is invoked with -Ztime-passes.

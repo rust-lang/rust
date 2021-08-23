@@ -1697,7 +1697,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         // In some (most?) cases cause.body_id points to actual body, but in some cases
-        // it's a actual definition. According to the comments (e.g. in
+        // it's an actual definition. According to the comments (e.g. in
         // librustc_typeck/check/compare_method.rs:compare_predicate_entailment) the latter
         // is relied upon by some other code. This might (or might not) need cleanup.
         let body_owner_def_id =

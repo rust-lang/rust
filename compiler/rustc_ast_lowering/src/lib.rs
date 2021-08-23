@@ -1265,7 +1265,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     ty,
                                 );
 
-                                // Construct a AnonConst where the expr is the "ty"'s path.
+                                // Construct an AnonConst where the expr is the "ty"'s path.
 
                                 let parent_def_id = self.current_hir_id_owner.0;
                                 let node_id = self.resolver.next_node_id();
@@ -2690,7 +2690,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// Report an error on illegal use of `'_` or a `&T` with no explicit lifetime;
-    /// return a "error lifetime".
+    /// return an "error lifetime".
     fn new_error_lifetime(&mut self, id: Option<NodeId>, span: Span) -> hir::Lifetime {
         let (id, msg, label) = match id {
             Some(id) => (id, "`'_` cannot be used here", "`'_` is a reserved lifetime name"),

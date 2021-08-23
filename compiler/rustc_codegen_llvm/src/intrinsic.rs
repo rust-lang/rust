@@ -137,9 +137,9 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                         match scalar.value {
                             Primitive::Int(..) => {
                                 if self.cx().size_of(ret_ty).bytes() < 4 {
-                                    // `va_arg` should not be called on a integer type
+                                    // `va_arg` should not be called on an integer type
                                     // less than 4 bytes in length. If it is, promote
-                                    // the integer to a `i32` and truncate the result
+                                    // the integer to an `i32` and truncate the result
                                     // back to the smaller type.
                                     let promoted_result = emit_va_arg(self, args[0], tcx.types.i32);
                                     self.trunc(promoted_result, llret_ty)
@@ -1031,7 +1031,7 @@ fn generic_simd_intrinsic(
         // vector mask and returns an unsigned integer containing the most
         // significant bit (MSB) of each lane.
 
-        // If the vector has less than 8 lanes, an u8 is returned with zeroed
+        // If the vector has less than 8 lanes, a u8 is returned with zeroed
         // trailing bits.
         let expected_int_bits = in_len.max(8);
         match ret_ty.kind() {
