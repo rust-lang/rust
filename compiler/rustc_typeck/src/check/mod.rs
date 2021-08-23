@@ -392,7 +392,7 @@ fn typeck_with_fallback<'tcx>(
                 fn_sig,
             );
 
-            let fcx = check_fn(&inh, param_env, fn_sig, decl, id, body, None).0;
+            let fcx = check_fn(&inh, param_env, fn_sig, decl, id, body, None, true).0;
             fcx
         } else {
             let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
