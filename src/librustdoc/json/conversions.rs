@@ -387,7 +387,7 @@ impl FromWithTcx<clean::Type> for Type {
     fn from_tcx(ty: clean::Type, tcx: TyCtxt<'_>) -> Self {
         use clean::Type::*;
         match ty {
-            ResolvedPath { path, did, is_generic: _ } => Type::ResolvedPath {
+            ResolvedPath { path, did } => Type::ResolvedPath {
                 name: path.whole_name(),
                 id: from_item_id(did.into()),
                 args: path.segments.last().map(|args| Box::new(args.clone().args.into_tcx(tcx))),

@@ -354,7 +354,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     let (poly_trait, output) =
                         (data.0.as_ref().unwrap().clone(), data.1.as_ref().cloned().map(Box::new));
                     let new_ty = match poly_trait.trait_ {
-                        Type::ResolvedPath { ref path, ref did, ref is_generic } => {
+                        Type::ResolvedPath { ref path, ref did } => {
                             let mut new_path = path.clone();
                             let last_segment =
                                 new_path.segments.pop().expect("segments were empty");
@@ -389,11 +389,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                 .segments
                                 .push(PathSegment { name: last_segment.name, args: new_params });
 
-                            Type::ResolvedPath {
-                                path: new_path,
-                                did: *did,
-                                is_generic: *is_generic,
-                            }
+                            Type::ResolvedPath { path: new_path, did: *did }
                         }
                         _ => panic!("Unexpected data: {:?}, {:?}", ty, data),
                     };
@@ -563,11 +559,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         Type::QPath { name: left_name, ref self_type, ref trait_, .. } => {
                             let ty = &*self_type;
                             match **trait_ {
-                                Type::ResolvedPath {
-                                    path: ref trait_path,
-                                    ref did,
-                                    ref is_generic,
-                                } => {
+                                Type::ResolvedPath { path: ref trait_path, ref did } => {
                                     let mut new_trait_path = trait_path.clone();
 
                                     if self.is_fn_ty(trait_) && left_name == sym::Output {
@@ -612,7 +604,6 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                             trait_: Type::ResolvedPath {
                                                 path: new_trait_path,
                                                 did: *did,
-                                                is_generic: *is_generic,
                                             },
                                             generic_params: Vec::new(),
                                         },

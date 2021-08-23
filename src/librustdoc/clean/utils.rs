@@ -159,9 +159,7 @@ pub(super) fn external_path(
 
 crate fn strip_type(ty: Type) -> Type {
     match ty {
-        Type::ResolvedPath { path, did, is_generic } => {
-            Type::ResolvedPath { path: strip_path(&path), did, is_generic }
-        }
+        Type::ResolvedPath { path, did } => Type::ResolvedPath { path: strip_path(&path), did },
         Type::DynTrait(mut bounds, lt) => {
             let first = bounds.remove(0);
             let stripped_trait = strip_type(first.trait_);
@@ -404,19 +402,15 @@ crate fn print_const_expr(tcx: TyCtxt<'_>, body: hir::BodyId) -> String {
 crate fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
     debug!("resolve_type({:?})", path);
 
-    let is_generic = match path.res {
-        Res::PrimTy(p) => return Primitive(PrimitiveType::from(p)),
-        Res::SelfTy(..) if path.segments.len() == 1 => {
-            return Generic(kw::SelfUpper);
+    match path.res {
+        Res::PrimTy(p) => Primitive(PrimitiveType::from(p)),
+        Res::SelfTy(..) if path.segments.len() == 1 => Generic(kw::SelfUpper),
+        Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => Generic(path.segments[0].name),
+        _ => {
+            let did = register_res(cx, path.res);
+            ResolvedPath { path, did }
         }
-        Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => {
-            return Generic(path.segments[0].name);
-        }
-        Res::SelfTy(..) | Res::Def(DefKind::TyParam | DefKind::AssocTy, _) => true,
-        _ => false,
-    };
-    let did = register_res(cx, path.res);
-    ResolvedPath { path, did, is_generic }
+    }
 }
 
 crate fn get_auto_trait_and_blanket_impls(

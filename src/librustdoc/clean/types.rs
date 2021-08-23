@@ -1114,10 +1114,7 @@ impl GenericBound {
         let path = external_path(cx, did, false, vec![], empty);
         inline::record_extern_fqn(cx, did, ItemType::Trait);
         GenericBound::TraitBound(
-            PolyTrait {
-                trait_: ResolvedPath { path, did, is_generic: false },
-                generic_params: Vec::new(),
-            },
+            PolyTrait { trait_: ResolvedPath { path, did }, generic_params: Vec::new() },
             hir::TraitBoundModifier::Maybe,
         )
     }
@@ -1384,8 +1381,6 @@ crate enum Type {
     ResolvedPath {
         path: Path,
         did: DefId,
-        /// `true` if is a `T::Name` path for associated types.
-        is_generic: bool,
     },
     /// `dyn for<'a> Trait<'a> + Send + 'static`
     DynTrait(Vec<PolyTrait>, Option<Lifetime>),
@@ -1504,8 +1499,8 @@ impl Type {
     }
 
     crate fn is_generic(&self) -> bool {
-        match *self {
-            ResolvedPath { is_generic, .. } => is_generic,
+        match self {
+            ResolvedPath { path, .. } => path.is_generic(),
             _ => false,
         }
     }
@@ -1993,6 +1988,15 @@ impl Path {
     crate fn whole_name(&self) -> String {
         String::from(if self.global { "::" } else { "" })
             + &self.segments.iter().map(|s| s.name.to_string()).collect::<Vec<_>>().join("::")
+    }
+
+    crate fn is_generic(&self) -> bool {
+        match self.res {
+            Res::SelfTy(..) if self.segments.len() != 1 => true,
+            Res::Def(DefKind::TyParam, _) if self.segments.len() != 1 => true,
+            Res::Def(DefKind::AssocTy, _) => true,
+            _ => false,
+        }
     }
 }
 
