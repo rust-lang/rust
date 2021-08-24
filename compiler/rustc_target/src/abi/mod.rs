@@ -697,7 +697,7 @@ pub struct WrappingRange {
 
 impl WrappingRange {
     /// Returns `true` if `v` is contained in the range.
-    #[inline]
+    #[inline(always)]
     pub fn contains(&self, v: u128) -> bool {
         if self.start <= self.end {
             self.start <= v && v <= self.end
@@ -708,17 +708,19 @@ impl WrappingRange {
 
     /// Returns `true` if zero is contained in the range.
     /// Equal to `range.contains(0)` but should be faster.
-    #[inline]
+    #[inline(always)]
     pub fn contains_zero(&self) -> bool {
         self.start > self.end || self.start == 0
     }
 
     /// Returns new `WrappingRange` with replaced `start`
+    #[inline(always)]
     pub fn with_start(&self, start: u128) -> Self {
         Self { start, end: self.end }
     }
 
     /// Returns new `WrappingRange` with replaced `end`
+    #[inline(always)]
     pub fn with_end(&self, end: u128) -> Self {
         Self { start: self.start, end }
     }
