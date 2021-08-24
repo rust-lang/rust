@@ -141,19 +141,21 @@ fn external_generic_args(
     }
 }
 
-// trait_did should be set to a trait's DefId if called on a TraitRef, in order to sugar
-// from Fn<(A, B,), C> to Fn(A, B) -> C
+/// trait_did should be set to a trait's DefId if called on a TraitRef, in order to sugar
+/// from `Fn<(A, B,), C>` to `Fn(A, B) -> C`
 pub(super) fn external_path(
     cx: &mut DocContext<'_>,
-    name: Symbol,
+    did: DefId,
     trait_did: Option<DefId>,
     has_self: bool,
     bindings: Vec<TypeBinding>,
     substs: SubstsRef<'_>,
 ) -> Path {
+    let def_kind = cx.tcx.def_kind(did);
+    let name = cx.tcx.item_name(did);
     Path {
         global: false,
-        res: Res::Err,
+        res: Res::Def(def_kind, did),
         segments: vec![PathSegment {
             name,
             args: external_generic_args(cx, trait_did, has_self, bindings, substs),
