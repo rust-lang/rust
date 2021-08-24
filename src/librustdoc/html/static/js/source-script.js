@@ -82,11 +82,13 @@ function toggleSidebar() {
     if (child.innerText === ">") {
         sidebar.style.left = "";
         this.style.left = "";
+        document.body.style.left = '300px';
         child.innerText = "<";
         updateLocalStorage("rustdoc-source-sidebar-show", "true");
     } else {
         sidebar.style.left = "-300px";
         this.style.left = "0";
+        document.body.style.left = '';
         child.innerText = ">";
         updateLocalStorage("rustdoc-source-sidebar-show", "false");
     }
@@ -104,9 +106,11 @@ function createSidebarToggle() {
     inner2.style.paddingTop = "3px";
     if (getCurrentValue("rustdoc-source-sidebar-show") === "true") {
         inner2.innerText = "<";
+        document.body.style.left ='300px';
     } else {
         inner2.innerText = ">";
         sidebarToggle.style.left = "0";
+        document.body.style.left ='';
     }
 
     inner1.appendChild(inner2);
