@@ -369,6 +369,22 @@ where
             // Instead of swapping one pair at the time, it is more efficient to perform a cyclic
             // permutation. This is not strictly equivalent to swapping, but produces a similar
             // result using fewer memory operations.
+
+            // SAFETY: The use of `ptr::read` is valid because there is at least one element in
+            // both `offsets_l` and `offsets_r`, so `left!` is a valid pointer to read from.
+            //
+            // The uses of `left!` involve calls to `offset` on `l`, which points to the
+            // beginning of `v`. All the offsets pointed-to by `start_l` are at most `block_l`, so
+            // these `offset` calls are safe as all reads are within the block. The same argument
+            // applies for the uses of `right!`.
+            //
+            // The calls to `start_l.offset` are valid because there are at most `count-1` of them,
+            // plus the final one at the end of the unsafe block, where `count` is the minimum number
+            // of collected offsets in `offsets_l` and `offsets_r`, so there is no risk of there not
+            // being enough elements. The same reasoning applies to the calls to `start_r.offset`.
+            //
+            // The calls to `copy_nonoverlapping` are safe because `left!` and `right!` are guaranteed
+            // not to overlap, and are valid because of the reasoning above.
             unsafe {
                 let tmp = ptr::read(left!());
                 ptr::copy_nonoverlapping(right!(), left!(), 1);
@@ -389,11 +405,21 @@ where
 
         if start_l == end_l {
             // All out-of-order elements in the left block were moved. Move to the next block.
+
+            // block-width-guarantee
+            // SAFETY: if `!is_done` then the slice width is guaranteed to be at least `2*BLOCK` wide. There
+            // are at most `BLOCK` elements in `offsets_l` because of its size, so the `offset` operation is
+            // safe. Otherwise, the debug assertions in the `is_done` case guarantee that
+            // `width(l, r) == block_l + block_r`, namely, that the block sizes have been adjusted to account
+            // for the smaller number of remaining elements.
             l = unsafe { l.offset(block_l as isize) };
         }
 
         if start_r == end_r {
             // All out-of-order elements in the right block were moved. Move to the previous block.
+
+            // SAFETY: Same argument as [block-width-guarantee]. Either this is a full block `2*BLOCK`-wide,
+            // or `block_r` has been adjusted for the last handful of elements.
             r = unsafe { r.offset(-(block_r as isize)) };
         }
 
