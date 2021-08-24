@@ -269,7 +269,7 @@ pub enum ErrorKind {
 
     // ErrorKinds which are primarily categorisations for OS error
     // codes should be added above.
-
+    //
     /// An error returned when an operation could not be completed because an
     /// "end of file" was reached prematurely.
     ///
@@ -287,7 +287,7 @@ pub enum ErrorKind {
     // "Unusual" error kinds which do not correspond simply to (sets
     // of) OS error codes, should be added just above this comment.
     // `Other` and `Uncategorised` should remain at the end:
-
+    //
     /// A custom error that does not fall under any other I/O error kind.
     ///
     /// This can be used to construct your own [`Error`]s that do not match any
