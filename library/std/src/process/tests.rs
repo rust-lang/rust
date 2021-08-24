@@ -129,7 +129,11 @@ fn test_process_status() {
 #[test]
 fn test_process_output_fail_to_start() {
     match Command::new("/no-binary-by-this-name-should-exist").output() {
-        Err(e) => assert_eq!(e.kind(), ErrorKind::NotFound),
+        Err(e) => {
+            assert_eq!(e.kind(), ErrorKind::NotFound);
+            #[cfg(unix)] // Feel free to adjust/disable if this varies on some platform
+            assert_eq!(e.to_string(), "No such file or directory (os error 2)");
+        },
         Ok(..) => panic!(),
     }
 }
