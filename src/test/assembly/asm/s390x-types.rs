@@ -51,7 +51,7 @@ extern "Rust" {
 macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
     #[no_mangle]
     pub unsafe fn $func(x: $ty) -> $ty {
-        dont_merge(stringify!(func));
+        dont_merge(stringify!($func));
 
         let y;
         asm!(concat!($mov," {}, {}"), out($class) y, in($class) x);
@@ -62,7 +62,7 @@ macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
 macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
     #[no_mangle]
     pub unsafe fn $func(x: $ty) -> $ty {
-        dont_merge(stringify!(func));
+        dont_merge(stringify!($func));
 
         let y;
         asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
@@ -124,3 +124,9 @@ check!(reg_f32, f32, freg, "ler");
 // CHECK: ldr %f{{[0-9]+}}, %f{{[0-9]+}}
 // CHECK: #NO_APP
 check!(reg_f64, f64, freg, "ldr");
+
+// CHECK-LABEL: reg_ptr:
+// CHECK: #APP
+// CHECK: lgr %r{{[0-9]+}}, %r{{[0-9]+}}
+// CHECK: #NO_APP
+check!(reg_ptr, ptr, reg, "lgr");
