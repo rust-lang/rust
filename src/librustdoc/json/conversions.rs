@@ -507,6 +507,11 @@ impl FromWithTcx<clean::Impl> for Impl {
             blanket_impl,
             span: _span,
         } = impl_;
+        // FIXME: should `trait_` be a Path in JSON?
+        let trait_ = trait_.map(|path| {
+            let did = path.res.def_id();
+            clean::ResolvedPath { path, did }.into_tcx(tcx)
+        });
         Impl {
             is_unsafe: unsafety == rustc_hir::Unsafety::Unsafe,
             generics: generics.into_tcx(tcx),
@@ -514,7 +519,7 @@ impl FromWithTcx<clean::Impl> for Impl {
                 .into_iter()
                 .map(|x| x.to_string())
                 .collect(),
-            trait_: trait_.map(|x| x.into_tcx(tcx)),
+            trait_,
             for_: for_.into_tcx(tcx),
             items: ids(items),
             negative: negative_polarity,

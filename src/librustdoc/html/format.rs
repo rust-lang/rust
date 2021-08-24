@@ -988,6 +988,15 @@ impl clean::Type {
     }
 }
 
+impl clean::Path {
+    crate fn print<'b, 'a: 'b, 'tcx: 'a>(
+        &'a self,
+        cx: &'a Context<'tcx>,
+    ) -> impl fmt::Display + 'b + Captures<'tcx> {
+        display_fn(move |f| resolved_path(f, self.res.def_id(), self, false, false, cx))
+    }
+}
+
 impl clean::Impl {
     crate fn print<'a, 'tcx: 'a>(
         &'a self,

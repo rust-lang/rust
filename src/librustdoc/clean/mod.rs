@@ -903,6 +903,12 @@ impl Clean<Type> for hir::TraitRef<'_> {
     }
 }
 
+impl Clean<Path> for hir::TraitRef<'_> {
+    fn clean(&self, cx: &mut DocContext<'_>) -> Path {
+        self.path.clean(cx)
+    }
+}
+
 impl Clean<PolyTrait> for hir::PolyTraitRef<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> PolyTrait {
         PolyTrait {
@@ -1912,7 +1918,7 @@ fn clean_impl(impl_: &hir::Impl<'_>, hir_id: hir::HirId, cx: &mut DocContext<'_>
         DefKind::TyAlias => Some(tcx.type_of(did).clean(cx)),
         _ => None,
     });
-    let mut make_item = |trait_: Option<Type>, for_: Type, items: Vec<Item>| {
+    let mut make_item = |trait_: Option<Path>, for_: Type, items: Vec<Item>| {
         let kind = ImplItem(Impl {
             span: types::rustc_span(tcx.hir().local_def_id(hir_id).to_def_id(), tcx),
             unsafety: impl_.unsafety,

@@ -78,7 +78,9 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     new_items.retain(|it| {
         if let ImplItem(Impl { ref for_, ref trait_, ref blanket_impl, .. }) = *it.kind {
             cleaner.keep_impl(for_)
-                || trait_.as_ref().map_or(false, |t| cleaner.keep_impl(t))
+                || trait_
+                    .as_ref()
+                    .map_or(false, |t| cleaner.keep_impl_with_def_id(t.res.def_id().into()))
                 || blanket_impl.is_some()
         } else {
             true

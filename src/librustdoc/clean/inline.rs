@@ -457,7 +457,7 @@ crate fn build_impl(
             span: clean::types::rustc_span(did, cx.tcx),
             unsafety: hir::Unsafety::Normal,
             generics,
-            trait_,
+            trait_: trait_.map(|t| t.expect_path()),
             for_,
             items: trait_items,
             negative_polarity: polarity.clean(cx),
