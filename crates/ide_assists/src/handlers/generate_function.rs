@@ -70,26 +70,56 @@ impl FuncExpr {
 fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let path_expr: ast::PathExpr = ctx.find_node_at_offset()?;
     let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
-
     let path = path_expr.path()?;
+    let fn_name = fn_name(&path)?;
     if ctx.sema.resolve_path(&path).is_some() {
         // The function call already resolves, no need to add a function
         return None;
     }
 
-    let target_module = match path.qualifier() {
-        Some(qualifier) => match ctx.sema.resolve_path(&qualifier) {
-            Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))) => Some(module),
-            _ => return None,
-        },
-        None => None,
-    };
+    let target_module;
+    let mut adt_name = None;
 
-    let (target, file, insert_offset) = get_fn_target(ctx, &target_module, call.clone())?;
+    let (target, file, insert_offset) = match path.qualifier() {
+        Some(qualifier) => match ctx.sema.resolve_path(&qualifier) {
+            Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))) => {
+                target_module = Some(module);
+                get_fn_target(ctx, &target_module, call.clone())?
+            }
+            Some(hir::PathResolution::Def(hir::ModuleDef::Adt(adt))) => {
+                let current_module = current_module(call.syntax(), ctx)?;
+                let module = adt.module(ctx.sema.db);
+                target_module = if current_module == module { None } else { Some(module) };
+                if current_module.krate() != module.krate() {
+                    return None;
+                }
+                let (impl_, file) = get_adt_source(ctx, &adt, fn_name.text().as_str())?;
+                let (target, insert_offset) = get_method_target(ctx, &module, &impl_)?;
+                adt_name = if impl_.is_none() { Some(adt.name(ctx.sema.db)) } else { None };
+                (target, file, insert_offset)
+            }
+            _ => {
+                return None;
+            }
+        },
+        _ => {
+            target_module = None;
+            get_fn_target(ctx, &target_module, call.clone())?
+        }
+    };
     let function_builder = FunctionBuilder::from_call(ctx, &call, &path, target_module, target)?;
-    let target = call.syntax().text_range();
+    let text_range = call.syntax().text_range();
     let label = format!("Generate {} function", function_builder.fn_name.clone());
-    add_func_to_accumulator(acc, ctx, target, function_builder, insert_offset, file, None, label)
+    add_func_to_accumulator(
+        acc,
+        ctx,
+        text_range,
+        function_builder,
+        insert_offset,
+        file,
+        adt_name,
+        label,
+    )
 }
 
 fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -103,13 +133,7 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     if current_module.krate() != target_module.krate() {
         return None;
     }
-
-    let range = adt.source(ctx.sema.db)?.syntax().original_file_range(ctx.sema.db);
-    let file = ctx.sema.parse(range.file_id);
-    let adt_source =
-        ctx.sema.find_node_at_offset_with_macros(file.syntax(), range.range.start())?;
-    let impl_ = find_struct_impl(ctx, &adt_source, fn_name.text().as_str())?;
-
+    let (impl_, file) = get_adt_source(ctx, &adt, fn_name.text().as_str())?;
     let (target, insert_offset) = get_method_target(ctx, &target_module, &impl_)?;
     let function_builder =
         FunctionBuilder::from_method_call(ctx, &call, &fn_name, target_module, target)?;
@@ -122,7 +146,7 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         text_range,
         function_builder,
         insert_offset,
-        range.file_id,
+        file,
         adt_name,
         label,
     )
@@ -154,6 +178,18 @@ fn add_func_to_accumulator(
 
 fn current_module(current_node: &SyntaxNode, ctx: &AssistContext) -> Option<Module> {
     ctx.sema.scope(current_node).module()
+}
+
+fn get_adt_source(
+    ctx: &AssistContext,
+    adt: &hir::Adt,
+    fn_name: &str,
+) -> Option<(Option<ast::Impl>, FileId)> {
+    let range = adt.source(ctx.sema.db)?.syntax().original_file_range(ctx.sema.db);
+    let file = ctx.sema.parse(range.file_id);
+    let adt_source =
+        ctx.sema.find_node_at_offset_with_macros(file.syntax(), range.range.start())?;
+    find_struct_impl(ctx, &adt_source, fn_name).map(|impl_| (impl_, range.file_id))
 }
 
 struct FunctionTemplate {
@@ -1511,6 +1547,99 @@ impl S {
 
 
 fn bar(&self) ${0:-> ()} {
+    todo!()
+}
+}
+",
+        )
+    }
+
+    #[test]
+    fn create_static_method() {
+        check_assist(
+            generate_function,
+            r"
+struct S;
+fn foo() {S::bar$0();}
+",
+            r"
+struct S;
+fn foo() {S::bar();}
+impl S {
+
+
+fn bar() ${0:-> ()} {
+    todo!()
+}
+}
+",
+        )
+    }
+
+    #[test]
+    fn create_static_method_within_an_impl() {
+        check_assist(
+            generate_function,
+            r"
+struct S;
+fn foo() {S::bar$0();}
+impl S {}
+
+",
+            r"
+struct S;
+fn foo() {S::bar();}
+impl S {
+    fn bar() ${0:-> ()} {
+        todo!()
+    }
+}
+
+",
+        )
+    }
+
+    #[test]
+    fn create_static_method_from_different_module() {
+        check_assist(
+            generate_function,
+            r"
+mod s {
+    pub struct S;
+}
+fn foo() {s::S::bar$0();}
+",
+            r"
+mod s {
+    pub struct S;
+impl S {
+
+
+    pub(crate) fn bar() ${0:-> ()} {
+        todo!()
+    }
+}
+}
+fn foo() {s::S::bar();}
+",
+        )
+    }
+
+    #[test]
+    fn create_static_method_with_cursor_anywhere_on_call_expresion() {
+        check_assist(
+            generate_function,
+            r"
+struct S;
+fn foo() {$0S::bar();}
+",
+            r"
+struct S;
+fn foo() {S::bar();}
+impl S {
+
+
+fn bar() ${0:-> ()} {
     todo!()
 }
 }
