@@ -287,7 +287,7 @@ pub enum ErrorKind {
     /// Subprocess failed.
     ///
     /// A subprocess (eg, run by a
-    /// [`Command`](care::process::Command)) failed.
+    /// [`Command`](crate::process::Command)) failed.
     ///
     /// Often wraps an
     /// [`ExitStatusError`](crate::process::ExitStatusError),
