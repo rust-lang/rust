@@ -3,7 +3,7 @@ use hir::{HasSource, PathResolution, TypeInfo};
 use ide_db::{defs::Definition, path_transform::PathTransform, search::FileReference};
 use itertools::izip;
 use syntax::{
-    ast::{self, edit::AstNodeEdit, ArgListOwner},
+    ast::{self, edit_in_place::Indent, ArgListOwner},
     ted, AstNode,
 };
 
@@ -217,11 +217,11 @@ pub(crate) fn inline_(
             }
 
             let original_indentation = expr.indent_level();
-            let replacement = body.reset_indent().indent(original_indentation);
+            body.reindent_to(original_indentation);
 
-            let replacement = match replacement.tail_expr() {
-                Some(expr) if replacement.statements().next().is_none() => expr,
-                _ => ast::Expr::BlockExpr(replacement),
+            let replacement = match body.tail_expr() {
+                Some(expr) if body.statements().next().is_none() => expr,
+                _ => ast::Expr::BlockExpr(body),
             };
             builder.replace_ast(expr, replacement);
         },
