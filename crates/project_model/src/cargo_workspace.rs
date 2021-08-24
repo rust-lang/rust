@@ -354,15 +354,6 @@ impl CargoWorkspace {
         CargoWorkspace { packages, targets, workspace_root }
     }
 
-    pub fn from_cargo_metadata3(
-        cargo_toml: &ManifestPath,
-        config: &CargoConfig,
-        progress: &dyn Fn(String),
-    ) -> Result<CargoWorkspace> {
-        let meta = CargoWorkspace::fetch_metadata(cargo_toml, config, progress)?;
-        Ok(CargoWorkspace::new(meta))
-    }
-
     pub fn packages<'a>(&'a self) -> impl Iterator<Item = Package> + ExactSizeIterator + 'a {
         self.packages.iter().map(|(id, _pkg)| id)
     }
