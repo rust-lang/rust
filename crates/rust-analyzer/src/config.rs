@@ -206,6 +206,8 @@ config_data! {
         joinLines_removeTrailingComma: bool = "true",
         /// Join lines unwraps trivial blocks.
         joinLines_unwrapTrivialBlock: bool = "true",
+        /// Join lines merges consecutive declaration and initialization of an assignment.
+        joinLines_joinAssignments: bool = "true",
 
         /// Whether to show `Debug` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
@@ -786,6 +788,7 @@ impl Config {
             join_else_if: self.data.joinLines_joinElseIf,
             remove_trailing_comma: self.data.joinLines_removeTrailingComma,
             unwrap_trivial_blocks: self.data.joinLines_unwrapTrivialBlock,
+            join_assignments: self.data.joinLines_joinAssignments,
         }
     }
     pub fn call_info_full(&self) -> bool {
