@@ -261,6 +261,33 @@ pub enum ErrorKind {
     #[stable(feature = "rust1", since = "1.0.0")]
     Interrupted,
 
+    /// This operation is unsupported on this platform.
+    ///
+    /// This means that the operation can never succeed.
+    #[stable(feature = "unsupported_error", since = "1.53.0")]
+    Unsupported,
+
+    // ErrorKinds which are primarily categorisations for OS error
+    // codes should be added above.
+
+    /// An error returned when an operation could not be completed because an
+    /// "end of file" was reached prematurely.
+    ///
+    /// This typically means that an operation could only succeed if it read a
+    /// particular number of bytes but only a smaller number of bytes could be
+    /// read.
+    #[stable(feature = "read_exact", since = "1.6.0")]
+    UnexpectedEof,
+
+    /// An operation could not be completed, because it failed
+    /// to allocate enough memory.
+    #[stable(feature = "out_of_memory_error", since = "1.54.0")]
+    OutOfMemory,
+
+    // "Unusual" error kinds which do not correspond simply to (sets
+    // of) OS error codes, should be added just above this comment.
+    // `Other` and `Uncategorised` should remain at the end:
+
     /// A custom error that does not fall under any other I/O error kind.
     ///
     /// This can be used to construct your own [`Error`]s that do not match any
@@ -273,26 +300,6 @@ pub enum ErrorKind {
     /// New [`ErrorKind`]s might be added in the future for some of those.
     #[stable(feature = "rust1", since = "1.0.0")]
     Other,
-
-    /// An error returned when an operation could not be completed because an
-    /// "end of file" was reached prematurely.
-    ///
-    /// This typically means that an operation could only succeed if it read a
-    /// particular number of bytes but only a smaller number of bytes could be
-    /// read.
-    #[stable(feature = "read_exact", since = "1.6.0")]
-    UnexpectedEof,
-
-    /// This operation is unsupported on this platform.
-    ///
-    /// This means that the operation can never succeed.
-    #[stable(feature = "unsupported_error", since = "1.53.0")]
-    Unsupported,
-
-    /// An operation could not be completed, because it failed
-    /// to allocate enough memory.
-    #[stable(feature = "out_of_memory_error", since = "1.54.0")]
-    OutOfMemory,
 
     /// Any I/O error from the standard library that's not part of this list.
     ///
