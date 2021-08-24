@@ -337,8 +337,8 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             return;
         }
 
-        if let Some(captures) = maps.tcx.typeck(local_def_id).closure_min_captures.get(&def_id) {
-            for &var_hir_id in captures.keys() {
+        if let Some(upvars) = maps.tcx.upvars_mentioned(def_id) {
+            for &var_hir_id in upvars.keys() {
                 let var_name = maps.tcx.hir().name(var_hir_id);
                 maps.add_variable(Upvar(var_hir_id, var_name));
             }
@@ -405,21 +405,14 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                 // breaks or continues)
                 self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
 
-                // Make a live_node for each captured variable, with the span
+                // Make a live_node for each mentioned variable, with the span
                 // being the location that the variable is used.  This results
                 // in better error messages than just pointing at the closure
                 // construction site.
                 let mut call_caps = Vec::new();
                 let closure_def_id = self.tcx.hir().local_def_id(expr.hir_id);
-                if let Some(captures) = self
-                    .tcx
-                    .typeck(closure_def_id)
-                    .closure_min_captures
-                    .get(&closure_def_id.to_def_id())
-                {
-                    // If closure_min_captures is Some, upvars_mentioned must also be Some
-                    let upvars = self.tcx.upvars_mentioned(closure_def_id).unwrap();
-                    call_caps.extend(captures.keys().map(|var_id| {
+                if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
+                    call_caps.extend(upvars.keys().map(|var_id| {
                         let upvar = upvars[var_id];
                         let upvar_ln = self.add_live_node(UpvarNode(upvar.span));
                         CaptureInfo { ln: upvar_ln, var_hid: *var_id }
@@ -494,7 +487,6 @@ struct Liveness<'a, 'tcx> {
     ir: &'a mut IrMaps<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
     closure_min_captures: Option<&'tcx RootVariableMinCaptureList<'tcx>>,
     successors: IndexVec<LiveNode, Option<LiveNode>>,
     rwu_table: rwu_table::RWUTable,
@@ -518,7 +510,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn new(ir: &'a mut IrMaps<'tcx>, body_owner: LocalDefId) -> Liveness<'a, 'tcx> {
         let typeck_results = ir.tcx.typeck(body_owner);
         let param_env = ir.tcx.param_env(body_owner);
-        let upvars = ir.tcx.upvars_mentioned(body_owner);
         let closure_min_captures = typeck_results.closure_min_captures.get(&body_owner.to_def_id());
         let closure_ln = ir.add_live_node(ClosureNode);
         let exit_ln = ir.add_live_node(ExitNode);
@@ -530,7 +521,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             ir,
             typeck_results,
             param_env,
-            upvars,
             closure_min_captures,
             successors: IndexVec::from_elem_n(None, num_live_nodes),
             rwu_table: rwu_table::RWUTable::new(num_live_nodes, num_vars),
@@ -1215,21 +1205,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         acc: u32,
     ) -> LiveNode {
         match path.res {
-            Res::Local(hid) => {
-                let in_upvars = self.upvars.map_or(false, |u| u.contains_key(&hid));
-                let in_captures = self.closure_min_captures.map_or(false, |c| c.contains_key(&hid));
-
-                match (in_upvars, in_captures) {
-                    (false, _) | (true, true) => self.access_var(hir_id, hid, succ, acc, path.span),
-                    (true, false) => {
-                        // This case is possible when with RFC-2229, a wild pattern
-                        // is used within a closure.
-                        // eg: `let _ = x`. The closure doesn't capture x here,
-                        // even though it's mentioned in the closure.
-                        succ
-                    }
-                }
-            }
+            Res::Local(hid) => self.access_var(hir_id, hid, succ, acc, path.span),
             _ => succ,
         }
     }
