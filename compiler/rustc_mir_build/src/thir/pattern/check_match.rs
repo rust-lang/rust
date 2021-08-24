@@ -394,23 +394,23 @@ fn irrefutable_let_pattern(id: HirId, ls: hir::LetSource, span: Span, tcx: TyCtx
         }};
     }
 
-    let is_if_let = || {
-        matches!(
-            tcx.hir().parent_iter(id).nth(1).unwrap().1,
-            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::If { .. }, .. })
-        )
-    };
     tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, id, span, |lint| match ls {
-        hir::LetSource::If if is_if_let() => {
-            emit_diag!(
-                lint,
-                "`if let`",
-                "`if let` is useless",
-                "replacing the `if let` with a `let`"
-            );
-        }
-        hir::LetSource::If | hir::LetSource::Local => {
-            emit_diag!(lint, "`let`", "`let` is useless", "removing `let`");
+        hir::LetSource::If => {
+            if matches!(
+                tcx.hir().parent_iter(id).nth(1).unwrap().1,
+                hir::Node::Expr(hir::Expr { kind: hir::ExprKind::If { .. }, .. })
+            ) {
+                // basic `if let`
+                emit_diag!(
+                    lint,
+                    "`if let`",
+                    "`if let` is useless",
+                    "replacing the `if let` with a `let`"
+                );
+            } else {
+                // `let` inside if-let-chains
+                emit_diag!(lint, "`let`", "`let` is useless", "removing `let`");
+            }
         }
         hir::LetSource::Guard => {
             emit_diag!(
@@ -428,6 +428,7 @@ fn irrefutable_let_pattern(id: HirId, ls: hir::LetSource, span: Span, tcx: TyCtx
                 "instead using a `loop { ... }` with a `let` inside it"
             );
         }
+        hir::LetSource::Local => {}
     });
 }
 

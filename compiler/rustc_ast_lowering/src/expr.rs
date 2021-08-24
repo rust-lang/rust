@@ -95,7 +95,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         Some(ConditionScope::Guard) => hir::LetSource::Guard,
                         Some(ConditionScope::If) => hir::LetSource::If,
                         Some(ConditionScope::While) => hir::LetSource::While,
-                        _ => hir::LetSource::Local,
+                        None => hir::LetSource::Local,
                     };
                     hir::ExprKind::Let(
                         self.lower_pat(pat),
