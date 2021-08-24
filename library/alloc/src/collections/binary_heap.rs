@@ -1416,7 +1416,7 @@ unsafe impl<T> SourceIter for IntoIter<T> {
 #[doc(hidden)]
 unsafe impl<I> InPlaceIterable for IntoIter<I> {}
 
-impl<I> AsIntoIter for IntoIter<I> {
+unsafe impl<I> AsIntoIter for IntoIter<I> {
     type Item = I;
 
     fn as_into_iter(&mut self) -> &mut vec::IntoIter<Self::Item> {

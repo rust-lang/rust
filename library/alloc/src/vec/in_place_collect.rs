@@ -2,7 +2,7 @@ use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
 use core::mem::{self, ManuallyDrop};
 use core::ptr::{self};
 
-use super::{AsIntoIter, InPlaceDrop, SpecFromIter, SpecFromIterNested, Vec};
+use super::{InPlaceDrop, SpecFromIter, SpecFromIterNested, Vec};
 
 /// Specialization marker for collecting an iterator pipeline into a Vec while reusing the
 /// source allocation, i.e. executing the pipeline in place.
@@ -153,4 +153,11 @@ where
         mem::forget(drop_guard);
         len
     }
+}
+
+// internal helper trait for in-place iteration specialization.
+#[rustc_specialization_trait]
+pub(crate) unsafe trait AsIntoIter {
+    type Item;
+    fn as_into_iter(&mut self) -> &mut super::IntoIter<Self::Item>;
 }

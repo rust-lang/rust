@@ -1,3 +1,5 @@
+#[cfg(not(no_global_oom_handling))]
+use super::AsIntoIter;
 use crate::alloc::{Allocator, Global};
 use crate::raw_vec::RawVec;
 use core::fmt;
@@ -338,14 +340,8 @@ unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A> {
     }
 }
 
-// internal helper trait for in-place iteration specialization.
-#[rustc_specialization_trait]
-pub(crate) trait AsIntoIter {
-    type Item;
-    fn as_into_iter(&mut self) -> &mut IntoIter<Self::Item>;
-}
-
-impl<T> AsIntoIter for IntoIter<T> {
+#[cfg(not(no_global_oom_handling))]
+unsafe impl<T> AsIntoIter for IntoIter<T> {
     type Item = T;
 
     fn as_into_iter(&mut self) -> &mut IntoIter<Self::Item> {
