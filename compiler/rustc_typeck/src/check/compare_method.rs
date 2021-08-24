@@ -1225,6 +1225,7 @@ fn compare_type_predicate_entailment<'tcx>(
 /// For default associated types the normalization is not possible (the value
 /// from the impl could be overridden). We also can't normalize generic
 /// associated types (yet) because they contain bound parameters.
+#[tracing::instrument(level = "debug", skip(tcx))]
 pub fn check_type_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ty: &ty::AssocItem,
@@ -1238,10 +1239,83 @@ pub fn check_type_bounds<'tcx>(
     //     type Bar<C> =...
     // }
     //
-    // - `impl_substs` would be `[A, B, C]`
-    // - `rebased_substs` would be `[(A, B), u32, C]`, combining the substs from
-    //    the *trait* with the generic associated type parameters.
-    let impl_ty_substs = InternalSubsts::identity_for_item(tcx, impl_ty.def_id);
+    // - `impl_trait_ref` would be `<(A, B) as Foo<u32>>
+    // - `impl_ty_substs` would be `[A, B, ^0.0]` (`^0.0` here is the bound var with db 0 and index 0)
+    // - `rebased_substs` would be `[(A, B), u32, ^0.0]`, combining the substs from
+    //    the *trait* with the generic associated type parameters (as bound vars).
+    //
+    // A note regarding the use of bound vars here:
+    // Imagine as an example
+    // ```
+    // trait Family {
+    //     type Member<C: Eq>;
+    // }
+    //
+    // impl Family for VecFamily {
+    //     type Member<C: Eq> = i32;
+    // }
+    // ```
+    // Here, we would generate
+    // ```notrust
+    // forall<C> { Normalize(<VecFamily as Family>::Member<C> => i32) }
+    // ```
+    // when we really would like to generate
+    // ```notrust
+    // forall<C> { Normalize(<VecFamily as Family>::Member<C> => i32) :- Implemented(C: Eq) }
+    // ```
+    // But, this is probably fine, because although the first clause can be used with types C that
+    // do not implement Eq, for it to cause some kind of problem, there would have to be a
+    // VecFamily::Member<X> for some type X where !(X: Eq), that appears in the value of type
+    // Member<C: Eq> = .... That type would fail a well-formedness check that we ought to be doing
+    // elsewhere, which would check that any <T as Family>::Member<X> meets the bounds declared in
+    // the trait (notably, that X: Eq and T: Family).
+    let defs: &ty::Generics = tcx.generics_of(impl_ty.def_id);
+    let mut substs = smallvec::SmallVec::with_capacity(defs.count());
+    if let Some(def_id) = defs.parent {
+        let parent_defs = tcx.generics_of(def_id);
+        InternalSubsts::fill_item(&mut substs, tcx, parent_defs, &mut |param, _| {
+            tcx.mk_param_from_def(param)
+        });
+    }
+    let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
+        smallvec::SmallVec::with_capacity(defs.count());
+    InternalSubsts::fill_single(&mut substs, defs, &mut |param, _| match param.kind {
+        GenericParamDefKind::Type { .. } => {
+            let kind = ty::BoundTyKind::Param(param.name);
+            let bound_var = ty::BoundVariableKind::Ty(kind);
+            bound_vars.push(bound_var);
+            tcx.mk_ty(ty::Bound(
+                ty::INNERMOST,
+                ty::BoundTy { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
+            ))
+            .into()
+        }
+        GenericParamDefKind::Lifetime => {
+            let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
+            let bound_var = ty::BoundVariableKind::Region(kind);
+            bound_vars.push(bound_var);
+            tcx.mk_region(ty::ReLateBound(
+                ty::INNERMOST,
+                ty::BoundRegion { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
+            ))
+            .into()
+        }
+        GenericParamDefKind::Const { .. } => {
+            let bound_var = ty::BoundVariableKind::Const;
+            bound_vars.push(bound_var);
+            tcx.mk_const(ty::Const {
+                ty: tcx.type_of(param.def_id),
+                val: ty::ConstKind::Bound(
+                    ty::INNERMOST,
+                    ty::BoundVar::from_usize(bound_vars.len() - 1),
+                ),
+            })
+            .into()
+        }
+    });
+    let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
+    let impl_ty_substs = tcx.intern_substs(&substs);
+
     let rebased_substs =
         impl_ty_substs.rebase_onto(tcx, impl_ty.container.id(), impl_trait_ref.substs);
     let impl_ty_value = tcx.type_of(impl_ty.def_id);
@@ -1270,18 +1344,26 @@ pub fn check_type_bounds<'tcx>(
                 // impl<T> X for T where T: X { type Y = <T as X>::Y; }
             }
             _ => predicates.push(
-                ty::Binder::dummy(ty::ProjectionPredicate {
-                    projection_ty: ty::ProjectionTy {
-                        item_def_id: trait_ty.def_id,
-                        substs: rebased_substs,
+                ty::Binder::bind_with_vars(
+                    ty::ProjectionPredicate {
+                        projection_ty: ty::ProjectionTy {
+                            item_def_id: trait_ty.def_id,
+                            substs: rebased_substs,
+                        },
+                        ty: impl_ty_value,
                     },
-                    ty: impl_ty_value,
-                })
+                    bound_vars,
+                )
                 .to_predicate(tcx),
             ),
         };
         ty::ParamEnv::new(tcx.intern_predicates(&predicates), Reveal::UserFacing)
     };
+    debug!(?normalize_param_env);
+
+    let impl_ty_substs = InternalSubsts::identity_for_item(tcx, impl_ty.def_id);
+    let rebased_substs =
+        impl_ty_substs.rebase_onto(tcx, impl_ty.container.id(), impl_trait_ref.substs);
 
     tcx.infer_ctxt().enter(move |infcx| {
         let constness = impl_ty
@@ -1308,6 +1390,7 @@ pub fn check_type_bounds<'tcx>(
             .explicit_item_bounds(trait_ty.def_id)
             .iter()
             .map(|&(bound, span)| {
+                debug!(?bound);
                 let concrete_ty_bound = bound.subst(tcx, rebased_substs);
                 debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
 
