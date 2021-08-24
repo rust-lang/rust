@@ -17,7 +17,7 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-extern "C" {
+extern "unadjusted" {
     #[link_name = "llvm.aarch64.tstart"]
     fn aarch64_tstart() -> u64;
     #[link_name = "llvm.aarch64.tcommit"]

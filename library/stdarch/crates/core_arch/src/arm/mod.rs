@@ -107,7 +107,7 @@ pub unsafe fn __dbg<const IMM4: i32>() {
     dbg(IMM4);
 }
 
-extern "C" {
+extern "unadjusted" {
     #[link_name = "llvm.arm.dbg"]
     fn dbg(_: i32);
 }

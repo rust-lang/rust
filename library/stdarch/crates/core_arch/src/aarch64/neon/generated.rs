@@ -15,7 +15,7 @@ use stdarch_test::assert_instr;
 #[cfg_attr(test, assert_instr(fabd))]
 pub unsafe fn vabd_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fabd.v1f64")]
         fn vabd_f64_(a: float64x1_t, b: float64x1_t) -> float64x1_t;
     }
@@ -28,7 +28,7 @@ pub unsafe fn vabd_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(fabd))]
 pub unsafe fn vabdq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fabd.v2f64")]
         fn vabdq_f64_(a: float64x2_t, b: float64x2_t) -> float64x2_t;
     }
@@ -1084,7 +1084,7 @@ pub unsafe fn vcltzq_f64(a: float64x2_t) -> uint64x2_t {
 #[cfg_attr(test, assert_instr(facgt))]
 pub unsafe fn vcagt_f64(a: float64x1_t, b: float64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.facgt.v1i64.v1f64")]
         fn vcagt_f64_(a: float64x1_t, b: float64x1_t) -> uint64x1_t;
     }
@@ -1097,7 +1097,7 @@ pub unsafe fn vcagt_f64(a: float64x1_t, b: float64x1_t) -> uint64x1_t {
 #[cfg_attr(test, assert_instr(facgt))]
 pub unsafe fn vcagtq_f64(a: float64x2_t, b: float64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.facgt.v2i64.v2f64")]
         fn vcagtq_f64_(a: float64x2_t, b: float64x2_t) -> uint64x2_t;
     }
@@ -1110,7 +1110,7 @@ pub unsafe fn vcagtq_f64(a: float64x2_t, b: float64x2_t) -> uint64x2_t {
 #[cfg_attr(test, assert_instr(facge))]
 pub unsafe fn vcage_f64(a: float64x1_t, b: float64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.facge.v1i64.v1f64")]
         fn vcage_f64_(a: float64x1_t, b: float64x1_t) -> uint64x1_t;
     }
@@ -1123,7 +1123,7 @@ pub unsafe fn vcage_f64(a: float64x1_t, b: float64x1_t) -> uint64x1_t {
 #[cfg_attr(test, assert_instr(facge))]
 pub unsafe fn vcageq_f64(a: float64x2_t, b: float64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.facge.v2i64.v2f64")]
         fn vcageq_f64_(a: float64x2_t, b: float64x2_t) -> uint64x2_t;
     }
@@ -2103,7 +2103,7 @@ pub unsafe fn vcvt_high_f32_f64(a: float32x2_t, b: float64x2_t) -> float32x4_t {
 #[cfg_attr(test, assert_instr(fcvtxn))]
 pub unsafe fn vcvtx_f32_f64(a: float64x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtxn.v2f32.v2f64")]
         fn vcvtx_f32_f64_(a: float64x2_t) -> float32x2_t;
     }
@@ -2126,7 +2126,7 @@ pub unsafe fn vcvtx_high_f32_f64(a: float32x2_t, b: float64x2_t) -> float32x4_t 
 pub unsafe fn vcvt_n_f64_s64<const N: i32>(a: int64x1_t) -> float64x1_t {
     static_assert!(N : i32 where N >= 1 && N <= 64);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxs2fp.v1f64.v1i64")]
         fn vcvt_n_f64_s64_(a: int64x1_t, n: i32) -> float64x1_t;
     }
@@ -2141,7 +2141,7 @@ pub unsafe fn vcvt_n_f64_s64<const N: i32>(a: int64x1_t) -> float64x1_t {
 pub unsafe fn vcvtq_n_f64_s64<const N: i32>(a: int64x2_t) -> float64x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 64);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxs2fp.v2f64.v2i64")]
         fn vcvtq_n_f64_s64_(a: int64x2_t, n: i32) -> float64x2_t;
     }
@@ -2156,7 +2156,7 @@ pub unsafe fn vcvtq_n_f64_s64<const N: i32>(a: int64x2_t) -> float64x2_t {
 pub unsafe fn vcvts_n_f32_s32<const N: i32>(a: i32) -> f32 {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxs2fp.f32.i32")]
         fn vcvts_n_f32_s32_(a: i32, n: i32) -> f32;
     }
@@ -2171,7 +2171,7 @@ pub unsafe fn vcvts_n_f32_s32<const N: i32>(a: i32) -> f32 {
 pub unsafe fn vcvtd_n_f64_s64<const N: i32>(a: i64) -> f64 {
     static_assert!(N : i32 where N >= 1 && N <= 64);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxs2fp.f64.i64")]
         fn vcvtd_n_f64_s64_(a: i64, n: i32) -> f64;
     }
@@ -2186,7 +2186,7 @@ pub unsafe fn vcvtd_n_f64_s64<const N: i32>(a: i64) -> f64 {
 pub unsafe fn vcvt_n_f64_u64<const N: i32>(a: uint64x1_t) -> float64x1_t {
     static_assert!(N : i32 where N >= 1 && N <= 64);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxu2fp.v1f64.v1i64")]
         fn vcvt_n_f64_u64_(a: uint64x1_t, n: i32) -> float64x1_t;
     }
@@ -2201,7 +2201,7 @@ pub unsafe fn vcvt_n_f64_u64<const N: i32>(a: uint64x1_t) -> float64x1_t {
 pub unsafe fn vcvtq_n_f64_u64<const N: i32>(a: uint64x2_t) -> float64x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 64);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxu2fp.v2f64.v2i64")]
         fn vcvtq_n_f64_u64_(a: uint64x2_t, n: i32) -> float64x2_t;
     }
@@ -2216,7 +2216,7 @@ pub unsafe fn vcvtq_n_f64_u64<const N: i32>(a: uint64x2_t) -> float64x2_t {
 pub unsafe fn vcvts_n_f32_u32<const N: i32>(a: u32) -> f32 {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxu2fp.f32.i32")]
         fn vcvts_n_f32_u32_(a: u32, n: i32) -> f32;
     }
@@ -2231,7 +2231,7 @@ pub unsafe fn vcvts_n_f32_u32<const N: i32>(a: u32) -> f32 {
 pub unsafe fn vcvtd_n_f64_u64<const N: i32>(a: u64) -> f64 {
     static_assert!(N : i32 where N >= 1 && N <= 64);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxu2fp.f64.i64")]
         fn vcvtd_n_f64_u64_(a: u64, n: i32) -> f64;
     }
@@ -2246,7 +2246,7 @@ pub unsafe fn vcvtd_n_f64_u64<const N: i32>(a: u64) -> f64 {
 pub unsafe fn vcvt_n_s64_f64<const N: i32>(a: float64x1_t) -> int64x1_t {
     static_assert!(N : i32 where N >= 1 && N <= 64);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxs.v1i64.v1f64")]
         fn vcvt_n_s64_f64_(a: float64x1_t, n: i32) -> int64x1_t;
     }
@@ -2261,7 +2261,7 @@ pub unsafe fn vcvt_n_s64_f64<const N: i32>(a: float64x1_t) -> int64x1_t {
 pub unsafe fn vcvtq_n_s64_f64<const N: i32>(a: float64x2_t) -> int64x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 64);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxs.v2i64.v2f64")]
         fn vcvtq_n_s64_f64_(a: float64x2_t, n: i32) -> int64x2_t;
     }
@@ -2276,7 +2276,7 @@ pub unsafe fn vcvtq_n_s64_f64<const N: i32>(a: float64x2_t) -> int64x2_t {
 pub unsafe fn vcvts_n_s32_f32<const N: i32>(a: f32) -> i32 {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxs.i32.f32")]
         fn vcvts_n_s32_f32_(a: f32, n: i32) -> i32;
     }
@@ -2291,7 +2291,7 @@ pub unsafe fn vcvts_n_s32_f32<const N: i32>(a: f32) -> i32 {
 pub unsafe fn vcvtd_n_s64_f64<const N: i32>(a: f64) -> i64 {
     static_assert!(N : i32 where N >= 1 && N <= 64);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxs.i64.f64")]
         fn vcvtd_n_s64_f64_(a: f64, n: i32) -> i64;
     }
@@ -2306,7 +2306,7 @@ pub unsafe fn vcvtd_n_s64_f64<const N: i32>(a: f64) -> i64 {
 pub unsafe fn vcvt_n_u64_f64<const N: i32>(a: float64x1_t) -> uint64x1_t {
     static_assert!(N : i32 where N >= 1 && N <= 64);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxu.v1i64.v1f64")]
         fn vcvt_n_u64_f64_(a: float64x1_t, n: i32) -> uint64x1_t;
     }
@@ -2321,7 +2321,7 @@ pub unsafe fn vcvt_n_u64_f64<const N: i32>(a: float64x1_t) -> uint64x1_t {
 pub unsafe fn vcvtq_n_u64_f64<const N: i32>(a: float64x2_t) -> uint64x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 64);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxu.v2i64.v2f64")]
         fn vcvtq_n_u64_f64_(a: float64x2_t, n: i32) -> uint64x2_t;
     }
@@ -2336,7 +2336,7 @@ pub unsafe fn vcvtq_n_u64_f64<const N: i32>(a: float64x2_t) -> uint64x2_t {
 pub unsafe fn vcvts_n_u32_f32<const N: i32>(a: f32) -> u32 {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxu.i32.f32")]
         fn vcvts_n_u32_f32_(a: f32, n: i32) -> u32;
     }
@@ -2351,7 +2351,7 @@ pub unsafe fn vcvts_n_u32_f32<const N: i32>(a: f32) -> u32 {
 pub unsafe fn vcvtd_n_u64_f64<const N: i32>(a: f64) -> u64 {
     static_assert!(N : i32 where N >= 1 && N <= 64);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxu.i64.f64")]
         fn vcvtd_n_u64_f64_(a: f64, n: i32) -> u64;
     }
@@ -2428,7 +2428,7 @@ pub unsafe fn vcvtd_u64_f64(a: f64) -> u64 {
 #[cfg_attr(test, assert_instr(fcvtzs))]
 pub unsafe fn vcvt_s64_f64(a: float64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fptosi.sat.v1i64.v1f64")]
         fn vcvt_s64_f64_(a: float64x1_t) -> int64x1_t;
     }
@@ -2441,7 +2441,7 @@ pub unsafe fn vcvt_s64_f64(a: float64x1_t) -> int64x1_t {
 #[cfg_attr(test, assert_instr(fcvtzs))]
 pub unsafe fn vcvtq_s64_f64(a: float64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fptosi.sat.v2i64.v2f64")]
         fn vcvtq_s64_f64_(a: float64x2_t) -> int64x2_t;
     }
@@ -2454,7 +2454,7 @@ pub unsafe fn vcvtq_s64_f64(a: float64x2_t) -> int64x2_t {
 #[cfg_attr(test, assert_instr(fcvtzu))]
 pub unsafe fn vcvt_u64_f64(a: float64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fptoui.sat.v1i64.v1f64")]
         fn vcvt_u64_f64_(a: float64x1_t) -> uint64x1_t;
     }
@@ -2467,7 +2467,7 @@ pub unsafe fn vcvt_u64_f64(a: float64x1_t) -> uint64x1_t {
 #[cfg_attr(test, assert_instr(fcvtzu))]
 pub unsafe fn vcvtq_u64_f64(a: float64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fptoui.sat.v2i64.v2f64")]
         fn vcvtq_u64_f64_(a: float64x2_t) -> uint64x2_t;
     }
@@ -2480,7 +2480,7 @@ pub unsafe fn vcvtq_u64_f64(a: float64x2_t) -> uint64x2_t {
 #[cfg_attr(test, assert_instr(fcvtas))]
 pub unsafe fn vcvta_s32_f32(a: float32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtas.v2i32.v2f32")]
         fn vcvta_s32_f32_(a: float32x2_t) -> int32x2_t;
     }
@@ -2493,7 +2493,7 @@ pub unsafe fn vcvta_s32_f32(a: float32x2_t) -> int32x2_t {
 #[cfg_attr(test, assert_instr(fcvtas))]
 pub unsafe fn vcvtaq_s32_f32(a: float32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtas.v4i32.v4f32")]
         fn vcvtaq_s32_f32_(a: float32x4_t) -> int32x4_t;
     }
@@ -2506,7 +2506,7 @@ pub unsafe fn vcvtaq_s32_f32(a: float32x4_t) -> int32x4_t {
 #[cfg_attr(test, assert_instr(fcvtas))]
 pub unsafe fn vcvta_s64_f64(a: float64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtas.v1i64.v1f64")]
         fn vcvta_s64_f64_(a: float64x1_t) -> int64x1_t;
     }
@@ -2519,7 +2519,7 @@ pub unsafe fn vcvta_s64_f64(a: float64x1_t) -> int64x1_t {
 #[cfg_attr(test, assert_instr(fcvtas))]
 pub unsafe fn vcvtaq_s64_f64(a: float64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtas.v2i64.v2f64")]
         fn vcvtaq_s64_f64_(a: float64x2_t) -> int64x2_t;
     }
@@ -2532,7 +2532,7 @@ pub unsafe fn vcvtaq_s64_f64(a: float64x2_t) -> int64x2_t {
 #[cfg_attr(test, assert_instr(fcvtas))]
 pub unsafe fn vcvtas_s32_f32(a: f32) -> i32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtas.i32.f32")]
         fn vcvtas_s32_f32_(a: f32) -> i32;
     }
@@ -2545,7 +2545,7 @@ pub unsafe fn vcvtas_s32_f32(a: f32) -> i32 {
 #[cfg_attr(test, assert_instr(fcvtas))]
 pub unsafe fn vcvtad_s64_f64(a: f64) -> i64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtas.i64.f64")]
         fn vcvtad_s64_f64_(a: f64) -> i64;
     }
@@ -2558,7 +2558,7 @@ pub unsafe fn vcvtad_s64_f64(a: f64) -> i64 {
 #[cfg_attr(test, assert_instr(fcvtau))]
 pub unsafe fn vcvtas_u32_f32(a: f32) -> u32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtau.i32.f32")]
         fn vcvtas_u32_f32_(a: f32) -> u32;
     }
@@ -2571,7 +2571,7 @@ pub unsafe fn vcvtas_u32_f32(a: f32) -> u32 {
 #[cfg_attr(test, assert_instr(fcvtau))]
 pub unsafe fn vcvtad_u64_f64(a: f64) -> u64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtau.i64.f64")]
         fn vcvtad_u64_f64_(a: f64) -> u64;
     }
@@ -2584,7 +2584,7 @@ pub unsafe fn vcvtad_u64_f64(a: f64) -> u64 {
 #[cfg_attr(test, assert_instr(fcvtns))]
 pub unsafe fn vcvtn_s32_f32(a: float32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtns.v2i32.v2f32")]
         fn vcvtn_s32_f32_(a: float32x2_t) -> int32x2_t;
     }
@@ -2597,7 +2597,7 @@ pub unsafe fn vcvtn_s32_f32(a: float32x2_t) -> int32x2_t {
 #[cfg_attr(test, assert_instr(fcvtns))]
 pub unsafe fn vcvtnq_s32_f32(a: float32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtns.v4i32.v4f32")]
         fn vcvtnq_s32_f32_(a: float32x4_t) -> int32x4_t;
     }
@@ -2610,7 +2610,7 @@ pub unsafe fn vcvtnq_s32_f32(a: float32x4_t) -> int32x4_t {
 #[cfg_attr(test, assert_instr(fcvtns))]
 pub unsafe fn vcvtn_s64_f64(a: float64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtns.v1i64.v1f64")]
         fn vcvtn_s64_f64_(a: float64x1_t) -> int64x1_t;
     }
@@ -2623,7 +2623,7 @@ pub unsafe fn vcvtn_s64_f64(a: float64x1_t) -> int64x1_t {
 #[cfg_attr(test, assert_instr(fcvtns))]
 pub unsafe fn vcvtnq_s64_f64(a: float64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtns.v2i64.v2f64")]
         fn vcvtnq_s64_f64_(a: float64x2_t) -> int64x2_t;
     }
@@ -2636,7 +2636,7 @@ pub unsafe fn vcvtnq_s64_f64(a: float64x2_t) -> int64x2_t {
 #[cfg_attr(test, assert_instr(fcvtns))]
 pub unsafe fn vcvtns_s32_f32(a: f32) -> i32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtns.i32.f32")]
         fn vcvtns_s32_f32_(a: f32) -> i32;
     }
@@ -2649,7 +2649,7 @@ pub unsafe fn vcvtns_s32_f32(a: f32) -> i32 {
 #[cfg_attr(test, assert_instr(fcvtns))]
 pub unsafe fn vcvtnd_s64_f64(a: f64) -> i64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtns.i64.f64")]
         fn vcvtnd_s64_f64_(a: f64) -> i64;
     }
@@ -2662,7 +2662,7 @@ pub unsafe fn vcvtnd_s64_f64(a: f64) -> i64 {
 #[cfg_attr(test, assert_instr(fcvtms))]
 pub unsafe fn vcvtm_s32_f32(a: float32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtms.v2i32.v2f32")]
         fn vcvtm_s32_f32_(a: float32x2_t) -> int32x2_t;
     }
@@ -2675,7 +2675,7 @@ pub unsafe fn vcvtm_s32_f32(a: float32x2_t) -> int32x2_t {
 #[cfg_attr(test, assert_instr(fcvtms))]
 pub unsafe fn vcvtmq_s32_f32(a: float32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtms.v4i32.v4f32")]
         fn vcvtmq_s32_f32_(a: float32x4_t) -> int32x4_t;
     }
@@ -2688,7 +2688,7 @@ pub unsafe fn vcvtmq_s32_f32(a: float32x4_t) -> int32x4_t {
 #[cfg_attr(test, assert_instr(fcvtms))]
 pub unsafe fn vcvtm_s64_f64(a: float64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtms.v1i64.v1f64")]
         fn vcvtm_s64_f64_(a: float64x1_t) -> int64x1_t;
     }
@@ -2701,7 +2701,7 @@ pub unsafe fn vcvtm_s64_f64(a: float64x1_t) -> int64x1_t {
 #[cfg_attr(test, assert_instr(fcvtms))]
 pub unsafe fn vcvtmq_s64_f64(a: float64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtms.v2i64.v2f64")]
         fn vcvtmq_s64_f64_(a: float64x2_t) -> int64x2_t;
     }
@@ -2714,7 +2714,7 @@ pub unsafe fn vcvtmq_s64_f64(a: float64x2_t) -> int64x2_t {
 #[cfg_attr(test, assert_instr(fcvtms))]
 pub unsafe fn vcvtms_s32_f32(a: f32) -> i32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtms.i32.f32")]
         fn vcvtms_s32_f32_(a: f32) -> i32;
     }
@@ -2727,7 +2727,7 @@ pub unsafe fn vcvtms_s32_f32(a: f32) -> i32 {
 #[cfg_attr(test, assert_instr(fcvtms))]
 pub unsafe fn vcvtmd_s64_f64(a: f64) -> i64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtms.i64.f64")]
         fn vcvtmd_s64_f64_(a: f64) -> i64;
     }
@@ -2740,7 +2740,7 @@ pub unsafe fn vcvtmd_s64_f64(a: f64) -> i64 {
 #[cfg_attr(test, assert_instr(fcvtps))]
 pub unsafe fn vcvtp_s32_f32(a: float32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtps.v2i32.v2f32")]
         fn vcvtp_s32_f32_(a: float32x2_t) -> int32x2_t;
     }
@@ -2753,7 +2753,7 @@ pub unsafe fn vcvtp_s32_f32(a: float32x2_t) -> int32x2_t {
 #[cfg_attr(test, assert_instr(fcvtps))]
 pub unsafe fn vcvtpq_s32_f32(a: float32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtps.v4i32.v4f32")]
         fn vcvtpq_s32_f32_(a: float32x4_t) -> int32x4_t;
     }
@@ -2766,7 +2766,7 @@ pub unsafe fn vcvtpq_s32_f32(a: float32x4_t) -> int32x4_t {
 #[cfg_attr(test, assert_instr(fcvtps))]
 pub unsafe fn vcvtp_s64_f64(a: float64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtps.v1i64.v1f64")]
         fn vcvtp_s64_f64_(a: float64x1_t) -> int64x1_t;
     }
@@ -2779,7 +2779,7 @@ pub unsafe fn vcvtp_s64_f64(a: float64x1_t) -> int64x1_t {
 #[cfg_attr(test, assert_instr(fcvtps))]
 pub unsafe fn vcvtpq_s64_f64(a: float64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtps.v2i64.v2f64")]
         fn vcvtpq_s64_f64_(a: float64x2_t) -> int64x2_t;
     }
@@ -2792,7 +2792,7 @@ pub unsafe fn vcvtpq_s64_f64(a: float64x2_t) -> int64x2_t {
 #[cfg_attr(test, assert_instr(fcvtps))]
 pub unsafe fn vcvtps_s32_f32(a: f32) -> i32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtps.i32.f32")]
         fn vcvtps_s32_f32_(a: f32) -> i32;
     }
@@ -2805,7 +2805,7 @@ pub unsafe fn vcvtps_s32_f32(a: f32) -> i32 {
 #[cfg_attr(test, assert_instr(fcvtps))]
 pub unsafe fn vcvtpd_s64_f64(a: f64) -> i64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtps.i64.f64")]
         fn vcvtpd_s64_f64_(a: f64) -> i64;
     }
@@ -2818,7 +2818,7 @@ pub unsafe fn vcvtpd_s64_f64(a: f64) -> i64 {
 #[cfg_attr(test, assert_instr(fcvtau))]
 pub unsafe fn vcvta_u32_f32(a: float32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtau.v2i32.v2f32")]
         fn vcvta_u32_f32_(a: float32x2_t) -> uint32x2_t;
     }
@@ -2831,7 +2831,7 @@ pub unsafe fn vcvta_u32_f32(a: float32x2_t) -> uint32x2_t {
 #[cfg_attr(test, assert_instr(fcvtau))]
 pub unsafe fn vcvtaq_u32_f32(a: float32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtau.v4i32.v4f32")]
         fn vcvtaq_u32_f32_(a: float32x4_t) -> uint32x4_t;
     }
@@ -2844,7 +2844,7 @@ pub unsafe fn vcvtaq_u32_f32(a: float32x4_t) -> uint32x4_t {
 #[cfg_attr(test, assert_instr(fcvtau))]
 pub unsafe fn vcvta_u64_f64(a: float64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtau.v1i64.v1f64")]
         fn vcvta_u64_f64_(a: float64x1_t) -> uint64x1_t;
     }
@@ -2857,7 +2857,7 @@ pub unsafe fn vcvta_u64_f64(a: float64x1_t) -> uint64x1_t {
 #[cfg_attr(test, assert_instr(fcvtau))]
 pub unsafe fn vcvtaq_u64_f64(a: float64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtau.v2i64.v2f64")]
         fn vcvtaq_u64_f64_(a: float64x2_t) -> uint64x2_t;
     }
@@ -2870,7 +2870,7 @@ pub unsafe fn vcvtaq_u64_f64(a: float64x2_t) -> uint64x2_t {
 #[cfg_attr(test, assert_instr(fcvtnu))]
 pub unsafe fn vcvtn_u32_f32(a: float32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtnu.v2i32.v2f32")]
         fn vcvtn_u32_f32_(a: float32x2_t) -> uint32x2_t;
     }
@@ -2883,7 +2883,7 @@ pub unsafe fn vcvtn_u32_f32(a: float32x2_t) -> uint32x2_t {
 #[cfg_attr(test, assert_instr(fcvtnu))]
 pub unsafe fn vcvtnq_u32_f32(a: float32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtnu.v4i32.v4f32")]
         fn vcvtnq_u32_f32_(a: float32x4_t) -> uint32x4_t;
     }
@@ -2896,7 +2896,7 @@ pub unsafe fn vcvtnq_u32_f32(a: float32x4_t) -> uint32x4_t {
 #[cfg_attr(test, assert_instr(fcvtnu))]
 pub unsafe fn vcvtn_u64_f64(a: float64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtnu.v1i64.v1f64")]
         fn vcvtn_u64_f64_(a: float64x1_t) -> uint64x1_t;
     }
@@ -2909,7 +2909,7 @@ pub unsafe fn vcvtn_u64_f64(a: float64x1_t) -> uint64x1_t {
 #[cfg_attr(test, assert_instr(fcvtnu))]
 pub unsafe fn vcvtnq_u64_f64(a: float64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtnu.v2i64.v2f64")]
         fn vcvtnq_u64_f64_(a: float64x2_t) -> uint64x2_t;
     }
@@ -2922,7 +2922,7 @@ pub unsafe fn vcvtnq_u64_f64(a: float64x2_t) -> uint64x2_t {
 #[cfg_attr(test, assert_instr(fcvtnu))]
 pub unsafe fn vcvtns_u32_f32(a: f32) -> u32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtnu.i32.f32")]
         fn vcvtns_u32_f32_(a: f32) -> u32;
     }
@@ -2935,7 +2935,7 @@ pub unsafe fn vcvtns_u32_f32(a: f32) -> u32 {
 #[cfg_attr(test, assert_instr(fcvtnu))]
 pub unsafe fn vcvtnd_u64_f64(a: f64) -> u64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtnu.i64.f64")]
         fn vcvtnd_u64_f64_(a: f64) -> u64;
     }
@@ -2948,7 +2948,7 @@ pub unsafe fn vcvtnd_u64_f64(a: f64) -> u64 {
 #[cfg_attr(test, assert_instr(fcvtmu))]
 pub unsafe fn vcvtm_u32_f32(a: float32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtmu.v2i32.v2f32")]
         fn vcvtm_u32_f32_(a: float32x2_t) -> uint32x2_t;
     }
@@ -2961,7 +2961,7 @@ pub unsafe fn vcvtm_u32_f32(a: float32x2_t) -> uint32x2_t {
 #[cfg_attr(test, assert_instr(fcvtmu))]
 pub unsafe fn vcvtmq_u32_f32(a: float32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtmu.v4i32.v4f32")]
         fn vcvtmq_u32_f32_(a: float32x4_t) -> uint32x4_t;
     }
@@ -2974,7 +2974,7 @@ pub unsafe fn vcvtmq_u32_f32(a: float32x4_t) -> uint32x4_t {
 #[cfg_attr(test, assert_instr(fcvtmu))]
 pub unsafe fn vcvtm_u64_f64(a: float64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtmu.v1i64.v1f64")]
         fn vcvtm_u64_f64_(a: float64x1_t) -> uint64x1_t;
     }
@@ -2987,7 +2987,7 @@ pub unsafe fn vcvtm_u64_f64(a: float64x1_t) -> uint64x1_t {
 #[cfg_attr(test, assert_instr(fcvtmu))]
 pub unsafe fn vcvtmq_u64_f64(a: float64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtmu.v2i64.v2f64")]
         fn vcvtmq_u64_f64_(a: float64x2_t) -> uint64x2_t;
     }
@@ -3000,7 +3000,7 @@ pub unsafe fn vcvtmq_u64_f64(a: float64x2_t) -> uint64x2_t {
 #[cfg_attr(test, assert_instr(fcvtmu))]
 pub unsafe fn vcvtms_u32_f32(a: f32) -> u32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtmu.i32.f32")]
         fn vcvtms_u32_f32_(a: f32) -> u32;
     }
@@ -3013,7 +3013,7 @@ pub unsafe fn vcvtms_u32_f32(a: f32) -> u32 {
 #[cfg_attr(test, assert_instr(fcvtmu))]
 pub unsafe fn vcvtmd_u64_f64(a: f64) -> u64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtmu.i64.f64")]
         fn vcvtmd_u64_f64_(a: f64) -> u64;
     }
@@ -3026,7 +3026,7 @@ pub unsafe fn vcvtmd_u64_f64(a: f64) -> u64 {
 #[cfg_attr(test, assert_instr(fcvtpu))]
 pub unsafe fn vcvtp_u32_f32(a: float32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtpu.v2i32.v2f32")]
         fn vcvtp_u32_f32_(a: float32x2_t) -> uint32x2_t;
     }
@@ -3039,7 +3039,7 @@ pub unsafe fn vcvtp_u32_f32(a: float32x2_t) -> uint32x2_t {
 #[cfg_attr(test, assert_instr(fcvtpu))]
 pub unsafe fn vcvtpq_u32_f32(a: float32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtpu.v4i32.v4f32")]
         fn vcvtpq_u32_f32_(a: float32x4_t) -> uint32x4_t;
     }
@@ -3052,7 +3052,7 @@ pub unsafe fn vcvtpq_u32_f32(a: float32x4_t) -> uint32x4_t {
 #[cfg_attr(test, assert_instr(fcvtpu))]
 pub unsafe fn vcvtp_u64_f64(a: float64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtpu.v1i64.v1f64")]
         fn vcvtp_u64_f64_(a: float64x1_t) -> uint64x1_t;
     }
@@ -3065,7 +3065,7 @@ pub unsafe fn vcvtp_u64_f64(a: float64x1_t) -> uint64x1_t {
 #[cfg_attr(test, assert_instr(fcvtpu))]
 pub unsafe fn vcvtpq_u64_f64(a: float64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtpu.v2i64.v2f64")]
         fn vcvtpq_u64_f64_(a: float64x2_t) -> uint64x2_t;
     }
@@ -3078,7 +3078,7 @@ pub unsafe fn vcvtpq_u64_f64(a: float64x2_t) -> uint64x2_t {
 #[cfg_attr(test, assert_instr(fcvtpu))]
 pub unsafe fn vcvtps_u32_f32(a: f32) -> u32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtpu.i32.f32")]
         fn vcvtps_u32_f32_(a: f32) -> u32;
     }
@@ -3091,7 +3091,7 @@ pub unsafe fn vcvtps_u32_f32(a: f32) -> u32 {
 #[cfg_attr(test, assert_instr(fcvtpu))]
 pub unsafe fn vcvtpd_u64_f64(a: f64) -> u64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtpu.i64.f64")]
         fn vcvtpd_u64_f64_(a: f64) -> u64;
     }
@@ -3914,7 +3914,7 @@ pub unsafe fn vnegq_f64(a: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(sqneg))]
 pub unsafe fn vqneg_s64(a: int64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqneg.v1i64")]
         fn vqneg_s64_(a: int64x1_t) -> int64x1_t;
     }
@@ -3927,7 +3927,7 @@ pub unsafe fn vqneg_s64(a: int64x1_t) -> int64x1_t {
 #[cfg_attr(test, assert_instr(sqneg))]
 pub unsafe fn vqnegq_s64(a: int64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqneg.v2i64")]
         fn vqnegq_s64_(a: int64x2_t) -> int64x2_t;
     }
@@ -3980,7 +3980,7 @@ pub unsafe fn vqsubh_u16(a: u16, b: u16) -> u16 {
 #[cfg_attr(test, assert_instr(uqsub))]
 pub unsafe fn vqsubs_u32(a: u32, b: u32) -> u32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqsub.i32")]
         fn vqsubs_u32_(a: u32, b: u32) -> u32;
     }
@@ -3993,7 +3993,7 @@ pub unsafe fn vqsubs_u32(a: u32, b: u32) -> u32 {
 #[cfg_attr(test, assert_instr(uqsub))]
 pub unsafe fn vqsubd_u64(a: u64, b: u64) -> u64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqsub.i64")]
         fn vqsubd_u64_(a: u64, b: u64) -> u64;
     }
@@ -4006,7 +4006,7 @@ pub unsafe fn vqsubd_u64(a: u64, b: u64) -> u64 {
 #[cfg_attr(test, assert_instr(sqsub))]
 pub unsafe fn vqsubs_s32(a: i32, b: i32) -> i32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqsub.i32")]
         fn vqsubs_s32_(a: i32, b: i32) -> i32;
     }
@@ -4019,7 +4019,7 @@ pub unsafe fn vqsubs_s32(a: i32, b: i32) -> i32 {
 #[cfg_attr(test, assert_instr(sqsub))]
 pub unsafe fn vqsubd_s64(a: i64, b: i64) -> i64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqsub.i64")]
         fn vqsubd_s64_(a: i64, b: i64) -> i64;
     }
@@ -4032,7 +4032,7 @@ pub unsafe fn vqsubd_s64(a: i64, b: i64) -> i64 {
 #[cfg_attr(test, assert_instr(rbit))]
 pub unsafe fn vrbit_s8(a: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.rbit.v8i8")]
         fn vrbit_s8_(a: int8x8_t) -> int8x8_t;
     }
@@ -4045,7 +4045,7 @@ pub unsafe fn vrbit_s8(a: int8x8_t) -> int8x8_t {
 #[cfg_attr(test, assert_instr(rbit))]
 pub unsafe fn vrbitq_s8(a: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.rbit.v16i8")]
         fn vrbitq_s8_(a: int8x16_t) -> int8x16_t;
     }
@@ -4090,7 +4090,7 @@ pub unsafe fn vrbitq_p8(a: poly8x16_t) -> poly8x16_t {
 #[cfg_attr(test, assert_instr(frintx))]
 pub unsafe fn vrndx_f32(a: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.rint.v2f32")]
         fn vrndx_f32_(a: float32x2_t) -> float32x2_t;
     }
@@ -4103,7 +4103,7 @@ pub unsafe fn vrndx_f32(a: float32x2_t) -> float32x2_t {
 #[cfg_attr(test, assert_instr(frintx))]
 pub unsafe fn vrndxq_f32(a: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.rint.v4f32")]
         fn vrndxq_f32_(a: float32x4_t) -> float32x4_t;
     }
@@ -4116,7 +4116,7 @@ pub unsafe fn vrndxq_f32(a: float32x4_t) -> float32x4_t {
 #[cfg_attr(test, assert_instr(frintx))]
 pub unsafe fn vrndx_f64(a: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.rint.v1f64")]
         fn vrndx_f64_(a: float64x1_t) -> float64x1_t;
     }
@@ -4129,7 +4129,7 @@ pub unsafe fn vrndx_f64(a: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(frintx))]
 pub unsafe fn vrndxq_f64(a: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.rint.v2f64")]
         fn vrndxq_f64_(a: float64x2_t) -> float64x2_t;
     }
@@ -4142,7 +4142,7 @@ pub unsafe fn vrndxq_f64(a: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(frinta))]
 pub unsafe fn vrnda_f32(a: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.round.v2f32")]
         fn vrnda_f32_(a: float32x2_t) -> float32x2_t;
     }
@@ -4155,7 +4155,7 @@ pub unsafe fn vrnda_f32(a: float32x2_t) -> float32x2_t {
 #[cfg_attr(test, assert_instr(frinta))]
 pub unsafe fn vrndaq_f32(a: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.round.v4f32")]
         fn vrndaq_f32_(a: float32x4_t) -> float32x4_t;
     }
@@ -4168,7 +4168,7 @@ pub unsafe fn vrndaq_f32(a: float32x4_t) -> float32x4_t {
 #[cfg_attr(test, assert_instr(frinta))]
 pub unsafe fn vrnda_f64(a: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.round.v1f64")]
         fn vrnda_f64_(a: float64x1_t) -> float64x1_t;
     }
@@ -4181,7 +4181,7 @@ pub unsafe fn vrnda_f64(a: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(frinta))]
 pub unsafe fn vrndaq_f64(a: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.round.v2f64")]
         fn vrndaq_f64_(a: float64x2_t) -> float64x2_t;
     }
@@ -4194,7 +4194,7 @@ pub unsafe fn vrndaq_f64(a: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(frintn))]
 pub unsafe fn vrndn_f64(a: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frintn.v1f64")]
         fn vrndn_f64_(a: float64x1_t) -> float64x1_t;
     }
@@ -4207,7 +4207,7 @@ pub unsafe fn vrndn_f64(a: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(frintn))]
 pub unsafe fn vrndnq_f64(a: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frintn.v2f64")]
         fn vrndnq_f64_(a: float64x2_t) -> float64x2_t;
     }
@@ -4220,7 +4220,7 @@ pub unsafe fn vrndnq_f64(a: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(frintm))]
 pub unsafe fn vrndm_f32(a: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.floor.v2f32")]
         fn vrndm_f32_(a: float32x2_t) -> float32x2_t;
     }
@@ -4233,7 +4233,7 @@ pub unsafe fn vrndm_f32(a: float32x2_t) -> float32x2_t {
 #[cfg_attr(test, assert_instr(frintm))]
 pub unsafe fn vrndmq_f32(a: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.floor.v4f32")]
         fn vrndmq_f32_(a: float32x4_t) -> float32x4_t;
     }
@@ -4246,7 +4246,7 @@ pub unsafe fn vrndmq_f32(a: float32x4_t) -> float32x4_t {
 #[cfg_attr(test, assert_instr(frintm))]
 pub unsafe fn vrndm_f64(a: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.floor.v1f64")]
         fn vrndm_f64_(a: float64x1_t) -> float64x1_t;
     }
@@ -4259,7 +4259,7 @@ pub unsafe fn vrndm_f64(a: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(frintm))]
 pub unsafe fn vrndmq_f64(a: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.floor.v2f64")]
         fn vrndmq_f64_(a: float64x2_t) -> float64x2_t;
     }
@@ -4272,7 +4272,7 @@ pub unsafe fn vrndmq_f64(a: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(frintp))]
 pub unsafe fn vrndp_f32(a: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ceil.v2f32")]
         fn vrndp_f32_(a: float32x2_t) -> float32x2_t;
     }
@@ -4285,7 +4285,7 @@ pub unsafe fn vrndp_f32(a: float32x2_t) -> float32x2_t {
 #[cfg_attr(test, assert_instr(frintp))]
 pub unsafe fn vrndpq_f32(a: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ceil.v4f32")]
         fn vrndpq_f32_(a: float32x4_t) -> float32x4_t;
     }
@@ -4298,7 +4298,7 @@ pub unsafe fn vrndpq_f32(a: float32x4_t) -> float32x4_t {
 #[cfg_attr(test, assert_instr(frintp))]
 pub unsafe fn vrndp_f64(a: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ceil.v1f64")]
         fn vrndp_f64_(a: float64x1_t) -> float64x1_t;
     }
@@ -4311,7 +4311,7 @@ pub unsafe fn vrndp_f64(a: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(frintp))]
 pub unsafe fn vrndpq_f64(a: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ceil.v2f64")]
         fn vrndpq_f64_(a: float64x2_t) -> float64x2_t;
     }
@@ -4324,7 +4324,7 @@ pub unsafe fn vrndpq_f64(a: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(frintz))]
 pub unsafe fn vrnd_f32(a: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.trunc.v2f32")]
         fn vrnd_f32_(a: float32x2_t) -> float32x2_t;
     }
@@ -4337,7 +4337,7 @@ pub unsafe fn vrnd_f32(a: float32x2_t) -> float32x2_t {
 #[cfg_attr(test, assert_instr(frintz))]
 pub unsafe fn vrndq_f32(a: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.trunc.v4f32")]
         fn vrndq_f32_(a: float32x4_t) -> float32x4_t;
     }
@@ -4350,7 +4350,7 @@ pub unsafe fn vrndq_f32(a: float32x4_t) -> float32x4_t {
 #[cfg_attr(test, assert_instr(frintz))]
 pub unsafe fn vrnd_f64(a: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.trunc.v1f64")]
         fn vrnd_f64_(a: float64x1_t) -> float64x1_t;
     }
@@ -4363,7 +4363,7 @@ pub unsafe fn vrnd_f64(a: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(frintz))]
 pub unsafe fn vrndq_f64(a: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.trunc.v2f64")]
         fn vrndq_f64_(a: float64x2_t) -> float64x2_t;
     }
@@ -4376,7 +4376,7 @@ pub unsafe fn vrndq_f64(a: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(frinti))]
 pub unsafe fn vrndi_f32(a: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.nearbyint.v2f32")]
         fn vrndi_f32_(a: float32x2_t) -> float32x2_t;
     }
@@ -4389,7 +4389,7 @@ pub unsafe fn vrndi_f32(a: float32x2_t) -> float32x2_t {
 #[cfg_attr(test, assert_instr(frinti))]
 pub unsafe fn vrndiq_f32(a: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.nearbyint.v4f32")]
         fn vrndiq_f32_(a: float32x4_t) -> float32x4_t;
     }
@@ -4402,7 +4402,7 @@ pub unsafe fn vrndiq_f32(a: float32x4_t) -> float32x4_t {
 #[cfg_attr(test, assert_instr(frinti))]
 pub unsafe fn vrndi_f64(a: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.nearbyint.v1f64")]
         fn vrndi_f64_(a: float64x1_t) -> float64x1_t;
     }
@@ -4415,7 +4415,7 @@ pub unsafe fn vrndi_f64(a: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(frinti))]
 pub unsafe fn vrndiq_f64(a: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.nearbyint.v2f64")]
         fn vrndiq_f64_(a: float64x2_t) -> float64x2_t;
     }
@@ -4468,7 +4468,7 @@ pub unsafe fn vqaddh_u16(a: u16, b: u16) -> u16 {
 #[cfg_attr(test, assert_instr(uqadd))]
 pub unsafe fn vqadds_u32(a: u32, b: u32) -> u32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqadd.i32")]
         fn vqadds_u32_(a: u32, b: u32) -> u32;
     }
@@ -4481,7 +4481,7 @@ pub unsafe fn vqadds_u32(a: u32, b: u32) -> u32 {
 #[cfg_attr(test, assert_instr(uqadd))]
 pub unsafe fn vqaddd_u64(a: u64, b: u64) -> u64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqadd.i64")]
         fn vqaddd_u64_(a: u64, b: u64) -> u64;
     }
@@ -4494,7 +4494,7 @@ pub unsafe fn vqaddd_u64(a: u64, b: u64) -> u64 {
 #[cfg_attr(test, assert_instr(sqadd))]
 pub unsafe fn vqadds_s32(a: i32, b: i32) -> i32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqadd.i32")]
         fn vqadds_s32_(a: i32, b: i32) -> i32;
     }
@@ -4507,11 +4507,89 @@ pub unsafe fn vqadds_s32(a: i32, b: i32) -> i32 {
 #[cfg_attr(test, assert_instr(sqadd))]
 pub unsafe fn vqaddd_s64(a: i64, b: i64) -> i64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqadd.i64")]
         fn vqaddd_s64_(a: i64, b: i64) -> i64;
     }
     vqaddd_s64_(a, b)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ld1))]
+pub unsafe fn vld1_f64_x2(a: *const f64) -> float64x1x2_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x2.v1f64.p0f64")]
+        fn vld1_f64_x2_(a: *const f64) -> float64x1x2_t;
+    }
+    vld1_f64_x2_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ld1))]
+pub unsafe fn vld1q_f64_x2(a: *const f64) -> float64x2x2_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x2.v2f64.p0f64")]
+        fn vld1q_f64_x2_(a: *const f64) -> float64x2x2_t;
+    }
+    vld1q_f64_x2_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ld1))]
+pub unsafe fn vld1_f64_x3(a: *const f64) -> float64x1x3_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x3.v1f64.p0f64")]
+        fn vld1_f64_x3_(a: *const f64) -> float64x1x3_t;
+    }
+    vld1_f64_x3_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ld1))]
+pub unsafe fn vld1q_f64_x3(a: *const f64) -> float64x2x3_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x3.v2f64.p0f64")]
+        fn vld1q_f64_x3_(a: *const f64) -> float64x2x3_t;
+    }
+    vld1q_f64_x3_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ld1))]
+pub unsafe fn vld1_f64_x4(a: *const f64) -> float64x1x4_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x4.v1f64.p0f64")]
+        fn vld1_f64_x4_(a: *const f64) -> float64x1x4_t;
+    }
+    vld1_f64_x4_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ld1))]
+pub unsafe fn vld1q_f64_x4(a: *const f64) -> float64x2x4_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x4.v2f64.p0f64")]
+        fn vld1q_f64_x4_(a: *const f64) -> float64x2x4_t;
+    }
+    vld1q_f64_x4_(a)
 }
 
 /// Multiply
@@ -4696,7 +4774,7 @@ pub unsafe fn vmull_high_u32(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
 #[cfg_attr(test, assert_instr(pmull))]
 pub unsafe fn vmull_p64(a: p64, b: p64) -> p128 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.pmull64")]
         fn vmull_p64_(a: p64, b: p64) -> int8x16_t;
     }
@@ -4839,7 +4917,7 @@ pub unsafe fn vmull_high_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t
 #[cfg_attr(test, assert_instr(fmulx))]
 pub unsafe fn vmulx_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmulx.v2f32")]
         fn vmulx_f32_(a: float32x2_t, b: float32x2_t) -> float32x2_t;
     }
@@ -4852,7 +4930,7 @@ pub unsafe fn vmulx_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[cfg_attr(test, assert_instr(fmulx))]
 pub unsafe fn vmulxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmulx.v4f32")]
         fn vmulxq_f32_(a: float32x4_t, b: float32x4_t) -> float32x4_t;
     }
@@ -4865,7 +4943,7 @@ pub unsafe fn vmulxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[cfg_attr(test, assert_instr(fmulx))]
 pub unsafe fn vmulx_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmulx.v1f64")]
         fn vmulx_f64_(a: float64x1_t, b: float64x1_t) -> float64x1_t;
     }
@@ -4878,7 +4956,7 @@ pub unsafe fn vmulx_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(fmulx))]
 pub unsafe fn vmulxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmulx.v2f64")]
         fn vmulxq_f64_(a: float64x2_t, b: float64x2_t) -> float64x2_t;
     }
@@ -4971,7 +5049,7 @@ pub unsafe fn vmulxq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t) 
 #[cfg_attr(test, assert_instr(fmulx))]
 pub unsafe fn vmulxs_f32(a: f32, b: f32) -> f32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmulx.f32")]
         fn vmulxs_f32_(a: f32, b: f32) -> f32;
     }
@@ -4984,7 +5062,7 @@ pub unsafe fn vmulxs_f32(a: f32, b: f32) -> f32 {
 #[cfg_attr(test, assert_instr(fmulx))]
 pub unsafe fn vmulxd_f64(a: f64, b: f64) -> f64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmulx.f64")]
         fn vmulxd_f64_(a: f64, b: f64) -> f64;
     }
@@ -5037,7 +5115,7 @@ pub unsafe fn vmulxd_laneq_f64<const LANE: i32>(a: f64, b: float64x2_t) -> f64 {
 #[cfg_attr(test, assert_instr(fmadd))]
 pub unsafe fn vfma_f64(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fma.v1f64")]
         fn vfma_f64_(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t;
     }
@@ -5050,7 +5128,7 @@ pub unsafe fn vfma_f64(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float6
 #[cfg_attr(test, assert_instr(fmla))]
 pub unsafe fn vfmaq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fma.v2f64")]
         fn vfmaq_f64_(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t;
     }
@@ -5160,7 +5238,7 @@ pub unsafe fn vfmaq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t, c
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vfmas_lane_f32<const LANE: i32>(a: f32, b: f32, c: float32x2_t) -> f32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fma.f32")]
         fn vfmas_lane_f32_(a: f32, b: f32, c: f32) -> f32;
     }
@@ -5176,7 +5254,7 @@ pub unsafe fn vfmas_lane_f32<const LANE: i32>(a: f32, b: f32, c: float32x2_t) ->
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vfmas_laneq_f32<const LANE: i32>(a: f32, b: f32, c: float32x4_t) -> f32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fma.f32")]
         fn vfmas_laneq_f32_(a: f32, b: f32, c: f32) -> f32;
     }
@@ -5192,7 +5270,7 @@ pub unsafe fn vfmas_laneq_f32<const LANE: i32>(a: f32, b: f32, c: float32x4_t) -
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vfmad_lane_f64<const LANE: i32>(a: f64, b: f64, c: float64x1_t) -> f64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fma.f64")]
         fn vfmad_lane_f64_(a: f64, b: f64, c: f64) -> f64;
     }
@@ -5208,7 +5286,7 @@ pub unsafe fn vfmad_lane_f64<const LANE: i32>(a: f64, b: f64, c: float64x1_t) ->
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vfmad_laneq_f64<const LANE: i32>(a: f64, b: f64, c: float64x2_t) -> f64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fma.f64")]
         fn vfmad_laneq_f64_(a: f64, b: f64, c: f64) -> f64;
     }
@@ -5421,7 +5499,7 @@ pub unsafe fn vsubq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(saddlv))]
 pub unsafe fn vaddlv_s16(a: int16x4_t) -> i32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.saddlv.i32.v4i16")]
         fn vaddlv_s16_(a: int16x4_t) -> i32;
     }
@@ -5434,7 +5512,7 @@ pub unsafe fn vaddlv_s16(a: int16x4_t) -> i32 {
 #[cfg_attr(test, assert_instr(saddlv))]
 pub unsafe fn vaddlvq_s16(a: int16x8_t) -> i32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.saddlv.i32.v8i16")]
         fn vaddlvq_s16_(a: int16x8_t) -> i32;
     }
@@ -5447,7 +5525,7 @@ pub unsafe fn vaddlvq_s16(a: int16x8_t) -> i32 {
 #[cfg_attr(test, assert_instr(saddlp))]
 pub unsafe fn vaddlv_s32(a: int32x2_t) -> i64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.saddlv.i64.v2i32")]
         fn vaddlv_s32_(a: int32x2_t) -> i64;
     }
@@ -5460,7 +5538,7 @@ pub unsafe fn vaddlv_s32(a: int32x2_t) -> i64 {
 #[cfg_attr(test, assert_instr(saddlv))]
 pub unsafe fn vaddlvq_s32(a: int32x4_t) -> i64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.saddlv.i64.v4i32")]
         fn vaddlvq_s32_(a: int32x4_t) -> i64;
     }
@@ -5473,7 +5551,7 @@ pub unsafe fn vaddlvq_s32(a: int32x4_t) -> i64 {
 #[cfg_attr(test, assert_instr(uaddlv))]
 pub unsafe fn vaddlv_u16(a: uint16x4_t) -> u32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uaddlv.i32.v4i16")]
         fn vaddlv_u16_(a: uint16x4_t) -> u32;
     }
@@ -5486,7 +5564,7 @@ pub unsafe fn vaddlv_u16(a: uint16x4_t) -> u32 {
 #[cfg_attr(test, assert_instr(uaddlv))]
 pub unsafe fn vaddlvq_u16(a: uint16x8_t) -> u32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uaddlv.i32.v8i16")]
         fn vaddlvq_u16_(a: uint16x8_t) -> u32;
     }
@@ -5499,7 +5577,7 @@ pub unsafe fn vaddlvq_u16(a: uint16x8_t) -> u32 {
 #[cfg_attr(test, assert_instr(uaddlp))]
 pub unsafe fn vaddlv_u32(a: uint32x2_t) -> u64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uaddlv.i64.v2i32")]
         fn vaddlv_u32_(a: uint32x2_t) -> u64;
     }
@@ -5512,7 +5590,7 @@ pub unsafe fn vaddlv_u32(a: uint32x2_t) -> u64 {
 #[cfg_attr(test, assert_instr(uaddlv))]
 pub unsafe fn vaddlvq_u32(a: uint32x4_t) -> u64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uaddlv.i64.v4i32")]
         fn vaddlvq_u32_(a: uint32x4_t) -> u64;
     }
@@ -5651,7 +5729,7 @@ pub unsafe fn vsubl_high_u32(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
 #[cfg_attr(test, assert_instr(fmax))]
 pub unsafe fn vmax_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmax.v1f64")]
         fn vmax_f64_(a: float64x1_t, b: float64x1_t) -> float64x1_t;
     }
@@ -5664,7 +5742,7 @@ pub unsafe fn vmax_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(fmax))]
 pub unsafe fn vmaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmax.v2f64")]
         fn vmaxq_f64_(a: float64x2_t, b: float64x2_t) -> float64x2_t;
     }
@@ -5677,7 +5755,7 @@ pub unsafe fn vmaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(fmaxnm))]
 pub unsafe fn vmaxnm_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmaxnm.v1f64")]
         fn vmaxnm_f64_(a: float64x1_t, b: float64x1_t) -> float64x1_t;
     }
@@ -5690,7 +5768,7 @@ pub unsafe fn vmaxnm_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(fmaxnm))]
 pub unsafe fn vmaxnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmaxnm.v2f64")]
         fn vmaxnmq_f64_(a: float64x2_t, b: float64x2_t) -> float64x2_t;
     }
@@ -5703,7 +5781,7 @@ pub unsafe fn vmaxnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(fmaxnmp))]
 pub unsafe fn vpmaxnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmaxnmp.v2f32")]
         fn vpmaxnm_f32_(a: float32x2_t, b: float32x2_t) -> float32x2_t;
     }
@@ -5716,7 +5794,7 @@ pub unsafe fn vpmaxnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[cfg_attr(test, assert_instr(fmaxnmp))]
 pub unsafe fn vpmaxnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmaxnmp.v2f64")]
         fn vpmaxnmq_f64_(a: float64x2_t, b: float64x2_t) -> float64x2_t;
     }
@@ -5729,7 +5807,7 @@ pub unsafe fn vpmaxnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(fmaxnmp))]
 pub unsafe fn vpmaxnmq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmaxnmp.v4f32")]
         fn vpmaxnmq_f32_(a: float32x4_t, b: float32x4_t) -> float32x4_t;
     }
@@ -5742,7 +5820,7 @@ pub unsafe fn vpmaxnmq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[cfg_attr(test, assert_instr(fmin))]
 pub unsafe fn vmin_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmin.v1f64")]
         fn vmin_f64_(a: float64x1_t, b: float64x1_t) -> float64x1_t;
     }
@@ -5755,7 +5833,7 @@ pub unsafe fn vmin_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(fmin))]
 pub unsafe fn vminq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmin.v2f64")]
         fn vminq_f64_(a: float64x2_t, b: float64x2_t) -> float64x2_t;
     }
@@ -5768,7 +5846,7 @@ pub unsafe fn vminq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(fminnm))]
 pub unsafe fn vminnm_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fminnm.v1f64")]
         fn vminnm_f64_(a: float64x1_t, b: float64x1_t) -> float64x1_t;
     }
@@ -5781,7 +5859,7 @@ pub unsafe fn vminnm_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(fminnm))]
 pub unsafe fn vminnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fminnm.v2f64")]
         fn vminnmq_f64_(a: float64x2_t, b: float64x2_t) -> float64x2_t;
     }
@@ -5794,7 +5872,7 @@ pub unsafe fn vminnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(fminnmp))]
 pub unsafe fn vpminnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fminnmp.v2f32")]
         fn vpminnm_f32_(a: float32x2_t, b: float32x2_t) -> float32x2_t;
     }
@@ -5807,7 +5885,7 @@ pub unsafe fn vpminnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[cfg_attr(test, assert_instr(fminnmp))]
 pub unsafe fn vpminnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fminnmp.v2f64")]
         fn vpminnmq_f64_(a: float64x2_t, b: float64x2_t) -> float64x2_t;
     }
@@ -5820,7 +5898,7 @@ pub unsafe fn vpminnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(fminnmp))]
 pub unsafe fn vpminnmq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fminnmp.v4f32")]
         fn vpminnmq_f32_(a: float32x4_t, b: float32x4_t) -> float32x4_t;
     }
@@ -5843,7 +5921,7 @@ pub unsafe fn vqdmullh_s16(a: i16, b: i16) -> i32 {
 #[cfg_attr(test, assert_instr(sqdmull))]
 pub unsafe fn vqdmulls_s32(a: i32, b: i32) -> i64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqdmulls.scalar")]
         fn vqdmulls_s32_(a: i32, b: i32) -> i64;
     }
@@ -6290,7 +6368,7 @@ pub unsafe fn vqmovns_u32(a: u32) -> u16 {
 #[cfg_attr(test, assert_instr(sqxtn))]
 pub unsafe fn vqmovnd_s64(a: i64) -> i32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.scalar.sqxtn.i32.i64")]
         fn vqmovnd_s64_(a: i64) -> i32;
     }
@@ -6303,7 +6381,7 @@ pub unsafe fn vqmovnd_s64(a: i64) -> i32 {
 #[cfg_attr(test, assert_instr(uqxtn))]
 pub unsafe fn vqmovnd_u64(a: u64) -> u32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.scalar.uqxtn.i32.i64")]
         fn vqmovnd_u64_(a: u64) -> u32;
     }
@@ -6580,7 +6658,7 @@ pub unsafe fn vqrdmlshs_laneq_s32<const LANE: i32>(a: i32, b: i32, c: int32x4_t)
 #[cfg_attr(test, assert_instr(sqrshl))]
 pub unsafe fn vqrshls_s32(a: i32, b: i32) -> i32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrshl.i32")]
         fn vqrshls_s32_(a: i32, b: i32) -> i32;
     }
@@ -6593,7 +6671,7 @@ pub unsafe fn vqrshls_s32(a: i32, b: i32) -> i32 {
 #[cfg_attr(test, assert_instr(sqrshl))]
 pub unsafe fn vqrshld_s64(a: i64, b: i64) -> i64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrshl.i64")]
         fn vqrshld_s64_(a: i64, b: i64) -> i64;
     }
@@ -6626,7 +6704,7 @@ pub unsafe fn vqrshlh_s16(a: i16, b: i16) -> i16 {
 #[cfg_attr(test, assert_instr(uqrshl))]
 pub unsafe fn vqrshls_u32(a: u32, b: i32) -> u32 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqrshl.i32")]
         fn vqrshls_u32_(a: u32, b: i32) -> u32;
     }
@@ -6639,7 +6717,7 @@ pub unsafe fn vqrshls_u32(a: u32, b: i32) -> u32 {
 #[cfg_attr(test, assert_instr(uqrshl))]
 pub unsafe fn vqrshld_u64(a: u64, b: i64) -> u64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqrshl.i64")]
         fn vqrshld_u64_(a: u64, b: i64) -> u64;
     }
@@ -6861,7 +6939,7 @@ pub unsafe fn vqrshrun_high_n_s64<const N: i32>(a: uint32x2_t, b: int64x2_t) -> 
 #[cfg_attr(test, assert_instr(sqshl))]
 pub unsafe fn vqshld_s64(a: i64, b: i64) -> i64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshl.i64")]
         fn vqshld_s64_(a: i64, b: i64) -> i64;
     }
@@ -6901,7 +6979,7 @@ pub unsafe fn vqshls_s32(a: i32, b: i32) -> i32 {
 #[cfg_attr(test, assert_instr(uqshl))]
 pub unsafe fn vqshld_u64(a: u64, b: i64) -> u64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqshl.i64")]
         fn vqshld_u64_(a: u64, b: i64) -> u64;
     }
@@ -7023,7 +7101,7 @@ pub unsafe fn vqshld_n_u64<const N: i32>(a: u64) -> u64 {
 pub unsafe fn vqshrnd_n_s64<const N: i32>(a: i64) -> i32 {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshrn.i32")]
         fn vqshrnd_n_s64_(a: i64, n: i32) -> i32;
     }
@@ -7088,7 +7166,7 @@ pub unsafe fn vqshrn_high_n_s64<const N: i32>(a: int32x2_t, b: int64x2_t) -> int
 pub unsafe fn vqshrnd_n_u64<const N: i32>(a: u64) -> u32 {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqshrn.i32")]
         fn vqshrnd_n_u64_(a: u64, n: i32) -> u32;
     }
@@ -7243,7 +7321,7 @@ pub unsafe fn vsqrtq_f64(a: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(frsqrte))]
 pub unsafe fn vrsqrte_f64(a: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frsqrte.v1f64")]
         fn vrsqrte_f64_(a: float64x1_t) -> float64x1_t;
     }
@@ -7256,7 +7334,7 @@ pub unsafe fn vrsqrte_f64(a: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(frsqrte))]
 pub unsafe fn vrsqrteq_f64(a: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frsqrte.v2f64")]
         fn vrsqrteq_f64_(a: float64x2_t) -> float64x2_t;
     }
@@ -7269,7 +7347,7 @@ pub unsafe fn vrsqrteq_f64(a: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(frecpe))]
 pub unsafe fn vrecpe_f64(a: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frecpe.v1f64")]
         fn vrecpe_f64_(a: float64x1_t) -> float64x1_t;
     }
@@ -7282,7 +7360,7 @@ pub unsafe fn vrecpe_f64(a: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(frecpe))]
 pub unsafe fn vrecpeq_f64(a: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frecpe.v2f64")]
         fn vrecpeq_f64_(a: float64x2_t) -> float64x2_t;
     }
@@ -8031,7 +8109,7 @@ pub unsafe fn vreinterpretq_f32_f64(a: float64x2_t) -> float32x4_t {
 #[cfg_attr(test, assert_instr(srshl))]
 pub unsafe fn vrshld_s64(a: i64, b: i64) -> i64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.srshl.i64")]
         fn vrshld_s64_(a: i64, b: i64) -> i64;
     }
@@ -8044,7 +8122,7 @@ pub unsafe fn vrshld_s64(a: i64, b: i64) -> i64 {
 #[cfg_attr(test, assert_instr(urshl))]
 pub unsafe fn vrshld_u64(a: u64, b: i64) -> u64 {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.urshl.i64")]
         fn vrshld_u64_(a: u64, b: i64) -> u64;
     }
@@ -9446,7 +9524,7 @@ pub unsafe fn vabal_high_s32(a: int64x2_t, b: int32x4_t, c: int32x4_t) -> int64x
 #[cfg_attr(test, assert_instr(sqabs))]
 pub unsafe fn vqabs_s64(a: int64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqabs.v1i64")]
         fn vqabs_s64_(a: int64x1_t) -> int64x1_t;
     }
@@ -9459,7 +9537,7 @@ pub unsafe fn vqabs_s64(a: int64x1_t) -> int64x1_t {
 #[cfg_attr(test, assert_instr(sqabs))]
 pub unsafe fn vqabsq_s64(a: int64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqabs.v2i64")]
         fn vqabsq_s64_(a: int64x2_t) -> int64x2_t;
     }
@@ -12854,6 +12932,54 @@ mod test {
         let b: i64 = 1;
         let e: i64 = 43;
         let r: i64 = transmute(vqaddd_s64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_f64_x2() {
+        let a: [f64; 3] = [0., 1., 2.];
+        let e: [f64; 2] = [1., 2.];
+        let r: [f64; 2] = transmute(vld1_f64_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_f64_x2() {
+        let a: [f64; 5] = [0., 1., 2., 3., 4.];
+        let e: [f64x2; 2] = [f64x2::new(1., 2.), f64x2::new(3., 4.)];
+        let r: [f64x2; 2] = transmute(vld1q_f64_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_f64_x3() {
+        let a: [f64; 4] = [0., 1., 2., 3.];
+        let e: [f64; 3] = [1., 2., 3.];
+        let r: [f64; 3] = transmute(vld1_f64_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_f64_x3() {
+        let a: [f64; 7] = [0., 1., 2., 3., 4., 5., 6.];
+        let e: [f64x2; 3] = [f64x2::new(1., 2.), f64x2::new(3., 4.), f64x2::new(5., 6.)];
+        let r: [f64x2; 3] = transmute(vld1q_f64_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_f64_x4() {
+        let a: [f64; 5] = [0., 1., 2., 3., 4.];
+        let e: [f64; 4] = [1., 2., 3., 4.];
+        let r: [f64; 4] = transmute(vld1_f64_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_f64_x4() {
+        let a: [f64; 9] = [0., 1., 2., 3., 4., 5., 6., 7., 8.];
+        let e: [f64x2; 4] = [f64x2::new(1., 2.), f64x2::new(3., 4.), f64x2::new(5., 6.), f64x2::new(7., 8.)];
+        let r: [f64x2; 4] = transmute(vld1q_f64_x4(a[1..].as_ptr()));
         assert_eq!(r, e);
     }
 

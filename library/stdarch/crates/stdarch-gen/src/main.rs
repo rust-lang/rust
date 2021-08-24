@@ -51,38 +51,34 @@ const FLOAT_TYPES_64: [&str; 2] = [
 ];
 
 fn type_len(t: &str) -> usize {
-    match t {
-        "int8x8_t" => 8,
-        "int8x16_t" => 16,
-        "int16x4_t" => 4,
-        "int16x8_t" => 8,
-        "int32x2_t" => 2,
-        "int32x4_t" => 4,
-        "int64x1_t" => 1,
-        "int64x2_t" => 2,
-        "uint8x8_t" => 8,
-        "uint8x16_t" => 16,
-        "uint16x4_t" => 4,
-        "uint16x8_t" => 8,
-        "uint32x2_t" => 2,
-        "uint32x4_t" => 4,
-        "uint64x1_t" => 1,
-        "uint64x2_t" => 2,
-        "float16x4_t" => 4,
-        "float16x8_t" => 8,
-        "float32x2_t" => 2,
-        "float32x4_t" => 4,
-        "float64x1_t" => 1,
-        "float64x2_t" => 2,
-        "poly8x8_t" => 8,
-        "poly8x16_t" => 16,
-        "poly16x4_t" => 4,
-        "poly16x8_t" => 8,
-        "poly64x1_t" => 1,
-        "poly64x2_t" => 2,
-        "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" | "f32" | "f64" | "p8"
-        | "p16" | "p64" | "p128" => 1,
-        _ => panic!("unknown type: {}", t),
+    let s: Vec<_> = t.split("x").collect();
+    if s.len() == 2 {
+        match &s[1][0..2] {
+            "1_" => 1,
+            "2_" => 2,
+            "4_" => 4,
+            "8_" => 8,
+            "16" => 16,
+            _ => panic!("unknown type: {}", t),
+        }
+    } else if s.len() == 3 {
+        s[1].parse::<usize>().unwrap() * type_sub_len(t)
+    } else {
+        1
+    }
+}
+
+fn type_sub_len(t: &str) -> usize {
+    let s: Vec<_> = t.split('x').collect();
+    if s.len() != 3 {
+        1
+    } else {
+        match s[2] {
+            "2_t" => 2,
+            "3_t" => 3,
+            "4_t" => 4,
+            _ => panic!("unknown type len: {}", t),
+        }
     }
 }
 
@@ -177,6 +173,84 @@ fn type_to_suffix(t: &str) -> &str {
         "poly16x8_t" => "q_p16",
         "poly64x1_t" => "_p64",
         "poly64x2_t" => "q_p64",
+        "int8x8x2_t" => "_s8_x2",
+        "int8x8x3_t" => "_s8_x3",
+        "int8x8x4_t" => "_s8_x4",
+        "int16x4x2_t" => "_s16_x2",
+        "int16x4x3_t" => "_s16_x3",
+        "int16x4x4_t" => "_s16_x4",
+        "int32x2x2_t" => "_s32_x2",
+        "int32x2x3_t" => "_s32_x3",
+        "int32x2x4_t" => "_s32_x4",
+        "int64x1x2_t" => "_s64_x2",
+        "int64x1x3_t" => "_s64_x3",
+        "int64x1x4_t" => "_s64_x4",
+        "uint8x8x2_t" => "_u8_x2",
+        "uint8x8x3_t" => "_u8_x3",
+        "uint8x8x4_t" => "_u8_x4",
+        "uint16x4x2_t" => "_u16_x2",
+        "uint16x4x3_t" => "_u16_x3",
+        "uint16x4x4_t" => "_u16_x4",
+        "uint32x2x2_t" => "_u32_x2",
+        "uint32x2x3_t" => "_u32_x3",
+        "uint32x2x4_t" => "_u32_x4",
+        "uint64x1x2_t" => "_u64_x2",
+        "uint64x1x3_t" => "_u64_x3",
+        "uint64x1x4_t" => "_u64_x4",
+        "poly8x8x2_t" => "_p8_x2",
+        "poly8x8x3_t" => "_p8_x3",
+        "poly8x8x4_t" => "_p8_x4",
+        "poly16x4x2_t" => "_p16_x2",
+        "poly16x4x3_t" => "_p16_x3",
+        "poly16x4x4_t" => "_p16_x4",
+        "poly64x1x2_t" => "_p64_x2",
+        "poly64x1x3_t" => "_p64_x3",
+        "poly64x1x4_t" => "_p64_x4",
+        "float32x2x2_t" => "_f32_x2",
+        "float32x2x3_t" => "_f32_x3",
+        "float32x2x4_t" => "_f32_x4",
+        "float64x1x2_t" => "_f64_x2",
+        "float64x1x3_t" => "_f64_x3",
+        "float64x1x4_t" => "_f64_x4",
+        "int8x16x2_t" => "q_s8_x2",
+        "int8x16x3_t" => "q_s8_x3",
+        "int8x16x4_t" => "q_s8_x4",
+        "int16x8x2_t" => "q_s16_x2",
+        "int16x8x3_t" => "q_s16_x3",
+        "int16x8x4_t" => "q_s16_x4",
+        "int32x4x2_t" => "q_s32_x2",
+        "int32x4x3_t" => "q_s32_x3",
+        "int32x4x4_t" => "q_s32_x4",
+        "int64x2x2_t" => "q_s64_x2",
+        "int64x2x3_t" => "q_s64_x3",
+        "int64x2x4_t" => "q_s64_x4",
+        "uint8x16x2_t" => "q_u8_x2",
+        "uint8x16x3_t" => "q_u8_x3",
+        "uint8x16x4_t" => "q_u8_x4",
+        "uint16x8x2_t" => "q_u16_x2",
+        "uint16x8x3_t" => "q_u16_x3",
+        "uint16x8x4_t" => "q_u16_x4",
+        "uint32x4x2_t" => "q_u32_x2",
+        "uint32x4x3_t" => "q_u32_x3",
+        "uint32x4x4_t" => "q_u32_x4",
+        "uint64x2x2_t" => "q_u64_x2",
+        "uint64x2x3_t" => "q_u64_x3",
+        "uint64x2x4_t" => "q_u64_x4",
+        "poly8x16x2_t" => "q_p8_x2",
+        "poly8x16x3_t" => "q_p8_x3",
+        "poly8x16x4_t" => "q_p8_x4",
+        "poly16x8x2_t" => "q_p16_x2",
+        "poly16x8x3_t" => "q_p16_x3",
+        "poly16x8x4_t" => "q_p16_x4",
+        "poly64x2x2_t" => "q_p64_x2",
+        "poly64x2x3_t" => "q_p64_x3",
+        "poly64x2x4_t" => "q_p64_x4",
+        "float32x4x2_t" => "q_f32_x2",
+        "float32x4x3_t" => "q_f32_x3",
+        "float32x4x4_t" => "q_f32_x4",
+        "float64x2x2_t" => "q_f64_x2",
+        "float64x2x3_t" => "q_f64_x3",
+        "float64x2x4_t" => "q_f64_x4",
         "i8" => "b_s8",
         "i16" => "h_s16",
         "i32" => "s_s32",
@@ -274,18 +348,10 @@ fn type_to_lane_suffixes<'a>(out_t: &'a str, in_t: &'a str) -> String {
     str
 }
 
-fn type_to_signed(t: &str) -> &str {
-    match t {
-        "int8x8_t" | "uint8x8_t" | "poly8x8_t" => "int8x8_t",
-        "int8x16_t" | "uint8x16_t" | "poly8x16_t" => "int8x16_t",
-        "int16x4_t" | "uint16x4_t" | "poly16x4_t" => "int16x4_t",
-        "int16x8_t" | "uint16x8_t" | "poly16x8_t" => "int16x8_t",
-        "int32x2_t" | "uint32x2_t" => "int32x2_t",
-        "int32x4_t" | "uint32x4_t" => "int32x4_t",
-        "int64x1_t" | "uint64x1_t" | "poly64x1_t" => "int64x1_t",
-        "int64x2_t" | "uint64x2_t" | "poly64x2_t" => "int64x2_t",
-        _ => panic!("unknown type: {}", t),
-    }
+fn type_to_signed(t: &String) -> String {
+    let s = t.replace("uint", "int");
+    let s = s.replace("poly", "int");
+    s
 }
 
 fn type_to_unsigned(t: &str) -> &str {
@@ -384,34 +450,34 @@ enum TargetFeature {
 
 fn type_to_global_type(t: &str) -> &str {
     match t {
-        "int8x8_t" => "i8x8",
-        "int8x16_t" => "i8x16",
-        "int16x4_t" => "i16x4",
-        "int16x8_t" => "i16x8",
-        "int32x2_t" => "i32x2",
-        "int32x4_t" => "i32x4",
-        "int64x1_t" => "i64x1",
-        "int64x2_t" => "i64x2",
-        "uint8x8_t" => "u8x8",
-        "uint8x16_t" => "u8x16",
-        "uint16x4_t" => "u16x4",
-        "uint16x8_t" => "u16x8",
-        "uint32x2_t" => "u32x2",
-        "uint32x4_t" => "u32x4",
-        "uint64x1_t" => "u64x1",
-        "uint64x2_t" => "u64x2",
+        "int8x8_t" | "int8x8x2_t" | "int8x8x3_t" | "int8x8x4_t" => "i8x8",
+        "int8x16_t" | "int8x16x2_t" | "int8x16x3_t" | "int8x16x4_t" => "i8x16",
+        "int16x4_t" | "int16x4x2_t" | "int16x4x3_t" | "int16x4x4_t" => "i16x4",
+        "int16x8_t" | "int16x8x2_t" | "int16x8x3_t" | "int16x8x4_t" => "i16x8",
+        "int32x2_t" | "int32x2x2_t" | "int32x2x3_t" | "int32x2x4_t" => "i32x2",
+        "int32x4_t" | "int32x4x2_t" | "int32x4x3_t" | "int32x4x4_t" => "i32x4",
+        "int64x1_t" | "int64x1x2_t" | "int64x1x3_t" | "int64x1x4_t" => "i64x1",
+        "int64x2_t" | "int64x2x2_t" | "int64x2x3_t" | "int64x2x4_t" => "i64x2",
+        "uint8x8_t" | "uint8x8x2_t" | "uint8x8x3_t" | "uint8x8x4_t" => "u8x8",
+        "uint8x16_t" | "uint8x16x2_t" | "uint8x16x3_t" | "uint8x16x4_t" => "u8x16",
+        "uint16x4_t" | "uint16x4x2_t" | "uint16x4x3_t" | "uint16x4x4_t" => "u16x4",
+        "uint16x8_t" | "uint16x8x2_t" | "uint16x8x3_t" | "uint16x8x4_t" => "u16x8",
+        "uint32x2_t" | "uint32x2x2_t" | "uint32x2x3_t" | "uint32x2x4_t" => "u32x2",
+        "uint32x4_t" | "uint32x4x2_t" | "uint32x4x3_t" | "uint32x4x4_t" => "u32x4",
+        "uint64x1_t" | "uint64x1x2_t" | "uint64x1x3_t" | "uint64x1x4_t" => "u64x1",
+        "uint64x2_t" | "uint64x2x2_t" | "uint64x2x3_t" | "uint64x2x4_t" => "u64x2",
         "float16x4_t" => "f16x4",
         "float16x8_t" => "f16x8",
-        "float32x2_t" => "f32x2",
-        "float32x4_t" => "f32x4",
-        "float64x1_t" => "f64",
-        "float64x2_t" => "f64x2",
-        "poly8x8_t" => "i8x8",
-        "poly8x16_t" => "i8x16",
-        "poly16x4_t" => "i16x4",
-        "poly16x8_t" => "i16x8",
-        "poly64x1_t" => "i64x1",
-        "poly64x2_t" => "i64x2",
+        "float32x2_t" | "float32x2x2_t" | "float32x2x3_t" | "float32x2x4_t" => "f32x2",
+        "float32x4_t" | "float32x4x2_t" | "float32x4x3_t" | "float32x4x4_t" => "f32x4",
+        "float64x1_t" | "float64x1x2_t" | "float64x1x3_t" | "float64x1x4_t" => "f64",
+        "float64x2_t" | "float64x2x2_t" | "float64x2x3_t" | "float64x2x4_t" => "f64x2",
+        "poly8x8_t" | "poly8x8x2_t" | "poly8x8x3_t" | "poly8x8x4_t" => "i8x8",
+        "poly8x16_t" | "poly8x16x2_t" | "poly8x16x3_t" | "poly8x16x4_t" => "i8x16",
+        "poly16x4_t" | "poly16x4x2_t" | "poly16x4x3_t" | "poly16x4x4_t" => "i16x4",
+        "poly16x8_t" | "poly16x8x2_t" | "poly16x8x3_t" | "poly16x8x4_t" => "i16x8",
+        "poly64x1_t" | "poly64x1x2_t" | "poly64x1x3_t" | "poly64x1x4_t" => "i64x1",
+        "poly64x2_t" | "poly64x2x2_t" | "poly64x2x3_t" | "poly64x2x4_t" => "i64x2",
         "i8" => "i8",
         "i16" => "i16",
         "i32" => "i32",
@@ -432,18 +498,33 @@ fn type_to_global_type(t: &str) -> &str {
 
 fn type_to_native_type(t: &str) -> &str {
     match t {
-        "int8x8_t" | "int8x16_t" | "i8" => "i8",
-        "int16x4_t" | "int16x8_t" | "i16" => "i16",
-        "int32x2_t" | "int32x4_t" | "i32" => "i32",
-        "int64x1_t" | "int64x2_t" | "i64" => "i64",
-        "uint8x8_t" | "uint8x16_t" | "u8" => "u8",
-        "uint16x4_t" | "uint16x8_t" | "u16" => "u16",
-        "uint32x2_t" | "uint32x4_t" | "u32" => "u32",
-        "uint64x1_t" | "uint64x2_t" | "u64" => "u64",
+        "int8x8_t" | "int8x16_t" | "i8" | "int8x8x2_t" | "int8x8x3_t" | "int8x8x4_t"
+        | "int8x16x2_t" | "int8x16x3_t" | "int8x16x4_t" => "i8",
+        "int16x4_t" | "int16x8_t" | "i16" | "int16x4x2_t" | "int16x4x3_t" | "int16x4x4_t"
+        | "int16x8x2_t" | "int16x8x3_t" | "int16x8x4_t" => "i16",
+        "int32x2_t" | "int32x4_t" | "i32" | "int32x2x2_t" | "int32x2x3_t" | "int32x2x4_t"
+        | "int32x4x2_t" | "int32x4x3_t" | "int32x4x4_t" => "i32",
+        "int64x1_t" | "int64x2_t" | "i64" | "int64x1x2_t" | "int64x1x3_t" | "int64x1x4_t"
+        | "int64x2x2_t" | "int64x2x3_t" | "int64x2x4_t" => "i64",
+        "uint8x8_t" | "uint8x16_t" | "u8" | "uint8x8x2_t" | "uint8x8x3_t" | "uint8x8x4_t"
+        | "uint8x16x2_t" | "uint8x16x3_t" | "uint8x16x4_t" => "u8",
+        "uint16x4_t" | "uint16x8_t" | "u16" | "uint16x4x2_t" | "uint16x4x3_t" | "uint16x4x4_t"
+        | "uint16x8x2_t" | "uint16x8x3_t" | "uint16x8x4_t" => "u16",
+        "uint32x2_t" | "uint32x4_t" | "u32" | "uint32x2x2_t" | "uint32x2x3_t" | "uint32x2x4_t"
+        | "uint32x4x2_t" | "uint32x4x3_t" | "uint32x4x4_t" => "u32",
+        "uint64x1_t" | "uint64x2_t" | "u64" | "uint64x1x2_t" | "uint64x1x3_t" | "uint64x1x4_t"
+        | "uint64x2x2_t" | "uint64x2x3_t" | "uint64x2x4_t" => "u64",
         "float16x4_t" | "float16x8_t" => "f16",
-        "float32x2_t" | "float32x4_t" => "f32",
-        "float64x1_t" | "float64x2_t" => "f64",
-        "poly64x1_t" | "poly64x2_t" => "u64",
+        "float32x2_t" | "float32x4_t" | "float32x2x2_t" | "float32x2x3_t" | "float32x2x4_t"
+        | "float32x4x2_t" | "float32x4x3_t" | "float32x4x4_t" => "f32",
+        "float64x1_t" | "float64x2_t" | "float64x1x2_t" | "float64x1x3_t" | "float64x1x4_t"
+        | "float64x2x2_t" | "float64x2x3_t" | "float64x2x4_t" => "f64",
+        "poly8x8_t" | "poly8x16_t" | "poly8x8x2_t" | "poly8x8x3_t" | "poly8x8x4_t"
+        | "poly8x16x2_t" | "poly8x16x3_t" | "poly8x16x4_t" => "u8",
+        "poly16x4_t" | "poly16x8_t" | "poly16x4x2_t" | "poly16x4x3_t" | "poly16x4x4_t"
+        | "poly16x8x2_t" | "poly16x8x3_t" | "poly16x8x4_t" => "u16",
+        "poly64x1_t" | "poly64x2_t" | "poly64x1x2_t" | "poly64x1x3_t" | "poly64x1x4_t"
+        | "poly64x2x2_t" | "poly64x2x3_t" | "poly64x2x4_t" => "u64",
         _ => panic!("unknown type: {}", t),
     }
 }
@@ -510,6 +591,26 @@ fn type_to_ext(t: &str) -> &str {
         "poly8x16_t" => "v16i8",
         "poly16x4_t" => "v4i16",
         "poly16x8_t" => "v8i16",
+        "int8x8x2_t" | "int8x8x3_t" | "int8x8x4_t" => "v8i8.p0i8",
+        "int16x4x2_t" | "int16x4x3_t" | "int16x4x4_t" => "v4i16.p0i16",
+        "int32x2x2_t" | "int32x2x3_t" | "int32x2x4_t" => "v2i32.p0i32",
+        "int64x1x2_t" | "int64x1x3_t" | "int64x1x4_t" => "v1i64.p0i64",
+        "uint8x8x2_t" | "uint8x8x3_t" | "uint8x8x4_t" => "v8i8.p0i8",
+        "uint16x4x2_t" | "uint16x4x3_t" | "uint16x4x4_t" => "v4i16.p0i16",
+        "uint32x2x2_t" | "uint32x2x3_t" | "uint32x2x4_t" => "v2i32.p0i32",
+        "uint64x1x2_t" | "uint64x1x3_t" | "uint64x1x4_t" => "v1i64.p0i64",
+        "float32x2x2_t" | "float32x2x3_t" | "float32x2x4_t" => "v2f32.p0f32",
+        "float64x1x2_t" | "float64x1x3_t" | "float64x1x4_t" => "v1f64.p0f64",
+        "int8x16x2_t" | "int8x16x3_t" | "int8x16x4_t" => "v16i8.p0i8",
+        "int16x8x2_t" | "int16x8x3_t" | "int16x8x4_t" => "v8i16.p0i16",
+        "int32x4x2_t" | "int32x4x3_t" | "int32x4x4_t" => "v4i32.p0i32",
+        "int64x2x2_t" | "int64x2x3_t" | "int64x2x4_t" => "v2i64.p0i64",
+        "uint8x16x2_t" | "uint8x16x3_t" | "uint8x16x4_t" => "v16i8.p0i8",
+        "uint16x8x2_t" | "uint16x8x3_t" | "uint16x8x4_t" => "v8i16.p0i16",
+        "uint32x4x2_t" | "uint32x4x3_t" | "uint32x4x4_t" => "v4i32.p0i32",
+        "uint64x2x2_t" | "uint64x2x3_t" | "uint64x2x4_t" => "v2i64.p0i64",
+        "float32x4x2_t" | "float32x4x3_t" | "float32x4x4_t" => "v4f32.p0f32",
+        "float64x2x2_t" | "float64x2x3_t" | "float64x2x4_t" => "v2f64.p0f64",
         "i8" => "i8",
         "i16" => "i16",
         "i32" => "i32",
@@ -522,6 +623,16 @@ fn type_to_ext(t: &str) -> &str {
         "f64" => "f64",
         "p64" => "p64",
         "p128" => "p128",
+        "*const i8" => "i8",
+        "*const i16" => "i16",
+        "*const i32" => "i32",
+        "*const i64" => "i64",
+        "*const u8" => "i8",
+        "*const u16" => "i16",
+        "*const u32" => "i32",
+        "*const u64" => "i64",
+        "*const f32" => "f32",
+        "*const f64" => "f64",
         /*
         "poly64x1_t" => "i64x1",
         "poly64x2_t" => "i64x2",
@@ -858,9 +969,8 @@ fn gen_aarch64(
     target: TargetFeature,
     fixed: &Vec<String>,
     multi_fn: &Vec<String>,
+    test_fn: &str,
 ) -> (String, String) {
-    let _global_t = type_to_global_type(in_t[0]);
-    let _global_ret_t = type_to_global_type(out_t);
     let name = match suffix {
         Normal => format!("{}{}", current_name, type_to_suffix(in_t[1])),
         NoQ => format!("{}{}", current_name, type_to_noq_suffix(in_t[1])),
@@ -941,7 +1051,7 @@ fn gen_aarch64(
         };
         ext_c = format!(
             r#"#[allow(improper_ctypes)]
-    extern "C" {{
+    extern "unadjusted" {{
         #[cfg_attr(target_arch = "aarch64", link_name = "{}")]
         fn {}({}) -> {};
     }}
@@ -965,7 +1075,7 @@ fn gen_aarch64(
         if const_aarch64.is_some() {
             ext_c_const = format!(
                 r#"#[allow(improper_ctypes)]
-    extern "C" {{
+    extern "unadjusted" {{
         #[cfg_attr(target_arch = "aarch64", link_name = "{}")]
         fn {}({}) -> {};
     }}
@@ -1162,16 +1272,93 @@ fn gen_aarch64(
         current_comment, current_target, current_aarch64, const_assert, const_legacy, call
     );
 
-    let test = gen_test(
-        &name,
-        in_t,
-        &out_t,
-        current_tests,
-        [type_len(in_t[0]), type_len(in_t[1]), type_len(in_t[2])],
-        type_len(out_t),
-        para_num,
-    );
+    let test = if test_fn == "load_test" {
+        gen_load_test(&name, in_t, &out_t, current_tests, type_len(out_t))
+    } else {
+        gen_test(
+            &name,
+            in_t,
+            &out_t,
+            current_tests,
+            [type_len(in_t[0]), type_len(in_t[1]), type_len(in_t[2])],
+            type_len(out_t),
+            para_num,
+        )
+    };
     (function, test)
+}
+fn gen_load_test(
+    name: &str,
+    _in_t: &[&str; 3],
+    out_t: &str,
+    current_tests: &[(
+        Vec<String>,
+        Vec<String>,
+        Vec<String>,
+        Option<String>,
+        Vec<String>,
+    )],
+    len_out: usize,
+) -> String {
+    let mut test = format!(
+        r#"
+    #[simd_test(enable = "neon")]
+    unsafe fn test_{}() {{"#,
+        name,
+    );
+    for (a, _, _, _, e) in current_tests {
+        let a: Vec<String> = a.iter().take(len_out + 1).cloned().collect();
+        let e: Vec<String> = e.iter().take(len_out).cloned().collect();
+        let mut input = String::from("[");
+        for i in 0..type_len(out_t) + 1 {
+            if i != 0 {
+                input.push_str(", ");
+            }
+            input.push_str(&a[i])
+        }
+        input.push_str("]");
+        let mut output = String::from("[");
+        for i in 0..type_sub_len(out_t) {
+            if i != 0 {
+                output.push_str(", ");
+            }
+            let sub_len = type_len(out_t) / type_sub_len(out_t);
+            if type_to_global_type(out_t) != "f64" {
+                let mut sub_output = format!("{}::new(", type_to_global_type(out_t));
+                for j in 0..sub_len {
+                    if j != 0 {
+                        sub_output.push_str(", ");
+                    }
+                    sub_output.push_str(&e[i * sub_len + j]);
+                }
+                sub_output.push_str(")");
+                output.push_str(&sub_output);
+            } else {
+                output.push_str(&e[i]);
+            }
+        }
+        output.push_str("]");
+        let t = format!(
+            r#"
+        let a: [{}; {}] = {};
+        let e: [{}; {}] = {};
+        let r: [{}; {}] = transmute({}(a[1..].as_ptr()));
+        assert_eq!(r, e);
+"#,
+            type_to_native_type(out_t),
+            type_len(out_t) + 1,
+            input,
+            type_to_global_type(out_t),
+            type_sub_len(out_t),
+            output,
+            type_to_global_type(out_t),
+            type_sub_len(out_t),
+            name,
+        );
+        test.push_str(&t);
+    }
+    test.push_str("    }\n");
+    test
 }
 
 fn gen_test(
@@ -1305,9 +1492,8 @@ fn gen_arm(
     target: TargetFeature,
     fixed: &Vec<String>,
     multi_fn: &Vec<String>,
+    test_fn: &str,
 ) -> (String, String) {
-    let _global_t = type_to_global_type(in_t[0]);
-    let _global_ret_t = type_to_global_type(out_t);
     let name = match suffix {
         Normal => format!("{}{}", current_name, type_to_suffix(in_t[1])),
         NoQ => format!("{}{}", current_name, type_to_noq_suffix(in_t[1])),
@@ -1440,7 +1626,7 @@ fn gen_arm(
         if out_t == link_arm_t[3] && out_t == link_aarch64_t[3] {
             ext_c = format!(
                 r#"#[allow(improper_ctypes)]
-    extern "C" {{
+    extern "unadjusted" {{
         #[cfg_attr(target_arch = "arm", link_name = "{}")]
         #[cfg_attr(target_arch = "aarch64", link_name = "{}")]
         fn {}({}) -> {};
@@ -1476,7 +1662,7 @@ fn gen_arm(
             };
             ext_c_arm.push_str(&format!(
                 r#"#[allow(improper_ctypes)]
-    extern "C" {{
+    extern "unadjusted" {{
         #[cfg_attr(target_arch = "arm", link_name = "{}")]
         fn {}({}) -> {};
     }}
@@ -1504,7 +1690,7 @@ fn gen_arm(
         if out_t != link_arm_t[3] {
             ext_c_arm.push_str(&format!(
                 r#"#[allow(improper_ctypes)]
-    extern "C" {{
+    extern "unadjusted" {{
         #[cfg_attr(target_arch = "arm", link_name = "{}")]
         fn {}({}) -> {};
     }}
@@ -1532,7 +1718,7 @@ fn gen_arm(
         if const_aarch64.is_some() {
             ext_c_aarch64.push_str(&format!(
                 r#"#[allow(improper_ctypes)]
-    extern "C" {{
+    extern "unadjusted" {{
         #[cfg_attr(target_arch = "aarch64", link_name = "{}")]
         fn {}({}) -> {};
     }}
@@ -1557,7 +1743,7 @@ fn gen_arm(
         if out_t != link_aarch64_t[3] {
             ext_c_aarch64.push_str(&format!(
                 r#"#[allow(improper_ctypes)]
-    extern "C" {{
+    extern "unadjusted" {{
         #[cfg_attr(target_arch = "aarch64", link_name = "{}")]
         fn {}({}) -> {};
     }}
@@ -1880,15 +2066,19 @@ fn gen_arm(
             call,
         )
     };
-    let test = gen_test(
-        &name,
-        in_t,
-        &out_t,
-        current_tests,
-        [type_len(in_t[0]), type_len(in_t[1]), type_len(in_t[2])],
-        type_len(out_t),
-        para_num,
-    );
+    let test = if test_fn == "load_test" {
+        gen_load_test(&name, in_t, &out_t, current_tests, type_len(out_t))
+    } else {
+        gen_test(
+            &name,
+            in_t,
+            &out_t,
+            current_tests,
+            [type_len(in_t[0]), type_len(in_t[1]), type_len(in_t[2])],
+            type_len(out_t),
+            para_num,
+        )
+    };
 
     (function, test)
 }
@@ -2305,7 +2495,9 @@ fn get_call(
         } else if fn_format[1] == "in2lane" {
             fn_name.push_str(&type_to_lane_suffixes(out_t, in_t[2]));
         } else if fn_format[1] == "signed" {
-            fn_name.push_str(type_to_suffix(type_to_signed(in_t[1])));
+            fn_name.push_str(type_to_suffix(&type_to_signed(&String::from(in_t[1]))));
+        } else if fn_format[1] == "outsigned" {
+            fn_name.push_str(type_to_suffix(&type_to_signed(&String::from(out_t))));
         } else if fn_format[1] == "unsigned" {
             fn_name.push_str(type_to_suffix(type_to_unsigned(in_t[1])));
         } else if fn_format[1] == "doubleself" {
@@ -2315,7 +2507,7 @@ fn get_call(
         } else if fn_format[1] == "noqself" {
             fn_name.push_str(type_to_noq_suffix(in_t[1]));
         } else if fn_format[1] == "noqsigned" {
-            fn_name.push_str(type_to_noq_suffix(type_to_signed(in_t[1])));
+            fn_name.push_str(type_to_noq_suffix(&type_to_signed(&String::from(in_t[1]))));
         } else if fn_format[1] == "nosuffix" {
         } else if fn_format[1] == "in_len" {
             fn_name.push_str(&type_len(in_t[1]).to_string());
@@ -2330,7 +2522,7 @@ fn get_call(
         } else if fn_format[1] == "nin0" {
             fn_name.push_str(type_to_n_suffix(in_t[0]));
         } else if fn_format[1] == "nsigned" {
-            fn_name.push_str(type_to_n_suffix(type_to_signed(in_t[1])));
+            fn_name.push_str(type_to_n_suffix(&type_to_signed(&String::from(in_t[1]))));
         } else if fn_format[1] == "in_ntt" {
             fn_name.push_str(type_to_suffix(native_type_to_type(in_t[1])));
         } else if fn_format[1] == "out_ntt" {
@@ -2410,6 +2602,7 @@ fn main() -> io::Result<()> {
     )> = Vec::new();
     let mut multi_fn: Vec<String> = Vec::new();
     let mut target: TargetFeature = Default;
+    let mut test_fn = "normal";
 
     //
     // THIS FILE IS GENERATED FORM neon.spec DO NOT CHANGE IT MANUALLY
@@ -2491,6 +2684,7 @@ mod test {
             n = None;
             multi_fn = Vec::new();
             target = Default;
+            test_fn = "normal";
         } else if line.starts_with("//") {
         } else if line.starts_with("name = ") {
             current_name = Some(String::from(&line[7..]));
@@ -2547,6 +2741,14 @@ mod test {
             link_arm = Some(String::from(&line[11..]));
         } else if line.starts_with("const-arm = ") {
             const_arm = Some(String::from(&line[12..]));
+        } else if line.starts_with("test = ") {
+            test_fn = if line.contains("load_test") {
+                "load_test"
+            } else if line.contains("store_test") {
+                "store_test"
+            } else {
+                "normal"
+            }
         } else if line.starts_with("target = ") {
             target = match Some(String::from(&line[9..])) {
                 Some(input) => match input.as_str() {
@@ -2618,6 +2820,7 @@ mod test {
                         target,
                         &fixed,
                         &multi_fn,
+                        test_fn,
                     );
                     out_arm.push_str(&function);
                     tests_arm.push_str(&test);
@@ -2638,6 +2841,7 @@ mod test {
                         target,
                         &fixed,
                         &multi_fn,
+                        test_fn,
                     );
                     out_aarch64.push_str(&function);
                     tests_aarch64.push_str(&test);

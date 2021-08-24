@@ -497,7 +497,7 @@ pub unsafe fn veorq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabd))]
 pub unsafe fn vabd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sabd.v8i8")]
         fn vabd_s8_(a: int8x8_t, b: int8x8_t) -> int8x8_t;
@@ -513,7 +513,7 @@ vabd_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabd))]
 pub unsafe fn vabdq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sabd.v16i8")]
         fn vabdq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
@@ -529,7 +529,7 @@ vabdq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabd))]
 pub unsafe fn vabd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sabd.v4i16")]
         fn vabd_s16_(a: int16x4_t, b: int16x4_t) -> int16x4_t;
@@ -545,7 +545,7 @@ vabd_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabd))]
 pub unsafe fn vabdq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sabd.v8i16")]
         fn vabdq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
@@ -561,7 +561,7 @@ vabdq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabd))]
 pub unsafe fn vabd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sabd.v2i32")]
         fn vabd_s32_(a: int32x2_t, b: int32x2_t) -> int32x2_t;
@@ -577,7 +577,7 @@ vabd_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabd))]
 pub unsafe fn vabdq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sabd.v4i32")]
         fn vabdq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
@@ -593,7 +593,7 @@ vabdq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabd))]
 pub unsafe fn vabd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabdu.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uabd.v8i8")]
         fn vabd_u8_(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t;
@@ -609,7 +609,7 @@ vabd_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabd))]
 pub unsafe fn vabdq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabdu.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uabd.v16i8")]
         fn vabdq_u8_(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t;
@@ -625,7 +625,7 @@ vabdq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabd))]
 pub unsafe fn vabd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabdu.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uabd.v4i16")]
         fn vabd_u16_(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t;
@@ -641,7 +641,7 @@ vabd_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabd))]
 pub unsafe fn vabdq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabdu.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uabd.v8i16")]
         fn vabdq_u16_(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t;
@@ -657,7 +657,7 @@ vabdq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabd))]
 pub unsafe fn vabd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabdu.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uabd.v2i32")]
         fn vabd_u32_(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t;
@@ -673,7 +673,7 @@ vabd_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabd))]
 pub unsafe fn vabdq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabdu.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uabd.v4i32")]
         fn vabdq_u32_(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t;
@@ -689,7 +689,7 @@ vabdq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fabd))]
 pub unsafe fn vabd_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v2f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fabd.v2f32")]
         fn vabd_f32_(a: float32x2_t, b: float32x2_t) -> float32x2_t;
@@ -705,7 +705,7 @@ vabd_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fabd))]
 pub unsafe fn vabdq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v4f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fabd.v4f32")]
         fn vabdq_f32_(a: float32x4_t, b: float32x4_t) -> float32x4_t;
@@ -1692,7 +1692,7 @@ pub unsafe fn vcgeq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
 pub unsafe fn vcls_s8(a: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcls.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.cls.v8i8")]
         fn vcls_s8_(a: int8x8_t) -> int8x8_t;
@@ -1708,7 +1708,7 @@ vcls_s8_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
 pub unsafe fn vclsq_s8(a: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcls.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.cls.v16i8")]
         fn vclsq_s8_(a: int8x16_t) -> int8x16_t;
@@ -1724,7 +1724,7 @@ vclsq_s8_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
 pub unsafe fn vcls_s16(a: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcls.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.cls.v4i16")]
         fn vcls_s16_(a: int16x4_t) -> int16x4_t;
@@ -1740,7 +1740,7 @@ vcls_s16_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
 pub unsafe fn vclsq_s16(a: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcls.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.cls.v8i16")]
         fn vclsq_s16_(a: int16x8_t) -> int16x8_t;
@@ -1756,7 +1756,7 @@ vclsq_s16_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
 pub unsafe fn vcls_s32(a: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcls.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.cls.v2i32")]
         fn vcls_s32_(a: int32x2_t) -> int32x2_t;
@@ -1772,7 +1772,7 @@ vcls_s32_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
 pub unsafe fn vclsq_s32(a: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcls.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.cls.v4i32")]
         fn vclsq_s32_(a: int32x4_t) -> int32x4_t;
@@ -1908,7 +1908,7 @@ pub unsafe fn vclzq_u32(a: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(facgt))]
 pub unsafe fn vcagt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vacgt.v2i32.v2f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.facgt.v2i32.v2f32")]
         fn vcagt_f32_(a: float32x2_t, b: float32x2_t) -> uint32x2_t;
@@ -1924,7 +1924,7 @@ vcagt_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(facgt))]
 pub unsafe fn vcagtq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vacgt.v4i32.v4f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.facgt.v4i32.v4f32")]
         fn vcagtq_f32_(a: float32x4_t, b: float32x4_t) -> uint32x4_t;
@@ -1940,7 +1940,7 @@ vcagtq_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(facge))]
 pub unsafe fn vcage_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vacge.v2i32.v2f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.facge.v2i32.v2f32")]
         fn vcage_f32_(a: float32x2_t, b: float32x2_t) -> uint32x2_t;
@@ -1956,7 +1956,7 @@ vcage_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(facge))]
 pub unsafe fn vcageq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vacge.v4i32.v4f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.facge.v4i32.v4f32")]
         fn vcageq_f32_(a: float32x4_t, b: float32x4_t) -> uint32x4_t;
@@ -2153,7 +2153,7 @@ pub unsafe fn vcvtq_f32_u32(a: uint32x4_t) -> float32x4_t {
 pub unsafe fn vcvt_n_f32_s32<const N: i32>(a: int32x2_t) -> float32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcvtfxs2fp.v2f32.v2i32")]
         fn vcvt_n_f32_s32_(a: int32x2_t, n: i32) -> float32x2_t;
     }
@@ -2169,7 +2169,7 @@ vcvt_n_f32_s32_(a, N)
 pub unsafe fn vcvt_n_f32_s32<const N: i32>(a: int32x2_t) -> float32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxs2fp.v2f32.v2i32")]
         fn vcvt_n_f32_s32_(a: int32x2_t, n: i32) -> float32x2_t;
     }
@@ -2185,7 +2185,7 @@ vcvt_n_f32_s32_(a, N)
 pub unsafe fn vcvtq_n_f32_s32<const N: i32>(a: int32x4_t) -> float32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcvtfxs2fp.v4f32.v4i32")]
         fn vcvtq_n_f32_s32_(a: int32x4_t, n: i32) -> float32x4_t;
     }
@@ -2201,7 +2201,7 @@ vcvtq_n_f32_s32_(a, N)
 pub unsafe fn vcvtq_n_f32_s32<const N: i32>(a: int32x4_t) -> float32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxs2fp.v4f32.v4i32")]
         fn vcvtq_n_f32_s32_(a: int32x4_t, n: i32) -> float32x4_t;
     }
@@ -2217,7 +2217,7 @@ vcvtq_n_f32_s32_(a, N)
 pub unsafe fn vcvt_n_f32_u32<const N: i32>(a: uint32x2_t) -> float32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcvtfxu2fp.v2f32.v2i32")]
         fn vcvt_n_f32_u32_(a: uint32x2_t, n: i32) -> float32x2_t;
     }
@@ -2233,7 +2233,7 @@ vcvt_n_f32_u32_(a, N)
 pub unsafe fn vcvt_n_f32_u32<const N: i32>(a: uint32x2_t) -> float32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxu2fp.v2f32.v2i32")]
         fn vcvt_n_f32_u32_(a: uint32x2_t, n: i32) -> float32x2_t;
     }
@@ -2249,7 +2249,7 @@ vcvt_n_f32_u32_(a, N)
 pub unsafe fn vcvtq_n_f32_u32<const N: i32>(a: uint32x4_t) -> float32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcvtfxu2fp.v4f32.v4i32")]
         fn vcvtq_n_f32_u32_(a: uint32x4_t, n: i32) -> float32x4_t;
     }
@@ -2265,7 +2265,7 @@ vcvtq_n_f32_u32_(a, N)
 pub unsafe fn vcvtq_n_f32_u32<const N: i32>(a: uint32x4_t) -> float32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxu2fp.v4f32.v4i32")]
         fn vcvtq_n_f32_u32_(a: uint32x4_t, n: i32) -> float32x4_t;
     }
@@ -2281,7 +2281,7 @@ vcvtq_n_f32_u32_(a, N)
 pub unsafe fn vcvt_n_s32_f32<const N: i32>(a: float32x2_t) -> int32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcvtfp2fxs.v2i32.v2f32")]
         fn vcvt_n_s32_f32_(a: float32x2_t, n: i32) -> int32x2_t;
     }
@@ -2297,7 +2297,7 @@ vcvt_n_s32_f32_(a, N)
 pub unsafe fn vcvt_n_s32_f32<const N: i32>(a: float32x2_t) -> int32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxs.v2i32.v2f32")]
         fn vcvt_n_s32_f32_(a: float32x2_t, n: i32) -> int32x2_t;
     }
@@ -2313,7 +2313,7 @@ vcvt_n_s32_f32_(a, N)
 pub unsafe fn vcvtq_n_s32_f32<const N: i32>(a: float32x4_t) -> int32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcvtfp2fxs.v4i32.v4f32")]
         fn vcvtq_n_s32_f32_(a: float32x4_t, n: i32) -> int32x4_t;
     }
@@ -2329,7 +2329,7 @@ vcvtq_n_s32_f32_(a, N)
 pub unsafe fn vcvtq_n_s32_f32<const N: i32>(a: float32x4_t) -> int32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxs.v4i32.v4f32")]
         fn vcvtq_n_s32_f32_(a: float32x4_t, n: i32) -> int32x4_t;
     }
@@ -2345,7 +2345,7 @@ vcvtq_n_s32_f32_(a, N)
 pub unsafe fn vcvt_n_u32_f32<const N: i32>(a: float32x2_t) -> uint32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcvtfp2fxu.v2i32.v2f32")]
         fn vcvt_n_u32_f32_(a: float32x2_t, n: i32) -> uint32x2_t;
     }
@@ -2361,7 +2361,7 @@ vcvt_n_u32_f32_(a, N)
 pub unsafe fn vcvt_n_u32_f32<const N: i32>(a: float32x2_t) -> uint32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxu.v2i32.v2f32")]
         fn vcvt_n_u32_f32_(a: float32x2_t, n: i32) -> uint32x2_t;
     }
@@ -2377,7 +2377,7 @@ vcvt_n_u32_f32_(a, N)
 pub unsafe fn vcvtq_n_u32_f32<const N: i32>(a: float32x4_t) -> uint32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcvtfp2fxu.v4i32.v4f32")]
         fn vcvtq_n_u32_f32_(a: float32x4_t, n: i32) -> uint32x4_t;
     }
@@ -2393,7 +2393,7 @@ vcvtq_n_u32_f32_(a, N)
 pub unsafe fn vcvtq_n_u32_f32<const N: i32>(a: float32x4_t) -> uint32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxu.v4i32.v4f32")]
         fn vcvtq_n_u32_f32_(a: float32x4_t, n: i32) -> uint32x4_t;
     }
@@ -2408,7 +2408,7 @@ vcvtq_n_u32_f32_(a, N)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcvtzs))]
 pub unsafe fn vcvt_s32_f32(a: float32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.fptosi.sat.v2i32.v2f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fptosi.sat.v2i32.v2f32")]
         fn vcvt_s32_f32_(a: float32x2_t) -> int32x2_t;
@@ -2424,7 +2424,7 @@ vcvt_s32_f32_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcvtzs))]
 pub unsafe fn vcvtq_s32_f32(a: float32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.fptosi.sat.v4i32.v4f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fptosi.sat.v4i32.v4f32")]
         fn vcvtq_s32_f32_(a: float32x4_t) -> int32x4_t;
@@ -2440,7 +2440,7 @@ vcvtq_s32_f32_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcvtzu))]
 pub unsafe fn vcvt_u32_f32(a: float32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.fptoui.sat.v2i32.v2f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fptoui.sat.v2i32.v2f32")]
         fn vcvt_u32_f32_(a: float32x2_t) -> uint32x2_t;
@@ -2456,7 +2456,7 @@ vcvt_u32_f32_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcvtzu))]
 pub unsafe fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.fptoui.sat.v4i32.v4f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fptoui.sat.v4i32.v4f32")]
         fn vcvtq_u32_f32_(a: float32x4_t) -> uint32x4_t;
@@ -4842,7 +4842,7 @@ pub unsafe fn vnegq_f32(a: float32x4_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqneg))]
 pub unsafe fn vqneg_s8(a: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqneg.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqneg.v8i8")]
         fn vqneg_s8_(a: int8x8_t) -> int8x8_t;
@@ -4858,7 +4858,7 @@ vqneg_s8_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqneg))]
 pub unsafe fn vqnegq_s8(a: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqneg.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqneg.v16i8")]
         fn vqnegq_s8_(a: int8x16_t) -> int8x16_t;
@@ -4874,7 +4874,7 @@ vqnegq_s8_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqneg))]
 pub unsafe fn vqneg_s16(a: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqneg.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqneg.v4i16")]
         fn vqneg_s16_(a: int16x4_t) -> int16x4_t;
@@ -4890,7 +4890,7 @@ vqneg_s16_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqneg))]
 pub unsafe fn vqnegq_s16(a: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqneg.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqneg.v8i16")]
         fn vqnegq_s16_(a: int16x8_t) -> int16x8_t;
@@ -4906,7 +4906,7 @@ vqnegq_s16_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqneg))]
 pub unsafe fn vqneg_s32(a: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqneg.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqneg.v2i32")]
         fn vqneg_s32_(a: int32x2_t) -> int32x2_t;
@@ -4922,7 +4922,7 @@ vqneg_s32_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqneg))]
 pub unsafe fn vqnegq_s32(a: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqneg.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqneg.v4i32")]
         fn vqnegq_s32_(a: int32x4_t) -> int32x4_t;
@@ -4938,7 +4938,7 @@ vqnegq_s32_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqsub))]
 pub unsafe fn vqsub_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.usub.sat.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqsub.v8i8")]
         fn vqsub_u8_(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t;
@@ -4954,7 +4954,7 @@ vqsub_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqsub))]
 pub unsafe fn vqsubq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.usub.sat.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqsub.v16i8")]
         fn vqsubq_u8_(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t;
@@ -4970,7 +4970,7 @@ vqsubq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqsub))]
 pub unsafe fn vqsub_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.usub.sat.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqsub.v4i16")]
         fn vqsub_u16_(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t;
@@ -4986,7 +4986,7 @@ vqsub_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqsub))]
 pub unsafe fn vqsubq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.usub.sat.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqsub.v8i16")]
         fn vqsubq_u16_(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t;
@@ -5002,7 +5002,7 @@ vqsubq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqsub))]
 pub unsafe fn vqsub_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.usub.sat.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqsub.v2i32")]
         fn vqsub_u32_(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t;
@@ -5018,7 +5018,7 @@ vqsub_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqsub))]
 pub unsafe fn vqsubq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.usub.sat.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqsub.v4i32")]
         fn vqsubq_u32_(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t;
@@ -5034,7 +5034,7 @@ vqsubq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqsub))]
 pub unsafe fn vqsub_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.usub.sat.v1i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqsub.v1i64")]
         fn vqsub_u64_(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t;
@@ -5050,7 +5050,7 @@ vqsub_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqsub))]
 pub unsafe fn vqsubq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.usub.sat.v2i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqsub.v2i64")]
         fn vqsubq_u64_(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t;
@@ -5066,7 +5066,7 @@ vqsubq_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
 pub unsafe fn vqsub_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.ssub.sat.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqsub.v8i8")]
         fn vqsub_s8_(a: int8x8_t, b: int8x8_t) -> int8x8_t;
@@ -5082,7 +5082,7 @@ vqsub_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
 pub unsafe fn vqsubq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.ssub.sat.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqsub.v16i8")]
         fn vqsubq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
@@ -5098,7 +5098,7 @@ vqsubq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
 pub unsafe fn vqsub_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.ssub.sat.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqsub.v4i16")]
         fn vqsub_s16_(a: int16x4_t, b: int16x4_t) -> int16x4_t;
@@ -5114,7 +5114,7 @@ vqsub_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
 pub unsafe fn vqsubq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.ssub.sat.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqsub.v8i16")]
         fn vqsubq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
@@ -5130,7 +5130,7 @@ vqsubq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
 pub unsafe fn vqsub_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.ssub.sat.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqsub.v2i32")]
         fn vqsub_s32_(a: int32x2_t, b: int32x2_t) -> int32x2_t;
@@ -5146,7 +5146,7 @@ vqsub_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
 pub unsafe fn vqsubq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.ssub.sat.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqsub.v4i32")]
         fn vqsubq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
@@ -5162,7 +5162,7 @@ vqsubq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
 pub unsafe fn vqsub_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.ssub.sat.v1i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqsub.v1i64")]
         fn vqsub_s64_(a: int64x1_t, b: int64x1_t) -> int64x1_t;
@@ -5178,7 +5178,7 @@ vqsub_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
 pub unsafe fn vqsubq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.ssub.sat.v2i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqsub.v2i64")]
         fn vqsubq_s64_(a: int64x2_t, b: int64x2_t) -> int64x2_t;
@@ -5194,7 +5194,7 @@ vqsubq_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhadd))]
 pub unsafe fn vhadd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhaddu.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uhadd.v8i8")]
         fn vhadd_u8_(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t;
@@ -5210,7 +5210,7 @@ vhadd_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhadd))]
 pub unsafe fn vhaddq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhaddu.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uhadd.v16i8")]
         fn vhaddq_u8_(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t;
@@ -5226,7 +5226,7 @@ vhaddq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhadd))]
 pub unsafe fn vhadd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhaddu.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uhadd.v4i16")]
         fn vhadd_u16_(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t;
@@ -5242,7 +5242,7 @@ vhadd_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhadd))]
 pub unsafe fn vhaddq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhaddu.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uhadd.v8i16")]
         fn vhaddq_u16_(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t;
@@ -5258,7 +5258,7 @@ vhaddq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhadd))]
 pub unsafe fn vhadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhaddu.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uhadd.v2i32")]
         fn vhadd_u32_(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t;
@@ -5274,7 +5274,7 @@ vhadd_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhadd))]
 pub unsafe fn vhaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhaddu.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uhadd.v4i32")]
         fn vhaddq_u32_(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t;
@@ -5290,7 +5290,7 @@ vhaddq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shadd))]
 pub unsafe fn vhadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhadds.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.shadd.v8i8")]
         fn vhadd_s8_(a: int8x8_t, b: int8x8_t) -> int8x8_t;
@@ -5306,7 +5306,7 @@ vhadd_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shadd))]
 pub unsafe fn vhaddq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhadds.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.shadd.v16i8")]
         fn vhaddq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
@@ -5322,7 +5322,7 @@ vhaddq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shadd))]
 pub unsafe fn vhadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhadds.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.shadd.v4i16")]
         fn vhadd_s16_(a: int16x4_t, b: int16x4_t) -> int16x4_t;
@@ -5338,7 +5338,7 @@ vhadd_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shadd))]
 pub unsafe fn vhaddq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhadds.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.shadd.v8i16")]
         fn vhaddq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
@@ -5354,7 +5354,7 @@ vhaddq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shadd))]
 pub unsafe fn vhadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhadds.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.shadd.v2i32")]
         fn vhadd_s32_(a: int32x2_t, b: int32x2_t) -> int32x2_t;
@@ -5370,7 +5370,7 @@ vhadd_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shadd))]
 pub unsafe fn vhaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhadds.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.shadd.v4i32")]
         fn vhaddq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
@@ -5386,7 +5386,7 @@ vhaddq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urhadd))]
 pub unsafe fn vrhadd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrhaddu.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.urhadd.v8i8")]
         fn vrhadd_u8_(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t;
@@ -5402,7 +5402,7 @@ vrhadd_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urhadd))]
 pub unsafe fn vrhaddq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrhaddu.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.urhadd.v16i8")]
         fn vrhaddq_u8_(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t;
@@ -5418,7 +5418,7 @@ vrhaddq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urhadd))]
 pub unsafe fn vrhadd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrhaddu.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.urhadd.v4i16")]
         fn vrhadd_u16_(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t;
@@ -5434,7 +5434,7 @@ vrhadd_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urhadd))]
 pub unsafe fn vrhaddq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrhaddu.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.urhadd.v8i16")]
         fn vrhaddq_u16_(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t;
@@ -5450,7 +5450,7 @@ vrhaddq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urhadd))]
 pub unsafe fn vrhadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrhaddu.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.urhadd.v2i32")]
         fn vrhadd_u32_(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t;
@@ -5466,7 +5466,7 @@ vrhadd_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urhadd))]
 pub unsafe fn vrhaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrhaddu.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.urhadd.v4i32")]
         fn vrhaddq_u32_(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t;
@@ -5482,7 +5482,7 @@ vrhaddq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srhadd))]
 pub unsafe fn vrhadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrhadds.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.srhadd.v8i8")]
         fn vrhadd_s8_(a: int8x8_t, b: int8x8_t) -> int8x8_t;
@@ -5498,7 +5498,7 @@ vrhadd_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srhadd))]
 pub unsafe fn vrhaddq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrhadds.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.srhadd.v16i8")]
         fn vrhaddq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
@@ -5514,7 +5514,7 @@ vrhaddq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srhadd))]
 pub unsafe fn vrhadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrhadds.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.srhadd.v4i16")]
         fn vrhadd_s16_(a: int16x4_t, b: int16x4_t) -> int16x4_t;
@@ -5530,7 +5530,7 @@ vrhadd_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srhadd))]
 pub unsafe fn vrhaddq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrhadds.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.srhadd.v8i16")]
         fn vrhaddq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
@@ -5546,7 +5546,7 @@ vrhaddq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srhadd))]
 pub unsafe fn vrhadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrhadds.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.srhadd.v2i32")]
         fn vrhadd_s32_(a: int32x2_t, b: int32x2_t) -> int32x2_t;
@@ -5562,7 +5562,7 @@ vrhadd_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srhadd))]
 pub unsafe fn vrhaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrhadds.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.srhadd.v4i32")]
         fn vrhaddq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
@@ -5578,7 +5578,7 @@ vrhaddq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frintn))]
 pub unsafe fn vrndn_f32(a: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrintn.v2f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frintn.v2f32")]
         fn vrndn_f32_(a: float32x2_t) -> float32x2_t;
@@ -5594,7 +5594,7 @@ vrndn_f32_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frintn))]
 pub unsafe fn vrndnq_f32(a: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrintn.v4f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frintn.v4f32")]
         fn vrndnq_f32_(a: float32x4_t) -> float32x4_t;
@@ -5610,7 +5610,7 @@ vrndnq_f32_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqadd))]
 pub unsafe fn vqadd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.uadd.sat.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqadd.v8i8")]
         fn vqadd_u8_(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t;
@@ -5626,7 +5626,7 @@ vqadd_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqadd))]
 pub unsafe fn vqaddq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.uadd.sat.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqadd.v16i8")]
         fn vqaddq_u8_(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t;
@@ -5642,7 +5642,7 @@ vqaddq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqadd))]
 pub unsafe fn vqadd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.uadd.sat.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqadd.v4i16")]
         fn vqadd_u16_(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t;
@@ -5658,7 +5658,7 @@ vqadd_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqadd))]
 pub unsafe fn vqaddq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.uadd.sat.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqadd.v8i16")]
         fn vqaddq_u16_(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t;
@@ -5674,7 +5674,7 @@ vqaddq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqadd))]
 pub unsafe fn vqadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.uadd.sat.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqadd.v2i32")]
         fn vqadd_u32_(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t;
@@ -5690,7 +5690,7 @@ vqadd_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqadd))]
 pub unsafe fn vqaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.uadd.sat.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqadd.v4i32")]
         fn vqaddq_u32_(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t;
@@ -5706,7 +5706,7 @@ vqaddq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqadd))]
 pub unsafe fn vqadd_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.uadd.sat.v1i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqadd.v1i64")]
         fn vqadd_u64_(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t;
@@ -5722,7 +5722,7 @@ vqadd_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqadd))]
 pub unsafe fn vqaddq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.uadd.sat.v2i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqadd.v2i64")]
         fn vqaddq_u64_(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t;
@@ -5738,7 +5738,7 @@ vqaddq_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
 pub unsafe fn vqadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.sadd.sat.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqadd.v8i8")]
         fn vqadd_s8_(a: int8x8_t, b: int8x8_t) -> int8x8_t;
@@ -5754,7 +5754,7 @@ vqadd_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
 pub unsafe fn vqaddq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.sadd.sat.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqadd.v16i8")]
         fn vqaddq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
@@ -5770,7 +5770,7 @@ vqaddq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
 pub unsafe fn vqadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.sadd.sat.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqadd.v4i16")]
         fn vqadd_s16_(a: int16x4_t, b: int16x4_t) -> int16x4_t;
@@ -5786,7 +5786,7 @@ vqadd_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
 pub unsafe fn vqaddq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.sadd.sat.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqadd.v8i16")]
         fn vqaddq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
@@ -5802,7 +5802,7 @@ vqaddq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
 pub unsafe fn vqadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.sadd.sat.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqadd.v2i32")]
         fn vqadd_s32_(a: int32x2_t, b: int32x2_t) -> int32x2_t;
@@ -5818,7 +5818,7 @@ vqadd_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
 pub unsafe fn vqaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.sadd.sat.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqadd.v4i32")]
         fn vqaddq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
@@ -5834,7 +5834,7 @@ vqaddq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
 pub unsafe fn vqadd_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.sadd.sat.v1i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqadd.v1i64")]
         fn vqadd_s64_(a: int64x1_t, b: int64x1_t) -> int64x1_t;
@@ -5850,12 +5850,852 @@ vqadd_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
 pub unsafe fn vqaddq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.sadd.sat.v2i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqadd.v2i64")]
         fn vqaddq_s64_(a: int64x2_t, b: int64x2_t) -> int64x2_t;
     }
 vqaddq_s64_(a, b)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_s8_x2(a: *const i8) -> int8x8x2_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x2.v8i8.p0i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x2.v8i8.p0i8")]
+        fn vld1_s8_x2_(a: *const i8) -> int8x8x2_t;
+    }
+vld1_s8_x2_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_s16_x2(a: *const i16) -> int16x4x2_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x2.v4i16.p0i16")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x2.v4i16.p0i16")]
+        fn vld1_s16_x2_(a: *const i16) -> int16x4x2_t;
+    }
+vld1_s16_x2_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_s32_x2(a: *const i32) -> int32x2x2_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x2.v2i32.p0i32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x2.v2i32.p0i32")]
+        fn vld1_s32_x2_(a: *const i32) -> int32x2x2_t;
+    }
+vld1_s32_x2_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_s64_x2(a: *const i64) -> int64x1x2_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x2.v1i64.p0i64")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x2.v1i64.p0i64")]
+        fn vld1_s64_x2_(a: *const i64) -> int64x1x2_t;
+    }
+vld1_s64_x2_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_s8_x2(a: *const i8) -> int8x16x2_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x2.v16i8.p0i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x2.v16i8.p0i8")]
+        fn vld1q_s8_x2_(a: *const i8) -> int8x16x2_t;
+    }
+vld1q_s8_x2_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_s16_x2(a: *const i16) -> int16x8x2_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x2.v8i16.p0i16")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x2.v8i16.p0i16")]
+        fn vld1q_s16_x2_(a: *const i16) -> int16x8x2_t;
+    }
+vld1q_s16_x2_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_s32_x2(a: *const i32) -> int32x4x2_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x2.v4i32.p0i32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x2.v4i32.p0i32")]
+        fn vld1q_s32_x2_(a: *const i32) -> int32x4x2_t;
+    }
+vld1q_s32_x2_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_s64_x2(a: *const i64) -> int64x2x2_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x2.v2i64.p0i64")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x2.v2i64.p0i64")]
+        fn vld1q_s64_x2_(a: *const i64) -> int64x2x2_t;
+    }
+vld1q_s64_x2_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_s8_x3(a: *const i8) -> int8x8x3_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x3.v8i8.p0i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x3.v8i8.p0i8")]
+        fn vld1_s8_x3_(a: *const i8) -> int8x8x3_t;
+    }
+vld1_s8_x3_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_s16_x3(a: *const i16) -> int16x4x3_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x3.v4i16.p0i16")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x3.v4i16.p0i16")]
+        fn vld1_s16_x3_(a: *const i16) -> int16x4x3_t;
+    }
+vld1_s16_x3_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_s32_x3(a: *const i32) -> int32x2x3_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x3.v2i32.p0i32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x3.v2i32.p0i32")]
+        fn vld1_s32_x3_(a: *const i32) -> int32x2x3_t;
+    }
+vld1_s32_x3_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_s64_x3(a: *const i64) -> int64x1x3_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x3.v1i64.p0i64")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x3.v1i64.p0i64")]
+        fn vld1_s64_x3_(a: *const i64) -> int64x1x3_t;
+    }
+vld1_s64_x3_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_s8_x3(a: *const i8) -> int8x16x3_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x3.v16i8.p0i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x3.v16i8.p0i8")]
+        fn vld1q_s8_x3_(a: *const i8) -> int8x16x3_t;
+    }
+vld1q_s8_x3_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_s16_x3(a: *const i16) -> int16x8x3_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x3.v8i16.p0i16")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x3.v8i16.p0i16")]
+        fn vld1q_s16_x3_(a: *const i16) -> int16x8x3_t;
+    }
+vld1q_s16_x3_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_s32_x3(a: *const i32) -> int32x4x3_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x3.v4i32.p0i32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x3.v4i32.p0i32")]
+        fn vld1q_s32_x3_(a: *const i32) -> int32x4x3_t;
+    }
+vld1q_s32_x3_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_s64_x3(a: *const i64) -> int64x2x3_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x3.v2i64.p0i64")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x3.v2i64.p0i64")]
+        fn vld1q_s64_x3_(a: *const i64) -> int64x2x3_t;
+    }
+vld1q_s64_x3_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_s8_x4(a: *const i8) -> int8x8x4_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x4.v8i8.p0i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x4.v8i8.p0i8")]
+        fn vld1_s8_x4_(a: *const i8) -> int8x8x4_t;
+    }
+vld1_s8_x4_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_s16_x4(a: *const i16) -> int16x4x4_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x4.v4i16.p0i16")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x4.v4i16.p0i16")]
+        fn vld1_s16_x4_(a: *const i16) -> int16x4x4_t;
+    }
+vld1_s16_x4_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_s32_x4(a: *const i32) -> int32x2x4_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x4.v2i32.p0i32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x4.v2i32.p0i32")]
+        fn vld1_s32_x4_(a: *const i32) -> int32x2x4_t;
+    }
+vld1_s32_x4_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_s64_x4(a: *const i64) -> int64x1x4_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x4.v1i64.p0i64")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x4.v1i64.p0i64")]
+        fn vld1_s64_x4_(a: *const i64) -> int64x1x4_t;
+    }
+vld1_s64_x4_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_s8_x4(a: *const i8) -> int8x16x4_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x4.v16i8.p0i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x4.v16i8.p0i8")]
+        fn vld1q_s8_x4_(a: *const i8) -> int8x16x4_t;
+    }
+vld1q_s8_x4_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_s16_x4(a: *const i16) -> int16x8x4_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x4.v8i16.p0i16")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x4.v8i16.p0i16")]
+        fn vld1q_s16_x4_(a: *const i16) -> int16x8x4_t;
+    }
+vld1q_s16_x4_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_s32_x4(a: *const i32) -> int32x4x4_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x4.v4i32.p0i32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x4.v4i32.p0i32")]
+        fn vld1q_s32_x4_(a: *const i32) -> int32x4x4_t;
+    }
+vld1q_s32_x4_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_s64_x4(a: *const i64) -> int64x2x4_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x4.v2i64.p0i64")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x4.v2i64.p0i64")]
+        fn vld1q_s64_x4_(a: *const i64) -> int64x2x4_t;
+    }
+vld1q_s64_x4_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_u8_x2(a: *const u8) -> uint8x8x2_t {
+    transmute(vld1_s8_x2(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_u16_x2(a: *const u16) -> uint16x4x2_t {
+    transmute(vld1_s16_x2(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_u32_x2(a: *const u32) -> uint32x2x2_t {
+    transmute(vld1_s32_x2(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_u64_x2(a: *const u64) -> uint64x1x2_t {
+    transmute(vld1_s64_x2(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_u8_x2(a: *const u8) -> uint8x16x2_t {
+    transmute(vld1q_s8_x2(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_u16_x2(a: *const u16) -> uint16x8x2_t {
+    transmute(vld1q_s16_x2(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_u32_x2(a: *const u32) -> uint32x4x2_t {
+    transmute(vld1q_s32_x2(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_u64_x2(a: *const u64) -> uint64x2x2_t {
+    transmute(vld1q_s64_x2(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_u8_x3(a: *const u8) -> uint8x8x3_t {
+    transmute(vld1_s8_x3(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_u16_x3(a: *const u16) -> uint16x4x3_t {
+    transmute(vld1_s16_x3(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_u32_x3(a: *const u32) -> uint32x2x3_t {
+    transmute(vld1_s32_x3(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_u64_x3(a: *const u64) -> uint64x1x3_t {
+    transmute(vld1_s64_x3(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_u8_x3(a: *const u8) -> uint8x16x3_t {
+    transmute(vld1q_s8_x3(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_u16_x3(a: *const u16) -> uint16x8x3_t {
+    transmute(vld1q_s16_x3(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_u32_x3(a: *const u32) -> uint32x4x3_t {
+    transmute(vld1q_s32_x3(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_u64_x3(a: *const u64) -> uint64x2x3_t {
+    transmute(vld1q_s64_x3(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_u8_x4(a: *const u8) -> uint8x8x4_t {
+    transmute(vld1_s8_x4(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_u16_x4(a: *const u16) -> uint16x4x4_t {
+    transmute(vld1_s16_x4(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_u32_x4(a: *const u32) -> uint32x2x4_t {
+    transmute(vld1_s32_x4(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_u64_x4(a: *const u64) -> uint64x1x4_t {
+    transmute(vld1_s64_x4(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_u8_x4(a: *const u8) -> uint8x16x4_t {
+    transmute(vld1q_s8_x4(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_u16_x4(a: *const u16) -> uint16x8x4_t {
+    transmute(vld1q_s16_x4(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_u32_x4(a: *const u32) -> uint32x4x4_t {
+    transmute(vld1q_s32_x4(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_u64_x4(a: *const u64) -> uint64x2x4_t {
+    transmute(vld1q_s64_x4(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_p8_x2(a: *const p8) -> poly8x8x2_t {
+    transmute(vld1_s8_x2(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_p8_x3(a: *const p8) -> poly8x8x3_t {
+    transmute(vld1_s8_x3(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_p8_x4(a: *const p8) -> poly8x8x4_t {
+    transmute(vld1_s8_x4(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_p8_x2(a: *const p8) -> poly8x16x2_t {
+    transmute(vld1q_s8_x2(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_p8_x3(a: *const p8) -> poly8x16x3_t {
+    transmute(vld1q_s8_x3(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_p8_x4(a: *const p8) -> poly8x16x4_t {
+    transmute(vld1q_s8_x4(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_p16_x2(a: *const p16) -> poly16x4x2_t {
+    transmute(vld1_s16_x2(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_p16_x3(a: *const p16) -> poly16x4x3_t {
+    transmute(vld1_s16_x3(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_p16_x4(a: *const p16) -> poly16x4x4_t {
+    transmute(vld1_s16_x4(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_p16_x2(a: *const p16) -> poly16x8x2_t {
+    transmute(vld1q_s16_x2(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_p16_x3(a: *const p16) -> poly16x8x3_t {
+    transmute(vld1q_s16_x3(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_p16_x4(a: *const p16) -> poly16x8x4_t {
+    transmute(vld1q_s16_x4(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_f32_x2(a: *const f32) -> float32x2x2_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x2.v2f32.p0f32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x2.v2f32.p0f32")]
+        fn vld1_f32_x2_(a: *const f32) -> float32x2x2_t;
+    }
+vld1_f32_x2_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_f32_x2(a: *const f32) -> float32x4x2_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x2.v4f32.p0f32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x2.v4f32.p0f32")]
+        fn vld1q_f32_x2_(a: *const f32) -> float32x4x2_t;
+    }
+vld1q_f32_x2_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_f32_x3(a: *const f32) -> float32x2x3_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x3.v2f32.p0f32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x3.v2f32.p0f32")]
+        fn vld1_f32_x3_(a: *const f32) -> float32x2x3_t;
+    }
+vld1_f32_x3_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_f32_x3(a: *const f32) -> float32x4x3_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x3.v4f32.p0f32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x3.v4f32.p0f32")]
+        fn vld1q_f32_x3_(a: *const f32) -> float32x4x3_t;
+    }
+vld1q_f32_x3_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_f32_x4(a: *const f32) -> float32x2x4_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x4.v2f32.p0f32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x4.v2f32.p0f32")]
+        fn vld1_f32_x4_(a: *const f32) -> float32x2x4_t;
+    }
+vld1_f32_x4_(a)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_f32_x4(a: *const f32) -> float32x4x4_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x4.v4f32.p0f32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x4.v4f32.p0f32")]
+        fn vld1q_f32_x4_(a: *const f32) -> float32x4x4_t;
+    }
+vld1q_f32_x4_(a)
 }
 
 /// Multiply
@@ -5986,7 +6826,7 @@ pub unsafe fn vmulq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(pmul))]
 pub unsafe fn vmul_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmulp.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.pmul.v8i8")]
         fn vmul_p8_(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t;
@@ -6002,7 +6842,7 @@ vmul_p8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(pmul))]
 pub unsafe fn vmulq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmulp.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.pmul.v16i8")]
         fn vmulq_p8_(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t;
@@ -6378,7 +7218,7 @@ pub unsafe fn vmulq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t) -
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smull))]
 pub unsafe fn vmull_s8(a: int8x8_t, b: int8x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmulls.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smull.v8i8")]
         fn vmull_s8_(a: int8x8_t, b: int8x8_t) -> int16x8_t;
@@ -6394,7 +7234,7 @@ vmull_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smull))]
 pub unsafe fn vmull_s16(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmulls.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smull.v4i16")]
         fn vmull_s16_(a: int16x4_t, b: int16x4_t) -> int32x4_t;
@@ -6410,7 +7250,7 @@ vmull_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smull))]
 pub unsafe fn vmull_s32(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmulls.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smull.v2i32")]
         fn vmull_s32_(a: int32x2_t, b: int32x2_t) -> int64x2_t;
@@ -6426,7 +7266,7 @@ vmull_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umull))]
 pub unsafe fn vmull_u8(a: uint8x8_t, b: uint8x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmullu.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umull.v8i8")]
         fn vmull_u8_(a: uint8x8_t, b: uint8x8_t) -> uint16x8_t;
@@ -6442,7 +7282,7 @@ vmull_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umull))]
 pub unsafe fn vmull_u16(a: uint16x4_t, b: uint16x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmullu.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umull.v4i16")]
         fn vmull_u16_(a: uint16x4_t, b: uint16x4_t) -> uint32x4_t;
@@ -6458,7 +7298,7 @@ vmull_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umull))]
 pub unsafe fn vmull_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmullu.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umull.v2i32")]
         fn vmull_u32_(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t;
@@ -6474,7 +7314,7 @@ vmull_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(pmull))]
 pub unsafe fn vmull_p8(a: poly8x8_t, b: poly8x8_t) -> poly16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmullp.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.pmull.v8i8")]
         fn vmull_p8_(a: poly8x8_t, b: poly8x8_t) -> poly16x8_t;
@@ -6626,7 +7466,7 @@ pub unsafe fn vmull_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x4_t) -> 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmla))]
 pub unsafe fn vfma_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.fma.v2f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fma.v2f32")]
         fn vfma_f32_(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t;
@@ -6642,7 +7482,7 @@ vfma_f32_(b, c, a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmla))]
 pub unsafe fn vfmaq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.fma.v4f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fma.v4f32")]
         fn vfmaq_f32_(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t;
@@ -7032,7 +7872,7 @@ pub unsafe fn vsubhn_high_u64(a: uint32x2_t, b: uint64x2_t, c: uint64x2_t) -> ui
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhsub))]
 pub unsafe fn vhsub_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhsubu.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uhsub.v8i8")]
         fn vhsub_u8_(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t;
@@ -7048,7 +7888,7 @@ vhsub_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhsub))]
 pub unsafe fn vhsubq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhsubu.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uhsub.v16i8")]
         fn vhsubq_u8_(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t;
@@ -7064,7 +7904,7 @@ vhsubq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhsub))]
 pub unsafe fn vhsub_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhsubu.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uhsub.v4i16")]
         fn vhsub_u16_(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t;
@@ -7080,7 +7920,7 @@ vhsub_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhsub))]
 pub unsafe fn vhsubq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhsubu.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uhsub.v8i16")]
         fn vhsubq_u16_(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t;
@@ -7096,7 +7936,7 @@ vhsubq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhsub))]
 pub unsafe fn vhsub_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhsubu.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uhsub.v2i32")]
         fn vhsub_u32_(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t;
@@ -7112,7 +7952,7 @@ vhsub_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhsub))]
 pub unsafe fn vhsubq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhsubu.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uhsub.v4i32")]
         fn vhsubq_u32_(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t;
@@ -7128,7 +7968,7 @@ vhsubq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shsub))]
 pub unsafe fn vhsub_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhsubs.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.shsub.v8i8")]
         fn vhsub_s8_(a: int8x8_t, b: int8x8_t) -> int8x8_t;
@@ -7144,7 +7984,7 @@ vhsub_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shsub))]
 pub unsafe fn vhsubq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhsubs.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.shsub.v16i8")]
         fn vhsubq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
@@ -7160,7 +8000,7 @@ vhsubq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shsub))]
 pub unsafe fn vhsub_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhsubs.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.shsub.v4i16")]
         fn vhsub_s16_(a: int16x4_t, b: int16x4_t) -> int16x4_t;
@@ -7176,7 +8016,7 @@ vhsub_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shsub))]
 pub unsafe fn vhsubq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhsubs.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.shsub.v8i16")]
         fn vhsubq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
@@ -7192,7 +8032,7 @@ vhsubq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shsub))]
 pub unsafe fn vhsub_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhsubs.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.shsub.v2i32")]
         fn vhsub_s32_(a: int32x2_t, b: int32x2_t) -> int32x2_t;
@@ -7208,7 +8048,7 @@ vhsub_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shsub))]
 pub unsafe fn vhsubq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vhsubs.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.shsub.v4i32")]
         fn vhsubq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
@@ -7356,7 +8196,7 @@ pub unsafe fn vsubl_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smax))]
 pub unsafe fn vmax_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smax.v8i8")]
         fn vmax_s8_(a: int8x8_t, b: int8x8_t) -> int8x8_t;
@@ -7372,7 +8212,7 @@ vmax_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smax))]
 pub unsafe fn vmaxq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smax.v16i8")]
         fn vmaxq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
@@ -7388,7 +8228,7 @@ vmaxq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smax))]
 pub unsafe fn vmax_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smax.v4i16")]
         fn vmax_s16_(a: int16x4_t, b: int16x4_t) -> int16x4_t;
@@ -7404,7 +8244,7 @@ vmax_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smax))]
 pub unsafe fn vmaxq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smax.v8i16")]
         fn vmaxq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
@@ -7420,7 +8260,7 @@ vmaxq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smax))]
 pub unsafe fn vmax_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smax.v2i32")]
         fn vmax_s32_(a: int32x2_t, b: int32x2_t) -> int32x2_t;
@@ -7436,7 +8276,7 @@ vmax_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smax))]
 pub unsafe fn vmaxq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smax.v4i32")]
         fn vmaxq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
@@ -7452,7 +8292,7 @@ vmaxq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umax))]
 pub unsafe fn vmax_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxu.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umax.v8i8")]
         fn vmax_u8_(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t;
@@ -7468,7 +8308,7 @@ vmax_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umax))]
 pub unsafe fn vmaxq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxu.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umax.v16i8")]
         fn vmaxq_u8_(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t;
@@ -7484,7 +8324,7 @@ vmaxq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umax))]
 pub unsafe fn vmax_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxu.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umax.v4i16")]
         fn vmax_u16_(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t;
@@ -7500,7 +8340,7 @@ vmax_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umax))]
 pub unsafe fn vmaxq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxu.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umax.v8i16")]
         fn vmaxq_u16_(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t;
@@ -7516,7 +8356,7 @@ vmaxq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umax))]
 pub unsafe fn vmax_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxu.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umax.v2i32")]
         fn vmax_u32_(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t;
@@ -7532,7 +8372,7 @@ vmax_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umax))]
 pub unsafe fn vmaxq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxu.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umax.v4i32")]
         fn vmaxq_u32_(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t;
@@ -7548,7 +8388,7 @@ vmaxq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmax))]
 pub unsafe fn vmax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v2f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmax.v2f32")]
         fn vmax_f32_(a: float32x2_t, b: float32x2_t) -> float32x2_t;
@@ -7564,7 +8404,7 @@ vmax_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmax))]
 pub unsafe fn vmaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v4f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmax.v4f32")]
         fn vmaxq_f32_(a: float32x4_t, b: float32x4_t) -> float32x4_t;
@@ -7580,7 +8420,7 @@ vmaxq_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmaxnm))]
 pub unsafe fn vmaxnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxnm.v2f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmaxnm.v2f32")]
         fn vmaxnm_f32_(a: float32x2_t, b: float32x2_t) -> float32x2_t;
@@ -7596,7 +8436,7 @@ vmaxnm_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmaxnm))]
 pub unsafe fn vmaxnmq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxnm.v4f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmaxnm.v4f32")]
         fn vmaxnmq_f32_(a: float32x4_t, b: float32x4_t) -> float32x4_t;
@@ -7612,7 +8452,7 @@ vmaxnmq_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smin))]
 pub unsafe fn vmin_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smin.v8i8")]
         fn vmin_s8_(a: int8x8_t, b: int8x8_t) -> int8x8_t;
@@ -7628,7 +8468,7 @@ vmin_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smin))]
 pub unsafe fn vminq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smin.v16i8")]
         fn vminq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
@@ -7644,7 +8484,7 @@ vminq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smin))]
 pub unsafe fn vmin_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smin.v4i16")]
         fn vmin_s16_(a: int16x4_t, b: int16x4_t) -> int16x4_t;
@@ -7660,7 +8500,7 @@ vmin_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smin))]
 pub unsafe fn vminq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smin.v8i16")]
         fn vminq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
@@ -7676,7 +8516,7 @@ vminq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smin))]
 pub unsafe fn vmin_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smin.v2i32")]
         fn vmin_s32_(a: int32x2_t, b: int32x2_t) -> int32x2_t;
@@ -7692,7 +8532,7 @@ vmin_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smin))]
 pub unsafe fn vminq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smin.v4i32")]
         fn vminq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
@@ -7708,7 +8548,7 @@ vminq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umin))]
 pub unsafe fn vmin_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminu.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umin.v8i8")]
         fn vmin_u8_(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t;
@@ -7724,7 +8564,7 @@ vmin_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umin))]
 pub unsafe fn vminq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminu.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umin.v16i8")]
         fn vminq_u8_(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t;
@@ -7740,7 +8580,7 @@ vminq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umin))]
 pub unsafe fn vmin_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminu.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umin.v4i16")]
         fn vmin_u16_(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t;
@@ -7756,7 +8596,7 @@ vmin_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umin))]
 pub unsafe fn vminq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminu.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umin.v8i16")]
         fn vminq_u16_(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t;
@@ -7772,7 +8612,7 @@ vminq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umin))]
 pub unsafe fn vmin_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminu.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umin.v2i32")]
         fn vmin_u32_(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t;
@@ -7788,7 +8628,7 @@ vmin_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umin))]
 pub unsafe fn vminq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminu.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umin.v4i32")]
         fn vminq_u32_(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t;
@@ -7804,7 +8644,7 @@ vminq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmin))]
 pub unsafe fn vmin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v2f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmin.v2f32")]
         fn vmin_f32_(a: float32x2_t, b: float32x2_t) -> float32x2_t;
@@ -7820,7 +8660,7 @@ vmin_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmin))]
 pub unsafe fn vminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v4f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmin.v4f32")]
         fn vminq_f32_(a: float32x4_t, b: float32x4_t) -> float32x4_t;
@@ -7836,7 +8676,7 @@ vminq_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fminnm))]
 pub unsafe fn vminnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminnm.v2f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fminnm.v2f32")]
         fn vminnm_f32_(a: float32x2_t, b: float32x2_t) -> float32x2_t;
@@ -7852,7 +8692,7 @@ vminnm_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fminnm))]
 pub unsafe fn vminnmq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminnm.v4f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fminnm.v4f32")]
         fn vminnmq_f32_(a: float32x4_t, b: float32x4_t) -> float32x4_t;
@@ -7868,7 +8708,7 @@ vminnmq_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmull))]
 pub unsafe fn vqdmull_s16(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqdmull.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqdmull.v4i32")]
         fn vqdmull_s16_(a: int16x4_t, b: int16x4_t) -> int32x4_t;
@@ -7884,7 +8724,7 @@ vqdmull_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmull))]
 pub unsafe fn vqdmull_s32(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqdmull.v2i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqdmull.v2i64")]
         fn vqdmull_s32_(a: int32x2_t, b: int32x2_t) -> int64x2_t;
@@ -8074,7 +8914,7 @@ pub unsafe fn vqdmlsl_lane_s32<const N: i32>(a: int64x2_t, b: int32x2_t, c: int3
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmulh))]
 pub unsafe fn vqdmulh_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqdmulh.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqdmulh.v4i16")]
         fn vqdmulh_s16_(a: int16x4_t, b: int16x4_t) -> int16x4_t;
@@ -8090,7 +8930,7 @@ vqdmulh_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmulh))]
 pub unsafe fn vqdmulhq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqdmulh.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqdmulh.v8i16")]
         fn vqdmulhq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
@@ -8106,7 +8946,7 @@ vqdmulhq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmulh))]
 pub unsafe fn vqdmulh_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqdmulh.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqdmulh.v2i32")]
         fn vqdmulh_s32_(a: int32x2_t, b: int32x2_t) -> int32x2_t;
@@ -8122,7 +8962,7 @@ vqdmulh_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmulh))]
 pub unsafe fn vqdmulhq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqdmulh.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqdmulh.v4i32")]
         fn vqdmulhq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
@@ -8182,7 +9022,7 @@ pub unsafe fn vqdmulhq_nq_s32(a: int32x4_t, b: i32) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqxtn))]
 pub unsafe fn vqmovn_s16(a: int16x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovns.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqxtn.v8i8")]
         fn vqmovn_s16_(a: int16x8_t) -> int8x8_t;
@@ -8198,7 +9038,7 @@ vqmovn_s16_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqxtn))]
 pub unsafe fn vqmovn_s32(a: int32x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovns.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqxtn.v4i16")]
         fn vqmovn_s32_(a: int32x4_t) -> int16x4_t;
@@ -8214,7 +9054,7 @@ vqmovn_s32_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqxtn))]
 pub unsafe fn vqmovn_s64(a: int64x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovns.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqxtn.v2i32")]
         fn vqmovn_s64_(a: int64x2_t) -> int32x2_t;
@@ -8230,7 +9070,7 @@ vqmovn_s64_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqxtn))]
 pub unsafe fn vqmovn_u16(a: uint16x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovnu.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqxtn.v8i8")]
         fn vqmovn_u16_(a: uint16x8_t) -> uint8x8_t;
@@ -8246,7 +9086,7 @@ vqmovn_u16_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqxtn))]
 pub unsafe fn vqmovn_u32(a: uint32x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovnu.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqxtn.v4i16")]
         fn vqmovn_u32_(a: uint32x4_t) -> uint16x4_t;
@@ -8262,7 +9102,7 @@ vqmovn_u32_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqxtn))]
 pub unsafe fn vqmovn_u64(a: uint64x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovnu.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqxtn.v2i32")]
         fn vqmovn_u64_(a: uint64x2_t) -> uint32x2_t;
@@ -8278,7 +9118,7 @@ vqmovn_u64_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqxtun))]
 pub unsafe fn vqmovun_s16(a: int16x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovnsu.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqxtun.v8i8")]
         fn vqmovun_s16_(a: int16x8_t) -> uint8x8_t;
@@ -8294,7 +9134,7 @@ vqmovun_s16_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqxtun))]
 pub unsafe fn vqmovun_s32(a: int32x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovnsu.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqxtun.v4i16")]
         fn vqmovun_s32_(a: int32x4_t) -> uint16x4_t;
@@ -8310,7 +9150,7 @@ vqmovun_s32_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqxtun))]
 pub unsafe fn vqmovun_s64(a: int64x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovnsu.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqxtun.v2i32")]
         fn vqmovun_s64_(a: int64x2_t) -> uint32x2_t;
@@ -8326,7 +9166,7 @@ vqmovun_s64_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh))]
 pub unsafe fn vqrdmulh_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrdmulh.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrdmulh.v4i16")]
         fn vqrdmulh_s16_(a: int16x4_t, b: int16x4_t) -> int16x4_t;
@@ -8342,7 +9182,7 @@ vqrdmulh_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh))]
 pub unsafe fn vqrdmulhq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrdmulh.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrdmulh.v8i16")]
         fn vqrdmulhq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
@@ -8358,7 +9198,7 @@ vqrdmulhq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh))]
 pub unsafe fn vqrdmulh_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrdmulh.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrdmulh.v2i32")]
         fn vqrdmulh_s32_(a: int32x2_t, b: int32x2_t) -> int32x2_t;
@@ -8374,7 +9214,7 @@ vqrdmulh_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh))]
 pub unsafe fn vqrdmulhq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrdmulh.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrdmulh.v4i32")]
         fn vqrdmulhq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
@@ -8806,7 +9646,7 @@ pub unsafe fn vqrdmlshq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrshl))]
 pub unsafe fn vqrshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshifts.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrshl.v8i8")]
         fn vqrshl_s8_(a: int8x8_t, b: int8x8_t) -> int8x8_t;
@@ -8822,7 +9662,7 @@ vqrshl_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrshl))]
 pub unsafe fn vqrshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshifts.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrshl.v16i8")]
         fn vqrshlq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
@@ -8838,7 +9678,7 @@ vqrshlq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrshl))]
 pub unsafe fn vqrshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshifts.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrshl.v4i16")]
         fn vqrshl_s16_(a: int16x4_t, b: int16x4_t) -> int16x4_t;
@@ -8854,7 +9694,7 @@ vqrshl_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrshl))]
 pub unsafe fn vqrshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshifts.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrshl.v8i16")]
         fn vqrshlq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
@@ -8870,7 +9710,7 @@ vqrshlq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrshl))]
 pub unsafe fn vqrshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshifts.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrshl.v2i32")]
         fn vqrshl_s32_(a: int32x2_t, b: int32x2_t) -> int32x2_t;
@@ -8886,7 +9726,7 @@ vqrshl_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrshl))]
 pub unsafe fn vqrshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshifts.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrshl.v4i32")]
         fn vqrshlq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
@@ -8902,7 +9742,7 @@ vqrshlq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrshl))]
 pub unsafe fn vqrshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshifts.v1i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrshl.v1i64")]
         fn vqrshl_s64_(a: int64x1_t, b: int64x1_t) -> int64x1_t;
@@ -8918,7 +9758,7 @@ vqrshl_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrshl))]
 pub unsafe fn vqrshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshifts.v2i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrshl.v2i64")]
         fn vqrshlq_s64_(a: int64x2_t, b: int64x2_t) -> int64x2_t;
@@ -8934,7 +9774,7 @@ vqrshlq_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqrshl))]
 pub unsafe fn vqrshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftu.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqrshl.v8i8")]
         fn vqrshl_u8_(a: uint8x8_t, b: int8x8_t) -> uint8x8_t;
@@ -8950,7 +9790,7 @@ vqrshl_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqrshl))]
 pub unsafe fn vqrshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftu.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqrshl.v16i8")]
         fn vqrshlq_u8_(a: uint8x16_t, b: int8x16_t) -> uint8x16_t;
@@ -8966,7 +9806,7 @@ vqrshlq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqrshl))]
 pub unsafe fn vqrshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftu.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqrshl.v4i16")]
         fn vqrshl_u16_(a: uint16x4_t, b: int16x4_t) -> uint16x4_t;
@@ -8982,7 +9822,7 @@ vqrshl_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqrshl))]
 pub unsafe fn vqrshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftu.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqrshl.v8i16")]
         fn vqrshlq_u16_(a: uint16x8_t, b: int16x8_t) -> uint16x8_t;
@@ -8998,7 +9838,7 @@ vqrshlq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqrshl))]
 pub unsafe fn vqrshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftu.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqrshl.v2i32")]
         fn vqrshl_u32_(a: uint32x2_t, b: int32x2_t) -> uint32x2_t;
@@ -9014,7 +9854,7 @@ vqrshl_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqrshl))]
 pub unsafe fn vqrshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftu.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqrshl.v4i32")]
         fn vqrshlq_u32_(a: uint32x4_t, b: int32x4_t) -> uint32x4_t;
@@ -9030,7 +9870,7 @@ vqrshlq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqrshl))]
 pub unsafe fn vqrshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftu.v1i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqrshl.v1i64")]
         fn vqrshl_u64_(a: uint64x1_t, b: int64x1_t) -> uint64x1_t;
@@ -9046,7 +9886,7 @@ vqrshl_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqrshl))]
 pub unsafe fn vqrshlq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftu.v2i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqrshl.v2i64")]
         fn vqrshlq_u64_(a: uint64x2_t, b: int64x2_t) -> uint64x2_t;
@@ -9063,7 +9903,7 @@ vqrshlq_u64_(a, b)
 pub unsafe fn vqrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftns.v8i8")]
         fn vqrshrn_n_s16_(a: int16x8_t, n: int16x8_t) -> int8x8_t;
     }
@@ -9079,7 +9919,7 @@ vqrshrn_n_s16_(a, int16x8_t(-N as i16, -N as i16, -N as i16, -N as i16, -N as i1
 pub unsafe fn vqrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrshrn.v8i8")]
         fn vqrshrn_n_s16_(a: int16x8_t, n: i32) -> int8x8_t;
     }
@@ -9095,7 +9935,7 @@ vqrshrn_n_s16_(a, N)
 pub unsafe fn vqrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftns.v4i16")]
         fn vqrshrn_n_s32_(a: int32x4_t, n: int32x4_t) -> int16x4_t;
     }
@@ -9111,7 +9951,7 @@ vqrshrn_n_s32_(a, int32x4_t(-N as i32, -N as i32, -N as i32, -N as i32))
 pub unsafe fn vqrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrshrn.v4i16")]
         fn vqrshrn_n_s32_(a: int32x4_t, n: i32) -> int16x4_t;
     }
@@ -9127,7 +9967,7 @@ vqrshrn_n_s32_(a, N)
 pub unsafe fn vqrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftns.v2i32")]
         fn vqrshrn_n_s64_(a: int64x2_t, n: int64x2_t) -> int32x2_t;
     }
@@ -9143,7 +9983,7 @@ vqrshrn_n_s64_(a, int64x2_t(-N as i64, -N as i64))
 pub unsafe fn vqrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrshrn.v2i32")]
         fn vqrshrn_n_s64_(a: int64x2_t, n: i32) -> int32x2_t;
     }
@@ -9159,7 +9999,7 @@ vqrshrn_n_s64_(a, N)
 pub unsafe fn vqrshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnu.v8i8")]
         fn vqrshrn_n_u16_(a: uint16x8_t, n: uint16x8_t) -> uint8x8_t;
     }
@@ -9175,7 +10015,7 @@ vqrshrn_n_u16_(a, uint16x8_t(-N as u16, -N as u16, -N as u16, -N as u16, -N as u
 pub unsafe fn vqrshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqrshrn.v8i8")]
         fn vqrshrn_n_u16_(a: uint16x8_t, n: i32) -> uint8x8_t;
     }
@@ -9191,7 +10031,7 @@ vqrshrn_n_u16_(a, N)
 pub unsafe fn vqrshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnu.v4i16")]
         fn vqrshrn_n_u32_(a: uint32x4_t, n: uint32x4_t) -> uint16x4_t;
     }
@@ -9207,7 +10047,7 @@ vqrshrn_n_u32_(a, uint32x4_t(-N as u32, -N as u32, -N as u32, -N as u32))
 pub unsafe fn vqrshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqrshrn.v4i16")]
         fn vqrshrn_n_u32_(a: uint32x4_t, n: i32) -> uint16x4_t;
     }
@@ -9223,7 +10063,7 @@ vqrshrn_n_u32_(a, N)
 pub unsafe fn vqrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnu.v2i32")]
         fn vqrshrn_n_u64_(a: uint64x2_t, n: uint64x2_t) -> uint32x2_t;
     }
@@ -9239,7 +10079,7 @@ vqrshrn_n_u64_(a, uint64x2_t(-N as u64, -N as u64))
 pub unsafe fn vqrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqrshrn.v2i32")]
         fn vqrshrn_n_u64_(a: uint64x2_t, n: i32) -> uint32x2_t;
     }
@@ -9255,7 +10095,7 @@ vqrshrn_n_u64_(a, N)
 pub unsafe fn vqrshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnsu.v8i8")]
         fn vqrshrun_n_s16_(a: int16x8_t, n: int16x8_t) -> uint8x8_t;
     }
@@ -9271,7 +10111,7 @@ vqrshrun_n_s16_(a, int16x8_t(-N as i16, -N as i16, -N as i16, -N as i16, -N as i
 pub unsafe fn vqrshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrshrun.v8i8")]
         fn vqrshrun_n_s16_(a: int16x8_t, n: i32) -> uint8x8_t;
     }
@@ -9287,7 +10127,7 @@ vqrshrun_n_s16_(a, N)
 pub unsafe fn vqrshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnsu.v4i16")]
         fn vqrshrun_n_s32_(a: int32x4_t, n: int32x4_t) -> uint16x4_t;
     }
@@ -9303,7 +10143,7 @@ vqrshrun_n_s32_(a, int32x4_t(-N as i32, -N as i32, -N as i32, -N as i32))
 pub unsafe fn vqrshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrshrun.v4i16")]
         fn vqrshrun_n_s32_(a: int32x4_t, n: i32) -> uint16x4_t;
     }
@@ -9319,7 +10159,7 @@ vqrshrun_n_s32_(a, N)
 pub unsafe fn vqrshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnsu.v2i32")]
         fn vqrshrun_n_s64_(a: int64x2_t, n: int64x2_t) -> uint32x2_t;
     }
@@ -9335,7 +10175,7 @@ vqrshrun_n_s64_(a, int64x2_t(-N as i64, -N as i64))
 pub unsafe fn vqrshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqrshrun.v2i32")]
         fn vqrshrun_n_s64_(a: int64x2_t, n: i32) -> uint32x2_t;
     }
@@ -9350,7 +10190,7 @@ vqrshrun_n_s64_(a, N)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl))]
 pub unsafe fn vqshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshifts.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshl.v8i8")]
         fn vqshl_s8_(a: int8x8_t, b: int8x8_t) -> int8x8_t;
@@ -9366,7 +10206,7 @@ vqshl_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl))]
 pub unsafe fn vqshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshifts.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshl.v16i8")]
         fn vqshlq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
@@ -9382,7 +10222,7 @@ vqshlq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl))]
 pub unsafe fn vqshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshifts.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshl.v4i16")]
         fn vqshl_s16_(a: int16x4_t, b: int16x4_t) -> int16x4_t;
@@ -9398,7 +10238,7 @@ vqshl_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl))]
 pub unsafe fn vqshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshifts.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshl.v8i16")]
         fn vqshlq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
@@ -9414,7 +10254,7 @@ vqshlq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl))]
 pub unsafe fn vqshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshifts.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshl.v2i32")]
         fn vqshl_s32_(a: int32x2_t, b: int32x2_t) -> int32x2_t;
@@ -9430,7 +10270,7 @@ vqshl_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl))]
 pub unsafe fn vqshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshifts.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshl.v4i32")]
         fn vqshlq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
@@ -9446,7 +10286,7 @@ vqshlq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl))]
 pub unsafe fn vqshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshifts.v1i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshl.v1i64")]
         fn vqshl_s64_(a: int64x1_t, b: int64x1_t) -> int64x1_t;
@@ -9462,7 +10302,7 @@ vqshl_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl))]
 pub unsafe fn vqshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshifts.v2i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshl.v2i64")]
         fn vqshlq_s64_(a: int64x2_t, b: int64x2_t) -> int64x2_t;
@@ -9478,7 +10318,7 @@ vqshlq_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl))]
 pub unsafe fn vqshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftu.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqshl.v8i8")]
         fn vqshl_u8_(a: uint8x8_t, b: int8x8_t) -> uint8x8_t;
@@ -9494,7 +10334,7 @@ vqshl_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl))]
 pub unsafe fn vqshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftu.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqshl.v16i8")]
         fn vqshlq_u8_(a: uint8x16_t, b: int8x16_t) -> uint8x16_t;
@@ -9510,7 +10350,7 @@ vqshlq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl))]
 pub unsafe fn vqshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftu.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqshl.v4i16")]
         fn vqshl_u16_(a: uint16x4_t, b: int16x4_t) -> uint16x4_t;
@@ -9526,7 +10366,7 @@ vqshl_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl))]
 pub unsafe fn vqshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftu.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqshl.v8i16")]
         fn vqshlq_u16_(a: uint16x8_t, b: int16x8_t) -> uint16x8_t;
@@ -9542,7 +10382,7 @@ vqshlq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl))]
 pub unsafe fn vqshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftu.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqshl.v2i32")]
         fn vqshl_u32_(a: uint32x2_t, b: int32x2_t) -> uint32x2_t;
@@ -9558,7 +10398,7 @@ vqshl_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl))]
 pub unsafe fn vqshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftu.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqshl.v4i32")]
         fn vqshlq_u32_(a: uint32x4_t, b: int32x4_t) -> uint32x4_t;
@@ -9574,7 +10414,7 @@ vqshlq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl))]
 pub unsafe fn vqshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftu.v1i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqshl.v1i64")]
         fn vqshl_u64_(a: uint64x1_t, b: int64x1_t) -> uint64x1_t;
@@ -9590,7 +10430,7 @@ vqshl_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl))]
 pub unsafe fn vqshlq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftu.v2i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqshl.v2i64")]
         fn vqshlq_u64_(a: uint64x2_t, b: int64x2_t) -> uint64x2_t;
@@ -9799,7 +10639,7 @@ pub unsafe fn vqshlq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
 pub unsafe fn vqshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftns.v8i8")]
         fn vqshrn_n_s16_(a: int16x8_t, n: int16x8_t) -> int8x8_t;
     }
@@ -9815,7 +10655,7 @@ vqshrn_n_s16_(a, int16x8_t(-N as i16, -N as i16, -N as i16, -N as i16, -N as i16
 pub unsafe fn vqshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshrn.v8i8")]
         fn vqshrn_n_s16_(a: int16x8_t, n: i32) -> int8x8_t;
     }
@@ -9831,7 +10671,7 @@ vqshrn_n_s16_(a, N)
 pub unsafe fn vqshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftns.v4i16")]
         fn vqshrn_n_s32_(a: int32x4_t, n: int32x4_t) -> int16x4_t;
     }
@@ -9847,7 +10687,7 @@ vqshrn_n_s32_(a, int32x4_t(-N as i32, -N as i32, -N as i32, -N as i32))
 pub unsafe fn vqshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshrn.v4i16")]
         fn vqshrn_n_s32_(a: int32x4_t, n: i32) -> int16x4_t;
     }
@@ -9863,7 +10703,7 @@ vqshrn_n_s32_(a, N)
 pub unsafe fn vqshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftns.v2i32")]
         fn vqshrn_n_s64_(a: int64x2_t, n: int64x2_t) -> int32x2_t;
     }
@@ -9879,7 +10719,7 @@ vqshrn_n_s64_(a, int64x2_t(-N as i64, -N as i64))
 pub unsafe fn vqshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshrn.v2i32")]
         fn vqshrn_n_s64_(a: int64x2_t, n: i32) -> int32x2_t;
     }
@@ -9895,7 +10735,7 @@ vqshrn_n_s64_(a, N)
 pub unsafe fn vqshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnu.v8i8")]
         fn vqshrn_n_u16_(a: uint16x8_t, n: uint16x8_t) -> uint8x8_t;
     }
@@ -9911,7 +10751,7 @@ vqshrn_n_u16_(a, uint16x8_t(-N as u16, -N as u16, -N as u16, -N as u16, -N as u1
 pub unsafe fn vqshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqshrn.v8i8")]
         fn vqshrn_n_u16_(a: uint16x8_t, n: i32) -> uint8x8_t;
     }
@@ -9927,7 +10767,7 @@ vqshrn_n_u16_(a, N)
 pub unsafe fn vqshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnu.v4i16")]
         fn vqshrn_n_u32_(a: uint32x4_t, n: uint32x4_t) -> uint16x4_t;
     }
@@ -9943,7 +10783,7 @@ vqshrn_n_u32_(a, uint32x4_t(-N as u32, -N as u32, -N as u32, -N as u32))
 pub unsafe fn vqshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqshrn.v4i16")]
         fn vqshrn_n_u32_(a: uint32x4_t, n: i32) -> uint16x4_t;
     }
@@ -9959,7 +10799,7 @@ vqshrn_n_u32_(a, N)
 pub unsafe fn vqshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnu.v2i32")]
         fn vqshrn_n_u64_(a: uint64x2_t, n: uint64x2_t) -> uint32x2_t;
     }
@@ -9975,7 +10815,7 @@ vqshrn_n_u64_(a, uint64x2_t(-N as u64, -N as u64))
 pub unsafe fn vqshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqshrn.v2i32")]
         fn vqshrn_n_u64_(a: uint64x2_t, n: i32) -> uint32x2_t;
     }
@@ -9991,7 +10831,7 @@ vqshrn_n_u64_(a, N)
 pub unsafe fn vqshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnsu.v8i8")]
         fn vqshrun_n_s16_(a: int16x8_t, n: int16x8_t) -> uint8x8_t;
     }
@@ -10007,7 +10847,7 @@ vqshrun_n_s16_(a, int16x8_t(-N as i16, -N as i16, -N as i16, -N as i16, -N as i1
 pub unsafe fn vqshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshrun.v8i8")]
         fn vqshrun_n_s16_(a: int16x8_t, n: i32) -> uint8x8_t;
     }
@@ -10023,7 +10863,7 @@ vqshrun_n_s16_(a, N)
 pub unsafe fn vqshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnsu.v4i16")]
         fn vqshrun_n_s32_(a: int32x4_t, n: int32x4_t) -> uint16x4_t;
     }
@@ -10039,7 +10879,7 @@ vqshrun_n_s32_(a, int32x4_t(-N as i32, -N as i32, -N as i32, -N as i32))
 pub unsafe fn vqshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshrun.v4i16")]
         fn vqshrun_n_s32_(a: int32x4_t, n: i32) -> uint16x4_t;
     }
@@ -10055,7 +10895,7 @@ vqshrun_n_s32_(a, N)
 pub unsafe fn vqshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnsu.v2i32")]
         fn vqshrun_n_s64_(a: int64x2_t, n: int64x2_t) -> uint32x2_t;
     }
@@ -10071,7 +10911,7 @@ vqshrun_n_s64_(a, int64x2_t(-N as i64, -N as i64))
 pub unsafe fn vqshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshrun.v2i32")]
         fn vqshrun_n_s64_(a: int64x2_t, n: i32) -> uint32x2_t;
     }
@@ -10086,7 +10926,7 @@ vqshrun_n_s64_(a, N)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frsqrte))]
 pub unsafe fn vrsqrte_f32(a: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrte.v2f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frsqrte.v2f32")]
         fn vrsqrte_f32_(a: float32x2_t) -> float32x2_t;
@@ -10102,7 +10942,7 @@ vrsqrte_f32_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frsqrte))]
 pub unsafe fn vrsqrteq_f32(a: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrte.v4f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frsqrte.v4f32")]
         fn vrsqrteq_f32_(a: float32x4_t) -> float32x4_t;
@@ -10118,7 +10958,7 @@ vrsqrteq_f32_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frecpe))]
 pub unsafe fn vrecpe_f32(a: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrecpe.v2f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frecpe.v2f32")]
         fn vrecpe_f32_(a: float32x2_t) -> float32x2_t;
@@ -10134,7 +10974,7 @@ vrecpe_f32_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frecpe))]
 pub unsafe fn vrecpeq_f32(a: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrecpe.v4f32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frecpe.v4f32")]
         fn vrecpeq_f32_(a: float32x4_t) -> float32x4_t;
@@ -12350,7 +13190,7 @@ pub unsafe fn vreinterpretq_f32_p16(a: poly16x8_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshl))]
 pub unsafe fn vrshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshifts.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.srshl.v8i8")]
         fn vrshl_s8_(a: int8x8_t, b: int8x8_t) -> int8x8_t;
@@ -12366,7 +13206,7 @@ vrshl_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshl))]
 pub unsafe fn vrshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshifts.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.srshl.v16i8")]
         fn vrshlq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
@@ -12382,7 +13222,7 @@ vrshlq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshl))]
 pub unsafe fn vrshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshifts.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.srshl.v4i16")]
         fn vrshl_s16_(a: int16x4_t, b: int16x4_t) -> int16x4_t;
@@ -12398,7 +13238,7 @@ vrshl_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshl))]
 pub unsafe fn vrshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshifts.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.srshl.v8i16")]
         fn vrshlq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
@@ -12414,7 +13254,7 @@ vrshlq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshl))]
 pub unsafe fn vrshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshifts.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.srshl.v2i32")]
         fn vrshl_s32_(a: int32x2_t, b: int32x2_t) -> int32x2_t;
@@ -12430,7 +13270,7 @@ vrshl_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshl))]
 pub unsafe fn vrshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshifts.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.srshl.v4i32")]
         fn vrshlq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
@@ -12446,7 +13286,7 @@ vrshlq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshl))]
 pub unsafe fn vrshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshifts.v1i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.srshl.v1i64")]
         fn vrshl_s64_(a: int64x1_t, b: int64x1_t) -> int64x1_t;
@@ -12462,7 +13302,7 @@ vrshl_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshl))]
 pub unsafe fn vrshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshifts.v2i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.srshl.v2i64")]
         fn vrshlq_s64_(a: int64x2_t, b: int64x2_t) -> int64x2_t;
@@ -12478,7 +13318,7 @@ vrshlq_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshl))]
 pub unsafe fn vrshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftu.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.urshl.v8i8")]
         fn vrshl_u8_(a: uint8x8_t, b: int8x8_t) -> uint8x8_t;
@@ -12494,7 +13334,7 @@ vrshl_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshl))]
 pub unsafe fn vrshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftu.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.urshl.v16i8")]
         fn vrshlq_u8_(a: uint8x16_t, b: int8x16_t) -> uint8x16_t;
@@ -12510,7 +13350,7 @@ vrshlq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshl))]
 pub unsafe fn vrshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftu.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.urshl.v4i16")]
         fn vrshl_u16_(a: uint16x4_t, b: int16x4_t) -> uint16x4_t;
@@ -12526,7 +13366,7 @@ vrshl_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshl))]
 pub unsafe fn vrshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftu.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.urshl.v8i16")]
         fn vrshlq_u16_(a: uint16x8_t, b: int16x8_t) -> uint16x8_t;
@@ -12542,7 +13382,7 @@ vrshlq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshl))]
 pub unsafe fn vrshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftu.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.urshl.v2i32")]
         fn vrshl_u32_(a: uint32x2_t, b: int32x2_t) -> uint32x2_t;
@@ -12558,7 +13398,7 @@ vrshl_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshl))]
 pub unsafe fn vrshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftu.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.urshl.v4i32")]
         fn vrshlq_u32_(a: uint32x4_t, b: int32x4_t) -> uint32x4_t;
@@ -12574,7 +13414,7 @@ vrshlq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshl))]
 pub unsafe fn vrshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftu.v1i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.urshl.v1i64")]
         fn vrshl_u64_(a: uint64x1_t, b: int64x1_t) -> uint64x1_t;
@@ -12590,7 +13430,7 @@ vrshl_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshl))]
 pub unsafe fn vrshlq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftu.v2i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.urshl.v2i64")]
         fn vrshlq_u64_(a: uint64x2_t, b: int64x2_t) -> uint64x2_t;
@@ -12799,7 +13639,7 @@ pub unsafe fn vrshrq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
 pub unsafe fn vrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftn.v8i8")]
         fn vrshrn_n_s16_(a: int16x8_t, n: int16x8_t) -> int8x8_t;
     }
@@ -12815,7 +13655,7 @@ vrshrn_n_s16_(a, int16x8_t(-N as i16, -N as i16, -N as i16, -N as i16, -N as i16
 pub unsafe fn vrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.rshrn.v8i8")]
         fn vrshrn_n_s16_(a: int16x8_t, n: i32) -> int8x8_t;
     }
@@ -12831,7 +13671,7 @@ vrshrn_n_s16_(a, N)
 pub unsafe fn vrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftn.v4i16")]
         fn vrshrn_n_s32_(a: int32x4_t, n: int32x4_t) -> int16x4_t;
     }
@@ -12847,7 +13687,7 @@ vrshrn_n_s32_(a, int32x4_t(-N as i32, -N as i32, -N as i32, -N as i32))
 pub unsafe fn vrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.rshrn.v4i16")]
         fn vrshrn_n_s32_(a: int32x4_t, n: i32) -> int16x4_t;
     }
@@ -12863,7 +13703,7 @@ vrshrn_n_s32_(a, N)
 pub unsafe fn vrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftn.v2i32")]
         fn vrshrn_n_s64_(a: int64x2_t, n: int64x2_t) -> int32x2_t;
     }
@@ -12879,7 +13719,7 @@ vrshrn_n_s64_(a, int64x2_t(-N as i64, -N as i64))
 pub unsafe fn vrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.rshrn.v2i32")]
         fn vrshrn_n_s64_(a: int64x2_t, n: i32) -> int32x2_t;
     }
@@ -13410,7 +14250,7 @@ pub unsafe fn vsetq_lane_f32<const LANE: i32>(a: f32, b: float32x4_t) -> float32
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshl))]
 pub unsafe fn vshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshifts.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sshl.v8i8")]
         fn vshl_s8_(a: int8x8_t, b: int8x8_t) -> int8x8_t;
@@ -13426,7 +14266,7 @@ vshl_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshl))]
 pub unsafe fn vshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshifts.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sshl.v16i8")]
         fn vshlq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
@@ -13442,7 +14282,7 @@ vshlq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshl))]
 pub unsafe fn vshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshifts.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sshl.v4i16")]
         fn vshl_s16_(a: int16x4_t, b: int16x4_t) -> int16x4_t;
@@ -13458,7 +14298,7 @@ vshl_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshl))]
 pub unsafe fn vshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshifts.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sshl.v8i16")]
         fn vshlq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
@@ -13474,7 +14314,7 @@ vshlq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshl))]
 pub unsafe fn vshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshifts.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sshl.v2i32")]
         fn vshl_s32_(a: int32x2_t, b: int32x2_t) -> int32x2_t;
@@ -13490,7 +14330,7 @@ vshl_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshl))]
 pub unsafe fn vshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshifts.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sshl.v4i32")]
         fn vshlq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
@@ -13506,7 +14346,7 @@ vshlq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshl))]
 pub unsafe fn vshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshifts.v1i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sshl.v1i64")]
         fn vshl_s64_(a: int64x1_t, b: int64x1_t) -> int64x1_t;
@@ -13522,7 +14362,7 @@ vshl_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshl))]
 pub unsafe fn vshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshifts.v2i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sshl.v2i64")]
         fn vshlq_s64_(a: int64x2_t, b: int64x2_t) -> int64x2_t;
@@ -13538,7 +14378,7 @@ vshlq_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushl))]
 pub unsafe fn vshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftu.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ushl.v8i8")]
         fn vshl_u8_(a: uint8x8_t, b: int8x8_t) -> uint8x8_t;
@@ -13554,7 +14394,7 @@ vshl_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushl))]
 pub unsafe fn vshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftu.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ushl.v16i8")]
         fn vshlq_u8_(a: uint8x16_t, b: int8x16_t) -> uint8x16_t;
@@ -13570,7 +14410,7 @@ vshlq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushl))]
 pub unsafe fn vshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftu.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ushl.v4i16")]
         fn vshl_u16_(a: uint16x4_t, b: int16x4_t) -> uint16x4_t;
@@ -13586,7 +14426,7 @@ vshl_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushl))]
 pub unsafe fn vshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftu.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ushl.v8i16")]
         fn vshlq_u16_(a: uint16x8_t, b: int16x8_t) -> uint16x8_t;
@@ -13602,7 +14442,7 @@ vshlq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushl))]
 pub unsafe fn vshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftu.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ushl.v2i32")]
         fn vshl_u32_(a: uint32x2_t, b: int32x2_t) -> uint32x2_t;
@@ -13618,7 +14458,7 @@ vshl_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushl))]
 pub unsafe fn vshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftu.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ushl.v4i32")]
         fn vshlq_u32_(a: uint32x4_t, b: int32x4_t) -> uint32x4_t;
@@ -13634,7 +14474,7 @@ vshlq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushl))]
 pub unsafe fn vshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftu.v1i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ushl.v1i64")]
         fn vshl_u64_(a: uint64x1_t, b: int64x1_t) -> uint64x1_t;
@@ -13650,7 +14490,7 @@ vshl_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushl))]
 pub unsafe fn vshlq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftu.v2i64")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ushl.v2i64")]
         fn vshlq_u64_(a: uint64x2_t, b: int64x2_t) -> uint64x2_t;
@@ -14455,7 +15295,7 @@ pub unsafe fn vabal_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqabs))]
 pub unsafe fn vqabs_s8(a: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqabs.v8i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqabs.v8i8")]
         fn vqabs_s8_(a: int8x8_t) -> int8x8_t;
@@ -14471,7 +15311,7 @@ vqabs_s8_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqabs))]
 pub unsafe fn vqabsq_s8(a: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqabs.v16i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqabs.v16i8")]
         fn vqabsq_s8_(a: int8x16_t) -> int8x16_t;
@@ -14487,7 +15327,7 @@ vqabsq_s8_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqabs))]
 pub unsafe fn vqabs_s16(a: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqabs.v4i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqabs.v4i16")]
         fn vqabs_s16_(a: int16x4_t) -> int16x4_t;
@@ -14503,7 +15343,7 @@ vqabs_s16_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqabs))]
 pub unsafe fn vqabsq_s16(a: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqabs.v8i16")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqabs.v8i16")]
         fn vqabsq_s16_(a: int16x8_t) -> int16x8_t;
@@ -14519,7 +15359,7 @@ vqabsq_s16_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqabs))]
 pub unsafe fn vqabs_s32(a: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqabs.v2i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqabs.v2i32")]
         fn vqabs_s32_(a: int32x2_t) -> int32x2_t;
@@ -14535,7 +15375,7 @@ vqabs_s32_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqabs))]
 pub unsafe fn vqabsq_s32(a: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "C" {
+    extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqabs.v4i32")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqabs.v4i32")]
         fn vqabsq_s32_(a: int32x4_t) -> int32x4_t;
@@ -18958,6 +19798,534 @@ mod test {
         let b: i64x2 = i64x2::new(1, 2);
         let e: i64x2 = i64x2::new(43, 44);
         let r: i64x2 = transmute(vqaddq_s64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_s8_x2() {
+        let a: [i8; 17] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let e: [i8x8; 2] = [i8x8::new(1, 2, 3, 4, 5, 6, 7, 8), i8x8::new(9, 10, 11, 12, 13, 14, 15, 16)];
+        let r: [i8x8; 2] = transmute(vld1_s8_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_s16_x2() {
+        let a: [i16; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+        let e: [i16x4; 2] = [i16x4::new(1, 2, 3, 4), i16x4::new(5, 6, 7, 8)];
+        let r: [i16x4; 2] = transmute(vld1_s16_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_s32_x2() {
+        let a: [i32; 5] = [0, 1, 2, 3, 4];
+        let e: [i32x2; 2] = [i32x2::new(1, 2), i32x2::new(3, 4)];
+        let r: [i32x2; 2] = transmute(vld1_s32_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_s64_x2() {
+        let a: [i64; 3] = [0, 1, 2];
+        let e: [i64x1; 2] = [i64x1::new(1), i64x1::new(2)];
+        let r: [i64x1; 2] = transmute(vld1_s64_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_s8_x2() {
+        let a: [i8; 33] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        let e: [i8x16; 2] = [i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), i8x16::new(17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32)];
+        let r: [i8x16; 2] = transmute(vld1q_s8_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_s16_x2() {
+        let a: [i16; 17] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let e: [i16x8; 2] = [i16x8::new(1, 2, 3, 4, 5, 6, 7, 8), i16x8::new(9, 10, 11, 12, 13, 14, 15, 16)];
+        let r: [i16x8; 2] = transmute(vld1q_s16_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_s32_x2() {
+        let a: [i32; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+        let e: [i32x4; 2] = [i32x4::new(1, 2, 3, 4), i32x4::new(5, 6, 7, 8)];
+        let r: [i32x4; 2] = transmute(vld1q_s32_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_s64_x2() {
+        let a: [i64; 5] = [0, 1, 2, 3, 4];
+        let e: [i64x2; 2] = [i64x2::new(1, 2), i64x2::new(3, 4)];
+        let r: [i64x2; 2] = transmute(vld1q_s64_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_s8_x3() {
+        let a: [i8; 25] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24];
+        let e: [i8x8; 3] = [i8x8::new(1, 2, 3, 4, 5, 6, 7, 8), i8x8::new(9, 10, 11, 12, 13, 14, 15, 16), i8x8::new(17, 18, 19, 20, 21, 22, 23, 24)];
+        let r: [i8x8; 3] = transmute(vld1_s8_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_s16_x3() {
+        let a: [i16; 13] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        let e: [i16x4; 3] = [i16x4::new(1, 2, 3, 4), i16x4::new(5, 6, 7, 8), i16x4::new(9, 10, 11, 12)];
+        let r: [i16x4; 3] = transmute(vld1_s16_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_s32_x3() {
+        let a: [i32; 7] = [0, 1, 2, 3, 4, 5, 6];
+        let e: [i32x2; 3] = [i32x2::new(1, 2), i32x2::new(3, 4), i32x2::new(5, 6)];
+        let r: [i32x2; 3] = transmute(vld1_s32_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_s64_x3() {
+        let a: [i64; 4] = [0, 1, 2, 3];
+        let e: [i64x1; 3] = [i64x1::new(1), i64x1::new(2), i64x1::new(3)];
+        let r: [i64x1; 3] = transmute(vld1_s64_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_s8_x3() {
+        let a: [i8; 49] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let e: [i8x16; 3] = [i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), i8x16::new(17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32), i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)];
+        let r: [i8x16; 3] = transmute(vld1q_s8_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_s16_x3() {
+        let a: [i16; 25] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24];
+        let e: [i16x8; 3] = [i16x8::new(1, 2, 3, 4, 5, 6, 7, 8), i16x8::new(9, 10, 11, 12, 13, 14, 15, 16), i16x8::new(17, 18, 19, 20, 21, 22, 23, 24)];
+        let r: [i16x8; 3] = transmute(vld1q_s16_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_s32_x3() {
+        let a: [i32; 13] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        let e: [i32x4; 3] = [i32x4::new(1, 2, 3, 4), i32x4::new(5, 6, 7, 8), i32x4::new(9, 10, 11, 12)];
+        let r: [i32x4; 3] = transmute(vld1q_s32_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_s64_x3() {
+        let a: [i64; 7] = [0, 1, 2, 3, 4, 5, 6];
+        let e: [i64x2; 3] = [i64x2::new(1, 2), i64x2::new(3, 4), i64x2::new(5, 6)];
+        let r: [i64x2; 3] = transmute(vld1q_s64_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_s8_x4() {
+        let a: [i8; 33] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        let e: [i8x8; 4] = [i8x8::new(1, 2, 3, 4, 5, 6, 7, 8), i8x8::new(9, 10, 11, 12, 13, 14, 15, 16), i8x8::new(17, 18, 19, 20, 21, 22, 23, 24), i8x8::new(25, 26, 27, 28, 29, 30, 31, 32)];
+        let r: [i8x8; 4] = transmute(vld1_s8_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_s16_x4() {
+        let a: [i16; 17] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let e: [i16x4; 4] = [i16x4::new(1, 2, 3, 4), i16x4::new(5, 6, 7, 8), i16x4::new(9, 10, 11, 12), i16x4::new(13, 14, 15, 16)];
+        let r: [i16x4; 4] = transmute(vld1_s16_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_s32_x4() {
+        let a: [i32; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+        let e: [i32x2; 4] = [i32x2::new(1, 2), i32x2::new(3, 4), i32x2::new(5, 6), i32x2::new(7, 8)];
+        let r: [i32x2; 4] = transmute(vld1_s32_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_s64_x4() {
+        let a: [i64; 5] = [0, 1, 2, 3, 4];
+        let e: [i64x1; 4] = [i64x1::new(1), i64x1::new(2), i64x1::new(3), i64x1::new(4)];
+        let r: [i64x1; 4] = transmute(vld1_s64_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_s8_x4() {
+        let a: [i8; 65] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        let e: [i8x16; 4] = [i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), i8x16::new(17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32), i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), i8x16::new(17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32)];
+        let r: [i8x16; 4] = transmute(vld1q_s8_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_s16_x4() {
+        let a: [i16; 33] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        let e: [i16x8; 4] = [i16x8::new(1, 2, 3, 4, 5, 6, 7, 8), i16x8::new(9, 10, 11, 12, 13, 14, 15, 16), i16x8::new(17, 18, 19, 20, 21, 22, 23, 24), i16x8::new(25, 26, 27, 28, 29, 30, 31, 32)];
+        let r: [i16x8; 4] = transmute(vld1q_s16_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_s32_x4() {
+        let a: [i32; 17] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let e: [i32x4; 4] = [i32x4::new(1, 2, 3, 4), i32x4::new(5, 6, 7, 8), i32x4::new(9, 10, 11, 12), i32x4::new(13, 14, 15, 16)];
+        let r: [i32x4; 4] = transmute(vld1q_s32_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_s64_x4() {
+        let a: [i64; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+        let e: [i64x2; 4] = [i64x2::new(1, 2), i64x2::new(3, 4), i64x2::new(5, 6), i64x2::new(7, 8)];
+        let r: [i64x2; 4] = transmute(vld1q_s64_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_u8_x2() {
+        let a: [u8; 17] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let e: [u8x8; 2] = [u8x8::new(1, 2, 3, 4, 5, 6, 7, 8), u8x8::new(9, 10, 11, 12, 13, 14, 15, 16)];
+        let r: [u8x8; 2] = transmute(vld1_u8_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_u16_x2() {
+        let a: [u16; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+        let e: [u16x4; 2] = [u16x4::new(1, 2, 3, 4), u16x4::new(5, 6, 7, 8)];
+        let r: [u16x4; 2] = transmute(vld1_u16_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_u32_x2() {
+        let a: [u32; 5] = [0, 1, 2, 3, 4];
+        let e: [u32x2; 2] = [u32x2::new(1, 2), u32x2::new(3, 4)];
+        let r: [u32x2; 2] = transmute(vld1_u32_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_u64_x2() {
+        let a: [u64; 3] = [0, 1, 2];
+        let e: [u64x1; 2] = [u64x1::new(1), u64x1::new(2)];
+        let r: [u64x1; 2] = transmute(vld1_u64_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_u8_x2() {
+        let a: [u8; 33] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        let e: [u8x16; 2] = [u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), u8x16::new(17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32)];
+        let r: [u8x16; 2] = transmute(vld1q_u8_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_u16_x2() {
+        let a: [u16; 17] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let e: [u16x8; 2] = [u16x8::new(1, 2, 3, 4, 5, 6, 7, 8), u16x8::new(9, 10, 11, 12, 13, 14, 15, 16)];
+        let r: [u16x8; 2] = transmute(vld1q_u16_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_u32_x2() {
+        let a: [u32; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+        let e: [u32x4; 2] = [u32x4::new(1, 2, 3, 4), u32x4::new(5, 6, 7, 8)];
+        let r: [u32x4; 2] = transmute(vld1q_u32_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_u64_x2() {
+        let a: [u64; 5] = [0, 1, 2, 3, 4];
+        let e: [u64x2; 2] = [u64x2::new(1, 2), u64x2::new(3, 4)];
+        let r: [u64x2; 2] = transmute(vld1q_u64_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_u8_x3() {
+        let a: [u8; 25] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24];
+        let e: [u8x8; 3] = [u8x8::new(1, 2, 3, 4, 5, 6, 7, 8), u8x8::new(9, 10, 11, 12, 13, 14, 15, 16), u8x8::new(17, 18, 19, 20, 21, 22, 23, 24)];
+        let r: [u8x8; 3] = transmute(vld1_u8_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_u16_x3() {
+        let a: [u16; 13] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        let e: [u16x4; 3] = [u16x4::new(1, 2, 3, 4), u16x4::new(5, 6, 7, 8), u16x4::new(9, 10, 11, 12)];
+        let r: [u16x4; 3] = transmute(vld1_u16_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_u32_x3() {
+        let a: [u32; 7] = [0, 1, 2, 3, 4, 5, 6];
+        let e: [u32x2; 3] = [u32x2::new(1, 2), u32x2::new(3, 4), u32x2::new(5, 6)];
+        let r: [u32x2; 3] = transmute(vld1_u32_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_u64_x3() {
+        let a: [u64; 4] = [0, 1, 2, 3];
+        let e: [u64x1; 3] = [u64x1::new(1), u64x1::new(2), u64x1::new(3)];
+        let r: [u64x1; 3] = transmute(vld1_u64_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_u8_x3() {
+        let a: [u8; 49] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let e: [u8x16; 3] = [u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), u8x16::new(17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32), u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)];
+        let r: [u8x16; 3] = transmute(vld1q_u8_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_u16_x3() {
+        let a: [u16; 25] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24];
+        let e: [u16x8; 3] = [u16x8::new(1, 2, 3, 4, 5, 6, 7, 8), u16x8::new(9, 10, 11, 12, 13, 14, 15, 16), u16x8::new(17, 18, 19, 20, 21, 22, 23, 24)];
+        let r: [u16x8; 3] = transmute(vld1q_u16_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_u32_x3() {
+        let a: [u32; 13] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        let e: [u32x4; 3] = [u32x4::new(1, 2, 3, 4), u32x4::new(5, 6, 7, 8), u32x4::new(9, 10, 11, 12)];
+        let r: [u32x4; 3] = transmute(vld1q_u32_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_u64_x3() {
+        let a: [u64; 7] = [0, 1, 2, 3, 4, 5, 6];
+        let e: [u64x2; 3] = [u64x2::new(1, 2), u64x2::new(3, 4), u64x2::new(5, 6)];
+        let r: [u64x2; 3] = transmute(vld1q_u64_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_u8_x4() {
+        let a: [u8; 33] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        let e: [u8x8; 4] = [u8x8::new(1, 2, 3, 4, 5, 6, 7, 8), u8x8::new(9, 10, 11, 12, 13, 14, 15, 16), u8x8::new(17, 18, 19, 20, 21, 22, 23, 24), u8x8::new(25, 26, 27, 28, 29, 30, 31, 32)];
+        let r: [u8x8; 4] = transmute(vld1_u8_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_u16_x4() {
+        let a: [u16; 17] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let e: [u16x4; 4] = [u16x4::new(1, 2, 3, 4), u16x4::new(5, 6, 7, 8), u16x4::new(9, 10, 11, 12), u16x4::new(13, 14, 15, 16)];
+        let r: [u16x4; 4] = transmute(vld1_u16_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_u32_x4() {
+        let a: [u32; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+        let e: [u32x2; 4] = [u32x2::new(1, 2), u32x2::new(3, 4), u32x2::new(5, 6), u32x2::new(7, 8)];
+        let r: [u32x2; 4] = transmute(vld1_u32_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_u64_x4() {
+        let a: [u64; 5] = [0, 1, 2, 3, 4];
+        let e: [u64x1; 4] = [u64x1::new(1), u64x1::new(2), u64x1::new(3), u64x1::new(4)];
+        let r: [u64x1; 4] = transmute(vld1_u64_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_u8_x4() {
+        let a: [u8; 65] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        let e: [u8x16; 4] = [u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), u8x16::new(17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32), u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), u8x16::new(17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32)];
+        let r: [u8x16; 4] = transmute(vld1q_u8_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_u16_x4() {
+        let a: [u16; 33] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        let e: [u16x8; 4] = [u16x8::new(1, 2, 3, 4, 5, 6, 7, 8), u16x8::new(9, 10, 11, 12, 13, 14, 15, 16), u16x8::new(17, 18, 19, 20, 21, 22, 23, 24), u16x8::new(25, 26, 27, 28, 29, 30, 31, 32)];
+        let r: [u16x8; 4] = transmute(vld1q_u16_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_u32_x4() {
+        let a: [u32; 17] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let e: [u32x4; 4] = [u32x4::new(1, 2, 3, 4), u32x4::new(5, 6, 7, 8), u32x4::new(9, 10, 11, 12), u32x4::new(13, 14, 15, 16)];
+        let r: [u32x4; 4] = transmute(vld1q_u32_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_u64_x4() {
+        let a: [u64; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+        let e: [u64x2; 4] = [u64x2::new(1, 2), u64x2::new(3, 4), u64x2::new(5, 6), u64x2::new(7, 8)];
+        let r: [u64x2; 4] = transmute(vld1q_u64_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_p8_x2() {
+        let a: [u8; 17] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let e: [i8x8; 2] = [i8x8::new(1, 2, 3, 4, 5, 6, 7, 8), i8x8::new(9, 10, 11, 12, 13, 14, 15, 16)];
+        let r: [i8x8; 2] = transmute(vld1_p8_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_p8_x3() {
+        let a: [u8; 25] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24];
+        let e: [i8x8; 3] = [i8x8::new(1, 2, 3, 4, 5, 6, 7, 8), i8x8::new(9, 10, 11, 12, 13, 14, 15, 16), i8x8::new(17, 18, 19, 20, 21, 22, 23, 24)];
+        let r: [i8x8; 3] = transmute(vld1_p8_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_p8_x4() {
+        let a: [u8; 33] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        let e: [i8x8; 4] = [i8x8::new(1, 2, 3, 4, 5, 6, 7, 8), i8x8::new(9, 10, 11, 12, 13, 14, 15, 16), i8x8::new(17, 18, 19, 20, 21, 22, 23, 24), i8x8::new(25, 26, 27, 28, 29, 30, 31, 32)];
+        let r: [i8x8; 4] = transmute(vld1_p8_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_p8_x2() {
+        let a: [u8; 33] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        let e: [i8x16; 2] = [i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), i8x16::new(17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32)];
+        let r: [i8x16; 2] = transmute(vld1q_p8_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_p8_x3() {
+        let a: [u8; 49] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let e: [i8x16; 3] = [i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), i8x16::new(17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32), i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)];
+        let r: [i8x16; 3] = transmute(vld1q_p8_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_p8_x4() {
+        let a: [u8; 65] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        let e: [i8x16; 4] = [i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), i8x16::new(17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32), i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), i8x16::new(17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32)];
+        let r: [i8x16; 4] = transmute(vld1q_p8_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_p16_x2() {
+        let a: [u16; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+        let e: [i16x4; 2] = [i16x4::new(1, 2, 3, 4), i16x4::new(5, 6, 7, 8)];
+        let r: [i16x4; 2] = transmute(vld1_p16_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_p16_x3() {
+        let a: [u16; 13] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        let e: [i16x4; 3] = [i16x4::new(1, 2, 3, 4), i16x4::new(5, 6, 7, 8), i16x4::new(9, 10, 11, 12)];
+        let r: [i16x4; 3] = transmute(vld1_p16_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_p16_x4() {
+        let a: [u16; 17] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let e: [i16x4; 4] = [i16x4::new(1, 2, 3, 4), i16x4::new(5, 6, 7, 8), i16x4::new(9, 10, 11, 12), i16x4::new(13, 14, 15, 16)];
+        let r: [i16x4; 4] = transmute(vld1_p16_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_p16_x2() {
+        let a: [u16; 17] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let e: [i16x8; 2] = [i16x8::new(1, 2, 3, 4, 5, 6, 7, 8), i16x8::new(9, 10, 11, 12, 13, 14, 15, 16)];
+        let r: [i16x8; 2] = transmute(vld1q_p16_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_p16_x3() {
+        let a: [u16; 25] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24];
+        let e: [i16x8; 3] = [i16x8::new(1, 2, 3, 4, 5, 6, 7, 8), i16x8::new(9, 10, 11, 12, 13, 14, 15, 16), i16x8::new(17, 18, 19, 20, 21, 22, 23, 24)];
+        let r: [i16x8; 3] = transmute(vld1q_p16_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_p16_x4() {
+        let a: [u16; 33] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        let e: [i16x8; 4] = [i16x8::new(1, 2, 3, 4, 5, 6, 7, 8), i16x8::new(9, 10, 11, 12, 13, 14, 15, 16), i16x8::new(17, 18, 19, 20, 21, 22, 23, 24), i16x8::new(25, 26, 27, 28, 29, 30, 31, 32)];
+        let r: [i16x8; 4] = transmute(vld1q_p16_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_f32_x2() {
+        let a: [f32; 5] = [0., 1., 2., 3., 4.];
+        let e: [f32x2; 2] = [f32x2::new(1., 2.), f32x2::new(3., 4.)];
+        let r: [f32x2; 2] = transmute(vld1_f32_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_f32_x2() {
+        let a: [f32; 9] = [0., 1., 2., 3., 4., 5., 6., 7., 8.];
+        let e: [f32x4; 2] = [f32x4::new(1., 2., 3., 4.), f32x4::new(5., 6., 7., 8.)];
+        let r: [f32x4; 2] = transmute(vld1q_f32_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_f32_x3() {
+        let a: [f32; 7] = [0., 1., 2., 3., 4., 5., 6.];
+        let e: [f32x2; 3] = [f32x2::new(1., 2.), f32x2::new(3., 4.), f32x2::new(5., 6.)];
+        let r: [f32x2; 3] = transmute(vld1_f32_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_f32_x3() {
+        let a: [f32; 13] = [0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.];
+        let e: [f32x4; 3] = [f32x4::new(1., 2., 3., 4.), f32x4::new(5., 6., 7., 8.), f32x4::new(9., 10., 11., 12.)];
+        let r: [f32x4; 3] = transmute(vld1q_f32_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_f32_x4() {
+        let a: [f32; 9] = [0., 1., 2., 3., 4., 5., 6., 7., 8.];
+        let e: [f32x2; 4] = [f32x2::new(1., 2.), f32x2::new(3., 4.), f32x2::new(5., 6.), f32x2::new(7., 8.)];
+        let r: [f32x2; 4] = transmute(vld1_f32_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_f32_x4() {
+        let a: [f32; 17] = [0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.];
+        let e: [f32x4; 4] = [f32x4::new(1., 2., 3., 4.), f32x4::new(5., 6., 7., 8.), f32x4::new(9., 10., 11., 12.), f32x4::new(13., 14., 15., 16.)];
+        let r: [f32x4; 4] = transmute(vld1q_f32_x4(a[1..].as_ptr()));
         assert_eq!(r, e);
     }
 

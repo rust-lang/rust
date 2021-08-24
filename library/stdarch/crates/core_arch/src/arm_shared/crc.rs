@@ -1,4 +1,4 @@
-extern "C" {
+extern "unadjusted" {
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crc32b")]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32b")]
     fn crc32b_(crc: u32, data: u32) -> u32;

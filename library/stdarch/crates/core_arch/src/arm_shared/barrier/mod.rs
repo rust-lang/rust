@@ -122,7 +122,7 @@ where
     arg.__isb()
 }
 
-extern "C" {
+extern "unadjusted" {
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.dmb")]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.dmb")]
     fn dmb(_: i32);

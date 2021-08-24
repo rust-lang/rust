@@ -12,7 +12,7 @@ pub(crate) type p8 = u8;
 pub(crate) type p16 = u16;
 
 #[allow(improper_ctypes)]
-extern "C" {
+extern "unadjusted" {
     #[link_name = "llvm.arm.neon.vbsl.v8i8"]
     fn vbsl_s8_(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t;
     #[link_name = "llvm.arm.neon.vbsl.v16i8"]

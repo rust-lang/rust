@@ -1,7 +1,7 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-extern "C" {
+extern "unadjusted" {
     #[link_name = "llvm.prefetch"]
     fn prefetch(p: *const i8, rw: i32, loc: i32, ty: i32);
 }

@@ -25,48 +25,38 @@ types! {
     pub struct float64x2_t(f64, f64);
 }
 
-/// ARM-specific type containing two `int8x16_t` vectors.
+/// ARM-specific type containing two `float64x1_t` vectors.
 #[derive(Copy, Clone)]
-pub struct int8x16x2_t(pub int8x16_t, pub int8x16_t);
-/// ARM-specific type containing three `int8x16_t` vectors.
+pub struct float64x1x2_t(pub float64x1_t, pub float64x1_t);
+/// ARM-specific type containing three `float64x1_t` vectors.
 #[derive(Copy, Clone)]
-pub struct int8x16x3_t(pub int8x16_t, pub int8x16_t, pub int8x16_t);
-/// ARM-specific type containing four `int8x16_t` vectors.
+pub struct float64x1x3_t(pub float64x1_t, pub float64x1_t, pub float64x1_t);
+/// ARM-specific type containing four `float64x1_t` vectors.
 #[derive(Copy, Clone)]
-pub struct int8x16x4_t(pub int8x16_t, pub int8x16_t, pub int8x16_t, pub int8x16_t);
-
-/// ARM-specific type containing two `uint8x16_t` vectors.
-#[derive(Copy, Clone)]
-pub struct uint8x16x2_t(pub uint8x16_t, pub uint8x16_t);
-/// ARM-specific type containing three `uint8x16_t` vectors.
-#[derive(Copy, Clone)]
-pub struct uint8x16x3_t(pub uint8x16_t, pub uint8x16_t, pub uint8x16_t);
-/// ARM-specific type containing four `uint8x16_t` vectors.
-#[derive(Copy, Clone)]
-pub struct uint8x16x4_t(
-    pub uint8x16_t,
-    pub uint8x16_t,
-    pub uint8x16_t,
-    pub uint8x16_t,
+pub struct float64x1x4_t(
+    pub float64x1_t,
+    pub float64x1_t,
+    pub float64x1_t,
+    pub float64x1_t,
 );
 
-/// ARM-specific type containing two `poly8x16_t` vectors.
+/// ARM-specific type containing two `float64x2_t` vectors.
 #[derive(Copy, Clone)]
-pub struct poly8x16x2_t(pub poly8x16_t, pub poly8x16_t);
-/// ARM-specific type containing three `poly8x16_t` vectors.
+pub struct float64x2x2_t(pub float64x2_t, pub float64x2_t);
+/// ARM-specific type containing three `float64x2_t` vectors.
 #[derive(Copy, Clone)]
-pub struct poly8x16x3_t(pub poly8x16_t, pub poly8x16_t, pub poly8x16_t);
-/// ARM-specific type containing four `poly8x16_t` vectors.
+pub struct float64x2x3_t(pub float64x2_t, pub float64x2_t, pub float64x2_t);
+/// ARM-specific type containing four `float64x2_t` vectors.
 #[derive(Copy, Clone)]
-pub struct poly8x16x4_t(
-    pub poly8x16_t,
-    pub poly8x16_t,
-    pub poly8x16_t,
-    pub poly8x16_t,
+pub struct float64x2x4_t(
+    pub float64x2_t,
+    pub float64x2_t,
+    pub float64x2_t,
+    pub float64x2_t,
 );
 
 #[allow(improper_ctypes)]
-extern "C" {
+extern "unadjusted" {
     // absolute value
     #[link_name = "llvm.aarch64.neon.abs.i64"]
     fn vabsd_s64_(a: i64) -> i64;

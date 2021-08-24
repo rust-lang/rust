@@ -11,7 +11,7 @@
     doc
 ))]
 pub unsafe fn __clrex() {
-    extern "C" {
+    extern "unadjusted" {
         #[link_name = "llvm.arm.clrex"]
         fn clrex();
     }
@@ -27,7 +27,7 @@ pub unsafe fn __clrex() {
     doc
 ))]
 pub unsafe fn __ldrexb(p: *const u8) -> u8 {
-    extern "C" {
+    extern "unadjusted" {
         #[link_name = "llvm.arm.ldrex.p0i8"]
         fn ldrex8(p: *const u8) -> u32;
     }
@@ -43,7 +43,7 @@ pub unsafe fn __ldrexb(p: *const u8) -> u8 {
     doc
 ))]
 pub unsafe fn __ldrexh(p: *const u16) -> u16 {
-    extern "C" {
+    extern "unadjusted" {
         #[link_name = "llvm.arm.ldrex.p0i16"]
         fn ldrex16(p: *const u16) -> u32;
     }
@@ -60,7 +60,7 @@ pub unsafe fn __ldrexh(p: *const u16) -> u16 {
     doc
 ))]
 pub unsafe fn __ldrex(p: *const u32) -> u32 {
-    extern "C" {
+    extern "unadjusted" {
         #[link_name = "llvm.arm.ldrex.p0i32"]
         fn ldrex32(p: *const u32) -> u32;
     }
@@ -78,7 +78,7 @@ pub unsafe fn __ldrex(p: *const u32) -> u32 {
     doc
 ))]
 pub unsafe fn __strexb(value: u32, addr: *mut u8) -> u32 {
-    extern "C" {
+    extern "unadjusted" {
         #[link_name = "llvm.arm.strex.p0i8"]
         fn strex8(value: u32, addr: *mut u8) -> u32;
     }
@@ -97,7 +97,7 @@ pub unsafe fn __strexb(value: u32, addr: *mut u8) -> u32 {
     doc
 ))]
 pub unsafe fn __strexh(value: u16, addr: *mut u16) -> u32 {
-    extern "C" {
+    extern "unadjusted" {
         #[link_name = "llvm.arm.strex.p0i16"]
         fn strex16(value: u32, addr: *mut u16) -> u32;
     }
@@ -116,7 +116,7 @@ pub unsafe fn __strexh(value: u16, addr: *mut u16) -> u32 {
     doc
 ))]
 pub unsafe fn __strex(value: u32, addr: *mut u32) -> u32 {
-    extern "C" {
+    extern "unadjusted" {
         #[link_name = "llvm.arm.strex.p0i32"]
         fn strex32(value: u32, addr: *mut u32) -> u32;
     }

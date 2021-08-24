@@ -80,7 +80,7 @@ pub unsafe fn __nop() {
     asm!("nop", options(nomem, nostack, preserves_flags));
 }
 
-extern "C" {
+extern "unadjusted" {
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.hint")]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.hint")]
     fn hint(_: i32);

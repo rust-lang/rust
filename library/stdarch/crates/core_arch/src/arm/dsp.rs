@@ -32,7 +32,7 @@ types! {
     pub struct uint16x2_t(u16, u16);
 }
 
-extern "C" {
+extern "unadjusted" {
     #[link_name = "llvm.arm.smulbb"]
     fn arm_smulbb(a: i32, b: i32) -> i32;
 

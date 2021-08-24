@@ -1,4 +1,4 @@
-extern "C" {
+extern "unadjusted" {
     #[link_name = "llvm.aarch64.crc32x"]
     fn crc32x_(crc: u32, data: u64) -> u32;
 

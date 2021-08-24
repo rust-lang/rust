@@ -2033,6 +2033,81 @@ aarch64 = sqadd
 link-aarch64 = sqadd._EXT_
 generate i32, i64
 
+/// Load multiple single-element structures to one, two, three, or four registers
+name = vld1
+out-suffix
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+validate 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+test = load_test
+
+aarch64 = ld1
+link-aarch64 = ld1x2._EXT2_
+arm = vld1
+link-arm = vld1x2._EXT2_
+generate *const i8:int8x8x2_t, *const i16:int16x4x2_t, *const i32:int32x2x2_t, *const i64:int64x1x2_t
+generate *const i8:int8x16x2_t, *const i16:int16x8x2_t, *const i32:int32x4x2_t, *const i64:int64x2x2_t
+
+link-aarch64 = ld1x3._EXT2_
+link-arm = vld1x3._EXT2_
+generate *const i8:int8x8x3_t, *const i16:int16x4x3_t, *const i32:int32x2x3_t, *const i64:int64x1x3_t
+generate *const i8:int8x16x3_t, *const i16:int16x8x3_t, *const i32:int32x4x3_t, *const i64:int64x2x3_t
+
+link-aarch64 = ld1x4._EXT2_
+link-arm = vld1x4._EXT2_
+generate *const i8:int8x8x4_t, *const i16:int16x4x4_t, *const i32:int32x2x4_t, *const i64:int64x1x4_t
+generate *const i8:int8x16x4_t, *const i16:int16x8x4_t, *const i32:int32x4x4_t, *const i64:int64x2x4_t
+
+/// Load multiple single-element structures to one, two, three, or four registers
+name = vld1
+out-suffix
+multi_fn = transmute, {vld1-outsigned-noext, transmute(a)}
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+validate 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+
+test = load_test
+aarch64 = ld1
+arm = vld1
+generate *const u8:uint8x8x2_t, *const u16:uint16x4x2_t, *const u32:uint32x2x2_t, *const u64:uint64x1x2_t
+generate *const u8:uint8x16x2_t, *const u16:uint16x8x2_t, *const u32:uint32x4x2_t, *const u64:uint64x2x2_t
+generate *const u8:uint8x8x3_t, *const u16:uint16x4x3_t, *const u32:uint32x2x3_t, *const u64:uint64x1x3_t
+generate *const u8:uint8x16x3_t, *const u16:uint16x8x3_t, *const u32:uint32x4x3_t, *const u64:uint64x2x3_t
+generate *const u8:uint8x8x4_t, *const u16:uint16x4x4_t, *const u32:uint32x2x4_t, *const u64:uint64x1x4_t
+generate *const u8:uint8x16x4_t, *const u16:uint16x8x4_t, *const u32:uint32x4x4_t, *const u64:uint64x2x4_t
+generate *const p8:poly8x8x2_t, *const p8:poly8x8x3_t, *const p8:poly8x8x4_t
+generate *const p8:poly8x16x2_t, *const p8:poly8x16x3_t, *const p8:poly8x16x4_t
+generate *const p16:poly16x4x2_t, *const p16:poly16x4x3_t, *const p16:poly16x4x4_t
+generate *const p16:poly16x8x2_t, *const p16:poly16x8x3_t, *const p16:poly16x8x4_t
+
+/// Load multiple single-element structures to one, two, three, or four registers
+name = vld1
+out-suffix
+a = 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.
+validate 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.
+test = load_test
+
+aarch64 = ld1
+link-aarch64 = ld1x2._EXT2_
+generate *const f64:float64x1x2_t, *const f64:float64x2x2_t
+
+link-aarch64 = ld1x3._EXT2_
+generate *const f64:float64x1x3_t, *const f64:float64x2x3_t
+
+link-aarch64 = ld1x4._EXT2_
+generate *const f64:float64x1x4_t, *const f64:float64x2x4_t
+
+arm = vld1
+link-aarch64 = ld1x2._EXT2_
+link-arm = vld1x2._EXT2_
+generate *const f32:float32x2x2_t, *const f32:float32x4x2_t
+
+link-aarch64 = ld1x3._EXT2_
+link-arm = vld1x3._EXT2_
+generate *const f32:float32x2x3_t, *const f32:float32x4x3_t
+
+link-aarch64 = ld1x4._EXT2_
+link-arm = vld1x4._EXT2_
+generate *const f32:float32x2x4_t, *const f32:float32x4x4_t
+
 /// Multiply
 name = vmul
 a = 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2
