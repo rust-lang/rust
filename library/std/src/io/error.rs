@@ -292,7 +292,7 @@ pub enum ErrorKind {
     /// Often wraps an
     /// [`ExitStatusError`](crate::process::ExitStatusError),
     /// (perhaps via `?` and `Into`), in which case
-    /// [`io::Error::get_ref`](crate::io::error::get_ref) or
+    /// [`io::Error::get_ref`](crate::io::Error::get_ref) or
     /// [`std::error::Error::source`](crate::error::Error::source)
     /// is the `ExitStatusError`,
     /// allowing the subprocess's exit status to be obtained.
