@@ -260,7 +260,9 @@ if idx >= len {
 ## Assertions
 
 Assert liberally.
-Prefer `stdx::never!` to standard `assert!`.
+Prefer [`stdx::never!`](https://docs.rs/always-assert/0.1.2/always_assert/macro.never.html) to standard `assert!`.
+
+**Rationale:** See [cross cutting concern: error handling](https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/architecture.md#error-handling).
 
 ## Getters & Setters
 

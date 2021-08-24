@@ -7,6 +7,7 @@ use std::{
     process::{self, Stdio},
 };
 
+use always_assert::always;
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, FileId, FilePosition, FileRange,
     HoverAction, HoverGotoTypeData, Query, RangeInfo, Runnable, RunnableKind, SingleResolve,
@@ -265,10 +266,11 @@ pub(crate) fn handle_on_type_formatting(
     // `text.char_at(position) == typed_char`.
     position.offset -= TextSize::of('.');
     let char_typed = params.ch.chars().next().unwrap_or('\0');
-    assert!({
-        let text = snap.analysis.file_text(position.file_id)?;
-        text[usize::from(position.offset)..].starts_with(char_typed)
-    });
+
+    let text = snap.analysis.file_text(position.file_id)?;
+    if !always!(text[usize::from(position.offset)..].starts_with(char_typed)) {
+        return Ok(None);
+    }
 
     // We have an assist that inserts ` ` after typing `->` in `fn foo() ->{`,
     // but it requires precise cursor positioning to work, and one can't
