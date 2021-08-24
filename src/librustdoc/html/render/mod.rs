@@ -2056,10 +2056,10 @@ fn sidebar_struct(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, s: &clea
 
 fn get_id_for_impl_on_foreign_type(
     for_: &clean::Type,
-    trait_: &clean::Type,
+    trait_: &clean::Path,
     cx: &Context<'_>,
 ) -> String {
-    small_url_encode(format!("impl-{:#}-for-{:#}", trait_.print(cx), for_.print(cx),))
+    small_url_encode(format!("impl-{:#}-for-{:#}", trait_.print(cx), for_.print(cx)))
 }
 
 fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String, String)> {

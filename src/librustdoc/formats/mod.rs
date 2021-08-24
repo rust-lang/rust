@@ -14,7 +14,7 @@ use crate::formats::cache::Cache;
 /// impl.
 crate enum AssocItemRender<'a> {
     All,
-    DerefFor { trait_: &'a clean::Type, type_: &'a clean::Type, deref_mut_: bool },
+    DerefFor { trait_: &'a clean::Path, type_: &'a clean::Type, deref_mut_: bool },
 }
 
 /// For different handling of associated items from the Deref target of a type rather than the type
