@@ -77,4 +77,24 @@ mod outer_arc {
     }
 }
 
+// https://github.com/rust-lang/rust-clippy/issues/7487
+mod box_dyn {
+    use std::boxed::Box;
+    use std::rc::Rc;
+    use std::sync::Arc;
+
+    pub trait T {}
+
+    struct S {
+        a: Box<Box<dyn T>>,
+        b: Rc<Box<dyn T>>,
+        c: Arc<Box<dyn T>>,
+    }
+
+    pub fn test_box(_: Box<Box<dyn T>>) {}
+    pub fn test_rc(_: Rc<Box<dyn T>>) {}
+    pub fn test_arc(_: Arc<Box<dyn T>>) {}
+    pub fn test_rc_box(_: Rc<Box<Box<dyn T>>>) {}
+}
+
 fn main() {}
