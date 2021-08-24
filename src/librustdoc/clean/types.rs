@@ -1114,7 +1114,7 @@ impl GenericBound {
         let path = external_path(cx, did, false, vec![], empty);
         inline::record_extern_fqn(cx, did, ItemType::Trait);
         GenericBound::TraitBound(
-            PolyTrait { trait_: ResolvedPath { path, did }, generic_params: Vec::new() },
+            PolyTrait { trait_: path, generic_params: Vec::new() },
             hir::TraitBoundModifier::Maybe,
         )
     }
@@ -1136,7 +1136,7 @@ impl GenericBound {
         None
     }
 
-    crate fn get_trait_type(&self) -> Option<Type> {
+    crate fn get_trait_path(&self) -> Option<Path> {
         if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, _) = *self {
             Some(trait_.clone())
         } else {
@@ -1368,7 +1368,7 @@ crate struct TraitAlias {
 /// A trait reference, which may have higher ranked lifetimes.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate struct PolyTrait {
-    crate trait_: Type,
+    crate trait_: Path,
     crate generic_params: Vec<GenericParamDef>,
 }
 
@@ -1408,7 +1408,8 @@ crate enum Type {
         name: Symbol,
         self_type: Box<Type>,
         self_def_id: Option<DefId>,
-        trait_: Box<Type>,
+        // FIXME: remove this `Box`; it's unnecessary
+        trait_: Box<Path>,
     },
 
     // `_`
@@ -1473,15 +1474,6 @@ impl Type {
         }
     }
 
-    // FIXME: temporary
-    #[track_caller]
-    crate fn expect_path(self) -> Path {
-        match self {
-            ResolvedPath { path, .. } => path,
-            _ => panic!("not a ResolvedPath: {:?}", self),
-        }
-    }
-
     crate fn is_self_type(&self) -> bool {
         match *self {
             Generic(name) => name == kw::SelfUpper,
@@ -1492,19 +1484,6 @@ impl Type {
     crate fn generics(&self) -> Option<Vec<&Type>> {
         match self {
             ResolvedPath { path, .. } => path.generics(),
-            _ => None,
-        }
-    }
-
-    crate fn bindings(&self) -> Option<&[TypeBinding]> {
-        match *self {
-            ResolvedPath { ref path, .. } => path.segments.last().and_then(|seg| {
-                if let GenericArgs::AngleBracketed { ref bindings, .. } = seg.args {
-                    Some(&**bindings)
-                } else {
-                    None
-                }
-            }),
             _ => None,
         }
     }
@@ -1522,17 +1501,13 @@ impl Type {
             QPath { self_type, trait_, name, .. } => (self_type, trait_, name),
             _ => return None,
         };
-        let trait_did = match **trait_ {
-            ResolvedPath { did, .. } => did,
-            _ => return None,
-        };
-        Some((&self_, trait_did, *name))
+        Some((&self_, trait_.res.def_id(), *name))
     }
 
     fn inner_def_id(&self, cache: Option<&Cache>) -> Option<DefId> {
         let t: PrimitiveType = match *self {
             ResolvedPath { did, .. } => return Some(did),
-            DynTrait(ref bounds, _) => return bounds[0].trait_.inner_def_id(cache),
+            DynTrait(ref bounds, _) => return Some(bounds[0].trait_.res.def_id()),
             Primitive(p) => return cache.and_then(|c| c.primitive_locations.get(&p).cloned()),
             BorrowedRef { type_: box Generic(..), .. } => PrimitiveType::Reference,
             BorrowedRef { ref type_, .. } => return type_.inner_def_id(cache),
@@ -2001,6 +1976,16 @@ impl Path {
                         })
                         .collect(),
                 )
+            } else {
+                None
+            }
+        })
+    }
+
+    crate fn bindings(&self) -> Option<&[TypeBinding]> {
+        self.segments.last().and_then(|seg| {
+            if let GenericArgs::AngleBracketed { ref bindings, .. } = seg.args {
+                Some(&**bindings)
             } else {
                 None
             }

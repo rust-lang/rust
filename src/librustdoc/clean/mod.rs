@@ -152,8 +152,8 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
     }
 }
 
-impl Clean<Type> for (ty::TraitRef<'_>, &[TypeBinding]) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Type {
+impl Clean<Path> for (ty::TraitRef<'_>, &[TypeBinding]) {
+    fn clean(&self, cx: &mut DocContext<'_>) -> Path {
         let (trait_ref, bounds) = *self;
         let kind = cx.tcx.def_kind(trait_ref.def_id).into();
         if !matches!(kind, ItemType::Trait | ItemType::TraitAlias) {
@@ -168,7 +168,7 @@ impl Clean<Type> for (ty::TraitRef<'_>, &[TypeBinding]) {
 
         debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
 
-        ResolvedPath { path, did: trait_ref.def_id }
+        path
     }
 }
 
@@ -905,7 +905,9 @@ impl Clean<Type> for hir::TraitRef<'_> {
 
 impl Clean<Path> for hir::TraitRef<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Path {
-        self.path.clean(cx)
+        let path = self.path.clean(cx);
+        register_res(cx, path.res);
+        path
     }
 }
 
@@ -1111,9 +1113,8 @@ impl Clean<Item> for ty::AssocItem {
                             if *name != my_name {
                                 return None;
                             }
-                            match **trait_ {
-                                ResolvedPath { did, .. } if did == self.container.id() => {}
-                                _ => return None,
+                            if trait_.res.def_id() != self.container.id() {
+                                return None;
                             }
                             match **self_type {
                                 Generic(ref s) if *s == kw::SelfUpper => {}
@@ -1286,11 +1287,12 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
                 res: Res::Def(DefKind::Trait, trait_def),
                 segments: trait_segments.clean(cx),
             };
+            register_res(cx, trait_path.res);
             Type::QPath {
                 name: p.segments.last().expect("segments were empty").ident.name,
                 self_def_id: Some(DefId::local(qself.hir_id.owner.local_def_index)),
                 self_type: box qself.clean(cx),
-                trait_: box resolve_type(cx, trait_path),
+                trait_: box trait_path,
             }
         }
         hir::QPath::TypeRelative(ref qself, ref segment) => {
@@ -1302,11 +1304,12 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
                 _ => bug!("clean: expected associated type, found `{:?}`", ty),
             };
             let trait_path = hir::Path { span, res, segments: &[] }.clean(cx);
+            register_res(cx, trait_path.res);
             Type::QPath {
                 name: segment.ident.name,
                 self_def_id: res.opt_def_id(),
                 self_type: box qself.clean(cx),
-                trait_: box resolve_type(cx, trait_path),
+                trait_: box trait_path,
             }
         }
         hir::QPath::LangItem(..) => bug!("clean: requiring documentation of lang item"),
@@ -1475,10 +1478,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     let empty = cx.tcx.intern_substs(&[]);
                     let path = external_path(cx, did, false, vec![], empty);
                     inline::record_extern_fqn(cx, did, ItemType::Trait);
-                    let bound = PolyTrait {
-                        trait_: ResolvedPath { path, did },
-                        generic_params: Vec::new(),
-                    };
+                    let bound = PolyTrait { trait_: path, generic_params: Vec::new() };
                     bounds.push(bound);
                 }
 
@@ -1491,10 +1491,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 }
 
                 let path = external_path(cx, did, false, bindings, substs);
-                bounds.insert(
-                    0,
-                    PolyTrait { trait_: ResolvedPath { path, did }, generic_params: Vec::new() },
-                );
+                bounds.insert(0, PolyTrait { trait_: path, generic_params: Vec::new() });
 
                 DynTrait(bounds, lifetime)
             }

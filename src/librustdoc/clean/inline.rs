@@ -455,11 +455,20 @@ crate fn build_impl(
     }
 
     // Return if the trait itself or any types of the generic parameters are doc(hidden).
-    let mut stack: Vec<&Type> = trait_.iter().collect();
-    stack.push(&for_);
+    let mut stack: Vec<&Type> = vec![&for_];
+
+    if let Some(did) = trait_.as_ref().map(|t| t.res.def_id()) {
+        if tcx.get_attrs(did).lists(sym::doc).has_word(sym::hidden) {
+            return;
+        }
+    }
+    if let Some(generics) = trait_.as_ref().and_then(|t| t.generics()) {
+        stack.extend(generics);
+    }
+
     while let Some(ty) = stack.pop() {
         if let Some(did) = ty.def_id() {
-            if cx.tcx.get_attrs(did).lists(sym::doc).has_word(sym::hidden) {
+            if tcx.get_attrs(did).lists(sym::doc).has_word(sym::hidden) {
                 return;
             }
         }
@@ -468,8 +477,8 @@ crate fn build_impl(
         }
     }
 
-    if let Some(trait_did) = trait_.def_id() {
-        record_extern_trait(cx, trait_did);
+    if let Some(did) = trait_.as_ref().map(|t| t.res.def_id()) {
+        record_extern_trait(cx, did);
     }
 
     let (merged_attrs, cfg) = merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
@@ -483,7 +492,7 @@ crate fn build_impl(
             span: clean::types::rustc_span(did, cx.tcx),
             unsafety: hir::Unsafety::Normal,
             generics,
-            trait_: trait_.map(|t| t.expect_path()),
+            trait_,
             for_,
             items: trait_items,
             negative_polarity: polarity.clean(cx),
@@ -620,11 +629,10 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
                 ref mut bounds,
                 ..
             } if *s == kw::SelfUpper => {
-                bounds.retain(|bound| match *bound {
-                    clean::GenericBound::TraitBound(
-                        clean::PolyTrait { trait_: clean::ResolvedPath { did, .. }, .. },
-                        _,
-                    ) => did != trait_did,
+                bounds.retain(|bound| match bound {
+                    clean::GenericBound::TraitBound(clean::PolyTrait { trait_, .. }, _) => {
+                        trait_.res.def_id() != trait_did
+                    }
                     _ => true,
                 });
             }
@@ -632,18 +640,12 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
         }
     }
 
-    g.where_predicates.retain(|pred| match *pred {
+    g.where_predicates.retain(|pred| match pred {
         clean::WherePredicate::BoundPredicate {
-            ty:
-                clean::QPath {
-                    self_type: box clean::Generic(ref s),
-                    trait_: box clean::ResolvedPath { did, .. },
-                    name: ref _name,
-                    ..
-                },
-            ref bounds,
+            ty: clean::QPath { self_type: box clean::Generic(ref s), trait_, name: _, .. },
+            bounds,
             ..
-        } => !(bounds.is_empty() || *s == kw::SelfUpper && did == trait_did),
+        } => !(bounds.is_empty() || *s == kw::SelfUpper && trait_.res.def_id() == trait_did),
         _ => true,
     });
     g

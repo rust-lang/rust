@@ -2370,6 +2370,15 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
     let mut visited = FxHashSet::default();
     let mut work = VecDeque::new();
 
+    let mut process_path = |did: DefId| {
+        let get_extern = || cache.external_paths.get(&did).map(|s| s.0.clone());
+        let fqp = cache.exact_paths.get(&did).cloned().or_else(get_extern);
+
+        if let Some(path) = fqp {
+            out.push(path.join("::"));
+        }
+    };
+
     work.push_back(first_ty);
 
     while let Some(ty) = work.pop_front() {
@@ -2378,14 +2387,7 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
         }
 
         match ty {
-            clean::Type::ResolvedPath { did, .. } => {
-                let get_extern = || cache.external_paths.get(&did).map(|s| s.0.clone());
-                let fqp = cache.exact_paths.get(&did).cloned().or_else(get_extern);
-
-                if let Some(path) = fqp {
-                    out.push(path.join("::"));
-                }
-            }
+            clean::Type::ResolvedPath { did, .. } => process_path(did),
             clean::Type::Tuple(tys) => {
                 work.extend(tys.into_iter());
             }
@@ -2403,7 +2405,7 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
             }
             clean::Type::QPath { self_type, trait_, .. } => {
                 work.push_back(*self_type);
-                work.push_back(*trait_);
+                process_path(trait_.res.def_id());
             }
             _ => {}
         }
