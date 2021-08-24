@@ -2633,34 +2633,6 @@ impl<'tcx> ty::Instance<'tcx> {
     }
 }
 
-pub trait FnAbiExt<'tcx, C>
-where
-    C: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>> + HasTargetSpec,
-{
-    /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
-    ///
-    /// NB: this doesn't handle virtual calls - those should use `FnAbi::of_instance`
-    /// instead, where the instance is an `InstanceDef::Virtual`.
-    fn of_fn_ptr(cx: &C, sig: ty::PolyFnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
-
-    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for
-    /// direct calls to an `fn`.
-    ///
-    /// NB: that includes virtual calls, which are represented by "direct calls"
-    /// to an `InstanceDef::Virtual` instance (of `<dyn Trait as Trait>::fn`).
-    fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
-
-    fn new_internal(
-        cx: &C,
-        sig: ty::PolyFnSig<'tcx>,
-        extra_args: &[Ty<'tcx>],
-        caller_location: Option<Ty<'tcx>>,
-        codegen_fn_attr_flags: CodegenFnAttrFlags,
-        make_self_ptr_thin: bool,
-    ) -> Self;
-    fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi);
-}
-
 /// Calculates whether a function's ABI can unwind or not.
 ///
 /// This takes two primary parameters:
@@ -2814,6 +2786,34 @@ pub fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
         // These API constants ought to be more specific...
         Cdecl => Conv::C,
     }
+}
+
+pub trait FnAbiExt<'tcx, C>
+where
+    C: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>> + HasTargetSpec,
+{
+    /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
+    ///
+    /// NB: this doesn't handle virtual calls - those should use `FnAbi::of_instance`
+    /// instead, where the instance is an `InstanceDef::Virtual`.
+    fn of_fn_ptr(cx: &C, sig: ty::PolyFnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
+
+    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for
+    /// direct calls to an `fn`.
+    ///
+    /// NB: that includes virtual calls, which are represented by "direct calls"
+    /// to an `InstanceDef::Virtual` instance (of `<dyn Trait as Trait>::fn`).
+    fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
+
+    fn new_internal(
+        cx: &C,
+        sig: ty::PolyFnSig<'tcx>,
+        extra_args: &[Ty<'tcx>],
+        caller_location: Option<Ty<'tcx>>,
+        codegen_fn_attr_flags: CodegenFnAttrFlags,
+        make_self_ptr_thin: bool,
+    ) -> Self;
+    fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi);
 }
 
 impl<'tcx, C> FnAbiExt<'tcx, C> for call::FnAbi<'tcx, Ty<'tcx>>
