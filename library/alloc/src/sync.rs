@@ -1354,7 +1354,8 @@ impl<T: Clone> Arc<T> {
     /// pointers, then the [`Weak`] pointers will be disassociated and the inner value will not
     /// be cloned.
     ///
-    /// See also [`get_mut`], which will fail rather than cloning.
+    /// See also [`get_mut`], which will fail rather than cloning the inner value
+    /// or diassociating [`Weak`] pointers.
     ///
     /// [`clone`]: Clone::clone
     /// [`get_mut`]: Arc::get_mut
@@ -1458,7 +1459,7 @@ impl<T: ?Sized> Arc<T> {
     /// mutate a shared value.
     ///
     /// See also [`make_mut`][make_mut], which will [`clone`][clone]
-    /// the inner value when there are other pointers.
+    /// the inner value when there are other `Arc` pointers.
     ///
     /// [make_mut]: Arc::make_mut
     /// [clone]: Clone::clone
