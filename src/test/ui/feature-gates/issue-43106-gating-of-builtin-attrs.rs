@@ -49,14 +49,14 @@
 #![macro_use] // (allowed if no argument; see issue-43160-gating-of-macro_use.rs)
 // skipping testing of cfg
 // skipping testing of cfg_attr
-#![should_panic] //~ WARN unused attribute
-#![ignore] //~ WARN unused attribute
+#![should_panic] //~ WARN `#[should_panic]` only has an effect
+#![ignore] //~ WARN `#[ignore]` only has an effect on functions
 #![no_implicit_prelude]
 #![reexport_test_harness_main = "2900"]
 // see gated-link-args.rs
 // see issue-43106-gating-of-macro_escape.rs for crate-level; but non crate-level is below at "2700"
 // (cannot easily test gating of crate-level #[no_std]; but non crate-level is below at "2600")
-#![proc_macro_derive()] //~ WARN unused attribute
+#![proc_macro_derive()] //~ WARN `#[proc_macro_derive]` only has an effect
 #![doc = "2400"]
 #![cold] //~ WARN attribute should be applied to a function
 //~^ WARN
@@ -182,35 +182,35 @@ mod macro_use {
     mod inner { #![macro_use] }
 
     #[macro_use] fn f() { }
-    //~^ WARN unused attribute
+    //~^ `#[macro_use]` only has an effect
 
     #[macro_use] struct S;
-    //~^ WARN unused attribute
+    //~^ `#[macro_use]` only has an effect
 
     #[macro_use] type T = S;
-    //~^ WARN unused attribute
+    //~^ `#[macro_use]` only has an effect
 
     #[macro_use] impl S { }
-    //~^ WARN unused attribute
+    //~^ `#[macro_use]` only has an effect
 }
 
 #[macro_export]
-//~^ WARN unused attribute
+//~^ WARN `#[macro_export]` only has an effect on macro definitions
 mod macro_export {
     mod inner { #![macro_export] }
-    //~^ WARN unused attribute
+    //~^ WARN `#[macro_export]` only has an effect on macro definitions
 
     #[macro_export] fn f() { }
-    //~^ WARN unused attribute
+    //~^ WARN `#[macro_export]` only has an effect on macro definitions
 
     #[macro_export] struct S;
-    //~^ WARN unused attribute
+    //~^ WARN `#[macro_export]` only has an effect on macro definitions
 
     #[macro_export] type T = S;
-    //~^ WARN unused attribute
+    //~^ WARN `#[macro_export]` only has an effect on macro definitions
 
     #[macro_export] impl S { }
-    //~^ WARN unused attribute
+    //~^ WARN `#[macro_export]` only has an effect on macro definitions
 }
 
 // At time of unit test authorship, if compiling without `--test` then
@@ -263,35 +263,34 @@ mod path {
     mod inner { #![path="3800"] }
 
     #[path = "3800"] fn f() { }
-    //~^ WARN unused attribute
+    //~^ WARN `#[path]` only has an effect
 
     #[path = "3800"]  struct S;
-    //~^ WARN unused attribute
+    //~^ WARN `#[path]` only has an effect
 
     #[path = "3800"] type T = S;
-    //~^ WARN unused attribute
+    //~^ WARN `#[path]` only has an effect
 
     #[path = "3800"] impl S { }
-    //~^ WARN unused attribute
+    //~^ WARN `#[path]` only has an effect
 }
 
 #[automatically_derived]
-//~^ WARN unused attribute
+//~^ WARN `#[automatically_derived]` only has an effect
 mod automatically_derived {
     mod inner { #![automatically_derived] }
-    //~^ WARN unused attribute
+    //~^ WARN `#[automatically_derived]
 
     #[automatically_derived] fn f() { }
-    //~^ WARN unused attribute
+    //~^ WARN `#[automatically_derived]
 
     #[automatically_derived] struct S;
-    //~^ WARN unused attribute
+    //~^ WARN `#[automatically_derived]
 
     #[automatically_derived] type T = S;
-    //~^ WARN unused attribute
+    //~^ WARN `#[automatically_derived]
 
     #[automatically_derived] impl S { }
-    //~^ WARN unused attribute
 }
 
 #[no_mangle]
@@ -335,79 +334,75 @@ mod no_mangle {
 }
 
 #[should_panic]
-//~^ WARN unused attribute
+//~^ WARN `#[should_panic]` only has an effect on
 mod should_panic {
     mod inner { #![should_panic] }
-    //~^ WARN unused attribute
+    //~^ WARN `#[should_panic]` only has an effect on
 
     #[should_panic] fn f() { }
-    //~^ WARN unused attribute
 
     #[should_panic] struct S;
-    //~^ WARN unused attribute
+    //~^ WARN `#[should_panic]` only has an effect on
 
     #[should_panic] type T = S;
-    //~^ WARN unused attribute
+    //~^ WARN `#[should_panic]` only has an effect on
 
     #[should_panic] impl S { }
-    //~^ WARN unused attribute
+    //~^ WARN `#[should_panic]` only has an effect on
 }
 
 #[ignore]
-//~^ WARN unused attribute
+//~^ WARN `#[ignore]` only has an effect on functions
 mod ignore {
     mod inner { #![ignore] }
-    //~^ WARN unused attribute
+    //~^ WARN `#[ignore]` only has an effect on functions
 
     #[ignore] fn f() { }
-    //~^ WARN unused attribute
 
     #[ignore] struct S;
-    //~^ WARN unused attribute
+    //~^ WARN `#[ignore]` only has an effect on functions
 
     #[ignore] type T = S;
-    //~^ WARN unused attribute
+    //~^ WARN `#[ignore]` only has an effect on functions
 
     #[ignore] impl S { }
-    //~^ WARN unused attribute
+    //~^ WARN `#[ignore]` only has an effect on functions
 }
 
 #[no_implicit_prelude]
-//~^ WARN unused attribute
 mod no_implicit_prelude {
     mod inner { #![no_implicit_prelude] }
-    //~^ WARN unused attribute
 
     #[no_implicit_prelude] fn f() { }
-    //~^ WARN unused attribute
+    //~^ WARN `#[no_implicit_prelude]` only has an effect
 
     #[no_implicit_prelude] struct S;
-    //~^ WARN unused attribute
+    //~^ WARN `#[no_implicit_prelude]` only has an effect
 
     #[no_implicit_prelude] type T = S;
-    //~^ WARN unused attribute
+    //~^ WARN `#[no_implicit_prelude]` only has an effect
 
     #[no_implicit_prelude] impl S { }
-    //~^ WARN unused attribute
+    //~^ WARN `#[no_implicit_prelude]` only has an effect
 }
 
 #[reexport_test_harness_main = "2900"]
-//~^ WARN unused attribute
+//~^ WARN crate-level attribute should be
 mod reexport_test_harness_main {
     mod inner { #![reexport_test_harness_main="2900"] }
-    //~^ WARN unused attribute
+    //~^ WARN crate-level attribute should be
 
     #[reexport_test_harness_main = "2900"] fn f() { }
-    //~^ WARN unused attribute
+    //~^ WARN crate-level attribute should be
 
     #[reexport_test_harness_main = "2900"] struct S;
-    //~^ WARN unused attribute
+    //~^ WARN crate-level attribute should be
 
     #[reexport_test_harness_main = "2900"] type T = S;
-    //~^ WARN unused attribute
+    //~^ WARN crate-level attribute should be
 
     #[reexport_test_harness_main = "2900"] impl S { }
-    //~^ WARN unused attribute
+    //~^ WARN crate-level attribute should be
 }
 
 // Cannot feed "2700" to `#[macro_escape]` without signaling an error.
@@ -419,41 +414,35 @@ mod macro_escape {
     //~| HELP try an outer attribute: `#[macro_use]`
 
     #[macro_escape] fn f() { }
-    //~^ WARN unused attribute
+    //~^ WARN `#[macro_escape]` only has an effect
 
     #[macro_escape] struct S;
-    //~^ WARN unused attribute
+    //~^ WARN `#[macro_escape]` only has an effect
 
     #[macro_escape] type T = S;
-    //~^ WARN unused attribute
+    //~^ WARN `#[macro_escape]` only has an effect
 
     #[macro_escape] impl S { }
-    //~^ WARN unused attribute
+    //~^ WARN `#[macro_escape]` only has an effect
 }
 
 #[no_std]
-//~^ WARN unused attribute
-//~| WARN crate-level attribute should be an inner attribute
+//~^ WARN crate-level attribute should be an inner attribute
 mod no_std {
     mod inner { #![no_std] }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be in the root module
+//~^ WARN crate-level attribute should be in the root module
 
     #[no_std] fn f() { }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[no_std] struct S;
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[no_std] type T = S;
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[no_std] impl S { }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 }
 
 // At time of authorship, #[proc_macro_derive = "2500"] signals error
@@ -633,104 +622,80 @@ mod windows_subsystem {
 // BROKEN USES OF CRATE-LEVEL BUILT-IN ATTRIBUTES
 
 #[crate_name = "0900"]
-//~^ WARN unused attribute
-//~| WARN crate-level attribute should be an inner attribute
+//~^ WARN crate-level attribute should be an inner attribute
 mod crate_name {
     mod inner { #![crate_name="0900"] }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be in the root module
+//~^ WARN crate-level attribute should be in the root module
 
     #[crate_name = "0900"] fn f() { }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[crate_name = "0900"] struct S;
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[crate_name = "0900"] type T = S;
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[crate_name = "0900"] impl S { }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 }
 
 #[crate_type = "0800"]
-//~^ WARN unused attribute
-//~| WARN crate-level attribute should be an inner attribute
+//~^ WARN crate-level attribute should be an inner attribute
 mod crate_type {
     mod inner { #![crate_type="0800"] }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be in the root module
+//~^ WARN crate-level attribute should be in the root module
 
     #[crate_type = "0800"] fn f() { }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[crate_type = "0800"] struct S;
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[crate_type = "0800"] type T = S;
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[crate_type = "0800"] impl S { }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 }
 
 #[feature(x0600)]
-//~^ WARN unused attribute
-//~| WARN crate-level attribute should be an inner attribute
+//~^ WARN crate-level attribute should be an inner attribute
 mod feature {
     mod inner { #![feature(x0600)] }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be in the root module
+//~^ WARN crate-level attribute should be in the root module
 
     #[feature(x0600)] fn f() { }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[feature(x0600)] struct S;
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[feature(x0600)] type T = S;
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[feature(x0600)] impl S { }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 }
 
 
 #[no_main]
-//~^ WARN unused attribute
-//~| WARN crate-level attribute should be an inner attribute
+//~^ WARN crate-level attribute should be an inner attribute
 mod no_main_1 {
     mod inner { #![no_main] }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be in the root module
+//~^ WARN crate-level attribute should be in the root module
 
     #[no_main] fn f() { }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[no_main] struct S;
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[no_main] type T = S;
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[no_main] impl S { }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 }
 
 #[no_builtins]
@@ -747,53 +712,41 @@ mod no_builtins {
 }
 
 #[recursion_limit="0200"]
-//~^ WARN unused attribute
-//~| WARN crate-level attribute should be an inner attribute
+//~^ WARN crate-level attribute should be an inner attribute
 mod recursion_limit {
     mod inner { #![recursion_limit="0200"] }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be in the root module
+//~^ WARN crate-level attribute should be in the root module
 
     #[recursion_limit="0200"] fn f() { }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[recursion_limit="0200"] struct S;
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[recursion_limit="0200"] type T = S;
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[recursion_limit="0200"] impl S { }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 }
 
 #[type_length_limit="0100"]
-//~^ WARN unused attribute
-//~| WARN crate-level attribute should be an inner attribute
+//~^ WARN crate-level attribute should be an inner attribute
 mod type_length_limit {
     mod inner { #![type_length_limit="0100"] }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be in the root module
+//~^ WARN crate-level attribute should be in the root module
 
     #[type_length_limit="0100"] fn f() { }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[type_length_limit="0100"] struct S;
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[type_length_limit="0100"] type T = S;
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[type_length_limit="0100"] impl S { }
-    //~^ WARN unused attribute
-    //~| WARN crate-level attribute should be an inner attribute
+    //~^ WARN crate-level attribute should be an inner attribute
 }
 
 fn main() {}

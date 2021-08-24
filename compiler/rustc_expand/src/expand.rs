@@ -753,11 +753,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         }
                     }
                 }
-                SyntaxExtensionKind::NonMacroAttr { mark_used } => {
+                SyntaxExtensionKind::NonMacroAttr => {
                     self.cx.expanded_inert_attrs.mark(&attr);
-                    if *mark_used {
-                        self.cx.sess.mark_attr_used(&attr);
-                    }
                     item.visit_attrs(|attrs| attrs.insert(pos, attr));
                     fragment_kind.expect_from_annotatables(iter::once(item))
                 }

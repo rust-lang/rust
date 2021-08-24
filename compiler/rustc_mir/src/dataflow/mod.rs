@@ -30,12 +30,12 @@ pub struct MoveDataParamEnv<'tcx> {
 }
 
 pub(crate) fn has_rustc_mir_with(
-    sess: &Session,
+    _sess: &Session,
     attrs: &[ast::Attribute],
     name: Symbol,
 ) -> Option<MetaItem> {
     for attr in attrs {
-        if sess.check_name(attr, sym::rustc_mir) {
+        if attr.has_name(sym::rustc_mir) {
             let items = attr.meta_item_list();
             for item in items.iter().flat_map(|l| l.iter()) {
                 match item.meta_item() {

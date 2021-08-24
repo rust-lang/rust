@@ -5,7 +5,7 @@ use rustc_ast::token::{DelimToken, Token, TokenKind};
 use rustc_ast::tokenstream::{AttrAnnotatedTokenStream, AttrAnnotatedTokenTree};
 use rustc_ast::tokenstream::{DelimSpan, Spacing};
 use rustc_ast::tokenstream::{LazyTokenStream, TokenTree};
-use rustc_ast::{self as ast, AstLike, AttrItem, AttrStyle, Attribute, MetaItem};
+use rustc_ast::{self as ast, AstLike, AttrStyle, Attribute, MetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::map_in_place::MapInPlace;
@@ -14,7 +14,7 @@ use rustc_feature::{Feature, Features, State as FeatureState};
 use rustc_feature::{
     ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES, STABLE_REMOVED_FEATURES,
 };
-use rustc_parse::{parse_in, validate_attr};
+use rustc_parse::validate_attr;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::edition::{Edition, ALL_EDITIONS};
@@ -75,7 +75,7 @@ fn get_features(
     // Process the edition umbrella feature-gates first, to ensure
     // `edition_enabled_features` is completed before it's queried.
     for attr in krate_attrs {
-        if !sess.check_name(attr, sym::feature) {
+        if !attr.has_name(sym::feature) {
             continue;
         }
 
@@ -108,7 +108,7 @@ fn get_features(
     }
 
     for attr in krate_attrs {
-        if !sess.check_name(attr, sym::feature) {
+        if !attr.has_name(sym::feature) {
             continue;
         }
 
@@ -237,11 +237,6 @@ macro_rules! configure {
     };
 }
 
-const CFG_ATTR_GRAMMAR_HELP: &str = "#[cfg_attr(condition, attribute, other_attribute, ...)]";
-const CFG_ATTR_NOTE_REF: &str = "for more information, visit \
-    <https://doc.rust-lang.org/reference/conditional-compilation.html\
-    #the-cfg_attr-attribute>";
-
 impl<'a> StripUnconfigured<'a> {
     pub fn configure<T: AstLike>(&mut self, mut node: T) -> Option<T> {
         self.process_cfg_attrs(&mut node);
@@ -349,18 +344,16 @@ impl<'a> StripUnconfigured<'a> {
             return vec![attr];
         }
 
-        let (cfg_predicate, expanded_attrs) = match self.parse_cfg_attr(&attr) {
-            None => return vec![],
-            Some(r) => r,
-        };
+        let (cfg_predicate, expanded_attrs) =
+            match rustc_parse::parse_cfg_attr(&attr, &self.sess.parse_sess) {
+                None => return vec![],
+                Some(r) => r,
+            };
 
         // Lint on zero attributes in source.
         if expanded_attrs.is_empty() {
             return vec![attr];
         }
-
-        // At this point we know the attribute is considered used.
-        self.sess.mark_attr_used(&attr);
 
         if !attr::cfg_matches(&cfg_predicate, &self.sess.parse_sess, self.features) {
             return vec![];
@@ -415,46 +408,10 @@ impl<'a> StripUnconfigured<'a> {
             .collect()
     }
 
-    fn parse_cfg_attr(&self, attr: &Attribute) -> Option<(MetaItem, Vec<(AttrItem, Span)>)> {
-        match attr.get_normal_item().args {
-            ast::MacArgs::Delimited(dspan, delim, ref tts) if !tts.is_empty() => {
-                let msg = "wrong `cfg_attr` delimiters";
-                validate_attr::check_meta_bad_delim(&self.sess.parse_sess, dspan, delim, msg);
-                match parse_in(&self.sess.parse_sess, tts.clone(), "`cfg_attr` input", |p| {
-                    p.parse_cfg_attr()
-                }) {
-                    Ok(r) => return Some(r),
-                    Err(mut e) => {
-                        e.help(&format!("the valid syntax is `{}`", CFG_ATTR_GRAMMAR_HELP))
-                            .note(CFG_ATTR_NOTE_REF)
-                            .emit();
-                    }
-                }
-            }
-            _ => self.error_malformed_cfg_attr_missing(attr.span),
-        }
-        None
-    }
-
-    fn error_malformed_cfg_attr_missing(&self, span: Span) {
-        self.sess
-            .parse_sess
-            .span_diagnostic
-            .struct_span_err(span, "malformed `cfg_attr` attribute input")
-            .span_suggestion(
-                span,
-                "missing condition and attribute",
-                CFG_ATTR_GRAMMAR_HELP.to_string(),
-                Applicability::HasPlaceholders,
-            )
-            .note(CFG_ATTR_NOTE_REF)
-            .emit();
-    }
-
     /// Determines if a node with the given attributes should be included in this configuration.
     fn in_cfg(&self, attrs: &[Attribute]) -> bool {
         attrs.iter().all(|attr| {
-            if !is_cfg(self.sess, attr) {
+            if !is_cfg(attr) {
                 return true;
             }
             let meta_item = match validate_attr::parse_meta(&self.sess.parse_sess, attr) {
@@ -500,7 +457,7 @@ impl<'a> StripUnconfigured<'a> {
         //
         // N.B., this is intentionally not part of the visit_expr() function
         //     in order for filter_map_expr() to be able to avoid this check
-        if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(self.sess, a)) {
+        if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(*a)) {
             let msg = "removing an expression is not supported in this position";
             self.sess.parse_sess.span_diagnostic.span_err(attr.span, msg);
         }
@@ -536,6 +493,6 @@ pub fn parse_cfg<'a>(meta_item: &'a MetaItem, sess: &Session) -> Option<&'a Meta
     }
 }
 
-fn is_cfg(sess: &Session, attr: &Attribute) -> bool {
-    sess.check_name(attr, sym::cfg)
+fn is_cfg(attr: &Attribute) -> bool {
+    attr.has_name(sym::cfg)
 }

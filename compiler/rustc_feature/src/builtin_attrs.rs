@@ -52,11 +52,6 @@ pub enum AttributeType {
     /// by the compiler before the unused_attribute check
     Normal,
 
-    /// Builtin attribute that may not be consumed by the compiler
-    /// before the unused_attribute check. These attributes
-    /// will be ignored by the unused_attribute lint
-    AssumedUsed,
-
     /// Builtin attribute that is only allowed at the crate level
     CrateLevel,
 }
@@ -186,7 +181,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(Word, List: r#"expected = "reason"#, NameValueStr: "reason"),
     ),
     // FIXME(Centril): This can be used on stable but shouldn't.
-    ungated!(reexport_test_harness_main, Normal, template!(NameValueStr: "name")),
+    ungated!(reexport_test_harness_main, CrateLevel, template!(NameValueStr: "name")),
 
     // Macros:
     ungated!(automatically_derived, Normal, template!(Word)),
@@ -206,7 +201,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(allow, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#)),
     ungated!(forbid, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#)),
     ungated!(deny, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#)),
-    ungated!(must_use, AssumedUsed, template!(Word, NameValueStr: "reason")),
+    ungated!(must_use, Normal, template!(Word, NameValueStr: "reason")),
     // FIXME(#14407)
     ungated!(
         deprecated, Normal,
@@ -224,16 +219,16 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // ABI, linking, symbols, and FFI
     ungated!(
-        link, AssumedUsed,
+        link, Normal,
         template!(List: r#"name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...""#),
     ),
-    ungated!(link_name, AssumedUsed, template!(NameValueStr: "name")),
-    ungated!(no_link, AssumedUsed, template!(Word)),
-    ungated!(repr, AssumedUsed, template!(List: "C")),
-    ungated!(export_name, AssumedUsed, template!(NameValueStr: "name")),
-    ungated!(link_section, AssumedUsed, template!(NameValueStr: "name")),
-    ungated!(no_mangle, AssumedUsed, template!(Word)),
-    ungated!(used, AssumedUsed, template!(Word)),
+    ungated!(link_name, Normal, template!(NameValueStr: "name")),
+    ungated!(no_link, Normal, template!(Word)),
+    ungated!(repr, Normal, template!(List: "C")),
+    ungated!(export_name, Normal, template!(NameValueStr: "name")),
+    ungated!(link_section, Normal, template!(NameValueStr: "name")),
+    ungated!(no_mangle, Normal, template!(Word)),
+    ungated!(used, Normal, template!(Word)),
 
     // Limits:
     ungated!(recursion_limit, CrateLevel, template!(NameValueStr: "N")),
@@ -257,36 +252,36 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(path, Normal, template!(NameValueStr: "file")),
     ungated!(no_std, CrateLevel, template!(Word)),
     ungated!(no_implicit_prelude, Normal, template!(Word)),
-    ungated!(non_exhaustive, AssumedUsed, template!(Word)),
+    ungated!(non_exhaustive, Normal, template!(Word)),
 
     // Runtime
-    ungated!(windows_subsystem, AssumedUsed, template!(NameValueStr: "windows|console")),
+    ungated!(windows_subsystem, Normal, template!(NameValueStr: "windows|console")),
     ungated!(panic_handler, Normal, template!(Word)), // RFC 2070
 
     // Code generation:
-    ungated!(inline, AssumedUsed, template!(Word, List: "always|never")),
-    ungated!(cold, AssumedUsed, template!(Word)),
-    ungated!(no_builtins, AssumedUsed, template!(Word)),
-    ungated!(target_feature, AssumedUsed, template!(List: r#"enable = "name""#)),
-    ungated!(track_caller, AssumedUsed, template!(Word)),
+    ungated!(inline, Normal, template!(Word, List: "always|never")),
+    ungated!(cold, Normal, template!(Word)),
+    ungated!(no_builtins, Normal, template!(Word)),
+    ungated!(target_feature, Normal, template!(List: r#"enable = "name""#)),
+    ungated!(track_caller, Normal, template!(Word)),
     gated!(
-        no_sanitize, AssumedUsed,
+        no_sanitize, Normal,
         template!(List: "address, memory, thread"),
         experimental!(no_sanitize)
     ),
-    gated!(no_coverage, AssumedUsed, template!(Word), experimental!(no_coverage)),
+    gated!(no_coverage, Normal, template!(Word), experimental!(no_coverage)),
 
     // FIXME: #14408 assume docs are used since rustdoc looks at them.
-    ungated!(doc, AssumedUsed, template!(List: "hidden|inline|...", NameValueStr: "string")),
+    ungated!(doc, Normal, template!(List: "hidden|inline|...", NameValueStr: "string")),
 
     // ==========================================================================
     // Unstable attributes:
     // ==========================================================================
 
     // Linking:
-    gated!(naked, AssumedUsed, template!(Word), naked_functions, experimental!(naked)),
+    gated!(naked, Normal, template!(Word), naked_functions, experimental!(naked)),
     gated!(
-        link_ordinal, AssumedUsed, template!(List: "ordinal"), raw_dylib,
+        link_ordinal, Normal, template!(List: "ordinal"), raw_dylib,
         experimental!(link_ordinal)
     ),
 
@@ -311,23 +306,23 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "custom test frameworks are an unstable feature",
     ),
     // RFC #1268
-    gated!(marker, AssumedUsed, template!(Word), marker_trait_attr, experimental!(marker)),
+    gated!(marker, Normal, template!(Word), marker_trait_attr, experimental!(marker)),
     gated!(
-        thread_local, AssumedUsed, template!(Word),
+        thread_local, Normal, template!(Word),
         "`#[thread_local]` is an experimental feature, and does not currently handle destructors",
     ),
     gated!(no_core, CrateLevel, template!(Word), experimental!(no_core)),
     // RFC 2412
     gated!(
-        optimize, AssumedUsed, template!(List: "size|speed"), optimize_attribute,
+        optimize, Normal, template!(List: "size|speed"), optimize_attribute,
         experimental!(optimize),
     ),
     // RFC 2867
-    gated!(instruction_set, AssumedUsed, template!(List: "set"), isa_attribute, experimental!(instruction_set)),
+    gated!(instruction_set, Normal, template!(List: "set"), isa_attribute, experimental!(instruction_set)),
 
-    gated!(ffi_returns_twice, AssumedUsed, template!(Word), experimental!(ffi_returns_twice)),
-    gated!(ffi_pure, AssumedUsed, template!(Word), experimental!(ffi_pure)),
-    gated!(ffi_const, AssumedUsed, template!(Word), experimental!(ffi_const)),
+    gated!(ffi_returns_twice, Normal, template!(Word), experimental!(ffi_returns_twice)),
+    gated!(ffi_pure, Normal, template!(Word), experimental!(ffi_pure)),
+    gated!(ffi_const, Normal, template!(Word), experimental!(ffi_const)),
     gated!(
         register_attr, CrateLevel, template!(List: "attr1, attr2, ..."),
         experimental!(register_attr),
@@ -337,10 +332,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         experimental!(register_tool),
     ),
 
-    gated!(cmse_nonsecure_entry, AssumedUsed, template!(Word), experimental!(cmse_nonsecure_entry)),
+    gated!(cmse_nonsecure_entry, Normal, template!(Word), experimental!(cmse_nonsecure_entry)),
     // RFC 2632
     gated!(
-        default_method_body_is_const, AssumedUsed, template!(Word), const_trait_impl,
+        default_method_body_is_const, Normal, template!(Word), const_trait_impl,
         "`default_method_body_is_const` is a temporary placeholder for declaring default bodies \
         as `const`, which may be removed or renamed in the future."
     ),
@@ -353,26 +348,26 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // FIXME(#14407) -- only looked at on-demand so we can't
     // guarantee they'll have already been checked.
     ungated!(
-        rustc_deprecated, AssumedUsed,
+        rustc_deprecated, Normal,
         template!(List: r#"since = "version", reason = "...""#)
     ),
     // FIXME(#14407)
-    ungated!(stable, AssumedUsed, template!(List: r#"feature = "name", since = "version""#)),
+    ungated!(stable, Normal, template!(List: r#"feature = "name", since = "version""#)),
     // FIXME(#14407)
     ungated!(
-        unstable, AssumedUsed,
+        unstable, Normal,
         template!(List: r#"feature = "name", reason = "...", issue = "N""#),
     ),
     // FIXME(#14407)
-    ungated!(rustc_const_unstable, AssumedUsed, template!(List: r#"feature = "name""#)),
+    ungated!(rustc_const_unstable, Normal, template!(List: r#"feature = "name""#)),
     // FIXME(#14407)
-    ungated!(rustc_const_stable, AssumedUsed, template!(List: r#"feature = "name""#)),
+    ungated!(rustc_const_stable, Normal, template!(List: r#"feature = "name""#)),
     gated!(
-        allow_internal_unstable, AssumedUsed, template!(Word, List: "feat1, feat2, ..."),
+        allow_internal_unstable, Normal, template!(Word, List: "feat1, feat2, ..."),
         "allow_internal_unstable side-steps feature gating and stability checks",
     ),
     gated!(
-        rustc_allow_const_fn_unstable, AssumedUsed, template!(Word, List: "feat1, feat2, ..."),
+        rustc_allow_const_fn_unstable, Normal, template!(Word, List: "feat1, feat2, ..."),
         "rustc_allow_const_fn_unstable side-steps feature gating and stability checks"
     ),
     gated!(
@@ -384,7 +379,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes: Type system related:
     // ==========================================================================
 
-    gated!(fundamental, AssumedUsed, template!(Word), experimental!(fundamental)),
+    gated!(fundamental, Normal, template!(Word), experimental!(fundamental)),
     gated!(
         may_dangle, Normal, template!(Word), dropck_eyepatch,
         "`may_dangle` has unstable semantics and may be removed in the future",
@@ -394,26 +389,26 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes: Runtime related:
     // ==========================================================================
 
-    rustc_attr!(rustc_allocator, AssumedUsed, template!(Word), IMPL_DETAIL),
-    rustc_attr!(rustc_allocator_nounwind, AssumedUsed, template!(Word), IMPL_DETAIL),
+    rustc_attr!(rustc_allocator, Normal, template!(Word), IMPL_DETAIL),
+    rustc_attr!(rustc_allocator_nounwind, Normal, template!(Word), IMPL_DETAIL),
     gated!(alloc_error_handler, Normal, template!(Word), experimental!(alloc_error_handler)),
     gated!(
-        default_lib_allocator, AssumedUsed, template!(Word), allocator_internals,
+        default_lib_allocator, Normal, template!(Word), allocator_internals,
         experimental!(default_lib_allocator),
     ),
     gated!(
         needs_allocator, Normal, template!(Word), allocator_internals,
         experimental!(needs_allocator),
     ),
-    gated!(panic_runtime, AssumedUsed, template!(Word), experimental!(panic_runtime)),
-    gated!(needs_panic_runtime, AssumedUsed, template!(Word), experimental!(needs_panic_runtime)),
+    gated!(panic_runtime, Normal, template!(Word), experimental!(panic_runtime)),
+    gated!(needs_panic_runtime, Normal, template!(Word), experimental!(needs_panic_runtime)),
     gated!(
-        compiler_builtins, AssumedUsed, template!(Word),
+        compiler_builtins, Normal, template!(Word),
         "the `#[compiler_builtins]` attribute is used to identify the `compiler_builtins` crate \
         which contains compiler-rt intrinsics and will never be stable",
     ),
     gated!(
-        profiler_runtime, AssumedUsed, template!(Word),
+        profiler_runtime, Normal, template!(Word),
         "the `#[profiler_runtime]` attribute is used to identify the `profiler_builtins` crate \
         which contains the profiler runtime and will never be stable",
     ),
@@ -423,23 +418,23 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     gated!(
-        linkage, AssumedUsed, template!(NameValueStr: "external|internal|..."),
+        linkage, Normal, template!(NameValueStr: "external|internal|..."),
         "the `linkage` attribute is experimental and not portable across platforms",
     ),
-    rustc_attr!(rustc_std_internal_symbol, AssumedUsed, template!(Word), INTERNAL_UNSTABLE),
+    rustc_attr!(rustc_std_internal_symbol, Normal, template!(Word), INTERNAL_UNSTABLE),
 
     // ==========================================================================
     // Internal attributes, Macro related:
     // ==========================================================================
 
     rustc_attr!(
-        rustc_builtin_macro, AssumedUsed,
+        rustc_builtin_macro, Normal,
         template!(Word, List: "name, /*opt*/ attributes(name1, name2, ...)"),
         IMPL_DETAIL,
     ),
     rustc_attr!(rustc_proc_macro_decls, Normal, template!(Word), INTERNAL_UNSTABLE),
     rustc_attr!(
-        rustc_macro_transparency, AssumedUsed,
+        rustc_macro_transparency, Normal,
         template!(NameValueStr: "transparent|semitransparent|opaque"),
         "used internally for testing macro hygiene",
     ),
@@ -449,7 +444,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     rustc_attr!(
-        rustc_on_unimplemented, AssumedUsed,
+        rustc_on_unimplemented, Normal,
         template!(
             List: r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#,
             NameValueStr: "message"
@@ -457,31 +452,31 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         INTERNAL_UNSTABLE
     ),
     // Enumerates "identity-like" conversion methods to suggest on type mismatch.
-    rustc_attr!(rustc_conversion_suggestion, AssumedUsed, template!(Word), INTERNAL_UNSTABLE),
+    rustc_attr!(rustc_conversion_suggestion, Normal, template!(Word), INTERNAL_UNSTABLE),
 
     // ==========================================================================
     // Internal attributes, Const related:
     // ==========================================================================
 
-    rustc_attr!(rustc_promotable, AssumedUsed, template!(Word), IMPL_DETAIL),
-    rustc_attr!(rustc_legacy_const_generics, AssumedUsed, template!(List: "N"), INTERNAL_UNSTABLE),
+    rustc_attr!(rustc_promotable, Normal, template!(Word), IMPL_DETAIL),
+    rustc_attr!(rustc_legacy_const_generics, Normal, template!(List: "N"), INTERNAL_UNSTABLE),
 
     // ==========================================================================
     // Internal attributes, Layout related:
     // ==========================================================================
 
     rustc_attr!(
-        rustc_layout_scalar_valid_range_start, AssumedUsed, template!(List: "value"),
+        rustc_layout_scalar_valid_range_start, Normal, template!(List: "value"),
         "the `#[rustc_layout_scalar_valid_range_start]` attribute is just used to enable \
         niche optimizations in libcore and will never be stable",
     ),
     rustc_attr!(
-        rustc_layout_scalar_valid_range_end, AssumedUsed, template!(List: "value"),
+        rustc_layout_scalar_valid_range_end, Normal, template!(List: "value"),
         "the `#[rustc_layout_scalar_valid_range_end]` attribute is just used to enable \
         niche optimizations in libcore and will never be stable",
     ),
     rustc_attr!(
-        rustc_nonnull_optimization_guaranteed, AssumedUsed, template!(Word),
+        rustc_nonnull_optimization_guaranteed, Normal, template!(Word),
         "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to enable \
         niche optimizations in libcore and will never be stable",
     ),
@@ -506,7 +501,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     gated!(
         // Used in resolve:
-        prelude_import, AssumedUsed, template!(Word),
+        prelude_import, Normal, template!(Word),
         "`#[prelude_import]` is for use by rustc only",
     ),
     gated!(
@@ -514,7 +509,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "unboxed_closures are still evolving",
     ),
     rustc_attr!(
-        rustc_inherit_overflow_checks, AssumedUsed, template!(Word),
+        rustc_inherit_overflow_checks, Normal, template!(Word),
         "the `#[rustc_inherit_overflow_checks]` attribute is just used to control \
         overflow checking behavior of several libcore functions that are inlined \
         across crates and will never be stable",
@@ -556,41 +551,41 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(TEST, rustc_layout, Normal, template!(List: "field1, field2, ...")),
     rustc_attr!(TEST, rustc_regions, Normal, template!(Word)),
     rustc_attr!(
-        TEST, rustc_error, AssumedUsed,
+        TEST, rustc_error, Normal,
         template!(Word, List: "delay_span_bug_from_inside_query")
     ),
-    rustc_attr!(TEST, rustc_dump_user_substs, AssumedUsed, template!(Word)),
-    rustc_attr!(TEST, rustc_evaluate_where_clauses, AssumedUsed, template!(Word)),
-    rustc_attr!(TEST, rustc_if_this_changed, AssumedUsed, template!(Word, List: "DepNode")),
-    rustc_attr!(TEST, rustc_then_this_would_need, AssumedUsed, template!(List: "DepNode")),
+    rustc_attr!(TEST, rustc_dump_user_substs, Normal, template!(Word)),
+    rustc_attr!(TEST, rustc_evaluate_where_clauses, Normal, template!(Word)),
+    rustc_attr!(TEST, rustc_if_this_changed, Normal, template!(Word, List: "DepNode")),
+    rustc_attr!(TEST, rustc_then_this_would_need, Normal, template!(List: "DepNode")),
     rustc_attr!(
-        TEST, rustc_clean, AssumedUsed,
+        TEST, rustc_clean, Normal,
         template!(List: r#"cfg = "...", /*opt*/ label = "...", /*opt*/ except = "...""#),
     ),
     rustc_attr!(
-        TEST, rustc_partition_reused, AssumedUsed,
+        TEST, rustc_partition_reused, Normal,
         template!(List: r#"cfg = "...", module = "...""#),
     ),
     rustc_attr!(
-        TEST, rustc_partition_codegened, AssumedUsed,
+        TEST, rustc_partition_codegened, Normal,
         template!(List: r#"cfg = "...", module = "...""#),
     ),
     rustc_attr!(
-        TEST, rustc_expected_cgu_reuse, AssumedUsed,
+        TEST, rustc_expected_cgu_reuse, Normal,
         template!(List: r#"cfg = "...", module = "...", kind = "...""#),
     ),
-    rustc_attr!(TEST, rustc_synthetic, AssumedUsed, template!(Word)),
-    rustc_attr!(TEST, rustc_symbol_name, AssumedUsed, template!(Word)),
-    rustc_attr!(TEST, rustc_polymorphize_error, AssumedUsed, template!(Word)),
-    rustc_attr!(TEST, rustc_def_path, AssumedUsed, template!(Word)),
-    rustc_attr!(TEST, rustc_mir, AssumedUsed, template!(List: "arg1, arg2, ...")),
-    rustc_attr!(TEST, rustc_dump_program_clauses, AssumedUsed, template!(Word)),
-    rustc_attr!(TEST, rustc_dump_env_program_clauses, AssumedUsed, template!(Word)),
-    rustc_attr!(TEST, rustc_object_lifetime_default, AssumedUsed, template!(Word)),
-    rustc_attr!(TEST, rustc_dump_vtable, AssumedUsed, template!(Word)),
+    rustc_attr!(TEST, rustc_synthetic, Normal, template!(Word)),
+    rustc_attr!(TEST, rustc_symbol_name, Normal, template!(Word)),
+    rustc_attr!(TEST, rustc_polymorphize_error, Normal, template!(Word)),
+    rustc_attr!(TEST, rustc_def_path, Normal, template!(Word)),
+    rustc_attr!(TEST, rustc_mir, Normal, template!(List: "arg1, arg2, ...")),
+    rustc_attr!(TEST, rustc_dump_program_clauses, Normal, template!(Word)),
+    rustc_attr!(TEST, rustc_dump_env_program_clauses, Normal, template!(Word)),
+    rustc_attr!(TEST, rustc_object_lifetime_default, Normal, template!(Word)),
+    rustc_attr!(TEST, rustc_dump_vtable, Normal, template!(Word)),
     rustc_attr!(TEST, rustc_dummy, Normal, template!(Word /* doesn't matter*/)),
     gated!(
-        omit_gdb_pretty_printer_section, AssumedUsed, template!(Word),
+        omit_gdb_pretty_printer_section, Normal, template!(Word),
         "the `#[omit_gdb_pretty_printer_section]` attribute is just used for the Rust test suite",
     ),
 ];

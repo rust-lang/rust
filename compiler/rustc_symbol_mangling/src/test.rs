@@ -35,7 +35,7 @@ impl SymbolNamesTest<'tcx> {
     fn process_attrs(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
         for attr in tcx.get_attrs(def_id.to_def_id()).iter() {
-            if tcx.sess.check_name(attr, SYMBOL_NAME) {
+            if attr.has_name(SYMBOL_NAME) {
                 let def_id = def_id.to_def_id();
                 let instance = Instance::new(
                     def_id,
@@ -47,7 +47,7 @@ impl SymbolNamesTest<'tcx> {
                     tcx.sess.span_err(attr.span, &format!("demangling({})", demangling));
                     tcx.sess.span_err(attr.span, &format!("demangling-alt({:#})", demangling));
                 }
-            } else if tcx.sess.check_name(attr, DEF_PATH) {
+            } else if attr.has_name(DEF_PATH) {
                 let path = with_no_trimmed_paths(|| tcx.def_path_str(def_id.to_def_id()));
                 tcx.sess.span_err(attr.span, &format!("def-path({})", path));
             }

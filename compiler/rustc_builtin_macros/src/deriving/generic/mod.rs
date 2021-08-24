@@ -677,8 +677,6 @@ impl<'a> TraitDef<'a> {
         let self_type = cx.ty_path(path);
 
         let attr = cx.attribute(cx.meta_word(self.span, sym::automatically_derived));
-        // Just mark it now since we know that it'll end up used downstream
-        cx.sess.mark_attr_used(&attr);
         let opt_trait_ref = Some(trait_ref);
         let unused_qual = {
             let word = rustc_ast::attr::mk_nested_word_item(Ident::new(

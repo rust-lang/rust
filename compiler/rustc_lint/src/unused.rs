@@ -4,20 +4,15 @@ use rustc_ast as ast;
 use rustc_ast::util::parser;
 use rustc_ast::{ExprKind, StmtKind};
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, Applicability};
-use rustc_feature::{AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::adjustment;
 use rustc_middle::ty::{self, Ty};
-use rustc_session::lint::builtin::UNUSED_ATTRIBUTES;
 use rustc_span::symbol::Symbol;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, Span, DUMMY_SP};
-
-use tracing::debug;
 
 declare_lint! {
     /// The `unused_must_use` lint detects unused result of a type flagged as
@@ -308,7 +303,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             descr_post_path: &str,
         ) -> bool {
             for attr in cx.tcx.get_attrs(def_id).iter() {
-                if cx.sess().check_name(attr, sym::must_use) {
+                if attr.has_name(sym::must_use) {
                     cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
                         let msg = format!(
                             "unused {}`{}`{} that must be used",
@@ -378,62 +373,6 @@ impl<'tcx> LateLintPass<'tcx> for PathStatements {
                     }
                 });
             }
-        }
-    }
-}
-
-#[derive(Copy, Clone)]
-pub struct UnusedAttributes {
-    builtin_attributes: &'static FxHashMap<Symbol, &'static BuiltinAttribute>,
-}
-
-impl UnusedAttributes {
-    pub fn new() -> Self {
-        UnusedAttributes { builtin_attributes: &*BUILTIN_ATTRIBUTE_MAP }
-    }
-}
-
-impl_lint_pass!(UnusedAttributes => [UNUSED_ATTRIBUTES]);
-
-impl<'tcx> LateLintPass<'tcx> for UnusedAttributes {
-    fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &ast::Attribute) {
-        debug!("checking attribute: {:?}", attr);
-
-        if attr.is_doc_comment() {
-            return;
-        }
-
-        let attr_info = attr.ident().and_then(|ident| self.builtin_attributes.get(&ident.name));
-
-        if let Some(&&(name, ty, ..)) = attr_info {
-            if let AttributeType::AssumedUsed = ty {
-                debug!("{:?} is AssumedUsed", name);
-                return;
-            }
-        }
-
-        if !cx.sess().is_attr_used(attr) {
-            debug!("emitting warning for: {:?}", attr);
-            cx.struct_span_lint(UNUSED_ATTRIBUTES, attr.span, |lint| {
-                // Mark as used to avoid duplicate warnings.
-                cx.sess().mark_attr_used(attr);
-                lint.build("unused attribute").emit()
-            });
-            // Is it a builtin attribute that must be used at the crate level?
-            if attr_info.map_or(false, |(_, ty, ..)| ty == &AttributeType::CrateLevel) {
-                cx.struct_span_lint(UNUSED_ATTRIBUTES, attr.span, |lint| {
-                    let msg = match attr.style {
-                        ast::AttrStyle::Outer => {
-                            "crate-level attribute should be an inner attribute: add an exclamation \
-                             mark: `#![foo]`"
-                        }
-                        ast::AttrStyle::Inner => "crate-level attribute should be in the root module",
-                    };
-                    lint.build(msg).emit()
-                });
-            }
-        } else {
-            debug!("Attr was used: {:?}", attr);
         }
     }
 }

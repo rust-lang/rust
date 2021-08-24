@@ -46,7 +46,6 @@ use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::{self, layout::LayoutError, Ty, TyCtxt};
 use rustc_session::lint::FutureIncompatibilityReason;
-use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -344,7 +343,7 @@ impl UnsafeCode {
 
 impl EarlyLintPass for UnsafeCode {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
-        if cx.sess().check_name(attr, sym::allow_internal_unsafe) {
+        if attr.has_name(sym::allow_internal_unsafe) {
             self.report_unsafe(cx, attr.span, |lint| {
                 lint.build(
                     "`allow_internal_unsafe` allows defining \
@@ -492,12 +491,12 @@ pub struct MissingDoc {
 
 impl_lint_pass!(MissingDoc => [MISSING_DOCS]);
 
-fn has_doc(sess: &Session, attr: &ast::Attribute) -> bool {
+fn has_doc(attr: &ast::Attribute) -> bool {
     if attr.is_doc_comment() {
         return true;
     }
 
-    if !sess.check_name(attr, sym::doc) {
+    if !attr.has_name(sym::doc) {
         return false;
     }
 
@@ -554,7 +553,7 @@ impl MissingDoc {
         }
 
         let attrs = cx.tcx.get_attrs(def_id.to_def_id());
-        let has_doc = attrs.iter().any(|a| has_doc(cx.sess(), a));
+        let has_doc = attrs.iter().any(has_doc);
         if !has_doc {
             cx.struct_span_lint(
                 MISSING_DOCS,
@@ -568,10 +567,10 @@ impl MissingDoc {
 }
 
 impl<'tcx> LateLintPass<'tcx> for MissingDoc {
-    fn enter_lint_attrs(&mut self, cx: &LateContext<'_>, attrs: &[ast::Attribute]) {
+    fn enter_lint_attrs(&mut self, _cx: &LateContext<'_>, attrs: &[ast::Attribute]) {
         let doc_hidden = self.doc_hidden()
             || attrs.iter().any(|attr| {
-                cx.sess().check_name(attr, sym::doc)
+                attr.has_name(sym::doc)
                     && match attr.meta_item_list() {
                         None => false,
                         Some(l) => attr::list_contains_name(&l, sym::hidden),
@@ -595,7 +594,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             }
 
             let attrs = cx.tcx.hir().attrs(macro_def.hir_id());
-            let has_doc = attrs.iter().any(|a| has_doc(cx.sess(), a));
+            let has_doc = attrs.iter().any(has_doc);
             if !has_doc {
                 cx.struct_span_lint(
                     MISSING_DOCS,
@@ -999,7 +998,7 @@ impl EarlyLintPass for DeprecatedAttr {
                 return;
             }
         }
-        if cx.sess().check_name(attr, sym::no_start) || cx.sess().check_name(attr, sym::crate_id) {
+        if attr.has_name(sym::no_start) || attr.has_name(sym::crate_id) {
             let path_str = pprust::path_to_string(&attr.get_normal_item().path);
             let msg = format!("use of deprecated attribute `{}`: no longer used.", path_str);
             lint_deprecated_attr(cx, attr, &msg, None);
@@ -1028,7 +1027,7 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
 
         let span = sugared_span.take().unwrap_or(attr.span);
 
-        if is_doc_comment || cx.sess().check_name(attr, sym::doc) {
+        if is_doc_comment || attr.has_name(sym::doc) {
             cx.struct_span_lint(UNUSED_DOC_COMMENTS, span, |lint| {
                 let mut err = lint.build("unused doc comment");
                 err.span_label(
@@ -1301,7 +1300,7 @@ declare_lint_pass!(
 
 impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
     fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &ast::Attribute) {
-        if cx.sess().check_name(attr, sym::feature) {
+        if attr.has_name(sym::feature) {
             if let Some(items) = attr.meta_item_list() {
                 for item in items {
                     cx.struct_span_lint(UNSTABLE_FEATURES, item.span(), |lint| {
@@ -2771,7 +2770,7 @@ impl ClashingExternDeclarations {
                     overridden_link_name,
                     tcx.get_attrs(fi.def_id.to_def_id())
                         .iter()
-                        .find(|at| tcx.sess.check_name(at, sym::link_name))
+                        .find(|at| at.has_name(sym::link_name))
                         .unwrap()
                         .span,
                 )

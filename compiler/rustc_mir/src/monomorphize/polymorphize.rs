@@ -204,11 +204,7 @@ fn emit_unused_generic_params_error<'tcx>(
     unused_parameters: &FiniteBitSet<u32>,
 ) {
     let base_def_id = tcx.closure_base_def_id(def_id);
-    if !tcx
-        .get_attrs(base_def_id)
-        .iter()
-        .any(|a| tcx.sess.check_name(a, sym::rustc_polymorphize_error))
-    {
+    if !tcx.get_attrs(base_def_id).iter().any(|a| a.has_name(sym::rustc_polymorphize_error)) {
         return;
     }
 

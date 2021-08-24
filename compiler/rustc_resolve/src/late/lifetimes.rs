@@ -2057,9 +2057,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             if let Some(def_id) = parent_def_id.as_local() {
                                 let parent_hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
                                 // lifetimes in `derive` expansions don't count (Issue #53738)
-                                if self.tcx.hir().attrs(parent_hir_id).iter().any(|attr| {
-                                    self.tcx.sess.check_name(attr, sym::automatically_derived)
-                                }) {
+                                if self
+                                    .tcx
+                                    .hir()
+                                    .attrs(parent_hir_id)
+                                    .iter()
+                                    .any(|attr| attr.has_name(sym::automatically_derived))
+                                {
                                     continue;
                                 }
                             }

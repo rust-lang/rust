@@ -151,8 +151,6 @@ macro_rules! late_lint_passes {
                 // FIXME: Look into regression when this is used as a module lint
                 // May Depend on constants elsewhere
                 UnusedBrokenConst: UnusedBrokenConst,
-                // Uses attr::is_used which is untracked, can't be an incremental module pass.
-                UnusedAttributes: UnusedAttributes::new(),
                 // Needs to run after UnusedAttributes as it marks all `feature` attributes as used.
                 UnstableFeatures: UnstableFeatures,
                 // Tracks state across modules

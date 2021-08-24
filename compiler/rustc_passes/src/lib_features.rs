@@ -33,9 +33,7 @@ impl LibFeatureCollector<'tcx> {
 
         // Find a stability attribute (i.e., `#[stable (..)]`, `#[unstable (..)]`,
         // `#[rustc_const_unstable (..)]`).
-        if let Some(stab_attr) =
-            stab_attrs.iter().find(|stab_attr| self.tcx.sess.check_name(attr, **stab_attr))
-        {
+        if let Some(stab_attr) = stab_attrs.iter().find(|stab_attr| attr.has_name(**stab_attr)) {
             let meta_item = attr.meta();
             if let Some(MetaItem { kind: MetaItemKind::List(ref metas), .. }) = meta_item {
                 let mut feature = None;

@@ -213,8 +213,6 @@ pub struct Session {
     /// Set of enabled features for the current target.
     pub target_features: FxHashSet<Symbol>,
 
-    used_attrs: Lock<MarkedAttrs>,
-
     /// `Span`s for `if` conditions that we have suggested turning into `if let`.
     pub if_let_suggestions: Lock<FxHashSet<Span>>,
 }
@@ -1066,39 +1064,14 @@ impl Session {
             == config::InstrumentCoverage::ExceptUnusedFunctions
     }
 
-    pub fn mark_attr_used(&self, attr: &Attribute) {
-        self.used_attrs.lock().mark(attr)
-    }
-
-    pub fn is_attr_used(&self, attr: &Attribute) -> bool {
-        self.used_attrs.lock().is_marked(attr)
-    }
-
-    /// Returns `true` if the attribute's path matches the argument. If it
-    /// matches, then the attribute is marked as used.
-    ///
-    /// This method should only be used by rustc, other tools can use
-    /// `Attribute::has_name` instead, because only rustc is supposed to report
-    /// the `unused_attributes` lint. (`MetaItem` and `NestedMetaItem` are
-    /// produced by lowering an `Attribute` and don't have identity, so they
-    /// only have the `has_name` method, and you need to mark the original
-    /// `Attribute` as used when necessary.)
-    pub fn check_name(&self, attr: &Attribute, name: Symbol) -> bool {
-        let matches = attr.has_name(name);
-        if matches {
-            self.mark_attr_used(attr);
-        }
-        matches
-    }
-
     pub fn is_proc_macro_attr(&self, attr: &Attribute) -> bool {
         [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
             .iter()
-            .any(|kind| self.check_name(attr, *kind))
+            .any(|kind| attr.has_name(*kind))
     }
 
     pub fn contains_name(&self, attrs: &[Attribute], name: Symbol) -> bool {
-        attrs.iter().any(|item| self.check_name(item, name))
+        attrs.iter().any(|item| item.has_name(name))
     }
 
     pub fn find_by_name<'a>(
@@ -1106,7 +1079,7 @@ impl Session {
         attrs: &'a [Attribute],
         name: Symbol,
     ) -> Option<&'a Attribute> {
-        attrs.iter().find(|attr| self.check_name(attr, name))
+        attrs.iter().find(|attr| attr.has_name(name))
     }
 
     pub fn filter_by_name<'a>(
@@ -1114,7 +1087,7 @@ impl Session {
         attrs: &'a [Attribute],
         name: Symbol,
     ) -> impl Iterator<Item = &'a Attribute> {
-        attrs.iter().filter(move |attr| self.check_name(attr, name))
+        attrs.iter().filter(move |attr| attr.has_name(name))
     }
 
     pub fn first_attr_value_str_by_name(
@@ -1122,7 +1095,7 @@ impl Session {
         attrs: &[Attribute],
         name: Symbol,
     ) -> Option<Symbol> {
-        attrs.iter().find(|at| self.check_name(at, name)).and_then(|at| at.value_str())
+        attrs.iter().find(|at| at.has_name(name)).and_then(|at| at.value_str())
     }
 }
 
@@ -1359,7 +1332,6 @@ pub fn build_session(
         miri_unleashed_features: Lock::new(Default::default()),
         asm_arch,
         target_features: FxHashSet::default(),
-        used_attrs: Lock::new(MarkedAttrs::new()),
         if_let_suggestions: Default::default(),
     };
 

@@ -195,7 +195,7 @@ impl<'a> Resolver<'a> {
     crate fn get_macro(&mut self, res: Res) -> Option<Lrc<SyntaxExtension>> {
         match res {
             Res::Def(DefKind::Macro(..), def_id) => Some(self.get_macro_by_def_id(def_id)),
-            Res::NonMacroAttr(attr_kind) => Some(self.non_macro_attr(attr_kind.is_used())),
+            Res::NonMacroAttr(_) => Some(self.non_macro_attr.clone()),
             _ => None,
         }
     }
@@ -1059,7 +1059,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let mut import_all = None;
         let mut single_imports = Vec::new();
         for attr in &item.attrs {
-            if self.r.session.check_name(attr, sym::macro_use) {
+            if attr.has_name(sym::macro_use) {
                 if self.parent_scope.module.parent.is_some() {
                     struct_span_err!(
                         self.r.session,
@@ -1165,7 +1165,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     /// Returns `true` if this attribute list contains `macro_use`.
     fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
-            if self.r.session.check_name(attr, sym::macro_escape) {
+            if attr.has_name(sym::macro_escape) {
                 let msg = "`#[macro_escape]` is a deprecated synonym for `#[macro_use]`";
                 let mut err = self.r.session.struct_span_warn(attr.span, msg);
                 if let ast::AttrStyle::Inner = attr.style {
@@ -1173,7 +1173,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 } else {
                     err.emit();
                 }
-            } else if !self.r.session.check_name(attr, sym::macro_use) {
+            } else if !attr.has_name(sym::macro_use) {
                 continue;
             }
 

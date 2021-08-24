@@ -11,6 +11,7 @@ rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
+rustc_parse = { path = "../rustc_parse" }
 rustc_session = { path = "../rustc_session" }
 rustc_target = { path = "../rustc_target" }
 rustc_ast = { path = "../rustc_ast" }
@@ -18,3 +19,4 @@ rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
+rustc_feature = { path = "../rustc_feature" }

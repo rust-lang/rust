@@ -488,13 +488,13 @@ pub fn get_codegen_sysroot(
 }
 
 pub(crate) fn check_attr_crate_type(
-    sess: &Session,
+    _sess: &Session,
     attrs: &[ast::Attribute],
     lint_buffer: &mut LintBuffer,
 ) {
     // Unconditionally collect crate types from attributes to make them used
     for a in attrs.iter() {
-        if sess.check_name(a, sym::crate_type) {
+        if a.has_name(sym::crate_type) {
             if let Some(n) = a.value_str() {
                 if categorize_crate_type(n).is_some() {
                     return;
@@ -552,7 +552,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
     let attr_types: Vec<CrateType> = attrs
         .iter()
         .filter_map(|a| {
-            if session.check_name(a, sym::crate_type) {
+            if a.has_name(sym::crate_type) {
                 match a.value_str() {
                     Some(s) => categorize_crate_type(s),
                     _ => None,

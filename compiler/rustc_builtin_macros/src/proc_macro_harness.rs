@@ -260,11 +260,11 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
             return;
         }
 
-        if self.sess.check_name(attr, sym::proc_macro_derive) {
+        if attr.has_name(sym::proc_macro_derive) {
             self.collect_custom_derive(item, attr);
-        } else if self.sess.check_name(attr, sym::proc_macro_attribute) {
+        } else if attr.has_name(sym::proc_macro_attribute) {
             self.collect_attr_proc_macro(item);
-        } else if self.sess.check_name(attr, sym::proc_macro) {
+        } else if attr.has_name(sym::proc_macro) {
             self.collect_bang_proc_macro(item);
         };
 

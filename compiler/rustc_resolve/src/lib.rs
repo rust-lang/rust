@@ -968,7 +968,7 @@ pub struct Resolver<'a> {
     macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
     dummy_ext_bang: Lrc<SyntaxExtension>,
     dummy_ext_derive: Lrc<SyntaxExtension>,
-    non_macro_attrs: [Lrc<SyntaxExtension>; 2],
+    non_macro_attr: Lrc<SyntaxExtension>,
     local_macro_def_scopes: FxHashMap<LocalDefId, Module<'a>>,
     ast_transform_scopes: FxHashMap<LocalExpnId, Module<'a>>,
     unused_macros: FxHashMap<LocalDefId, (NodeId, Span)>,
@@ -1293,8 +1293,6 @@ impl<'a> Resolver<'a> {
             macros::registered_attrs_and_tools(session, &krate.attrs);
 
         let features = session.features_untracked();
-        let non_macro_attr =
-            |mark_used| Lrc::new(SyntaxExtension::non_macro_attr(mark_used, session.edition()));
 
         let mut resolver = Resolver {
             session,
@@ -1361,7 +1359,7 @@ impl<'a> Resolver<'a> {
             macro_map: FxHashMap::default(),
             dummy_ext_bang: Lrc::new(SyntaxExtension::dummy_bang(session.edition())),
             dummy_ext_derive: Lrc::new(SyntaxExtension::dummy_derive(session.edition())),
-            non_macro_attrs: [non_macro_attr(false), non_macro_attr(true)],
+            non_macro_attr: Lrc::new(SyntaxExtension::non_macro_attr(session.edition())),
             invocation_parent_scopes: Default::default(),
             output_macro_rules_scopes: Default::default(),
             helper_attrs: Default::default(),
@@ -1476,15 +1474,11 @@ impl<'a> Resolver<'a> {
         self.crate_loader.cstore()
     }
 
-    fn non_macro_attr(&self, mark_used: bool) -> Lrc<SyntaxExtension> {
-        self.non_macro_attrs[mark_used as usize].clone()
-    }
-
     fn dummy_ext(&self, macro_kind: MacroKind) -> Lrc<SyntaxExtension> {
         match macro_kind {
             MacroKind::Bang => self.dummy_ext_bang.clone(),
             MacroKind::Derive => self.dummy_ext_derive.clone(),
-            MacroKind::Attr => self.non_macro_attr(true),
+            MacroKind::Attr => self.non_macro_attr.clone(),
         }
     }
 
@@ -3381,9 +3375,8 @@ impl<'a> Resolver<'a> {
 
                 let parse_attrs = || {
                     let attrs = self.cstore().item_attrs(def_id, self.session);
-                    let attr = attrs
-                        .iter()
-                        .find(|a| self.session.check_name(a, sym::rustc_legacy_const_generics))?;
+                    let attr =
+                        attrs.iter().find(|a| a.has_name(sym::rustc_legacy_const_generics))?;
                     let mut ret = vec![];
                     for meta in attr.meta_item_list()? {
                         match meta.literal()?.kind {
