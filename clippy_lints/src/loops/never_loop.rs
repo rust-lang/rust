@@ -87,7 +87,7 @@ fn combine_branches(b1: NeverLoopResult, b2: NeverLoopResult) -> NeverLoopResult
 
 fn never_loop_block(block: &Block<'_>, main_loop_id: HirId) -> NeverLoopResult {
     let stmts = block.stmts.iter().map(stmt_to_expr);
-    let expr = once(block.expr.as_deref());
+    let expr = once(block.expr);
     let mut iter = stmts.chain(expr).flatten();
     never_loop_expr_seq(&mut iter, main_loop_id)
 }
@@ -100,7 +100,7 @@ fn never_loop_expr_seq<'a, T: Iterator<Item = &'a Expr<'a>>>(es: &mut T, main_lo
 fn stmt_to_expr<'tcx>(stmt: &Stmt<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     match stmt.kind {
         StmtKind::Semi(e, ..) | StmtKind::Expr(e, ..) => Some(e),
-        StmtKind::Local(local) => local.init.as_deref(),
+        StmtKind::Local(local) => local.init,
         StmtKind::Item(..) => None,
     }
 }

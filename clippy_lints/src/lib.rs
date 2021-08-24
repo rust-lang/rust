@@ -289,6 +289,7 @@ mod needless_borrow;
 mod needless_borrowed_ref;
 mod needless_continue;
 mod needless_for_each;
+mod needless_option_as_deref;
 mod needless_pass_by_value;
 mod needless_question_mark;
 mod needless_update;
@@ -847,6 +848,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE,
         needless_continue::NEEDLESS_CONTINUE,
         needless_for_each::NEEDLESS_FOR_EACH,
+        needless_option_as_deref::NEEDLESS_OPTION_AS_DEREF,
         needless_pass_by_value::NEEDLESS_PASS_BY_VALUE,
         needless_question_mark::NEEDLESS_QUESTION_MARK,
         needless_update::NEEDLESS_UPDATE,
@@ -1374,6 +1376,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(needless_bool::NEEDLESS_BOOL),
         LintId::of(needless_borrow::NEEDLESS_BORROW),
         LintId::of(needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE),
+        LintId::of(needless_option_as_deref::NEEDLESS_OPTION_AS_DEREF),
         LintId::of(needless_question_mark::NEEDLESS_QUESTION_MARK),
         LintId::of(needless_update::NEEDLESS_UPDATE),
         LintId::of(neg_cmp_op_on_partial_ord::NEG_CMP_OP_ON_PARTIAL_ORD),
@@ -1636,6 +1639,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(needless_bool::BOOL_COMPARISON),
         LintId::of(needless_bool::NEEDLESS_BOOL),
         LintId::of(needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE),
+        LintId::of(needless_option_as_deref::NEEDLESS_OPTION_AS_DEREF),
         LintId::of(needless_question_mark::NEEDLESS_QUESTION_MARK),
         LintId::of(needless_update::NEEDLESS_UPDATE),
         LintId::of(neg_cmp_op_on_partial_ord::NEG_CMP_OP_ON_PARTIAL_ORD),
@@ -1863,6 +1867,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(ptr::Ptr));
     store.register_late_pass(|| Box::new(ptr_eq::PtrEq));
     store.register_late_pass(|| Box::new(needless_bool::NeedlessBool));
+    store.register_late_pass(|| Box::new(needless_option_as_deref::OptionNeedlessDeref));
     store.register_late_pass(|| Box::new(needless_bool::BoolComparison));
     store.register_late_pass(|| Box::new(needless_for_each::NeedlessForEach));
     store.register_late_pass(|| Box::new(approx_const::ApproxConstant));
