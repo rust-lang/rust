@@ -148,6 +148,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.expand_attr_macro(item)
     }
 
+    pub fn expand_derive_macro(&self, derive: &ast::Attr) -> Option<SyntaxNode> {
+        self.imp.expand_derive_macro(derive)
+    }
+
     pub fn is_attr_macro_call(&self, item: &ast::Item) -> bool {
         self.imp.is_attr_macro_call(item)
     }
@@ -379,6 +383,18 @@ impl<'db> SemanticsImpl<'db> {
         let sa = self.analyze(item.syntax());
         let src = InFile::new(sa.file_id, item.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(src))?;
+        let file_id = macro_call_id.as_file();
+        let node = self.db.parse_or_expand(file_id)?;
+        self.cache(node.clone(), file_id);
+        Some(node)
+    }
+
+    fn expand_derive_macro(&self, attr: &ast::Attr) -> Option<SyntaxNode> {
+        let item = attr.syntax().parent().and_then(ast::Item::cast)?;
+        let sa = self.analyze(item.syntax());
+        let item = InFile::new(sa.file_id, &item);
+        let src = InFile::new(sa.file_id, attr.clone());
+        let macro_call_id = self.with_ctx(|ctx| ctx.attr_to_derive_macro_call(item, src))?;
         let file_id = macro_call_id.as_file();
         let node = self.db.parse_or_expand(file_id)?;
         self.cache(node.clone(), file_id);

@@ -242,6 +242,15 @@ impl SourceToDefCtx<'_, '_> {
         map[keys::ATTR_MACRO].get(&src).copied()
     }
 
+    pub(super) fn attr_to_derive_macro_call(
+        &mut self,
+        item: InFile<&ast::Item>,
+        src: InFile<ast::Attr>,
+    ) -> Option<MacroCallId> {
+        let map = self.dyn_map(item)?;
+        map[keys::DERIVE_MACRO].get(&src).copied()
+    }
+
     fn to_def<Ast: AstNode + 'static, ID: Copy + 'static>(
         &mut self,
         src: InFile<Ast>,

@@ -1047,6 +1047,12 @@ impl DefCollector<'_> {
                         &resolver,
                     ) {
                         Ok(call_id) => {
+                            self.def_map.modules[directive.module_id].scope.add_derive_macro_invoc(
+                                ast_id.ast_id,
+                                call_id,
+                                *derive_attr,
+                            );
+
                             resolved.push((directive.module_id, call_id, directive.depth));
                             res = ReachedFixedPoint::No;
                             return false;

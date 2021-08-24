@@ -2,6 +2,7 @@ use std::iter;
 
 use hir::Semantics;
 use ide_db::{helpers::pick_best_token, RootDatabase};
+use itertools::Itertools;
 use syntax::{ast, ted, AstNode, NodeOrToken, SyntaxKind, SyntaxKind::*, SyntaxNode, WalkEvent, T};
 
 use crate::FilePosition;
@@ -33,6 +34,18 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     let mut expanded = None;
     let mut name = None;
     for node in tok.ancestors() {
+        if let Some(attr) = ast::Attr::cast(node.clone()) {
+            if let Some((path, tt)) = attr.as_simple_call() {
+                if path == "derive" {
+                    let mut tt = tt.syntax().children_with_tokens().skip(1).join("");
+                    tt.pop();
+                    name = Some(tt);
+                    expanded = sema.expand_derive_macro(&attr);
+                    break;
+                }
+            }
+        }
+
         if let Some(item) = ast::Item::cast(node.clone()) {
             if let Some(def) = sema.resolve_attr_macro_call(&item) {
                 name = def.name(db).map(|name| name.to_string());
@@ -323,6 +336,24 @@ fn main() {
             expect![[r#"
                 foo
                 0 "#]],
+        );
+    }
+
+    #[test]
+    fn macro_expand_derive() {
+        check(
+            r#"
+
+#[rustc_builtin_macro]
+pub macro Clone {}
+
+#[derive(C$0lone)]
+struct Foo {}
+"#,
+            expect![[r#"
+                Clone
+                impl< >crate::clone::Clone for Foo< >{}
+            "#]],
         );
     }
 }
