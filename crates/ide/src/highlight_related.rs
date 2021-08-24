@@ -1,14 +1,14 @@
 use hir::Semantics;
 use ide_db::{
     base_db::FilePosition,
-    defs::Definition,
+    defs::{Definition, NameClass, NameRefClass},
     helpers::{for_each_break_expr, for_each_tail_expr, pick_best_token},
     search::{FileReference, ReferenceAccess, SearchScope},
     RootDatabase,
 };
 use syntax::{
     ast::{self, LoopBodyOwner},
-    match_ast, AstNode, SyntaxNode, SyntaxToken, TextRange, T,
+    match_ast, AstNode, SyntaxNode, SyntaxToken, TextRange, TextSize, T,
 };
 
 use crate::{display::TryToNav, references, NavigationTarget};
@@ -70,35 +70,36 @@ fn highlight_references(
     syntax: &SyntaxNode,
     FilePosition { offset, file_id }: FilePosition,
 ) -> Option<Vec<HighlightedRange>> {
-    let def = references::find_def(sema, syntax, offset)?;
-    let usages = def
-        .usages(sema)
-        .set_scope(Some(SearchScope::single_file(file_id)))
-        .include_self_refs()
-        .all();
+    let defs = find_defs(sema, syntax, offset)?;
+    let usages = defs
+        .iter()
+        .flat_map(|&d| {
+            d.usages(sema)
+                .set_scope(Some(SearchScope::single_file(file_id)))
+                .include_self_refs()
+                .all()
+                .references
+                .remove(&file_id)
+        })
+        .flatten()
+        .map(|FileReference { access, range, .. }| HighlightedRange { range, access });
 
-    let declaration = match def {
-        Definition::ModuleDef(hir::ModuleDef::Module(module)) => {
-            Some(NavigationTarget::from_module_to_decl(sema.db, module))
+    let declarations = defs.iter().flat_map(|def| {
+        match def {
+            &Definition::ModuleDef(hir::ModuleDef::Module(module)) => {
+                Some(NavigationTarget::from_module_to_decl(sema.db, module))
+            }
+            def => def.try_to_nav(sema.db),
         }
-        def => def.try_to_nav(sema.db),
-    }
-    .filter(|decl| decl.file_id == file_id)
-    .and_then(|decl| {
-        let range = decl.focus_range?;
-        let access = references::decl_access(&def, syntax, range);
-        Some(HighlightedRange { range, access })
+        .filter(|decl| decl.file_id == file_id)
+        .and_then(|decl| {
+            let range = decl.focus_range?;
+            let access = references::decl_access(&def, syntax, range);
+            Some(HighlightedRange { range, access })
+        })
     });
 
-    let file_refs = usages.references.get(&file_id).map_or(&[][..], Vec::as_slice);
-    let mut res = Vec::with_capacity(file_refs.len() + 1);
-    res.extend(declaration);
-    res.extend(
-        file_refs
-            .iter()
-            .map(|&FileReference { access, range, .. }| HighlightedRange { range, access }),
-    );
-    Some(res)
+    Some(declarations.chain(usages).collect())
 }
 
 fn highlight_exit_points(
@@ -263,6 +264,35 @@ fn cover_range(r0: Option<TextRange>, r1: Option<TextRange>) -> Option<TextRange
         (None, Some(range)) => Some(range),
         (None, None) => None,
     }
+}
+
+fn find_defs(
+    sema: &Semantics<RootDatabase>,
+    syntax: &SyntaxNode,
+    offset: TextSize,
+) -> Option<Vec<Definition>> {
+    let defs = match sema.find_node_at_offset_with_descend(syntax, offset)? {
+        ast::NameLike::NameRef(name_ref) => match NameRefClass::classify(sema, &name_ref)? {
+            NameRefClass::Definition(def) => vec![def],
+            NameRefClass::FieldShorthand { local_ref, field_ref } => {
+                vec![Definition::Local(local_ref), Definition::Field(field_ref)]
+            }
+        },
+        ast::NameLike::Name(name) => match NameClass::classify(sema, &name)? {
+            NameClass::Definition(it) | NameClass::ConstReference(it) => vec![it],
+            NameClass::PatFieldShorthand { local_def, field_ref } => {
+                vec![Definition::Local(local_def), Definition::Field(field_ref)]
+            }
+        },
+        ast::NameLike::Lifetime(lifetime) => NameRefClass::classify_lifetime(sema, &lifetime)
+            .and_then(|class| match class {
+                NameRefClass::Definition(it) => Some(it),
+                _ => None,
+            })
+            .or_else(|| NameClass::classify_lifetime(sema, &lifetime).and_then(NameClass::defined))
+            .map(|it| vec![it])?,
+    };
+    Some(defs)
 }
 
 #[cfg(test)]
@@ -768,6 +798,22 @@ fn foo() {
          // ^^^^^
         }
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_field_shorthand() {
+        check(
+            r#"
+struct Struct { field: u32 }
+              //^^^^^
+fn function(field: u32) {
+          //^^^^^
+    Struct { field$0 }
+           //^^^^^ read
+           //^^^^^ read
 }
 "#,
         );
