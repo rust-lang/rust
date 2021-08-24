@@ -118,10 +118,7 @@ pub(crate) fn find_def(
                 _ => None,
             })
             .or_else(|| {
-                NameClass::classify_lifetime(sema, &lifetime).and_then(|class| match class {
-                    NameClass::Definition(it) => Some(it),
-                    _ => None,
-                })
+                NameClass::classify_lifetime(sema, &lifetime).and_then(NameClass::defined)
             })?,
     };
     Some(def)
