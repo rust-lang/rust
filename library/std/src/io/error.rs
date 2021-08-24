@@ -284,6 +284,45 @@ pub enum ErrorKind {
     #[stable(feature = "out_of_memory_error", since = "1.54.0")]
     OutOfMemory,
 
+    /// Subprocess failed.
+    ///
+    /// A subprocess (eg, run by a
+    /// [`Command`](care::process::Command)) failed.
+    ///
+    /// Often wraps an
+    /// [`ExitStatusError`](crate::process::ExitStatusError),
+    /// (perhaps via `?` and `Into`), in which case
+    /// [`io::Error::get_ref`](crate::io::error::get_ref) or
+    /// [`std::error::Error::source`](crate::error::Error::source)
+    /// is the `ExitStatusError`,
+    /// allowing the subprocess's exit status to be obtained.
+    ///
+    /// (The exit code, exit status, or wait status is generally *not*
+    /// available via
+    /// [`io::Error::raw_os_error`](crate::io::Error::raw_os_error),
+    /// since process exit codes are not generally the same as OS
+    /// error codes..)
+    ///
+    /// # Example
+    /// ```
+    /// #![feature(exit_status_error)]
+    /// use std::process::{Command, ExitStatusError};
+    ///
+    /// fn system(shellcmd: &str) -> Result<(), std::io::Error> {
+    ///     Command::new("sh").args(&["-c",shellcmd]).status()?.exit_ok()?;
+    ///     Ok(())
+    /// }
+    ///
+    /// # if cfg!(unix) {
+    /// let err = system("exit 23").unwrap_err();
+    /// let exit_error: &ExitStatusError = err.get_ref().unwrap().downcast_ref().unwrap();
+    /// assert_eq!(err.to_string(), "process exited unsuccessfully: exit status: 23");
+    /// assert_eq!(exit_error.code(), Some(23));
+    /// # }
+    /// ```
+    #[unstable(feature = "exit_status_error", issue = "84908")]
+    SubprocessFailed,
+
     // "Unusual" error kinds which do not correspond simply to (sets
     // of) OS error codes, should be added just above this comment.
     // `Other` and `Uncategorised` should remain at the end:
@@ -350,6 +389,7 @@ impl ErrorKind {
             ResourceBusy => "resource busy",
             StaleNetworkFileHandle => "stale network file handle",
             StorageFull => "no storage space",
+            SubprocessFailed => "subprocess failed",
             TimedOut => "timed out",
             TooManyLinks => "too many links",
             Uncategorized => "uncategorized error",

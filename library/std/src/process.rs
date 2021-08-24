@@ -1636,6 +1636,13 @@ impl fmt::Display for ExitStatusError {
 #[unstable(feature = "exit_status_error", issue = "84908")]
 impl crate::error::Error for ExitStatusError {}
 
+#[unstable(feature = "exit_status_error", issue = "84908")]
+impl From<ExitStatusError> for io::Error {
+    fn from(ese: ExitStatusError) -> io::Error {
+        io::Error::new(io::ErrorKind::SubprocessFailed, ese)
+    }
+}
+
 /// This type represents the status code a process can return to its
 /// parent under normal termination.
 ///
