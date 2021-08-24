@@ -5,7 +5,7 @@
 //
 //[warn_deny] compile-flags: --warn missing_abi --deny missing_abi
 //[forbid_warn] compile-flags: --warn missing_abi --forbid missing_abi
-//[force_warn_deny] compile-flags: -Z unstable-options --force-warn missing_abi --allow missing_abi
+//[force_warn_deny] compile-flags: --force-warn missing_abi --allow missing_abi
 //[force_warn_deny] check-pass
 
 

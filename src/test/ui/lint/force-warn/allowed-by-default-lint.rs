@@ -1,5 +1,5 @@
 // --force-warn $LINT causes $LINT (which is allow-by-default) to warn
-// compile-flags: --force-warn elided_lifetimes_in_paths -Zunstable-options
+// compile-flags: --force-warn elided_lifetimes_in_paths
 // check-pass
 
 struct Foo<'a> {

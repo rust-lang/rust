@@ -503,10 +503,11 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("disable-minification", |o| {
             o.optflagmulti("", "disable-minification", "Disable minification applied on JS files")
         }),
-        stable("warn", |o| o.optmulti("W", "warn", "Set lint warnings", "OPT")),
-        stable("allow", |o| o.optmulti("A", "allow", "Set lint allowed", "OPT")),
-        stable("deny", |o| o.optmulti("D", "deny", "Set lint denied", "OPT")),
-        stable("forbid", |o| o.optmulti("F", "forbid", "Set lint forbidden", "OPT")),
+        stable("allow", |o| o.optmulti("A", "allow", "Set lint allowed", "LINT")),
+        stable("warn", |o| o.optmulti("W", "warn", "Set lint warnings", "LINT")),
+        stable("force-warn", |o| o.optmulti("", "force-warn", "Set lint force-warn", "LINT")),
+        stable("deny", |o| o.optmulti("D", "deny", "Set lint denied", "LINT")),
+        stable("forbid", |o| o.optmulti("F", "forbid", "Set lint forbidden", "LINT")),
         stable("cap-lints", |o| {
             o.optmulti(
                 "",
@@ -515,14 +516,6 @@ fn opts() -> Vec<RustcOptGroup> {
                  More restrictive lints are capped at this \
                  level. By default, it is at `forbid` level.",
                 "LEVEL",
-            )
-        }),
-        unstable("force-warn", |o| {
-            o.optopt(
-                "",
-                "force-warn",
-                "Lints that will warn even if allowed somewhere else",
-                "LINTS",
             )
         }),
         unstable("index-page", |o| {
