@@ -167,10 +167,7 @@ pub(super) struct DecodeContext<'a, 'tcx> {
 /// Abstract over the various ways one can create metadata decoders.
 pub(super) trait Metadata<'a, 'tcx>: Copy {
     fn blob(self) -> &'a MetadataBlob;
-    #[inline]
-    fn raw_bytes(self) -> &'a [u8] {
-        self.blob()
-    }
+
     fn cdata(self) -> Option<CrateMetadataRef<'a>> {
         None
     }
@@ -184,7 +181,7 @@ pub(super) trait Metadata<'a, 'tcx>: Copy {
     fn decoder(self, pos: usize) -> DecodeContext<'a, 'tcx> {
         let tcx = self.tcx();
         DecodeContext {
-            opaque: opaque::Decoder::new(self.raw_bytes(), pos),
+            opaque: opaque::Decoder::new(self.blob(), pos),
             cdata: self.cdata(),
             blob: self.blob(),
             sess: self.sess().or(tcx.map(|tcx| tcx.sess)),
@@ -637,7 +634,7 @@ impl MetadataBlob {
     }
 
     crate fn is_compatible(&self) -> bool {
-        self.raw_bytes().starts_with(METADATA_HEADER)
+        self.blob().starts_with(METADATA_HEADER)
     }
 
     crate fn get_rustc_version(&self) -> String {
@@ -646,7 +643,7 @@ impl MetadataBlob {
     }
 
     crate fn get_root(&self) -> CrateRoot<'tcx> {
-        let slice = self.raw_bytes();
+        let slice = &self.blob()[..];
         let offset = METADATA_HEADER.len();
         let pos = (((slice[offset + 0] as u32) << 24)
             | ((slice[offset + 1] as u32) << 16)
