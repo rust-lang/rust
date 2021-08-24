@@ -63,6 +63,7 @@ mod remove_noop_landing_pads;
 mod remove_storage_markers;
 mod remove_unneeded_drops;
 mod remove_zsts;
+mod replace_few_wildcard_matches;
 mod required_consts;
 mod separate_const_switch;
 mod shim;
@@ -491,6 +492,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let optimizations_with_generators: &[&dyn MirPass<'tcx>] = &[
         &lower_slice_len::LowerSliceLenCalls, // has to be done before inlining, otherwise actual call will be almost always inlined. Also simple, so can just do first
         &unreachable_prop::UnreachablePropagation,
+        &replace_few_wildcard_matches::ReplaceFewWildcardMatches,
         &uninhabited_enum_branching::UninhabitedEnumBranching,
         &simplify::SimplifyCfg::new("after-uninhabited-enum-branching"),
         &inline::Inline,
