@@ -2804,16 +2804,6 @@ where
     /// NB: that includes virtual calls, which are represented by "direct calls"
     /// to an `InstanceDef::Virtual` instance (of `<dyn Trait as Trait>::fn`).
     fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
-
-    fn new_internal(
-        cx: &C,
-        sig: ty::PolyFnSig<'tcx>,
-        extra_args: &[Ty<'tcx>],
-        caller_location: Option<Ty<'tcx>>,
-        codegen_fn_attr_flags: CodegenFnAttrFlags,
-        make_self_ptr_thin: bool,
-    ) -> Self;
-    fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi);
 }
 
 impl<'tcx, C> FnAbiExt<'tcx, C> for call::FnAbi<'tcx, Ty<'tcx>>
@@ -2844,7 +2834,28 @@ where
             matches!(instance.def, ty::InstanceDef::Virtual(..)),
         )
     }
+}
 
+/// Implementation detail of computing `FnAbi`s, shouldn't be exported.
+trait FnAbiInternalExt<'tcx, C>
+where
+    C: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>> + HasTargetSpec,
+{
+    fn new_internal(
+        cx: &C,
+        sig: ty::PolyFnSig<'tcx>,
+        extra_args: &[Ty<'tcx>],
+        caller_location: Option<Ty<'tcx>>,
+        codegen_fn_attr_flags: CodegenFnAttrFlags,
+        make_self_ptr_thin: bool,
+    ) -> Self;
+    fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi);
+}
+
+impl<'tcx, C> FnAbiInternalExt<'tcx, C> for call::FnAbi<'tcx, Ty<'tcx>>
+where
+    C: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>> + HasTargetSpec,
+{
     fn new_internal(
         cx: &C,
         sig: ty::PolyFnSig<'tcx>,
