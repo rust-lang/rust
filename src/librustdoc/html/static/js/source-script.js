@@ -78,18 +78,23 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
 
 function toggleSidebar() {
     var sidebar = document.getElementById("source-sidebar");
+    var logo = document.getElementsByClassName("sidebar")[0];
+    document.body.style.transition = "left 0.5s ease 0s";
+    logo.style.transition = "left 0.5s ease 0s";
     var child = this.children[0].children[0];
     if (child.innerText === ">") {
-        sidebar.style.left = "";
+        sidebar.style.left = "0px";
         this.style.left = "";
-        document.body.style.left = '300px';
         child.innerText = "<";
+        logo.style.left = "300px";
+        document.body.style.left = "300px";
         updateLocalStorage("rustdoc-source-sidebar-show", "true");
     } else {
         sidebar.style.left = "-300px";
         this.style.left = "0";
-        document.body.style.left = '';
         child.innerText = ">";
+        logo.style.left = "0px";
+        document.body.style.left = "0px";
         updateLocalStorage("rustdoc-source-sidebar-show", "false");
     }
 }
