@@ -65,7 +65,7 @@ macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
         dont_merge(stringify!($func));
 
         let y;
-        asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
+        asm!(concat!($mov, " %", $reg, ", %", $reg), lateout($reg) y, in($reg) x);
         y
     }
 };}
@@ -130,3 +130,39 @@ check!(reg_f64, f64, freg, "ldr");
 // CHECK: lgr %r{{[0-9]+}}, %r{{[0-9]+}}
 // CHECK: #NO_APP
 check!(reg_ptr, ptr, reg, "lgr");
+
+// CHECK-LABEL: r0_i8:
+// CHECK: #APP
+// CHECK: lr %r0, %r0
+// CHECK: #NO_APP
+check_reg!(r0_i8, i8, "r0", "lr");
+
+// CHECK-LABEL: r0_i16:
+// CHECK: #APP
+// CHECK: lr %r0, %r0
+// CHECK: #NO_APP
+check_reg!(r0_i16, i16, "r0", "lr");
+
+// CHECK-LABEL: r0_i32:
+// CHECK: #APP
+// CHECK: lr %r0, %r0
+// CHECK: #NO_APP
+check_reg!(r0_i32, i32, "r0", "lr");
+
+// CHECK-LABEL: r0_i64:
+// CHECK: #APP
+// CHECK: lr %r0, %r0
+// CHECK: #NO_APP
+check_reg!(r0_i64, i64, "r0", "lr");
+
+// CHECK-LABEL: f0_f32:
+// CHECK: #APP
+// CHECK: ler %f0, %f0
+// CHECK: #NO_APP
+check_reg!(f0_f32, f32, "f0", "ler");
+
+// CHECK-LABEL: f0_f64:
+// CHECK: #APP
+// CHECK: ldr %f0, %f0
+// CHECK: #NO_APP
+check_reg!(f0_f64, f64, "f0", "ldr");
