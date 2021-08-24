@@ -118,7 +118,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 span: Span::dummy(),
                 unsafety: hir::Unsafety::Normal,
                 generics: new_generics,
-                trait_: Some(trait_ref.clean(self.cx).get_trait_type().unwrap()),
+                trait_: Some(trait_ref.clean(self.cx).get_trait_type().unwrap().expect_path()),
                 for_: ty.clean(self.cx),
                 items: Vec::new(),
                 negative_polarity,

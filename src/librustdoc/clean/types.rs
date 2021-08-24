@@ -1473,6 +1473,15 @@ impl Type {
         }
     }
 
+    // FIXME: temporary
+    #[track_caller]
+    crate fn expect_path(self) -> Path {
+        match self {
+            ResolvedPath { path, .. } => path,
+            _ => panic!("not a ResolvedPath: {:?}", self),
+        }
+    }
+
     crate fn is_self_type(&self) -> bool {
         match *self {
             Generic(name) => name == kw::SelfUpper,
@@ -1481,21 +1490,8 @@ impl Type {
     }
 
     crate fn generics(&self) -> Option<Vec<&Type>> {
-        match *self {
-            ResolvedPath { ref path, .. } => path.segments.last().and_then(|seg| {
-                if let GenericArgs::AngleBracketed { ref args, .. } = seg.args {
-                    Some(
-                        args.iter()
-                            .filter_map(|arg| match arg {
-                                GenericArg::Type(ty) => Some(ty),
-                                _ => None,
-                            })
-                            .collect(),
-                    )
-                } else {
-                    None
-                }
-            }),
+        match self {
+            ResolvedPath { path, .. } => path.generics(),
             _ => None,
         }
     }
@@ -1993,6 +1989,34 @@ impl Path {
             _ => false,
         }
     }
+
+    crate fn generics(&self) -> Option<Vec<&Type>> {
+        self.segments.last().and_then(|seg| {
+            if let GenericArgs::AngleBracketed { ref args, .. } = seg.args {
+                Some(
+                    args.iter()
+                        .filter_map(|arg| match arg {
+                            GenericArg::Type(ty) => Some(ty),
+                            _ => None,
+                        })
+                        .collect(),
+                )
+            } else {
+                None
+            }
+        })
+    }
+}
+
+// FIXME: this is temporary
+impl GetDefId for Path {
+    fn def_id(&self) -> Option<DefId> {
+        Some(self.res.def_id())
+    }
+
+    fn def_id_full(&self, _: &Cache) -> Option<DefId> {
+        self.def_id()
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -2136,7 +2160,7 @@ crate struct Impl {
     crate span: Span,
     crate unsafety: hir::Unsafety,
     crate generics: Generics,
-    crate trait_: Option<Type>,
+    crate trait_: Option<Path>,
     crate for_: Type,
     crate items: Vec<Item>,
     crate negative_polarity: bool,
