@@ -713,16 +713,18 @@ impl WrappingRange {
         self.start > self.end || self.start == 0
     }
 
-    /// Returns new `WrappingRange` with replaced `start`
+    /// Returns `self` with replaced `start`
     #[inline(always)]
-    pub fn with_start(&self, start: u128) -> Self {
-        Self { start, end: self.end }
+    pub fn with_start(mut self, start: u128) -> Self {
+        self.start = start;
+        self
     }
 
-    /// Returns new `WrappingRange` with replaced `end`
+    /// Returns `self` with replaced `end`
     #[inline(always)]
-    pub fn with_end(&self, end: u128) -> Self {
-        Self { start: self.start, end }
+    pub fn with_end(mut self, end: u128) -> Self {
+        self.end = end;
+        self
     }
 }
 
@@ -1024,7 +1026,7 @@ impl Niche {
     pub fn reserve<C: HasDataLayout>(&self, cx: &C, count: u128) -> Option<(u128, Scalar)> {
         assert!(count > 0);
 
-        let Scalar { value, valid_range: ref v } = self.scalar;
+        let Scalar { value, valid_range: v } = self.scalar.clone();
         let bits = value.size(cx).bits();
         assert!(bits <= 128);
         let max_value = !0u128 >> (128 - bits);
