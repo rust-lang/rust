@@ -607,8 +607,14 @@ impl Process {
 }
 
 /// Unix exit statuses
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub struct ExitStatus(c_int);
+
+impl fmt::Debug for ExitStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("unix_wait_status").field(&self.0).finish()
+    }
+}
 
 impl ExitStatus {
     pub fn new(status: c_int) -> ExitStatus {
@@ -683,12 +689,18 @@ impl fmt::Display for ExitStatus {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub struct ExitStatusError(NonZero_c_int);
 
 impl Into<ExitStatus> for ExitStatusError {
     fn into(self) -> ExitStatus {
         ExitStatus(self.0.into())
+    }
+}
+
+impl fmt::Debug for ExitStatusError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("unix_wait_status").field(&self.0).finish()
     }
 }
 
