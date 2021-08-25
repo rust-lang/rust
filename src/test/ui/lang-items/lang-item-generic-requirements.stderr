@@ -1,0 +1,56 @@
+error[E0718]: `add` language item must be applied to a trait with 1 generic argument
+  --> $DIR/lang-item-generic-requirements.rs:11:1
+   |
+LL | #[lang = "add"]
+   | ^^^^^^^^^^^^^^^
+LL | trait MyAdd<'a, T> {}
+   |            ------- this trait has 2 generic arguments
+
+error[E0718]: `drop_in_place` language item must be applied to a function with at least 1 generic argument
+  --> $DIR/lang-item-generic-requirements.rs:15:1
+   |
+LL | #[lang = "drop_in_place"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn my_ptr_drop() {}
+   |               - this function has 0 generic arguments
+
+error[E0718]: `index` language item must be applied to a trait with 1 generic argument
+  --> $DIR/lang-item-generic-requirements.rs:19:1
+   |
+LL | #[lang = "index"]
+   | ^^^^^^^^^^^^^^^^^
+LL | trait MyIndex<'a, T> {}
+   |              ------- this trait has 2 generic arguments
+
+error[E0718]: `phantom_data` language item must be applied to a struct with 1 generic argument
+  --> $DIR/lang-item-generic-requirements.rs:23:1
+   |
+LL | #[lang = "phantom_data"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct MyPhantomData<T, U>;
+   |                     ------ this struct has 2 generic arguments
+
+error[E0392]: parameter `T` is never used
+  --> $DIR/lang-item-generic-requirements.rs:25:22
+   |
+LL | struct MyPhantomData<T, U>;
+   |                      ^ unused parameter
+   |
+   = help: consider removing `T` or referring to it in a field
+   = help: if you intended `T` to be a const parameter, use `const T: usize` instead
+
+error[E0392]: parameter `U` is never used
+  --> $DIR/lang-item-generic-requirements.rs:25:25
+   |
+LL | struct MyPhantomData<T, U>;
+   |                         ^ unused parameter
+   |
+   = help: consider removing `U` or referring to it in a field
+   = help: if you intended `U` to be a const parameter, use `const U: usize` instead
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0392, E0718.
+For more information about an error, try `rustc --explain E0392`.

@@ -14,6 +14,7 @@ use rustc_trait_selection::traits::{
 };
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    #[instrument(skip(self), level = "debug")]
     pub fn check_match(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
@@ -26,6 +27,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let acrb = arms_contain_ref_bindings(arms);
         let scrutinee_ty = self.demand_scrutinee_type(scrut, acrb, arms.is_empty());
+        debug!(?scrutinee_ty);
 
         // If there are no arms, that is a diverging match; a special case.
         if arms.is_empty() {

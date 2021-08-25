@@ -499,7 +499,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let scalar_unit = |value: Primitive| {
             let bits = value.size(dl).bits();
             assert!(bits <= 128);
-            Scalar { value, valid_range: 0..=(!0 >> (128 - bits)) }
+            Scalar { value, valid_range: WrappingRange { start: 0, end: (!0 >> (128 - bits)) } }
         };
         let scalar = |value: Primitive| tcx.intern_layout(Layout::scalar(self, scalar_unit(value)));
 
@@ -512,11 +512,14 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             // Basic scalars.
             ty::Bool => tcx.intern_layout(Layout::scalar(
                 self,
-                Scalar { value: Int(I8, false), valid_range: 0..=1 },
+                Scalar { value: Int(I8, false), valid_range: WrappingRange { start: 0, end: 1 } },
             )),
             ty::Char => tcx.intern_layout(Layout::scalar(
                 self,
-                Scalar { value: Int(I32, false), valid_range: 0..=0x10FFFF },
+                Scalar {
+                    value: Int(I32, false),
+                    valid_range: WrappingRange { start: 0, end: 0x10FFFF },
+                },
             )),
             ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)),
             ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)),
@@ -526,7 +529,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             }),
             ty::FnPtr(_) => {
                 let mut ptr = scalar_unit(Pointer);
-                ptr.valid_range = 1..=*ptr.valid_range.end();
+                ptr.valid_range = ptr.valid_range.with_start(1);
                 tcx.intern_layout(Layout::scalar(self, ptr))
             }
 
@@ -544,7 +547,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let mut data_ptr = scalar_unit(Pointer);
                 if !ty.is_unsafe_ptr() {
-                    data_ptr.valid_range = 1..=*data_ptr.valid_range.end();
+                    data_ptr.valid_range = data_ptr.valid_range.with_start(1);
                 }
 
                 let pointee = tcx.normalize_erasing_regions(param_env, pointee);
@@ -560,7 +563,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     ty::Slice(_) | ty::Str => scalar_unit(Int(dl.ptr_sized_integer(), false)),
                     ty::Dynamic(..) => {
                         let mut vtable = scalar_unit(Pointer);
-                        vtable.valid_range = 1..=*vtable.valid_range.end();
+                        vtable.valid_range = vtable.valid_range.with_start(1);
                         vtable
                     }
                     _ => return Err(LayoutError::Unknown(unsized_part)),
@@ -933,14 +936,14 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             if let Bound::Included(start) = start {
                                 // FIXME(eddyb) this might be incorrect - it doesn't
                                 // account for wrap-around (end < start) ranges.
-                                assert!(*scalar.valid_range.start() <= start);
-                                scalar.valid_range = start..=*scalar.valid_range.end();
+                                assert!(scalar.valid_range.start <= start);
+                                scalar.valid_range.start = start;
                             }
                             if let Bound::Included(end) = end {
                                 // FIXME(eddyb) this might be incorrect - it doesn't
                                 // account for wrap-around (end < start) ranges.
-                                assert!(*scalar.valid_range.end() >= end);
-                                scalar.valid_range = *scalar.valid_range.start()..=end;
+                                assert!(scalar.valid_range.end >= end);
+                                scalar.valid_range.end = end;
                             }
 
                             // Update `largest_niche` if we have introduced a larger niche.
@@ -1256,7 +1259,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 let tag_mask = !0u128 >> (128 - ity.size().bits());
                 let tag = Scalar {
                     value: Int(ity, signed),
-                    valid_range: (min as u128 & tag_mask)..=(max as u128 & tag_mask),
+                    valid_range: WrappingRange {
+                        start: (min as u128 & tag_mask),
+                        end: (max as u128 & tag_mask),
+                    },
                 };
                 let mut abi = Abi::Aggregate { sized: true };
                 if tag.value.size(dl) == size {
@@ -1535,7 +1541,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let max_discr = (info.variant_fields.len() - 1) as u128;
         let discr_int = Integer::fit_unsigned(max_discr);
         let discr_int_ty = discr_int.to_ty(tcx, false);
-        let tag = Scalar { value: Primitive::Int(discr_int, false), valid_range: 0..=max_discr };
+        let tag = Scalar {
+            value: Primitive::Int(discr_int, false),
+            valid_range: WrappingRange { start: 0, end: max_discr },
+        };
         let tag_layout = self.tcx.intern_layout(Layout::scalar(self, tag.clone()));
         let tag_layout = TyAndLayout { ty: discr_int_ty, layout: tag_layout };
 
@@ -2846,10 +2855,8 @@ where
                 return;
             }
 
-            if scalar.valid_range.start() < scalar.valid_range.end() {
-                if *scalar.valid_range.start() > 0 {
-                    attrs.set(ArgAttribute::NonNull);
-                }
+            if !scalar.valid_range.contains_zero() {
+                attrs.set(ArgAttribute::NonNull);
             }
 
             if let Some(pointee) = layout.pointee_info_at(cx, offset) {

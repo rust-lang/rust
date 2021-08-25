@@ -18,7 +18,7 @@ use rustc_errors::{pluralize, struct_span_err};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::lang_items::{extract, ITEM_REFS};
+use rustc_hir::lang_items::{extract, GenericRequirement, ITEM_REFS};
 use rustc_hir::{HirId, LangItem, LanguageItems, Target};
 use rustc_span::Span;
 
@@ -183,97 +183,39 @@ impl LanguageItemCollector<'tcx> {
     }
 
     // Like collect_item() above, but also checks whether the lang item is declared
-    // with the right number of generic arguments if it is a trait.
+    // with the right number of generic arguments.
     fn collect_item_extended(&mut self, item_index: usize, hir_id: HirId, span: Span) {
         let item_def_id = self.tcx.hir().local_def_id(hir_id).to_def_id();
         let lang_item = LangItem::from_u32(item_index as u32).unwrap();
         let name = lang_item.name();
 
-        self.collect_item(item_index, item_def_id);
-
         // Now check whether the lang_item has the expected number of generic
-        // arguments if it is a trait. Generally speaking, binary and indexing
-        // operations have one (for the RHS/index), unary operations have none,
-        // and the rest also have none except for the closure traits (one for
-        // the argument list), generators (one for the resume argument),
-        // ordering/equality relations (one for the RHS), and various conversion
-        // traits.
+        // arguments. Generally speaking, binary and indexing operations have
+        // one (for the RHS/index), unary operations have none, the closure
+        // traits have one for the argument list, generators have one for the
+        // resume argument, and ordering/equality relations have one for the RHS
+        // Some other types like Box and various functions like drop_in_place
+        // have minimum requirements.
 
-        let expected_num = match lang_item {
-            // Binary operations
-            LangItem::Add
-            | LangItem::Sub
-            | LangItem::Mul
-            | LangItem::Div
-            | LangItem::Rem
-            | LangItem::BitXor
-            | LangItem::BitAnd
-            | LangItem::BitOr
-            | LangItem::Shl
-            | LangItem::Shr
-            | LangItem::AddAssign
-            | LangItem::SubAssign
-            | LangItem::MulAssign
-            | LangItem::DivAssign
-            | LangItem::RemAssign
-            | LangItem::BitXorAssign
-            | LangItem::BitAndAssign
-            | LangItem::BitOrAssign
-            | LangItem::ShlAssign
-            | LangItem::ShrAssign
-            | LangItem::Index
-            | LangItem::IndexMut
-
-            // Miscellaneous
-            | LangItem::Unsize
-            | LangItem::CoerceUnsized
-            | LangItem::DispatchFromDyn
-            | LangItem::Fn
-            | LangItem::FnMut
-            | LangItem::FnOnce
-            | LangItem::Generator
-            | LangItem::PartialEq
-            | LangItem::PartialOrd
-                => Some(1),
-
-            // Unary operations
-            LangItem::Neg
-            | LangItem::Not
-
-            // Miscellaneous
-            | LangItem::Deref
-            | LangItem::DerefMut
-            | LangItem::Sized
-            | LangItem::StructuralPeq
-            | LangItem::StructuralTeq
-            | LangItem::Copy
-            | LangItem::Clone
-            | LangItem::Sync
-            | LangItem::DiscriminantKind
-            | LangItem::PointeeTrait
-            | LangItem::Freeze
-            | LangItem::Drop
-            | LangItem::Receiver
-            | LangItem::Future
-            | LangItem::Unpin
-            | LangItem::Termination
-            | LangItem::Try
-                => Some(0),
-
-            // Not a trait
-            _ => None,
-        };
-
-        if let Some(expected_num) = expected_num {
-            let (actual_num, generics_span) = match self.tcx.hir().get(hir_id) {
-                hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Trait(_, _, generics, ..),
-                    ..
-                }) => (generics.params.len(), generics.span),
-                _ => bug!("op/index/deref lang item target is not a trait: {:?}", lang_item),
+        if let hir::Node::Item(hir::Item { kind, span: item_span, .. }) = self.tcx.hir().get(hir_id)
+        {
+            let (actual_num, generics_span) = match kind.generics() {
+                Some(generics) => (generics.params.len(), generics.span),
+                None => (0, *item_span),
             };
 
-            if expected_num != actual_num {
+            let required = match lang_item.required_generics() {
+                GenericRequirement::Exact(num) if num != actual_num => {
+                    Some((format!("{}", num), pluralize!(num)))
+                }
+                GenericRequirement::Minimum(num) if actual_num < num => {
+                    Some((format!("at least {}", num), pluralize!(num)))
+                }
+                // If the number matches, or there is no requirement, handle it normally
+                _ => None,
+            };
+
+            if let Some((range_str, pluralized)) = required {
                 // We are issuing E0718 "incorrect target" here, because while the
                 // item kind of the target is correct, the target is still wrong
                 // because of the wrong number of generic arguments.
@@ -281,23 +223,29 @@ impl LanguageItemCollector<'tcx> {
                     self.tcx.sess,
                     span,
                     E0718,
-                    "`{}` language item must be applied to a trait with {} generic argument{}",
+                    "`{}` language item must be applied to a {} with {} generic argument{}",
                     name,
-                    expected_num,
-                    pluralize!(expected_num)
+                    kind.descr(),
+                    range_str,
+                    pluralized,
                 )
                 .span_label(
                     generics_span,
                     format!(
-                        "this trait has {} generic argument{}, not {}",
+                        "this {} has {} generic argument{}",
+                        kind.descr(),
                         actual_num,
                         pluralize!(actual_num),
-                        expected_num
                     ),
                 )
                 .emit();
+
+                // return early to not collect the lang item
+                return;
             }
         }
+
+        self.collect_item(item_index, item_def_id);
     }
 }
 

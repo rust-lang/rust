@@ -11,7 +11,6 @@
 // of the underlying generator.
 
 #![feature(if_let_guard)]
-#![allow(incomplete_features)]
 
 async fn f() -> u8 { 1 }
 async fn foo() -> [bool; 10] { [false; 10] }

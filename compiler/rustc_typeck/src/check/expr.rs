@@ -156,12 +156,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Note that inspecting a type's structure *directly* may expose the fact
     /// that there are actually multiple representations for `Error`, so avoid
     /// that when err needs to be handled differently.
+    #[instrument(skip(self), level = "debug")]
     pub(super) fn check_expr_with_expectation(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        debug!(">> type-checking: expected={:?}, expr={:?} ", expected, expr);
+        if self.tcx().sess.verbose() {
+            // make this code only run with -Zverbose because it is probably slow
+            if let Ok(lint_str) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
+                if !lint_str.contains("\n") {
+                    debug!("expr text: {}", lint_str);
+                } else {
+                    let mut lines = lint_str.lines();
+                    if let Some(line0) = lines.next() {
+                        let remaining_lines = lines.count();
+                        debug!("expr text: {}", line0);
+                        debug!("expr text: ...(and {} more lines)", remaining_lines);
+                    }
+                }
+            }
+        }
 
         // True if `expr` is a `Try::from_ok(())` that is a result of desugaring a try block
         // without the final expr (e.g. `try { return; }`). We don't want to generate an
@@ -1039,7 +1054,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let t_cast = self.to_ty_saving_user_provided_ty(t);
         let t_cast = self.resolve_vars_if_possible(t_cast);
         let t_expr = self.check_expr_with_expectation(e, ExpectCastableToType(t_cast));
-        let t_cast = self.resolve_vars_if_possible(t_cast);
+        let t_expr = self.resolve_vars_if_possible(t_expr);
 
         // Eagerly check for some obvious errors.
         if t_expr.references_error() || t_cast.references_error() {
@@ -1049,6 +1064,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
             match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
                 Ok(cast_check) => {
+                    debug!(
+                        "check_expr_cast: deferring cast from {:?} to {:?}: {:?}",
+                        t_cast, t_expr, cast_check,
+                    );
                     deferred_cast_checks.push(cast_check);
                     t_cast
                 }

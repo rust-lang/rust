@@ -51,6 +51,7 @@ use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
 
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
+#[derive(Debug)]
 pub struct CastCheck<'tcx> {
     expr: &'tcx hir::Expr<'tcx>,
     expr_ty: Ty<'tcx>,
@@ -603,11 +604,10 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         });
     }
 
+    #[instrument(skip(fcx), level = "debug")]
     pub fn check(mut self, fcx: &FnCtxt<'a, 'tcx>) {
         self.expr_ty = fcx.structurally_resolved_type(self.expr.span, self.expr_ty);
         self.cast_ty = fcx.structurally_resolved_type(self.cast_span, self.cast_ty);
-
-        debug!("check_cast({}, {:?} as {:?})", self.expr.hir_id, self.expr_ty, self.cast_ty);
 
         if !fcx.type_is_known_to_be_sized_modulo_regions(self.cast_ty, self.span) {
             self.report_cast_to_unsized_type(fcx);

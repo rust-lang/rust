@@ -1,11 +1,11 @@
 error: irrefutable `if let` pattern
-  --> $DIR/deny-irrefutable-let-patterns.rs:7:8
+  --> $DIR/deny-irrefutable-let-patterns.rs:6:8
    |
 LL |     if let _ = 5 {}
    |        ^^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/deny-irrefutable-let-patterns.rs:4:9
+  --> $DIR/deny-irrefutable-let-patterns.rs:3:9
    |
 LL | #![deny(irrefutable_let_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL | #![deny(irrefutable_let_patterns)]
    = help: consider replacing the `if let` with a `let`
 
 error: irrefutable `while let` pattern
-  --> $DIR/deny-irrefutable-let-patterns.rs:9:11
+  --> $DIR/deny-irrefutable-let-patterns.rs:8:11
    |
 LL |     while let _ = 5 {
    |           ^^^^^^^^^
@@ -22,7 +22,7 @@ LL |     while let _ = 5 {
    = help: consider instead using a `loop { ... }` with a `let` inside it
 
 error: irrefutable `if let` guard pattern
-  --> $DIR/deny-irrefutable-let-patterns.rs:14:18
+  --> $DIR/deny-irrefutable-let-patterns.rs:13:18
    |
 LL |         _ if let _ = 2 => {}
    |                  ^

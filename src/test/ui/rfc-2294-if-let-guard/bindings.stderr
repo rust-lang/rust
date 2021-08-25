@@ -1,11 +1,11 @@
 error[E0425]: cannot find value `y` in this scope
-  --> $DIR/bindings.rs:7:14
+  --> $DIR/bindings.rs:6:14
    |
 LL |         _ => y,
    |              ^ not found in this scope
 
 error[E0425]: cannot find value `y` in this scope
-  --> $DIR/bindings.rs:9:5
+  --> $DIR/bindings.rs:8:5
    |
 LL |     y
    |     ^ not found in this scope

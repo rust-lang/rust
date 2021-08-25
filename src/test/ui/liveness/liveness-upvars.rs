@@ -1,5 +1,6 @@
 // edition:2018
 // check-pass
+#![feature(generators)]
 #![warn(unused)]
 #![allow(unreachable_code)]
 
@@ -102,6 +103,41 @@ pub fn h<T: Copy + Default + std::fmt::Debug>() {
             }
         }
         dbg!(z);
+    };
+}
+
+async fn yield_now() {
+    todo!();
+}
+
+pub fn async_generator() {
+    let mut state: u32 = 0;
+
+    let _ = async {
+        state = 1;
+        yield_now().await;
+        state = 2;
+        yield_now().await;
+        state = 3;
+    };
+
+    let _ = async move {
+        state = 4;  //~  WARN value assigned to `state` is never read
+                    //~| WARN unused variable: `state`
+        yield_now().await;
+        state = 5;  //~ WARN value assigned to `state` is never read
+    };
+}
+
+pub fn generator() {
+    let mut s: u32 = 0;
+    let _ = |_| {
+        s = 0;
+        yield ();
+        s = 1; //~ WARN value assigned to `s` is never read
+        yield (s = 2);
+        s = yield (); //~ WARN value assigned to `s` is never read
+        s = 3;
     };
 }
 

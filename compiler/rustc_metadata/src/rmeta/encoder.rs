@@ -509,11 +509,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                                 let working_dir = &self.tcx.sess.opts.working_dir;
                                 match working_dir {
                                     RealFileName::LocalPath(absolute) => {
-                                        // If working_dir has not been remapped, then we emit a
-                                        // LocalPath variant as it's likely to be a valid path
-                                        RealFileName::LocalPath(
-                                            Path::new(absolute).join(path_to_file),
-                                        )
+                                        // Although neither working_dir or the file name were subject
+                                        // to path remapping, the concatenation between the two may
+                                        // be. Hence we need to do a remapping here.
+                                        let joined = Path::new(absolute).join(path_to_file);
+                                        let (joined, remapped) =
+                                            source_map.path_mapping().map_prefix(joined);
+                                        if remapped {
+                                            RealFileName::Remapped {
+                                                local_path: None,
+                                                virtual_name: joined,
+                                            }
+                                        } else {
+                                            RealFileName::LocalPath(joined)
+                                        }
                                     }
                                     RealFileName::Remapped { local_path: _, virtual_name } => {
                                         // If working_dir has been remapped, then we emit

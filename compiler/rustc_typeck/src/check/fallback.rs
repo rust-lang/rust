@@ -3,7 +3,9 @@ use rustc_infer::infer::type_variable::Diverging;
 use rustc_middle::ty::{self, Ty};
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
-    pub(super) fn type_inference_fallback(&self) {
+    /// Performs type inference fallback, returning true if any fallback
+    /// occurs.
+    pub(super) fn type_inference_fallback(&self) -> bool {
         // All type checking constraints were added, try to fallback unsolved variables.
         self.select_obligations_where_possible(false, |_| {});
         let mut fallback_has_occurred = false;
@@ -50,6 +52,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
         // See if we can make any more progress.
         self.select_obligations_where_possible(fallback_has_occurred, |_| {});
+
+        fallback_has_occurred
     }
 
     // Tries to apply a fallback to `ty` if it is an unsolved variable.

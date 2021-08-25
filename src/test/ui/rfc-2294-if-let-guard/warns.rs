@@ -1,5 +1,4 @@
 #![feature(if_let_guard)]
-#![allow(incomplete_features)]
 
 #[deny(irrefutable_let_patterns)]
 fn irrefutable_let_guard() {

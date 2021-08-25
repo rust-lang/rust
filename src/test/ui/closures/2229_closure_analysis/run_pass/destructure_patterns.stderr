@@ -29,29 +29,11 @@ warning: unused variable: `t2`
 LL |         let (_, t2) = t;
    |                 ^^ help: if this is intentional, prefix it with an underscore: `_t2`
 
-warning: unused variable: `t`
-  --> $DIR/destructure_patterns.rs:45:9
-   |
-LL |     let t = (String::from("Hello"), String::from("World"));
-   |         ^ help: if this is intentional, prefix it with an underscore: `_t`
-
 warning: unused variable: `x`
-  --> $DIR/destructure_patterns.rs:91:21
+  --> $DIR/destructure_patterns.rs:88:21
    |
 LL |         let Point { x, y } = p;
    |                     ^ help: try ignoring the field: `x: _`
 
-warning: unused variable: `x`
-  --> $DIR/destructure_patterns.rs:83:9
-   |
-LL |     let x = 0;
-   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
-
-warning: unused variable: `tup`
-  --> $DIR/destructure_patterns.rs:85:9
-   |
-LL |     let tup = (1, 2);
-   |         ^^^ help: if this is intentional, prefix it with an underscore: `_tup`
-
-warning: 8 warnings emitted
+warning: 5 warnings emitted
 

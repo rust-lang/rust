@@ -552,7 +552,7 @@ declare_features! (
     (incomplete, lazy_normalization_consts, "1.46.0", Some(72219), None),
 
     /// Allows `if let` guard in match arms.
-    (incomplete, if_let_guard, "1.47.0", Some(51114), None),
+    (active, if_let_guard, "1.47.0", Some(51114), None),
 
     /// Allows non-trivial generic constants which have to be manually propagated upwards.
     (incomplete, const_evaluatable_checked, "1.48.0", Some(76560), None),
