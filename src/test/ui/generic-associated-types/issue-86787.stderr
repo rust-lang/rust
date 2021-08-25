@@ -9,7 +9,7 @@ LL | |     <Left as HasChildrenOf>::T: 'a,
 LL | |     <Right as HasChildrenOf>::T: 'a
    | |                                    - help: consider adding a where clause: `, <Left as HasChildrenOf>::T: 'a`
 LL | |     = Either<&'a Left::T, &'a Right::T>;
-   | |________________________________________^ ...so that the type `<Left as HasChildrenOf>::T` will meet its required lifetime bounds
+   | |________________________________________^ ...so that the definition in impl matches the definition from the trait
 
 error[E0309]: the associated type `<Right as HasChildrenOf>::T` may not live long enough
   --> $DIR/issue-86787.rs:23:5
@@ -22,7 +22,7 @@ LL | |     <Left as HasChildrenOf>::T: 'a,
 LL | |     <Right as HasChildrenOf>::T: 'a
    | |                                    - help: consider adding a where clause: `, <Right as HasChildrenOf>::T: 'a`
 LL | |     = Either<&'a Left::T, &'a Right::T>;
-   | |________________________________________^ ...so that the type `<Right as HasChildrenOf>::T` will meet its required lifetime bounds
+   | |________________________________________^ ...so that the definition in impl matches the definition from the trait
 
 error: aborting due to 2 previous errors
 
