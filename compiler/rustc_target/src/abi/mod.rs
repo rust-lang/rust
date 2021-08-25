@@ -1244,7 +1244,7 @@ pub trait TyAbiInterface<'a, C: LayoutOf<'a, Ty = Self>>: Sized {
         cx: &C,
         variant_index: VariantIdx,
     ) -> TyAndLayout<'a, Self>;
-    fn ty_and_layout_field(this: TyAndLayout<'a, Self>, cx: &C, i: usize) -> C::TyAndLayout;
+    fn ty_and_layout_field(this: TyAndLayout<'a, Self>, cx: &C, i: usize) -> TyAndLayout<'a, Self>;
     fn ty_and_layout_pointee_info_at(
         this: TyAndLayout<'a, Self>,
         cx: &C,
@@ -1261,7 +1261,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty::ty_and_layout_for_variant(self, cx, variant_index)
     }
 
-    pub fn field<C>(self, cx: &C, i: usize) -> C::TyAndLayout
+    pub fn field<C>(self, cx: &C, i: usize) -> Self
     where
         Ty: TyAbiInterface<'a, C>,
         C: LayoutOf<'a, Ty = Ty>,
@@ -1302,11 +1302,11 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// FIXME: Once we removed all the conservatism, we could alternatively
     /// create an all-0/all-undef constant and run the const value validator to see if
     /// this is a valid value for the given type.
-    pub fn might_permit_raw_init<C, E>(self, cx: &C, zero: bool) -> Result<bool, E>
+    pub fn might_permit_raw_init<C>(self, cx: &C, zero: bool) -> bool
     where
         Self: Copy,
         Ty: TyAbiInterface<'a, C>,
-        C: LayoutOf<'a, Ty = Ty, TyAndLayout: MaybeResult<Self, Error = E>> + HasDataLayout,
+        C: LayoutOf<'a, Ty = Ty> + HasDataLayout,
     {
         let scalar_allows_raw_init = move |s: &Scalar| -> bool {
             if zero {
@@ -1331,7 +1331,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         };
         if !valid {
             // This is definitely not okay.
-            return Ok(false);
+            return false;
         }
 
         // If we have not found an error yet, we need to recursively descend into fields.
@@ -1342,16 +1342,15 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             }
             FieldsShape::Arbitrary { offsets, .. } => {
                 for idx in 0..offsets.len() {
-                    let field = self.field(cx, idx).to_result()?;
-                    if !field.might_permit_raw_init(cx, zero)? {
+                    if !self.field(cx, idx).might_permit_raw_init(cx, zero) {
                         // We found a field that is unhappy with this kind of initialization.
-                        return Ok(false);
+                        return false;
                     }
                 }
             }
         }
 
         // FIXME(#66151): For now, we are conservative and do not check `self.variants`.
-        Ok(true)
+        true
     }
 }

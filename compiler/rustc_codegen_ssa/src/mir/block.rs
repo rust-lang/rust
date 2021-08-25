@@ -472,10 +472,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let layout = bx.layout_of(ty);
             let do_panic = match intrinsic {
                 Inhabited => layout.abi.is_uninhabited(),
-                // We unwrap as the error type is `!`.
-                ZeroValid => !layout.might_permit_raw_init(bx, /*zero:*/ true).unwrap(),
-                // We unwrap as the error type is `!`.
-                UninitValid => !layout.might_permit_raw_init(bx, /*zero:*/ false).unwrap(),
+                ZeroValid => !layout.might_permit_raw_init(bx, /*zero:*/ true),
+                UninitValid => !layout.might_permit_raw_init(bx, /*zero:*/ false),
             };
             if do_panic {
                 let msg_str = with_no_trimmed_paths(|| {

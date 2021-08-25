@@ -364,7 +364,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Err(value) => value,
         };
 
-        let field_layout = op.layout.field(self, field)?;
+        let field_layout = op.layout.field(self, field);
         if field_layout.is_zst() {
             let immediate = Scalar::ZST.into();
             return Ok(OpTy { op: Operand::Immediate(immediate), layout: field_layout });

@@ -340,7 +340,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Example: `Arc<T>` -> `Arc<Trait>`
                 // here we need to increase the size of every &T thin ptr field to a fat ptr
                 for i in 0..src.layout.fields.count() {
-                    let cast_ty_field = cast_ty.field(self, i)?;
+                    let cast_ty_field = cast_ty.field(self, i);
                     if cast_ty_field.is_zst() {
                         continue;
                     }
