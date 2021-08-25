@@ -489,7 +489,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut root_var_min_capture_list =
             typeck_results.closure_min_captures.remove(&closure_def_id).unwrap_or_default();
 
-        for (place, capture_info) in capture_information.into_iter() {
+        for (mut place, capture_info) in capture_information.into_iter() {
             let var_hir_id = match place.base {
                 PlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
                 base => bug!("Expected upvar, found={:?}", base),
@@ -530,13 +530,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         // Truncate the descendant (already in min_captures) to be same as the ancestor to handle any
                         // possible change in capture mode.
-                        let (_, descendant_capture_kind) = truncate_place_to_len(
-                            possible_descendant.place,
-                            possible_descendant.info.capture_kind,
+                        truncate_place_to_len_and_update_capture_kind(
+                            &mut possible_descendant.place,
+                            &mut possible_descendant.info.capture_kind,
                             place.projections.len(),
                         );
-
-                        possible_descendant.info.capture_kind = descendant_capture_kind;
 
                         updated_capture_info =
                             determine_capture_info(updated_capture_info, possible_descendant.info);
@@ -561,13 +559,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                             // Truncate the descendant (current place) to be same as the ancestor to handle any
                             // possible change in capture mode.
-                            let (_, descendant_capture_kind) = truncate_place_to_len(
-                                place.clone(),
-                                updated_capture_info.capture_kind,
+                            truncate_place_to_len_and_update_capture_kind(
+                                &mut place,
+                                &mut updated_capture_info.capture_kind,
                                 possible_ancestor.place.projections.len(),
                             );
-
-                            updated_capture_info.capture_kind = descendant_capture_kind;
 
                             possible_ancestor.info = determine_capture_info(
                                 possible_ancestor.info,
@@ -1476,7 +1472,7 @@ fn restrict_repr_packed_field_ref_capture<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     place: &Place<'tcx>,
-    curr_borrow_kind: ty::UpvarCapture<'tcx>,
+    mut curr_borrow_kind: ty::UpvarCapture<'tcx>,
 ) -> (Place<'tcx>, ty::UpvarCapture<'tcx>) {
     let pos = place.projections.iter().enumerate().position(|(i, p)| {
         let ty = place.ty_before_projection(i);
@@ -1508,13 +1504,13 @@ fn restrict_repr_packed_field_ref_capture<'tcx>(
         }
     });
 
-    let place = place.clone();
+    let mut place = place.clone();
 
     if let Some(pos) = pos {
-        truncate_place_to_len(place, curr_borrow_kind, pos)
-    } else {
-        (place, curr_borrow_kind)
+        truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_borrow_kind, pos);
     }
+
+    (place, curr_borrow_kind)
 }
 
 /// Returns a Ty that applies the specified capture kind on the provided capture Ty
@@ -1841,31 +1837,28 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
 ///   them completely.
 /// - No projections are applied on top of Union ADTs, since these require unsafe blocks.
 fn restrict_precision_for_unsafe(
-    place: Place<'tcx>,
-    curr_mode: ty::UpvarCapture<'tcx>,
+    mut place: Place<'tcx>,
+    mut curr_mode: ty::UpvarCapture<'tcx>,
 ) -> (Place<'tcx>, ty::UpvarCapture<'tcx>) {
-    if place.projections.is_empty() {
-        // Nothing to do here
-        return (place, curr_mode);
-    }
-
     if place.base_ty.is_unsafe_ptr() {
-        return truncate_place_to_len(place, curr_mode, 0);
+        truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_mode, 0);
     }
 
     if place.base_ty.is_union() {
-        return truncate_place_to_len(place, curr_mode, 0);
+        truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_mode, 0);
     }
 
     for (i, proj) in place.projections.iter().enumerate() {
         if proj.ty.is_unsafe_ptr() {
             // Don't apply any projections on top of an unsafe ptr.
-            return truncate_place_to_len(place, curr_mode, i + 1);
+            truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_mode, i + 1);
+            break;
         }
 
         if proj.ty.is_union() {
             // Don't capture preicse fields of a union.
-            return truncate_place_to_len(place, curr_mode, i + 1);
+            truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_mode, i + 1);
+            break;
         }
     }
 
@@ -1880,7 +1873,7 @@ fn restrict_capture_precision<'tcx>(
     place: Place<'tcx>,
     curr_mode: ty::UpvarCapture<'tcx>,
 ) -> (Place<'tcx>, ty::UpvarCapture<'tcx>) {
-    let (place, curr_mode) = restrict_precision_for_unsafe(place, curr_mode);
+    let (mut place, mut curr_mode) = restrict_precision_for_unsafe(place, curr_mode);
 
     if place.projections.is_empty() {
         // Nothing to do here
@@ -1891,7 +1884,8 @@ fn restrict_capture_precision<'tcx>(
         match proj.kind {
             ProjectionKind::Index => {
                 // Arrays are completely captured, so we drop Index projections
-                return truncate_place_to_len(place, curr_mode, i);
+                truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_mode, i);
+                return (place, curr_mode);
             }
             ProjectionKind::Deref => {}
             ProjectionKind::Field(..) => {} // ignore
@@ -1906,8 +1900,8 @@ fn restrict_capture_precision<'tcx>(
 /// (or if closure attempts to move data that it doesn’t own).
 /// Note: When taking ownership, only capture data found on the stack.
 fn adjust_for_move_closure<'tcx>(
-    place: Place<'tcx>,
-    kind: ty::UpvarCapture<'tcx>,
+    mut place: Place<'tcx>,
+    mut kind: ty::UpvarCapture<'tcx>,
 ) -> (Place<'tcx>, ty::UpvarCapture<'tcx>) {
     let contains_deref_of_ref = place.deref_tys().any(|ty| ty.is_ref());
     let first_deref = place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref);
@@ -1917,52 +1911,38 @@ fn adjust_for_move_closure<'tcx>(
 
         // If there's any Deref and the data needs to be moved into the closure body,
         // or it's a Deref of a Box, truncate the path to the first deref
-        _ if first_deref.is_some() => {
-            let place = match first_deref {
-                Some(idx) => {
-                    let (place, _) = truncate_place_to_len(place, kind, idx);
-                    place
-                }
-                None => place,
-            };
+        _ => {
+            if let Some(idx) = first_deref {
+                truncate_place_to_len_and_update_capture_kind(&mut place, &mut kind, idx);
+            }
 
             // AMAN: I think we don't need the span inside the ByValue anymore
             //       we have more detailed span in CaptureInfo
             (place, ty::UpvarCapture::ByValue(None))
         }
-
-        _ => (place, ty::UpvarCapture::ByValue(None)),
     }
 }
 
 /// Adjust closure capture just that if taking ownership of data, only move data
 /// from enclosing stack frame.
 fn adjust_for_non_move_closure<'tcx>(
-    place: Place<'tcx>,
+    mut place: Place<'tcx>,
     mut kind: ty::UpvarCapture<'tcx>,
 ) -> (Place<'tcx>, ty::UpvarCapture<'tcx>) {
     let contains_deref =
         place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref);
 
     match kind {
-        ty::UpvarCapture::ByValue(..) if contains_deref.is_some() => {
-            let place = match contains_deref {
-                Some(idx) => {
-                    let (place, new_kind) = truncate_place_to_len(place, kind, idx);
-
-                    kind = new_kind;
-                    place
-                }
-                // Because of the if guard on the match on `kind`, we should never get here.
-                None => unreachable!(),
-            };
-
-            (place, kind)
+        ty::UpvarCapture::ByValue(..) => {
+            if let Some(idx) = contains_deref {
+                truncate_place_to_len_and_update_capture_kind(&mut place, &mut kind, idx);
+            }
         }
 
-        ty::UpvarCapture::ByValue(..) => (place, kind),
-        ty::UpvarCapture::ByRef(..) => (place, kind),
+        ty::UpvarCapture::ByRef(..) => {}
     }
+
+    (place, kind)
 }
 
 fn construct_place_string(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String {
@@ -2157,14 +2137,12 @@ fn determine_capture_info(
 ///
 /// Note: Capture kind changes from `MutBorrow` to `UniqueImmBorrow` if the truncated part of the `place`
 /// contained `Deref` of `&mut`.
-fn truncate_place_to_len(
-    mut place: Place<'tcx>,
-    curr_mode: ty::UpvarCapture<'tcx>,
+fn truncate_place_to_len_and_update_capture_kind(
+    place: &mut Place<'tcx>,
+    curr_mode: &mut ty::UpvarCapture<'tcx>,
     len: usize,
-) -> (Place<'tcx>, ty::UpvarCapture<'tcx>) {
+) {
     let is_mut_ref = |ty: Ty<'_>| matches!(ty.kind(), ty::Ref(.., hir::Mutability::Mut));
-
-    let mut capture_kind = curr_mode;
 
     // If the truncated part of the place contains `Deref` of a `&mut` then convert MutBorrow ->
     // UniqueImmBorrow
@@ -2176,7 +2154,7 @@ fn truncate_place_to_len(
                 if place.projections[i].kind == ProjectionKind::Deref
                     && is_mut_ref(place.ty_before_projection(i))
                 {
-                    capture_kind = ty::UpvarCapture::ByRef(ty::UpvarBorrow {
+                    *curr_mode = ty::UpvarCapture::ByRef(ty::UpvarBorrow {
                         kind: ty::BorrowKind::UniqueImmBorrow,
                         region,
                     });
@@ -2190,8 +2168,6 @@ fn truncate_place_to_len(
     }
 
     place.projections.truncate(len);
-
-    (place, capture_kind)
 }
 
 /// Determines the Ancestry relationship of Place A relative to Place B
@@ -2256,8 +2232,8 @@ fn determine_place_ancestry_relation(
 /// }
 /// ```
 fn truncate_capture_for_optimization<'tcx>(
-    place: Place<'tcx>,
-    curr_mode: ty::UpvarCapture<'tcx>,
+    mut place: Place<'tcx>,
+    mut curr_mode: ty::UpvarCapture<'tcx>,
 ) -> (Place<'tcx>, ty::UpvarCapture<'tcx>) {
     let is_shared_ref = |ty: Ty<'_>| matches!(ty.kind(), ty::Ref(.., hir::Mutability::Not));
 
@@ -2269,10 +2245,12 @@ fn truncate_capture_for_optimization<'tcx>(
     match idx {
         // If that pointer is a shared reference, then we don't need those fields.
         Some(idx) if is_shared_ref(place.ty_before_projection(idx)) => {
-            truncate_place_to_len(place, curr_mode, idx + 1)
+            truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_mode, idx + 1)
         }
-        None | Some(_) => (place, curr_mode),
+        None | Some(_) => {}
     }
+
+    (place, curr_mode)
 }
 
 /// Precise capture is enabled if the feature gate `capture_disjoint_fields` is enabled or if
