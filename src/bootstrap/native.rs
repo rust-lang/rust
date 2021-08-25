@@ -165,7 +165,7 @@ impl Step for Llvm {
 
         let llvm_exp_targets = match builder.config.llvm_experimental_targets {
             Some(ref s) => s,
-            None => "AVR",
+            None => "AVR;M68k",
         };
 
         let assertions = if builder.config.llvm_assertions { "ON" } else { "OFF" };
