@@ -1174,8 +1174,8 @@ impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
 }
 
 /// Trait for context types that can compute layouts of things.
-pub trait LayoutOf<'a> {
-    type Ty;
+pub trait LayoutOf<'a>: Sized {
+    type Ty: TyAbiInterface<'a, Self>;
     type TyAndLayout: MaybeResult<TyAndLayout<'a, Self::Ty>>;
 
     fn layout_of(&self, ty: Self::Ty) -> Self::TyAndLayout;

@@ -2034,6 +2034,20 @@ impl<'tcx> HasTyCtxt<'tcx> for TyCtxt<'tcx> {
     }
 }
 
+impl<'tcx> HasDataLayout for ty::query::TyCtxtAt<'tcx> {
+    #[inline]
+    fn data_layout(&self) -> &TargetDataLayout {
+        &self.data_layout
+    }
+}
+
+impl<'tcx> HasTyCtxt<'tcx> for ty::query::TyCtxtAt<'tcx> {
+    #[inline]
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        **self
+    }
+}
+
 impl<'tcx, C> HasParamEnv<'tcx> for LayoutCx<'tcx, C> {
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env

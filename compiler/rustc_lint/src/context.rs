@@ -41,7 +41,7 @@ use rustc_session::Session;
 use rustc_session::SessionLintStore;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
-use rustc_target::abi::LayoutOf;
+use rustc_target::abi::{self, LayoutOf};
 use tracing::debug;
 
 use std::cell::Cell;
@@ -1056,6 +1056,27 @@ impl<'tcx> LateContext<'tcx> {
         }
 
         AbsolutePathPrinter { tcx: self.tcx }.print_def_path(def_id, &[]).unwrap()
+    }
+}
+
+impl<'tcx> abi::HasDataLayout for LateContext<'tcx> {
+    #[inline]
+    fn data_layout(&self) -> &abi::TargetDataLayout {
+        &self.tcx.data_layout
+    }
+}
+
+impl<'tcx> ty::layout::HasTyCtxt<'tcx> for LateContext<'tcx> {
+    #[inline]
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+}
+
+impl<'tcx> ty::layout::HasParamEnv<'tcx> for LateContext<'tcx> {
+    #[inline]
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.param_env
     }
 }
 
