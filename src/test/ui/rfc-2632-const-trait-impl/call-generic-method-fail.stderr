@@ -1,5 +1,5 @@
 error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/call-generic-method-fail.rs:7:5
+  --> $DIR/call-generic-method-fail.rs:5:5
    |
 LL |     *t == *t
    |     ^^^^^^^^

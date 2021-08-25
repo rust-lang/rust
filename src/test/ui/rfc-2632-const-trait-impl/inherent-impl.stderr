@@ -1,5 +1,5 @@
 error: inherent impls cannot be `const`
-  --> $DIR/inherent-impl.rs:9:12
+  --> $DIR/inherent-impl.rs:7:12
    |
 LL | impl const S {}
    |      ----- ^ inherent impl for this type
@@ -9,7 +9,7 @@ LL | impl const S {}
    = note: only trait implementations may be annotated with `const`
 
 error: inherent impls cannot be `const`
-  --> $DIR/inherent-impl.rs:12:12
+  --> $DIR/inherent-impl.rs:10:12
    |
 LL | impl const T {}
    |      ----- ^ inherent impl for this type

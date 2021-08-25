@@ -4,11 +4,11 @@ error[E0275]: overflow evaluating the requirement `<T as Foo>::Item: Sized`
 LL |     type Assoc = OnlySized<<T as Foo>::Item>;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: required by a bound in `Foo::Item`
-  --> $DIR/projection-bound-cycle-generic.rs:11:49
+note: required by a bound in `OnlySized`
+  --> $DIR/projection-bound-cycle-generic.rs:28:18
    |
-LL |     type Item: Sized where <Self as Foo>::Item: Sized;
-   |                                                 ^^^^^ required by this bound in `Foo::Item`
+LL | struct OnlySized<T> where T: Sized { f: T }
+   |                  ^ required by this bound in `OnlySized`
 
 error: aborting due to previous error
 

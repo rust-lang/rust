@@ -927,7 +927,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     self.instantiate_poly_trait_ref(
                         &b.trait_ref,
                         b.span,
-                        constness,
+                        Constness::NotConst,
                         param_ty,
                         bounds,
                         false,
@@ -937,7 +937,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     self.instantiate_poly_trait_ref(
                         &b.trait_ref,
                         b.span,
-                        Constness::NotConst,
+                        constness,
                         param_ty,
                         bounds,
                         false,
