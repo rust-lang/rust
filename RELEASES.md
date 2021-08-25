@@ -175,6 +175,7 @@ Compiler
 - [Improved debugger output for enums on Windows MSVC platforms.][85292]
 - [Added tier 3\* support for `bpfel-unknown-none`
    and `bpfeb-unknown-none`.][79608]
+- [`-Zmutable-noalias=yes`][82834] is enabled by default when using LLVM 12 or above.
 
 \* Refer to Rust's [platform support page][platform-support-doc] for more
    information on Rust's tiered platform support.
@@ -244,6 +245,7 @@ Compatibility Notes
 [83366]: https://github.com/rust-lang/rust/pull/83366
 [83278]: https://github.com/rust-lang/rust/pull/83278
 [85292]: https://github.com/rust-lang/rust/pull/85292
+[82834]: https://github.com/rust-lang/rust/pull/82834
 [cargo/9520]: https://github.com/rust-lang/cargo/pull/9520
 [cargo/9499]: https://github.com/rust-lang/cargo/pull/9499
 [cargo/9488]: https://github.com/rust-lang/cargo/pull/9488
