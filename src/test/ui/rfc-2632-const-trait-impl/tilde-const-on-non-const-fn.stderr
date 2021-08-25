@@ -1,0 +1,18 @@
+error: `~const` is not allowed here
+  --> $DIR/tilde-const-on-non-const-fn.rs:2:9
+   |
+LL | fn a<T: ~const From<u8>>() {}
+   |         ^^^^^^^^^^^^^^^
+   |
+   = note: only allowed on bounds on traits' associated types, const fns, const impls and its associated functions
+
+error: `~const` is not allowed here
+  --> $DIR/tilde-const-on-non-const-fn.rs:8:13
+   |
+LL |     fn b<T: ~const From<u8>>() {}
+   |             ^^^^^^^^^^^^^^^
+   |
+   = note: only allowed on bounds on traits' associated types, const fns, const impls and its associated functions
+
+error: aborting due to 2 previous errors
+

@@ -123,6 +123,9 @@ declare_features! (
     /// Allows overlapping impls of marker traits.
     (removed, overlapping_marker_traits, "1.42.0", Some(29864), None,
      Some("removed in favor of `#![feature(marker_trait_attr)]`")),
+    /// Allows `T: ?const Trait` syntax in bounds.
+    (removed, const_trait_bound_opt_out, "1.42.0", Some(67794), None,
+     Some("Removed in favor of `~const` bound in #![feature(const_trait_impl)]")),
     /// Allows `#[no_debug]`.
     (removed, no_debug, "1.43.0", Some(29721), None, Some("removed due to lack of demand")),
     /// Allows comparing raw pointers during const eval.

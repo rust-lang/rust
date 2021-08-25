@@ -13,12 +13,10 @@ impl PartialEq for S {
     }
 }
 
-const fn equals_self<T: ?const PartialEq>(t: &T) -> bool {
+const fn equals_self<T: PartialEq>(t: &T) -> bool {
     true
 }
 
 pub const EQ: bool = equals_self(&S);
-
-// Calling `equals_self` with a type that only has a non-const impl is fine, because we opted out.
 
 fn main() {}

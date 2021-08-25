@@ -457,10 +457,6 @@ pub enum PredicateKind<'tcx> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
     /// would be the type parameters.
-    ///
-    /// A trait predicate will have `Constness::Const` if it originates
-    /// from a bound on a `const fn` without the `?const` opt-out (e.g.,
-    /// `const fn foobar<Foo: Bar>() {}`).
     Trait(TraitPredicate<'tcx>),
 
     /// `where 'a: 'b`
@@ -633,8 +629,7 @@ pub struct TraitPredicate<'tcx> {
     pub trait_ref: TraitRef<'tcx>,
 
     /// A trait predicate will have `Constness::Const` if it originates
-    /// from a bound on a `const fn` without the `?const` opt-out (e.g.,
-    /// `const fn foobar<Foo: Bar>() {}`).
+    /// from a bound marked with `~const`.
     pub constness: hir::Constness,
 }
 
