@@ -368,7 +368,7 @@ pub fn main() {
     // We can use refcells if we're single-threaded (as this test is).
     // If one were to generalize these constructions to a
     // multi-threaded context, then it might seem like we could choose
-    // between either a RwLock or a Mutex to hold the owned arcs on
+    // between either an RwLock or a Mutex to hold the owned arcs on
     // each node.
     //
     // Part of the point of this test is to actually confirm that the

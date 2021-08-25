@@ -1745,7 +1745,7 @@ impl<T: ?Sized> fmt::Pointer for Rc<T> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "from_for_ptrs", since = "1.6.0")]
 impl<T> From<T> for Rc<T> {
-    /// Converts a generic type `T` into a `Rc<T>`
+    /// Converts a generic type `T` into an `Rc<T>`
     ///
     /// The conversion allocates on the heap and moves `t`
     /// from the stack into it.
