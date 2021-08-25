@@ -228,3 +228,44 @@ fn debug_dump_ignore_spaces(node: &syntax::SyntaxNode) -> String {
 
     buf
 }
+
+#[test]
+fn test_node_to_tt_censor() {
+    use syntax::ast::{AttrsOwner, ModuleItemOwner};
+
+    let source = r##"
+#[attr0]
+#[attr1]
+#[attr2]
+struct Struct {
+    field: ()
+}
+"##;
+    let source_file = ast::SourceFile::parse(&source).ok().unwrap();
+    let item = source_file.items().next().unwrap();
+    let attr = item.attrs().nth(1).unwrap();
+
+    let (tt, _) =
+        syntax_node_to_token_tree_censored(item.syntax(), Some(attr.syntax().text_range()));
+    expect_test::expect![[r##"# [attr0] # [attr2] struct Struct {field : ()}"##]]
+        .assert_eq(&tt.to_string());
+
+    let source = r##"
+#[derive(Derive0)]
+#[derive(Derive1)]
+#[derive(Derive2)]
+struct Struct {
+    field: ()
+}
+"##;
+    let source_file = ast::SourceFile::parse(&source).ok().unwrap();
+    let item = source_file.items().next().unwrap();
+    let attr = item.attrs().nth(1).unwrap();
+
+    let (tt, _) = syntax_node_to_token_tree_censored(
+        item.syntax(),
+        Some(attr.syntax().text_range().cover_offset(0.into())),
+    );
+    expect_test::expect![[r##"# [derive (Derive2)] struct Struct {field : ()}"##]]
+        .assert_eq(&tt.to_string());
+}

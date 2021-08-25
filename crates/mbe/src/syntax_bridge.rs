@@ -15,14 +15,14 @@ use tt::buffer::{Cursor, TokenBuffer};
 use crate::{subtree_source::SubtreeTokenSource, tt_iter::TtIter};
 use crate::{ExpandError, TokenMap};
 
-/// Convert the syntax node to a `TokenTree` with the censored nodes excluded (what macro
+/// Convert the syntax node to a `TokenTree` (what macro
 /// will consume).
 pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> (tt::Subtree, TokenMap) {
     syntax_node_to_token_tree_censored(node, None)
 }
 
-/// Convert the syntax node to a `TokenTree` with the censored nodes excluded (what macro
-/// will consume).
+/// Convert the syntax node to a `TokenTree` (what macro will consume)
+/// with the censored range excluded.
 pub fn syntax_node_to_token_tree_censored(
     node: &SyntaxNode,
     censor: Option<TextRange>,
