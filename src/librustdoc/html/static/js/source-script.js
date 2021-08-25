@@ -83,7 +83,7 @@ function toggleSidebar() {
     logo.style.transition = "left 0.5s ease 0s";
     var child = this.children[0].children[0];
     if (child.innerText === ">") {
-        sidebar.style.left = "0px";
+        sidebar.style.left = "";
         this.style.left = "";
         child.innerText = "<";
         logo.style.left = "300px";
@@ -104,6 +104,7 @@ function createSidebarToggle() {
     sidebarToggle.id = "sidebar-toggle";
     sidebarToggle.onclick = toggleSidebar;
 
+    var logo = document.getElementsByClassName("sidebar")[0];
     var inner1 = document.createElement("div");
     inner1.style.position = "relative";
 
@@ -111,11 +112,13 @@ function createSidebarToggle() {
     inner2.style.paddingTop = "3px";
     if (getCurrentValue("rustdoc-source-sidebar-show") === "true") {
         inner2.innerText = "<";
+        logo.style.left = "300px";
         document.body.style.left ='300px';
     } else {
         inner2.innerText = ">";
         sidebarToggle.style.left = "0";
-        document.body.style.left ='';
+        logo.style.left = "0px";
+        document.body.style.left ="0px";
     }
 
     inner1.appendChild(inner2);

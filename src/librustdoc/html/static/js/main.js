@@ -190,6 +190,11 @@ function hideThemeButtonState() {
             if (search === null || typeof search === 'undefined') {
                 search = searchState.outputElement();
             }
+            if (getCurrentValue("rustdoc-source-sidebar-show") === "true"){
+                var logo = document.getElementsByClassName("sidebar")[0];
+                document.body.style.left = "0px";
+                logo.style.left = "0px";
+            }
             addClass(main, "hidden");
             removeClass(search, "hidden");
             searchState.mouseMovedAfterSearch = false;
@@ -198,6 +203,11 @@ function hideThemeButtonState() {
         hideResults: function(search) {
             if (search === null || typeof search === 'undefined') {
                 search = searchState.outputElement();
+            }
+            if (getCurrentValue("rustdoc-source-sidebar-show") === "true"){
+                var logo = document.getElementsByClassName("sidebar")[0];
+                document.body.style.left = "300px";
+                logo.style.left = "300px";
             }
             addClass(search, "hidden");
             removeClass(main, "hidden");
