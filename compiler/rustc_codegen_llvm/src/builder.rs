@@ -88,7 +88,7 @@ impl HasTargetSpec for Builder<'_, '_, 'tcx> {
     }
 }
 
-impl abi::LayoutOf for Builder<'_, '_, 'tcx> {
+impl abi::LayoutOf<'tcx> for Builder<'_, '_, 'tcx> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = TyAndLayout<'tcx>;
 

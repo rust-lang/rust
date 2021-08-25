@@ -27,7 +27,7 @@ fn classify_arg<'a, Ty, C>(
 ) -> Result<[Option<Class>; MAX_EIGHTBYTES], Memory>
 where
     Ty: TyAndLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
+    C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     fn classify<'a, Ty, C>(
         cx: &C,
@@ -37,7 +37,7 @@ where
     ) -> Result<(), Memory>
     where
         Ty: TyAndLayoutMethods<'a, C> + Copy,
-        C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
+        C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
     {
         if !off.is_aligned(layout.align.abi) {
             if !layout.is_zst() {
@@ -173,7 +173,7 @@ const MAX_SSE_REGS: usize = 8; // XMM0-7
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
     Ty: TyAndLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
+    C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     let mut int_regs = MAX_INT_REGS;
     let mut sse_regs = MAX_SSE_REGS;

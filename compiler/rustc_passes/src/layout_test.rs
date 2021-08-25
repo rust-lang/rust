@@ -113,7 +113,7 @@ struct UnwrapLayoutCx<'tcx> {
     param_env: ParamEnv<'tcx>,
 }
 
-impl LayoutOf for UnwrapLayoutCx<'tcx> {
+impl LayoutOf<'tcx> for UnwrapLayoutCx<'tcx> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = TyAndLayout<'tcx>;
 

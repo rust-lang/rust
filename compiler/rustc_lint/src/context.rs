@@ -1059,7 +1059,7 @@ impl<'tcx> LateContext<'tcx> {
     }
 }
 
-impl<'tcx> LayoutOf for LateContext<'tcx> {
+impl<'tcx> LayoutOf<'tcx> for LateContext<'tcx> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 

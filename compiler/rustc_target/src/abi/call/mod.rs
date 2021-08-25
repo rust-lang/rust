@@ -317,7 +317,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     pub fn homogeneous_aggregate<C>(&self, cx: &C) -> Result<HomogeneousAggregate, Heterogeneous>
     where
         Ty: TyAndLayoutMethods<'a, C> + Copy,
-        C: LayoutOf<Ty = Ty, TyAndLayout = Self>,
+        C: LayoutOf<'a, Ty = Ty, TyAndLayout = Self>,
     {
         match self.abi {
             Abi::Uninhabited => Err(Heterogeneous),
@@ -604,7 +604,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
     pub fn adjust_for_cabi<C>(&mut self, cx: &C, abi: spec::abi::Abi) -> Result<(), String>
     where
         Ty: TyAndLayoutMethods<'a, C> + Copy,
-        C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
+        C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
     {
         if abi == spec::abi::Abi::X86Interrupt {
             if let Some(arg) = self.args.first_mut() {

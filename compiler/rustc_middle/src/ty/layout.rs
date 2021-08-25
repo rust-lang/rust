@@ -2054,7 +2054,7 @@ impl<'tcx, T: HasTyCtxt<'tcx>> HasTyCtxt<'tcx> for LayoutCx<'tcx, T> {
 
 pub type TyAndLayout<'tcx> = rustc_target::abi::TyAndLayout<'tcx, Ty<'tcx>>;
 
-impl<'tcx> LayoutOf for LayoutCx<'tcx, TyCtxt<'tcx>> {
+impl LayoutOf<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
@@ -2066,7 +2066,7 @@ impl<'tcx> LayoutOf for LayoutCx<'tcx, TyCtxt<'tcx>> {
     }
 }
 
-impl LayoutOf for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
+impl LayoutOf<'tcx> for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
@@ -2080,9 +2080,7 @@ impl LayoutOf for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
 
 impl<'tcx, C> TyAndLayoutMethods<'tcx, C> for Ty<'tcx>
 where
-    C: LayoutOf<Ty = Ty<'tcx>, TyAndLayout: MaybeResult<TyAndLayout<'tcx>>>
-        + HasTyCtxt<'tcx>
-        + HasParamEnv<'tcx>,
+    C: LayoutOf<'tcx, Ty = Ty<'tcx>> + HasTyCtxt<'tcx> + HasParamEnv<'tcx>,
 {
     fn for_variant(
         this: TyAndLayout<'tcx>,
@@ -2135,21 +2133,19 @@ where
     }
 
     fn field(this: TyAndLayout<'tcx>, cx: &C, i: usize) -> C::TyAndLayout {
-        enum TyMaybeWithLayout<C: LayoutOf> {
+        enum TyMaybeWithLayout<'tcx, C: LayoutOf<'tcx>> {
             Ty(C::Ty),
             TyAndLayout(C::TyAndLayout),
         }
 
         fn ty_and_layout_kind<
-            C: LayoutOf<Ty = Ty<'tcx>, TyAndLayout: MaybeResult<TyAndLayout<'tcx>>>
-                + HasTyCtxt<'tcx>
-                + HasParamEnv<'tcx>,
+            C: LayoutOf<'tcx, Ty = Ty<'tcx>> + HasTyCtxt<'tcx> + HasParamEnv<'tcx>,
         >(
             this: TyAndLayout<'tcx>,
             cx: &C,
             i: usize,
             ty: C::Ty,
-        ) -> TyMaybeWithLayout<C> {
+        ) -> TyMaybeWithLayout<'tcx, C> {
             let tcx = cx.tcx();
             let tag_layout = |tag: &Scalar| -> C::TyAndLayout {
                 let layout = Layout::scalar(cx, tag.clone());
@@ -2538,7 +2534,7 @@ impl<'tcx> ty::Instance<'tcx> {
 
 pub trait FnAbiExt<'tcx, C>
 where
-    C: LayoutOf<Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
+    C: LayoutOf<'tcx, Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
         + HasDataLayout
         + HasTargetSpec
         + HasTyCtxt<'tcx>
@@ -2725,7 +2721,7 @@ pub fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
 
 impl<'tcx, C> FnAbiExt<'tcx, C> for call::FnAbi<'tcx, Ty<'tcx>>
 where
-    C: LayoutOf<Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
+    C: LayoutOf<'tcx, Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
         + HasDataLayout
         + HasTargetSpec
         + HasTyCtxt<'tcx>
@@ -3006,7 +3002,7 @@ where
 
 fn make_thin_self_ptr<'tcx, C>(cx: &C, mut layout: TyAndLayout<'tcx>) -> TyAndLayout<'tcx>
 where
-    C: LayoutOf<Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
+    C: LayoutOf<'tcx, Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
         + HasTyCtxt<'tcx>
         + HasParamEnv<'tcx>,
 {
