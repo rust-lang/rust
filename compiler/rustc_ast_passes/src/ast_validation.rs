@@ -17,11 +17,10 @@ use rustc_errors::{error_code, pluralize, struct_span_err, Applicability};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
-use rustc_session::{DiagnosticMessageId, Session};
+use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
-use std::convert::TryInto;
 use std::mem;
 use std::ops::DerefMut;
 
@@ -1177,6 +1176,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 let kind = FnKind::Fn(FnCtxt::Free, item.ident, sig, &item.vis, body.as_deref());
                 self.visit_fn(kind, item.span, item.id);
                 walk_list!(self, visit_attribute, &item.attrs);
+                return; // Avoid visiting again.
             }
             ItemKind::ForeignMod(ForeignMod { unsafety, .. }) => {
                 let old_item = mem::replace(&mut self.extern_mod, Some(item));
@@ -1440,19 +1440,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         match bound {
             GenericBound::Trait(_, TraitBoundModifier::MaybeConst) => {
                 if !self.is_tilde_const_allowed {
-                    let msg = "`~const` is not allowed here";
-                    let id_span_msg = (
-                        DiagnosticMessageId::StabilityId(67792.try_into().ok()),
-                        Some(bound.span()),
-                        msg.to_owned(),
-                    );
-                    let fresh = self.session.one_time_diagnostics.borrow_mut().insert(id_span_msg);
-                    if fresh {
-                        self.err_handler()
-                            .struct_span_err(bound.span(), msg)
-                            .note("only allowed on bounds on traits' associated types, const fns, const impls and its associated functions")
-                            .emit();
-                    }
+                    self.err_handler()
+                        .struct_span_err(bound.span(), "`~const` is not allowed here")
+                        .note("only allowed on bounds on traits' associated types, const fns, const impls and its associated functions")
+                        .emit();
                 }
             }
 
