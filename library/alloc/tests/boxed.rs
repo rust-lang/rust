@@ -35,11 +35,11 @@ fn box_clone_and_clone_from_equivalence() {
     }
 }
 
-/// This test might give a false positive in case the box realocates, but the alocator keeps the
-/// original pointer.
+/// This test might give a false positive in case the box reallocates,
+/// but the allocator keeps the original pointer.
 ///
-/// On the other hand it won't give a false negative, if it fails than the memory was definitely not
-/// reused
+/// On the other hand, it won't give a false negative: If it fails, then the
+/// memory was definitely not reused.
 #[test]
 fn box_clone_from_ptr_stability() {
     for size in (0..8).map(|i| 2usize.pow(i)) {
