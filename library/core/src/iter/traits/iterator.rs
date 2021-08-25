@@ -2442,14 +2442,14 @@ pub trait Iterator {
         R: Try<Output = bool>,
         // FIXME: This bound is rather strange, but means minimal breakage on nightly.
         // See #85115 for the issue tracking a holistic solution for this and try_map.
-        R: crate::ops::TryV2<Residual = Result<crate::convert::Infallible, E>>,
+        R: Try<Residual = Result<crate::convert::Infallible, E>>,
     {
         #[inline]
         fn check<F, T, R, E>(mut f: F) -> impl FnMut((), T) -> ControlFlow<Result<T, E>>
         where
             F: FnMut(&T) -> R,
             R: Try<Output = bool>,
-            R: crate::ops::TryV2<Residual = Result<crate::convert::Infallible, E>>,
+            R: Try<Residual = Result<crate::convert::Infallible, E>>,
         {
             move |(), x| match f(&x).branch() {
                 ControlFlow::Continue(false) => ControlFlow::CONTINUE,

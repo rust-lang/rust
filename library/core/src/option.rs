@@ -2013,7 +2013,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<T> ops::TryV2 for Option<T> {
+impl<T> ops::Try for Option<T> {
     type Output = T;
     type Residual = Option<convert::Infallible>;
 

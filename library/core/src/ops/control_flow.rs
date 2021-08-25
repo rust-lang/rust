@@ -63,7 +63,7 @@ pub enum ControlFlow<B, C = ()> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<B, C> ops::TryV2 for ControlFlow<B, C> {
+impl<B, C> ops::Try for ControlFlow<B, C> {
     type Output = C;
     type Residual = ControlFlow<B, convert::Infallible>;
 
@@ -165,7 +165,7 @@ impl<B, C> ControlFlow<B, C> {
 /// These are used only as part of implementing the iterator adapters.
 /// They have mediocre names and non-obvious semantics, so aren't
 /// currently on a path to potential stabilization.
-impl<R: ops::TryV2> ControlFlow<R, R::Output> {
+impl<R: ops::Try> ControlFlow<R, R::Output> {
     /// Create a `ControlFlow` from any type implementing `Try`.
     #[inline]
     pub(crate) fn from_try(r: R) -> Self {
