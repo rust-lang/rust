@@ -7,7 +7,7 @@ use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::iter::Step;
 use std::num::NonZeroUsize;
-use std::ops::{Add, AddAssign, Deref, Mul, Range, RangeInclusive, Sub};
+use std::ops::{Add, AddAssign, Deref, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
 use rustc_index::vec::{Idx, IndexVec};
@@ -779,6 +779,14 @@ impl WrappingRange {
         self.end = end;
         self
     }
+
+    /// Returns `true` if `size` completely fills the range.
+    #[inline]
+    pub fn is_full_for(&self, size: Size) -> bool {
+        let max_value = u128::MAX >> (128 - size.bits());
+        debug_assert!(self.start <= max_value && self.end <= max_value);
+        (self.start == 0 && self.end == max_value) || (self.end + 1 == self.start)
+    }
 }
 
 impl fmt::Debug for WrappingRange {
@@ -807,21 +815,10 @@ impl Scalar {
             && matches!(self.valid_range, WrappingRange { start: 0, end: 1 })
     }
 
-    /// Returns the valid range as a `x..y` range.
-    ///
-    /// If `x` and `y` are equal, the range is full, not empty.
-    pub fn valid_range_exclusive<C: HasDataLayout>(&self, cx: &C) -> Range<u128> {
-        // For a (max) value of -1, max will be `-1 as usize`, which overflows.
-        // However, that is fine here (it would still represent the full range),
-        // i.e., if the range is everything.
-        let bits = self.value.size(cx).bits();
-        assert!(bits <= 128);
-        let mask = !0u128 >> (128 - bits);
-        let start = self.valid_range.start;
-        let end = self.valid_range.end;
-        assert_eq!(start, start & mask);
-        assert_eq!(end, end & mask);
-        start..(end.wrapping_add(1) & mask)
+    /// Returns `true` if all possible numbers are valid, i.e `valid_range` covers the whole layout
+    #[inline]
+    pub fn is_always_valid_for<C: HasDataLayout>(&self, cx: &C) -> bool {
+        self.valid_range.is_full_for(self.value.size(cx))
     }
 }
 
@@ -1269,11 +1266,8 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 // The range must contain 0.
                 s.valid_range.contains_zero()
             } else {
-                // The range must include all values. `valid_range_exclusive` handles
-                // the wrap-around using target arithmetic; with wrap-around then the full
-                // range is one where `start == end`.
-                let range = s.valid_range_exclusive(cx);
-                range.start == range.end
+                // The range must include all values.
+                s.is_always_valid_for(cx)
             }
         };
 

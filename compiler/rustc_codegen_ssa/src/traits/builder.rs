@@ -16,10 +16,8 @@ use crate::MemFlags;
 use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
-use rustc_target::abi::{Abi, Align, Scalar, Size};
+use rustc_target::abi::{Abi, Align, Scalar, Size, WrappingRange};
 use rustc_target::spec::HasTargetSpec;
-
-use std::ops::Range;
 
 #[derive(Copy, Clone)]
 pub enum OverflowOp {
@@ -158,7 +156,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         dest: PlaceRef<'tcx, Self::Value>,
     ) -> Self;
 
-    fn range_metadata(&mut self, load: Self::Value, range: Range<u128>);
+    fn range_metadata(&mut self, load: Self::Value, range: &WrappingRange);
     fn nonnull_metadata(&mut self, load: Self::Value);
 
     fn store(&mut self, val: Self::Value, ptr: Self::Value, align: Align) -> Self::Value;
