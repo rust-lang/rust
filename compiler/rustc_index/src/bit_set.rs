@@ -247,10 +247,13 @@ impl<T: Idx> BitRelations<BitSet<T>> for BitSet<T> {
     }
 }
 
-fn sequential_update<T: Idx>(mut f: impl FnMut(T) -> bool, it: impl Iterator<Item = T>) -> bool {
+fn sequential_update<T: Idx>(
+    mut self_update: impl FnMut(T) -> bool,
+    it: impl Iterator<Item = T>,
+) -> bool {
     let mut changed = false;
     for elem in it {
-        changed |= f(elem);
+        changed |= self_update(elem);
     }
     changed
 }
@@ -342,7 +345,17 @@ impl<T: Idx> BitRelations<HybridBitSet<T>> for HybridBitSet<T> {
         match self {
             HybridBitSet::Sparse(self_sparse) => {
                 match other {
-                    HybridBitSet::Sparse(other_sparse) => self_sparse.union(other_sparse),
+                    HybridBitSet::Sparse(other_sparse) => {
+                        // Both sets are sparse. Add the elements in
+                        // `other_sparse` to `self` one at a time. This
+                        // may or may not cause `self` to be densified.
+                        assert_eq!(self.domain_size(), other.domain_size());
+                        let mut changed = false;
+                        for elem in other_sparse.iter() {
+                            changed |= self.insert(*elem);
+                        }
+                        changed
+                    }
 
                     HybridBitSet::Dense(other_dense) => {
                         // `self` is sparse and `other` is dense. To
