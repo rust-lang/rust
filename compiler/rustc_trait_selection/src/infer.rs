@@ -44,6 +44,10 @@ pub trait InferCtxtExt<'tcx> {
     /// - the self type
     /// - the *other* type parameters of the trait, excluding the self-type
     /// - the parameter environment
+    ///
+    /// Invokes `evaluate_obligation`, so in the event that evaluating
+    /// `Ty: Trait` causes overflow, EvaluatedToRecur (or EvaluatedToUnknown) 
+    /// will be returned.
     fn type_implements_trait(
         &self,
         trait_def_id: DefId,
