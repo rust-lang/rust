@@ -1,10 +1,10 @@
 use crate::abi::call::{ArgAbi, FnAbi};
-use crate::abi::{HasDataLayout, LayoutOf, TyAbiInterface, TyAndLayout};
+use crate::abi::{HasDataLayout, TyAbiInterface};
 
 fn classify_ret<'a, Ty, C>(_cx: &C, ret: &mut ArgAbi<'a, Ty>)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
-    C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
+    C: HasDataLayout,
 {
     ret.extend_integer_width_to(32);
 }
@@ -12,7 +12,7 @@ where
 fn classify_arg<'a, Ty, C>(_cx: &C, arg: &mut ArgAbi<'a, Ty>)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
-    C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
+    C: HasDataLayout,
 {
     arg.extend_integer_width_to(32);
 }
@@ -20,7 +20,7 @@ where
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
-    C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
+    C: HasDataLayout,
 {
     if !fn_abi.ret.is_ignore() {
         classify_ret(cx, &mut fn_abi.ret);

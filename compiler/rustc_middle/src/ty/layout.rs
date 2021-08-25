@@ -2090,7 +2090,7 @@ impl LayoutOf<'tcx> for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
 
 impl<'tcx, C> TyAbiInterface<'tcx, C> for Ty<'tcx>
 where
-    C: LayoutOf<'tcx, Ty = Ty<'tcx>> + HasTyCtxt<'tcx> + HasParamEnv<'tcx>,
+    C: HasTyCtxt<'tcx> + HasParamEnv<'tcx>,
 {
     fn ty_and_layout_for_variant(
         this: TyAndLayout<'tcx>,
@@ -2109,8 +2109,11 @@ where
             }
 
             Variants::Single { index } => {
+                let tcx = cx.tcx();
+                let param_env = cx.param_env();
+
                 // Deny calling for_variant more than once for non-Single enums.
-                if let Ok(original_layout) = cx.layout_of(this.ty).to_result() {
+                if let Ok(original_layout) = tcx.layout_of(param_env.and(this.ty)) {
                     assert_eq!(original_layout.variants, Variants::Single { index });
                 }
 
@@ -2120,7 +2123,6 @@ where
                     ty::Adt(def, _) => def.variants[variant_index].fields.len(),
                     _ => bug!(),
                 };
-                let tcx = cx.tcx();
                 tcx.intern_layout(Layout {
                     variants: Variants::Single { index: variant_index },
                     fields: match NonZeroUsize::new(fields) {
@@ -2300,13 +2302,16 @@ where
         cx: &C,
         offset: Size,
     ) -> Option<PointeeInfo> {
+        let tcx = cx.tcx();
+        let param_env = cx.param_env();
+
         let addr_space_of_ty = |ty: Ty<'tcx>| {
             if ty.is_fn() { cx.data_layout().instruction_address_space } else { AddressSpace::DATA }
         };
 
         let pointee_info = match *this.ty.kind() {
             ty::RawPtr(mt) if offset.bytes() == 0 => {
-                cx.layout_of(mt.ty).to_result().ok().map(|layout| PointeeInfo {
+                tcx.layout_of(param_env.and(mt.ty)).ok().map(|layout| PointeeInfo {
                     size: layout.size,
                     align: layout.align.abi,
                     safe: None,
@@ -2314,18 +2319,15 @@ where
                 })
             }
             ty::FnPtr(fn_sig) if offset.bytes() == 0 => {
-                cx.layout_of(cx.tcx().mk_fn_ptr(fn_sig)).to_result().ok().map(|layout| {
-                    PointeeInfo {
-                        size: layout.size,
-                        align: layout.align.abi,
-                        safe: None,
-                        address_space: cx.data_layout().instruction_address_space,
-                    }
+                tcx.layout_of(param_env.and(tcx.mk_fn_ptr(fn_sig))).ok().map(|layout| PointeeInfo {
+                    size: layout.size,
+                    align: layout.align.abi,
+                    safe: None,
+                    address_space: cx.data_layout().instruction_address_space,
                 })
             }
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
                 let address_space = addr_space_of_ty(ty);
-                let tcx = cx.tcx();
                 let kind = if tcx.sess.opts.optimize == OptLevel::No {
                     // Use conservative pointer kind if not optimizing. This saves us the
                     // Freeze/Unpin queries, and can save time in the codegen backend (noalias
@@ -2354,7 +2356,7 @@ where
                     }
                 };
 
-                cx.layout_of(ty).to_result().ok().map(|layout| PointeeInfo {
+                tcx.layout_of(param_env.and(ty)).ok().map(|layout| PointeeInfo {
                     size: layout.size,
                     align: layout.align.abi,
                     safe: Some(kind),
@@ -3023,16 +3025,15 @@ where
     }
 }
 
-fn make_thin_self_ptr<'tcx, C>(cx: &C, mut layout: TyAndLayout<'tcx>) -> TyAndLayout<'tcx>
-where
-    C: LayoutOf<'tcx, Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
-        + HasTyCtxt<'tcx>
-        + HasParamEnv<'tcx>,
-{
+fn make_thin_self_ptr<'tcx>(
+    cx: &(impl HasTyCtxt<'tcx> + HasParamEnv<'tcx>),
+    layout: TyAndLayout<'tcx>,
+) -> TyAndLayout<'tcx> {
+    let tcx = cx.tcx();
     let fat_pointer_ty = if layout.is_unsized() {
         // unsized `self` is passed as a pointer to `self`
         // FIXME (mikeyhew) change this to use &own if it is ever added to the language
-        cx.tcx().mk_mut_ptr(layout.ty)
+        tcx.mk_mut_ptr(layout.ty)
     } else {
         match layout.abi {
             Abi::ScalarPair(..) => (),
@@ -3066,8 +3067,13 @@ where
     // we now have a type like `*mut RcBox<dyn Trait>`
     // change its layout to that of `*mut ()`, a thin pointer, but keep the same type
     // this is understood as a special case elsewhere in the compiler
-    let unit_pointer_ty = cx.tcx().mk_mut_ptr(cx.tcx().mk_unit());
-    layout = cx.layout_of(unit_pointer_ty);
-    layout.ty = fat_pointer_ty;
-    layout
+    let unit_ptr_ty = tcx.mk_mut_ptr(tcx.mk_unit());
+
+    TyAndLayout {
+        ty: fat_pointer_ty,
+
+        // NOTE(eddyb) using an empty `ParamEnv`, and `unwrap`-ing the `Result`
+        // should always work because the type is always `*mut ()`.
+        ..tcx.layout_of(ty::ParamEnv::reveal_all().and(unit_ptr_ty)).unwrap()
+    }
 }

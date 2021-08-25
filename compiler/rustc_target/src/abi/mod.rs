@@ -1238,7 +1238,7 @@ pub struct PointeeInfo {
 
 /// Trait that needs to be implemented by the higher-level type representation
 /// (e.g. `rustc_middle::ty::Ty`), to provide `rustc_target::abi` functionality.
-pub trait TyAbiInterface<'a, C: LayoutOf<'a, Ty = Self>>: Sized {
+pub trait TyAbiInterface<'a, C>: Sized {
     fn ty_and_layout_for_variant(
         this: TyAndLayout<'a, Self>,
         cx: &C,
@@ -1256,7 +1256,6 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     pub fn for_variant<C>(self, cx: &C, variant_index: VariantIdx) -> Self
     where
         Ty: TyAbiInterface<'a, C>,
-        C: LayoutOf<'a, Ty = Ty>,
     {
         Ty::ty_and_layout_for_variant(self, cx, variant_index)
     }
@@ -1264,7 +1263,6 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     pub fn field<C>(self, cx: &C, i: usize) -> Self
     where
         Ty: TyAbiInterface<'a, C>,
-        C: LayoutOf<'a, Ty = Ty>,
     {
         Ty::ty_and_layout_field(self, cx, i)
     }
@@ -1272,7 +1270,6 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     pub fn pointee_info_at<C>(self, cx: &C, offset: Size) -> Option<PointeeInfo>
     where
         Ty: TyAbiInterface<'a, C>,
-        C: LayoutOf<'a, Ty = Ty>,
     {
         Ty::ty_and_layout_pointee_info_at(self, cx, offset)
     }
@@ -1306,7 +1303,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     where
         Self: Copy,
         Ty: TyAbiInterface<'a, C>,
-        C: LayoutOf<'a, Ty = Ty> + HasDataLayout,
+        C: HasDataLayout,
     {
         let scalar_allows_raw_init = move |s: &Scalar| -> bool {
             if zero {

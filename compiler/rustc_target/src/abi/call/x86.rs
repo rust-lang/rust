@@ -1,5 +1,5 @@
 use crate::abi::call::{ArgAttribute, FnAbi, PassMode, Reg, RegKind};
-use crate::abi::{self, HasDataLayout, LayoutOf, TyAbiInterface, TyAndLayout};
+use crate::abi::{self, HasDataLayout, TyAbiInterface, TyAndLayout};
 use crate::spec::HasTargetSpec;
 
 #[derive(PartialEq)]
@@ -11,7 +11,7 @@ pub enum Flavor {
 fn is_single_fp_element<'a, Ty, C>(cx: &C, layout: TyAndLayout<'a, Ty>) -> bool
 where
     Ty: TyAbiInterface<'a, C> + Copy,
-    C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
+    C: HasDataLayout,
 {
     match layout.abi {
         abi::Abi::Scalar(ref scalar) => scalar.value.is_float(),
@@ -29,7 +29,7 @@ where
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, flavor: Flavor)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
-    C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
+    C: HasDataLayout + HasTargetSpec,
 {
     if !fn_abi.ret.is_ignore() {
         if fn_abi.ret.layout.is_aggregate() {
