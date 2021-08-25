@@ -2734,9 +2734,7 @@ impl<'a> Resolver<'a> {
                         ConstantItemRibKind(trivial, _) => {
                             let features = self.session.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
-                            if !(trivial
-                                || features.const_generics
-                                || features.generic_const_exprs)
+                            if !(trivial || features.const_generics || features.generic_const_exprs)
                             {
                                 // HACK(min_const_generics): If we encounter `Self` in an anonymous constant
                                 // we can't easily tell if it's generic at this stage, so we instead remember
@@ -2809,9 +2807,7 @@ impl<'a> Resolver<'a> {
                         ConstantItemRibKind(trivial, _) => {
                             let features = self.session.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
-                            if !(trivial
-                                || features.const_generics
-                                || features.generic_const_exprs)
+                            if !(trivial || features.const_generics || features.generic_const_exprs)
                             {
                                 if record_used {
                                     self.report_error(
