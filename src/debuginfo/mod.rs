@@ -160,12 +160,10 @@ impl<'tcx> DebugContext<'tcx> {
 
                 for (field_idx, field_def) in variant.fields.iter().enumerate() {
                     let field_offset = layout.fields.offset(field_idx);
-                    let field_layout = layout
-                        .field(
-                            &layout::LayoutCx { tcx: self.tcx, param_env: ParamEnv::reveal_all() },
-                            field_idx,
-                        )
-                        .unwrap();
+                    let field_layout = layout.field(
+                        &layout::LayoutCx { tcx: self.tcx, param_env: ParamEnv::reveal_all() },
+                        field_idx,
+                    );
 
                     let field_type = self.dwarf_ty(field_layout.ty);
 
