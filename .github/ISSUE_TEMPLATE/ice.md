@@ -20,17 +20,16 @@ http://blog.pnkfx.org/blog/2019/11/18/rust-bug-minimization-patterns/
 
 ### Meta
 
-- `cargo clippy -V`: e.g. clippy 0.0.212 (f455e46 2020-06-20)
-- `rustc -Vv`:
-  ```
-  rustc 1.46.0-nightly (f455e46ea 2020-06-20)
-  binary: rustc
-  commit-hash: f455e46eae1a227d735091091144601b467e1565
-  commit-date: 2020-06-20
-  host: x86_64-unknown-linux-gnu
-  release: 1.46.0-nightly
-  LLVM version: 10.0
-  ```
+**Rust version (`rustc -Vv`):**
+```
+rustc 1.46.0-nightly (f455e46ea 2020-06-20)
+binary: rustc
+commit-hash: f455e46eae1a227d735091091144601b467e1565
+commit-date: 2020-06-20
+host: x86_64-unknown-linux-gnu
+release: 1.46.0-nightly
+LLVM version: 10.0
+```
 
 ### Error output
 
