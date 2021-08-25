@@ -868,9 +868,8 @@ class RustBuild(object):
     @staticmethod
     def exe_suffix():
         """Return a suffix for executables"""
-        if sys.platform == 'win32':
-            return '.exe'
-        return ''
+        return '.exe' if sys.platform == 'win32' else ''
+
 
     def bootstrap_binary(self):
         """Return the path of the bootstrap binary
