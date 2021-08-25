@@ -1,5 +1,5 @@
 use crate::abi::{self, Abi, Align, FieldsShape, Size};
-use crate::abi::{HasDataLayout, LayoutOf, TyAndLayout, TyAndLayoutMethods};
+use crate::abi::{HasDataLayout, LayoutOf, TyAbiInterface, TyAndLayout};
 use crate::spec::{self, HasTargetSpec};
 
 mod aarch64;
@@ -316,7 +316,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// specific targets.
     pub fn homogeneous_aggregate<C>(&self, cx: &C) -> Result<HomogeneousAggregate, Heterogeneous>
     where
-        Ty: TyAndLayoutMethods<'a, C> + Copy,
+        Ty: TyAbiInterface<'a, C> + Copy,
         C: LayoutOf<'a, Ty = Ty, TyAndLayout = Self>,
     {
         match self.abi {
@@ -603,7 +603,7 @@ pub struct FnAbi<'a, Ty> {
 impl<'a, Ty> FnAbi<'a, Ty> {
     pub fn adjust_for_cabi<C>(&mut self, cx: &C, abi: spec::abi::Abi) -> Result<(), String>
     where
-        Ty: TyAndLayoutMethods<'a, C> + Copy,
+        Ty: TyAbiInterface<'a, C> + Copy,
         C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
     {
         if abi == spec::abi::Abi::X86Interrupt {

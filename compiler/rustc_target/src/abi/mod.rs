@@ -1236,39 +1236,45 @@ pub struct PointeeInfo {
     pub address_space: AddressSpace,
 }
 
-pub trait TyAndLayoutMethods<'a, C: LayoutOf<'a, Ty = Self>>: Sized {
-    fn for_variant(
+/// Trait that needs to be implemented by the higher-level type representation
+/// (e.g. `rustc_middle::ty::Ty`), to provide `rustc_target::abi` functionality.
+pub trait TyAbiInterface<'a, C: LayoutOf<'a, Ty = Self>>: Sized {
+    fn ty_and_layout_for_variant(
         this: TyAndLayout<'a, Self>,
         cx: &C,
         variant_index: VariantIdx,
     ) -> TyAndLayout<'a, Self>;
-    fn field(this: TyAndLayout<'a, Self>, cx: &C, i: usize) -> C::TyAndLayout;
-    fn pointee_info_at(this: TyAndLayout<'a, Self>, cx: &C, offset: Size) -> Option<PointeeInfo>;
+    fn ty_and_layout_field(this: TyAndLayout<'a, Self>, cx: &C, i: usize) -> C::TyAndLayout;
+    fn ty_and_layout_pointee_info_at(
+        this: TyAndLayout<'a, Self>,
+        cx: &C,
+        offset: Size,
+    ) -> Option<PointeeInfo>;
 }
 
 impl<'a, Ty> TyAndLayout<'a, Ty> {
     pub fn for_variant<C>(self, cx: &C, variant_index: VariantIdx) -> Self
     where
-        Ty: TyAndLayoutMethods<'a, C>,
+        Ty: TyAbiInterface<'a, C>,
         C: LayoutOf<'a, Ty = Ty>,
     {
-        Ty::for_variant(self, cx, variant_index)
+        Ty::ty_and_layout_for_variant(self, cx, variant_index)
     }
 
     pub fn field<C>(self, cx: &C, i: usize) -> C::TyAndLayout
     where
-        Ty: TyAndLayoutMethods<'a, C>,
+        Ty: TyAbiInterface<'a, C>,
         C: LayoutOf<'a, Ty = Ty>,
     {
-        Ty::field(self, cx, i)
+        Ty::ty_and_layout_field(self, cx, i)
     }
 
     pub fn pointee_info_at<C>(self, cx: &C, offset: Size) -> Option<PointeeInfo>
     where
-        Ty: TyAndLayoutMethods<'a, C>,
+        Ty: TyAbiInterface<'a, C>,
         C: LayoutOf<'a, Ty = Ty>,
     {
-        Ty::pointee_info_at(self, cx, offset)
+        Ty::ty_and_layout_pointee_info_at(self, cx, offset)
     }
 }
 
@@ -1299,7 +1305,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     pub fn might_permit_raw_init<C, E>(self, cx: &C, zero: bool) -> Result<bool, E>
     where
         Self: Copy,
-        Ty: TyAndLayoutMethods<'a, C>,
+        Ty: TyAbiInterface<'a, C>,
         C: LayoutOf<'a, Ty = Ty, TyAndLayout: MaybeResult<Self, Error = E>> + HasDataLayout,
     {
         let scalar_allows_raw_init = move |s: &Scalar| -> bool {

@@ -6,7 +6,7 @@
 
 use crate::abi::call::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Reg, RegKind, Uniform};
 use crate::abi::{
-    self, Abi, FieldsShape, HasDataLayout, LayoutOf, Size, TyAndLayout, TyAndLayoutMethods,
+    self, Abi, FieldsShape, HasDataLayout, LayoutOf, Size, TyAbiInterface, TyAndLayout,
 };
 use crate::spec::HasTargetSpec;
 
@@ -43,7 +43,7 @@ fn should_use_fp_conv_helper<'a, Ty, C>(
     field2_kind: &mut RegPassKind,
 ) -> Result<(), CannotUseFpConv>
 where
-    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    Ty: TyAbiInterface<'a, C> + Copy,
     C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>>,
 {
     match arg_layout.abi {
@@ -130,7 +130,7 @@ fn should_use_fp_conv<'a, Ty, C>(
     flen: u64,
 ) -> Option<FloatConv>
 where
-    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    Ty: TyAbiInterface<'a, C> + Copy,
     C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>>,
 {
     let mut field1_kind = RegPassKind::Unknown;
@@ -149,7 +149,7 @@ where
 
 fn classify_ret<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, xlen: u64, flen: u64) -> bool
 where
-    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    Ty: TyAbiInterface<'a, C> + Copy,
     C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>>,
 {
     if let Some(conv) = should_use_fp_conv(cx, &arg.layout, xlen, flen) {
@@ -212,7 +212,7 @@ fn classify_arg<'a, Ty, C>(
     avail_gprs: &mut u64,
     avail_fprs: &mut u64,
 ) where
-    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    Ty: TyAbiInterface<'a, C> + Copy,
     C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>>,
 {
     if !is_vararg {
@@ -320,7 +320,7 @@ fn extend_integer_width<'a, Ty>(arg: &mut ArgAbi<'a, Ty>, xlen: u64) {
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
-    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    Ty: TyAbiInterface<'a, C> + Copy,
     C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
 {
     let flen = match &cx.target_spec().llvm_abiname[..] {

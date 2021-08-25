@@ -2,7 +2,7 @@
 // for a pre-z13 machine or using -mno-vx.
 
 use crate::abi::call::{ArgAbi, FnAbi, Reg};
-use crate::abi::{self, HasDataLayout, LayoutOf, TyAndLayout, TyAndLayoutMethods};
+use crate::abi::{self, HasDataLayout, LayoutOf, TyAbiInterface, TyAndLayout};
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     if !ret.layout.is_aggregate() && ret.layout.size.bits() <= 64 {
@@ -14,7 +14,7 @@ fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
 
 fn is_single_fp_element<'a, Ty, C>(cx: &C, layout: TyAndLayout<'a, Ty>) -> bool
 where
-    Ty: TyAndLayoutMethods<'a, C>,
+    Ty: TyAbiInterface<'a, C>,
     C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     match layout.abi {
@@ -32,7 +32,7 @@ where
 
 fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
 where
-    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    Ty: TyAbiInterface<'a, C> + Copy,
     C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     if !arg.layout.is_aggregate() && arg.layout.size.bits() <= 64 {
@@ -59,7 +59,7 @@ where
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
-    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    Ty: TyAbiInterface<'a, C> + Copy,
     C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     if !fn_abi.ret.is_ignore() {

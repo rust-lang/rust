@@ -2078,11 +2078,11 @@ impl LayoutOf<'tcx> for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
     }
 }
 
-impl<'tcx, C> TyAndLayoutMethods<'tcx, C> for Ty<'tcx>
+impl<'tcx, C> TyAbiInterface<'tcx, C> for Ty<'tcx>
 where
     C: LayoutOf<'tcx, Ty = Ty<'tcx>> + HasTyCtxt<'tcx> + HasParamEnv<'tcx>,
 {
-    fn for_variant(
+    fn ty_and_layout_for_variant(
         this: TyAndLayout<'tcx>,
         cx: &C,
         variant_index: VariantIdx,
@@ -2132,7 +2132,7 @@ where
         TyAndLayout { ty: this.ty, layout }
     }
 
-    fn field(this: TyAndLayout<'tcx>, cx: &C, i: usize) -> C::TyAndLayout {
+    fn ty_and_layout_field(this: TyAndLayout<'tcx>, cx: &C, i: usize) -> C::TyAndLayout {
         enum TyMaybeWithLayout<'tcx, C: LayoutOf<'tcx>> {
             Ty(C::Ty),
             TyAndLayout(C::TyAndLayout),
@@ -2276,7 +2276,11 @@ where
         })
     }
 
-    fn pointee_info_at(this: TyAndLayout<'tcx>, cx: &C, offset: Size) -> Option<PointeeInfo> {
+    fn ty_and_layout_pointee_info_at(
+        this: TyAndLayout<'tcx>,
+        cx: &C,
+        offset: Size,
+    ) -> Option<PointeeInfo> {
         let addr_space_of_ty = |ty: Ty<'tcx>| {
             if ty.is_fn() { cx.data_layout().instruction_address_space } else { AddressSpace::DATA }
         };

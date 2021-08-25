@@ -1,9 +1,9 @@
 use crate::abi::call::{ArgAbi, FnAbi, Uniform};
-use crate::abi::{HasDataLayout, LayoutOf, TyAndLayout, TyAndLayoutMethods};
+use crate::abi::{HasDataLayout, LayoutOf, TyAbiInterface, TyAndLayout};
 
 fn unwrap_trivial_aggregate<'a, Ty, C>(cx: &C, val: &mut ArgAbi<'a, Ty>) -> bool
 where
-    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    Ty: TyAbiInterface<'a, C> + Copy,
     C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     if val.layout.is_aggregate() {
@@ -20,7 +20,7 @@ where
 
 fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>)
 where
-    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    Ty: TyAbiInterface<'a, C> + Copy,
     C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     ret.extend_integer_width_to(32);
@@ -31,7 +31,7 @@ where
 
 fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
 where
-    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    Ty: TyAbiInterface<'a, C> + Copy,
     C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     arg.extend_integer_width_to(32);
@@ -43,7 +43,7 @@ where
 /// The purpose of this ABI is to match the C ABI (aka clang) exactly.
 pub fn compute_c_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
-    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    Ty: TyAbiInterface<'a, C> + Copy,
     C: LayoutOf<'a, Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     if !fn_abi.ret.is_ignore() {
