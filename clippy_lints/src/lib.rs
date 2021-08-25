@@ -275,6 +275,7 @@ mod missing_const_for_fn;
 mod missing_doc;
 mod missing_enforced_import_rename;
 mod missing_inline;
+mod module_style;
 mod modulo_arithmetic;
 mod multiple_crate_versions;
 mod mut_key;
@@ -829,6 +830,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS,
         missing_enforced_import_rename::MISSING_ENFORCED_IMPORT_RENAMES,
         missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS,
+        module_style::MOD_MODULE_FILES,
+        module_style::SELF_NAMED_MODULE_FILES,
         modulo_arithmetic::MODULO_ARITHMETIC,
         multiple_crate_versions::MULTIPLE_CRATE_VERSIONS,
         mut_key::MUTABLE_KEY_TYPE,
@@ -1038,6 +1041,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS),
         LintId::of(missing_enforced_import_rename::MISSING_ENFORCED_IMPORT_RENAMES),
         LintId::of(missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS),
+        LintId::of(module_style::MOD_MODULE_FILES),
+        LintId::of(module_style::SELF_NAMED_MODULE_FILES),
         LintId::of(modulo_arithmetic::MODULO_ARITHMETIC),
         LintId::of(panic_in_result_fn::PANIC_IN_RESULT_FN),
         LintId::of(panic_unimplemented::PANIC),
@@ -2111,6 +2116,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box manual_map::ManualMap);
     store.register_late_pass(move || box if_then_some_else_none::IfThenSomeElseNone::new(msrv));
     store.register_early_pass(|| box bool_assert_comparison::BoolAssertComparison);
+    store.register_early_pass(move || box module_style::ModStyle);
     store.register_late_pass(|| box unused_async::UnusedAsync);
     let disallowed_types = conf.disallowed_types.iter().cloned().collect::<FxHashSet<_>>();
     store.register_late_pass(move || box disallowed_type::DisallowedType::new(&disallowed_types));
