@@ -70,15 +70,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn report_method_error(
         &self,
-        span: Span,
+        mut span: Span,
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
         source: SelfSource<'tcx>,
         error: MethodError<'tcx>,
         args: Option<&'tcx [hir::Expr<'tcx>]>,
     ) -> Option<DiagnosticBuilder<'_>> {
-        let orig_span = span;
-        let mut span = span;
         // Avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
             return None;
@@ -545,7 +543,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     } else {
                         err.span_label(span, format!("{item_kind} cannot be called on `{ty_str}` due to unsatisfied trait bounds"));
                     }
-                    self.tcx.sess.trait_methods_not_found.borrow_mut().insert(orig_span);
                 };
 
                 // If the method name is the name of a field with a function or closure type,
