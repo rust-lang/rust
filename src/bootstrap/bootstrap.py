@@ -301,6 +301,7 @@ def default_build_triple(verbose):
         'ppc': 'powerpc',
         'ppc64': 'powerpc64',
         'ppc64le': 'powerpc64le',
+        'riscv64': 'riscv64gc',
         's390x': 's390x',
         'x64': 'x86_64',
         'x86': 'i686',
