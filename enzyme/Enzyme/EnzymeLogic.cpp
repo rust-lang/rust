@@ -85,7 +85,7 @@ cl::opt<bool> nonmarkedglobals_inactiveloads(
     cl::desc("Consider loads of nonmarked globals to be inactive"));
 
 cl::opt<bool> EnzymeJuliaAddrLoad(
-    "enzyme-julia-addr-load", cl::init(true), cl::Hidden,
+    "enzyme-julia-addr-load", cl::init(false), cl::Hidden,
     cl::desc("Mark all loads resulting in an addr(13)* to be legal to redo"));
 }
 
