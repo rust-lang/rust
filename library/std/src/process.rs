@@ -1530,6 +1530,9 @@ impl crate::sealed::Sealed for ExitStatusError {}
 ///
 /// Produced by the [`.exit_ok`](ExitStatus::exit_ok) method on [`ExitStatus`].
 ///
+/// Implements [`Into<io::Error>`], producing an [`io::Error`]
+/// of kind [`Subprocessfailed`](io::ErrorKind::SubprocessFailed).
+///
 /// # Examples
 ///
 /// ```
