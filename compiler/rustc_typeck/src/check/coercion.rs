@@ -796,6 +796,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         //! into a closure or a `proc`.
 
         let b = self.shallow_resolve(b);
+        let InferOk { value: b, mut obligations } =
+            self.normalize_associated_types_in_as_infer_ok(self.cause.span, b);
         debug!("coerce_from_fn_item(a={:?}, b={:?})", a, b);
 
         match b.kind() {
@@ -815,8 +817,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     }
                 }
 
-                let InferOk { value: a_sig, mut obligations } =
+                let InferOk { value: a_sig, obligations: o1 } =
                     self.normalize_associated_types_in_as_infer_ok(self.cause.span, a_sig);
+                obligations.extend(o1);
 
                 let a_fn_pointer = self.tcx.mk_fn_ptr(a_sig);
                 let InferOk { value, obligations: o2 } = self.coerce_from_safe_fn(

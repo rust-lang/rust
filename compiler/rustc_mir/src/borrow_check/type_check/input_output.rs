@@ -9,7 +9,9 @@
 
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::mir::*;
-use rustc_middle::ty::Ty;
+use rustc_middle::traits::ObligationCause;
+use rustc_middle::ty::{self, Ty};
+use rustc_trait_selection::traits::query::normalize::AtExt;
 
 use rustc_index::vec::Idx;
 use rustc_span::Span;
@@ -162,17 +164,49 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn equate_normalized_input_or_output(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, span: Span) {
         debug!("equate_normalized_input_or_output(a={:?}, b={:?})", a, b);
 
-        if let Err(terr) =
+        if let Err(_) =
             self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
         {
-            span_mirbug!(
-                self,
-                Location::START,
-                "equate_normalized_input_or_output: `{:?}=={:?}` failed with `{:?}`",
-                a,
-                b,
-                terr
-            );
+            // FIXME(jackh726): This is a hack. It's somewhat like
+            // `rustc_traits::normalize_after_erasing_regions`. Ideally, we'd
+            // like to normalize *before* inserting into `local_decls`, but
+            // doing so ends up causing some other trouble.
+            let b = match self
+                .infcx
+                .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
+                .normalize(b)
+            {
+                Ok(n) => {
+                    debug!("equate_inputs_and_outputs: {:?}", n);
+                    if n.obligations.iter().all(|o| {
+                        matches!(
+                            o.predicate.kind().skip_binder(),
+                            ty::PredicateKind::RegionOutlives(_)
+                                | ty::PredicateKind::TypeOutlives(_)
+                        )
+                    }) {
+                        n.value
+                    } else {
+                        b
+                    }
+                }
+                Err(_) => {
+                    debug!("equate_inputs_and_outputs: NoSolution");
+                    b
+                }
+            };
+            if let Err(terr) =
+                self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
+            {
+                span_mirbug!(
+                    self,
+                    Location::START,
+                    "equate_normalized_input_or_output: `{:?}=={:?}` failed with `{:?}`",
+                    a,
+                    b,
+                    terr
+                );
+            }
         }
     }
 }

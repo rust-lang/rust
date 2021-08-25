@@ -1,11 +1,9 @@
-error[E0277]: the trait bound `for<'b> <Box<T> as X<'b, Box<T>>>::U: Clone` is not satisfied
+error[E0277]: the trait bound `str: Clone` is not satisfied
   --> $DIR/hr-associated-type-bound-param-5.rs:27:14
    |
 LL |     type U = str;
-   |              ^^^ the trait `for<'b> Clone` is not implemented for `<Box<T> as X<'b, Box<T>>>::U`
+   |              ^^^ the trait `Clone` is not implemented for `str`
    |
-   = help: the following implementations were found:
-             <&T as Clone>
 note: required by a bound in `X`
   --> $DIR/hr-associated-type-bound-param-5.rs:18:45
    |
@@ -15,31 +13,12 @@ LL | trait X<'a, T: Cycle + for<'b> X<'b, T>>
 LL |     for<'b> <T::Next as X<'b, T::Next>>::U: Clone,
    |                                             ^^^^^ required by this bound in `X`
 
-error[E0277]: the trait bound `for<'b> <Vec<T> as X<'b, Vec<T>>>::U: Clone` is not satisfied
-  --> $DIR/hr-associated-type-bound-param-5.rs:27:14
+error[E0277]: the trait bound `str: Clone` is not satisfied
+  --> $DIR/hr-associated-type-bound-param-5.rs:32:14
    |
 LL |     type U = str;
-   |              ^^^ the trait `for<'b> Clone` is not implemented for `<Vec<T> as X<'b, Vec<T>>>::U`
+   |              ^^^ the trait `Clone` is not implemented for `str`
    |
-   = help: the following implementations were found:
-             <&T as Clone>
-note: required by a bound in `X`
-  --> $DIR/hr-associated-type-bound-param-5.rs:16:33
-   |
-LL | trait X<'a, T: Cycle + for<'b> X<'b, T>>
-   |       - required by a bound in this
-LL | where
-LL |     for<'b> <T as X<'b, T>>::U: Clone,
-   |                                 ^^^^^ required by this bound in `X`
-
-error[E0277]: the trait bound `for<'b> <Vec<T> as X<'b, Vec<T>>>::U: Clone` is not satisfied
-  --> $DIR/hr-associated-type-bound-param-5.rs:33:14
-   |
-LL |     type U = str;
-   |              ^^^ the trait `for<'b> Clone` is not implemented for `<Vec<T> as X<'b, Vec<T>>>::U`
-   |
-   = help: the following implementations were found:
-             <&T as Clone>
 note: required by a bound in `X`
   --> $DIR/hr-associated-type-bound-param-5.rs:18:45
    |
@@ -49,23 +28,6 @@ LL | trait X<'a, T: Cycle + for<'b> X<'b, T>>
 LL |     for<'b> <T::Next as X<'b, T::Next>>::U: Clone,
    |                                             ^^^^^ required by this bound in `X`
 
-error[E0277]: the trait bound `for<'b> <Box<T> as X<'b, Box<T>>>::U: Clone` is not satisfied
-  --> $DIR/hr-associated-type-bound-param-5.rs:33:14
-   |
-LL |     type U = str;
-   |              ^^^ the trait `for<'b> Clone` is not implemented for `<Box<T> as X<'b, Box<T>>>::U`
-   |
-   = help: the following implementations were found:
-             <&T as Clone>
-note: required by a bound in `X`
-  --> $DIR/hr-associated-type-bound-param-5.rs:16:33
-   |
-LL | trait X<'a, T: Cycle + for<'b> X<'b, T>>
-   |       - required by a bound in this
-LL | where
-LL |     for<'b> <T as X<'b, T>>::U: Clone,
-   |                                 ^^^^^ required by this bound in `X`
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

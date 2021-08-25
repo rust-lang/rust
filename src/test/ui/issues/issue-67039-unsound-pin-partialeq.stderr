@@ -4,8 +4,8 @@ error[E0271]: type mismatch resolving `<Rc<Apple> as Deref>::Target == Rc<Apple>
 LL |     let _ = Pin::new(Apple) == Rc::pin(Apple);
    |                             ^^ expected struct `Apple`, found struct `Rc`
    |
-   = note: expected type `Apple`
-            found struct `Rc<Apple>`
+   = note: expected struct `Apple`
+              found struct `Rc<Apple>`
    = note: required because of the requirements on the impl of `PartialEq<Pin<Rc<Apple>>>` for `Pin<Apple>`
 
 error: aborting due to previous error

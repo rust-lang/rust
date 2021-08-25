@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     foo(());
    |     ^^^^^^^ one type is more general than the other
    |
-   = note:   expected type `&'a ()`
-           found reference `&()`
+   = note: expected reference `&'a ()`
+              found reference `&()`
 
 error: aborting due to previous error
 

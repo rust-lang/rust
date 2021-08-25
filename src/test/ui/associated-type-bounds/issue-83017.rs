@@ -1,3 +1,5 @@
+// check-pass
+
 #![feature(associated_type_bounds)]
 
 trait TraitA<'a> {
@@ -34,6 +36,4 @@ where
 
 fn main() {
     foo::<Z>();
-    //~^ ERROR: the trait bound `for<'a, 'b> <Z as TraitA<'a>>::AsA: TraitB<'a, 'b>` is not satisfied
-    //~| ERROR: the trait bound `for<'a, 'b, 'c> <<Z as TraitA<'a>>::AsA as TraitB<'a, 'b>>::AsB: TraitC<'a, 'b, 'c>` is not satisfied
 }
