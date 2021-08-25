@@ -72,7 +72,15 @@ impl HtmlWithLimit {
     }
 
     /// Open an HTML tag.
+    ///
+    /// **Note:** HTML attributes have not yet been implemented.
+    /// This function will panic if called with a non-alphabetic `tag_name`.
     pub(super) fn open_tag(&mut self, tag_name: &'static str) {
+        assert!(
+            tag_name.chars().all(|c| ('a'..='z').contains(&c)),
+            "tag_name contained non-alphabetic chars: {:?}",
+            tag_name
+        );
         self.queued_tags.push(tag_name);
     }
 
