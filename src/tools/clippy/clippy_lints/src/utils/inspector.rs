@@ -383,6 +383,13 @@ fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
         },
         hir::ItemKind::Mod(..) => println!("module"),
         hir::ItemKind::ForeignMod { abi, .. } => println!("foreign module with abi: {}", abi),
+        hir::ItemKind::Macro(ref macro_def) => {
+            if macro_def.macro_rules {
+                println!("macro introduced by `macro_rules!`");
+            } else {
+                println!("macro introduced by `macro`");
+            }
+        }
         hir::ItemKind::GlobalAsm(asm) => println!("global asm: {:?}", asm),
         hir::ItemKind::TyAlias(..) => {
             println!("type alias for {:?}", cx.tcx.type_of(did));

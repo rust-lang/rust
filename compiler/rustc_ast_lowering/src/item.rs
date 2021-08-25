@@ -170,7 +170,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_item_id_use_tree(use_tree, i.id, &mut vec);
                 vec
             }
-            ItemKind::MacroDef(..) => SmallVec::new(),
             ItemKind::Fn(..) | ItemKind::Impl(box ImplKind { of_trait: None, .. }) => {
                 smallvec![i.id]
             }
@@ -212,28 +211,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub fn lower_item(&mut self, i: &Item) -> Option<hir::Item<'hir>> {
         let mut ident = i.ident;
         let mut vis = self.lower_visibility(&i.vis, None);
-
-        if let ItemKind::MacroDef(MacroDef { ref body, macro_rules }) = i.kind {
-            if !macro_rules || self.sess.contains_name(&i.attrs, sym::macro_export) {
-                let hir_id = self.lower_node_id(i.id);
-                self.lower_attrs(hir_id, &i.attrs);
-                let body = P(self.lower_mac_args(body));
-                self.insert_macro_def(hir::MacroDef {
-                    ident,
-                    vis,
-                    def_id: hir_id.expect_owner(),
-                    span: i.span,
-                    ast: MacroDef { body, macro_rules },
-                });
-            } else {
-                for a in i.attrs.iter() {
-                    let a = self.lower_attr(a);
-                    self.non_exported_macro_attrs.push(a);
-                }
-            }
-            return None;
-        }
-
         let hir_id = self.lower_node_id(i.id);
         let attrs = self.lower_attrs(hir_id, &i.attrs);
         let kind = self.lower_item_kind(i.span, i.id, hir_id, &mut ident, attrs, &mut vis, &i.kind);
@@ -465,7 +442,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_generics(generics, ImplTraitContext::disallowed()),
                 self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
             ),
-            ItemKind::MacroDef(..) | ItemKind::MacCall(..) => {
+            ItemKind::MacroDef(MacroDef { ref body, macro_rules }) => {
+                let body = P(self.lower_mac_args(body));
+
+                hir::ItemKind::Macro(ast::MacroDef { body, macro_rules })
+            }
+            ItemKind::MacCall(..) => {
                 panic!("`TyMac` should have been expanded by now")
             }
         }

@@ -91,7 +91,6 @@ impl Clean<Item> for doctree::Module<'_> {
         items.extend(self.foreigns.iter().map(|x| x.clean(cx)));
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
         items.extend(self.items.iter().map(|x| x.clean(cx)).flatten());
-        items.extend(self.macros.iter().map(|x| x.clean(cx)));
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
@@ -1861,6 +1860,10 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                 ItemKind::Fn(ref sig, ref generics, body_id) => {
                     clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
                 }
+                ItemKind::Macro(ref macro_def) => MacroItem(Macro {
+                    source: display_macro_source(cx, name, &macro_def, def_id, &item.vis),
+                    imported_from: None,
+                }),
                 ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref item_ids) => {
                     let items = item_ids
                         .iter()
@@ -2135,24 +2138,6 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
                 cx,
             )
         })
-    }
-}
-
-impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Item {
-        let (item, renamed) = self;
-        let name = renamed.unwrap_or(item.ident.name);
-        let def_id = item.def_id.to_def_id();
-
-        Item::from_hir_id_and_parts(
-            item.hir_id(),
-            Some(name),
-            MacroItem(Macro {
-                source: display_macro_source(cx, name, &item.ast, def_id, &item.vis),
-                imported_from: None,
-            }),
-            cx,
-        )
     }
 }
 

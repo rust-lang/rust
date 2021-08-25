@@ -265,6 +265,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     | hir::ItemKind::TyAlias(..)
                     | hir::ItemKind::Mod(..)
                     | hir::ItemKind::ForeignMod { .. }
+                    | hir::ItemKind::Macro(..)
                     | hir::ItemKind::Impl { .. }
                     | hir::ItemKind::Trait(..)
                     | hir::ItemKind::TraitAlias(..)
@@ -309,8 +310,7 @@ impl<'tcx> ReachableContext<'tcx> {
             | Node::Ctor(..)
             | Node::Field(_)
             | Node::Ty(_)
-            | Node::Crate(_)
-            | Node::MacroDef(_) => {}
+            | Node::Crate(_) => {}
             _ => {
                 bug!(
                     "found unexpected node kind in worklist: {} ({:?})",

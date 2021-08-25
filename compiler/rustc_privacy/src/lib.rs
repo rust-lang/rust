@@ -26,7 +26,7 @@ use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{self, Const, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
-use rustc_span::symbol::{kw, Ident};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::traits::const_evaluatable::{self, AbstractConst};
 
@@ -507,11 +507,7 @@ impl EmbargoVisitor<'tcx> {
         }
         match def_kind {
             // No type privacy, so can be directly marked as reachable.
-            DefKind::Const
-            | DefKind::Macro(_)
-            | DefKind::Static
-            | DefKind::TraitAlias
-            | DefKind::TyAlias => {
+            DefKind::Const | DefKind::Static | DefKind::TraitAlias | DefKind::TyAlias => {
                 if vis.is_accessible_from(module.to_def_id(), self.tcx) {
                     self.update(def_id, level);
                 }
@@ -566,6 +562,7 @@ impl EmbargoVisitor<'tcx> {
             | DefKind::ExternCrate
             | DefKind::Use
             | DefKind::ForeignMod
+            | DefKind::Macro(_)
             | DefKind::AnonConst
             | DefKind::Field
             | DefKind::GlobalAsm
@@ -642,6 +639,21 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             }
             // Foreign modules inherit level from parents.
             hir::ItemKind::ForeignMod { .. } => self.prev_level,
+            hir::ItemKind::Macro(ref macro_def) => {
+                let def_id = item.def_id.to_def_id();
+                let is_macro_export = self.tcx.has_attr(def_id, sym::macro_export);
+                match (macro_def.macro_rules, is_macro_export) {
+                    (true, true) => Some(AccessLevel::Public),
+                    (true, false) => None,
+                    (false, _) => {
+                        if item.vis.node.is_pub() {
+                            self.prev_level
+                        } else {
+                            None
+                        }
+                    }
+                }
+            }
             // Other `pub` items inherit levels from parents.
             hir::ItemKind::Const(..)
             | hir::ItemKind::Enum(..)
@@ -711,6 +723,43 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     }
                 }
             }
+            hir::ItemKind::Macro(ref md) => {
+                // We have to make sure that the items that macros might reference
+                // are reachable, since they might be exported transitively.
+
+                // Non-opaque macros cannot make other items more accessible than they already are.
+                let attrs = self.tcx.hir().attrs(item.hir_id());
+                if attr::find_transparency(&attrs, md.macro_rules).0 != Transparency::Opaque {
+                    return;
+                }
+
+                let item_def_id = item.def_id.to_def_id();
+                let macro_module_def_id =
+                    ty::DefIdTree::parent(self.tcx, item_def_id).unwrap().expect_local();
+                if self.tcx.hir().opt_def_kind(macro_module_def_id) != Some(DefKind::Mod) {
+                    // The macro's parent doesn't correspond to a `mod`, return early (#63164, #65252).
+                    return;
+                }
+
+                if self.get(item.def_id).is_none() {
+                    return;
+                }
+
+                // Since we are starting from an externally visible module,
+                // all the parents in the loop below are also guaranteed to be modules.
+                let mut module_def_id = macro_module_def_id;
+                loop {
+                    let changed_reachability =
+                        self.update_macro_reachable(module_def_id, macro_module_def_id);
+                    if changed_reachability || module_def_id == CRATE_DEF_ID {
+                        break;
+                    }
+                    module_def_id = ty::DefIdTree::parent(self.tcx, module_def_id.to_def_id())
+                        .unwrap()
+                        .expect_local();
+                }
+            }
+
             hir::ItemKind::OpaqueTy(..)
             | hir::ItemKind::Use(..)
             | hir::ItemKind::Static(..)
@@ -726,7 +775,8 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
         // Mark all items in interfaces of reachable items as reachable.
         match item.kind {
             // The interface is empty.
-            hir::ItemKind::ExternCrate(..) => {}
+            hir::ItemKind::Macro(..) | hir::ItemKind::ExternCrate(..) => {}
+
             // All nested items are checked by `visit_item`.
             hir::ItemKind::Mod(..) => {}
             // Re-exports are handled in `visit_mod`. However, in order to avoid looping over
@@ -880,45 +930,6 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
         }
 
         intravisit::walk_mod(self, m, id);
-    }
-
-    fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
-        // Non-opaque macros cannot make other items more accessible than they already are.
-        let attrs = self.tcx.hir().attrs(md.hir_id());
-        if attr::find_transparency(&attrs, md.ast.macro_rules).0 != Transparency::Opaque {
-            // `#[macro_export]`-ed `macro_rules!` are `Public` since they
-            // ignore their containing path to always appear at the crate root.
-            if md.ast.macro_rules {
-                self.update(md.def_id, Some(AccessLevel::Public));
-            }
-            return;
-        }
-
-        let macro_module_def_id =
-            ty::DefIdTree::parent(self.tcx, md.def_id.to_def_id()).unwrap().expect_local();
-        if self.tcx.hir().opt_def_kind(macro_module_def_id) != Some(DefKind::Mod) {
-            // The macro's parent doesn't correspond to a `mod`, return early (#63164, #65252).
-            return;
-        }
-
-        let level = if md.vis.node.is_pub() { self.get(macro_module_def_id) } else { None };
-        let new_level = self.update(md.def_id, level);
-        if new_level.is_none() {
-            return;
-        }
-
-        // Since we are starting from an externally visible module,
-        // all the parents in the loop below are also guaranteed to be modules.
-        let mut module_def_id = macro_module_def_id;
-        loop {
-            let changed_reachability =
-                self.update_macro_reachable(module_def_id, macro_module_def_id);
-            if changed_reachability || module_def_id == CRATE_DEF_ID {
-                break;
-            }
-            module_def_id =
-                ty::DefIdTree::parent(self.tcx, module_def_id.to_def_id()).unwrap().expect_local();
-        }
     }
 }
 
@@ -1977,7 +1988,7 @@ impl<'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'tcx> {
             // Checked in resolve.
             hir::ItemKind::Use(..) => {}
             // No subitems.
-            hir::ItemKind::GlobalAsm(..) => {}
+            hir::ItemKind::Macro(..) | hir::ItemKind::GlobalAsm(..) => {}
             // Subitems of these items have inherited publicity.
             hir::ItemKind::Const(..)
             | hir::ItemKind::Static(..)

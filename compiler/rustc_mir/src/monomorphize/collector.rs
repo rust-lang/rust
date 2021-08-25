@@ -1150,6 +1150,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
             hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::Use(..)
             | hir::ItemKind::ForeignMod { .. }
+            | hir::ItemKind::Macro(..)
             | hir::ItemKind::TyAlias(..)
             | hir::ItemKind::Trait(..)
             | hir::ItemKind::TraitAlias(..)

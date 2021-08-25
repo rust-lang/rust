@@ -127,9 +127,7 @@ impl Visitor<'tcx> for LibFeatureCollector<'tcx> {
 fn get_lib_features(tcx: TyCtxt<'_>, (): ()) -> LibFeatures {
     let mut collector = LibFeatureCollector::new(tcx);
     let krate = tcx.hir().krate();
-    for attr in krate.non_exported_macro_attrs {
-        collector.visit_attribute(rustc_hir::CRATE_HIR_ID, attr);
-    }
+
     intravisit::walk_crate(&mut collector, krate);
     collector.lib_features
 }
