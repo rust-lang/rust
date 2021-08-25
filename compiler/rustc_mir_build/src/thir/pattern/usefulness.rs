@@ -816,7 +816,7 @@ impl<'p, 'tcx> SubPatSet<'p, 'tcx> {
     }
 
     /// When `self` refers to a patstack that was obtained from splitting an or-pattern, after
-    /// running `unspecialize` it will refer to the original patstack before splitting.
+    /// running `unsplit_or_pat` it will refer to the original patstack before splitting.
     ///
     /// For example:
     /// ```
