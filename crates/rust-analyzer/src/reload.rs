@@ -232,14 +232,6 @@ impl GlobalState {
             let mut res = Vec::new();
             for ws in workspaces.iter() {
                 res.push(ws.run_build_scripts(&config, &progress));
-                let ws = match ws {
-                    ProjectWorkspace::Cargo { cargo, .. } => cargo,
-                    ProjectWorkspace::DetachedFiles { .. } | ProjectWorkspace::Json { .. } => {
-                        res.push(Ok(WorkspaceBuildScripts::default()));
-                        continue;
-                    }
-                };
-                res.push(WorkspaceBuildScripts::run(&config, ws, &progress))
             }
             sender.send(Task::FetchBuildData(BuildDataProgress::End((workspaces, res)))).unwrap();
         });
