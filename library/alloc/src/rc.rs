@@ -1011,7 +1011,7 @@ impl<T: ?Sized> Rc<T> {
     /// mutate a shared value.
     ///
     /// See also [`make_mut`][make_mut], which will [`clone`][clone]
-    /// the inner value when there are other pointers.
+    /// the inner value when there are other `Rc` pointers.
     ///
     /// [make_mut]: Rc::make_mut
     /// [clone]: Clone::clone
@@ -1100,10 +1100,12 @@ impl<T: Clone> Rc<T> {
     /// [`clone`] the inner value to a new allocation to ensure unique ownership.  This is also
     /// referred to as clone-on-write.
     ///
-    /// If there are no other `Rc` pointers to this allocation, then [`Weak`]
-    /// pointers to this allocation will be disassociated.
+    /// However, if there are no other `Rc` pointers to this allocation, but some [`Weak`]
+    /// pointers, then the [`Weak`] pointers will be disassociated and the inner value will not
+    /// be cloned.
     ///
-    /// See also [`get_mut`], which will fail rather than cloning.
+    /// See also [`get_mut`], which will fail rather than cloning the inner value
+    /// or diassociating [`Weak`] pointers.
     ///
     /// [`clone`]: Clone::clone
     /// [`get_mut`]: Rc::get_mut
@@ -1115,11 +1117,11 @@ impl<T: Clone> Rc<T> {
     ///
     /// let mut data = Rc::new(5);
     ///
-    /// *Rc::make_mut(&mut data) += 1;        // Won't clone anything
-    /// let mut other_data = Rc::clone(&data);    // Won't clone inner data
-    /// *Rc::make_mut(&mut data) += 1;        // Clones inner data
-    /// *Rc::make_mut(&mut data) += 1;        // Won't clone anything
-    /// *Rc::make_mut(&mut other_data) *= 2;  // Won't clone anything
+    /// *Rc::make_mut(&mut data) += 1;         // Won't clone anything
+    /// let mut other_data = Rc::clone(&data); // Won't clone inner data
+    /// *Rc::make_mut(&mut data) += 1;         // Clones inner data
+    /// *Rc::make_mut(&mut data) += 1;         // Won't clone anything
+    /// *Rc::make_mut(&mut other_data) *= 2;   // Won't clone anything
     ///
     /// // Now `data` and `other_data` point to different allocations.
     /// assert_eq!(*data, 8);
