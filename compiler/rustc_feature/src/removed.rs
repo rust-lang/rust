@@ -125,6 +125,8 @@ declare_features! (
      Some("removed in favor of `#![feature(marker_trait_attr)]`")),
     /// Allows `#[no_debug]`.
     (removed, no_debug, "1.43.0", Some(29721), None, Some("removed due to lack of demand")),
+    /// Allows non-trivial generic constants which have to be manually propagated upwards.
+    (removed, const_evaluatable_checked, "1.48.0", Some(76560), None, Some("renamed to `generic_const_exprs`")),
     /// Allows comparing raw pointers during const eval.
     (removed, const_compare_raw_pointers, "1.46.0", Some(53020), None,
      Some("cannot be allowed in const eval in any meaningful way")),
@@ -163,9 +165,6 @@ declare_features! (
     ///
     /// Permits specifying whether a function should permit unwinding or abort on unwind.
     (removed, unwind_attributes, "1.56.0", Some(58760), None, Some("use the C-unwind ABI instead")),
-
-    /// Allows non-trivial generic constants which have to be manually propagated upwards.
-    (removed, const_evaluatable_checked, "1.48.0", Some(76560), None, Some("renamed to `generic_const_exprs`")),
 
     // -------------------------------------------------------------------------
     // feature-group-end: removed features

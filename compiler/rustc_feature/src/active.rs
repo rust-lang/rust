@@ -680,7 +680,7 @@ declare_features! (
     (active, doc_primitive, "1.56.0", Some(88070), None),
 
     /// Allows non-trivial generic constants which have to have wfness manually propagated to callers
-    (active, generic_const_exprs, "1.56.0", Some(76560), None),
+    (incomplete, generic_const_exprs, "1.56.0", Some(76560), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
