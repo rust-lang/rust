@@ -16,7 +16,7 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
   COMMAND="python $COMMAND"
 fi
 
-echo "Running pre-commit script '$COMMAND'"
+echo "Running pre-push script '$COMMAND'"
 
 cd "$ROOT_DIR"
 
