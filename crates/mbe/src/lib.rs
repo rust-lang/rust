@@ -67,7 +67,7 @@ impl fmt::Display for ExpandError {
 pub use crate::{
     syntax_bridge::{
         parse_exprs_with_sep, parse_to_token_tree, syntax_node_to_token_tree,
-        token_tree_to_syntax_node,
+        syntax_node_to_token_tree_censored, token_tree_to_syntax_node,
     },
     token_map::TokenMap,
 };

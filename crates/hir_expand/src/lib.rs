@@ -14,7 +14,6 @@ pub mod builtin_macro;
 pub mod proc_macro;
 pub mod quote;
 pub mod eager;
-mod input;
 
 use base_db::ProcMacroKind;
 use either::Either;

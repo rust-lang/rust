@@ -511,6 +511,7 @@ dependencies = [
  "cov-mark",
  "either",
  "expect-test",
+ "itertools",
  "la-arena",
  "limit",
  "log",

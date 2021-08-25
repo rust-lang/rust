@@ -3,19 +3,20 @@
 use std::sync::Arc;
 
 use base_db::{salsa, SourceDatabase};
+use itertools::Itertools;
 use limit::Limit;
 use mbe::{ExpandError, ExpandResult};
 use parser::{FragmentKind, T};
 use syntax::{
     algo::diff,
-    ast::{self, NameOwner},
-    AstNode, GreenNode, Parse, SyntaxNode, SyntaxToken,
+    ast::{self, AttrsOwner, NameOwner},
+    AstNode, GreenNode, Parse, SyntaxNode, SyntaxToken, TextRange,
 };
 
 use crate::{
-    ast_id_map::AstIdMap, hygiene::HygieneFrame, input::process_macro_input, BuiltinAttrExpander,
-    BuiltinDeriveExpander, BuiltinFnLikeExpander, HirFileId, HirFileIdRepr, MacroCallId,
-    MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander,
+    ast_id_map::AstIdMap, hygiene::HygieneFrame, BuiltinAttrExpander, BuiltinDeriveExpander,
+    BuiltinFnLikeExpander, HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind, MacroCallLoc,
+    MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander,
 };
 
 /// Total limit on the number of tokens produced by any macro invocation.
@@ -257,9 +258,28 @@ fn parse_macro_expansion(
 
 fn macro_arg(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>> {
     let arg = db.macro_arg_text(id)?;
-    let (mut tt, tmap) = mbe::syntax_node_to_token_tree(&SyntaxNode::new_root(arg));
+    let loc = db.lookup_intern_macro(id);
 
-    let loc: MacroCallLoc = db.lookup_intern_macro(id);
+    let node = SyntaxNode::new_root(arg);
+    let censor = match loc.kind {
+        MacroCallKind::FnLike { .. } => None,
+        MacroCallKind::Derive { derive_attr_index, .. } => match ast::Item::cast(node.clone()) {
+            Some(item) => item
+                .attrs()
+                .map(|attr| attr.syntax().text_range())
+                .take(derive_attr_index as usize + 1)
+                .fold1(TextRange::cover),
+            None => None,
+        },
+        MacroCallKind::Attr { invoc_attr_index, .. } => match ast::Item::cast(node.clone()) {
+            Some(item) => {
+                item.attrs().nth(invoc_attr_index as usize).map(|attr| attr.syntax().text_range())
+            }
+            None => None,
+        },
+    };
+    let (mut tt, tmap) = mbe::syntax_node_to_token_tree_censored(&node, censor);
+
     if loc.def.is_proc_macro() {
         // proc macros expect their inputs without parentheses, MBEs expect it with them included
         tt.delimiter = None;
@@ -271,7 +291,6 @@ fn macro_arg(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(tt::Subtree, 
 fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {
     let loc = db.lookup_intern_macro(id);
     let arg = loc.kind.arg(db)?;
-    let arg = process_macro_input(&loc.kind, arg);
     if matches!(loc.kind, MacroCallKind::FnLike { .. }) {
         let first = arg.first_child_or_token().map_or(T![.], |it| it.kind());
         let last = arg.last_child_or_token().map_or(T![.], |it| it.kind());
