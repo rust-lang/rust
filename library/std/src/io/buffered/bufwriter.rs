@@ -323,7 +323,6 @@ impl<W: Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(bufwriter_into_parts)]
     /// use std::io::{BufWriter, Write};
     ///
     /// let mut buffer = [0u8; 10];
@@ -334,7 +333,7 @@ impl<W: Write> BufWriter<W> {
     /// assert_eq!(recovered_writer.len(), 0);
     /// assert_eq!(&buffered_data.unwrap(), b"ata");
     /// ```
-    #[unstable(feature = "bufwriter_into_parts", issue = "80690")]
+    #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
     pub fn into_parts(mut self) -> (W, Result<Vec<u8>, WriterPanicked>) {
         let buf = mem::take(&mut self.buf);
         let buf = if !self.panicked { Ok(buf) } else { Err(WriterPanicked { buf }) };
@@ -444,14 +443,13 @@ impl<W: Write> BufWriter<W> {
     }
 }
 
-#[unstable(feature = "bufwriter_into_parts", issue = "80690")]
+#[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 /// Error returned for the buffered data from `BufWriter::into_parts`, when the underlying
 /// writer has previously panicked.  Contains the (possibly partly written) buffered data.
 ///
 /// # Example
 ///
 /// ```
-/// #![feature(bufwriter_into_parts)]
 /// use std::io::{self, BufWriter, Write};
 /// use std::panic::{catch_unwind, AssertUnwindSafe};
 ///
@@ -478,7 +476,7 @@ pub struct WriterPanicked {
 impl WriterPanicked {
     /// Returns the perhaps-unwritten data.  Some of this data may have been written by the
     /// panicking call(s) to the underlying writer, so simply writing it again is not a good idea.
-    #[unstable(feature = "bufwriter_into_parts", issue = "80690")]
+    #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
     pub fn into_inner(self) -> Vec<u8> {
         self.buf
     }
@@ -487,7 +485,7 @@ impl WriterPanicked {
         "BufWriter inner writer panicked, what data remains unwritten is not known";
 }
 
-#[unstable(feature = "bufwriter_into_parts", issue = "80690")]
+#[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 impl error::Error for WriterPanicked {
     #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
@@ -495,14 +493,14 @@ impl error::Error for WriterPanicked {
     }
 }
 
-#[unstable(feature = "bufwriter_into_parts", issue = "80690")]
+#[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 impl fmt::Display for WriterPanicked {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", Self::DESCRIPTION)
     }
 }
 
-#[unstable(feature = "bufwriter_into_parts", issue = "80690")]
+#[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 impl fmt::Debug for WriterPanicked {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("WriterPanicked")
