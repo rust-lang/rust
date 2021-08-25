@@ -367,11 +367,11 @@ unsafe {
 
 ## Labels
 
-Any reuse of a named label, local or otherwise, can result in a assembler or linker error in the best case, ICEs or segfaults in the compiler in other cases, and generally unexpected behavior. Reuse of a named label can happen in a variety of ways including:
+Any reuse of a named label, local or otherwise, can result in a assembler or linker error or may cause other strange behavior. Reuse of a named label can happen in a variety of ways including:
 
 -   explicitly: using a label more than once in one `asm!` block, or multiple times across blocks
 -   implicitly via inlining: the compiler is allowed to instantiate multiple copies of an `asm!` block, for example when the function containing it is inlined in multiple places.
--   implicitly via LTO: LTO can cause code from _other crates_ to be placed in the same codegen unit, and so could bring in arbitrary labels
+-   implicitly via LTO: LTO can cause code from *other crates* to be placed in the same codegen unit, and so could bring in arbitrary labels
 
 As a consequence, you should only use GNU assembler **numeric** [local labels] inside inline assembly code. Defining symbols in assembly code may lead to assembler and/or linker errors due to duplicate symbol definitions.
 
