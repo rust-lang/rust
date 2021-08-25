@@ -545,9 +545,6 @@ declare_features! (
     /// Allows capturing variables in scope using format_args!
     (active, format_args_capture, "1.46.0", Some(67984), None),
 
-    /// Lazily evaluate constants. This allows constants to depend on type parameters.
-    (incomplete, lazy_normalization_consts, "1.46.0", Some(72219), None),
-
     /// Allows `if let` guard in match arms.
     (active, if_let_guard, "1.47.0", Some(51114), None),
 
