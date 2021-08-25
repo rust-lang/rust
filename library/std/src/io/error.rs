@@ -289,7 +289,7 @@ pub enum ErrorKind {
     /// A subprocess (eg, run by a
     /// [`Command`](crate::process::Command)) failed.
     ///
-    /// Often wraps an
+    /// Often an [`io::Error`](`crate::io::Error`) with this kind wraps an
     /// [`ExitStatusError`](crate::process::ExitStatusError),
     /// (perhaps via `?` and `Into`), in which case
     /// [`io::Error::get_ref`](crate::io::Error::get_ref) or
