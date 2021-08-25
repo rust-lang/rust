@@ -196,6 +196,10 @@ impl WorkspaceBuildScripts {
 
         Ok(res)
     }
+
+    pub fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
 }
 
 // FIXME: File a better way to know if it is a dylib.

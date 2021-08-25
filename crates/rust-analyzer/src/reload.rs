@@ -445,19 +445,29 @@ impl GlobalState {
     }
 
     fn fetch_build_data_error(&self) -> Option<String> {
-        let mut buf = String::new();
+        let mut buf = "rust-analyzer failed to run build scripts:\n".to_string();
+        let mut has_errors = false;
 
         for ws in &self.fetch_build_data_queue.last_op_result().1 {
-            if let Err(err) = ws {
-                stdx::format_to!(buf, "rust-analyzer failed to run custom build: {:#}\n", err);
+            match ws {
+                Ok(data) => {
+                    if let Some(err) = data.error() {
+                        has_errors = true;
+                        stdx::format_to!(buf, "{:#}\n", err);
+                    }
+                }
+                Err(err) => {
+                    has_errors = true;
+                    stdx::format_to!(buf, "{:#}\n", err);
+                }
             }
         }
 
-        if buf.is_empty() {
-            return None;
+        if has_errors {
+            Some(buf)
+        } else {
+            None
         }
-
-        Some(buf)
     }
 
     fn reload_flycheck(&mut self) {
