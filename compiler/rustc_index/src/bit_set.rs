@@ -267,6 +267,16 @@ fn sparse_intersect<T: Idx>(
     set.elems.len() != size
 }
 
+fn dense_sparse_intersect<T: Idx>(
+    dense: &BitSet<T>,
+    sparse: &SparseBitSet<T>,
+) -> (SparseBitSet<T>, bool) {
+    let n = dense.count();
+    let mut sparse_copy = sparse.clone();
+    sparse_intersect(&mut sparse_copy, |el| !dense.contains(*el));
+    (sparse_copy, dense.count() != n)
+}
+
 impl<T: Idx> BitRelations<HybridBitSet<T>> for BitSet<T> {
     fn union(&mut self, other: &HybridBitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size());
@@ -292,11 +302,9 @@ impl<T: Idx> BitRelations<HybridBitSet<T>> for BitSet<T> {
         assert_eq!(self.domain_size, other.domain_size());
         match other {
             HybridBitSet::Sparse(sparse) => {
-                let n = self.count();
-                let mut sparse_copy = sparse.clone();
-                sparse_intersect(&mut sparse_copy, |el| !self.contains(*el));
-                *self = sparse_copy.to_dense();
-                self.count() != n
+                let (updated, changed) = dense_sparse_intersect(self, sparse);
+                *self = updated.to_dense();
+                changed
             }
             HybridBitSet::Dense(dense) => self.intersect(dense),
         }
@@ -364,7 +372,14 @@ impl<T: Idx> BitRelations<HybridBitSet<T>> for HybridBitSet<T> {
             HybridBitSet::Sparse(self_sparse) => {
                 sparse_intersect(self_sparse, |elem| other.contains(*elem))
             }
-            HybridBitSet::Dense(self_dense) => self_dense.intersect(other),
+            HybridBitSet::Dense(self_dense) => match other {
+                HybridBitSet::Sparse(other_sparse) => {
+                    let (updated, changed) = dense_sparse_intersect(self_dense, other_sparse);
+                    *self = HybridBitSet::Sparse(updated);
+                    changed
+                }
+                HybridBitSet::Dense(other_dense) => self_dense.intersect(other_dense),
+            },
         }
     }
 }
