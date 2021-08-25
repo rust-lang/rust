@@ -406,11 +406,11 @@ fn push_debuginfo_type_name<'tcx>(
             let dataful_discriminant_range =
                 &dataful_variant_layout.largest_niche.as_ref().unwrap().scalar.valid_range;
 
-            let min = dataful_discriminant_range.start();
-            let min = tag.value.size(&tcx).truncate(*min);
+            let min = dataful_discriminant_range.start;
+            let min = tag.value.size(&tcx).truncate(min);
 
-            let max = dataful_discriminant_range.end();
-            let max = tag.value.size(&tcx).truncate(*max);
+            let max = dataful_discriminant_range.end;
+            let max = tag.value.size(&tcx).truncate(max);
 
             let dataful_variant_name = def.variants[*dataful_variant].ident.as_str();
 

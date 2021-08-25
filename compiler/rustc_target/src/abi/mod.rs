@@ -677,32 +677,80 @@ impl Primitive {
     }
 }
 
+/// Inclusive wrap-around range of valid values, that is, if
+/// start > end, it represents `start..=MAX`,
+/// followed by `0..=end`.
+///
+/// That is, for an i8 primitive, a range of `254..=2` means following
+/// sequence:
+///
+///    254 (-2), 255 (-1), 0, 1, 2
+///
+/// This is intended specifically to mirror LLVM’s `!range` metadata,
+/// semantics.
+#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(HashStable_Generic)]
+pub struct WrappingRange {
+    pub start: u128,
+    pub end: u128,
+}
+
+impl WrappingRange {
+    /// Returns `true` if `v` is contained in the range.
+    #[inline(always)]
+    pub fn contains(&self, v: u128) -> bool {
+        if self.start <= self.end {
+            self.start <= v && v <= self.end
+        } else {
+            self.start <= v || v <= self.end
+        }
+    }
+
+    /// Returns `true` if zero is contained in the range.
+    /// Equal to `range.contains(0)` but should be faster.
+    #[inline(always)]
+    pub fn contains_zero(&self) -> bool {
+        self.start > self.end || self.start == 0
+    }
+
+    /// Returns `self` with replaced `start`
+    #[inline(always)]
+    pub fn with_start(mut self, start: u128) -> Self {
+        self.start = start;
+        self
+    }
+
+    /// Returns `self` with replaced `end`
+    #[inline(always)]
+    pub fn with_end(mut self, end: u128) -> Self {
+        self.end = end;
+        self
+    }
+}
+
+impl fmt::Debug for WrappingRange {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(fmt, "{}..={}", self.start, self.end)?;
+        Ok(())
+    }
+}
+
 /// Information about one scalar component of a Rust type.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub struct Scalar {
     pub value: Primitive,
 
-    /// Inclusive wrap-around range of valid values, that is, if
-    /// start > end, it represents `start..=MAX`,
-    /// followed by `0..=end`.
-    ///
-    /// That is, for an i8 primitive, a range of `254..=2` means following
-    /// sequence:
-    ///
-    ///    254 (-2), 255 (-1), 0, 1, 2
-    ///
-    /// This is intended specifically to mirror LLVM’s `!range` metadata,
-    /// semantics.
     // FIXME(eddyb) always use the shortest range, e.g., by finding
     // the largest space between two consecutive valid values and
     // taking everything else as the (shortest) valid range.
-    pub valid_range: RangeInclusive<u128>,
+    pub valid_range: WrappingRange,
 }
 
 impl Scalar {
     pub fn is_bool(&self) -> bool {
-        matches!(self.value, Int(I8, false)) && self.valid_range == (0..=1)
+        matches!(self.value, Int(I8, false))
+            && matches!(self.valid_range, WrappingRange { start: 0, end: 1 })
     }
 
     /// Returns the valid range as a `x..y` range.
@@ -715,8 +763,8 @@ impl Scalar {
         let bits = self.value.size(cx).bits();
         assert!(bits <= 128);
         let mask = !0u128 >> (128 - bits);
-        let start = *self.valid_range.start();
-        let end = *self.valid_range.end();
+        let start = self.valid_range.start;
+        let end = self.valid_range.end;
         assert_eq!(start, start & mask);
         assert_eq!(end, end & mask);
         start..(end.wrapping_add(1) & mask)
@@ -971,14 +1019,14 @@ impl Niche {
         let max_value = !0u128 >> (128 - bits);
 
         // Find out how many values are outside the valid range.
-        let niche = v.end().wrapping_add(1)..*v.start();
+        let niche = v.end.wrapping_add(1)..v.start;
         niche.end.wrapping_sub(niche.start) & max_value
     }
 
     pub fn reserve<C: HasDataLayout>(&self, cx: &C, count: u128) -> Option<(u128, Scalar)> {
         assert!(count > 0);
 
-        let Scalar { value, valid_range: ref v } = self.scalar;
+        let Scalar { value, valid_range: v } = self.scalar.clone();
         let bits = value.size(cx).bits();
         assert!(bits <= 128);
         let max_value = !0u128 >> (128 - bits);
@@ -988,24 +1036,14 @@ impl Niche {
         }
 
         // Compute the range of invalid values being reserved.
-        let start = v.end().wrapping_add(1) & max_value;
-        let end = v.end().wrapping_add(count) & max_value;
+        let start = v.end.wrapping_add(1) & max_value;
+        let end = v.end.wrapping_add(count) & max_value;
 
-        // If the `end` of our range is inside the valid range,
-        // then we ran out of invalid values.
-        // FIXME(eddyb) abstract this with a wraparound range type.
-        let valid_range_contains = |x| {
-            if v.start() <= v.end() {
-                *v.start() <= x && x <= *v.end()
-            } else {
-                *v.start() <= x || x <= *v.end()
-            }
-        };
-        if valid_range_contains(end) {
+        if v.contains(end) {
             return None;
         }
 
-        Some((start, Scalar { value, valid_range: *v.start()..=end }))
+        Some((start, Scalar { value, valid_range: v.with_end(end) }))
     }
 }
 
@@ -1212,9 +1250,8 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     {
         let scalar_allows_raw_init = move |s: &Scalar| -> bool {
             if zero {
-                let range = &s.valid_range;
                 // The range must contain 0.
-                range.contains(&0) || (*range.start() > *range.end()) // wrap-around allows 0
+                s.valid_range.contains_zero()
             } else {
                 // The range must include all values. `valid_range_exclusive` handles
                 // the wrap-around using target arithmetic; with wrap-around then the full

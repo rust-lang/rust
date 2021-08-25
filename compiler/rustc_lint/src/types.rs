@@ -795,7 +795,7 @@ crate fn repr_nullable_ptr<'tcx>(
         // Return the nullable type this Option-like enum can be safely represented with.
         let field_ty_abi = &cx.layout_of(field_ty).unwrap().abi;
         if let Abi::Scalar(field_ty_scalar) = field_ty_abi {
-            match (field_ty_scalar.valid_range.start(), field_ty_scalar.valid_range.end()) {
+            match (field_ty_scalar.valid_range.start, field_ty_scalar.valid_range.end) {
                 (0, _) => unreachable!("Non-null optimisation extended to a non-zero value."),
                 (1, _) => {
                     return Some(get_nullable_type(cx, field_ty).unwrap());

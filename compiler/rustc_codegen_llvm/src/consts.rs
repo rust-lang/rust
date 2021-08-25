@@ -16,7 +16,9 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, span_bug};
-use rustc_target::abi::{AddressSpace, Align, HasDataLayout, LayoutOf, Primitive, Scalar, Size};
+use rustc_target::abi::{
+    AddressSpace, Align, HasDataLayout, LayoutOf, Primitive, Scalar, Size, WrappingRange,
+};
 use tracing::debug;
 
 pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll Value {
@@ -59,7 +61,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
                 Pointer::new(alloc_id, Size::from_bytes(ptr_offset)),
                 &cx.tcx,
             ),
-            &Scalar { value: Primitive::Pointer, valid_range: 0..=!0 },
+            &Scalar { value: Primitive::Pointer, valid_range: WrappingRange { start: 0, end: !0 } },
             cx.type_i8p_ext(address_space),
         ));
         next_offset = offset + pointer_size;
