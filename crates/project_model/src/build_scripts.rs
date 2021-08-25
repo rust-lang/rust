@@ -42,7 +42,7 @@ pub(crate) struct BuildScriptOutput {
 }
 
 impl WorkspaceBuildScripts {
-    pub fn run(
+    pub(crate) fn run(
         config: &CargoConfig,
         workspace: &CargoWorkspace,
         progress: &dyn Fn(String),
