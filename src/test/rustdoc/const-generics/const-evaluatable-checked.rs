@@ -1,5 +1,5 @@
 #![crate_name = "foo"]
-#![feature(const_evaluatable_checked, const_generics)]
+#![feature(generic_const_exprs, const_generics)]
 #![allow(incomplete_features)]
 // make sure that `ConstEvaluatable` predicates dont cause rustdoc to ICE #77647
 // @has foo/struct.Ice.html '//pre[@class="rust struct"]' \

@@ -1,5 +1,5 @@
 // run-pass
-#![feature(const_evaluatable_checked)]
+#![feature(generic_const_exprs)]
 #![feature(const_generics)]
 #![allow(incomplete_features)]
 

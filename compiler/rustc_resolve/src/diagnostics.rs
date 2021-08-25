@@ -506,8 +506,8 @@ impl<'a> Resolver<'a> {
 
                 if self.session.is_nightly_build() {
                     err.help(
-                        "use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` \
-                        to allow generic const expressions"
+                        "use `#![feature(const_generics)]` and `#![feature(generic_const_exprs)]` \
+                        to allow generic const expressions",
                     );
                 }
 

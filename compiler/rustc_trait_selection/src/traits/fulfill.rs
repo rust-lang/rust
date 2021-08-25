@@ -570,7 +570,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
 
                 ty::PredicateKind::ConstEquate(c1, c2) => {
                     debug!(?c1, ?c2, "equating consts");
-                    if self.selcx.tcx().features().const_evaluatable_checked {
+                    if self.selcx.tcx().features().generic_const_exprs {
                         // FIXME: we probably should only try to unify abstract constants
                         // if the constants depend on generic parameters.
                         //
