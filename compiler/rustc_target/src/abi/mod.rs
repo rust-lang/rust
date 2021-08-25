@@ -194,6 +194,7 @@ impl TargetDataLayout {
     /// to represent object size in bits. It would need to be 1 << 61 to account for this, but is
     /// currently conservatively bounded to 1 << 47 as that is enough to cover the current usable
     /// address space on 64-bit ARMv8 and x86_64.
+    #[inline]
     pub fn obj_size_bound(&self) -> u64 {
         match self.pointer_size.bits() {
             16 => 1 << 15,
@@ -203,6 +204,7 @@ impl TargetDataLayout {
         }
     }
 
+    #[inline]
     pub fn ptr_sized_integer(&self) -> Integer {
         match self.pointer_size.bits() {
             16 => I16,
@@ -212,6 +214,7 @@ impl TargetDataLayout {
         }
     }
 
+    #[inline]
     pub fn vector_align(&self, vec_size: Size) -> AbiAndPrefAlign {
         for &(size, align) in &self.vector_align {
             if size == vec_size {
@@ -562,14 +565,17 @@ pub struct AbiAndPrefAlign {
 }
 
 impl AbiAndPrefAlign {
+    #[inline]
     pub fn new(align: Align) -> AbiAndPrefAlign {
         AbiAndPrefAlign { abi: align, pref: align }
     }
 
+    #[inline]
     pub fn min(self, other: AbiAndPrefAlign) -> AbiAndPrefAlign {
         AbiAndPrefAlign { abi: self.abi.min(other.abi), pref: self.pref.min(other.pref) }
     }
 
+    #[inline]
     pub fn max(self, other: AbiAndPrefAlign) -> AbiAndPrefAlign {
         AbiAndPrefAlign { abi: self.abi.max(other.abi), pref: self.pref.max(other.pref) }
     }
@@ -586,6 +592,7 @@ pub enum Integer {
 }
 
 impl Integer {
+    #[inline]
     pub fn size(self) -> Size {
         match self {
             I8 => Size::from_bytes(1),
@@ -609,6 +616,7 @@ impl Integer {
     }
 
     /// Finds the smallest Integer type which can represent the signed value.
+    #[inline]
     pub fn fit_signed(x: i128) -> Integer {
         match x {
             -0x0000_0000_0000_0080..=0x0000_0000_0000_007f => I8,
@@ -620,6 +628,7 @@ impl Integer {
     }
 
     /// Finds the smallest Integer type which can represent the unsigned value.
+    #[inline]
     pub fn fit_unsigned(x: u128) -> Integer {
         match x {
             0..=0x0000_0000_0000_00ff => I8,
@@ -655,6 +664,9 @@ impl Integer {
         I8
     }
 
+    // FIXME(eddyb) consolidate this and other methods that find the appropriate
+    // `Integer` given some requirements.
+    #[inline]
     fn from_size(size: Size) -> Result<Self, String> {
         match size.bits() {
             8 => Ok(Integer::I8),
@@ -706,10 +718,14 @@ impl Primitive {
         }
     }
 
+    // FIXME(eddyb) remove, it's trivial thanks to `matches!`.
+    #[inline]
     pub fn is_float(self) -> bool {
         matches!(self, F32 | F64)
     }
 
+    // FIXME(eddyb) remove, it's completely unused.
+    #[inline]
     pub fn is_int(self) -> bool {
         matches!(self, Int(..))
     }
@@ -786,6 +802,7 @@ pub struct Scalar {
 }
 
 impl Scalar {
+    #[inline]
     pub fn is_bool(&self) -> bool {
         matches!(self.value, Int(I8, false))
             && matches!(self.valid_range, WrappingRange { start: 0, end: 1 })
@@ -852,6 +869,7 @@ pub enum FieldsShape {
 }
 
 impl FieldsShape {
+    #[inline]
     pub fn count(&self) -> usize {
         match *self {
             FieldsShape::Primitive => 0,
@@ -861,6 +879,7 @@ impl FieldsShape {
         }
     }
 
+    #[inline]
     pub fn offset(&self, i: usize) -> Size {
         match *self {
             FieldsShape::Primitive => {
@@ -884,6 +903,7 @@ impl FieldsShape {
         }
     }
 
+    #[inline]
     pub fn memory_index(&self, i: usize) -> usize {
         match *self {
             FieldsShape::Primitive => {
@@ -967,6 +987,7 @@ impl Abi {
     }
 
     /// Returns `true` if this is a single signed integer scalar
+    #[inline]
     pub fn is_signed(&self) -> bool {
         match *self {
             Abi::Scalar(ref scal) => match scal.value {
