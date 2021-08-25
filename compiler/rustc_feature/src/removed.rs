@@ -125,6 +125,8 @@ declare_features! (
      Some("removed in favor of `#![feature(marker_trait_attr)]`")),
     /// Allows `#[no_debug]`.
     (removed, no_debug, "1.43.0", Some(29721), None, Some("removed due to lack of demand")),
+    /// Lazily evaluate constants. This allows constants to depend on type parameters.
+    (removed, lazy_normalization_consts, "1.46.0", Some(72219), None, Some("superseded by `generic_const_exprs`")),
     /// Allows non-trivial generic constants which have to be manually propagated upwards.
     (removed, const_evaluatable_checked, "1.48.0", Some(76560), None, Some("renamed to `generic_const_exprs`")),
     /// Allows comparing raw pointers during const eval.
