@@ -1,4 +1,4 @@
-use crate::{convert, ops};
+use crate::ops;
 
 /// Used to tell an operation whether it should exit early or go on as usual.
 ///
@@ -65,7 +65,7 @@ pub enum ControlFlow<B, C = ()> {
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 impl<B, C> ops::Try for ControlFlow<B, C> {
     type Output = C;
-    type Residual = ControlFlow<B, convert::Infallible>;
+    type Residual = B;
 
     #[inline]
     fn from_output(output: Self::Output) -> Self {
@@ -74,20 +74,15 @@ impl<B, C> ops::Try for ControlFlow<B, C> {
 
     #[inline]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
-        match self {
-            ControlFlow::Continue(c) => ControlFlow::Continue(c),
-            ControlFlow::Break(b) => ControlFlow::Break(ControlFlow::Break(b)),
-        }
+        self
     }
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 impl<B, C> ops::FromResidual for ControlFlow<B, C> {
     #[inline]
-    fn from_residual(residual: ControlFlow<B, convert::Infallible>) -> Self {
-        match residual {
-            ControlFlow::Break(b) => ControlFlow::Break(b),
-        }
+    fn from_residual(residual: B) -> Self {
+        ControlFlow::Break(residual)
     }
 }
 

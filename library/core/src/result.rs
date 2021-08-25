@@ -1891,7 +1891,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 impl<T, E> ops::Try for Result<T, E> {
     type Output = T;
-    type Residual = Result<convert::Infallible, E>;
+    type Residual = E;
 
     #[inline]
     fn from_output(output: Self::Output) -> Self {
@@ -1902,17 +1902,15 @@ impl<T, E> ops::Try for Result<T, E> {
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             Ok(v) => ControlFlow::Continue(v),
-            Err(e) => ControlFlow::Break(Err(e)),
+            Err(e) => ControlFlow::Break(e),
         }
     }
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Result<T, F> {
+impl<T, E, F: From<E>> ops::FromResidual<E> for Result<T, F> {
     #[inline]
-    fn from_residual(residual: Result<convert::Infallible, E>) -> Self {
-        match residual {
-            Err(e) => Err(From::from(e)),
-        }
+    fn from_residual(residual: E) -> Self {
+        Err(From::from(residual))
     }
 }

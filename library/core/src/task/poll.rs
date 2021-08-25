@@ -1,6 +1,5 @@
 #![stable(feature = "futures_api", since = "1.36.0")]
 
-use crate::convert;
 use crate::ops::{self, ControlFlow};
 use crate::result::Result;
 
@@ -224,7 +223,7 @@ impl<T> From<T> for Poll<T> {
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 impl<T, E> ops::Try for Poll<Result<T, E>> {
     type Output = Poll<T>;
-    type Residual = Result<convert::Infallible, E>;
+    type Residual = E;
 
     #[inline]
     fn from_output(c: Self::Output) -> Self {
@@ -235,26 +234,24 @@ impl<T, E> ops::Try for Poll<Result<T, E>> {
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             Poll::Ready(Ok(x)) => ControlFlow::Continue(Poll::Ready(x)),
-            Poll::Ready(Err(e)) => ControlFlow::Break(Err(e)),
+            Poll::Ready(Err(e)) => ControlFlow::Break(e),
             Poll::Pending => ControlFlow::Continue(Poll::Pending),
         }
     }
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Poll<Result<T, F>> {
+impl<T, E, F: From<E>> ops::FromResidual<E> for Poll<Result<T, F>> {
     #[inline]
-    fn from_residual(x: Result<convert::Infallible, E>) -> Self {
-        match x {
-            Err(e) => Poll::Ready(Err(From::from(e))),
-        }
+    fn from_residual(e: E) -> Self {
+        Poll::Ready(Err(From::from(e)))
     }
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 impl<T, E> ops::Try for Poll<Option<Result<T, E>>> {
     type Output = Poll<Option<T>>;
-    type Residual = Result<convert::Infallible, E>;
+    type Residual = E;
 
     #[inline]
     fn from_output(c: Self::Output) -> Self {
@@ -265,7 +262,7 @@ impl<T, E> ops::Try for Poll<Option<Result<T, E>>> {
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             Poll::Ready(Some(Ok(x))) => ControlFlow::Continue(Poll::Ready(Some(x))),
-            Poll::Ready(Some(Err(e))) => ControlFlow::Break(Err(e)),
+            Poll::Ready(Some(Err(e))) => ControlFlow::Break(e),
             Poll::Ready(None) => ControlFlow::Continue(Poll::Ready(None)),
             Poll::Pending => ControlFlow::Continue(Poll::Pending),
         }
@@ -273,13 +270,10 @@ impl<T, E> ops::Try for Poll<Option<Result<T, E>>> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>>
-    for Poll<Option<Result<T, F>>>
+impl<T, E, F: From<E>> ops::FromResidual<E> for Poll<Option<Result<T, F>>>
 {
     #[inline]
-    fn from_residual(x: Result<convert::Infallible, E>) -> Self {
-        match x {
-            Err(e) => Poll::Ready(Some(Err(From::from(e)))),
-        }
+    fn from_residual(e: E) -> Self {
+        Poll::Ready(Some(Err(From::from(e))))
     }
 }

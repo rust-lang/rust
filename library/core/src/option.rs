@@ -499,7 +499,7 @@
 use crate::iter::{FromIterator, FusedIterator, TrustedLen};
 use crate::pin::Pin;
 use crate::{
-    convert, hint, mem,
+    hint, mem,
     ops::{self, ControlFlow, Deref, DerefMut},
 };
 
@@ -2015,7 +2015,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 impl<T> ops::Try for Option<T> {
     type Output = T;
-    type Residual = Option<convert::Infallible>;
+    type Residual = ();
 
     #[inline]
     fn from_output(output: Self::Output) -> Self {
@@ -2026,7 +2026,7 @@ impl<T> ops::Try for Option<T> {
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             Some(v) => ControlFlow::Continue(v),
-            None => ControlFlow::Break(None),
+            None => ControlFlow::Break(()),
         }
     }
 }
@@ -2034,10 +2034,8 @@ impl<T> ops::Try for Option<T> {
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 impl<T> ops::FromResidual for Option<T> {
     #[inline]
-    fn from_residual(residual: Option<convert::Infallible>) -> Self {
-        match residual {
-            None => None,
-        }
+    fn from_residual(_: ()) -> Self {
+        None
     }
 }
 
