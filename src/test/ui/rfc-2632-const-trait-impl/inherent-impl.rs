@@ -1,6 +1,4 @@
 #![feature(const_trait_impl)]
-#![feature(const_trait_bound_opt_out)]
-#![allow(incomplete_features)]
 #![allow(bare_trait_objects)]
 
 struct S;

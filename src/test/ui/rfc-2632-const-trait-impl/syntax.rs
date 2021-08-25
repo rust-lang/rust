@@ -5,4 +5,4 @@
 #![feature(const_trait_impl)]
 
 // For now, this parses since an error does not occur until AST lowering.
-impl ?const T {}
+impl ~const T {}
