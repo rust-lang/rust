@@ -19,20 +19,20 @@ use crate::token;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum AssocCtxt {
     Trait,
     Impl,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum FnCtxt {
     Free,
     Foreign,
     Assoc(AssocCtxt),
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum FnKind<'a> {
     /// E.g., `fn foo()`, `fn foo(&self)`, or `extern "Abi" fn foo()`.
     Fn(FnCtxt, Ident, &'a FnSig, &'a Visibility, Option<&'a Block>),

@@ -1,6 +1,14 @@
 // only-x86_64
 
-#![feature(asm, global_asm)]
+// Tests that the use of named labels in the `asm!` macro are linted against
+// except for in `#[naked]` fns.
+// Using a named label is incorrect as per the RFC because for most cases
+// the compiler cannot ensure that inline asm is emitted exactly once per
+// codegen unit (except for naked fns) and so the label could be duplicated
+// which causes less readable LLVM errors and in the worst cases causes ICEs
+// or segfaults based on system dependent behavior and codegen flags.
+
+#![feature(asm, global_asm, naked_functions)]
 
 #[no_mangle]
 pub static FOO: usize = 42;
@@ -124,6 +132,62 @@ fn main() {
             asm!("warned: nop"); //~ WARNING avoid using named labels
         }
     }
+}
+
+// Trigger on naked fns too, even though they can't be inlined, reusing a
+// label or LTO can cause labels to break
+#[naked]
+pub extern "C" fn foo() -> i32 {
+    unsafe { asm!(".Lfoo: mov rax, {}; ret;", "nop", const 1, options(noreturn)) } //~ ERROR avoid using named labels
+}
+
+// Make sure that non-naked attributes *do* still let the lint happen
+#[no_mangle]
+pub extern "C" fn bar() {
+    unsafe { asm!(".Lbar: mov rax, {}; ret;", "nop", const 1, options(noreturn)) }
+    //~^ ERROR avoid using named labels
+}
+
+#[naked]
+pub extern "C" fn aaa() {
+    fn _local() {}
+
+    unsafe { asm!(".Laaa: nop; ret;", options(noreturn)) } //~ ERROR avoid using named labels
+}
+
+pub fn normal() {
+    fn _local1() {}
+
+    #[naked]
+    pub extern "C" fn bbb() {
+        fn _very_local() {}
+
+        unsafe { asm!(".Lbbb: nop; ret;", options(noreturn)) } //~ ERROR avoid using named labels
+    }
+
+    fn _local2() {}
+}
+
+// Make sure that the lint happens within closures
+fn closures() {
+    || unsafe {
+        asm!("closure1: nop"); //~ ERROR avoid using named labels
+    };
+
+    move || unsafe {
+        asm!("closure2: nop"); //~ ERROR avoid using named labels
+    };
+
+    || {
+        #[naked]
+        unsafe extern "C" fn _nested() {
+            asm!("ret;", options(noreturn));
+        }
+
+        unsafe {
+            asm!("closure3: nop"); //~ ERROR avoid using named labels
+        }
+    };
 }
 
 // Don't trigger on global asm
