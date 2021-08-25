@@ -1070,35 +1070,22 @@ impl<'p, 'tcx> FilteredField<'p, 'tcx> {
 
 /// A value can be decomposed into a constructor applied to some fields. This struct represents
 /// those fields, generalized to allow patterns in each field. See also `Constructor`.
-/// This is constructed from a constructor using [`Fields::wildcards()`].
+/// This is constructed for a constructor using [`Fields::wildcards()`].
 ///
 /// If a private or `non_exhaustive` field is uninhabited, the code mustn't observe that it is
-/// uninhabited. For that, we filter these fields out of the matrix. This is handled automatically
-/// in `Fields`. This filtering is uncommon in practice, because uninhabited fields are rarely used,
-/// so we avoid it when possible to preserve performance.
+/// uninhabited. For that, we hide these fields. This is handled automatically in `Fields`.
 #[derive(Debug, Clone)]
-pub(super) enum Fields<'p, 'tcx> {
-    /// Lists of patterns that don't contain any filtered fields.
-    /// `Slice` and `Vec` behave the same; the difference is only to avoid allocating and
-    /// triple-dereferences when possible. Frankly this is premature optimization, I (Nadrieril)
-    /// have not measured if it really made a difference.
-    Slice(&'p [Pat<'tcx>]),
-    Vec(SmallVec<[&'p Pat<'tcx>; 2]>),
-    /// Patterns where some of the fields need to be hidden. For all intents and purposes we only
-    /// care about the non-hidden fields. We need to keep the real field index for those fields;
-    /// we're morally storing a `Vec<(usize, &Pat)>` but what we do is more convenient.
-    /// `len` counts the number of non-hidden fields
-    Filtered {
-        fields: SmallVec<[FilteredField<'p, 'tcx>; 2]>,
-        len: usize,
-    },
+pub(super) struct Fields<'p, 'tcx> {
+    fields: SmallVec<[FilteredField<'p, 'tcx>; 2]>,
+    /// Number of non-hidden fields
+    len: usize,
 }
 
 impl<'p, 'tcx> Fields<'p, 'tcx> {
     /// Internal use. Use `Fields::wildcards()` instead.
     /// Must not be used if the pattern is a field of a struct/tuple/variant.
-    fn from_single_pattern(pat: &'p Pat<'tcx>) -> Self {
-        Fields::Slice(std::slice::from_ref(pat))
+    fn from_slice(slice: &'p [Pat<'tcx>]) -> Self {
+        Fields { fields: slice.iter().map(FilteredField::Kept).collect(), len: slice.len() }
     }
 
     /// Convenience; internal use.
@@ -1108,7 +1095,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     ) -> Self {
         let wilds = tys.into_iter().map(Pat::wildcard_from_ty);
         let pats = cx.pattern_arena.alloc_from_iter(wilds);
-        Fields::Slice(pats)
+        Fields::from_slice(pats)
     }
 
     /// Creates a new list of wildcard fields for a given constructor.
@@ -1122,49 +1109,42 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 ty::Tuple(ref fs) => {
                     Fields::wildcards_from_tys(cx, fs.into_iter().map(|ty| ty.expect_ty()))
                 }
-                ty::Ref(_, rty, _) => Fields::from_single_pattern(wildcard_from_ty(rty)),
+                ty::Ref(_, rty, _) => Fields::wildcards_from_tys(cx, once(*rty)),
                 ty::Adt(adt, substs) => {
                     if adt.is_box() {
                         // Use T as the sub pattern type of Box<T>.
-                        Fields::from_single_pattern(wildcard_from_ty(substs.type_at(0)))
+                        // FIXME(Nadrieril): This is to make box-patterns work even though `Box` is
+                        // actually a struct with 2 private fields. Hacky.
+                        Fields::wildcards_from_tys(cx, once(substs.type_at(0)))
                     } else {
                         let variant = &adt.variants[constructor.variant_index_for_adt(adt)];
                         // Whether we must not match the fields of this variant exhaustively.
                         let is_non_exhaustive =
                             variant.is_field_list_non_exhaustive() && !adt.did.is_local();
-                        let field_tys = variant.fields.iter().map(|field| field.ty(cx.tcx, substs));
-                        // In the following cases, we don't need to filter out any fields. This is
-                        // the vast majority of real cases, since uninhabited fields are uncommon.
-                        let has_no_hidden_fields = (adt.is_enum() && !is_non_exhaustive)
-                            || !field_tys.clone().any(|ty| cx.is_uninhabited(ty));
 
-                        if has_no_hidden_fields {
-                            Fields::wildcards_from_tys(cx, field_tys)
-                        } else {
-                            let mut len = 0;
-                            let fields = variant
-                                .fields
-                                .iter()
-                                .map(|field| {
-                                    let ty = field.ty(cx.tcx, substs);
-                                    let is_visible = adt.is_enum()
-                                        || field.vis.is_accessible_from(cx.module, cx.tcx);
-                                    let is_uninhabited = cx.is_uninhabited(ty);
+                        let mut len = 0;
+                        let fields = variant
+                            .fields
+                            .iter()
+                            .map(|field| {
+                                let ty = field.ty(cx.tcx, substs);
+                                let is_visible = adt.is_enum()
+                                    || field.vis.is_accessible_from(cx.module, cx.tcx);
+                                let is_uninhabited = cx.is_uninhabited(ty);
 
-                                    // In the cases of either a `#[non_exhaustive]` field list
-                                    // or a non-public field, we hide uninhabited fields in
-                                    // order not to reveal the uninhabitedness of the whole
-                                    // variant.
-                                    if is_uninhabited && (!is_visible || is_non_exhaustive) {
-                                        FilteredField::Hidden
-                                    } else {
-                                        len += 1;
-                                        FilteredField::Kept(wildcard_from_ty(ty))
-                                    }
-                                })
-                                .collect();
-                            Fields::Filtered { fields, len }
-                        }
+                                // In the cases of either a `#[non_exhaustive]` field list
+                                // or a non-public field, we hide uninhabited fields in
+                                // order not to reveal the uninhabitedness of the whole
+                                // variant.
+                                if is_uninhabited && (!is_visible || is_non_exhaustive) {
+                                    FilteredField::Hidden
+                                } else {
+                                    len += 1;
+                                    FilteredField::Kept(wildcard_from_ty(ty))
+                                }
+                            })
+                            .collect();
+                        Fields { fields, len }
                     }
                 }
                 _ => bug!("Unexpected type for `Single` constructor: {:?}", ty),
@@ -1177,7 +1157,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
             },
             Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque | Missing
-            | Wildcard => Fields::Slice(&[]),
+            | Wildcard => Fields::from_slice(&[]),
         };
         debug!("Fields::wildcards({:?}, {:?}) = {:#?}", constructor, ty, ret);
         ret
@@ -1199,16 +1179,17 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     /// `self`: `[false]`
     /// returns `Some(false)`
     pub(super) fn apply(self, pcx: PatCtxt<'_, 'p, 'tcx>, ctor: &Constructor<'tcx>) -> Pat<'tcx> {
-        let subpatterns_and_indices = self.patterns_and_indices();
-        let mut subpatterns = subpatterns_and_indices.iter().map(|&(_, p)| p).cloned();
-
         let pat = match ctor {
             Single | Variant(_) => match pcx.ty.kind() {
                 ty::Adt(..) | ty::Tuple(..) => {
-                    // We want the real indices here.
-                    let subpatterns = subpatterns_and_indices
+                    // We want the real indices here, so enumerate first, then filter.
+                    let subpatterns = self
+                        .fields
                         .iter()
-                        .map(|&(field, p)| FieldPat { field, pattern: p.clone() })
+                        .enumerate()
+                        .filter_map(|(i, p)| {
+                            Some(FieldPat { field: Field::new(i), pattern: p.kept()?.clone() })
+                        })
                         .collect();
 
                     if let ty::Adt(adt, substs) = pcx.ty.kind() {
@@ -1230,35 +1211,45 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 // be careful to reconstruct the correct constant pattern here. However a string
                 // literal pattern will never be reported as a non-exhaustiveness witness, so we
                 // can ignore this issue.
-                ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
+                ty::Ref(..) => {
+                    PatKind::Deref { subpattern: self.fields[0].kept().unwrap().clone() }
+                }
                 ty::Slice(_) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", ctor, pcx.ty),
                 _ => PatKind::Wild,
             },
-            Slice(slice) => match slice.kind {
-                FixedLen(_) => {
-                    PatKind::Slice { prefix: subpatterns.collect(), slice: None, suffix: vec![] }
-                }
-                VarLen(prefix, _) => {
-                    let mut prefix: Vec<_> = subpatterns.by_ref().take(prefix as usize).collect();
-                    if slice.array_len.is_some() {
-                        // Improves diagnostics a bit: if the type is a known-size array, instead
-                        // of reporting `[x, _, .., _, y]`, we prefer to report `[x, .., y]`.
-                        // This is incorrect if the size is not known, since `[_, ..]` captures
-                        // arrays of lengths `>= 1` whereas `[..]` captures any length.
-                        while !prefix.is_empty() && is_wildcard(prefix.last().unwrap()) {
-                            prefix.pop();
+            Slice(slice) => {
+                // Slices have no hidden fields so we can unwrap.
+                let mut subpatterns = self.fields.iter().map(|p| p.kept().unwrap()).cloned();
+
+                match slice.kind {
+                    FixedLen(_) => PatKind::Slice {
+                        prefix: subpatterns.collect(),
+                        slice: None,
+                        suffix: vec![],
+                    },
+                    VarLen(prefix, _) => {
+                        let mut prefix: Vec<_> =
+                            subpatterns.by_ref().take(prefix as usize).collect();
+                        if slice.array_len.is_some() {
+                            // Improves diagnostics a bit: if the type is a known-size array, instead
+                            // of reporting `[x, _, .., _, y]`, we prefer to report `[x, .., y]`.
+                            // This is incorrect if the size is not known, since `[_, ..]` captures
+                            // arrays of lengths `>= 1` whereas `[..]` captures any length.
+                            while !prefix.is_empty() && is_wildcard(prefix.last().unwrap()) {
+                                prefix.pop();
+                            }
                         }
+                        let suffix: Vec<_> = if slice.array_len.is_some() {
+                            // Same as above.
+                            subpatterns.skip_while(is_wildcard).collect()
+                        } else {
+                            subpatterns.collect()
+                        };
+                        let wild = Pat::wildcard_from_ty(pcx.ty);
+                        PatKind::Slice { prefix, slice: Some(wild), suffix }
                     }
-                    let suffix: Vec<_> = if slice.array_len.is_some() {
-                        // Same as above.
-                        subpatterns.skip_while(is_wildcard).collect()
-                    } else {
-                        subpatterns.collect()
-                    };
-                    let wild = Pat::wildcard_from_ty(pcx.ty);
-                    PatKind::Slice { prefix, slice: Some(wild), suffix }
                 }
-            },
+            }
             &Str(value) => PatKind::Constant { value },
             &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
             IntRange(range) => return range.to_pat(pcx.cx.tcx, pcx.ty),
@@ -1276,51 +1267,12 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     /// Returns the number of patterns. This is the same as the arity of the constructor used to
     /// construct `self`.
     pub(super) fn len(&self) -> usize {
-        match self {
-            Fields::Slice(pats) => pats.len(),
-            Fields::Vec(pats) => pats.len(),
-            Fields::Filtered { len, .. } => *len,
-        }
-    }
-
-    /// Returns the list of patterns along with the corresponding field indices.
-    fn patterns_and_indices(&self) -> SmallVec<[(Field, &'p Pat<'tcx>); 2]> {
-        match self {
-            Fields::Slice(pats) => {
-                pats.iter().enumerate().map(|(i, p)| (Field::new(i), p)).collect()
-            }
-            Fields::Vec(pats) => {
-                pats.iter().copied().enumerate().map(|(i, p)| (Field::new(i), p)).collect()
-            }
-            Fields::Filtered { fields, .. } => {
-                // Indices must be relative to the full list of patterns
-                fields
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(i, p)| Some((Field::new(i), p.kept()?)))
-                    .collect()
-            }
-        }
+        self.len
     }
 
     /// Returns the list of patterns.
     pub(super) fn into_patterns(self) -> SmallVec<[&'p Pat<'tcx>; 2]> {
-        match self {
-            Fields::Slice(pats) => pats.iter().collect(),
-            Fields::Vec(pats) => pats,
-            Fields::Filtered { fields, .. } => fields.iter().filter_map(|p| p.kept()).collect(),
-        }
-    }
-
-    /// Overrides some of the fields with the provided patterns. Exactly like
-    /// `replace_fields_indexed`, except that it takes `FieldPat`s as input.
-    fn replace_with_fieldpats(
-        &self,
-        new_pats: impl IntoIterator<Item = &'p FieldPat<'tcx>>,
-    ) -> Self {
-        self.replace_fields_indexed(
-            new_pats.into_iter().map(|pat| (pat.field.index(), &pat.pattern)),
-        )
+        self.fields.iter().filter_map(|p| p.kept()).collect()
     }
 
     /// Overrides some of the fields with the provided patterns. This is used when a pattern
@@ -1332,29 +1284,19 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         &self,
         new_pats: impl IntoIterator<Item = (usize, &'p Pat<'tcx>)>,
     ) -> Self {
-        let mut fields = self.clone();
-        if let Fields::Slice(pats) = fields {
-            fields = Fields::Vec(pats.iter().collect());
-        }
-
-        match &mut fields {
-            Fields::Vec(pats) => {
-                for (i, pat) in new_pats {
-                    if let Some(p) = pats.get_mut(i) {
-                        *p = pat;
-                    }
-                }
+        let mut new = self.clone();
+        for (i, pat) in new_pats {
+            // FIXME(Nadrieril): Should be able to index infaillibly, but triggers https://github.com/rust-lang/rust/issues/82772
+            // Explanation: https://github.com/rust-lang/rust/pull/82789#issuecomment-796921977
+            // This is a Box-only issue; should be removed when box-patterns is dropped. We'll have
+            // to find a clean solution for generalized Deref patterns. The problem is that we
+            // can't know from the type whether we'll match normally or through deref. Also need to
+            // prevent mixing of those two options.
+            if let Some(FilteredField::Kept(p)) = new.fields.get_mut(i) {
+                *p = pat
             }
-            Fields::Filtered { fields, .. } => {
-                for (i, pat) in new_pats {
-                    if let FilteredField::Kept(p) = &mut fields[i] {
-                        *p = pat
-                    }
-                }
-            }
-            Fields::Slice(_) => unreachable!(),
         }
-        fields
+        new
     }
 
     /// Replaces contained fields with the given list of patterns. There must be `len()` patterns
@@ -1366,20 +1308,15 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     ) -> Self {
         let pats: &[_] = cx.pattern_arena.alloc_from_iter(pats);
 
-        match self {
-            Fields::Filtered { fields, len } => {
-                let mut pats = pats.iter();
-                let mut fields = fields.clone();
-                for f in &mut fields {
-                    if let FilteredField::Kept(p) = f {
-                        // We take one input pattern for each `Kept` field, in order.
-                        *p = pats.next().unwrap();
-                    }
-                }
-                Fields::Filtered { fields, len: *len }
+        let mut pats = pats.iter();
+        let mut fields = self.fields.clone();
+        for f in &mut fields {
+            if let FilteredField::Kept(p) = f {
+                // We take one input pattern for each `Kept` field, in order.
+                *p = pats.next().unwrap();
             }
-            _ => Fields::Slice(pats),
         }
+        Fields { fields, len: self.len }
     }
 
     /// Replaces contained fields with the arguments of the given pattern. Only use on a pattern
@@ -1401,10 +1338,12 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         match pat.kind.as_ref() {
             PatKind::Deref { subpattern } => {
                 assert_eq!(self.len(), 1);
-                Fields::from_single_pattern(subpattern)
+                Fields::from_slice(std::slice::from_ref(subpattern))
             }
             PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
-                self.replace_with_fieldpats(subpatterns)
+                let subpatterns =
+                    subpatterns.into_iter().map(|pat| (pat.field.index(), &pat.pattern));
+                self.replace_fields_indexed(subpatterns)
             }
             PatKind::Array { prefix, suffix, .. } | PatKind::Slice { prefix, suffix, .. } => {
                 // Number of subpatterns for the constructor
