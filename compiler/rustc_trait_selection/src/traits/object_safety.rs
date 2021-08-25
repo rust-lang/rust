@@ -855,7 +855,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
 
         fn visit_predicate(&mut self, pred: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
             if let ty::PredicateKind::ConstEvaluatable(ct) = pred.kind().skip_binder() {
-                // FIXME(const_evaluatable_checked): We should probably deduplicate the logic for
+                // FIXME(generic_const_exprs): We should probably deduplicate the logic for
                 // `AbstractConst`s here, it might make sense to change `ConstEvaluatable` to
                 // take a `ty::Const` instead.
                 use rustc_middle::mir::abstract_const::Node;

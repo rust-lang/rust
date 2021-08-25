@@ -1,7 +1,7 @@
 // Regression test for #84408.
 // check-pass
 
-#![feature(const_generics, const_evaluatable_checked)]
+#![feature(const_generics, generic_const_exprs)]
 #![allow(incomplete_features)]
 
 trait Melon<const X: usize> {

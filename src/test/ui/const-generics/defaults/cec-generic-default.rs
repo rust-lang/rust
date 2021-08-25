@@ -1,4 +1,4 @@
-#![feature(const_evaluatable_checked, const_generics, const_generics_defaults)]
+#![feature(generic_const_exprs, const_generics, const_generics_defaults)]
 #![allow(incomplete_features)]
 
 pub struct Foo<const N: usize, const M: usize = { N + 1 }>;

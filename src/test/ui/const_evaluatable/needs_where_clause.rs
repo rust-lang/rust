@@ -1,5 +1,5 @@
 #![crate_type = "lib"]
-#![feature(const_generics, const_evaluatable_checked)]
+#![feature(const_generics, generic_const_exprs)]
 #![allow(incomplete_features)]
 
 const fn complex_maths<T>(n : usize) -> usize {

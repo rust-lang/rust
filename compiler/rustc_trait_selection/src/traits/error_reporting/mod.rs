@@ -794,7 +794,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 )
             }
             SelectionError::NotConstEvaluatable(NotConstEvaluatable::MentionsParam) => {
-                if !self.tcx.features().const_evaluatable_checked {
+                if !self.tcx.features().generic_const_exprs {
                     let mut err = self.tcx.sess.struct_span_err(
                         span,
                         "constant expression depends on a generic parameter",
@@ -803,7 +803,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // issue. However, this is currently not actually possible
                     // (see https://github.com/rust-lang/rust/issues/66962#issuecomment-575907083).
                     //
-                    // Note that with `feature(const_evaluatable_checked)` this case should not
+                    // Note that with `feature(generic_const_exprs)` this case should not
                     // be reachable.
                     err.note("this may fail depending on what value the parameter takes");
                     err.emit();

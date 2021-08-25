@@ -1,4 +1,4 @@
-#![feature(const_generics, const_evaluatable_checked, const_generics_defaults)]
+#![feature(const_generics, generic_const_exprs, const_generics_defaults)]
 #![allow(incomplete_features)]
 
 struct Foo<const N: usize, const M: usize = { N + 1 }>;

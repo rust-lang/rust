@@ -1,5 +1,5 @@
 // check-pass
-#![feature(const_generics, const_evaluatable_checked)]
+#![feature(const_generics, generic_const_exprs)]
 #![allow(incomplete_features)]
 
 // This tests that the correct `param_env` is used so that

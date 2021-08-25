@@ -3,7 +3,7 @@
 // This test used to cause an ICE in rustc_mir::interpret::step::eval_rvalue_into_place
 
 #![allow(incomplete_features)]
-#![feature(const_evaluatable_checked)]
+#![feature(generic_const_exprs)]
 #![feature(const_generics)]
 
 use std::fmt::Debug;

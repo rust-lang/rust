@@ -662,6 +662,7 @@ symbols! {
         generators,
         generic_arg_infer,
         generic_associated_types,
+        generic_const_exprs,
         generic_param_attrs,
         get_context,
         global_allocator,
