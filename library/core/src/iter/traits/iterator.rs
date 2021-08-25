@@ -1957,8 +1957,8 @@ pub trait Iterator {
     /// assert_eq!(it.next(), Some(&40));
     /// ```
     ///
-    /// While you cannot `break` from a closure, the [`crate::ops::ControlFlow`]
-    /// type allows a similar idea:
+    /// While you cannot `break` from a closure, the [`ControlFlow`] type allows
+    /// a similar idea:
     ///
     /// ```
     /// use std::ops::ControlFlow;
@@ -2024,8 +2024,8 @@ pub trait Iterator {
     /// assert_eq!(it.next(), Some("stale_bread.json"));
     /// ```
     ///
-    /// The [`crate::ops::ControlFlow`] type can be used with this method for the
-    /// situations in which you'd use `break` and `continue` in a normal loop:
+    /// The [`ControlFlow`] type can be used with this method for the situations
+    /// in which you'd use `break` and `continue` in a normal loop:
     ///
     /// ```
     /// use std::ops::ControlFlow;
