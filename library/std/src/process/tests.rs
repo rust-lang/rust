@@ -133,7 +133,7 @@ fn test_process_output_fail_to_start() {
             assert_eq!(e.kind(), ErrorKind::NotFound);
             #[cfg(unix)] // Feel free to adjust/disable if this varies on some platform
             assert_eq!(e.to_string(), "No such file or directory (os error 2)");
-        },
+        }
         Ok(..) => panic!(),
     }
 }
