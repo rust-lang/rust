@@ -330,15 +330,6 @@ struct ConstPropagator<'mir, 'tcx> {
     source_info: Option<SourceInfo>,
 }
 
-impl<'mir, 'tcx> LayoutOf<'tcx> for ConstPropagator<'mir, 'tcx> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
-
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
-        self.tcx.layout_of(self.param_env.and(ty))
-    }
-}
-
 impl<'mir, 'tcx> HasDataLayout for ConstPropagator<'mir, 'tcx> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
@@ -357,6 +348,20 @@ impl<'mir, 'tcx> ty::layout::HasParamEnv<'tcx> for ConstPropagator<'mir, 'tcx> {
     #[inline]
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
+    }
+}
+
+impl<'mir, 'tcx> ty::layout::IsLayoutCx<'tcx> for ConstPropagator<'mir, 'tcx> {
+    type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
+
+    #[inline]
+    fn map_err_for_layout_of(
+        err: LayoutError<'tcx>,
+        _cx: &Self,
+        _span: Span,
+        _ty: Ty<'tcx>,
+    ) -> LayoutError<'tcx> {
+        err
     }
 }
 
@@ -869,7 +874,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             let alloc = self.use_ecx(|this| {
                                 let ty1 = substs[0].expect_ty();
                                 let ty2 = substs[1].expect_ty();
-                                let ty_is_scalar = |ty| {
+                                let ty_is_scalar = |ty: Ty<'tcx>| {
                                     this.ecx.layout_of(ty).ok().map(|layout| layout.abi.is_scalar())
                                         == Some(true)
                                 };

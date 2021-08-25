@@ -79,7 +79,7 @@ pub(crate) fn codegen_fn<'tcx>(
     let arg_uninhabited = fx
         .mir
         .args_iter()
-        .any(|arg| fx.layout_of(fx.monomorphize(&fx.mir.local_decls[arg].ty)).abi.is_uninhabited());
+        .any(|arg| fx.layout_of(fx.monomorphize(fx.mir.local_decls[arg].ty)).abi.is_uninhabited());
 
     if !crate::constant::check_constants(&mut fx) {
         fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
@@ -835,7 +835,7 @@ pub(crate) fn codegen_place<'tcx>(
                 let from: u64 = from;
                 let to: u64 = to;
 
-                match cplace.layout().ty.kind() {
+                match *cplace.layout().ty.kind() {
                     ty::Array(elem_ty, _len) => {
                         assert!(!from_end, "array subslices are never `from_end`");
                         let elem_layout = fx.layout_of(elem_ty);

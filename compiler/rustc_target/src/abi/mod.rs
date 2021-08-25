@@ -231,6 +231,13 @@ pub trait HasDataLayout {
     fn data_layout(&self) -> &TargetDataLayout;
 }
 
+impl<T: HasDataLayout> HasDataLayout for &mut T {
+    #[inline]
+    fn data_layout(&self) -> &TargetDataLayout {
+        (**self).data_layout()
+    }
+}
+
 impl HasDataLayout for TargetDataLayout {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
@@ -1173,17 +1180,6 @@ impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
     }
 }
 
-/// Trait for context types that can compute layouts of things.
-pub trait LayoutOf<'a>: Sized {
-    type Ty: TyAbiInterface<'a, Self>;
-    type TyAndLayout: MaybeResult<TyAndLayout<'a, Self::Ty>>;
-
-    fn layout_of(&self, ty: Self::Ty) -> Self::TyAndLayout;
-    fn spanned_layout_of(&self, ty: Self::Ty, _span: Span) -> Self::TyAndLayout {
-        self.layout_of(ty)
-    }
-}
-
 pub trait MaybeResult<T> {
     type Error;
 
@@ -1239,6 +1235,13 @@ pub struct PointeeInfo {
 /// Trait that needs to be implemented by the higher-level type representation
 /// (e.g. `rustc_middle::ty::Ty`), to provide `rustc_target::abi` functionality.
 pub trait TyAbiInterface<'a, C>: Sized {
+    type CxLayoutOfResult: MaybeResult<TyAndLayout<'a, Self>>;
+
+    fn cx_layout_of(ty: Self, cx: &C) -> Self::CxLayoutOfResult;
+    // FIXME(eddyb) avoid passing information like this, and instead add more
+    // `TyCtxt::at`-like APIs to be able to do e.g. `cx.at(span).layout_of(ty)`.
+    fn cx_spanned_layout_of(ty: Self, cx: &C, span: Span) -> Self::CxLayoutOfResult;
+
     fn ty_and_layout_for_variant(
         this: TyAndLayout<'a, Self>,
         cx: &C,
@@ -1251,6 +1254,23 @@ pub trait TyAbiInterface<'a, C>: Sized {
         offset: Size,
     ) -> Option<PointeeInfo>;
 }
+
+/// Extension trait for contexts that can compute layouts from types.
+// NOTE(eddyb) this has to be an extension trait because `C::layout_of` proxies
+// to `TyAbiInterface::<C>::cx_layout_of`, and we don't want to require wrapping
+// whichever `C` context type the user has, or require inherent methods on it.
+pub trait LayoutOf<'a, Ty: TyAbiInterface<'a, Self>>: Sized {
+    fn layout_of(&self, ty: Ty) -> Ty::CxLayoutOfResult {
+        Ty::cx_layout_of(ty, self)
+    }
+    // FIXME(eddyb) avoid passing information like this, and instead add more
+    // `TyCtxt::at`-like APIs to be able to do e.g. `cx.at(span).layout_of(ty)`.
+    fn spanned_layout_of(&self, ty: Ty, span: Span) -> Ty::CxLayoutOfResult {
+        Ty::cx_spanned_layout_of(ty, self, span)
+    }
+}
+
+impl<'a, Ty: TyAbiInterface<'a, C>, C> LayoutOf<'a, Ty> for C {}
 
 impl<'a, Ty> TyAndLayout<'a, Ty> {
     pub fn for_variant<C>(self, cx: &C, variant_index: VariantIdx) -> Self

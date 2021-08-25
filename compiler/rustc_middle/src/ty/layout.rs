@@ -13,7 +13,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::{config::OptLevel, DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::DUMMY_SP;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::call::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
 };
@@ -2012,8 +2012,22 @@ pub trait HasTyCtxt<'tcx>: HasDataLayout {
     fn tcx(&self) -> TyCtxt<'tcx>;
 }
 
+impl<T: HasTyCtxt<'tcx>> HasTyCtxt<'tcx> for &mut T {
+    #[inline]
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        (**self).tcx()
+    }
+}
+
 pub trait HasParamEnv<'tcx> {
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
+}
+
+impl<T: HasParamEnv<'tcx>> HasParamEnv<'tcx> for &mut T {
+    #[inline]
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        (**self).param_env()
+    }
 }
 
 impl<'tcx> HasDataLayout for TyCtxt<'tcx> {
@@ -2064,34 +2078,110 @@ impl<'tcx, T: HasTyCtxt<'tcx>> HasTyCtxt<'tcx> for LayoutCx<'tcx, T> {
 
 pub type TyAndLayout<'tcx> = rustc_target::abi::TyAndLayout<'tcx, Ty<'tcx>>;
 
-impl LayoutOf<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
+/// Trait that indicates a context which should have `cx.layout_of(...)`
+/// (provided by `rustc_target::abi::LayoutOf` through `TyAbiInterface`),
+/// and which should be able to be used for various layout methods,
+/// e.g. `layout.for_variant(cx, v)` and `layout.field(cx, i)`.
+pub trait IsLayoutCx<'tcx>: HasTyCtxt<'tcx> + HasParamEnv<'tcx> {
+    /// The `TyAndLayout`-wrapping type (or `TyAndLayout` itself), which will be
+    /// returned from `cx.layout_of(...)` (see also `map_err_for_layout_of`).
+    type LayoutOfResult: MaybeResult<TyAndLayout<'tcx>>;
 
-    /// Computes the layout of a type. Note that this implicitly
-    /// executes in "reveal all" mode, and will normalize the input type.
+    /// `Span` to use for `tcx.at(span)`, from `cx.layout_of(...)`.
+    // FIXME(eddyb) perhaps make this mandatory to get contexts to track it better?
     #[inline]
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
-        self.tcx.layout_of(self.param_env.and(ty))
+    fn tcx_at_span_for_layout_of(_cx: &Self) -> Span {
+        DUMMY_SP
+    }
+
+    /// Helper used for `cx.layout_of(...)`, to adapt `tcx.layout_of(...)`
+    /// into a `Self::LayoutOfResult` (which may not even be a `Result<...>`).
+    ///
+    /// Most `impl`s, which propagate `LayoutError`s, should simply return `err`,
+    /// but this hook allows e.g. codegen to return only `TyAndLayout` from its
+    /// `cx.layout_of(...)`, without any `Result<...>` around it to deal with
+    /// (and any `LayoutError`s are turned into fatal errors or ICEs).
+    fn map_err_for_layout_of(
+        err: LayoutError<'tcx>,
+        cx: &Self,
+        span: Span,
+        ty: Ty<'tcx>,
+    ) -> <Self::LayoutOfResult as MaybeResult<TyAndLayout<'tcx>>>::Error;
+}
+
+impl<C: IsLayoutCx<'tcx>> IsLayoutCx<'tcx> for &mut C {
+    type LayoutOfResult = C::LayoutOfResult;
+
+    #[inline]
+    fn tcx_at_span_for_layout_of(cx: &Self) -> Span {
+        C::tcx_at_span_for_layout_of(cx)
+    }
+
+    #[inline]
+    fn map_err_for_layout_of(
+        err: LayoutError<'tcx>,
+        cx: &Self,
+        span: Span,
+        ty: Ty<'tcx>,
+    ) -> <C::LayoutOfResult as MaybeResult<TyAndLayout<'tcx>>>::Error {
+        C::map_err_for_layout_of(err, cx, span, ty)
     }
 }
 
-impl LayoutOf<'tcx> for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
+impl IsLayoutCx<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
+    type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
-    /// Computes the layout of a type. Note that this implicitly
-    /// executes in "reveal all" mode, and will normalize the input type.
     #[inline]
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
-        self.tcx.layout_of(self.param_env.and(ty))
+    fn map_err_for_layout_of(
+        err: LayoutError<'tcx>,
+        _cx: &Self,
+        _span: Span,
+        _ty: Ty<'tcx>,
+    ) -> LayoutError<'tcx> {
+        err
+    }
+}
+
+impl IsLayoutCx<'tcx> for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
+    type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
+
+    #[inline]
+    fn tcx_at_span_for_layout_of(cx: &Self) -> Span {
+        cx.tcx.span
+    }
+
+    #[inline]
+    fn map_err_for_layout_of(
+        err: LayoutError<'tcx>,
+        _cx: &Self,
+        _span: Span,
+        _ty: Ty<'tcx>,
+    ) -> LayoutError<'tcx> {
+        err
     }
 }
 
 impl<'tcx, C> TyAbiInterface<'tcx, C> for Ty<'tcx>
 where
-    C: HasTyCtxt<'tcx> + HasParamEnv<'tcx>,
+    C: IsLayoutCx<'tcx>,
 {
+    type CxLayoutOfResult = C::LayoutOfResult;
+
+    #[inline]
+    fn cx_layout_of(ty: Ty<'tcx>, cx: &C) -> C::LayoutOfResult {
+        Self::cx_spanned_layout_of(ty, cx, DUMMY_SP)
+    }
+    #[inline]
+    fn cx_spanned_layout_of(ty: Ty<'tcx>, cx: &C, span: Span) -> C::LayoutOfResult {
+        let span = if !span.is_dummy() { span } else { C::tcx_at_span_for_layout_of(cx) };
+        MaybeResult::from(
+            cx.tcx()
+                .at(span)
+                .layout_of(cx.param_env().and(ty))
+                .map_err(|err| C::map_err_for_layout_of(err, cx, span, ty)),
+        )
+    }
+
     fn ty_and_layout_for_variant(
         this: TyAndLayout<'tcx>,
         cx: &C,
@@ -2559,11 +2649,7 @@ impl<'tcx> ty::Instance<'tcx> {
 
 pub trait FnAbiExt<'tcx, C>
 where
-    C: LayoutOf<'tcx, Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
-        + HasDataLayout
-        + HasTargetSpec
-        + HasTyCtxt<'tcx>
-        + HasParamEnv<'tcx>,
+    C: IsLayoutCx<'tcx, LayoutOfResult = TyAndLayout<'tcx>> + HasTargetSpec,
 {
     /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
     ///
@@ -2746,11 +2832,7 @@ pub fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
 
 impl<'tcx, C> FnAbiExt<'tcx, C> for call::FnAbi<'tcx, Ty<'tcx>>
 where
-    C: LayoutOf<'tcx, Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
-        + HasDataLayout
-        + HasTargetSpec
-        + HasTyCtxt<'tcx>
-        + HasParamEnv<'tcx>,
+    C: IsLayoutCx<'tcx, LayoutOfResult = TyAndLayout<'tcx>> + HasTargetSpec,
 {
     fn of_fn_ptr(cx: &C, sig: ty::PolyFnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
         call::FnAbi::new_internal(cx, sig, extra_args, None, CodegenFnAttrFlags::empty(), false)
@@ -3026,7 +3108,7 @@ where
 }
 
 fn make_thin_self_ptr<'tcx>(
-    cx: &(impl HasTyCtxt<'tcx> + HasParamEnv<'tcx>),
+    cx: &impl IsLayoutCx<'tcx>,
     layout: TyAndLayout<'tcx>,
 ) -> TyAndLayout<'tcx> {
     let tcx = cx.tcx();

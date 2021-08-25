@@ -8,7 +8,7 @@ use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_middle::ich::StableHashingContext;
 use rustc_middle::mir;
-use rustc_middle::ty::layout::{self, TyAndLayout};
+use rustc_middle::ty::layout::{self, LayoutError, TyAndLayout};
 use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
@@ -17,9 +17,9 @@ use rustc_span::{Pos, Span};
 use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
 
 use super::{
-    AllocId, GlobalId, Immediate, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory,
-    MemoryKind, Operand, Place, PlaceTy, Pointer, Provenance, Scalar, ScalarMaybeUninit,
-    StackPopJump,
+    AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace,
+    MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, Pointer, Provenance, Scalar,
+    ScalarMaybeUninit, StackPopJump,
 };
 use crate::transform::validate::equal_up_to_regions;
 use crate::util::storage::AlwaysLiveLocals;
@@ -312,15 +312,24 @@ where
     }
 }
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> LayoutOf<'tcx> for InterpCx<'mir, 'tcx, M> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = InterpResult<'tcx, TyAndLayout<'tcx>>;
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ty::layout::IsLayoutCx<'tcx>
+    for InterpCx<'mir, 'tcx, M>
+{
+    type LayoutOfResult = InterpResult<'tcx, TyAndLayout<'tcx>>;
 
     #[inline]
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
-        self.tcx
-            .layout_of(self.param_env.and(ty))
-            .map_err(|layout| err_inval!(Layout(layout)).into())
+    fn tcx_at_span_for_layout_of(cx: &Self) -> Span {
+        cx.tcx.span
+    }
+
+    #[inline]
+    fn map_err_for_layout_of(
+        err: LayoutError<'tcx>,
+        _cx: &Self,
+        _span: Span,
+        _ty: Ty<'tcx>,
+    ) -> InterpErrorInfo<'tcx> {
+        err_inval!(Layout(err)).into()
     }
 }
 

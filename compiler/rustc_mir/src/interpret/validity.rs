@@ -557,7 +557,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 {
                     // A mutable reference inside a const? That does not seem right (except if it is
                     // a ZST).
-                    let layout = self.ecx.layout_of(ty)?;
+                    let layout = self.ecx.layout_of(*ty)?;
                     if !layout.is_zst() {
                         throw_validation_failure!(self.path, { "mutable reference in a `const`" });
                     }
@@ -810,7 +810,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         op: &OpTy<'tcx, M::PointerTag>,
         fields: impl Iterator<Item = InterpResult<'tcx, Self::V>>,
     ) -> InterpResult<'tcx> {
-        match op.layout.ty.kind() {
+        match *op.layout.ty.kind() {
             ty::Str => {
                 let mplace = op.assert_mem_place(); // strings are never immediate
                 let len = mplace.len(self.ecx)?;

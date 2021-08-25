@@ -44,6 +44,11 @@ pub use self::type_::{
 };
 pub use self::write::{ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
 
+// HACK(eddyb) this means that `traits::*` imports will also import `LayoutOf`,
+// which wasn't needed previously because `Backend` itself having `LayoutOf` as
+// a supertrait meant that methods from `LayoutOf` were always available.
+pub use rustc_target::abi::LayoutOf as _;
+
 use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt};
 use rustc_target::spec::HasTargetSpec;
 

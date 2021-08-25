@@ -678,7 +678,7 @@ impl<'tcx> CPlace<'tcx> {
         fx: &mut FunctionCx<'_, '_, 'tcx>,
         index: Value,
     ) -> CPlace<'tcx> {
-        let (elem_layout, ptr) = match self.layout().ty.kind() {
+        let (elem_layout, ptr) = match *self.layout().ty.kind() {
             ty::Array(elem_ty, _) => (fx.layout_of(elem_ty), self.to_ptr()),
             ty::Slice(elem_ty) => (fx.layout_of(elem_ty), self.to_ptr_maybe_unsized().0),
             _ => bug!("place_index({:?})", self.layout().ty),

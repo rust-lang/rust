@@ -152,7 +152,7 @@ impl<'tcx> PassByRefOrValue {
                 _ => (),
             }
 
-            match ty.kind() {
+            match *ty.kind() {
                 ty::Ref(input_lt, ty, Mutability::Not) => {
                     // Use lifetimes to determine if we're returning a reference to the
                     // argument. In that case we can't switch to pass-by-value as the
@@ -164,7 +164,7 @@ impl<'tcx> PassByRefOrValue {
                     };
 
                     if_chain! {
-                        if !output_lts.contains(input_lt);
+                        if !output_lts.contains(&input_lt);
                         if is_copy(cx, ty);
                         if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());
                         if size <= self.ref_min_size;

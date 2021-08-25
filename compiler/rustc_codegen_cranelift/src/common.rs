@@ -1,4 +1,5 @@
 use rustc_index::vec::IndexVec;
+use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::SymbolName;
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Integer, Primitive};
@@ -256,15 +257,6 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
     pub(crate) inline_asm_index: u32,
 }
 
-impl<'tcx> LayoutOf<'tcx> for FunctionCx<'_, '_, 'tcx> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = TyAndLayout<'tcx>;
-
-    fn layout_of(&self, ty: Ty<'tcx>) -> TyAndLayout<'tcx> {
-        RevealAllLayoutCx(self.tcx).layout_of(ty)
-    }
-}
-
 impl<'tcx> layout::HasTyCtxt<'tcx> for FunctionCx<'_, '_, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
@@ -286,6 +278,15 @@ impl<'tcx> layout::HasParamEnv<'tcx> for FunctionCx<'_, '_, 'tcx> {
 impl<'tcx> HasTargetSpec for FunctionCx<'_, '_, 'tcx> {
     fn target_spec(&self) -> &Target {
         &self.tcx.sess.target
+    }
+}
+
+impl<'tcx> ty::layout::IsLayoutCx<'tcx> for FunctionCx<'_, '_, 'tcx> {
+    type LayoutOfResult = TyAndLayout<'tcx>;
+
+    #[inline]
+    fn map_err_for_layout_of(err: LayoutError<'tcx>, cx: &Self, span: Span, ty: Ty<'tcx>) -> ! {
+        RevealAllLayoutCx::map_err_for_layout_of(err, &RevealAllLayoutCx(cx.tcx), span, ty)
     }
 }
 
@@ -364,22 +365,6 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
 
 pub(crate) struct RevealAllLayoutCx<'tcx>(pub(crate) TyCtxt<'tcx>);
 
-impl<'tcx> LayoutOf<'tcx> for RevealAllLayoutCx<'tcx> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = TyAndLayout<'tcx>;
-
-    fn layout_of(&self, ty: Ty<'tcx>) -> TyAndLayout<'tcx> {
-        assert!(!ty.still_further_specializable());
-        self.0.layout_of(ParamEnv::reveal_all().and(&ty)).unwrap_or_else(|e| {
-            if let layout::LayoutError::SizeOverflow(_) = e {
-                self.0.sess.fatal(&e.to_string())
-            } else {
-                bug!("failed to get layout for `{}`: {}", ty, e)
-            }
-        })
-    }
-}
-
 impl<'tcx> layout::HasTyCtxt<'tcx> for RevealAllLayoutCx<'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.0
@@ -401,5 +386,18 @@ impl<'tcx> layout::HasParamEnv<'tcx> for RevealAllLayoutCx<'tcx> {
 impl<'tcx> HasTargetSpec for RevealAllLayoutCx<'tcx> {
     fn target_spec(&self) -> &Target {
         &self.0.sess.target
+    }
+}
+
+impl<'tcx> ty::layout::IsLayoutCx<'tcx> for RevealAllLayoutCx<'tcx> {
+    type LayoutOfResult = TyAndLayout<'tcx>;
+
+    #[inline]
+    fn map_err_for_layout_of(err: LayoutError<'tcx>, cx: &Self, span: Span, ty: Ty<'tcx>) -> ! {
+        if let layout::LayoutError::SizeOverflow(_) = err {
+            cx.0.sess.span_fatal(span, &err.to_string())
+        } else {
+            span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
+        }
     }
 }

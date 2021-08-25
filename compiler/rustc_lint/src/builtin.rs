@@ -2830,18 +2830,19 @@ impl ClashingExternDeclarations {
                 let a_kind = a.kind();
                 let b_kind = b.kind();
 
-                let compare_layouts = |a, b| -> Result<bool, LayoutError<'tcx>> {
-                    debug!("compare_layouts({:?}, {:?})", a, b);
-                    let a_layout = &cx.layout_of(a)?.layout.abi;
-                    let b_layout = &cx.layout_of(b)?.layout.abi;
-                    debug!(
-                        "comparing layouts: {:?} == {:?} = {}",
-                        a_layout,
-                        b_layout,
-                        a_layout == b_layout
-                    );
-                    Ok(a_layout == b_layout)
-                };
+                let compare_layouts =
+                    |a: Ty<'tcx>, b: Ty<'tcx>| -> Result<bool, LayoutError<'tcx>> {
+                        debug!("compare_layouts({:?}, {:?})", a, b);
+                        let a_layout = &cx.layout_of(a)?.layout.abi;
+                        let b_layout = &cx.layout_of(b)?.layout.abi;
+                        debug!(
+                            "comparing layouts: {:?} == {:?} = {}",
+                            a_layout,
+                            b_layout,
+                            a_layout == b_layout
+                        );
+                        Ok(a_layout == b_layout)
+                    };
 
                 #[allow(rustc::usage_of_ty_tykind)]
                 let is_primitive_or_pointer = |kind: &ty::TyKind<'_>| {
