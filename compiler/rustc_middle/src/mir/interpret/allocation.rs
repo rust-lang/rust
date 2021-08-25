@@ -766,7 +766,7 @@ impl InitMask {
             // In both cases, the block index of `end` is 1.
             // But we do want to search block 1 in (a), and we don't in (b).
             //
-            // If we subtract 1 from both end positions to make them inclusive:
+            // We subtract 1 from both end positions to make them inclusive:
             //
             //   (a) 00000000|00000000    (b) 00000000|
             //       ^~~~~~~~~~^              ^~~~~~~^
@@ -937,7 +937,12 @@ impl InitMask {
     pub fn range_as_init_chunks(&self, start: Size, end: Size) -> InitChunkIter<'_> {
         assert!(end <= self.len);
 
-        let is_init = if start < end { self.get(start) } else { false };
+        let is_init = if start < end {
+            self.get(start)
+        } else {
+            // `start..end` is empty: there are no chunks, so use some arbitrary value
+            false
+        };
 
         InitChunkIter { init_mask: self, is_init, start, end }
     }
