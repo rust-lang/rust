@@ -2,7 +2,6 @@
 
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
-#![feature(box_syntax)]
 
 use std::cell::Cell;
 
@@ -58,7 +57,7 @@ fn test_tup() {
 fn test_unique() {
     let i = &Cell::new(0);
     {
-        let _a: Box<_> = box r(i);
+        let _a: Box<_> = Box::new(r(i));
     }
     assert_eq!(i.get(), 1);
 }
@@ -66,9 +65,9 @@ fn test_unique() {
 fn test_unique_rec() {
     let i = &Cell::new(0);
     {
-        let _a: Box<_> = box BoxR {
+        let _a: Box<_> = Box::new(BoxR {
             x: r(i)
-        };
+        });
     }
     assert_eq!(i.get(), 1);
 }

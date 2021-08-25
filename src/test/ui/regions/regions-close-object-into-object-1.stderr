@@ -1,10 +1,10 @@
 error[E0515]: cannot return value referencing local data `*v`
   --> $DIR/regions-close-object-into-object-1.rs:12:5
    |
-LL |     box B(&*v) as Box<X>
-   |     ^^^^^^---^^^^^^^^^^^
-   |     |     |
-   |     |     `*v` is borrowed here
+LL |     Box::new(B(&*v)) as Box<X>
+   |     ^^^^^^^^^^^---^^^^^^^^^^^^
+   |     |          |
+   |     |          `*v` is borrowed here
    |     returns a value referencing data owned by the current function
 
 error: aborting due to previous error

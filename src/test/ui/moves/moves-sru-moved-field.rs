@@ -1,6 +1,6 @@
-#![feature(box_syntax)]
-
 type Noncopyable = Box<isize>;
+
+
 
 struct Foo {
     copied: isize,
@@ -10,8 +10,8 @@ struct Foo {
 
 fn test0(f: Foo, g: Noncopyable, h: Noncopyable) {
     // just copy implicitly copyable fields from `f`, no moves:
-    let _b = Foo {moved: box 1, noncopyable: g, ..f};
-    let _c = Foo {moved: box 2, noncopyable: h, ..f};
+    let _b = Foo {moved: Box::new(1), noncopyable: g, ..f};
+    let _c = Foo {moved: Box::new(2), noncopyable: h, ..f};
 }
 
 fn test1(f: Foo, g: Noncopyable, h: Noncopyable) {

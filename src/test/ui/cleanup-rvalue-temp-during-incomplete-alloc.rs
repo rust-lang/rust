@@ -21,8 +21,6 @@
 
 // ignore-emscripten no threads support
 
-#![feature(box_syntax)]
-
 use std::thread;
 
 enum Conzabble {
@@ -40,7 +38,7 @@ fn get_bar(x: usize) -> Vec<usize> { vec![x * 2] }
 pub fn fails() {
     let x = 2;
     let mut y: Vec<Box<_>> = Vec::new();
-    y.push(box Conzabble::Bickwick(do_it(&get_bar(x))));
+    y.push(Box::new(Conzabble::Bickwick(do_it(&get_bar(x)))));
 }
 
 pub fn main() {

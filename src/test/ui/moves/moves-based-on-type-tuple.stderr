@@ -1,12 +1,13 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/moves-based-on-type-tuple.rs:4:13
+  --> $DIR/moves-based-on-type-tuple.rs:4:18
    |
 LL | fn dup(x: Box<isize>) -> Box<(Box<isize>,Box<isize>)> {
    |        - move occurs because `x` has type `Box<isize>`, which does not implement the `Copy` trait
-LL |     box (x, x)
-   |          -  ^ value used here after move
-   |          |
-   |          value moved here
+...
+LL |     Box::new((x, x))
+   |               -  ^ value used here after move
+   |               |
+   |               value moved here
 
 error: aborting due to previous error
 

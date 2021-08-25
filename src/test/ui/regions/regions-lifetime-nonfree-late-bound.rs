@@ -15,19 +15,17 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(box_syntax)]
-
 pub fn main() {
     fn explicit() {
         fn test<F>(_x: Option<Box<F>>) where F: FnMut(Box<dyn for<'a> FnMut(&'a isize)>) {}
-        test(Some(box |_f: Box<dyn for<'a> FnMut(&'a isize)>| {}));
+        test(Some(Box::new(|_f: Box<dyn for<'a> FnMut(&'a isize)>| {})));
     }
 
     // The code below is shorthand for the code above (and more likely
     // to represent what one encounters in practice).
     fn implicit() {
         fn test<F>(_x: Option<Box<F>>) where F: FnMut(Box<dyn        FnMut(&   isize)>) {}
-        test(Some(box |_f: Box<dyn        FnMut(&   isize)>| {}));
+        test(Some(Box::new(|_f: Box<dyn        FnMut(&   isize)>| {})));
     }
 
     explicit();

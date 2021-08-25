@@ -262,7 +262,6 @@
 // cdb-check:struct ForeignType2 * foreign2 = [...]
 // cdb-check:struct ForeignType1 * foreign1 = [...]
 
-#![feature(box_syntax)]
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
@@ -373,8 +372,8 @@ fn main() {
     let tuple2 = ((Struct1, mod1::mod2::Struct3), mod1::Variant1, 'x');
 
     // Box
-    let box1 = (box 1f32, 0i32);
-    let box2 = (box mod1::mod2::Variant2(1f32), 0i32);
+    let box1 = (Box::new(1f32), 0i32);
+    let box2 = (Box::new(mod1::mod2::Variant2(1f32)), 0i32);
 
     // References
     let ref1 = (&Struct1, 0i32);
@@ -404,14 +403,14 @@ fn main() {
     let slice2 = &*vec2;
 
     // Trait Objects
-    let box_trait = (box 0_isize) as Box<dyn Trait1>;
+    let box_trait = Box::new(0_isize) as Box<dyn Trait1>;
     let ref_trait = &0_isize as &dyn Trait1;
     let mut mut_int1 = 0_isize;
     let mut_ref_trait = (&mut mut_int1) as &mut dyn Trait1;
-    let no_principal_trait = (box 0_isize) as Box<(dyn Send + Sync)>;
+    let no_principal_trait = Box::new(0_isize) as Box<(dyn Send + Sync)>;
     let has_associated_type_trait = &0_isize as &(dyn Trait3<u32, AssocType = isize> + Send);
 
-    let generic_box_trait = (box 0_isize) as Box<dyn Trait2<i32, mod1::Struct2>>;
+    let generic_box_trait = Box::new(0_isize) as Box<dyn Trait2<i32, mod1::Struct2>>;
     let generic_ref_trait = (&0_isize) as &dyn Trait2<Struct1, Struct1>;
 
     let mut generic_mut_ref_trait_impl = 0_isize;

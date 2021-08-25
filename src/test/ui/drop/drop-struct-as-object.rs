@@ -5,8 +5,6 @@
 // Test that destructor on a struct runs successfully after the struct
 // is boxed and converted to an object.
 
-#![feature(box_syntax)]
-
 static mut value: usize = 0;
 
 struct Cat {
@@ -29,7 +27,7 @@ impl Drop for Cat {
 
 pub fn main() {
     {
-        let x = box Cat {name: 22};
+        let x = Box::new(Cat {name: 22});
         let nyan: Box<dyn Dummy> = x as Box<dyn Dummy>;
     }
     unsafe {

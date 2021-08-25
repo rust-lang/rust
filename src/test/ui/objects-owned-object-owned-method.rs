@@ -3,8 +3,6 @@
 // closed over contain managed values. This implies that the boxes
 // will have headers that must be skipped over.
 
-#![feature(box_syntax)]
-
 trait FooTrait {
     fn foo(self: Box<Self>) -> usize;
 }
@@ -20,6 +18,6 @@ impl FooTrait for BarStruct {
 }
 
 pub fn main() {
-    let foo = box BarStruct{ x: 22 } as Box<dyn FooTrait>;
+    let foo = Box::new(BarStruct{ x: 22 }) as Box<dyn FooTrait>;
     assert_eq!(22, foo.foo());
 }

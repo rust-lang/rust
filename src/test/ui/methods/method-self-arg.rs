@@ -1,8 +1,6 @@
 // run-pass
 // Test method calls with self as an argument
 
-#![feature(box_syntax)]
-
 static mut COUNT: usize = 1;
 
 #[derive(Copy, Clone)]
@@ -18,8 +16,8 @@ impl Foo {
         Foo::baz(self);
         Foo::baz(*x);
 
-        Foo::qux(box self);
-        Foo::qux(box *x);
+        Foo::qux(Box::new(self));
+        Foo::qux(Box::new(*x));
     }
 
     fn bar(&self) {
@@ -40,7 +38,7 @@ fn main() {
     // Test external call.
     Foo::bar(&x);
     Foo::baz(x);
-    Foo::qux(box x);
+    Foo::qux(Box::new(x));
 
     x.foo(&x);
 

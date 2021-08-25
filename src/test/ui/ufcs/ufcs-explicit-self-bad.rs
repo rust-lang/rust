@@ -1,8 +1,8 @@
-#![feature(box_syntax)]
-
 struct Foo {
     f: isize,
 }
+
+
 
 impl Foo {
     fn foo(self: isize, x: isize) -> isize {
@@ -48,12 +48,12 @@ impl<'a, T> SomeTrait for &'a Bar<T> {
 }
 
 fn main() {
-    let foo = box Foo {
+    let foo = Box::new(Foo {
         f: 1,
-    };
+    });
     println!("{}", foo.foo(2));
-    let bar = box Bar {
+    let bar = Box::new(Bar {
         f: 1,
-    };
+    });
     println!("{} {}", bar.foo(2), bar.bar(2));
 }

@@ -1,5 +1,3 @@
-#![feature(box_syntax)]
-
 struct Node_ {
     a: Box<Cycle>
 }
@@ -8,8 +6,10 @@ enum Cycle {
     Node(Node_),
     Empty,
 }
+
 fn main() {
-    let mut x: Box<_> = box Cycle::Node(Node_ {a: box Cycle::Empty});
+    let mut x: Box<_> = Box::new(Cycle::Node(Node_ {a: Box::new(Cycle::Empty)}));
+
     // Create a cycle!
     match *x {
       Cycle::Node(ref mut y) => {

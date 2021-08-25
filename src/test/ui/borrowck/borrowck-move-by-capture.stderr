@@ -1,7 +1,7 @@
 error[E0507]: cannot move out of `bar`, a captured variable in an `FnMut` closure
   --> $DIR/borrowck-move-by-capture.rs:9:29
    |
-LL |       let bar: Box<_> = box 3;
+LL |       let bar: Box<_> = Box::new(3);
    |           --- captured outer variable
 LL |       let _g = to_fn_mut(|| {
    |  ________________________-

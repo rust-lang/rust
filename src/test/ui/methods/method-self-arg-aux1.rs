@@ -1,8 +1,6 @@
 // run-pass
 // Test method calls with self as an argument (cross-crate)
 
-#![feature(box_syntax)]
-
 // aux-build:method_self_arg1.rs
 extern crate method_self_arg1;
 use method_self_arg1::Foo;
@@ -12,7 +10,7 @@ fn main() {
     // Test external call.
     Foo::bar(&x);
     Foo::baz(x);
-    Foo::qux(box x);
+    Foo::qux(Box::new(x));
 
     x.foo(&x);
 

@@ -2,10 +2,10 @@
 // reference work properly.
 
 #![feature(box_patterns)]
-#![feature(box_syntax)]
 
 trait T { fn foo(&self) {} }
 impl T for isize {}
+
 
 fn main() {
     // For an expression of the form:
@@ -25,7 +25,7 @@ fn main() {
     // n == m
     let &x = &1isize as &dyn T;      //~ ERROR type `&dyn T` cannot be dereferenced
     let &&x = &(&1isize as &dyn T);  //~ ERROR type `&dyn T` cannot be dereferenced
-    let box x = box 1isize as Box<dyn T>;
+    let box x = Box::new(1isize) as Box<dyn T>;
     //~^ ERROR type `Box<dyn T>` cannot be dereferenced
 
     // n > m
@@ -37,7 +37,7 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected trait object `dyn T`
     //~| found reference `&_`
-    let box box x = box 1isize as Box<dyn T>;
+    let box box x = Box::new(1isize) as Box<dyn T>;
     //~^ ERROR mismatched types
     //~| expected trait object `dyn T`
     //~| found struct `Box<_>`

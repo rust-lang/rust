@@ -2,8 +2,6 @@
 // Tests that you can use an early-bound lifetime parameter as
 // on of the generic parameters in a trait.
 
-#![feature(box_syntax)]
-
 trait Trait<'a> {
     fn long(&'a self) -> isize;
     fn short<'b>(&'b self) -> isize;
@@ -72,7 +70,7 @@ impl<'s> Trait<'s> for (isize,isize) {
 
 impl<'t> MakerTrait for Box<dyn Trait<'t>+'static> {
     fn mk() -> Box<dyn Trait<'t>+'static> {
-        let tup: Box<(isize, isize)> = box (4,5);
+        let tup: Box<(isize, isize)> = Box::new((4,5));
         tup as Box<dyn Trait>
     }
 }

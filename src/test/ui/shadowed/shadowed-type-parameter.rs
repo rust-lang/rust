@@ -1,8 +1,8 @@
 // Test that shadowed lifetimes generate an error.
 
-#![feature(box_syntax)]
 
 struct Foo<T>(T);
+
 
 impl<T> Foo<T> {
     fn shadow_in_method<T>(&self) {}

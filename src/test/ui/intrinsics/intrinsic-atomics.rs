@@ -1,5 +1,4 @@
 // run-pass
-#![feature(box_syntax)]
 #![feature(intrinsics)]
 
 mod rusti {
@@ -34,7 +33,7 @@ mod rusti {
 
 pub fn main() {
     unsafe {
-        let mut x: Box<_> = box 1;
+        let mut x: Box<_> = Box::new(1);
 
         assert_eq!(rusti::atomic_load(&*x), 1);
         *x = 5;

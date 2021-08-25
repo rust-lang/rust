@@ -1,5 +1,5 @@
 // run-pass
-#![feature(box_syntax, trait_upcasting)]
+#![feature(trait_upcasting)]
 #![allow(incomplete_features)]
 
 struct Test {
@@ -8,6 +8,6 @@ struct Test {
 
 fn main() {
     let closure: Box<dyn Fn() + 'static> = Box::new(|| ());
-    let mut test = box Test { func: closure };
+    let mut test = Box::new(Test { func: closure });
     (test.func)();
 }

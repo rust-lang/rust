@@ -1,6 +1,5 @@
 // run-pass
 #![allow(unused_braces)]
-#![feature(box_syntax)]
 
 use std::cell::RefCell;
 use std::fmt::Debug;

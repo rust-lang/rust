@@ -5,7 +5,6 @@
 // pattern.
 
 #![feature(box_patterns)]
-#![feature(box_syntax)]
 
 fn getaddr(box ref x: Box<usize>) -> *const usize {
     let addr: *const usize = &*x;
@@ -17,11 +16,11 @@ fn checkval(box ref x: Box<usize>) -> usize {
 }
 
 pub fn main() {
-    let obj: Box<_> = box 1;
+    let obj: Box<_> = Box::new(1);
     let objptr: *const usize = &*obj;
     let xptr = getaddr(obj);
     assert_eq!(objptr, xptr);
 
-    let obj = box 22;
+    let obj = Box::new(22);
     assert_eq!(checkval(obj), 22);
 }

@@ -2,8 +2,6 @@
 // A test where we (successfully) close over a reference into
 // an object.
 
-#![feature(box_syntax)]
-
 trait SomeTrait { fn get(&self) -> isize; }
 
 impl<'a> SomeTrait for &'a isize {
@@ -13,7 +11,7 @@ impl<'a> SomeTrait for &'a isize {
 }
 
 fn make_object<'a,A:SomeTrait+'a>(v: A) -> Box<dyn SomeTrait+'a> {
-    box v as Box<dyn SomeTrait+'a>
+    Box::new(v) as Box<dyn SomeTrait+'a>
 }
 
 fn main() {

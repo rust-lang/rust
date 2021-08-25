@@ -1,7 +1,6 @@
 // run-pass
 
 #![allow(non_camel_case_types)]
-#![feature(box_syntax)]
 
 trait get {
     fn get(self) -> isize;
@@ -17,7 +16,7 @@ impl<'a> get for &'a isize {
 }
 
 pub fn main() {
-    let x: Box<_> = box 6;
+    let x: Box<_> = 6.into();
     let y = x.get();
     println!("y={}", y);
     assert_eq!(y, 6);

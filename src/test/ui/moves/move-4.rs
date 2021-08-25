@@ -1,6 +1,5 @@
 // run-pass
 #![allow(dead_code)]
-#![feature(box_syntax)]
 
 struct Triple { a: isize, b: isize, c: isize }
 
@@ -13,7 +12,7 @@ fn test(foo: Box<Triple>) -> Box<Triple> {
 }
 
 pub fn main() {
-    let x = box Triple{a: 1, b: 2, c: 3};
+    let x = Box::new(Triple{ a: 1, b: 2, c: 3 });
     let y = test(x);
     assert_eq!(y.c, 3);
 }

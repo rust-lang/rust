@@ -3,7 +3,6 @@
 // blanket impl for T:Copy coexists with an impl for Box<T>, because
 // Box does not impl Copy.
 
-#![feature(box_syntax)]
 
 trait Get {
     fn get(&self) -> Self;
@@ -20,7 +19,7 @@ impl<T:MyCopy> Get for T {
 }
 
 impl Get for Box<i32> {
-    fn get(&self) -> Box<i32> { box get_it(&**self) }
+    fn get(&self) -> Box<i32> { Box::new(get_it(&**self)) }
 }
 
 fn get_it<T:Get>(t: &T) -> T {

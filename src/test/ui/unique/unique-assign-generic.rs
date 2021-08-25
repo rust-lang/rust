@@ -1,5 +1,4 @@
 // run-pass
-#![feature(box_syntax)]
 
 fn f<T>(t: T) -> T {
     let t1 = t;
@@ -7,6 +6,6 @@ fn f<T>(t: T) -> T {
 }
 
 pub fn main() {
-    let t = f::<Box<_>>(box 100);
-    assert_eq!(t, box 100);
+    let t = f::<Box<_>>(Box::new(100));
+    assert_eq!(t, Box::new(100));
 }

@@ -1,8 +1,7 @@
 // run-pass
-#![feature(box_syntax)]
 
 pub fn main() {
-    let mut i: Box<_> = box 1;
+    let mut i: Box<_> = Box::new(1);
     // Should be a copy
     let mut j;
     j = i.clone();

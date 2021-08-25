@@ -1,6 +1,6 @@
-#![feature(box_syntax)]
-
 trait X {}
+
+
 
 trait Iter {
     type Item: X;
@@ -18,7 +18,7 @@ fn bad1<T: Iter>(v: T) -> Box<dyn X + 'static>
 fn bad2<T: Iter>(v: T) -> Box<dyn X + 'static>
     where Box<T::Item> : X
 {
-    let item: Box<_> = box v.into_item();
+    let item: Box<_> = Box::new(v.into_item());
     Box::new(item) //~ ERROR associated type `<T as Iter>::Item` may not live long enough
 }
 
@@ -31,7 +31,7 @@ fn bad3<'a, T: Iter>(v: T) -> Box<dyn X + 'a>
 fn bad4<'a, T: Iter>(v: T) -> Box<dyn X + 'a>
     where Box<T::Item> : X
 {
-    let item: Box<_> = box v.into_item();
+    let item: Box<_> = Box::new(v.into_item());
     Box::new(item) //~ ERROR associated type `<T as Iter>::Item` may not live long enough
 }
 

@@ -1,8 +1,6 @@
 // Tests that two closures cannot simultaneously have mutable
 // and immutable access to the variable. Issue #6801.
 
-#![feature(box_syntax)]
-
 fn get(x: &isize) -> isize {
     *x
 }
@@ -10,6 +8,8 @@ fn get(x: &isize) -> isize {
 fn set(x: &mut isize) {
     *x = 4;
 }
+
+
 
 fn a() {
     let mut x = 3;
@@ -52,7 +52,7 @@ fn e() {
 }
 
 fn f() {
-    let mut x: Box<_> = box 3;
+    let mut x: Box<_> = Box::new(3);
     let c1 = || get(&*x);
     *x = 5;
     //~^ ERROR cannot assign to `*x` because it is borrowed
@@ -64,7 +64,7 @@ fn g() {
         f: Box<isize>
     }
 
-    let mut x: Box<_> = box Foo { f: box 3 };
+    let mut x: Box<_> = Box::new(Foo { f: Box::new(3) });
     let c1 = || get(&*x.f);
     *x.f = 5;
     //~^ ERROR cannot assign to `*x.f` because it is borrowed
@@ -76,7 +76,7 @@ fn h() {
         f: Box<isize>
     }
 
-    let mut x: Box<_> = box Foo { f: box 3 };
+    let mut x: Box<_> = Box::new(Foo { f: Box::new(3) });
     let c1 = || get(&*x.f);
     let c2 = || *x.f = 5;
     //~^ ERROR cannot borrow `x` as mutable because it is also borrowed as immutable

@@ -1,7 +1,5 @@
 #![crate_type = "lib"]
 
-#![feature(box_syntax)]
-
 static mut COUNT: u64 = 1;
 
 pub fn get_count() -> u64 { unsafe { COUNT } }
@@ -19,8 +17,8 @@ impl Foo {
         Foo::baz(self);
         Foo::baz(*x);
 
-        Foo::qux(box self);
-        Foo::qux(box *x);
+        Foo::qux(Box::new(self));
+        Foo::qux(Box::new(*x));
     }
 
     pub fn bar(&self) {

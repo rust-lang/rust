@@ -3,7 +3,7 @@ error[E0502]: cannot borrow `*ptr` as immutable because it is also borrowed as m
    |
 LL |   let mut test = |foo: &Foo| {
    |                  ----------- mutable borrow occurs here
-LL |     ptr = box Foo { x: ptr.x + 1 };
+LL |     ptr = Box::new(Foo { x: ptr.x + 1 });
    |     --- first borrow occurs due to use of `ptr` in closure
 LL |   };
 LL |   test(&*ptr);

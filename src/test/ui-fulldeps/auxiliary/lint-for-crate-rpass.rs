@@ -1,7 +1,6 @@
 // force-host
 
 #![feature(rustc_private)]
-#![feature(box_syntax)]
 
 extern crate rustc_driver;
 extern crate rustc_hir;
@@ -73,7 +72,7 @@ fn __rustc_plugin_registrar(reg: &mut Registry) {
         &CRATE_NOT_GREY,
         &CRATE_NOT_GREEN,
     ]);
-    reg.lint_store.register_late_pass(|| box PassOkay);
-    reg.lint_store.register_late_pass(|| box PassRedBlue);
-    reg.lint_store.register_late_pass(|| box PassGreyGreen);
+    reg.lint_store.register_late_pass(|| Box::new(PassOkay));
+    reg.lint_store.register_late_pass(|| Box::new(PassRedBlue));
+    reg.lint_store.register_late_pass(|| Box::new(PassGreyGreen));
 }

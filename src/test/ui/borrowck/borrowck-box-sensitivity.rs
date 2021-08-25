@@ -3,8 +3,6 @@
 
 // run-pass
 
-#![feature(box_syntax)]
-
 struct A {
     x: Box<isize>,
     y: isize,
@@ -26,97 +24,97 @@ struct D {
 }
 
 fn copy_after_move() {
-    let a: Box<_> = box A { x: box 0, y: 1 };
+    let a: Box<_> = Box::new(A { x: Box::new(0), y: 1 });
     let _x = a.x;
     let _y = a.y;
 }
 
 fn move_after_move() {
-    let a: Box<_> = box B { x: box 0, y: box 1 };
+    let a: Box<_> = Box::new(B { x: Box::new(0), y: Box::new(1) });
     let _x = a.x;
     let _y = a.y;
 }
 
 fn borrow_after_move() {
-    let a: Box<_> = box A { x: box 0, y: 1 };
+    let a: Box<_> = Box::new(A { x: Box::new(0), y: 1 });
     let _x = a.x;
     let _y = &a.y;
 }
 
 fn move_after_borrow() {
-    let a: Box<_> = box B { x: box 0, y: box 1 };
+    let a: Box<_> = Box::new(B { x: Box::new(0), y: Box::new(1) });
     let _x = &a.x;
     let _y = a.y;
     use_imm(_x);
 }
 fn copy_after_mut_borrow() {
-    let mut a: Box<_> = box A { x: box 0, y: 1 };
+    let mut a: Box<_> = Box::new(A { x: Box::new(0), y: 1 });
     let _x = &mut a.x;
     let _y = a.y;
     use_mut(_x);
 }
 fn move_after_mut_borrow() {
-    let mut a: Box<_> = box B { x: box 0, y: box 1 };
+    let mut a: Box<_> = Box::new(B { x: Box::new(0), y: Box::new(1) });
     let _x = &mut a.x;
     let _y = a.y;
     use_mut(_x);
 }
 fn borrow_after_mut_borrow() {
-    let mut a: Box<_> = box A { x: box 0, y: 1 };
+    let mut a: Box<_> = Box::new(A { x: Box::new(0), y: 1 });
     let _x = &mut a.x;
     let _y = &a.y;
     use_mut(_x);
 }
 fn mut_borrow_after_borrow() {
-    let mut a: Box<_> = box A { x: box 0, y: 1 };
+    let mut a: Box<_> = Box::new(A { x: Box::new(0), y: 1 });
     let _x = &a.x;
     let _y = &mut a.y;
     use_imm(_x);
 }
 fn copy_after_move_nested() {
-    let a: Box<_> = box C { x: box A { x: box 0, y: 1 }, y: 2 };
+    let a: Box<_> = Box::new(C { x: Box::new(A { x: Box::new(0), y: 1 }), y: 2 });
     let _x = a.x.x;
     let _y = a.y;
 }
 
 fn move_after_move_nested() {
-    let a: Box<_> = box D { x: box A { x: box 0, y: 1 }, y: box 2 };
+    let a: Box<_> = Box::new(D { x: Box::new(A { x: Box::new(0), y: 1 }), y: Box::new(2) });
     let _x = a.x.x;
     let _y = a.y;
 }
 
 fn borrow_after_move_nested() {
-    let a: Box<_> = box C { x: box A { x: box 0, y: 1 }, y: 2 };
+    let a: Box<_> = Box::new(C { x: Box::new(A { x: Box::new(0), y: 1 }), y: 2 });
     let _x = a.x.x;
     let _y = &a.y;
 }
 
 fn move_after_borrow_nested() {
-    let a: Box<_> = box D { x: box A { x: box 0, y: 1 }, y: box 2 };
+    let a: Box<_> = Box::new(D { x: Box::new(A { x: Box::new(0), y: 1 }), y: Box::new(2) });
     let _x = &a.x.x;
     let _y = a.y;
     use_imm(_x);
 }
 fn copy_after_mut_borrow_nested() {
-    let mut a: Box<_> = box C { x: box A { x: box 0, y: 1 }, y: 2 };
+    let mut a: Box<_> = Box::new(C { x: Box::new(A { x: Box::new(0), y: 1 }), y: 2 });
     let _x = &mut a.x.x;
     let _y = a.y;
     use_mut(_x);
 }
 fn move_after_mut_borrow_nested() {
-    let mut a: Box<_> = box D { x: box A { x: box 0, y: 1 }, y: box 2 };
+    let mut a: Box<_> = Box::new(D { x: Box::new(A { x: Box::new(0), y: 1 }), y: Box::new(2) });
     let _x = &mut a.x.x;
     let _y = a.y;
     use_mut(_x);
 }
 fn borrow_after_mut_borrow_nested() {
-    let mut a: Box<_> = box C { x: box A { x: box 0, y: 1 }, y: 2 };
+    let mut a: Box<_> = Box::new(C { x: Box::new(A { x: Box::new(0), y: 1 }), y: 2 });
     let _x = &mut a.x.x;
     let _y = &a.y;
     use_mut(_x);
 }
 fn mut_borrow_after_borrow_nested() {
-    let mut a: Box<_> = box C { x: box A { x: box 0, y: 1 }, y: 2 };
+    let mut a: Box<_> = Box::new(C { x: Box::new(A { x: Box::new(0), y: 1 }), y: 2 });
     let _x = &a.x.x;
     let _y = &mut a.y;
     use_imm(_x);

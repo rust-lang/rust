@@ -1,11 +1,12 @@
 error[E0382]: borrow of moved value: `n`
   --> $DIR/use-after-move-implicity-coerced-object.rs:28:13
    |
-LL |     let n: Box<_> = box Number { n: 42 };
+LL |     let n: Box<_> = Number { n: 42 }.into();
    |         - move occurs because `n` has type `Box<Number>`, which does not implement the `Copy` trait
-LL |     let mut l: Box<_> = box List { list: Vec::new() };
+LL |     let mut l: Box<_> = List { list: Vec::new() }.into();
 LL |     l.push(n);
    |            - value moved here
+LL | 
 LL |     let x = n.to_string();
    |             ^ value borrowed here after move
 

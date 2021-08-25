@@ -10,8 +10,6 @@
 // codegen the call as `Foo::foo(&x)` and let the specific impl get
 // chosen later.
 
-#![feature(box_syntax)]
-
 trait Foo {
     fn foo(&self) -> isize;
 }
@@ -37,7 +35,7 @@ fn call_foo_copy() -> isize {
 fn call_foo_other() -> isize {
     let mut x: Vec<_> = Vec::new();
     let y = x.foo();
-    let z: Box<i32> = box 0;
+    let z: Box<i32> = Box::new(0);
     x.push(z);
     y
 }

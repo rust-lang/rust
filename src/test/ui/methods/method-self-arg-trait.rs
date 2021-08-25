@@ -1,8 +1,6 @@
 // run-pass
 // Test method calls with self as an argument
 
-#![feature(box_syntax)]
-
 static mut COUNT: u64 = 1;
 
 #[derive(Copy, Clone)]
@@ -44,11 +42,11 @@ impl Foo {
         // Test internal call.
         Bar::foo1(&self);
         Bar::foo2(self);
-        Bar::foo3(box self);
+        Bar::foo3(Box::new(self));
 
         Bar::bar1(&self);
         Bar::bar2(self);
-        Bar::bar3(box self);
+        Bar::bar3(Box::new(self));
     }
 }
 
@@ -57,11 +55,11 @@ fn main() {
     // Test external call.
     Bar::foo1(&x);
     Bar::foo2(x);
-    Bar::foo3(box x);
+    Bar::foo3(Box::new(x));
 
     Bar::bar1(&x);
     Bar::bar2(x);
-    Bar::bar3(box x);
+    Bar::bar3(Box::new(x));
 
     x.baz();
 

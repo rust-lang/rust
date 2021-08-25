@@ -1,11 +1,11 @@
 error: unreachable pattern
   --> $DIR/issue-12116.rs:15:9
    |
-LL |         &IntList::Cons(val, box IntList::Nil)  => IntList::Cons(val, box IntList::Nil),
+LL |         &IntList::Cons(val, box IntList::Nil)  => IntList::Cons(val, Box::new(IntList::Nil)),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/issue-12116.rs:5:9
+  --> $DIR/issue-12116.rs:4:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^

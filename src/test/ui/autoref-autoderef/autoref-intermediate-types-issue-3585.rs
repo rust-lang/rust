@@ -1,5 +1,4 @@
 // run-pass
-#![feature(box_syntax)]
 
 trait Foo {
     fn foo(&self) -> String;
@@ -18,6 +17,6 @@ impl Foo for usize {
 }
 
 pub fn main() {
-    let x: Box<_> = box 3;
+    let x: Box<_> = Box::new(3);
     assert_eq!(x.foo(), "box 3".to_string());
 }

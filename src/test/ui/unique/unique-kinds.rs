@@ -1,5 +1,4 @@
 // run-pass
-#![feature(box_syntax)]
 
 use std::cmp::PartialEq;
 use std::fmt::Debug;
@@ -14,11 +13,11 @@ fn sendable() {
         assert!(i != j);
     }
 
-    let i: Box<_> = box 100;
-    let j: Box<_> = box 100;
+    let i: Box<_> = Box::new(100);
+    let j: Box<_> = Box::new(100);
     f(i, j);
-    let i: Box<_> = box 100;
-    let j: Box<_> = box 101;
+    let i: Box<_> = Box::new(100);
+    let j: Box<_> = Box::new(101);
     g(i, j);
 }
 
@@ -32,11 +31,11 @@ fn copyable() {
         assert!(i != j);
     }
 
-    let i: Box<_> = box 100;
-    let j: Box<_> = box 100;
+    let i: Box<_> = Box::new(100);
+    let j: Box<_> = Box::new(100);
     f(i, j);
-    let i: Box<_> = box 100;
-    let j: Box<_> = box 101;
+    let i: Box<_> = Box::new(100);
+    let j: Box<_> = Box::new(101);
     g(i, j);
 }
 
@@ -50,11 +49,11 @@ fn noncopyable() {
         assert!(i != j);
     }
 
-    let i: Box<_> = box 100;
-    let j: Box<_> = box 100;
+    let i: Box<_> = Box::new(100);
+    let j: Box<_> = Box::new(100);
     f(i, j);
-    let i: Box<_> = box 100;
-    let j: Box<_> = box 101;
+    let i: Box<_> = Box::new(100);
+    let j: Box<_> = Box::new(101);
     g(i, j);
 }
 

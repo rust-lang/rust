@@ -1,6 +1,8 @@
 // run-pass
-#![feature(box_syntax)]
 
 fn f<T>(x: Box<T>) -> Box<T> { return x; }
 
-pub fn main() { let x = f(box 3); println!("{}", *x); }
+pub fn main() {
+    let x = f(Box::new(3));
+    println!("{}", *x);
+}

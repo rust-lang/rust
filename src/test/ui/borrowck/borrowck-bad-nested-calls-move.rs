@@ -1,10 +1,10 @@
 // Test that we detect nested calls that could free pointers evaluated
 // for earlier arguments.
 
-#![feature(box_syntax)]
+
 
 fn rewrite(v: &mut Box<usize>) -> usize {
-    *v = box 22;
+    *v = Box::new(22);
     **v
 }
 
@@ -13,7 +13,7 @@ fn add(v: &usize, w: Box<usize>) -> usize {
 }
 
 fn implicit() {
-    let mut a: Box<_> = box 1;
+    let mut a: Box<_> = Box::new(1);
 
     // Note the danger here:
     //
@@ -26,7 +26,7 @@ fn implicit() {
 }
 
 fn explicit() {
-    let mut a: Box<_> = box 1;
+    let mut a: Box<_> = Box::new(1);
     add(
         &*a,
         a); //~ ERROR cannot move

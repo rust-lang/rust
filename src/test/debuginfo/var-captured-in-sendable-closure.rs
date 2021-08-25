@@ -34,7 +34,6 @@
 // lldbr-check:(isize) *owned = 5
 
 #![allow(unused_variables)]
-#![feature(box_syntax)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
@@ -53,7 +52,7 @@ fn main() {
         c: 4
     };
 
-    let owned: Box<_> = box 5;
+    let owned: Box<_> = Box::new(5);
 
     let closure = move || {
         zzz(); // #break

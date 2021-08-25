@@ -5,8 +5,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(box_syntax)]
-
 struct Foo;
 
 // Test uses on inherent impl.
@@ -57,14 +55,14 @@ impl Bar<isize> for Box<Baz<isize>> {
         let _: Self::SuperQux = true;
         let _: <Self as SuperBar>::SuperQux = true;
 
-        box Baz { f: 42 }
+        Box::new(Baz { f: 42 })
     }
 }
 
 fn main() {
-    let _: Foo = Foo::foo(Foo, &Foo, box Foo);
-    let _: Box<Baz<isize>> = Bar::bar(box Baz { f: 42 },
-                                      &box Baz { f: 42 },
-                                      box box Baz { f: 42 },
+    let _: Foo = Foo::foo(Foo, &Foo, Box::new(Foo));
+    let _: Box<Baz<isize>> = Bar::bar(Box::new(Baz { f: 42 }),
+                                      &Box::new(Baz { f: 42 }),
+                                      Box::new(Box::new(Baz { f: 42 })),
                                       true);
 }

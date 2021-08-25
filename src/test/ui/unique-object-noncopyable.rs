@@ -1,5 +1,3 @@
-#![feature(box_syntax)]
-
 trait Foo {
     fn f(&self);
 }
@@ -18,8 +16,10 @@ impl Foo for Bar {
     }
 }
 
+
+
 fn main() {
-    let x = box Bar { x: 10 };
+    let x = Box::new(Bar { x: 10 });
     let y: Box<dyn Foo> = x as Box<dyn Foo>;
     let _z = y.clone(); //~ ERROR the method
 }

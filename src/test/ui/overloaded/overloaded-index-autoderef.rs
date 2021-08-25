@@ -3,8 +3,6 @@
 
 // Test overloaded indexing combined with autoderef.
 
-#![feature(box_syntax, core)]
-
 use std::ops::{Index, IndexMut};
 
 struct Foo {
@@ -47,10 +45,10 @@ impl Int for isize {
 }
 
 fn main() {
-    let mut f: Box<_> = box Foo {
+    let mut f: Box<_> = Box::new(Foo {
         x: 1,
         y: 2,
-    };
+    });
 
     assert_eq!(f[1], 2);
 

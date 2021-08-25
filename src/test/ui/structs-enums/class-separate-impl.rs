@@ -2,8 +2,6 @@
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
 
-#![feature(box_syntax)]
-
 use std::fmt;
 
 struct cat {
@@ -60,6 +58,6 @@ fn print_out(thing: Box<dyn ToString>, expected: String) {
 }
 
 pub fn main() {
-  let nyan: Box<dyn ToString> = box cat(0, 2, "nyan".to_string()) as Box<dyn ToString>;
+  let nyan: Box<dyn ToString> = Box::new(cat(0, 2, "nyan".to_string())) as Box<dyn ToString>;
   print_out(nyan, "nyan".to_string());
 }

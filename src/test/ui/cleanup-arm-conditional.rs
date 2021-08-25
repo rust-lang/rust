@@ -7,7 +7,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(box_syntax, os)]
+#![feature(os)]
 
 use std::os;
 
@@ -15,7 +15,7 @@ struct Test { x: isize }
 
 impl Test {
     fn get_x(&self) -> Option<Box<isize>> {
-        Some(box self.x)
+        Some(Box::new(self.x))
     }
 }
 

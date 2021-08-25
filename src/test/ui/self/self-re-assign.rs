@@ -2,13 +2,12 @@
 // Ensure assigning an owned or managed variable to itself works. In particular,
 // that we do not glue_drop before we glue_take (#3290).
 
-#![feature(box_syntax)]
 #![allow(dead_code)]
 
 use std::rc::Rc;
 
 pub fn main() {
-   let mut x: Box<_> = box 3;
+   let mut x: Box<_> = Box::new(3);
    x = x;
    assert_eq!(*x, 3);
 

@@ -1,5 +1,3 @@
-#![feature(box_syntax)]
-
 use std::fmt;
 
 struct Number {
@@ -22,9 +20,11 @@ impl List {
 }
 
 fn main() {
-    let n: Box<_> = box Number { n: 42 };
-    let mut l: Box<_> = box List { list: Vec::new() };
+
+    let n: Box<_> = Number { n: 42 }.into();
+    let mut l: Box<_> = List { list: Vec::new() }.into();
     l.push(n);
+
     let x = n.to_string();
     //~^ ERROR: borrow of moved value: `n`
 }

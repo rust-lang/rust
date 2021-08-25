@@ -1,10 +1,9 @@
 // run-pass
-#![feature(box_syntax)]
 
 use std::ops::FnMut;
 
  fn make_adder(x: i32) -> Box<dyn FnMut(i32)->i32+'static> {
-    (box move |y: i32| -> i32 { x + y }) as
+    Box::new(move |y: i32| -> i32 { x + y }) as
         Box<dyn FnMut(i32)->i32+'static>
 }
 

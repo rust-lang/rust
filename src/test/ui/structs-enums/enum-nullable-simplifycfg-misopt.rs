@@ -1,5 +1,4 @@
 // run-pass
-#![feature(box_syntax)]
 
 /*!
  * This is a regression test for a bug in LLVM, fixed in upstream r179587,
@@ -9,7 +8,7 @@
 
 enum List<X> { Nil, Cons(X, Box<List<X>>) }
 pub fn main() {
-    match List::Cons(10, box List::Nil) {
+    match List::Cons(10, Box::new(List::Nil)) {
         List::Cons(10, _) => {}
         List::Nil => {}
         _ => panic!()

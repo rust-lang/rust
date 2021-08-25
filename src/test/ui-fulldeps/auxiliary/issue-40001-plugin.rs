@@ -1,4 +1,4 @@
-#![feature(box_syntax, plugin, rustc_private)]
+#![feature(plugin, rustc_private)]
 #![crate_type = "dylib"]
 
 extern crate rustc_ast_pretty;
@@ -21,7 +21,7 @@ use rustc_span::source_map;
 #[no_mangle]
 fn __rustc_plugin_registrar(reg: &mut Registry) {
     reg.lint_store.register_lints(&[&MISSING_ALLOWED_ATTR]);
-    reg.lint_store.register_late_pass(|| box MissingAllowedAttrPass);
+    reg.lint_store.register_late_pass(|| Box::new(MissingAllowedAttrPass));
 }
 
 declare_lint! {

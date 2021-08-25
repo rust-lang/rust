@@ -2,7 +2,6 @@
 #![allow(dead_code)]
 #![allow(unused_mut)]
 #![allow(unused_variables)]
-#![feature(box_syntax)]
 
 use std::io::{self, Write};
 

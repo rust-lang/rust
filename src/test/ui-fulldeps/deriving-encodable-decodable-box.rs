@@ -1,7 +1,6 @@
 // run-pass
 
 #![allow(unused_imports)]
-#![feature(box_syntax)]
 #![feature(rustc_private)]
 
 extern crate rustc_macros;

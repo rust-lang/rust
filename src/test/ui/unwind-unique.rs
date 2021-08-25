@@ -1,12 +1,10 @@
 // run-pass
 // ignore-emscripten no threads support
 
-#![feature(box_syntax)]
-
 use std::thread;
 
 fn f() {
-    let _a: Box<_> = box 0;
+    let _a: Box<_> = Box::new(0);
     panic!();
 }
 

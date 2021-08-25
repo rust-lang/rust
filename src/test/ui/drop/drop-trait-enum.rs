@@ -4,8 +4,6 @@
 #![allow(unused_variables)]
 // ignore-emscripten no threads support
 
-#![feature(box_syntax)]
-
 use std::thread;
 use std::sync::mpsc::{channel, Sender};
 
@@ -57,7 +55,7 @@ pub fn main() {
 
     let (sender, receiver) = channel();
     {
-        let v = Foo::NestedVariant(box 42, SendOnDrop { sender: sender.clone() }, sender);
+        let v = Foo::NestedVariant(Box::new(42), SendOnDrop { sender: sender.clone() }, sender);
     }
     assert_eq!(receiver.recv().unwrap(), Message::DestructorRan);
     assert_eq!(receiver.recv().unwrap(), Message::Dropped);
@@ -74,10 +72,10 @@ pub fn main() {
     let (sender, receiver) = channel();
     let t = {
         thread::spawn(move|| {
-            let mut v = Foo::NestedVariant(box 42, SendOnDrop {
+            let mut v = Foo::NestedVariant(Box::new(42), SendOnDrop {
                 sender: sender.clone()
             }, sender.clone());
-            v = Foo::NestedVariant(box 42,
+            v = Foo::NestedVariant(Box::new(42),
                                    SendOnDrop { sender: sender.clone() },
                                    sender.clone());
             v = Foo::SimpleVariant(sender.clone());

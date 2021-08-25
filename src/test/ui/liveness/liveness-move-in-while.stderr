@@ -21,7 +21,7 @@ LL |         while true { while true { while true { x = y; x.clone(); } } }
 error[E0382]: borrow of moved value: `y`
   --> $DIR/liveness-move-in-while.rs:7:24
    |
-LL |     let y: Box<isize> = box 42;
+LL |     let y: Box<isize> = 42.into();
    |         - move occurs because `y` has type `Box<isize>`, which does not implement the `Copy` trait
 ...
 LL |         println!("{}", y);

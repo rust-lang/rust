@@ -4,7 +4,7 @@
 // either genuine or would require more advanced changes.  The latter
 // cases are noted.
 
-#![feature(box_syntax)]
+
 
 fn borrow(_v: &isize) {}
 fn borrow_mut(_v: &mut isize) {}
@@ -13,15 +13,15 @@ fn for_func<F>(_f: F) where F: FnOnce() -> bool { panic!() }
 fn produce<T>() -> T { panic!(); }
 
 fn inc(v: &mut Box<isize>) {
-    *v = box (**v + 1);
+    *v = Box::new(**v + 1);
 }
 
 fn pre_freeze_cond() {
     // In this instance, the freeze is conditional and starts before
     // the mut borrow.
 
-    let u = box 0;
-    let mut v: Box<_> = box 3;
+    let u = Box::new(0);
+    let mut v: Box<_> = Box::new(3);
     let mut _w = &u;
     if cond() {
         _w = &v;
@@ -34,8 +34,8 @@ fn pre_freeze_else() {
     // In this instance, the freeze and mut borrow are on separate sides
     // of the if.
 
-    let u = box 0;
-    let mut v: Box<_> = box 3;
+    let u = Box::new(0);
+    let mut v: Box<_> = Box::new(3);
     let mut _w = &u;
     if cond() {
         _w = &v;

@@ -1,9 +1,9 @@
-#![feature(box_syntax)]
-
 #[derive(Copy, Clone)]
 struct A { a: isize, b: isize }
 
 struct B { a: isize, b: Box<isize> }
+
+
 
 fn var_copy_after_var_borrow() {
     let mut x: isize = 1;
@@ -50,21 +50,21 @@ fn fu_field_copy_after_field_borrow() {
 }
 
 fn var_deref_after_var_borrow() {
-    let mut x: Box<isize> = box 1;
+    let mut x: Box<isize> = Box::new(1);
     let p = &mut x;
     drop(*x); //~ ERROR cannot use `*x` because it was mutably borrowed
     **p = 2;
 }
 
 fn field_deref_after_var_borrow() {
-    let mut x = B { a: 1, b: box 2 };
+    let mut x = B { a: 1, b: Box::new(2) };
     let p = &mut x;
     drop(*x.b); //~ ERROR cannot use `*x.b` because it was mutably borrowed
     p.a = 3;
 }
 
 fn field_deref_after_field_borrow() {
-    let mut x = B { a: 1, b: box 2 };
+    let mut x = B { a: 1, b: Box::new(2) };
     let p = &mut x.b;
     drop(*x.b); //~ ERROR cannot use `*x.b` because it was mutably borrowed
     **p = 3;

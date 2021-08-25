@@ -4,7 +4,7 @@ error[E0506]: cannot assign to `vec[_]` because it is borrowed
 LL |         [box ref _a, _, _] => {
    |              ------ borrow of `vec[_]` occurs here
 LL |
-LL |             vec[0] = box 4;
+LL |             vec[0] = Box::new(4);
    |             ^^^^^^ assignment to borrowed `vec[_]` occurs here
 LL |
 LL |             _a.use_ref();
@@ -16,7 +16,7 @@ error[E0506]: cannot assign to `vec[_]` because it is borrowed
 LL |         &mut [ref _b @ ..] => {
    |               ----------- borrow of `vec[_]` occurs here
 LL |
-LL |             vec[0] = box 4;
+LL |             vec[0] = Box::new(4);
    |             ^^^^^^ assignment to borrowed `vec[_]` occurs here
 LL |
 LL |             _b.use_ref();

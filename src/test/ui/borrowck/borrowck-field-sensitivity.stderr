@@ -123,7 +123,7 @@ LL |     x.a = 1;
 error[E0381]: assign to part of possibly-uninitialized variable: `x`
   --> $DIR/borrowck-field-sensitivity.rs:94:5
    |
-LL |     x.b = box 1;
+LL |     x.b = Box::new(1);
    |     ^^^ use of possibly-uninitialized `x`
 
 error: aborting due to 14 previous errors

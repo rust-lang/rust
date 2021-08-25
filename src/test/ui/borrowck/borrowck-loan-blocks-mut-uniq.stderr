@@ -7,7 +7,7 @@ LL |     borrow(&*v,
    |     immutable borrow later used by call
 LL |            |w| {
    |            ^^^ mutable borrow occurs here
-LL |             v = box 4;
+LL |             v = Box::new(4);
    |             - second borrow occurs due to use of `v` in closure
 
 error: aborting due to previous error

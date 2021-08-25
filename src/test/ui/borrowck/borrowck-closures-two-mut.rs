@@ -2,7 +2,7 @@
 // access to the variable, whether that mutable access be used
 // for direct assignment or for taking mutable ref. Issue #6801.
 
-#![feature(box_syntax)]
+
 
 fn to_fn_mut<F: FnMut()>(f: F) -> F { f }
 
@@ -44,7 +44,7 @@ fn g() {
         f: Box<isize>
     }
 
-    let mut x: Box<_> = box Foo { f: box 3 };
+    let mut x: Box<_> = Box::new(Foo { f: Box::new(3) });
     let c1 = to_fn_mut(|| set(&mut *x.f));
     let c2 = to_fn_mut(|| set(&mut *x.f));
     //~^ ERROR cannot borrow `x` as mutable more than once

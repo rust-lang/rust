@@ -1,5 +1,4 @@
 // run-pass
-#![feature(box_syntax)]
 
 fn test_generic<T: Clone, F>(expected: T, eq: F) where F: FnOnce(T, T) -> bool {
     let actual: T = match true {
@@ -11,7 +10,7 @@ fn test_generic<T: Clone, F>(expected: T, eq: F) where F: FnOnce(T, T) -> bool {
 
 fn test_vec() {
     fn compare_box(v1: Box<isize>, v2: Box<isize>) -> bool { return v1 == v2; }
-    test_generic::<Box<isize>, _>(box 1, compare_box);
+    test_generic::<Box<isize>, _>(Box::new(1), compare_box);
 }
 
 pub fn main() { test_vec(); }

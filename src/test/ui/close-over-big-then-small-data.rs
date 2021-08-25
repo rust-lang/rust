@@ -5,8 +5,6 @@
 // storing closure data (as we used to do), the u64 would
 // overwrite the u16.
 
-#![feature(box_syntax)]
-
 struct Pair<A,B> {
     a: A, b: B
 }
@@ -27,10 +25,10 @@ impl<A:Clone> Invokable<A> for Invoker<A> {
 }
 
 fn f<A:Clone + 'static>(a: A, b: u16) -> Box<dyn Invokable<A>+'static> {
-    box Invoker {
+    Box::new(Invoker {
         a: a,
         b: b,
-    } as Box<dyn Invokable<A>+'static>
+    }) as Box<dyn Invokable<A>+'static>
 }
 
 pub fn main() {

@@ -1,6 +1,5 @@
 // run-pass
 #![allow(dead_code)]
-#![feature(box_syntax)]
 
 #[derive(Copy, Clone)]
 struct LM { resize_at: usize, size: usize }
@@ -24,6 +23,6 @@ impl<K,V> HashMap<K,V> {
 }
 
 pub fn main() {
-    let mut m: Box<_> = box linear_map::<(),()>();
+    let mut m: Box<_> = Box::new(linear_map::<(),()>());
     assert_eq!(m.len(), 0);
 }

@@ -5,7 +5,6 @@
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
 #![allow(dead_code, unused_variables)]
-#![feature(box_syntax)]
 
 // Tests that the new `box` syntax works with unique pointers.
 
@@ -17,12 +16,12 @@ struct Structure {
 }
 
 pub fn main() {
-    let y: Box<isize> = box 2;
-    let b: Box<isize> = box (1 + 2);
-    let c = box (3 + 4);
+    let y: Box<isize> = Box::new(2);
+    let b: Box<isize> = Box::new(1 + 2);
+    let c = Box::new(3 + 4);
 
-    let s: Box<Structure> = box Structure {
+    let s: Box<Structure> = Box::new(Structure {
         x: 3,
         y: 4,
-    };
+    });
 }

@@ -24,13 +24,12 @@
 // lldbr-check:((i32, f64)) *b = { 0 = 2 1 = 3.5 }
 
 #![allow(unused_variables)]
-#![feature(box_syntax)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 fn main() {
-    let a = box 1;
-    let b = box (2, 3.5f64);
+    let a = Box::new(1);
+    let b = Box::new((2, 3.5f64));
 
     zzz(); // #break
 }

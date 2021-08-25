@@ -1,5 +1,3 @@
-#![feature(box_syntax)]
-
 use std::cell::RefCell;
 
 pub struct Entry<A,B> {
@@ -37,7 +35,7 @@ pub fn new_int_alist<B:'static>() -> alist<isize, B> {
     fn eq_int(a: isize, b: isize) -> bool { a == b }
     return alist {
         eq_fn: eq_int,
-        data: box RefCell::new(Vec::new()),
+        data: Box::new(RefCell::new(Vec::new())),
     };
 }
 
@@ -47,6 +45,6 @@ pub fn new_int_alist_2<B:'static>() -> alist<isize, B> {
     fn eq_int(a: isize, b: isize) -> bool { a == b }
     return alist {
         eq_fn: eq_int,
-        data: box RefCell::new(Vec::new()),
+        data: Box::new(RefCell::new(Vec::new())),
     };
 }

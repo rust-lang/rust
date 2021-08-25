@@ -5,7 +5,7 @@
 // Issue 4691: Ensure that functional-struct-updates operates
 // correctly and moves rather than copy when appropriate.
 
-#![feature(box_syntax, core)]
+#![feature(core)]
 
 struct ncint { v: isize }
 fn ncint(v: isize) -> ncint { ncint { v: v } }
@@ -17,7 +17,7 @@ impl NoFoo {
 
 struct MoveFoo { copied: isize, moved: Box<isize>, }
 impl MoveFoo {
-    fn new(x:isize,y:isize) -> MoveFoo { MoveFoo { copied: x, moved: box y } }
+    fn new(x:isize,y:isize) -> MoveFoo { MoveFoo { copied: x, moved: Box::new(y) } }
 }
 
 struct DropNoFoo { inner: NoFoo }
@@ -53,8 +53,8 @@ fn test0() {
 
     // Case 2: Owned
     let f = DropMoveFoo::new(5, 6);
-    let b = DropMoveFoo { inner: MoveFoo { moved: box 7, ..f.inner }};
-    let c = DropMoveFoo { inner: MoveFoo { moved: box 8, ..f.inner }};
+    let b = DropMoveFoo { inner: MoveFoo { moved: Box::new(7), ..f.inner }};
+    let c = DropMoveFoo { inner: MoveFoo { moved: Box::new(8), ..f.inner }};
     assert_eq!(f.inner.copied,    5);
     assert_eq!(*f.inner.moved,    6);
 
@@ -69,7 +69,7 @@ fn test1() {
     // copying move-by-default fields from `f`, so it moves:
     let f = MoveFoo::new(11, 12);
 
-    let b = MoveFoo {moved: box 13, ..f};
+    let b = MoveFoo {moved: Box::new(13), ..f};
     let c = MoveFoo {copied: 14, ..f};
     assert_eq!(b.copied,    11);
     assert_eq!(*b.moved,    13);

@@ -1,8 +1,8 @@
-#![feature(box_syntax)]
-
 struct S {
     x: Box<isize>,
 }
+
+
 
 impl S {
     pub fn foo(self) -> isize {
@@ -14,6 +14,6 @@ impl S {
 }
 
 fn main() {
-    let x = S { x: box 1 };
+    let x = S { x: 1.into() };
     println!("{}", x.foo());
 }

@@ -2,13 +2,11 @@
 #![allow(unused_must_use)]
 // ignore-emscripten no threads support
 
-#![feature(box_syntax)]
-
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
 fn child(tx: &Sender<Box<usize>>, i: usize) {
-    tx.send(box i).unwrap();
+    tx.send(Box::new(i)).unwrap();
 }
 
 pub fn main() {

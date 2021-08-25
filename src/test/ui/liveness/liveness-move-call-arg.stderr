@@ -1,9 +1,9 @@
 error[E0382]: use of moved value: `x`
   --> $DIR/liveness-move-call-arg.rs:9:14
    |
-LL |     let x: Box<isize> = box 25;
+LL |     let x: Box<isize> = Box::new(25);
    |         - move occurs because `x` has type `Box<isize>`, which does not implement the `Copy` trait
-LL |     loop {
+...
 LL |         take(x);
    |              ^ value moved here, in previous iteration of loop
 

@@ -1,5 +1,3 @@
-#![feature(box_syntax)]
-
 // Issue #12470.
 
 trait X {
@@ -31,9 +29,11 @@ fn make_a(p: &dyn X) -> A {
 }
 
 fn make_make_a<'a>() -> A<'a> {
-    let b: Box<B> = box B {
+
+    let b: Box<B> = Box::new(B {
         i: 1,
-    };
+    });
+
     let bb: &B = &*b;
     make_a(bb) //~ ERROR cannot return value referencing local data `*b`
 }

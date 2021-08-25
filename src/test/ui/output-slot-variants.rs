@@ -7,22 +7,21 @@
 
 #![allow(dead_assignment)]
 #![allow(unused_variables)]
-#![feature(box_syntax)]
 
 struct A { a: isize, b: isize }
 struct Abox { a: Box<isize>, b: Box<isize> }
 
 fn ret_int_i() -> isize { 10 }
 
-fn ret_ext_i() -> Box<isize> { box 10 }
+fn ret_ext_i() -> Box<isize> { Box::new(10) }
 
 fn ret_int_rec() -> A { A {a: 10, b: 10} }
 
-fn ret_ext_rec() -> Box<A> { box A {a: 10, b: 10} }
+fn ret_ext_rec() -> Box<A> { Box::new(A {a: 10, b: 10}) }
 
-fn ret_ext_mem() -> Abox { Abox {a: box 10, b: box 10} }
+fn ret_ext_mem() -> Abox { Abox {a: Box::new(10), b: Box::new(10) } }
 
-fn ret_ext_ext_mem() -> Box<Abox> { box Abox{a: box 10, b: box 10} }
+fn ret_ext_ext_mem() -> Box<Abox> { Box::new(Abox{a: Box::new(10), b: Box::new(10) }) }
 
 pub fn main() {
     let mut int_i: isize;

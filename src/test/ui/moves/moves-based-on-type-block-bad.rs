@@ -1,5 +1,5 @@
 #![feature(box_patterns)]
-#![feature(box_syntax)]
+
 
 struct S {
     x: Box<E>
@@ -16,7 +16,7 @@ fn f<G>(s: &S, g: G) where G: FnOnce(&S) {
 }
 
 fn main() {
-    let s = S { x: box E::Bar(box 42) };
+    let s = S { x: Box::new(E::Bar(Box::new(42))) };
     loop {
         f(&s, |hellothere| {
             match hellothere.x { //~ ERROR cannot move out

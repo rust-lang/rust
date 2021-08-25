@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(box_syntax)]
-
 use std::collections::HashMap;
 
 trait Graph<Node, Edge> {
@@ -19,6 +17,6 @@ impl<E> Graph<isize, E> for HashMap<isize, isize> {
 }
 
 pub fn main() {
-    let g : Box<HashMap<isize,isize>> = box HashMap::new();
+    let g : Box<HashMap<isize,isize>> = Box::new(HashMap::new());
     let _g2 : Box<dyn Graph<isize,isize>> = g as Box<dyn Graph<isize,isize>>;
 }

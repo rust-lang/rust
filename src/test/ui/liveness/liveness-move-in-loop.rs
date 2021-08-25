@@ -1,8 +1,8 @@
-#![feature(box_syntax)]
-
 fn main() {
-    let y: Box<isize> = box 42;
+
+    let y: Box<isize> = 42.into();
     let mut x: Box<isize>;
+
     loop {
         println!("{}", y);
         loop {
