@@ -895,6 +895,14 @@ pub enum InitChunk {
 
 impl InitChunk {
     #[inline]
+    pub fn is_init(&self) -> bool {
+        match self {
+            Self::Init(_) => true,
+            Self::Uninit(_) => false,
+        }
+    }
+
+    #[inline]
     pub fn range(&self) -> Range<Size> {
         match self {
             Self::Init(r) => r.clone(),
@@ -1035,7 +1043,7 @@ impl InitMaskCompressed {
 
 /// Transferring the initialization mask to other allocations.
 impl<Tag, Extra> Allocation<Tag, Extra> {
-    /// Creates a run-length encoding of the initialization mask.
+    /// Creates a run-length encoding of the initialization mask; panics if range is empty.
     ///
     /// This is essentially a more space-efficient version of
     /// `InitMask::range_as_init_chunks(...).collect::<Vec<_>>()`.
@@ -1053,10 +1061,13 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
         // where each element toggles the state.
 
         let mut ranges = smallvec::SmallVec::<[u64; 1]>::new();
-        let initial = self.init_mask.get(range.start);
+
+        let mut chunks = self.init_mask.range_as_init_chunks(range.start, range.end()).peekable();
+
+        let initial = chunks.peek().expect("range should be nonempty").is_init();
 
         // Here we rely on `range_as_init_chunks` to yield alternating init/uninit chunks.
-        for chunk in self.init_mask.range_as_init_chunks(range.start, range.end()) {
+        for chunk in chunks {
             let len = chunk.range().end.bytes() - chunk.range().start.bytes();
             ranges.push(len);
         }
