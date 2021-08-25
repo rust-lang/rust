@@ -62,10 +62,10 @@ fn main() {
     get_number();
     5;get_number();
     42;get_number();
-    [42, 55];get_usize();
+    assert!([42, 55].len() > get_usize());
     42;get_number();
     get_number();
-    [42; 55];get_usize();
+    assert!([42; 55].len() > get_usize());
     get_number();
     String::from("blah");
 
