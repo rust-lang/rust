@@ -1,11 +1,11 @@
 error: irrefutable `if let` guard pattern
-  --> $DIR/warns.rs:7:24
+  --> $DIR/warns.rs:6:24
    |
 LL |         Some(x) if let () = x => {}
    |                        ^^
    |
 note: the lint level is defined here
-  --> $DIR/warns.rs:4:8
+  --> $DIR/warns.rs:3:8
    |
 LL | #[deny(irrefutable_let_patterns)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,13 +13,13 @@ LL | #[deny(irrefutable_let_patterns)]
    = help: consider removing the guard and adding a `let` inside the match arm
 
 error: unreachable pattern
-  --> $DIR/warns.rs:16:25
+  --> $DIR/warns.rs:15:25
    |
 LL |         x if let None | None = x => {}
    |                         ^^^^
    |
 note: the lint level is defined here
-  --> $DIR/warns.rs:13:8
+  --> $DIR/warns.rs:12:8
    |
 LL | #[deny(unreachable_patterns)]
    |        ^^^^^^^^^^^^^^^^^^^^
