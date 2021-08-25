@@ -992,7 +992,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let fields_ending = pluralize!(fields.len());
 
         let subpat_spans = if subpats.is_empty() {
-            vec![pat_span.trim_start(qpath.span()).unwrap_or(pat_span)]
+            vec![pat_span]
         } else {
             subpats.iter().map(|p| p.span).collect()
         };
@@ -1000,7 +1000,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let res_span = self.tcx.def_span(res.def_id());
         let def_ident_span = self.tcx.def_ident_span(res.def_id()).unwrap_or(res_span);
         let field_def_spans = if fields.is_empty() {
-            vec![res_span.trim_start(def_ident_span).unwrap_or(res_span)]
+            vec![res_span]
         } else {
             fields.iter().map(|f| f.ident.span).collect()
         };
@@ -1021,8 +1021,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             last_subpat_span,
             &format!("expected {} field{}, found {}", fields.len(), fields_ending, subpats.len()),
         );
-        err.span_label(qpath.span(), "");
-        if self.tcx.sess.source_map().is_multiline(def_ident_span.between(field_def_spans[0])) {
+        if self.tcx.sess.source_map().is_multiline(qpath.span().between(last_subpat_span)) {
+            err.span_label(qpath.span(), "");
+        }
+        if self.tcx.sess.source_map().is_multiline(def_ident_span.between(last_field_def_span)) {
             err.span_label(def_ident_span, format!("{} defined here", res.descr()));
         }
         for span in &field_def_spans[..field_def_spans.len() - 1] {

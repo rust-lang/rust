@@ -121,7 +121,7 @@ error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 0
   --> $DIR/pat-tuple-field-count-cross.rs:14:12
    |
 LL |         Z1(x) => {}
-   |         -- ^ expected 0 fields, found 1
+   |            ^ expected 0 fields, found 1
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:2:1
    |
@@ -129,10 +129,10 @@ LL | pub struct Z1();
    | ---------------- tuple struct has 0 fields
 
 error[E0023]: this pattern has 0 fields, but the corresponding tuple struct has 3 fields
-  --> $DIR/pat-tuple-field-count-cross.rs:18:10
+  --> $DIR/pat-tuple-field-count-cross.rs:18:9
    |
 LL |         S() => {}
-   |         -^^ expected 3 fields, found 0
+   |         ^^^ expected 3 fields, found 0
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:4:14
    |
@@ -152,7 +152,7 @@ error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 3
   --> $DIR/pat-tuple-field-count-cross.rs:19:11
    |
 LL |         S(1) => {}
-   |         - ^ expected 3 fields, found 1
+   |           ^ expected 3 fields, found 1
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:4:14
    |
@@ -172,7 +172,7 @@ error[E0023]: this pattern has 2 fields, but the corresponding tuple struct has 
   --> $DIR/pat-tuple-field-count-cross.rs:20:11
    |
 LL |         S(xyz, abc) => {}
-   |         - ^^^  ^^^ expected 3 fields, found 2
+   |           ^^^  ^^^ expected 3 fields, found 2
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:4:14
    |
@@ -188,7 +188,7 @@ error[E0023]: this pattern has 4 fields, but the corresponding tuple struct has 
   --> $DIR/pat-tuple-field-count-cross.rs:21:11
    |
 LL |         S(1, 2, 3, 4) => {}
-   |         - ^  ^  ^  ^ expected 3 fields, found 4
+   |           ^  ^  ^  ^ expected 3 fields, found 4
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:4:14
    |
@@ -196,10 +196,10 @@ LL | pub struct S(pub u8, pub u8, pub u8);
    |              ------  ------  ------ tuple struct has 3 fields
 
 error[E0023]: this pattern has 0 fields, but the corresponding tuple struct has 3 fields
-  --> $DIR/pat-tuple-field-count-cross.rs:24:10
+  --> $DIR/pat-tuple-field-count-cross.rs:24:9
    |
 LL |           M() => {}
-   |           -^^ expected 3 fields, found 0
+   |           ^^^ expected 3 fields, found 0
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:5:1
    |
@@ -226,7 +226,7 @@ error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 3
   --> $DIR/pat-tuple-field-count-cross.rs:25:11
    |
 LL |           M(1) => {}
-   |           - ^ expected 3 fields, found 1
+   |             ^ expected 3 fields, found 1
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:5:1
    |
@@ -253,7 +253,7 @@ error[E0023]: this pattern has 2 fields, but the corresponding tuple struct has 
   --> $DIR/pat-tuple-field-count-cross.rs:26:11
    |
 LL |           M(xyz, abc) => {}
-   |           - ^^^  ^^^ expected 3 fields, found 2
+   |             ^^^  ^^^ expected 3 fields, found 2
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:5:1
    |
@@ -276,7 +276,7 @@ error[E0023]: this pattern has 4 fields, but the corresponding tuple struct has 
   --> $DIR/pat-tuple-field-count-cross.rs:27:11
    |
 LL |           M(1, 2, 3, 4) => {}
-   |           - ^  ^  ^  ^ expected 3 fields, found 4
+   |             ^  ^  ^  ^ expected 3 fields, found 4
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:5:1
    |
@@ -294,7 +294,7 @@ error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 
   --> $DIR/pat-tuple-field-count-cross.rs:36:16
    |
 LL |         E1::Z1(x) => {}
-   |         ------ ^ expected 0 fields, found 1
+   |                ^ expected 0 fields, found 1
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:19
    |
@@ -302,10 +302,10 @@ LL | pub enum E1 { Z0, Z1(), S(u8, u8, u8) }
    |                   ---- tuple variant has 0 fields
 
 error[E0023]: this pattern has 0 fields, but the corresponding tuple variant has 3 fields
-  --> $DIR/pat-tuple-field-count-cross.rs:39:14
+  --> $DIR/pat-tuple-field-count-cross.rs:39:9
    |
 LL |         E1::S() => {}
-   |         -----^^ expected 3 fields, found 0
+   |         ^^^^^^^ expected 3 fields, found 0
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:27
    |
@@ -325,7 +325,7 @@ error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 
   --> $DIR/pat-tuple-field-count-cross.rs:40:15
    |
 LL |         E1::S(1) => {}
-   |         ----- ^ expected 3 fields, found 1
+   |               ^ expected 3 fields, found 1
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:27
    |
@@ -345,7 +345,7 @@ error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has
   --> $DIR/pat-tuple-field-count-cross.rs:41:15
    |
 LL |         E1::S(xyz, abc) => {}
-   |         ----- ^^^  ^^^ expected 3 fields, found 2
+   |               ^^^  ^^^ expected 3 fields, found 2
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:27
    |
@@ -361,7 +361,7 @@ error[E0023]: this pattern has 4 fields, but the corresponding tuple variant has
   --> $DIR/pat-tuple-field-count-cross.rs:42:15
    |
 LL |         E1::S(1, 2, 3, 4) => {}
-   |         ----- ^  ^  ^  ^ expected 3 fields, found 4
+   |               ^  ^  ^  ^ expected 3 fields, found 4
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:27
    |
@@ -369,10 +369,10 @@ LL | pub enum E1 { Z0, Z1(), S(u8, u8, u8) }
    |                           --  --  -- tuple variant has 3 fields
 
 error[E0023]: this pattern has 0 fields, but the corresponding tuple variant has 3 fields
-  --> $DIR/pat-tuple-field-count-cross.rs:46:14
+  --> $DIR/pat-tuple-field-count-cross.rs:46:9
    |
 LL |         E2::S() => {}
-   |         -----^^ expected 3 fields, found 0
+   |         ^^^^^^^ expected 3 fields, found 0
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:14:7
    |
@@ -392,7 +392,7 @@ error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 
   --> $DIR/pat-tuple-field-count-cross.rs:47:15
    |
 LL |         E2::S(1) => {}
-   |         ----- ^ expected 3 fields, found 1
+   |               ^ expected 3 fields, found 1
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:14:7
    |
@@ -412,7 +412,7 @@ error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has
   --> $DIR/pat-tuple-field-count-cross.rs:48:15
    |
 LL |         E2::S(xyz, abc) => {}
-   |         ----- ^^^  ^^^ expected 3 fields, found 2
+   |               ^^^  ^^^ expected 3 fields, found 2
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:14:7
    |
@@ -428,7 +428,7 @@ error[E0023]: this pattern has 4 fields, but the corresponding tuple variant has
   --> $DIR/pat-tuple-field-count-cross.rs:49:15
    |
 LL |         E2::S(1, 2, 3, 4) => {}
-   |         ----- ^  ^  ^  ^ expected 3 fields, found 4
+   |               ^  ^  ^  ^ expected 3 fields, found 4
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:14:7
    |
@@ -436,10 +436,10 @@ LL |     S(u8, u8, u8),
    |       --  --  -- tuple variant has 3 fields
 
 error[E0023]: this pattern has 0 fields, but the corresponding tuple variant has 3 fields
-  --> $DIR/pat-tuple-field-count-cross.rs:52:14
+  --> $DIR/pat-tuple-field-count-cross.rs:52:9
    |
 LL |           E2::M() => {}
-   |           -----^^ expected 3 fields, found 0
+   |           ^^^^^^^ expected 3 fields, found 0
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:15:5
    |
@@ -466,7 +466,7 @@ error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 
   --> $DIR/pat-tuple-field-count-cross.rs:53:15
    |
 LL |           E2::M(1) => {}
-   |           ----- ^ expected 3 fields, found 1
+   |                 ^ expected 3 fields, found 1
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:15:5
    |
@@ -493,7 +493,7 @@ error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has
   --> $DIR/pat-tuple-field-count-cross.rs:54:15
    |
 LL |           E2::M(xyz, abc) => {}
-   |           ----- ^^^  ^^^ expected 3 fields, found 2
+   |                 ^^^  ^^^ expected 3 fields, found 2
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:15:5
    |
@@ -516,7 +516,7 @@ error[E0023]: this pattern has 4 fields, but the corresponding tuple variant has
   --> $DIR/pat-tuple-field-count-cross.rs:55:15
    |
 LL |           E2::M(1, 2, 3, 4) => {}
-   |           ----- ^  ^  ^  ^ expected 3 fields, found 4
+   |                 ^  ^  ^  ^ expected 3 fields, found 4
    |
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:15:5
    |

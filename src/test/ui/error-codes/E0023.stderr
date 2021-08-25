@@ -5,7 +5,7 @@ LL |     Apple(String, String),
    |           ------  ------ tuple variant has 2 fields
 ...
 LL |         Fruit::Apple(a) => {},
-   |         ------------ ^ expected 2 fields, found 1
+   |                      ^ expected 2 fields, found 1
    |
 help: use `_` to explicitly ignore each field
    |
@@ -19,7 +19,7 @@ LL |     Apple(String, String),
    |           ------  ------ tuple variant has 2 fields
 ...
 LL |         Fruit::Apple(a, b, c) => {},
-   |         ------------ ^  ^  ^ expected 2 fields, found 3
+   |                      ^  ^  ^ expected 2 fields, found 3
 
 error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has 1 field
   --> $DIR/E0023.rs:13:21
@@ -28,7 +28,7 @@ LL |     Pear(u32),
    |          --- tuple variant has 1 field
 ...
 LL |         Fruit::Pear(1, 2) => {},
-   |         ----------- ^  ^ expected 1 field, found 2
+   |                     ^  ^ expected 1 field, found 2
 
 error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has 1 field
   --> $DIR/E0023.rs:14:23
@@ -37,7 +37,7 @@ LL |     Orange((String, String)),
    |            ---------------- tuple variant has 1 field
 ...
 LL |         Fruit::Orange(a, b) => {},
-   |         ------------- ^  ^ expected 1 field, found 2
+   |                       ^  ^ expected 1 field, found 2
    |
 help: missing parentheses
    |
@@ -45,13 +45,13 @@ LL |         Fruit::Orange((a, b)) => {},
    |                       +    +
 
 error[E0023]: this pattern has 0 fields, but the corresponding tuple variant has 1 field
-  --> $DIR/E0023.rs:15:22
+  --> $DIR/E0023.rs:15:9
    |
 LL |     Banana(()),
    |            -- tuple variant has 1 field
 ...
 LL |         Fruit::Banana() => {},
-   |         -------------^^ expected 1 field, found 0
+   |         ^^^^^^^^^^^^^^^ expected 1 field, found 0
    |
 help: missing parentheses
    |

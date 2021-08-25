@@ -25,7 +25,7 @@ LL | struct Binder(i32, i32, i32);
    |               ---  ---  --- tuple struct has 3 fields
 ...
 LL |         Binder(_a, _x @ ..) => {}
-   |         ------ ^^  ^^^^^^^ expected 3 fields, found 2
+   |                ^^  ^^^^^^^ expected 3 fields, found 2
    |
 help: use `_` to explicitly ignore each field
    |

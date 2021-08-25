@@ -25,7 +25,7 @@ LL |     A(u8, u8),
    |       --  -- tuple variant has 2 fields
 ...
 LL |         E::A(x @ ..) => {
-   |         ---- ^^^^^^ expected 2 fields, found 1
+   |              ^^^^^^ expected 2 fields, found 1
    |
 help: use `_` to explicitly ignore each field
    |

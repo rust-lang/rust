@@ -30,6 +30,22 @@ fn main() {
     match M(1, 2, 3, 4, 5) {
         M(1, 2, 3, 4, 5, 6) => {}
         //~^ ERROR this pattern has 6 fields, but the corresponding tuple struct has 5 fields
+        M(1,
+          2,
+          3,
+          4,
+          5,
+          6) => {}
+        //~^ ERROR this pattern has 6 fields, but the corresponding tuple struct has 5 fields
+        M(
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+        ) => {}
+        //~^^ ERROR this pattern has 6 fields, but the corresponding tuple struct has 5 fields
     }
     match Z0 {
         Z0 => {}
