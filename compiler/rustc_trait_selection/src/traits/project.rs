@@ -363,12 +363,28 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
             return ty;
         }
 
-        // N.b. while we want to call `super_fold_with(self)` on `ty` before
-        // normalization, we wait until we know whether we need to normalize the
-        // current type. If we do, then we only fold the ty *after* replacing bound
-        // vars with placeholders. This means that nested types don't need to replace
-        // bound vars at the current binder level or above. A key assumption here is
-        // that folding the type can't introduce new bound vars.
+        // We try to be a little clever here as a performance optimization in
+        // cases where there are nested projections under binders.
+        // For example:
+        // ```
+        // for<'a> fn(<T as Foo>::One<'a, Box<dyn Bar<'a, Item=<T as Foo>::Two<'a>>>>)
+        // ```
+        // We normalize the substs on the projection before the projecting, but
+        // if we're naive, we'll
+        //   replace bound vars on inner, project inner, replace placeholders on inner,
+        //   replace bound vars on outer, project outer, replace placeholders on outer
+        //
+        // However, if we're a bit more clever, we can replace the bound vars
+        // on the entire type before normalizing nested projections, meaning we
+        //   replace bound vars on outer, project inner,
+        //   project outer, replace placeholders on outer
+        //
+        // This is possible because the inner `'a` will already be a placeholder
+        // when we need to normalize the inner projection
+        //
+        // On the other hand, this does add a bit of complexity, since we only
+        // replace bound vars if the current type is a `Projection` and we need
+        // to make sure we don't forget to fold the substs regardless.
 
         match *ty.kind() {
             ty::Opaque(def_id, substs) => {
@@ -380,7 +396,6 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                         // N.b. there is an assumption here all this code can handle
                         // escaping bound vars.
 
-                        let substs = substs.super_fold_with(self);
                         let recursion_limit = self.tcx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.depth) {
                             let obligation = Obligation::with_depth(
@@ -392,6 +407,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                             self.selcx.infcx().report_overflow_error(&obligation, true);
                         }
 
+                        let substs = substs.super_fold_with(self);
                         let generic_ty = self.tcx().type_of(def_id);
                         let concrete_ty = generic_ty.subst(self.tcx(), substs);
                         self.depth += 1;
@@ -430,12 +446,16 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
 
             ty::Projection(data) => {
                 // If there are escaping bound vars, we temporarily replace the
-                // bound vars with placeholders. Note though, that in the cas
+                // bound vars with placeholders. Note though, that in the case
                 // that we still can't project for whatever reason (e.g. self
                 // type isn't known enough), we *can't* register an obligation
                 // and return an inference variable (since then that obligation
                 // would have bound vars and that's a can of worms). Instead,
                 // we just give up and fall back to pretending like we never tried!
+                //
+                // Note: this isn't necessarily the final approach here; we may
+                // want to figure out how to register obligations with escaping vars
+                // or handle this some other way.
 
                 let infcx = self.selcx.infcx();
                 let (data, mapped_regions, mapped_types, mapped_consts) =
@@ -451,16 +471,18 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 )
                 .ok()
                 .flatten()
+                .map(|normalized_ty| {
+                    PlaceholderReplacer::replace_placeholders(
+                        infcx,
+                        mapped_regions,
+                        mapped_types,
+                        mapped_consts,
+                        &self.universes,
+                        normalized_ty,
+                    )
+                })
                 .unwrap_or_else(|| ty.super_fold_with(self));
 
-                let normalized_ty = PlaceholderReplacer::replace_placeholders(
-                    infcx,
-                    mapped_regions,
-                    mapped_types,
-                    mapped_consts,
-                    &self.universes,
-                    normalized_ty,
-                );
                 debug!(
                     ?self.depth,
                     ?ty,

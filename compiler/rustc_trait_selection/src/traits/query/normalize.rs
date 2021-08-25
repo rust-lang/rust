@@ -67,6 +67,16 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
             universes: vec![],
         };
 
+        // This is actually a consequence by the way `normalize_erasing_regions` works currently.
+        // Because it needs to call the `normalize_generic_arg_after_erasing_regions`, it folds
+        // through tys and consts in a `TypeFoldable`. Importantly, it skips binders, leaving us
+        // with trying to normalize with escaping bound vars.
+        //
+        // Here, we just add the universes that we *would* have created had we passed through the binders.
+        //
+        // We *could* replace escaping bound vars eagerly here, but it doesn't seem really necessary.
+        // The rest of the code is already set up to be lazy about replacing bound vars,
+        // and only when we actually have to normalize.
         if value.has_escaping_bound_vars() {
             let mut max_visitor =
                 MaxEscapingBoundVarVisitor { outer_index: ty::INNERMOST, escaping: 0 };
@@ -183,12 +193,8 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
             return ty;
         }
 
-        // N.b. while we want to call `super_fold_with(self)` on `ty` before
-        // normalization, we wait until we know whether we need to normalize the
-        // current type. If we do, then we only fold the ty *after* replacing bound
-        // vars with placeholders. This means that nested types don't need to replace
-        // bound vars at the current binder level or above. A key assumption here is
-        // that folding the type can't introduce new bound vars.
+        // See note in `rustc_trait_selection::traits::project` about why we
+        // wait to fold the substs.
 
         // Wrap this in a closure so we don't accidentally return from the outer function
         let res = (|| match *ty.kind() {
@@ -253,7 +259,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                         // We don't expect ambiguity.
                         if result.is_ambiguous() {
                             self.error = true;
-                            return ty;
+                            return ty.super_fold_with(self);
                         }
 
                         match self.infcx.instantiate_query_response_and_region_obligations(
@@ -271,14 +277,14 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
 
                             Err(_) => {
                                 self.error = true;
-                                ty
+                                ty.super_fold_with(self)
                             }
                         }
                     }
 
                     Err(NoSolution) => {
                         self.error = true;
-                        ty
+                        ty.super_fold_with(self)
                     }
                 }
             }
@@ -304,12 +310,12 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                     .canonicalize_query_keep_static(self.param_env.and(data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
-                let normalized_ty = match tcx.normalize_projection_ty(c_data) {
+                match tcx.normalize_projection_ty(c_data) {
                     Ok(result) => {
                         // We don't expect ambiguity.
                         if result.is_ambiguous() {
                             self.error = true;
-                            return ty;
+                            return ty.super_fold_with(self);
                         }
                         match self.infcx.instantiate_query_response_and_region_obligations(
                             self.cause,
@@ -321,27 +327,26 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                                 debug!("QueryNormalizer: result = {:#?}", result);
                                 debug!("QueryNormalizer: obligations = {:#?}", obligations);
                                 self.obligations.extend(obligations);
-                                result.normalized_ty
+                                crate::traits::project::PlaceholderReplacer::replace_placeholders(
+                                    infcx,
+                                    mapped_regions,
+                                    mapped_types,
+                                    mapped_consts,
+                                    &self.universes,
+                                    result.normalized_ty,
+                                )
                             }
                             Err(_) => {
                                 self.error = true;
-                                ty
+                                ty.super_fold_with(self)
                             }
                         }
                     }
                     Err(NoSolution) => {
                         self.error = true;
-                        ty
+                        ty.super_fold_with(self)
                     }
-                };
-                crate::traits::project::PlaceholderReplacer::replace_placeholders(
-                    infcx,
-                    mapped_regions,
-                    mapped_types,
-                    mapped_consts,
-                    &self.universes,
-                    normalized_ty,
-                )
+                }
             }
 
             _ => ty.super_fold_with(self),

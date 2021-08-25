@@ -169,8 +169,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         {
             // FIXME(jackh726): This is a hack. It's somewhat like
             // `rustc_traits::normalize_after_erasing_regions`. Ideally, we'd
-            // like to normalize *before* inserting into `local_decls`, but I
-            // couldn't figure out where the heck that was.
+            // like to normalize *before* inserting into `local_decls`, but
+            // doing so ends up causing some other trouble.
             let b = match self
                 .infcx
                 .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
