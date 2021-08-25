@@ -600,7 +600,7 @@ pub struct FnAbi<'a, Ty> {
 }
 
 impl<'a, Ty> FnAbi<'a, Ty> {
-    pub fn adjust_for_cabi<C>(&mut self, cx: &C, abi: spec::abi::Abi) -> Result<(), String>
+    pub fn adjust_for_foreign_abi<C>(&mut self, cx: &C, abi: spec::abi::Abi) -> Result<(), String>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
         C: HasDataLayout + HasTargetSpec,

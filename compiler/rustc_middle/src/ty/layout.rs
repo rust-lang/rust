@@ -3098,7 +3098,7 @@ where
             return;
         }
 
-        if let Err(msg) = self.adjust_for_cabi(cx, abi) {
+        if let Err(msg) = self.adjust_for_foreign_abi(cx, abi) {
             cx.tcx().sess.fatal(&msg);
         }
     }
