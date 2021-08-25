@@ -168,6 +168,7 @@ macro_rules! late_lint_passes {
                 NonPanicFmt: NonPanicFmt,
                 NoopMethodCall: NoopMethodCall,
                 InvalidAtomicOrdering: InvalidAtomicOrdering,
+                NamedAsmLabels: NamedAsmLabels,
             ]
         );
     };

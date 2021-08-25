@@ -916,7 +916,7 @@ impl From<&OsStr> for Arc<OsStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Rc<OsStr> {
-    /// Converts an [`OsString`] into a [`Rc`]`<OsStr>` without copying or allocating.
+    /// Converts an [`OsString`] into an [`Rc`]`<OsStr>` without copying or allocating.
     #[inline]
     fn from(s: OsString) -> Rc<OsStr> {
         let rc = s.inner.into_rc();

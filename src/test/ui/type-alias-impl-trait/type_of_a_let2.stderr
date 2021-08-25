@@ -1,0 +1,21 @@
+error[E0562]: `impl Trait` not allowed outside of function and method return types
+  --> $DIR/type_of_a_let2.rs:9:12
+   |
+LL |     let x: impl Debug = 22_u32;
+   |            ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and method return types
+  --> $DIR/type_of_a_let2.rs:15:12
+   |
+LL |     let x: impl Debug = 22_u32;
+   |            ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and method return types
+  --> $DIR/type_of_a_let2.rs:17:12
+   |
+LL |     let y: impl Debug = x;
+   |            ^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0562`.

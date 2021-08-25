@@ -1957,8 +1957,8 @@ pub trait Iterator {
     /// assert_eq!(it.next(), Some(&40));
     /// ```
     ///
-    /// While you cannot `break` from a closure, the [`crate::ops::ControlFlow`]
-    /// type allows a similar idea:
+    /// While you cannot `break` from a closure, the [`ControlFlow`] type allows
+    /// a similar idea:
     ///
     /// ```
     /// use std::ops::ControlFlow;
@@ -2024,8 +2024,8 @@ pub trait Iterator {
     /// assert_eq!(it.next(), Some("stale_bread.json"));
     /// ```
     ///
-    /// The [`crate::ops::ControlFlow`] type can be used with this method for the
-    /// situations in which you'd use `break` and `continue` in a normal loop:
+    /// The [`ControlFlow`] type can be used with this method for the situations
+    /// in which you'd use `break` and `continue` in a normal loop:
     ///
     /// ```
     /// use std::ops::ControlFlow;
@@ -2442,14 +2442,14 @@ pub trait Iterator {
         R: Try<Output = bool>,
         // FIXME: This bound is rather strange, but means minimal breakage on nightly.
         // See #85115 for the issue tracking a holistic solution for this and try_map.
-        R: crate::ops::TryV2<Residual = Result<crate::convert::Infallible, E>>,
+        R: Try<Residual = Result<crate::convert::Infallible, E>>,
     {
         #[inline]
         fn check<F, T, R, E>(mut f: F) -> impl FnMut((), T) -> ControlFlow<Result<T, E>>
         where
             F: FnMut(&T) -> R,
             R: Try<Output = bool>,
-            R: crate::ops::TryV2<Residual = Result<crate::convert::Infallible, E>>,
+            R: Try<Residual = Result<crate::convert::Infallible, E>>,
         {
             move |(), x| match f(&x).branch() {
                 ControlFlow::Continue(false) => ControlFlow::CONTINUE,

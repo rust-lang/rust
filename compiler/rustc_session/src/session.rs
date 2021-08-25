@@ -189,9 +189,6 @@ pub struct Session {
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
-    /// `Span`s of trait methods that weren't found to avoid emitting object safety errors
-    pub trait_methods_not_found: Lock<FxHashSet<Span>>,
-
     /// Mapping from ident span to path span for paths that don't exist as written, but that
     /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
     pub confused_type_with_std_module: Lock<FxHashMap<Span, Span>>,
@@ -1326,7 +1323,6 @@ pub fn build_session(
         print_fuel,
         jobserver: jobserver::client(),
         driver_lint_caps,
-        trait_methods_not_found: Lock::new(Default::default()),
         confused_type_with_std_module: Lock::new(Default::default()),
         ctfe_backtrace,
         miri_unleashed_features: Lock::new(Default::default()),

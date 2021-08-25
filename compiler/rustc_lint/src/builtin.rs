@@ -45,11 +45,11 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::{self, layout::LayoutError, Ty, TyCtxt};
-use rustc_session::lint::FutureIncompatibilityReason;
+use rustc_session::lint::{BuiltinLintDiagnostics, FutureIncompatibilityReason};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, InnerSpan, MultiSpan, Span};
 use rustc_target::abi::{LayoutOf, VariantIdx};
 use rustc_trait_selection::traits::misc::can_type_implement_copy;
 
@@ -3135,6 +3135,126 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
                         );
                         err.emit();
                     });
+                }
+            }
+        }
+    }
+}
+
+declare_lint! {
+    /// The `named_asm_labels` lint detects the use of named labels in the
+    /// inline `asm!` macro.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(asm)]
+    /// fn main() {
+    ///     unsafe {
+    ///         asm!("foo: bar");
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// LLVM is allowed to duplicate inline assembly blocks for any
+    /// reason, for example when it is in a function that gets inlined. Because
+    /// of this, GNU assembler [local labels] *must* be used instead of labels
+    /// with a name. Using named labels might cause assembler or linker errors.
+    ///
+    /// See the [unstable book] for more details.
+    ///
+    /// [local labels]: https://sourceware.org/binutils/docs/as/Symbol-Names.html#Local-Labels
+    /// [unstable book]: https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels
+    pub NAMED_ASM_LABELS,
+    Deny,
+    "named labels in inline assembly",
+}
+
+declare_lint_pass!(NamedAsmLabels => [NAMED_ASM_LABELS]);
+
+impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
+        if let hir::Expr {
+            kind: hir::ExprKind::InlineAsm(hir::InlineAsm { template_strs, .. }),
+            ..
+        } = expr
+        {
+            for (template_sym, template_snippet, template_span) in template_strs.iter() {
+                let template_str = &template_sym.as_str();
+                let find_label_span = |needle: &str| -> Option<Span> {
+                    if let Some(template_snippet) = template_snippet {
+                        let snippet = template_snippet.as_str();
+                        if let Some(pos) = snippet.find(needle) {
+                            let end = pos
+                                + &snippet[pos..]
+                                    .find(|c| c == ':')
+                                    .unwrap_or(snippet[pos..].len() - 1);
+                            let inner = InnerSpan::new(pos, end);
+                            return Some(template_span.from_inner(inner));
+                        }
+                    }
+
+                    None
+                };
+
+                let mut found_labels = Vec::new();
+
+                // A semicolon might not actually be specified as a separator for all targets, but it seems like LLVM accepts it always
+                let statements = template_str.split(|c| matches!(c, '\n' | ';'));
+                for statement in statements {
+                    // If there's a comment, trim it from the statement
+                    let statement = statement.find("//").map_or(statement, |idx| &statement[..idx]);
+                    let mut start_idx = 0;
+                    for (idx, _) in statement.match_indices(':') {
+                        let possible_label = statement[start_idx..idx].trim();
+                        let mut chars = possible_label.chars();
+                        if let Some(c) = chars.next() {
+                            // A label starts with an alphabetic character or . or _ and continues with alphanumeric characters, _, or $
+                            if (c.is_alphabetic() || matches!(c, '.' | '_'))
+                                && chars.all(|c| c.is_alphanumeric() || matches!(c, '_' | '$'))
+                            {
+                                found_labels.push(possible_label);
+                            } else {
+                                // If we encounter a non-label, there cannot be any further labels, so stop checking
+                                break;
+                            }
+                        } else {
+                            // Empty string means a leading ':' in this section, which is not a label
+                            break;
+                        }
+
+                        start_idx = idx + 1;
+                    }
+                }
+
+                debug!("NamedAsmLabels::check_expr(): found_labels: {:#?}", &found_labels);
+
+                if found_labels.len() > 0 {
+                    let spans = found_labels
+                        .into_iter()
+                        .filter_map(|label| find_label_span(label))
+                        .collect::<Vec<Span>>();
+                    // If there were labels but we couldn't find a span, combine the warnings and use the template span
+                    let target_spans: MultiSpan =
+                        if spans.len() > 0 { spans.into() } else { (*template_span).into() };
+
+                    cx.lookup_with_diagnostics(
+                            NAMED_ASM_LABELS,
+                            Some(target_spans),
+                            |diag| {
+                                let mut err =
+                                    diag.build("avoid using named labels in inline assembly");
+                                err.emit();
+                            },
+                            BuiltinLintDiagnostics::NamedAsmLabel(
+                                "only local labels of the form `<number>:` should be used in inline asm"
+                                    .to_string(),
+                            ),
+                        );
                 }
             }
         }
