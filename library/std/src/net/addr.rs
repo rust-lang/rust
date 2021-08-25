@@ -765,15 +765,15 @@ impl hash::Hash for SocketAddrV6 {
 ///
 ///  * [`SocketAddr`]: [`to_socket_addrs`] is the identity function.
 ///
-///  * [`SocketAddrV4`], [`SocketAddrV6`], `(`[`IpAddr`]`, `[`u16`]`)`,
-///    `(`[`Ipv4Addr`]`, `[`u16`]`)`, `(`[`Ipv6Addr`]`, `[`u16`]`)`:
+///  * [`SocketAddrV4`], [`SocketAddrV6`], <code>([IpAddr], [u16])</code>,
+///    <code>([Ipv4Addr], [u16])</code>, <code>([Ipv6Addr], [u16])</code>:
 ///    [`to_socket_addrs`] constructs a [`SocketAddr`] trivially.
 ///
-///  * `(`[`&str`]`, `[`u16`]`)`: [`&str`] should be either a string representation
+///  * <code>(&[str], [u16])</code>: <code>&[str]</code> should be either a string representation
 ///    of an [`IpAddr`] address as expected by [`FromStr`] implementation or a host
 ///    name. [`u16`] is the port number.
 ///
-///  * [`&str`]: the string should be either a string representation of a
+///  * <code>&[str]</code>: the string should be either a string representation of a
 ///    [`SocketAddr`] as expected by its [`FromStr`] implementation or a string like
 ///    `<host_name>:<port>` pair where `<port>` is a [`u16`] value.
 ///
@@ -789,11 +789,10 @@ impl hash::Hash for SocketAddrV6 {
 /// Addresses returned by the operating system that are not IP addresses are
 /// silently ignored.
 ///
-/// [`FromStr`]: crate::str::FromStr
-/// [`&str`]: str
-/// [`TcpStream`]: crate::net::TcpStream
+/// [`FromStr`]: crate::str::FromStr "std::str::FromStr"
+/// [`TcpStream`]: crate::net::TcpStream "net::TcpStream"
 /// [`to_socket_addrs`]: ToSocketAddrs::to_socket_addrs
-/// [`UdpSocket`]: crate::net::UdpSocket
+/// [`UdpSocket`]: crate::net::UdpSocket "net::UdpSocket"
 ///
 /// # Examples
 ///
@@ -872,7 +871,7 @@ pub trait ToSocketAddrs {
     #[stable(feature = "rust1", since = "1.0.0")]
     type Iter: Iterator<Item = SocketAddr>;
 
-    /// Converts this object to an iterator of resolved `SocketAddr`s.
+    /// Converts this object to an iterator of resolved [`SocketAddr`]s.
     ///
     /// The returned iterator might not actually yield any values depending on the
     /// outcome of any resolution performed.

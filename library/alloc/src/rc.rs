@@ -781,9 +781,7 @@ impl<T: ?Sized> Rc<T> {
     /// Consumes the `Rc`, returning the wrapped pointer.
     ///
     /// To avoid a memory leak the pointer must be converted back to an `Rc` using
-    /// [`Rc::from_raw`][from_raw].
-    ///
-    /// [from_raw]: Rc::from_raw
+    /// [`Rc::from_raw`].
     ///
     /// # Examples
     ///
@@ -834,7 +832,7 @@ impl<T: ?Sized> Rc<T> {
     /// and alignment as `T`. This is trivially true if `U` is `T`.
     /// Note that if `U` is not `T` but has the same size and alignment, this is
     /// basically like transmuting references of different types. See
-    /// [`mem::transmute`][transmute] for more information on what
+    /// [`mem::transmute`] for more information on what
     /// restrictions apply in this case.
     ///
     /// The user of `from_raw` has to make sure a specific value of `T` is only
@@ -844,7 +842,6 @@ impl<T: ?Sized> Rc<T> {
     /// even if the returned `Rc<T>` is never accessed.
     ///
     /// [into_raw]: Rc::into_raw
-    /// [transmute]: core::mem::transmute
     ///
     /// # Examples
     ///
@@ -1086,8 +1083,6 @@ impl<T: ?Sized> Rc<T> {
     /// assert!(Rc::ptr_eq(&five, &same_five));
     /// assert!(!Rc::ptr_eq(&five, &other_five));
     /// ```
-    ///
-    /// [`ptr::eq`]: core::ptr::eq
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
         this.ptr.as_ptr() == other.ptr.as_ptr()
     }
@@ -1993,7 +1988,7 @@ impl<T, I: iter::TrustedLen<Item = T>> ToRcSlice<T> for I {
 
 /// `Weak` is a version of [`Rc`] that holds a non-owning reference to the
 /// managed allocation. The allocation is accessed by calling [`upgrade`] on the `Weak`
-/// pointer, which returns an [`Option`]`<`[`Rc`]`<T>>`.
+/// pointer, which returns an <code>[Option]<[Rc]\<T>></code>.
 ///
 /// Since a `Weak` reference does not count towards ownership, it will not
 /// prevent the value stored in the allocation from being dropped, and `Weak` itself makes no
@@ -2090,7 +2085,7 @@ impl<T: ?Sized> Weak<T> {
     /// // assert_eq!("hello", unsafe { &*weak.as_ptr() });
     /// ```
     ///
-    /// [`null`]: core::ptr::null
+    /// [`null`]: ptr::null
     #[stable(feature = "rc_as_ptr", since = "1.45.0")]
     pub fn as_ptr(&self) -> *const T {
         let ptr: *mut RcBox<T> = NonNull::as_ptr(self.ptr);
@@ -2317,8 +2312,6 @@ impl<T: ?Sized> Weak<T> {
     /// let third = Rc::downgrade(&third_rc);
     /// assert!(!first.ptr_eq(&third));
     /// ```
-    ///
-    /// [`ptr::eq`]: core::ptr::eq
     #[inline]
     #[stable(feature = "weak_ptr_eq", since = "1.39.0")]
     pub fn ptr_eq(&self, other: &Self) -> bool {
@@ -2400,7 +2393,6 @@ impl<T> Default for Weak<T> {
     /// Constructs a new `Weak<T>`, without allocating any memory.
     /// Calling [`upgrade`] on the return value always gives [`None`].
     ///
-    /// [`None`]: Option
     /// [`upgrade`]: Weak::upgrade
     ///
     /// # Examples

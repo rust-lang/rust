@@ -348,7 +348,7 @@
 //! provides some helper methods.
 //!
 //! Additionally, the return value of this function is [`fmt::Result`] which is a
-//! type alias of [`Result`]`<(), `[`std::fmt::Error`]`>`. Formatting implementations
+//! type alias of <code>[Result]<(), [std::fmt::Error]></code>. Formatting implementations
 //! should ensure that they propagate errors from the [`Formatter`] (e.g., when
 //! calling [`write!`]). However, they should never return errors spuriously. That
 //! is, a formatting implementation must and may only return an error if the
@@ -505,23 +505,19 @@
 //! it would internally pass around this structure until it has been determined
 //! where output should go to.
 //!
-//! [`fmt::Result`]: Result
-//! [`Result`]: core::result::Result
-//! [`std::fmt::Error`]: Error
-//! [`write!`]: core::write
-//! [`write`]: core::write
-//! [`format!`]: crate::format
-//! [`to_string`]: crate::string::ToString
-//! [`writeln!`]: core::writeln
+//! [`fmt::Result`]: Result "fmt::Result"
+//! [Result]: core::result::Result "std::result::Result"
+//! [std::fmt::Error]: Error "fmt::Error"
+//! [`write`]: write() "fmt::write"
+//! [`to_string`]: crate::string::ToString::to_string "ToString::to_string"
 //! [`write_fmt`]: ../../std/io/trait.Write.html#method.write_fmt
 //! [`std::io::Write`]: ../../std/io/trait.Write.html
-//! [`print!`]: ../../std/macro.print.html
-//! [`println!`]: ../../std/macro.println.html
-//! [`eprint!`]: ../../std/macro.eprint.html
-//! [`eprintln!`]: ../../std/macro.eprintln.html
-//! [`format_args!`]: core::format_args
-//! [`fmt::Arguments`]: Arguments
-//! [`format`]: crate::format
+//! [`print!`]: ../../std/macro.print.html "print!"
+//! [`println!`]: ../../std/macro.println.html "println!"
+//! [`eprint!`]: ../../std/macro.eprint.html "eprint!"
+//! [`eprintln!`]: ../../std/macro.eprintln.html "eprintln!"
+//! [`fmt::Arguments`]: Arguments "fmt::Arguments"
+//! [`format`]: format() "fmt::format"
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

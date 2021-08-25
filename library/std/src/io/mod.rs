@@ -854,8 +854,8 @@ pub trait Read {
 
     /// Transforms this `Read` instance to an [`Iterator`] over its bytes.
     ///
-    /// The returned type implements [`Iterator`] where the `Item` is
-    /// [`Result`]`<`[`u8`]`, `[`io::Error`]`>`.
+    /// The returned type implements [`Iterator`] where the [`Item`] is
+    /// <code>[Result]<[u8], [io::Error]></code>.
     /// The yielded item is [`Ok`] if a byte was successfully read and [`Err`]
     /// otherwise. EOF is mapped to returning [`None`] from this iterator.
     ///
@@ -863,9 +863,10 @@ pub trait Read {
     ///
     /// [`File`]s implement `Read`:
     ///
-    /// [`File`]: crate::fs::File
-    /// [`Result`]: crate::result::Result
-    /// [`io::Error`]: self::Error
+    /// [`Item`]: Iterator::Item
+    /// [`File`]: crate::fs::File "fs::File"
+    /// [Result]: crate::result::Result "Result"
+    /// [io::Error]: self::Error "io::Error"
     ///
     /// ```no_run
     /// use std::io;
@@ -2191,13 +2192,13 @@ pub trait BufRead: Read {
     /// `byte`.
     ///
     /// The iterator returned from this function will return instances of
-    /// [`io::Result`]`<`[`Vec<u8>`]`>`. Each vector returned will *not* have
+    /// <code>[io::Result]<[Vec]\<u8>></code>. Each vector returned will *not* have
     /// the delimiter byte at the end.
     ///
     /// This function will yield errors whenever [`read_until`] would have
     /// also yielded an error.
     ///
-    /// [`io::Result`]: self::Result
+    /// [io::Result]: self::Result "io::Result"
     /// [`read_until`]: BufRead::read_until
     ///
     /// # Examples
@@ -2228,10 +2229,10 @@ pub trait BufRead: Read {
     /// Returns an iterator over the lines of this reader.
     ///
     /// The iterator returned from this function will yield instances of
-    /// [`io::Result`]`<`[`String`]`>`. Each string returned will *not* have a newline
+    /// <code>[io::Result]<[String]></code>. Each string returned will *not* have a newline
     /// byte (the `0xA` byte) or `CRLF` (`0xD`, `0xA` bytes) at the end.
     ///
-    /// [`io::Result`]: self::Result
+    /// [io::Result]: self::Result "io::Result"
     ///
     /// # Examples
     ///

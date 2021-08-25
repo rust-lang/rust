@@ -33,7 +33,7 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// of this is that `OsString` instances are *not* `NUL` terminated; in order
 /// to pass to e.g., Unix system call, you should create a [`CStr`].
 ///
-/// `OsString` is to [`&OsStr`] as [`String`] is to [`&str`]: the former
+/// `OsString` is to <code>&[OsStr]</code> as [`String`] is to <code>&[str]</code>: the former
 /// in each pair are owned strings; the latter are borrowed
 /// references.
 ///
@@ -47,18 +47,18 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// # Creating an `OsString`
 ///
 /// **From a Rust string**: `OsString` implements
-/// [`From`]`<`[`String`]`>`, so you can use `my_string.from` to
+/// <code>[From]<[String]></code>, so you can use <code>my_string.[into]\()</code> to
 /// create an `OsString` from a normal Rust string.
 ///
 /// **From slices:** Just like you can start with an empty Rust
-/// [`String`] and then [`String::push_str`] `&str`
+/// [`String`] and then [`String::push_str`] some <code>&[str]</code>
 /// sub-string slices into it, you can create an empty `OsString` with
 /// the [`OsString::new`] method and then push string slices into it with the
 /// [`OsString::push`] method.
 ///
 /// # Extracting a borrowed reference to the whole OS string
 ///
-/// You can use the [`OsString::as_os_str`] method to get an `&`[`OsStr`] from
+/// You can use the [`OsString::as_os_str`] method to get an <code>&[OsStr]</code> from
 /// an `OsString`; this is effectively a borrowed reference to the
 /// whole string.
 ///
@@ -67,10 +67,9 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// See the [module's toplevel documentation about conversions][conversions] for a discussion on
 /// the traits which `OsString` implements for [conversions] from/to native representations.
 ///
-/// [`&OsStr`]: OsStr
-/// [`&str`]: str
 /// [`CStr`]: crate::ffi::CStr
 /// [conversions]: super#conversions
+/// [into]: Into::into
 #[cfg_attr(not(test), rustc_diagnostic_item = "OsString")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
@@ -86,13 +85,12 @@ impl crate::sealed::Sealed for OsString {}
 /// This type represents a borrowed reference to a string in the operating system's preferred
 /// representation.
 ///
-/// `&OsStr` is to [`OsString`] as [`&str`] is to [`String`]: the former in each pair are borrowed
-/// references; the latter are owned strings.
+/// `&OsStr` is to [`OsString`] as <code>&[str]</code> is to [`String`]: the
+/// former in each pair are borrowed references; the latter are owned strings.
 ///
 /// See the [module's toplevel documentation about conversions][conversions] for a discussion on
 /// the traits which `OsStr` implements for [conversions] from/to native representations.
 ///
-/// [`&str`]: str
 /// [conversions]: super#conversions
 #[cfg_attr(not(test), rustc_diagnostic_item = "OsStr")]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -162,9 +160,7 @@ impl OsString {
         self.inner.into_string().map_err(|buf| OsString { inner: buf })
     }
 
-    /// Extends the string with the given [`&OsStr`] slice.
-    ///
-    /// [`&OsStr`]: OsStr
+    /// Extends the string with the given <code>&[OsStr]</code> slice.
     ///
     /// # Examples
     ///
@@ -563,11 +559,9 @@ impl OsStr {
         unsafe { &mut *(inner as *mut Slice as *mut OsStr) }
     }
 
-    /// Yields a [`&str`] slice if the `OsStr` is valid Unicode.
+    /// Yields a <code>&[str]</code> slice if the `OsStr` is valid Unicode.
     ///
     /// This conversion may entail doing a check for UTF-8 validity.
-    ///
-    /// [`&str`]: str
     ///
     /// # Examples
     ///
@@ -583,7 +577,7 @@ impl OsStr {
         self.inner.to_str()
     }
 
-    /// Converts an `OsStr` to a [`Cow`]`<`[`str`]`>`.
+    /// Converts an `OsStr` to a <code>[Cow]<[str]></code>.
     ///
     /// Any non-Unicode sequences are replaced with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD].
@@ -701,7 +695,7 @@ impl OsStr {
         self.inner.inner.len()
     }
 
-    /// Converts a [`Box`]`<OsStr>` into an [`OsString`] without copying or allocating.
+    /// Converts a <code>[Box]<[OsStr]></code> into an [`OsString`] without copying or allocating.
     #[stable(feature = "into_boxed_os_str", since = "1.20.0")]
     pub fn into_os_string(self: Box<OsStr>) -> OsString {
         let boxed = unsafe { Box::from_raw(Box::into_raw(self) as *mut Slice) };
@@ -870,7 +864,7 @@ impl From<Cow<'_, OsStr>> for Box<OsStr> {
 
 #[stable(feature = "os_string_from_box", since = "1.18.0")]
 impl From<Box<OsStr>> for OsString {
-    /// Converts a [`Box`]`<`[`OsStr`]`>` into an [`OsString`] without copying or
+    /// Converts a <code>[Box]<[OsStr]></code> into an [`OsString`] without copying or
     /// allocating.
     #[inline]
     fn from(boxed: Box<OsStr>) -> OsString {
@@ -880,7 +874,7 @@ impl From<Box<OsStr>> for OsString {
 
 #[stable(feature = "box_from_os_string", since = "1.20.0")]
 impl From<OsString> for Box<OsStr> {
-    /// Converts an [`OsString`] into a [`Box`]`<OsStr>` without copying or allocating.
+    /// Converts an [`OsString`] into a <code>[Box]<[OsStr]></code> without copying or allocating.
     #[inline]
     fn from(s: OsString) -> Box<OsStr> {
         s.into_boxed_os_str()
@@ -897,7 +891,7 @@ impl Clone for Box<OsStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Arc<OsStr> {
-    /// Converts an [`OsString`] into an [`Arc`]`<OsStr>` without copying or allocating.
+    /// Converts an [`OsString`] into an <code>[Arc]<[OsStr]></code> without copying or allocating.
     #[inline]
     fn from(s: OsString) -> Arc<OsStr> {
         let arc = s.inner.into_arc();
@@ -916,7 +910,7 @@ impl From<&OsStr> for Arc<OsStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Rc<OsStr> {
-    /// Converts an [`OsString`] into an [`Rc`]`<OsStr>` without copying or allocating.
+    /// Converts an [`OsString`] into an <code>[Rc]<[OsStr]></code> without copying or allocating.
     #[inline]
     fn from(s: OsString) -> Rc<OsStr> {
         let rc = s.inner.into_rc();

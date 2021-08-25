@@ -64,15 +64,15 @@
 //! string: it is nul-terminated, and has no internal nul characters.
 //! Rust code can create a [`CString`] out of a normal string (provided
 //! that the string doesn't have nul characters in the middle), and
-//! then use a variety of methods to obtain a raw `*mut `[`u8`] that can
+//! then use a variety of methods to obtain a raw <code>\*mut [u8]</code> that can
 //! then be passed as an argument to functions which use the C
 //! conventions for strings.
 //!
 //! * **From C to Rust:** [`CStr`] represents a borrowed C string; it
-//! is what you would use to wrap a raw `*const `[`u8`] that you got from
+//! is what you would use to wrap a raw <code>\*const [u8]</code> that you got from
 //! a C function. A [`CStr`] is guaranteed to be a nul-terminated array
 //! of bytes. Once you have a [`CStr`], you can convert it to a Rust
-//! [`&str`][`str`] if it's valid UTF-8, or lossily convert it by adding
+//! <code>&[str]</code> if it's valid UTF-8, or lossily convert it by adding
 //! replacement characters.
 //!
 //! [`OsString`] and [`OsStr`] are useful when you need to transfer
@@ -86,9 +86,9 @@
 //! library, various APIs that transfer strings to/from the operating
 //! system use [`OsString`] instead of plain strings. For example,
 //! [`env::var_os()`] is used to query environment variables; it
-//! returns an [`Option`]`<`[`OsString`]`>`. If the environment variable
-//! exists you will get a [`Some`]`(os_string)`, which you can *then* try to
-//! convert to a Rust string. This yields a [`Result`], so that
+//! returns an <code>[Option]<[OsString]></code>. If the environment variable
+//! exists you will get a <code>[Some]\(os_string)</code>, which you can
+//! *then* try to convert to a Rust string. This yields a [`Result`], so that
 //! your code can detect errors in case the environment variable did
 //! not in fact contain valid Unicode data.
 //!
@@ -102,44 +102,44 @@
 //! ## On Unix
 //!
 //! On Unix, [`OsStr`] implements the
-//! `std::os::unix::ffi::`[`OsStrExt`][unix.OsStrExt] trait, which
+//! <code>std::os::unix::ffi::[OsStrExt][unix.OsStrExt]</code> trait, which
 //! augments it with two methods, [`from_bytes`] and [`as_bytes`].
 //! These do inexpensive conversions from and to UTF-8 byte slices.
 //!
 //! Additionally, on Unix [`OsString`] implements the
-//! `std::os::unix::ffi::`[`OsStringExt`][unix.OsStringExt] trait,
+//! <code>std::os::unix::ffi::[OsStringExt][unix.OsStringExt]</code> trait,
 //! which provides [`from_vec`] and [`into_vec`] methods that consume
 //! their arguments, and take or produce vectors of [`u8`].
 //!
 //! ## On Windows
 //!
 //! On Windows, [`OsStr`] implements the
-//! `std::os::windows::ffi::`[`OsStrExt`][windows.OsStrExt] trait,
+//! <code>std::os::windows::ffi::[OsStrExt][windows.OsStrExt]</code> trait,
 //! which provides an [`encode_wide`] method. This provides an
 //! iterator that can be [`collect`]ed into a vector of [`u16`].
 //!
 //! Additionally, on Windows [`OsString`] implements the
-//! `std::os::windows:ffi::`[`OsStringExt`][windows.OsStringExt]
+//! <code>std::os::windows:ffi::[OsStringExt][windows.OsStringExt]</code>
 //! trait, which provides a [`from_wide`] method. The result of this
 //! method is an [`OsString`] which can be round-tripped to a Windows
 //! string losslessly.
 //!
 //! [Unicode scalar value]: https://www.unicode.org/glossary/#unicode_scalar_value
 //! [Unicode code point]: https://www.unicode.org/glossary/#code_point
-//! [`env::set_var()`]: crate::env::set_var
-//! [`env::var_os()`]: crate::env::var_os
-//! [unix.OsStringExt]: crate::os::unix::ffi::OsStringExt
-//! [`from_vec`]: crate::os::unix::ffi::OsStringExt::from_vec
-//! [`into_vec`]: crate::os::unix::ffi::OsStringExt::into_vec
-//! [unix.OsStrExt]: crate::os::unix::ffi::OsStrExt
-//! [`from_bytes`]: crate::os::unix::ffi::OsStrExt::from_bytes
-//! [`as_bytes`]: crate::os::unix::ffi::OsStrExt::as_bytes
-//! [`OsStrExt`]: crate::os::unix::ffi::OsStrExt
-//! [windows.OsStrExt]: crate::os::windows::ffi::OsStrExt
-//! [`encode_wide`]: crate::os::windows::ffi::OsStrExt::encode_wide
-//! [`collect`]: crate::iter::Iterator::collect
-//! [windows.OsStringExt]: crate::os::windows::ffi::OsStringExt
-//! [`from_wide`]: crate::os::windows::ffi::OsStringExt::from_wide
+//! [`env::set_var()`]: crate::env::set_var "env::set_var"
+//! [`env::var_os()`]: crate::env::var_os "env::var_os"
+//! [unix.OsStringExt]: crate::os::unix::ffi::OsStringExt "os::unix::ffi::OsStringExt"
+//! [`from_vec`]: crate::os::unix::ffi::OsStringExt::from_vec "os::unix::ffi::OsStringExt::from_vec"
+//! [`into_vec`]: crate::os::unix::ffi::OsStringExt::into_vec "os::unix::ffi::OsStringExt::into_vec"
+//! [unix.OsStrExt]: crate::os::unix::ffi::OsStrExt "os::unix::ffi::OsStrExt"
+//! [`from_bytes`]: crate::os::unix::ffi::OsStrExt::from_bytes "os::unix::ffi::OsStrExt::from_bytes"
+//! [`as_bytes`]: crate::os::unix::ffi::OsStrExt::as_bytes "os::unix::ffi::OsStrExt::as_bytes"
+//! [`OsStrExt`]: crate::os::unix::ffi::OsStrExt "os::unix::ffi::OsStrExt"
+//! [windows.OsStrExt]: crate::os::windows::ffi::OsStrExt "os::windows::ffi::OsStrExt"
+//! [`encode_wide`]: crate::os::windows::ffi::OsStrExt::encode_wide "os::windows::ffi::OsStrExt::encode_wide"
+//! [`collect`]: crate::iter::Iterator::collect "iter::Iterator::collect"
+//! [windows.OsStringExt]: crate::os::windows::ffi::OsStringExt "os::windows::ffi::OsStringExt"
+//! [`from_wide`]: crate::os::windows::ffi::OsStringExt::from_wide "os::windows::ffi::OsStringExt::from_wide"
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

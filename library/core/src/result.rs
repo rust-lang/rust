@@ -88,7 +88,7 @@
 //! ```
 //!
 //! *Note: The actual definition of [`Write`] uses [`io::Result`], which
-//! is just a synonym for [`Result`]`<T, `[`io::Error`]`>`.*
+//! is just a synonym for <code>[Result]<T, [io::Error]></code>.*
 //!
 //! This method doesn't produce a value, but the write may
 //! fail. It's crucial to handle the error case, and *not* write
@@ -217,13 +217,13 @@
 //! early return of [`Err`] that it provides.
 //!
 //! [`expect`]: Result::expect
-//! [`Write`]: ../../std/io/trait.Write.html
-//! [`write_all`]: ../../std/io/trait.Write.html#method.write_all
-//! [`io::Result`]: ../../std/io/type.Result.html
+//! [`Write`]: ../../std/io/trait.Write.html "io::Write"
+//! [`write_all`]: ../../std/io/trait.Write.html#method.write_all "io::Write::write_all"
+//! [`io::Result`]: ../../std/io/type.Result.html "io::Result"
 //! [`?`]: crate::ops::Try
 //! [`Ok(T)`]: Ok
 //! [`Err(E)`]: Err
-//! [`io::Error`]: ../../std/io/struct.Error.html
+//! [io::Error]: ../../std/io/struct.Error.html "io::Error"
 //!
 //! # Method overview
 //!

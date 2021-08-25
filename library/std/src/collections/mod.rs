@@ -217,7 +217,7 @@
 //! contents by-value. This is great when the collection itself is no longer
 //! needed, and the values are needed elsewhere. Using `extend` with `into_iter`
 //! is the main way that contents of one collection are moved into another.
-//! `extend` automatically calls `into_iter`, and takes any `T: `[`IntoIterator`].
+//! `extend` automatically calls `into_iter`, and takes any <code>T: [IntoIterator]</code>.
 //! Calling `collect` on an iterator itself is also a great way to convert one
 //! collection into another. Both of these methods should internally use the
 //! capacity management tools discussed in the previous section to do this as
@@ -396,7 +396,7 @@
 //! assert_eq!(map.keys().next().unwrap().b, "baz");
 //! ```
 //!
-//! [`IntoIterator`]: crate::iter::IntoIterator
+//! [IntoIterator]: crate::iter::IntoIterator "iter::IntoIterator"
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

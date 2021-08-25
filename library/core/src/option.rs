@@ -47,9 +47,9 @@
 //!
 //! Rust's pointer types must always point to a valid location; there are
 //! no "null" references. Instead, Rust has *optional* pointers, like
-//! the optional owned box, [`Option`]`<`[`Box<T>`]`>`.
+//! the optional owned box, <code>[Option]<[Box\<T>]></code>.
 //!
-//! [`Box<T>`]: ../../std/boxed/struct.Box.html
+//! [Box\<T>]: ../../std/boxed/struct.Box.html
 //!
 //! The following example uses [`Option`] to create an optional box of
 //! [`i32`]. Notice that in order to use the inner [`i32`] value, the
@@ -111,16 +111,20 @@
 //!
 //! ## Adapters for working with references
 //!
-//! * [`as_ref`] converts from `&Option<T>` to `Option<&T>`
-//! * [`as_mut`] converts from `&mut Option<T>` to `Option<&mut T>`
-//! * [`as_deref`] converts from `&Option<T>` to `Option<&T::Target>`
-//! * [`as_deref_mut`] converts from `&mut Option<T>` to
-//!   `Option<&mut T::Target>`
-//! * [`as_pin_ref`] converts from [`Pin`]`<&Option<T>>` to
-//!   `Option<`[`Pin`]`<&T>>`
-//! * [`as_pin_mut`] converts from [`Pin`]`<&mut Option<T>>` to
-//!   `Option<`[`Pin`]`<&mut T>>`
+//! * [`as_ref`] converts from <code>[&][][Option]\<T></code> to <code>[Option]<[&]T></code>
+//! * [`as_mut`] converts from <code>[&mut] [Option]\<T></code> to <code>[Option]<[&mut] T></code>
+//! * [`as_deref`] converts from <code>[&][][Option]\<T></code> to
+//!   <code>[Option]<[&]T::[Target]></code>
+//! * [`as_deref_mut`] converts from <code>[&mut] [Option]\<T></code> to
+//!   <code>[Option]<[&mut] T::[Target]></code>
+//! * [`as_pin_ref`] converts from <code>[Pin]<[&][][Option]\<T>></code> to
+//!   <code>[Option]<[Pin]<[&]T>></code>
+//! * [`as_pin_mut`] converts from <code>[Pin]<[&mut] [Option]\<T>></code> to
+//!   <code>[Option]<[Pin]<[&mut] T>></code>
 //!
+//! [&]: reference "shared reference"
+//! [&mut]: reference "mutable reference"
+//! [Target]: Deref::Target "ops::Deref::Target"
 //! [`as_deref`]: Option::as_deref
 //! [`as_deref_mut`]: Option::as_deref_mut
 //! [`as_mut`]: Option::as_mut
@@ -603,13 +607,13 @@ impl<T> Option<T> {
     ///
     /// # Examples
     ///
-    /// Converts an `Option<`[`String`]`>` into an `Option<`[`usize`]`>`, preserving the original.
-    /// The [`map`] method takes the `self` argument by value, consuming the original,
+    /// Converts an <code>Option<[String]></code> into an <code>Option<[usize]></code>, preserving
+    /// the original. The [`map`] method takes the `self` argument by value, consuming the original,
     /// so this technique uses `as_ref` to first take an `Option` to a reference
     /// to the value inside the original.
     ///
     /// [`map`]: Option::map
-    /// [`String`]: ../../std/string/struct.String.html
+    /// [String]: ../../std/string/struct.String.html "String"
     ///
     /// ```
     /// let text: Option<String> = Some("Hello, world!".to_string());
@@ -649,7 +653,9 @@ impl<T> Option<T> {
         }
     }
 
-    /// Converts from [`Pin`]`<&Option<T>>` to `Option<`[`Pin`]`<&T>>`.
+    /// Converts from <code>[Pin]<[&]Option\<T>></code> to <code>Option<[Pin]<[&]T>></code>.
+    ///
+    /// [&]: reference "shared reference"
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_ref(self: Pin<&Self>) -> Option<Pin<&T>> {
@@ -658,7 +664,9 @@ impl<T> Option<T> {
         unsafe { Pin::get_ref(self).as_ref().map(|x| Pin::new_unchecked(x)) }
     }
 
-    /// Converts from [`Pin`]`<&mut Option<T>>` to `Option<`[`Pin`]`<&mut T>>`.
+    /// Converts from <code>[Pin]<[&mut] Option\<T>></code> to <code>Option<[Pin]<[&mut] T>></code>.
+    ///
+    /// [&mut]: reference "mutable reference"
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_mut(self: Pin<&mut Self>) -> Option<Pin<&mut T>> {
@@ -819,9 +827,10 @@ impl<T> Option<T> {
     ///
     /// # Examples
     ///
-    /// Converts an `Option<`[`String`]`>` into an `Option<`[`usize`]`>`, consuming the original:
+    /// Converts an <code>Option<[String]></code> into an <code>Option<[usize]></code>, consuming
+    /// the original:
     ///
-    /// [`String`]: ../../std/string/struct.String.html
+    /// [String]: ../../std/string/struct.String.html "String"
     /// ```
     /// let maybe_some_string = Some(String::from("Hello, World!"));
     /// // `Option::map` takes self *by value*, consuming `maybe_some_string`
@@ -1584,9 +1593,9 @@ impl<T: DerefMut> Option<T> {
 impl<T, E> Option<Result<T, E>> {
     /// Transposes an `Option` of a [`Result`] into a [`Result`] of an `Option`.
     ///
-    /// [`None`] will be mapped to [`Ok`]`(`[`None`]`)`.
-    /// [`Some`]`(`[`Ok`]`(_))` and [`Some`]`(`[`Err`]`(_))` will be mapped to
-    /// [`Ok`]`(`[`Some`]`(_))` and [`Err`]`(_)`.
+    /// [`None`] will be mapped to <code>[Ok]\([None])</code>.
+    /// <code>[Some]\([Ok]\(\_))</code> and <code>[Some]\([Err]\(\_))</code> will be mapped to
+    /// <code>[Ok]\([Some]\(\_))</code> and <code>[Err]\(\_)</code>.
     ///
     /// # Examples
     ///
@@ -1724,13 +1733,13 @@ impl<'a, T> From<&'a Option<T>> for Option<&'a T> {
     ///
     /// # Examples
     ///
-    /// Converts an `Option<`[`String`]`>` into an `Option<`[`usize`]`>`, preserving the original.
-    /// The [`map`] method takes the `self` argument by value, consuming the original,
-    /// so this technique uses `from` to first take an `Option` to a reference
+    /// Converts an <code>[Option]<[String]></code> into an <code>[Option]<[usize]></code>, preserving
+    /// the original. The [`map`] method takes the `self` argument by value, consuming the original,
+    /// so this technique uses `from` to first take an [`Option`] to a reference
     /// to the value inside the original.
     ///
     /// [`map`]: Option::map
-    /// [`String`]: ../../std/string/struct.String.html
+    /// [String]: ../../std/string/struct.String.html "String"
     ///
     /// ```
     /// let s: Option<String> = Some(String::from("Hello, Rustaceans!"));
