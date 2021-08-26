@@ -523,7 +523,7 @@ impl<'a> Builder<'a> {
                 install::Src,
                 install::Rustc
             ),
-            Kind::Run => describe!(run::ExpandYamlAnchors, run::BuildManifest),
+            Kind::Run => describe!(run::ExpandYamlAnchors, run::BuildManifest, run::BumpStage0),
         }
     }
 

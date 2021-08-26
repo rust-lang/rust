@@ -82,3 +82,24 @@ impl Step for BuildManifest {
         builder.run(&mut cmd);
     }
 }
+
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct BumpStage0;
+
+impl Step for BumpStage0 {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/bump-stage0")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(BumpStage0);
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let mut cmd = builder.tool_cmd(Tool::BumpStage0);
+        builder.run(&mut cmd);
+    }
+}

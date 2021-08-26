@@ -13,25 +13,6 @@ from shutil import rmtree
 import bootstrap
 
 
-class Stage0DataTestCase(unittest.TestCase):
-    """Test Case for stage0_data"""
-    def setUp(self):
-        self.rust_root = tempfile.mkdtemp()
-        os.mkdir(os.path.join(self.rust_root, "src"))
-        with open(os.path.join(self.rust_root, "src",
-                               "stage0.txt"), "w") as stage0:
-            stage0.write("#ignore\n\ndate: 2017-06-15\nrustc: beta\ncargo: beta\nrustfmt: beta")
-
-    def tearDown(self):
-        rmtree(self.rust_root)
-
-    def test_stage0_data(self):
-        """Extract data from stage0.txt"""
-        expected = {"date": "2017-06-15", "rustc": "beta", "cargo": "beta", "rustfmt": "beta"}
-        data = bootstrap.stage0_data(self.rust_root)
-        self.assertDictEqual(data, expected)
-
-
 class VerifyTestCase(unittest.TestCase):
     """Test Case for verify"""
     def setUp(self):
@@ -99,7 +80,6 @@ if __name__ == '__main__':
     TEST_LOADER = unittest.TestLoader()
     SUITE.addTest(doctest.DocTestSuite(bootstrap))
     SUITE.addTests([
-        TEST_LOADER.loadTestsFromTestCase(Stage0DataTestCase),
         TEST_LOADER.loadTestsFromTestCase(VerifyTestCase),
         TEST_LOADER.loadTestsFromTestCase(ProgramOutOfDate)])
 

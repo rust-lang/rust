@@ -4,6 +4,7 @@ import contextlib
 import datetime
 import distutils.version
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -174,15 +175,6 @@ def require(cmd, exit=True):
         print("error: unable to run `{}`: {}".format(' '.join(cmd), exc))
         print("Please make sure it's installed and in the path.")
         sys.exit(1)
-
-
-def stage0_data(rust_root):
-    """Build a dictionary from stage0.txt"""
-    nightlies = os.path.join(rust_root, "src/stage0.txt")
-    with open(nightlies, 'r') as nightlies:
-        lines = [line.rstrip() for line in nightlies
-                 if not line.startswith("#")]
-        return dict([line.split(": ", 1) for line in lines if line])
 
 
 def format_build_time(duration):
@@ -371,13 +363,21 @@ def output(filepath):
     os.rename(tmp, filepath)
 
 
+class Stage0Toolchain:
+    def __init__(self, stage0_payload):
+        self.date = stage0_payload["date"]
+        self.version = stage0_payload["version"]
+
+    def channel(self):
+        return self.version + "-" + self.date
+
+
 class RustBuild(object):
     """Provide all the methods required to build Rust"""
     def __init__(self):
-        self.date = ''
+        self.stage0_compiler = None
+        self.stage0_rustfmt = None
         self._download_url = ''
-        self.rustc_channel = ''
-        self.rustfmt_channel = ''
         self.build = ''
         self.build_dir = ''
         self.clean = False
@@ -401,11 +401,10 @@ class RustBuild(object):
         will move all the content to the right place.
         """
         if rustc_channel is None:
-            rustc_channel = self.rustc_channel
-        rustfmt_channel = self.rustfmt_channel
+            rustc_channel = self.stage0_compiler.version
         bin_root = self.bin_root(stage0)
 
-        key = self.date
+        key = self.stage0_compiler.date
         if not stage0:
             key += str(self.rustc_commit)
         if self.rustc(stage0).startswith(bin_root) and \
@@ -444,19 +443,23 @@ class RustBuild(object):
 
         if self.rustfmt() and self.rustfmt().startswith(bin_root) and (
             not os.path.exists(self.rustfmt())
-            or self.program_out_of_date(self.rustfmt_stamp(), self.rustfmt_channel)
+            or self.program_out_of_date(
+                self.rustfmt_stamp(),
+                "" if self.stage0_rustfmt is None else self.stage0_rustfmt.channel()
+            )
         ):
-            if rustfmt_channel:
+            if self.stage0_rustfmt is not None:
                 tarball_suffix = '.tar.xz' if support_xz() else '.tar.gz'
-                [channel, date] = rustfmt_channel.split('-', 1)
-                filename = "rustfmt-{}-{}{}".format(channel, self.build, tarball_suffix)
+                filename = "rustfmt-{}-{}{}".format(
+                    self.stage0_rustfmt.version, self.build, tarball_suffix,
+                )
                 self._download_component_helper(
-                    filename, "rustfmt-preview", tarball_suffix, key=date
+                    filename, "rustfmt-preview", tarball_suffix, key=self.stage0_rustfmt.date
                 )
                 self.fix_bin_or_dylib("{}/bin/rustfmt".format(bin_root))
                 self.fix_bin_or_dylib("{}/bin/cargo-fmt".format(bin_root))
                 with output(self.rustfmt_stamp()) as rustfmt_stamp:
-                    rustfmt_stamp.write(self.rustfmt_channel)
+                    rustfmt_stamp.write(self.stage0_rustfmt.channel())
 
         # Avoid downloading LLVM twice (once for stage0 and once for the master rustc)
         if self.downloading_llvm() and stage0:
@@ -517,7 +520,7 @@ class RustBuild(object):
     ):
         if key is None:
             if stage0:
-                key = self.date
+                key = self.stage0_compiler.date
             else:
                 key = self.rustc_commit
         cache_dst = os.path.join(self.build_dir, "cache")
@@ -815,7 +818,7 @@ class RustBuild(object):
 
     def rustfmt(self):
         """Return config path for rustfmt"""
-        if not self.rustfmt_channel:
+        if self.stage0_rustfmt is None:
             return None
         return self.program_config('rustfmt')
 
@@ -1039,19 +1042,12 @@ class RustBuild(object):
             self.update_submodule(module[0], module[1], recorded_submodules)
         print("Submodules updated in %.2f seconds" % (time() - start_time))
 
-    def set_normal_environment(self):
+    def set_dist_environment(self, url):
         """Set download URL for normal environment"""
         if 'RUSTUP_DIST_SERVER' in os.environ:
             self._download_url = os.environ['RUSTUP_DIST_SERVER']
         else:
-            self._download_url = 'https://static.rust-lang.org'
-
-    def set_dev_environment(self):
-        """Set download URL for development environment"""
-        if 'RUSTUP_DEV_DIST_SERVER' in os.environ:
-            self._download_url = os.environ['RUSTUP_DEV_DIST_SERVER']
-        else:
-            self._download_url = 'https://dev-static.rust-lang.org'
+            self._download_url = url
 
     def check_vendored_status(self):
         """Check that vendoring is configured properly"""
@@ -1160,17 +1156,13 @@ def bootstrap(help_triggered):
     build_dir = build.get_toml('build-dir', 'build') or 'build'
     build.build_dir = os.path.abspath(build_dir.replace("$ROOT", build.rust_root))
 
-    data = stage0_data(build.rust_root)
-    build.date = data['date']
-    build.rustc_channel = data['rustc']
+    with open(os.path.join(build.rust_root, "src", "stage0.json")) as f:
+        data = json.load(f)
+    build.stage0_compiler = Stage0Toolchain(data["compiler"])
+    if data.get("rustfmt") is not None:
+        build.stage0_rustfmt = Stage0Toolchain(data["rustfmt"])
 
-    if "rustfmt" in data:
-        build.rustfmt_channel = data['rustfmt']
-
-    if 'dev' in data:
-        build.set_dev_environment()
-    else:
-        build.set_normal_environment()
+    build.set_dist_environment(data["dist_server"])
 
     build.build = args.build or build.build_triple()
     build.update_submodules()

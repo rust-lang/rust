@@ -35,6 +35,7 @@ members = [
   "src/tools/expand-yaml-anchors",
   "src/tools/jsondocck",
   "src/tools/html-checker",
+  "src/tools/bump-stage0",
 ]
 
 exclude = [

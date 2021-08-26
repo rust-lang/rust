@@ -221,6 +221,17 @@ name = "build_helper"
 version = "0.1.0"
 
 [[package]]
+name = "bump-stage0"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "curl",
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
 name = "byte-tools"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

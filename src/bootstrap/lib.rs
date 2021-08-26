@@ -31,7 +31,7 @@
 //! When you execute `x.py build`, the steps executed are:
 //!
 //! * First, the python script is run. This will automatically download the
-//!   stage0 rustc and cargo according to `src/stage0.txt`, or use the cached
+//!   stage0 rustc and cargo according to `src/stage0.json`, or use the cached
 //!   versions if they're available. These are then used to compile rustbuild
 //!   itself (using Cargo). Finally, control is then transferred to rustbuild.
 //!
