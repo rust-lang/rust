@@ -148,7 +148,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.expand_attr_macro(item)
     }
 
-    pub fn expand_derive_macro(&self, derive: &ast::Attr) -> Option<SyntaxNode> {
+    pub fn expand_derive_macro(&self, derive: &ast::Attr) -> Option<Vec<SyntaxNode>> {
         self.imp.expand_derive_macro(derive)
     }
 
@@ -389,16 +389,29 @@ impl<'db> SemanticsImpl<'db> {
         Some(node)
     }
 
-    fn expand_derive_macro(&self, attr: &ast::Attr) -> Option<SyntaxNode> {
+    fn expand_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<SyntaxNode>> {
         let item = attr.syntax().parent().and_then(ast::Item::cast)?;
         let sa = self.analyze(item.syntax());
         let item = InFile::new(sa.file_id, &item);
         let src = InFile::new(sa.file_id, attr.clone());
-        let macro_call_id = self.with_ctx(|ctx| ctx.attr_to_derive_macro_call(item, src))?;
-        let file_id = macro_call_id.as_file();
-        let node = self.db.parse_or_expand(file_id)?;
-        self.cache(node.clone(), file_id);
-        Some(node)
+        self.with_ctx(|ctx| {
+            let macro_call_ids = ctx.attr_to_derive_macro_call(item, src)?;
+
+            let expansions: Vec<_> = macro_call_ids
+                .iter()
+                .map(|call| call.as_file())
+                .flat_map(|file_id| {
+                    let node = self.db.parse_or_expand(file_id)?;
+                    self.cache(node.clone(), file_id);
+                    Some(node)
+                })
+                .collect();
+            if expansions.is_empty() {
+                None
+            } else {
+                Some(expansions)
+            }
+        })
     }
 
     fn is_attr_macro_call(&self, item: &ast::Item) -> bool {
