@@ -195,8 +195,8 @@ impl ItemScope {
 
     pub(crate) fn derive_macro_invocs(
         &self,
-    ) -> impl Iterator<Item = (AstId<ast::Item>, (AttrId, MacroCallId))> + '_ {
-        self.derive_macros.iter().flat_map(|(k, v)| v.iter().map(move |v| (*k, *v)))
+    ) -> impl Iterator<Item = (AstId<ast::Item>, &[(AttrId, MacroCallId)])> + '_ {
+        self.derive_macros.iter().map(|(k, v)| (*k, v.as_ref()))
     }
 
     pub(crate) fn unnamed_trait_vis(&self, tr: TraitId) -> Option<Visibility> {

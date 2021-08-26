@@ -37,10 +37,11 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
             if path == "derive" {
                 let mut tt = tt.syntax().children_with_tokens().skip(1).join("");
                 tt.pop();
-                return sema
-                    .expand_derive_macro(&attr)
-                    .map(insert_whitespaces)
-                    .map(|expansion| ExpandedMacro { name: tt, expansion });
+                let expansions = sema.expand_derive_macro(&attr)?;
+                return Some(ExpandedMacro {
+                    name: tt,
+                    expansion: expansions.into_iter().map(insert_whitespaces).join(""),
+                });
             }
         }
     }
@@ -378,6 +379,28 @@ struct Foo {}
             expect![[r#"
                 Copy
                 impl< >crate::marker::Copy for Foo< >{}
+
+            "#]],
+        );
+    }
+
+    #[test]
+    fn macro_expand_derive_multi() {
+        check(
+            r#"
+#[rustc_builtin_macro]
+pub macro Clone {}
+#[rustc_builtin_macro]
+pub macro Copy {}
+
+#[derive(Cop$0y, Clone)]
+struct Foo {}
+"#,
+            expect![[r#"
+                Copy, Clone
+                impl< >crate::marker::Copy for Foo< >{}
+
+                impl< >crate::clone::Clone for Foo< >{}
 
             "#]],
         );
