@@ -344,8 +344,8 @@ fn sparse_matrix_operations() {
     // SparseBitMatrix::intersect_row
     {
         let mut matrix = matrix.clone();
-        assert!(!matrix.intersect_row(2, &superset));
-        assert!(matrix.intersect_row(2, &subset));
+        assert!(!matrix.intersect_row(3, &superset));
+        assert!(matrix.intersect_row(3, &subset));
         matrix.intersect_row(0, &disjoint);
         assert!(matrix.row(0).is_none());
     }
@@ -353,9 +353,9 @@ fn sparse_matrix_operations() {
      // SparseBitMatrix::subtract_row
      {
         let mut matrix = matrix.clone();
-        assert!(!matrix.subtract_row(2, &disjoint));
-        assert!(matrix.subtract_row(2, &subset));
-        assert!(matrix.subtract_row(2, &superset));
+        assert!(!matrix.subtract_row(3, &disjoint));
+        assert!(matrix.subtract_row(3, &subset));
+        assert!(matrix.subtract_row(3, &superset));
         matrix.intersect_row(0, &disjoint);
         assert!(matrix.row(0).is_none());
      }
@@ -363,8 +363,8 @@ fn sparse_matrix_operations() {
      // SparseBitMatrix::union_row 
      {
         let mut matrix = matrix.clone();
-        assert!(!matrix.union_row(2, &subset));
-        assert!(matrix.union_row(2, &disjoint));
+        assert!(!matrix.union_row(3, &subset));
+        assert!(matrix.union_row(3, &disjoint));
         matrix.union_row(0, &disjoint);
         assert!(matrix.row(0).is_some());
      }
