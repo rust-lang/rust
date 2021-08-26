@@ -272,7 +272,7 @@ fn dense_sparse_intersect<T: Idx>(
     sparse: &SparseBitSet<T>,
 ) -> (SparseBitSet<T>, bool) {
     let mut sparse_copy = sparse.clone();
-    sparse_intersect(&mut sparse_copy, |el| !dense.contains(*el));
+    sparse_intersect(&mut sparse_copy, |el| dense.contains(*el));
     let n = sparse_copy.len();
     (sparse_copy, n != dense.count())
 }
