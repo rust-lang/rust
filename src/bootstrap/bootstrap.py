@@ -812,9 +812,7 @@ class RustBuild(object):
 
     def rustfmt(self):
         """Return config path for rustfmt"""
-        if not self.rustfmt_channel:
-            return None
-        return self.program_config('rustfmt')
+        return None if not self.rustfmt_channel else self.program_config('rustfmt')
 
     def program_config(self, program, stage0=True):
         """Return config path for the given program at the given stage
@@ -866,7 +864,6 @@ class RustBuild(object):
     def exe_suffix():
         """Return a suffix for executables"""
         return '.exe' if sys.platform == 'win32' else ''
-
 
     def bootstrap_binary(self):
         """Return the path of the bootstrap binary
@@ -942,9 +939,7 @@ class RustBuild(object):
         so use `self.build` where possible.
         """
         config = self.get_toml('build')
-        if config:
-            return config
-        return default_build_triple(self.verbose)
+        return config if config else default_build_triple(self.verbose)
 
     def check_submodule(self, module, slow_submodules):
         if not slow_submodules:
@@ -952,8 +947,7 @@ class RustBuild(object):
                                            cwd=os.path.join(self.rust_root, module),
                                            stdout=subprocess.PIPE)
             return checked_out
-        else:
-            return None
+        return None
 
     def update_submodule(self, module, checked_out, recorded_submodules):
         module_path = os.path.join(self.rust_root, module)
