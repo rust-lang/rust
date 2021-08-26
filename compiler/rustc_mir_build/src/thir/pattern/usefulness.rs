@@ -914,22 +914,6 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
         }
     }
 
-    /// When trying several branches and each returns a `Usefulness`, we need to combine the
-    /// results together.
-    fn merge(pref: ArmType, usefulnesses: impl Iterator<Item = Self>) -> Self {
-        let mut ret = Self::new_not_useful(pref);
-        for u in usefulnesses {
-            ret.extend(u);
-            if let NoWitnesses(subpats) = &ret {
-                if subpats.is_full() {
-                    // Once we reach the full set, more unions won't change the result.
-                    return ret;
-                }
-            }
-        }
-        ret
-    }
-
     /// After calculating the usefulness for a branch of an or-pattern, call this to make this
     /// usefulness mergeable with those from the other branches.
     fn unsplit_or_pat(self, alt_id: usize, alt_count: usize, pat: &'p Pat<'tcx>) -> Self {
@@ -1168,25 +1152,26 @@ fn is_useful<'p, 'tcx>(
     let pcx = PatCtxt { cx, ty, span: v.head().span, is_top_level, is_non_exhaustive };
 
     // If the first pattern is an or-pattern, expand it.
-    let ret = if is_or_pat(v.head()) {
+    let mut ret = Usefulness::new_not_useful(witness_preference);
+    if is_or_pat(v.head()) {
         debug!("expanding or-pattern");
         let v_head = v.head();
         let vs: Vec<_> = v.expand_or_pat().collect();
         let alt_count = vs.len();
         // We try each or-pattern branch in turn.
         let mut matrix = matrix.clone();
-        let usefulnesses = vs.into_iter().enumerate().map(|(i, v)| {
+        for (i, v) in vs.into_iter().enumerate() {
             let usefulness =
                 is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
+            let usefulness = usefulness.unsplit_or_pat(i, alt_count, v_head);
+            ret.extend(usefulness);
             // If pattern has a guard don't add it to the matrix.
             if !is_under_guard {
                 // We push the already-seen patterns into the matrix in order to detect redundant
                 // branches like `Some(_) | Some(0)`.
                 matrix.push(v);
             }
-            usefulness.unsplit_or_pat(i, alt_count, v_head)
-        });
-        Usefulness::merge(witness_preference, usefulnesses)
+        }
     } else {
         let v_ctor = v.head_ctor(cx);
         if let Constructor::IntRange(ctor_range) = &v_ctor {
@@ -1204,7 +1189,7 @@ fn is_useful<'p, 'tcx>(
         // For each constructor, we compute whether there's a value that starts with it that would
         // witness the usefulness of `v`.
         let start_matrix = &matrix;
-        let usefulnesses = split_ctors.into_iter().map(|ctor| {
+        for ctor in split_ctors {
             debug!("specialize({:?})", ctor);
             // We cache the result of `Fields::wildcards` because it is used a lot.
             let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
@@ -1213,6 +1198,8 @@ fn is_useful<'p, 'tcx>(
             let v = v.pop_head_constructor(&ctor_wild_subpatterns);
             let usefulness =
                 is_useful(cx, &spec_matrix, &v, witness_preference, hir_id, is_under_guard, false);
+            let usefulness =
+                usefulness.apply_constructor(pcx, start_matrix, &ctor, &ctor_wild_subpatterns);
 
             // When all the conditions are met we have a match with a `non_exhaustive` enum
             // that has the potential to trigger the `non_exhaustive_omitted_patterns` lint.
@@ -1248,10 +1235,9 @@ fn is_useful<'p, 'tcx>(
                 lint_non_exhaustive_omitted_patterns(pcx.cx, pcx.ty, pcx.span, hir_id, patterns);
             }
 
-            usefulness.apply_constructor(pcx, start_matrix, &ctor, &ctor_wild_subpatterns)
-        });
-        Usefulness::merge(witness_preference, usefulnesses)
-    };
+            ret.extend(usefulness);
+        }
+    }
 
     debug!(?ret);
     ret
