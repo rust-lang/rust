@@ -400,7 +400,7 @@ class RustBuild(object):
         Each downloaded tarball is extracted, after that, the script
         will move all the content to the right place.
         """
-        if rustc_channel is None:
+        if not rustc_channel:
             rustc_channel = self.rustc_channel
         rustfmt_channel = self.rustfmt_channel
         bin_root = self.bin_root(stage0)
