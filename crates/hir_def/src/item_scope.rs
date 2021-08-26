@@ -8,6 +8,7 @@ use hir_expand::{name::Name, AstId, MacroCallId, MacroDefKind};
 use once_cell::sync::Lazy;
 use profile::Count;
 use rustc_hash::{FxHashMap, FxHashSet};
+use smallvec::SmallVec;
 use stdx::format_to;
 use syntax::ast;
 
@@ -61,7 +62,7 @@ pub struct ItemScope {
     // be all resolved to the last one defined if shadowing happens.
     legacy_macros: FxHashMap<Name, MacroDefId>,
     attr_macros: FxHashMap<AstId<ast::Item>, MacroCallId>,
-    derive_macros: FxHashMap<AstId<ast::Item>, (AttrId, MacroCallId)>,
+    derive_macros: FxHashMap<AstId<ast::Item>, SmallVec<[(AttrId, MacroCallId); 1]>>,
 }
 
 pub(crate) static BUILTIN_SCOPE: Lazy<FxHashMap<Name, PerNs>> = Lazy::new(|| {
@@ -189,13 +190,13 @@ impl ItemScope {
         call: MacroCallId,
         attr_id: AttrId,
     ) {
-        self.derive_macros.insert(item, (attr_id, call));
+        self.derive_macros.entry(item).or_default().push((attr_id, call));
     }
 
     pub(crate) fn derive_macro_invocs(
         &self,
     ) -> impl Iterator<Item = (AstId<ast::Item>, (AttrId, MacroCallId))> + '_ {
-        self.derive_macros.iter().map(|(k, v)| (*k, *v))
+        self.derive_macros.iter().flat_map(|(k, v)| v.iter().map(move |v| (*k, *v)))
     }
 
     pub(crate) fn unnamed_trait_vis(&self, tr: TraitId) -> Option<Visibility> {
