@@ -464,10 +464,6 @@ pub fn lower_to_hir<'res, 'tcx>(
         arena,
     );
 
-    if sess.opts.debugging_opts.hir_stats {
-        hir_stats::print_hir_stats(&hir_crate);
-    }
-
     sess.time("early_lint_checks", || {
         rustc_lint::check_ast_crate(
             sess,
