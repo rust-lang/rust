@@ -1100,10 +1100,12 @@ rustc_queries! {
         cache_on_disk_if { false }
     }
 
-    query layout_raw(
-        env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
-    ) -> Result<&'tcx rustc_target::abi::Layout, ty::layout::LayoutError<'tcx>> {
-        desc { "computing layout of `{}`", env.value }
+    /// Computes the layout of a type. Note that this implicitly
+    /// executes in "reveal all" mode, and will normalize the input type.
+    query layout_of(
+        key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
+    ) -> Result<ty::layout::TyAndLayout<'tcx>, ty::layout::LayoutError<'tcx>> {
+        desc { "computing layout of `{}`", key.value }
     }
 
     query dylib_dependency_formats(_: CrateNum)

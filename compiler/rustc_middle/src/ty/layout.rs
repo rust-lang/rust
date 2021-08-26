@@ -205,10 +205,10 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
     }
 }
 
-fn layout_raw<'tcx>(
+fn layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
-) -> Result<&'tcx Layout, LayoutError<'tcx>> {
+) -> Result<TyAndLayout<'tcx>, LayoutError<'tcx>> {
     ty::tls::with_related_context(tcx, move |icx| {
         let (param_env, ty) = query.into_parts();
 
@@ -220,21 +220,33 @@ fn layout_raw<'tcx>(
         let icx = ty::tls::ImplicitCtxt { layout_depth: icx.layout_depth + 1, ..icx.clone() };
 
         ty::tls::enter_context(&icx, |_| {
-            let cx = LayoutCx { tcx, param_env };
-            let layout = cx.layout_raw_uncached(ty);
-            // Type-level uninhabitedness should always imply ABI uninhabitedness.
-            if let Ok(layout) = layout {
-                if tcx.conservative_is_privately_uninhabited(param_env.and(ty)) {
-                    assert!(layout.abi.is_uninhabited());
-                }
+            let param_env = param_env.with_reveal_all_normalized(tcx);
+            let unnormalized_ty = ty;
+            let ty = tcx.normalize_erasing_regions(param_env, ty);
+            if ty != unnormalized_ty {
+                // Ensure this layout is also cached for the normalized type.
+                return tcx.layout_of(param_env.and(ty));
             }
-            layout
+
+            let cx = LayoutCx { tcx, param_env };
+
+            let layout = cx.layout_of_uncached(ty)?;
+            let layout = TyAndLayout { ty, layout };
+
+            cx.record_layout_for_printing(layout);
+
+            // Type-level uninhabitedness should always imply ABI uninhabitedness.
+            if tcx.conservative_is_privately_uninhabited(param_env.and(ty)) {
+                assert!(layout.abi.is_uninhabited());
+            }
+
+            Ok(layout)
         })
     })
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { layout_raw, ..*providers };
+    *providers = ty::query::Providers { layout_of, ..*providers };
 }
 
 pub struct LayoutCx<'tcx, C> {
@@ -492,7 +504,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         })
     }
 
-    fn layout_raw_uncached(&self, ty: Ty<'tcx>) -> Result<&'tcx Layout, LayoutError<'tcx>> {
+    fn layout_of_uncached(&self, ty: Ty<'tcx>) -> Result<&'tcx Layout, LayoutError<'tcx>> {
         let tcx = self.tcx;
         let param_env = self.param_env;
         let dl = self.data_layout();
@@ -889,7 +901,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 let present_first = match present_first {
                     Some(present_first) => present_first,
                     // Uninhabited because it has no variants, or only absent ones.
-                    None if def.is_enum() => return tcx.layout_raw(param_env.and(tcx.types.never)),
+                    None if def.is_enum() => {
+                        return Ok(tcx.layout_of(param_env.and(tcx.types.never))?.layout);
+                    }
                     // If it's a struct, still compute a layout so that we can still compute the
                     // field offsets.
                     None => VariantIdx::new(0),
@@ -1368,11 +1382,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
             // Types with no meaningful known layout.
             ty::Projection(_) | ty::Opaque(..) => {
-                let normalized = tcx.normalize_erasing_regions(param_env, ty);
-                if ty == normalized {
-                    return Err(LayoutError::Unknown(ty));
-                }
-                tcx.layout_raw(param_env.and(normalized))?
+                // NOTE(eddyb) `layout_of` query should've normalized these away,
+                // if that was possible, so there's no reason to try again here.
+                return Err(LayoutError::Unknown(ty));
             }
 
             ty::Placeholder(..) | ty::GeneratorWitness(..) | ty::Infer(_) => {
@@ -1712,7 +1724,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         Ok(layout)
     }
 
-    /// This is invoked by the `layout_raw` query to record the final
+    /// This is invoked by the `layout_of` query to record the final
     /// layout of each type.
     #[inline(always)]
     fn record_layout_for_printing(&self, layout: TyAndLayout<'tcx>) {
@@ -2040,22 +2052,9 @@ impl<'tcx> LayoutOf for LayoutCx<'tcx, TyCtxt<'tcx>> {
     type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
     /// Computes the layout of a type. Note that this implicitly
-    /// executes in "reveal all" mode.
+    /// executes in "reveal all" mode, and will normalize the input type.
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
-        let param_env = self.param_env.with_reveal_all_normalized(self.tcx);
-        let ty = self.tcx.normalize_erasing_regions(param_env, ty);
-        let layout = self.tcx.layout_raw(param_env.and(ty))?;
-        let layout = TyAndLayout { ty, layout };
-
-        // N.B., this recording is normally disabled; when enabled, it
-        // can however trigger recursive invocations of `layout_of`.
-        // Therefore, we execute it *after* the main query has
-        // completed, to avoid problems around recursive structures
-        // and the like. (Admittedly, I wasn't able to reproduce a problem
-        // here, but it seems like the right thing to do. -nmatsakis)
-        self.record_layout_for_printing(layout);
-
-        Ok(layout)
+        self.tcx.layout_of(self.param_env.and(ty))
     }
 }
 
@@ -2064,50 +2063,9 @@ impl LayoutOf for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
     type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
     /// Computes the layout of a type. Note that this implicitly
-    /// executes in "reveal all" mode.
+    /// executes in "reveal all" mode, and will normalize the input type.
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
-        let param_env = self.param_env.with_reveal_all_normalized(*self.tcx);
-        let ty = self.tcx.normalize_erasing_regions(param_env, ty);
-        let layout = self.tcx.layout_raw(param_env.and(ty))?;
-        let layout = TyAndLayout { ty, layout };
-
-        // N.B., this recording is normally disabled; when enabled, it
-        // can however trigger recursive invocations of `layout_of`.
-        // Therefore, we execute it *after* the main query has
-        // completed, to avoid problems around recursive structures
-        // and the like. (Admittedly, I wasn't able to reproduce a problem
-        // here, but it seems like the right thing to do. -nmatsakis)
-        let cx = LayoutCx { tcx: *self.tcx, param_env: self.param_env };
-        cx.record_layout_for_printing(layout);
-
-        Ok(layout)
-    }
-}
-
-// Helper (inherent) `layout_of` methods to avoid pushing `LayoutCx` to users.
-impl TyCtxt<'tcx> {
-    /// Computes the layout of a type. Note that this implicitly
-    /// executes in "reveal all" mode.
-    #[inline]
-    pub fn layout_of(
-        self,
-        param_env_and_ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> Result<TyAndLayout<'tcx>, LayoutError<'tcx>> {
-        let cx = LayoutCx { tcx: self, param_env: param_env_and_ty.param_env };
-        cx.layout_of(param_env_and_ty.value)
-    }
-}
-
-impl ty::query::TyCtxtAt<'tcx> {
-    /// Computes the layout of a type. Note that this implicitly
-    /// executes in "reveal all" mode.
-    #[inline]
-    pub fn layout_of(
-        self,
-        param_env_and_ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> Result<TyAndLayout<'tcx>, LayoutError<'tcx>> {
-        let cx = LayoutCx { tcx: self.at(self.span), param_env: param_env_and_ty.param_env };
-        cx.layout_of(param_env_and_ty.value)
+        self.tcx.layout_of(self.param_env.and(ty))
     }
 }
 

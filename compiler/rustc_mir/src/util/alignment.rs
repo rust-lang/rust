@@ -24,7 +24,7 @@ where
     };
 
     let ty = place.ty(local_decls, tcx).ty;
-    match tcx.layout_raw(param_env.and(ty)) {
+    match tcx.layout_of(param_env.and(ty)) {
         Ok(layout) if layout.align.abi <= pack => {
             // If the packed alignment is greater or equal to the field alignment, the type won't be
             // further disaligned.
