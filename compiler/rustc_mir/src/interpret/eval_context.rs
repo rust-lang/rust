@@ -272,11 +272,12 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
                 write!(f, "inside `{}`", self.instance)?;
             }
             if !self.span.is_dummy() {
-                let lo = tcx.sess.source_map().lookup_char_pos(self.span.lo());
+                let sm = tcx.sess.source_map();
+                let lo = sm.lookup_char_pos(self.span.lo());
                 write!(
                     f,
                     " at {}:{}:{}",
-                    lo.file.name.prefer_local(),
+                    sm.filename_for_diagnostics(&lo.file.name),
                     lo.line,
                     lo.col.to_usize() + 1
                 )?;

@@ -1320,7 +1320,7 @@ impl EmitterWriter {
                         buffer_msg_line_offset,
                         &format!(
                             "{}:{}:{}",
-                            loc.file.name.prefer_local(),
+                            sm.filename_for_diagnostics(&loc.file.name),
                             sm.doctest_offset_line(&loc.file.name, loc.line),
                             loc.col.0 + 1,
                         ),
@@ -1334,7 +1334,7 @@ impl EmitterWriter {
                         0,
                         &format!(
                             "{}:{}:{}: ",
-                            loc.file.name.prefer_local(),
+                            sm.filename_for_diagnostics(&loc.file.name),
                             sm.doctest_offset_line(&loc.file.name, loc.line),
                             loc.col.0 + 1,
                         ),
@@ -1362,12 +1362,12 @@ impl EmitterWriter {
                     };
                     format!(
                         "{}:{}{}",
-                        annotated_file.file.name.prefer_local(),
+                        sm.filename_for_diagnostics(&annotated_file.file.name),
                         sm.doctest_offset_line(&annotated_file.file.name, first_line.line_index),
                         col
                     )
                 } else {
-                    format!("{}", annotated_file.file.name.prefer_local())
+                    format!("{}", sm.filename_for_diagnostics(&annotated_file.file.name))
                 };
                 buffer.append(buffer_msg_line_offset + 1, &loc, Style::LineAndColumn);
                 for _ in 0..max_line_num_len {
