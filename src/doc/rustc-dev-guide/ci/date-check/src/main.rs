@@ -39,7 +39,7 @@ fn make_date_regex() -> Regex {
     Regex::new(
         r"(?x) # insignificant whitespace mode
         <!--\s*
-        date:\s*
+        [dD]ate:\s*
         (?P<y>\d{4}) # year
         -
         (?P<m>\d{2}) # month
@@ -184,6 +184,12 @@ mod tests {
     fn test_date_regex() {
         let regex = make_date_regex();
         assert!(regex.is_match("foo <!-- date: 2021-01 --> bar"));
+    }
+
+    #[test]
+    fn test_date_regex_capitalized() {
+        let regex = make_date_regex();
+        assert!(regex.is_match("foo <!-- Date: 2021-08 --> bar"));
     }
 
     #[test]
