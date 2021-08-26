@@ -1,6 +1,7 @@
 use crate::abi::{self, Abi, Align, FieldsShape, Size};
 use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
 use crate::spec::{self, HasTargetSpec};
+use std::fmt;
 
 mod aarch64;
 mod amdgpu;
@@ -599,8 +600,28 @@ pub struct FnAbi<'a, Ty> {
     pub can_unwind: bool,
 }
 
+/// Error produced by attempting to adjust a `FnAbi`, for a "foreign" ABI.
+pub enum AdjustForForeignAbiError {
+    /// Target architecture doesn't support "foreign" (i.e. non-Rust) ABIs.
+    Unsupported { arch: String, abi: spec::abi::Abi },
+}
+
+impl fmt::Display for AdjustForForeignAbiError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Unsupported { arch, abi } => {
+                write!(f, "target architecture {:?} does not support `extern {}` ABI", arch, abi)
+            }
+        }
+    }
+}
+
 impl<'a, Ty> FnAbi<'a, Ty> {
-    pub fn adjust_for_foreign_abi<C>(&mut self, cx: &C, abi: spec::abi::Abi) -> Result<(), String>
+    pub fn adjust_for_foreign_abi<C>(
+        &mut self,
+        cx: &C,
+        abi: spec::abi::Abi,
+    ) -> Result<(), AdjustForForeignAbiError>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
         C: HasDataLayout + HasTargetSpec,
@@ -655,7 +676,9 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             }
             "asmjs" => wasm::compute_c_abi_info(cx, self),
             "bpf" => bpf::compute_abi_info(self),
-            a => return Err(format!("unrecognized arch \"{}\" in target specification", a)),
+            arch => {
+                return Err(AdjustForForeignAbiError::Unsupported { arch: arch.to_string(), abi });
+            }
         }
 
         Ok(())

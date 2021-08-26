@@ -18,7 +18,7 @@ use rustc_target::abi::call::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
 };
 use rustc_target::abi::*;
-use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy};
+use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Target};
 
 use std::cmp;
 use std::fmt;
@@ -2015,6 +2015,12 @@ impl<'tcx> HasDataLayout for TyCtxt<'tcx> {
     }
 }
 
+impl<'tcx> HasTargetSpec for TyCtxt<'tcx> {
+    fn target_spec(&self) -> &Target {
+        &self.sess.target
+    }
+}
+
 impl<'tcx> HasTyCtxt<'tcx> for TyCtxt<'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -2045,6 +2051,12 @@ impl<'tcx, C> HasParamEnv<'tcx> for LayoutCx<'tcx, C> {
 impl<'tcx, T: HasDataLayout> HasDataLayout for LayoutCx<'tcx, T> {
     fn data_layout(&self) -> &TargetDataLayout {
         self.tcx.data_layout()
+    }
+}
+
+impl<'tcx, T: HasTargetSpec> HasTargetSpec for LayoutCx<'tcx, T> {
+    fn target_spec(&self) -> &Target {
+        self.tcx.target_spec()
     }
 }
 
@@ -2788,9 +2800,39 @@ pub fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
     }
 }
 
+/// Error produced by attempting to compute or adjust a `FnAbi`.
+enum FnAbiError<'tcx> {
+    /// Error produced by a `layout_of` call, while computing `FnAbi` initially.
+    Layout(LayoutError<'tcx>),
+
+    /// Error produced by attempting to adjust a `FnAbi`, for a "foreign" ABI.
+    AdjustForForeignAbi(call::AdjustForForeignAbiError),
+}
+
+impl From<LayoutError<'tcx>> for FnAbiError<'tcx> {
+    fn from(err: LayoutError<'tcx>) -> Self {
+        Self::Layout(err)
+    }
+}
+
+impl From<call::AdjustForForeignAbiError> for FnAbiError<'_> {
+    fn from(err: call::AdjustForForeignAbiError) -> Self {
+        Self::AdjustForForeignAbi(err)
+    }
+}
+
+impl<'tcx> fmt::Display for FnAbiError<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Layout(err) => err.fmt(f),
+            Self::AdjustForForeignAbi(err) => err.fmt(f),
+        }
+    }
+}
+
 pub trait FnAbiExt<'tcx, C>
 where
-    C: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>> + HasTargetSpec,
+    C: HasTyCtxt<'tcx> + HasParamEnv<'tcx>,
 {
     /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
     ///
@@ -2808,10 +2850,26 @@ where
 
 impl<'tcx, C> FnAbiExt<'tcx, C> for call::FnAbi<'tcx, Ty<'tcx>>
 where
-    C: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>> + HasTargetSpec,
+    C: HasTyCtxt<'tcx> + HasParamEnv<'tcx>,
 {
     fn of_fn_ptr(cx: &C, sig: ty::PolyFnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
-        call::FnAbi::new_internal(cx, sig, extra_args, None, CodegenFnAttrFlags::empty(), false)
+        call::FnAbi::new_internal(
+            &LayoutCx { tcx: cx.tcx(), param_env: cx.param_env() },
+            sig,
+            extra_args,
+            None,
+            CodegenFnAttrFlags::empty(),
+            false,
+        )
+        .unwrap_or_else(|err| {
+            // FIXME(eddyb) get a better `span` here.
+            let span = DUMMY_SP;
+            if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
+                cx.tcx().sess.span_fatal(span, &err.to_string())
+            } else {
+                span_bug!(span, "`FnAbi::of_fn_ptr({}, {:?})` failed: {}", sig, extra_args, err);
+            }
+        })
     }
 
     fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
@@ -2826,35 +2884,57 @@ where
         let attrs = cx.tcx().codegen_fn_attrs(instance.def_id()).flags;
 
         call::FnAbi::new_internal(
-            cx,
+            &LayoutCx { tcx: cx.tcx(), param_env: cx.param_env() },
             sig,
             extra_args,
             caller_location,
             attrs,
             matches!(instance.def, ty::InstanceDef::Virtual(..)),
         )
+        .unwrap_or_else(|err| {
+            // FIXME(eddyb) get a better `span` here.
+            let span = cx.tcx().def_span(instance.def_id());
+            if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
+                cx.tcx().sess.span_fatal(span, &err.to_string())
+            } else {
+                span_bug!(
+                    span,
+                    "`FnAbi::of_instance({}, {:?})` failed: {}",
+                    instance,
+                    extra_args,
+                    err
+                );
+            }
+        })
     }
 }
 
 /// Implementation detail of computing `FnAbi`s, shouldn't be exported.
-trait FnAbiInternalExt<'tcx, C>
+// FIXME(eddyb) move this off of being generic on `C: LayoutOf`, and
+// explicitly take `LayoutCx` *or* `TyCtxt` and `ParamEnvAnd<...>`.
+trait FnAbiInternalExt<'tcx, C>: Sized
 where
-    C: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>> + HasTargetSpec,
+    C: LayoutOf<'tcx, LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>>
+        + HasTargetSpec,
 {
+    // FIXME(eddyb) perhaps group the signature/type-containing (or all of them?)
+    // arguments of this method, into a separate `struct`.
     fn new_internal(
         cx: &C,
         sig: ty::PolyFnSig<'tcx>,
         extra_args: &[Ty<'tcx>],
         caller_location: Option<Ty<'tcx>>,
         codegen_fn_attr_flags: CodegenFnAttrFlags,
+        // FIXME(eddyb) replace this with something typed, like an `enum`.
         make_self_ptr_thin: bool,
-    ) -> Self;
-    fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi);
+    ) -> Result<Self, FnAbiError<'tcx>>;
+    fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi) -> Result<(), FnAbiError<'tcx>>;
 }
 
 impl<'tcx, C> FnAbiInternalExt<'tcx, C> for call::FnAbi<'tcx, Ty<'tcx>>
 where
-    C: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>> + HasTargetSpec,
+    C: LayoutOf<'tcx, LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>>
+        + HasTargetSpec,
 {
     fn new_internal(
         cx: &C,
@@ -2863,10 +2943,10 @@ where
         caller_location: Option<Ty<'tcx>>,
         codegen_fn_attr_flags: CodegenFnAttrFlags,
         force_thin_self_ptr: bool,
-    ) -> Self {
+    ) -> Result<Self, FnAbiError<'tcx>> {
         debug!("FnAbi::new_internal({:?}, {:?})", sig, extra_args);
 
-        let sig = cx.tcx().normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig);
+        let sig = cx.tcx().normalize_erasing_late_bound_regions(cx.param_env(), sig);
 
         let conv = conv_from_spec_abi(cx.tcx(), sig.abi);
 
@@ -2972,10 +3052,10 @@ where
             }
         };
 
-        let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| {
+        let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, FnAbiError<'tcx>> {
             let is_return = arg_idx.is_none();
 
-            let layout = cx.layout_of(ty);
+            let layout = cx.layout_of(ty)?;
             let layout = if force_thin_self_ptr && arg_idx == Some(0) {
                 // Don't pass the vtable, it's not an argument of the virtual fn.
                 // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`
@@ -3006,11 +3086,11 @@ where
                 }
             }
 
-            arg
+            Ok(arg)
         };
 
         let mut fn_abi = FnAbi {
-            ret: arg_of(sig.output(), None),
+            ret: arg_of(sig.output(), None)?,
             args: inputs
                 .iter()
                 .cloned()
@@ -3018,20 +3098,20 @@ where
                 .chain(caller_location)
                 .enumerate()
                 .map(|(i, ty)| arg_of(ty, Some(i)))
-                .collect(),
+                .collect::<Result<_, _>>()?,
             c_variadic: sig.c_variadic,
             fixed_count: inputs.len(),
             conv,
             can_unwind: fn_can_unwind(cx.tcx(), codegen_fn_attr_flags, sig.abi),
         };
-        fn_abi.adjust_for_abi(cx, sig.abi);
+        fn_abi.adjust_for_abi(cx, sig.abi)?;
         debug!("FnAbi::new_internal = {:?}", fn_abi);
-        fn_abi
+        Ok(fn_abi)
     }
 
-    fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi) {
+    fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi) -> Result<(), FnAbiError<'tcx>> {
         if abi == SpecAbi::Unadjusted {
-            return;
+            return Ok(());
         }
 
         if abi == SpecAbi::Rust
@@ -3095,12 +3175,11 @@ where
             for arg in &mut self.args {
                 fixup(arg);
             }
-            return;
+        } else {
+            self.adjust_for_foreign_abi(cx, abi)?;
         }
 
-        if let Err(msg) = self.adjust_for_foreign_abi(cx, abi) {
-            cx.tcx().sess.fatal(&msg);
-        }
+        Ok(())
     }
 }
 
