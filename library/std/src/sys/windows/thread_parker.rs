@@ -22,7 +22,7 @@
 //
 // Unlike WaitOnAddress, NtWaitForKeyedEvent/NtReleaseKeyedEvent operate on a
 // HANDLE (created with NtCreateKeyedEvent). This means that we can be sure
-// a succesfully awoken park() was awoken by unpark() and not a
+// a successfully awoken park() was awoken by unpark() and not a
 // NtReleaseKeyedEvent call from some other code, as these events are not only
 // matched by the key (address of the parker (state)), but also by this HANDLE.
 // We lazily allocate this handle the first time it is needed.

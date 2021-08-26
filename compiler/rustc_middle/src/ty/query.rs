@@ -265,7 +265,7 @@ rustc_query_append! { [define_callbacks!][<'tcx>] }
 mod sealed {
     use super::{DefId, LocalDefId};
 
-    /// An analogue of the `Into` trait that's intended only for query paramaters.
+    /// An analogue of the `Into` trait that's intended only for query parameters.
     ///
     /// This exists to allow queries to accept either `DefId` or `LocalDefId` while requiring that the
     /// user call `to_def_id` to convert between them everywhere else.

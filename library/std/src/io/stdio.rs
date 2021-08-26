@@ -1185,7 +1185,7 @@ where
             })
         }) == Ok(Some(()))
     {
-        // Succesfully wrote to capture buffer.
+        // Successfully wrote to capture buffer.
         return;
     }
 
