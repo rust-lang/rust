@@ -107,11 +107,14 @@ fn quickly_past_the_limit() {
 }
 
 #[test]
-#[should_panic = "called `Option::unwrap()` on a `None` value"]
 fn close_too_many() {
     let mut buf = HtmlWithLimit::new(60);
     buf.open_tag("p");
     buf.push("Hello");
     buf.close_tag();
+    // This call does not panic because there are valid cases
+    // where `close_tag()` is called with no tags left to close.
+    // So `close_tag()` does nothing in this case.
     buf.close_tag();
+    assert_eq!(buf.finish(), "<p>Hello</p>");
 }

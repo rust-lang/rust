@@ -86,8 +86,16 @@ impl HtmlWithLimit {
 
     /// Close the most recently opened HTML tag.
     pub(super) fn close_tag(&mut self) {
-        let tag_name = self.unclosed_tags.pop().unwrap();
-        write!(self.buf, "</{}>", tag_name).unwrap();
+        match self.unclosed_tags.pop() {
+            // Close the most recently opened tag.
+            Some(tag_name) => write!(self.buf, "</{}>", tag_name).unwrap(),
+            // There are valid cases where `close_tag()` is called without
+            // there being any tags to close. For example, this occurs when
+            // a tag is opened after the length limit is exceeded;
+            // `flush_queue()` will never be called, and thus, the tag will
+            // not end up being added to `unclosed_tags`.
+            None => {}
+        }
     }
 
     /// Write all queued tags and add them to the `unclosed_tags` list.
