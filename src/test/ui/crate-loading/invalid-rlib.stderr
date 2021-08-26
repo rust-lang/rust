@@ -1,0 +1,11 @@
+error[E0786]: found invalid metadata files for crate `foo`
+  --> $DIR/invalid-rlib.rs:4:7
+   |
+LL | use ::foo;
+   |       ^^^
+   |
+   = note: failed to mmap file '$DIR/auxiliary/libfoo.rlib': memory map must have a non-zero length
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0786`.
