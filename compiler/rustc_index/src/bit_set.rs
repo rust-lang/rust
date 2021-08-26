@@ -379,9 +379,9 @@ impl<T: Idx> BitRelations<HybridBitSet<T>> for HybridBitSet<T> {
     fn union(&mut self, other: &HybridBitSet<T>) -> bool {
         assert_eq!(self.domain_size(), other.domain_size());
         match self {
-            HybridBitSet::Sparse(self_sparse) => {
+            HybridBitSet::Sparse(_) => {
                 match other {
-                    HybridBitSet::Sparse(_) => {
+                    HybridBitSet::Sparse(other_sparse) => {
                         // Both sets are sparse. Add the elements in
                         // `other_sparse` to `self` one at a time. This
                         // may or may not cause `self` to be densified.
