@@ -93,8 +93,8 @@ fn basic() {
         if b { return; }
         #[allow(unused)]
         let x = never();
-        yield 2;
         #[allow(unreachable_code)]
+        yield 2;
         drop(x);
     });
 
