@@ -1,13 +1,17 @@
 use anyhow::Error;
 use curl::easy::Easy;
+use indexmap::IndexMap;
 use std::collections::HashMap;
 use std::convert::TryInto;
 
 const DIST_SERVER: &str = "https://static.rust-lang.org";
+const COMPILER_COMPONENTS: &[&str] = &["rustc", "rust-std", "cargo"];
+const RUSTFMT_COMPONENTS: &[&str] = &["rustfmt-preview"];
 
 struct Tool {
     channel: Channel,
     version: [u16; 3],
+    checksums: IndexMap<String, String>,
 }
 
 impl Tool {
@@ -28,10 +32,10 @@ impl Tool {
             .try_into()
             .map_err(|_| anyhow::anyhow!("failed to parse version"))?;
 
-        Ok(Self { channel, version })
+        Ok(Self { channel, version, checksums: IndexMap::new() })
     }
 
-    fn update_json(self) -> Result<(), Error> {
+    fn update_json(mut self) -> Result<(), Error> {
         std::fs::write(
             "src/stage0.json",
             format!(
@@ -42,8 +46,14 @@ impl Tool {
                     dist_server: DIST_SERVER.into(),
                     compiler: self.detect_compiler()?,
                     rustfmt: self.detect_rustfmt()?,
+                    checksums_sha256: {
+                        // Keys are sorted here instead of beforehand because values in this map
+                        // are added while filling the other struct fields just above this block.
+                        self.checksums.sort_keys();
+                        self.checksums
+                    }
                 })?
-            )
+            ),
         )?;
         Ok(())
     }
@@ -55,7 +65,7 @@ impl Tool {
     // On the master branch the compiler version is configured to `beta` whereas if you're looking
     // at the beta or stable channel you'll likely see `1.x.0` as the version, with the previous
     // release's version number.
-    fn detect_compiler(&self) -> Result<Stage0Toolchain, Error> {
+    fn detect_compiler(&mut self) -> Result<Stage0Toolchain, Error> {
         let channel = match self.channel {
             Channel::Stable | Channel::Beta => {
                 // The 1.XX manifest points to the latest point release of that minor release.
@@ -65,6 +75,7 @@ impl Tool {
         };
 
         let manifest = fetch_manifest(&channel)?;
+        self.collect_checksums(&manifest, COMPILER_COMPONENTS)?;
         Ok(Stage0Toolchain {
             date: manifest.date,
             version: if self.channel == Channel::Nightly {
@@ -84,13 +95,38 @@ impl Tool {
     /// We use a nightly rustfmt to format the source because it solves some bootstrapping issues
     /// with use of new syntax in this repo. For the beta/stable channels rustfmt is not provided,
     /// as we don't want to depend on rustfmt from nightly there.
-    fn detect_rustfmt(&self) -> Result<Option<Stage0Toolchain>, Error> {
+    fn detect_rustfmt(&mut self) -> Result<Option<Stage0Toolchain>, Error> {
         if self.channel != Channel::Nightly {
             return Ok(None);
         }
 
         let manifest = fetch_manifest("nightly")?;
+        self.collect_checksums(&manifest, RUSTFMT_COMPONENTS)?;
         Ok(Some(Stage0Toolchain { date: manifest.date, version: "nightly".into() }))
+    }
+
+    fn collect_checksums(&mut self, manifest: &Manifest, components: &[&str]) -> Result<(), Error> {
+        let prefix = format!("{}/", DIST_SERVER);
+        for component in components {
+            let pkg = manifest
+                .pkg
+                .get(*component)
+                .ok_or_else(|| anyhow::anyhow!("missing component from manifest: {}", component))?;
+            for target in pkg.target.values() {
+                for pair in &[(&target.url, &target.hash), (&target.xz_url, &target.xz_hash)] {
+                    if let (Some(url), Some(sha256)) = pair {
+                        let url = url
+                            .strip_prefix(&prefix)
+                            .ok_or_else(|| {
+                                anyhow::anyhow!("url doesn't start with dist server base: {}", url)
+                            })?
+                            .to_string();
+                        self.checksums.insert(url, sha256.clone());
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 }
 
@@ -137,6 +173,7 @@ struct Stage0 {
     dist_server: String,
     compiler: Stage0Toolchain,
     rustfmt: Option<Stage0Toolchain>,
+    checksums_sha256: IndexMap<String, String>,
 }
 
 #[derive(Debug, serde::Serialize)]

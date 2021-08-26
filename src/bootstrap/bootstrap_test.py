@@ -18,14 +18,13 @@ class VerifyTestCase(unittest.TestCase):
     def setUp(self):
         self.container = tempfile.mkdtemp()
         self.src = os.path.join(self.container, "src.txt")
-        self.sums = os.path.join(self.container, "sums")
         self.bad_src = os.path.join(self.container, "bad.txt")
         content = "Hello world"
 
+        self.expected = hashlib.sha256(content.encode("utf-8")).hexdigest()
+
         with open(self.src, "w") as src:
             src.write(content)
-        with open(self.sums, "w") as sums:
-            sums.write(hashlib.sha256(content.encode("utf-8")).hexdigest())
         with open(self.bad_src, "w") as bad:
             bad.write("Hello!")
 
@@ -34,11 +33,11 @@ class VerifyTestCase(unittest.TestCase):
 
     def test_valid_file(self):
         """Check if the sha256 sum of the given file is valid"""
-        self.assertTrue(bootstrap.verify(self.src, self.sums, False))
+        self.assertTrue(bootstrap.verify(self.src, self.expected, False))
 
     def test_invalid_file(self):
         """Should verify that the file is invalid"""
-        self.assertFalse(bootstrap.verify(self.bad_src, self.sums, False))
+        self.assertFalse(bootstrap.verify(self.bad_src, self.expected, False))
 
 
 class ProgramOutOfDate(unittest.TestCase):

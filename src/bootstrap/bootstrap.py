@@ -25,19 +25,17 @@ def support_xz():
     except tarfile.CompressionError:
         return False
 
-def get(url, path, verbose=False, do_verify=True):
-    suffix = '.sha256'
-    sha_url = url + suffix
+def get(base, url, path, checksums, verbose=False, do_verify=True):
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_path = temp_file.name
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as sha_file:
-        sha_path = sha_file.name
 
     try:
         if do_verify:
-            download(sha_path, sha_url, False, verbose)
+            if url not in checksums:
+                raise RuntimeError("src/stage0.json doesn't contain a checksum for {}".format(url))
+            sha256 = checksums[url]
             if os.path.exists(path):
-                if verify(path, sha_path, False):
+                if verify(path, sha256, False):
                     if verbose:
                         print("using already-download file", path)
                     return
@@ -46,23 +44,17 @@ def get(url, path, verbose=False, do_verify=True):
                         print("ignoring already-download file",
                             path, "due to failed verification")
                     os.unlink(path)
-        download(temp_path, url, True, verbose)
-        if do_verify and not verify(temp_path, sha_path, verbose):
+        download(temp_path, "{}/{}".format(base, url), True, verbose)
+        if do_verify and not verify(temp_path, sha256, verbose):
             raise RuntimeError("failed verification")
         if verbose:
             print("moving {} to {}".format(temp_path, path))
         shutil.move(temp_path, path)
     finally:
-        delete_if_present(sha_path, verbose)
-        delete_if_present(temp_path, verbose)
-
-
-def delete_if_present(path, verbose):
-    """Remove the given file if present"""
-    if os.path.isfile(path):
-        if verbose:
-            print("removing", path)
-        os.unlink(path)
+        if os.path.isfile(temp_path):
+            if verbose:
+                print("removing", temp_path)
+            os.unlink(temp_path)
 
 
 def download(path, url, probably_big, verbose):
@@ -99,14 +91,12 @@ def _download(path, url, probably_big, verbose, exception):
             exception=exception)
 
 
-def verify(path, sha_path, verbose):
+def verify(path, expected, verbose):
     """Check if the sha256 sum of the given path is valid"""
     if verbose:
         print("verifying", path)
     with open(path, "rb") as source:
         found = hashlib.sha256(source.read()).hexdigest()
-    with open(sha_path, "r") as sha256sum:
-        expected = sha256sum.readline().split()[0]
     verified = found == expected
     if not verified:
         print("invalid checksum:\n"
@@ -375,6 +365,7 @@ class Stage0Toolchain:
 class RustBuild(object):
     """Provide all the methods required to build Rust"""
     def __init__(self):
+        self.checksums_sha256 = {}
         self.stage0_compiler = None
         self.stage0_rustfmt = None
         self._download_url = ''
@@ -529,12 +520,21 @@ class RustBuild(object):
             os.makedirs(rustc_cache)
 
         if stage0:
-            url = "{}/dist/{}".format(self._download_url, key)
+            base = self._download_url
+            url = "dist/{}".format(key)
         else:
-            url = "https://ci-artifacts.rust-lang.org/rustc-builds/{}".format(self.rustc_commit)
+            base = "https://ci-artifacts.rust-lang.org"
+            url = "rustc-builds/{}".format(self.rustc_commit)
         tarball = os.path.join(rustc_cache, filename)
         if not os.path.exists(tarball):
-            get("{}/{}".format(url, filename), tarball, verbose=self.verbose, do_verify=stage0)
+            get(
+                base,
+                "{}/{}".format(url, filename),
+                tarball,
+                self.checksums_sha256,
+                verbose=self.verbose,
+                do_verify=stage0,
+            )
         unpack(tarball, tarball_suffix, self.bin_root(stage0), match=pattern, verbose=self.verbose)
 
     def _download_ci_llvm(self, llvm_sha, llvm_assertions):
@@ -544,7 +544,8 @@ class RustBuild(object):
         if not os.path.exists(rustc_cache):
             os.makedirs(rustc_cache)
 
-        url = "https://ci-artifacts.rust-lang.org/rustc-builds/{}".format(llvm_sha)
+        base = "https://ci-artifacts.rust-lang.org"
+        url = "rustc-builds/{}".format(llvm_sha)
         if llvm_assertions:
             url = url.replace('rustc-builds', 'rustc-builds-alt')
         # ci-artifacts are only stored as .xz, not .gz
@@ -556,7 +557,14 @@ class RustBuild(object):
         filename = "rust-dev-nightly-" + self.build + tarball_suffix
         tarball = os.path.join(rustc_cache, filename)
         if not os.path.exists(tarball):
-            get("{}/{}".format(url, filename), tarball, verbose=self.verbose, do_verify=False)
+            get(
+                base,
+                "{}/{}".format(url, filename),
+                tarball,
+                self.checksums_sha256,
+                verbose=self.verbose,
+                do_verify=False,
+            )
         unpack(tarball, tarball_suffix, self.llvm_root(),
                 match="rust-dev",
                 verbose=self.verbose)
@@ -1158,6 +1166,7 @@ def bootstrap(help_triggered):
 
     with open(os.path.join(build.rust_root, "src", "stage0.json")) as f:
         data = json.load(f)
+    build.checksums_sha256 = data["checksums_sha256"]
     build.stage0_compiler = Stage0Toolchain(data["compiler"])
     if data.get("rustfmt") is not None:
         build.stage0_rustfmt = Stage0Toolchain(data["rustfmt"])
