@@ -64,8 +64,8 @@
       bb1: {
 -         StorageDead(_10);                // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
 -         StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
--         _5 = discriminant(_3);           // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
--         switchInt(move _5) -> [0_isize: bb2, otherwise: bb3]; // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
+-         _5 = discriminant(_3);           // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
+-         switchInt(move _5) -> [0_isize: bb2, otherwise: bb3]; // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
 -     }
 - 
 -     bb2: {
@@ -121,8 +121,8 @@
 -         goto -> bb1;                     // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
 +         StorageDead(_10);                // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
 +         StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
-+         _5 = discriminant(_3);           // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
-+         switchInt(move _5) -> [0_isize: bb1, otherwise: bb2]; // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
++         _5 = discriminant(_3);           // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
++         switchInt(move _5) -> [0_isize: bb1, otherwise: bb2]; // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
       }
   
 -     bb5: {
@@ -143,8 +143,8 @@
 -         goto -> bb1;                     // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
 +         StorageDead(_10);                // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
 +         StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
-+         _5 = discriminant(_3);           // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
-+         switchInt(move _5) -> [0_isize: bb1, otherwise: bb2]; // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
++         _5 = discriminant(_3);           // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
++         switchInt(move _5) -> [0_isize: bb1, otherwise: bb2]; // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
       }
   }
   

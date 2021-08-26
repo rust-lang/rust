@@ -39,8 +39,8 @@ fn try_identity(_1: Result<u32, i32>) -> Result<u32, i32> {
         _4 = _1;                         // scope 0 at $DIR/simplify_try.rs:21:31: 21:32
         _3 = move _4;                    // scope 4 at $DIR/simplify_try.rs:21:19: 21:33
         StorageDead(_4);                 // scope 0 at $DIR/simplify_try.rs:21:32: 21:33
-        _5 = discriminant(_3);           // scope 0 at $DIR/simplify_try.rs:22:9: 22:15
-        goto -> bb1;                     // scope 0 at $DIR/simplify_try.rs:22:9: 22:15
+        _5 = discriminant(_3);           // scope 0 at $DIR/simplify_try.rs:21:19: 21:33
+        goto -> bb1;                     // scope 0 at $DIR/simplify_try.rs:21:13: 21:33
     }
 
     bb1: {

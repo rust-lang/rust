@@ -1,16 +1,15 @@
 error[E0382]: use of moved value: `b`
-  --> $DIR/issue-27282-move-match-input-into-guard.rs:16:14
+  --> $DIR/issue-27282-move-match-input-into-guard.rs:12:5
    |
 LL |     let b = &mut true;
    |         - move occurs because `b` has type `&mut bool`, which does not implement the `Copy` trait
+LL |     match b {
+   |     ^^^^^^^ value used here after move
 ...
 LL |         _ if { (|| { let bar = b; *bar = false; })();
    |                 --             - variable moved due to use in closure
    |                 |
    |                 value moved into closure here
-LL |                      false } => { },
-LL |         &mut true => { println!("You might think we should get here"); },
-   |              ^^^^ value used here after move
 
 error: aborting due to previous error
 

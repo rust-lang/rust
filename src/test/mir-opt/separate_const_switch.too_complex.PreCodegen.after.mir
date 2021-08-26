@@ -27,8 +27,8 @@ fn too_complex(_1: Result<i32, usize>) -> Option<i32> {
 
     bb0: {
         StorageLive(_2);                 // scope 0 at $DIR/separate_const_switch.rs:14:11: 19:6
-        _3 = discriminant(_1);           // scope 0 at $DIR/separate_const_switch.rs:16:13: 16:18
-        switchInt(move _3) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/separate_const_switch.rs:16:13: 16:18
+        _3 = discriminant(_1);           // scope 0 at $DIR/separate_const_switch.rs:15:15: 15:16
+        switchInt(move _3) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/separate_const_switch.rs:15:9: 15:16
     }
 
     bb1: {
@@ -44,7 +44,7 @@ fn too_complex(_1: Result<i32, usize>) -> Option<i32> {
         _10 = ((_2 as Break).0: usize);  // scope 0 at $DIR/separate_const_switch.rs:21:28: 21:29
         discriminant(_0) = 0;            // scope 4 at $DIR/separate_const_switch.rs:21:34: 21:38
         StorageDead(_10);                // scope 0 at $DIR/separate_const_switch.rs:21:37: 21:38
-        goto -> bb3;                     // scope 0 at $DIR/separate_const_switch.rs:14:5: 22:6
+        goto -> bb3;                     // scope 0 at $DIR/separate_const_switch.rs:21:37: 21:38
     }
 
     bb2: {
@@ -64,7 +64,7 @@ fn too_complex(_1: Result<i32, usize>) -> Option<i32> {
         discriminant(_0) = 1;            // scope 3 at $DIR/separate_const_switch.rs:20:37: 20:44
         StorageDead(_9);                 // scope 3 at $DIR/separate_const_switch.rs:20:43: 20:44
         StorageDead(_8);                 // scope 0 at $DIR/separate_const_switch.rs:20:43: 20:44
-        goto -> bb3;                     // scope 0 at $DIR/separate_const_switch.rs:14:5: 22:6
+        goto -> bb3;                     // scope 0 at $DIR/separate_const_switch.rs:20:43: 20:44
     }
 
     bb3: {

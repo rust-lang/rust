@@ -20,14 +20,14 @@
           _3 = _1;                         // scope 0 at $DIR/if-condition-int.rs:44:13: 44:14
 -         _2 = Eq(move _3, const 17_i8);   // scope 0 at $DIR/if-condition-int.rs:44:13: 44:20
 -         StorageDead(_3);                 // scope 0 at $DIR/if-condition-int.rs:44:19: 44:20
--         switchInt(_2) -> [false: bb2, otherwise: bb1]; // scope 1 at $DIR/if-condition-int.rs:46:9: 46:14
+-         switchInt(_2) -> [false: bb2, otherwise: bb1]; // scope 1 at $DIR/if-condition-int.rs:45:5: 45:12
 +         _2 = Eq(_3, const 17_i8);        // scope 0 at $DIR/if-condition-int.rs:44:13: 44:20
 +         nop;                             // scope 0 at $DIR/if-condition-int.rs:44:19: 44:20
-+         switchInt(move _3) -> [17_i8: bb1, otherwise: bb2]; // scope 1 at $DIR/if-condition-int.rs:46:9: 46:14
++         switchInt(move _3) -> [17_i8: bb1, otherwise: bb2]; // scope 1 at $DIR/if-condition-int.rs:45:5: 45:12
       }
   
       bb1: {
-+         StorageDead(_3);                 // scope 1 at $DIR/if-condition-int.rs:46:9: 46:14
++         StorageDead(_3);                 // scope 1 at $DIR/if-condition-int.rs:45:5: 45:12
           StorageLive(_6);                 // scope 1 at $DIR/if-condition-int.rs:47:23: 47:31
           StorageLive(_7);                 // scope 1 at $DIR/if-condition-int.rs:47:23: 47:24
           _7 = _2;                         // scope 1 at $DIR/if-condition-int.rs:47:23: 47:24
@@ -35,11 +35,11 @@
           StorageDead(_7);                 // scope 1 at $DIR/if-condition-int.rs:47:30: 47:31
           _0 = Add(const 100_i32, move _6); // scope 1 at $DIR/if-condition-int.rs:47:17: 47:31
           StorageDead(_6);                 // scope 1 at $DIR/if-condition-int.rs:47:30: 47:31
-          goto -> bb3;                     // scope 1 at $DIR/if-condition-int.rs:45:5: 48:6
+          goto -> bb3;                     // scope 1 at $DIR/if-condition-int.rs:47:30: 47:31
       }
   
       bb2: {
-+         StorageDead(_3);                 // scope 1 at $DIR/if-condition-int.rs:46:9: 46:14
++         StorageDead(_3);                 // scope 1 at $DIR/if-condition-int.rs:45:5: 45:12
           StorageLive(_4);                 // scope 1 at $DIR/if-condition-int.rs:46:23: 46:31
           StorageLive(_5);                 // scope 1 at $DIR/if-condition-int.rs:46:23: 46:24
           _5 = _2;                         // scope 1 at $DIR/if-condition-int.rs:46:23: 46:24
@@ -47,7 +47,7 @@
           StorageDead(_5);                 // scope 1 at $DIR/if-condition-int.rs:46:30: 46:31
           _0 = Add(const 10_i32, move _4); // scope 1 at $DIR/if-condition-int.rs:46:18: 46:31
           StorageDead(_4);                 // scope 1 at $DIR/if-condition-int.rs:46:30: 46:31
-          goto -> bb3;                     // scope 1 at $DIR/if-condition-int.rs:45:5: 48:6
+          goto -> bb3;                     // scope 1 at $DIR/if-condition-int.rs:46:30: 46:31
       }
   
       bb3: {

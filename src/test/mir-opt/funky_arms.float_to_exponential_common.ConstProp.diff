@@ -47,17 +47,17 @@
       bb1: {
           StorageDead(_5);                 // scope 0 at $DIR/funky_arms.rs:15:36: 15:37
           StorageLive(_6);                 // scope 1 at $DIR/funky_arms.rs:19:9: 19:13
-          switchInt(_4) -> [false: bb3, otherwise: bb2]; // scope 1 at $DIR/funky_arms.rs:20:9: 20:14
+          switchInt(_4) -> [false: bb3, otherwise: bb2]; // scope 1 at $DIR/funky_arms.rs:19:16: 19:32
       }
   
       bb2: {
           discriminant(_6) = 1;            // scope 1 at $DIR/funky_arms.rs:21:17: 21:41
-          goto -> bb4;                     // scope 1 at $DIR/funky_arms.rs:19:16: 22:6
+          goto -> bb4;                     // scope 1 at $DIR/funky_arms.rs:21:17: 21:41
       }
   
       bb3: {
           discriminant(_6) = 0;            // scope 1 at $DIR/funky_arms.rs:20:18: 20:38
-          goto -> bb4;                     // scope 1 at $DIR/funky_arms.rs:19:16: 22:6
+          goto -> bb4;                     // scope 1 at $DIR/funky_arms.rs:20:18: 20:38
       }
   
       bb4: {
