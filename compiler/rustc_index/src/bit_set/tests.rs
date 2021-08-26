@@ -110,11 +110,22 @@ fn hybrid_bitset() {
     assert!(hybrid.superset(&sparse01358) && sparse01358.superset(&hybrid));
     assert!(!dense10.union(&sparse01358));
     assert!(!dense256.union(&dense10));
-    let mut dense = dense10;
+
+    assert!(dense10.clone().intersect(&sparse01358));
+    assert!(!sparse01358.clone().intersect(&dense10));
+    assert!(dense10.clone().subtract(&sparse01358));
+    assert!(sparse01358.clone().subtract(&dense10));
+
+    let mut dense = dense10.clone();
     assert!(dense.union(&dense256));
     assert!(dense.superset(&dense256) && dense256.superset(&dense));
     assert!(hybrid.union(&dense256));
     assert!(hybrid.superset(&dense256) && dense256.superset(&hybrid));
+
+    assert!(!dense10.clone().intersect(&dense256));
+    assert!(dense256.clone().intersect(&dense10));
+    assert!(dense10.clone().subtract(&dense256));
+    assert!(dense256.clone().subtract(&dense10));
 
     assert_eq!(dense256.iter().count(), 256);
     let mut dense0 = dense256;
