@@ -24,7 +24,7 @@ impl char {
     /// decoding error.
     ///
     /// It can occur, for example, when giving ill-formed UTF-8 bytes to
-    /// [`String::from_utf8_lossy`](string/struct.String.html#method.from_utf8_lossy).
+    /// [`String::from_utf8_lossy`](../std/string/struct.String.html#method.from_utf8_lossy).
     #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
 

@@ -6,7 +6,7 @@ use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 
-use crate::clean::{self, GetDefId, ItemId};
+use crate::clean::{self, GetDefId, ItemId, PrimitiveType};
 use crate::config::RenderOptions;
 use crate::fold::DocFolder;
 use crate::formats::item_type::ItemType;
@@ -159,17 +159,16 @@ impl Cache {
             self.external_paths.insert(e.def_id(), (vec![name.to_string()], ItemType::Module));
         }
 
-        // Cache where all known primitives have their documentation located.
-        //
-        // Favor linking to as local extern as possible, so iterate all crates in
-        // reverse topological order.
-        for &e in krate.externs.iter().rev() {
-            for &(def_id, prim) in &e.primitives(tcx) {
-                self.primitive_locations.insert(prim, def_id);
-            }
-        }
-        for &(def_id, prim) in &krate.primitives {
-            self.primitive_locations.insert(prim, def_id);
+        // FIXME: avoid this clone (requires implementing Default manually)
+        self.primitive_locations = PrimitiveType::primitive_locations(tcx).clone();
+        for (prim, &def_id) in &self.primitive_locations {
+            let crate_name = tcx.crate_name(def_id.krate);
+            // Recall that we only allow primitive modules to be at the root-level of the crate.
+            // If that restriction is ever lifted, this will have to include the relative paths instead.
+            self.external_paths.insert(
+                def_id,
+                (vec![crate_name.to_string(), prim.as_sym().to_string()], ItemType::Primitive),
+            );
         }
 
         krate = CacheBuilder { tcx, cache: self }.fold_crate(krate);

@@ -132,6 +132,7 @@
 #![feature(decl_macro)]
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
+#![cfg_attr(not(bootstrap), feature(doc_primitive))]
 #![feature(exhaustive_patterns)]
 #![feature(extern_types)]
 #![feature(fundamental)]
@@ -357,3 +358,5 @@ pub mod arch {
         /* compiler built-in */
     }
 }
+
+include!("primitive_docs.rs");

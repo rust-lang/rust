@@ -71,6 +71,7 @@ fn main() {
 
         // Checks that only make sense for the std libs.
         check!(pal, &library_path);
+        check!(primitive_docs, &library_path);
 
         // Checks that need to be done for both the compiler and std libraries.
         check!(unit_tests, &src_path);
