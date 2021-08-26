@@ -5391,7 +5391,8 @@ public:
       }
       Type *castvals[2] = {call.getArgOperand(1)->getType(),
                            call.getArgOperand(3)->getType()};
-      auto *cachetype = StructType::get(call.getContext(), ArrayRef(castvals));
+      auto *cachetype =
+          StructType::get(call.getContext(), ArrayRef<Type *>(castvals));
       Value *undefinit = UndefValue::get(cachetype);
       Value *cacheval;
       auto in_arg = call.getCalledFunction()->arg_begin();
