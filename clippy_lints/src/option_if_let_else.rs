@@ -174,9 +174,9 @@ fn detect_option_if_let_else<'tcx>(
                     ExprKind::Field(e, _) | ExprKind::AddrOf(_, _, e) => Some(e),
                     _ => None,
                 });
-                if let ExprKind::Path(QPath::Resolved(None, Path { res: Res::Local(l), .. })) = e.kind {
-                    match some_captures.get(l)
-                        .or_else(|| (method_sugg == "map_or_else").then(|| ()).and_then(|_| none_captures.get(l)))
+                if let ExprKind::Path(QPath::Resolved(None, Path { res: Res::Local(local_id), .. })) = e.kind {
+                    match some_captures.get(local_id)
+                        .or_else(|| (method_sugg == "map_or_else").then(|| ()).and_then(|_| none_captures.get(local_id)))
                     {
                         Some(CaptureKind::Value | CaptureKind::Ref(Mutability::Mut)) => return None,
                         Some(CaptureKind::Ref(Mutability::Not)) if as_mut => return None,
