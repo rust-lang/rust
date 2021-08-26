@@ -478,7 +478,7 @@ pub trait Visitor<'v>: Sized {
 }
 
 /// Walks the contents of a crate. See also `Crate::visit_all_items`.
-pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate<'v>) {
+pub fn walk_crate_and_attributes<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate<'v>) {
     let top_mod = krate.module();
     visitor.visit_mod(top_mod, top_mod.inner, CRATE_HIR_ID);
     for (&id, attrs) in krate.attrs.iter() {

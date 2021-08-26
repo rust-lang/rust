@@ -36,7 +36,7 @@ pub fn print_hir_stats(krate: &hir::Crate<'_>) {
         data: FxHashMap::default(),
         seen: FxHashSet::default(),
     };
-    hir_visit::walk_crate(&mut collector, krate);
+    hir_visit::walk_crate_and_attributes(&mut collector, krate);
     collector.print("HIR STATS");
 }
 

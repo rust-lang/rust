@@ -6,7 +6,7 @@
 
 use rustc_ast::{Attribute, MetaItem, MetaItemKind};
 use rustc_errors::struct_span_err;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::ty::query::Providers;
@@ -126,9 +126,7 @@ impl Visitor<'tcx> for LibFeatureCollector<'tcx> {
 
 fn get_lib_features(tcx: TyCtxt<'_>, (): ()) -> LibFeatures {
     let mut collector = LibFeatureCollector::new(tcx);
-    let krate = tcx.hir().krate();
-
-    intravisit::walk_crate(&mut collector, krate);
+    tcx.hir().walk_attributes(&mut collector);
     collector.lib_features
 }
 

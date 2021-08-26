@@ -1012,8 +1012,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let module_did = self.tcx.parent_module(self.body_id);
         let module_id = self.tcx.hir().local_def_id_to_hir_id(module_did);
-        let krate = self.tcx.hir().krate();
-        let (span, found_use) = UsePlacementFinder::check(self.tcx, krate, module_id);
+        let (span, found_use) = UsePlacementFinder::check(self.tcx, module_id);
         if let Some(span) = span {
             let path_strings = candidates.iter().map(|did| {
                 // Produce an additional newline to separate the new use statement
@@ -1614,13 +1613,9 @@ struct UsePlacementFinder<'tcx> {
 }
 
 impl UsePlacementFinder<'tcx> {
-    fn check(
-        tcx: TyCtxt<'tcx>,
-        krate: &'tcx hir::Crate<'tcx>,
-        target_module: hir::HirId,
-    ) -> (Option<Span>, bool) {
+    fn check(tcx: TyCtxt<'tcx>, target_module: hir::HirId) -> (Option<Span>, bool) {
         let mut finder = UsePlacementFinder { target_module, span: None, found_use: false, tcx };
-        intravisit::walk_crate(&mut finder, krate);
+        tcx.hir().walk_crate(&mut finder);
         (finder.span, finder.found_use)
     }
 }
