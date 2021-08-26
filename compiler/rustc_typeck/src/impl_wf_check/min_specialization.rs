@@ -207,15 +207,15 @@ fn unconstrained_parent_impl_substs<'tcx>(
                 continue;
             }
 
-            unconstrained_parameters.extend(cgp::parameters_for(&projection_ty, true));
+            unconstrained_parameters.extend(cgp::parameters_for(tcx, &projection_ty, true));
 
-            for param in cgp::parameters_for(&projected_ty, false) {
+            for param in cgp::parameters_for(tcx, &projected_ty, false) {
                 if !unconstrained_parameters.contains(&param) {
                     constrained_params.insert(param.0);
                 }
             }
 
-            unconstrained_parameters.extend(cgp::parameters_for(&projected_ty, true));
+            unconstrained_parameters.extend(cgp::parameters_for(tcx, &projected_ty, true));
         }
     }
 
@@ -249,7 +249,7 @@ fn check_duplicate_params<'tcx>(
     parent_substs: &Vec<GenericArg<'tcx>>,
     span: Span,
 ) {
-    let mut base_params = cgp::parameters_for(parent_substs, true);
+    let mut base_params = cgp::parameters_for(tcx, parent_substs, true);
     base_params.sort_by_key(|param| param.0);
     if let (_, [duplicate, ..]) = base_params.partition_dedup() {
         let param = impl1_substs[duplicate.0 as usize];
@@ -363,7 +363,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
     match predicate.kind().skip_binder() {
         // Global predicates are either always true or always false, so we
         // are fine to specialize on.
-        _ if predicate.is_global() => (),
+        _ if predicate.is_global(tcx) => (),
         // We allow specializing on explicitly marked traits with no associated
         // items.
         ty::PredicateKind::Trait(ty::TraitPredicate {

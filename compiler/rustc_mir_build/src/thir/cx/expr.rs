@@ -693,11 +693,10 @@ impl<'tcx> Cx<'tcx> {
                                 // and not the beginning of discriminants (which is always `0`)
                                 let substs = InternalSubsts::identity_for_item(self.tcx(), did);
                                 let lhs = ty::Const {
-                                    val: ty::ConstKind::Unevaluated(ty::Unevaluated {
-                                        def: ty::WithOptConstParam::unknown(did),
+                                    val: ty::ConstKind::Unevaluated(ty::Unevaluated::new(
+                                        ty::WithOptConstParam::unknown(did),
                                         substs,
-                                        promoted: None,
-                                    }),
+                                    )),
                                     ty: var_ty,
                                 };
                                 let lhs = self.thir.exprs.push(mk_const(self.tcx().mk_const(lhs)));
@@ -889,11 +888,10 @@ impl<'tcx> Cx<'tcx> {
                 debug!("convert_path_expr: (const) user_ty={:?}", user_ty);
                 ExprKind::Literal {
                     literal: self.tcx.mk_const(ty::Const {
-                        val: ty::ConstKind::Unevaluated(ty::Unevaluated {
-                            def: ty::WithOptConstParam::unknown(def_id),
+                        val: ty::ConstKind::Unevaluated(ty::Unevaluated::new(
+                            ty::WithOptConstParam::unknown(def_id),
                             substs,
-                            promoted: None,
-                        }),
+                        )),
                         ty: self.typeck_results().node_type(expr.hir_id),
                     }),
                     user_ty,

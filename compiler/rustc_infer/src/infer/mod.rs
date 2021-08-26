@@ -675,13 +675,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// canonicalizing the consts.
     pub fn try_unify_abstract_consts(
         &self,
-        a: ty::Unevaluated<'tcx>,
-        b: ty::Unevaluated<'tcx>,
+        a: ty::Unevaluated<'tcx, ()>,
+        b: ty::Unevaluated<'tcx, ()>,
     ) -> bool {
-        let canonical = self.canonicalize_query(
-            ((a.def, a.substs), (b.def, b.substs)),
-            &mut OriginalQueryValues::default(),
-        );
+        let canonical = self.canonicalize_query((a, b), &mut OriginalQueryValues::default());
         debug!("canonical consts: {:?}", &canonical.value);
 
         self.tcx.try_unify_abstract_consts(canonical.value)
@@ -1592,16 +1589,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn const_eval_resolve(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        ty::Unevaluated { def, substs, promoted }: ty::Unevaluated<'tcx>,
+        unevaluated: ty::Unevaluated<'tcx>,
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
         let mut original_values = OriginalQueryValues::default();
-        let canonical = self.canonicalize_query((param_env, substs), &mut original_values);
+        let canonical = self.canonicalize_query((param_env, unevaluated), &mut original_values);
 
-        let (param_env, substs) = canonical.value;
+        let (param_env, unevaluated) = canonical.value;
         // The return value is the evaluated value which doesn't contain any reference to inference
         // variables, thus we don't need to substitute back the original values.
-        self.tcx.const_eval_resolve(param_env, ty::Unevaluated { def, substs, promoted }, span)
+        self.tcx.const_eval_resolve(param_env, unevaluated, span)
     }
 
     /// If `typ` is a type variable of some kind, resolve it one level

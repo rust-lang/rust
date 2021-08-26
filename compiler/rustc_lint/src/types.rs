@@ -1160,6 +1160,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         impl<'a, 'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueTypes<'a, 'tcx> {
             type BreakTy = Ty<'tcx>;
+            fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+                Some(self.cx.tcx)
+            }
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                 match ty.kind() {

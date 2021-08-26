@@ -394,7 +394,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     if self.is_object && has_default {
                         let default_ty = tcx.at(self.span).type_of(param.def_id);
                         let self_param = tcx.types.self_param;
-                        if default_ty.walk().any(|arg| arg == self_param.into()) {
+                        if default_ty.walk(tcx).any(|arg| arg == self_param.into()) {
                             // There is no suitable inference default for a type parameter
                             // that references self, in an object type.
                             return true;
@@ -1354,7 +1354,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         // A `Self` within the original bound will be substituted with a
                         // `trait_object_dummy_self`, so check for that.
                         let references_self =
-                            pred.skip_binder().ty.walk().any(|arg| arg == dummy_self.into());
+                            pred.skip_binder().ty.walk(tcx).any(|arg| arg == dummy_self.into());
 
                         // If the projection output contains `Self`, force the user to
                         // elaborate it explicitly to avoid a lot of complexity.
@@ -2204,7 +2204,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.prohibit_generics(path.segments);
                 // Try to evaluate any array length constants.
                 let normalized_ty = self.normalize_ty(span, tcx.at(span).type_of(def_id));
-                if forbid_generic && normalized_ty.needs_subst() {
+                if forbid_generic && normalized_ty.definitely_needs_subst(tcx) {
                     let mut err = tcx.sess.struct_span_err(
                         path.span,
                         "generic `Self` types are currently not permitted in anonymous constants",

@@ -450,7 +450,7 @@ fn subst_and_check_impossible_predicates<'tcx>(
     debug!("subst_and_check_impossible_predicates(key={:?})", key);
 
     let mut predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
-    predicates.retain(|predicate| !predicate.needs_subst());
+    predicates.retain(|predicate| !predicate.definitely_needs_subst(tcx));
     let result = impossible_predicates(tcx, predicates);
 
     debug!("subst_and_check_impossible_predicates(key={:?}) = {:?}", key, result);

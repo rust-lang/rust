@@ -499,7 +499,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         ty::Adt(def, ..) if !def.is_box() => {
                             // Again, only create type information if full debuginfo is enabled
                             if cx.sess().opts.debuginfo == DebugInfo::Full
-                                && !impl_self_ty.needs_subst()
+                                && !impl_self_ty.definitely_needs_subst(cx.tcx)
                             {
                                 Some(type_metadata(cx, impl_self_ty, rustc_span::DUMMY_SP))
                             } else {

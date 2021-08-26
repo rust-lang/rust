@@ -475,7 +475,7 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
                 ty::ConstKind::Unevaluated(uv) => format!(
                     "Unevaluated({}, {:?}, {:?})",
                     self.tcx.def_path_str(uv.def.did),
-                    uv.substs,
+                    uv.substs(self.tcx),
                     uv.promoted
                 ),
                 ty::ConstKind::Value(val) => format!("Value({:?})", val),
@@ -682,6 +682,12 @@ pub fn write_allocations<'tcx>(
     }
     struct CollectAllocIds(BTreeSet<AllocId>);
     impl<'tcx> TypeVisitor<'tcx> for CollectAllocIds {
+        fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+            // `AllocId`s are only inside of `ConstKind::Value` which
+            // can't be part of the anon const default substs.
+            None
+        }
+
         fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
             if let ty::ConstKind::Value(val) = c.val {
                 self.0.extend(alloc_ids_from_const(val));

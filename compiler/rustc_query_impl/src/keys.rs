@@ -217,18 +217,13 @@ impl<'tcx> Key for (DefId, SubstsRef<'tcx>) {
     }
 }
 
-impl<'tcx> Key
-    for (
-        (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
-        (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
-    )
-{
+impl<'tcx> Key for (ty::Unevaluated<'tcx, ()>, ty::Unevaluated<'tcx, ()>) {
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
-        (self.0).0.did.krate == LOCAL_CRATE
+        (self.0).def.did.krate == LOCAL_CRATE
     }
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
-        (self.0).0.did.default_span(tcx)
+        (self.0).def.did.default_span(tcx)
     }
 }
 

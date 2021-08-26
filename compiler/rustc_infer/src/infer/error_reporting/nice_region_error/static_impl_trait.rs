@@ -9,7 +9,9 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorRepor
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_ty, ErasedMap, NestedVisitorMap, Visitor};
 use rustc_hir::{self as hir, GenericBound, Item, ItemKind, Lifetime, LifetimeName, Node, TyKind};
-use rustc_middle::ty::{self, AssocItemContainer, RegionKind, Ty, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{
+    self, AssocItemContainer, RegionKind, Ty, TyCtxt, TypeFoldable, TypeVisitor,
+};
 use rustc_span::symbol::Ident;
 use rustc_span::{MultiSpan, Span};
 
@@ -476,8 +478,14 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 /// Collect all the trait objects in a type that could have received an implicit `'static` lifetime.
 pub(super) struct TraitObjectVisitor(pub(super) FxHashSet<DefId>);
 
-impl TypeVisitor<'_> for TraitObjectVisitor {
-    fn visit_ty(&mut self, t: Ty<'_>) -> ControlFlow<Self::BreakTy> {
+impl<'tcx> TypeVisitor<'tcx> for TraitObjectVisitor {
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        // The default anon const substs cannot include
+        // trait objects, so we don't have to bother looking.
+        None
+    }
+
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
             ty::Dynamic(preds, RegionKind::ReStatic) => {
                 if let Some(def_id) = preds.principal_def_id() {

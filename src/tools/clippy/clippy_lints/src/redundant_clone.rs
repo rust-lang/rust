@@ -14,7 +14,7 @@ use rustc_middle::mir::{
     visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor as _},
     Mutability,
 };
-use rustc_middle::ty::{self, fold::TypeVisitor, Ty};
+use rustc_middle::ty::{self, fold::TypeVisitor, Ty, TyCtxt};
 use rustc_mir::dataflow::{Analysis, AnalysisDomain, GenKill, GenKillAnalysis, ResultsCursor};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{BytePos, Span};
@@ -576,7 +576,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
                 self.possible_borrower.add(borrowed.local, lhs);
             },
             other => {
-                if ContainsRegion
+                if ContainsRegion(self.cx.tcx)
                     .visit_ty(place.ty(&self.body.local_decls, self.cx.tcx).ty)
                     .is_continue()
                 {
@@ -625,7 +625,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
                 .flat_map(HybridBitSet::iter)
                 .collect();
 
-            if ContainsRegion.visit_ty(self.body.local_decls[*dest].ty).is_break() {
+            if ContainsRegion(self.cx.tcx).visit_ty(self.body.local_decls[*dest].ty).is_break() {
                 mutable_variables.push(*dest);
             }
 
@@ -701,12 +701,15 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleOriginVisitor<'a, 'tcx> {
     }
 }
 
-struct ContainsRegion;
+struct ContainsRegion<'tcx>(TyCtxt<'tcx>);
 
-impl TypeVisitor<'_> for ContainsRegion {
+impl<'tcx> TypeVisitor<'tcx> for ContainsRegion<'tcx> {
     type BreakTy = ();
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        Some(self.0)
+    }
 
-    fn visit_region(&mut self, _: ty::Region<'_>) -> ControlFlow<Self::BreakTy> {
+    fn visit_region(&mut self, _: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         ControlFlow::BREAK
     }
 }

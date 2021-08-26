@@ -391,7 +391,7 @@ fn orphan_check_trait_ref<'tcx>(
 ) -> Result<(), OrphanCheckErr<'tcx>> {
     debug!("orphan_check_trait_ref(trait_ref={:?}, in_crate={:?})", trait_ref, in_crate);
 
-    if trait_ref.needs_infer() && trait_ref.needs_subst() {
+    if trait_ref.needs_infer() && trait_ref.definitely_needs_subst(tcx) {
         bug!(
             "can't orphan check a trait ref with both params and inference variables {:?}",
             trait_ref

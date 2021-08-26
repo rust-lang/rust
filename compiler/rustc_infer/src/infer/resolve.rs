@@ -126,6 +126,11 @@ impl<'a, 'tcx> UnresolvedTypeFinder<'a, 'tcx> {
 
 impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
     type BreakTy = (Ty<'tcx>, Option<Span>);
+
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        Some(self.infcx.tcx)
+    }
+
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         let t = self.infcx.shallow_resolve(t);
         if t.has_infer_types() {

@@ -1987,10 +1987,10 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
             // walk the return type and check for Self (this does not check associated types)
             if let Some(self_adt) = self_ty.ty_adt_def() {
-                if contains_adt_constructor(ret_ty, self_adt) {
+                if contains_adt_constructor(cx.tcx, ret_ty, self_adt) {
                     return;
                 }
-            } else if contains_ty(ret_ty, self_ty) {
+            } else if contains_ty(cx.tcx, ret_ty, self_ty) {
                 return;
             }
 
@@ -2001,10 +2001,10 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     if let ty::PredicateKind::Projection(projection_predicate) = predicate.kind().skip_binder() {
                         // walk the associated type and check for Self
                         if let Some(self_adt) = self_ty.ty_adt_def() {
-                            if contains_adt_constructor(projection_predicate.ty, self_adt) {
+                            if contains_adt_constructor(cx.tcx, projection_predicate.ty, self_adt) {
                                 return;
                             }
-                        } else if contains_ty(projection_predicate.ty, self_ty) {
+                        } else if contains_ty(cx.tcx, projection_predicate.ty, self_ty) {
                             return;
                         }
                     }
@@ -2053,7 +2053,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             if let TraitItemKind::Fn(_, _) = item.kind;
             let ret_ty = return_ty(cx, item.hir_id());
             let self_ty = TraitRef::identity(cx.tcx, item.def_id.to_def_id()).self_ty();
-            if !contains_ty(ret_ty, self_ty);
+            if !contains_ty(cx.tcx, ret_ty, self_ty);
 
             then {
                 span_lint(

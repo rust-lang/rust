@@ -859,13 +859,17 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             ty,
                             val: ty::ConstKind::Unevaluated(ty::Unevaluated {
                                 def,
-                                substs: InternalSubsts::for_item(tcx, def.did, |param, _| {
-                                    if let ty::GenericParamDefKind::Lifetime = param.kind {
-                                        tcx.lifetimes.re_erased.into()
-                                    } else {
-                                        tcx.mk_param_from_def(param)
-                                    }
-                                }),
+                                substs_: Some(InternalSubsts::for_item(
+                                    tcx,
+                                    def.did,
+                                    |param, _| {
+                                        if let ty::GenericParamDefKind::Lifetime = param.kind {
+                                            tcx.lifetimes.re_erased.into()
+                                        } else {
+                                            tcx.mk_param_from_def(param)
+                                        }
+                                    },
+                                )),
                                 promoted: Some(promoted_id),
                             }),
                         })
@@ -988,6 +992,7 @@ pub fn promote_candidates<'tcx>(
         scope.parent_scope = None;
 
         let promoted = Body::new(
+            tcx,
             body.source, // `promoted` gets filled in below
             IndexVec::new(),
             IndexVec::from_elem_n(scope, 1),

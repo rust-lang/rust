@@ -579,7 +579,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
             if tcx.features().const_evaluatable_checked =>
         {
-            tcx.try_unify_abstract_consts(((au.def, au.substs), (bu.def, bu.substs)))
+            tcx.try_unify_abstract_consts((au.shrink(), bu.shrink()))
         }
 
         // While this is slightly incorrect, it shouldn't matter for `min_const_generics`
@@ -591,13 +591,13 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
             let substs = relation.relate_with_variance(
                 ty::Variance::Invariant,
                 ty::VarianceDiagInfo::default(),
-                au.substs,
-                bu.substs,
+                au.substs(tcx),
+                bu.substs(tcx),
             )?;
             return Ok(tcx.mk_const(ty::Const {
                 val: ty::ConstKind::Unevaluated(ty::Unevaluated {
                     def: au.def,
-                    substs,
+                    substs_: Some(substs),
                     promoted: au.promoted,
                 }),
                 ty: a.ty,

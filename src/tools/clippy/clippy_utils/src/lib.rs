@@ -1581,7 +1581,7 @@ pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_>, did: DefId) -> bool {
         .predicates_of(did)
         .predicates
         .iter()
-        .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
+        .filter_map(|(p, _)| if p.is_global(cx.tcx) { Some(*p) } else { None });
     traits::impossible_predicates(
         cx.tcx,
         traits::elaborate_predicates(cx.tcx, predicates)
@@ -1627,7 +1627,7 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
     if is_primitive {
         // if we have wrappers like Array, Slice or Tuple, print these
         // and get the type enclosed in the slice ref
-        match expr_type.peel_refs().walk().nth(1).unwrap().expect_ty().kind() {
+        match expr_type.peel_refs().walk(cx.tcx).nth(1).unwrap().expect_ty().kind() {
             rustc_ty::Slice(..) => return Some("slice".into()),
             rustc_ty::Array(..) => return Some("array".into()),
             rustc_ty::Tuple(..) => return Some("tuple".into()),
@@ -1635,7 +1635,7 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
                 // is_recursively_primitive_type() should have taken care
                 // of the rest and we can rely on the type that is found
                 let refs_peeled = expr_type.peel_refs();
-                return Some(refs_peeled.walk().last().unwrap().to_string());
+                return Some(refs_peeled.walk(cx.tcx).last().unwrap().to_string());
             },
         }
     }

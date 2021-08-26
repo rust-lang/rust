@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
             _ => return,
         };
         let substs = cx.typeck_results().node_substs(expr.hir_id);
-        if substs.needs_subst() {
+        if substs.definitely_needs_subst(cx.tcx) {
             // We can't resolve on types that require monomorphization, so we don't handle them if
             // we need to perfom substitution.
             return;

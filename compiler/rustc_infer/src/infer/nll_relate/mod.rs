@@ -202,6 +202,7 @@ where
         };
 
         value.skip_binder().visit_with(&mut ScopeInstantiator {
+            tcx: self.infcx.tcx,
             next_region: &mut next_region,
             target_index: ty::INNERMOST,
             bound_region_scope: &mut scope,
@@ -757,6 +758,7 @@ where
 /// `for<..`>.  For each of those, it creates an entry in
 /// `bound_region_scope`.
 struct ScopeInstantiator<'me, 'tcx> {
+    tcx: TyCtxt<'tcx>,
     next_region: &'me mut dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
     // The debruijn index of the scope we are instantiating.
     target_index: ty::DebruijnIndex,
@@ -764,6 +766,10 @@ struct ScopeInstantiator<'me, 'tcx> {
 }
 
 impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        Some(self.tcx)
+    }
+
     fn visit_binder<T: TypeFoldable<'tcx>>(
         &mut self,
         t: &ty::Binder<'tcx, T>,

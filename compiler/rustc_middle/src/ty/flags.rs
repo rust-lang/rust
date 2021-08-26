@@ -34,6 +34,12 @@ impl FlagComputation {
         result.flags
     }
 
+    pub fn for_unevaluated_const(uv: ty::Unevaluated<'_>) -> TypeFlags {
+        let mut result = FlagComputation::new();
+        result.add_unevaluated_const(uv);
+        result.flags
+    }
+
     fn add_flags(&mut self, flags: TypeFlags) {
         self.flags = self.flags | flags;
     }
@@ -91,7 +97,7 @@ impl FlagComputation {
             &ty::Error(_) => self.add_flags(TypeFlags::HAS_ERROR),
 
             &ty::Param(_) => {
-                self.add_flags(TypeFlags::HAS_TY_PARAM);
+                self.add_flags(TypeFlags::HAS_KNOWN_TY_PARAM);
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
 
@@ -246,8 +252,8 @@ impl FlagComputation {
             ty::PredicateKind::ClosureKind(_def_id, substs, _kind) => {
                 self.add_substs(substs);
             }
-            ty::PredicateKind::ConstEvaluatable(_def_id, substs) => {
-                self.add_substs(substs);
+            ty::PredicateKind::ConstEvaluatable(uv) => {
+                self.add_unevaluated_const(uv);
             }
             ty::PredicateKind::ConstEquate(expected, found) => {
                 self.add_const(expected);
@@ -292,7 +298,7 @@ impl FlagComputation {
                 self.add_bound_var(debruijn);
             }
             ty::ConstKind::Param(_) => {
-                self.add_flags(TypeFlags::HAS_CT_PARAM);
+                self.add_flags(TypeFlags::HAS_KNOWN_CT_PARAM);
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
             ty::ConstKind::Placeholder(_) => {
@@ -304,8 +310,24 @@ impl FlagComputation {
         }
     }
 
-    fn add_unevaluated_const(&mut self, ct: ty::Unevaluated<'tcx>) {
-        self.add_substs(ct.substs);
+    fn add_unevaluated_const<P>(&mut self, ct: ty::Unevaluated<'tcx, P>) {
+        // The generic arguments of unevaluated consts are a bit special,
+        // see the `rustc-dev-guide` for more information.
+        //
+        // FIXME(@lcnr): Actually add a link here.
+        if let Some(substs) = ct.substs_ {
+            // If they are available, we treat them as ordinary generic arguments.
+            self.add_substs(substs);
+        } else {
+            // Otherwise, we add `HAS_UNKNOWN_DEFAULT_CONST_SUBSTS` to signify
+            // that our const may potentially refer to generic parameters.
+            //
+            // Note that depending on which generic parameters are actually
+            // used in this constant, we may not actually refer to any generic
+            // parameters at all.
+            self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
+            self.add_flags(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS);
+        }
         self.add_flags(TypeFlags::HAS_CT_PROJECTION);
     }
 

@@ -288,7 +288,7 @@ impl<'tcx> Visitor<'tcx> for BorrowVisitor<'_, 'tcx> {
                 .fn_sig(def_id)
                 .output()
                 .skip_binder()
-                .walk()
+                .walk(self.cx.tcx)
                 .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(_)));
         }
 

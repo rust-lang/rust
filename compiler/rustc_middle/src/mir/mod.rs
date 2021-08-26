@@ -242,6 +242,7 @@ pub struct Body<'tcx> {
 
 impl<'tcx> Body<'tcx> {
     pub fn new(
+        tcx: TyCtxt<'tcx>,
         source: MirSource<'tcx>,
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
         source_scopes: IndexVec<SourceScope, SourceScopeData<'tcx>>,
@@ -284,7 +285,7 @@ impl<'tcx> Body<'tcx> {
             predecessor_cache: PredecessorCache::new(),
             is_cyclic: GraphIsCyclicCache::new(),
         };
-        body.is_polymorphic = body.has_param_types_or_consts();
+        body.is_polymorphic = body.definitely_has_param_types_or_consts(tcx);
         body
     }
 
@@ -294,7 +295,7 @@ impl<'tcx> Body<'tcx> {
     /// is only useful for testing but cannot be `#[cfg(test)]` because it is used in a different
     /// crate.
     pub fn new_cfg_only(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
-        let mut body = Body {
+        Body {
             phase: MirPhase::Build,
             source: MirSource::item(DefId::local(CRATE_DEF_INDEX)),
             basic_blocks,
@@ -310,9 +311,7 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
             is_cyclic: GraphIsCyclicCache::new(),
-        };
-        body.is_polymorphic = body.has_param_types_or_consts();
-        body
+        }
     }
 
     #[inline]

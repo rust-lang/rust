@@ -9,7 +9,7 @@ where
     T: TypeFoldable<'tcx>,
 {
     debug!("ensure_monomorphic_enough: ty={:?}", ty);
-    if !ty.needs_subst() {
+    if !ty.potentially_needs_subst() {
         return Ok(());
     }
 
@@ -21,19 +21,12 @@ where
     impl<'tcx> TypeVisitor<'tcx> for UsedParamsNeedSubstVisitor<'tcx> {
         type BreakTy = FoundParam;
 
-        fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if !c.needs_subst() {
-                return ControlFlow::CONTINUE;
-            }
-
-            match c.val {
-                ty::ConstKind::Param(..) => ControlFlow::Break(FoundParam),
-                _ => c.super_visit_with(self),
-            }
+        fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+            Some(self.tcx)
         }
 
         fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if !ty.needs_subst() {
+            if !ty.potentially_needs_subst() {
                 return ControlFlow::CONTINUE;
             }
 
@@ -50,7 +43,7 @@ where
                         let is_used = unused_params.contains(index).map_or(true, |unused| !unused);
                         // Only recurse when generic parameters in fns, closures and generators
                         // are used and require substitution.
-                        match (is_used, subst.needs_subst()) {
+                        match (is_used, subst.definitely_needs_subst(self.tcx)) {
                             // Just in case there are closures or generators within this subst,
                             // recurse.
                             (true, true) => return subst.super_visit_with(self),
@@ -71,6 +64,13 @@ where
                     ControlFlow::CONTINUE
                 }
                 _ => ty.super_visit_with(self),
+            }
+        }
+
+        fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+            match c.val {
+                ty::ConstKind::Param(..) => ControlFlow::Break(FoundParam),
+                _ => c.super_visit_with(self),
             }
         }
     }

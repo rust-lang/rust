@@ -78,8 +78,11 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
         // The rest of the code is already set up to be lazy about replacing bound vars,
         // and only when we actually have to normalize.
         if value.has_escaping_bound_vars() {
-            let mut max_visitor =
-                MaxEscapingBoundVarVisitor { outer_index: ty::INNERMOST, escaping: 0 };
+            let mut max_visitor = MaxEscapingBoundVarVisitor {
+                tcx: self.infcx.tcx,
+                outer_index: ty::INNERMOST,
+                escaping: 0,
+            };
             value.visit_with(&mut max_visitor);
             if max_visitor.escaping > 0 {
                 normalizer.universes.extend((0..max_visitor.escaping).map(|_| None));
@@ -106,13 +109,18 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
 }
 
 /// Visitor to find the maximum escaping bound var
-struct MaxEscapingBoundVarVisitor {
+struct MaxEscapingBoundVarVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
     // The index which would count as escaping
     outer_index: ty::DebruijnIndex,
     escaping: usize,
 }
 
-impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor {
+impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor<'tcx> {
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        Some(self.tcx)
+    }
+
     fn visit_binder<T: TypeFoldable<'tcx>>(
         &mut self,
         t: &ty::Binder<'tcx, T>,

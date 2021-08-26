@@ -1739,7 +1739,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // Ignore layouts that are done with non-empty environments or
         // non-monomorphic layouts, as the user only wants to see the stuff
         // resulting from the final codegen session.
-        if layout.ty.has_param_types_or_consts() || !self.param_env.caller_bounds().is_empty() {
+        if layout.ty.definitely_has_param_types_or_consts(self.tcx)
+            || !self.param_env.caller_bounds().is_empty()
+        {
             return;
         }
 
@@ -1906,7 +1908,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 let tail = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
                 match tail.kind() {
                     ty::Param(_) | ty::Projection(_) => {
-                        debug_assert!(tail.has_param_types_or_consts());
+                        debug_assert!(tail.definitely_has_param_types_or_consts(tcx));
                         Ok(SizeSkeleton::Pointer { non_zero, tail: tcx.erase_regions(tail) })
                     }
                     _ => bug!(

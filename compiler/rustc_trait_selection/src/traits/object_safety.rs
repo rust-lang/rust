@@ -278,7 +278,7 @@ fn predicate_references_self(
     (predicate, sp): (ty::Predicate<'tcx>, Span),
 ) -> Option<Span> {
     let self_ty = tcx.types.self_param;
-    let has_self_ty = |arg: &GenericArg<'_>| arg.walk().any(|arg| arg == self_ty.into());
+    let has_self_ty = |arg: &GenericArg<'tcx>| arg.walk(tcx).any(|arg| arg == self_ty.into());
     match predicate.kind().skip_binder() {
         ty::PredicateKind::Trait(ref data) => {
             // In the case of a trait predicate, we can skip the "self" type.
@@ -771,6 +771,9 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
 
     impl<'tcx> TypeVisitor<'tcx> for IllegalSelfTypeVisitor<'tcx> {
         type BreakTy = ();
+        fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+            Some(self.tcx)
+        }
 
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             match t.kind() {
@@ -851,12 +854,12 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
         }
 
         fn visit_predicate(&mut self, pred: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if let ty::PredicateKind::ConstEvaluatable(def, substs) = pred.kind().skip_binder() {
+            if let ty::PredicateKind::ConstEvaluatable(ct) = pred.kind().skip_binder() {
                 // FIXME(const_evaluatable_checked): We should probably deduplicate the logic for
                 // `AbstractConst`s here, it might make sense to change `ConstEvaluatable` to
                 // take a `ty::Const` instead.
                 use rustc_middle::mir::abstract_const::Node;
-                if let Ok(Some(ct)) = AbstractConst::new(self.tcx, def, substs) {
+                if let Ok(Some(ct)) = AbstractConst::new(self.tcx, ct) {
                     const_evaluatable::walk_abstract_const(self.tcx, ct, |node| match node.root() {
                         Node::Leaf(leaf) => {
                             let leaf = leaf.subst(self.tcx, ct.substs);

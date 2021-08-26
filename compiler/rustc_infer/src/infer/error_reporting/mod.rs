@@ -1537,6 +1537,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for OpaqueTypesVisitor<'tcx> {
+            fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+                Some(self.tcx)
+            }
+
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                 if let Some((kind, def_id)) = TyCategory::from_ty(self.tcx, t) {
                     let span = self.tcx.def_span(def_id);

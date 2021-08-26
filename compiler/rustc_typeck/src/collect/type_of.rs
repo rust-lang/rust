@@ -7,7 +7,7 @@ use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{HirId, Node};
 use rustc_middle::hir::map::Map;
-use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
+use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, SubstsRef};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable, TypeFolder};
 use rustc_span::symbol::Ident;
@@ -272,6 +272,31 @@ fn get_path_containing_arg_in_pat<'hir>(
         _ => true,
     });
     arg_path
+}
+
+pub(super) fn default_anon_const_substs(tcx: TyCtxt<'_>, def_id: DefId) -> SubstsRef<'_> {
+    let generics = tcx.generics_of(def_id);
+    if let Some(parent) = generics.parent {
+        // This is the reason we bother with having optional anon const substs.
+        //
+        // In the future the substs of an anon const will depend on its parents predicates
+        // at which point eagerly looking at them will cause a query cycle.
+        //
+        // So for now this is only an assurance that this approach won't cause cycle errors in
+        // the future.
+        let _cycle_check = tcx.predicates_of(parent);
+    }
+
+    let substs = InternalSubsts::identity_for_item(tcx, def_id);
+    // We only expect substs with the following type flags as default substs.
+    //
+    // Getting this wrong can lead to ICE and unsoundness, so we assert it here.
+    for arg in substs.iter() {
+        let allowed_flags = ty::TypeFlags::MAY_NEED_DEFAULT_CONST_SUBSTS
+            | ty::TypeFlags::STILL_FURTHER_SPECIALIZABLE;
+        assert!(!arg.has_type_flags(!allowed_flags));
+    }
+    substs
 }
 
 pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
