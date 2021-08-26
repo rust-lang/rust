@@ -742,10 +742,7 @@ class RustBuild(object):
         >>> rb.bin_root(True) == os.path.join("build", "devel", "stage0")
         True
         """
-        if stage0:
-            subdir = "stage0"
-        else:
-            subdir = "ci-rustc"
+        subdir = "stage0" if stage0 else "ci-rustc"
         return os.path.join(self.build_dir, self.build, subdir)
 
     def llvm_root(self):
