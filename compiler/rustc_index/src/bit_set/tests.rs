@@ -304,6 +304,72 @@ fn sparse_matrix_iter() {
     assert!(iter.next().is_none());
 }
 
+#[test]
+fn sparse_matrix_operations() {
+    let mut matrix: SparseBitMatrix<usize, usize> = SparseBitMatrix::new(100);
+    matrix.insert(3, 22);
+    matrix.insert(3, 75);
+    matrix.insert(2, 99);
+    matrix.insert(4, 0);
+
+    let mut disjoint: HybridBitSet<usize> = HybridBitSet::new_empty(100);
+    disjoint.insert(33);
+
+    let mut superset = HybridBitSet::new_empty(100);
+    superset.insert(22);
+    superset.insert(75);
+    superset.insert(33);
+
+    let mut subset = HybridBitSet::new_empty(100);
+    subset.insert(22);
+
+    // SparseBitMatrix::remove
+    {
+        let mut matrix = matrix.clone();
+        matrix.remove(3, 22);
+        assert!(!matrix.row(3).unwrap().contains(22));
+        matrix.remove(0, 0);
+        assert!(matrix.row(0).is_none());
+    }
+
+    // SparseBitMatrix::clear
+    {
+        let mut matrix = matrix.clone();
+        matrix.clear(3);
+        assert!(!matrix.row(3).unwrap().contains(75));
+        matrix.clear(0);
+        assert!(matrix.row(0).is_none());
+    }
+
+    // SparseBitMatrix::intersect_row
+    {
+        let mut matrix = matrix.clone();
+        assert!(!matrix.intersect_row(2, &superset));
+        assert!(matrix.intersect_row(2, &subset));
+        matrix.intersect_row(0, &disjoint);
+        assert!(matrix.row(0).is_none());
+    }
+
+     // SparseBitMatrix::subtract_row
+     {
+        let mut matrix = matrix.clone();
+        assert!(!matrix.subtract_row(2, &disjoint));
+        assert!(matrix.subtract_row(2, &subset));
+        assert!(matrix.subtract_row(2, &superset));
+        matrix.intersect_row(0, &disjoint);
+        assert!(matrix.row(0).is_none());
+     }
+
+     // SparseBitMatrix::union_row 
+     {
+        let mut matrix = matrix.clone();
+        assert!(!matrix.union_row(2, &subset));
+        assert!(matrix.union_row(2, &disjoint));
+        matrix.union_row(0, &disjoint);
+        assert!(matrix.row(0).is_some());
+     }
+}
+
 /// Merge dense hybrid set into empty sparse hybrid set.
 #[bench]
 fn union_hybrid_sparse_empty_to_dense(b: &mut Bencher) {

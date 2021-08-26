@@ -1087,6 +1087,11 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         self.ensure_row(row).insert(column)
     }
 
+    /// Sets the cell at `(row, column)` to false. Put another way, delete
+    /// `column` from the bitset for `row`. Has no effect if `row` does not
+    /// exist.
+    ///
+    /// Returns `true` if this changed the matrix.
     pub fn remove(&mut self, row: R, column: C) -> bool {
         match self.rows.get_mut(row) {
             Some(Some(row)) => row.remove(column),
@@ -1094,6 +1099,8 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         }
     }
 
+    /// Sets all columns at `row` to false. Has no effect if `row` does
+    /// not exist.
     pub fn clear(&mut self, row: R) {
         if let Some(Some(row)) = self.rows.get_mut(row) {
             row.clear();
@@ -1147,6 +1154,10 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         if let Some(Some(row)) = self.rows.get(row) { Some(row) } else { None }
     }
 
+    /// Interescts `row` with `set`. `set` can be either `BitSet` or
+    /// `HybridBitSet`. Has no effect if `row` does not exist.
+    ///
+    /// Returns true if the row was changed.
     pub fn intersect_row<Set>(&mut self, row: R, set: &Set) -> bool
     where
         HybridBitSet<C>: BitRelations<Set>,
@@ -1157,6 +1168,10 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         }
     }
 
+    /// Subtracts `set from `row`. `set` can be either `BitSet` or
+    /// `HybridBitSet`. Has no effect if `row` does not exist.
+    ///
+    /// Returns true if the row was changed.
     pub fn subtract_row<Set>(&mut self, row: R, set: &Set) -> bool
     where
         HybridBitSet<C>: BitRelations<Set>,
@@ -1167,6 +1182,10 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         }
     }
 
+    /// Unions `row` with `set`. `set` can be either `BitSet` or
+    /// `HybridBitSet`.
+    ///
+    /// Returns true if the row was changed.
     pub fn union_row<Set>(&mut self, row: R, set: &Set) -> bool
     where
         HybridBitSet<C>: BitRelations<Set>,
