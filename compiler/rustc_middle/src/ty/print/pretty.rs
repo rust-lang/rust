@@ -1220,13 +1220,20 @@ pub trait PrettyPrinter<'tcx>:
                         }
                         p!(")");
                     }
-                    ty::Adt(def, substs) if def.variants.is_empty() => {
-                        p!(print_value_path(def.did, substs));
+                    ty::Adt(def, _) if def.variants.is_empty() => {
+                        self = self.typed_value(
+                            |mut this| {
+                                write!(this, "unreachable()")?;
+                                Ok(this)
+                            },
+                            |this| this.print_type(ty),
+                            ": ",
+                        )?;
                     }
                     ty::Adt(def, substs) => {
-                        let variant_id =
-                            contents.variant.expect("destructed const of adt without variant id");
-                        let variant_def = &def.variants[variant_id];
+                        let variant_idx =
+                            contents.variant.expect("destructed const of adt without variant idx");
+                        let variant_def = &def.variants[variant_idx];
                         p!(print_value_path(variant_def.def_id, substs));
 
                         match variant_def.ctor_kind {

@@ -64,7 +64,7 @@ fn main() {
             //[legacy]~| ERROR demangling(<[&dyn impl1::Foo+Assoc = extern "C" fn(&u8, ::.)+impl1::AutoTrait; 3] as impl1::main::{{closure}}::Bar>::method
             //[legacy]~| ERROR demangling-alt(<[&dyn impl1::Foo+Assoc = extern "C" fn(&u8, ::.)+impl1::AutoTrait; 3] as impl1::main::{{closure}}::Bar>::method)
              //[v0]~^^^^ ERROR symbol-name(_RNvXNCNvCs2qSCrjELJET_5impl14mains_0ARDNtB6_3Foop5AssocFG_KCRL0_hvEuNtB6_9AutoTraitEL_j3_NtB2_3Bar6method)
-                //[v0]~| ERROR demangling(<[&dyn impl1[1c5860ab79c9e305]::Foo<Assoc = for<'a> extern "C" fn(&'a u8, ...)> + impl1[1c5860ab79c9e305]::AutoTrait; 3: usize] as impl1[1c5860ab79c9e305]::main::{closure#1}::Bar>::method)
+                //[v0]~| ERROR demangling(<[&dyn impl1[1c5860ab79c9e305]::Foo<Assoc = for<'a> extern "C" fn(&'a u8, ...)> + impl1[1c5860ab79c9e305]::AutoTrait; 3usize] as impl1[1c5860ab79c9e305]::main::{closure#1}::Bar>::method)
                 //[v0]~| ERROR demangling-alt(<[&dyn impl1::Foo<Assoc = for<'a> extern "C" fn(&'a u8, ...)> + impl1::AutoTrait; 3] as impl1::main::{closure#1}::Bar>::method)
             #[rustc_def_path]
             //[legacy]~^ ERROR def-path(<[&dyn Foo<Assoc = for<'r> extern "C" fn(&'r u8, ...)> + AutoTrait; 3] as main::{closure#1}::Bar>::method)

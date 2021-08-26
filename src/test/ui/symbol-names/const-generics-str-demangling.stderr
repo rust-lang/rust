@@ -1,0 +1,110 @@
+error: symbol-name(_RMCsno73SFvQKx_1cINtB0_3StrKRe616263_E)
+  --> $DIR/const-generics-str-demangling.rs:8:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<c[464da6a86cb672f]::Str<"abc">>)
+  --> $DIR/const-generics-str-demangling.rs:8:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<c::Str<"abc">>)
+  --> $DIR/const-generics-str-demangling.rs:8:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_RMs_Csno73SFvQKx_1cINtB2_3StrKRe27_E)
+  --> $DIR/const-generics-str-demangling.rs:14:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<c[464da6a86cb672f]::Str<"'">>)
+  --> $DIR/const-generics-str-demangling.rs:14:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<c::Str<"'">>)
+  --> $DIR/const-generics-str-demangling.rs:14:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_RMs0_Csno73SFvQKx_1cINtB3_3StrKRe090a_E)
+  --> $DIR/const-generics-str-demangling.rs:20:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<c[464da6a86cb672f]::Str<"\t\n">>)
+  --> $DIR/const-generics-str-demangling.rs:20:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<c::Str<"\t\n">>)
+  --> $DIR/const-generics-str-demangling.rs:20:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_RMs1_Csno73SFvQKx_1cINtB3_3StrKRee28882c3bc_E)
+  --> $DIR/const-generics-str-demangling.rs:26:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<c[464da6a86cb672f]::Str<"∂ü">>)
+  --> $DIR/const-generics-str-demangling.rs:26:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<c::Str<"∂ü">>)
+  --> $DIR/const-generics-str-demangling.rs:26:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_RMs2_Csno73SFvQKx_1cINtB3_3StrKRee183a1e18390e183ade1839be18394e1839ae18390e183935fe18392e18394e1839be183a0e18398e18394e1839ae183985fe183a1e18390e18393e18398e1839ae18398_E)
+  --> $DIR/const-generics-str-demangling.rs:32:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<c[464da6a86cb672f]::Str<"საჭმელად_გემრიელი_სადილი">>)
+  --> $DIR/const-generics-str-demangling.rs:32:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<c::Str<"საჭმელად_გემრიელი_სადილი">>)
+  --> $DIR/const-generics-str-demangling.rs:32:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_RMs3_Csno73SFvQKx_1cINtB3_3StrKRef09f908af09fa688f09fa686f09f90ae20c2a720f09f90b6f09f9192e29895f09f94a520c2a720f09fa7a1f09f929bf09f929af09f9299f09f929c_E)
+  --> $DIR/const-generics-str-demangling.rs:38:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<c[464da6a86cb672f]::Str<"🐊🦈🦆🐮 § 🐶👒☕🔥 § 🧡💛💚💙💜">>)
+  --> $DIR/const-generics-str-demangling.rs:38:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<c::Str<"🐊🦈🦆🐮 § 🐶👒☕🔥 § 🧡💛💚💙💜">>)
+  --> $DIR/const-generics-str-demangling.rs:38:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 18 previous errors
+

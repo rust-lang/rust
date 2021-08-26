@@ -24,7 +24,7 @@ std_detect = { path = "../stdarch/crates/std_detect", default-features = false, 
 
 # Dependencies of the `backtrace` crate
 addr2line = { version = "0.16.0", optional = true, default-features = false }
-rustc-demangle = { version = "0.1.18", features = ['rustc-dep-of-std'] }
+rustc-demangle = { version = "0.1.21", features = ['rustc-dep-of-std'] }
 miniz_oxide = { version = "0.4.0", optional = true, default-features = false }
 [dependencies.object]
 version = "0.26.1"

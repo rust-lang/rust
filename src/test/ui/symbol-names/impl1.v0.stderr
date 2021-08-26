@@ -52,7 +52,7 @@ error: symbol-name(_RNvXNCNvCs2qSCrjELJET_5impl14mains_0ARDNtB6_3Foop5AssocFG_KC
 LL |             #[rustc_symbol_name]
    |             ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<[&dyn impl1[1c5860ab79c9e305]::Foo<Assoc = for<'a> extern "C" fn(&'a u8, ...)> + impl1[1c5860ab79c9e305]::AutoTrait; 3: usize] as impl1[1c5860ab79c9e305]::main::{closure#1}::Bar>::method)
+error: demangling(<[&dyn impl1[1c5860ab79c9e305]::Foo<Assoc = for<'a> extern "C" fn(&'a u8, ...)> + impl1[1c5860ab79c9e305]::AutoTrait; 3usize] as impl1[1c5860ab79c9e305]::main::{closure#1}::Bar>::method)
   --> $DIR/impl1.rs:62:13
    |
 LL |             #[rustc_symbol_name]
