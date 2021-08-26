@@ -14,8 +14,8 @@ fn distinct_variant() {
     // also used for the discriminant of `Foo`, which it would be if `a` was a
     // reference.
     let b = match y {
-      Foo::Y(_, ref mut b) => b,
       //~^ ERROR cannot use `y`
+      Foo::Y(_, ref mut b) => b,
       Foo::X => panic!()
     };
 
@@ -32,8 +32,9 @@ fn same_variant() {
     };
 
     let b = match y {
-      Foo::Y(ref mut b, _) => b, //~ ERROR cannot use `y`
-      //~| ERROR cannot borrow `y.0` as mutable
+      //~^ ERROR cannot use `y`
+      Foo::Y(ref mut b, _) => b,
+      //~^ ERROR cannot borrow `y.0` as mutable
       Foo::X => panic!()
     };
 

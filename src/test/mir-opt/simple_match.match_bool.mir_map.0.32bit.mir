@@ -6,7 +6,7 @@ fn match_bool(_1: bool) -> usize {
 
     bb0: {
         FakeRead(ForMatchedPlace(None), _1); // scope 0 at $DIR/simple-match.rs:6:11: 6:12
-        switchInt(_1) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/simple-match.rs:7:9: 7:13
+        switchInt(_1) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/simple-match.rs:6:5: 6:12
     }
 
     bb1: {
@@ -15,12 +15,12 @@ fn match_bool(_1: bool) -> usize {
 
     bb2: {
         _0 = const 20_usize;             // scope 0 at $DIR/simple-match.rs:8:14: 8:16
-        goto -> bb4;                     // scope 0 at $DIR/simple-match.rs:6:5: 9:6
+        goto -> bb4;                     // scope 0 at $DIR/simple-match.rs:8:14: 8:16
     }
 
     bb3: {
         _0 = const 10_usize;             // scope 0 at $DIR/simple-match.rs:7:17: 7:19
-        goto -> bb4;                     // scope 0 at $DIR/simple-match.rs:6:5: 9:6
+        goto -> bb4;                     // scope 0 at $DIR/simple-match.rs:7:17: 7:19
     }
 
     bb4: {

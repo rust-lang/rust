@@ -29,7 +29,7 @@
       }
   
       bb2: {
-          switchInt(((_3 as Some).0: bool)) -> [false: bb1, otherwise: bb3]; // scope 0 at $DIR/discriminant.rs:11:26: 11:30
+          switchInt(((_3 as Some).0: bool)) -> [false: bb1, otherwise: bb3]; // scope 0 at $DIR/discriminant.rs:11:21: 11:31
       }
   
       bb3: {

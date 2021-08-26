@@ -37,8 +37,8 @@ fn test() -> Option<Box<u32>> {
 
     bb1: {
         StorageDead(_4);                 // scope 0 at $DIR/issue-62289.rs:9:19: 9:20
-        _5 = discriminant(_3);           // scope 0 at $DIR/issue-62289.rs:9:19: 9:20
-        switchInt(move _5) -> [0_isize: bb2, 1_isize: bb4, otherwise: bb3]; // scope 0 at $DIR/issue-62289.rs:9:19: 9:20
+        _5 = discriminant(_3);           // scope 0 at $DIR/issue-62289.rs:9:15: 9:20
+        switchInt(move _5) -> [0_isize: bb2, 1_isize: bb4, otherwise: bb3]; // scope 0 at $DIR/issue-62289.rs:9:15: 9:20
     }
 
     bb2: {

@@ -10,7 +10,7 @@
       let mut _8: bool;                    // in scope 0 at $DIR/matches_reduce_branches.rs:36:9: 36:10
       let mut _9: bool;                    // in scope 0 at $DIR/matches_reduce_branches.rs:36:12: 36:13
       let mut _10: bool;                   // in scope 0 at $DIR/matches_reduce_branches.rs:36:15: 36:16
-+     let mut _11: i32;                    // in scope 0 at $DIR/matches_reduce_branches.rs:20:9: 20:10
++     let mut _11: i32;                    // in scope 0 at $DIR/matches_reduce_branches.rs:19:5: 19:12
       scope 1 {
           debug a => _2;                   // in scope 1 at $DIR/matches_reduce_branches.rs:14:9: 14:10
           let _3: bool;                    // in scope 1 at $DIR/matches_reduce_branches.rs:15:9: 15:10
@@ -33,7 +33,7 @@
           StorageLive(_4);                 // scope 2 at $DIR/matches_reduce_branches.rs:16:9: 16:10
           StorageLive(_5);                 // scope 3 at $DIR/matches_reduce_branches.rs:17:9: 17:10
           StorageLive(_6);                 // scope 4 at $DIR/matches_reduce_branches.rs:19:5: 34:6
--         switchInt(_1) -> [7_i32: bb2, otherwise: bb1]; // scope 4 at $DIR/matches_reduce_branches.rs:20:9: 20:10
+-         switchInt(_1) -> [7_i32: bb2, otherwise: bb1]; // scope 4 at $DIR/matches_reduce_branches.rs:19:5: 19:12
 -     }
 - 
 -     bb1: {
@@ -41,23 +41,23 @@
 -         _3 = const false;                // scope 4 at $DIR/matches_reduce_branches.rs:29:13: 29:22
 -         _4 = const false;                // scope 4 at $DIR/matches_reduce_branches.rs:30:13: 30:22
 -         _5 = const true;                 // scope 4 at $DIR/matches_reduce_branches.rs:31:13: 31:21
--         goto -> bb3;                     // scope 4 at $DIR/matches_reduce_branches.rs:19:5: 34:6
+-         goto -> bb3;                     // scope 4 at $DIR/matches_reduce_branches.rs:32:13: 32:15
 -     }
 - 
 -     bb2: {
 -         _2 = const false;                // scope 4 at $DIR/matches_reduce_branches.rs:21:13: 21:22
 -         _3 = const true;                 // scope 4 at $DIR/matches_reduce_branches.rs:22:13: 22:21
-+         StorageLive(_11);                // scope 4 at $DIR/matches_reduce_branches.rs:20:9: 20:10
-+         _11 = _1;                        // scope 4 at $DIR/matches_reduce_branches.rs:20:9: 20:10
++         StorageLive(_11);                // scope 4 at $DIR/matches_reduce_branches.rs:19:5: 19:12
++         _11 = _1;                        // scope 4 at $DIR/matches_reduce_branches.rs:19:5: 19:12
 +         _2 = Ne(_11, const 7_i32);       // scope 4 at $DIR/matches_reduce_branches.rs:21:13: 21:22
 +         _3 = Eq(_11, const 7_i32);       // scope 4 at $DIR/matches_reduce_branches.rs:22:13: 22:21
           _4 = const false;                // scope 4 at $DIR/matches_reduce_branches.rs:23:13: 23:22
           _5 = const true;                 // scope 4 at $DIR/matches_reduce_branches.rs:24:13: 24:21
--         goto -> bb3;                     // scope 4 at $DIR/matches_reduce_branches.rs:19:5: 34:6
+-         goto -> bb3;                     // scope 4 at $DIR/matches_reduce_branches.rs:25:13: 25:15
 -     }
 - 
 -     bb3: {
-+         StorageDead(_11);                // scope 4 at $DIR/matches_reduce_branches.rs:20:9: 20:10
++         StorageDead(_11);                // scope 4 at $DIR/matches_reduce_branches.rs:19:5: 19:12
           StorageDead(_6);                 // scope 4 at $DIR/matches_reduce_branches.rs:34:6: 34:7
           StorageLive(_7);                 // scope 4 at $DIR/matches_reduce_branches.rs:36:6: 36:7
           _7 = _2;                         // scope 4 at $DIR/matches_reduce_branches.rs:36:6: 36:7

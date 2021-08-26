@@ -238,23 +238,22 @@ LL |         drop(x);
    |              - borrow later used here
 
 error[E0503]: cannot use `e` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:167:13
+  --> $DIR/borrowck-describe-lvalue.rs:166:15
    |
 LL |         let x = &mut e;
    |                 ------ borrow of `e` occurs here
 LL |         match e {
-LL |             E::A(ref ax) =>
-   |             ^^^^^^^^^^^^ use of borrowed `e`
+   |               ^ use of borrowed `e`
 ...
 LL |         drop(x);
    |              - borrow later used here
 
 error[E0502]: cannot borrow `e.0` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-describe-lvalue.rs:167:18
+  --> $DIR/borrowck-describe-lvalue.rs:168:18
    |
 LL |         let x = &mut e;
    |                 ------ mutable borrow occurs here
-LL |         match e {
+...
 LL |             E::A(ref ax) =>
    |                  ^^^^^^ immutable borrow occurs here
 ...

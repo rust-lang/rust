@@ -32,15 +32,15 @@
   
       bb1: {
           StorageDead(_3);                 // scope 2 at $DIR/issue-75439.rs:7:52: 7:53
-          switchInt(_2[0 of 4]) -> [0_u32: bb2, otherwise: bb4]; // scope 1 at $DIR/issue-75439.rs:9:13: 9:14
+          switchInt(_2[0 of 4]) -> [0_u32: bb2, otherwise: bb4]; // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
       }
   
       bb2: {
-          switchInt(_2[1 of 4]) -> [0_u32: bb3, otherwise: bb4]; // scope 1 at $DIR/issue-75439.rs:9:16: 9:17
+          switchInt(_2[1 of 4]) -> [0_u32: bb3, otherwise: bb4]; // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
       }
   
       bb3: {
-          switchInt(_2[2 of 4]) -> [0_u32: bb6, 4294901760_u32: bb7, otherwise: bb4]; // scope 1 at $DIR/issue-75439.rs:9:19: 9:20
+          switchInt(_2[2 of 4]) -> [0_u32: bb6, 4294901760_u32: bb7, otherwise: bb4]; // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
       }
   
       bb4: {

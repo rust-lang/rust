@@ -32,18 +32,18 @@
   
       bb0: {
 -         FakeRead(ForMatchedPlace(None), _2); // scope 0 at $DIR/match-arm-scopes.rs:14:11: 14:16
--         switchInt((_2.0: bool)) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/match-arm-scopes.rs:15:10: 15:15
-+         switchInt((_2.0: bool)) -> [false: bb5, otherwise: bb1]; // scope 0 at $DIR/match-arm-scopes.rs:15:10: 15:15
+-         switchInt((_2.0: bool)) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/match-arm-scopes.rs:14:5: 14:16
++         switchInt((_2.0: bool)) -> [false: bb5, otherwise: bb1]; // scope 0 at $DIR/match-arm-scopes.rs:14:5: 14:16
       }
   
       bb1: {
 -         falseEdge -> [real: bb8, imaginary: bb3]; // scope 0 at $DIR/match-arm-scopes.rs:15:9: 15:22
-+         switchInt((_2.1: bool)) -> [false: bb10, otherwise: bb2]; // scope 0 at $DIR/match-arm-scopes.rs:15:29: 15:34
++         switchInt((_2.1: bool)) -> [false: bb10, otherwise: bb2]; // scope 0 at $DIR/match-arm-scopes.rs:14:5: 14:16
       }
   
       bb2: {
--         switchInt((_2.1: bool)) -> [false: bb3, otherwise: bb4]; // scope 0 at $DIR/match-arm-scopes.rs:15:29: 15:34
-+         switchInt((_2.0: bool)) -> [false: bb3, otherwise: bb17]; // scope 0 at $DIR/match-arm-scopes.rs:16:10: 16:14
+-         switchInt((_2.1: bool)) -> [false: bb3, otherwise: bb4]; // scope 0 at $DIR/match-arm-scopes.rs:14:5: 14:16
++         switchInt((_2.0: bool)) -> [false: bb3, otherwise: bb17]; // scope 0 at $DIR/match-arm-scopes.rs:14:5: 14:16
       }
   
       bb3: {
@@ -51,7 +51,7 @@
 -     }
 - 
 -     bb4: {
--         switchInt((_2.0: bool)) -> [false: bb6, otherwise: bb5]; // scope 0 at $DIR/match-arm-scopes.rs:16:10: 16:14
+-         switchInt((_2.0: bool)) -> [false: bb6, otherwise: bb5]; // scope 0 at $DIR/match-arm-scopes.rs:14:5: 14:16
 -     }
 - 
 -     bb5: {
@@ -192,8 +192,8 @@
           StorageDead(_5);                 // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
           StorageDead(_8);                 // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
           StorageDead(_6);                 // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
--         goto -> bb22;                    // scope 0 at $DIR/match-arm-scopes.rs:14:5: 17:6
-+         goto -> bb19;                    // scope 0 at $DIR/match-arm-scopes.rs:14:5: 17:6
+-         goto -> bb22;                    // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
++         goto -> bb19;                    // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
       }
   
 -     bb19: {
@@ -217,8 +217,8 @@
 +     bb18: {
           StorageDead(_16);                // scope 0 at $DIR/match-arm-scopes.rs:16:41: 16:42
           StorageDead(_15);                // scope 0 at $DIR/match-arm-scopes.rs:16:41: 16:42
--         goto -> bb22;                    // scope 0 at $DIR/match-arm-scopes.rs:14:5: 17:6
-+         goto -> bb19;                    // scope 0 at $DIR/match-arm-scopes.rs:14:5: 17:6
+-         goto -> bb22;                    // scope 0 at $DIR/match-arm-scopes.rs:16:41: 16:42
++         goto -> bb19;                    // scope 0 at $DIR/match-arm-scopes.rs:16:41: 16:42
       }
   
 -     bb22: {

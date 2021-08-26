@@ -115,8 +115,8 @@
       bb4: {
 -         StorageDead(_18);                // scope 7 at $DIR/remove_storage_markers.rs:8:14: 8:19
 -         StorageDead(_9);                 // scope 3 at $DIR/remove_storage_markers.rs:8:18: 8:19
-          _11 = discriminant(_8);          // scope 3 at $DIR/remove_storage_markers.rs:8:9: 8:10
-          switchInt(move _11) -> [0_isize: bb2, otherwise: bb3]; // scope 3 at $DIR/remove_storage_markers.rs:8:9: 8:10
+          _11 = discriminant(_8);          // scope 3 at $DIR/remove_storage_markers.rs:8:14: 8:19
+          switchInt(move _11) -> [0_isize: bb2, otherwise: bb3]; // scope 3 at $DIR/remove_storage_markers.rs:8:14: 8:19
       }
   }
   

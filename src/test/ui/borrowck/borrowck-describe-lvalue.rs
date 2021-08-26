@@ -164,9 +164,9 @@ fn main() {
         let mut e = E::A(3);
         let x = &mut e;
         match e {
+            //~^ ERROR cannot use `e` because it was mutably borrowed
             E::A(ref ax) =>
                 //~^ ERROR cannot borrow `e.0` as immutable because it is also borrowed as mutable
-                //~| ERROR cannot use `e` because it was mutably borrowed
                 println!("e.ax: {:?}", ax),
             E::B { x: ref bx } =>
                 //~^ ERROR cannot borrow `e.x` as immutable because it is also borrowed as mutable
