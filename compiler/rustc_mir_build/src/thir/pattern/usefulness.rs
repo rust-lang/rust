@@ -907,12 +907,6 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
         let mut ret = Self::new_not_useful(pref);
         for u in usefulnesses {
             ret.extend(u);
-            if let NoWitnesses(subpats) = &ret {
-                if subpats.is_full() {
-                    // Once we reach the full set, more unions won't change the result.
-                    return ret;
-                }
-            }
         }
         ret
     }
