@@ -344,7 +344,7 @@ impl InlineAsmReg {
             Self::Arm(r) => r.overlapping_regs(|r| cb(Self::Arm(r))),
             Self::AArch64(_) => cb(self),
             Self::RiscV(_) => cb(self),
-            Self::PowerPC(_) => cb(self),
+            Self::PowerPC(r) => r.overlapping_regs(|r| cb(Self::PowerPC(r))),
             Self::Hexagon(r) => r.overlapping_regs(|r| cb(Self::Hexagon(r))),
             Self::Mips(_) => cb(self),
             Self::Bpf(r) => r.overlapping_regs(|r| cb(Self::Bpf(r))),
