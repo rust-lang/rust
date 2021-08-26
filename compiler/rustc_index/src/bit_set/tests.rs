@@ -350,24 +350,24 @@ fn sparse_matrix_operations() {
         assert!(matrix.row(0).is_none());
     }
 
-     // SparseBitMatrix::subtract_row
-     {
+    // SparseBitMatrix::subtract_row
+    {
         let mut matrix = matrix.clone();
         assert!(!matrix.subtract_row(3, &disjoint));
         assert!(matrix.subtract_row(3, &subset));
         assert!(matrix.subtract_row(3, &superset));
         matrix.intersect_row(0, &disjoint);
         assert!(matrix.row(0).is_none());
-     }
+    }
 
-     // SparseBitMatrix::union_row 
-     {
+    // SparseBitMatrix::union_row
+    {
         let mut matrix = matrix.clone();
         assert!(!matrix.union_row(3, &subset));
         assert!(matrix.union_row(3, &disjoint));
         matrix.union_row(0, &disjoint);
         assert!(matrix.row(0).is_some());
-     }
+    }
 }
 
 /// Merge dense hybrid set into empty sparse hybrid set.
