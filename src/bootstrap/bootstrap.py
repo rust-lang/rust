@@ -515,11 +515,8 @@ class RustBuild(object):
     def _download_component_helper(
         self, filename, pattern, tarball_suffix, stage0=True, key=None
     ):
-        if key is None:
-            if stage0:
-                key = self.date
-            else:
-                key = self.rustc_commit
+        if not key:
+            key = self.date if stage0 else self.rustc_commit
         cache_dst = os.path.join(self.build_dir, "cache")
         rustc_cache = os.path.join(cache_dst, key)
         if not os.path.exists(rustc_cache):
@@ -654,7 +651,7 @@ class RustBuild(object):
     def maybe_download_ci_toolchain(self):
         # If `download-rustc` is not set, default to rebuilding.
         download_rustc = self.get_toml("download-rustc", section="rust")
-        if download_rustc is None or download_rustc == "false":
+        if not download_rustc or download_rustc == "false":
             return None
         assert download_rustc == "true" or download_rustc == "if-unchanged", download_rustc
 
