@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::ffi::OsStr;
 use std::fmt;
-use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -680,29 +679,7 @@ impl Options {
 
         let scrape_examples = matches.opt_str("scrape-examples").map(PathBuf::from);
         let with_examples = matches.opt_strs("with-examples");
-        let each_call_locations = with_examples
-            .into_iter()
-            .map(|path| {
-                let bytes = fs::read(&path).map_err(|e| format!("{} (for path {})", e, path))?;
-                let calls: AllCallLocations =
-                    serde_json::from_slice(&bytes).map_err(|e| format!("{}", e))?;
-                Ok(calls)
-            })
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e: String| {
-                diag.err(&format!("failed to load examples with error: {}", e));
-                1
-            })?;
-        let call_locations = (each_call_locations.len() > 0).then(move || {
-            each_call_locations.into_iter().fold(FxHashMap::default(), |mut acc, map| {
-                for (function, calls) in map.into_iter() {
-                    acc.entry(function)
-                        .or_insert_with(FxHashMap::default)
-                        .extend(calls.into_iter());
-                }
-                acc
-            })
-        });
+        let call_locations = crate::scrape_examples::load_call_locations(with_examples, &diag)?;
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 

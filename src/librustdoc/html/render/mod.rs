@@ -2453,32 +2453,31 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
 
 const MAX_FULL_EXAMPLES: usize = 5;
 
+/// Generates the HTML for example call locations generated via the --scrape-examples flag.
 fn render_call_locations(
     w: &mut Buffer,
     cx: &Context<'_>,
     call_locations: &Option<FnCallLocations>,
 ) {
     let call_locations = match call_locations.as_ref() {
-        Some(call_locations) => call_locations,
-        None => {
+        Some(call_locations) if call_locations.len() > 0 => call_locations,
+        _ => {
             return;
         }
     };
 
-    if call_locations.len() == 0 {
-        return;
-    }
-
+    // Generate a unique ID so users can link to this section for a given method
     let id = cx.id_map.borrow_mut().derive("scraped-examples");
     write!(
         w,
         r##"<div class="docblock scraped-example-list">
           <h1 id="scraped-examples" class="small-section-header">
-             <a href="#{}">Uses found in <code>examples/</code></a>
+             <a href="#{}">Examples found in repository</a>
           </h1>"##,
         id
     );
 
+    // Link to the source file containing a given example
     let example_url = |call_data: &CallData| -> String {
         format!(
             r#"<a href="{root}{url}" target="_blank">{name}</a>"#,
@@ -2488,18 +2487,27 @@ fn render_call_locations(
         )
     };
 
+    // Generate the HTML for a single example, being the title and code block
     let write_example = |w: &mut Buffer, (path, call_data): (&PathBuf, &CallData)| {
-        let mut contents =
+        // FIXME(wcrichto): is there a better way to handle an I/O error than a panic?
+        //  When would such an error arise?
+        let contents =
             fs::read_to_string(&path).expect(&format!("Failed to read file: {}", path.display()));
 
+        // To reduce file sizes, we only want to embed the source code needed to understand the example, not
+        // the entire file. So we find the smallest byte range that covers all items enclosing examples.
         let min_loc =
             call_data.locations.iter().min_by_key(|loc| loc.enclosing_item_span.0).unwrap();
         let min_byte = min_loc.enclosing_item_span.0;
         let min_line = min_loc.enclosing_item_lines.0;
         let max_byte =
             call_data.locations.iter().map(|loc| loc.enclosing_item_span.1).max().unwrap();
-        contents = contents[min_byte..max_byte].to_string();
 
+        // The output code is limited to that byte range.
+        let contents_subset = &contents[min_byte..max_byte];
+
+        // The call locations need to be updated to reflect that the size of the program has changed.
+        // Specifically, the ranges are all subtracted by `min_byte` since that's the new zero point.
         let locations = call_data
             .locations
             .iter()
@@ -2510,23 +2518,44 @@ fn render_call_locations(
         write!(
             w,
             r#"<div class="scraped-example" data-code="{code}" data-locs="{locations}">
-                <strong>{title}</strong>
+                <div class="scraped-example-title">{title}</div>
                  <div class="code-wrapper">"#,
-            code = contents.replace("\"", "&quot;"),
-            locations = serde_json::to_string(&locations).unwrap(),
             title = example_url(call_data),
+            // The code and locations are encoded as data attributes, so they can be read
+            // later by the JS for interactions.
+            code = contents_subset.replace("\"", "&quot;"),
+            locations = serde_json::to_string(&locations).unwrap(),
         );
         write!(w, r#"<span class="prev">&pr;</span> <span class="next">&sc;</span>"#);
         write!(w, r#"<span class="expand">&varr;</span>"#);
+
+        // FIXME(wcrichto): where should file_span and root_path come from?
         let file_span = rustc_span::DUMMY_SP;
         let root_path = "".to_string();
-        sources::print_src(w, &contents, edition, file_span, cx, &root_path, Some(min_line));
+        sources::print_src(w, contents_subset, edition, file_span, cx, &root_path, Some(min_line));
         write!(w, "</div></div>");
     };
 
-    let mut it = call_locations.into_iter().peekable();
+    // The call locations are output in sequence, so that sequence needs to be determined.
+    // Ideally the most "relevant" examples would be shown first, but there's no general algorithm
+    // for determining relevance. Instead, we prefer the smallest examples being likely the easiest to
+    // understand at a glance.
+    let ordered_locations = {
+        let sort_criterion = |(_, call_data): &(_, &CallData)| {
+            let (lo, hi) = call_data.locations[0].enclosing_item_span;
+            hi - lo
+        };
+
+        let mut locs = call_locations.into_iter().collect::<Vec<_>>();
+        locs.sort_by_key(|x| sort_criterion(x));
+        locs
+    };
+
+    // Write just one example that's visible by default in the method's description.
+    let mut it = ordered_locations.into_iter().peekable();
     write_example(w, it.next().unwrap());
 
+    // Then add the remaining examples in a hidden section.
     if it.peek().is_some() {
         write!(
             w,
@@ -2534,19 +2563,29 @@ fn render_call_locations(
                   <summary class="hideme">
                      <span>More examples</span>
                   </summary>
-                  <div class="more-scraped-examples">"#
+                  <div class="more-scraped-examples">
+                    <div class="toggle-line"><div class="toggle-line-inner"></div></div>
+                    <div>
+"#
         );
+
+        // Only generate inline code for MAX_FULL_EXAMPLES number of examples. Otherwise we could
+        // make the page arbitrarily huge!
         (&mut it).take(MAX_FULL_EXAMPLES).for_each(|ex| write_example(w, ex));
 
+        // For the remaining examples, generate a <ul /> containing links to the source files.
         if it.peek().is_some() {
-            write!(w, "Additional examples can be found in:<br /><ul>");
+            write!(
+                w,
+                r#"<div class="example-links">Additional examples can be found in:<br /><ul>"#
+            );
             it.for_each(|(_, call_data)| {
                 write!(w, "<li>{}</li>", example_url(call_data));
             });
-            write!(w, "</ul>");
+            write!(w, "</ul></div>");
         }
 
-        write!(w, "</div></details>");
+        write!(w, "</div></div></details>");
     }
 
     write!(w, "</div>");

@@ -1259,6 +1259,8 @@ crate struct Function {
 }
 
 impl Function {
+    /// If --scrape-examples is used, then this function attempts to find call locations
+    /// for `self` within `RenderOptions::call_locations` and store them in `Function::call_locations`.
     crate fn load_call_locations(&mut self, def_id: hir::def_id::DefId, cx: &DocContext<'_>) {
         if let Some(call_locations) = cx.render_options.call_locations.as_ref() {
             let key = scrape_examples::def_id_call_key(cx.tcx, def_id);

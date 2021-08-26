@@ -137,7 +137,7 @@ h1.fqn {
 	margin-top: 0;
 
 	/* workaround to keep flex from breaking below 700 px width due to the float: right on the nav
-	   above the h1 */
+		 above the h1 */
 	padding-left: 1px;
 }
 h1.fqn > .in-band > a:hover {
@@ -974,7 +974,7 @@ body.blur > :not(#help) {
 	text-shadow:
 		1px 0 0 black,
 		-1px 0 0 black,
-		0  1px 0 black,
+		0	 1px 0 black,
 		0 -1px 0 black;
 }
 
@@ -1214,8 +1214,8 @@ a.test-arrow:hover{
 
 .notable-traits-tooltip::after {
 	/* The margin on the tooltip does not capture hover events,
-	   this extends the area of hover enough so that mouse hover is not
-	   lost when moving the mouse to the tooltip */
+		 this extends the area of hover enough so that mouse hover is not
+		 lost when moving the mouse to the tooltip */
 	content: "\00a0\00a0\00a0";
 }
 
@@ -1715,7 +1715,7 @@ details.undocumented[open] > summary::before {
 	}
 
 	/* We do NOT hide this element so that alternative device readers still have this information
-	   available. */
+		 available. */
 	.sidebar-elems {
 		position: fixed;
 		z-index: 1;
@@ -1973,10 +1973,15 @@ details.undocumented[open] > summary::before {
 
 /* This part is for the new "examples" components */
 
+.scraped-example-title {
+	font-family: 'Fira Sans';
+	font-weight: 500;
+}
+
 .scraped-example:not(.expanded) .code-wrapper pre.line-numbers,
 .scraped-example:not(.expanded) .code-wrapper .example-wrap pre.rust {
 	overflow: hidden;
-	height: 240px;
+	max-height: 240px;
 }
 
 .scraped-example .code-wrapper .prev {
@@ -2033,7 +2038,7 @@ details.undocumented[open] > summary::before {
 
 .scraped-example:not(.expanded) .code-wrapper {
 	overflow: hidden;
-	height: 240px;
+	max-height: 240px;
 }
 
 .scraped-example .code-wrapper .line-numbers {
@@ -2072,6 +2077,41 @@ details.undocumented[open] > summary::before {
 
 .more-scraped-examples {
 	padding-left: 10px;
-	border-left: 1px solid #ccc;
-	margin-left: 24px;
+	margin-left: 15px;
+	display: flex;
+	flex-direction: row;
+}
+
+.toggle-line {
+	align-self: stretch;
+	margin-right: 10px;
+	margin-top: 5px;
+	padding: 0 4px;
+	cursor: pointer;
+}
+
+.toggle-line:hover .toggle-line-inner {
+	background: #aaa;
+}
+
+.toggle-line-inner {
+	min-width: 2px;
+	background: #ddd;
+	height: 100%;
+}
+
+h1 + .scraped-example {
+	margin-bottom: 10px;
+}
+
+.more-scraped-examples .scraped-example {
+	margin-bottom: 20px;
+}
+
+.example-links a {
+	font-family: 'Fira Sans';
+}
+
+.example-links ul {
+	margin-bottom: 0;
 }

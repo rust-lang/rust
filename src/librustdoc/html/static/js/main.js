@@ -1121,15 +1121,22 @@ function hideThemeButtonState() {
             example.querySelector('.next').remove();
         }
 
-        // Show full code on expansion
-        example.querySelector('.expand').addEventListener('click', function () {
-            if (hasClass(example, "expanded")) {
-                removeClass(example, "expanded");
-                scrollToLoc(example, locs[0]);
-            } else {
-                addClass(example, "expanded");
-            }
-        });
+        let codeEl = example.querySelector('.rust');
+        let expandButton = example.querySelector('.expand');
+        if (codeEl.scrollHeight == codeEl.clientHeight) {
+            addClass(example, 'expanded');
+            expandButton.remove();
+        } else {
+            // Show full code on expansion
+            expandButton.addEventListener('click', function () {
+                if (hasClass(example, "expanded")) {
+                    removeClass(example, "expanded");
+                    scrollToLoc(example, locs[0]);
+                } else {
+                    addClass(example, "expanded");
+                }
+            });
+        }
 
         // Start with the first example in view
         scrollToLoc(example, locs[0]);
@@ -1139,6 +1146,10 @@ function hideThemeButtonState() {
         var firstExamples = document.querySelectorAll('.scraped-example-list > .scraped-example');
         onEach(firstExamples, updateScrapedExample);
         onEach(document.querySelectorAll('.more-examples-toggle'), function(toggle) {
+            toggle.querySelector('.toggle-line').addEventListener('click', function() {
+                toggle.open = false;
+            });
+
             var moreExamples = toggle.querySelectorAll('.scraped-example');
             toggle.querySelector('summary').addEventListener('click', function() {
                 // Wrapping in setTimeout ensures the update happens after the elements are actually

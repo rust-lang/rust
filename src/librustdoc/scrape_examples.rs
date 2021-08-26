@@ -1,4 +1,4 @@
-//! This module analyzes provided crates to find examples of uses for items in the
+//! This module analyzes crates to find examples of uses for items in the
 //! current crate being documented.
 
 use crate::clean;
@@ -157,4 +157,32 @@ crate fn run(
         eprintln!("{}", e);
         rustc_errors::ErrorReported
     })
+}
+
+crate fn load_call_locations(
+    with_examples: Vec<String>,
+    diag: &rustc_errors::Handler,
+) -> Result<Option<AllCallLocations>, i32> {
+    let each_call_locations = with_examples
+        .into_iter()
+        .map(|path| {
+            let bytes = fs::read(&path).map_err(|e| format!("{} (for path {})", e, path))?;
+            let calls: AllCallLocations =
+                serde_json::from_slice(&bytes).map_err(|e| format!("{}", e))?;
+            Ok(calls)
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e: String| {
+            diag.err(&format!("failed to load examples with error: {}", e));
+            1
+        })?;
+
+    Ok((each_call_locations.len() > 0).then(|| {
+        each_call_locations.into_iter().fold(FxHashMap::default(), |mut acc, map| {
+            for (function, calls) in map.into_iter() {
+                acc.entry(function).or_insert_with(FxHashMap::default).extend(calls.into_iter());
+            }
+            acc
+        })
+    }))
 }
