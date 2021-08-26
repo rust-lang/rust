@@ -1199,12 +1199,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut user_self_ty = None;
         let mut is_alias_variant_ctor = false;
         match res {
-            Res::Def(DefKind::Ctor(CtorOf::Variant, _), _) => {
-                if let Some(self_ty) = self_ty {
-                    let adt_def = self_ty.ty_adt_def().unwrap();
-                    user_self_ty = Some(UserSelfTy { impl_def_id: adt_def.did, self_ty });
-                    is_alias_variant_ctor = true;
-                }
+            Res::Def(DefKind::Ctor(CtorOf::Variant, _), _)
+                if let Some(self_ty) = self_ty =>
+            {
+                let adt_def = self_ty.ty_adt_def().unwrap();
+                user_self_ty = Some(UserSelfTy { impl_def_id: adt_def.did, self_ty });
+                is_alias_variant_ctor = true;
             }
             Res::Def(DefKind::AssocFn | DefKind::AssocConst, def_id) => {
                 let container = tcx.associated_item(def_id).container;

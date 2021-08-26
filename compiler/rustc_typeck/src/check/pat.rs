@@ -627,15 +627,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let binding_parent = tcx.hir().get(binding_parent_id);
             debug!("inner {:?} pat {:?} parent {:?}", inner, pat, binding_parent);
             match binding_parent {
-                hir::Node::Param(hir::Param { span, .. }) => {
-                    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(inner.span) {
-                        err.span_suggestion(
-                            *span,
-                            &format!("did you mean `{}`", snippet),
-                            format!(" &{}", expected),
-                            Applicability::MachineApplicable,
-                        );
-                    }
+                hir::Node::Param(hir::Param { span, .. })
+                    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(inner.span) =>
+                {
+                    err.span_suggestion(
+                        *span,
+                        &format!("did you mean `{}`", snippet),
+                        format!(" &{}", expected),
+                        Applicability::MachineApplicable,
+                    );
                 }
                 hir::Node::Arm(_) | hir::Node::Pat(_) => {
                     // rely on match ergonomics or it might be nested `&&pat`
@@ -1293,13 +1293,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (Some(mut err), None) => {
                 err.emit();
             }
-            (None, None) => {
-                if let Some(mut err) =
-                    self.error_tuple_variant_index_shorthand(variant, pat, fields)
-                {
-                    err.emit();
-                }
+            (None, None) if let Some(mut err) =
+                    self.error_tuple_variant_index_shorthand(variant, pat, fields) =>
+            {
+                err.emit();
             }
+            (None, None) => {}
         }
         no_field_errors
     }

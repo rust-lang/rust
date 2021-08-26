@@ -446,13 +446,13 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
         }
 
-        Node::AnonConst(_) => {
-            if let Some(param) = tcx.opt_const_param_of(def_id) {
-                // We defer to `type_of` of the corresponding parameter
-                // for generic arguments.
-                return tcx.type_of(param);
-            }
+        Node::AnonConst(_) if let Some(param) = tcx.opt_const_param_of(def_id) => {
+            // We defer to `type_of` of the corresponding parameter
+            // for generic arguments.
+            tcx.type_of(param)
+        }
 
+        Node::AnonConst(_) => {
             let parent_node = tcx.hir().get(tcx.hir().get_parent_node(hir_id));
             match parent_node {
                 Node::Ty(&Ty { kind: TyKind::Array(_, ref constant), .. })

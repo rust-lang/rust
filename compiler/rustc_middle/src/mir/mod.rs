@@ -1664,13 +1664,10 @@ impl Debug for Statement<'_> {
             AscribeUserType(box (ref place, ref c_ty), ref variance) => {
                 write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
             }
-            Coverage(box ref coverage) => {
-                if let Some(rgn) = &coverage.code_region {
-                    write!(fmt, "Coverage::{:?} for {:?}", coverage.kind, rgn)
-                } else {
-                    write!(fmt, "Coverage::{:?}", coverage.kind)
-                }
+            Coverage(box self::Coverage { ref kind, code_region: Some(ref rgn) }) => {
+                write!(fmt, "Coverage::{:?} for {:?}", kind, rgn)
             }
+            Coverage(box ref coverage) => write!(fmt, "Coverage::{:?}", coverage.kind),
             CopyNonOverlapping(box crate::mir::CopyNonOverlapping {
                 ref src,
                 ref dst,

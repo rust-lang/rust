@@ -305,15 +305,14 @@ impl<'a> StripUnconfigured<'a> {
                     Some((AttrAnnotatedTokenTree::Delimited(sp, delim, inner), *spacing))
                         .into_iter()
                 }
+                AttrAnnotatedTokenTree::Token(ref token) if let TokenKind::Interpolated(ref nt) = token.kind => {
+                    panic!(
+                        "Nonterminal should have been flattened at {:?}: {:?}",
+                        token.span, nt
+                    );
+                }
                 AttrAnnotatedTokenTree::Token(token) => {
-                    if let TokenKind::Interpolated(nt) = token.kind {
-                        panic!(
-                            "Nonterminal should have been flattened at {:?}: {:?}",
-                            token.span, nt
-                        );
-                    } else {
-                        Some((AttrAnnotatedTokenTree::Token(token), *spacing)).into_iter()
-                    }
+                    Some((AttrAnnotatedTokenTree::Token(token), *spacing)).into_iter()
                 }
             })
             .collect();

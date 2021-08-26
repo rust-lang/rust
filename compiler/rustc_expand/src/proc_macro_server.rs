@@ -178,18 +178,19 @@ impl FromInternal<(TreeAndSpacing, &'_ mut Vec<Self>, &mut Rustc<'_>)>
                 tt!(Punct::new('#', false))
             }
 
+            Interpolated(nt)
+                if let Some((name, is_raw)) = ident_name_compatibility_hack(&nt, span, rustc) =>
+            {
+                TokenTree::Ident(Ident::new(rustc.sess, name.name, is_raw, name.span))
+            }
             Interpolated(nt) => {
-                if let Some((name, is_raw)) = ident_name_compatibility_hack(&nt, span, rustc) {
-                    TokenTree::Ident(Ident::new(rustc.sess, name.name, is_raw, name.span))
-                } else {
-                    let stream = nt_to_tokenstream(&nt, rustc.sess, CanSynthesizeMissingTokens::No);
-                    TokenTree::Group(Group {
-                        delimiter: Delimiter::None,
-                        stream,
-                        span: DelimSpan::from_single(span),
-                        flatten: crate::base::pretty_printing_compatibility_hack(&nt, rustc.sess),
-                    })
-                }
+                let stream = nt_to_tokenstream(&nt, rustc.sess, CanSynthesizeMissingTokens::No);
+                TokenTree::Group(Group {
+                    delimiter: Delimiter::None,
+                    stream,
+                    span: DelimSpan::from_single(span),
+                    flatten: crate::base::pretty_printing_compatibility_hack(&nt, rustc.sess),
+                })
             }
 
             OpenDelim(..) | CloseDelim(..) => unreachable!(),

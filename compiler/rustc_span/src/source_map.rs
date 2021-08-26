@@ -982,15 +982,13 @@ impl SourceMap {
         None
     }
     pub fn ensure_source_file_source_present(&self, source_file: Lrc<SourceFile>) -> bool {
-        source_file.add_external_src(|| match source_file.name {
-            FileName::Real(ref name) => {
-                if let Some(local_path) = name.local_path() {
+        source_file.add_external_src(|| {
+            match source_file.name {
+                FileName::Real(ref name) if let Some(local_path) = name.local_path() => {
                     self.file_loader.read_file(local_path).ok()
-                } else {
-                    None
                 }
+                _ => None,
             }
-            _ => None,
         })
     }
 
@@ -1033,22 +1031,19 @@ impl FilePathMapping {
 
     fn map_filename_prefix(&self, file: &FileName) -> (FileName, bool) {
         match file {
-            FileName::Real(realfile) => {
-                if let RealFileName::LocalPath(local_path) = realfile {
-                    let (mapped_path, mapped) = self.map_prefix(local_path.to_path_buf());
-                    let realfile = if mapped {
-                        RealFileName::Remapped {
-                            local_path: Some(local_path.clone()),
-                            virtual_name: mapped_path,
-                        }
-                    } else {
-                        realfile.clone()
-                    };
-                    (FileName::Real(realfile), mapped)
+            FileName::Real(realfile) if let RealFileName::LocalPath(local_path) = realfile => {
+                let (mapped_path, mapped) = self.map_prefix(local_path.to_path_buf());
+                let realfile = if mapped {
+                    RealFileName::Remapped {
+                        local_path: Some(local_path.clone()),
+                        virtual_name: mapped_path,
+                    }
                 } else {
-                    unreachable!("attempted to remap an already remapped filename");
-                }
+                    realfile.clone()
+                };
+                (FileName::Real(realfile), mapped)
             }
+            FileName::Real(_) => unreachable!("attempted to remap an already remapped filename"),
             other => (other.clone(), false),
         }
     }

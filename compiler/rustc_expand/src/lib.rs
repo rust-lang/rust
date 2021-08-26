@@ -1,12 +1,15 @@
+#![cfg_attr(bootstrap, feature(bindings_after_at))]
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
 #![feature(destructuring_assignment)]
 #![feature(format_args_capture)]
+#![feature(if_let_guard)]
 #![feature(iter_zip)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_span)]
 #![feature(try_blocks)]
+#![cfg_attr(bootstrap, allow(incomplete_features))] // if_let_guard
 
 #[macro_use]
 extern crate rustc_macros;

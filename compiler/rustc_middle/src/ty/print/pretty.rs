@@ -927,27 +927,29 @@ pub trait PrettyPrinter<'tcx>:
         }
 
         match ct.val {
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }) => {
-                if let Some(promoted) = promoted {
-                    p!(print_value_path(def.did, substs));
-                    p!(write("::{:?}", promoted));
-                } else {
-                    match self.tcx().def_kind(def.did) {
-                        DefKind::Static | DefKind::Const | DefKind::AssocConst => {
-                            p!(print_value_path(def.did, substs))
-                        }
-                        _ => {
-                            if def.is_local() {
-                                let span = self.tcx().def_span(def.did);
-                                if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span)
-                                {
-                                    p!(write("{}", snip))
-                                } else {
-                                    print_underscore!()
-                                }
+            ty::ConstKind::Unevaluated(ty::Unevaluated {
+                def,
+                substs,
+                promoted: Some(promoted),
+            }) => {
+                p!(print_value_path(def.did, substs));
+                p!(write("::{:?}", promoted));
+            }
+            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted: None }) => {
+                match self.tcx().def_kind(def.did) {
+                    DefKind::Static | DefKind::Const | DefKind::AssocConst => {
+                        p!(print_value_path(def.did, substs))
+                    }
+                    _ => {
+                        if def.is_local() {
+                            let span = self.tcx().def_span(def.did);
+                            if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span) {
+                                p!(write("{}", snip))
                             } else {
                                 print_underscore!()
                             }
+                        } else {
+                            print_underscore!()
                         }
                     }
                 }
