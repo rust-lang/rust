@@ -78,7 +78,7 @@ impl LateLintPass<'_> for MyStructLint {
 There are three ways to do this, depending on if the target trait has a diagnostic item, lang item or neither.
 
 ```rust
-use clippy_utils::{implements_trait, is_trait_method, match_trait_method};
+use clippy_utils::{implements_trait, is_trait_method, match_trait_method, paths};
 use rustc_span::symbol::sym;
 
 impl LateLintPass<'_> for MyStructLint {
