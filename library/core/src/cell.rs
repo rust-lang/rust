@@ -349,7 +349,7 @@ impl<T> Cell<T> {
         drop(old);
     }
 
-    /// Swaps the values of two Cells.
+    /// Swaps the values of two `Cell`s.
     /// Difference with `std::mem::swap` is that this function doesn't require `&mut` reference.
     ///
     /// # Examples
