@@ -5,61 +5,59 @@ set -euxo pipefail
 rm -rf /tmp/rustc-pgo
 
 python3 ../x.py build --target=$PGO_HOST --host=$PGO_HOST \
-    --stage 2 library/std --rust-profile-generate=/tmp/rustc-pgo
+    --stage 2 library/std \
+    --rust-profile-generate=/tmp/rustc-pgo \
+    --llvm-profile-generate
 
+# Profile libcore compilation in opt-level=0 and opt-level=3
 RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc --edition=2018 \
     --crate-type=lib ../library/core/src/lib.rs
+RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc --edition=2018 \
+    --crate-type=lib -Copt-level=3 ../library/core/src/lib.rs
 
-# Download and build a single-file stress test benchmark on perf.rust-lang.org.
-function pgo_perf_benchmark {
-    local PERF=1e19fc4c6168d2f7596e512f42f358f245d8f09d
-    local github_prefix=https://raw.githubusercontent.com/rust-lang/rustc-perf/$PERF
-    local name=$1
-    local edition=$2
-    curl -o /tmp/$name.rs $github_prefix/collector/benchmarks/$name/src/lib.rs
+cp -r /tmp/rustc-perf ./
+chown -R $(whoami): ./rustc-perf
+cd rustc-perf
 
-    RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc --edition=$edition \
-        --crate-type=lib /tmp/$name.rs
-}
+# Build the collector ahead of time, which is needed to make sure the rustc-fake
+# binary used by the collector is present.
+RUSTC=/checkout/obj/build/$PGO_HOST/stage0/bin/rustc \
+RUSTC_BOOTSTRAP=1 \
+/checkout/obj/build/$PGO_HOST/stage0/bin/cargo build -p collector
 
-pgo_perf_benchmark externs 2018
-pgo_perf_benchmark ctfe-stress-4 2018
-pgo_perf_benchmark inflate 2015
+# benchmark using profile_local with eprintln, which essentially just means
+# don't actually benchmark -- just make sure we run rustc a bunch of times.
+RUST_LOG=collector=debug \
+RUSTC=/checkout/obj/build/$PGO_HOST/stage0/bin/rustc \
+RUSTC_BOOTSTRAP=1 \
+/checkout/obj/build/$PGO_HOST/stage0/bin/cargo run -p collector --bin collector -- \
+        profile_local \
+        eprintln \
+        /checkout/obj/build/$PGO_HOST/stage2/bin/rustc \
+        Test \
+        --builds Check,Debug,Opt \
+        --cargo /checkout/obj/build/$PGO_HOST/stage0/bin/cargo \
+        --runs All \
+        --include externs,ctfe-stress-4,inflate,cargo,token-stream-stress,match-stress-enum
 
-cp -pri ../src/tools/cargo /tmp/cargo
-
-# The Cargo repository does not have a Cargo.lock in it, as it relies on the
-# lockfile already present in the rust-lang/rust monorepo. This decision breaks
-# down when Cargo is built outside the monorepo though (like in this case),
-# resulting in a build without any dependency locking.
-#
-# To ensure Cargo is built with locked dependencies even during PGO profiling
-# the following command copies the monorepo's lockfile into the Cargo temporary
-# directory. Cargo will *not* keep that lockfile intact, as it will remove all
-# the dependencies Cargo itself doesn't rely on. Still, it will prevent
-# building Cargo with arbitrary dependency versions.
-#
-# See #81378 for the bug that prompted adding this.
-cp -p ../Cargo.lock /tmp/cargo
-
-# Build cargo (with some flags)
-function pgo_cargo {
-    RUSTC=./build/$PGO_HOST/stage2/bin/rustc \
-        ./build/$PGO_HOST/stage0/bin/cargo $@ \
-        --manifest-path /tmp/cargo/Cargo.toml
-}
-
-# Build a couple different variants of Cargo
-CARGO_INCREMENTAL=1 pgo_cargo check
-echo 'pub fn barbarbar() {}' >> /tmp/cargo/src/cargo/lib.rs
-CARGO_INCREMENTAL=1 pgo_cargo check
-touch /tmp/cargo/src/cargo/lib.rs
-CARGO_INCREMENTAL=1 pgo_cargo check
-pgo_cargo build --release
+cd /checkout/obj
 
 # Merge the profile data we gathered
 ./build/$PGO_HOST/llvm/bin/llvm-profdata \
     merge -o /tmp/rustc-pgo.profdata /tmp/rustc-pgo
 
+# Merge the profile data we gathered for LLVM
+# Note that this uses the profdata from the clang we used to build LLVM,
+# which likely has a different version than our in-tree clang.
+/rustroot/bin/llvm-profdata \
+    merge -o /tmp/llvm-pgo.profdata ./build/$PGO_HOST/llvm/build/profiles
+
+# Rustbuild currently doesn't support rebuilding LLVM when PGO options
+# change (or any other llvm-related options); so just clear out the relevant
+# directories ourselves.
+rm -r ./build/$PGO_HOST/llvm ./build/$PGO_HOST/lld
+
 # This produces the actual final set of artifacts.
-$@ --rust-profile-use=/tmp/rustc-pgo.profdata
+$@ \
+    --rust-profile-use=/tmp/rustc-pgo.profdata \
+    --llvm-profile-use=/tmp/llvm-pgo.profdata
