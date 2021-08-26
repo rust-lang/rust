@@ -212,6 +212,7 @@ impl SourceCollector<'_, 'tcx> {
                     &self.cx,
                     &root_path,
                     None,
+                    None,
                 )
             },
             &self.cx.shared.style_files,
@@ -259,6 +260,7 @@ crate fn print_src(
     context: &Context<'_>,
     root_path: &str,
     offset: Option<usize>,
+    decoration_info: Option<highlight::DecorationInfo>,
 ) {
     let lines = s.lines().count();
     let mut line_numbers = Buffer::empty_from(buf);
@@ -283,5 +285,6 @@ crate fn print_src(
         edition,
         Some(line_numbers),
         Some(highlight::ContextInfo { context, file_span, root_path }),
+        decoration_info,
     );
 }

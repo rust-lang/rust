@@ -137,7 +137,7 @@ h1.fqn {
 	margin-top: 0;
 
 	/* workaround to keep flex from breaking below 700 px width due to the float: right on the nav
-		 above the h1 */
+	   above the h1 */
 	padding-left: 1px;
 }
 h1.fqn > .in-band > a:hover {
@@ -974,7 +974,7 @@ body.blur > :not(#help) {
 	text-shadow:
 		1px 0 0 black,
 		-1px 0 0 black,
-		0	 1px 0 black,
+		0  1px 0 black,
 		0 -1px 0 black;
 }
 
@@ -1214,8 +1214,8 @@ a.test-arrow:hover{
 
 .notable-traits-tooltip::after {
 	/* The margin on the tooltip does not capture hover events,
-		 this extends the area of hover enough so that mouse hover is not
-		 lost when moving the mouse to the tooltip */
+	   this extends the area of hover enough so that mouse hover is not
+	   lost when moving the mouse to the tooltip */
 	content: "\00a0\00a0\00a0";
 }
 
@@ -1715,7 +1715,7 @@ details.undocumented[open] > summary::before {
 	}
 
 	/* We do NOT hide this element so that alternative device readers still have this information
-		 available. */
+	   available. */
 	.sidebar-elems {
 		position: fixed;
 		z-index: 1;
@@ -1971,7 +1971,8 @@ details.undocumented[open] > summary::before {
 	}
 }
 
-/* This part is for the new "examples" components */
+
+/* Begin: styles for --scrape-examples feature */
 
 .scraped-example-title {
 	font-family: 'Fira Sans';
@@ -2063,16 +2064,17 @@ details.undocumented[open] > summary::before {
 	overflow-y: hidden;
 }
 
-.scraped-example .line-numbers span.highlight {
-	background: #f6fdb0;
+.scraped-example .example-wrap .rust span.highlight {
+	background: #fcffd6;
 }
 
-.scraped-example .example-wrap .rust span.highlight {
+.scraped-example .example-wrap .rust span.highlight.focus {
 	background: #f6fdb0;
 }
 
 .more-examples-toggle summary {
 	color: #999;
+	font-family: 'Fira Sans';
 }
 
 .more-scraped-examples {
@@ -2115,3 +2117,5 @@ h1 + .scraped-example {
 .example-links ul {
 	margin-bottom: 0;
 }
+
+/* End: styles for --scrape-examples feature */

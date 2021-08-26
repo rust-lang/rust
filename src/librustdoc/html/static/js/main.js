@@ -980,154 +980,55 @@ function hideThemeButtonState() {
     window.addEventListener("hashchange", onHashChange);
     searchState.setup();
 
-    /////// EXAMPLE ANALYZER
-
-    // Merge the full set of [from, to] offsets into a minimal set of non-overlapping
-    // [from, to] offsets.
-    // NB: This is such a archetypal software engineering interview question that
-    // I can't believe I actually had to write it. Yes, it's O(N) in the input length --
-    // but it does assume a sorted input!
-    function distinctRegions(locs) {
-        var start = -1;
-        var end = -1;
-        var output = [];
-        for (var i = 0; i < locs.length; i++) {
-            var loc = locs[i];
-            if (loc[0] > end) {
-                if (end > 0) {
-                    output.push([start, end]);
-                }
-                start = loc[0];
-                end = loc[1];
-            } else {
-                end = Math.max(end, loc[1]);
-            }
-        }
-        if (end > 0) {
-            output.push([start, end]);
-        }
-        return output;
-    }
-
-    function convertLocsStartsToLineOffsets(code, locs) {
-        locs = distinctRegions(locs.slice(0).sort(function (a, b) {
-            return a[0] === b[0] ? a[1] - b[1] : a[0] - b[0];
-        })); // sort by start; use end if start is equal.
-        var codeLines = code.split("\n");
-        var lineIndex = 0;
-        var totalOffset = 0;
-        var output = [];
-
-        while (locs.length > 0 && lineIndex < codeLines.length) {
-            // +1 here and later is due to omitted \n
-            var lineLength = codeLines[lineIndex].length + 1;
-            while (locs.length > 0 && totalOffset + lineLength > locs[0][0]) {
-                var endIndex = lineIndex;
-                var charsRemaining = locs[0][1] - totalOffset;
-                while (endIndex < codeLines.length &&
-                       charsRemaining > codeLines[endIndex].length + 1)
-                {
-                    charsRemaining -= codeLines[endIndex].length + 1;
-                    endIndex += 1;
-                }
-                output.push({
-                    from: [lineIndex, locs[0][0] - totalOffset],
-                    to: [endIndex, charsRemaining]
-                });
-                locs.shift();
-            }
-            lineIndex++;
-            totalOffset += lineLength;
-        }
-        return output;
-    }
-
-    // inserts str into html, *but* calculates idx by eliding anything in html that's not in raw.
-    // ideally this would work by walking the element tree...but this is good enough for now.
-    function insertStrAtRawIndex(raw, html, idx, str) {
-        if (idx > raw.length) {
-            return html;
-        }
-        if (idx == raw.length) {
-            return html + str;
-        }
-        var rawIdx = 0;
-        var htmlIdx = 0;
-        while (rawIdx < idx && rawIdx < raw.length) {
-            while (raw[rawIdx] !== html[htmlIdx] && htmlIdx < html.length) {
-                htmlIdx++;
-            }
-            rawIdx++;
-            htmlIdx++;
-        }
-        return html.substring(0, htmlIdx) + str + html.substr(htmlIdx);
-    }
+    /////// --scrape-examples interactions
 
     // Scroll code block to put the given code location in the middle of the viewer
     function scrollToLoc(elt, loc) {
         var wrapper = elt.querySelector(".code-wrapper");
         var halfHeight = wrapper.offsetHeight / 2;
         var lines = elt.querySelector('.line-numbers');
-        var offsetMid = (lines.children[loc.from[0]].offsetTop
-                         + lines.children[loc.to[0]].offsetTop) / 2;
+        var offsetMid = (lines.children[loc[0]].offsetTop
+                         + lines.children[loc[1]].offsetTop) / 2;
         var scrollOffset = offsetMid - halfHeight;
         lines.scrollTo(0, scrollOffset);
         elt.querySelector(".rust").scrollTo(0, scrollOffset);
     }
 
     function updateScrapedExample(example) {
-        var code = example.attributes.getNamedItem("data-code").textContent;
-        var codeLines = code.split("\n");
         var locs = JSON.parse(example.attributes.getNamedItem("data-locs").textContent);
-        locs = convertLocsStartsToLineOffsets(code, locs);
 
-        // Add call-site highlights to code listings
-        var litParent = example.querySelector('.example-wrap pre.rust');
-        var litHtml = litParent.innerHTML.split("\n");
-        onEach(locs, function (loc) {
-            for (var i = loc.from[0]; i < loc.to[0] + 1; i++) {
-                addClass(example.querySelector('.line-numbers').children[i], "highlight");
-            }
-            litHtml[loc.to[0]] = insertStrAtRawIndex(
-                codeLines[loc.to[0]],
-                litHtml[loc.to[0]],
-                loc.to[1],
-                "</span>");
-            litHtml[loc.from[0]] = insertStrAtRawIndex(
-                codeLines[loc.from[0]],
-                litHtml[loc.from[0]],
-                loc.from[1],
-                '<span class="highlight" data-loc="' +
-                    JSON.stringify(loc).replace(/"/g, "&quot;") +
-                    '">');
-        }, true); // do this backwards to avoid shifting later offsets
-        litParent.innerHTML = litHtml.join('\n');
-
-        // Toggle through list of examples in a given file
         var locIndex = 0;
+        var highlights = example.querySelectorAll('.highlight');
+        addClass(highlights[0], 'focus');
         if (locs.length > 1) {
+            // Toggle through list of examples in a given file
+            var onChangeLoc = function(f) {
+                removeClass(highlights[locIndex], 'focus');
+                f();
+                scrollToLoc(example, locs[locIndex]);
+                addClass(highlights[locIndex], 'focus');
+            };
             example.querySelector('.prev')
-                .addEventListener('click', function () {
-                    locIndex = (locIndex - 1 + locs.length) % locs.length;
-                    scrollToLoc(example, locs[locIndex]);
+                .addEventListener('click', function() {
+                    onChangeLoc(function() {
+                        locIndex = (locIndex - 1 + locs.length) % locs.length;
+                    });
                 });
             example.querySelector('.next')
-                .addEventListener('click', function () {
-                    locIndex = (locIndex + 1) % locs.length;
-                    scrollToLoc(example, locs[locIndex]);
+                .addEventListener('click', function() {
+                    onChangeLoc(function() { locIndex = (locIndex + 1) % locs.length; });
                 });
         } else {
+            // Remove buttons if there's only one example in the file
             example.querySelector('.prev').remove();
             example.querySelector('.next').remove();
         }
 
-        let codeEl = example.querySelector('.rust');
-        let expandButton = example.querySelector('.expand');
-        if (codeEl.scrollHeight == codeEl.clientHeight) {
-            addClass(example, 'expanded');
-            expandButton.remove();
-        } else {
-            // Show full code on expansion
+        var codeEl = example.querySelector('.rust');
+        var codeOverflows = codeEl.scrollHeight > codeEl.clientHeight;
+        var expandButton = example.querySelector('.expand');
+        if (codeOverflows) {
+            // If file is larger than default height, give option to expand the viewer
             expandButton.addEventListener('click', function () {
                 if (hasClass(example, "expanded")) {
                     removeClass(example, "expanded");
@@ -1136,6 +1037,10 @@ function hideThemeButtonState() {
                     addClass(example, "expanded");
                 }
             });
+        } else {
+            // Otherwise remove expansion buttons
+            addClass(example, 'expanded');
+            expandButton.remove();
         }
 
         // Start with the first example in view
@@ -1146,6 +1051,8 @@ function hideThemeButtonState() {
         var firstExamples = document.querySelectorAll('.scraped-example-list > .scraped-example');
         onEach(firstExamples, updateScrapedExample);
         onEach(document.querySelectorAll('.more-examples-toggle'), function(toggle) {
+            // Allow users to click the left border of the <details> section to close it,
+            // since the section can be large and finding the [+] button is annoying.
             toggle.querySelector('.toggle-line').addEventListener('click', function() {
                 toggle.open = false;
             });

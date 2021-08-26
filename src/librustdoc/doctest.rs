@@ -45,7 +45,7 @@ crate struct TestOptions {
     crate attrs: Vec<String>,
 }
 
-crate fn make_rustc_config(options: &Options) -> interface::Config {
+crate fn run(options: Options) -> Result<(), ErrorReported> {
     let input = config::Input::File(options.input.clone());
 
     let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
@@ -87,7 +87,7 @@ crate fn make_rustc_config(options: &Options) -> interface::Config {
     let mut cfgs = options.cfgs.clone();
     cfgs.push("doc".to_owned());
     cfgs.push("doctest".to_owned());
-    interface::Config {
+    let config = interface::Config {
         opts: sessopts,
         crate_cfg: interface::parse_cfgspecs(cfgs),
         input,
@@ -103,11 +103,7 @@ crate fn make_rustc_config(options: &Options) -> interface::Config {
         override_queries: None,
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
-    }
-}
-
-crate fn run(options: Options) -> Result<(), ErrorReported> {
-    let config = make_rustc_config(&options);
+    };
 
     let test_args = options.test_args.clone();
     let display_doctest_warnings = options.display_doctest_warnings;

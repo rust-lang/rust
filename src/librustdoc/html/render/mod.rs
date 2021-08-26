@@ -46,7 +46,7 @@ use std::string::ToString;
 
 use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, StabilityLevel};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
@@ -2496,23 +2496,28 @@ fn render_call_locations(
 
         // To reduce file sizes, we only want to embed the source code needed to understand the example, not
         // the entire file. So we find the smallest byte range that covers all items enclosing examples.
+        assert!(call_data.locations.len() > 0);
         let min_loc =
-            call_data.locations.iter().min_by_key(|loc| loc.enclosing_item_span.0).unwrap();
-        let min_byte = min_loc.enclosing_item_span.0;
-        let min_line = min_loc.enclosing_item_lines.0;
+            call_data.locations.iter().min_by_key(|loc| loc.enclosing_item.byte_span.0).unwrap();
+        let min_byte = min_loc.enclosing_item.byte_span.0;
+        let min_line = min_loc.enclosing_item.line_span.0;
         let max_byte =
-            call_data.locations.iter().map(|loc| loc.enclosing_item_span.1).max().unwrap();
+            call_data.locations.iter().map(|loc| loc.enclosing_item.byte_span.1).max().unwrap();
 
         // The output code is limited to that byte range.
-        let contents_subset = &contents[min_byte..max_byte];
+        let contents_subset = &contents[(min_byte as usize)..(max_byte as usize)];
 
         // The call locations need to be updated to reflect that the size of the program has changed.
         // Specifically, the ranges are all subtracted by `min_byte` since that's the new zero point.
-        let locations = call_data
+        let (byte_ranges, line_ranges): (Vec<_>, Vec<_>) = call_data
             .locations
             .iter()
-            .map(|loc| (loc.call_span.0 - min_byte, loc.call_span.1 - min_byte))
-            .collect::<Vec<_>>();
+            .map(|loc| {
+                let (byte_lo, byte_hi) = loc.call_expr.byte_span;
+                let (line_lo, line_hi) = loc.call_expr.line_span;
+                ((byte_lo - min_byte, byte_hi - min_byte), (line_lo - min_line, line_hi - min_line))
+            })
+            .unzip();
 
         let edition = cx.shared.edition();
         write!(
@@ -2524,7 +2529,7 @@ fn render_call_locations(
             // The code and locations are encoded as data attributes, so they can be read
             // later by the JS for interactions.
             code = contents_subset.replace("\"", "&quot;"),
-            locations = serde_json::to_string(&locations).unwrap(),
+            locations = serde_json::to_string(&line_ranges).unwrap(),
         );
         write!(w, r#"<span class="prev">&pr;</span> <span class="next">&sc;</span>"#);
         write!(w, r#"<span class="expand">&varr;</span>"#);
@@ -2532,7 +2537,18 @@ fn render_call_locations(
         // FIXME(wcrichto): where should file_span and root_path come from?
         let file_span = rustc_span::DUMMY_SP;
         let root_path = "".to_string();
-        sources::print_src(w, contents_subset, edition, file_span, cx, &root_path, Some(min_line));
+        let mut decoration_info = FxHashMap::default();
+        decoration_info.insert("highlight", byte_ranges);
+        sources::print_src(
+            w,
+            contents_subset,
+            edition,
+            file_span,
+            cx,
+            &root_path,
+            Some(min_line),
+            Some(decoration_info),
+        );
         write!(w, "</div></div>");
     };
 
@@ -2542,7 +2558,8 @@ fn render_call_locations(
     // understand at a glance.
     let ordered_locations = {
         let sort_criterion = |(_, call_data): &(_, &CallData)| {
-            let (lo, hi) = call_data.locations[0].enclosing_item_span;
+            // Use the first location because that's what the user will see initially
+            let (lo, hi) = call_data.locations[0].enclosing_item.byte_span;
             hi - lo
         };
 

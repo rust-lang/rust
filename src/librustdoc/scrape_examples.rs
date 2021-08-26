@@ -1,5 +1,4 @@
-//! This module analyzes crates to find examples of uses for items in the
-//! current crate being documented.
+//! This module analyzes crates to find call sites that can serve as examples in the documentation.
 
 use crate::clean;
 use crate::config;
@@ -11,20 +10,55 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
     self as hir,
     intravisit::{self, Visitor},
+    HirId,
 };
 use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::{def_id::DefId, FileName};
+use rustc_span::{def_id::DefId, BytePos, FileName, SourceFile};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+crate struct SyntaxRange {
+    crate byte_span: (u32, u32),
+    crate line_span: (usize, usize),
+}
+
+impl SyntaxRange {
+    fn new(span: rustc_span::Span, file: &SourceFile) -> Self {
+        let get_pos = |bytepos: BytePos| file.original_relative_byte_pos(bytepos).0;
+        let get_line = |bytepos: BytePos| file.lookup_line(bytepos).unwrap();
+
+        SyntaxRange {
+            byte_span: (get_pos(span.lo()), get_pos(span.hi())),
+            line_span: (get_line(span.lo()), get_line(span.hi())),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 crate struct CallLocation {
-    crate call_span: (usize, usize),
-    crate enclosing_item_span: (usize, usize),
-    crate enclosing_item_lines: (usize, usize),
+    crate call_expr: SyntaxRange,
+    crate enclosing_item: SyntaxRange,
+}
+
+impl CallLocation {
+    fn new(
+        tcx: TyCtxt<'_>,
+        expr_span: rustc_span::Span,
+        expr_id: HirId,
+        source_file: &rustc_span::SourceFile,
+    ) -> Self {
+        let enclosing_item_span = tcx.hir().span_with_body(tcx.hir().get_parent_item(expr_id));
+        assert!(enclosing_item_span.contains(expr_span));
+
+        CallLocation {
+            call_expr: SyntaxRange::new(expr_span, source_file),
+            enclosing_item: SyntaxRange::new(enclosing_item_span, source_file),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -96,24 +130,10 @@ where
                 _ => None,
             };
 
-            let get_pos =
-                |bytepos: rustc_span::BytePos| file.original_relative_byte_pos(bytepos).0 as usize;
-            let get_range = |span: rustc_span::Span| (get_pos(span.lo()), get_pos(span.hi()));
-            let get_line = |bytepos: rustc_span::BytePos| file.lookup_line(bytepos).unwrap();
-            let get_lines = |span: rustc_span::Span| (get_line(span.lo()), get_line(span.hi()));
-
             if let Some(file_path) = file_path {
                 let abs_path = fs::canonicalize(file_path.clone()).unwrap();
                 let cx = &self.cx;
-                let enclosing_item_span =
-                    self.tcx.hir().span_with_body(self.tcx.hir().get_parent_item(ex.hir_id));
-                assert!(enclosing_item_span.contains(span));
-
-                let location = CallLocation {
-                    call_span: get_range(span),
-                    enclosing_item_span: get_range(enclosing_item_span),
-                    enclosing_item_lines: get_lines(enclosing_item_span),
-                };
+                let location = CallLocation::new(self.tcx, span, ex.hir_id, &file);
 
                 entries
                     .entry(abs_path)

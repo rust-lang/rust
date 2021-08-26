@@ -12,6 +12,7 @@ use crate::html::render::Context;
 use std::collections::VecDeque;
 use std::fmt::{Display, Write};
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_lexer::{LiteralKind, TokenKind};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
@@ -30,6 +31,8 @@ crate struct ContextInfo<'a, 'b, 'c> {
     crate root_path: &'c str,
 }
 
+crate type DecorationInfo = FxHashMap<&'static str, Vec<(u32, u32)>>;
+
 /// Highlights `src`, returning the HTML output.
 crate fn render_with_highlighting(
     src: &str,
@@ -40,6 +43,7 @@ crate fn render_with_highlighting(
     edition: Edition,
     extra_content: Option<Buffer>,
     context_info: Option<ContextInfo<'_, '_, '_>>,
+    decoration_info: Option<DecorationInfo>,
 ) {
     debug!("highlighting: ================\n{}\n==============", src);
     if let Some((edition_info, class)) = tooltip {
@@ -56,7 +60,7 @@ crate fn render_with_highlighting(
     }
 
     write_header(out, class, extra_content);
-    write_code(out, &src, edition, context_info);
+    write_code(out, &src, edition, context_info, decoration_info);
     write_footer(out, playground_button);
 }
 
@@ -89,17 +93,23 @@ fn write_code(
     src: &str,
     edition: Edition,
     context_info: Option<ContextInfo<'_, '_, '_>>,
+    decoration_info: Option<DecorationInfo>,
 ) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
     let src = src.replace("\r\n", "\n");
-    Classifier::new(&src, edition, context_info.as_ref().map(|c| c.file_span).unwrap_or(DUMMY_SP))
-        .highlight(&mut |highlight| {
-            match highlight {
-                Highlight::Token { text, class } => string(out, Escape(text), class, &context_info),
-                Highlight::EnterSpan { class } => enter_span(out, class),
-                Highlight::ExitSpan => exit_span(out),
-            };
-        });
+    Classifier::new(
+        &src,
+        edition,
+        context_info.as_ref().map(|c| c.file_span).unwrap_or(DUMMY_SP),
+        decoration_info,
+    )
+    .highlight(&mut |highlight| {
+        match highlight {
+            Highlight::Token { text, class } => string(out, Escape(text), class, &context_info),
+            Highlight::EnterSpan { class } => enter_span(out, class),
+            Highlight::ExitSpan => exit_span(out),
+        };
+    });
 }
 
 fn write_footer(out: &mut Buffer, playground_button: Option<&str>) {
@@ -127,6 +137,7 @@ enum Class {
     PreludeTy,
     PreludeVal,
     QuestionMark,
+    Decoration(&'static str),
 }
 
 impl Class {
@@ -150,6 +161,7 @@ impl Class {
             Class::PreludeTy => "prelude-ty",
             Class::PreludeVal => "prelude-val",
             Class::QuestionMark => "question-mark",
+            Class::Decoration(kind) => kind,
         }
     }
 
@@ -244,7 +256,28 @@ impl Iterator for PeekIter<'a> {
     type Item = (TokenKind, &'a str);
     fn next(&mut self) -> Option<Self::Item> {
         self.peek_pos = 0;
-        if let Some(first) = self.stored.pop_front() { Some(first) } else { self.iter.next() }
+        if let Some(first) = self.stored.pop_front() {
+            Some(first)
+        } else {
+            self.iter.next()
+        }
+    }
+}
+
+/// Custom spans inserted into the source. Eg --scrape-examples uses this to highlight function calls
+struct Decorations {
+    starts: Vec<(u32, &'static str)>,
+    ends: Vec<u32>,
+}
+
+impl Decorations {
+    fn new(info: DecorationInfo) -> Self {
+        let (starts, ends) = info
+            .into_iter()
+            .map(|(kind, ranges)| ranges.into_iter().map(move |(lo, hi)| ((lo, kind), hi)))
+            .flatten()
+            .unzip();
+        Decorations { starts, ends }
     }
 }
 
@@ -259,12 +292,18 @@ struct Classifier<'a> {
     byte_pos: u32,
     file_span: Span,
     src: &'a str,
+    decorations: Option<Decorations>,
 }
 
 impl<'a> Classifier<'a> {
     /// Takes as argument the source code to HTML-ify, the rust edition to use and the source code
     /// file span which will be used later on by the `span_correspondance_map`.
-    fn new(src: &str, edition: Edition, file_span: Span) -> Classifier<'_> {
+    fn new(
+        src: &str,
+        edition: Edition,
+        file_span: Span,
+        decoration_info: Option<DecorationInfo>,
+    ) -> Classifier<'_> {
         let tokens = PeekIter::new(TokenIter { src });
         Classifier {
             tokens,
@@ -275,6 +314,7 @@ impl<'a> Classifier<'a> {
             byte_pos: 0,
             file_span,
             src,
+            decorations,
         }
     }
 
@@ -356,6 +396,19 @@ impl<'a> Classifier<'a> {
     /// token is used.
     fn highlight(mut self, sink: &mut dyn FnMut(Highlight<'a>)) {
         loop {
+            if let Some(decs) = self.decorations.as_mut() {
+                let byte_pos = self.byte_pos;
+                let n_starts = decs.starts.iter().filter(|(i, _)| byte_pos >= *i).count();
+                for (_, kind) in decs.starts.drain(0..n_starts) {
+                    sink(Highlight::EnterSpan { class: Class::Decoration(kind) });
+                }
+
+                let n_ends = decs.ends.iter().filter(|i| byte_pos >= **i).count();
+                for _ in decs.ends.drain(0..n_ends) {
+                    sink(Highlight::ExitSpan);
+                }
+            }
+
             if self
                 .tokens
                 .peek()

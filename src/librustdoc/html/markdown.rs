@@ -360,6 +360,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             edition,
             None,
             None,
+            None,
         );
         Some(Event::Html(s.into_inner().into()))
     }
