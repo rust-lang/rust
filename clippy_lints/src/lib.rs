@@ -2115,7 +2115,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box from_str_radix_10::FromStrRadix10);
     store.register_late_pass(|| box manual_map::ManualMap);
     store.register_late_pass(move || box if_then_some_else_none::IfThenSomeElseNone::new(msrv));
-    store.register_early_pass(|| box bool_assert_comparison::BoolAssertComparison);
+    store.register_late_pass(|| box bool_assert_comparison::BoolAssertComparison);
     store.register_early_pass(move || box module_style::ModStyle);
     store.register_late_pass(|| box unused_async::UnusedAsync);
     let disallowed_types = conf.disallowed_types.iter().cloned().collect::<FxHashSet<_>>();
