@@ -124,7 +124,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         &self,
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
         bx: &mut Bx,
-        fn_abi: FnAbi<'tcx, Ty<'tcx>>,
+        fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
         fn_ptr: Bx::Value,
         llargs: &[Bx::Value],
         destination: Option<(ReturnDest<'tcx, Bx::Value>, mir::BasicBlock)>,

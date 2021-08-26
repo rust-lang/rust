@@ -11,7 +11,8 @@
 macro_rules! arena_types {
     ($macro:path, $tcx:lifetime) => (
         $macro!([
-            [] layouts: rustc_target::abi::Layout,
+            [] layout: rustc_target::abi::Layout,
+            [] fn_abi: rustc_target::abi::call::FnAbi<$tcx, rustc_middle::ty::Ty<$tcx>>,
             // AdtDef are interned and compared by address
             [] adt_def: rustc_middle::ty::AdtDef,
             [] steal_thir: rustc_data_structures::steal::Steal<rustc_middle::thir::Thir<$tcx>>,

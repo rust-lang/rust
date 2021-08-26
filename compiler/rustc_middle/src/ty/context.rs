@@ -55,6 +55,7 @@ use rustc_span::def_id::{DefPathHash, StableCrateId};
 use rustc_span::source_map::{MultiSpan, SourceMap};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Layout, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
 
@@ -135,6 +136,7 @@ pub struct CtxtInterners<'tcx> {
     const_allocation: InternedSet<'tcx, Allocation>,
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
     layout: InternedSet<'tcx, Layout>,
+    fn_abi: InternedSet<'tcx, FnAbi<'tcx, Ty<'tcx>>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -155,6 +157,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             const_allocation: Default::default(),
             bound_variable_kinds: Default::default(),
             layout: Default::default(),
+            fn_abi: Default::default(),
         }
     }
 
@@ -1959,6 +1962,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     self.0.interners.const_allocation.len()
                 )?;
                 writeln!(fmt, "Layout interner: #{}", self.0.interners.layout.len())?;
+                writeln!(fmt, "FnAbi interner: #{}", self.0.interners.fn_abi.len())?;
 
                 Ok(())
             }
@@ -2083,6 +2087,7 @@ direct_interners! {
     const_: mk_const(Const<'tcx>),
     const_allocation: intern_const_alloc(Allocation),
     layout: intern_layout(Layout),
+    fn_abi: intern_fn_abi(FnAbi<'tcx, Ty<'tcx>>),
 }
 
 macro_rules! slice_interners {

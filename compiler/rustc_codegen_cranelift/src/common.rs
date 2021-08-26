@@ -239,7 +239,7 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
     pub(crate) instance: Instance<'tcx>,
     pub(crate) symbol_name: SymbolName<'tcx>,
     pub(crate) mir: &'tcx Body<'tcx>,
-    pub(crate) fn_abi: Option<FnAbi<'tcx, Ty<'tcx>>>,
+    pub(crate) fn_abi: Option<&'tcx FnAbi<'tcx, Ty<'tcx>>>,
 
     pub(crate) bcx: FunctionBuilder<'clif>,
     pub(crate) block_map: IndexVec<BasicBlock, Block>,

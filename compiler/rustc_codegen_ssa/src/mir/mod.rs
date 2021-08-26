@@ -29,7 +29,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
     cx: &'a Bx::CodegenCx,
 
-    fn_abi: FnAbi<'tcx, Ty<'tcx>>,
+    fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
 
     /// When unwinding is initiated, we have to store this personality
     /// value somewhere so that we can load it and re-use it in the

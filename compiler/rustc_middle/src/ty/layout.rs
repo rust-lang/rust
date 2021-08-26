@@ -2838,21 +2838,21 @@ where
     ///
     /// NB: this doesn't handle virtual calls - those should use `FnAbi::of_instance`
     /// instead, where the instance is an `InstanceDef::Virtual`.
-    fn of_fn_ptr(cx: &C, sig: ty::PolyFnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
+    fn of_fn_ptr(cx: &C, sig: ty::PolyFnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> &'tcx Self;
 
     /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for
     /// direct calls to an `fn`.
     ///
     /// NB: that includes virtual calls, which are represented by "direct calls"
     /// to an `InstanceDef::Virtual` instance (of `<dyn Trait as Trait>::fn`).
-    fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
+    fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> &'tcx Self;
 }
 
 impl<'tcx, C> FnAbiExt<'tcx, C> for call::FnAbi<'tcx, Ty<'tcx>>
 where
     C: HasTyCtxt<'tcx> + HasParamEnv<'tcx>,
 {
-    fn of_fn_ptr(cx: &C, sig: ty::PolyFnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
+    fn of_fn_ptr(cx: &C, sig: ty::PolyFnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> &'tcx Self {
         call::FnAbi::new_internal(
             &LayoutCx { tcx: cx.tcx(), param_env: cx.param_env() },
             sig,
@@ -2872,7 +2872,7 @@ where
         })
     }
 
-    fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
+    fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> &'tcx Self {
         let sig = instance.fn_sig_for_fn_abi(cx.tcx());
 
         let caller_location = if instance.def.requires_caller_location(cx.tcx()) {
@@ -2912,7 +2912,7 @@ where
 /// Implementation detail of computing `FnAbi`s, shouldn't be exported.
 // FIXME(eddyb) move this off of being generic on `C: LayoutOf`, and
 // explicitly take `LayoutCx` *or* `TyCtxt` and `ParamEnvAnd<...>`.
-trait FnAbiInternalExt<'tcx, C>: Sized
+trait FnAbiInternalExt<'tcx, C>
 where
     C: LayoutOf<'tcx, LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>>
         + HasTargetSpec,
@@ -2927,7 +2927,7 @@ where
         codegen_fn_attr_flags: CodegenFnAttrFlags,
         // FIXME(eddyb) replace this with something typed, like an `enum`.
         make_self_ptr_thin: bool,
-    ) -> Result<Self, FnAbiError<'tcx>>;
+    ) -> Result<&'tcx Self, FnAbiError<'tcx>>;
     fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi) -> Result<(), FnAbiError<'tcx>>;
 }
 
@@ -2943,7 +2943,7 @@ where
         caller_location: Option<Ty<'tcx>>,
         codegen_fn_attr_flags: CodegenFnAttrFlags,
         force_thin_self_ptr: bool,
-    ) -> Result<Self, FnAbiError<'tcx>> {
+    ) -> Result<&'tcx Self, FnAbiError<'tcx>> {
         debug!("FnAbi::new_internal({:?}, {:?})", sig, extra_args);
 
         let sig = cx.tcx().normalize_erasing_late_bound_regions(cx.param_env(), sig);
@@ -3106,7 +3106,7 @@ where
         };
         fn_abi.adjust_for_abi(cx, sig.abi)?;
         debug!("FnAbi::new_internal = {:?}", fn_abi);
-        Ok(fn_abi)
+        Ok(cx.tcx().intern_fn_abi(fn_abi))
     }
 
     fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi) -> Result<(), FnAbiError<'tcx>> {
