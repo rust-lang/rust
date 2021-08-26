@@ -274,7 +274,7 @@ fn sparse_intersect<T: Idx>(
 // Optimization of dense/sparse intersection. The resulting set is
 // guaranteed to be at most the size of the sparse set, and hence can be
 // represented as a sparse set. Therefore the sparse set is copied and filtered,
-// then returned as the new set. 
+// then returned as the new set.
 fn dense_sparse_intersect<T: Idx>(
     dense: &BitSet<T>,
     sparse: &SparseBitSet<T>,
@@ -312,7 +312,7 @@ impl<T: Idx> BitRelations<HybridBitSet<T>> for BitSet<T> {
             HybridBitSet::Sparse(sparse) => {
                 let (updated, changed) = dense_sparse_intersect(self, sparse);
 
-                // We can't directly assign the BitSet to the SparseBitSet, and 
+                // We can't directly assign the BitSet to the SparseBitSet, and
                 // doing `*self = updated.to_dense()` would cause a drop / reallocation. Instead,
                 // the BitSet is cleared and `updated` is copied into `self`.
                 self.clear();
