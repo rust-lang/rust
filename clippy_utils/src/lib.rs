@@ -808,6 +808,13 @@ pub fn capture_local_usage(cx: &LateContext<'tcx>, e: &Expr<'_>) -> CaptureKind 
                         capture_expr_ty = e;
                     }
                 },
+                ExprKind::Let(pat, ..) => {
+                    let mutability = match pat_capture_kind(cx, pat) {
+                        CaptureKind::Value => Mutability::Not,
+                        CaptureKind::Ref(m) => m,
+                    };
+                    return CaptureKind::Ref(mutability);
+                },
                 ExprKind::Match(_, arms, _) => {
                     let mut mutability = Mutability::Not;
                     for capture in arms.iter().map(|arm| pat_capture_kind(cx, arm.pat)) {

@@ -6,7 +6,7 @@ use crate::{is_expn_of, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::{self, LitKind};
 use rustc_hir as hir;
-use rustc_hir::{Block, BorrowKind, Expr, ExprKind, LoopSource, Node, Pat, StmtKind, UnOp};
+use rustc_hir::{Arm, Block, BorrowKind, Expr, ExprKind, LoopSource, MatchSource, Node, Pat, StmtKind, UnOp};
 use rustc_lint::LateContext;
 use rustc_span::{sym, ExpnKind, Span, Symbol};
 
@@ -112,6 +112,33 @@ impl<'hir> IfLet<'hir> {
             });
         }
         None
+    }
+}
+
+pub enum IfLetOrMatch<'hir> {
+    Match(&'hir Expr<'hir>, &'hir [Arm<'hir>], MatchSource),
+    /// scrutinee, pattern, then block, else block
+    IfLet(
+        &'hir Expr<'hir>,
+        &'hir Pat<'hir>,
+        &'hir Expr<'hir>,
+        Option<&'hir Expr<'hir>>,
+    ),
+}
+
+impl<'hir> IfLetOrMatch<'hir> {
+    pub fn parse(cx: &LateContext<'_>, expr: &Expr<'hir>) -> Option<Self> {
+        match expr.kind {
+            ExprKind::Match(expr, arms, source) => Some(Self::Match(expr, arms, source)),
+            _ => IfLet::hir(cx, expr).map(
+                |IfLet {
+                     let_expr,
+                     let_pat,
+                     if_then,
+                     if_else,
+                 }| { Self::IfLet(let_expr, let_pat, if_then, if_else) },
+            ),
+        }
     }
 }
 
