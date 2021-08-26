@@ -247,6 +247,8 @@ impl<T: Idx> BitRelations<BitSet<T>> for BitSet<T> {
     }
 }
 
+// Applies a function to mutate a bitset, and returns true if any
+// of the applications return true
 fn sequential_update<T: Idx>(
     mut self_update: impl FnMut(T) -> bool,
     it: impl Iterator<Item = T>,
@@ -258,6 +260,8 @@ fn sequential_update<T: Idx>(
     changed
 }
 
+// Optimization of intersection for SparseBitSet that's generic
+// over the RHS
 fn sparse_intersect<T: Idx>(
     set: &mut SparseBitSet<T>,
     other_contains: impl Fn(&T) -> bool,
@@ -267,6 +271,10 @@ fn sparse_intersect<T: Idx>(
     set.elems.len() != size
 }
 
+// Optimization of dense/sparse intersection. The resulting set is
+// guaranteed to be at most the size of the sparse set, and hence can be
+// represented as a sparse set. Therefore the sparse set is copied and filtered,
+// then returned as the new set. 
 fn dense_sparse_intersect<T: Idx>(
     dense: &BitSet<T>,
     sparse: &SparseBitSet<T>,
@@ -303,6 +311,10 @@ impl<T: Idx> BitRelations<HybridBitSet<T>> for BitSet<T> {
         match other {
             HybridBitSet::Sparse(sparse) => {
                 let (updated, changed) = dense_sparse_intersect(self, sparse);
+
+                // We can't directly assign the BitSet to the SparseBitSet, and 
+                // doing `*self = updated.to_dense()` would cause a drop / reallocation. Instead,
+                // the BitSet is cleared and `updated` is copied into `self`.
                 self.clear();
                 for elem in updated.iter() {
                     self.insert(*elem);
