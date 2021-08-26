@@ -271,10 +271,10 @@ fn dense_sparse_intersect<T: Idx>(
     dense: &BitSet<T>,
     sparse: &SparseBitSet<T>,
 ) -> (SparseBitSet<T>, bool) {
-    let n = dense.count();
     let mut sparse_copy = sparse.clone();
     sparse_intersect(&mut sparse_copy, |el| !dense.contains(*el));
-    (sparse_copy, dense.count() != n)
+    let n = sparse_copy.len();
+    (sparse_copy, n != dense.count())
 }
 
 impl<T: Idx> BitRelations<HybridBitSet<T>> for BitSet<T> {
@@ -303,7 +303,10 @@ impl<T: Idx> BitRelations<HybridBitSet<T>> for BitSet<T> {
         match other {
             HybridBitSet::Sparse(sparse) => {
                 let (updated, changed) = dense_sparse_intersect(self, sparse);
-                *self = updated.to_dense();
+                self.clear();
+                for elem in updated.iter() {
+                    self.insert(*elem);
+                }
                 changed
             }
             HybridBitSet::Dense(dense) => self.intersect(dense),
