@@ -49,7 +49,8 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
     ("alloc/vec/struct.Vec.html", &["#method.sort_by_key", "#method.sort_by_cached_key"]),
     ("core/primitive.str.html", &["#method.to_ascii_uppercase", "#method.to_ascii_lowercase"]),
     ("core/primitive.slice.html", &["#method.to_ascii_uppercase", "#method.to_ascii_lowercase",
-                                    "#method.sort_by_cached_key", "core/slice::sort_by_key"]),
+                                    "core/slice::sort_by_key", "core\\slice::sort_by_key",
+                                    "#method.sort_by_cached_key"]),
 ];
 
 #[rustfmt::skip]
