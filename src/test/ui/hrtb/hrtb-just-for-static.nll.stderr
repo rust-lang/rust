@@ -17,11 +17,14 @@ LL |     want_hrtb::<&'a u32>()
    |
    = help: consider replacing `'a` with `'static`
 
-error: higher-ranked subtype error
+error: implementation of `Foo` is not general enough
   --> $DIR/hrtb-just-for-static.rs:30:5
    |
 LL |     want_hrtb::<&'a u32>()
-   |     ^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
+   |
+   = note: `Foo<&'0 isize>` would have to be implemented for the type `&u32`, for any lifetime `'0`...
+   = note: ...but `Foo<&'1 isize>` is actually implemented for the type `&'1 u32`, for some specific lifetime `'1`
 
 error: aborting due to 3 previous errors
 
