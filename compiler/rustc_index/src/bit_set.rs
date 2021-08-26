@@ -230,6 +230,7 @@ impl<T: Idx> BitSet<T> {
     bit_relations_inherent_impls! {}
 }
 
+// dense REL dense
 impl<T: Idx> BitRelations<BitSet<T>> for BitSet<T> {
     fn union(&mut self, other: &BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
@@ -285,6 +286,53 @@ fn dense_sparse_intersect<T: Idx>(
     (sparse_copy, n != dense.count())
 }
 
+// hybrid REL dense
+impl<T: Idx> BitRelations<BitSet<T>> for HybridBitSet<T> {
+    fn union(&mut self, other: &BitSet<T>) -> bool {
+        match self {
+            HybridBitSet::Sparse(sparse) => {
+                // `self` is sparse and `other` is dense. To
+                // merge them, we have two available strategies:
+                // * Densify `self` then merge other
+                // * Clone other then integrate bits from `self`
+                // The second strategy requires dedicated method
+                // since the usual `union` returns the wrong
+                // result. In the dedicated case the computation
+                // is slightly faster if the bits of the sparse
+                // bitset map to only few words of the dense
+                // representation, i.e. indices are near each
+                // other.
+                //
+                // Benchmarking seems to suggest that the second
+                // option is worth it.
+                let mut new_dense = other.clone();
+                let changed = new_dense.reverse_union_sparse(sparse);
+                *self = HybridBitSet::Dense(new_dense);
+                changed
+            }
+
+            HybridBitSet::Dense(dense) => dense.union(other),
+        }
+    }
+
+    fn subtract(&mut self, other: &BitSet<T>) -> bool {
+        match self {
+            HybridBitSet::Sparse(sparse) => {
+                sequential_update(|elem| sparse.remove(elem), other.iter())
+            }
+            HybridBitSet::Dense(dense) => dense.subtract(other),
+        }
+    }
+
+    fn intersect(&mut self, other: &BitSet<T>) -> bool {
+        match self {
+            HybridBitSet::Sparse(sparse) => sparse_intersect(sparse, |elem| other.contains(*elem)),
+            HybridBitSet::Dense(dense) => dense.intersect(other),
+        }
+    }
+}
+
+// dense REL hybrid
 impl<T: Idx> BitRelations<HybridBitSet<T>> for BitSet<T> {
     fn union(&mut self, other: &HybridBitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size());
@@ -326,13 +374,14 @@ impl<T: Idx> BitRelations<HybridBitSet<T>> for BitSet<T> {
     }
 }
 
+// hybrid REL hybrid
 impl<T: Idx> BitRelations<HybridBitSet<T>> for HybridBitSet<T> {
     fn union(&mut self, other: &HybridBitSet<T>) -> bool {
         assert_eq!(self.domain_size(), other.domain_size());
         match self {
             HybridBitSet::Sparse(self_sparse) => {
                 match other {
-                    HybridBitSet::Sparse(other_sparse) => {
+                    HybridBitSet::Sparse(_) => {
                         // Both sets are sparse. Add the elements in
                         // `other_sparse` to `self` one at a time. This
                         // may or may not cause `self` to be densified.
@@ -344,26 +393,7 @@ impl<T: Idx> BitRelations<HybridBitSet<T>> for HybridBitSet<T> {
                         changed
                     }
 
-                    HybridBitSet::Dense(other_dense) => {
-                        // `self` is sparse and `other` is dense. To
-                        // merge them, we have two available strategies:
-                        // * Densify `self` then merge other
-                        // * Clone other then integrate bits from `self`
-                        // The second strategy requires dedicated method
-                        // since the usual `union` returns the wrong
-                        // result. In the dedicated case the computation
-                        // is slightly faster if the bits of the sparse
-                        // bitset map to only few words of the dense
-                        // representation, i.e. indices are near each
-                        // other.
-                        //
-                        // Benchmarking seems to suggest that the second
-                        // option is worth it.
-                        let mut new_dense = other_dense.clone();
-                        let changed = new_dense.reverse_union_sparse(self_sparse);
-                        *self = HybridBitSet::Dense(new_dense);
-                        changed
-                    }
+                    HybridBitSet::Dense(other_dense) => self.union(other_dense),
                 }
             }
 
