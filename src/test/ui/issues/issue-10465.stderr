@@ -5,8 +5,10 @@ LL |             b.foo();
    |               ^^^ method not found in `&B`
    |
    = help: items from traits can only be used if the trait is in scope
-   = note: the following trait is implemented but not in scope; perhaps add a `use` for it:
-           `use a::A;`
+help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+   |
+LL |         use a::A;
+   |
 
 error: aborting due to previous error
 

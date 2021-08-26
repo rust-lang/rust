@@ -23,9 +23,11 @@ LL |         ().clone()
    |            ^^^^^ method not found in `()`
    |
    = help: items from traits can only be used if the trait is in scope
-   = note: the following trait is implemented but not in scope; perhaps add a `use` for it:
-           `use std::clone::Clone;`
    = note: this error originates in the macro `::bar::m` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+   |
+LL |     use std::clone::Clone;
+   |
 
 error: aborting due to 2 previous errors
 

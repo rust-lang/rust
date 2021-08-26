@@ -15,9 +15,6 @@ LL |     fn try_into(self) -> Result<T, Self::Error>;
    |        the method is available for `Rc<u8>` here
    |
    = help: items from traits can only be used if the trait is in scope
-   = note: the following traits are implemented but not in scope; perhaps add a `use` for one of them:
-           candidate #1: `use crate::m::TryIntoU32;`
-           candidate #2: `use std::convert::TryInto;`
 help: consider wrapping the receiver expression with the appropriate type
    |
 LL |         let _: u32 = Box::new(3u8).try_into().unwrap();
@@ -34,6 +31,12 @@ help: consider wrapping the receiver expression with the appropriate type
    |
 LL |         let _: u32 = Rc::new(3u8).try_into().unwrap();
    |                      ++++++++   +
+help: the following traits are implemented but not in scope; perhaps add a `use` for one of them:
+   |
+LL |     use crate::m::TryIntoU32;
+   |
+LL |     use std::convert::TryInto;
+   |
 
 error: aborting due to previous error
 
