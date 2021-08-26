@@ -1133,7 +1133,7 @@ mod prim_usize {}
 /// * [`Send`] \(`&T` references also require <code>T: [Sync]</code>)
 ///
 /// [`std::fmt`]: fmt
-/// ['fmt::Pointer`]: fmt::Pointer
+/// [`fmt::Pointer`]: fmt::Pointer
 /// [`Hash`]: hash::Hash
 /// [`ToSocketAddrs`]: net::ToSocketAddrs
 ///
