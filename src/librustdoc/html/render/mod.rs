@@ -1012,11 +1012,11 @@ fn render_assoc_items(
     what: AssocItemRender<'_>,
 ) {
     info!("Documenting associated items of {:?}", containing_item.name);
-    let v = match cx.cache.impls.get(&it) {
+    let cache = cx.cache();
+    let v = match cache.impls.get(&it) {
         Some(v) => v,
         None => return,
     };
-    let cache = cx.cache();
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !non_trait.is_empty() {
         let render_mode = match what {
@@ -1063,11 +1063,11 @@ fn render_assoc_items(
     if !traits.is_empty() {
         let deref_impl = traits
             .iter()
-            .find(|t| t.inner_impl().trait_.def_id_full(cache) == cx.cache.deref_trait_did);
+            .find(|t| t.inner_impl().trait_.def_id_full(cache) == cache.deref_trait_did);
         if let Some(impl_) = deref_impl {
             let has_deref_mut = traits
                 .iter()
-                .any(|t| t.inner_impl().trait_.def_id_full(cache) == cx.cache.deref_mut_trait_did);
+                .any(|t| t.inner_impl().trait_.def_id_full(cache) == cache.deref_mut_trait_did);
             render_deref_methods(w, cx, impl_, containing_item, has_deref_mut);
         }
         let (synthetic, concrete): (Vec<&&Impl>, Vec<&&Impl>) =
@@ -1122,6 +1122,7 @@ fn render_deref_methods(
     container_item: &clean::Item,
     deref_mut: bool,
 ) {
+    let cache = cx.cache();
     let deref_type = impl_.inner_impl().trait_.as_ref().unwrap();
     let (target, real_target) = impl_
         .inner_impl()
@@ -1138,8 +1139,8 @@ fn render_deref_methods(
     debug!("Render deref methods for {:#?}, target {:#?}", impl_.inner_impl().for_, target);
     let what =
         AssocItemRender::DerefFor { trait_: deref_type, type_: real_target, deref_mut_: deref_mut };
-    if let Some(did) = target.def_id_full(cx.cache()) {
-        if let Some(type_did) = impl_.inner_impl().for_.def_id_full(cx.cache()) {
+    if let Some(did) = target.def_id_full(cache) {
+        if let Some(type_did) = impl_.inner_impl().for_.def_id_full(cache) {
             // `impl Deref<Target = S> for S`
             if did == type_did {
                 // Avoid infinite cycles
@@ -1149,7 +1150,7 @@ fn render_deref_methods(
         render_assoc_items(w, cx, container_item, did, what);
     } else {
         if let Some(prim) = target.primitive_type() {
-            if let Some(&did) = cx.cache.primitive_locations.get(&prim) {
+            if let Some(&did) = cache.primitive_locations.get(&prim) {
                 render_assoc_items(w, cx, container_item, did, what);
             }
         }
@@ -1286,7 +1287,7 @@ fn render_impl(
         let render_method_item = match render_mode {
             RenderMode::Normal => true,
             RenderMode::ForDeref { mut_: deref_mut_ } => {
-                should_render_item(&item, deref_mut_, &cx.cache)
+                should_render_item(&item, deref_mut_, cx.cache())
             }
         };
 
@@ -1678,7 +1679,7 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
     }
 
     if it.is_crate() {
-        if let Some(ref version) = cx.cache.crate_version {
+        if let Some(ref version) = cx.cache().crate_version {
             write!(
                 buffer,
                 "<div class=\"block version\">\
@@ -1825,18 +1826,16 @@ fn small_url_encode(s: String) -> String {
 
 fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
     let did = it.def_id.expect_def_id();
-    if let Some(v) = cx.cache.impls.get(&did) {
+    let cache = cx.cache();
+    if let Some(v) = cache.impls.get(&did) {
         let mut used_links = FxHashSet::default();
-        let cache = cx.cache();
 
         {
             let used_links_bor = &mut used_links;
             let mut ret = v
                 .iter()
                 .filter(|i| i.inner_impl().trait_.is_none())
-                .flat_map(move |i| {
-                    get_methods(i.inner_impl(), false, used_links_bor, false, &cx.cache)
-                })
+                .flat_map(move |i| get_methods(i.inner_impl(), false, used_links_bor, false, cache))
                 .collect::<Vec<_>>();
             if !ret.is_empty() {
                 // We want links' order to be reproducible so we don't use unstable sort.
@@ -1857,7 +1856,7 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
             if let Some(impl_) = v
                 .iter()
                 .filter(|i| i.inner_impl().trait_.is_some())
-                .find(|i| i.inner_impl().trait_.def_id_full(cache) == cx.cache.deref_trait_did)
+                .find(|i| i.inner_impl().trait_.def_id_full(cache) == cache.deref_trait_did)
             {
                 sidebar_deref_methods(cx, out, impl_, v);
             }
@@ -2117,15 +2116,15 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
         "</div>",
     );
 
-    if let Some(implementors) = cx.cache.implementors.get(&it.def_id.expect_def_id()) {
-        let cache = cx.cache();
+    let cache = cx.cache();
+    if let Some(implementors) = cache.implementors.get(&it.def_id.expect_def_id()) {
         let mut res = implementors
             .iter()
             .filter(|i| {
                 i.inner_impl()
                     .for_
                     .def_id_full(cache)
-                    .map_or(false, |d| !cx.cache.paths.contains_key(&d))
+                    .map_or(false, |d| !cache.paths.contains_key(&d))
             })
             .filter_map(|i| extract_for_impl_name(&i.impl_item, cx))
             .collect::<Vec<_>>();

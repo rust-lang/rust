@@ -690,7 +690,8 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
     // If there are methods directly on this trait object, render them here.
     render_assoc_items(w, cx, it, it.def_id.expect_def_id(), AssocItemRender::All);
 
-    if let Some(implementors) = cx.cache.implementors.get(&it.def_id.expect_def_id()) {
+    let cache = cx.cache();
+    if let Some(implementors) = cache.implementors.get(&it.def_id.expect_def_id()) {
         // The DefId is for the first Type found with that name. The bool is
         // if any Types with the same name but different DefId have been found.
         let mut implementor_dups: FxHashMap<Symbol, (DefId, bool)> = FxHashMap::default();
@@ -712,10 +713,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         }
 
         let (local, foreign) = implementors.iter().partition::<Vec<_>, _>(|i| {
-            i.inner_impl()
-                .for_
-                .def_id_full(cx.cache())
-                .map_or(true, |d| cx.cache.paths.contains_key(&d))
+            i.inner_impl().for_.def_id_full(cache).map_or(true, |d| cache.paths.contains_key(&d))
         });
 
         let (mut synthetic, mut concrete): (Vec<&&Impl>, Vec<&&Impl>) =
@@ -772,7 +770,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     it,
                     w,
                     &implementor_dups,
-                    &collect_paths_for_type(implementor.inner_impl().for_.clone(), &cx.cache),
+                    &collect_paths_for_type(implementor.inner_impl().for_.clone(), cache),
                 );
             }
             w.write_str("</div>");
@@ -806,7 +804,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         path = if it.def_id.is_local() {
             cx.current.join("/")
         } else {
-            let (ref path, _) = cx.cache.external_paths[&it.def_id.expect_def_id()];
+            let (ref path, _) = cache.external_paths[&it.def_id.expect_def_id()];
             path[..path.len() - 1].join("/")
         },
         ty = it.type_(),
