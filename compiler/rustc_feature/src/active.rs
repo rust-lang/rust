@@ -71,7 +71,7 @@ macro_rules! declare_features {
             }
 
             pub fn unordered_const_ty_params(&self) -> bool {
-                self.const_generics_defaults
+                self.const_generics_defaults || self.generic_const_exprs || self.const_param_types
             }
 
             /// Some features are known to be incomplete and using them is likely to have

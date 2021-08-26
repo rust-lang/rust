@@ -3,8 +3,6 @@ error: generic parameters with a default must be trailing
    |
 LL | struct Bar<T = [u8; N], const N: usize>(T);
    |            ^
-   |
-   = note: using type defaults and const parameters in the same parameter list is currently not permitted
 
 error[E0128]: generic parameters with a default cannot use forward declared identifiers
   --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:8:21
