@@ -236,14 +236,21 @@ impl<'a> CompletionContext<'a> {
         let kind = self.token.kind();
         if kind == IDENT || kind == LIFETIME_IDENT || kind == UNDERSCORE || kind.is_keyword() {
             cov_mark::hit!(completes_if_prefix_is_keyword);
-            self.original_token.text_range()
+            return self.original_token.text_range();
         } else if kind == CHAR {
             // assume we are completing a lifetime but the user has only typed the '
             cov_mark::hit!(completes_if_lifetime_without_idents);
-            TextRange::at(self.original_token.text_range().start(), TextSize::from(1))
-        } else {
-            TextRange::empty(self.position.offset)
+            return TextRange::at(self.original_token.text_range().start(), TextSize::from(1));
+        } else if kind == BANG {
+            if let Some(n) = self.token.parent() {
+                if n.kind() == SyntaxKind::MACRO_CALL {
+                    cov_mark::hit!(completes_macro_call_if_cursor_at_bang_token);
+                    return n.text_range();
+                }
+            }
         }
+
+        TextRange::empty(self.position.offset)
     }
 
     pub(crate) fn previous_token_is(&self, kind: SyntaxKind) -> bool {
