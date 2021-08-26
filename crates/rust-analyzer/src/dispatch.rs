@@ -33,8 +33,10 @@ impl<'a> RequestDispatcher<'a> {
         let global_state = panic::AssertUnwindSafe(&mut *self.global_state);
 
         let result = panic::catch_unwind(move || {
-            let _ = &global_state;
-            let panic::AssertUnwindSafe(global_state) = global_state;
+            // Make sure that the whole AssertUnwindSafe is moved into the
+            // closure, and not just its field.
+            let panic::AssertUnwindSafe(global_state) = { global_state };
+
             let _pctx = stdx::panic_context::enter(format!(
                 "\nversion: {}\nrequest: {} {:#?}",
                 env!("REV"),
