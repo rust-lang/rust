@@ -270,34 +270,30 @@ extern "C" void LLVMRustAddFunctionAttribute(LLVMValueRef Fn, unsigned Index,
                                              LLVMRustAttribute RustAttr) {
   Function *A = unwrap<Function>(Fn);
   Attribute Attr = Attribute::get(A->getContext(), fromRust(RustAttr));
-  AttrBuilder B(Attr);
-  A->addAttributes(Index, B);
+  A->addAttribute(Index, Attr);
 }
 
 extern "C" void LLVMRustAddAlignmentAttr(LLVMValueRef Fn,
                                          unsigned Index,
                                          uint32_t Bytes) {
   Function *A = unwrap<Function>(Fn);
-  AttrBuilder B;
-  B.addAlignmentAttr(Bytes);
-  A->addAttributes(Index, B);
+  A->addAttribute(Index, Attribute::getWithAlignment(
+      A->getContext(), llvm::Align(Bytes)));
 }
 
 extern "C" void LLVMRustAddDereferenceableAttr(LLVMValueRef Fn, unsigned Index,
                                                uint64_t Bytes) {
   Function *A = unwrap<Function>(Fn);
-  AttrBuilder B;
-  B.addDereferenceableAttr(Bytes);
-  A->addAttributes(Index, B);
+  A->addAttribute(Index, Attribute::getWithDereferenceableBytes(A->getContext(),
+                                                                Bytes));
 }
 
 extern "C" void LLVMRustAddDereferenceableOrNullAttr(LLVMValueRef Fn,
                                                      unsigned Index,
                                                      uint64_t Bytes) {
   Function *A = unwrap<Function>(Fn);
-  AttrBuilder B;
-  B.addDereferenceableOrNullAttr(Bytes);
-  A->addAttributes(Index, B);
+  A->addAttribute(Index, Attribute::getWithDereferenceableOrNullBytes(
+      A->getContext(), Bytes));
 }
 
 extern "C" void LLVMRustAddByValAttr(LLVMValueRef Fn, unsigned Index,
@@ -323,9 +319,8 @@ extern "C" void LLVMRustAddFunctionAttrStringValue(LLVMValueRef Fn,
                                                    const char *Name,
                                                    const char *Value) {
   Function *F = unwrap<Function>(Fn);
-  AttrBuilder B;
-  B.addAttribute(Name, Value);
-  F->addAttributes(Index, B);
+  F->addAttribute(Index, Attribute::get(
+      F->getContext(), StringRef(Name), StringRef(Value)));
 }
 
 extern "C" void LLVMRustRemoveFunctionAttributes(LLVMValueRef Fn,
