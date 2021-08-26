@@ -1603,13 +1603,13 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
 
     while let Some(higher::IfOrIfLet { cond, then, r#else }) = higher::IfOrIfLet::hir(expr) {
         conds.push(&*cond);
-        if let ExprKind::Block(ref block, _) = then.kind {
+        if let ExprKind::Block(block, _) = then.kind {
             blocks.push(block);
         } else {
             panic!("ExprKind::If node is not an ExprKind::Block");
         }
 
-        if let Some(ref else_expr) = r#else {
+        if let Some(else_expr) = r#else {
             expr = else_expr;
         } else {
             break;

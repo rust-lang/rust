@@ -106,7 +106,7 @@ impl QuestionMark {
             if let PatKind::Binding(annot, bind_id, _, _) = fields[0].kind;
             let by_ref = matches!(annot, BindingAnnotation::Ref | BindingAnnotation::RefMut);
 
-            if let ExprKind::Block(ref block, None) = if_then.kind;
+            if let ExprKind::Block(block, None) = if_then.kind;
             if block.stmts.is_empty();
             if let Some(trailing_expr) = &block.expr;
             if path_to_local_id(trailing_expr, bind_id);

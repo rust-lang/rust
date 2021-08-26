@@ -23,16 +23,16 @@ impl<'tcx> ForLoop<'tcx> {
     #[inline]
     pub fn hir(expr: &Expr<'tcx>) -> Option<Self> {
         if_chain! {
-            if let hir::ExprKind::Match(ref iterexpr, ref arms, hir::MatchSource::ForLoopDesugar) = expr.kind;
+            if let hir::ExprKind::Match(iterexpr, arms, hir::MatchSource::ForLoopDesugar) = expr.kind;
             if let Some(first_arm) = arms.get(0);
-            if let hir::ExprKind::Call(_, ref iterargs) = iterexpr.kind;
+            if let hir::ExprKind::Call(_, iterargs) = iterexpr.kind;
             if let Some(first_arg) = iterargs.get(0);
             if iterargs.len() == 1 && arms.len() == 1 && first_arm.guard.is_none();
-            if let hir::ExprKind::Loop(ref block, ..) = first_arm.body.kind;
+            if let hir::ExprKind::Loop(block, ..) = first_arm.body.kind;
             if block.expr.is_none();
             if let [ _, _, ref let_stmt, ref body ] = *block.stmts;
-            if let hir::StmtKind::Local(ref local) = let_stmt.kind;
-            if let hir::StmtKind::Expr(ref body_expr) = body.kind;
+            if let hir::StmtKind::Local(local) = let_stmt.kind;
+            if let hir::StmtKind::Expr(body_expr) = body.kind;
             then {
                 return Some(Self {
                     pat: &*local.pat,
@@ -189,7 +189,7 @@ impl<'a> Range<'a> {
         }
 
         match expr.kind {
-            hir::ExprKind::Call(ref path, ref args)
+            hir::ExprKind::Call(path, args)
                 if matches!(
                     path.kind,
                     hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::RangeInclusiveNew, _))
@@ -201,7 +201,7 @@ impl<'a> Range<'a> {
                     limits: ast::RangeLimits::Closed,
                 })
             },
-            hir::ExprKind::Struct(ref path, ref fields, None) => match path {
+            hir::ExprKind::Struct(path, fields, None) => match &path {
                 hir::QPath::LangItem(hir::LangItem::RangeFull, _) => Some(Range {
                     start: None,
                     end: None,
@@ -247,7 +247,7 @@ impl<'a> VecArgs<'a> {
     /// from `vec!`.
     pub fn hir(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> Option<VecArgs<'a>> {
         if_chain! {
-            if let hir::ExprKind::Call(ref fun, ref args) = expr.kind;
+            if let hir::ExprKind::Call(fun, args) = expr.kind;
             if let hir::ExprKind::Path(ref qpath) = fun.kind;
             if is_expn_of(fun.span, "vec").is_some();
             if let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
@@ -259,10 +259,10 @@ impl<'a> VecArgs<'a> {
                 else if match_def_path(cx, fun_def_id, &paths::SLICE_INTO_VEC) && args.len() == 1 {
                     // `vec![a, b, c]` case
                     if_chain! {
-                        if let hir::ExprKind::Box(ref boxed) = args[0].kind;
-                        if let hir::ExprKind::Array(ref args) = boxed.kind;
+                        if let hir::ExprKind::Box(boxed) = args[0].kind;
+                        if let hir::ExprKind::Array(args) = boxed.kind;
                         then {
-                            return Some(VecArgs::Vec(&*args));
+                            return Some(VecArgs::Vec(args));
                         }
                     }
 
@@ -566,7 +566,7 @@ pub fn is_from_for_desugar(local: &hir::Local<'_>) -> bool {
     // }
     // ```
     if_chain! {
-        if let Some(ref expr) = local.init;
+        if let Some(expr) = local.init;
         if let hir::ExprKind::Match(_, _, hir::MatchSource::ForLoopDesugar) = expr.kind;
         then {
             return true;

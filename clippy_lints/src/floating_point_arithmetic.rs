@@ -332,8 +332,6 @@ fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
                         ),
                         Applicability::MachineApplicable,
                     );
-
-                    return;
                 }
             }
         }
