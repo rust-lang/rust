@@ -26,13 +26,13 @@ LL |         A::B(_) => (),
    |            ~
 
 error[E0023]: this pattern has 3 fields, but the corresponding tuple variant has 2 fields
-  --> $DIR/pattern-error-continue.rs:17:9
+  --> $DIR/pattern-error-continue.rs:17:14
    |
 LL |     B(isize, isize),
-   |     --------------- tuple variant defined here
+   |       -----  ----- tuple variant has 2 fields
 ...
 LL |         A::B(_, _, _) => (),
-   |         ^^^^^^^^^^^^^ expected 2 fields, found 3
+   |              ^  ^  ^ expected 2 fields, found 3
 
 error[E0308]: mismatched types
   --> $DIR/pattern-error-continue.rs:22:9

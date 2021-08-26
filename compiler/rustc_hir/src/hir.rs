@@ -3183,6 +3183,20 @@ pub enum Node<'hir> {
 }
 
 impl<'hir> Node<'hir> {
+    /// Get the identifier of this `Node`, if applicable.
+    ///
+    /// # Edge cases
+    ///
+    /// Calling `.ident()` on a [`Node::Ctor`] will return `None`
+    /// because `Ctor`s do not have identifiers themselves.
+    /// Instead, call `.ident()` on the parent struct/variant, like so:
+    ///
+    /// ```ignore (illustrative)
+    /// ctor
+    ///     .ctor_hir_id()
+    ///     .and_then(|ctor_id| tcx.hir().find(tcx.hir().get_parent_node(ctor_id)))
+    ///     .and_then(|parent| parent.ident())
+    /// ```
     pub fn ident(&self) -> Option<Ident> {
         match self {
             Node::TraitItem(TraitItem { ident, .. })
@@ -3191,8 +3205,25 @@ impl<'hir> Node<'hir> {
             | Node::Field(FieldDef { ident, .. })
             | Node::Variant(Variant { ident, .. })
             | Node::MacroDef(MacroDef { ident, .. })
-            | Node::Item(Item { ident, .. }) => Some(*ident),
-            _ => None,
+            | Node::Item(Item { ident, .. })
+            | Node::PathSegment(PathSegment { ident, .. }) => Some(*ident),
+            Node::Lifetime(lt) => Some(lt.name.ident()),
+            Node::GenericParam(p) => Some(p.name.ident()),
+            Node::Param(..)
+            | Node::AnonConst(..)
+            | Node::Expr(..)
+            | Node::Stmt(..)
+            | Node::Block(..)
+            | Node::Ctor(..)
+            | Node::Pat(..)
+            | Node::Binding(..)
+            | Node::Arm(..)
+            | Node::Local(..)
+            | Node::Visibility(..)
+            | Node::Crate(..)
+            | Node::Ty(..)
+            | Node::TraitRef(..)
+            | Node::Infer(..) => None,
         }
     }
 
