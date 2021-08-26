@@ -9,7 +9,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op;
 use rustc_trait_selection::traits::{SelectionContext, TraitEngineExt as _};
-use rustc_traits::type_op_prove_predicate_with_span;
+use rustc_traits::{type_op_ascribe_user_type_with_span, type_op_prove_predicate_with_span};
 
 use std::fmt;
 use std::rc::Rc;
@@ -104,10 +104,11 @@ impl<'tcx, T: Copy + fmt::Display + TypeFoldable<'tcx> + 'tcx> ToUniverseInfo<'t
 impl<'tcx> ToUniverseInfo<'tcx>
     for Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::AscribeUserType<'tcx>>>
 {
-    fn to_universe_info(self, _base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
-        // Ascribe user type isn't usually called on types that have different
-        // bound regions.
-        UniverseInfo::other()
+    fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
+        UniverseInfo(UniverseInfoInner::TypeOp(Rc::new(AscribeUserTypeQuery {
+            canonical_query: self,
+            base_universe,
+        })))
     }
 }
 
@@ -262,6 +263,37 @@ where
             );
             fulfill_cx.register_predicate_obligations(infcx, obligations);
 
+            try_extract_error_from_fulfill_cx(fulfill_cx, infcx, placeholder_region, error_region)
+        })
+    }
+}
+
+struct AscribeUserTypeQuery<'tcx> {
+    canonical_query: Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::AscribeUserType<'tcx>>>,
+    base_universe: ty::UniverseIndex,
+}
+
+impl TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
+    fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+        // FIXME: This error message isn't great, but it doesn't show up in the existing UI tests,
+        // and is only the fallback when the nice error fails. Consider improving this some more.
+        tcx.sess.struct_span_err(span, "higher-ranked lifetime error")
+    }
+
+    fn base_universe(&self) -> ty::UniverseIndex {
+        self.base_universe
+    }
+
+    fn nice_error(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        span: Span,
+        placeholder_region: ty::Region<'tcx>,
+        error_region: Option<ty::Region<'tcx>>,
+    ) -> Option<DiagnosticBuilder<'tcx>> {
+        tcx.infer_ctxt().enter_with_canonical(span, &self.canonical_query, |ref infcx, key, _| {
+            let mut fulfill_cx = <dyn TraitEngine<'_>>::new(tcx);
+            type_op_ascribe_user_type_with_span(infcx, &mut *fulfill_cx, key, Some(span)).ok()?;
             try_extract_error_from_fulfill_cx(fulfill_cx, infcx, placeholder_region, error_region)
         })
     }
