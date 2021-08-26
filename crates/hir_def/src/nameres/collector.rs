@@ -1732,6 +1732,7 @@ impl ModCollector<'_, '_> {
                 let name = name.to_string();
                 let is_inert = builtin_attr::INERT_ATTRIBUTES
                     .iter()
+                    .chain(builtin_attr::EXTRA_ATTRIBUTES)
                     .copied()
                     .chain(self.def_collector.registered_attrs.iter().map(AsRef::as_ref))
                     .any(|attr| name == *attr);
