@@ -46,7 +46,6 @@ impl Category {
             ExprKind::LogicalOp { .. }
             | ExprKind::Match { .. }
             | ExprKind::If { .. }
-            | ExprKind::Let { .. }
             | ExprKind::NeverToAny { .. }
             | ExprKind::Use { .. }
             | ExprKind::Adt { .. }

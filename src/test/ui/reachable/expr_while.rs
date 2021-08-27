@@ -5,7 +5,7 @@
 
 fn foo() {
     while {return} {
-        //~^ ERROR unreachable block in `if`
+        //~^ ERROR unreachable block in `while` expression
         println!("Hello, world!");
     }
 }
@@ -20,7 +20,7 @@ fn bar() {
 fn baz() {
     // Here, we cite the `while` loop as dead.
     while {return} {
-        //~^ ERROR unreachable block in `if`
+        //~^ ERROR unreachable block in `while` expression
         println!("I am dead.");
     }
     println!("I am, too.");

@@ -232,7 +232,6 @@ fn is_linted_explicit_deref_position(parent: Option<Node<'_>>, child_id: HirId, 
         | ExprKind::If(..)
         | ExprKind::Loop(..)
         | ExprKind::Match(..)
-        | ExprKind::Let(..)
         | ExprKind::Closure(..)
         | ExprKind::Block(..)
         | ExprKind::Assign(..)

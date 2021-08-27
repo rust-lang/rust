@@ -48,8 +48,11 @@ impl NonConstExpr {
 
             Self::Match(TryDesugar) => &[sym::const_try],
 
+            Self::Match(IfLetGuardDesugar) => bug!("`if let` guard outside a `match` expression"),
+
             // All other expressions are allowed.
-            Self::Loop(Loop | While) | Self::Match(Normal) => &[],
+            Self::Loop(Loop | While | WhileLet)
+            | Self::Match(WhileDesugar | WhileLetDesugar | Normal | IfLetDesugar { .. }) => &[],
         };
 
         Some(gates)
@@ -274,7 +277,9 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
             hir::ExprKind::Match(_, _, source) => {
                 let non_const_expr = match source {
                     // These are handled by `ExprKind::Loop` above.
-                    hir::MatchSource::ForLoopDesugar => None,
+                    hir::MatchSource::WhileDesugar
+                    | hir::MatchSource::WhileLetDesugar
+                    | hir::MatchSource::ForLoopDesugar => None,
 
                     _ => Some(NonConstExpr::Match(*source)),
                 };

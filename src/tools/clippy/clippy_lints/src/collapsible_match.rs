@@ -1,9 +1,16 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::visitors::LocalUsedVisitor;
+<<<<<<< HEAD
 use clippy_utils::{higher, is_lang_ctor, is_unit_expr, path_to_local, peel_ref_operators, SpanlessEq};
 use if_chain::if_chain;
 use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, MatchSource, Pat, PatKind, StmtKind};
+=======
+use clippy_utils::{is_lang_ctor, path_to_local, peel_ref_operators, SpanlessEq};
+use if_chain::if_chain;
+use rustc_hir::LangItem::OptionNone;
+use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind, StmtKind};
+>>>>>>> parent of 2a6fb9a4c0e (Auto merge of #80357 - c410-f3r:new-hir-let, r=matthewjasper)
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{MultiSpan, Span};
@@ -49,6 +56,7 @@ declare_lint_pass!(CollapsibleMatch => [COLLAPSIBLE_MATCH]);
 
 impl<'tcx> LateLintPass<'tcx> for CollapsibleMatch {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
+<<<<<<< HEAD
         match IfLetOrMatch::parse(cx, expr) {
             Some(IfLetOrMatch::Match(_, arms, _)) => {
                 if let Some(els_arm) = arms.iter().rfind(|arm| arm_is_wild_like(cx, arm)) {
@@ -61,10 +69,19 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleMatch {
                 check_arm(cx, false, pat, body, None, els);
             }
             None => {}
+=======
+        if let ExprKind::Match(_expr, arms, _source) = expr.kind {
+            if let Some(wild_arm) = arms.iter().rfind(|arm| arm_is_wild_like(cx, arm)) {
+                for arm in arms {
+                    check_arm(arm, wild_arm, cx);
+                }
+            }
+>>>>>>> parent of 2a6fb9a4c0e (Auto merge of #80357 - c410-f3r:new-hir-let, r=matthewjasper)
         }
     }
 }
 
+<<<<<<< HEAD
 fn check_arm<'tcx>(
     cx: &LateContext<'tcx>,
     outer_is_match: bool,
@@ -114,6 +131,36 @@ fn check_arm<'tcx>(
                 !used_visitor.check_expr(body) && els.map_or(true, |e| !used_visitor.check_expr(e))
             },
             IfLetOrMatch::Match(_, arms, ..) => !arms.iter().any(|arm| used_visitor.check_arm(arm)),
+=======
+fn check_arm<'tcx>(arm: &Arm<'tcx>, wild_outer_arm: &Arm<'tcx>, cx: &LateContext<'tcx>) {
+    let expr = strip_singleton_blocks(arm.body);
+    if_chain! {
+        if let ExprKind::Match(expr_in, arms_inner, _) = expr.kind;
+        // the outer arm pattern and the inner match
+        if expr_in.span.ctxt() == arm.pat.span.ctxt();
+        // there must be no more than two arms in the inner match for this lint
+        if arms_inner.len() == 2;
+        // no if guards on the inner match
+        if arms_inner.iter().all(|arm| arm.guard.is_none());
+        // match expression must be a local binding
+        // match <local> { .. }
+        if let Some(binding_id) = path_to_local(peel_ref_operators(cx, expr_in));
+        // one of the branches must be "wild-like"
+        if let Some(wild_inner_arm_idx) = arms_inner.iter().rposition(|arm_inner| arm_is_wild_like(cx, arm_inner));
+        let (wild_inner_arm, non_wild_inner_arm) =
+            (&arms_inner[wild_inner_arm_idx], &arms_inner[1 - wild_inner_arm_idx]);
+        if !pat_contains_or(non_wild_inner_arm.pat);
+        // the binding must come from the pattern of the containing match arm
+        // ..<local>.. => match <local> { .. }
+        if let Some(binding_span) = find_pat_binding(arm.pat, binding_id);
+        // the "wild-like" branches must be equal
+        if SpanlessEq::new(cx).eq_expr(wild_inner_arm.body, wild_outer_arm.body);
+        // the binding must not be used in the if guard
+        let mut used_visitor = LocalUsedVisitor::new(cx, binding_id);
+        if match arm.guard {
+            None => true,
+            Some(Guard::If(expr) | Guard::IfLet(_, expr)) => !used_visitor.check_expr(expr),
+>>>>>>> parent of 2a6fb9a4c0e (Auto merge of #80357 - c410-f3r:new-hir-let, r=matthewjasper)
         };
         then {
             let msg = format!(
@@ -121,6 +168,7 @@ fn check_arm<'tcx>(
                 if matches!(inner, IfLetOrMatch::Match(..)) { "match" } else { "if let" },
                 if outer_is_match { "match" } else { "if let" },
             );
+<<<<<<< HEAD
             span_lint_and_then(
                 cx,
                 COLLAPSIBLE_MATCH,
@@ -133,6 +181,8 @@ fn check_arm<'tcx>(
                     diag.span_help(help_span, "the outer pattern can be modified to include the inner pattern");
                 },
             );
+=======
+>>>>>>> parent of 2a6fb9a4c0e (Auto merge of #80357 - c410-f3r:new-hir-let, r=matthewjasper)
         }
     }
 }
@@ -151,6 +201,7 @@ fn strip_singleton_blocks<'hir>(mut expr: &'hir Expr<'hir>) -> &'hir Expr<'hir> 
     expr
 }
 
+<<<<<<< HEAD
 enum IfLetOrMatch<'hir> {
     Match(&'hir Expr<'hir>, &'hir [Arm<'hir>], MatchSource),
     /// scrutinee, pattern, then block, else block
@@ -170,6 +221,11 @@ impl<'hir> IfLetOrMatch<'hir> {
 
 /// A "wild-like" arm has a wild (`_`) or `None` pattern and no guard. Such arms can be "collapsed"
 /// into a single wild arm without any significant loss in semantics or readability.
+=======
+/// A "wild-like" pattern is wild ("_") or `None`.
+/// For this lint to apply, both the outer and inner match expressions
+/// must have "wild-like" branches that can be combined.
+>>>>>>> parent of 2a6fb9a4c0e (Auto merge of #80357 - c410-f3r:new-hir-let, r=matthewjasper)
 fn arm_is_wild_like(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
     if arm.guard.is_some() {
         return false;

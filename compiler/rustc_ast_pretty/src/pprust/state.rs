@@ -1587,14 +1587,19 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::Block(blk))
     }
 
-    /// Print a `let pat = expr` expression.
-    crate fn print_let(&mut self, pat: &ast::Pat, expr: &ast::Expr) {
+    /// Print a `let pat = scrutinee` expression.
+    crate fn print_let(&mut self, pat: &ast::Pat, scrutinee: &ast::Expr) {
         self.s.word("let ");
+
         self.print_pat(pat);
         self.s.space();
+
         self.word_space("=");
-        let npals = || parser::needs_par_as_let_scrutinee(expr.precedence().order());
-        self.print_expr_cond_paren(expr, Self::cond_needs_par(expr) || npals())
+        self.print_expr_cond_paren(
+            scrutinee,
+            Self::cond_needs_par(scrutinee)
+                || parser::needs_par_as_let_scrutinee(scrutinee.precedence().order()),
+        )
     }
 
     fn print_else(&mut self, els: Option<&ast::Expr>) {
@@ -1627,8 +1632,10 @@ impl<'a> State<'a> {
 
     crate fn print_if(&mut self, test: &ast::Expr, blk: &ast::Block, elseopt: Option<&ast::Expr>) {
         self.head("if");
+
         self.print_expr_as_cond(test);
         self.s.space();
+
         self.print_block(blk);
         self.print_else(elseopt)
     }
@@ -1661,13 +1668,13 @@ impl<'a> State<'a> {
         self.print_expr_cond_paren(expr, Self::cond_needs_par(expr))
     }
 
-    // Does `expr` need parenthesis when printed in a condition position?
-    //
-    // These cases need parens due to the parse error observed in #26461: `if return {}`
-    // parses as the erroneous construct `if (return {})`, not `if (return) {}`.
+    /// Does `expr` need parenthesis when printed in a condition position?
     fn cond_needs_par(expr: &ast::Expr) -> bool {
         match expr.kind {
-            ast::ExprKind::Break(..) | ast::ExprKind::Closure(..) | ast::ExprKind::Ret(..) => true,
+            // These cases need parens due to the parse error observed in #26461: `if return {}`
+            // parses as the erroneous construct `if (return {})`, not `if (return) {}`.
+            ast::ExprKind::Closure(..) | ast::ExprKind::Ret(..) | ast::ExprKind::Break(..) => true,
+
             _ => parser::contains_exterior_struct_lit(expr),
         }
     }
@@ -1912,7 +1919,7 @@ impl<'a> State<'a> {
                 self.word_space(":");
                 self.print_type(ty);
             }
-            ast::ExprKind::Let(ref pat, ref scrutinee, _) => {
+            ast::ExprKind::Let(ref pat, ref scrutinee) => {
                 self.print_let(pat, scrutinee);
             }
             ast::ExprKind::If(ref test, ref blk, ref elseopt) => {

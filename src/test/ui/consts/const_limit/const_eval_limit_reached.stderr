@@ -1,19 +1,15 @@
 error: any use of this value will cause an error
-  --> $DIR/const_eval_limit_reached.rs:6:5
+  --> $DIR/const_eval_limit_reached.rs:6:11
    |
-LL |  / const X: usize = {
-LL |  |     let mut x = 0;
-LL |  |     while x != 1000 {
-   |  |_____^
-LL | ||
-LL | ||
-LL | ||         x += 1;
-LL | ||     }
-   | ||_____^ exceeded interpreter step limit (see `#[const_eval_limit]`)
-LL |  |
-LL |  |     x
-LL |  | };
-   |  |__-
+LL | / const X: usize = {
+LL | |     let mut x = 0;
+LL | |     while x != 1000 {
+   | |           ^^^^^^^^^ exceeded interpreter step limit (see `#[const_eval_limit]`)
+LL | |
+...  |
+LL | |     x
+LL | | };
+   | |__-
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

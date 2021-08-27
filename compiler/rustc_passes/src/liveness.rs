@@ -422,11 +422,6 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprKind::Let(ref pat, ..) => {
-                self.add_from_pat(pat);
-                intravisit::walk_expr(self, expr);
-            }
-
             // live nodes required for interesting control flow:
             hir::ExprKind::If(..)
             | hir::ExprKind::Match(..)
@@ -847,11 +842,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     self.acc(cap.ln, var, ACC_READ | ACC_USE);
                     cap.ln
                 })
-            }
-
-            hir::ExprKind::Let(ref pat, ref scrutinee, _) => {
-                let succ = self.propagate_through_expr(scrutinee, succ);
-                self.define_bindings_in_pat(pat, succ)
             }
 
             // Note that labels have been resolved, so we don't need to look
@@ -1338,7 +1328,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
 
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         check_expr(self, ex);
-        intravisit::walk_expr(self, ex);
     }
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
@@ -1394,10 +1383,6 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
             }
         }
 
-        hir::ExprKind::Let(ref pat, ..) => {
-            this.check_unused_vars_in_pat(pat, None, |_, _, _, _| {});
-        }
-
         // no correctness conditions related to liveness
         hir::ExprKind::Call(..)
         | hir::ExprKind::MethodCall(..)
@@ -1428,6 +1413,8 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
         | hir::ExprKind::Type(..)
         | hir::ExprKind::Err => {}
     }
+
+    intravisit::walk_expr(this, expr);
 }
 
 impl<'tcx> Liveness<'_, 'tcx> {

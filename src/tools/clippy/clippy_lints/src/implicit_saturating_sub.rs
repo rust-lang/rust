@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::higher;
 use clippy_utils::{in_macro, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
@@ -43,7 +42,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
             return;
         }
         if_chain! {
-            if let Some(higher::If { cond, then, .. }) = higher::If::hir(expr);
+            if let ExprKind::If(cond, then, None) = &expr.kind;
 
             // Check if the conditional expression is a binary operation
             if let ExprKind::Binary(ref cond_op, cond_left, cond_right) = cond.kind;

@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
-use clippy_utils::higher;
 use clippy_utils::source::snippet_block_with_applicability;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{differing_macro_contexts, get_parent_expr};
@@ -93,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
         if in_external_macro(cx.sess(), expr.span) {
             return;
         }
-        if let Some(higher::If { cond, .. }) = higher::If::hir(expr) {
+        if let ExprKind::If(cond, _, _) = &expr.kind {
             if let ExprKind::Block(block, _) = &cond.kind {
                 if block.rules == BlockCheckMode::DefaultBlock {
                     if block.stmts.is_empty() {

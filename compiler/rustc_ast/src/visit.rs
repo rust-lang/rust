@@ -776,9 +776,9 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(subexpression);
             visitor.visit_ty(typ)
         }
-        ExprKind::Let(ref pat, ref expr, _) => {
+        ExprKind::Let(ref pat, ref scrutinee) => {
             visitor.visit_pat(pat);
-            visitor.visit_expr(expr);
+            visitor.visit_expr(scrutinee);
         }
         ExprKind::If(ref head_expression, ref if_block, ref optional_else) => {
             visitor.visit_expr(head_expression);
