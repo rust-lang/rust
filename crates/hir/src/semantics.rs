@@ -474,7 +474,7 @@ impl<'db> SemanticsImpl<'db> {
                                 .entry(file_id)
                                 .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
                                 .as_ref()?
-                                .map_token_down(token.as_ref())?;
+                                .map_token_down(self.db.upcast(), None, token.as_ref())?;
 
                             if let Some(parent) = token.value.parent() {
                                 self.cache(find_root(&parent), token.file_id);
@@ -483,24 +483,21 @@ impl<'db> SemanticsImpl<'db> {
                             return Some(token);
                         },
                         ast::Item(item) => {
-                            match self.with_ctx(|ctx| ctx.item_to_macro_call(token.with_value(item))) {
-                                Some(call_id) => {
-                                    let file_id = call_id.as_file();
-                                    let token = self
-                                        .expansion_info_cache
-                                        .borrow_mut()
-                                        .entry(file_id)
-                                        .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
-                                        .as_ref()?
-                                        .map_token_down(token.as_ref())?;
+                            if let Some(call_id) = self.with_ctx(|ctx| ctx.item_to_macro_call(token.with_value(item.clone()))) {
+                                let file_id = call_id.as_file();
+                                let token = self
+                                    .expansion_info_cache
+                                    .borrow_mut()
+                                    .entry(file_id)
+                                    .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
+                                    .as_ref()?
+                                    .map_token_down(self.db.upcast(), Some(item), token.as_ref())?;
 
-                                    if let Some(parent) = token.value.parent() {
-                                        self.cache(find_root(&parent), token.file_id);
-                                    }
-
-                                    return Some(token);
+                                if let Some(parent) = token.value.parent() {
+                                    self.cache(find_root(&parent), token.file_id);
                                 }
-                                None => {}
+
+                                return Some(token);
                             }
                         },
                         _ => {}
@@ -512,7 +509,6 @@ impl<'db> SemanticsImpl<'db> {
         })
         .last()
         .unwrap();
-
         token.value
     }
 

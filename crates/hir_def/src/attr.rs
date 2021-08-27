@@ -2,7 +2,9 @@
 
 use std::{
     convert::{TryFrom, TryInto},
-    fmt, ops,
+    fmt,
+    hash::Hash,
+    ops,
     sync::Arc,
 };
 
@@ -158,7 +160,7 @@ impl RawAttrs {
                 }
 
                 let subtree = match attr.input.as_deref() {
-                    Some(AttrInput::TokenTree(it)) => it,
+                    Some(AttrInput::TokenTree(it, _)) => it,
                     _ => return smallvec![attr.clone()],
                 };
 
@@ -258,7 +260,7 @@ impl Attrs {
     pub fn docs(&self) -> Option<Documentation> {
         let docs = self.by_key("doc").attrs().flat_map(|attr| match attr.input.as_deref()? {
             AttrInput::Literal(s) => Some(s),
-            AttrInput::TokenTree(_) => None,
+            AttrInput::TokenTree(..) => None,
         });
         let indent = docs
             .clone()
@@ -463,7 +465,7 @@ impl AttrsWithOwner {
         // FIXME: code duplication in `docs` above
         let docs = self.by_key("doc").attrs().flat_map(|attr| match attr.input.as_deref()? {
             AttrInput::Literal(s) => Some((s, attr.id)),
-            AttrInput::TokenTree(_) => None,
+            AttrInput::TokenTree(..) => None,
         });
         let indent = docs
             .clone()
@@ -652,14 +654,14 @@ pub enum AttrInput {
     /// `#[attr = "string"]`
     Literal(SmolStr),
     /// `#[attr(subtree)]`
-    TokenTree(Subtree),
+    TokenTree(tt::Subtree, mbe::TokenMap),
 }
 
 impl fmt::Display for AttrInput {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AttrInput::Literal(lit) => write!(f, " = \"{}\"", lit.escape_debug()),
-            AttrInput::TokenTree(subtree) => subtree.fmt(f),
+            AttrInput::TokenTree(subtree, _) => subtree.fmt(f),
         }
     }
 }
@@ -679,7 +681,8 @@ impl Attr {
             };
             Some(Interned::new(AttrInput::Literal(value)))
         } else if let Some(tt) = ast.token_tree() {
-            Some(Interned::new(AttrInput::TokenTree(syntax_node_to_token_tree(tt.syntax()).0)))
+            let (tree, map) = syntax_node_to_token_tree(tt.syntax());
+            Some(Interned::new(AttrInput::TokenTree(tree, map)))
         } else {
             None
         };
@@ -709,7 +712,7 @@ impl Attr {
         }
 
         match self.input.as_deref() {
-            Some(AttrInput::TokenTree(args)) => {
+            Some(AttrInput::TokenTree(args, _)) => {
                 let mut counter = 0;
                 let paths = args
                     .token_trees
@@ -756,7 +759,7 @@ pub struct AttrQuery<'a> {
 impl<'a> AttrQuery<'a> {
     pub fn tt_values(self) -> impl Iterator<Item = &'a Subtree> {
         self.attrs().filter_map(|attr| match attr.input.as_deref()? {
-            AttrInput::TokenTree(it) => Some(it),
+            AttrInput::TokenTree(it, _) => Some(it),
             _ => None,
         })
     }

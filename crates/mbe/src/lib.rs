@@ -97,11 +97,11 @@ struct Rule {
     rhs: MetaTemplate,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct Shift(u32);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Shift(u32);
 
 impl Shift {
-    fn new(tt: &tt::Subtree) -> Shift {
+    pub fn new(tt: &tt::Subtree) -> Shift {
         // Note that TokenId is started from zero,
         // We have to add 1 to prevent duplication.
         let value = max_id(tt).map_or(0, |it| it + 1);
@@ -134,7 +134,7 @@ impl Shift {
     }
 
     /// Shift given TokenTree token id
-    fn shift_all(self, tt: &mut tt::Subtree) {
+    pub fn shift_all(self, tt: &mut tt::Subtree) {
         for t in &mut tt.token_trees {
             match t {
                 tt::TokenTree::Leaf(leaf) => match leaf {
@@ -152,14 +152,14 @@ impl Shift {
         }
     }
 
-    fn shift(self, id: tt::TokenId) -> tt::TokenId {
+    pub fn shift(self, id: tt::TokenId) -> tt::TokenId {
         if id == tt::TokenId::unspecified() {
             return id;
         }
         tt::TokenId(id.0 + self.0)
     }
 
-    fn unshift(self, id: tt::TokenId) -> Option<tt::TokenId> {
+    pub fn unshift(self, id: tt::TokenId) -> Option<tt::TokenId> {
         id.0.checked_sub(self.0).map(tt::TokenId)
     }
 }

@@ -1,9 +1,11 @@
 //! Mapping between `TokenId`s and the token's position in macro definitions or inputs.
 
+use std::hash::Hash;
+
 use parser::{SyntaxKind, T};
 use syntax::{TextRange, TextSize};
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 enum TokenTextRange {
     Token(TextRange),
     Delimiter(TextRange),
@@ -25,7 +27,7 @@ impl TokenTextRange {
 }
 
 /// Maps `tt::TokenId` to the relative range of the original token.
-#[derive(Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default, Hash)]
 pub struct TokenMap {
     /// Maps `tt::TokenId` to the *relative* source range.
     entries: Vec<(tt::TokenId, TokenTextRange)>,
