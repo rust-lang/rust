@@ -515,9 +515,6 @@ declare_features! (
     /// Allows `impl const Trait for T` syntax.
     (active, const_trait_impl, "1.42.0", Some(67792), None),
 
-    /// Allows `T: ?const Trait` syntax in bounds.
-    (incomplete, const_trait_bound_opt_out, "1.42.0", Some(67794), None),
-
     /// Allows the use of `no_sanitize` attribute.
     (active, no_sanitize, "1.42.0", Some(39699), None),
 

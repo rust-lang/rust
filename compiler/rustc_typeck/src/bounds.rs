@@ -1,7 +1,6 @@
 //! Bounds are restrictions applied to some types after they've been converted into the
 //! `ty` form from the HIR.
 
-use rustc_hir::Constness;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_span::Span;
 
@@ -30,7 +29,7 @@ pub struct Bounds<'tcx> {
 
     /// A list of trait bounds. So if you had `T: Debug` this would be
     /// `T: Debug`. Note that the self-type is explicit here.
-    pub trait_bounds: Vec<(ty::PolyTraitRef<'tcx>, Span, Constness)>,
+    pub trait_bounds: Vec<(ty::PolyTraitRef<'tcx>, Span, ty::BoundConstness)>,
 
     /// A list of projection equality bounds. So if you had `T:
     /// Iterator<Item = u32>` this would include `<T as

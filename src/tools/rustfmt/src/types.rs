@@ -537,10 +537,10 @@ impl Rewrite for ast::GenericBound {
                         .map(|s| format!("?{}", s)),
                     ast::TraitBoundModifier::MaybeConst => poly_trait_ref
                         .rewrite(context, shape.offset_left(7)?)
-                        .map(|s| format!("?const {}", s)),
+                        .map(|s| format!("~const {}", s)),
                     ast::TraitBoundModifier::MaybeConstMaybe => poly_trait_ref
                         .rewrite(context, shape.offset_left(8)?)
-                        .map(|s| format!("?const ?{}", s)),
+                        .map(|s| format!("~const ?{}", s)),
                 };
                 rewrite.map(|s| if has_paren { format!("({})", s) } else { s })
             }

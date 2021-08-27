@@ -365,10 +365,6 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         Some(self.item_def_id)
     }
 
-    fn default_constness_for_trait_bounds(&self) -> hir::Constness {
-        self.node().constness_for_typeck()
-    }
-
     fn get_type_parameter_bounds(
         &self,
         span: Span,
@@ -664,7 +660,6 @@ impl ItemCtxt<'tcx> {
         only_self_bounds: OnlySelfBounds,
         assoc_name: Option<Ident>,
     ) -> Vec<(ty::Predicate<'tcx>, Span)> {
-        let constness = self.default_constness_for_trait_bounds();
         let from_ty_params = ast_generics
             .params
             .iter()
@@ -677,7 +672,7 @@ impl ItemCtxt<'tcx> {
                 Some(assoc_name) => self.bound_defines_assoc_item(b, assoc_name),
                 None => true,
             })
-            .flat_map(|b| predicates_from_bound(self, ty, b, constness));
+            .flat_map(|b| predicates_from_bound(self, ty, b));
 
         let from_where_clauses = ast_generics
             .where_clause
@@ -703,7 +698,7 @@ impl ItemCtxt<'tcx> {
                     })
                     .filter_map(move |b| bt.map(|bt| (bt, b)))
             })
-            .flat_map(|(bt, b)| predicates_from_bound(self, bt, b, constness));
+            .flat_map(|(bt, b)| predicates_from_bound(self, bt, b));
 
         from_ty_params.chain(from_where_clauses).collect()
     }
@@ -2031,7 +2026,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     let mut is_default_impl_trait = None;
 
     let icx = ItemCtxt::new(tcx, def_id);
-    let constness = icx.default_constness_for_trait_bounds();
 
     const NO_GENERICS: &hir::Generics<'_> = &hir::Generics::empty();
 
@@ -2227,8 +2221,10 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                     match bound {
                         hir::GenericBound::Trait(poly_trait_ref, modifier) => {
                             let constness = match modifier {
-                                hir::TraitBoundModifier::MaybeConst => hir::Constness::NotConst,
-                                hir::TraitBoundModifier::None => constness,
+                                hir::TraitBoundModifier::None => ty::BoundConstness::NotConst,
+                                hir::TraitBoundModifier::MaybeConst => {
+                                    ty::BoundConstness::ConstIfConst
+                                }
                                 // We ignore `where T: ?Sized`, it is already part of
                                 // type parameter `T`.
                                 hir::TraitBoundModifier::Maybe => continue,
@@ -2491,14 +2487,13 @@ fn predicates_from_bound<'tcx>(
     astconv: &dyn AstConv<'tcx>,
     param_ty: Ty<'tcx>,
     bound: &'tcx hir::GenericBound<'tcx>,
-    constness: hir::Constness,
 ) -> Vec<(ty::Predicate<'tcx>, Span)> {
     match *bound {
         hir::GenericBound::Trait(ref tr, modifier) => {
             let constness = match modifier {
                 hir::TraitBoundModifier::Maybe => return vec![],
-                hir::TraitBoundModifier::MaybeConst => hir::Constness::NotConst,
-                hir::TraitBoundModifier::None => constness,
+                hir::TraitBoundModifier::MaybeConst => ty::BoundConstness::ConstIfConst,
+                hir::TraitBoundModifier::None => ty::BoundConstness::NotConst,
             };
 
             let mut bounds = Bounds::default();

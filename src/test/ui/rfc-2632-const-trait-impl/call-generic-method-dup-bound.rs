@@ -1,9 +1,7 @@
 // check-pass
 
 #![feature(const_trait_impl)]
-#![feature(const_trait_bound_opt_out)]
 #![feature(const_fn_trait_bound)]
-#![allow(incomplete_features)]
 
 struct S;
 
@@ -16,9 +14,11 @@ impl const PartialEq for S {
     }
 }
 
-// This duplicate bound should not result in ambiguities. It should be equivalent to a single const
+// This duplicate bound should not result in ambiguities. It should be equivalent to a single ~const
 // bound.
-const fn equals_self<T: PartialEq + ?const PartialEq>(t: &T) -> bool {
+// const fn equals_self<T: PartialEq + ~const PartialEq>(t: &T) -> bool {
+// FIXME(fee1-dead)^ why should the order matter here?
+const fn equals_self<T: ~const PartialEq + PartialEq>(t: &T) -> bool {
     *t == *t
 }
 

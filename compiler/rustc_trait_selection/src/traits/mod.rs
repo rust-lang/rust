@@ -778,7 +778,10 @@ pub fn vtable_trait_upcasting_coercion_new_vptr_slot(
     let obligation = Obligation::new(
         ObligationCause::dummy(),
         ty::ParamEnv::reveal_all(),
-        ty::Binder::dummy(ty::TraitPredicate { trait_ref, constness: hir::Constness::NotConst }),
+        ty::Binder::dummy(ty::TraitPredicate {
+            trait_ref,
+            constness: ty::BoundConstness::NotConst,
+        }),
     );
 
     let implsrc = tcx.infer_ctxt().enter(|infcx| {

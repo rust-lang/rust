@@ -37,7 +37,7 @@ use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, CRATE_DEF_INDEX};
-use rustc_hir::{Constness, Node};
+use rustc_hir::Node;
 use rustc_macros::HashStable;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
@@ -179,6 +179,25 @@ pub enum Visibility {
     Restricted(DefId),
     /// Not visible anywhere in the local crate. This is the visibility of private external items.
     Invisible,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
+pub enum BoundConstness {
+    /// `T: Trait`
+    NotConst,
+    /// `T: ~const Trait`
+    ///
+    /// Requires resolving to const only when we are in a const context.
+    ConstIfConst,
+}
+
+impl fmt::Display for BoundConstness {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NotConst => f.write_str("normal"),
+            Self::ConstIfConst => f.write_str("`~const`"),
+        }
+    }
 }
 
 #[derive(
@@ -457,10 +476,6 @@ pub enum PredicateKind<'tcx> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
     /// would be the type parameters.
-    ///
-    /// A trait predicate will have `Constness::Const` if it originates
-    /// from a bound on a `const fn` without the `?const` opt-out (e.g.,
-    /// `const fn foobar<Foo: Bar>() {}`).
     Trait(TraitPredicate<'tcx>),
 
     /// `where 'a: 'b`
@@ -632,10 +647,7 @@ impl<'tcx> Predicate<'tcx> {
 pub struct TraitPredicate<'tcx> {
     pub trait_ref: TraitRef<'tcx>,
 
-    /// A trait predicate will have `Constness::Const` if it originates
-    /// from a bound on a `const fn` without the `?const` opt-out (e.g.,
-    /// `const fn foobar<Foo: Bar>() {}`).
-    pub constness: hir::Constness,
+    pub constness: BoundConstness,
 }
 
 pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
@@ -1304,7 +1316,7 @@ impl<'tcx> ParamEnv<'tcx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable)]
 pub struct ConstnessAnd<T> {
-    pub constness: Constness,
+    pub constness: BoundConstness,
     pub value: T,
 }
 
@@ -1312,18 +1324,18 @@ pub struct ConstnessAnd<T> {
 // the constness of trait bounds is being propagated correctly.
 pub trait WithConstness: Sized {
     #[inline]
-    fn with_constness(self, constness: Constness) -> ConstnessAnd<Self> {
+    fn with_constness(self, constness: BoundConstness) -> ConstnessAnd<Self> {
         ConstnessAnd { constness, value: self }
     }
 
     #[inline]
-    fn with_const(self) -> ConstnessAnd<Self> {
-        self.with_constness(Constness::Const)
+    fn with_const_if_const(self) -> ConstnessAnd<Self> {
+        self.with_constness(BoundConstness::ConstIfConst)
     }
 
     #[inline]
     fn without_const(self) -> ConstnessAnd<Self> {
-        self.with_constness(Constness::NotConst)
+        self.with_constness(BoundConstness::NotConst)
     }
 }
 

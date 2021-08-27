@@ -548,7 +548,7 @@ pub fn hir_trait_to_predicates<'tcx>(
         &item_cx,
         hir_trait,
         DUMMY_SP,
-        hir::Constness::NotConst,
+        ty::BoundConstness::NotConst,
         self_ty,
         &mut bounds,
         true,

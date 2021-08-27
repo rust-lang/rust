@@ -9,7 +9,7 @@ impl PartialEq for S {
     }
 }
 
-const fn equals_self<T: PartialEq>(t: &T) -> bool {
+const fn equals_self<T: ~const PartialEq>(t: &T) -> bool {
     true
 }
 

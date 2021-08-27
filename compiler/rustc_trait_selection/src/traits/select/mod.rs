@@ -32,7 +32,6 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::Constness;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 use rustc_middle::mir::abstract_const::NotConstEvaluatable;
@@ -130,8 +129,8 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// and a negative impl
     allow_negative_impls: bool,
 
-    /// Do we only want const impls when we have a const trait predicate?
-    const_impls_required: bool,
+    /// Are we in a const context that needs `~const` bounds to be const?
+    is_in_const_context: bool,
 
     /// The mode that trait queries run in, which informs our error handling
     /// policy. In essence, canonicalized queries need their errors propagated
@@ -224,7 +223,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate: false,
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
-            const_impls_required: false,
+            is_in_const_context: false,
             query_mode: TraitQueryMode::Standard,
         }
     }
@@ -236,7 +235,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate: true,
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
-            const_impls_required: false,
+            is_in_const_context: false,
             query_mode: TraitQueryMode::Standard,
         }
     }
@@ -252,7 +251,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate: false,
             intercrate_ambiguity_causes: None,
             allow_negative_impls,
-            const_impls_required: false,
+            is_in_const_context: false,
             query_mode: TraitQueryMode::Standard,
         }
     }
@@ -268,7 +267,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate: false,
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
-            const_impls_required: false,
+            is_in_const_context: false,
             query_mode,
         }
     }
@@ -283,7 +282,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate: false,
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
-            const_impls_required: matches!(constness, hir::Constness::Const),
+            is_in_const_context: matches!(constness, hir::Constness::Const),
             query_mode: TraitQueryMode::Standard,
         }
     }
@@ -316,14 +315,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx.tcx
     }
 
+    /// Returns `true` if the trait predicate is considerd `const` to this selection context.
+    pub fn is_trait_predicate_const(&self, pred: ty::TraitPredicate<'_>) -> bool {
+        match pred.constness {
+            ty::BoundConstness::ConstIfConst if self.is_in_const_context => true,
+            _ => false,
+        }
+    }
+
     /// Returns `true` if the predicate is considered `const` to
     /// this selection context.
     pub fn is_predicate_const(&self, pred: ty::Predicate<'_>) -> bool {
         match pred.kind().skip_binder() {
-            ty::PredicateKind::Trait(ty::TraitPredicate {
-                constness: hir::Constness::Const,
-                ..
-            }) if self.const_impls_required => true,
+            ty::PredicateKind::Trait(pred) => self.is_trait_predicate_const(pred),
             _ => false,
         }
     }
@@ -1074,30 +1078,28 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         let tcx = self.tcx();
         // Respect const trait obligations
-        if self.const_impls_required {
-            if let hir::Constness::Const = obligation.predicate.skip_binder().constness {
-                if Some(obligation.predicate.skip_binder().trait_ref.def_id)
-                    != tcx.lang_items().sized_trait()
-                // const Sized bounds are skipped
-                {
-                    match candidate {
-                        // const impl
-                        ImplCandidate(def_id)
-                            if tcx.impl_constness(def_id) == hir::Constness::Const => {}
-                        // const param
-                        ParamCandidate(ty::ConstnessAnd {
-                            constness: hir::Constness::Const,
-                            ..
-                        }) => {}
-                        // auto trait impl
-                        AutoImplCandidate(..) => {}
-                        // generator, this will raise error in other places
-                        // or ignore error with const_async_blocks feature
-                        GeneratorCandidate => {}
-                        _ => {
-                            // reject all other types of candidates
-                            return Err(Unimplemented);
-                        }
+        if self.is_trait_predicate_const(obligation.predicate.skip_binder()) {
+            if Some(obligation.predicate.skip_binder().trait_ref.def_id)
+                != tcx.lang_items().sized_trait()
+            // const Sized bounds are skipped
+            {
+                match candidate {
+                    // const impl
+                    ImplCandidate(def_id)
+                        if tcx.impl_constness(def_id) == hir::Constness::Const => {}
+                    // const param
+                    ParamCandidate(ty::ConstnessAnd {
+                        constness: ty::BoundConstness::ConstIfConst,
+                        ..
+                    }) => {}
+                    // auto trait impl
+                    AutoImplCandidate(..) => {}
+                    // generator, this will raise error in other places
+                    // or ignore error with const_async_blocks feature
+                    GeneratorCandidate => {}
+                    _ => {
+                        // reject all other types of candidates
+                        return Err(Unimplemented);
                     }
                 }
             }
@@ -1495,7 +1497,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // probably best characterized as a "hack", since we might prefer to just do our
                     // best to *not* create essentially duplicate candidates in the first place.
                     other.value.bound_vars().len() <= victim.value.bound_vars().len()
-                } else if other.value == victim.value && victim.constness == Constness::NotConst {
+                } else if other.value == victim.value
+                    && victim.constness == ty::BoundConstness::NotConst
+                {
                     // Drop otherwise equivalent non-const candidates in favor of const candidates.
                     true
                 } else {

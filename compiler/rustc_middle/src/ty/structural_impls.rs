@@ -8,7 +8,6 @@ use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::{self, InferConst, Lift, Ty, TyCtxt};
 use rustc_data_structures::functor::IdFunctor;
-use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::CRATE_DEF_INDEX;
 use rustc_index::vec::{Idx, IndexVec};
@@ -155,8 +154,8 @@ impl fmt::Debug for ty::ParamConst {
 
 impl fmt::Debug for ty::TraitPredicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let hir::Constness::Const = self.constness {
-            write!(f, "const ")?;
+        if let ty::BoundConstness::ConstIfConst = self.constness {
+            write!(f, "~const ")?;
         }
         write!(f, "TraitPredicate({:?})", self.trait_ref)
     }
@@ -241,6 +240,7 @@ TrivialTypeFoldableAndLiftImpls! {
     crate::traits::Reveal,
     crate::ty::adjustment::AutoBorrowMutability,
     crate::ty::AdtKind,
+    crate::ty::BoundConstness,
     // Including `BoundRegionKind` is a *bit* dubious, but direct
     // references to bound region appear in `ty::Error`, and aren't
     // really meant to be folded. In general, we can only fold a fully

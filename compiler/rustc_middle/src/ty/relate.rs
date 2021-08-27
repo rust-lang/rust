@@ -200,12 +200,12 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
     }
 }
 
-impl<'tcx> Relate<'tcx> for ast::Constness {
+impl<'tcx> Relate<'tcx> for ty::BoundConstness {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
-        a: ast::Constness,
-        b: ast::Constness,
-    ) -> RelateResult<'tcx, ast::Constness> {
+        a: ty::BoundConstness,
+        b: ty::BoundConstness,
+    ) -> RelateResult<'tcx, ty::BoundConstness> {
         if a != b {
             Err(TypeError::ConstnessMismatch(expected_found(relation, a, b)))
         } else {

@@ -8,7 +8,6 @@
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::Constness;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
@@ -75,7 +74,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ProjectionCandidate(idx) => {
                 let obligations = self.confirm_projection_candidate(obligation, idx)?;
                 // FIXME(jschievink): constness
-                Ok(ImplSource::Param(obligations, Constness::NotConst))
+                Ok(ImplSource::Param(obligations, ty::BoundConstness::NotConst))
             }
 
             ObjectCandidate(idx) => {
@@ -113,7 +112,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // This indicates something like `Trait + Send: Send`. In this case, we know that
                 // this holds because that's what the object type is telling us, and there's really
                 // no additional obligations to prove and no types in particular to unify, etc.
-                Ok(ImplSource::Param(Vec::new(), Constness::NotConst))
+                Ok(ImplSource::Param(Vec::new(), ty::BoundConstness::NotConst))
             }
 
             BuiltinUnsizeCandidate => {

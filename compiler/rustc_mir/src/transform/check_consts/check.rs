@@ -805,6 +805,8 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                     }
                 };
 
+                let mut nonconst_call_permission = false;
+
                 // Attempting to call a trait method?
                 if let Some(trait_id) = tcx.trait_of_item(callee) {
                     trace!("attempting to call a trait method");
@@ -819,23 +821,54 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                         param_env,
                         Binder::dummy(TraitPredicate {
                             trait_ref,
-                            constness: hir::Constness::Const,
+                            constness: ty::BoundConstness::ConstIfConst,
                         }),
                     );
 
                     let implsrc = tcx.infer_ctxt().enter(|infcx| {
-                        let mut selcx = SelectionContext::new(&infcx);
-                        selcx.select(&obligation).unwrap()
+                        let mut selcx =
+                            SelectionContext::with_constness(&infcx, hir::Constness::Const);
+                        selcx.select(&obligation)
                     });
 
-                    // If the method is provided via a where-clause that does not use the `?const`
-                    // opt-out, the call is allowed.
-                    if let Some(ImplSource::Param(_, hir::Constness::Const)) = implsrc {
-                        debug!(
-                            "const_trait_impl: provided {:?} via where-clause in {:?}",
-                            trait_ref, param_env
-                        );
-                        return;
+                    match implsrc {
+                        Ok(Some(ImplSource::Param(_, ty::BoundConstness::ConstIfConst))) => {
+                            debug!(
+                                "const_trait_impl: provided {:?} via where-clause in {:?}",
+                                trait_ref, param_env
+                            );
+                            return;
+                        }
+                        Ok(Some(ImplSource::UserDefined(data))) => {
+                            let callee_name = tcx.item_name(callee);
+                            if let Some(&did) = tcx
+                                .associated_item_def_ids(data.impl_def_id)
+                                .iter()
+                                .find(|did| tcx.item_name(**did) == callee_name)
+                            {
+                                callee = did;
+                            }
+                        }
+                        _ => {
+                            if !tcx.is_const_fn_raw(callee) {
+                                // At this point, it is only legal when the caller is marked with
+                                // #[default_method_body_is_const], and the callee is in the same
+                                // trait.
+                                let callee_trait = tcx.trait_of_item(callee);
+                                if callee_trait.is_some() {
+                                    if tcx.has_attr(caller, sym::default_method_body_is_const) {
+                                        if tcx.trait_of_item(caller) == callee_trait {
+                                            nonconst_call_permission = true;
+                                        }
+                                    }
+                                }
+
+                                if !nonconst_call_permission {
+                                    self.check_op(ops::FnCallNonConst);
+                                    return;
+                                }
+                            }
+                        }
                     }
 
                     // Resolve a trait method call to its concrete implementation, which may be in a
@@ -875,34 +908,16 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                 let is_intrinsic = tcx.fn_sig(callee).abi() == RustIntrinsic;
 
                 if !tcx.is_const_fn_raw(callee) {
-                    let mut permitted = false;
-
-                    let callee_trait = tcx.trait_of_item(callee);
-                    if let Some(trait_id) = callee_trait {
-                        if tcx.has_attr(caller, sym::default_method_body_is_const) {
-                            // permit call to non-const fn when caller has default_method_body_is_const..
-                            if tcx.trait_of_item(caller) == callee_trait {
-                                // ..and caller and callee are in the same trait.
-                                permitted = true;
-                            }
-                        }
-                        if !permitted {
-                            // if trait's impls are all const, permit the call.
-                            let mut const_impls = true;
-                            tcx.for_each_relevant_impl(trait_id, substs.type_at(0), |imp| {
-                                if const_impls {
-                                    if let hir::Constness::NotConst = tcx.impl_constness(imp) {
-                                        const_impls = false;
-                                    }
-                                }
-                            });
-                            if const_impls {
-                                permitted = true;
-                            }
+                    if tcx.trait_of_item(callee).is_some() {
+                        if tcx.has_attr(callee, sym::default_method_body_is_const) {
+                            // To get to here we must have already found a const impl for the
+                            // trait, but for it to still be non-const can be that the impl is
+                            // using default method bodies.
+                            nonconst_call_permission = true;
                         }
                     }
 
-                    if !permitted {
+                    if !nonconst_call_permission {
                         self.check_op(ops::FnCallNonConst);
                         return;
                     }

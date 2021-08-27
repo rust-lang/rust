@@ -1,8 +1,8 @@
 error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/call-generic-method-fail.rs:5:5
+  --> $DIR/issue-88155.rs:9:5
    |
-LL |     *t == *t
-   |     ^^^^^^^^
+LL |     T::assoc()
+   |     ^^^^^^^^^^
 
 error: aborting due to previous error
 

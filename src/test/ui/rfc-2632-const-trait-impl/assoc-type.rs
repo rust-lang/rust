@@ -1,7 +1,5 @@
 // FIXME(fee1-dead): this should have a better error message
 #![feature(const_trait_impl)]
-#![feature(const_trait_bound_opt_out)]
-#![allow(incomplete_features)]
 
 struct NonConstAdd(i32);
 
@@ -14,7 +12,7 @@ impl std::ops::Add for NonConstAdd {
 }
 
 trait Foo {
-    type Bar: std::ops::Add;
+    type Bar: ~const std::ops::Add;
 }
 
 impl const Foo for NonConstAdd {
@@ -23,7 +21,7 @@ impl const Foo for NonConstAdd {
 }
 
 trait Baz {
-    type Qux: ?const std::ops::Add;
+    type Qux: std::ops::Add;
 }
 
 impl const Baz for NonConstAdd {

@@ -68,7 +68,6 @@
 use crate::constrained_generic_params as cgp;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferCtxt, RegionckMode, TyCtxtInferExt};
@@ -368,7 +367,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
         // items.
         ty::PredicateKind::Trait(ty::TraitPredicate {
             trait_ref,
-            constness: hir::Constness::NotConst,
+            constness: ty::BoundConstness::NotConst,
         }) => {
             if !matches!(
                 trait_predicate_kind(tcx, predicate),
@@ -399,7 +398,7 @@ fn trait_predicate_kind<'tcx>(
     match predicate.kind().skip_binder() {
         ty::PredicateKind::Trait(ty::TraitPredicate {
             trait_ref,
-            constness: hir::Constness::NotConst,
+            constness: ty::BoundConstness::NotConst,
         }) => Some(tcx.trait_def(trait_ref.def_id).specialization_kind),
         ty::PredicateKind::Trait(_)
         | ty::PredicateKind::RegionOutlives(_)

@@ -656,7 +656,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(more_qualified_paths, "usage of qualified paths in this context is experimental");
     gate_all!(generators, "yield syntax is experimental");
     gate_all!(raw_ref_op, "raw address of syntax is experimental");
-    gate_all!(const_trait_bound_opt_out, "`?const` on trait bounds is experimental");
     gate_all!(const_trait_impl, "const trait impls are experimental");
     gate_all!(half_open_range_patterns, "half-open range patterns are unstable");
     gate_all!(inline_const, "inline-const is experimental");
