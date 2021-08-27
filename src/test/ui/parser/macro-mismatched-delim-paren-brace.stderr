@@ -10,10 +10,10 @@ LL | }
    | ^ unexpected closing delimiter
 
 error: mismatched closing delimiter: `}`
-  --> $DIR/macro-mismatched-delim-paren-brace.rs:4:5
+  --> $DIR/macro-mismatched-delim-paren-brace.rs:2:10
    |
 LL |     foo! (
-   |          - unclosed delimiter
+   |          ^ unclosed delimiter
 LL |         bar, "baz", 1, 2.0
 LL |     }
    |     ^ mismatched closing delimiter

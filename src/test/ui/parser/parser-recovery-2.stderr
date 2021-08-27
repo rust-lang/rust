@@ -5,10 +5,10 @@ LL |     let x = y.;
    |               ^
 
 error: mismatched closing delimiter: `)`
-  --> $DIR/parser-recovery-2.rs:6:5
+  --> $DIR/parser-recovery-2.rs:4:14
    |
 LL |     fn bar() {
-   |              - unclosed delimiter
+   |              ^ unclosed delimiter
 LL |         let x = foo();
 LL |     )
    |     ^ mismatched closing delimiter

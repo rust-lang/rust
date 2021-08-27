@@ -21,10 +21,10 @@ LL |
    |  ^
 
 error: expected one of `,` or `}`, found `{`
-  --> $DIR/issue-62973.rs:6:25
+  --> $DIR/issue-62973.rs:6:8
    |
 LL | fn p() { match s { v, E { [) {) }
-   |        -       -       -^ expected one of `,` or `}`
+   |        ^       -       -^ expected one of `,` or `}`
    |        |       |       |
    |        |       |       help: `}` may belong here
    |        |       while parsing this struct
@@ -56,18 +56,18 @@ LL |
    |  ^ expected one of `.`, `?`, `{`, or an operator
 
 error: mismatched closing delimiter: `)`
-  --> $DIR/issue-62973.rs:6:28
+  --> $DIR/issue-62973.rs:6:27
    |
 LL | fn p() { match s { v, E { [) {) }
-   |                           -^ mismatched closing delimiter
+   |                           ^^ mismatched closing delimiter
    |                           |
    |                           unclosed delimiter
 
 error: mismatched closing delimiter: `)`
-  --> $DIR/issue-62973.rs:6:31
+  --> $DIR/issue-62973.rs:6:30
    |
 LL | fn p() { match s { v, E { [) {) }
-   |                              -^ mismatched closing delimiter
+   |                              ^^ mismatched closing delimiter
    |                              |
    |                              unclosed delimiter
 

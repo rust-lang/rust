@@ -1,10 +1,10 @@
 error: mismatched closing delimiter: `}`
-  --> $DIR/token-error-correct.rs:6:1
+  --> $DIR/token-error-correct.rs:4:12
    |
 LL | fn main() {
    |           - closing delimiter possibly meant for this
 LL |     foo(bar(;
-   |            - unclosed delimiter
+   |            ^ unclosed delimiter
 LL |
 LL | }
    | ^ mismatched closing delimiter

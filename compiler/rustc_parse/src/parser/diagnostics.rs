@@ -1432,12 +1432,22 @@ impl<'a> Parser<'a> {
                 // the most sense, which is immediately after the last token:
                 //
                 //  {foo(bar {}}
-                //      -      ^
+                //      ^      ^
                 //      |      |
                 //      |      help: `)` may belong here
                 //      |
                 //      unclosed delimiter
                 if let Some(sp) = unmatched.unclosed_span {
+                    let mut primary_span: Vec<Span> =
+                        err.span.primary_spans().iter().cloned().collect();
+                    primary_span.push(sp);
+                    let mut primary_span: MultiSpan = primary_span.into();
+                    for span_label in err.span.span_labels() {
+                        if let Some(label) = span_label.label {
+                            primary_span.push_span_label(span_label.span, label);
+                        }
+                    }
+                    err.set_span(primary_span);
                     err.span_label(sp, "unclosed delimiter");
                 }
                 // Backticks should be removed to apply suggestions.

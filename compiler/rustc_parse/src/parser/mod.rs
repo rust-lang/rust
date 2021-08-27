@@ -33,7 +33,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError};
 use rustc_session::parse::ParseSess;
-use rustc_span::source_map::{Span, DUMMY_SP};
+use rustc_span::source_map::{MultiSpan, Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use tracing::debug;
 
@@ -1335,8 +1335,13 @@ crate fn make_unclosed_delims_error(
     // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
     // `unmatched_braces` only for error recovery in the `Parser`.
     let found_delim = unmatched.found_delim?;
+    let span: MultiSpan = if let Some(sp) = unmatched.unclosed_span {
+        vec![unmatched.found_span, sp].into()
+    } else {
+        unmatched.found_span.into()
+    };
     let mut err = sess.span_diagnostic.struct_span_err(
-        unmatched.found_span,
+        span,
         &format!(
             "mismatched closing delimiter: `{}`",
             pprust::token_kind_to_string(&token::CloseDelim(found_delim)),

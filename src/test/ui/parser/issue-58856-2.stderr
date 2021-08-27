@@ -1,8 +1,8 @@
 error: expected one of `)` or `,`, found `->`
-  --> $DIR/issue-58856-2.rs:6:26
+  --> $DIR/issue-58856-2.rs:6:19
    |
 LL |     fn how_are_you(&self -> Empty {
-   |                   -     -^^
+   |                   ^     -^^
    |                   |     |
    |                   |     help: `)` may belong here
    |                   unclosed delimiter
