@@ -1,0 +1,37 @@
+error[E0391]: cycle detected when computing type of `m::Foo::{opaque#0}`
+  --> $DIR/inference-cycle.rs:5:16
+   |
+LL |     type Foo = impl std::fmt::Debug;
+   |                ^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires type-checking `m::bar`...
+  --> $DIR/inference-cycle.rs:14:5
+   |
+LL |     pub fn bar() {
+   |     ^^^^^^^^^^^^
+   = note: ...which requires evaluating trait selection obligation `impl std::fmt::Debug: std::marker::Send`...
+   = note: ...which again requires computing type of `m::Foo::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in module `m`
+  --> $DIR/inference-cycle.rs:4:1
+   |
+LL | mod m {
+   | ^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/inference-cycle.rs:19:22
+   |
+LL |     type Foo = impl std::fmt::Debug;
+   |                -------------------- the expected opaque type
+...
+LL |         let f: Foo = 22_u32;
+   |                ---   ^^^^^^ expected opaque type, found `u32`
+   |                |
+   |                expected due to this
+   |
+   = note: expected opaque type `impl Debug`
+                     found type `u32`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0391.
+For more information about an error, try `rustc --explain E0308`.
