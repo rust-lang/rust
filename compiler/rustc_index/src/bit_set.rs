@@ -289,6 +289,7 @@ fn dense_sparse_intersect<T: Idx>(
 // hybrid REL dense
 impl<T: Idx> BitRelations<BitSet<T>> for HybridBitSet<T> {
     fn union(&mut self, other: &BitSet<T>) -> bool {
+        assert_eq!(self.domain_size(), other.domain_size);
         match self {
             HybridBitSet::Sparse(sparse) => {
                 // `self` is sparse and `other` is dense. To
@@ -316,6 +317,7 @@ impl<T: Idx> BitRelations<BitSet<T>> for HybridBitSet<T> {
     }
 
     fn subtract(&mut self, other: &BitSet<T>) -> bool {
+        assert_eq!(self.domain_size(), other.domain_size);
         match self {
             HybridBitSet::Sparse(sparse) => {
                 sequential_update(|elem| sparse.remove(elem), other.iter())
@@ -325,6 +327,7 @@ impl<T: Idx> BitRelations<BitSet<T>> for HybridBitSet<T> {
     }
 
     fn intersect(&mut self, other: &BitSet<T>) -> bool {
+        assert_eq!(self.domain_size(), other.domain_size);
         match self {
             HybridBitSet::Sparse(sparse) => sparse_intersect(sparse, |elem| other.contains(*elem)),
             HybridBitSet::Dense(dense) => dense.intersect(other),
@@ -385,7 +388,6 @@ impl<T: Idx> BitRelations<HybridBitSet<T>> for HybridBitSet<T> {
                         // Both sets are sparse. Add the elements in
                         // `other_sparse` to `self` one at a time. This
                         // may or may not cause `self` to be densified.
-                        assert_eq!(self.domain_size(), other.domain_size());
                         let mut changed = false;
                         for elem in other_sparse.iter() {
                             changed |= self.insert(*elem);
