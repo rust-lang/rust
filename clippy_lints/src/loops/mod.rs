@@ -580,8 +580,8 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
 
         while_let_on_iterator::check(cx, expr);
 
-        if let Some(higher::While { if_cond, if_then, .. }) = higher::While::hir(expr) {
-            while_immutable_condition::check(cx, if_cond, if_then);
+        if let Some(higher::While { condition, body }) = higher::While::hir(expr) {
+            while_immutable_condition::check(cx, condition, body);
         }
 
         needless_collect::check(expr, cx);
