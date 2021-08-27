@@ -436,7 +436,7 @@ impl FromWithTcx<clean::Type> for Type {
             },
             QPath { name, self_type, trait_, .. } => {
                 // FIXME: should `trait_` be a clean::Path equivalent in JSON?
-                let trait_ = ResolvedPath { did: trait_.res.def_id(), path: *trait_ }.into_tcx(tcx);
+                let trait_ = ResolvedPath { did: trait_.res.def_id(), path: trait_ }.into_tcx(tcx);
                 Type::QualifiedPath {
                     name: name.to_string(),
                     self_type: Box::new((*self_type).into_tcx(tcx)),

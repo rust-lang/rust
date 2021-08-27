@@ -545,7 +545,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     match lhs {
                         Type::QPath { name: left_name, ref self_type, ref trait_, .. } => {
                             let ty = &*self_type;
-                            let mut new_trait = *trait_.clone();
+                            let mut new_trait = trait_.clone();
 
                             if self.is_fn_trait(trait_) && left_name == sym::Output {
                                 ty_to_fn
@@ -592,12 +592,12 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             // duplicate bound like `T: Iterator + Iterator<Item=u8>`
                             // on the docs page.
                             bounds.remove(&GenericBound::TraitBound(
-                                PolyTrait { trait_: *trait_.clone(), generic_params: Vec::new() },
+                                PolyTrait { trait_: trait_.clone(), generic_params: Vec::new() },
                                 hir::TraitBoundModifier::None,
                             ));
                             // Avoid creating any new duplicate bounds later in the outer
                             // loop
-                            ty_to_traits.entry(*ty.clone()).or_default().insert(*trait_.clone());
+                            ty_to_traits.entry(*ty.clone()).or_default().insert(trait_.clone());
                         }
                         _ => panic!("Unexpected LHS {:?} for {:?}", lhs, item_def_id),
                     }

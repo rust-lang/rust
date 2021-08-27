@@ -387,7 +387,7 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
             name: cx.tcx.associated_item(self.item_def_id).ident.name,
             self_def_id: self_type.def_id(),
             self_type: box self_type,
-            trait_: box trait_,
+            trait_,
         }
     }
 }
@@ -1277,16 +1277,16 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
             let segments = if p.is_global() { &p.segments[1..] } else { &p.segments };
             let trait_segments = &segments[..segments.len() - 1];
             let trait_def = cx.tcx.associated_item(p.res.def_id()).container.id();
-            let trait_path = self::Path {
+            let trait_ = self::Path {
                 res: Res::Def(DefKind::Trait, trait_def),
                 segments: trait_segments.clean(cx),
             };
-            register_res(cx, trait_path.res);
+            register_res(cx, trait_.res);
             Type::QPath {
                 name: p.segments.last().expect("segments were empty").ident.name,
                 self_def_id: Some(DefId::local(qself.hir_id.owner.local_def_index)),
                 self_type: box qself.clean(cx),
-                trait_: box trait_path,
+                trait_,
             }
         }
         hir::QPath::TypeRelative(ref qself, ref segment) => {
@@ -1297,13 +1297,13 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
                 ty::Error(_) => return Type::Infer,
                 _ => bug!("clean: expected associated type, found `{:?}`", ty),
             };
-            let trait_path = hir::Path { span, res, segments: &[] }.clean(cx);
-            register_res(cx, trait_path.res);
+            let trait_ = hir::Path { span, res, segments: &[] }.clean(cx);
+            register_res(cx, trait_.res);
             Type::QPath {
                 name: segment.ident.name,
                 self_def_id: res.opt_def_id(),
                 self_type: box qself.clean(cx),
-                trait_: box trait_path,
+                trait_,
             }
         }
         hir::QPath::LangItem(..) => bug!("clean: requiring documentation of lang item"),

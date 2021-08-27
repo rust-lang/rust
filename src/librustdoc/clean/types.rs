@@ -1408,8 +1408,7 @@ crate enum Type {
         name: Symbol,
         self_type: Box<Type>,
         self_def_id: Option<DefId>,
-        // FIXME: remove this `Box`; it's unnecessary
-        trait_: Box<Path>,
+        trait_: Path,
     },
 
     // `_`
