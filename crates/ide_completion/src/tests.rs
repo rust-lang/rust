@@ -75,13 +75,13 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     },
 };
 
-pub(crate) fn completion_list(code: &str) -> String {
-    completion_list_with_config(TEST_CONFIG, code)
+pub(crate) fn completion_list(ra_fixture: &str) -> String {
+    completion_list_with_config(TEST_CONFIG, ra_fixture)
 }
 
-fn completion_list_with_config(config: CompletionConfig, code: &str) -> String {
+fn completion_list_with_config(config: CompletionConfig, ra_fixture: &str) -> String {
     // filter out all but one builtintype completion for smaller test outputs
-    let items = get_all_items(config, code);
+    let items = get_all_items(config, ra_fixture);
     let mut bt_seen = false;
     let items = items
         .into_iter()
@@ -226,4 +226,27 @@ fn check_no_completion(ra_fixture: &str) {
 fn test_no_completions_required() {
     cov_mark::check!(no_completion_required);
     check_no_completion(r#"fn foo() { for i i$0 }"#);
+}
+
+#[test]
+fn regression_10042() {
+    completion_list(
+        r#"
+macro_rules! preset {
+    ($($x:ident)&&*) => {
+        {
+            let mut v = Vec::new();
+            $(
+                v.push($x.into());
+            )*
+            v
+        }
+    };
+}
+
+fn foo() {
+    preset!(foo$0);
+}
+"#,
+    );
 }

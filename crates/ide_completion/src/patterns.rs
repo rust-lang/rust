@@ -285,6 +285,7 @@ fn maximize_name_ref(name_ref: &ast::NameRef) -> SyntaxNode {
 }
 
 fn find_node_with_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Option<N> {
+    let range = syntax.text_range().intersect(range)?;
     syntax.covering_element(range).ancestors().find_map(N::cast)
 }
 
