@@ -1883,7 +1883,7 @@ fn clean_impl(impl_: &hir::Impl<'_>, hir_id: hir::HirId, cx: &mut DocContext<'_>
 
     // If this impl block is an implementation of the Deref trait, then we
     // need to try inlining the target's inherent impl blocks as well.
-    if trait_.def_id() == tcx.lang_items().deref_trait() {
+    if trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait() {
         build_deref_target_impls(cx, &items, &mut ret);
     }
 

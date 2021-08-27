@@ -447,7 +447,7 @@ crate fn build_impl(
     };
     let polarity = tcx.impl_polarity(did);
     let trait_ = associated_trait.clean(cx);
-    if trait_.def_id() == tcx.lang_items().deref_trait() {
+    if trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait() {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }
 
@@ -481,7 +481,7 @@ crate fn build_impl(
     let (merged_attrs, cfg) = merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
     trace!("merged_attrs={:?}", merged_attrs);
 
-    trace!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());
+    trace!("build_impl: impl {:?} for {:?}", trait_.as_ref().map(|t| t.def_id()), for_.def_id());
     ret.push(clean::Item::from_def_id_and_attrs_and_parts(
         did,
         None,

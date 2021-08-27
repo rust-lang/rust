@@ -1122,7 +1122,7 @@ impl GenericBound {
     crate fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
         use rustc_hir::TraitBoundModifier as TBM;
         if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
-            if trait_.def_id() == cx.tcx.lang_items().sized_trait() {
+            if Some(trait_.def_id()) == cx.tcx.lang_items().sized_trait() {
                 return true;
             }
         }
@@ -1942,6 +1942,10 @@ crate struct Path {
 }
 
 impl Path {
+    crate fn def_id(&self) -> DefId {
+        self.res.def_id()
+    }
+
     crate fn last(&self) -> Symbol {
         self.segments.last().expect("segments were empty").name
     }
@@ -1989,17 +1993,6 @@ impl Path {
                 None
             }
         })
-    }
-}
-
-// FIXME: this is temporary
-impl GetDefId for Path {
-    fn def_id(&self) -> Option<DefId> {
-        Some(self.res.def_id())
-    }
-
-    fn def_id_full(&self, _: &Cache) -> Option<DefId> {
-        self.def_id()
     }
 }
 
@@ -2155,7 +2148,8 @@ crate struct Impl {
 impl Impl {
     crate fn provided_trait_methods(&self, tcx: TyCtxt<'_>) -> FxHashSet<Symbol> {
         self.trait_
-            .def_id()
+            .as_ref()
+            .map(|t| t.def_id())
             .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.ident.name).collect())
             .unwrap_or_default()
     }
