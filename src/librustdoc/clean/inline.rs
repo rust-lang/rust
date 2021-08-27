@@ -446,10 +446,7 @@ crate fn build_impl(
         ),
     };
     let polarity = tcx.impl_polarity(did);
-    let trait_ = associated_trait.clean(cx).map(|bound| match bound {
-        clean::GenericBound::TraitBound(polyt, _) => polyt.trait_,
-        clean::GenericBound::Outlives(..) => unreachable!(),
-    });
+    let trait_ = associated_trait.clean(cx);
     if trait_.def_id() == tcx.lang_items().deref_trait() {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }

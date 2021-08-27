@@ -172,12 +172,9 @@ impl Clean<Path> for (ty::TraitRef<'_>, &[TypeBinding]) {
     }
 }
 
-impl<'tcx> Clean<GenericBound> for ty::TraitRef<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> GenericBound {
-        GenericBound::TraitBound(
-            PolyTrait { trait_: (*self, &[][..]).clean(cx), generic_params: vec![] },
-            hir::TraitBoundModifier::None,
-        )
+impl Clean<Path> for ty::TraitRef<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'_>) -> Path {
+        (*self, &[][..]).clean(cx)
     }
 }
 
@@ -384,10 +381,7 @@ impl<'tcx> Clean<WherePredicate> for ty::ProjectionPredicate<'tcx> {
 impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Type {
         let lifted = self.lift_to_tcx(cx.tcx).unwrap();
-        let trait_ = match lifted.trait_ref(cx.tcx).clean(cx) {
-            GenericBound::TraitBound(t, _) => t.trait_,
-            GenericBound::Outlives(_) => panic!("cleaning a trait got a lifetime"),
-        };
+        let trait_ = lifted.trait_ref(cx.tcx).clean(cx);
         let self_type = self.self_ty().clean(cx);
         Type::QPath {
             name: cx.tcx.associated_item(self.item_def_id).ident.name,
