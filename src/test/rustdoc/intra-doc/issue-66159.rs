@@ -1,4 +1,4 @@
-// aux-crate:priv:issue_66159_1=issue-66159-1.rs
+// aux-crate:priv:pub_struct=pub-struct.rs
 // compile-flags:-Z unstable-options
 
 // The issue was an ICE which meant that we never actually generated the docs
@@ -7,4 +7,4 @@
 // verify that the struct is linked correctly.
 
 // @has issue_66159/index.html
-//! [issue_66159_1::Something]
+//! [pub_struct::SomeStruct]

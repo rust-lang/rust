@@ -90,13 +90,13 @@
 +         _10 = move _3;                   // scope 0 at $DIR/matches_reduce_branches.rs:41:15: 45:10
           StorageDead(_3);                 // scope 0 at $DIR/matches_reduce_branches.rs:48:9: 48:10
 -         _1 = const true;                 // scope 0 at $DIR/matches_reduce_branches.rs:47:13: 47:17
--         goto -> bb12;                    // scope 0 at $DIR/matches_reduce_branches.rs:40:15: 50:6
+-         goto -> bb12;                    // scope 0 at $DIR/matches_reduce_branches.rs:47:13: 47:17
 -     }
 - 
 -     bb11: {
 -         StorageDead(_3);                 // scope 0 at $DIR/matches_reduce_branches.rs:48:9: 48:10
 -         _1 = const false;                // scope 0 at $DIR/matches_reduce_branches.rs:49:14: 49:19
--         goto -> bb12;                    // scope 0 at $DIR/matches_reduce_branches.rs:40:15: 50:6
+-         goto -> bb12;                    // scope 0 at $DIR/matches_reduce_branches.rs:49:14: 49:19
 -     }
 - 
 -     bb12: {

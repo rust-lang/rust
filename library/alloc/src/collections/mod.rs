@@ -117,12 +117,12 @@ impl From<TryReserveErrorKind> for TryReserveError {
     }
 }
 
-#[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
-impl From<LayoutError> for TryReserveError {
+#[unstable(feature = "try_reserve_kind", reason = "new API", issue = "48043")]
+impl From<LayoutError> for TryReserveErrorKind {
     /// Always evaluates to [`TryReserveErrorKind::CapacityOverflow`].
     #[inline]
     fn from(_: LayoutError) -> Self {
-        TryReserveErrorKind::CapacityOverflow.into()
+        TryReserveErrorKind::CapacityOverflow
     }
 }
 

@@ -31,20 +31,20 @@
       }
   
       bb1: {
-          switchInt((*_2)[0 of 4]) -> [47_u8: bb2, otherwise: bb5]; // scope 0 at $DIR/deduplicate_blocks.rs:4:10: 4:14
+          switchInt((*_2)[0 of 4]) -> [47_u8: bb2, otherwise: bb5]; // scope 0 at $DIR/deduplicate_blocks.rs:3:5: 3:23
       }
   
       bb2: {
-          switchInt((*_2)[1 of 4]) -> [47_u8: bb3, otherwise: bb5]; // scope 0 at $DIR/deduplicate_blocks.rs:4:16: 4:20
+          switchInt((*_2)[1 of 4]) -> [47_u8: bb3, otherwise: bb5]; // scope 0 at $DIR/deduplicate_blocks.rs:3:5: 3:23
       }
   
       bb3: {
-          switchInt((*_2)[2 of 4]) -> [47_u8: bb4, otherwise: bb5]; // scope 0 at $DIR/deduplicate_blocks.rs:4:22: 4:26
+          switchInt((*_2)[2 of 4]) -> [47_u8: bb4, otherwise: bb5]; // scope 0 at $DIR/deduplicate_blocks.rs:3:5: 3:23
       }
   
       bb4: {
--         switchInt((*_2)[3 of 4]) -> [47_u8: bb10, otherwise: bb5]; // scope 0 at $DIR/deduplicate_blocks.rs:4:28: 4:32
-+         switchInt((*_2)[3 of 4]) -> [47_u8: bb9, otherwise: bb5]; // scope 0 at $DIR/deduplicate_blocks.rs:4:28: 4:32
+-         switchInt((*_2)[3 of 4]) -> [47_u8: bb10, otherwise: bb5]; // scope 0 at $DIR/deduplicate_blocks.rs:3:5: 3:23
++         switchInt((*_2)[3 of 4]) -> [47_u8: bb9, otherwise: bb5]; // scope 0 at $DIR/deduplicate_blocks.rs:3:5: 3:23
       }
   
       bb5: {
@@ -54,39 +54,39 @@
       }
   
       bb6: {
-          switchInt((*_2)[0 of 3]) -> [47_u8: bb7, otherwise: bb9]; // scope 0 at $DIR/deduplicate_blocks.rs:5:10: 5:14
+          switchInt((*_2)[0 of 3]) -> [47_u8: bb7, otherwise: bb9]; // scope 0 at $DIR/deduplicate_blocks.rs:3:5: 3:23
       }
   
       bb7: {
-          switchInt((*_2)[1 of 3]) -> [47_u8: bb8, otherwise: bb9]; // scope 0 at $DIR/deduplicate_blocks.rs:5:16: 5:20
+          switchInt((*_2)[1 of 3]) -> [47_u8: bb8, otherwise: bb9]; // scope 0 at $DIR/deduplicate_blocks.rs:3:5: 3:23
       }
   
       bb8: {
--         switchInt((*_2)[2 of 3]) -> [47_u8: bb11, 33_u8: bb12, otherwise: bb9]; // scope 0 at $DIR/deduplicate_blocks.rs:5:22: 5:26
-+         switchInt((*_2)[2 of 3]) -> [47_u8: bb10, 33_u8: bb10, otherwise: bb9]; // scope 0 at $DIR/deduplicate_blocks.rs:5:22: 5:26
+-         switchInt((*_2)[2 of 3]) -> [47_u8: bb11, 33_u8: bb12, otherwise: bb9]; // scope 0 at $DIR/deduplicate_blocks.rs:3:5: 3:23
++         switchInt((*_2)[2 of 3]) -> [47_u8: bb10, 33_u8: bb10, otherwise: bb9]; // scope 0 at $DIR/deduplicate_blocks.rs:3:5: 3:23
       }
   
       bb9: {
 -         _0 = const false;                // scope 0 at $DIR/deduplicate_blocks.rs:7:14: 7:19
--         goto -> bb13;                    // scope 0 at $DIR/deduplicate_blocks.rs:3:5: 8:6
+-         goto -> bb13;                    // scope 0 at $DIR/deduplicate_blocks.rs:7:14: 7:19
 -     }
 - 
 -     bb10: {
           _0 = const false;                // scope 0 at $DIR/deduplicate_blocks.rs:4:41: 4:46
--         goto -> bb13;                    // scope 0 at $DIR/deduplicate_blocks.rs:3:5: 8:6
-+         goto -> bb11;                    // scope 0 at $DIR/deduplicate_blocks.rs:3:5: 8:6
+-         goto -> bb13;                    // scope 0 at $DIR/deduplicate_blocks.rs:4:41: 4:46
++         goto -> bb11;                    // scope 0 at $DIR/deduplicate_blocks.rs:4:41: 4:46
       }
   
 -     bb11: {
 -         _0 = const true;                 // scope 0 at $DIR/deduplicate_blocks.rs:5:35: 5:39
--         goto -> bb13;                    // scope 0 at $DIR/deduplicate_blocks.rs:3:5: 8:6
+-         goto -> bb13;                    // scope 0 at $DIR/deduplicate_blocks.rs:5:35: 5:39
 -     }
 - 
 -     bb12: {
 +     bb10: {
           _0 = const true;                 // scope 0 at $DIR/deduplicate_blocks.rs:6:35: 6:39
--         goto -> bb13;                    // scope 0 at $DIR/deduplicate_blocks.rs:3:5: 8:6
-+         goto -> bb11;                    // scope 0 at $DIR/deduplicate_blocks.rs:3:5: 8:6
+-         goto -> bb13;                    // scope 0 at $DIR/deduplicate_blocks.rs:6:35: 6:39
++         goto -> bb11;                    // scope 0 at $DIR/deduplicate_blocks.rs:6:35: 6:39
       }
   
 -     bb13: {

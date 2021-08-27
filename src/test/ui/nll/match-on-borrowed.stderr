@@ -1,41 +1,40 @@
 error[E0503]: cannot use `e` because it was mutably borrowed
-  --> $DIR/match-on-borrowed.rs:49:9
+  --> $DIR/match-on-borrowed.rs:47:11
    |
 LL |         E::V(ref mut x, _) => x,
    |              --------- borrow of `e.0` occurs here
 ...
-LL |         E::V(_, r) => (),
-   |         ^^^^^^^^^^ use of borrowed `e.0`
+LL |     match e { // Don't know that E uses a tag for its discriminant
+   |           ^ use of borrowed `e.0`
 ...
 LL |     x;
    |     - borrow later used here
 
 error[E0503]: cannot use `*f` because it was mutably borrowed
-  --> $DIR/match-on-borrowed.rs:62:9
+  --> $DIR/match-on-borrowed.rs:61:11
    |
 LL |         E::V(ref mut x, _) => x,
    |              --------- borrow of `f.0` occurs here
 ...
-LL |         E::V(_, r) => (),
-   |         ^^^^^^^^^^ use of borrowed `f.0`
+LL |     match f { // Don't know that E uses a tag for its discriminant
+   |           ^ use of borrowed `f.0`
 ...
 LL |     x;
    |     - borrow later used here
 
 error[E0503]: cannot use `t` because it was mutably borrowed
-  --> $DIR/match-on-borrowed.rs:80:9
+  --> $DIR/match-on-borrowed.rs:81:5
    |
 LL |     let x = &mut t;
    |             ------ borrow of `t` occurs here
 LL |     match t {
-LL |         true => (),
-   |         ^^^^ use of borrowed `t`
+   |     ^^^^^^^ use of borrowed `t`
 ...
 LL |     x;
    |     - borrow later used here
 
 error[E0381]: use of possibly-uninitialized variable: `n`
-  --> $DIR/match-on-borrowed.rs:90:11
+  --> $DIR/match-on-borrowed.rs:93:11
    |
 LL |     match n {}
    |           ^ use of possibly-uninitialized `n`

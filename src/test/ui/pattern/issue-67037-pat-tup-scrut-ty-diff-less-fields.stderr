@@ -13,7 +13,7 @@ error[E0023]: this pattern has 0 fields, but the corresponding tuple struct has 
   --> $DIR/issue-67037-pat-tup-scrut-ty-diff-less-fields.rs:19:9
    |
 LL | struct P<T>(T); // 1 type parameter wanted
-   | --------------- tuple struct defined here
+   |             - tuple struct has 1 field
 ...
 LL |     let P() = U {};
    |         ^^^ expected 1 field, found 0

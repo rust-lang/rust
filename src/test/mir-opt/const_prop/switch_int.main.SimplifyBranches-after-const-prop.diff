@@ -8,8 +8,8 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/switch_int.rs:7:11: 7:12
           _1 = const 1_i32;                // scope 0 at $DIR/switch_int.rs:7:11: 7:12
--         switchInt(const 1_i32) -> [1_i32: bb2, otherwise: bb1]; // scope 0 at $DIR/switch_int.rs:8:9: 8:10
-+         goto -> bb2;                     // scope 0 at $DIR/switch_int.rs:8:9: 8:10
+-         switchInt(const 1_i32) -> [1_i32: bb2, otherwise: bb1]; // scope 0 at $DIR/switch_int.rs:7:5: 7:12
++         goto -> bb2;                     // scope 0 at $DIR/switch_int.rs:7:5: 7:12
       }
   
       bb1: {

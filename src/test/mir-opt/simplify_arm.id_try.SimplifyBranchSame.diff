@@ -40,9 +40,9 @@
           _4 = _1;                         // scope 0 at $DIR/simplify-arm.rs:36:31: 36:32
           _3 = move _4;                    // scope 4 at $DIR/simplify-arm.rs:36:19: 36:33
           StorageDead(_4);                 // scope 0 at $DIR/simplify-arm.rs:36:32: 36:33
-          _5 = discriminant(_3);           // scope 0 at $DIR/simplify-arm.rs:37:9: 37:15
--         switchInt(move _5) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/simplify-arm.rs:37:9: 37:15
-+         goto -> bb1;                     // scope 0 at $DIR/simplify-arm.rs:37:9: 37:15
+          _5 = discriminant(_3);           // scope 0 at $DIR/simplify-arm.rs:36:19: 36:33
+-         switchInt(move _5) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/simplify-arm.rs:36:13: 36:33
++         goto -> bb1;                     // scope 0 at $DIR/simplify-arm.rs:36:13: 36:33
       }
   
       bb1: {

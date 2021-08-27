@@ -55,10 +55,10 @@ LL |     let U1 { a } = u1;
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:65:20
+  --> $DIR/union-unsafe.rs:65:12
    |
 LL |     if let U1 { a: 12 } = u1 {}
-   |                    ^^ access to union field
+   |            ^^^^^^^^^^^^ access to union field
    |
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 

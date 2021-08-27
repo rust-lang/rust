@@ -15,7 +15,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::Ident;
-use rustc_span::{BytePos, DUMMY_SP};
+use rustc_span::{BytePos, MultiSpan, DUMMY_SP};
 use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
 use ty::VariantDef;
@@ -990,10 +990,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let subpats_ending = pluralize!(subpats.len());
         let fields_ending = pluralize!(fields.len());
+
+        let subpat_spans = if subpats.is_empty() {
+            vec![pat_span]
+        } else {
+            subpats.iter().map(|p| p.span).collect()
+        };
+        let last_subpat_span = *subpat_spans.last().unwrap();
         let res_span = self.tcx.def_span(res.def_id());
+        let def_ident_span = self.tcx.def_ident_span(res.def_id()).unwrap_or(res_span);
+        let field_def_spans = if fields.is_empty() {
+            vec![res_span]
+        } else {
+            fields.iter().map(|f| f.ident.span).collect()
+        };
+        let last_field_def_span = *field_def_spans.last().unwrap();
+
         let mut err = struct_span_err!(
             self.tcx.sess,
-            pat_span,
+            MultiSpan::from_spans(subpat_spans.clone()),
             E0023,
             "this pattern has {} field{}, but the corresponding {} has {} field{}",
             subpats.len(),
@@ -1003,10 +1018,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fields_ending,
         );
         err.span_label(
-            pat_span,
-            format!("expected {} field{}, found {}", fields.len(), fields_ending, subpats.len(),),
-        )
-        .span_label(res_span, format!("{} defined here", res.descr()));
+            last_subpat_span,
+            &format!("expected {} field{}, found {}", fields.len(), fields_ending, subpats.len()),
+        );
+        if self.tcx.sess.source_map().is_multiline(qpath.span().between(last_subpat_span)) {
+            err.span_label(qpath.span(), "");
+        }
+        if self.tcx.sess.source_map().is_multiline(def_ident_span.between(last_field_def_span)) {
+            err.span_label(def_ident_span, format!("{} defined here", res.descr()));
+        }
+        for span in &field_def_spans[..field_def_spans.len() - 1] {
+            err.span_label(*span, "");
+        }
+        err.span_label(
+            last_field_def_span,
+            &format!("{} has {} field{}", res.descr(), fields.len(), fields_ending),
+        );
 
         // Identify the case `Some(x, y)` where the expected type is e.g. `Option<(T, U)>`.
         // More generally, the expected type wants a tuple variant with one field of an

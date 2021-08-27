@@ -7,8 +7,8 @@ fn all_previous_tests_may_be_done(y: &mut (bool, bool)) {
     let r = &mut y.1;
     // We don't actually test y.1 to select the second arm, but we don't want
     // borrowck results to be based on the order we match patterns.
-    match y {
-        (false, true) => 1, //~ ERROR cannot use `y.1` because it was mutably borrowed
+    match y { //~ ERROR cannot use `y.1` because it was mutably borrowed
+        (false, true) => 1,
         (true, _) => {
             r;
             2

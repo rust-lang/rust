@@ -53,8 +53,8 @@
           StorageLive(_2);                 // scope 0 at $DIR/issue-73223.rs:2:23: 2:30
           ((_2 as Some).0: i32) = const 1_i32; // scope 0 at $DIR/issue-73223.rs:2:23: 2:30
           discriminant(_2) = 1;            // scope 0 at $DIR/issue-73223.rs:2:23: 2:30
-          _3 = const 1_isize;              // scope 0 at $DIR/issue-73223.rs:3:9: 3:16
-          goto -> bb2;                     // scope 0 at $DIR/issue-73223.rs:3:9: 3:16
+          _3 = const 1_isize;              // scope 0 at $DIR/issue-73223.rs:2:23: 2:30
+          goto -> bb2;                     // scope 0 at $DIR/issue-73223.rs:2:17: 2:30
       }
   
       bb1: {
