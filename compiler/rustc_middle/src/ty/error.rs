@@ -33,7 +33,7 @@ impl<T> ExpectedFound<T> {
 #[derive(Clone, Debug, TypeFoldable)]
 pub enum TypeError<'tcx> {
     Mismatch,
-    ConstnessMismatch(ExpectedFound<hir::Constness>),
+    ConstnessMismatch(ExpectedFound<ty::BoundConstness>),
     UnsafetyMismatch(ExpectedFound<hir::Unsafety>),
     AbiMismatch(ExpectedFound<abi::Abi>),
     Mutability,
@@ -102,7 +102,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             CyclicConst(_) => write!(f, "encountered a self-referencing constant"),
             Mismatch => write!(f, "types differ"),
             ConstnessMismatch(values) => {
-                write!(f, "expected {} fn, found {} fn", values.expected, values.found)
+                write!(f, "expected {} bound, found {} bound", values.expected, values.found)
             }
             UnsafetyMismatch(values) => {
                 write!(f, "expected {} fn, found {} fn", values.expected, values.found)

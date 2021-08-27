@@ -1,6 +1,5 @@
 use std::fmt;
 
-use rustc_hir as hir;
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::mir::ConstraintCategory;
@@ -88,7 +87,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.prove_predicates(
             Some(ty::PredicateKind::Trait(ty::TraitPredicate {
                 trait_ref,
-                constness: hir::Constness::NotConst,
+                constness: ty::BoundConstness::NotConst,
             })),
             locations,
             category,

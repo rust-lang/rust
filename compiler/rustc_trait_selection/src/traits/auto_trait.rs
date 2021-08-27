@@ -285,7 +285,7 @@ impl AutoTraitFinder<'tcx> {
                 def_id: trait_did,
                 substs: infcx.tcx.mk_substs_trait(ty, &[]),
             },
-            constness: hir::Constness::NotConst,
+            constness: ty::BoundConstness::NotConst,
         }));
 
         let computed_preds = param_env.caller_bounds().iter();

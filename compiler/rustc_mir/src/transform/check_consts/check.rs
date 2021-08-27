@@ -821,7 +821,7 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                         param_env,
                         Binder::dummy(TraitPredicate {
                             trait_ref,
-                            constness: hir::Constness::Const,
+                            constness: ty::BoundConstness::ConstIfConst,
                         }),
                     );
 
@@ -831,7 +831,7 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                     });
 
                     match implsrc {
-                        Ok(Some(ImplSource::Param(_, hir::Constness::Const))) => {
+                        Ok(Some(ImplSource::Param(_, ty::BoundConstness::ConstIfConst))) => {
                             debug!(
                                 "const_trait_impl: provided {:?} via where-clause in {:?}",
                                  trait_ref, param_env
