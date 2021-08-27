@@ -256,6 +256,9 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
         let constraint_sets: Vec<_> = unnormalized_input_output_tys
             .flat_map(|ty| {
                 debug!("build: input_or_output={:?}", ty);
+                // We add implied bounds from both the unnormalized and normalized ty
+                // See issue #87748
+                let constraints_implied_1 = self.add_implied_bounds(ty);
                 let TypeOpOutput { output: ty, constraints: constraints1, .. } = self
                     .param_env
                     .and(type_op::normalize::Normalize::new(ty))
@@ -271,9 +274,21 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
                             canonicalized_query: None,
                         }
                     });
-                let constraints2 = self.add_implied_bounds(ty);
+                // Note: we need this in examples like
+                // ```
+                // trait Foo {
+                //   type Bar;
+                //   fn foo(&self) -> &Self::Bar;
+                // }
+                // impl Foo for () {
+                //   type Bar = ();
+                //   fn foo(&self) ->&() {}
+                // }
+                // ```
+                // Both &Self::Bar and &() are WF
+                let constraints_implied_2 = self.add_implied_bounds(ty);
                 normalized_inputs_and_output.push(ty);
-                constraints1.into_iter().chain(constraints2)
+                constraints1.into_iter().chain(constraints_implied_1).chain(constraints_implied_2)
             })
             .collect();
 

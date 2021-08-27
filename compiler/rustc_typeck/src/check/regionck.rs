@@ -144,11 +144,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// rest of type check and because sometimes we need type
     /// inference to have completed before we can determine which
     /// constraints to add.
-    pub fn regionck_fn(&self, fn_id: hir::HirId, body: &'tcx hir::Body<'tcx>) {
+    pub(crate) fn regionck_fn(
+        &self,
+        fn_id: hir::HirId,
+        body: &'tcx hir::Body<'tcx>,
+        span: Span,
+        wf_tys: &[Ty<'tcx>],
+    ) {
         debug!("regionck_fn(id={})", fn_id);
         let subject = self.tcx.hir().body_owner_def_id(body.id());
         let hir_id = body.value.hir_id;
         let mut rcx = RegionCtxt::new(self, hir_id, Subject(subject), self.param_env);
+        // We need to add the implied bounds from the function signature
+        rcx.outlives_environment.add_implied_bounds(self, wf_tys, fn_id, span);
+        rcx.outlives_environment.save_implied_bounds(fn_id);
 
         if !self.errors_reported_since_creation() {
             // regionck assumes typeck succeeded
