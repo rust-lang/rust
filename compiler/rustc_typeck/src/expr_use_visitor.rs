@@ -268,10 +268,21 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                                     if def.variants.len() > 1 {
                                         needs_to_be_read = true;
                                     } else if let Some(variant) = def.variants.iter().next() {
+                                        // We need to handle `const` in match arms slightly differently
+                                        // as they are not processed the same way as other match arms.
+                                        // Consider this const `const OP1: Opcode = Opcode(0x1)`, this
+                                        // will generate a pattern with kind Path while if use Opcode(0x1)
+                                        // this will generate pattern TupleStruct and Lit.
+                                        // When dealing with pat kind Path we need to make additional checks
+                                        // to ensure we have all the info needed to make a decision on whether
+                                        // to borrow discr.
+                                        //
                                         // If the pat kind is a Path we want to check whether the
                                         // variant contains at least one field. If that's the case,
                                         // we want to borrow discr.
-                                        if matches!(pat.kind, PatKind::Path(..)) && variant.fields.len() > 0 {
+                                        if matches!(pat.kind, PatKind::Path(..))
+                                            && variant.fields.len() > 0
+                                        {
                                             needs_to_be_read = true;
                                         }
                                     }
