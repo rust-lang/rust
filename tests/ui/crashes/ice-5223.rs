@@ -1,7 +1,4 @@
 // Regression test for #5233
-
-#![feature(const_generics)]
-#![allow(incomplete_features)]
 #![warn(clippy::indexing_slicing, clippy::iter_cloned_collect)]
 
 pub struct KotomineArray<T, const N: usize> {
