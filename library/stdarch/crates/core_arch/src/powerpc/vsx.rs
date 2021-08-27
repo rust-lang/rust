@@ -21,7 +21,7 @@ types! {
     pub struct vector_signed_long(i64, i64);
     /// PowerPC-specific 128-bit wide vector of two packed `u64`
     pub struct vector_unsigned_long(u64, u64);
-    /// PowerPC-specific 128-bit wide vector mask of two elements
+    /// PowerPC-specific 128-bit wide vector mask of two `i64`
     pub struct vector_bool_long(i64, i64);
     /// PowerPC-specific 128-bit wide vector of two packed `f64`
     pub struct vector_double(f64, f64);
