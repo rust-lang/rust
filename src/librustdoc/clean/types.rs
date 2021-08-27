@@ -715,6 +715,7 @@ impl ItemKind {
             StructItem(s) => s.fields.iter(),
             UnionItem(u) => u.fields.iter(),
             VariantItem(Variant::Struct(v)) => v.fields.iter(),
+            VariantItem(Variant::Tuple(v)) => v.iter(),
             EnumItem(e) => e.variants.iter(),
             TraitItem(t) => t.items.iter(),
             ImplItem(i) => i.items.iter(),
@@ -1937,7 +1938,7 @@ crate struct Enum {
 #[derive(Clone, Debug)]
 crate enum Variant {
     CLike,
-    Tuple(Vec<Type>),
+    Tuple(Vec<Item>),
     Struct(VariantStruct),
 }
 

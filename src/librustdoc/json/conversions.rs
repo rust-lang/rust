@@ -569,7 +569,18 @@ impl FromWithTcx<clean::Variant> for Variant {
         use clean::Variant::*;
         match variant {
             CLike => Variant::Plain,
-            Tuple(t) => Variant::Tuple(t.into_iter().map(|x| x.into_tcx(tcx)).collect()),
+            Tuple(fields) => Variant::Tuple(
+                fields
+                    .into_iter()
+                    .map(|f| {
+                        if let clean::StructFieldItem(ty) = *f.kind {
+                            ty.into_tcx(tcx)
+                        } else {
+                            unreachable!()
+                        }
+                    })
+                    .collect(),
+            ),
             Struct(s) => Variant::Struct(ids(s.fields)),
         }
     }
