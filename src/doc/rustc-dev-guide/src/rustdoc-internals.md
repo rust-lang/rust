@@ -72,7 +72,7 @@ Here is the list of passes as of <!-- date: 2021-02 --> February 2021:
   flag.
 
 - `check-code-block-syntax` validates syntax inside Rust code blocks
-  (`` ```rust ``)
+  (<code>```rust</code>)
 
 - `check-invalid-html-tags` detects invalid HTML (like an unclosed `<span>`)
   in doc comments.
