@@ -1955,7 +1955,7 @@ impl Path {
     }
 
     crate fn whole_name(&self) -> String {
-        self.segments.iter().map(|s| s.name.to_string()).collect::<Vec<_>>().join("::")
+        self.segments.iter().map(|s| s.name.to_string()).intersperse("::".into()).collect()
     }
 
     /// Checks if this is a `T::Name` path for an associated type.
