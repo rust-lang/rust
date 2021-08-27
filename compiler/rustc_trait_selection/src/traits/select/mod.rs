@@ -319,7 +319,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn is_trait_predicate_const(&self, pred: ty::TraitPredicate<'_>) -> bool {
         match pred.constness {
             ty::BoundConstness::ConstIfConst if self.is_in_const_context => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -1079,30 +1079,30 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         // Respect const trait obligations
         if self.is_trait_predicate_const(obligation.predicate.skip_binder()) {
-                if Some(obligation.predicate.skip_binder().trait_ref.def_id)
-                    != tcx.lang_items().sized_trait()
-                // const Sized bounds are skipped
-                {
-                    match candidate {
-                        // const impl
-                        ImplCandidate(def_id)
-                            if tcx.impl_constness(def_id) == hir::Constness::Const => {}
-                        // const param
-                        ParamCandidate(ty::ConstnessAnd {
-                            constness: ty::BoundConstness::ConstIfConst,
-                            ..
-                        }) => {}
-                        // auto trait impl
-                        AutoImplCandidate(..) => {}
-                        // generator, this will raise error in other places
-                        // or ignore error with const_async_blocks feature
-                        GeneratorCandidate => {}
-                        _ => {
-                            // reject all other types of candidates
-                            return Err(Unimplemented);
-                        }
+            if Some(obligation.predicate.skip_binder().trait_ref.def_id)
+                != tcx.lang_items().sized_trait()
+            // const Sized bounds are skipped
+            {
+                match candidate {
+                    // const impl
+                    ImplCandidate(def_id)
+                        if tcx.impl_constness(def_id) == hir::Constness::Const => {}
+                    // const param
+                    ParamCandidate(ty::ConstnessAnd {
+                        constness: ty::BoundConstness::ConstIfConst,
+                        ..
+                    }) => {}
+                    // auto trait impl
+                    AutoImplCandidate(..) => {}
+                    // generator, this will raise error in other places
+                    // or ignore error with const_async_blocks feature
+                    GeneratorCandidate => {}
+                    _ => {
+                        // reject all other types of candidates
+                        return Err(Unimplemented);
                     }
                 }
+            }
         }
         // Treat negative impls as unimplemented, and reservation impls as ambiguity.
         if let ImplCandidate(def_id) = candidate {
@@ -1497,7 +1497,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // probably best characterized as a "hack", since we might prefer to just do our
                     // best to *not* create essentially duplicate candidates in the first place.
                     other.value.bound_vars().len() <= victim.value.bound_vars().len()
-                } else if other.value == victim.value && victim.constness == ty::BoundConstness::NotConst {
+                } else if other.value == victim.value
+                    && victim.constness == ty::BoundConstness::NotConst
+                {
                     // Drop otherwise equivalent non-const candidates in favor of const candidates.
                     true
                 } else {

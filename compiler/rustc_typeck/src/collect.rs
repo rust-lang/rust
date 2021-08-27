@@ -2222,7 +2222,9 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                         hir::GenericBound::Trait(poly_trait_ref, modifier) => {
                             let constness = match modifier {
                                 hir::TraitBoundModifier::None => ty::BoundConstness::NotConst,
-                                hir::TraitBoundModifier::MaybeConst => ty::BoundConstness::ConstIfConst,
+                                hir::TraitBoundModifier::MaybeConst => {
+                                    ty::BoundConstness::ConstIfConst
+                                }
                                 // We ignore `where T: ?Sized`, it is already part of
                                 // type parameter `T`.
                                 hir::TraitBoundModifier::Maybe => continue,

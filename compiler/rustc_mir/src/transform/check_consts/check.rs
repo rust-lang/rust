@@ -826,7 +826,8 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                     );
 
                     let implsrc = tcx.infer_ctxt().enter(|infcx| {
-                        let mut selcx = SelectionContext::with_constness(&infcx, hir::Constness::Const);
+                        let mut selcx =
+                            SelectionContext::with_constness(&infcx, hir::Constness::Const);
                         selcx.select(&obligation)
                     });
 
@@ -834,13 +835,17 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                         Ok(Some(ImplSource::Param(_, ty::BoundConstness::ConstIfConst))) => {
                             debug!(
                                 "const_trait_impl: provided {:?} via where-clause in {:?}",
-                                 trait_ref, param_env
+                                trait_ref, param_env
                             );
                             return;
                         }
                         Ok(Some(ImplSource::UserDefined(data))) => {
                             let callee_name = tcx.item_name(callee);
-                            if let Some(&did) = tcx.associated_item_def_ids(data.impl_def_id).iter().find(|did| tcx.item_name(**did) == callee_name) {
+                            if let Some(&did) = tcx
+                                .associated_item_def_ids(data.impl_def_id)
+                                .iter()
+                                .find(|did| tcx.item_name(**did) == callee_name)
+                            {
                                 callee = did;
                             }
                         }
@@ -909,7 +914,7 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                             // trait, but for it to still be non-const can be that the impl is
                             // using default method bodies.
                             nonconst_call_permission = true;
-                        }    
+                        }
                     }
 
                     if !nonconst_call_permission {
