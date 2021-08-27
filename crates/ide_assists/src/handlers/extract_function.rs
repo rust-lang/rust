@@ -601,10 +601,7 @@ impl FunctionBody {
                     if local_ref.is_self(sema.db) {
                         match local_ref.source(sema.db).value {
                             Either::Right(it) => {
-                                stdx::always!(
-                                    self_param.replace(it).is_none(),
-                                    "body references two different self params"
-                                );
+                                self_param.replace(it);
                             }
                             Either::Left(_) => {
                                 stdx::never!(
@@ -2369,7 +2366,7 @@ struct S { f: i32 };
 
 impl S {
     fn foo(&self) -> i32 {
-        $01+self.f$0
+        $0self.f+self.f$0
     }
 }
 "#,
@@ -2382,7 +2379,7 @@ impl S {
     }
 
     fn $0fun_name(&self) -> i32 {
-        1+self.f
+        self.f+self.f
     }
 }
 "#,
