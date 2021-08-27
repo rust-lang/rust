@@ -42,7 +42,7 @@ LL | extern "stdcall" fn stdcall() {}
    |
    = note: `#[warn(unsupported_calling_conventions)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #00000 <https://github.com/rust-lang/rust/issues/00000>
+   = note: for more information, see issue #87678 <https://github.com/rust-lang/rust/issues/87678>
 
 warning: use of calling convention not supported on this target
   --> $DIR/unsupported.rs:44:1
@@ -51,7 +51,7 @@ LL | extern "thiscall" fn thiscall() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #00000 <https://github.com/rust-lang/rust/issues/00000>
+   = note: for more information, see issue #87678 <https://github.com/rust-lang/rust/issues/87678>
 
 error: aborting due to 6 previous errors; 2 warnings emitted
 
