@@ -2,6 +2,7 @@
 //! normal visitor, which just walks the entire body in one shot, the
 //! `ExprUseVisitor` determines how expressions are being used.
 
+use hir::def::DefKind;
 // Export these here so that Clippy can use them.
 pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
 
@@ -14,7 +15,7 @@ use rustc_index::vec::Idx;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::{self, adjustment, TyCtxt};
+use rustc_middle::ty::{self, adjustment, Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
 use std::iter;
 
@@ -251,43 +252,34 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                                     needs_to_be_read = true;
                                 }
                             }
-                            PatKind::TupleStruct(..)
-                            | PatKind::Path(..)
-                            | PatKind::Struct(..)
-                            | PatKind::Tuple(..) => {
-                                // If the PatKind is a TupleStruct, Path, Struct or Tuple then we want to check
-                                // whether the Variant is a MultiVariant or a SingleVariant. We only want
-                                // to borrow discr if it is a MultiVariant.
-                                // If it is a SingleVariant and creates a binding we will handle that when
-                                // this callback gets called again.
+                            PatKind::Path(qpath) => {
+                                // A `Path` pattern is just a name like `Foo`. This is either a
+                                // named constant or else it refers to an ADT variant
 
-                                // Get the type of the Place after all projections have been applied
-                                let place_ty = place.place.ty();
-
-                                if let ty::Adt(def, _) = place_ty.kind() {
-                                    if def.variants.len() > 1 {
+                                let res = self.mc.typeck_results.qpath_res(qpath, pat.hir_id);
+                                match res {
+                                    Res::Def(DefKind::Const, _)
+                                    | Res::Def(DefKind::AssocConst, _) => {
+                                        // Named constants have to be equated with the value
+                                        // being matched, so that's a read of the value being matched.
                                         needs_to_be_read = true;
-                                    } else if let Some(variant) = def.variants.iter().next() {
-                                        // We need to handle `const` in match arms slightly differently
-                                        // as they are not processed the same way as other match arms.
-                                        // Consider this const `const OP1: Opcode = Opcode(0x1)`, this
-                                        // will generate a pattern with kind Path while if use Opcode(0x1)
-                                        // this will generate pattern TupleStruct and Lit.
-                                        // When dealing with pat kind Path we need to make additional checks
-                                        // to ensure we have all the info needed to make a decision on whether
-                                        // to borrow discr.
-                                        //
-                                        // If the pat kind is a Path we want to check whether the
-                                        // variant contains at least one field. If that's the case,
-                                        // we want to borrow discr.
-                                        if matches!(pat.kind, PatKind::Path(..))
-                                            && variant.fields.len() > 0
-                                        {
-                                            needs_to_be_read = true;
-                                        }
                                     }
-                                } else {
-                                    // If it is not ty::Adt, then it should be read
+                                    _ => {
+                                        // Otherwise, this is a struct/enum variant, and so it's
+                                        // only a read if we need to read the discriminant.
+                                        needs_to_be_read = is_multivariant_adt(place.place.ty());
+                                    }
+                                }
+                            }
+                            PatKind::TupleStruct(..) | PatKind::Struct(..) | PatKind::Tuple(..) => {
+                                // For `Foo(..)`, `Foo { ... }` and `(...)` patterns, check if we are matching
+                                // against a multivariant enum or struct. In that case, we have to read
+                                // the discriminant. Otherwise this kind of pattern doesn't actually
+                                // read anything (we'll get invoked for the `...`, which may indeed
+                                // perform some reads).
+
+                                let place_ty = place.place.ty();
+                                if is_multivariant_adt(place_ty) {
                                     needs_to_be_read = true;
                                 }
                             }
@@ -853,4 +845,8 @@ fn delegate_consume<'a, 'tcx>(
             delegate.borrow(place_with_id, diag_expr_id, ty::BorrowKind::ImmBorrow)
         }
     }
+}
+
+fn is_multivariant_adt(ty: Ty<'tcx>) -> bool {
+    if let ty::Adt(def, _) = ty.kind() { def.variants.len() > 1 } else { false }
 }
