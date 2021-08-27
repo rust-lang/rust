@@ -347,10 +347,34 @@ impl ModuleDef {
         };
 
         let mut acc = Vec::new();
-        for diag in hir_ty::diagnostics::validate_module_item(db, module.id.krate(), id) {
-            acc.push(diag.into())
+
+        match self.as_def_with_body() {
+            Some(def) => {
+                def.diagnostics(db, &mut acc);
+            }
+            None => {
+                for diag in hir_ty::diagnostics::validate_module_item(db, module.id.krate(), id) {
+                    acc.push(diag.into())
+                }
+            }
         }
+
         acc
+    }
+
+    pub fn as_def_with_body(self) -> Option<DefWithBody> {
+        match self {
+            ModuleDef::Function(it) => Some(it.into()),
+            ModuleDef::Const(it) => Some(it.into()),
+            ModuleDef::Static(it) => Some(it.into()),
+
+            ModuleDef::Module(_)
+            | ModuleDef::Adt(_)
+            | ModuleDef::Variant(_)
+            | ModuleDef::Trait(_)
+            | ModuleDef::TypeAlias(_)
+            | ModuleDef::BuiltinType(_) => None,
+        }
     }
 
     pub fn attrs(&self, db: &dyn HirDatabase) -> Option<AttrsWithOwner> {
@@ -624,7 +648,6 @@ impl Module {
         }
         for decl in self.declarations(db) {
             match decl {
-                ModuleDef::Function(f) => f.diagnostics(db, acc),
                 ModuleDef::Module(m) => {
                     // Only add diagnostics from inline modules
                     if def_map[m.id.local_id].origin.is_inline() {
@@ -637,9 +660,13 @@ impl Module {
 
         for impl_def in self.impl_defs(db) {
             for item in impl_def.items(db) {
-                if let AssocItem::Function(f) = item {
-                    f.diagnostics(db, acc);
-                }
+                let def: DefWithBody = match item {
+                    AssocItem::Function(it) => it.into(),
+                    AssocItem::Const(it) => it.into(),
+                    AssocItem::TypeAlias(_) => continue,
+                };
+
+                def.diagnostics(db, acc);
             }
         }
     }
@@ -999,76 +1026,20 @@ impl DefWithBody {
             DefWithBody::Const(c) => c.name(db),
         }
     }
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Function {
-    pub(crate) id: FunctionId,
-}
-
-impl Function {
-    pub fn module(self, db: &dyn HirDatabase) -> Module {
-        self.id.lookup(db.upcast()).module(db.upcast()).into()
-    }
-
-    pub fn name(self, db: &dyn HirDatabase) -> Name {
-        db.function_data(self.id).name.clone()
-    }
-
-    /// Get this function's return type
-    pub fn ret_type(self, db: &dyn HirDatabase) -> Type {
-        let resolver = self.id.resolver(db.upcast());
-        let krate = self.id.lookup(db.upcast()).container.module(db.upcast()).krate();
-        let ret_type = &db.function_data(self.id).ret_type;
-        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
-        let ty = ctx.lower_ty(ret_type);
-        Type::new_with_resolver_inner(db, krate, &resolver, ty)
-    }
-
-    pub fn self_param(self, db: &dyn HirDatabase) -> Option<SelfParam> {
-        if !db.function_data(self.id).has_self_param() {
-            return None;
+    /// Returns the type this def's body has to evaluate to.
+    pub fn body_type(self, db: &dyn HirDatabase) -> Type {
+        match self {
+            DefWithBody::Function(it) => it.ret_type(db),
+            DefWithBody::Static(it) => it.ty(db),
+            DefWithBody::Const(it) => it.ty(db),
         }
-        Some(SelfParam { func: self.id })
-    }
-
-    pub fn assoc_fn_params(self, db: &dyn HirDatabase) -> Vec<Param> {
-        let resolver = self.id.resolver(db.upcast());
-        let krate = self.id.lookup(db.upcast()).container.module(db.upcast()).krate();
-        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
-        let environment = db.trait_environment(self.id.into());
-        db.function_data(self.id)
-            .params
-            .iter()
-            .enumerate()
-            .map(|(idx, type_ref)| {
-                let ty = Type { krate, env: environment.clone(), ty: ctx.lower_ty(type_ref) };
-                Param { func: self, ty, idx }
-            })
-            .collect()
-    }
-
-    pub fn method_params(self, db: &dyn HirDatabase) -> Option<Vec<Param>> {
-        if self.self_param(db).is_none() {
-            return None;
-        }
-        let mut res = self.assoc_fn_params(db);
-        res.remove(0);
-        Some(res)
-    }
-
-    pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).is_unsafe()
-    }
-
-    pub fn is_async(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).is_async()
     }
 
     pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
         let krate = self.module(db).id.krate();
 
-        let source_map = db.body_with_source_map(self.id.into()).1;
+        let source_map = db.body_with_source_map(self.into()).1;
         for diag in source_map.diagnostics() {
             match diag {
                 BodyDiagnostic::InactiveCode { node, cfg, opts } => acc.push(
@@ -1096,8 +1067,8 @@ impl Function {
             }
         }
 
-        let infer = db.infer(self.id.into());
-        let source_map = Lazy::new(|| db.body_with_source_map(self.id.into()).1);
+        let infer = db.infer(self.into());
+        let source_map = Lazy::new(|| db.body_with_source_map(self.into()).1);
         for d in &infer.diagnostics {
             match d {
                 hir_ty::InferenceDiagnostic::NoSuchField { expr } => {
@@ -1113,7 +1084,7 @@ impl Function {
             }
         }
 
-        for expr in hir_ty::diagnostics::missing_unsafe(db, self.id.into()) {
+        for expr in hir_ty::diagnostics::missing_unsafe(db, self.into()) {
             match source_map.expr_syntax(expr) {
                 Ok(expr) => acc.push(MissingUnsafe { expr }.into()),
                 Err(SyntheticSyntax) => {
@@ -1123,7 +1094,7 @@ impl Function {
             }
         }
 
-        for diagnostic in BodyValidationDiagnostic::collect(db, self.id.into()) {
+        for diagnostic in BodyValidationDiagnostic::collect(db, self.into()) {
             match diagnostic {
                 BodyValidationDiagnostic::RecordMissingFields {
                     record,
@@ -1220,7 +1191,7 @@ impl Function {
                             MissingOkOrSomeInTailExpr {
                                 expr,
                                 required,
-                                expected: self.ret_type(db),
+                                expected: self.body_type(db),
                             }
                             .into(),
                         ),
@@ -1260,9 +1231,79 @@ impl Function {
             }
         }
 
-        for diag in hir_ty::diagnostics::validate_module_item(db, krate, self.id.into()) {
+        let def: ModuleDef = match self {
+            DefWithBody::Function(it) => it.into(),
+            DefWithBody::Static(it) => it.into(),
+            DefWithBody::Const(it) => it.into(),
+        };
+        for diag in hir_ty::diagnostics::validate_module_item(db, krate, def.into()) {
             acc.push(diag.into())
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Function {
+    pub(crate) id: FunctionId,
+}
+
+impl Function {
+    pub fn module(self, db: &dyn HirDatabase) -> Module {
+        self.id.lookup(db.upcast()).module(db.upcast()).into()
+    }
+
+    pub fn name(self, db: &dyn HirDatabase) -> Name {
+        db.function_data(self.id).name.clone()
+    }
+
+    /// Get this function's return type
+    pub fn ret_type(self, db: &dyn HirDatabase) -> Type {
+        let resolver = self.id.resolver(db.upcast());
+        let krate = self.id.lookup(db.upcast()).container.module(db.upcast()).krate();
+        let ret_type = &db.function_data(self.id).ret_type;
+        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
+        let ty = ctx.lower_ty(ret_type);
+        Type::new_with_resolver_inner(db, krate, &resolver, ty)
+    }
+
+    pub fn self_param(self, db: &dyn HirDatabase) -> Option<SelfParam> {
+        if !db.function_data(self.id).has_self_param() {
+            return None;
+        }
+        Some(SelfParam { func: self.id })
+    }
+
+    pub fn assoc_fn_params(self, db: &dyn HirDatabase) -> Vec<Param> {
+        let resolver = self.id.resolver(db.upcast());
+        let krate = self.id.lookup(db.upcast()).container.module(db.upcast()).krate();
+        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
+        let environment = db.trait_environment(self.id.into());
+        db.function_data(self.id)
+            .params
+            .iter()
+            .enumerate()
+            .map(|(idx, type_ref)| {
+                let ty = Type { krate, env: environment.clone(), ty: ctx.lower_ty(type_ref) };
+                Param { func: self, ty, idx }
+            })
+            .collect()
+    }
+
+    pub fn method_params(self, db: &dyn HirDatabase) -> Option<Vec<Param>> {
+        if self.self_param(db).is_none() {
+            return None;
+        }
+        let mut res = self.assoc_fn_params(db);
+        res.remove(0);
+        Some(res)
+    }
+
+    pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
+        db.function_data(self.id).is_unsafe()
+    }
+
+    pub fn is_async(self, db: &dyn HirDatabase) -> bool {
+        db.function_data(self.id).is_async()
     }
 
     /// Whether this function declaration has a definition.
