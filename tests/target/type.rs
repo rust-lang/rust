@@ -157,12 +157,6 @@ struct S<T: ~const ?Sized>(std::marker::PhantomData<T>);
 
 impl ~const T {}
 
-fn trait_object() -> &'static dyn ~const T {
-    &S
-}
-
-fn i(_: impl IntoIterator<Item = Box<dyn ~const T>>) {}
-
 fn apit(_: impl ~const T) {}
 
 fn rpit() -> impl ~const T {
