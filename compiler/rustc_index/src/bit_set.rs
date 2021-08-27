@@ -363,7 +363,7 @@ impl<T: Idx> BitRelations<HybridBitSet<T>> for BitSet<T> {
             HybridBitSet::Sparse(sparse) => {
                 let (updated, changed) = dense_sparse_intersect(self, sparse);
 
-                // We can't directly assign the BitSet to the SparseBitSet, and
+                // We can't directly assign the SparseBitSet to the BitSet, and
                 // doing `*self = updated.to_dense()` would cause a drop / reallocation. Instead,
                 // the BitSet is cleared and `updated` is copied into `self`.
                 self.clear();
@@ -1071,7 +1071,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         Self { num_columns, rows: IndexVec::new() }
     }
 
-    pub fn ensure_row(&mut self, row: R) -> &mut HybridBitSet<C> {
+    fn ensure_row(&mut self, row: R) -> &mut HybridBitSet<C> {
         // Instantiate any missing rows up to and including row `row` with an
         // empty HybridBitSet.
         self.rows.ensure_contains_elem(row, || None);
