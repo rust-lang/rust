@@ -209,9 +209,6 @@ pub struct Session {
 
     /// Set of enabled features for the current target.
     pub target_features: FxHashSet<Symbol>,
-
-    /// `Span`s for `if` conditions that we have suggested turning into `if let`.
-    pub if_let_suggestions: Lock<FxHashSet<Span>>,
 }
 
 pub struct PerfStats {
@@ -1328,7 +1325,6 @@ pub fn build_session(
         miri_unleashed_features: Lock::new(Default::default()),
         asm_arch,
         target_features: FxHashSet::default(),
-        if_let_suggestions: Default::default(),
     };
 
     validate_commandline_args_with_session_available(&sess);

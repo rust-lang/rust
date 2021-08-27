@@ -919,9 +919,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
 
-            if self.sess().if_let_suggestions.borrow().get(&expr.span).is_some() {
-                // We already emitted an `if let` suggestion due to an identifier not found.
-                err.delay_as_bug();
+            // If the assignment expression itself is ill-formed, don't
+            // bother emitting another error
+            if lhs_ty.references_error() || rhs_ty.references_error() {
+                err.delay_as_bug()
             } else {
                 err.emit();
             }
