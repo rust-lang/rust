@@ -1,0 +1,27 @@
+error[E0004]: non-exhaustive patterns: `Opcode(0_u8)` and `Opcode(2_u8..=u8::MAX)` not covered
+  --> $DIR/issue-88331.rs:11:20
+   |
+LL | pub struct Opcode(pub u8);
+   | -------------------------- `Opcode` defined here
+...
+LL |     move |i| match msg_type {
+   |                    ^^^^^^^^ patterns `Opcode(0_u8)` and `Opcode(2_u8..=u8::MAX)` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `Opcode`
+
+error[E0004]: non-exhaustive patterns: `Opcode2(Opcode(0_u8))` and `Opcode2(Opcode(2_u8..=u8::MAX))` not covered
+  --> $DIR/issue-88331.rs:27:20
+   |
+LL | pub struct Opcode2(Opcode);
+   | --------------------------- `Opcode2` defined here
+...
+LL |     move |i| match msg_type {
+   |                    ^^^^^^^^ patterns `Opcode2(Opcode(0_u8))` and `Opcode2(Opcode(2_u8..=u8::MAX))` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `Opcode2`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

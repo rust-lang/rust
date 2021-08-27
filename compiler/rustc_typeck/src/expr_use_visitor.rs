@@ -267,6 +267,13 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                                 if let ty::Adt(def, _) = place_ty.kind() {
                                     if def.variants.len() > 1 {
                                         needs_to_be_read = true;
+                                    } else if let Some(variant) = def.variants.iter().next() {
+                                        // If the pat kind is a Path we want to check whether the
+                                        // variant contains at least one field. If that's the case,
+                                        // we want to borrow discr.
+                                        if matches!(pat.kind, PatKind::Path(..)) && variant.fields.len() > 0 {
+                                            needs_to_be_read = true;
+                                        }
                                     }
                                 } else {
                                     // If it is not ty::Adt, then it should be read
