@@ -42,6 +42,7 @@ pub trait IntegerExt {
 }
 
 impl IntegerExt for Integer {
+    #[inline]
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>, signed: bool) -> Ty<'tcx> {
         match (*self, signed) {
             (I8, false) => tcx.types.u8,
@@ -149,6 +150,7 @@ pub trait PrimitiveExt {
 }
 
 impl PrimitiveExt for Primitive {
+    #[inline]
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             Int(i, signed) => i.to_ty(tcx, signed),
@@ -160,6 +162,7 @@ impl PrimitiveExt for Primitive {
 
     /// Return an *integer* type matching this primitive.
     /// Useful in particular when dealing with enum discriminants.
+    #[inline]
     fn to_int_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             Int(i, signed) => i.to_ty(tcx, signed),
@@ -2018,12 +2021,14 @@ pub trait HasParamEnv<'tcx> {
 }
 
 impl<'tcx> HasDataLayout for TyCtxt<'tcx> {
+    #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.data_layout
     }
 }
 
 impl<'tcx> HasTyCtxt<'tcx> for TyCtxt<'tcx> {
+    #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
         *self
     }
@@ -2055,6 +2060,7 @@ impl<'tcx> LayoutOf for LayoutCx<'tcx, TyCtxt<'tcx>> {
 
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode, and will normalize the input type.
+    #[inline]
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         self.tcx.layout_of(self.param_env.and(ty))
     }
@@ -2066,6 +2072,7 @@ impl LayoutOf for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
 
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode, and will normalize the input type.
+    #[inline]
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         self.tcx.layout_of(self.param_env.and(ty))
     }
@@ -2416,6 +2423,7 @@ where
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for LayoutError<'tcx> {
+    #[inline]
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::LayoutError::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
@@ -2606,6 +2614,7 @@ where
 /// compiled with `-Cpanic=unwind` and referenced from another crate compiled
 /// with `-Cpanic=abort` will look like they can't unwind when in fact they
 /// might (from a foreign exception or similar).
+#[inline]
 pub fn fn_can_unwind(
     tcx: TyCtxt<'tcx>,
     codegen_fn_attr_flags: CodegenFnAttrFlags,
@@ -2681,6 +2690,7 @@ pub fn fn_can_unwind(
     }
 }
 
+#[inline]
 pub fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
     use rustc_target::spec::abi::Abi::*;
     match tcx.sess.target.adjust_abi(abi) {
