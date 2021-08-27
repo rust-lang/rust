@@ -14,7 +14,7 @@ use rustc_index::vec::Idx;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::{self, adjustment, TyCtxt};
+use rustc_middle::ty::{self, adjustment, AdtKind, TyCtxt};
 use rustc_target::abi::VariantIdx;
 use std::iter;
 
@@ -265,7 +265,20 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                                 let place_ty = place.place.ty();
 
                                 if let ty::Adt(def, _) = place_ty.kind() {
-                                    if def.variants.len() > 1 {
+                                    // Note that if a non-exhaustive SingleVariant is defined in another crate, we need
+                                    // to assume that more cases will be added to the variant in the future. This mean
+                                    // that we should handle non-exhaustive SingleVariant the same way we would handle
+                                    // a MultiVariant.
+                                    // If the variant is not local it must be defined in another crate.
+                                    let is_non_exhaustive = match def.adt_kind() {
+                                        AdtKind::Struct | AdtKind::Union => {
+                                            def.non_enum_variant().is_field_list_non_exhaustive()
+                                        }
+                                        AdtKind::Enum => def.is_variant_list_non_exhaustive(),
+                                    };
+                                    if def.variants.len() > 1
+                                        || (!def.did.is_local() && is_non_exhaustive)
+                                    {
                                         needs_to_be_read = true;
                                     }
                                 } else {

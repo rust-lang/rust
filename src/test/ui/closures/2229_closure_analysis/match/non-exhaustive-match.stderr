@@ -1,0 +1,50 @@
+error[E0004]: non-exhaustive patterns: `B` not covered
+  --> $DIR/non-exhaustive-match.rs:26:25
+   |
+LL | enum L1 { A, B }
+   | ----------------
+   | |            |
+   | |            not covered
+   | `L1` defined here
+...
+LL |     let _b = || { match l1 { L1::A => () } };
+   |                         ^^ pattern `B` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `L1`
+
+error[E0004]: non-exhaustive patterns: type `E1` is non-empty
+  --> $DIR/non-exhaustive-match.rs:37:25
+   |
+LL |     let _d = || { match e1 {} };
+   |                         ^^
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `E1`, which is marked as non-exhaustive
+
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/non-exhaustive-match.rs:39:25
+   |
+LL |     let _e = || { match e2 { E2::A => (), E2::B => () } };
+   |                         ^^ pattern `_` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `E2`, which is marked as non-exhaustive
+
+error[E0505]: cannot move out of `e3` because it is borrowed
+  --> $DIR/non-exhaustive-match.rs:46:22
+   |
+LL |     let _g = || { match e3 { E3::C => (), _ => () }  };
+   |              --         -- borrow occurs due to use in closure
+   |              |
+   |              borrow of `e3` occurs here
+LL |     let mut mut_e3 = e3;
+   |                      ^^ move out of `e3` occurs here
+LL |
+LL |     _g();
+   |     -- borrow later used here
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0004, E0505.
+For more information about an error, try `rustc --explain E0004`.
