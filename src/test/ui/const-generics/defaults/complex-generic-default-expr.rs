@@ -1,6 +1,6 @@
 // revisions: full min
 //[full] check-pass
-#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, feature(generic_const_exprs))]
 #![feature(const_generics_defaults)]
 #![allow(incomplete_features)]
 

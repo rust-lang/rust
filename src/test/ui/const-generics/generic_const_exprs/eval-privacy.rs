@@ -1,5 +1,5 @@
 #![crate_type = "lib"]
-#![feature(const_generics, generic_const_exprs)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
 pub struct Const<const U: u8>;

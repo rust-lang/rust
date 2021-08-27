@@ -1,5 +1,5 @@
 // build-pass
-#![feature(const_generics)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
 // This test does not use any "unevaluated" consts, so it should compile just fine.

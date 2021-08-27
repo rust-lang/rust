@@ -1,5 +1,5 @@
 // check-pass
-#![feature(generic_const_exprs, const_generics)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
 struct Foo<const N: u8>([u8; N as usize])

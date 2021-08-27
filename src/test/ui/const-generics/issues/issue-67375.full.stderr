@@ -1,15 +1,15 @@
-warning: cannot use constants which depend on generic parameters in types
-  --> $DIR/issue-67375.rs:8:12
+error: overly complex generic constant
+  --> $DIR/issue-67375.rs:7:17
    |
 LL |     inner: [(); { [|_: &T| {}; 0].len() }],
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^----------^^^^^^^^^^^^
+   |                    |
+   |                    unsupported rvalue
    |
-   = note: `#[warn(const_evaluatable_unchecked)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #76200 <https://github.com/rust-lang/rust/issues/76200>
+   = help: consider moving this anonymous constant into a `const` function
 
 error[E0392]: parameter `T` is never used
-  --> $DIR/issue-67375.rs:6:12
+  --> $DIR/issue-67375.rs:5:12
    |
 LL | struct Bug<T> {
    |            ^ unused parameter
@@ -17,6 +17,6 @@ LL | struct Bug<T> {
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
    = help: if you intended `T` to be a const parameter, use `const T: usize` instead
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0392`.

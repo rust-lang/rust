@@ -102,6 +102,9 @@ declare_features! (
     (removed, extern_in_paths, "1.33.0", Some(55600), None,
      Some("subsumed by `::foo::bar` paths")),
     (removed, quote, "1.33.0", Some(29601), None, None),
+    /// Allows const generic types (e.g. `struct Foo<const N: usize>(...);`).
+    (removed, const_generics, "1.34.0", Some(44580), None,
+     Some("removed in favor of `#![feature(const_param_types]` and `#![feature(generic_const_exprs)]`")),
     /// Allows `[x; N]` where `x` is a constant (RFC 2203).
     (removed, const_in_array_repeat_expressions,  "1.37.0", Some(49147), None,
      Some("removed due to causing promotable bugs")),

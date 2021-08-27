@@ -1,5 +1,5 @@
 // run-pass
-#![feature(const_generics, generic_const_exprs)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
 fn callee<const M2: usize>() -> usize

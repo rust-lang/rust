@@ -1,4 +1,4 @@
-#![feature(const_generics)]
+#![feature(const_param_types)]
 
 #![crate_name = "foo"]
 

@@ -1,5 +1,5 @@
 // run-pass
-#![feature(const_generics, generic_const_exprs)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
 fn make_array<const M: usize>() -> [(); M + 1] {

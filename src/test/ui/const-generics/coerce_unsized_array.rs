@@ -1,9 +1,4 @@
 // run-pass
-// revisions: full min
-
-#![cfg_attr(full, feature(const_generics))]
-#![cfg_attr(full, allow(incomplete_features))]
-
 fn foo<const N: usize>(v: &[u8; N]) -> &[u8] {
     v
 }

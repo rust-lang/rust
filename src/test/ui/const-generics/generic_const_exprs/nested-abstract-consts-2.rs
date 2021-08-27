@@ -1,5 +1,5 @@
 // run-pass
-#![feature(generic_const_exprs, const_generics)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
 struct Generic<const K: u64>;

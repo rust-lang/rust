@@ -4,7 +4,7 @@
 // only contain generic parameters. This is incorrect as trying to unify `N > 1` with `M > 1`
 // should fail.
 #![allow(incomplete_features)]
-#![feature(const_generics, generic_const_exprs)]
+#![feature(generic_const_exprs)]
 
 enum Assert<const COND: bool> {}
 trait IsTrue {}

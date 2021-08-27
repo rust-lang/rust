@@ -3,8 +3,7 @@
 // check-pass
 // ignore-pretty pretty-printing is unhygienic
 
-#![feature(decl_macro, rustc_attrs, const_generics)]
-//~^ WARNING the feature `const_generics` is incomplete
+#![feature(decl_macro, rustc_attrs)]
 
 mod type_params {
     macro m($T:ident) {

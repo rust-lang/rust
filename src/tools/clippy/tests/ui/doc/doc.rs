@@ -2,7 +2,7 @@
 
 #![allow(dead_code, incomplete_features)]
 #![warn(clippy::doc_markdown)]
-#![feature(custom_inner_attributes, const_generics, generic_const_exprs, const_option)]
+#![feature(custom_inner_attributes, generic_const_exprs, const_option)]
 #![rustfmt::skip]
 
 /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)

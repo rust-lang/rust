@@ -1,4 +1,4 @@
-#![feature(generic_const_exprs, const_generics)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
 struct Evaluatable<const N: u128> {}

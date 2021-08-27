@@ -1489,7 +1489,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 }
 
                 // HACK(eddyb) this provides the correct generics when
-                // `feature(const_generics)` is enabled, so that const expressions
+                // `feature(generic_const_expressions)` is enabled, so that const expressions
                 // used with const generics, e.g. `Foo<{N+1}>`, can work at all.
                 //
                 // Note that we do not supply the parent generics when using

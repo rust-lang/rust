@@ -1,7 +1,7 @@
 // run-pass
 // Test that we use the elaborated predicates from traits
 // to satisfy const evaluatable predicates.
-#![feature(const_generics, generic_const_exprs)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 use std::mem::size_of;
 

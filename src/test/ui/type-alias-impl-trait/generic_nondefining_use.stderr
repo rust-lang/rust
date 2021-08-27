@@ -1,17 +1,17 @@
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_nondefining_use.rs:15:21
+  --> $DIR/generic_nondefining_use.rs:13:21
    |
 LL | fn concrete_ty() -> OneTy<u32> {
    |                     ^^^^^^^^^^
    |
 note: used non-generic type `u32` for generic parameter
-  --> $DIR/generic_nondefining_use.rs:9:12
+  --> $DIR/generic_nondefining_use.rs:7:12
    |
 LL | type OneTy<T> = impl Debug;
    |            ^
 
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_nondefining_use.rs:20:27
+  --> $DIR/generic_nondefining_use.rs:18:27
    |
 LL | type OneLifetime<'a> = impl Debug;
    |                  -- cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
@@ -20,13 +20,13 @@ LL | fn concrete_lifetime() -> OneLifetime<'static> {
    |                           ^^^^^^^^^^^^^^^^^^^^
 
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_nondefining_use.rs:25:24
+  --> $DIR/generic_nondefining_use.rs:23:24
    |
 LL | fn concrete_const() -> OneConst<{ 123 }> {
    |                        ^^^^^^^^^^^^^^^^^
    |
-note: used non-generic constant `{ 123 }` for generic parameter
-  --> $DIR/generic_nondefining_use.rs:11:21
+note: used non-generic constant `123_usize` for generic parameter
+  --> $DIR/generic_nondefining_use.rs:9:21
    |
 LL | type OneConst<const X: usize> = impl Debug;
    |                     ^

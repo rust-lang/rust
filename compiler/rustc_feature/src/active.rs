@@ -71,7 +71,7 @@ macro_rules! declare_features {
             }
 
             pub fn unordered_const_ty_params(&self) -> bool {
-                self.const_generics || self.const_generics_defaults
+                self.const_generics_defaults
             }
 
             /// Some features are known to be incomplete and using them is likely to have
@@ -453,9 +453,6 @@ declare_features! (
     /// Allows using `#[ffi_returns_twice]` on foreign functions.
     (active, ffi_returns_twice, "1.34.0", Some(58314), None),
 
-    /// Allows const generic types (e.g. `struct Foo<const N: usize>(...);`).
-    (incomplete, const_generics, "1.34.0", Some(44580), None),
-
     /// Allows using `#[optimize(X)]`.
     (active, optimize_attribute, "1.34.0", Some(54882), None),
 
@@ -675,6 +672,9 @@ declare_features! (
 
     /// Allows non-trivial generic constants which have to have wfness manually propagated to callers
     (incomplete, generic_const_exprs, "1.56.0", Some(76560), None),
+
+    /// Allows additional const parameter types, such as `&'static str` or user defined types
+    (incomplete, const_param_types, "1.56.0", Some(44580), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

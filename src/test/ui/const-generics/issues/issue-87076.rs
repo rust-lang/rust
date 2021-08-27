@@ -1,6 +1,6 @@
 // build-pass
 
-#![feature(const_generics)]
+#![feature(const_param_types)]
 #![allow(incomplete_features)]
 
 #[derive(PartialEq, Eq)]

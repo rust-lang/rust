@@ -3,8 +3,6 @@
 
 // check-pass
 
-#![feature(const_generics)] //~ WARNING `const_generics` is incomplete
-
 use std::ops::Add;
 
 struct VectorLike<T, const SIZE: usize>([T; {SIZE}]);

@@ -1,6 +1,4 @@
 // check-pass
-#![feature(const_generics)]
-#![allow(incomplete_features)]
 #![deny(dead_code)]
 
 // We previously incorrectly linted `L` as unused here.

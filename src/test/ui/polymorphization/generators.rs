@@ -1,7 +1,7 @@
 // build-fail
 // compile-flags:-Zpolymorphize=on
-#![feature(const_generics, generators, generator_trait, rustc_attrs)]
-//~^ WARN the feature `const_generics` is incomplete
+#![feature(generic_const_exprs, generators, generator_trait, rustc_attrs)]
+//~^ WARN the feature `generic_const_exprs` is incomplete
 
 use std::marker::Unpin;
 use std::ops::{Generator, GeneratorState};

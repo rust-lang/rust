@@ -1,5 +1,5 @@
 error: unconstrained generic constant
-  --> $DIR/issue-51892.rs:15:17
+  --> $DIR/issue-51892.rs:14:17
    |
 LL |     type Type = [u8; std::mem::size_of::<<T as Trait>::Type>()];
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,6 +1,5 @@
 // revisions: full min
-#![cfg_attr(full, feature(const_generics))]
-#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(full, feature(const_generics_defaults))]
 
 struct Bad<const N: usize, T> {
     //[min]~^ ERROR type parameters must be declared prior to const parameters

@@ -1,8 +1,3 @@
-// revisions: full min
-
-#![cfg_attr(full, allow(incomplete_features))]
-#![cfg_attr(full, feature(const_generics))]
-
 trait Usizer {
     fn m(self) -> usize;
 }

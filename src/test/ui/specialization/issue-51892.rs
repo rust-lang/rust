@@ -1,5 +1,4 @@
 #![allow(incomplete_features)]
-#![feature(const_generics)]
 #![feature(generic_const_exprs)]
 #![feature(specialization)]
 

@@ -1,8 +1,4 @@
 // run-pass
-// revisions: full min
-#![cfg_attr(full, allow(incomplete_features))]
-#![cfg_attr(full, feature(const_generics))]
-
 trait Bar<const N: usize> {}
 
 trait Foo<const N: usize> {

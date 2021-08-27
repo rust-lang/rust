@@ -1,7 +1,4 @@
 // check-pass
-// revisions: full min
-#![cfg_attr(full, feature(const_generics))] //[full]~WARN the feature `const_generics` is incomplete
-
 use std::mem;
 
 // Neither of the uninits below are currently accepted as not UB, however,

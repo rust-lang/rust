@@ -1,0 +1,18 @@
+error: unconstrained generic constant
+  --> $DIR/array-size-in-generic-struct-param.rs:8:38
+   |
+LL | struct ArithArrayLen<const N: usize>([u32; 0 + N]);
+   |                                      ^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); 0 + N]:`
+
+error: overly complex generic constant
+  --> $DIR/array-size-in-generic-struct-param.rs:19:15
+   |
+LL |     arr: [u8; CFG.arr_size],
+   |               ^^^^^^^^^^^^ unsupported projection
+   |
+   = help: consider moving this anonymous constant into a `const` function
+
+error: aborting due to 2 previous errors
+

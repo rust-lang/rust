@@ -1,10 +1,6 @@
 // run-pass
 //
 // see issue #70529
-// revisions: full min
-
-#![cfg_attr(full, feature(const_generics))]
-#![cfg_attr(full, allow(incomplete_features))]
 
 struct A<const N: usize> {
     arr: [u8; N],

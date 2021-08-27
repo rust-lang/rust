@@ -2340,7 +2340,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(const_generics)]
+    /// #![feature(generic_const_exprs)]
     /// ```
     ///
     /// {{produces}}

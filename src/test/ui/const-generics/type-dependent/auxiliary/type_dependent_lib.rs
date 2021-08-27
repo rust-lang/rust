@@ -1,6 +1,3 @@
-#![cfg_attr(full, feature(const_generics))]
-#![cfg_attr(full, allow(incomplete_features))]
-
 pub struct Struct<const N: usize>(());
 
 impl<const N: usize> Struct<N> {

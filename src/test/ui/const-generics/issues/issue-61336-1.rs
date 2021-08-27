@@ -1,7 +1,4 @@
 // build-pass
-// revisions: full min
-#![cfg_attr(full, feature(const_generics))] //[full]~WARN the feature `const_generics` is incomplete
-
 fn f<T: Copy, const N: usize>(x: T) -> [T; N] {
     [x; N]
 }

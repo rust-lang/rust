@@ -1,7 +1,7 @@
 // build-fail
 // compile-flags:-Zpolymorphize=on
-#![feature(const_generics, rustc_attrs)]
-//~^ WARN the feature `const_generics` is incomplete
+#![feature(generic_const_exprs, rustc_attrs)]
+//~^ WARN the feature `generic_const_exprs` is incomplete
 
 // This test checks that the polymorphization analysis correctly detects unused const
 // parameters in closures.

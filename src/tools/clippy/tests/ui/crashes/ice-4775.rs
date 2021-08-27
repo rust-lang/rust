@@ -1,6 +1,3 @@
-#![feature(const_generics)]
-#![allow(incomplete_features)]
-
 pub struct ArrayWrapper<const N: usize>([usize; N]);
 
 impl<const N: usize> ArrayWrapper<{ N }> {

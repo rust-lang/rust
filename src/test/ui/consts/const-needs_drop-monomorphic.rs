@@ -1,5 +1,5 @@
 // Check that evaluation of needs_drop<T> fails when T is not monomorphic.
-#![feature(const_generics)]
+#![feature(generic_const_exprs)]
 #![allow(const_evaluatable_unchecked)]
 #![allow(incomplete_features)]
 
@@ -10,7 +10,7 @@ impl Bool<true> {
 fn f<T>() {
     Bool::<{ std::mem::needs_drop::<T>() }>::assert();
     //~^ ERROR no function or associated item named `assert` found
-    //~| ERROR constant expression depends on a generic parameter
+    //~| ERROR unconstrained generic constant
 }
 fn main() {
     f::<u32>();

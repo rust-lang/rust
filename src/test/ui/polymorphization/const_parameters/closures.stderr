@@ -1,11 +1,11 @@
-warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/closures.rs:3:12
    |
-LL | #![feature(const_generics, rustc_attrs)]
-   |            ^^^^^^^^^^^^^^
+LL | #![feature(generic_const_exprs, rustc_attrs)]
+   |            ^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
 
 error: item has unused generic parameters
   --> $DIR/closures.rs:19:19
