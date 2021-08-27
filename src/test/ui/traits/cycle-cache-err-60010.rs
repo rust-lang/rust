@@ -25,7 +25,7 @@ struct Runtime<DB: Database> {
 }
 struct SalsaStorage {
     _parse: <ParseQuery as Query<RootDatabase>>::Data,
-    //~^ ERROR overflow evaluating the requirement `RootDatabase: SourceDatabase`
+    //~^ ERROR overflow
 }
 
 impl Database for RootDatabase {
