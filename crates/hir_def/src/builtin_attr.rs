@@ -34,6 +34,11 @@ macro_rules! rustc_attr {
     };
 }
 
+// FIXME: We shouldn't special case these at all, but as of now expanding attributes severely degrades
+// user experience due to lacking support.
+/// Built-in macro-like attributes.
+pub const EXTRA_ATTRIBUTES: &[BuiltinAttribute] = &["test", "bench"];
+
 /// "Inert" built-in attributes that have a special meaning to rustc or rustdoc.
 #[rustfmt::skip]
 pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
