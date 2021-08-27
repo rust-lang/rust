@@ -262,12 +262,14 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                                     | Res::Def(DefKind::AssocConst, _) => {
                                         // Named constants have to be equated with the value
                                         // being matched, so that's a read of the value being matched.
+                                        //
+                                        // FIXME: We don't actually  reads for ZSTs.
                                         needs_to_be_read = true;
                                     }
                                     _ => {
                                         // Otherwise, this is a struct/enum variant, and so it's
                                         // only a read if we need to read the discriminant.
-                                        needs_to_be_read = is_multivariant_adt(place.place.ty());
+                                        needs_to_be_read |= is_multivariant_adt(place.place.ty());
                                     }
                                 }
                             }
@@ -279,9 +281,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                                 // perform some reads).
 
                                 let place_ty = place.place.ty();
-                                if is_multivariant_adt(place_ty) {
-                                    needs_to_be_read = true;
-                                }
+                                needs_to_be_read |= is_multivariant_adt(place_ty);
                             }
                             PatKind::Lit(_) | PatKind::Range(..) => {
                                 // If the PatKind is a Lit or a Range then we want
