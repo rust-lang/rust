@@ -890,13 +890,6 @@ impl Clean<bool> for hir::IsAuto {
     }
 }
 
-impl Clean<Type> for hir::TraitRef<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Type {
-        let path = self.path.clean(cx);
-        resolve_type(cx, path)
-    }
-}
-
 impl Clean<Path> for hir::TraitRef<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Path {
         let path = self.path.clean(cx);
