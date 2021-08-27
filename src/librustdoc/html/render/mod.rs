@@ -51,6 +51,7 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{kw, sym, Symbol};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
@@ -1165,7 +1166,7 @@ fn render_deref_methods(
     }
 }
 
-fn should_render_item(item: &clean::Item, deref_mut_: bool, cx: &Context<'_>) -> bool {
+fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> bool {
     let self_type_opt = match *item.kind {
         clean::MethodItem(ref method, _) => method.decl.self_type(),
         clean::TyMethodItem(ref method) => method.decl.self_type(),
@@ -1179,7 +1180,7 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, cx: &Context<'_>) ->
                 (mutability == Mutability::Mut, false, false)
             }
             SelfTy::SelfExplicit(clean::ResolvedPath { did, .. }) => {
-                (false, Some(did) == cx.tcx().lang_items().owned_box(), false)
+                (false, Some(did) == tcx.lang_items().owned_box(), false)
             }
             SelfTy::SelfValue => (false, false, true),
             _ => (false, false, false),
@@ -1302,7 +1303,7 @@ fn render_impl(
             && match render_mode {
                 RenderMode::Normal => true,
                 RenderMode::ForDeref { mut_: deref_mut_ } => {
-                    should_render_item(&item, deref_mut_, cx)
+                    should_render_item(&item, deref_mut_, cx.tcx())
                 }
             };
 
@@ -1800,13 +1801,13 @@ fn get_methods(
     for_deref: bool,
     used_links: &mut FxHashSet<String>,
     deref_mut: bool,
-    cx: &Context<'_>,
+    tcx: TyCtxt<'_>,
 ) -> Vec<String> {
     i.items
         .iter()
         .filter_map(|item| match item.name {
             Some(ref name) if !name.is_empty() && item.is_method() => {
-                if !for_deref || should_render_item(item, deref_mut, cx) {
+                if !for_deref || should_render_item(item, deref_mut, tcx) {
                     Some(format!(
                         "<a href=\"#{}\">{}</a>",
                         get_next_url(used_links, format!("method.{}", name)),
@@ -1868,7 +1869,9 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
             let mut ret = v
                 .iter()
                 .filter(|i| i.inner_impl().trait_.is_none())
-                .flat_map(move |i| get_methods(i.inner_impl(), false, used_links_bor, false, cx))
+                .flat_map(move |i| {
+                    get_methods(i.inner_impl(), false, used_links_bor, false, cx.tcx())
+                })
                 .collect::<Vec<_>>();
             if !ret.is_empty() {
                 // We want links' order to be reproducible so we don't use unstable sort.
@@ -2001,7 +2004,9 @@ fn sidebar_deref_methods(cx: &Context<'_>, out: &mut Buffer, impl_: &Impl, v: &V
             let mut ret = impls
                 .iter()
                 .filter(|i| i.inner_impl().trait_.is_none())
-                .flat_map(|i| get_methods(i.inner_impl(), true, &mut used_links, deref_mut, cx))
+                .flat_map(|i| {
+                    get_methods(i.inner_impl(), true, &mut used_links, deref_mut, cx.tcx())
+                })
                 .collect::<Vec<_>>();
             if !ret.is_empty() {
                 write!(
