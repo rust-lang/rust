@@ -5,6 +5,7 @@
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(associated_type_bounds)]
+#![feature(once_cell)]
 #![recursion_limit = "256"]
 
 //! This crate contains codegen code that is used by all codegen backends (LLVM and others).
