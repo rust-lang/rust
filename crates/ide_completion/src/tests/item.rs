@@ -81,6 +81,72 @@ fn after_target_name_in_impl() {
 }
 
 #[test]
+fn after_struct_name() {
+    // FIXME: This should emit `kw where` only
+    check(
+        r"struct Struct $0",
+        expect![[r##"
+            kw pub(crate)
+            kw pub
+            kw unsafe
+            kw fn
+            kw const
+            kw type
+            kw impl
+            kw extern
+            kw use
+            kw trait
+            kw static
+            kw mod
+            kw enum
+            kw struct
+            kw union
+            sn tmod (Test module)
+            sn tfn (Test function)
+            sn macro_rules
+            kw self
+            kw super
+            kw crate
+            md module
+            ma makro!(…)           #[macro_export] macro_rules! makro
+        "##]],
+    );
+}
+
+#[test]
+fn after_fn_name() {
+    // FIXME: This should emit `kw where` only
+    check(
+        r"fn func() $0",
+        expect![[r##"
+            kw pub(crate)
+            kw pub
+            kw unsafe
+            kw fn
+            kw const
+            kw type
+            kw impl
+            kw extern
+            kw use
+            kw trait
+            kw static
+            kw mod
+            kw enum
+            kw struct
+            kw union
+            sn tmod (Test module)
+            sn tfn (Test function)
+            sn macro_rules
+            kw self
+            kw super
+            kw crate
+            md module
+            ma makro!(…)           #[macro_export] macro_rules! makro
+        "##]],
+    );
+}
+
+#[test]
 fn before_record_field() {
     check(
         r#"
