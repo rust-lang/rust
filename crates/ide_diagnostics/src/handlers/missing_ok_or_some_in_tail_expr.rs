@@ -176,6 +176,19 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
     }
 
     #[test]
+    fn test_in_const_and_static() {
+        check_fix(
+            r#"
+//- minicore: option, result
+static A: Option<()> = {($0)};
+            "#,
+            r#"
+static A: Option<()> = {Some(())};
+            "#,
+        )
+    }
+
+    #[test]
     fn test_wrap_return_type_not_applicable_when_expr_type_does_not_match_ok_type() {
         check_diagnostics(
             r#"
