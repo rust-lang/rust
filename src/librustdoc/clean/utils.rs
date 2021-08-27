@@ -407,8 +407,8 @@ crate fn print_const_expr(tcx: TyCtxt<'_>, body: hir::BodyId) -> String {
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt
-crate fn resolve_type(cx: &mut DocContext<'_>, path: Path, id: hir::HirId) -> Type {
-    debug!("resolve_type({:?},{:?})", path, id);
+crate fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
+    debug!("resolve_type({:?})", path);
 
     let is_generic = match path.res {
         Res::PrimTy(p) => return Primitive(PrimitiveType::from(p)),
