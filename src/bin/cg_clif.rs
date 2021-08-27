@@ -1,4 +1,7 @@
 #![feature(rustc_private, once_cell)]
+#![warn(rust_2018_idioms)]
+#![warn(unused_lifetimes)]
+#![warn(unreachable_pub)]
 
 extern crate rustc_data_structures;
 extern crate rustc_driver;

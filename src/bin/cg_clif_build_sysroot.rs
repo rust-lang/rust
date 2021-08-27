@@ -7,8 +7,10 @@
 //! target crates.
 
 #![feature(rustc_private)]
+#![warn(rust_2018_idioms)]
+#![warn(unused_lifetimes)]
+#![warn(unreachable_pub)]
 
-extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate rustc_session;
