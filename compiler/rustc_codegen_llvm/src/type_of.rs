@@ -43,7 +43,9 @@ fn uncached_llvm_type<'a, 'tcx>(
         // FIXME(eddyb) producing readable type names for trait objects can result
         // in problematically distinct types due to HRTB and subtyping (see #47638).
         // ty::Dynamic(..) |
-        ty::Adt(..) | ty::Closure(..) | ty::Foreign(..) | ty::Generator(..) | ty::Str => {
+        ty::Adt(..) | ty::Closure(..) | ty::Foreign(..) | ty::Generator(..) | ty::Str
+            if !cx.sess().fewer_names() =>
+        {
             let mut name = with_no_trimmed_paths(|| layout.ty.to_string());
             if let (&ty::Adt(def, _), &Variants::Single { index }) =
                 (layout.ty.kind(), &layout.variants)
@@ -58,6 +60,12 @@ fn uncached_llvm_type<'a, 'tcx>(
                 write!(&mut name, "::{}", ty::GeneratorSubsts::variant_name(index)).unwrap();
             }
             Some(name)
+        }
+        ty::Adt(..) => {
+            // If `Some` is returned then a named struct is created in LLVM. Name collisions are
+            // avoided by LLVM (with increasing suffixes). If rustc doesn't generate names then that
+            // can improve perf.
+            Some(String::new())
         }
         _ => None,
     };
