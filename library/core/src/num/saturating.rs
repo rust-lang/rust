@@ -6,7 +6,7 @@ use crate::ops::{BitXor, BitXorAssign, Div, DivAssign};
 use crate::ops::{Mul, MulAssign, Neg, Not, Rem, RemAssign};
 use crate::ops::{Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign};
 
-/// Provides intentionally-wrapped arithmetic on `T`.
+/// Provides intentionally-saturating arithmetic on `T`.
 ///
 /// Operations like `+` on `u32` values are intended to never overflow,
 /// and in some debug configurations overflow is detected and results
@@ -741,7 +741,7 @@ macro_rules! saturating_int_impl {
             #[doc = concat!("assert_eq!(Saturating(3", stringify!($t), ").pow(4), Saturating(81));")]
             /// ```
             ///
-            /// Results that are too large are wrapped:
+            /// Results that are too large are saturated:
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
