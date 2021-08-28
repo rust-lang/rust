@@ -141,7 +141,7 @@ macro_rules! sh_impl_unsigned {
 
             #[inline]
             fn shl(self, other: $f) -> Saturating<$t> {
-                Saturating(self.0.shl((other & self::shift_max::$t as $f) as u32))
+                Saturating(self.0.wrapping_shl(other as u32))
             }
         }
         forward_ref_binop! { impl Shl, shl for Saturating<$t>, $f,
@@ -162,7 +162,7 @@ macro_rules! sh_impl_unsigned {
 
             #[inline]
             fn shr(self, other: $f) -> Saturating<$t> {
-                Saturating(self.0.shr((other & self::shift_max::$t as $f) as u32))
+                Saturating(self.0.wrapping_shr(other as u32))
             }
         }
         forward_ref_binop! { impl Shr, shr for Saturating<$t>, $f,
