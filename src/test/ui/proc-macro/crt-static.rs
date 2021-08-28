@@ -1,11 +1,18 @@
 // Test proc-macro crate can be built without additional RUSTFLAGS
 // on musl target
 // override -Ctarget-feature=-crt-static from compiletest
-// compile-flags: -Ctarget-feature=
+// compile-flags: --crate-type proc-macro -Ctarget-feature=
 // ignore-wasm32
 // ignore-sgx no support for proc-macro crate type
 // build-pass
 #![crate_type = "proc-macro"]
+
+// FIXME: This don't work when crate-type is specified by attribute
+// `#![crate_type = "proc-macro"]`, not by `--crate-type=proc-macro`
+// command line flag. This is beacuse the list of `cfg` symbols is generated
+// before attributes are parsed. See rustc_interface::util::add_configuration
+#[cfg(target_feature = "crt-static")]
+compile_error!("crt-static is enabled");
 
 extern crate proc_macro;
 
