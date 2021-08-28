@@ -9,4 +9,7 @@ edition = "2018"
 doctest = false
 
 [dependencies]
-serde = "1"
+# Adding this dep sadly puts a lot of rust-analyzer crates after the
+# serde-derive crate. Even though we don't activate the derive feature here,
+# someone else in the crate graph certainly does!
+# serde = "1"

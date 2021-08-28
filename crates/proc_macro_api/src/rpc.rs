@@ -7,14 +7,15 @@
 //! for separation of code responsibility.
 pub(crate) mod flat;
 
-use paths::AbsPathBuf;
+use std::path::PathBuf;
+
 use serde::{Deserialize, Serialize};
 
 use crate::rpc::flat::FlatTree;
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct ListMacrosTask {
-    pub lib: AbsPathBuf,
+    pub lib: PathBuf,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -46,7 +47,7 @@ pub struct ExpansionTask {
     /// Possible attributes for the attribute-like macros.
     pub attributes: Option<FlatTree>,
 
-    pub lib: AbsPathBuf,
+    pub lib: PathBuf,
 
     /// Environment variables to set during macro expansion.
     pub env: Vec<(String, String)>,
@@ -93,7 +94,7 @@ mod tests {
             macro_body: FlatTree::new(&tt),
             macro_name: Default::default(),
             attributes: None,
-            lib: AbsPathBuf::assert(std::env::current_dir().unwrap()),
+            lib: std::env::current_dir().unwrap(),
             env: Default::default(),
         };
 

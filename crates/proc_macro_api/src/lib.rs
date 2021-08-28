@@ -63,7 +63,7 @@ impl ProcMacroProcessExpander {
             macro_body: FlatTree::new(subtree),
             macro_name: self.name.to_string(),
             attributes: attr.map(FlatTree::new),
-            lib: self.dylib_path.to_path_buf(),
+            lib: self.dylib_path.to_path_buf().into(),
             env,
         };
 
