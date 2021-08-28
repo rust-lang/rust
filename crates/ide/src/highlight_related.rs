@@ -6,6 +6,7 @@ use ide_db::{
     search::{FileReference, ReferenceAccess, SearchScope},
     RootDatabase,
 };
+use itertools::Itertools;
 use syntax::{
     ast::{self, LoopBodyOwner},
     match_ast, AstNode, SyntaxNode, SyntaxToken, TextRange, TextSize, T,
@@ -70,7 +71,7 @@ fn highlight_references(
     syntax: &SyntaxNode,
     FilePosition { offset, file_id }: FilePosition,
 ) -> Option<Vec<HighlightedRange>> {
-    let defs = find_defs(sema, syntax, offset)?;
+    let defs = find_defs(sema, syntax, offset);
     let usages = defs
         .iter()
         .flat_map(|&d| {
@@ -99,7 +100,12 @@ fn highlight_references(
         })
     });
 
-    Some(declarations.chain(usages).collect())
+    let res: Vec<_> = declarations.chain(usages).collect();
+    if res.is_empty() {
+        None
+    } else {
+        Some(res)
+    }
 }
 
 fn highlight_exit_points(
@@ -270,29 +276,41 @@ fn find_defs(
     sema: &Semantics<RootDatabase>,
     syntax: &SyntaxNode,
     offset: TextSize,
-) -> Option<Vec<Definition>> {
-    let defs = match sema.find_node_at_offset_with_descend(syntax, offset)? {
-        ast::NameLike::NameRef(name_ref) => match NameRefClass::classify(sema, &name_ref)? {
-            NameRefClass::Definition(def) => vec![def],
-            NameRefClass::FieldShorthand { local_ref, field_ref } => {
-                vec![Definition::Local(local_ref), Definition::Field(field_ref)]
-            }
-        },
-        ast::NameLike::Name(name) => match NameClass::classify(sema, &name)? {
-            NameClass::Definition(it) | NameClass::ConstReference(it) => vec![it],
-            NameClass::PatFieldShorthand { local_def, field_ref } => {
-                vec![Definition::Local(local_def), Definition::Field(field_ref)]
-            }
-        },
-        ast::NameLike::Lifetime(lifetime) => NameRefClass::classify_lifetime(sema, &lifetime)
-            .and_then(|class| match class {
-                NameRefClass::Definition(it) => Some(it),
-                _ => None,
+) -> Vec<Definition> {
+    sema.find_nodes_at_offset_with_descend(syntax, offset)
+        .flat_map(|name_like| {
+            Some(match name_like {
+                ast::NameLike::NameRef(name_ref) => {
+                    match NameRefClass::classify(sema, &name_ref)? {
+                        NameRefClass::Definition(def) => vec![def],
+                        NameRefClass::FieldShorthand { local_ref, field_ref } => {
+                            vec![Definition::Local(local_ref), Definition::Field(field_ref)]
+                        }
+                    }
+                }
+                ast::NameLike::Name(name) => match NameClass::classify(sema, &name)? {
+                    NameClass::Definition(it) | NameClass::ConstReference(it) => vec![it],
+                    NameClass::PatFieldShorthand { local_def, field_ref } => {
+                        vec![Definition::Local(local_def), Definition::Field(field_ref)]
+                    }
+                },
+                ast::NameLike::Lifetime(lifetime) => {
+                    NameRefClass::classify_lifetime(sema, &lifetime)
+                        .and_then(|class| match class {
+                            NameRefClass::Definition(it) => Some(it),
+                            _ => None,
+                        })
+                        .or_else(|| {
+                            NameClass::classify_lifetime(sema, &lifetime)
+                                .and_then(NameClass::defined)
+                        })
+                        .map(|it| vec![it])?
+                }
             })
-            .or_else(|| NameClass::classify_lifetime(sema, &lifetime).and_then(NameClass::defined))
-            .map(|it| vec![it])?,
-    };
-    Some(defs)
+        })
+        .flatten()
+        .unique()
+        .collect()
 }
 
 #[cfg(test)]
@@ -387,6 +405,46 @@ fn foo() {
          // ^^^ write
     bar$0;
  // ^^^ read
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_multi_macro_usage() {
+        check(
+            r#"
+macro_rules! foo {
+    ($ident:ident) => {
+        fn $ident() -> $ident { loop {} }
+        struct $ident;
+    }
+}
+
+foo!(bar$0);
+  // ^^^
+  // ^^^
+fn foo() {
+    let bar: bar = bar();
+          // ^^^
+                // ^^^
+}
+"#,
+        );
+        check(
+            r#"
+macro_rules! foo {
+    ($ident:ident) => {
+        fn $ident() -> $ident { loop {} }
+        struct $ident;
+    }
+}
+
+foo!(bar);
+  // ^^^
+fn foo() {
+    let bar: bar$0 = bar();
+          // ^^^
 }
 "#,
         );

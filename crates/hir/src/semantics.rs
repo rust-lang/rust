@@ -166,10 +166,12 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.speculative_expand(actual_macro_call, speculative_args, token_to_map)
     }
 
+    // FIXME: Rename to descend_into_macros_single
     pub fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
         self.imp.descend_into_macros(token).pop().unwrap()
     }
 
+    // FIXME: Rename to descend_into_macros
     pub fn descend_into_macros_many(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
         self.imp.descend_into_macros(token)
     }
@@ -234,6 +236,16 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         }
 
         self.imp.descend_node_at_offset(node, offset).find_map(N::cast)
+    }
+
+    /// Find an AstNode by offset inside SyntaxNode, if it is inside *MacroCall*,
+    /// descend it and find again
+    pub fn find_nodes_at_offset_with_descend<'slf, N: AstNode + 'slf>(
+        &'slf self,
+        node: &SyntaxNode,
+        offset: TextSize,
+    ) -> impl Iterator<Item = N> + 'slf {
+        self.imp.descend_node_at_offset(node, offset).flat_map(N::cast)
     }
 
     pub fn resolve_lifetime_param(&self, lifetime: &ast::Lifetime) -> Option<LifetimeParam> {
@@ -482,12 +494,13 @@ impl<'db> SemanticsImpl<'db> {
                                     .as_ref()?
                                     .map_token_down(self.db.upcast(), None, token.as_ref())?;
 
+                                let len = queue.len();
                                 queue.extend(tokens.inspect(|token| {
                                     if let Some(parent) = token.value.parent() {
                                         self.cache(find_root(&parent), token.file_id);
                                     }
                                 }));
-                                return Some(());
+                                return (queue.len() != len).then(|| ());
                             },
                             ast::Item(item) => {
                                 match self.with_ctx(|ctx| ctx.item_to_macro_call(token.with_value(item))) {
@@ -500,12 +513,13 @@ impl<'db> SemanticsImpl<'db> {
                                             .as_ref()?
                                             .map_token_down(self.db.upcast(), None, token.as_ref())?;
 
+                                        let len = queue.len();
                                         queue.extend(tokens.inspect(|token| {
                                             if let Some(parent) = token.value.parent() {
                                                 self.cache(find_root(&parent), token.file_id);
                                             }
                                         }));
-                                        return Some(());
+                                        return (queue.len() != len).then(|| ());
                                     }
                                     None => {}
                                 }
