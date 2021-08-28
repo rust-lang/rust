@@ -166,16 +166,16 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             .clone()
     }
 
-    // This method calculates two things: Lifetime constraints of the form 'a: 'b,
-    // and region constraints of the form ReVar: 'a
-    //
-    // This is essentially a simplified version of lexical_region_resolve. However,
-    // handle_lifetimes determines what *needs be* true in order for an impl to hold.
-    // lexical_region_resolve, along with much of the rest of the compiler, is concerned
-    // with determining if a given set up constraints/predicates *are* met, given some
-    // starting conditions (e.g., user-provided code). For this reason, it's easier
-    // to perform the calculations we need on our own, rather than trying to make
-    // existing inference/solver code do what we want.
+    /// This method calculates two things: Lifetime constraints of the form `'a: 'b`,
+    /// and region constraints of the form `RegionVid: 'a`
+    ///
+    /// This is essentially a simplified version of lexical_region_resolve. However,
+    /// handle_lifetimes determines what *needs be* true in order for an impl to hold.
+    /// lexical_region_resolve, along with much of the rest of the compiler, is concerned
+    /// with determining if a given set up constraints/predicates *are* met, given some
+    /// starting conditions (e.g., user-provided code). For this reason, it's easier
+    /// to perform the calculations we need on our own, rather than trying to make
+    /// existing inference/solver code do what we want.
     fn handle_lifetimes<'cx>(
         regions: &RegionConstraintData<'cx>,
         names_map: &FxHashMap<Symbol, Lifetime>,
@@ -410,15 +410,15 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             .collect()
     }
 
-    // Converts the calculated ParamEnv and lifetime information to a clean::Generics, suitable for
-    // display on the docs page. Cleaning the Predicates produces sub-optimal `WherePredicate`s,
-    // so we fix them up:
-    //
-    // * Multiple bounds for the same type are coalesced into one: e.g., 'T: Copy', 'T: Debug'
-    // becomes 'T: Copy + Debug'
-    // * Fn bounds are handled specially - instead of leaving it as 'T: Fn(), <T as Fn::Output> =
-    // K', we use the dedicated syntax 'T: Fn() -> K'
-    // * We explicitly add a '?Sized' bound if we didn't find any 'Sized' predicates for a type
+    /// Converts the calculated `ParamEnv` and lifetime information to a [`clean::Generics`](Generics), suitable for
+    /// display on the docs page. Cleaning the `Predicates` produces sub-optimal [`WherePredicate`]s,
+    /// so we fix them up:
+    ///
+    /// * Multiple bounds for the same type are coalesced into one: e.g., `T: Copy`, `T: Debug`
+    /// becomes `T: Copy + Debug`
+    /// * `Fn` bounds are handled specially - instead of leaving it as `T: Fn(), <T as Fn::Output> =
+    /// K`, we use the dedicated syntax `T: Fn() -> K`
+    /// * We explicitly add a `?Sized` bound if we didn't find any `Sized` predicates for a type
     fn param_env_to_generics(
         &mut self,
         item_def_id: DefId,
@@ -632,11 +632,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         Generics { params: generic_params, where_predicates: existing_predicates }
     }
 
-    // Ensure that the predicates are in a consistent order. The precise
-    // ordering doesn't actually matter, but it's important that
-    // a given set of predicates always appears in the same order -
-    // both for visual consistency between 'rustdoc' runs, and to
-    // make writing tests much easier
+    /// Ensure that the predicates are in a consistent order. The precise
+    /// ordering doesn't actually matter, but it's important that
+    /// a given set of predicates always appears in the same order -
+    /// both for visual consistency between 'rustdoc' runs, and to
+    /// make writing tests much easier
     #[inline]
     fn sort_where_predicates(&self, mut predicates: &mut Vec<WherePredicate>) {
         // We should never have identical bounds - and if we do,
@@ -645,11 +645,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         self.unstable_debug_sort(&mut predicates);
     }
 
-    // Ensure that the bounds are in a consistent order. The precise
-    // ordering doesn't actually matter, but it's important that
-    // a given set of bounds always appears in the same order -
-    // both for visual consistency between 'rustdoc' runs, and to
-    // make writing tests much easier
+    /// Ensure that the bounds are in a consistent order. The precise
+    /// ordering doesn't actually matter, but it's important that
+    /// a given set of bounds always appears in the same order -
+    /// both for visual consistency between 'rustdoc' runs, and to
+    /// make writing tests much easier
     #[inline]
     fn sort_where_bounds(&self, mut bounds: &mut Vec<GenericBound>) {
         // We should never have identical bounds - and if we do,
@@ -658,33 +658,33 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         self.unstable_debug_sort(&mut bounds);
     }
 
-    // This might look horrendously hacky, but it's actually not that bad.
-    //
-    // For performance reasons, we use several different FxHashMaps
-    // in the process of computing the final set of where predicates.
-    // However, the iteration order of a HashMap is completely unspecified.
-    // In fact, the iteration of an FxHashMap can even vary between platforms,
-    // since FxHasher has different behavior for 32-bit and 64-bit platforms.
-    //
-    // Obviously, it's extremely undesirable for documentation rendering
-    // to be dependent on the platform it's run on. Apart from being confusing
-    // to end users, it makes writing tests much more difficult, as predicates
-    // can appear in any order in the final result.
-    //
-    // To solve this problem, we sort WherePredicates and GenericBounds
-    // by their Debug string. The thing to keep in mind is that we don't really
-    // care what the final order is - we're synthesizing an impl or bound
-    // ourselves, so any order can be considered equally valid. By sorting the
-    // predicates and bounds, however, we ensure that for a given codebase, all
-    // auto-trait impls always render in exactly the same way.
-    //
-    // Using the Debug implementation for sorting prevents us from needing to
-    // write quite a bit of almost entirely useless code (e.g., how should two
-    // Types be sorted relative to each other). It also allows us to solve the
-    // problem for both WherePredicates and GenericBounds at the same time. This
-    // approach is probably somewhat slower, but the small number of items
-    // involved (impls rarely have more than a few bounds) means that it
-    // shouldn't matter in practice.
+    /// This might look horrendously hacky, but it's actually not that bad.
+    ///
+    /// For performance reasons, we use several different FxHashMaps
+    /// in the process of computing the final set of where predicates.
+    /// However, the iteration order of a HashMap is completely unspecified.
+    /// In fact, the iteration of an FxHashMap can even vary between platforms,
+    /// since FxHasher has different behavior for 32-bit and 64-bit platforms.
+    ///
+    /// Obviously, it's extremely undesirable for documentation rendering
+    /// to be dependent on the platform it's run on. Apart from being confusing
+    /// to end users, it makes writing tests much more difficult, as predicates
+    /// can appear in any order in the final result.
+    ///
+    /// To solve this problem, we sort WherePredicates and GenericBounds
+    /// by their Debug string. The thing to keep in mind is that we don't really
+    /// care what the final order is - we're synthesizing an impl or bound
+    /// ourselves, so any order can be considered equally valid. By sorting the
+    /// predicates and bounds, however, we ensure that for a given codebase, all
+    /// auto-trait impls always render in exactly the same way.
+    ///
+    /// Using the Debug implementation for sorting prevents us from needing to
+    /// write quite a bit of almost entirely useless code (e.g., how should two
+    /// Types be sorted relative to each other). It also allows us to solve the
+    /// problem for both WherePredicates and GenericBounds at the same time. This
+    /// approach is probably somewhat slower, but the small number of items
+    /// involved (impls rarely have more than a few bounds) means that it
+    /// shouldn't matter in practice.
     fn unstable_debug_sort<T: Debug>(&self, vec: &mut Vec<T>) {
         vec.sort_by_cached_key(|x| format!("{:?}", x))
     }
@@ -705,7 +705,7 @@ fn region_name(region: Region<'_>) -> Option<Symbol> {
     }
 }
 
-// Replaces all ReVars in a type with ty::Region's, using the provided map
+/// Replaces all [`ty::RegionVid`]s in a type with [`ty::Region`]s, using the provided map.
 struct RegionReplacer<'a, 'tcx> {
     vid_to_region: &'a FxHashMap<ty::RegionVid, ty::Region<'tcx>>,
     tcx: TyCtxt<'tcx>,
