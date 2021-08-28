@@ -1,0 +1,22 @@
+error[E0391]: cycle detected when computing type of `m::Foo::{opaque#0}`
+  --> $DIR/auto-trait-leakage3.rs:7:16
+   |
+LL |     type Foo = impl std::fmt::Debug;
+   |                ^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires type-checking `m::bar`...
+  --> $DIR/auto-trait-leakage3.rs:14:5
+   |
+LL |     pub fn bar() {
+   |     ^^^^^^^^^^^^
+   = note: ...which requires evaluating trait selection obligation `impl std::fmt::Debug: std::marker::Send`...
+   = note: ...which again requires computing type of `m::Foo::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in module `m`
+  --> $DIR/auto-trait-leakage3.rs:6:1
+   |
+LL | mod m {
+   | ^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.
