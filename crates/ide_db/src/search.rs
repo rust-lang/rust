@@ -61,7 +61,7 @@ pub struct FileReference {
     pub access: Option<ReferenceAccess>,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ReferenceAccess {
     Read,
     Write,

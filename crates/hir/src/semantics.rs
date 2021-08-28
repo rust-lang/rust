@@ -538,6 +538,8 @@ impl<'db> SemanticsImpl<'db> {
         res
     }
 
+    // Note this return type is deliberate as [`find_nodes_at_offset_with_descend`] wants to stop
+    // traversing the inner iterator when it finds a node.
     fn descend_node_at_offset(
         &self,
         node: &SyntaxNode,

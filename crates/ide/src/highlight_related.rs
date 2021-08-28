@@ -6,7 +6,7 @@ use ide_db::{
     search::{FileReference, ReferenceAccess, SearchScope},
     RootDatabase,
 };
-use itertools::Itertools;
+use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, LoopBodyOwner},
     match_ast, AstNode, SyntaxNode, SyntaxToken, TextRange, TextSize, T,
@@ -14,6 +14,7 @@ use syntax::{
 
 use crate::{display::TryToNav, references, NavigationTarget};
 
+#[derive(PartialEq, Eq, Hash)]
 pub struct HighlightedRange {
     pub range: TextRange,
     pub access: Option<ReferenceAccess>,
@@ -100,11 +101,11 @@ fn highlight_references(
         })
     });
 
-    let res: Vec<_> = declarations.chain(usages).collect();
+    let res: FxHashSet<_> = declarations.chain(usages).collect();
     if res.is_empty() {
         None
     } else {
-        Some(res)
+        Some(res.into_iter().collect())
     }
 }
 
@@ -276,7 +277,7 @@ fn find_defs(
     sema: &Semantics<RootDatabase>,
     syntax: &SyntaxNode,
     offset: TextSize,
-) -> Vec<Definition> {
+) -> FxHashSet<Definition> {
     sema.find_nodes_at_offset_with_descend(syntax, offset)
         .flat_map(|name_like| {
             Some(match name_like {
@@ -309,7 +310,6 @@ fn find_defs(
             })
         })
         .flatten()
-        .unique()
         .collect()
 }
 
@@ -423,8 +423,6 @@ macro_rules! foo {
 
 foo!(bar$0);
   // ^^^
-  // ^^^
-  // ^^^
 fn foo() {
     let bar: bar = bar();
           // ^^^
@@ -442,7 +440,6 @@ macro_rules! foo {
 }
 
 foo!(bar);
-  // ^^^
   // ^^^
 fn foo() {
     let bar: bar$0 = bar();
@@ -872,7 +869,6 @@ struct Struct { field: u32 }
 fn function(field: u32) {
           //^^^^^
     Struct { field$0 }
-           //^^^^^ read
            //^^^^^ read
 }
 "#,
