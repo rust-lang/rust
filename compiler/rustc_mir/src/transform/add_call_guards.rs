@@ -38,7 +38,9 @@ impl<'tcx> MirPass<'tcx> for AddCallGuards {
 
 impl AddCallGuards {
     pub fn add_call_guards(&self, body: &mut Body<'_>) {
-        let pred_count: IndexVec<_, _> = body.predecessors().iter().map(|ps| ps.len()).collect();
+        let mut pred_count: IndexVec<_, _> =
+            body.predecessors().iter().map(|ps| ps.len()).collect();
+        pred_count[START_BLOCK] += 1;
 
         // We need a place to store the new blocks generated
         let mut new_blocks = Vec::new();

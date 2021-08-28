@@ -1,0 +1,31 @@
+error[E0277]: `&T` is not an iterator
+  --> $DIR/hir-wf-check-erase-regions.rs:7:5
+   |
+LL |     type IntoIter = std::iter::Flatten<std::slice::Iter<'a, T>>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&T` is not an iterator
+   | 
+  ::: $SRC_DIR/core/src/iter/adapters/flatten.rs:LL:COL
+   |
+LL | pub struct Flatten<I: Iterator<Item: IntoIterator>> {
+   |                                      ------------ required by this bound in `Flatten`
+   |
+   = help: the trait `Iterator` is not implemented for `&T`
+   = note: required because of the requirements on the impl of `IntoIterator` for `&T`
+
+error[E0277]: `&T` is not an iterator
+  --> $DIR/hir-wf-check-erase-regions.rs:10:27
+   |
+LL |     fn into_iter(self) -> Self::IntoIter {
+   |                           ^^^^^^^^^^^^^^ `&T` is not an iterator
+   | 
+  ::: $SRC_DIR/core/src/iter/adapters/flatten.rs:LL:COL
+   |
+LL | pub struct Flatten<I: Iterator<Item: IntoIterator>> {
+   |                                      ------------ required by this bound in `Flatten`
+   |
+   = help: the trait `Iterator` is not implemented for `&T`
+   = note: required because of the requirements on the impl of `IntoIterator` for `&T`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
