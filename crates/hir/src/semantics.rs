@@ -181,7 +181,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         node: &SyntaxNode,
         offset: TextSize,
     ) -> Option<N> {
-        self.imp.descend_node_at_offset(node, offset).find_map(N::cast)
+        self.imp.descend_node_at_offset(node, offset).flatten().find_map(N::cast)
     }
 
     pub fn hir_file_for(&self, syntax_node: &SyntaxNode) -> HirFileId {
@@ -235,7 +235,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
             return Some(it);
         }
 
-        self.imp.descend_node_at_offset(node, offset).find_map(N::cast)
+        self.imp.descend_node_at_offset(node, offset).flatten().find_map(N::cast)
     }
 
     /// Find an AstNode by offset inside SyntaxNode, if it is inside *MacroCall*,
@@ -245,7 +245,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         node: &SyntaxNode,
         offset: TextSize,
     ) -> impl Iterator<Item = N> + 'slf {
-        self.imp.descend_node_at_offset(node, offset).flat_map(N::cast)
+        self.imp.descend_node_at_offset(node, offset).filter_map(|mut it| it.find_map(N::cast))
     }
 
     pub fn resolve_lifetime_param(&self, lifetime: &ast::Lifetime) -> Option<LifetimeParam> {
@@ -542,11 +542,11 @@ impl<'db> SemanticsImpl<'db> {
         &self,
         node: &SyntaxNode,
         offset: TextSize,
-    ) -> impl Iterator<Item = SyntaxNode> + '_ {
+    ) -> impl Iterator<Item = impl Iterator<Item = SyntaxNode> + '_> + '_ {
         // Handle macro token cases
         node.token_at_offset(offset)
-            .flat_map(move |token| self.descend_into_macros(token))
-            .map(move |it| self.token_ancestors_with_macros(it))
+            .map(move |token| self.descend_into_macros(token))
+            .map(|it| it.into_iter().map(move |it| self.token_ancestors_with_macros(it)))
             .flatten()
     }
 

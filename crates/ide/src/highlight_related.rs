@@ -424,6 +424,7 @@ macro_rules! foo {
 foo!(bar$0);
   // ^^^
   // ^^^
+  // ^^^
 fn foo() {
     let bar: bar = bar();
           // ^^^
@@ -441,6 +442,7 @@ macro_rules! foo {
 }
 
 foo!(bar);
+  // ^^^
   // ^^^
 fn foo() {
     let bar: bar$0 = bar();
