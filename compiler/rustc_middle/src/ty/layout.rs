@@ -2921,7 +2921,7 @@ where
                 return;
             }
 
-            if !scalar.valid_range.contains_zero() {
+            if !scalar.valid_range.contains(0) {
                 attrs.set(ArgAttribute::NonNull);
             }
 

@@ -759,13 +759,6 @@ impl WrappingRange {
         }
     }
 
-    /// Returns `true` if zero is contained in the range.
-    /// Equal to `range.contains(0)` but should be faster.
-    #[inline(always)]
-    pub fn contains_zero(&self) -> bool {
-        self.start > self.end || self.start == 0
-    }
-
     /// Returns `self` with replaced `start`
     #[inline(always)]
     pub fn with_start(mut self, start: u128) -> Self {
@@ -1266,7 +1259,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         let scalar_allows_raw_init = move |s: &Scalar| -> bool {
             if zero {
                 // The range must contain 0.
-                s.valid_range.contains_zero()
+                s.valid_range.contains(0)
             } else {
                 // The range must include all values.
                 s.is_always_valid_for(cx)
