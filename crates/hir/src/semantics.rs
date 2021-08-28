@@ -2,7 +2,7 @@
 
 mod source_to_def;
 
-use std::{cell::RefCell, fmt, iter::successors};
+use std::{cell::RefCell, fmt};
 
 use base_db::{FileId, FileRange};
 use hir_def::{
@@ -14,6 +14,7 @@ use hir_expand::{name::AsName, ExpansionInfo};
 use hir_ty::{associated_type_shorthand_candidates, Interner};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
+use smallvec::{smallvec, SmallVec};
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, GenericParamsOwner, LoopBodyOwner},
@@ -166,6 +167,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     }
 
     pub fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
+        self.imp.descend_into_macros(token).pop().unwrap()
+    }
+
+    pub fn descend_into_macros_many(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
         self.imp.descend_into_macros(token)
     }
 
@@ -440,76 +445,83 @@ impl<'db> SemanticsImpl<'db> {
         )
     }
 
-    fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
+    fn descend_into_macros(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
         let _p = profile::span("descend_into_macros");
         let parent = match token.parent() {
             Some(it) => it,
-            None => return token,
+            None => return smallvec![token],
         };
         let sa = self.analyze(&parent);
-
-        let token = successors(Some(InFile::new(sa.file_id, token)), |token| {
+        let mut queue = vec![InFile::new(sa.file_id, token)];
+        let mut res = smallvec![];
+        while let Some(token) = queue.pop() {
             self.db.unwind_if_cancelled();
 
-            for node in token.value.ancestors() {
-                match_ast! {
-                    match node {
-                        ast::MacroCall(macro_call) => {
-                            let tt = macro_call.token_tree()?;
-                            let l_delim = match tt.left_delimiter_token() {
-                                Some(it) => it.text_range().end(),
-                                None => tt.syntax().text_range().start()
-                            };
-                            let r_delim = match tt.right_delimiter_token() {
-                                Some(it) => it.text_range().start(),
-                                None => tt.syntax().text_range().end()
-                            };
-                            if !TextRange::new(l_delim, r_delim).contains_range(token.value.text_range()) {
-                                return None;
-                            }
-                            let file_id = sa.expand(self.db, token.with_value(&macro_call))?;
-                            let token = self
-                                .expansion_info_cache
-                                .borrow_mut()
-                                .entry(file_id)
-                                .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
-                                .as_ref()?
-                                .map_token_down(self.db.upcast(), None, token.as_ref())?;
-
-                            if let Some(parent) = token.value.parent() {
-                                self.cache(find_root(&parent), token.file_id);
-                            }
-
-                            return Some(token);
-                        },
-                        ast::Item(item) => {
-                            if let Some(call_id) = self.with_ctx(|ctx| ctx.item_to_macro_call(token.with_value(item.clone()))) {
-                                let file_id = call_id.as_file();
-                                let token = self
-                                    .expansion_info_cache
-                                    .borrow_mut()
+            let mapped = (|| {
+                for node in token.value.ancestors() {
+                    match_ast! {
+                        match node {
+                            ast::MacroCall(macro_call) => {
+                                let tt = macro_call.token_tree()?;
+                                let l_delim = match tt.left_delimiter_token() {
+                                    Some(it) => it.text_range().end(),
+                                    None => tt.syntax().text_range().start()
+                                };
+                                let r_delim = match tt.right_delimiter_token() {
+                                    Some(it) => it.text_range().start(),
+                                    None => tt.syntax().text_range().end()
+                                };
+                                if !TextRange::new(l_delim, r_delim).contains_range(token.value.text_range()) {
+                                    return None;
+                                }
+                                let file_id = sa.expand(self.db, token.with_value(&macro_call))?;
+                                let mut cache = self.expansion_info_cache.borrow_mut();
+                                let tokens = cache
                                     .entry(file_id)
                                     .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
                                     .as_ref()?
-                                    .map_token_down(self.db.upcast(), Some(item), token.as_ref())?;
+                                    .map_token_down(self.db.upcast(), None, token.as_ref())?;
 
-                                if let Some(parent) = token.value.parent() {
-                                    self.cache(find_root(&parent), token.file_id);
+                                queue.extend(tokens.inspect(|token| {
+                                    if let Some(parent) = token.value.parent() {
+                                        self.cache(find_root(&parent), token.file_id);
+                                    }
+                                }));
+                                return Some(());
+                            },
+                            ast::Item(item) => {
+                                match self.with_ctx(|ctx| ctx.item_to_macro_call(token.with_value(item))) {
+                                    Some(call_id) => {
+                                        let file_id = call_id.as_file();
+                                        let mut cache = self.expansion_info_cache.borrow_mut();
+                                        let tokens = cache
+                                            .entry(file_id)
+                                            .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
+                                            .as_ref()?
+                                            .map_token_down(self.db.upcast(), None, token.as_ref())?;
+
+                                        queue.extend(tokens.inspect(|token| {
+                                            if let Some(parent) = token.value.parent() {
+                                                self.cache(find_root(&parent), token.file_id);
+                                            }
+                                        }));
+                                        return Some(());
+                                    }
+                                    None => {}
                                 }
-
-                                return Some(token);
-                            }
-                        },
-                        _ => {}
+                            },
+                            _ => {}
+                        }
                     }
                 }
+                None
+            })();
+            match mapped {
+                Some(()) => (),
+                None => res.push(token.value),
             }
-
-            None
-        })
-        .last()
-        .unwrap();
-        token.value
+        }
+        res
     }
 
     fn descend_node_at_offset(
@@ -519,8 +531,8 @@ impl<'db> SemanticsImpl<'db> {
     ) -> impl Iterator<Item = SyntaxNode> + '_ {
         // Handle macro token cases
         node.token_at_offset(offset)
-            .map(|token| self.descend_into_macros(token))
-            .map(|it| self.token_ancestors_with_macros(it))
+            .flat_map(move |token| self.descend_into_macros(token))
+            .map(move |it| self.token_ancestors_with_macros(it))
             .flatten()
     }
 
