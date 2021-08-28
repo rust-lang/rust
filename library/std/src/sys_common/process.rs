@@ -106,13 +106,13 @@ impl CommandEnv {
 /// This struct is created by
 /// [`Command::get_envs`][crate::process::Command::get_envs]. See its
 /// documentation for more.
-#[unstable(feature = "command_access", issue = "44434")]
+#[stable(feature = "command_access", since = "1.56.0")]
 #[derive(Debug)]
 pub struct CommandEnvs<'a> {
     iter: crate::collections::btree_map::Iter<'a, EnvKey, Option<OsString>>,
 }
 
-#[unstable(feature = "command_access", issue = "44434")]
+#[stable(feature = "command_access", since = "1.56.0")]
 impl<'a> Iterator for CommandEnvs<'a> {
     type Item = (&'a OsStr, Option<&'a OsStr>);
     fn next(&mut self) -> Option<Self::Item> {
@@ -123,7 +123,7 @@ impl<'a> Iterator for CommandEnvs<'a> {
     }
 }
 
-#[unstable(feature = "command_access", issue = "44434")]
+#[stable(feature = "command_access", since = "1.56.0")]
 impl<'a> ExactSizeIterator for CommandEnvs<'a> {
     fn len(&self) -> usize {
         self.iter.len()
