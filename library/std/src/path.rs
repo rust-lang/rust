@@ -993,6 +993,7 @@ impl cmp::Ord for Components<'_> {
     }
 }
 
+#[inline]
 fn compare_components(mut left: Components<'_>, mut right: Components<'_>) -> cmp::Ordering {
     // Fast path for long shared prefixes
     //
