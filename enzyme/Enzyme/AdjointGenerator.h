@@ -6350,9 +6350,12 @@ public:
           assert(Type::getInt8Ty(tofree->getContext()));
           assert(PointerType::getUnqual(Type::getInt8Ty(tofree->getContext())));
           assert(Type::getInt8PtrTy(tofree->getContext()));
-          auto CI = freeKnownAllocation(Builder2, tofree, *called, gutils->TLI);
-          if (CI)
+          auto dbgLoc = gutils->getNewFromOriginal(orig)->getDebugLoc();
+          auto CI = freeKnownAllocation(Builder2, tofree, *called, dbgLoc,
+                                        gutils->TLI);
+          if (CI) {
             CI->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+          }
         }
       }
 
@@ -6418,8 +6421,9 @@ public:
           if (Mode == DerivativeMode::ReverseModeGradient && hasPDFree) {
             IRBuilder<> Builder2(call.getParent());
             getReverseBuilder(Builder2);
+            auto dbgLoc = gutils->getNewFromOriginal(orig)->getDebugLoc();
             freeKnownAllocation(Builder2, lookup(nop, Builder2), *called,
-                                gutils->TLI);
+                                dbgLoc, gutils->TLI);
           }
         } else if (Mode != DerivativeMode::ReverseModePrimal) {
           // Note that here we cannot simply replace with null as users who
@@ -6434,8 +6438,9 @@ public:
       } else {
         IRBuilder<> Builder2(call.getParent());
         getReverseBuilder(Builder2);
+        auto dbgLoc = gutils->getNewFromOriginal(orig)->getDebugLoc();
         freeKnownAllocation(Builder2, lookup(newCall, Builder2), *called,
-                            gutils->TLI);
+                            dbgLoc, gutils->TLI);
       }
 
       return;

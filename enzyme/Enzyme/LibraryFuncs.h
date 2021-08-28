@@ -202,6 +202,7 @@ static inline bool isDeallocationFunction(const llvm::Function &F,
 static inline llvm::CallInst *
 freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
                     llvm::Function &allocationfn,
+                    const llvm::DebugLoc &debuglocation,
                     const llvm::TargetLibraryInfo &TLI) {
   using namespace llvm;
   assert(isAllocationFunction(allocationfn, TLI));
@@ -237,6 +238,7 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
             ArrayRef<Value *>(builder.CreatePointerCast(tofree, IntPtrTy)),
 #endif
             "", builder.GetInsertBlock()));
+    freecall->setDebugLoc(debuglocation);
     freecall->setTailCall();
     if (isa<CallInst>(tofree) &&
         cast<CallInst>(tofree)->getAttributes().hasAttribute(
@@ -349,6 +351,7 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
 #endif
                        "", builder.GetInsertBlock()));
   freecall->setTailCall();
+  freecall->setDebugLoc(debuglocation);
   if (isa<CallInst>(tofree) &&
       cast<CallInst>(tofree)->getAttributes().hasAttribute(
           AttributeList::ReturnIndex, Attribute::NonNull)) {
