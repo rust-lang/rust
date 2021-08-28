@@ -38,7 +38,7 @@ LL | more code
   - Primary and secondary spans underlying the users' code. These spans can
     optionally contain one or more labels.
     - Primary spans should have enough text to describe the problem in such a
-      way that if it where the only thing being displayed (for example, in an
+      way that if it were the only thing being displayed (for example, in an
       IDE) it would still make sense. Because it is "spatially aware" (it
       points at the code), it can generally be more succinct than the error
       message.
@@ -61,7 +61,7 @@ error: the fobrulator needs to be krontrificated
 ```
 
 When code or an identifier must appear in a message or label, it should be
-surrounded with single acute accents \`.
+surrounded with backticks: `` `foo.bar` ``.
 
 ### Error explanations
 
@@ -449,8 +449,8 @@ The possible values of [`Applicability`][appl] are:
 
 - `MachineApplicable`: Can be applied mechanically.
 - `HasPlaceholders`: Cannot be applied mechanically because it has placeholder
-  text in the suggestions. For example, "Try adding a type: \`let x:
-  \<type\>\`".
+  text in the suggestions. For example: ``try adding a type: `let x:
+  <type>` ``.
 - `MaybeIncorrect`: Cannot be applied mechanically because the suggestion may
   or may not be a good one.
 - `Unspecified`: Cannot be applied mechanically because we don't know which
