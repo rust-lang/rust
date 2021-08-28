@@ -746,6 +746,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         // These don't define types.
         hir::ItemKind::ExternCrate(_)
         | hir::ItemKind::Use(..)
+        | hir::ItemKind::Macro(_)
         | hir::ItemKind::Mod(_)
         | hir::ItemKind::GlobalAsm(_) => {}
         hir::ItemKind::ForeignMod { items, .. } => {

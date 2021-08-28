@@ -120,7 +120,6 @@ impl<'a> State<'a> {
             // printing.
             Node::Ctor(..) => panic!("cannot print isolated Ctor"),
             Node::Local(a) => self.print_local_decl(&a),
-            Node::MacroDef(_) => panic!("cannot print MacroDef"),
             Node::Crate(..) => panic!("cannot print Crate"),
         }
     }
@@ -641,6 +640,11 @@ impl<'a> State<'a> {
                 self.end(); // need to close a box
                 self.end(); // need to close a box
                 self.ann.nested(self, Nested::Body(body));
+            }
+            hir::ItemKind::Macro(ref macro_def) => {
+                self.print_mac_def(macro_def, &item.ident, &item.span, |state| {
+                    state.print_visibility(&item.vis)
+                });
             }
             hir::ItemKind::Mod(ref _mod) => {
                 self.head(visibility_qualified(&item.vis, "mod"));

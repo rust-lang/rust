@@ -107,10 +107,6 @@ fn diagnostic_items<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> FxHashMap<Symbol
     // Collect diagnostic items in this crate.
     tcx.hir().krate().visit_all_item_likes(&mut collector);
 
-    for m in tcx.hir().krate().exported_macros() {
-        collector.observe_item(m.def_id);
-    }
-
     collector.items
 }
 

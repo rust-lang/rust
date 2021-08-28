@@ -10,7 +10,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit;
-use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::*;
 use rustc_index::vec::Idx;
@@ -218,6 +217,7 @@ impl<'hir> Map<'hir> {
                 ItemKind::Static(..) => DefKind::Static,
                 ItemKind::Const(..) => DefKind::Const,
                 ItemKind::Fn(..) => DefKind::Fn,
+                ItemKind::Macro(..) => DefKind::Macro(MacroKind::Bang),
                 ItemKind::Mod(..) => DefKind::Mod,
                 ItemKind::OpaqueTy(..) => DefKind::OpaqueTy,
                 ItemKind::TyAlias(..) => DefKind::TyAlias,
@@ -266,7 +266,6 @@ impl<'hir> Map<'hir> {
                 ExprKind::Closure(.., Some(_)) => DefKind::Generator,
                 _ => bug!("def_kind: unsupported node: {}", self.node_to_string(hir_id)),
             },
-            Node::MacroDef(_) => DefKind::Macro(MacroKind::Bang),
             Node::GenericParam(param) => match param.kind {
                 GenericParamKind::Lifetime { .. } => DefKind::LifetimeParam,
                 GenericParamKind::Type { .. } => DefKind::TyParam,
@@ -543,15 +542,6 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn visit_exported_macros_in_krate<V>(&self, visitor: &mut V)
-    where
-        V: Visitor<'hir>,
-    {
-        for macro_def in self.krate().exported_macros() {
-            visitor.visit_macro_def(macro_def);
-        }
-    }
-
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
     /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
     pub fn parent_iter(&self, current_id: HirId) -> ParentHirIterator<'_, 'hir> {
@@ -645,8 +635,6 @@ impl<'hir> Map<'hir> {
     /// in a module, trait, or impl.
     pub fn get_parent_item(&self, hir_id: HirId) -> HirId {
         if let Some((hir_id, _node)) = self.parent_owner_iter(hir_id).next() {
-            // A MacroDef does not have children.
-            debug_assert!(!matches!(_node, OwnerNode::MacroDef(_)));
             hir_id
         } else {
             CRATE_HIR_ID
@@ -774,13 +762,6 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_macro_def(&self, id: HirId) -> &'hir MacroDef<'hir> {
-        match self.tcx.hir_owner(id.expect_owner()) {
-            Some(Owner { node: OwnerNode::MacroDef(macro_def) }) => macro_def,
-            _ => bug!("expected macro def, found {}", self.node_to_string(id)),
-        }
-    }
-
     pub fn expect_expr(&self, id: HirId) -> &'hir Expr<'hir> {
         match self.find(id) {
             Some(Node::Expr(expr)) => expr,
@@ -800,7 +781,6 @@ impl<'hir> Map<'hir> {
             Node::GenericParam(param) => param.name.ident().name,
             Node::Binding(&Pat { kind: PatKind::Binding(_, _, l, _), .. }) => l.name,
             Node::Ctor(..) => self.name(self.get_parent_item(id)),
-            Node::MacroDef(md) => md.ident.name,
             _ => return None,
         })
     }
@@ -867,7 +847,6 @@ impl<'hir> Map<'hir> {
             Node::Infer(i) => i.span,
             Node::Visibility(v) => bug!("unexpected Visibility {:?}", v),
             Node::Local(local) => local.span,
-            Node::MacroDef(macro_def) => macro_def.span,
             Node::Crate(item) => item.inner,
         };
         Some(span)
@@ -1013,7 +992,6 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
     tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
     tcx.sess.local_stable_crate_id().hash_stable(&mut hcx, &mut stable_hasher);
-    tcx.untracked_crate.non_exported_macro_attrs.hash_stable(&mut hcx, &mut stable_hasher);
 
     let crate_hash: Fingerprint = stable_hasher.finish();
     Svh::new(crate_hash.to_smaller_hash())
@@ -1062,6 +1040,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
                 ItemKind::Static(..) => "static",
                 ItemKind::Const(..) => "const",
                 ItemKind::Fn(..) => "fn",
+                ItemKind::Macro(..) => "macro",
                 ItemKind::Mod(..) => "mod",
                 ItemKind::ForeignMod { .. } => "foreign mod",
                 ItemKind::GlobalAsm(..) => "global asm",
@@ -1118,7 +1097,6 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
         Some(Node::Lifetime(_)) => node_str("lifetime"),
         Some(Node::GenericParam(ref param)) => format!("generic_param {:?}{}", param, id_str),
         Some(Node::Visibility(ref vis)) => format!("visibility {:?}{}", vis, id_str),
-        Some(Node::MacroDef(_)) => format!("macro {}{}", path_str(), id_str),
         Some(Node::Crate(..)) => String::from("root_crate"),
         None => format!("unknown node{}", id_str),
     }

@@ -263,6 +263,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     | hir::ItemKind::Use(..)
                     | hir::ItemKind::OpaqueTy(..)
                     | hir::ItemKind::TyAlias(..)
+                    | hir::ItemKind::Macro(..)
                     | hir::ItemKind::Mod(..)
                     | hir::ItemKind::ForeignMod { .. }
                     | hir::ItemKind::Impl { .. }
@@ -309,8 +310,7 @@ impl<'tcx> ReachableContext<'tcx> {
             | Node::Ctor(..)
             | Node::Field(_)
             | Node::Ty(_)
-            | Node::Crate(_)
-            | Node::MacroDef(_) => {}
+            | Node::Crate(_) => {}
             _ => {
                 bug!(
                     "found unexpected node kind in worklist: {} ({:?})",
