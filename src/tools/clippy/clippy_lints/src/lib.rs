@@ -2204,6 +2204,7 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::panic_params", "non_fmt_panics");
     ls.register_renamed("clippy::unknown_clippy_lints", "unknown_lints");
     ls.register_renamed("clippy::invalid_atomic_ordering", "invalid_atomic_ordering");
+    ls.register_renamed("clippy::redundant_field_names", "redundant_field_initializers");
 }
 
 // only exists to let the dogfood integration test works.
