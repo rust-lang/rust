@@ -89,13 +89,14 @@ unsafe fn configure_llvm(sess: &Session) {
             add("-generate-arange-section", false);
         }
 
-        // FIXME(nagisa): disable the machine outliner by default in LLVM versions 11, where it was
-        // introduced and up.
+        // Disable the machine outliner by default in LLVM versions 11 and LLVM
+        // version 12, where it leads to miscompilation.
         //
-        // This should remain in place until https://reviews.llvm.org/D103167 is fixed. If LLVM
-        // has been upgraded since, consider adjusting the version check below to contain an upper
-        // bound.
-        if llvm_util::get_version() >= (11, 0, 0) {
+        // Ref:
+        // - https://github.com/rust-lang/rust/issues/85351
+        // - https://reviews.llvm.org/D103167
+        let llvm_version = llvm_util::get_version();
+        if llvm_version >= (11, 0, 0) && llvm_version < (13, 0, 0) {
             add("-enable-machine-outliner=never", false);
         }
 
