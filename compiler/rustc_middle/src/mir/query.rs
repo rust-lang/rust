@@ -338,6 +338,11 @@ pub enum ConstraintCategory {
     OpaqueType,
     ClosureUpvar(hir::HirId),
 
+    /// A constraint from a user-written predicate
+    /// with the provided span, written on the item
+    /// with the given `DefId`
+    Predicate(DefId, Span),
+
     /// A "boring" constraint (caused by the given location) is one that
     /// the user probably doesn't want to see described in diagnostics,
     /// because it is kind of an artifact of the type system setup.

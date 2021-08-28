@@ -6,6 +6,11 @@ LL |     test(gen);
    |
    = note: expected type `for<'a> Generator<&'a mut bool>`
               found type `Generator<&mut bool>`
+note: the lifetime requirement is introduced here
+  --> $DIR/resume-arg-late-bound.rs:8:17
+   |
+LL | fn test(a: impl for<'a> Generator<&'a mut bool>) {}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

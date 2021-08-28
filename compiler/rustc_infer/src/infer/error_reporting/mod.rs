@@ -609,6 +609,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'tcx>,
         cause: &ObligationCause<'tcx>,
         exp_found: Option<ty::error::ExpectedFound<Ty<'tcx>>>,
+        terr: &TypeError<'tcx>,
     ) {
         match cause.code {
             ObligationCauseCode::Pattern { origin_expr: true, span: Some(span), root_ty } => {
@@ -785,7 +786,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err.help("try adding a diverging expression, such as `return` or `panic!(..)`");
                 err.help("...or use `match` instead of `let...else`");
             }
-            _ => (),
+            _ => {
+                if let ObligationCauseCode::BindingObligation(_, binding_span) =
+                    cause.code.peel_derives()
+                {
+                    if matches!(terr, TypeError::RegionsPlaceholderMismatch) {
+                        err.span_note(*binding_span, "the lifetime requirement is introduced here");
+                    }
+                }
+            }
         }
     }
 
@@ -1724,7 +1733,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         // It reads better to have the error origin as the final
         // thing.
-        self.note_error_origin(diag, cause, exp_found);
+        self.note_error_origin(diag, cause, exp_found, terr);
     }
 
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {

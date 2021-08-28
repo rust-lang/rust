@@ -9,7 +9,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op;
 use rustc_trait_selection::traits::{SelectionContext, TraitEngineExt as _};
-use rustc_traits::{type_op_ascribe_user_type_with_span, type_op_prove_predicate_with_span};
+use rustc_traits::{type_op_ascribe_user_type_with_span, type_op_prove_predicate_with_cause};
 
 use std::fmt;
 use std::rc::Rc;
@@ -45,13 +45,12 @@ impl UniverseInfo<'tcx> {
         mbcx: &mut MirBorrowckCtxt<'_, 'tcx>,
         placeholder: ty::PlaceholderRegion,
         error_element: RegionElement,
-        span: Span,
+        cause: ObligationCause<'tcx>,
     ) {
         match self.0 {
             UniverseInfoInner::RelateTys { expected, found } => {
-                let body_id = mbcx.infcx.tcx.hir().local_def_id_to_hir_id(mbcx.mir_def_id());
                 let err = mbcx.infcx.report_mismatched_types(
-                    &ObligationCause::misc(span, body_id),
+                    &cause,
                     expected,
                     found,
                     TypeError::RegionsPlaceholderMismatch,
@@ -59,7 +58,7 @@ impl UniverseInfo<'tcx> {
                 err.buffer(&mut mbcx.errors_buffer);
             }
             UniverseInfoInner::TypeOp(ref type_op_info) => {
-                type_op_info.report_error(mbcx, placeholder, error_element, span);
+                type_op_info.report_error(mbcx, placeholder, error_element, cause);
             }
             UniverseInfoInner::Other => {
                 // FIXME: This error message isn't great, but it doesn't show
@@ -68,7 +67,7 @@ impl UniverseInfo<'tcx> {
                 mbcx.infcx
                     .tcx
                     .sess
-                    .struct_span_err(span, "higher-ranked subtype error")
+                    .struct_span_err(cause.span, "higher-ranked subtype error")
                     .buffer(&mut mbcx.errors_buffer);
             }
         }
@@ -130,7 +129,7 @@ trait TypeOpInfo<'tcx> {
     fn nice_error(
         &self,
         tcx: TyCtxt<'tcx>,
-        span: Span,
+        cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
     ) -> Option<DiagnosticBuilder<'tcx>>;
@@ -140,7 +139,7 @@ trait TypeOpInfo<'tcx> {
         mbcx: &mut MirBorrowckCtxt<'_, 'tcx>,
         placeholder: ty::PlaceholderRegion,
         error_element: RegionElement,
-        span: Span,
+        cause: ObligationCause<'tcx>,
     ) {
         let tcx = mbcx.infcx.tcx;
         let base_universe = self.base_universe();
@@ -150,7 +149,7 @@ trait TypeOpInfo<'tcx> {
         {
             adjusted
         } else {
-            self.fallback_error(tcx, span).buffer(&mut mbcx.errors_buffer);
+            self.fallback_error(tcx, cause.span).buffer(&mut mbcx.errors_buffer);
             return;
         };
 
@@ -175,7 +174,8 @@ trait TypeOpInfo<'tcx> {
 
         debug!(?placeholder_region);
 
-        let nice_error = self.nice_error(tcx, span, placeholder_region, error_region);
+        let span = cause.span;
+        let nice_error = self.nice_error(tcx, cause, placeholder_region, error_region);
 
         if let Some(nice_error) = nice_error {
             nice_error.buffer(&mut mbcx.errors_buffer);
@@ -205,15 +205,24 @@ impl TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
     fn nice_error(
         &self,
         tcx: TyCtxt<'tcx>,
-        span: Span,
+        cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
     ) -> Option<DiagnosticBuilder<'tcx>> {
-        tcx.infer_ctxt().enter_with_canonical(span, &self.canonical_query, |ref infcx, key, _| {
-            let mut fulfill_cx = <dyn TraitEngine<'_>>::new(tcx);
-            type_op_prove_predicate_with_span(infcx, &mut *fulfill_cx, key, Some(span));
-            try_extract_error_from_fulfill_cx(fulfill_cx, infcx, placeholder_region, error_region)
-        })
+        tcx.infer_ctxt().enter_with_canonical(
+            cause.span,
+            &self.canonical_query,
+            |ref infcx, key, _| {
+                let mut fulfill_cx = <dyn TraitEngine<'_>>::new(tcx);
+                type_op_prove_predicate_with_cause(infcx, &mut *fulfill_cx, key, cause);
+                try_extract_error_from_fulfill_cx(
+                    fulfill_cx,
+                    infcx,
+                    placeholder_region,
+                    error_region,
+                )
+            },
+        )
     }
 }
 
@@ -239,32 +248,41 @@ where
     fn nice_error(
         &self,
         tcx: TyCtxt<'tcx>,
-        span: Span,
+        cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
     ) -> Option<DiagnosticBuilder<'tcx>> {
-        tcx.infer_ctxt().enter_with_canonical(span, &self.canonical_query, |ref infcx, key, _| {
-            let mut fulfill_cx = <dyn TraitEngine<'_>>::new(tcx);
+        tcx.infer_ctxt().enter_with_canonical(
+            cause.span,
+            &self.canonical_query,
+            |ref infcx, key, _| {
+                let mut fulfill_cx = <dyn TraitEngine<'_>>::new(tcx);
 
-            let mut selcx = SelectionContext::new(infcx);
+                let mut selcx = SelectionContext::new(infcx);
 
-            // FIXME(lqd): Unify and de-duplicate the following with the actual
-            // `rustc_traits::type_op::type_op_normalize` query to allow the span we need in the
-            // `ObligationCause`. The normalization results are currently different between
-            // `AtExt::normalize` used in the query and `normalize` called below: the former fails
-            // to normalize the `nll/relate_tys/impl-fn-ignore-binder-via-bottom.rs` test. Check
-            // after #85499 lands to see if its fixes have erased this difference.
-            let (param_env, value) = key.into_parts();
-            let Normalized { value: _, obligations } = rustc_trait_selection::traits::normalize(
-                &mut selcx,
-                param_env,
-                ObligationCause::dummy_with_span(span),
-                value.value,
-            );
-            fulfill_cx.register_predicate_obligations(infcx, obligations);
+                // FIXME(lqd): Unify and de-duplicate the following with the actual
+                // `rustc_traits::type_op::type_op_normalize` query to allow the span we need in the
+                // `ObligationCause`. The normalization results are currently different between
+                // `AtExt::normalize` used in the query and `normalize` called below: the former fails
+                // to normalize the `nll/relate_tys/impl-fn-ignore-binder-via-bottom.rs` test. Check
+                // after #85499 lands to see if its fixes have erased this difference.
+                let (param_env, value) = key.into_parts();
+                let Normalized { value: _, obligations } = rustc_trait_selection::traits::normalize(
+                    &mut selcx,
+                    param_env,
+                    cause,
+                    value.value,
+                );
+                fulfill_cx.register_predicate_obligations(infcx, obligations);
 
-            try_extract_error_from_fulfill_cx(fulfill_cx, infcx, placeholder_region, error_region)
-        })
+                try_extract_error_from_fulfill_cx(
+                    fulfill_cx,
+                    infcx,
+                    placeholder_region,
+                    error_region,
+                )
+            },
+        )
     }
 }
 
@@ -287,15 +305,25 @@ impl TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
     fn nice_error(
         &self,
         tcx: TyCtxt<'tcx>,
-        span: Span,
+        cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
     ) -> Option<DiagnosticBuilder<'tcx>> {
-        tcx.infer_ctxt().enter_with_canonical(span, &self.canonical_query, |ref infcx, key, _| {
-            let mut fulfill_cx = <dyn TraitEngine<'_>>::new(tcx);
-            type_op_ascribe_user_type_with_span(infcx, &mut *fulfill_cx, key, Some(span)).ok()?;
-            try_extract_error_from_fulfill_cx(fulfill_cx, infcx, placeholder_region, error_region)
-        })
+        tcx.infer_ctxt().enter_with_canonical(
+            cause.span,
+            &self.canonical_query,
+            |ref infcx, key, _| {
+                let mut fulfill_cx = <dyn TraitEngine<'_>>::new(tcx);
+                type_op_ascribe_user_type_with_span(infcx, &mut *fulfill_cx, key, Some(cause.span))
+                    .ok()?;
+                try_extract_error_from_fulfill_cx(
+                    fulfill_cx,
+                    infcx,
+                    placeholder_region,
+                    error_region,
+                )
+            },
+        )
     }
 }
 

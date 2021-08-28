@@ -14,6 +14,11 @@ LL |     f(data, identity)
    |
    = note: expected type `for<'r> Fn<(&'r T,)>`
               found type `Fn<(&T,)>`
+note: the lifetime requirement is introduced here
+  --> $DIR/issue_74400.rs:8:34
+   |
+LL | fn f<T, S>(data: &[T], key: impl Fn(&T) -> S) {
+   |                                  ^^^^^^^^^^^
 
 error: implementation of `FnOnce` is not general enough
   --> $DIR/issue_74400.rs:12:5

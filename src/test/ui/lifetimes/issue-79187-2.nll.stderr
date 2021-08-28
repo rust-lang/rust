@@ -38,6 +38,11 @@ note: this closure does not fulfill the lifetime requirements
    |
 LL |     take_foo(|a| a);
    |              ^^^^^
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-79187-2.rs:5:21
+   |
+LL | fn take_foo(_: impl Foo) {}
+   |                     ^^^
 
 error[E0308]: mismatched types
   --> $DIR/issue-79187-2.rs:9:5
@@ -47,6 +52,11 @@ LL |     take_foo(|a: &i32| a);
    |
    = note: expected reference `&i32`
               found reference `&i32`
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-79187-2.rs:5:21
+   |
+LL | fn take_foo(_: impl Foo) {}
+   |                     ^^^
 
 error[E0308]: mismatched types
   --> $DIR/issue-79187-2.rs:10:5
@@ -56,6 +66,11 @@ LL |     take_foo(|a: &i32| -> &i32 { a });
    |
    = note: expected reference `&i32`
               found reference `&i32`
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-79187-2.rs:5:21
+   |
+LL | fn take_foo(_: impl Foo) {}
+   |                     ^^^
 
 error: aborting due to 6 previous errors
 

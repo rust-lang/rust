@@ -32,6 +32,7 @@ use rustc_middle::ty::{
     self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, OpaqueTypeKey, RegionVid,
     ToPredicate, Ty, TyCtxt, UserType, UserTypeAnnotationIndex, WithConstness,
 };
+use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -449,6 +450,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
             if let ty::FnDef(def_id, substs) = *constant.literal.ty().kind() {
                 let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
                 self.cx.normalize_and_prove_instantiated_predicates(
+                    def_id,
                     instantiated_predicates,
                     location.to_locations(),
                 );
@@ -2572,9 +2574,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             aggregate_kind, location
         );
 
-        let instantiated_predicates = match aggregate_kind {
+        let (def_id, instantiated_predicates) = match aggregate_kind {
             AggregateKind::Adt(def, _, substs, _, _) => {
-                tcx.predicates_of(def.did).instantiate(tcx, substs)
+                (def.did, tcx.predicates_of(def.did).instantiate(tcx, substs))
             }
 
             // For closures, we have some **extra requirements** we
@@ -2599,13 +2601,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // clauses on the struct.
             AggregateKind::Closure(def_id, substs)
             | AggregateKind::Generator(def_id, substs, _) => {
-                self.prove_closure_bounds(tcx, def_id.expect_local(), substs, location)
+                (*def_id, self.prove_closure_bounds(tcx, def_id.expect_local(), substs, location))
             }
 
-            AggregateKind::Array(_) | AggregateKind::Tuple => ty::InstantiatedPredicates::empty(),
+            AggregateKind::Array(_) | AggregateKind::Tuple => {
+                (CRATE_DEF_ID.to_def_id(), ty::InstantiatedPredicates::empty())
+            }
         };
 
         self.normalize_and_prove_instantiated_predicates(
+            def_id,
             instantiated_predicates,
             location.to_locations(),
         );
