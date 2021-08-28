@@ -23,7 +23,7 @@ use serde::Deserialize;
 use crate::builder::Cargo;
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
-use crate::config::TargetSelection;
+use crate::config::{LlvmLibunwind, TargetSelection};
 use crate::dist;
 use crate::native;
 use crate::tool::SourceType;
@@ -232,6 +232,18 @@ fn copy_self_contained_objects(
             builder.copy(&src, &target);
             target_deps.push((target, DependencyType::TargetSelfContained));
         }
+    }
+
+    if target.contains("musl")
+        || target.contains("x86_64-fortanix-unknown-sgx")
+        || builder.config.llvm_libunwind == LlvmLibunwind::InTree
+            && (target.contains("linux") || target.contains("fuchsia"))
+    {
+        let libunwind_path = builder.ensure(native::Libunwind { target });
+        let libunwind_source = libunwind_path.join("libunwind.a");
+        let libunwind_target = libdir_self_contained.join("libunwind.a");
+        builder.copy(&libunwind_source, &libunwind_target);
+        target_deps.push((libunwind_target, DependencyType::TargetSelfContained));
     }
 
     target_deps

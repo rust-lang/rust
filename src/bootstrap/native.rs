@@ -10,7 +10,7 @@
 
 use std::env;
 use std::env::consts::EXE_EXTENSION;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -949,6 +949,157 @@ impl Step for CrtBeginEnd {
 
         t!(fs::copy(out_dir.join("crtbegin.o"), out_dir.join("crtbeginS.o")));
         t!(fs::copy(out_dir.join("crtend.o"), out_dir.join("crtendS.o")));
+        out_dir
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Libunwind {
+    pub target: TargetSelection,
+}
+
+impl Step for Libunwind {
+    type Output = PathBuf;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/llvm-project/libunwind")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Libunwind { target: run.target });
+    }
+
+    /// Build linunwind.a
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        if builder.config.dry_run {
+            return PathBuf::new();
+        }
+
+        let out_dir = builder.native_dir(self.target).join("libunwind");
+        let root = builder.src.join("src/llvm-project/libunwind");
+
+        if up_to_date(&root, &out_dir.join("libunwind.a")) {
+            return out_dir;
+        }
+
+        builder.info(&format!("Building libunwind.a for {}", self.target.triple));
+        t!(fs::create_dir_all(&out_dir));
+
+        let mut cc_cfg = cc::Build::new();
+        let mut cpp_cfg = cc::Build::new();
+
+        cpp_cfg.cpp(true);
+        cpp_cfg.cpp_set_stdlib(None);
+        cpp_cfg.flag("-nostdinc++");
+        cpp_cfg.flag("-fno-exceptions");
+        cpp_cfg.flag("-fno-rtti");
+        cpp_cfg.flag_if_supported("-fvisibility-global-new-delete-hidden");
+
+        for cfg in [&mut cc_cfg, &mut cpp_cfg].iter_mut() {
+            if let Some(ar) = builder.ar(self.target) {
+                cfg.archiver(ar);
+            }
+            cfg.target(&self.target.triple);
+            cfg.host(&builder.config.build.triple);
+            cfg.warnings(false);
+            cfg.debug(false);
+            // get_compiler() need set opt_level first.
+            cfg.opt_level(3);
+            cfg.flag("-fstrict-aliasing");
+            cfg.flag("-funwind-tables");
+            cfg.flag("-fvisibility=hidden");
+            cfg.define("_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS", None);
+            cfg.include(root.join("include"));
+            cfg.cargo_metadata(false);
+            cfg.out_dir(&out_dir);
+
+            if self.target.contains("x86_64-fortanix-unknown-sgx") {
+                cfg.static_flag(true);
+                cfg.flag("-fno-stack-protector");
+                cfg.flag("-ffreestanding");
+                cfg.flag("-fexceptions");
+
+                // easiest way to undefine since no API available in cc::Build to undefine
+                cfg.flag("-U_FORTIFY_SOURCE");
+                cfg.define("_FORTIFY_SOURCE", "0");
+                cfg.define("RUST_SGX", "1");
+                cfg.define("__NO_STRING_INLINES", None);
+                cfg.define("__NO_MATH_INLINES", None);
+                cfg.define("_LIBUNWIND_IS_BAREMETAL", None);
+                cfg.define("__LIBUNWIND_IS_NATIVE_ONLY", None);
+                cfg.define("NDEBUG", None);
+            }
+        }
+
+        cc_cfg.compiler(builder.cc(self.target));
+        if let Ok(cxx) = builder.cxx(self.target) {
+            cpp_cfg.compiler(cxx);
+        } else {
+            cc_cfg.compiler(builder.cc(self.target));
+        }
+
+        // Don't set this for clang
+        // By default, Clang builds C code in GNU C17 mode.
+        // By default, Clang builds C++ code according to the C++98 standard,
+        // with many C++11 features accepted as extensions.
+        if cc_cfg.get_compiler().is_like_gnu() {
+            cc_cfg.flag("-std=c99");
+        }
+        if cpp_cfg.get_compiler().is_like_gnu() {
+            cpp_cfg.flag("-std=c++11");
+        }
+
+        if self.target.contains("x86_64-fortanix-unknown-sgx") || self.target.contains("musl") {
+            // use the same GCC C compiler command to compile C++ code so we do not need to setup the
+            // C++ compiler env variables on the builders.
+            // Don't set this for clang++, as clang++ is able to compile this without libc++.
+            if cpp_cfg.get_compiler().is_like_gnu() {
+                cpp_cfg.cpp(false);
+                cpp_cfg.compiler(builder.cc(self.target));
+            }
+        }
+
+        let mut c_sources = vec![
+            "Unwind-sjlj.c",
+            "UnwindLevel1-gcc-ext.c",
+            "UnwindLevel1.c",
+            "UnwindRegistersRestore.S",
+            "UnwindRegistersSave.S",
+        ];
+
+        let cpp_sources = vec!["Unwind-EHABI.cpp", "Unwind-seh.cpp", "libunwind.cpp"];
+        let cpp_len = cpp_sources.len();
+
+        if self.target.contains("x86_64-fortanix-unknown-sgx") {
+            c_sources.push("UnwindRustSgx.c");
+        }
+
+        for src in c_sources {
+            cc_cfg.file(root.join("src").join(src).canonicalize().unwrap());
+        }
+
+        for src in &cpp_sources {
+            cpp_cfg.file(root.join("src").join(src).canonicalize().unwrap());
+        }
+
+        cpp_cfg.compile("unwind-cpp");
+
+        // FIXME: https://github.com/alexcrichton/cc-rs/issues/545#issuecomment-679242845
+        let mut count = 0;
+        for entry in fs::read_dir(&out_dir).unwrap() {
+            let file = entry.unwrap().path().canonicalize().unwrap();
+            if file.is_file() && file.extension() == Some(OsStr::new("o")) {
+                // file name starts with "Unwind-EHABI", "Unwind-seh" or "libunwind"
+                let file_name = file.file_name().unwrap().to_str().expect("UTF-8 file name");
+                if cpp_sources.iter().any(|f| file_name.starts_with(&f[..f.len() - 4])) {
+                    cc_cfg.object(&file);
+                    count += 1;
+                }
+            }
+        }
+        assert_eq!(cpp_len, count, "Can't get object files from {:?}", &out_dir);
+
+        cc_cfg.compile("unwind");
         out_dir
     }
 }
