@@ -78,8 +78,8 @@ Here is the list of passes as of <!-- date: 2021-02 --> February 2021:
   in doc comments.
 
 - `check-non-autolinks` detects links that could or should be written using
-  angle brackets (the code behind the nightly-only <!-- date: 2021-02 -->
-  `non_autolinks` lint).
+  angle brackets (the code behind the nightly-only <!-- date: 2021-02 --> `non_autolinks`
+  lint).
 
 - `collapse-docs` concatenates all document attributes into one document
   attribute. This is necessary because each line of a doc comment is given as a
