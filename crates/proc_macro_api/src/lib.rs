@@ -21,7 +21,9 @@ use tt::{SmolStr, Subtree};
 
 use crate::process::ProcMacroProcessSrv;
 
-pub use rpc::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask, ProcMacroKind};
+pub use rpc::{
+    ExpansionResult, ExpansionTask, flat::FlatTree, ListMacrosResult, ListMacrosTask, ProcMacroKind,
+};
 pub use version::{read_dylib_info, RustCInfo};
 
 #[derive(Debug, Clone)]
@@ -58,9 +60,9 @@ impl ProcMacroProcessExpander {
         env: Vec<(String, String)>,
     ) -> Result<Subtree, tt::ExpansionError> {
         let task = ExpansionTask {
-            macro_body: subtree.clone(),
+            macro_body: FlatTree::new(subtree),
             macro_name: self.name.to_string(),
-            attributes: attr.cloned(),
+            attributes: attr.map(FlatTree::new),
             lib: self.dylib_path.to_path_buf(),
             env,
         };
@@ -70,7 +72,7 @@ impl ProcMacroProcessExpander {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .send_task(msg::Request::ExpansionMacro(task))?;
-        Ok(result.expansion)
+        Ok(result.expansion.to_subtree())
     }
 }
 

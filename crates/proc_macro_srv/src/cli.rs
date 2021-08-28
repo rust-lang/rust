@@ -12,7 +12,7 @@ pub fn run() -> io::Result<()> {
         let res = match req {
             msg::Request::ListMacro(task) => srv.list_macros(&task).map(msg::Response::ListMacro),
             msg::Request::ExpansionMacro(task) => {
-                srv.expand(&task).map(msg::Response::ExpansionMacro)
+                srv.expand(task).map(msg::Response::ExpansionMacro)
             }
         };
 
