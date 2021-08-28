@@ -1041,6 +1041,36 @@ macro_rules! uint_impl {
             }
         }
 
+        /// Saturating integer division. Computes `self / rhs`, saturating at the
+        /// numeric bounds instead of overflowing.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(saturating_div)]
+        ///
+        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".saturating_div(2), 2);")]
+        ///
+        /// ```
+        ///
+        /// ```should_panic
+        /// #![feature(saturating_div)]
+        ///
+        #[doc = concat!("let _ = 1", stringify!($SelfT), ".saturating_div(0);")]
+        ///
+        /// ```
+        #[unstable(feature = "saturating_div", issue = "87920")]
+        #[rustc_const_unstable(feature = "saturating_div", issue = "87920")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn saturating_div(self, rhs: Self) -> Self {
+            // on unsigned types, there is no overflow in integer division
+            self.wrapping_div(rhs)
+        }
+
         /// Saturating integer exponentiation. Computes `self.pow(exp)`,
         /// saturating at the numeric bounds instead of overflowing.
         ///
