@@ -1503,9 +1503,6 @@ name = "smol_str"
 version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b203e79e90905594272c1c97c7af701533d42adaab0beb3859018e477d54a3b0"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "snap"
@@ -1572,7 +1569,6 @@ dependencies = [
  "rowan",
  "rustc-ap-rustc_lexer",
  "rustc-hash",
- "serde",
  "smol_str",
  "sourcegen",
  "stdx",
