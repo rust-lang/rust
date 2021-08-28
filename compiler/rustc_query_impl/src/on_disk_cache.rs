@@ -246,6 +246,11 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
         }
     }
 
+    /// Execute all cache promotions and release the serialized backing Mmap.
+    ///
+    /// Cache promotions require invoking queries, which needs to read the serialized data.
+    /// In order to serialize the new on-disk cache, the former on-disk cache file needs to be
+    /// deleted, hence we won't be able to refer to its memmapped data.
     fn drop_serialized_data(&self, tcx: TyCtxt<'tcx>) {
         // Register any dep nodes that we reused from the previous session,
         // but didn't `DepNode::construct` in this session. This ensures
