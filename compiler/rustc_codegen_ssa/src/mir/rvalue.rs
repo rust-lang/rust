@@ -300,7 +300,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let llval = operand.immediate();
 
                         let mut signed = false;
-                        if let Abi::Scalar(ref scalar) = operand.layout.abi {
+                        if let Abi::Scalar(scalar) = operand.layout.abi {
                             if let Int(_, s) = scalar.value {
                                 // We use `i1` for bytes that are always `0` or `1`,
                                 // e.g., `#[repr(i8)] enum E { A, B }`, but we can't

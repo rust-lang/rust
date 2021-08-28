@@ -741,7 +741,7 @@ impl Primitive {
 ///
 /// This is intended specifically to mirror LLVM’s `!range` metadata,
 /// semantics.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub struct WrappingRange {
     pub start: u128,
@@ -797,7 +797,7 @@ impl fmt::Debug for WrappingRange {
 }
 
 /// Information about one scalar component of a Rust type.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub struct Scalar {
     pub value: Primitive,
@@ -1070,7 +1070,7 @@ impl Niche {
     }
 
     pub fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
-        let Scalar { value, valid_range: ref v } = self.scalar;
+        let Scalar { value, valid_range: v } = self.scalar;
         let bits = value.size(cx).bits();
         assert!(bits <= 128);
         let max_value = !0u128 >> (128 - bits);
@@ -1083,7 +1083,7 @@ impl Niche {
     pub fn reserve<C: HasDataLayout>(&self, cx: &C, count: u128) -> Option<(u128, Scalar)> {
         assert!(count > 0);
 
-        let Scalar { value, valid_range: v } = self.scalar.clone();
+        let Scalar { value, valid_range: v } = self.scalar;
         let bits = value.size(cx).bits();
         assert!(bits <= 128);
         let max_value = !0u128 >> (128 - bits);
@@ -1137,7 +1137,7 @@ pub struct Layout {
 
 impl Layout {
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
-        let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar.clone());
+        let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
         let size = scalar.value.size(cx);
         let align = scalar.value.align(cx);
         Layout {
