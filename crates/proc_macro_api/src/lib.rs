@@ -22,7 +22,7 @@ use tt::{SmolStr, Subtree};
 use crate::process::ProcMacroProcessSrv;
 
 pub use rpc::{
-    ExpansionResult, ExpansionTask, flat::FlatTree, ListMacrosResult, ListMacrosTask, ProcMacroKind,
+    flat::FlatTree, ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask, ProcMacroKind,
 };
 pub use version::{read_dylib_info, RustCInfo};
 
