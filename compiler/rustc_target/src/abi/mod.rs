@@ -811,8 +811,10 @@ pub struct Scalar {
 impl Scalar {
     #[inline]
     pub fn is_bool(&self) -> bool {
-        matches!(self.value, Int(I8, false))
-            && matches!(self.valid_range, WrappingRange { start: 0, end: 1 })
+        matches!(
+            self,
+            Scalar { value: Int(I8, false), valid_range: WrappingRange { start: 0, end: 1 } }
+        )
     }
 
     /// Returns `true` if all possible numbers are valid, i.e `valid_range` covers the whole layout
