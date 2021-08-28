@@ -786,8 +786,6 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for ApplicabilityResolver<'a, 'hir> {
             }
         };
 
-        // TODO xFrednet 2021-03-01: support function arguments?
-
         intravisit::walk_expr(self, expr);
     }
 }
