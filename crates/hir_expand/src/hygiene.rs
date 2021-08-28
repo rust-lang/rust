@@ -171,7 +171,7 @@ impl HygieneInfo {
             },
         };
 
-        let range = token_map.range_by_token(token_id, SyntaxKind::IDENT)?;
+        let range = token_map.first_range_by_token(token_id, SyntaxKind::IDENT)?;
         Some((tt.with_value(range + tt.value), origin))
     }
 }

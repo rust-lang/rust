@@ -58,8 +58,9 @@ macro_rules! foobar {
     let (node, token_map) = token_tree_to_syntax_node(&expanded, FragmentKind::Items).unwrap();
     let content = node.syntax_node().to_string();
 
-    let get_text =
-        |id, kind| -> String { content[token_map.range_by_token(id, kind).unwrap()].to_string() };
+    let get_text = |id, kind| -> String {
+        content[token_map.first_range_by_token(id, kind).unwrap()].to_string()
+    };
 
     assert_eq!(expanded.token_trees.len(), 4);
     // {($e:ident) => { fn $e() {} }}

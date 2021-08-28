@@ -46,9 +46,23 @@ impl TokenMap {
         Some(token_id)
     }
 
-    pub fn range_by_token(&self, token_id: tt::TokenId, kind: SyntaxKind) -> Option<TextRange> {
-        let &(_, range) = self.entries.iter().find(|(tid, _)| *tid == token_id)?;
-        range.by_kind(kind)
+    pub fn ranges_by_token(
+        &self,
+        token_id: tt::TokenId,
+        kind: SyntaxKind,
+    ) -> impl Iterator<Item = TextRange> + '_ {
+        self.entries
+            .iter()
+            .filter(move |&&(tid, _)| tid == token_id)
+            .filter_map(move |(_, range)| range.by_kind(kind))
+    }
+
+    pub fn first_range_by_token(
+        &self,
+        token_id: tt::TokenId,
+        kind: SyntaxKind,
+    ) -> Option<TextRange> {
+        self.ranges_by_token(token_id, kind).next()
     }
 
     pub(crate) fn shrink_to_fit(&mut self) {

@@ -368,7 +368,7 @@ impl ExpansionInfo {
         db: &dyn db::AstDatabase,
         item: Option<ast::Item>,
         token: InFile<&SyntaxToken>,
-    ) -> Option<InFile<SyntaxToken>> {
+    ) -> Option<impl Iterator<Item = InFile<SyntaxToken>> + '_> {
         assert_eq!(token.file_id, self.arg.file_id);
         let token_id = if let Some(item) = item {
             let call_id = match self.expanded.file_id.0 {
@@ -411,11 +411,12 @@ impl ExpansionInfo {
             }
         };
 
-        let range = self.exp_map.range_by_token(token_id, token.value.kind())?;
+        let tokens = self
+            .exp_map
+            .ranges_by_token(token_id, token.value.kind())
+            .flat_map(move |range| self.expanded.value.covering_element(range).into_token());
 
-        let token = self.expanded.value.covering_element(range).into_token()?;
-
-        Some(self.expanded.with_value(token))
+        Some(tokens.map(move |token| self.expanded.with_value(token)))
     }
 
     pub fn map_token_up(
@@ -453,7 +454,7 @@ impl ExpansionInfo {
             },
         };
 
-        let range = token_map.range_by_token(token_id, token.value.kind())?;
+        let range = token_map.first_range_by_token(token_id, token.value.kind())?;
         let token =
             tt.value.covering_element(range + tt.value.text_range().start()).into_token()?;
         Some((tt.with_value(token), origin))

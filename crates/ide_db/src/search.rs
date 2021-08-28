@@ -61,7 +61,7 @@ pub struct FileReference {
     pub access: Option<ReferenceAccess>,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ReferenceAccess {
     Read,
     Write,
@@ -393,7 +393,7 @@ impl<'a> FindUsages<'a> {
                     continue;
                 }
 
-                if let Some(name) = sema.find_node_at_offset_with_descend(&tree, offset) {
+                for name in sema.find_nodes_at_offset_with_descend(&tree, offset) {
                     if match name {
                         ast::NameLike::NameRef(name_ref) => self.found_name_ref(&name_ref, sink),
                         ast::NameLike::Name(name) => self.found_name(&name, sink),
@@ -410,9 +410,7 @@ impl<'a> FindUsages<'a> {
                         continue;
                     }
 
-                    if let Some(ast::NameLike::NameRef(name_ref)) =
-                        sema.find_node_at_offset_with_descend(&tree, offset)
-                    {
+                    for name_ref in sema.find_nodes_at_offset_with_descend(&tree, offset) {
                         if self.found_self_ty_name_ref(self_ty, &name_ref, sink) {
                             return;
                         }
