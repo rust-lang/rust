@@ -465,11 +465,12 @@ impl<'db> SemanticsImpl<'db> {
         };
         let sa = self.analyze(&parent);
         let mut queue = vec![InFile::new(sa.file_id, token)];
+        let mut cache = self.expansion_info_cache.borrow_mut();
         let mut res = smallvec![];
         while let Some(token) = queue.pop() {
             self.db.unwind_if_cancelled();
 
-            let mapped = (|| {
+            let was_not_remapped = (|| {
                 for node in token.value.ancestors() {
                     match_ast! {
                         match node {
@@ -487,7 +488,6 @@ impl<'db> SemanticsImpl<'db> {
                                     return None;
                                 }
                                 let file_id = sa.expand(self.db, token.with_value(&macro_call))?;
-                                let mut cache = self.expansion_info_cache.borrow_mut();
                                 let tokens = cache
                                     .entry(file_id)
                                     .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
@@ -503,25 +503,21 @@ impl<'db> SemanticsImpl<'db> {
                                 return (queue.len() != len).then(|| ());
                             },
                             ast::Item(item) => {
-                                match self.with_ctx(|ctx| ctx.item_to_macro_call(token.with_value(item))) {
-                                    Some(call_id) => {
-                                        let file_id = call_id.as_file();
-                                        let mut cache = self.expansion_info_cache.borrow_mut();
-                                        let tokens = cache
-                                            .entry(file_id)
-                                            .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
-                                            .as_ref()?
-                                            .map_token_down(self.db.upcast(), None, token.as_ref())?;
+                                if let Some(call_id) = self.with_ctx(|ctx| ctx.item_to_macro_call(token.with_value(item.clone()))) {
+                                    let file_id = call_id.as_file();
+                                    let tokens = cache
+                                        .entry(file_id)
+                                        .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
+                                        .as_ref()?
+                                        .map_token_down(self.db.upcast(), Some(item), token.as_ref())?;
 
-                                        let len = queue.len();
-                                        queue.extend(tokens.inspect(|token| {
-                                            if let Some(parent) = token.value.parent() {
-                                                self.cache(find_root(&parent), token.file_id);
-                                            }
-                                        }));
-                                        return (queue.len() != len).then(|| ());
-                                    }
-                                    None => {}
+                                    let len = queue.len();
+                                    queue.extend(tokens.inspect(|token| {
+                                        if let Some(parent) = token.value.parent() {
+                                            self.cache(find_root(&parent), token.file_id);
+                                        }
+                                    }));
+                                    return (queue.len() != len).then(|| ());
                                 }
                             },
                             _ => {}
@@ -529,10 +525,9 @@ impl<'db> SemanticsImpl<'db> {
                     }
                 }
                 None
-            })();
-            match mapped {
-                Some(()) => (),
-                None => res.push(token.value),
+            })().is_none();
+            if was_not_remapped {
+                res.push(token.value)
             }
         }
         res
