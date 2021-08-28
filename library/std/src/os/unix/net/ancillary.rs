@@ -78,6 +78,36 @@ pub(super) fn send_vectored_with_ancillary_to(
     }
 }
 
+/// The size in octets of a control message containing `n` `T`s.
+///
+/// # Panics
+///
+/// If the size is so large that it causes arithmetic overflow.
+fn ancillary_size_data<T>(n: usize) -> u32 {
+    let r = u32::try_from(n.checked_mul(size_of::<T>()).unwrap()).unwrap();
+    unsafe { libc::CMSG_SPACE(r) }
+}
+
+/// The size in octets of a control message containing `n` file descriptors.
+///
+/// # Panics
+///
+/// If the size is so large that it causes arithmetic overflow.
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+pub fn ancillary_size_fds(n: usize) -> u32 {
+    ancillary_size_data::<RawFd>(n)
+}
+
+/// The size in octets of a control message containing `n` unix credentials.
+///
+/// # Panics
+///
+/// If the size is so large that it causes arithmetic overflow.
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+pub fn ancillary_size_creds(n: usize) -> u32 {
+    ancillary_size_data::<SocketCred>(n)
+}
+
 fn add_to_ancillary_data<T>(
     buffer: &mut [u8],
     length: &mut usize,
@@ -369,7 +399,19 @@ impl<'a> Iterator for Messages<'a> {
     }
 }
 
-/// A Unix socket Ancillary data struct.
+/// A struct for accessing a Unix socket ancillary data packet.
+///
+/// An *ancillary data* (also known as *control data*) *packet* may be attached
+/// to a usual *data segment* transferred through a Unix socket.
+/// See [“2.10.11 Socket Receive Queue”](https://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_10_11)
+/// in POSIX for details. An ancillary data packet is a list of *ancillary data objects*
+/// (also known as *control messages*).
+/// Here an ancillary data packet is represented by a [`SocketAncillary`] and a control message
+/// (see `struct cmsghdr` in the C API) is represented by an [`AncillaryData`].
+/// The C API for ancillary data:
+///
+/// - [`sys/socket.h`](https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/sys_socket.h.html)
+/// - [`cmsg`(3)](https://man7.org/linux/man-pages/man3/cmsg.3.html)
 ///
 /// # Example
 /// ```no_run
@@ -407,7 +449,13 @@ pub struct SocketAncillary<'a> {
 }
 
 impl<'a> SocketAncillary<'a> {
-    /// Create an ancillary data with the given buffer.
+    /// Create a struct for accessing an ancillary data packet in `buffer`.
+    /// This ancillary data packet will be empty.
+    /// The result won't own the ancillary data and will read them from
+    /// and write them into `buffer`. Obviously, this buffer isn't extensible.
+    /// In order to ensure that there is enough space in `buffer` when adding control messages,
+    /// provide `buffer` whose size is at least the sum of the sizes of these control messages
+    /// (see [`ancillary_size_fds`] and [`ancillary_size_creds`]).
     ///
     /// # Example
     ///
@@ -418,6 +466,7 @@ impl<'a> SocketAncillary<'a> {
     /// let mut ancillary_buffer = [0; 128];
     /// let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
     /// ```
+    // FIXME: add size example
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn new(buffer: &'a mut [u8]) -> Self {
         SocketAncillary { buffer, length: 0, truncated: false }
@@ -475,10 +524,10 @@ impl<'a> SocketAncillary<'a> {
         self.truncated
     }
 
-    /// Add file descriptors to the ancillary data.
+    /// Add one control message containing file descriptors to the ancillary data.
     ///
     /// The function returns `true` if there was enough space in the buffer.
-    /// If there was not enough space then no file descriptors was appended.
+    /// If there was not enough space then no control message was appended.
     /// Technically, that means this operation adds a control message with the level `SOL_SOCKET`
     /// and type `SCM_RIGHTS`.
     ///
@@ -515,10 +564,10 @@ impl<'a> SocketAncillary<'a> {
         )
     }
 
-    /// Add credentials to the ancillary data.
+    /// Add one control message containing credentials to the ancillary data.
     ///
     /// The function returns `true` if there was enough space in the buffer.
-    /// If there was not enough space then no credentials was appended.
+    /// If there was not enough space then no control message was appended.
     /// Technically, that means this operation adds a control message with the level `SOL_SOCKET`
     /// and type `SCM_CREDENTIALS` or `SCM_CREDS`.
     ///
