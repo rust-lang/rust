@@ -450,6 +450,7 @@ pub(crate) fn inline_asm_call(
 ) -> Option<&'ll Value> {
     let volatile = if volatile { llvm::True } else { llvm::False };
     let alignstack = if alignstack { llvm::True } else { llvm::False };
+    let can_throw = llvm::False;
 
     let argtys = inputs
         .iter()
@@ -475,6 +476,7 @@ pub(crate) fn inline_asm_call(
                 volatile,
                 alignstack,
                 llvm::AsmDialect::from_generic(dia),
+                can_throw,
             );
             let call = bx.call(fty, v, inputs, None);
 

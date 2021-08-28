@@ -1847,6 +1847,7 @@ extern "C" {
         SideEffects: Bool,
         AlignStack: Bool,
         Dialect: AsmDialect,
+        CanThrow: Bool,
     ) -> &Value;
     pub fn LLVMRustInlineAsmVerify(
         Ty: &Type,
