@@ -19,7 +19,7 @@ pub mod path_transform;
 pub mod search;
 pub mod rename;
 
-use std::{fmt, sync::Arc};
+use std::{fmt, mem::ManuallyDrop, sync::Arc};
 
 use base_db::{
     salsa::{self, Durability},
@@ -44,7 +44,19 @@ pub use base_db;
     hir::db::HirDatabaseStorage
 )]
 pub struct RootDatabase {
-    storage: salsa::Storage<RootDatabase>,
+    // We use `ManuallyDrop` here because every codegen unit that contains a
+    // `&RootDatabase -> &dyn OtherDatabase` cast will instantiate its drop glue in the vtable,
+    // which duplicates `Weak::drop` and `Arc::drop` tens of thousands of times, which makes
+    // compile times of all `ide_*` and downstream crates suffer greatly.
+    storage: ManuallyDrop<salsa::Storage<RootDatabase>>,
+}
+
+impl Drop for RootDatabase {
+    fn drop(&mut self) {
+        unsafe {
+            ManuallyDrop::drop(&mut self.storage);
+        }
+    }
 }
 
 impl fmt::Debug for RootDatabase {
@@ -93,7 +105,7 @@ impl Default for RootDatabase {
 
 impl RootDatabase {
     pub fn new(lru_capacity: Option<usize>) -> RootDatabase {
-        let mut db = RootDatabase { storage: salsa::Storage::default() };
+        let mut db = RootDatabase { storage: ManuallyDrop::new(salsa::Storage::default()) };
         db.set_crate_graph_with_durability(Default::default(), Durability::HIGH);
         db.set_local_roots_with_durability(Default::default(), Durability::HIGH);
         db.set_library_roots_with_durability(Default::default(), Durability::HIGH);
@@ -112,7 +124,7 @@ impl RootDatabase {
 
 impl salsa::ParallelDatabase for RootDatabase {
     fn snapshot(&self) -> salsa::Snapshot<RootDatabase> {
-        salsa::Snapshot::new(RootDatabase { storage: self.storage.snapshot() })
+        salsa::Snapshot::new(RootDatabase { storage: ManuallyDrop::new(self.storage.snapshot()) })
     }
 }
 
