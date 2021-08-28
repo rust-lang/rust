@@ -39,7 +39,7 @@ impl ProcMacroProcessSrv {
         &mut self,
         dylib_path: &AbsPath,
     ) -> Result<Vec<(String, ProcMacroKind)>, tt::ExpansionError> {
-        let task = ListMacrosTask { lib: dylib_path.to_path_buf() };
+        let task = ListMacrosTask { lib: dylib_path.to_path_buf().into() };
 
         let result: ListMacrosResult = self.send_task(Request::ListMacro(task))?;
         Ok(result.macros)

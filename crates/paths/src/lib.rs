@@ -66,27 +66,6 @@ impl PartialEq<AbsPath> for AbsPathBuf {
     }
 }
 
-impl serde::Serialize for AbsPathBuf {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        self.0.serialize(serializer)
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for AbsPathBuf {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let path = PathBuf::deserialize(deserializer)?;
-        AbsPathBuf::try_from(path).map_err(|path| {
-            serde::de::Error::custom(format!("expected absolute path, got {}", path.display()))
-        })
-    }
-}
-
 impl AbsPathBuf {
     /// Wrap the given absolute path in `AbsPathBuf`
     ///

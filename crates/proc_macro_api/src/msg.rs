@@ -12,13 +12,13 @@ use crate::{
     ExpansionResult, ExpansionTask,
 };
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Request {
     ListMacro(ListMacrosTask),
     ExpansionMacro(ExpansionTask),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Response {
     Error(ResponseError),
     ListMacro(ListMacrosResult),

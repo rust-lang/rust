@@ -15,7 +15,7 @@ mod dylib;
 
 mod abis;
 
-use proc_macro_api::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask};
+use proc_macro_api::{ExpansionResult, ExpansionTask, FlatTree, ListMacrosResult, ListMacrosTask};
 use std::{
     collections::{hash_map::Entry, HashMap},
     env, fs,
@@ -29,7 +29,7 @@ pub(crate) struct ProcMacroSrv {
 }
 
 impl ProcMacroSrv {
-    pub fn expand(&mut self, task: &ExpansionTask) -> Result<ExpansionResult, String> {
+    pub fn expand(&mut self, task: ExpansionTask) -> Result<ExpansionResult, String> {
         let expander = self.expander(task.lib.as_ref())?;
 
         let mut prev_env = HashMap::new();
@@ -38,7 +38,11 @@ impl ProcMacroSrv {
             env::set_var(k, v);
         }
 
-        let result = expander.expand(&task.macro_name, &task.macro_body, task.attributes.as_ref());
+        let macro_body = task.macro_body.to_subtree();
+        let attributes = task.attributes.map(|it| it.to_subtree());
+        let result = expander
+            .expand(&task.macro_name, &macro_body, attributes.as_ref())
+            .map(|it| FlatTree::new(&it));
 
         for (k, _) in &task.env {
             match &prev_env[k.as_str()] {
