@@ -1,29 +1,3 @@
-error[E0631]: type mismatch in closure arguments
-  --> $DIR/issue-62529-1.rs:80:10
-   |
-LL |       task(annotate(
-   |  _____----_^
-   | |     |
-   | |     required by a bound introduced by this call
-LL | |
-LL | |
-LL | |         Annotate::<RefMutFamily<usize>>::new(),
-LL | |         |value: &mut usize| {
-   | |         ------------------- found signature of `for<'r> fn(&'r mut usize) -> _`
-LL | |             *value = 2;
-LL | |         }
-LL | |     ));
-   | |_____^ expected signature of `for<'r> fn(<RefMutFamily<usize> as FamilyLt<'r>>::Out) -> _`
-   |
-note: required by a bound in `annotate`
-  --> $DIR/issue-62529-1.rs:44:8
-   |
-LL | fn annotate<F, Q>(_q: Annotate<Q>, func: F) -> impl Execute + 'static
-   |    -------- required by a bound in this
-LL | where
-LL |     F: for<'r> FnOnce(<<Q as Inject>::I as FamilyLt<'r>>::Out) + 'static,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `annotate`
-
 error[E0277]: the size for values of type `impl Execute` cannot be known at compilation time
   --> $DIR/issue-62529-1.rs:80:10
    |
@@ -73,7 +47,6 @@ LL | fn task<P>(processor: P) -> Task
 LL | where P: Execute + 'static {
    |          ^^^^^^^ required by this bound in `task`
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0277, E0631.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0277`.

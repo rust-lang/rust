@@ -1,0 +1,92 @@
+error: implementation of `Parser` is not general enough
+  --> $DIR/issue-71955.rs:52:5
+   |
+LL |     foo(bar, "string", |s| s.len() == 5);
+   |     ^^^ implementation of `Parser` is not general enough
+   |
+   = note: `for<'a> fn(&'a str) -> (&'a str, &'a str) {bar}` must implement `Parser<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
+
+error: implementation of `Parser` is not general enough
+  --> $DIR/issue-71955.rs:52:5
+   |
+LL |     foo(bar, "string", |s| s.len() == 5);
+   |     ^^^ implementation of `Parser` is not general enough
+   |
+   = note: `for<'a> fn(&'a str) -> (&'a str, &'a str) {bar}` must implement `Parser<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
+
+error: implementation of `Parser` is not general enough
+  --> $DIR/issue-71955.rs:52:5
+   |
+LL |     foo(bar, "string", |s| s.len() == 5);
+   |     ^^^ implementation of `Parser` is not general enough
+   |
+   = note: `for<'a> fn(&'a str) -> (&'a str, &'a str) {bar}` must implement `Parser<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
+
+error: implementation of `Parser` is not general enough
+  --> $DIR/issue-71955.rs:52:5
+   |
+LL |     foo(bar, "string", |s| s.len() == 5);
+   |     ^^^ implementation of `Parser` is not general enough
+   |
+   = note: `for<'a> fn(&'a str) -> (&'a str, &'a str) {bar}` must implement `Parser<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
+
+error: implementation of `Parser` is not general enough
+  --> $DIR/issue-71955.rs:52:5
+   |
+LL |     foo(bar, "string", |s| s.len() == 5);
+   |     ^^^ implementation of `Parser` is not general enough
+   |
+   = note: `for<'a> fn(&'a str) -> (&'a str, &'a str) {bar}` must implement `Parser<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
+
+error: implementation of `Parser` is not general enough
+  --> $DIR/issue-71955.rs:58:5
+   |
+LL |     foo(baz, "string", |s| s.0.len() == 5);
+   |     ^^^ implementation of `Parser` is not general enough
+   |
+   = note: `for<'a> fn(&'a str) -> (&'a str, Wrapper<'a>) {baz}` must implement `Parser<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
+
+error: implementation of `Parser` is not general enough
+  --> $DIR/issue-71955.rs:58:5
+   |
+LL |     foo(baz, "string", |s| s.0.len() == 5);
+   |     ^^^ implementation of `Parser` is not general enough
+   |
+   = note: `for<'a> fn(&'a str) -> (&'a str, Wrapper<'a>) {baz}` must implement `Parser<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
+
+error: implementation of `Parser` is not general enough
+  --> $DIR/issue-71955.rs:58:5
+   |
+LL |     foo(baz, "string", |s| s.0.len() == 5);
+   |     ^^^ implementation of `Parser` is not general enough
+   |
+   = note: `for<'a> fn(&'a str) -> (&'a str, Wrapper<'a>) {baz}` must implement `Parser<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
+
+error: implementation of `Parser` is not general enough
+  --> $DIR/issue-71955.rs:58:5
+   |
+LL |     foo(baz, "string", |s| s.0.len() == 5);
+   |     ^^^ implementation of `Parser` is not general enough
+   |
+   = note: `for<'a> fn(&'a str) -> (&'a str, Wrapper<'a>) {baz}` must implement `Parser<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
+
+error: implementation of `Parser` is not general enough
+  --> $DIR/issue-71955.rs:58:5
+   |
+LL |     foo(baz, "string", |s| s.0.len() == 5);
+   |     ^^^ implementation of `Parser` is not general enough
+   |
+   = note: `for<'a> fn(&'a str) -> (&'a str, Wrapper<'a>) {baz}` must implement `Parser<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
+
+error: aborting due to 10 previous errors
+

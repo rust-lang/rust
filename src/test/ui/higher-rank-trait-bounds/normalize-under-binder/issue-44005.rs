@@ -1,3 +1,5 @@
+// check-pass
+
 pub trait Foo<'a> {
     type Bar;
     fn foo(&'a self) -> Self::Bar;
@@ -24,7 +26,6 @@ pub fn catalyst(x: &i32) {
 
 pub fn broken<F: Fn(&i32)>(x: &i32, f: F) {
     uncallable(x, |y| f(y));
-    //~^ type mismatch
 }
 
 fn main() {}
