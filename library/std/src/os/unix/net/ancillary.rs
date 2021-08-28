@@ -79,33 +79,18 @@ pub(super) fn send_vectored_with_ancillary_to(
 }
 
 /// The size in octets of a control message containing `n` `T`s.
+/// `T` must be one of:
+///
+/// - [`RawFd`] (file descriptor)
+/// - [`SocketCred`] (Unix credentials)
 ///
 /// # Panics
 ///
 /// If the size is so large that it causes arithmetic overflow.
-fn ancillary_size_data<T>(n: usize) -> u32 {
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+pub fn ancillary_data_size<T>(n: usize) -> usize {
     let r = u32::try_from(n.checked_mul(size_of::<T>()).unwrap()).unwrap();
-    unsafe { libc::CMSG_SPACE(r) }
-}
-
-/// The size in octets of a control message containing `n` file descriptors.
-///
-/// # Panics
-///
-/// If the size is so large that it causes arithmetic overflow.
-#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-pub fn ancillary_size_fds(n: usize) -> u32 {
-    ancillary_size_data::<RawFd>(n)
-}
-
-/// The size in octets of a control message containing `n` unix credentials.
-///
-/// # Panics
-///
-/// If the size is so large that it causes arithmetic overflow.
-#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-pub fn ancillary_size_creds(n: usize) -> u32 {
-    ancillary_size_data::<SocketCred>(n)
+    unsafe { libc::CMSG_SPACE(r) as usize }
 }
 
 fn add_to_ancillary_data<T>(
@@ -399,10 +384,10 @@ impl<'a> Iterator for Messages<'a> {
     }
 }
 
-/// A struct for accessing a Unix socket ancillary data packet.
+/// A struct for accessing a socket ancillary data packet.
 ///
 /// An *ancillary data* (also known as *control data*) *packet* may be attached
-/// to a usual *data segment* transferred through a Unix socket.
+/// to a usual *data segment* transferred through a socket.
 /// See [“2.10.11 Socket Receive Queue”](https://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_10_11)
 /// in POSIX for details. An ancillary data packet is a list of *ancillary data objects*
 /// (also known as *control messages*).
@@ -451,11 +436,11 @@ pub struct SocketAncillary<'a> {
 impl<'a> SocketAncillary<'a> {
     /// Create a struct for accessing an ancillary data packet in `buffer`.
     /// This ancillary data packet will be empty.
-    /// The result won't own the ancillary data and will read them from
-    /// and write them into `buffer`. Obviously, this buffer isn't extensible.
+    /// The result won't own the ancillary data and will read them from `buffer`
+    /// and write them into `buffer`.
     /// In order to ensure that there is enough space in `buffer` when adding control messages,
     /// provide `buffer` whose size is at least the sum of the sizes of these control messages
-    /// (see [`ancillary_size_fds`] and [`ancillary_size_creds`]).
+    /// (see [`ancillary_data_size`]).
     ///
     /// # Example
     ///
