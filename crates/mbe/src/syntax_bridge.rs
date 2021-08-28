@@ -1,5 +1,7 @@
 //! Conversions between [`SyntaxNode`] and [`tt::TokenTree`].
 
+use std::iter;
+
 use parser::{FragmentKind, ParseError, TreeSink};
 use rustc_hash::FxHashMap;
 use syntax::{
@@ -16,8 +18,17 @@ use crate::{ExpandError, TokenMap};
 /// Convert the syntax node to a `TokenTree` (what macro
 /// will consume).
 pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> (tt::Subtree, TokenMap) {
+    syntax_node_to_token_tree_censored(node, None)
+}
+
+/// Convert the syntax node to a `TokenTree` (what macro will consume)
+/// with the censored range excluded.
+pub fn syntax_node_to_token_tree_censored(
+    node: &SyntaxNode,
+    censor: Option<TextRange>,
+) -> (tt::Subtree, TokenMap) {
     let global_offset = node.text_range().start();
-    let mut c = Convertor::new(node, global_offset);
+    let mut c = Convertor::new(node, global_offset, censor);
     let subtree = convert_tokens(&mut c);
     c.id_alloc.map.shrink_to_fit();
     (subtree, c.id_alloc.map)
@@ -446,16 +457,24 @@ impl<'a> TokenConvertor for RawConvertor<'a> {
 struct Convertor {
     id_alloc: TokenIdAlloc,
     current: Option<SyntaxToken>,
+    censor: Option<TextRange>,
     range: TextRange,
     punct_offset: Option<(SyntaxToken, TextSize)>,
 }
 
 impl Convertor {
-    fn new(node: &SyntaxNode, global_offset: TextSize) -> Convertor {
+    fn new(node: &SyntaxNode, global_offset: TextSize, censor: Option<TextRange>) -> Convertor {
+        let first = node.first_token();
+        let current = match censor {
+            Some(censor) => iter::successors(first, |token| token.next_token())
+                .find(|token| !censor.contains_range(token.text_range())),
+            None => first,
+        };
         Convertor {
             id_alloc: { TokenIdAlloc { map: TokenMap::default(), global_offset, next_id: 0 } },
-            current: node.first_token(),
+            current,
             range: node.text_range(),
+            censor,
             punct_offset: None,
         }
     }
@@ -512,8 +531,11 @@ impl TokenConvertor for Convertor {
         if !&self.range.contains_range(curr.text_range()) {
             return None;
         }
-        self.current = curr.next_token();
-
+        self.current = match self.censor {
+            Some(censor) => iter::successors(curr.next_token(), |token| token.next_token())
+                .find(|token| !censor.contains_range(token.text_range())),
+            None => curr.next_token(),
+        };
         let token = if curr.kind().is_punct() {
             let range = curr.text_range();
             let range = TextRange::at(range.start(), TextSize::of('.'));

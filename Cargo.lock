@@ -511,6 +511,7 @@ dependencies = [
  "cov-mark",
  "either",
  "expect-test",
+ "itertools",
  "la-arena",
  "limit",
  "log",
@@ -887,6 +888,7 @@ name = "mbe"
 version = "0.0.0"
 dependencies = [
  "cov-mark",
+ "expect-test",
  "log",
  "parser",
  "profile",
