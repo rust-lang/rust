@@ -2,7 +2,7 @@
 #![feature(bench_black_box)]
 #![feature(extend_one)]
 #![feature(iter_zip)]
-#![feature(unboxed_closures)]
+#![feature(min_specialization)]
 #![feature(test)]
 #![feature(fn_traits)]
 
