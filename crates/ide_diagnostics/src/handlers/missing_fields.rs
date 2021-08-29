@@ -343,6 +343,93 @@ fn f() {
     }
 
     #[test]
+    fn test_fill_struct_fields_shorthand() {
+        check_fix(
+            r#"
+struct S { a: &'static str, b: i32 }
+
+fn f() {
+    let a = "hello";
+    let b = 1i32;
+    S {
+        $0
+    };
+}
+"#,
+            r#"
+struct S { a: &'static str, b: i32 }
+
+fn f() {
+    let a = "hello";
+    let b = 1i32;
+    S {
+        a,
+        b,
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_fill_struct_fields_shorthand_ty_mismatch() {
+        check_fix(
+            r#"
+struct S { a: &'static str, b: i32 }
+
+fn f() {
+    let a = "hello";
+    let b = 1usize;
+    S {
+        $0
+    };
+}
+"#,
+            r#"
+struct S { a: &'static str, b: i32 }
+
+fn f() {
+    let a = "hello";
+    let b = 1usize;
+    S {
+        a,
+        b: (),
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_fill_struct_fields_shorthand_unifies() {
+        check_fix(
+            r#"
+struct S<T> { a: &'static str, b: T }
+
+fn f() {
+    let a = "hello";
+    let b = 1i32;
+    S {
+        $0
+    };
+}
+"#,
+            r#"
+struct S<T> { a: &'static str, b: T }
+
+fn f() {
+    let a = "hello";
+    let b = 1i32;
+    S {
+        a,
+        b,
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
     fn import_extern_crate_clash_with_inner_item() {
         // This is more of a resolver test, but doesn't really work with the hir_def testsuite.
 
