@@ -2564,7 +2564,7 @@ impl Type {
         krate: Crate,
         traits_in_scope: &FxHashSet<TraitId>,
         name: Option<&Name>,
-        mut callback: impl FnMut(&Ty, Function) -> Option<T>,
+        mut callback: impl FnMut(Type, Function) -> Option<T>,
     ) -> Option<T> {
         let _p = profile::span("iterate_method_candidates");
         let mut slot = None;
@@ -2575,7 +2575,7 @@ impl Type {
             name,
             &mut |ty, assoc_item_id| match assoc_item_id {
                 AssocItemId::FunctionId(it) => {
-                    slot = callback(ty, it.into());
+                    slot = callback(self.derived(ty.clone()), it.into());
                     slot.is_some()
                 }
                 AssocItemId::ConstId(_) | AssocItemId::TypeAliasId(_) => false,
@@ -2620,7 +2620,7 @@ impl Type {
         krate: Crate,
         traits_in_scope: &FxHashSet<TraitId>,
         name: Option<&Name>,
-        mut callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
+        mut callback: impl FnMut(Type, AssocItem) -> Option<T>,
     ) -> Option<T> {
         let _p = profile::span("iterate_path_candidates");
         let mut slot = None;
@@ -2630,7 +2630,7 @@ impl Type {
             traits_in_scope,
             name,
             &mut |ty, assoc_item_id| {
-                slot = callback(ty, assoc_item_id.into());
+                slot = callback(self.derived(ty.clone()), assoc_item_id.into());
                 slot.is_some()
             },
         );
