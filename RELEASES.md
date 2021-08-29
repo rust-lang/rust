@@ -117,6 +117,7 @@ Compatibility Notes
 [79965]: https://github.com/rust-lang/rust/pull/79965
 [87370]: https://github.com/rust-lang/rust/pull/87370
 [87298]: https://github.com/rust-lang/rust/pull/87298
+[cargo/9663]: https://github.com/rust-lang/cargo/pull/9663
 [cargo/9675]: https://github.com/rust-lang/cargo/pull/9675
 [cargo/9550]: https://github.com/rust-lang/cargo/pull/9550
 [cargo/9680]: https://github.com/rust-lang/cargo/pull/9680
