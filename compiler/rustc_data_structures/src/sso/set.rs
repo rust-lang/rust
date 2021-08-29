@@ -13,7 +13,7 @@ use super::map::SsoHashMap;
 //
 // Missing HashSet API:
 //   all hasher-related
-//   try_reserve (unstable)
+//   try_reserve
 //   shrink_to (unstable)
 //   drain_filter (unstable)
 //   replace

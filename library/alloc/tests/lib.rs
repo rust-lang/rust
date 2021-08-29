@@ -8,7 +8,6 @@
 #![feature(new_uninit)]
 #![feature(pattern)]
 #![feature(trusted_len)]
-#![feature(try_reserve)]
 #![feature(try_reserve_kind)]
 #![feature(unboxed_closures)]
 #![feature(associated_type_bounds)]
