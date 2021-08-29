@@ -5,7 +5,7 @@ set -euxo pipefail
 rm -rf /tmp/rustc-pgo
 
 python3 ../x.py build --target=$PGO_HOST --host=$PGO_HOST \
-    --stage 2 library/std \
+    --stage 2 library/std rustdoc \
     --rust-profile-generate=/tmp/rustc-pgo \
     --llvm-profile-generate
 
@@ -35,7 +35,7 @@ RUSTC_BOOTSTRAP=1 \
         eprintln \
         /checkout/obj/build/$PGO_HOST/stage2/bin/rustc \
         Test \
-        --builds Check,Debug,Opt \
+        --builds Check,Debug,Opt,Doc \
         --cargo /checkout/obj/build/$PGO_HOST/stage0/bin/cargo \
         --runs All \
         --include externs,ctfe-stress-4,inflate,cargo,token-stream-stress,match-stress-enum
