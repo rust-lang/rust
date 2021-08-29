@@ -49,7 +49,7 @@ where
         let mut c = match layout.abi {
             Abi::Uninhabited => return Ok(()),
 
-            Abi::Scalar(ref scalar) => match scalar.value {
+            Abi::Scalar(scalar) => match scalar.value {
                 abi::Int(..) | abi::Pointer => Class::Int,
                 abi::F32 | abi::F64 => Class::Sse,
             },

@@ -187,17 +187,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return false;
         }
         // Compare layout
-        match (&caller.abi, &callee.abi) {
+        match (caller.abi, callee.abi) {
             // Different valid ranges are okay (once we enforce validity,
             // that will take care to make it UB to leave the range, just
             // like for transmute).
-            (abi::Abi::Scalar(ref caller), abi::Abi::Scalar(ref callee)) => {
-                caller.value == callee.value
+            (abi::Abi::Scalar(caller), abi::Abi::Scalar(callee)) => caller.value == callee.value,
+            (abi::Abi::ScalarPair(caller1, caller2), abi::Abi::ScalarPair(callee1, callee2)) => {
+                caller1.value == callee1.value && caller2.value == callee2.value
             }
-            (
-                abi::Abi::ScalarPair(ref caller1, ref caller2),
-                abi::Abi::ScalarPair(ref callee1, ref callee2),
-            ) => caller1.value == callee1.value && caller2.value == callee2.value,
             // Be conservative
             _ => false,
         }

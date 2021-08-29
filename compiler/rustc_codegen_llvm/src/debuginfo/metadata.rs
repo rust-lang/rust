@@ -1656,7 +1656,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
             Variants::Multiple {
                 tag_encoding:
                     TagEncoding::Niche { ref niche_variants, niche_start, dataful_variant },
-                ref tag,
+                tag,
                 ref variants,
                 tag_field,
             } => {
@@ -2082,10 +2082,8 @@ fn prepare_enum_metadata(
 
     let layout = cx.layout_of(enum_type);
 
-    if let (
-        &Abi::Scalar(_),
-        &Variants::Multiple { tag_encoding: TagEncoding::Direct, ref tag, .. },
-    ) = (&layout.abi, &layout.variants)
+    if let (Abi::Scalar(_), Variants::Multiple { tag_encoding: TagEncoding::Direct, tag, .. }) =
+        (layout.abi, &layout.variants)
     {
         return FinalMetadata(discriminant_type_metadata(tag.value));
     }
@@ -2093,8 +2091,8 @@ fn prepare_enum_metadata(
     if use_enum_fallback(cx) {
         let discriminant_type_metadata = match layout.variants {
             Variants::Single { .. } => None,
-            Variants::Multiple { tag_encoding: TagEncoding::Niche { .. }, ref tag, .. }
-            | Variants::Multiple { tag_encoding: TagEncoding::Direct, ref tag, .. } => {
+            Variants::Multiple { tag_encoding: TagEncoding::Niche { .. }, tag, .. }
+            | Variants::Multiple { tag_encoding: TagEncoding::Direct, tag, .. } => {
                 Some(discriminant_type_metadata(tag.value))
             }
         };
@@ -2146,9 +2144,7 @@ fn prepare_enum_metadata(
         // A single-variant enum has no discriminant.
         Variants::Single { .. } => None,
 
-        Variants::Multiple {
-            tag_encoding: TagEncoding::Niche { .. }, ref tag, tag_field, ..
-        } => {
+        Variants::Multiple { tag_encoding: TagEncoding::Niche { .. }, tag, tag_field, .. } => {
             // Find the integer type of the correct size.
             let size = tag.value.size(cx);
             let align = tag.value.align(cx);
@@ -2179,7 +2175,7 @@ fn prepare_enum_metadata(
             }
         }
 
-        Variants::Multiple { tag_encoding: TagEncoding::Direct, ref tag, tag_field, .. } => {
+        Variants::Multiple { tag_encoding: TagEncoding::Direct, tag, tag_field, .. } => {
             let discr_type = tag.value.to_ty(cx.tcx);
             let (size, align) = cx.size_and_align_of(discr_type);
 

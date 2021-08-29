@@ -792,7 +792,7 @@ fn dummy_output_type(cx: &CodegenCx<'ll, 'tcx>, reg: InlineAsmRegClass) -> &'ll 
 
 /// Helper function to get the LLVM type for a Scalar. Pointers are returned as
 /// the equivalent integer type.
-fn llvm_asm_scalar_type(cx: &CodegenCx<'ll, 'tcx>, scalar: &Scalar) -> &'ll Type {
+fn llvm_asm_scalar_type(cx: &CodegenCx<'ll, 'tcx>, scalar: Scalar) -> &'ll Type {
     match scalar.value {
         Primitive::Int(Integer::I8, _) => cx.type_i8(),
         Primitive::Int(Integer::I16, _) => cx.type_i16(),
@@ -812,7 +812,7 @@ fn llvm_fixup_input(
     reg: InlineAsmRegClass,
     layout: &TyAndLayout<'tcx>,
 ) -> &'ll Value {
-    match (reg, &layout.abi) {
+    match (reg, layout.abi) {
         (InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg), Abi::Scalar(s)) => {
             if let Primitive::Int(Integer::I8, _) = s.value {
                 let vec_ty = bx.cx.type_vector(bx.cx.type_i8(), 8);
@@ -835,7 +835,7 @@ fn llvm_fixup_input(
             Abi::Vector { element, count },
         ) if layout.size.bytes() == 8 => {
             let elem_ty = llvm_asm_scalar_type(bx.cx, element);
-            let vec_ty = bx.cx.type_vector(elem_ty, *count);
+            let vec_ty = bx.cx.type_vector(elem_ty, count);
             let indices: Vec<_> = (0..count * 2).map(|x| bx.const_i32(x as i32)).collect();
             bx.shuffle_vector(value, bx.const_undef(vec_ty), bx.const_vector(&indices))
         }
@@ -890,7 +890,7 @@ fn llvm_fixup_output(
     reg: InlineAsmRegClass,
     layout: &TyAndLayout<'tcx>,
 ) -> &'ll Value {
-    match (reg, &layout.abi) {
+    match (reg, layout.abi) {
         (InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg), Abi::Scalar(s)) => {
             if let Primitive::Int(Integer::I8, _) = s.value {
                 bx.extract_element(value, bx.const_i32(0))
@@ -910,8 +910,8 @@ fn llvm_fixup_output(
             Abi::Vector { element, count },
         ) if layout.size.bytes() == 8 => {
             let elem_ty = llvm_asm_scalar_type(bx.cx, element);
-            let vec_ty = bx.cx.type_vector(elem_ty, *count * 2);
-            let indices: Vec<_> = (0..*count).map(|x| bx.const_i32(x as i32)).collect();
+            let vec_ty = bx.cx.type_vector(elem_ty, count * 2);
+            let indices: Vec<_> = (0..count).map(|x| bx.const_i32(x as i32)).collect();
             bx.shuffle_vector(value, bx.const_undef(vec_ty), bx.const_vector(&indices))
         }
         (InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd), Abi::Scalar(s))
@@ -965,7 +965,7 @@ fn llvm_fixup_output_type(
     reg: InlineAsmRegClass,
     layout: &TyAndLayout<'tcx>,
 ) -> &'ll Type {
-    match (reg, &layout.abi) {
+    match (reg, layout.abi) {
         (InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg), Abi::Scalar(s)) => {
             if let Primitive::Int(Integer::I8, _) = s.value {
                 cx.type_vector(cx.type_i8(), 8)

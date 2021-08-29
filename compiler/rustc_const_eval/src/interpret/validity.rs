@@ -618,7 +618,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     fn visit_scalar(
         &mut self,
         op: &OpTy<'tcx, M::PointerTag>,
-        scalar_layout: &ScalarAbi,
+        scalar_layout: ScalarAbi,
     ) -> InterpResult<'tcx> {
         if scalar_layout.valid_range.is_full_for(op.layout.size) {
             // Nothing to check
@@ -784,7 +784,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     { "a value of uninhabited type {:?}", op.layout.ty }
                 );
             }
-            Abi::Scalar(ref scalar_layout) => {
+            Abi::Scalar(scalar_layout) => {
                 self.visit_scalar(op, scalar_layout)?;
             }
             Abi::ScalarPair { .. } | Abi::Vector { .. } => {

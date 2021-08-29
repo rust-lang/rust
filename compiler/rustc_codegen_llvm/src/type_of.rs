@@ -23,7 +23,7 @@ fn uncached_llvm_type<'a, 'tcx>(
 ) -> &'a Type {
     match layout.abi {
         Abi::Scalar(_) => bug!("handled elsewhere"),
-        Abi::Vector { ref element, count } => {
+        Abi::Vector { element, count } => {
             let element = layout.scalar_llvm_type_at(cx, element, Size::ZERO);
             return cx.type_vector(element, count);
         }
@@ -177,7 +177,7 @@ pub trait LayoutLlvmExt<'tcx> {
     fn scalar_llvm_type_at<'a>(
         &self,
         cx: &CodegenCx<'a, 'tcx>,
-        scalar: &Scalar,
+        scalar: Scalar,
         offset: Size,
     ) -> &'a Type;
     fn scalar_pair_element_llvm_type<'a>(
@@ -218,7 +218,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     /// of that field's type - this is useful for taking the address of
     /// that field and ensuring the struct has the right alignment.
     fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type {
-        if let Abi::Scalar(ref scalar) = self.abi {
+        if let Abi::Scalar(scalar) = self.abi {
             // Use a different cache for scalars because pointers to DSTs
             // can be either fat or thin (data pointers of fat pointers).
             if let Some(&llty) = cx.scalar_lltypes.borrow().get(&self.ty) {
@@ -286,7 +286,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     }
 
     fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type {
-        if let Abi::Scalar(ref scalar) = self.abi {
+        if let Abi::Scalar(scalar) = self.abi {
             if scalar.is_bool() {
                 return cx.type_i1();
             }
@@ -297,7 +297,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     fn scalar_llvm_type_at<'a>(
         &self,
         cx: &CodegenCx<'a, 'tcx>,
-        scalar: &Scalar,
+        scalar: Scalar,
         offset: Size,
     ) -> &'a Type {
         match scalar.value {
@@ -337,7 +337,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         }
 
         let (a, b) = match self.abi {
-            Abi::ScalarPair(ref a, ref b) => (a, b),
+            Abi::ScalarPair(a, b) => (a, b),
             _ => bug!("TyAndLayout::scalar_pair_element_llty({:?}): not applicable", self),
         };
         let scalar = [a, b][index];

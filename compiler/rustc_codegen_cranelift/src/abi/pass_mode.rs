@@ -92,9 +92,9 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     fn get_abi_param(&self, tcx: TyCtxt<'tcx>) -> SmallVec<[AbiParam; 2]> {
         match self.mode {
             PassMode::Ignore => smallvec![],
-            PassMode::Direct(attrs) => match &self.layout.abi {
+            PassMode::Direct(attrs) => match self.layout.abi {
                 Abi::Scalar(scalar) => smallvec![apply_arg_attrs_to_abi_param(
-                    AbiParam::new(scalar_to_clif_type(tcx, scalar.clone())),
+                    AbiParam::new(scalar_to_clif_type(tcx, scalar)),
                     attrs
                 )],
                 Abi::Vector { .. } => {
@@ -103,10 +103,10 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 }
                 _ => unreachable!("{:?}", self.layout.abi),
             },
-            PassMode::Pair(attrs_a, attrs_b) => match &self.layout.abi {
+            PassMode::Pair(attrs_a, attrs_b) => match self.layout.abi {
                 Abi::ScalarPair(a, b) => {
-                    let a = scalar_to_clif_type(tcx, a.clone());
-                    let b = scalar_to_clif_type(tcx, b.clone());
+                    let a = scalar_to_clif_type(tcx, a);
+                    let b = scalar_to_clif_type(tcx, b);
                     smallvec![
                         apply_arg_attrs_to_abi_param(AbiParam::new(a), attrs_a),
                         apply_arg_attrs_to_abi_param(AbiParam::new(b), attrs_b),
@@ -139,9 +139,9 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     fn get_abi_return(&self, tcx: TyCtxt<'tcx>) -> (Option<AbiParam>, Vec<AbiParam>) {
         match self.mode {
             PassMode::Ignore => (None, vec![]),
-            PassMode::Direct(_) => match &self.layout.abi {
+            PassMode::Direct(_) => match self.layout.abi {
                 Abi::Scalar(scalar) => {
-                    (None, vec![AbiParam::new(scalar_to_clif_type(tcx, scalar.clone()))])
+                    (None, vec![AbiParam::new(scalar_to_clif_type(tcx, scalar))])
                 }
                 Abi::Vector { .. } => {
                     let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout).unwrap();
@@ -149,10 +149,10 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 }
                 _ => unreachable!("{:?}", self.layout.abi),
             },
-            PassMode::Pair(_, _) => match &self.layout.abi {
+            PassMode::Pair(_, _) => match self.layout.abi {
                 Abi::ScalarPair(a, b) => {
-                    let a = scalar_to_clif_type(tcx, a.clone());
-                    let b = scalar_to_clif_type(tcx, b.clone());
+                    let a = scalar_to_clif_type(tcx, a);
+                    let b = scalar_to_clif_type(tcx, b);
                     (None, vec![AbiParam::new(a), AbiParam::new(b)])
                 }
                 _ => unreachable!("{:?}", self.layout.abi),

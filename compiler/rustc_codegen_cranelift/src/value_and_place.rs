@@ -49,11 +49,7 @@ fn codegen_field<'tcx>(
     }
 }
 
-fn scalar_pair_calculate_b_offset(
-    tcx: TyCtxt<'_>,
-    a_scalar: &Scalar,
-    b_scalar: &Scalar,
-) -> Offset32 {
+fn scalar_pair_calculate_b_offset(tcx: TyCtxt<'_>, a_scalar: Scalar, b_scalar: Scalar) -> Offset32 {
     let b_offset = a_scalar.value.size(&tcx).align_to(b_scalar.value.align(&tcx).abi);
     Offset32::new(b_offset.bytes().try_into().unwrap())
 }
@@ -124,12 +120,10 @@ impl<'tcx> CValue<'tcx> {
         match self.0 {
             CValueInner::ByRef(ptr, None) => {
                 let clif_ty = match layout.abi {
-                    Abi::Scalar(ref scalar) => scalar_to_clif_type(fx.tcx, scalar.clone()),
-                    Abi::Vector { ref element, count } => {
-                        scalar_to_clif_type(fx.tcx, element.clone())
-                            .by(u16::try_from(count).unwrap())
-                            .unwrap()
-                    }
+                    Abi::Scalar(scalar) => scalar_to_clif_type(fx.tcx, scalar),
+                    Abi::Vector { element, count } => scalar_to_clif_type(fx.tcx, element)
+                        .by(u16::try_from(count).unwrap())
+                        .unwrap(),
                     _ => unreachable!("{:?}", layout.ty),
                 };
                 let mut flags = MemFlags::new();
@@ -147,13 +141,13 @@ impl<'tcx> CValue<'tcx> {
         let layout = self.1;
         match self.0 {
             CValueInner::ByRef(ptr, None) => {
-                let (a_scalar, b_scalar) = match &layout.abi {
+                let (a_scalar, b_scalar) = match layout.abi {
                     Abi::ScalarPair(a, b) => (a, b),
                     _ => unreachable!("load_scalar_pair({:?})", self),
                 };
                 let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
-                let clif_ty1 = scalar_to_clif_type(fx.tcx, a_scalar.clone());
-                let clif_ty2 = scalar_to_clif_type(fx.tcx, b_scalar.clone());
+                let clif_ty1 = scalar_to_clif_type(fx.tcx, a_scalar);
+                let clif_ty2 = scalar_to_clif_type(fx.tcx, b_scalar);
                 let mut flags = MemFlags::new();
                 flags.set_notrap();
                 let val1 = ptr.load(fx, clif_ty1, flags);
@@ -564,7 +558,7 @@ impl<'tcx> CPlace<'tcx> {
                 to_ptr.store(fx, val, flags);
                 return;
             }
-            Abi::ScalarPair(ref a_scalar, ref b_scalar) => {
+            Abi::ScalarPair(a_scalar, b_scalar) => {
                 let (value, extra) = from.load_scalar_pair(fx);
                 let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
                 to_ptr.store(fx, value, flags);

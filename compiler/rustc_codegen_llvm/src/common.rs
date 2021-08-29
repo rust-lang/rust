@@ -228,7 +228,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         })
     }
 
-    fn scalar_to_backend(&self, cv: Scalar, layout: &abi::Scalar, llty: &'ll Type) -> &'ll Value {
+    fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, llty: &'ll Type) -> &'ll Value {
         let bitsize = if layout.is_bool() { 1 } else { layout.value.size(self).bits() };
         match cv {
             Scalar::Int(ScalarInt::ZST) => {

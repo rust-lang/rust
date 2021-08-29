@@ -382,7 +382,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             val
         }
     }
-    fn to_immediate_scalar(&mut self, val: Self::Value, scalar: &abi::Scalar) -> Self::Value {
+    fn to_immediate_scalar(&mut self, val: Self::Value, scalar: abi::Scalar) -> Self::Value {
         if scalar.is_bool() {
             return self.trunc(val, self.cx().type_i1());
         }
@@ -460,12 +460,12 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         fn scalar_load_metadata<'a, 'll, 'tcx>(
             bx: &mut Builder<'a, 'll, 'tcx>,
             load: &'ll Value,
-            scalar: &abi::Scalar,
+            scalar: abi::Scalar,
         ) {
             match scalar.value {
                 abi::Int(..) => {
                     if !scalar.is_always_valid_for(bx) {
-                        bx.range_metadata(load, &scalar.valid_range);
+                        bx.range_metadata(load, scalar.valid_range);
                     }
                 }
                 abi::Pointer if !scalar.valid_range.contains(0) => {
@@ -488,17 +488,17 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             }
             let llval = const_llval.unwrap_or_else(|| {
                 let load = self.load(place.layout.llvm_type(self), place.llval, place.align);
-                if let abi::Abi::Scalar(ref scalar) = place.layout.abi {
+                if let abi::Abi::Scalar(scalar) = place.layout.abi {
                     scalar_load_metadata(self, load, scalar);
                 }
                 load
             });
             OperandValue::Immediate(self.to_immediate(llval, place.layout))
-        } else if let abi::Abi::ScalarPair(ref a, ref b) = place.layout.abi {
+        } else if let abi::Abi::ScalarPair(a, b) = place.layout.abi {
             let b_offset = a.value.size(self).align_to(b.value.align(self).abi);
             let pair_ty = place.layout.llvm_type(self);
 
-            let mut load = |i, scalar: &abi::Scalar, align| {
+            let mut load = |i, scalar: abi::Scalar, align| {
                 let llptr = self.struct_gep(pair_ty, place.llval, i as u64);
                 let llty = place.layout.scalar_pair_element_llvm_type(self, i, false);
                 let load = self.load(llty, llptr, align);
@@ -554,7 +554,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         next_bx
     }
 
-    fn range_metadata(&mut self, load: &'ll Value, range: &WrappingRange) {
+    fn range_metadata(&mut self, load: &'ll Value, range: WrappingRange) {
         if self.sess().target.arch == "amdgpu" {
             // amdgpu/LLVM does something weird and thinks an i64 value is
             // split into a v2i32, halving the bitwidth LLVM expects,

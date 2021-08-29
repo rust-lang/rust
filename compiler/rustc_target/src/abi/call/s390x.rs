@@ -18,7 +18,7 @@ where
     C: HasDataLayout,
 {
     match layout.abi {
-        abi::Abi::Scalar(ref scalar) => scalar.value.is_float(),
+        abi::Abi::Scalar(scalar) => scalar.value.is_float(),
         abi::Abi::Aggregate { .. } => {
             if layout.fields.count() == 1 && layout.fields.offset(0).bytes() == 0 {
                 is_single_fp_element(cx, layout.field(cx, 0))

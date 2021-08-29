@@ -752,7 +752,7 @@ where
                 // We would anyway check against `ptr_align.restrict_for_offset(b_offset)`,
                 // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
                 let (a, b) = match dest.layout.abi {
-                    Abi::ScalarPair(ref a, ref b) => (&a.value, &b.value),
+                    Abi::ScalarPair(a, b) => (a.value, b.value),
                     _ => span_bug!(
                         self.cur_span(),
                         "write_immediate_to_mplace: invalid ScalarPair layout: {:#?}",
@@ -1000,7 +1000,7 @@ where
             }
             Variants::Multiple {
                 tag_encoding: TagEncoding::Direct,
-                tag: ref tag_layout,
+                tag: tag_layout,
                 tag_field,
                 ..
             } => {
@@ -1022,7 +1022,7 @@ where
             Variants::Multiple {
                 tag_encoding:
                     TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start },
-                tag: ref tag_layout,
+                tag: tag_layout,
                 tag_field,
                 ..
             } => {

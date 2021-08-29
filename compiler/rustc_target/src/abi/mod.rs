@@ -955,7 +955,7 @@ impl AddressSpace {
 
 /// Describes how values of the type are passed by target ABIs,
 /// in terms of categories of C types there are ABI rules for.
-#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum Abi {
     Uninhabited,
     Scalar(Scalar),
@@ -983,8 +983,8 @@ impl Abi {
     /// Returns `true` if this is a single signed integer scalar
     #[inline]
     pub fn is_signed(&self) -> bool {
-        match *self {
-            Abi::Scalar(ref scal) => match scal.value {
+        match self {
+            Abi::Scalar(scal) => match scal.value {
                 Primitive::Int(_, signed) => signed,
                 _ => false,
             },
@@ -1053,7 +1053,7 @@ pub enum TagEncoding {
     },
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct Niche {
     pub offset: Size,
     pub scalar: Scalar,
@@ -1259,7 +1259,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty: TyAbiInterface<'a, C>,
         C: HasDataLayout,
     {
-        let scalar_allows_raw_init = move |s: &Scalar| -> bool {
+        let scalar_allows_raw_init = move |s: Scalar| -> bool {
             if zero {
                 // The range must contain 0.
                 s.valid_range.contains(0)
@@ -1270,11 +1270,11 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         };
 
         // Check the ABI.
-        let valid = match &self.abi {
+        let valid = match self.abi {
             Abi::Uninhabited => false, // definitely UB
             Abi::Scalar(s) => scalar_allows_raw_init(s),
             Abi::ScalarPair(s1, s2) => scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2),
-            Abi::Vector { element: s, count } => *count == 0 || scalar_allows_raw_init(s),
+            Abi::Vector { element: s, count } => count == 0 || scalar_allows_raw_init(s),
             Abi::Aggregate { .. } => true, // Fields are checked below.
         };
         if !valid {

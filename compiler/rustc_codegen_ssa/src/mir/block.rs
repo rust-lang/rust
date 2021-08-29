@@ -1102,9 +1102,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // the load would just produce `OperandValue::Ref` instead
                 // of the `OperandValue::Immediate` we need for the call.
                 llval = bx.load(bx.backend_type(arg.layout), llval, align);
-                if let abi::Abi::Scalar(ref scalar) = arg.layout.abi {
+                if let abi::Abi::Scalar(scalar) = arg.layout.abi {
                     if scalar.is_bool() {
-                        bx.range_metadata(llval, &WrappingRange { start: 0, end: 1 });
+                        bx.range_metadata(llval, WrappingRange { start: 0, end: 1 });
                     }
                 }
                 // We store bools as `i8` so we need to truncate to `i1`.
@@ -1424,7 +1424,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let src = self.codegen_operand(bx, src);
 
         // Special-case transmutes between scalars as simple bitcasts.
-        match (&src.layout.abi, &dst.layout.abi) {
+        match (src.layout.abi, dst.layout.abi) {
             (abi::Abi::Scalar(src_scalar), abi::Abi::Scalar(dst_scalar)) => {
                 // HACK(eddyb) LLVM doesn't like `bitcast`s between pointers and non-pointers.
                 if (src_scalar.value == abi::Pointer) == (dst_scalar.value == abi::Pointer) {

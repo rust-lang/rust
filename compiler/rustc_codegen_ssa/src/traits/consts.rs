@@ -28,7 +28,7 @@ pub trait ConstMethods<'tcx>: BackendTypes {
 
     fn const_data_from_alloc(&self, alloc: &Allocation) -> Self::Value;
 
-    fn scalar_to_backend(&self, cv: Scalar, layout: &abi::Scalar, llty: Self::Type) -> Self::Value;
+    fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, llty: Self::Type) -> Self::Value;
     fn from_const_alloc(
         &self,
         layout: TyAndLayout<'tcx>,
