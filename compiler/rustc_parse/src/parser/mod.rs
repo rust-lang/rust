@@ -806,7 +806,7 @@ impl<'a> Parser<'a> {
                                         .span_suggestion_short(
                                             sp,
                                             &format!("missing `{}`", token_str),
-                                            token_str,
+                                            token_str.into(),
                                             Applicability::MaybeIncorrect,
                                         )
                                         .emit();

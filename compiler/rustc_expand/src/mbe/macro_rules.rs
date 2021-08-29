@@ -1221,7 +1221,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
 
 fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     match *tt {
-        mbe::TokenTree::Token(ref token) => pprust::token_to_string(&token),
+        mbe::TokenTree::Token(ref token) => pprust::token_to_string(&token).into(),
         mbe::TokenTree::MetaVar(_, name) => format!("${}", name),
         mbe::TokenTree::MetaVarDecl(_, name, Some(kind)) => format!("${}:{}", name, kind),
         mbe::TokenTree::MetaVarDecl(_, name, None) => format!("${}:", name),

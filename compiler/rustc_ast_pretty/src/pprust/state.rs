@@ -685,7 +685,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     /// Print the token kind precisely, without converting `$crate` into its respective crate name.
-    fn token_kind_to_string(&self, tok: &TokenKind) -> String {
+    fn token_kind_to_string(&self, tok: &TokenKind) -> Cow<'static, str> {
         self.token_kind_to_string_ext(tok, None)
     }
 
@@ -693,72 +693,72 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         &self,
         tok: &TokenKind,
         convert_dollar_crate: Option<Span>,
-    ) -> String {
+    ) -> Cow<'static, str> {
         match *tok {
-            token::Eq => "=".to_string(),
-            token::Lt => "<".to_string(),
-            token::Le => "<=".to_string(),
-            token::EqEq => "==".to_string(),
-            token::Ne => "!=".to_string(),
-            token::Ge => ">=".to_string(),
-            token::Gt => ">".to_string(),
-            token::Not => "!".to_string(),
-            token::Tilde => "~".to_string(),
-            token::OrOr => "||".to_string(),
-            token::AndAnd => "&&".to_string(),
-            token::BinOp(op) => binop_to_string(op).to_string(),
-            token::BinOpEq(op) => format!("{}=", binop_to_string(op)),
+            token::Eq => "=".into(),
+            token::Lt => "<".into(),
+            token::Le => "<=".into(),
+            token::EqEq => "==".into(),
+            token::Ne => "!=".into(),
+            token::Ge => ">=".into(),
+            token::Gt => ">".into(),
+            token::Not => "!".into(),
+            token::Tilde => "~".into(),
+            token::OrOr => "||".into(),
+            token::AndAnd => "&&".into(),
+            token::BinOp(op) => binop_to_string(op).into(),
+            token::BinOpEq(op) => format!("{}=", binop_to_string(op)).into(),
 
             /* Structural symbols */
-            token::At => "@".to_string(),
-            token::Dot => ".".to_string(),
-            token::DotDot => "..".to_string(),
-            token::DotDotDot => "...".to_string(),
-            token::DotDotEq => "..=".to_string(),
-            token::Comma => ",".to_string(),
-            token::Semi => ";".to_string(),
-            token::Colon => ":".to_string(),
-            token::ModSep => "::".to_string(),
-            token::RArrow => "->".to_string(),
-            token::LArrow => "<-".to_string(),
-            token::FatArrow => "=>".to_string(),
-            token::OpenDelim(token::Paren) => "(".to_string(),
-            token::CloseDelim(token::Paren) => ")".to_string(),
-            token::OpenDelim(token::Bracket) => "[".to_string(),
-            token::CloseDelim(token::Bracket) => "]".to_string(),
-            token::OpenDelim(token::Brace) => "{".to_string(),
-            token::CloseDelim(token::Brace) => "}".to_string(),
-            token::OpenDelim(token::NoDelim) | token::CloseDelim(token::NoDelim) => "".to_string(),
-            token::Pound => "#".to_string(),
-            token::Dollar => "$".to_string(),
-            token::Question => "?".to_string(),
-            token::SingleQuote => "'".to_string(),
+            token::At => "@".into(),
+            token::Dot => ".".into(),
+            token::DotDot => "..".into(),
+            token::DotDotDot => "...".into(),
+            token::DotDotEq => "..=".into(),
+            token::Comma => ",".into(),
+            token::Semi => ";".into(),
+            token::Colon => ":".into(),
+            token::ModSep => "::".into(),
+            token::RArrow => "->".into(),
+            token::LArrow => "<-".into(),
+            token::FatArrow => "=>".into(),
+            token::OpenDelim(token::Paren) => "(".into(),
+            token::CloseDelim(token::Paren) => ")".into(),
+            token::OpenDelim(token::Bracket) => "[".into(),
+            token::CloseDelim(token::Bracket) => "]".into(),
+            token::OpenDelim(token::Brace) => "{".into(),
+            token::CloseDelim(token::Brace) => "}".into(),
+            token::OpenDelim(token::NoDelim) | token::CloseDelim(token::NoDelim) => "".into(),
+            token::Pound => "#".into(),
+            token::Dollar => "$".into(),
+            token::Question => "?".into(),
+            token::SingleQuote => "'".into(),
 
             /* Literals */
-            token::Literal(lit) => literal_to_string(lit),
+            token::Literal(lit) => literal_to_string(lit).into(),
 
             /* Name components */
             token::Ident(s, is_raw) => {
-                IdentPrinter::new(s, is_raw, convert_dollar_crate).to_string()
+                IdentPrinter::new(s, is_raw, convert_dollar_crate).to_string().into()
             }
-            token::Lifetime(s) => s.to_string(),
+            token::Lifetime(s) => s.to_string().into(),
 
             /* Other */
             token::DocComment(comment_kind, attr_style, data) => {
-                doc_comment_to_string(comment_kind, attr_style, data)
+                doc_comment_to_string(comment_kind, attr_style, data).into()
             }
-            token::Eof => "<eof>".to_string(),
+            token::Eof => "<eof>".into(),
 
-            token::Interpolated(ref nt) => self.nonterminal_to_string(nt),
+            token::Interpolated(ref nt) => self.nonterminal_to_string(nt).into(),
         }
     }
 
     /// Print the token precisely, without converting `$crate` into its respective crate name.
-    fn token_to_string(&self, token: &Token) -> String {
+    fn token_to_string(&self, token: &Token) -> Cow<'static, str> {
         self.token_to_string_ext(token, false)
     }
 
-    fn token_to_string_ext(&self, token: &Token, convert_dollar_crate: bool) -> String {
+    fn token_to_string_ext(&self, token: &Token, convert_dollar_crate: bool) -> Cow<'static, str> {
         let convert_dollar_crate = convert_dollar_crate.then_some(token.span);
         self.token_kind_to_string_ext(&token.kind, convert_dollar_crate)
     }
