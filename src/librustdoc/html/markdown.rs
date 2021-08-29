@@ -23,12 +23,13 @@ use rustc_hir::HirId;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::edition::Edition;
 use rustc_span::Span;
+
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt::Write;
-use std::ops::Range;
+use std::ops::{ControlFlow, Range};
 use std::str;
 
 use crate::clean::RenderedLink;
@@ -36,6 +37,7 @@ use crate::doctest;
 use crate::html::escape::Escape;
 use crate::html::format::Buffer;
 use crate::html::highlight;
+use crate::html::length_limit::HtmlWithLimit;
 use crate::html::toc::TocBuilder;
 
 use pulldown_cmark::{
@@ -1081,15 +1083,6 @@ fn markdown_summary_with_limit(
         return (String::new(), false);
     }
 
-    let mut s = String::with_capacity(md.len() * 3 / 2);
-    let mut text_length = 0;
-    let mut stopped_early = false;
-
-    fn push(s: &mut String, text_length: &mut usize, text: &str) {
-        write!(s, "{}", Escape(text)).unwrap();
-        *text_length += text.len();
-    }
-
     let mut replacer = |broken_link: BrokenLink<'_>| {
         if let Some(link) =
             link_names.iter().find(|link| &*link.original_text == broken_link.reference)
@@ -1101,56 +1094,48 @@ fn markdown_summary_with_limit(
     };
 
     let p = Parser::new_with_broken_link_callback(md, opts(), Some(&mut replacer));
-    let p = LinkReplacer::new(p, link_names);
+    let mut p = LinkReplacer::new(p, link_names);
 
-    'outer: for event in p {
+    let mut buf = HtmlWithLimit::new(length_limit);
+    let mut stopped_early = false;
+    p.try_for_each(|event| {
         match &event {
             Event::Text(text) => {
-                for word in text.split_inclusive(char::is_whitespace) {
-                    if text_length + word.len() >= length_limit {
-                        stopped_early = true;
-                        break 'outer;
-                    }
-
-                    push(&mut s, &mut text_length, word);
+                let r =
+                    text.split_inclusive(char::is_whitespace).try_for_each(|word| buf.push(word));
+                if r.is_break() {
+                    stopped_early = true;
                 }
+                return r;
             }
             Event::Code(code) => {
-                if text_length + code.len() >= length_limit {
+                buf.open_tag("code");
+                let r = buf.push(code);
+                if r.is_break() {
                     stopped_early = true;
-                    break;
+                } else {
+                    buf.close_tag();
                 }
-
-                s.push_str("<code>");
-                push(&mut s, &mut text_length, code);
-                s.push_str("</code>");
+                return r;
             }
             Event::Start(tag) => match tag {
-                Tag::Emphasis => s.push_str("<em>"),
-                Tag::Strong => s.push_str("<strong>"),
-                Tag::CodeBlock(..) => break,
+                Tag::Emphasis => buf.open_tag("em"),
+                Tag::Strong => buf.open_tag("strong"),
+                Tag::CodeBlock(..) => return ControlFlow::BREAK,
                 _ => {}
             },
             Event::End(tag) => match tag {
-                Tag::Emphasis => s.push_str("</em>"),
-                Tag::Strong => s.push_str("</strong>"),
-                Tag::Paragraph => break,
-                Tag::Heading(..) => break,
+                Tag::Emphasis | Tag::Strong => buf.close_tag(),
+                Tag::Paragraph | Tag::Heading(..) => return ControlFlow::BREAK,
                 _ => {}
             },
-            Event::HardBreak | Event::SoftBreak => {
-                if text_length + 1 >= length_limit {
-                    stopped_early = true;
-                    break;
-                }
-
-                push(&mut s, &mut text_length, " ");
-            }
+            Event::HardBreak | Event::SoftBreak => buf.push(" ")?,
             _ => {}
-        }
-    }
+        };
+        ControlFlow::CONTINUE
+    });
 
-    (s, stopped_early)
+    (buf.finish(), stopped_early)
 }
 
 /// Renders a shortened first paragraph of the given Markdown as a subset of Markdown,

@@ -1,3 +1,0 @@
-#[no_mangle] pub static RAH: usize = 5;
-
-fn main() {}

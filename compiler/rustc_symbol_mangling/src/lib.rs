@@ -246,10 +246,18 @@ fn compute_symbol_name(
         tcx.symbol_mangling_version(mangling_version_crate)
     };
 
-    match mangling_version {
+    let symbol = match mangling_version {
         SymbolManglingVersion::Legacy => legacy::mangle(tcx, instance, instantiating_crate),
         SymbolManglingVersion::V0 => v0::mangle(tcx, instance, instantiating_crate),
-    }
+    };
+
+    debug_assert!(
+        rustc_demangle::try_demangle(&symbol).is_ok(),
+        "compute_symbol_name: `{}` cannot be demangled",
+        symbol
+    );
+
+    symbol
 }
 
 fn is_generic(substs: SubstsRef<'_>) -> bool {

@@ -70,7 +70,8 @@ Cargo
 - [The package definition in `cargo metadata` now includes the `"default_run"`
   field from the manifest.][cargo/9550]
 - [Added `cargo d` as an alias for `cargo doc`.][cargo/9680]
-- [Added `{lib}` as formatting option for `cargo tree` to print the "lib_name" of packages.][cargo/9663]
+- [Added `{lib}` as formatting option for `cargo tree` to print the `"lib_name"`
+  of packages.][cargo/9663]
 
 Rustdoc
 -------
@@ -116,9 +117,11 @@ Compatibility Notes
 [79965]: https://github.com/rust-lang/rust/pull/79965
 [87370]: https://github.com/rust-lang/rust/pull/87370
 [87298]: https://github.com/rust-lang/rust/pull/87298
+[cargo/9663]: https://github.com/rust-lang/cargo/pull/9663
 [cargo/9675]: https://github.com/rust-lang/cargo/pull/9675
 [cargo/9550]: https://github.com/rust-lang/cargo/pull/9550
 [cargo/9680]: https://github.com/rust-lang/cargo/pull/9680
+[cargo/9663]: https://github.com/rust-lang/cargo/pull/9663
 [`array::map`]: https://doc.rust-lang.org/stable/std/primitive.array.html#method.map
 [`Bound::cloned`]: https://doc.rust-lang.org/stable/std/ops/enum.Bound.html#method.cloned
 [`Drain::as_str`]: https://doc.rust-lang.org/stable/std/string/struct.Drain.html#method.as_str

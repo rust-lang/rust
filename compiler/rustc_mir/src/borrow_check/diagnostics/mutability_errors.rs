@@ -5,11 +5,14 @@ use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{
     hir::place::PlaceBase,
-    mir::{self, ClearCrossCrate, Local, LocalDecl, LocalInfo, LocalKind, Location},
+    mir::{
+        self, BindingForm, ClearCrossCrate, ImplicitSelfKind, Local, LocalDecl, LocalInfo,
+        LocalKind, Location,
+    },
 };
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, Symbol};
-use rustc_span::Span;
+use rustc_span::{BytePos, Span};
 
 use crate::borrow_check::diagnostics::BorrowedContentSource;
 use crate::borrow_check::MirBorrowckCtxt;
@@ -241,13 +244,74 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     .map(|l| mut_borrow_of_mutable_ref(l, self.local_names[local]))
                     .unwrap_or(false) =>
             {
+                let decl = &self.body.local_decls[local];
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
-                err.span_suggestion(
-                    span,
-                    "try removing `&mut` here",
-                    String::new(),
-                    Applicability::MaybeIncorrect,
-                );
+                if let Some(mir::Statement {
+                    source_info,
+                    kind:
+                        mir::StatementKind::Assign(box (
+                            _,
+                            mir::Rvalue::Ref(
+                                _,
+                                mir::BorrowKind::Mut { allow_two_phase_borrow: false },
+                                _,
+                            ),
+                        )),
+                    ..
+                }) = &self.body[location.block].statements.get(location.statement_index)
+                {
+                    match decl.local_info {
+                        Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                            mir::VarBindingForm {
+                                binding_mode: ty::BindingMode::BindByValue(Mutability::Not),
+                                opt_ty_info: Some(sp),
+                                opt_match_place: _,
+                                pat_span: _,
+                            },
+                        )))) => {
+                            err.span_note(sp, "the binding is already a mutable borrow");
+                        }
+                        _ => {
+                            err.span_note(
+                                decl.source_info.span,
+                                "the binding is already a mutable borrow",
+                            );
+                        }
+                    }
+                    if let Ok(snippet) =
+                        self.infcx.tcx.sess.source_map().span_to_snippet(source_info.span)
+                    {
+                        if snippet.starts_with("&mut ") {
+                            // We don't have access to the HIR to get accurate spans, but we can
+                            // give a best effort structured suggestion.
+                            err.span_suggestion_verbose(
+                                source_info.span.with_hi(source_info.span.lo() + BytePos(5)),
+                                "try removing `&mut` here",
+                                String::new(),
+                                Applicability::MachineApplicable,
+                            );
+                        } else {
+                            // This can occur with things like `(&mut self).foo()`.
+                            err.span_help(source_info.span, "try removing `&mut` here");
+                        }
+                    } else {
+                        err.span_help(source_info.span, "try removing `&mut` here");
+                    }
+                } else if decl.mutability == Mutability::Not
+                    && !matches!(
+                        decl.local_info,
+                        Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(
+                            ImplicitSelfKind::MutRef
+                        ))))
+                    )
+                {
+                    err.span_suggestion_verbose(
+                        decl.source_info.span.shrink_to_lo(),
+                        "consider making the binding mutable",
+                        "mut ".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
 
             // We want to suggest users use `let mut` for local (user

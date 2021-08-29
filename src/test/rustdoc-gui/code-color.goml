@@ -1,0 +1,30 @@
+// The ayu theme has a different color for the "<code>" tags in the doc blocks. We need to
+// check that the rule isn't applied on other "<code>" elements.
+//
+// While we're at it, we also check it for the other themes.
+goto: file://|DOC_PATH|/test_docs/fn.foo.html
+// If the text isn't displayed, the browser doesn't compute color style correctly...
+show-text: true
+// Set the theme to dark.
+local-storage: {"rustdoc-theme": "dark", "rustdoc-preferred-dark-theme": "dark", "rustdoc-use-system-theme": "false"}
+// We reload the page so the local storage settings are being used.
+reload:
+
+assert-css: (".docblock pre > code", {"color": "rgb(221, 221, 221)"}, ALL)
+assert-css: (".docblock > p > code", {"color": "rgb(221, 221, 221)"}, ALL)
+
+// Set the theme to ayu.
+local-storage: {"rustdoc-theme": "ayu", "rustdoc-preferred-dark-theme": "ayu", "rustdoc-use-system-theme": "false"}
+// We reload the page so the local storage settings are being used.
+reload:
+
+assert-css: (".docblock pre > code", {"color": "rgb(230, 225, 207)"}, ALL)
+assert-css: (".docblock > p > code", {"color": "rgb(255, 180, 84)"}, ALL)
+
+// Set the theme to light.
+local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
+// We reload the page so the local storage settings are being used.
+reload:
+
+assert-css: (".docblock pre > code", {"color": "rgb(0, 0, 0)"}, ALL)
+assert-css: (".docblock > p > code", {"color": "rgb(0, 0, 0)"}, ALL)

@@ -25,6 +25,8 @@ use std::fmt;
 /// ```ignore (it's a test)
 /// Let's say I'm just some text will ya?
 /// ```
+///
+/// An inlined `code`!
 pub fn foo() {}
 
 /// Just a normal struct.

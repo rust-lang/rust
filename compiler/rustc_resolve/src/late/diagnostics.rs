@@ -215,7 +215,6 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     "let ".to_string(),
                     Applicability::MaybeIncorrect,
                 );
-                self.r.session.if_let_suggestions.borrow_mut().insert(*span);
             }
             _ => {}
         }

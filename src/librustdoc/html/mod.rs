@@ -2,6 +2,7 @@ crate mod escape;
 crate mod format;
 crate mod highlight;
 crate mod layout;
+mod length_limit;
 // used by the error-index generator, so it needs to be public
 pub mod markdown;
 crate mod render;
