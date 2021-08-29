@@ -191,6 +191,12 @@ impl<'a> StringReader<'a> {
                 }
                 token::Ident(sym, is_raw_ident)
             }
+            rustc_lexer::TokenKind::InvalidIdent => {
+                let sym = nfc_normalize(self.str_from(start));
+                let span = self.mk_sp(start, self.pos);
+                self.sess.bad_unicode_identifiers.borrow_mut().entry(sym).or_default().push(span);
+                token::Ident(sym, false)
+            }
             rustc_lexer::TokenKind::Literal { kind, suffix_start } => {
                 let suffix_start = start + BytePos(suffix_start as u32);
                 let (kind, symbol) = self.cook_lexer_literal(start, suffix_start, kind);
