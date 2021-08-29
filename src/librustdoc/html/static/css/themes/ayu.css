@@ -40,7 +40,7 @@ h4 {
 .code-header {
 	color: #e6e1cf;
 }
-pre > code {
+.docblock pre > code, pre > code {
 	color: #e6e1cf;
 }
 span code {
