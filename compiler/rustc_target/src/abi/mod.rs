@@ -739,8 +739,7 @@ impl Primitive {
 ///
 ///    254 (-2), 255 (-1), 0, 1, 2
 ///
-/// This is intended specifically to mirror LLVM’s `!range` metadata,
-/// semantics.
+/// This is intended specifically to mirror LLVM’s `!range` metadata semantics.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub struct WrappingRange {
