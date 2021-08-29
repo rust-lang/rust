@@ -461,7 +461,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // a thin pointer.
                 assert!(receiver_place.layout.is_unsized());
                 let receiver_ptr_ty = self.tcx.mk_mut_ptr(receiver_place.layout.ty);
-                let this_receiver_ptr = self.layout_of(receiver_ptr_ty)?.field(self, 0)?;
+                let this_receiver_ptr = self.layout_of(receiver_ptr_ty)?.field(self, 0);
                 // Adjust receiver argument.
                 args[0] = OpTy::from(ImmTy::from_immediate(
                     Scalar::from_maybe_pointer(receiver_place.ptr, self).into(),

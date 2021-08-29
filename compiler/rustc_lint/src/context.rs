@@ -41,7 +41,7 @@ use rustc_session::Session;
 use rustc_session::SessionLintStore;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
-use rustc_target::abi::LayoutOf;
+use rustc_target::abi::{self, LayoutOf};
 use tracing::debug;
 
 use std::cell::Cell;
@@ -1059,7 +1059,28 @@ impl<'tcx> LateContext<'tcx> {
     }
 }
 
-impl<'tcx> LayoutOf for LateContext<'tcx> {
+impl<'tcx> abi::HasDataLayout for LateContext<'tcx> {
+    #[inline]
+    fn data_layout(&self) -> &abi::TargetDataLayout {
+        &self.tcx.data_layout
+    }
+}
+
+impl<'tcx> ty::layout::HasTyCtxt<'tcx> for LateContext<'tcx> {
+    #[inline]
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+}
+
+impl<'tcx> ty::layout::HasParamEnv<'tcx> for LateContext<'tcx> {
+    #[inline]
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.param_env
+    }
+}
+
+impl<'tcx> LayoutOf<'tcx> for LateContext<'tcx> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 

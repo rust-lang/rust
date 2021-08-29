@@ -17,7 +17,7 @@ use rustc_middle::mir::{
     Location, Operand, Place, Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement,
     StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
 };
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutError, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{
     self, ConstInt, ConstKind, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeFoldable,
@@ -330,7 +330,7 @@ struct ConstPropagator<'mir, 'tcx> {
     source_info: Option<SourceInfo>,
 }
 
-impl<'mir, 'tcx> LayoutOf for ConstPropagator<'mir, 'tcx> {
+impl<'mir, 'tcx> LayoutOf<'tcx> for ConstPropagator<'mir, 'tcx> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
@@ -346,10 +346,17 @@ impl<'mir, 'tcx> HasDataLayout for ConstPropagator<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx> HasTyCtxt<'tcx> for ConstPropagator<'mir, 'tcx> {
+impl<'mir, 'tcx> ty::layout::HasTyCtxt<'tcx> for ConstPropagator<'mir, 'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+}
+
+impl<'mir, 'tcx> ty::layout::HasParamEnv<'tcx> for ConstPropagator<'mir, 'tcx> {
+    #[inline]
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.param_env
     }
 }
 

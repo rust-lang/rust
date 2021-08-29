@@ -39,12 +39,17 @@ pub trait BackendTypes {
 }
 
 pub trait Backend<'tcx>:
-    Sized + BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
+    Sized
+    + BackendTypes
+    + HasTyCtxt<'tcx>
+    + LayoutOf<'tcx, Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
 {
 }
 
 impl<'tcx, T> Backend<'tcx> for T where
-    Self: BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
+    Self: BackendTypes
+        + HasTyCtxt<'tcx>
+        + LayoutOf<'tcx, Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
 {
 }
 

@@ -312,7 +312,7 @@ where
     }
 }
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> LayoutOf<'tcx> for InterpCx<'mir, 'tcx, M> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = InterpResult<'tcx, TyAndLayout<'tcx>>;
 
@@ -592,7 +592,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Recurse to get the size of the dynamically sized field (must be
                 // the last field).  Can't have foreign types here, how would we
                 // adjust alignment and size for them?
-                let field = layout.field(self, layout.fields.count() - 1)?;
+                let field = layout.field(self, layout.fields.count() - 1);
                 let (unsized_size, unsized_align) =
                     match self.size_and_align_of(metadata, &field)? {
                         Some(size_and_align) => size_and_align,
@@ -645,7 +645,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             ty::Slice(_) | ty::Str => {
                 let len = metadata.unwrap_meta().to_machine_usize(self)?;
-                let elem = layout.field(self, 0)?;
+                let elem = layout.field(self, 0);
 
                 // Make sure the slice is not too big.
                 let size = elem.size.checked_mul(len, self).ok_or_else(|| {

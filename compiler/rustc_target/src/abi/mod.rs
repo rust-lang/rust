@@ -1174,9 +1174,9 @@ impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
 }
 
 /// Trait for context types that can compute layouts of things.
-pub trait LayoutOf {
-    type Ty;
-    type TyAndLayout;
+pub trait LayoutOf<'a>: Sized {
+    type Ty: TyAbiInterface<'a, Self>;
+    type TyAndLayout: MaybeResult<TyAndLayout<'a, Self::Ty>>;
 
     fn layout_of(&self, ty: Self::Ty) -> Self::TyAndLayout;
     fn spanned_layout_of(&self, ty: Self::Ty, _span: Span) -> Self::TyAndLayout {
@@ -1184,9 +1184,6 @@ pub trait LayoutOf {
     }
 }
 
-/// The `TyAndLayout` above will always be a `MaybeResult<TyAndLayout<'_, Self>>`.
-/// We can't add the bound due to the lifetime, but this trait is still useful when
-/// writing code that's generic over the `LayoutOf` impl.
 pub trait MaybeResult<T> {
     type Error;
 
@@ -1239,41 +1236,42 @@ pub struct PointeeInfo {
     pub address_space: AddressSpace,
 }
 
-pub trait TyAndLayoutMethods<'a, C: LayoutOf<Ty = Self>>: Sized {
-    fn for_variant(
+/// Trait that needs to be implemented by the higher-level type representation
+/// (e.g. `rustc_middle::ty::Ty`), to provide `rustc_target::abi` functionality.
+pub trait TyAbiInterface<'a, C>: Sized {
+    fn ty_and_layout_for_variant(
         this: TyAndLayout<'a, Self>,
         cx: &C,
         variant_index: VariantIdx,
     ) -> TyAndLayout<'a, Self>;
-    fn field(this: TyAndLayout<'a, Self>, cx: &C, i: usize) -> C::TyAndLayout;
-    fn pointee_info_at(this: TyAndLayout<'a, Self>, cx: &C, offset: Size) -> Option<PointeeInfo>;
+    fn ty_and_layout_field(this: TyAndLayout<'a, Self>, cx: &C, i: usize) -> TyAndLayout<'a, Self>;
+    fn ty_and_layout_pointee_info_at(
+        this: TyAndLayout<'a, Self>,
+        cx: &C,
+        offset: Size,
+    ) -> Option<PointeeInfo>;
 }
 
 impl<'a, Ty> TyAndLayout<'a, Ty> {
     pub fn for_variant<C>(self, cx: &C, variant_index: VariantIdx) -> Self
     where
-        Ty: TyAndLayoutMethods<'a, C>,
-        C: LayoutOf<Ty = Ty>,
+        Ty: TyAbiInterface<'a, C>,
     {
-        Ty::for_variant(self, cx, variant_index)
+        Ty::ty_and_layout_for_variant(self, cx, variant_index)
     }
 
-    /// Callers might want to use `C: LayoutOf<Ty=Ty, TyAndLayout: MaybeResult<Self>>`
-    /// to allow recursion (see `might_permit_zero_init` below for an example).
-    pub fn field<C>(self, cx: &C, i: usize) -> C::TyAndLayout
+    pub fn field<C>(self, cx: &C, i: usize) -> Self
     where
-        Ty: TyAndLayoutMethods<'a, C>,
-        C: LayoutOf<Ty = Ty>,
+        Ty: TyAbiInterface<'a, C>,
     {
-        Ty::field(self, cx, i)
+        Ty::ty_and_layout_field(self, cx, i)
     }
 
     pub fn pointee_info_at<C>(self, cx: &C, offset: Size) -> Option<PointeeInfo>
     where
-        Ty: TyAndLayoutMethods<'a, C>,
-        C: LayoutOf<Ty = Ty>,
+        Ty: TyAbiInterface<'a, C>,
     {
-        Ty::pointee_info_at(self, cx, offset)
+        Ty::ty_and_layout_pointee_info_at(self, cx, offset)
     }
 }
 
@@ -1301,11 +1299,11 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// FIXME: Once we removed all the conservatism, we could alternatively
     /// create an all-0/all-undef constant and run the const value validator to see if
     /// this is a valid value for the given type.
-    pub fn might_permit_raw_init<C, E>(self, cx: &C, zero: bool) -> Result<bool, E>
+    pub fn might_permit_raw_init<C>(self, cx: &C, zero: bool) -> bool
     where
         Self: Copy,
-        Ty: TyAndLayoutMethods<'a, C>,
-        C: LayoutOf<Ty = Ty, TyAndLayout: MaybeResult<Self, Error = E>> + HasDataLayout,
+        Ty: TyAbiInterface<'a, C>,
+        C: HasDataLayout,
     {
         let scalar_allows_raw_init = move |s: &Scalar| -> bool {
             if zero {
@@ -1330,7 +1328,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         };
         if !valid {
             // This is definitely not okay.
-            return Ok(false);
+            return false;
         }
 
         // If we have not found an error yet, we need to recursively descend into fields.
@@ -1341,16 +1339,15 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             }
             FieldsShape::Arbitrary { offsets, .. } => {
                 for idx in 0..offsets.len() {
-                    let field = self.field(cx, idx).to_result()?;
-                    if !field.might_permit_raw_init(cx, zero)? {
+                    if !self.field(cx, idx).might_permit_raw_init(cx, zero) {
                         // We found a field that is unhappy with this kind of initialization.
-                        return Ok(false);
+                        return false;
                     }
                 }
             }
         }
 
         // FIXME(#66151): For now, we are conservative and do not check `self.variants`.
-        Ok(true)
+        true
     }
 }

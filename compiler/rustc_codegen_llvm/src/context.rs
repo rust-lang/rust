@@ -835,7 +835,7 @@ impl ty::layout::HasTyCtxt<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 }
 
-impl LayoutOf for CodegenCx<'ll, 'tcx> {
+impl LayoutOf<'tcx> for CodegenCx<'ll, 'tcx> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = TyAndLayout<'tcx>;
 

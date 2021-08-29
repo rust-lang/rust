@@ -355,7 +355,7 @@ where
         field: usize,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let offset = base.layout.fields.offset(field);
-        let field_layout = base.layout.field(self, field)?;
+        let field_layout = base.layout.field(self, field);
 
         // Offset may need adjustment for unsized fields.
         let (meta, offset) = if field_layout.is_unsized() {
@@ -405,7 +405,7 @@ where
                 }
                 let offset = stride * index; // `Size` multiplication
                 // All fields have the same layout.
-                let field_layout = base.layout.field(self, 0)?;
+                let field_layout = base.layout.field(self, 0);
 
                 assert!(!field_layout.is_unsized());
                 base.offset(offset, MemPlaceMeta::None, field_layout, self)
@@ -430,7 +430,7 @@ where
             FieldsShape::Array { stride, .. } => stride,
             _ => span_bug!(self.cur_span(), "mplace_array_fields: expected an array layout"),
         };
-        let layout = base.layout.field(self, 0)?;
+        let layout = base.layout.field(self, 0);
         let dl = &self.tcx.data_layout;
         // `Size` multiplication
         Ok((0..len).map(move |i| base.offset(stride * i, MemPlaceMeta::None, layout, dl)))

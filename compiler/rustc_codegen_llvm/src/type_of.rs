@@ -9,7 +9,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_target::abi::{Abi, AddressSpace, Align, FieldsShape};
 use rustc_target::abi::{Int, Pointer, F32, F64};
-use rustc_target::abi::{LayoutOf, PointeeInfo, Scalar, Size, TyAndLayoutMethods, Variants};
+use rustc_target::abi::{LayoutOf, PointeeInfo, Scalar, Size, TyAbiInterface, Variants};
 use smallvec::{smallvec, SmallVec};
 use tracing::debug;
 
@@ -393,12 +393,15 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         }
     }
 
+    // FIXME(eddyb) this having the same name as `TyAndLayout::pointee_info_at`
+    // (the inherent method, which is lacking this caching logic) can result in
+    // the uncached version being called - not wrong, but potentially inefficient.
     fn pointee_info_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, offset: Size) -> Option<PointeeInfo> {
         if let Some(&pointee) = cx.pointee_infos.borrow().get(&(self.ty, offset)) {
             return pointee;
         }
 
-        let result = Ty::pointee_info_at(*self, cx, offset);
+        let result = Ty::ty_and_layout_pointee_info_at(*self, cx, offset);
 
         cx.pointee_infos.borrow_mut().insert((self.ty, offset), result);
         result
