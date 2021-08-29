@@ -82,6 +82,7 @@ use rustc_session::getopts;
 use rustc_session::{early_error, early_warn};
 
 use crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL;
+use crate::passes::collect_intra_doc_links;
 
 /// A macro to create a FxHashMap.
 ///
@@ -798,7 +799,15 @@ fn main_options(options: config::Options) -> MainResult {
             // We need to hold on to the complete resolver, so we cause everything to be
             // cloned for the analysis passes to use. Suboptimal, but necessary in the
             // current architecture.
-            let resolver = core::create_resolver(externs, queries, sess);
+            // FIXME(#83761): Resolver cloning can lead to inconsistencies between data in the
+            // two copies because one of the copies can be modified after `TyCtxt` construction.
+            let (resolver, resolver_caches) = {
+                let (krate, resolver, _) = &*abort_on_err(queries.expansion(), sess).peek();
+                let resolver_caches = resolver.borrow_mut().access(|resolver| {
+                    collect_intra_doc_links::early_resolve_intra_doc_links(resolver, krate, externs)
+                });
+                (resolver.clone(), resolver_caches)
+            };
 
             if sess.diagnostic().has_errors_or_lint_errors() {
                 sess.fatal("Compilation failed, aborting rustdoc");
@@ -811,6 +820,7 @@ fn main_options(options: config::Options) -> MainResult {
                     core::run_global_ctxt(
                         tcx,
                         resolver,
+                        resolver_caches,
                         show_coverage,
                         render_options,
                         output_format,

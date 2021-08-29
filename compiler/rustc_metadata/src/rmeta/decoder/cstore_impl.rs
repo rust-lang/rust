@@ -10,6 +10,7 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::hir::exports::Export;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
+use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_session::cstore::{CrateSource, CrateStore, ForeignModule};
@@ -192,8 +193,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     extra_filename => { cdata.root.extra_filename.clone() }
 
     traits_in_crate => { tcx.arena.alloc_from_iter(cdata.get_traits()) }
-    all_trait_implementations => { tcx.arena.alloc_from_iter(cdata.get_trait_impls()) }
-
     implementations_of_trait => { cdata.get_implementations_of_trait(tcx, other) }
 
     visibility => { cdata.get_visibility(def_id.index) }
@@ -472,6 +471,17 @@ impl CStore {
         sess: &Session,
     ) -> Span {
         self.get_crate_data(cnum).get_proc_macro_quoted_span(id, sess)
+    }
+
+    pub fn traits_in_crate_untracked(&self, cnum: CrateNum) -> Vec<DefId> {
+        self.get_crate_data(cnum).get_traits().collect()
+    }
+
+    pub fn trait_impls_in_crate_untracked(
+        &self,
+        cnum: CrateNum,
+    ) -> Vec<(DefId, Option<SimplifiedType>)> {
+        self.get_crate_data(cnum).get_trait_impls().collect()
     }
 }
 
