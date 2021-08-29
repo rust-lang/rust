@@ -1372,49 +1372,49 @@ crate struct PolyTrait {
     crate generic_params: Vec<GenericParamDef>,
 }
 
-/// A representation of a type suitable for hyperlinking purposes. Ideally, one can get the original
-/// type out of the AST/`TyCtxt` given one of these, if more information is needed. Most
-/// importantly, it does not preserve mutability or boxes.
+/// Rustdoc's representation of types, mostly based on the [`hir::Ty`].
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate enum Type {
-    /// Structs/enums/traits (most that would be an `hir::TyKind::Path`).
-    ResolvedPath {
-        path: Path,
-        did: DefId,
-    },
-    /// `dyn for<'a> Trait<'a> + Send + 'static`
+    /// A named type, which could be a trait.
+    ///
+    /// This is mostly Rustdoc's version of [`hir::Path`].
+    ResolvedPath { path: Path, did: DefId },
+    /// A `dyn Trait` object: `dyn for<'a> Trait<'a> + Send + 'static`
     DynTrait(Vec<PolyTrait>, Option<Lifetime>),
-    /// For parameterized types, so the consumer of the JSON don't go
-    /// looking for types which don't exist anywhere.
+    /// A type parameter.
     Generic(Symbol),
-    /// Primitives are the fixed-size numeric types (plus int/usize/float), char,
-    /// arrays, slices, and tuples.
+    /// A primitive (aka, builtin) type.
     Primitive(PrimitiveType),
-    /// `extern "ABI" fn`
+    /// A function pointer: `extern "ABI" fn(...) -> ...`
     BareFunction(Box<BareFunctionDecl>),
+    /// A tuple type: `(i32, &str)`.
     Tuple(Vec<Type>),
+    /// A slice type (does *not* include the `&`): `[i32]`
     Slice(Box<Type>),
-    /// The `String` field is about the size or the constant representing the array's length.
+    /// An array type.
+    ///
+    /// The `String` field is a stringified version of the array's length parameter.
     Array(Box<Type>, String),
+    /// A raw pointer type: `*const i32`, `*mut i32`
     RawPointer(Mutability, Box<Type>),
-    BorrowedRef {
-        lifetime: Option<Lifetime>,
-        mutability: Mutability,
-        type_: Box<Type>,
-    },
+    /// A reference type: `&i32`, `&'a mut Foo`
+    BorrowedRef { lifetime: Option<Lifetime>, mutability: Mutability, type_: Box<Type> },
 
-    // `<Type as Trait>::Name`
+    /// A qualified path to an associated item: `<Type as Trait>::Name`
     QPath {
         name: Symbol,
         self_type: Box<Type>,
+        /// FIXME: This is a hack that should be removed; see [this discussion][1].
+        ///
+        /// [1]: https://github.com/rust-lang/rust/pull/85479#discussion_r635729093
         self_def_id: Option<DefId>,
         trait_: Path,
     },
 
-    // `_`
+    /// A type that is inferred: `_`
     Infer,
 
-    // `impl TraitA + TraitB + ...`
+    /// An `impl Trait`: `impl TraitA + TraitB + ...`
     ImplTrait(Vec<GenericBound>),
 }
 
@@ -1538,8 +1538,12 @@ impl GetDefId for Type {
     }
 }
 
-/// N.B. this has to be different from `hir::PrimTy` because it also includes types that aren't
-/// paths, like `Unit`.
+/// A primitive (aka, builtin) type.
+///
+/// This represents things like `i32`, `str`, etc.
+///
+/// N.B. This has to be different from [`hir::PrimTy`] because it also includes types that aren't
+/// paths, like [`Self::Unit`].
 #[derive(Clone, PartialEq, Eq, Hash, Copy, Debug)]
 crate enum PrimitiveType {
     Isize,
