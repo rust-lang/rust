@@ -143,13 +143,13 @@ extern "rust-call" {
 // Make function public --------------------------------------------------------
 #[cfg(any(cfail1,cfail4))]
 extern "C" {
-    fn make_function_public(c: i32);
+    fn     make_function_public(c: i32);
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2", except = "hir_owner")]
+#[rustc_clean(cfg = "cfail2")]
 #[rustc_clean(cfg = "cfail3")]
-#[rustc_clean(cfg = "cfail5", except = "hir_owner")]
+#[rustc_clean(cfg = "cfail5")]
 #[rustc_clean(cfg = "cfail6")]
 extern "C" {
     pub fn make_function_public(c: i32);
