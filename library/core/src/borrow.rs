@@ -142,8 +142,9 @@
 /// }
 /// ```
 ///
-/// Can `CaseInsensitiveString` implement `Borrow<str>`? It certainly can
-/// provide a reference to a string slice via its contained owned string.
+/// Can `CaseInsensitiveString` implement `Borrow<str>` to be used as a key
+/// for a `HashMap<String,_>`? It certainly can provide a reference to a
+/// string slice via its contained owned string.
 /// But because its `Hash` implementation differs, it behaves differently
 /// from `str` and therefore must not, in fact, implement `Borrow<str>`.
 /// If it wants to allow others access to the underlying `str`, it can do
