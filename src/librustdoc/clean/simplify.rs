@@ -102,7 +102,7 @@ crate fn merge_bounds(
         // If this QPath's trait `trait_did` is the same as, or a supertrait
         // of, the bound's trait `did` then we can keep going, otherwise
         // this is just a plain old equality bound.
-        if !trait_is_same_or_supertrait(cx, trait_ref.trait_.res.def_id(), trait_did) {
+        if !trait_is_same_or_supertrait(cx, trait_ref.trait_.def_id(), trait_did) {
             return false;
         }
         let last = trait_ref.trait_.segments.last_mut().expect("segments were empty");

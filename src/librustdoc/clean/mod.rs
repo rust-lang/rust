@@ -1100,7 +1100,7 @@ impl Clean<Item> for ty::AssocItem {
                             if *name != my_name {
                                 return None;
                             }
-                            if trait_.res.def_id() != self.container.id() {
+                            if trait_.def_id() != self.container.id() {
                                 return None;
                             }
                             match **self_type {

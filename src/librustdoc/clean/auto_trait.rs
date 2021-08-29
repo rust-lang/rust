@@ -691,7 +691,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
     fn is_fn_trait(&self, path: &Path) -> bool {
         let tcx = self.cx.tcx;
-        let did = path.res.def_id();
+        let did = path.def_id();
         did == tcx.require_lang_item(LangItem::Fn, None)
             || did == tcx.require_lang_item(LangItem::FnMut, None)
             || did == tcx.require_lang_item(LangItem::FnOnce, None)

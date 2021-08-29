@@ -2389,7 +2389,7 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
             }
             clean::Type::QPath { self_type, trait_, .. } => {
                 work.push_back(*self_type);
-                process_path(trait_.res.def_id());
+                process_path(trait_.def_id());
             }
             _ => {}
         }

@@ -914,7 +914,7 @@ fn fmt_type<'cx>(
         clean::QPath { ref name, ref self_type, ref trait_, ref self_def_id } => {
             let should_show_cast = !trait_.segments.is_empty()
                 && self_def_id
-                    .zip(Some(trait_.res.def_id()))
+                    .zip(Some(trait_.def_id()))
                     .map_or(!self_type.is_self_type(), |(id, trait_)| id != trait_);
             if f.alternate() {
                 if should_show_cast {
@@ -939,7 +939,7 @@ fn fmt_type<'cx>(
             //        the ugliness comes from inlining across crates where
             //        everything comes in as a fully resolved QPath (hard to
             //        look at).
-            match href(trait_.res.def_id(), cx) {
+            match href(trait_.def_id(), cx) {
                 Ok((ref url, _, ref path)) if !f.alternate() => {
                     write!(
                         f,
@@ -972,7 +972,7 @@ impl clean::Path {
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'b + Captures<'tcx> {
-        display_fn(move |f| resolved_path(f, self.res.def_id(), self, false, false, cx))
+        display_fn(move |f| resolved_path(f, self.def_id(), self, false, false, cx))
     }
 }
 

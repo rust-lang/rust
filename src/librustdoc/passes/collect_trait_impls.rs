@@ -82,7 +82,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
             cleaner.keep_impl(for_)
                 || trait_
                     .as_ref()
-                    .map_or(false, |t| cleaner.keep_impl_with_def_id(t.res.def_id().into()))
+                    .map_or(false, |t| cleaner.keep_impl_with_def_id(t.def_id().into()))
                 || blanket_impl.is_some()
         } else {
             true

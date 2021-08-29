@@ -322,7 +322,7 @@ crate fn get_real_types<'tcx>(
         if let Some(bound) = generics.params.iter().find(|g| g.is_type() && g.name == arg_s) {
             for bound in bound.get_bounds().unwrap_or(&[]) {
                 if let Some(path) = bound.get_trait_path() {
-                    let ty = Type::ResolvedPath { did: path.res.def_id(), path };
+                    let ty = Type::ResolvedPath { did: path.def_id(), path };
                     let adds = get_real_types(generics, &ty, tcx, recurse + 1, res);
                     nb_added += adds;
                     if adds == 0 && !ty.is_full_generic() {

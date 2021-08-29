@@ -454,7 +454,7 @@ crate fn build_impl(
     // Return if the trait itself or any types of the generic parameters are doc(hidden).
     let mut stack: Vec<&Type> = vec![&for_];
 
-    if let Some(did) = trait_.as_ref().map(|t| t.res.def_id()) {
+    if let Some(did) = trait_.as_ref().map(|t| t.def_id()) {
         if tcx.get_attrs(did).lists(sym::doc).has_word(sym::hidden) {
             return;
         }
@@ -474,7 +474,7 @@ crate fn build_impl(
         }
     }
 
-    if let Some(did) = trait_.as_ref().map(|t| t.res.def_id()) {
+    if let Some(did) = trait_.as_ref().map(|t| t.def_id()) {
         record_extern_trait(cx, did);
     }
 
@@ -628,7 +628,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
             } if *s == kw::SelfUpper => {
                 bounds.retain(|bound| match bound {
                     clean::GenericBound::TraitBound(clean::PolyTrait { trait_, .. }, _) => {
-                        trait_.res.def_id() != trait_did
+                        trait_.def_id() != trait_did
                     }
                     _ => true,
                 });
@@ -642,7 +642,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
             ty: clean::QPath { self_type: box clean::Generic(ref s), trait_, name: _, .. },
             bounds,
             ..
-        } => !(bounds.is_empty() || *s == kw::SelfUpper && trait_.res.def_id() == trait_did),
+        } => !(bounds.is_empty() || *s == kw::SelfUpper && trait_.def_id() == trait_did),
         _ => true,
     });
     g
