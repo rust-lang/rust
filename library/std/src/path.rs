@@ -739,6 +739,7 @@ impl<'a> Components<'a> {
 
     // parse a component from the right, saying how many bytes to consume to
     // remove the component
+    #[inline]
     fn parse_next_component_back(&self) -> (usize, Option<Component<'a>>) {
         debug_assert!(self.back == State::Body);
         let start = self.len_before_body();
