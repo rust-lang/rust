@@ -242,7 +242,7 @@ enum Expr {
 
 impl Expr {
     fn new_bin(lhs: Box<Expr>, rhs: Box<Expr>) -> Expr {
-        Expr::Bin { lhs: (), rhs: () }
+        Expr::Bin { lhs, rhs }
     }
 }
 "#,
