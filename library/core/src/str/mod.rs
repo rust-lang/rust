@@ -292,7 +292,12 @@ impl str {
     /// The caller must ensure that the returned pointer is never written to.
     /// If you need to mutate the contents of the string slice, use [`as_mut_ptr`].
     ///
+    /// Note that the pointer returned by `as_ptr()` is *not* null-terminated.
+    /// See [`std::ffi::CString`] if you need a pointer to a traditional
+    /// C-style string.
+    ///
     /// [`as_mut_ptr`]: str::as_mut_ptr
+    /// [`std::ffi::CString`]: ../std/ffi/struct.CString.html
     ///
     /// # Examples
     ///
@@ -317,6 +322,12 @@ impl str {
     ///
     /// It is your responsibility to make sure that the string slice only gets
     /// modified in a way that it remains valid UTF-8.
+    ///
+    /// Note that the pointer returned by `as_mut_ptr()` is *not* null-terminated.
+    /// See [`std::ffi::CString`] if you need a pointer to a traditional
+    /// C-style string.
+    ///
+    /// [`std::ffi::CString`]: ../std/ffi/struct.CString.html
     #[stable(feature = "str_as_mut_ptr", since = "1.36.0")]
     #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut u8 {
