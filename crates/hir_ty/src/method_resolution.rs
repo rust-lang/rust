@@ -422,7 +422,7 @@ pub fn iterate_method_candidates<T>(
     mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
     let mut slot = None;
-    iterate_method_candidates_impl(
+    iterate_method_candidates_dyn(
         ty,
         db,
         env,
@@ -440,7 +440,7 @@ pub fn iterate_method_candidates<T>(
     slot
 }
 
-fn iterate_method_candidates_impl(
+pub fn iterate_method_candidates_dyn(
     ty: &Canonical<Ty>,
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,

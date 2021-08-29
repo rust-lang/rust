@@ -2517,18 +2517,35 @@ impl Type {
         krate: Crate,
         mut callback: impl FnMut(AssocItem) -> Option<T>,
     ) -> Option<T> {
-        for krate in method_resolution::def_crates(db, &self.ty, krate.id)? {
+        let mut slot = None;
+        self.iterate_assoc_items_dyn(db, krate, &mut |assoc_item_id| {
+            slot = callback(assoc_item_id.into());
+            slot.is_some()
+        });
+        slot
+    }
+
+    fn iterate_assoc_items_dyn(
+        self,
+        db: &dyn HirDatabase,
+        krate: Crate,
+        callback: &mut dyn FnMut(AssocItemId) -> bool,
+    ) {
+        let def_crates = match method_resolution::def_crates(db, &self.ty, krate.id) {
+            Some(it) => it,
+            None => return,
+        };
+        for krate in def_crates {
             let impls = db.inherent_impls_in_crate(krate);
 
             for impl_def in impls.for_self_ty(&self.ty) {
                 for &item in db.impl_data(*impl_def).items.iter() {
-                    if let Some(result) = callback(item.into()) {
-                        return Some(result);
+                    if callback(item) {
+                        return;
                     }
                 }
             }
         }
-        None
     }
 
     pub fn type_arguments(&self) -> impl Iterator<Item = Type> + '_ {
@@ -2547,9 +2564,34 @@ impl Type {
         krate: Crate,
         traits_in_scope: &FxHashSet<TraitId>,
         name: Option<&Name>,
-        mut callback: impl FnMut(&Ty, Function) -> Option<T>,
+        mut callback: impl FnMut(Type, Function) -> Option<T>,
     ) -> Option<T> {
         let _p = profile::span("iterate_method_candidates");
+        let mut slot = None;
+        self.iterate_method_candidates_dyn(
+            db,
+            krate,
+            traits_in_scope,
+            name,
+            &mut |ty, assoc_item_id| match assoc_item_id {
+                AssocItemId::FunctionId(it) => {
+                    slot = callback(self.derived(ty.clone()), it.into());
+                    slot.is_some()
+                }
+                AssocItemId::ConstId(_) | AssocItemId::TypeAliasId(_) => false,
+            },
+        );
+        slot
+    }
+
+    fn iterate_method_candidates_dyn(
+        &self,
+        db: &dyn HirDatabase,
+        krate: Crate,
+        traits_in_scope: &FxHashSet<TraitId>,
+        name: Option<&Name>,
+        callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
+    ) {
         // There should be no inference vars in types passed here
         // FIXME check that?
         // FIXME replace Unknown by bound vars here
@@ -2559,7 +2601,7 @@ impl Type {
         let env = self.env.clone();
         let krate = krate.id;
 
-        method_resolution::iterate_method_candidates(
+        method_resolution::iterate_method_candidates_dyn(
             &canonical,
             db,
             env,
@@ -2568,11 +2610,8 @@ impl Type {
             None,
             name,
             method_resolution::LookupMode::MethodCall,
-            |ty, it| match it {
-                AssocItemId::FunctionId(f) => callback(ty, f.into()),
-                _ => None,
-            },
-        )
+            callback,
+        );
     }
 
     pub fn iterate_path_candidates<T>(
@@ -2581,15 +2620,37 @@ impl Type {
         krate: Crate,
         traits_in_scope: &FxHashSet<TraitId>,
         name: Option<&Name>,
-        mut callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
+        mut callback: impl FnMut(Type, AssocItem) -> Option<T>,
     ) -> Option<T> {
         let _p = profile::span("iterate_path_candidates");
+        let mut slot = None;
+        self.iterate_path_candidates_dyn(
+            db,
+            krate,
+            traits_in_scope,
+            name,
+            &mut |ty, assoc_item_id| {
+                slot = callback(self.derived(ty.clone()), assoc_item_id.into());
+                slot.is_some()
+            },
+        );
+        slot
+    }
+
+    fn iterate_path_candidates_dyn(
+        &self,
+        db: &dyn HirDatabase,
+        krate: Crate,
+        traits_in_scope: &FxHashSet<TraitId>,
+        name: Option<&Name>,
+        callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
+    ) {
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
 
         let env = self.env.clone();
         let krate = krate.id;
 
-        method_resolution::iterate_method_candidates(
+        method_resolution::iterate_method_candidates_dyn(
             &canonical,
             db,
             env,
@@ -2598,8 +2659,8 @@ impl Type {
             None,
             name,
             method_resolution::LookupMode::Path,
-            |ty, it| callback(ty, it.into()),
-        )
+            callback,
+        );
     }
 
     pub fn as_adt(&self) -> Option<Adt> {
