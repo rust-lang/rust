@@ -911,6 +911,7 @@ fn check_where_clauses<'tcx, 'fcx>(
     }
 }
 
+#[tracing::instrument(level = "debug", skip(fcx, span, hir_decl))]
 fn check_fn_or_method<'fcx, 'tcx>(
     fcx: &FnCtxt<'fcx, 'tcx>,
     span: Span,
@@ -920,6 +921,11 @@ fn check_fn_or_method<'fcx, 'tcx>(
     implied_bounds: &mut Vec<Ty<'tcx>>,
 ) {
     let sig = fcx.tcx.liberate_late_bound_regions(def_id, sig);
+
+    // Unnormalized types in signature are WF too
+    implied_bounds.extend(sig.inputs());
+    // FIXME(#27579) return types should not be implied bounds
+    implied_bounds.push(sig.output());
 
     // Normalize the input and output types one at a time, using a different
     // `WellFormedLoc` for each. We cannot call `normalize_associated_types`
@@ -970,8 +976,10 @@ fn check_fn_or_method<'fcx, 'tcx>(
         ObligationCauseCode::ReturnType,
     );
 
-    // FIXME(#25759) return types should not be implied bounds
+    // FIXME(#27579) return types should not be implied bounds
     implied_bounds.push(sig.output());
+
+    debug!(?implied_bounds);
 
     check_where_clauses(fcx, span, def_id, Some((sig.output(), hir_decl.output.span())));
 }
@@ -1117,6 +1125,7 @@ const HELP_FOR_SELF_TYPE: &str = "consider changing to `self`, `&self`, `&mut se
      `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one \
      of the previous types except `Self`)";
 
+#[tracing::instrument(level = "debug", skip(fcx))]
 fn check_method_receiver<'fcx, 'tcx>(
     fcx: &FnCtxt<'fcx, 'tcx>,
     fn_sig: &hir::FnSig<'_>,
