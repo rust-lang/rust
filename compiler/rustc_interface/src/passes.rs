@@ -35,7 +35,7 @@ use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::FileName;
+use rustc_span::{FileName, MultiSpan};
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
 use tempfile::Builder as TempFileBuilder;
@@ -449,6 +449,16 @@ pub fn configure_and_expand(
             }
         });
     }
+
+    // Gate identifiers containing invalid Unicode codepoints that were recovered during lexing.
+    sess.parse_sess.bad_unicode_identifiers.with_lock(|identifiers| {
+        for (ident, spans) in identifiers.drain() {
+            sess.diagnostic().span_err(
+                MultiSpan::from(spans),
+                &format!("identifiers cannot contain emojis: `{}`", ident),
+            );
+        }
+    });
 
     Ok(krate)
 }
