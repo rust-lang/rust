@@ -99,7 +99,7 @@ mod tests {
         };
 
         let json = serde_json::to_string(&task).unwrap();
-        println!("{}", json);
+        // println!("{}", json);
         let back: ExpansionTask = serde_json::from_str(&json).unwrap();
 
         assert_eq!(tt, back.macro_body.to_subtree());
