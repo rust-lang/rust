@@ -26,7 +26,7 @@ LL |     let y = &x;
 LL |     x = 0;
    |     ^^^^^ assignment to borrowed `x` occurs here
 LL |     move || *y;
-   |              - borrow later captured here by closure
+   |             -- borrow later captured here by closure
 
 error: aborting due to 3 previous errors
 

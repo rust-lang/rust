@@ -56,28 +56,6 @@ fn no_ref_nested() {
     c();
 }
 
-struct A<'a>(&'a mut String,  &'a mut String);
-// Test that reborrowing works as expected for move closures
-// by attempting a disjoint capture through a reference.
-fn disjoint_via_ref() {
-    let mut x = String::new();
-    let mut y = String::new();
-
-    let mut a = A(&mut x, &mut y);
-    let a = &mut a;
-
-    let mut c1 = move || {
-        a.0.truncate(0);
-    };
-
-    let mut c2 = move || {
-        a.1.truncate(0);
-    };
-
-    c1();
-    c2();
-}
-
 // Test that even if a path is moved into the closure, the closure is not FnOnce
 // if the path is not moved by the closure call.
 fn data_moved_but_not_fn_once() {
@@ -109,7 +87,6 @@ fn main() {
     no_ref();
     no_ref_nested();
 
-    disjoint_via_ref();
     data_moved_but_not_fn_once();
 
     returned_closure_owns_copy_type_data();

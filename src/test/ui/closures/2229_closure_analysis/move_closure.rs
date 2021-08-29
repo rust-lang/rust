@@ -35,7 +35,7 @@ fn simple_ref() {
     //~| ERROR: Min Capture analysis includes:
         *ref_s += 10;
         //~^ NOTE: Capturing ref_s[Deref] -> MutBorrow
-        //~| NOTE: Min Capture ref_s[Deref] -> MutBorrow
+        //~| NOTE: Min Capture ref_s[] -> ByValue
     };
     c();
 }
@@ -56,7 +56,7 @@ fn struct_contains_ref_to_another_struct_1() {
     //~| ERROR: Min Capture analysis includes:
         t.0.0 = "new s".into();
         //~^ NOTE: Capturing t[(0, 0),Deref,(0, 0)] -> MutBorrow
-        //~| NOTE: Min Capture t[(0, 0),Deref,(0, 0)] -> MutBorrow
+        //~| NOTE: Min Capture t[(0, 0)] -> ByValue
     };
 
     c();
@@ -79,7 +79,7 @@ fn struct_contains_ref_to_another_struct_2() {
     //~| ERROR: Min Capture analysis includes:
         let _t = t.0.0;
         //~^ NOTE: Capturing t[(0, 0),Deref,(0, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture t[(0, 0),Deref] -> ImmBorrow
+        //~| NOTE: Min Capture t[(0, 0)] -> ByValue
     };
 
     c();
@@ -175,7 +175,7 @@ fn box_mut_1() {
     //~| First Pass analysis includes:
     //~| NOTE: Capturing box_p_foo[Deref,Deref,(0, 0)] -> MutBorrow
     //~| Min Capture analysis includes:
-    //~| NOTE: Min Capture box_p_foo[Deref,Deref,(0, 0)] -> MutBorrow
+    //~| NOTE: Min Capture box_p_foo[] -> ByValue
 }
 
 // Ensure that even in move closures, if the data is not owned by the root variable
@@ -192,7 +192,7 @@ fn box_mut_2() {
     //~| First Pass analysis includes:
     //~| NOTE: Capturing p_foo[Deref,Deref,(0, 0)] -> MutBorrow
     //~| Min Capture analysis includes:
-    //~| NOTE: Min Capture p_foo[Deref,Deref,(0, 0)] -> MutBorrow
+    //~| NOTE: Min Capture p_foo[] -> ByValue
 }
 
 // Test that move closures can take ownership of Copy type
