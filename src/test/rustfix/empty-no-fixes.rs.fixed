@@ -1,2 +1,0 @@
-// compile-flags:--crate-type lib
-fn foo() {}
