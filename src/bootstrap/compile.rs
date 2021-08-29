@@ -1133,6 +1133,10 @@ impl Step for Assemble {
                 &lld_install.join("bin").join(&src_exe),
                 &gcc_ld_dir.join(exe("ld", target_compiler.host)),
             );
+            builder.copy(
+                &lld_install.join("bin").join(&src_exe),
+                &gcc_ld_dir.join(exe("ld64", target_compiler.host)),
+            );
         }
 
         // Similarly, copy `llvm-dwp` into libdir for Split DWARF. Only copy it when the LLVM
