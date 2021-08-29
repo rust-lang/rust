@@ -1246,6 +1246,8 @@ options! {
         "enable queries of the dependency graph for regression testing (default: no)"),
     query_stats: bool = (false, parse_bool, [UNTRACKED],
         "print some statistics about the query system (default: no)"),
+    randomize_layout: bool = (false, parse_bool, [TRACKED],
+        "randomize the layout of types (default: no)"),
     relax_elf_relocations: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether ELF relocations can be relaxed"),
     relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
