@@ -310,9 +310,9 @@ impl<T, const N: usize> [T; N] {
     /// on large arrays or check the emitted code. Also try to avoid chained
     /// maps (e.g. `arr.map(...).map(...)`).
     ///
-    /// In many cases, you can instead use [`Iterator::map`] by calling `.iter()`
-    /// or `.into_iter()` on your array. `[T; N]::map` is only necessary if you
-    /// really need a new array of the same size as the result. Rust's lazy
+    /// In many cases, you can instead use [`Iterator::map`] by calling [`.iter()`](slice::iter)
+    /// or [`.into_iter()`](IntoIterator::into_iter) on your array. `[T; N]::map` is only necessary
+    /// if you really need a new array of the same size as the result. Rust's lazy
     /// iterators tend to get optimized very well.
     ///
     ///
@@ -396,7 +396,7 @@ impl<T, const N: usize> [T; N] {
     ///
     /// This method is particularly useful if combined with other methods, like
     /// [`map`](#method.map). This way, you can avoid moving the original
-    /// array if its elements are not `Copy`.
+    /// array if its elements are not [`Copy`].
     ///
     /// ```
     /// #![feature(array_methods)]

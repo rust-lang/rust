@@ -2,7 +2,7 @@
 
 #[lang = "bool"]
 impl bool {
-    /// Returns `Some(t)` if the `bool` is `true`, or `None` otherwise.
+    /// Returns <code>[Some]\(t)</code> if the `bool` is [`true`](keyword.true.html), or [`None`] otherwise.
     ///
     /// # Examples
     ///
@@ -18,7 +18,7 @@ impl bool {
         if self { Some(t) } else { None }
     }
 
-    /// Returns `Some(f())` if the `bool` is `true`, or `None` otherwise.
+    /// Returns <code>[Some]\(f())</code> if the `bool` is [`true`](keyword.true.html), or [`None`] otherwise.
     ///
     /// # Examples
     ///
