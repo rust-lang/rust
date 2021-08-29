@@ -614,7 +614,8 @@ impl<'a> ModuleData<'a> {
         }
     }
 
-    fn def_id(&self) -> DefId {
+    // Public for rustdoc.
+    pub fn def_id(&self) -> DefId {
         self.opt_def_id().expect("`ModuleData::def_id` is called on a block module")
     }
 
@@ -3405,6 +3406,16 @@ impl<'a> Resolver<'a> {
     // For rustdoc.
     pub fn all_macros(&self) -> &FxHashMap<Symbol, Res> {
         &self.all_macros
+    }
+
+    /// For rustdoc.
+    /// For local modules returns only reexports, for external modules returns all children.
+    pub fn module_children_or_reexports(&self, def_id: DefId) -> Vec<ModChild> {
+        if let Some(def_id) = def_id.as_local() {
+            self.reexport_map.get(&def_id).cloned().unwrap_or_default()
+        } else {
+            self.cstore().module_children_untracked(def_id, self.session)
+        }
     }
 
     /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
