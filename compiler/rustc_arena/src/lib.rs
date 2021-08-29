@@ -11,7 +11,6 @@
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(no_crate_inject, attr(deny(warnings)))
 )]
-#![feature(dropck_eyepatch)]
 #![feature(new_uninit)]
 #![feature(maybe_uninit_slice)]
 #![feature(min_specialization)]
@@ -306,7 +305,7 @@ impl<T> TypedArena<T> {
     }
 }
 
-unsafe impl<#[may_dangle] T> Drop for TypedArena<T> {
+unsafe impl<T> Drop for TypedArena<T> {
     fn drop(&mut self) {
         unsafe {
             // Determine how much was filled.

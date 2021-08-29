@@ -23,17 +23,14 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(allocator_api)]
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(backtrace)]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(core_intrinsics)]
-#![feature(discriminant_kind)]
 #![feature(if_let_guard)]
 #![feature(never_type)]
-#![feature(extern_types)]
 #![feature(new_uninit)]
 #![feature(nll)]
 #![feature(once_cell)]
