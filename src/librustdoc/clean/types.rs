@@ -120,8 +120,7 @@ crate struct Crate {
     crate module: Item,
     crate externs: Vec<ExternalCrate>,
     crate primitives: ThinVec<(DefId, PrimitiveType)>,
-    // These are later on moved into `CACHEKEY`, leaving the map empty.
-    // Only here so that they can be filtered through the rustdoc passes.
+    /// Only here so that they can be filtered through the rustdoc passes.
     crate external_traits: Rc<RefCell<FxHashMap<DefId, TraitWithExtraInfo>>>,
     crate collapsed: bool,
 }
