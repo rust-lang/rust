@@ -1,0 +1,9 @@
+error[E0158]: const parameters cannot be referenced in patterns
+  --> $DIR/const-match-pat-generic.rs:8:11
+   |
+LL |     const { V } => {},
+   |           ^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0158`.
