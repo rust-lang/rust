@@ -41,7 +41,7 @@ pub(crate) fn ssr_assists(
     for (label, source_change) in assists.into_iter() {
         let assist = Assist {
             id,
-            label: Label::new(label),
+            label: Label::new(label.to_string()),
             group: Some(GroupLabel("Apply SSR".into())),
             target: comment_range,
             source_change,
