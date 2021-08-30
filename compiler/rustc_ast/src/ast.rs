@@ -332,8 +332,8 @@ pub type GenericBounds = Vec<GenericBound>;
 pub enum ParamKindOrd {
     Lifetime,
     Type,
-    // `unordered` is only `true` if `sess.has_features().const_generics`
-    // is active. Specifically, if it's only `min_const_generics`, it will still require
+    // `unordered` is only `true` if `sess.unordered_const_ty_params()`
+    // returns true. Specifically, if it's only `min_const_generics`, it will still require
     // ordering consts after types.
     Const { unordered: bool },
     // `Infer` is not actually constructed directly from the AST, but is implicitly constructed

@@ -307,7 +307,7 @@ pub enum Res<Id = hir::HirId> {
     /// We do however allow `Self` in repeat expression even if it is generic to not break code
     /// which already works on stable while causing the `const_evaluatable_unchecked` future compat lint.
     ///
-    /// FIXME(lazy_normalization_consts): Remove this bodge once that feature is stable.
+    /// FIXME(generic_const_exprs): Remove this bodge once that feature is stable.
     SelfTy(
         /// Optionally, the trait associated with this `Self` type.
         Option<DefId>,

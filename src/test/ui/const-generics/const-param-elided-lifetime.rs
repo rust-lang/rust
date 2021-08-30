@@ -3,8 +3,7 @@
 // elided lifetimes within the type of a const generic parameters to be 'static, like elided
 // lifetimes within const/static items.
 // revisions: full min
-
-#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, feature(adt_const_params))]
 #![cfg_attr(full, allow(incomplete_features))]
 
 struct A<const N: &u8>;

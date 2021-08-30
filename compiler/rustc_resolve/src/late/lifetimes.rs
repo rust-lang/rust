@@ -2301,7 +2301,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             match *scope {
                 Scope::Body { id, s } => {
                     // Non-static lifetimes are prohibited in anonymous constants without
-                    // `const_generics`.
+                    // `generic_const_exprs`.
                     self.maybe_emit_forbidden_non_static_lifetime_error(id, lifetime_ref);
 
                     outermost_body = Some(id);

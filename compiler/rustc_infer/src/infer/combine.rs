@@ -202,7 +202,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
     /// A good example of this is the following:
     ///
     /// ```rust
-    /// #![feature(const_generics)]
+    /// #![feature(generic_const_exprs)]
     ///
     /// fn bind<const N: usize>(value: [u8; N]) -> [u8; 3 + 4] {
     ///     todo!()

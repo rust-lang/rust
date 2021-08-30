@@ -1,5 +1,5 @@
 // revisions: rpass
-#![feature(const_generics, const_evaluatable_checked)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
 struct Foo;

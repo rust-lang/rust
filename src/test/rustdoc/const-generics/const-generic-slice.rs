@@ -1,5 +1,4 @@
 #![crate_name = "foo"]
-#![feature(const_generics)]
 
 pub trait Array {
     type Item;

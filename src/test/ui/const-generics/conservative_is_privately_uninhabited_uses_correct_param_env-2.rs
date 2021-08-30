@@ -1,5 +1,5 @@
 // run-pass
-#![feature(const_generics, const_evaluatable_checked)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
 // This tests that the `conservative_is_privately_uninhabited` fn doesn't cause

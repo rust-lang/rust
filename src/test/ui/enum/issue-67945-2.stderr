@@ -5,7 +5,7 @@ LL |     Var = 0: S,
    |              ^ cannot perform const operation using `S`
    |
    = note: type parameters may not be used in const expressions
-   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
+   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error[E0392]: parameter `S` is never used
   --> $DIR/issue-67945-2.rs:3:10

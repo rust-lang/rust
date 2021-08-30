@@ -1,8 +1,4 @@
 // check-pass
-// revisions: full min
-#![cfg_attr(full, feature(const_generics))]
-#![cfg_attr(full, allow(incomplete_features))]
-
 trait Foo<'a, A>: Iterator<Item=A> {
     fn bar<const N: usize>(&mut self) -> *const [A; N];
 }

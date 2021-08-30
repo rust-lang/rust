@@ -1,5 +1,5 @@
 // aux-build:generics_of_parent_impl_trait.rs
-#![feature(const_generics, const_evaluatable_checked)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
 extern crate generics_of_parent_impl_trait;

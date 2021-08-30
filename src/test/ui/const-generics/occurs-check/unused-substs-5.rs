@@ -1,4 +1,4 @@
-#![feature(const_generics, const_evaluatable_checked)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
 // `N + 1` also depends on `T` here even if it doesn't use it.

@@ -1,6 +1,6 @@
 // revisions: cfail
 #![allow(incomplete_features)]
-#![feature(const_generics, const_evaluatable_checked)]
+#![feature(generic_const_exprs)]
 
 pub struct Ref<'a>(&'a i32);
 

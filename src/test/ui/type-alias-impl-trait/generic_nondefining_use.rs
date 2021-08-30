@@ -1,6 +1,4 @@
-#![feature(const_generics)]
 #![feature(type_alias_impl_trait)]
-#![allow(incomplete_features)]
 
 use std::fmt::Debug;
 

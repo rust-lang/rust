@@ -1,7 +1,7 @@
 // Checks that pointers must not be used as the type of const params.
 // revisions: full min
 
-#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, feature(adt_const_params))]
 #![cfg_attr(full, allow(incomplete_features))]
 
 const A: u32 = 3;

@@ -4,7 +4,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(repr_simd, platform_intrinsics, const_generics)]
+#![feature(repr_simd, platform_intrinsics, generic_const_exprs)]
 #![allow(non_camel_case_types, incomplete_features)]
 
 pub trait Simd {
@@ -21,7 +21,7 @@ impl Simd for i32x4 {
 #[repr(simd)]
 #[derive(Copy, Clone)]
 pub struct T<S: Simd>([S::Lane; S::SIZE]);
-//~^ ERROR constant expression depends on a generic parameter
+//~^ ERROR unconstrained generic constant
 
 extern "platform-intrinsic" {
     fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;

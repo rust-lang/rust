@@ -1,6 +1,3 @@
-#![feature(const_generics)]
-//~^ WARN the feature `const_generics` is incomplete
-
 fn f<T>() {
     extern "C" {
         static a: *const T;

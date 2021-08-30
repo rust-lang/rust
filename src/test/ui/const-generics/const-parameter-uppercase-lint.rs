@@ -1,8 +1,3 @@
-// revisions: full min
-
-#![cfg_attr(full, feature(const_generics))]
-#![cfg_attr(full, allow(incomplete_features))]
-
 #![deny(non_upper_case_globals)]
 
 fn noop<const x: u32>() {

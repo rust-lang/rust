@@ -1,8 +1,8 @@
 // build-fail
 // compile-flags:-Zpolymorphize=on
 #![crate_type = "lib"]
-#![feature(lazy_normalization_consts, rustc_attrs)]
-//~^ WARN the feature `lazy_normalization_consts` is incomplete
+#![feature(generic_const_exprs, rustc_attrs)]
+//~^ WARN the feature `generic_const_exprs` is incomplete
 
 #[rustc_polymorphize_error]
 fn test<T>() {

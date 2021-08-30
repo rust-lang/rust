@@ -1,7 +1,7 @@
 // revisions: full min
 //[full] check-pass
 
-#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, feature(adt_const_params))]
 #![cfg_attr(full, allow(incomplete_features))]
 
 struct Const<const P: &'static ()>;

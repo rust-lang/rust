@@ -1351,7 +1351,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_generics(&mut self, generics: &'a Generics) {
-        let cg_defaults = self.session.features_untracked().const_generics_defaults;
+        let cg_defaults = self.session.features_untracked().unordered_const_ty_params();
 
         let mut prev_param_default = None;
         for param in &generics.params {

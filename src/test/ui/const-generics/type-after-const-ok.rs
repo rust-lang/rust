@@ -1,7 +1,7 @@
 // [full] run-pass
 // revisions: full min
 // Verifies that having generic parameters after constants is permitted
-#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, feature(const_generics_defaults))]
 #![cfg_attr(full, allow(incomplete_features))]
 
 #[allow(dead_code)]

@@ -1,8 +1,5 @@
 // edition:2018
 // check-pass
-// revisions: full min
-#![cfg_attr(full, feature(const_generics))]
-#![cfg_attr(full, allow(incomplete_features))]
 
 async fn foo<const N: usize>(arg: [u8; N]) -> usize { arg.len() }
 

@@ -1,7 +1,7 @@
 // [full] run-pass
 // revisions: full min
 // Checks a complicated usage of unordered params
-#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, feature(const_generics_defaults))]
 #![cfg_attr(full, allow(incomplete_features))]
 #![allow(dead_code)]
 

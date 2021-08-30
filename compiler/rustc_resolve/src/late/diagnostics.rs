@@ -2245,7 +2245,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
     }
 
     /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics`.
-    /// This function will emit an error if `const_generics` is not enabled, the body identified by
+    /// This function will emit an error if `generic_const_exprs` is not enabled, the body identified by
     /// `body_id` is an anonymous constant and `lifetime_ref` is non-static.
     crate fn maybe_emit_forbidden_non_static_lifetime_error(
         &self,
@@ -2264,7 +2264,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         if !self.tcx.lazy_normalization() && is_anon_const && !is_allowed_lifetime {
             feature_err(
                 &self.tcx.sess.parse_sess,
-                sym::const_generics,
+                sym::generic_const_exprs,
                 lifetime_ref.span,
                 "a non-static lifetime is not allowed in a `const`",
             )

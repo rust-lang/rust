@@ -71,7 +71,7 @@ macro_rules! declare_features {
             }
 
             pub fn unordered_const_ty_params(&self) -> bool {
-                self.const_generics || self.const_generics_defaults
+                self.const_generics_defaults || self.generic_const_exprs || self.adt_const_params
             }
 
             /// Some features are known to be incomplete and using them is likely to have
@@ -453,9 +453,6 @@ declare_features! (
     /// Allows using `#[ffi_returns_twice]` on foreign functions.
     (active, ffi_returns_twice, "1.34.0", Some(58314), None),
 
-    /// Allows const generic types (e.g. `struct Foo<const N: usize>(...);`).
-    (incomplete, const_generics, "1.34.0", Some(44580), None),
-
     /// Allows using `#[optimize(X)]`.
     (active, optimize_attribute, "1.34.0", Some(54882), None),
 
@@ -545,14 +542,8 @@ declare_features! (
     /// Allows capturing variables in scope using format_args!
     (active, format_args_capture, "1.46.0", Some(67984), None),
 
-    /// Lazily evaluate constants. This allows constants to depend on type parameters.
-    (incomplete, lazy_normalization_consts, "1.46.0", Some(72219), None),
-
     /// Allows `if let` guard in match arms.
     (active, if_let_guard, "1.47.0", Some(51114), None),
-
-    /// Allows non-trivial generic constants which have to be manually propagated upwards.
-    (incomplete, const_evaluatable_checked, "1.48.0", Some(76560), None),
 
     /// Allows basic arithmetic on floating point types in a `const fn`.
     (active, const_fn_floating_point_arithmetic, "1.48.0", Some(57241), None),
@@ -678,6 +669,12 @@ declare_features! (
 
     /// Allows using doc(primitive) without a future-incompat warning
     (active, doc_primitive, "1.56.0", Some(88070), None),
+
+    /// Allows non-trivial generic constants which have to have wfness manually propagated to callers
+    (incomplete, generic_const_exprs, "1.56.0", Some(76560), None),
+
+    /// Allows additional const parameter types, such as `&'static str` or user defined types
+    (incomplete, adt_const_params, "1.56.0", Some(44580), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

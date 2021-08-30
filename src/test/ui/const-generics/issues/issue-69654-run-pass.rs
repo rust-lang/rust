@@ -1,8 +1,6 @@
-#![feature(const_generics)]
-#![allow(incomplete_features, unused_braces)]
-
+// run-pass
 trait Bar<T> {}
-impl<T> Bar<T> for [u8; {7}] {}
+impl<T> Bar<T> for [u8; 7] {}
 
 struct Foo<const N: usize> {}
 impl<const N: usize> Foo<N>
@@ -14,5 +12,4 @@ where
 
 fn main() {
     Foo::foo();
-    //~^ ERROR the function or associated item
 }

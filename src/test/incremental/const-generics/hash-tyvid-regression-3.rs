@@ -1,5 +1,5 @@
 // revisions: cfail
-#![feature(const_generics, const_evaluatable_checked)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 // regression test for #79251
 struct Node<const D: usize>

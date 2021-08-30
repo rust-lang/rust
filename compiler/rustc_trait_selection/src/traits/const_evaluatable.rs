@@ -34,7 +34,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     span: Span,
 ) -> Result<(), NotConstEvaluatable> {
     debug!("is_const_evaluatable({:?})", uv);
-    if infcx.tcx.features().const_evaluatable_checked {
+    if infcx.tcx.features().generic_const_exprs {
         let tcx = infcx.tcx;
         match AbstractConst::new(tcx, uv)? {
             // We are looking at a generic abstract constant.
@@ -537,9 +537,9 @@ pub(super) fn mir_abstract_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
 ) -> Result<Option<&'tcx [mir::abstract_const::Node<'tcx>]>, ErrorReported> {
-    if tcx.features().const_evaluatable_checked {
+    if tcx.features().generic_const_exprs {
         match tcx.def_kind(def.did) {
-            // FIXME(const_evaluatable_checked): We currently only do this for anonymous constants,
+            // FIXME(generic_const_exprs): We currently only do this for anonymous constants,
             // meaning that we do not look into associated constants. I(@lcnr) am not yet sure whether
             // we want to look into them or treat them as opaque projections.
             //
@@ -568,7 +568,7 @@ pub(super) fn try_unify_abstract_consts<'tcx>(
         Ok(false)
     })()
     .unwrap_or_else(|ErrorReported| true)
-    // FIXME(const_evaluatable_checked): We should instead have this
+    // FIXME(generic_const_exprs): We should instead have this
     // method return the resulting `ty::Const` and return `ConstKind::Error`
     // on `ErrorReported`.
 }
@@ -656,13 +656,13 @@ pub(super) fn try_unify<'tcx>(
                 // branch should only be taking when dealing with associated constants, at
                 // which point directly comparing them seems like the desired behavior.
                 //
-                // FIXME(const_evaluatable_checked): This isn't actually the case.
+                // FIXME(generic_const_exprs): This isn't actually the case.
                 // We also take this branch for concrete anonymous constants and
                 // expand generic anonymous constants with concrete substs.
                 (ty::ConstKind::Unevaluated(a_uv), ty::ConstKind::Unevaluated(b_uv)) => {
                     a_uv == b_uv
                 }
-                // FIXME(const_evaluatable_checked): We may want to either actually try
+                // FIXME(generic_const_exprs): We may want to either actually try
                 // to evaluate `a_ct` and `b_ct` if they are are fully concrete or something like
                 // this, for now we just return false here.
                 _ => false,

@@ -1,8 +1,4 @@
 // build-pass
-// revisions: full min
-
-#![cfg_attr(full, feature(const_generics))]
-#![cfg_attr(full, allow(incomplete_features))]
 
 fn works() {
     let array/*: [u8; _]*/ = default_byte_array();

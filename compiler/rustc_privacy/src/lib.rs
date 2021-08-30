@@ -136,7 +136,7 @@ where
             }
             ty::PredicateKind::RegionOutlives(..) => ControlFlow::CONTINUE,
             ty::PredicateKind::ConstEvaluatable(uv)
-                if self.def_id_visitor.tcx().features().const_evaluatable_checked =>
+                if self.def_id_visitor.tcx().features().generic_const_exprs =>
             {
                 let tcx = self.def_id_visitor.tcx();
                 if let Ok(Some(ct)) = AbstractConst::new(tcx, uv) {
@@ -1809,7 +1809,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
                         self.visit(self.tcx.type_of(param.def_id));
                     }
                 }
-                // FIXME(const_evaluatable_checked): May want to look inside const here
+                // FIXME(generic_const_exprs): May want to look inside const here
                 GenericParamDefKind::Const { .. } => {
                     self.visit(self.tcx.type_of(param.def_id));
                 }

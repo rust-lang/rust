@@ -290,7 +290,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
 
             let err_ty_str;
             let mut is_ptr = true;
-            let err = if tcx.features().const_generics {
+            let err = if tcx.features().adt_const_params {
                 match ty.peel_refs().kind() {
                     ty::FnPtr(_) => Some("function pointers"),
                     ty::RawPtr(_) => Some("raw pointers"),
@@ -328,7 +328,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                     err.note("the only supported types are integers, `bool` and `char`");
                     if tcx.sess.is_nightly_build() {
                         err.help(
-                            "more complex types are supported with `#![feature(const_generics)]`",
+                            "more complex types are supported with `#![feature(adt_const_params)]`",
                         );
                     }
                     err.emit()

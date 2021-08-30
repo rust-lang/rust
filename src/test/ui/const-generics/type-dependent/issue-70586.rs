@@ -1,8 +1,4 @@
 // check-pass
-// revisions: full min
-#![cfg_attr(full, feature(const_generics))]
-#![cfg_attr(full, allow(incomplete_features))]
-
 use std::marker::PhantomData;
 
 // This namespace is necessary for the ICE to trigger

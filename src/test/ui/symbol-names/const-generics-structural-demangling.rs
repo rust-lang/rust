@@ -6,7 +6,7 @@
 // normalize-stderr-test: "Cs[0-9a-zA-Z]+_4core" -> "Cs$$HASH_4core"
 // normalize-stderr-test: "core\[[0-9a-f]+\]" -> "core[$$HASH_HEX]"
 
-#![feature(const_generics, decl_macro, rustc_attrs)]
+#![feature(adt_const_params, decl_macro, rustc_attrs)]
 #![allow(incomplete_features)]
 
 pub struct RefByte<const RB: &'static u8>;

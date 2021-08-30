@@ -577,13 +577,13 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         }
 
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
-            if tcx.features().const_evaluatable_checked =>
+            if tcx.features().generic_const_exprs =>
         {
             tcx.try_unify_abstract_consts((au.shrink(), bu.shrink()))
         }
 
         // While this is slightly incorrect, it shouldn't matter for `min_const_generics`
-        // and is the better alternative to waiting until `const_evaluatable_checked` can
+        // and is the better alternative to waiting until `generic_const_exprs` can
         // be stabilized.
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
             if au.def == bu.def && au.promoted == bu.promoted =>

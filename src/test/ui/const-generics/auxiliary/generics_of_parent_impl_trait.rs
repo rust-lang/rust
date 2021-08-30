@@ -1,4 +1,4 @@
-#![feature(const_generics, const_evaluatable_checked)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
 // library portion of testing that `impl Trait<{ expr }>` doesnt

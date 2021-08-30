@@ -3,8 +3,6 @@
 // check-pass
 
 #![feature(type_alias_impl_trait)]
-#![feature(const_generics)]
-//~^ WARN the feature `const_generics` is incomplete
 
 trait UnwrapItemsExt<'a, const C: usize> {
     type Iter;

@@ -1,6 +1,6 @@
 // build-fail
 // compile-flags: -Z symbol-mangling-version=v0 --crate-name=c
-#![feature(const_generics, rustc_attrs)]
+#![feature(adt_const_params, rustc_attrs)]
 #![allow(incomplete_features)]
 
 pub struct Str<const S: &'static str>;

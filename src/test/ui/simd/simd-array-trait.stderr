@@ -1,10 +1,10 @@
-error: constant expression depends on a generic parameter
+error: unconstrained generic constant
   --> $DIR/simd-array-trait.rs:23:23
    |
 LL | pub struct T<S: Simd>([S::Lane; S::SIZE]);
    |                       ^^^^^^^^^^^^^^^^^^
    |
-   = note: this may fail depending on what value the parameter takes
+   = help: try adding a `where` bound using this expression: `where [(); S::SIZE]:`
 
 error: aborting due to previous error
 

@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/different_generic_args_array.rs:9:9
+   |
+LL |     x = Const::<{ [4] }> {};
+   |         ^^^^^^^^^^^^^^^^^^^ expected `3_usize`, found `4_usize`
+   |
+   = note: expected struct `Const<[3_usize]>`
+              found struct `Const<[4_usize]>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

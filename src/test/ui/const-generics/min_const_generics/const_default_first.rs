@@ -1,5 +1,4 @@
 #![crate_type = "lib"]
-#![feature(const_generics)]
 #![feature(const_generics_defaults)]
 #![allow(incomplete_features, dead_code)]
 

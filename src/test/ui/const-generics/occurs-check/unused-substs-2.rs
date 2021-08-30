@@ -1,4 +1,4 @@
-#![feature(const_generics)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
 // The goal is is to get an unevaluated const `ct` with a `Ty::Infer(TyVar(_#1t)` subst.

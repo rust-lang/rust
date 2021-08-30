@@ -82,8 +82,8 @@
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
-#![feature(const_generics, generators, generator_trait)]
-#![allow(incomplete_features)] // for const_generics
+#![feature(adt_const_params, generators, generator_trait)]
+#![allow(incomplete_features)]
 
 use Mod1::TestTrait2;
 use std::ops::Generator;

@@ -1,11 +1,11 @@
-warning: the feature `lazy_normalization_consts` is incomplete and may not be safe to use and/or cause compiler crashes
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/promoted-function-2.rs:4:12
    |
-LL | #![feature(lazy_normalization_consts, rustc_attrs)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![feature(generic_const_exprs, rustc_attrs)]
+   |            ^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #72219 <https://github.com/rust-lang/rust/issues/72219> for more information
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
 
 error: item has unused generic parameters
   --> $DIR/promoted-function-2.rs:8:4

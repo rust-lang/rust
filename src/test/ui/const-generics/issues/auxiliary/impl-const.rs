@@ -1,5 +1,4 @@
-#![cfg_attr(full, feature(const_generics))]
-#![cfg_attr(full, allow(incomplete_features))]
+#![feature(generic_const_exprs)]
 
 pub struct Num<const N: usize>;
 

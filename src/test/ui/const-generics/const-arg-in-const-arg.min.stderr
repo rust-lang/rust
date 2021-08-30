@@ -5,7 +5,7 @@ LL |     let _: [u8; foo::<T>()];
    |                       ^ cannot perform const operation using `T`
    |
    = note: type parameters may not be used in const expressions
-   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
+   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:14:23
@@ -14,7 +14,7 @@ LL |     let _: [u8; bar::<N>()];
    |                       ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
-   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
+   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:24:23
@@ -23,7 +23,7 @@ LL |     let _ = [0; bar::<N>()];
    |                       ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
-   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
+   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:29:24
@@ -32,7 +32,7 @@ LL |     let _: Foo<{ foo::<T>() }>;
    |                        ^ cannot perform const operation using `T`
    |
    = note: type parameters may not be used in const expressions
-   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
+   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:30:24
@@ -41,7 +41,7 @@ LL |     let _: Foo<{ bar::<N>() }>;
    |                        ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
-   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
+   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:35:27
@@ -50,7 +50,7 @@ LL |     let _ = Foo::<{ foo::<T>() }>;
    |                           ^ cannot perform const operation using `T`
    |
    = note: type parameters may not be used in const expressions
-   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
+   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:36:27
@@ -59,7 +59,7 @@ LL |     let _ = Foo::<{ bar::<N>() }>;
    |                           ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
-   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
+   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:15:23
@@ -67,8 +67,8 @@ error[E0658]: a non-static lifetime is not allowed in a `const`
 LL |     let _: [u8; faz::<'a>(&())];
    |                       ^^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:16:23
@@ -76,8 +76,8 @@ error[E0658]: a non-static lifetime is not allowed in a `const`
 LL |     let _: [u8; baz::<'a>(&())];
    |                       ^^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:17:23
@@ -85,8 +85,8 @@ error[E0658]: a non-static lifetime is not allowed in a `const`
 LL |     let _: [u8; faz::<'b>(&())];
    |                       ^^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:18:23
@@ -94,8 +94,8 @@ error[E0658]: a non-static lifetime is not allowed in a `const`
 LL |     let _: [u8; baz::<'b>(&())];
    |                       ^^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:25:23
@@ -103,8 +103,8 @@ error[E0658]: a non-static lifetime is not allowed in a `const`
 LL |     let _ = [0; faz::<'a>(&())];
    |                       ^^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:26:23
@@ -112,8 +112,8 @@ error[E0658]: a non-static lifetime is not allowed in a `const`
 LL |     let _ = [0; baz::<'a>(&())];
    |                       ^^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:27:23
@@ -121,8 +121,8 @@ error[E0658]: a non-static lifetime is not allowed in a `const`
 LL |     let _ = [0; faz::<'b>(&())];
    |                       ^^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:28:23
@@ -130,8 +130,8 @@ error[E0658]: a non-static lifetime is not allowed in a `const`
 LL |     let _ = [0; baz::<'b>(&())];
    |                       ^^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:31:24
@@ -139,8 +139,8 @@ error[E0658]: a non-static lifetime is not allowed in a `const`
 LL |     let _: Foo<{ faz::<'a>(&()) }>;
    |                        ^^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:32:24
@@ -148,8 +148,8 @@ error[E0658]: a non-static lifetime is not allowed in a `const`
 LL |     let _: Foo<{ baz::<'a>(&()) }>;
    |                        ^^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:33:24
@@ -157,8 +157,8 @@ error[E0658]: a non-static lifetime is not allowed in a `const`
 LL |     let _: Foo<{ faz::<'b>(&()) }>;
    |                        ^^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:34:24
@@ -166,8 +166,8 @@ error[E0658]: a non-static lifetime is not allowed in a `const`
 LL |     let _: Foo<{ baz::<'b>(&()) }>;
    |                        ^^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:37:27
@@ -175,8 +175,8 @@ error[E0658]: a non-static lifetime is not allowed in a `const`
 LL |     let _ = Foo::<{ faz::<'a>(&()) }>;
    |                           ^^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:38:27
@@ -184,8 +184,8 @@ error[E0658]: a non-static lifetime is not allowed in a `const`
 LL |     let _ = Foo::<{ baz::<'a>(&()) }>;
    |                           ^^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:39:27
@@ -193,8 +193,8 @@ error[E0658]: a non-static lifetime is not allowed in a `const`
 LL |     let _ = Foo::<{ faz::<'b>(&()) }>;
    |                           ^^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:40:27
@@ -202,8 +202,8 @@ error[E0658]: a non-static lifetime is not allowed in a `const`
 LL |     let _ = Foo::<{ baz::<'b>(&()) }>;
    |                           ^^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
 
 error: aborting due to 23 previous errors
 
