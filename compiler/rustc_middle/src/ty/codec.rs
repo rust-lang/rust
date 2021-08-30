@@ -437,15 +437,15 @@ macro_rules! impl_arena_allocatable_decoder {
 }
 
 macro_rules! impl_arena_allocatable_decoders {
-    ([], [$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) => {
+    ([$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) => {
         $(
             impl_arena_allocatable_decoder!($a [[$name: $ty], $tcx]);
         )*
     }
 }
 
-rustc_hir::arena_types!(impl_arena_allocatable_decoders, [], 'tcx);
-arena_types!(impl_arena_allocatable_decoders, [], 'tcx);
+rustc_hir::arena_types!(impl_arena_allocatable_decoders, 'tcx);
+arena_types!(impl_arena_allocatable_decoders, 'tcx);
 
 #[macro_export]
 macro_rules! implement_ty_decoder {
