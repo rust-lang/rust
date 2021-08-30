@@ -62,6 +62,8 @@ mod traits;
 mod types;
 mod unused;
 
+pub use array_into_iter::ARRAY_INTO_ITER;
+
 use rustc_ast as ast;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
