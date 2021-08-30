@@ -487,15 +487,16 @@ pub trait Indent: AstNode + Clone + Sized {
     fn indent_level(&self) -> IndentLevel {
         IndentLevel::from_node(self.syntax())
     }
-    fn indent(&self, level: IndentLevel) {
-        level.increase_indent(self.syntax());
+    fn indent(&self, by: IndentLevel) {
+        by.increase_indent(self.syntax());
     }
-    fn dedent(&self, level: IndentLevel) {
-        level.decrease_indent(self.syntax());
+    fn dedent(&self, by: IndentLevel) {
+        by.decrease_indent(self.syntax());
     }
-    fn reset_indent(&self) {
-        let level = IndentLevel::from_node(self.syntax());
-        self.dedent(level);
+    fn reindent_to(&self, target_level: IndentLevel) {
+        let current_level = IndentLevel::from_node(self.syntax());
+        self.dedent(current_level);
+        self.indent(target_level)
     }
 }
 

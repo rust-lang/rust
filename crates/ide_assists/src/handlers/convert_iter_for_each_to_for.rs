@@ -61,8 +61,7 @@ pub(crate) fn convert_iter_for_each_to_for(acc: &mut Assists, ctx: &AssistContex
                 _ => make::block_expr(Vec::new(), Some(body)),
             }
             .clone_for_update();
-            block.reset_indent();
-            block.indent(indent);
+            block.reindent_to(indent);
 
             let expr_for_loop = make::expr_for_loop(param, receiver, block);
             builder.replace(range, expr_for_loop.to_string())
