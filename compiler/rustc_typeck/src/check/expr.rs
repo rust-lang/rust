@@ -165,7 +165,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.tcx().sess.verbose() {
             // make this code only run with -Zverbose because it is probably slow
             if let Ok(lint_str) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
-                if !lint_str.contains("\n") {
+                if !lint_str.contains('\n') {
                     debug!("expr text: {}", lint_str);
                 } else {
                     let mut lines = lint_str.lines();
