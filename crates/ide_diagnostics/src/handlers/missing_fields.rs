@@ -1,6 +1,7 @@
 use either::Either;
 use hir::{db::AstDatabase, InFile};
 use ide_db::{assists::Assist, source_change::SourceChange};
+use rustc_hash::FxHashMap;
 use stdx::format_to;
 use syntax::{algo, ast::make, AstNode, SyntaxNodePtr};
 use text_edit::TextEdit;
@@ -54,9 +55,27 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
     };
     let old_field_list = field_list_parent.record_expr_field_list()?;
     let new_field_list = old_field_list.clone_for_update();
-    for f in d.missed_fields.iter() {
+    let mut locals = FxHashMap::default();
+    ctx.sema.scope(field_list_parent.syntax()).process_all_names(&mut |name, def| {
+        if let hir::ScopeDef::Local(local) = def {
+            locals.insert(name.clone(), local);
+        }
+    });
+    let missing_fields = ctx.sema.record_literal_missing_fields(&field_list_parent);
+    for (f, ty) in missing_fields.iter() {
+        let field_expr = if let Some(local_candidate) = locals.get(&f.name(ctx.sema.db)) {
+            cov_mark::hit!(field_shorthand);
+            let candidate_ty = local_candidate.ty(ctx.sema.db);
+            if ty.could_unify_with(ctx.sema.db, &candidate_ty) {
+                None
+            } else {
+                Some(make::expr_unit())
+            }
+        } else {
+            Some(make::expr_unit())
+        };
         let field =
-            make::record_expr_field(make::name_ref(&f.to_string()), Some(make::expr_unit()))
+            make::record_expr_field(make::name_ref(&f.name(ctx.sema.db).to_string()), field_expr)
                 .clone_for_update();
         new_field_list.add_field(field);
     }
@@ -224,7 +243,7 @@ enum Expr {
 
 impl Expr {
     fn new_bin(lhs: Box<Expr>, rhs: Box<Expr>) -> Expr {
-        Expr::Bin { lhs: (), rhs: () }
+        Expr::Bin { lhs, rhs }
     }
 }
 "#,
@@ -318,6 +337,94 @@ fn f() {
     S {
         a: (),
         b: (),
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_fill_struct_fields_shorthand() {
+        cov_mark::check!(field_shorthand);
+        check_fix(
+            r#"
+struct S { a: &'static str, b: i32 }
+
+fn f() {
+    let a = "hello";
+    let b = 1i32;
+    S {
+        $0
+    };
+}
+"#,
+            r#"
+struct S { a: &'static str, b: i32 }
+
+fn f() {
+    let a = "hello";
+    let b = 1i32;
+    S {
+        a,
+        b,
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_fill_struct_fields_shorthand_ty_mismatch() {
+        check_fix(
+            r#"
+struct S { a: &'static str, b: i32 }
+
+fn f() {
+    let a = "hello";
+    let b = 1usize;
+    S {
+        $0
+    };
+}
+"#,
+            r#"
+struct S { a: &'static str, b: i32 }
+
+fn f() {
+    let a = "hello";
+    let b = 1usize;
+    S {
+        a,
+        b: (),
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_fill_struct_fields_shorthand_unifies() {
+        check_fix(
+            r#"
+struct S<T> { a: &'static str, b: T }
+
+fn f() {
+    let a = "hello";
+    let b = 1i32;
+    S {
+        $0
+    };
+}
+"#,
+            r#"
+struct S<T> { a: &'static str, b: T }
+
+fn f() {
+    let a = "hello";
+    let b = 1i32;
+    S {
+        a,
+        b,
     };
 }
 "#,
