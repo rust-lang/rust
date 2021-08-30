@@ -597,6 +597,14 @@ impl Span {
         if !expn_data.is_root() { Some(expn_data.call_site) } else { None }
     }
 
+    /// Walk down the expansion ancestors to find a span that's contained within `outer`.
+    pub fn find_ancestor_inside(mut self, outer: Span) -> Option<Span> {
+        while !outer.contains(self) {
+            self = self.parent()?;
+        }
+        Some(self)
+    }
+
     /// Edition of the crate from which this span came.
     pub fn edition(self) -> edition::Edition {
         self.ctxt().edition()
