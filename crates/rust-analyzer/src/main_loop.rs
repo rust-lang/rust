@@ -296,12 +296,15 @@ impl GlobalState {
                             ));
                             fraction = Progress::fraction(report.n_done, report.n_total);
                         }
-                        PrimeCachesProgress::End { cancelled: _ } => {
+                        PrimeCachesProgress::End { cancelled } => {
                             state = Progress::End;
                             message = None;
                             fraction = 1.0;
 
                             self.prime_caches_queue.op_completed(());
+                            if cancelled {
+                                self.prime_caches_queue.request_op();
+                            }
                         }
                     };
 
@@ -424,11 +427,10 @@ impl GlobalState {
                 for flycheck in &self.flycheck {
                     flycheck.update();
                 }
+                self.prime_caches_queue.request_op();
             }
 
             if !was_quiescent || state_changed {
-                self.prime_caches_queue.request_op();
-
                 // Refresh semantic tokens if the client supports it.
                 if self.config.semantic_tokens_refresh() {
                     self.semantic_tokens_cache.lock().clear();
