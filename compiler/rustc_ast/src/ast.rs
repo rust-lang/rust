@@ -1964,7 +1964,7 @@ pub enum InlineAsmRegOrRegClass {
 
 bitflags::bitflags! {
     #[derive(Encodable, Decodable, HashStable_Generic)]
-    pub struct InlineAsmOptions: u8 {
+    pub struct InlineAsmOptions: u16 {
         const PURE = 1 << 0;
         const NOMEM = 1 << 1;
         const READONLY = 1 << 2;
@@ -1973,6 +1973,7 @@ bitflags::bitflags! {
         const NOSTACK = 1 << 5;
         const ATT_SYNTAX = 1 << 6;
         const RAW = 1 << 7;
+        const MAY_UNWIND = 1 << 8;
     }
 }
 

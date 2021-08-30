@@ -220,9 +220,7 @@ impl<D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
         &self,
         _state: &mut Self::Domain,
         _block: BasicBlock,
-        _func: &mir::Operand<'tcx>,
-        _args: &[mir::Operand<'tcx>],
-        _return_place: mir::Place<'tcx>,
+        _return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
     }
 }
