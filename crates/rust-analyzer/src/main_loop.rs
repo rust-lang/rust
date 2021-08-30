@@ -427,23 +427,6 @@ impl GlobalState {
             if !was_quiescent || state_changed {
                 // Ensure that only one cache priming task can run at a time
                 self.prime_caches_queue.request_op();
-                if self.prime_caches_queue.should_start_op() {
-                    self.task_pool.handle.spawn_with_sender({
-                        let analysis = self.snapshot().analysis;
-                        move |sender| {
-                            sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
-                            let res = analysis.prime_caches(|progress| {
-                                let report = PrimeCachesProgress::Report(progress);
-                                sender.send(Task::PrimeCaches(report)).unwrap();
-                            });
-                            sender
-                                .send(Task::PrimeCaches(PrimeCachesProgress::End {
-                                    cancelled: res.is_err(),
-                                }))
-                                .unwrap();
-                        }
-                    });
-                }
 
                 // Refresh semantic tokens if the client supports it.
                 if self.config.semantic_tokens_refresh() {
@@ -493,6 +476,24 @@ impl GlobalState {
             self.fetch_workspaces_if_needed();
         }
         self.fetch_build_data_if_needed();
+
+        if self.prime_caches_queue.should_start_op() {
+            self.task_pool.handle.spawn_with_sender({
+                let analysis = self.snapshot().analysis;
+                move |sender| {
+                    sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
+                    let res = analysis.prime_caches(|progress| {
+                        let report = PrimeCachesProgress::Report(progress);
+                        sender.send(Task::PrimeCaches(report)).unwrap();
+                    });
+                    sender
+                        .send(Task::PrimeCaches(PrimeCachesProgress::End {
+                            cancelled: res.is_err(),
+                        }))
+                        .unwrap();
+                }
+            });
+        }
 
         self.report_new_status_if_needed();
 
