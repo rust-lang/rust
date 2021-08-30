@@ -518,7 +518,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     )))
                 }
                 if intrinsic_name == "assert_zero_valid"
-                    && !layout.might_permit_raw_init(this, /*zero:*/ true).unwrap()
+                    && !layout.might_permit_raw_init(this, /*zero:*/ true)
                 {
                     throw_machine_stop!(TerminationInfo::Abort(format!(
                         "aborted execution: attempted to zero-initialize type `{}`, which is invalid",
@@ -526,7 +526,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     )))
                 }
                 if intrinsic_name == "assert_uninit_valid"
-                    && !layout.might_permit_raw_init(this, /*zero:*/ false).unwrap()
+                    && !layout.might_permit_raw_init(this, /*zero:*/ false)
                 {
                     throw_machine_stop!(TerminationInfo::Abort(format!(
                         "aborted execution: attempted to leave type `{}` uninitialized, which is invalid",
