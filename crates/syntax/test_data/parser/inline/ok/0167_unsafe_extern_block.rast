@@ -1,0 +1,13 @@
+SOURCE_FILE@0..21
+  EXTERN_BLOCK@0..20
+    UNSAFE_KW@0..6 "unsafe"
+    WHITESPACE@6..7 " "
+    ABI@7..17
+      EXTERN_KW@7..13 "extern"
+      WHITESPACE@13..14 " "
+      STRING@14..17 "\"C\""
+    WHITESPACE@17..18 " "
+    EXTERN_ITEM_LIST@18..20
+      L_CURLY@18..19 "{"
+      R_CURLY@19..20 "}"
+  WHITESPACE@20..21 "\n"

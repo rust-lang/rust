@@ -93,6 +93,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     };
 
     let mut has_mods = false;
+    let mut has_extern = false;
 
     // modifiers
     if p.at(T![const]) && p.nth(1) != T!['{'] {
@@ -102,7 +103,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
 
     // test_err async_without_semicolon
     // fn foo() { let _ = async {} }
-    if p.at(T![async]) && p.nth(1) != T!['{'] && p.nth(1) != T![move] && p.nth(1) != T![|] {
+    if p.at(T![async]) && !matches!(p.nth(1), T!['{'] | T![move] | T![|]) {
         p.eat(T![async]);
         has_mods = true;
     }
@@ -114,7 +115,8 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
         has_mods = true;
     }
 
-    if p.at(T![extern]) && p.nth(1) != T!['{'] && (p.nth(1) != STRING || p.nth(2) != T!['{']) {
+    if p.at(T![extern]) {
+        has_extern = true;
         has_mods = true;
         abi(p);
     }
@@ -211,25 +213,23 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
             type_alias(p, m);
         }
 
+        // test unsafe_extern_block
         // unsafe extern "C" {}
-        T![extern] => {
-            abi(p);
+        T!['{'] if has_extern => {
             extern_item_list(p);
             m.complete(p, EXTERN_BLOCK);
         }
 
-        _ => {
-            if !has_visibility && !has_mods {
-                return Err(m);
+        _ if has_visibility || has_mods => {
+            if has_mods {
+                p.error("expected existential, fn, trait or impl");
             } else {
-                if has_mods {
-                    p.error("expected existential, fn, trait or impl");
-                } else {
-                    p.error("expected an item");
-                }
-                m.complete(p, ERROR);
+                p.error("expected an item");
             }
+            m.complete(p, ERROR);
         }
+
+        _ => return Err(m),
     }
     Ok(())
 }

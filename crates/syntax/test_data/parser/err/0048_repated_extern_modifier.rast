@@ -1,0 +1,15 @@
+SOURCE_FILE@0..22
+  ERROR@0..10
+    ABI@0..10
+      EXTERN_KW@0..6 "extern"
+      WHITESPACE@6..7 " "
+      STRING@7..10 "\"C\""
+  WHITESPACE@10..11 " "
+  ERROR@11..21
+    ABI@11..21
+      EXTERN_KW@11..17 "extern"
+      WHITESPACE@17..18 " "
+      STRING@18..21 "\"C\""
+  WHITESPACE@21..22 "\n"
+error 10..10: expected existential, fn, trait or impl
+error 21..21: expected existential, fn, trait or impl
