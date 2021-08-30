@@ -1,5 +1,5 @@
 use rustc_index::vec::IndexVec;
-use rustc_middle::ty::layout::LayoutError;
+use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers};
 use rustc_middle::ty::SymbolName;
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Integer, Primitive};
@@ -257,7 +257,7 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
     pub(crate) inline_asm_index: u32,
 }
 
-impl<'tcx> LayoutOf<'tcx> for FunctionCx<'_, '_, 'tcx> {
+impl<'tcx> LayoutOfHelpers<'tcx> for FunctionCx<'_, '_, 'tcx> {
     type LayoutOfResult = TyAndLayout<'tcx>;
 
     #[inline]
@@ -365,7 +365,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
 
 pub(crate) struct RevealAllLayoutCx<'tcx>(pub(crate) TyCtxt<'tcx>);
 
-impl<'tcx> LayoutOf<'tcx> for RevealAllLayoutCx<'tcx> {
+impl<'tcx> LayoutOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
     type LayoutOfResult = TyAndLayout<'tcx>;
 
     #[inline]
