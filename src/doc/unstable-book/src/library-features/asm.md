@@ -31,6 +31,7 @@ Inline assembly is currently supported on the following architectures:
 - MIPS32r2 and MIPS64r2
 - wasm32
 - BPF
+- SPIR-V
 
 ## Basic usage
 
@@ -188,8 +189,7 @@ As you can see, this assembly fragment will still work correctly if `a` and `b` 
 
 Some instructions require that the operands be in a specific register.
 Therefore, Rust inline assembly provides some more specific constraint specifiers.
-While `reg` is generally available on any architecture, these are highly architecture specific. E.g. for x86 the general purpose registers `eax`, `ebx`, `ecx`, `edx`, `ebp`, `esi`, and `edi`
-among others can be addressed by their name.
+While `reg` is generally available on any architecture, explicit registers are highly architecture specific. E.g. for x86 the general purpose registers `eax`, `ebx`, `ecx`, `edx`, `ebp`, `esi`, and `edi` among others can be addressed by their name.
 
 ```rust,allow_fail,no_run
 #![feature(asm)]
@@ -199,11 +199,9 @@ unsafe {
 }
 ```
 
-In this example we call the `out` instruction to output the content of the `cmd` variable
-to port `0x64`. Since the `out` instruction only accepts `eax` (and its sub registers) as operand
-we had to use the `eax` constraint specifier.
+In this example we call the `out` instruction to output the content of the `cmd` variable to port `0x64`. Since the `out` instruction only accepts `eax` (and its sub registers) as operand we had to use the `eax` constraint specifier.
 
-Note that unlike other operand types, explicit register operands cannot be used in the template string: you can't use `{}` and should write the register name directly instead. Also, they must appear at the end of the operand list after all other operand types.
+> **Note**: unlike other operand types, explicit register operands cannot be used in the template string: you can't use `{}` and should write the register name directly instead. Also, they must appear at the end of the operand list after all other operand types.
 
 Consider this example which uses the x86 `mul` instruction:
 
@@ -237,11 +235,9 @@ The higher 64 bits are stored in `rdx` from which we fill the variable `hi`.
 ## Clobbered registers
 
 In many cases inline assembly will modify state that is not needed as an output.
-Usually this is either because we have to use a scratch register in the assembly,
-or instructions modify state that we don't need to further examine.
+Usually this is either because we have to use a scratch register in the assembly or because instructions modify state that we don't need to further examine.
 This state is generally referred to as being "clobbered".
-We need to tell the compiler about this since it may need to save and restore this state
-around the inline assembly block.
+We need to tell the compiler about this since it may need to save and restore this state around the inline assembly block.
 
 ```rust,allow_fail
 #![feature(asm)]
@@ -321,8 +317,7 @@ fn call_foo(arg: i32) -> i32 {
 }
 ```
 
-Note that the `fn` or `static` item does not need to be public or `#[no_mangle]`:
-the compiler will automatically insert the appropriate mangled symbol name into the assembly code.
+Note that the `fn` or `static` item does not need to be public or `#[no_mangle]`: the compiler will automatically insert the appropriate mangled symbol name into the assembly code.
 
 By default, `asm!` assumes that any register not specified as an output will have its contents preserved by the assembly code. The [`clobber_abi`](#abi-clobbers) argument to `asm!` tells the compiler to automatically insert the necessary clobber operands according to the given calling convention ABI: any register which is not fully preserved in that ABI will be treated as clobbered.
 
@@ -355,9 +350,8 @@ If you use a smaller data type (e.g. `u16`) with an operand and forget the use t
 ## Memory address operands
 
 Sometimes assembly instructions require operands passed via memory addresses/memory locations.
-You have to manually use the memory address syntax specified by the respectively architectures.
-For example, in x86/x86_64 and intel assembly syntax, you should wrap inputs/outputs in `[]`
-to indicate they are memory operands:
+You have to manually use the memory address syntax specified by the target architecture.
+For example, on x86/x86_64 using intel assembly syntax, you should wrap inputs/outputs in `[]` to indicate they are memory operands:
 
 ```rust,allow_fail
 #![feature(asm, llvm_asm)]
@@ -373,9 +367,15 @@ unsafe {
 
 ## Labels
 
-The compiler is allowed to instantiate multiple copies an `asm!` block, for example when the function containing it is inlined in multiple places. As a consequence, you should only use GNU assembler [local labels] inside inline assembly code. Defining symbols in assembly code may lead to assembler and/or linker errors due to duplicate symbol definitions.
+Any reuse of a named label, local or otherwise, can result in a assembler or linker error or may cause other strange behavior. Reuse of a named label can happen in a variety of ways including:
 
-Moreover, due to [an llvm bug], you shouldn't use labels exclusively made of `0` and `1` digits, e.g. `0`, `11` or `101010`, as they may end up being interpreted as binary values.
+-   explicitly: using a label more than once in one `asm!` block, or multiple times across blocks
+-   implicitly via inlining: the compiler is allowed to instantiate multiple copies of an `asm!` block, for example when the function containing it is inlined in multiple places.
+-   implicitly via LTO: LTO can cause code from *other crates* to be placed in the same codegen unit, and so could bring in arbitrary labels
+
+As a consequence, you should only use GNU assembler **numeric** [local labels] inside inline assembly code. Defining symbols in assembly code may lead to assembler and/or linker errors due to duplicate symbol definitions.
+
+Moreover, on x86 when using the default intel syntax, due to [an llvm bug], you shouldn't use labels exclusively made of `0` and `1` digits, e.g. `0`, `11` or `101010`, as they may end up being interpreted as binary values. Using `option(att_syntax)` will avoid any ambiguity, but that affects the syntax of the _entire_ `asm!` block.
 
 ```rust,allow_fail
 #![feature(asm)]
@@ -410,7 +410,7 @@ Second, that when a numeric label is used as a reference (as an instruction oper
 
 ## Options
 
-By default, an inline assembly block is treated the same way as an external FFI function call with a custom calling convention: it may read/write memory, have observable side effects, etc. However in many cases, it is desirable to give the compiler more information about what the assembly code is actually doing so that it can optimize better.
+By default, an inline assembly block is treated the same way as an external FFI function call with a custom calling convention: it may read/write memory, have observable side effects, etc. However, in many cases it is desirable to give the compiler more information about what the assembly code is actually doing so that it can optimize better.
 
 Let's take our previous example of an `add` instruction:
 
@@ -470,6 +470,7 @@ Inline assembly is currently supported on the following architectures:
 - MIPS32r2 and MIPS64r2
 - wasm32
 - BPF
+- SPIR-V
 
 Support for more targets may be added in the future. The compiler will emit an error if `asm!` is used on an unsupported target.
 
@@ -836,7 +837,7 @@ The compiler performs some additional checks on options:
   - Note that a `lateout` may be allocated to the same register as an `in`, in which case this rule does not apply. Code should not rely on this however since it depends on the results of register allocation.
 - Behavior is undefined if execution unwinds out of an asm block.
   - This also applies if the assembly code calls a function which then unwinds.
-- The set of memory locations that assembly code is allowed the read and write are the same as those allowed for an FFI function.
+- The set of memory locations that assembly code is allowed to read and write are the same as those allowed for an FFI function.
   - Refer to the unsafe code guidelines for the exact rules.
   - If the `readonly` option is set, then only memory reads are allowed.
   - If the `nomem` option is set then no reads or writes to memory are allowed.
