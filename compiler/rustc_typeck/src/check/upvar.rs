@@ -400,6 +400,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             capture_info.capture_kind = capture_kind;
+            let capture_info = if let Some(existing) = processed.get(&place) {
+                determine_capture_info(*existing, capture_info)
+            } else {
+                capture_info
+            };
             processed.insert(place, capture_info);
         }
 
