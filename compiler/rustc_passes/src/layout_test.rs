@@ -3,7 +3,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::ItemKind;
-use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutError, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -114,7 +114,7 @@ struct UnwrapLayoutCx<'tcx> {
     param_env: ParamEnv<'tcx>,
 }
 
-impl LayoutOf<'tcx> for UnwrapLayoutCx<'tcx> {
+impl LayoutOfHelpers<'tcx> for UnwrapLayoutCx<'tcx> {
     type LayoutOfResult = TyAndLayout<'tcx>;
 
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {

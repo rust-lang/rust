@@ -31,7 +31,7 @@ use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::middle::stability;
-use rustc_middle::ty::layout::{LayoutError, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
 use rustc_serialize::json::Json;
@@ -1080,7 +1080,7 @@ impl<'tcx> ty::layout::HasParamEnv<'tcx> for LateContext<'tcx> {
     }
 }
 
-impl<'tcx> LayoutOf<'tcx> for LateContext<'tcx> {
+impl<'tcx> LayoutOfHelpers<'tcx> for LateContext<'tcx> {
     type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
     #[inline]

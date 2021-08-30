@@ -17,7 +17,7 @@ use rustc_middle::mir::{
     Location, Operand, Place, Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement,
     StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
 };
-use rustc_middle::ty::layout::{LayoutError, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{
     self, ConstInt, ConstKind, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeFoldable,
@@ -330,7 +330,7 @@ struct ConstPropagator<'mir, 'tcx> {
     source_info: Option<SourceInfo>,
 }
 
-impl<'mir, 'tcx> LayoutOf<'tcx> for ConstPropagator<'mir, 'tcx> {
+impl<'mir, 'tcx> LayoutOfHelpers<'tcx> for ConstPropagator<'mir, 'tcx> {
     type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
     #[inline]

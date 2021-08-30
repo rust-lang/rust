@@ -2093,8 +2093,9 @@ impl<T, E> MaybeResult<T> for Result<T, E> {
 
 pub type TyAndLayout<'tcx> = rustc_target::abi::TyAndLayout<'tcx, Ty<'tcx>>;
 
-/// Trait for contexts that can compute layouts of types.
-pub trait LayoutOf<'tcx>: HasDataLayout + HasTyCtxt<'tcx> + HasParamEnv<'tcx> {
+/// Trait for contexts that want to be able to compute layouts of types.
+/// This automatically gives access to `LayoutOf`, through a blanket `impl`.
+pub trait LayoutOfHelpers<'tcx>: HasDataLayout + HasTyCtxt<'tcx> + HasParamEnv<'tcx> {
     /// The `TyAndLayout`-wrapping type (or `TyAndLayout` itself), which will be
     /// returned from `layout_of` (see also `handle_layout_err`).
     type LayoutOfResult: MaybeResult<TyAndLayout<'tcx>>;
@@ -2119,7 +2120,10 @@ pub trait LayoutOf<'tcx>: HasDataLayout + HasTyCtxt<'tcx> + HasParamEnv<'tcx> {
         span: Span,
         ty: Ty<'tcx>,
     ) -> <Self::LayoutOfResult as MaybeResult<TyAndLayout<'tcx>>>::Error;
+}
 
+/// Blanket extension trait for contexts that can compute layouts of types.
+pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode, and will normalize the input type.
     #[inline]
@@ -2143,7 +2147,9 @@ pub trait LayoutOf<'tcx>: HasDataLayout + HasTyCtxt<'tcx> + HasParamEnv<'tcx> {
     }
 }
 
-impl LayoutOf<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
+impl<C: LayoutOfHelpers<'tcx>> LayoutOf<'tcx> for C {}
+
+impl LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
     type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
     #[inline]
@@ -2152,7 +2158,7 @@ impl LayoutOf<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
     }
 }
 
-impl LayoutOf<'tcx> for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
+impl LayoutOfHelpers<'tcx> for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
     type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
     #[inline]

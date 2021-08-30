@@ -8,7 +8,7 @@ use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_middle::ich::StableHashingContext;
 use rustc_middle::mir;
-use rustc_middle::ty::layout::{self, LayoutError, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{self, LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
@@ -312,7 +312,7 @@ where
     }
 }
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> LayoutOf<'tcx> for InterpCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> LayoutOfHelpers<'tcx> for InterpCx<'mir, 'tcx, M> {
     type LayoutOfResult = InterpResult<'tcx, TyAndLayout<'tcx>>;
 
     #[inline]

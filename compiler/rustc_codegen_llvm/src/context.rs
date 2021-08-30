@@ -15,7 +15,7 @@ use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_middle::mir::mono::CodegenUnit;
-use rustc_middle::ty::layout::{HasParamEnv, LayoutError, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasParamEnv, LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CFGuard, CrateType, DebugInfo};
@@ -835,7 +835,7 @@ impl ty::layout::HasTyCtxt<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 }
 
-impl LayoutOf<'tcx> for CodegenCx<'ll, 'tcx> {
+impl LayoutOfHelpers<'tcx> for CodegenCx<'ll, 'tcx> {
     type LayoutOfResult = TyAndLayout<'tcx>;
 
     #[inline]
