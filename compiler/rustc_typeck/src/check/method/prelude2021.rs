@@ -7,7 +7,7 @@ use rustc_hir as hir;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{Adt, Ref, Ty};
 use rustc_session::lint::builtin::RUST_2021_PRELUDE_COLLISIONS;
-use rustc_span::symbol::kw::Underscore;
+use rustc_span::symbol::kw::{Empty, Underscore};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -322,7 +322,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .filter_map(|item| if item.ident.name != Underscore { Some(item.ident) } else { None })
             .next();
         if let Some(any_id) = any_id {
-            return Some(format!("{}", any_id));
+            if any_id.name == Empty {
+                // Glob import, so just use its name.
+                return None;
+            } else {
+                return Some(format!("{}", any_id));
+            }
         }
 
         // All that is left is `_`! We need to use the full path. It doesn't matter which one we pick,
