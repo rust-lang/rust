@@ -6,8 +6,8 @@ use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_target::abi::LayoutOf;
 
 declare_clippy_lint! {
     /// ### What it does

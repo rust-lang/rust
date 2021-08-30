@@ -5,9 +5,9 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, def_id::DefId, GenericArg, QPath, TyKind};
 use rustc_lint::LateContext;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::TypeFoldable;
 use rustc_span::symbol::sym;
-use rustc_target::abi::LayoutOf;
 use rustc_typeck::hir_ty_to_ty;
 
 use super::VEC_BOX;
