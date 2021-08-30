@@ -38,7 +38,9 @@ impl Trait for Foo {
 }
 
 
-impl implementors::Whatever for Foo {}
+impl implementors::Whatever for Foo {
+    type Foo = u32;
+}
 
 pub mod sub_mod {
     /// ```txt
