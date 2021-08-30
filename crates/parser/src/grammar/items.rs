@@ -213,8 +213,9 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
             type_alias(p, m);
         }
 
-        // test unsafe_extern_block
+        // test extern_block
         // unsafe extern "C" {}
+        // extern {}
         T!['{'] if has_extern => {
             extern_item_list(p);
             m.complete(p, EXTERN_BLOCK);
@@ -240,10 +241,11 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
         // test extern_crate
         // extern crate foo;
         T![extern] if la == T![crate] => extern_crate(p, m),
-        T![type] => {
-            type_alias(p, m);
-        }
+        T![use] => use_item::use_(p, m),
         T![mod] => mod_item(p, m),
+
+        T![type] => type_alias(p, m),
+
         T![struct] => {
             // test struct_items
             // struct Foo;
@@ -256,14 +258,7 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
             // }
             adt::strukt(p, m);
         }
-        // test pub_macro_def
-        // pub macro m($:ident) {}
-        T![macro] => {
-            macro_def(p, m);
-        }
-        IDENT if p.at_contextual_kw("macro_rules") && p.nth(1) == BANG => {
-            macro_rules(p, m);
-        }
+        T![enum] => adt::enum_(p, m),
         IDENT if p.at_contextual_kw("union") && p.nth(1) == IDENT => {
             // test union_items
             // union Foo {}
@@ -273,17 +268,19 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
             // }
             adt::union(p, m);
         }
-        T![enum] => adt::enum_(p, m),
-        T![use] => use_item::use_(p, m),
+
+        // test pub_macro_def
+        // pub macro m($:ident) {}
+        T![macro] => {
+            macro_def(p, m);
+        }
+        IDENT if p.at_contextual_kw("macro_rules") && p.nth(1) == BANG => {
+            macro_rules(p, m);
+        }
+
         T![const] if (la == IDENT || la == T![_] || la == T![mut]) => consts::konst(p, m),
         T![static] => consts::static_(p, m),
-        // test extern_block
-        // extern {}
-        T![extern] if la == T!['{'] || (la == STRING && p.nth(2) == T!['{']) => {
-            abi(p);
-            extern_item_list(p);
-            m.complete(p, EXTERN_BLOCK);
-        }
+
         _ => return Err(m),
     };
     Ok(())
@@ -292,6 +289,7 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
 fn extern_crate(p: &mut Parser, m: Marker) {
     assert!(p.at(T![extern]));
     p.bump(T![extern]);
+
     assert!(p.at(T![crate]));
     p.bump(T![crate]);
 
