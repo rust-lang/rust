@@ -38,26 +38,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        // `try_into` was added to the prelude in Rust 2021.
-        // `into_iter` wasn't, but `[T; N].into_iter()` doesn't resolve to
-        // IntoIterator::into_iter before Rust 2021, which results in the same
-        // problem.
-        if !matches!(segment.ident.name, sym::try_into | sym::into_iter) {
-            return;
-        }
-
-        let prelude_or_array_lint = if segment.ident.name == sym::into_iter {
-            // The `into_iter` problem is only a thing for arrays.
-            if let Array(..) = self_ty.kind() {
+        let prelude_or_array_lint = match segment.ident.name {
+            // `try_into` was added to the prelude in Rust 2021.
+            sym::try_into => RUST_2021_PRELUDE_COLLISIONS,
+            // `into_iter` wasn't added to the prelude,
+            // but `[T; N].into_iter()` doesn't resolve to IntoIterator::into_iter
+            // before Rust 2021, which results in the same problem.
+            // It is only a problem for arrays.
+            sym::into_iter if let Array(..) = self_ty.kind() => {
                 // In this case, it wasn't really a prelude addition that was the problem.
                 // Instead, the problem is that the array-into_iter hack will no longer apply in Rust 2021.
                 rustc_lint::ARRAY_INTO_ITER
-            } else {
-                // No problem in this case.
-                return;
             }
-        } else {
-            RUST_2021_PRELUDE_COLLISIONS
+            _ => return,
         };
 
         // No need to lint if method came from std/core, as that will now be in the prelude
