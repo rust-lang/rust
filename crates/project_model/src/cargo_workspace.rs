@@ -57,6 +57,20 @@ pub enum RustcSource {
     Discover,
 }
 
+/// Crates to disable `#[cfg(test)]` on.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum UnsetTestCrates {
+    None,
+    Only(Vec<String>),
+    All,
+}
+
+impl Default for UnsetTestCrates {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct CargoConfig {
     /// Do not activate the `default` feature.
@@ -80,20 +94,29 @@ pub struct CargoConfig {
     pub rustc_source: Option<RustcSource>,
 
     /// crates to disable `#[cfg(test)]` on
-    pub unset_test_crates: Vec<String>,
+    pub unset_test_crates: UnsetTestCrates,
 
     pub wrap_rustc_in_build_scripts: bool,
 }
 
 impl CargoConfig {
     pub fn cfg_overrides(&self) -> CfgOverrides {
-        self.unset_test_crates
-            .iter()
-            .cloned()
-            .zip(iter::repeat_with(|| {
-                cfg::CfgDiff::new(Vec::new(), vec![cfg::CfgAtom::Flag("test".into())]).unwrap()
-            }))
-            .collect()
+        match &self.unset_test_crates {
+            UnsetTestCrates::None => CfgOverrides::Selective(iter::empty().collect()),
+            UnsetTestCrates::Only(unset_test_crates) => CfgOverrides::Selective(
+                unset_test_crates
+                    .iter()
+                    .map(|name| name.clone())
+                    .zip(iter::repeat_with(|| {
+                        cfg::CfgDiff::new(Vec::new(), vec![cfg::CfgAtom::Flag("test".into())])
+                            .unwrap()
+                    }))
+                    .collect(),
+            ),
+            UnsetTestCrates::All => CfgOverrides::Wildcard(
+                cfg::CfgDiff::new(Vec::new(), vec![cfg::CfgAtom::Flag("test".into())]).unwrap(),
+            ),
+        }
     }
 }
 

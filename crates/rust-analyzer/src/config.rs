@@ -19,7 +19,9 @@ use ide_db::helpers::{
     SnippetCap,
 };
 use lsp_types::{ClientCapabilities, MarkupKind};
-use project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest, RustcSource};
+use project_model::{
+    CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest, RustcSource, UnsetTestCrates,
+};
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{de::DeserializeOwned, Deserialize};
 use vfs::AbsPathBuf;
@@ -668,9 +670,9 @@ impl Config {
             all_features: self.data.cargo_allFeatures,
             features: self.data.cargo_features.clone(),
             target: self.data.cargo_target.clone(),
-            rustc_source,
             no_sysroot: self.data.cargo_noSysroot,
-            unset_test_crates: self.data.cargo_unsetTest.clone(),
+            rustc_source,
+            unset_test_crates: UnsetTestCrates::Only(self.data.cargo_unsetTest.clone()),
             wrap_rustc_in_build_scripts: self.data.cargo_useRustcWrapperForBuildScripts,
         }
     }
