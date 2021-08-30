@@ -451,6 +451,7 @@ fn settings(root_path: &str, suffix: &str, themes: &[StylePath]) -> Result<Strin
         ("auto-hide-method-docs", "Auto-hide item methods' documentation", false).into(),
         ("auto-hide-trait-implementations", "Auto-hide trait implementation documentation", false)
             .into(),
+        ("auto-collapse-implementors", "Auto-hide implementors of a trait", true).into(),
         ("go-to-only-result", "Directly go to item in search if there is only one result", false)
             .into(),
         ("line-numbers", "Show line numbers on code examples", false).into(),
