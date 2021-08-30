@@ -76,7 +76,7 @@ impl NotifyActor {
     }
     fn run(mut self, inbox: Receiver<Message>) {
         while let Some(event) = self.next_event(&inbox) {
-            log::debug!("vfs-notify event: {:?}", event);
+            tracing::debug!("vfs-notify event: {:?}", event);
             match event {
                 Event::Message(msg) => match msg {
                     Message::Config(config) => {
@@ -227,5 +227,5 @@ fn read(path: &AbsPath) -> Option<Vec<u8>> {
 }
 
 fn log_notify_error<T>(res: notify::Result<T>) -> Option<T> {
-    res.map_err(|err| log::warn!("notify error: {}", err)).ok()
+    res.map_err(|err| tracing::warn!("notify error: {}", err)).ok()
 }

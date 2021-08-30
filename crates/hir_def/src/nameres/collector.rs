@@ -64,7 +64,7 @@ pub(super) fn collect_defs(
     if block.is_none() {
         // populate external prelude
         for dep in &crate_graph[def_map.krate].dependencies {
-            log::debug!("crate dep {:?} -> {:?}", dep.name, dep.crate_id);
+            tracing::debug!("crate dep {:?} -> {:?}", dep.name, dep.crate_id);
             let dep_def_map = db.crate_def_map(dep.crate_id);
             def_map
                 .extern_prelude
@@ -358,7 +358,7 @@ impl DefCollector<'_> {
 
                 i += 1;
                 if FIXED_POINT_LIMIT.check(i).is_err() {
-                    log::error!("name resolution is stuck");
+                    tracing::error!("name resolution is stuck");
                     break 'outer;
                 }
             }
@@ -510,7 +510,7 @@ impl DefCollector<'_> {
                     return;
                 }
                 _ => {
-                    log::debug!(
+                    tracing::debug!(
                         "could not resolve prelude path `{}` to module (resolved to {:?})",
                         path,
                         per_ns.types
@@ -654,7 +654,7 @@ impl DefCollector<'_> {
         current_module_id: LocalModuleId,
         extern_crate: &item_tree::ExternCrate,
     ) {
-        log::debug!(
+        tracing::debug!(
             "importing macros from extern crate: {:?} ({:?})",
             extern_crate,
             self.def_map.edition,
@@ -718,7 +718,7 @@ impl DefCollector<'_> {
     }
 
     fn resolve_import(&self, module_id: LocalModuleId, import: &Import) -> PartialResolvedImport {
-        log::debug!("resolving import: {:?} ({:?})", import, self.def_map.edition);
+        tracing::debug!("resolving import: {:?} ({:?})", import, self.def_map.edition);
         if import.is_extern_crate {
             let res = self.def_map.resolve_name_in_extern_prelude(
                 self.db,
@@ -794,7 +794,7 @@ impl DefCollector<'_> {
                     def.macros = None;
                 }
 
-                log::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
+                tracing::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
 
                 // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
                 if import.is_extern_crate && module_id == self.def_map.root {
@@ -806,7 +806,7 @@ impl DefCollector<'_> {
                 self.update(module_id, &[(name, def)], vis, ImportType::Named);
             }
             ImportKind::Glob => {
-                log::debug!("glob import: {:?}", import);
+                tracing::debug!("glob import: {:?}", import);
                 match def.take_types() {
                     Some(ModuleDefId::ModuleId(m)) => {
                         if import.is_prelude {
@@ -895,10 +895,10 @@ impl DefCollector<'_> {
                         self.update(module_id, &resolutions, vis, ImportType::Glob);
                     }
                     Some(d) => {
-                        log::debug!("glob import {:?} from non-module/enum {:?}", import, d);
+                        tracing::debug!("glob import {:?} from non-module/enum {:?}", import, d);
                     }
                     None => {
-                        log::debug!("glob import {:?} didn't resolve as type", import);
+                        tracing::debug!("glob import {:?} didn't resolve as type", import);
                     }
                 }
             }
@@ -947,7 +947,7 @@ impl DefCollector<'_> {
                     let tr = match res.take_types() {
                         Some(ModuleDefId::TraitId(tr)) => tr,
                         Some(other) => {
-                            log::debug!("non-trait `_` import of {:?}", other);
+                            tracing::debug!("non-trait `_` import of {:?}", other);
                             continue;
                         }
                         None => continue,
@@ -1167,7 +1167,7 @@ impl DefCollector<'_> {
     ) {
         if EXPANSION_DEPTH_LIMIT.check(depth).is_err() {
             cov_mark::hit!(macro_expansion_overflow);
-            log::warn!("macro expansion is too deep");
+            tracing::warn!("macro expansion is too deep");
             return;
         }
         let file_id = macro_call_id.as_file();
@@ -1694,7 +1694,7 @@ impl ModCollector<'_, '_> {
             } else if self.is_builtin_or_registered_attr(&attr.path) {
                 continue;
             } else {
-                log::debug!("non-builtin attribute {}", attr.path);
+                tracing::debug!("non-builtin attribute {}", attr.path);
 
                 let ast_id = AstIdWithPath::new(
                     self.file_id(),
@@ -1768,7 +1768,7 @@ impl ModCollector<'_, '_> {
             }
             None => {
                 // FIXME: diagnose
-                log::debug!("malformed derive: {:?}", attr);
+                tracing::debug!("malformed derive: {:?}", attr);
             }
         }
     }

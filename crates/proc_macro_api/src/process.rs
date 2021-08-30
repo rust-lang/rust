@@ -54,7 +54,7 @@ impl ProcMacroProcessSrv {
             Ok(res) => res,
             Err(err) => {
                 let result = self.process.child.try_wait();
-                log::error!(
+                tracing::error!(
                     "proc macro server crashed, server process state: {:?}, server request error: {:?}",
                     result,
                     err

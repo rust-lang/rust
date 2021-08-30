@@ -353,7 +353,7 @@ impl TryToNav for hir::MacroDef {
             Either::Left(it) => it,
             Either::Right(it) => it,
         };
-        log::debug!("nav target {:#?}", name_owner.syntax());
+        tracing::debug!("nav target {:#?}", name_owner.syntax());
         let mut res = NavigationTarget::from_named(
             db,
             src.as_ref().with_value(name_owner),

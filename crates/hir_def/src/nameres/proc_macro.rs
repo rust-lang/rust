@@ -70,7 +70,7 @@ impl Attrs {
                 }
 
                 _ => {
-                    log::trace!("malformed `#[proc_macro_derive]`: {}", derive);
+                    tracing::trace!("malformed `#[proc_macro_derive]`: {}", derive);
                     None
                 }
             }

@@ -1,6 +1,6 @@
 //! Builtin derives.
 
-use log::debug;
+use tracing::debug;
 
 use mbe::ExpandResult;
 use parser::FragmentKind;

@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use cov_mark::hit;
-use log::debug;
+use tracing::debug;
 
 use chalk_ir::{cast::Cast, fold::shift::Shift, CanonicalVarKinds};
 use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};

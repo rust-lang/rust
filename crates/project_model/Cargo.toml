@@ -9,7 +9,7 @@ edition = "2018"
 doctest = false
 
 [dependencies]
-log = "0.4.8"
+tracing = "0.1"
 rustc-hash = "1.1.0"
 cargo_metadata = "0.14"
 semver = "1"

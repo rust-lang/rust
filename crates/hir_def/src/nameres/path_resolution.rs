@@ -116,7 +116,7 @@ impl DefMap {
             if self.block_id() != m.block {
                 cov_mark::hit!(adjust_vis_in_block_def_map);
                 vis = Visibility::Module(self.module_id(self.root()));
-                log::debug!("visibility {:?} points outside DefMap, adjusting to {:?}", m, vis);
+                tracing::debug!("visibility {:?} points outside DefMap, adjusting to {:?}", m, vis);
             }
         }
 
@@ -204,7 +204,7 @@ impl DefMap {
                     Some((idx, segment)) => (idx, segment),
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
-                log::debug!("resolving {:?} in crate root (+ extern prelude)", segment);
+                tracing::debug!("resolving {:?} in crate root (+ extern prelude)", segment);
                 self.resolve_name_in_crate_root_or_extern_prelude(db, segment)
             }
             PathKind::Plain => {
@@ -221,7 +221,7 @@ impl DefMap {
                 let prefer_module =
                     if path.segments().len() == 1 { shadow } else { BuiltinShadowMode::Module };
 
-                log::debug!("resolving {:?} in module", segment);
+                tracing::debug!("resolving {:?} in module", segment);
                 self.resolve_name_in_module(db, original_module, segment, prefer_module)
             }
             PathKind::Super(lvl) => {
@@ -236,7 +236,11 @@ impl DefMap {
                                     PathKind::Super(lvl - i),
                                     path.segments().to_vec(),
                                 );
-                                log::debug!("`super` path: {} -> {} in parent map", path, new_path);
+                                tracing::debug!(
+                                    "`super` path: {} -> {} in parent map",
+                                    path,
+                                    new_path
+                                );
                                 return block.parent.def_map(db).resolve_path_fp_with_macro(
                                     db,
                                     mode,
@@ -246,7 +250,7 @@ impl DefMap {
                                 );
                             }
                             None => {
-                                log::debug!("super path in root module");
+                                tracing::debug!("super path in root module");
                                 return ResolvePathResult::empty(ReachedFixedPoint::Yes);
                             }
                         },
@@ -270,7 +274,7 @@ impl DefMap {
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
                 if let Some(def) = self.extern_prelude.get(segment) {
-                    log::debug!("absolute path {:?} resolved to crate {:?}", path, def);
+                    tracing::debug!("absolute path {:?} resolved to crate {:?}", path, def);
                     PerNs::types(*def, Visibility::Public)
                 } else {
                     return ResolvePathResult::empty(ReachedFixedPoint::No); // extern crate declarations can add to the extern prelude
@@ -299,7 +303,7 @@ impl DefMap {
                             PathKind::Super(0),
                             path.segments()[i..].iter().cloned(),
                         );
-                        log::debug!("resolving {:?} in other crate", path);
+                        tracing::debug!("resolving {:?} in other crate", path);
                         let defp_map = module.def_map(db);
                         let (def, s) = defp_map.resolve_path(db, module.local_id, &path, shadow);
                         return ResolvePathResult::with(
@@ -351,7 +355,7 @@ impl DefMap {
                 s => {
                     // could be an inherent method call in UFCS form
                     // (`Struct::method`), or some other kind of associated item
-                    log::debug!(
+                    tracing::debug!(
                         "path segment {:?} resolved to non-module {:?}, but is not last",
                         segment,
                         curr,

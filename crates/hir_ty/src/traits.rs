@@ -81,7 +81,7 @@ pub(crate) fn trait_solve_query(
         GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(_))) => "alias_eq".to_string(),
         _ => "??".to_string(),
     });
-    log::info!("trait_solve_query({:?})", goal.value.goal);
+    tracing::info!("trait_solve_query({:?})", goal.value.goal);
 
     if let GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(AliasEq {
         alias: AliasTy::Projection(projection_ty),
@@ -106,7 +106,7 @@ fn solve(
     goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<Interner>>>,
 ) -> Option<chalk_solve::Solution<Interner>> {
     let context = ChalkContext { db, krate };
-    log::debug!("solve goal: {:?}", goal);
+    tracing::debug!("solve goal: {:?}", goal);
     let mut solver = create_chalk_solver();
 
     let fuel = std::cell::Cell::new(CHALK_SOLVER_FUEL);
@@ -116,7 +116,7 @@ fn solve(
         let remaining = fuel.get();
         fuel.set(remaining - 1);
         if remaining == 0 {
-            log::debug!("fuel exhausted");
+            tracing::debug!("fuel exhausted");
         }
         remaining > 0
     };
@@ -136,7 +136,7 @@ fn solve(
             solver.solve_limited(&context, goal, &should_continue)
         };
 
-        log::debug!("solve({:?}) => {:?}", goal, solution);
+        tracing::debug!("solve({:?}) => {:?}", goal, solution);
 
         solution
     };

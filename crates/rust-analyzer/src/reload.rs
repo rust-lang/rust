@@ -61,7 +61,7 @@ impl GlobalState {
         if !changes.iter().any(|(path, kind)| is_interesting(path, *kind)) {
             return;
         }
-        log::info!(
+        tracing::info!(
             "Requesting workspace reload because of the following changes: {}",
             itertools::join(
                 changes
@@ -153,7 +153,7 @@ impl GlobalState {
         if !self.fetch_workspaces_queue.should_start_op() {
             return;
         }
-        log::info!("will fetch workspaces");
+        tracing::info!("will fetch workspaces");
 
         self.task_pool.handle.spawn_with_sender({
             let linked_projects = self.config.linked_projects();
@@ -196,7 +196,7 @@ impl GlobalState {
                         .push(project_model::ProjectWorkspace::load_detached_files(detached_files));
                 }
 
-                log::info!("did fetch workspaces {:?}", workspaces);
+                tracing::info!("did fetch workspaces {:?}", workspaces);
                 sender
                     .send(Task::FetchWorkspace(ProjectWorkspaceProgress::End(workspaces)))
                     .unwrap();
@@ -245,10 +245,10 @@ impl GlobalState {
 
     pub(crate) fn switch_workspaces(&mut self) {
         let _p = profile::span("GlobalState::switch_workspaces");
-        log::info!("will switch workspaces");
+        tracing::info!("will switch workspaces");
 
         if let Some(error_message) = self.fetch_workspace_error() {
-            log::error!("failed to switch workspaces: {}", error_message);
+            tracing::error!("failed to switch workspaces: {}", error_message);
             if !self.workspaces.is_empty() {
                 // It only makes sense to switch to a partially broken workspace
                 // if we don't have any workspace at all yet.
@@ -257,7 +257,7 @@ impl GlobalState {
         }
 
         if let Some(error_message) = self.fetch_build_data_error() {
-            log::error!("failed to switch build data: {}", error_message);
+            tracing::error!("failed to switch build data: {}", error_message);
         }
 
         let workspaces = self
@@ -367,7 +367,7 @@ impl GlobalState {
                 Some((path, args)) => match ProcMacroClient::extern_process(path.clone(), args) {
                     Ok(it) => Some(it),
                     Err(err) => {
-                        log::error!(
+                        tracing::error!(
                             "Failed to run proc_macro_srv from path {}, error: {:?}",
                             path.display(),
                             err
@@ -407,7 +407,7 @@ impl GlobalState {
                 }
                 let res = vfs.file_id(&vfs_path);
                 if res.is_none() {
-                    log::warn!("failed to load {}", path.display())
+                    tracing::warn!("failed to load {}", path.display())
                 }
                 res
             };
@@ -425,7 +425,7 @@ impl GlobalState {
         self.analysis_host.apply_change(change);
         self.process_changes();
         self.reload_flycheck();
-        log::info!("did switch workspaces");
+        tracing::info!("did switch workspaces");
     }
 
     fn fetch_workspace_error(&self) -> Option<String> {

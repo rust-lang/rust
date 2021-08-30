@@ -203,7 +203,7 @@ fn parse_macro_expansion(
                 .collect::<Vec<_>>()
                 .join("\n");
 
-        log::warn!(
+        tracing::warn!(
             "fail on macro_parse: (reason: {:?} macro_call: {:#}) parents: {}",
             err,
             node.value,
@@ -217,13 +217,13 @@ fn parse_macro_expansion(
 
     let fragment_kind = macro_fragment_kind(db, macro_file.macro_call_id);
 
-    log::debug!("expanded = {}", tt.as_debug_string());
-    log::debug!("kind = {:?}", fragment_kind);
+    tracing::debug!("expanded = {}", tt.as_debug_string());
+    tracing::debug!("kind = {:?}", fragment_kind);
 
     let (parse, rev_token_map) = match mbe::token_tree_to_syntax_node(&tt, fragment_kind) {
         Ok(it) => it,
         Err(err) => {
-            log::debug!(
+            tracing::debug!(
                 "failed to parse expansion to {:?} = {}",
                 fragment_kind,
                 tt.as_debug_string()
@@ -250,7 +250,7 @@ fn parse_macro_expansion(
             }
         }
         None => {
-            log::debug!("parse = {:?}", parse.syntax_node().kind());
+            tracing::debug!("parse = {:?}", parse.syntax_node().kind());
             ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err: None }
         }
     }
@@ -321,7 +321,7 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<TokenExpander>>
                     Ok(it) => it,
                     Err(err) => {
                         let name = macro_rules.name().map(|n| n.to_string()).unwrap_or_default();
-                        log::warn!("fail on macro_def parse ({}): {:?} {:#?}", name, err, tt);
+                        tracing::warn!("fail on macro_def parse ({}): {:?} {:#?}", name, err, tt);
                         return None;
                     }
                 };
@@ -334,7 +334,7 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<TokenExpander>>
                     Ok(it) => it,
                     Err(err) => {
                         let name = macro_def.name().map(|n| n.to_string()).unwrap_or_default();
-                        log::warn!("fail on macro_def parse ({}): {:?} {:#?}", name, err, tt);
+                        tracing::warn!("fail on macro_def parse ({}): {:?} {:#?}", name, err, tt);
                         return None;
                     }
                 };
