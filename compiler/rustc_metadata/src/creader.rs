@@ -459,7 +459,7 @@ impl<'a> CrateLoader<'a> {
         let mut proc_macro_locator = locator.clone();
 
         // Try to load a proc macro
-        proc_macro_locator.is_proc_macro = Some(true);
+        proc_macro_locator.is_proc_macro = true;
 
         // Load the proc macro crate for the target
         let (locator, target_result) = if self.sess.opts.debugging_opts.dual_proc_macros {
@@ -482,7 +482,7 @@ impl<'a> CrateLoader<'a> {
         // Load the proc macro crate for the host
 
         locator.reset();
-        locator.is_proc_macro = Some(true);
+        locator.is_proc_macro = true;
         locator.target = &self.sess.host;
         locator.triple = TargetTriple::from_triple(config::host_triple());
         locator.filesearch = self.sess.host_filesearch(path_kind);
@@ -556,7 +556,6 @@ impl<'a> CrateLoader<'a> {
                 false, // is_host
                 path_kind,
                 root,
-                Some(false), // is_proc_macro
             );
 
             match self.load(&mut locator)? {
@@ -605,7 +604,7 @@ impl<'a> CrateLoader<'a> {
         // FIXME: why is this condition necessary? It was adding in #33625 but I
         // don't know why and the original author doesn't remember ...
         let can_reuse_cratenum =
-            locator.triple == self.sess.opts.target_triple || locator.is_proc_macro == Some(true);
+            locator.triple == self.sess.opts.target_triple || locator.is_proc_macro;
         Ok(Some(if can_reuse_cratenum {
             let mut result = LoadResult::Loaded(library);
             self.cstore.iter_crate_data(|cnum, data| {

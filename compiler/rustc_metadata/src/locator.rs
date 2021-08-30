@@ -254,7 +254,7 @@ crate struct CrateLocator<'a> {
     pub triple: TargetTriple,
     pub filesearch: FileSearch<'a>,
     root: Option<&'a CratePaths>,
-    pub is_proc_macro: Option<bool>,
+    pub is_proc_macro: bool,
 
     // Mutable in-progress state or output.
     rejected_via_hash: Vec<CrateMismatch>,
@@ -304,7 +304,6 @@ impl<'a> CrateLocator<'a> {
         is_host: bool,
         path_kind: PathKind,
         root: Option<&'a CratePaths>,
-        is_proc_macro: Option<bool>,
     ) -> CrateLocator<'a> {
         // The all loop is because `--crate-type=rlib --crate-type=rlib` is
         // legal and produces both inside this type.
@@ -349,7 +348,7 @@ impl<'a> CrateLocator<'a> {
                 sess.target_filesearch(path_kind)
             },
             root,
-            is_proc_macro,
+            is_proc_macro: false,
             rejected_via_hash: Vec::new(),
             rejected_via_triple: Vec::new(),
             rejected_via_kind: Vec::new(),
@@ -491,7 +490,7 @@ impl<'a> CrateLocator<'a> {
     }
 
     fn needs_crate_flavor(&self, flavor: CrateFlavor) -> bool {
-        if flavor == CrateFlavor::Dylib && self.is_proc_macro == Some(true) {
+        if flavor == CrateFlavor::Dylib && self.is_proc_macro {
             return true;
         }
 
@@ -623,15 +622,13 @@ impl<'a> CrateLocator<'a> {
         }
 
         let root = metadata.get_root();
-        if let Some(expected_is_proc_macro) = self.is_proc_macro {
-            let is_proc_macro = root.is_proc_macro_crate();
-            if is_proc_macro != expected_is_proc_macro {
-                info!(
-                    "Rejecting via proc macro: expected {} got {}",
-                    expected_is_proc_macro, is_proc_macro
-                );
-                return None;
-            }
+        if root.is_proc_macro_crate() != self.is_proc_macro {
+            info!(
+                "Rejecting via proc macro: expected {} got {}",
+                self.is_proc_macro,
+                root.is_proc_macro_crate(),
+            );
+            return None;
         }
 
         if self.exact_paths.is_empty() && self.crate_name != root.name() {
@@ -815,7 +812,6 @@ fn find_plugin_registrar_impl<'a>(
         true, // is_host
         PathKind::Crate,
         None, // root
-        None, // is_proc_macro
     );
 
     match locator.maybe_load_library_crate()? {
