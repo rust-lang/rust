@@ -113,7 +113,7 @@ fn foo() {
     }
 
     #[test]
-    fn replace_with_wind_map() {
+    fn replace_with_find_map() {
         check_fix(
             r#"
 //- minicore: iterators
