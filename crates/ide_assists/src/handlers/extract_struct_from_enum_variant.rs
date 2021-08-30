@@ -15,8 +15,8 @@ use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{
-        self, make, AstNode, AttrsOwner, GenericParamsOwner, NameOwner, TypeBoundsOwner,
-        VisibilityOwner,
+        self, edit_in_place::Indent, make, AstNode, AttrsOwner, GenericParamsOwner, NameOwner,
+        TypeBoundsOwner, VisibilityOwner,
     },
     match_ast,
     ted::{self, Position},
@@ -89,6 +89,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                 });
             }
             builder.edit_file(ctx.frange.file_id);
+
             let variant = builder.make_mut(variant.clone());
             if let Some(references) = def_file_references {
                 let processed = process_references(
@@ -104,10 +105,18 @@ pub(crate) fn extract_struct_from_enum_variant(
                 });
             }
 
-            let def = create_struct_def(variant_name.clone(), &field_list, &enum_ast);
+            let indent = enum_ast.indent_level();
+            let def = create_struct_def(variant_name.clone(), &variant, &field_list, &enum_ast);
+            def.reindent_to(indent);
+
             let start_offset = &variant.parent_enum().syntax().clone();
-            ted::insert_raw(ted::Position::before(start_offset), def.syntax());
-            ted::insert_raw(ted::Position::before(start_offset), &make::tokens::blank_line());
+            ted::insert_all_raw(
+                ted::Position::before(start_offset),
+                vec![
+                    def.syntax().clone().into(),
+                    make::tokens::whitespace(&format!("\n\n{}", indent)).into(),
+                ],
+            );
 
             update_variant(&variant, enum_ast.generic_param_list());
         },
@@ -163,7 +172,7 @@ fn create_struct_def(
     };
 
     // for fields without any existing visibility, use pub visibility
-    let field_list = match field_list {
+    let field_list: ast::FieldList = match field_list {
         Either::Left(field_list) => {
             let field_list = field_list.clone_for_update();
 
@@ -187,6 +196,8 @@ fn create_struct_def(
             field_list.into()
         }
     };
+
+    field_list.reindent_to(IndentLevel::single());
 
     // FIXME: This uses all the generic params of the enum, but the variant might not use all of them.
     let strukt =
@@ -365,6 +376,52 @@ enum Enum { Variant(Variant) }"#,
     }
 
     #[test]
+    fn test_extract_struct_indent_to_parent_enum() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+enum Enum {
+    Variant {
+        field: u32$0
+    }
+}"#,
+            r#"
+struct Variant{
+    pub field: u32
+}
+
+enum Enum {
+    Variant(Variant)
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_struct_indent_to_parent_enum_in_mod() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+mod indenting {
+    enum Enum {
+        Variant {
+            field: u32$0
+        }
+    }
+}"#,
+            r#"
+mod indenting {
+    struct Variant{
+        pub field: u32
+    }
+
+    enum Enum {
+        Variant(Variant)
+    }
+}"#,
+        );
+    }
+
+    #[test]
     fn test_extract_struct_keep_comments_and_attrs_one_field_named() {
         check_assist(
             extract_struct_from_enum_variant,
@@ -380,12 +437,12 @@ enum A {
 }"#,
             r#"
 struct One{
-        // leading comment
-        /// doc comment
-        #[an_attr]
-        pub foo: u32
-        // trailing comment
-    }
+    // leading comment
+    /// doc comment
+    #[an_attr]
+    pub foo: u32
+    // trailing comment
+}
 
 enum A {
     One(One)
@@ -412,15 +469,15 @@ enum A {
 }"#,
             r#"
 struct One{
-        // comment
-        /// doc
-        #[attr]
-        pub foo: u32,
-        // comment
-        #[attr]
-        /// doc
-        pub bar: u32
-    }
+    // comment
+    /// doc
+    #[attr]
+    pub foo: u32,
+    // comment
+    #[attr]
+    /// doc
+    pub bar: u32
+}
 
 enum A {
     One(One)
@@ -527,7 +584,7 @@ mod my_mod {
 
         pub struct MyField(pub u8, pub u8);
 
-pub enum MyEnum {
+        pub enum MyEnum {
             MyField(MyField),
         }
     }
