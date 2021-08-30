@@ -366,7 +366,7 @@ fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Ar
 
     let macro_arg = match db.macro_arg(id) {
         Some(it) => it,
-        None => return ExpandResult::str_err("Fail to args in to tt::TokenTree".into()),
+        None => return ExpandResult::str_err("Fail to lower args to token tree".into()),
     };
 
     let macro_rules = match db.macro_def(loc.def) {
