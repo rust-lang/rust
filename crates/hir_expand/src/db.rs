@@ -366,12 +366,12 @@ fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Ar
 
     let macro_arg = match db.macro_arg(id) {
         Some(it) => it,
-        None => return ExpandResult::str_err("Fail to lower macro args to token tree".into()),
+        None => return ExpandResult::str_err("Failed to lower macro args to token tree".into()),
     };
 
     let macro_rules = match db.macro_def(loc.def) {
         Some(it) => it,
-        None => return ExpandResult::str_err("Fail to find macro definition".into()),
+        None => return ExpandResult::str_err("Failed to find macro definition".into()),
     };
     let ExpandResult { value: tt, err } = macro_rules.expand(db, id, &macro_arg.0);
     // Set a hard limit for the expanded tt
