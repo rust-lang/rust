@@ -47,7 +47,7 @@ impl GlobalState {
             self.analysis_host.update_lru_capacity(self.config.lru_capacity());
         }
         if self.config.linked_projects() != old_config.linked_projects() {
-            self.fetch_workspaces_request()
+            self.fetch_workspaces_queue.request_op()
         } else if self.config.flycheck() != old_config.flycheck() {
             self.reload_flycheck();
         }
@@ -71,7 +71,7 @@ impl GlobalState {
                 ", "
             )
         );
-        self.fetch_workspaces_request();
+        self.fetch_workspaces_queue.request_op();
 
         fn is_interesting(path: &AbsPath, change_kind: ChangeKind) -> bool {
             const IMPLICIT_TARGET_FILES: &[&str] = &["build.rs", "src/main.rs", "src/lib.rs"];
@@ -109,7 +109,8 @@ impl GlobalState {
             false
         }
     }
-    pub(crate) fn report_new_status_if_needed(&mut self) {
+
+    pub(crate) fn current_status(&self) -> lsp_ext::ServerStatusParams {
         let mut status = lsp_ext::ServerStatusParams {
             health: lsp_ext::Health::Ok,
             quiescent: self.is_quiescent(),
@@ -132,27 +133,10 @@ impl GlobalState {
             status.health = lsp_ext::Health::Error;
             status.message = Some(error)
         }
-
-        if self.last_reported_status.as_ref() != Some(&status) {
-            self.last_reported_status = Some(status.clone());
-
-            if let (lsp_ext::Health::Error, Some(message)) = (status.health, &status.message) {
-                self.show_message(lsp_types::MessageType::Error, message.clone());
-            }
-
-            if self.config.server_status_notification() {
-                self.send_notification::<lsp_ext::ServerStatusNotification>(status);
-            }
-        }
+        status
     }
 
-    pub(crate) fn fetch_workspaces_request(&mut self) {
-        self.fetch_workspaces_queue.request_op()
-    }
-    pub(crate) fn fetch_workspaces_if_needed(&mut self) {
-        if !self.fetch_workspaces_queue.should_start_op() {
-            return;
-        }
+    pub(crate) fn fetch_workspaces(&mut self) {
         tracing::info!("will fetch workspaces");
 
         self.task_pool.handle.spawn_with_sender({
@@ -203,21 +187,8 @@ impl GlobalState {
             }
         });
     }
-    pub(crate) fn fetch_workspaces_completed(
-        &mut self,
-        workspaces: Vec<anyhow::Result<ProjectWorkspace>>,
-    ) {
-        self.fetch_workspaces_queue.op_completed(workspaces)
-    }
 
-    pub(crate) fn fetch_build_data_request(&mut self) {
-        self.fetch_build_data_queue.request_op();
-    }
-    pub(crate) fn fetch_build_data_if_needed(&mut self) {
-        if !self.fetch_build_data_queue.should_start_op() {
-            return;
-        }
-
+    pub(crate) fn fetch_build_data(&mut self) {
         let workspaces = Arc::clone(&self.workspaces);
         let config = self.config.cargo();
         self.task_pool.handle.spawn_with_sender(move |sender| {
@@ -235,12 +206,6 @@ impl GlobalState {
             }
             sender.send(Task::FetchBuildData(BuildDataProgress::End((workspaces, res)))).unwrap();
         });
-    }
-    pub(crate) fn fetch_build_data_completed(
-        &mut self,
-        build_data: (Arc<Vec<ProjectWorkspace>>, Vec<anyhow::Result<WorkspaceBuildScripts>>),
-    ) {
-        self.fetch_build_data_queue.op_completed(build_data)
     }
 
     pub(crate) fn switch_workspaces(&mut self) {
