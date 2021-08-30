@@ -107,6 +107,11 @@ impl Step for Std {
             add_to_sysroot(&builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
         }
 
+        // don't run on std twice with x.py clippy
+        if builder.kind == Kind::Clippy {
+            return;
+        }
+
         // Then run cargo again, once we've put the rmeta files for the library
         // crates into the sysroot. This is needed because e.g., core's tests
         // depend on `libtest` -- Cargo presumes it will exist, but it doesn't
@@ -120,6 +125,7 @@ impl Step for Std {
             target,
             cargo_subcommand(builder.kind),
         );
+
         cargo.arg("--all-targets");
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
@@ -192,7 +198,12 @@ impl Step for Rustc {
             cargo_subcommand(builder.kind),
         );
         rustc_cargo(builder, &mut cargo, target);
-        cargo.arg("--all-targets");
+
+        // For ./x.py clippy, don't run with --all-targets because
+        // linting tests and benchmarks can produce very noisy results
+        if builder.kind != Kind::Clippy {
+            cargo.arg("--all-targets");
+        }
 
         // Explicitly pass -p for all compiler krates -- this will force cargo
         // to also check the tests/benches/examples for these crates, rather
@@ -313,7 +324,12 @@ macro_rules! tool_check_step {
                     $source_type,
                     &[],
                 );
-                cargo.arg("--all-targets");
+
+                // For ./x.py clippy, don't run with --all-targets because
+                // linting tests and benchmarks can produce very noisy results
+                if builder.kind != Kind::Clippy {
+                    cargo.arg("--all-targets");
+                }
 
                 // Enable internal lints for clippy and rustdoc
                 // NOTE: this doesn't enable lints for any other tools unless they explicitly add `#![warn(rustc::internal)]`
