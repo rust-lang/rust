@@ -363,10 +363,11 @@ pub enum IntVarValue {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct FloatVarValue(pub FloatTy);
 
-/// A **ty**pe **v**ariable **ID**.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
-pub struct TyVid {
-    pub index: u32,
+rustc_index::newtype_index! {
+    /// A **ty**pe **v**ariable **ID**.
+    pub struct TyVid {
+        DEBUG_FORMAT = "_#{}t"
+    }
 }
 
 /// An **int**egral (`u32`, `i32`, `usize`, etc.) type **v**ariable **ID**.
@@ -422,10 +423,10 @@ pub enum InferTy {
 impl UnifyKey for TyVid {
     type Value = ();
     fn index(&self) -> u32 {
-        self.index
+        self.as_u32()
     }
     fn from_index(i: u32) -> TyVid {
-        TyVid { index: i }
+        TyVid::from_u32(i)
     }
     fn tag() -> &'static str {
         "TyVid"
@@ -558,7 +559,7 @@ impl<CTX> HashStable<CTX> for InferTy {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         use InferTy::*;
         match self {
-            TyVar(v) => v.index.hash_stable(ctx, hasher),
+            TyVar(v) => v.as_u32().hash_stable(ctx, hasher),
             IntVar(v) => v.index.hash_stable(ctx, hasher),
             FloatVar(v) => v.index.hash_stable(ctx, hasher),
             FreshTy(v) | FreshIntTy(v) | FreshFloatTy(v) => v.hash_stable(ctx, hasher),
@@ -584,12 +585,6 @@ impl fmt::Debug for IntVarValue {
 impl fmt::Debug for FloatVarValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
-    }
-}
-
-impl fmt::Debug for TyVid {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "_#{}t", self.index)
     }
 }
 
