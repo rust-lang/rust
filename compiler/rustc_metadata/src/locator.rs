@@ -240,7 +240,8 @@ use tracing::{debug, info, warn};
 #[derive(Clone)]
 crate struct CrateLocator<'a> {
     // Immutable per-session configuration.
-    sess: &'a Session,
+    only_needs_metadata: bool,
+    sysroot: &'a Path,
     metadata_loader: &'a dyn MetadataLoader,
 
     // Immutable per-search configuration.
@@ -305,8 +306,18 @@ impl<'a> CrateLocator<'a> {
         root: Option<&'a CratePaths>,
         is_proc_macro: Option<bool>,
     ) -> CrateLocator<'a> {
+        // The all loop is because `--crate-type=rlib --crate-type=rlib` is
+        // legal and produces both inside this type.
+        let is_rlib = sess.crate_types().iter().all(|c| *c == CrateType::Rlib);
+        let needs_object_code = sess.opts.output_types.should_codegen();
+        // If we're producing an rlib, then we don't need object code.
+        // Or, if we're not producing object code, then we don't need it either
+        // (e.g., if we're a cdylib but emitting just metadata).
+        let only_needs_metadata = is_rlib || !needs_object_code;
+
         CrateLocator {
-            sess,
+            only_needs_metadata,
+            sysroot: &sess.sysroot,
             metadata_loader,
             crate_name,
             exact_paths: if hash.is_none() {
@@ -484,14 +495,7 @@ impl<'a> CrateLocator<'a> {
             return true;
         }
 
-        // The all loop is because `--crate-type=rlib --crate-type=rlib` is
-        // legal and produces both inside this type.
-        let is_rlib = self.sess.crate_types().iter().all(|c| *c == CrateType::Rlib);
-        let needs_object_code = self.sess.opts.output_types.should_codegen();
-        // If we're producing an rlib, then we don't need object code.
-        // Or, if we're not producing object code, then we don't need it either
-        // (e.g., if we're a cdylib but emitting just metadata).
-        if is_rlib || !needs_object_code {
+        if self.only_needs_metadata {
             flavor == CrateFlavor::Rmeta
         } else {
             // we need all flavors (perhaps not true, but what we do for now)
@@ -591,7 +595,7 @@ impl<'a> CrateLocator<'a> {
             // candidates are all canonicalized, so we canonicalize the sysroot
             // as well.
             if let Some((prev, _)) = &ret {
-                let sysroot = &self.sess.sysroot;
+                let sysroot = self.sysroot;
                 let sysroot = sysroot.canonicalize().unwrap_or_else(|_| sysroot.to_path_buf());
                 if prev.starts_with(&sysroot) {
                     continue;
