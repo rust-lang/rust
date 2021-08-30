@@ -8,11 +8,10 @@ use std::{
 
 use always_assert::always;
 use crossbeam_channel::{select, Receiver};
-use ide::{FileId, PrimeCachesProgress};
 use ide_db::base_db::{SourceDatabaseExt, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
-use vfs::ChangeKind;
+use vfs::{ChangeKind, FileId};
 
 use crate::{
     config::Config,
@@ -65,6 +64,13 @@ pub(crate) enum Task {
     PrimeCaches(PrimeCachesProgress),
     FetchWorkspace(ProjectWorkspaceProgress),
     FetchBuildData(BuildDataProgress),
+}
+
+#[derive(Debug)]
+pub(crate) enum PrimeCachesProgress {
+    Begin,
+    Report(ide::PrimeCachesProgress),
+    End { cancelled: bool },
 }
 
 impl fmt::Debug for Event {
@@ -209,17 +215,17 @@ impl GlobalState {
                             }
                         }
                         Task::PrimeCaches(progress) => match progress {
-                            PrimeCachesProgress::Started => prime_caches_progress.push(progress),
-                            PrimeCachesProgress::StartedOnCrate { .. } => {
+                            PrimeCachesProgress::Begin => prime_caches_progress.push(progress),
+                            PrimeCachesProgress::Report(_) => {
                                 match prime_caches_progress.last_mut() {
-                                    Some(last @ PrimeCachesProgress::StartedOnCrate { .. }) => {
+                                    Some(last @ PrimeCachesProgress::Report(_)) => {
                                         // Coalesce subsequent update events.
                                         *last = progress;
                                     }
                                     _ => prime_caches_progress.push(progress),
                                 }
                             }
-                            PrimeCachesProgress::Finished => prime_caches_progress.push(progress),
+                            PrimeCachesProgress::End { .. } => prime_caches_progress.push(progress),
                         },
                         Task::FetchWorkspace(progress) => {
                             let (state, msg) = match progress {
@@ -275,17 +281,20 @@ impl GlobalState {
                 for progress in prime_caches_progress {
                     let (state, message, fraction);
                     match progress {
-                        PrimeCachesProgress::Started => {
+                        PrimeCachesProgress::Begin => {
                             state = Progress::Begin;
                             message = None;
                             fraction = 0.0;
                         }
-                        PrimeCachesProgress::StartedOnCrate { on_crate, n_done, n_total } => {
+                        PrimeCachesProgress::Report(report) => {
                             state = Progress::Report;
-                            message = Some(format!("{}/{} ({})", n_done, n_total, on_crate));
-                            fraction = Progress::fraction(n_done, n_total);
+                            message = Some(format!(
+                                "{}/{} ({})",
+                                report.n_done, report.n_total, report.on_crate
+                            ));
+                            fraction = Progress::fraction(report.n_done, report.n_total);
                         }
-                        PrimeCachesProgress::Finished => {
+                        PrimeCachesProgress::End { cancelled: _ } => {
                             state = Progress::End;
                             message = None;
                             fraction = 1.0;
@@ -422,13 +431,16 @@ impl GlobalState {
                     self.task_pool.handle.spawn_with_sender({
                         let analysis = self.snapshot().analysis;
                         move |sender| {
-                            let cb = |progress| {
-                                sender.send(Task::PrimeCaches(progress)).unwrap();
-                            };
-                            match analysis.prime_caches(cb) {
-                                Ok(()) => (),
-                                Err(_canceled) => (),
-                            }
+                            sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
+                            let res = analysis.prime_caches(|progress| {
+                                let report = PrimeCachesProgress::Report(progress);
+                                sender.send(Task::PrimeCaches(report)).unwrap();
+                            });
+                            sender
+                                .send(Task::PrimeCaches(PrimeCachesProgress::End {
+                                    cancelled: res.is_err(),
+                                }))
+                                .unwrap();
                         }
                     });
                 }

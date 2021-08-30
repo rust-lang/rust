@@ -8,17 +8,12 @@ use ide_db::base_db::SourceDatabase;
 
 use crate::RootDatabase;
 
+/// We started indexing a crate.
 #[derive(Debug)]
-pub enum PrimeCachesProgress {
-    Started,
-    /// We started indexing a crate.
-    StartedOnCrate {
-        on_crate: String,
-        n_done: usize,
-        n_total: usize,
-    },
-    /// We finished indexing all crates.
-    Finished,
+pub struct PrimeCachesProgress {
+    pub on_crate: String,
+    pub n_done: usize,
+    pub n_total: usize,
 }
 
 pub(crate) fn prime_caches(db: &RootDatabase, cb: &(dyn Fn(PrimeCachesProgress) + Sync)) {
@@ -26,21 +21,13 @@ pub(crate) fn prime_caches(db: &RootDatabase, cb: &(dyn Fn(PrimeCachesProgress) 
     let graph = db.crate_graph();
     let topo = &graph.crates_in_topological_order();
 
-    cb(PrimeCachesProgress::Started);
-    // Take care to emit the finish signal even when the computation is canceled.
-    let _d = stdx::defer(|| cb(PrimeCachesProgress::Finished));
-
     // FIXME: This would be easy to parallelize, since it's in the ideal ordering for that.
     // Unfortunately rayon prevents panics from propagation out of a `scope`, which breaks
     // cancellation, so we cannot use rayon.
     for (i, &crate_id) in topo.iter().enumerate() {
         let crate_name = graph[crate_id].display_name.as_deref().unwrap_or_default().to_string();
 
-        cb(PrimeCachesProgress::StartedOnCrate {
-            on_crate: crate_name,
-            n_done: i,
-            n_total: topo.len(),
-        });
+        cb(PrimeCachesProgress { on_crate: crate_name, n_done: i, n_total: topo.len() });
         db.crate_def_map(crate_id);
         db.import_map(crate_id);
     }
