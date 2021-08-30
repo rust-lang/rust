@@ -1,5 +1,5 @@
 // revisions: full min
-#![cfg_attr(full, feature(const_param_types))]
+#![cfg_attr(full, feature(adt_const_params))]
 #![cfg_attr(full, allow(incomplete_features))]
 
 fn foo<const LEN: usize, const DATA: [u8; LEN]>() {}

@@ -1,5 +1,5 @@
 // Check that different const types are different.
-#![feature(const_param_types)]
+#![feature(adt_const_params)]
 #![allow(incomplete_features)]
 
 struct Const<const V: [usize; 1]> {}

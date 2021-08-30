@@ -1,5 +1,5 @@
 // revisions: rpass
-#![feature(generic_const_exprs, const_param_types)]
+#![feature(generic_const_exprs, adt_const_params)]
 #![allow(incomplete_features)]
 
 use std::{convert::TryFrom, num::NonZeroUsize};

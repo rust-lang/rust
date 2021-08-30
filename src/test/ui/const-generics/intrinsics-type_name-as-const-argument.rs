@@ -2,7 +2,7 @@
 // revisions: full min
 
 #![cfg_attr(full, allow(incomplete_features))]
-#![cfg_attr(full, feature(const_param_types, generic_const_exprs))]
+#![cfg_attr(full, feature(adt_const_params, generic_const_exprs))]
 
 #![feature(core_intrinsics)]
 #![feature(const_type_name)]

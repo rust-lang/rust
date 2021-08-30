@@ -1,6 +1,6 @@
 // run-pass
 
-#![feature(const_param_types)]
+#![feature(adt_const_params)]
 #![allow(incomplete_features)]
 
 pub fn function_with_str<const STRING: &'static str>() -> &'static str {

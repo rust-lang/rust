@@ -82,7 +82,7 @@
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
-#![feature(const_param_types, generators, generator_trait)]
+#![feature(adt_const_params, generators, generator_trait)]
 #![allow(incomplete_features)]
 
 use Mod1::TestTrait2;

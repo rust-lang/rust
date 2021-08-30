@@ -1,5 +1,5 @@
-#![feature(const_param_types)]
-//~^ WARN the feature `const_param_types` is incomplete
+#![feature(adt_const_params)]
+//~^ WARN the feature `adt_const_params` is incomplete
 
 fn function_with_str<'a, const STRING: &'a str>() {} //~ ERROR E0771
 

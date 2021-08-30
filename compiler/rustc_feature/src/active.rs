@@ -71,7 +71,7 @@ macro_rules! declare_features {
             }
 
             pub fn unordered_const_ty_params(&self) -> bool {
-                self.const_generics_defaults || self.generic_const_exprs || self.const_param_types
+                self.const_generics_defaults || self.generic_const_exprs || self.adt_const_params
             }
 
             /// Some features are known to be incomplete and using them is likely to have
@@ -674,7 +674,7 @@ declare_features! (
     (incomplete, generic_const_exprs, "1.56.0", Some(76560), None),
 
     /// Allows additional const parameter types, such as `&'static str` or user defined types
-    (incomplete, const_param_types, "1.56.0", Some(44580), None),
+    (incomplete, adt_const_params, "1.56.0", Some(44580), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

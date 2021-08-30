@@ -1,5 +1,5 @@
 // revisions: cfail
-#![feature(generic_const_exprs, const_param_types)]
+#![feature(generic_const_exprs, adt_const_params)]
 #![allow(incomplete_features)]
 // regression test for #77650
 fn c<T, const N: std::num::NonZeroUsize>()
