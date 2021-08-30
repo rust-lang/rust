@@ -197,6 +197,7 @@ pub const SOCK_DGRAM: c_int = 2;
 pub const SOCK_STREAM: c_int = 1;
 pub const SOCKET_ERROR: c_int = -1;
 pub const SOL_SOCKET: c_int = 0xffff;
+pub const SO_LINGER: c_int = 0x0080;
 pub const SO_RCVTIMEO: c_int = 0x1006;
 pub const SO_SNDTIMEO: c_int = 0x1005;
 pub const IPPROTO_IP: c_int = 0;
@@ -215,6 +216,13 @@ pub const IP_DROP_MEMBERSHIP: c_int = 13;
 pub const IPV6_ADD_MEMBERSHIP: c_int = 12;
 pub const IPV6_DROP_MEMBERSHIP: c_int = 13;
 pub const MSG_PEEK: c_int = 0x2;
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct linger {
+    pub l_onoff: c_ushort,
+    pub l_linger: c_ushort,
+}
 
 #[repr(C)]
 pub struct ip_mreq {

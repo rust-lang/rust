@@ -76,6 +76,14 @@ impl TcpStream {
         self.0
     }
 
+    pub fn set_linger(&self, _: Option<Duration>) -> io::Result<()> {
+        self.0
+    }
+
+    pub fn linger(&self) -> io::Result<Option<Duration>> {
+        self.0
+    }
+
     pub fn set_nodelay(&self, _: bool) -> io::Result<()> {
         self.0
     }

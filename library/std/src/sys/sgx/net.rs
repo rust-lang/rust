@@ -183,6 +183,14 @@ impl TcpStream {
         Ok(self.clone())
     }
 
+    pub fn set_linger(&self, _: Option<Duration>) -> io::Result<()> {
+        sgx_ineffective(())
+    }
+
+    pub fn linger(&self) -> io::Result<Option<Duration>> {
+        sgx_ineffective(None)
+    }
+
     pub fn set_nodelay(&self, _: bool) -> io::Result<()> {
         sgx_ineffective(())
     }

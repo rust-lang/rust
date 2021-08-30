@@ -98,6 +98,14 @@ pub mod net {
             unimpl!();
         }
 
+        pub fn set_linger(&self, _: Option<Duration>) -> io::Result<()> {
+            unimpl!();
+        }
+
+        pub fn linger(&self) -> io::Result<Option<Duration>> {
+            unimpl!();
+        }
+
         pub fn set_nodelay(&self, _: bool) -> io::Result<()> {
             unimpl!();
         }
@@ -211,6 +219,14 @@ pub mod net {
         }
 
         pub fn duplicate(&self) -> io::Result<TcpStream> {
+            unimpl!();
+        }
+
+        pub fn set_linger(&self, _: Option<Duration>) -> io::Result<()> {
+            unimpl!();
+        }
+
+        pub fn linger(&self) -> io::Result<Option<Duration>> {
             unimpl!();
         }
 

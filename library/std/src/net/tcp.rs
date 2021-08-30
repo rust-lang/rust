@@ -401,6 +401,53 @@ impl TcpStream {
         self.0.peek(buf)
     }
 
+    /// Sets the value of the `SO_LINGER` option on this socket.
+    ///
+    /// This value controls how the socket is closed when data remains
+    /// to be sent. If `SO_LINGER` is set, the socket will remain open
+    /// for the specified duration as the system attempts to send pending data.
+    /// Otherwise, the system may close the socket immediately, or wait for a
+    /// default timeout.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(tcp_linger)]
+    ///
+    /// use std::net::TcpStream;
+    /// use std::time::Duration;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_linger(Some(Duration::from_secs(0))).expect("set_linger call failed");
+    /// ```
+    #[unstable(feature = "tcp_linger", issue = "88494")]
+    pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
+        self.0.set_linger(linger)
+    }
+
+    /// Gets the value of the `SO_LINGER` option on this socket.
+    ///
+    /// For more information about this option, see [`TcpStream::set_linger`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(tcp_linger)]
+    ///
+    /// use std::net::TcpStream;
+    /// use std::time::Duration;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_linger(Some(Duration::from_secs(0))).expect("set_linger call failed");
+    /// assert_eq!(stream.linger().unwrap(), Some(Duration::from_secs(0)));
+    /// ```
+    #[unstable(feature = "tcp_linger", issue = "88494")]
+    pub fn linger(&self) -> io::Result<Option<Duration>> {
+        self.0.linger()
+    }
+
     /// Sets the value of the `TCP_NODELAY` option on this socket.
     ///
     /// If set, this option disables the Nagle algorithm. This means that

@@ -182,6 +182,14 @@ impl TcpStream {
         Ok(self.clone())
     }
 
+    pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn linger(&self) -> io::Result<Option<Duration>> {
+        unsupported()
+    }
+
     pub fn set_nodelay(&self, mode: bool) -> io::Result<()> {
         abi::tcpstream::set_nodelay(*self.0.as_inner(), mode)
             .map_err(|_| io::Error::new_const(ErrorKind::Uncategorized, &"set_nodelay failed"))
