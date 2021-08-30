@@ -5,12 +5,12 @@ edition = "2018"
 publish = false
 
 [dependencies]
-if_chain = "1.0.0"
-itertools = "0.9"
-regex-syntax = "0.6"
-serde = { version = "1.0", features = ["derive"] }
-unicode-normalization = "0.1"
-rustc-semver="1.1.0"
+if_chain = "1.0.2"
+itertools = "0.10.1"
+regex-syntax = "0.6.25"
+serde = { version = "1.0.129", features = ["derive"] }
+unicode-normalization = "0.1.19"
+rustc-semver= "1.1.0"
 
 [features]
 deny-warnings = []

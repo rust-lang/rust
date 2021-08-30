@@ -11,23 +11,23 @@ keywords = ["clippy", "lint", "plugin"]
 edition = "2018"
 
 [dependencies]
-cargo_metadata = "0.12"
+cargo_metadata = "0.14.0"
 clippy_utils = { path = "../clippy_utils" }
-if_chain = "1.0.0"
-itertools = "0.9"
-pulldown-cmark = { version = "0.8", default-features = false }
-quine-mc_cluskey = "0.2.2"
-regex-syntax = "0.6"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0", optional = true }
-toml = "0.5.3"
-unicode-normalization = "0.1"
+if_chain = "1.0.2"
+itertools = "0.10.1"
+pulldown-cmark = { version = "0.8.0", default-features = false }
+quine-mc_cluskey = "0.2.4"
+regex-syntax = "0.6.25"
+serde = { version = "1.0.129", features = ["derive"] }
+serde_json = { version = "1.0.66", optional = true }
+toml = "0.5.8"
+unicode-normalization = "0.1.19"
 unicode-script = { version = "0.5.3", default-features = false }
-semver = "0.11"
+semver = "1.0.4"
 rustc-semver = "1.1.0"
 # NOTE: cargo requires serde feat in its url dep
 # see <https://github.com/rust-lang/rust/pull/63587#issuecomment-522343864>
-url = { version = "2.1.0", features = ["serde"] }
+url = { version = "2.2.2", features = ["serde"] }
 
 [features]
 deny-warnings = ["clippy_utils/deny-warnings"]

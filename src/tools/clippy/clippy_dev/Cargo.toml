@@ -4,13 +4,13 @@ version = "0.0.1"
 edition = "2018"
 
 [dependencies]
-bytecount = "0.6"
-clap = "2.33"
-itertools = "0.9"
-opener = "0.5"
-regex = "1"
-shell-escape = "0.1"
-walkdir = "2"
+bytecount = "0.6.2"
+clap = "2.33.3"
+itertools = "0.10.1"
+opener = "0.5.0"
+regex = "1.5.4"
+shell-escape = "0.1.5"
+walkdir = "2.3.2"
 
 [features]
 deny-warnings = []

@@ -12,6 +12,7 @@ const LICENSES: &[&str] = &[
     "Apache-2.0/MIT",
     "Apache-2.0 / MIT",
     "MIT OR Apache-2.0",
+    "MIT OR Apache-2.0 OR Zlib",
     "Apache-2.0 OR MIT",
     "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT", // wasi license
     "MIT",
@@ -201,6 +202,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "thread_local",
     "time",
     "tinyvec",
+    "tinyvec_macros",
     "tracing",
     "tracing-attributes",
     "tracing-core",
