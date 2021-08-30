@@ -13,7 +13,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::{config::OptLevel, DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::DUMMY_SP;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::call::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
 };
@@ -2062,28 +2062,67 @@ impl<'tcx, T: HasTyCtxt<'tcx>> HasTyCtxt<'tcx> for LayoutCx<'tcx, T> {
     }
 }
 
+pub trait MaybeResult<T> {
+    type Error;
+
+    fn from(x: Result<T, Self::Error>) -> Self;
+    fn to_result(self) -> Result<T, Self::Error>;
+}
+
+impl<T> MaybeResult<T> for T {
+    type Error = !;
+
+    fn from(Ok(x): Result<T, Self::Error>) -> Self {
+        x
+    }
+    fn to_result(self) -> Result<T, Self::Error> {
+        Ok(self)
+    }
+}
+
+impl<T, E> MaybeResult<T> for Result<T, E> {
+    type Error = E;
+
+    fn from(x: Result<T, Self::Error>) -> Self {
+        x
+    }
+    fn to_result(self) -> Result<T, Self::Error> {
+        self
+    }
+}
+
 pub type TyAndLayout<'tcx> = rustc_target::abi::TyAndLayout<'tcx, Ty<'tcx>>;
 
+/// Trait for contexts that can compute layouts of types.
+pub trait LayoutOf<'tcx>: HasDataLayout + HasTyCtxt<'tcx> + HasParamEnv<'tcx> {
+    type LayoutOfResult: MaybeResult<TyAndLayout<'tcx>>;
+
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::LayoutOfResult;
+    // FIXME(eddyb) avoid passing information like this, and instead add more
+    // `TyCtxt::at`-like APIs to be able to do e.g. `cx.at(span).layout_of(ty)`.
+    fn spanned_layout_of(&self, ty: Ty<'tcx>, _span: Span) -> Self::LayoutOfResult {
+        self.layout_of(ty)
+    }
+}
+
 impl LayoutOf<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
+    type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode, and will normalize the input type.
     #[inline]
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::LayoutOfResult {
         self.tcx.layout_of(self.param_env.and(ty))
     }
 }
 
 impl LayoutOf<'tcx> for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
+    type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode, and will normalize the input type.
     #[inline]
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::LayoutOfResult {
         self.tcx.layout_of(self.param_env.and(ty))
     }
 }
@@ -2559,11 +2598,7 @@ impl<'tcx> ty::Instance<'tcx> {
 
 pub trait FnAbiExt<'tcx, C>
 where
-    C: LayoutOf<'tcx, Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
-        + HasDataLayout
-        + HasTargetSpec
-        + HasTyCtxt<'tcx>
-        + HasParamEnv<'tcx>,
+    C: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>> + HasTargetSpec,
 {
     /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
     ///
@@ -2746,11 +2781,7 @@ pub fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
 
 impl<'tcx, C> FnAbiExt<'tcx, C> for call::FnAbi<'tcx, Ty<'tcx>>
 where
-    C: LayoutOf<'tcx, Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
-        + HasDataLayout
-        + HasTargetSpec
-        + HasTyCtxt<'tcx>
-        + HasParamEnv<'tcx>,
+    C: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>> + HasTargetSpec,
 {
     fn of_fn_ptr(cx: &C, sig: ty::PolyFnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
         call::FnAbi::new_internal(cx, sig, extra_args, None, CodegenFnAttrFlags::empty(), false)

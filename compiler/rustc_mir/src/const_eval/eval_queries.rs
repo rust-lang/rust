@@ -12,10 +12,11 @@ use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::Reveal;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, subst::Subst, TyCtxt};
 use rustc_span::source_map::Span;
-use rustc_target::abi::{Abi, LayoutOf};
+use rustc_target::abi::Abi;
 use std::borrow::Cow;
 use std::convert::TryInto;
 

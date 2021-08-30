@@ -7,11 +7,11 @@ use std::fmt::Write;
 use rustc_errors::ErrorReported;
 use rustc_hir::def::Namespace;
 use rustc_macros::HashStable;
-use rustc_middle::ty::layout::{PrimitiveExt, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Printer};
 use rustc_middle::ty::{ConstInt, Ty};
 use rustc_middle::{mir, ty};
-use rustc_target::abi::{Abi, HasDataLayout, LayoutOf, Size, TagEncoding};
+use rustc_target::abi::{Abi, HasDataLayout, Size, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
 use super::{

@@ -17,14 +17,14 @@ use rustc_middle::mir::{
     Location, Operand, Place, Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement,
     StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
 };
-use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutError, LayoutOf, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{
     self, ConstInt, ConstKind, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_session::lint;
 use rustc_span::{def_id::DefId, Span};
-use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TargetDataLayout};
+use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 
@@ -331,10 +331,9 @@ struct ConstPropagator<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx> LayoutOf<'tcx> for ConstPropagator<'mir, 'tcx> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
+    type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::LayoutOfResult {
         self.tcx.layout_of(self.param_env.and(ty))
     }
 }

@@ -9,8 +9,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Location, TerminatorKind};
-use rustc_middle::ty::layout::HasTyCtxt;
-use rustc_target::abi::LayoutOf;
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 
 pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,

@@ -7,9 +7,9 @@ use rustc_codegen_ssa::{
     common::IntPredicate,
     traits::{BaseTypeMethods, BuilderMethods, ConstMethods, DerivedTypeMethods},
 };
-use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::Ty;
-use rustc_target::abi::{Align, Endian, HasDataLayout, LayoutOf, Size};
+use rustc_target::abi::{Align, Endian, HasDataLayout, Size};
 
 fn round_pointer_up_to_alignment(
     bx: &mut Builder<'a, 'll, 'tcx>,

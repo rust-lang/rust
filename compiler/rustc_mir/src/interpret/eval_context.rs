@@ -8,13 +8,13 @@ use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_middle::ich::StableHashingContext;
 use rustc_middle::mir;
-use rustc_middle::ty::layout::{self, TyAndLayout};
+use rustc_middle::ty::layout::{self, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_session::Limit;
 use rustc_span::{Pos, Span};
-use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
+use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
     AllocId, GlobalId, Immediate, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory,
@@ -313,11 +313,10 @@ where
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> LayoutOf<'tcx> for InterpCx<'mir, 'tcx, M> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = InterpResult<'tcx, TyAndLayout<'tcx>>;
+    type LayoutOfResult = InterpResult<'tcx, TyAndLayout<'tcx>>;
 
     #[inline]
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::LayoutOfResult {
         self.tcx
             .layout_of(self.param_env.and(ty))
             .map_err(|layout| err_inval!(Layout(layout)).into())

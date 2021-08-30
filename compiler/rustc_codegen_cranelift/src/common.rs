@@ -257,8 +257,7 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
 }
 
 impl<'tcx> LayoutOf<'tcx> for FunctionCx<'_, '_, 'tcx> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = TyAndLayout<'tcx>;
+    type LayoutOfResult = TyAndLayout<'tcx>;
 
     fn layout_of(&self, ty: Ty<'tcx>) -> TyAndLayout<'tcx> {
         RevealAllLayoutCx(self.tcx).layout_of(ty)
@@ -365,8 +364,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
 pub(crate) struct RevealAllLayoutCx<'tcx>(pub(crate) TyCtxt<'tcx>);
 
 impl<'tcx> LayoutOf<'tcx> for RevealAllLayoutCx<'tcx> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = TyAndLayout<'tcx>;
+    type LayoutOfResult = TyAndLayout<'tcx>;
 
     fn layout_of(&self, ty: Ty<'tcx>) -> TyAndLayout<'tcx> {
         assert!(!ty.still_further_specializable());

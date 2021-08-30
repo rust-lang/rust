@@ -3,10 +3,10 @@ use clippy_utils::ty::{is_normalizable, is_type_diagnostic_item};
 use if_chain::if_chain;
 use rustc_hir::{self as hir, HirId, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{Adt, Ty, TypeFoldable};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
-use rustc_target::abi::LayoutOf as _;
 use rustc_typeck::hir_ty_to_ty;
 
 declare_clippy_lint! {

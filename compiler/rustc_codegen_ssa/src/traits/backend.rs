@@ -8,15 +8,14 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorReported;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
-use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::{
     config::{self, OutputFilenames, PrintRequest},
     Session,
 };
 use rustc_span::symbol::Symbol;
-use rustc_target::abi::LayoutOf;
 use rustc_target::spec::Target;
 
 pub use rustc_data_structures::sync::MetadataRef;
@@ -39,17 +38,12 @@ pub trait BackendTypes {
 }
 
 pub trait Backend<'tcx>:
-    Sized
-    + BackendTypes
-    + HasTyCtxt<'tcx>
-    + LayoutOf<'tcx, Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
+    Sized + BackendTypes + HasTyCtxt<'tcx> + LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
 {
 }
 
 impl<'tcx, T> Backend<'tcx> for T where
-    Self: BackendTypes
-        + HasTyCtxt<'tcx>
-        + LayoutOf<'tcx, Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
+    Self: BackendTypes + HasTyCtxt<'tcx> + LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
 {
 }
 

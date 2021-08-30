@@ -4,8 +4,7 @@ use crate::traits::*;
 use rustc_hir as hir;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{Linkage, Visibility};
-use rustc_middle::ty::layout::HasTyCtxt;
-use rustc_target::abi::LayoutOf;
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 
 pub trait MonoItemExt<'a, 'tcx> {
     fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx);

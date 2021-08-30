@@ -12,9 +12,10 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{Allocation, GlobalAlloc, Scalar};
-use rustc_middle::ty::{layout::TyAndLayout, ScalarInt};
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::ScalarInt;
 use rustc_span::symbol::Symbol;
-use rustc_target::abi::{self, AddressSpace, HasDataLayout, LayoutOf, Pointer, Size};
+use rustc_target::abi::{self, AddressSpace, HasDataLayout, Pointer, Size};
 
 use libc::{c_char, c_uint};
 use tracing::debug;
