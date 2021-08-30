@@ -624,6 +624,7 @@ impl Conflicts<'a> {
                 options: _,
                 line_spans: _,
                 destination: _,
+                cleanup: _,
             } => {
                 // The intended semantics here aren't documented, we just assume that nothing that
                 // could be written to by the assembly may overlap with any other operands.

@@ -1828,9 +1828,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     self.assert_iscleanup(body, block_data, unwind, true);
                 }
             }
-            TerminatorKind::InlineAsm { destination, .. } => {
+            TerminatorKind::InlineAsm { destination, cleanup, .. } => {
                 if let Some(target) = destination {
                     self.assert_iscleanup(body, block_data, target, is_cleanup);
+                }
+                if let Some(cleanup) = cleanup {
+                    if is_cleanup {
+                        span_mirbug!(self, block_data, "cleanup on cleanup block")
+                    }
+                    self.assert_iscleanup(body, block_data, cleanup, true);
                 }
             }
         }

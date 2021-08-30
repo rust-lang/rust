@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::{AnalysisDomain, GenKill, GenKillAnalysis};
+use crate::{AnalysisDomain, CallReturnPlaces, GenKill, GenKillAnalysis};
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 
@@ -84,9 +84,7 @@ impl GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
         &self,
         _trans: &mut impl GenKill<Self::Idx>,
         _block: mir::BasicBlock,
-        _func: &mir::Operand<'tcx>,
-        _args: &[mir::Operand<'tcx>],
-        _dest_place: mir::Place<'tcx>,
+        _return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
     }
 }

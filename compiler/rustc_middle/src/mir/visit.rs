@@ -412,7 +412,7 @@ macro_rules! make_mir_visitor {
                         for output in & $($mutability)? asm.outputs[..] {
                             self.visit_place(
                                 output,
-                                PlaceContext::MutatingUse(MutatingUseContext::AsmOutput),
+                                PlaceContext::MutatingUse(MutatingUseContext::LlvmAsmOutput),
                                 location
                             );
                         }
@@ -581,6 +581,7 @@ macro_rules! make_mir_visitor {
                         options: _,
                         line_spans: _,
                         destination: _,
+                        cleanup: _,
                     } => {
                         for op in operands {
                             match op {
@@ -590,7 +591,7 @@ macro_rules! make_mir_visitor {
                                 InlineAsmOperand::Out { place: Some(place), .. } => {
                                     self.visit_place(
                                         place,
-                                        PlaceContext::MutatingUse(MutatingUseContext::Store),
+                                        PlaceContext::MutatingUse(MutatingUseContext::AsmOutput),
                                         location,
                                     );
                                 }
@@ -599,7 +600,7 @@ macro_rules! make_mir_visitor {
                                     if let Some(out_place) = out_place {
                                         self.visit_place(
                                             out_place,
-                                            PlaceContext::MutatingUse(MutatingUseContext::Store),
+                                            PlaceContext::MutatingUse(MutatingUseContext::AsmOutput),
                                             location,
                                         );
                                     }
@@ -1178,8 +1179,10 @@ pub enum MutatingUseContext {
     /// Appears as LHS of an assignment.
     Store,
     /// Can often be treated as a `Store`, but needs to be separate because
-    /// ASM is allowed to read outputs as well, so a `Store`-`AsmOutput` sequence
+    /// ASM is allowed to read outputs as well, so a `Store`-`LlvmAsmOutput` sequence
     /// cannot be simplified the way a `Store`-`Store` can be.
+    LlvmAsmOutput,
+    /// Output operand of an inline assembly block.
     AsmOutput,
     /// Destination of a call.
     Call,
@@ -1268,6 +1271,7 @@ impl PlaceContext {
             PlaceContext::MutatingUse(
                 MutatingUseContext::Store
                     | MutatingUseContext::Call
+                    | MutatingUseContext::LlvmAsmOutput
                     | MutatingUseContext::AsmOutput,
             )
         )

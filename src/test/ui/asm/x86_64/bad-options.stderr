@@ -45,41 +45,41 @@ LL |         asm!("{}", out(reg) foo, clobber_abi("C"), clobber_abi("C"));
    |                    |             clobber_abi
    |                    generic outputs
 
-error: expected one of `)`, `att_syntax`, or `raw`, found `nomem`
+error: expected one of `)`, `att_syntax`, `may_unwind`, or `raw`, found `nomem`
   --> $DIR/bad-options.rs:31:25
    |
 LL | global_asm!("", options(nomem));
-   |                         ^^^^^ expected one of `)`, `att_syntax`, or `raw`
+   |                         ^^^^^ expected one of `)`, `att_syntax`, `may_unwind`, or `raw`
 
-error: expected one of `)`, `att_syntax`, or `raw`, found `readonly`
+error: expected one of `)`, `att_syntax`, `may_unwind`, or `raw`, found `readonly`
   --> $DIR/bad-options.rs:33:25
    |
 LL | global_asm!("", options(readonly));
-   |                         ^^^^^^^^ expected one of `)`, `att_syntax`, or `raw`
+   |                         ^^^^^^^^ expected one of `)`, `att_syntax`, `may_unwind`, or `raw`
 
-error: expected one of `)`, `att_syntax`, or `raw`, found `noreturn`
+error: expected one of `)`, `att_syntax`, `may_unwind`, or `raw`, found `noreturn`
   --> $DIR/bad-options.rs:35:25
    |
 LL | global_asm!("", options(noreturn));
-   |                         ^^^^^^^^ expected one of `)`, `att_syntax`, or `raw`
+   |                         ^^^^^^^^ expected one of `)`, `att_syntax`, `may_unwind`, or `raw`
 
-error: expected one of `)`, `att_syntax`, or `raw`, found `pure`
+error: expected one of `)`, `att_syntax`, `may_unwind`, or `raw`, found `pure`
   --> $DIR/bad-options.rs:37:25
    |
 LL | global_asm!("", options(pure));
-   |                         ^^^^ expected one of `)`, `att_syntax`, or `raw`
+   |                         ^^^^ expected one of `)`, `att_syntax`, `may_unwind`, or `raw`
 
-error: expected one of `)`, `att_syntax`, or `raw`, found `nostack`
+error: expected one of `)`, `att_syntax`, `may_unwind`, or `raw`, found `nostack`
   --> $DIR/bad-options.rs:39:25
    |
 LL | global_asm!("", options(nostack));
-   |                         ^^^^^^^ expected one of `)`, `att_syntax`, or `raw`
+   |                         ^^^^^^^ expected one of `)`, `att_syntax`, `may_unwind`, or `raw`
 
-error: expected one of `)`, `att_syntax`, or `raw`, found `preserves_flags`
+error: expected one of `)`, `att_syntax`, `may_unwind`, or `raw`, found `preserves_flags`
   --> $DIR/bad-options.rs:41:25
    |
 LL | global_asm!("", options(preserves_flags));
-   |                         ^^^^^^^^^^^^^^^ expected one of `)`, `att_syntax`, or `raw`
+   |                         ^^^^^^^^^^^^^^^ expected one of `)`, `att_syntax`, `may_unwind`, or `raw`
 
 error: invalid ABI for `clobber_abi`
   --> $DIR/bad-options.rs:20:18

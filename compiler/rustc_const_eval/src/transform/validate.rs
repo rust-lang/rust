@@ -495,9 +495,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.check_edge(location, *unwind, EdgeKind::Unwind);
                 }
             }
-            TerminatorKind::InlineAsm { destination, .. } => {
+            TerminatorKind::InlineAsm { destination, cleanup, .. } => {
                 if let Some(destination) = destination {
                     self.check_edge(location, *destination, EdgeKind::Normal);
+                }
+                if let Some(cleanup) = cleanup {
+                    self.check_edge(location, *cleanup, EdgeKind::Unwind);
                 }
             }
             // Nothing to validate for these.

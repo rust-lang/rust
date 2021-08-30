@@ -791,6 +791,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                 options: _,
                 line_spans: _,
                 destination: _,
+                cleanup: _,
             } => {
                 for op in operands {
                     match *op {
