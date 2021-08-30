@@ -1,0 +1,13 @@
+// This test ensures two things:
+//
+// 1. The implementors toggle are not open by default.
+// 2. The "auto-collapse-implementors" setting is working as expected.
+goto: file://|DOC_PATH|/implementors/trait.Whatever.html
+
+// First, checking that they are not open by default.
+assert-attribute-false: ("#implementors-list > details", {"open": ""}, ALL)
+
+// Second, checking "auto-collapse-implementors" setting.
+local-storage: {"rustdoc-auto-collapse-implementors": false}
+reload:
+assert-attribute: ("#implementors-list > details", {"open": ""}, ALL)
