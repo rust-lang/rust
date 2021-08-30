@@ -239,16 +239,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let trait_path = self.trait_path_or_bare_name(span, expr_id, pick.item.container.id());
             let trait_generics = self.tcx.generics_of(pick.item.container.id());
 
-            let parameter_count = trait_generics.count() - (trait_generics.has_self as usize);
-            let trait_name = if parameter_count == 0 {
-                trait_path
-            } else {
-                format!(
-                    "{}<{}>",
-                    trait_path,
-                    std::iter::repeat("_").take(parameter_count).collect::<Vec<_>>().join(", ")
-                )
-            };
+            let trait_name =
+                if trait_generics.params.len() <= trait_generics.has_self as usize {
+                    trait_path
+                } else {
+                    let counts = trait_generics.own_counts();
+                    format!(
+                        "{}<{}>",
+                        trait_path,
+                        std::iter::repeat("'_")
+                            .take(counts.lifetimes)
+                            .chain(std::iter::repeat("_").take(
+                                counts.types + counts.consts - trait_generics.has_self as usize
+                            ))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
+                };
 
             let mut lint = lint.build(&format!(
                 "trait-associated function `{}` will become ambiguous in Rust 2021",
