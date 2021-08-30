@@ -6,19 +6,19 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-struct Generic<T, U>(T, U);
+struct Generic<'a, U>(&'a U);
 
 trait MyFromIter {
     fn from_iter(_: i32) -> Self;
 }
 
-impl MyFromIter for Generic<i32, i32> {
-    fn from_iter(x: i32) -> Self {
-        Self(x, x)
+impl MyFromIter for Generic<'static, i32> {
+    fn from_iter(_: i32) -> Self {
+        todo!()
     }
 }
 
-impl std::iter::FromIterator<i32> for Generic<i32, i32> {
+impl std::iter::FromIterator<i32> for Generic<'static, i32> {
     fn from_iter<T: IntoIterator<Item = i32>>(_: T) -> Self {
         todo!()
     }
@@ -28,10 +28,10 @@ fn main() {
     Generic::from_iter(1);
     //~^ WARNING trait-associated function `from_iter` will become ambiguous in Rust 2021
     //~| this is accepted in the current edition (Rust 2018)
-    Generic::<i32, i32>::from_iter(1);
+    Generic::<'static, i32>::from_iter(1);
     //~^ WARNING trait-associated function `from_iter` will become ambiguous in Rust 2021
     //~| this is accepted in the current edition (Rust 2018)
-    Generic::<_, _>::from_iter(1);
+    Generic::<'_, _>::from_iter(1);
     //~^ WARNING trait-associated function `from_iter` will become ambiguous in Rust 2021
     //~| this is accepted in the current edition (Rust 2018)
 }
