@@ -520,24 +520,20 @@ impl GlobalState {
         }
 
         RequestDispatcher { req: Some(req), global_state: self }
-            .on_sync::<lsp_ext::ReloadWorkspace>(|s, ()| {
+            .on_sync_mut::<lsp_ext::ReloadWorkspace>(|s, ()| {
                 s.fetch_workspaces_request();
                 s.fetch_workspaces_if_needed();
                 Ok(())
             })?
-            .on_sync::<lsp_ext::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
-            .on_sync::<lsp_ext::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
-            .on_sync::<lsp_types::request::Shutdown>(|s, ()| {
+            .on_sync_mut::<lsp_types::request::Shutdown>(|s, ()| {
                 s.shutdown_requested = true;
                 Ok(())
             })?
-            .on_sync::<lsp_types::request::SelectionRangeRequest>(|s, p| {
-                handlers::handle_selection_range(s.snapshot(), p)
-            })?
-            .on_sync::<lsp_ext::MatchingBrace>(|s, p| {
-                handlers::handle_matching_brace(s.snapshot(), p)
-            })?
-            .on_sync::<lsp_ext::MemoryUsage>(|s, p| handlers::handle_memory_usage(s, p))?
+            .on_sync_mut::<lsp_ext::MemoryUsage>(|s, p| handlers::handle_memory_usage(s, p))?
+            .on_sync::<lsp_ext::JoinLines>(handlers::handle_join_lines)?
+            .on_sync::<lsp_ext::OnEnter>(handlers::handle_on_enter)?
+            .on_sync::<lsp_types::request::SelectionRangeRequest>(handlers::handle_selection_range)?
+            .on_sync::<lsp_ext::MatchingBrace>(handlers::handle_matching_brace)?
             .on::<lsp_ext::AnalyzerStatus>(handlers::handle_analyzer_status)
             .on::<lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)
             .on::<lsp_ext::ViewHir>(handlers::handle_view_hir)
