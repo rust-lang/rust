@@ -173,9 +173,6 @@ pub struct Session {
     /// Tracks fuel info if `-zfuel=crate=n` is specified.
     optimization_fuel: Lock<OptimizationFuel>,
 
-    // The next two are public because the driver needs to read them.
-    /// If `-zprint-fuel=crate`, `Some(crate)`.
-    pub print_fuel_crate: Option<String>,
     /// Always set to zero and incremented so that we can print fuel expended by a crate.
     pub print_fuel: AtomicU64,
 
@@ -900,7 +897,7 @@ impl Session {
                 }
             }
         }
-        if let Some(ref c) = self.print_fuel_crate {
+        if let Some(ref c) = self.opts.debugging_opts.print_fuel {
             if c == crate_name {
                 assert_eq!(self.threads(), 1);
                 self.print_fuel.fetch_add(1, SeqCst);
@@ -1262,7 +1259,6 @@ pub fn build_session(
         remaining: sopts.debugging_opts.fuel.as_ref().map_or(0, |i| i.1),
         out_of_fuel: false,
     });
-    let print_fuel_crate = sopts.debugging_opts.print_fuel.clone();
     let print_fuel = AtomicU64::new(0);
 
     let cgu_reuse_tracker = if sopts.debugging_opts.query_dep_graph {
@@ -1311,7 +1307,6 @@ pub fn build_session(
         },
         code_stats: Default::default(),
         optimization_fuel,
-        print_fuel_crate,
         print_fuel,
         jobserver: jobserver::client(),
         driver_lint_caps,
