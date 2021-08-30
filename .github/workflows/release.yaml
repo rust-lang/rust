@@ -85,7 +85,7 @@ jobs:
 
   dist-x86_64-unknown-linux-gnu:
     name: dist (x86_64-unknown-linux-gnu)
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-18.04
     env:
       RA_TARGET: x86_64-unknown-linux-gnu
 
@@ -155,7 +155,7 @@ jobs:
 
   dist-aarch64-unknown-linux-gnu:
     name: dist (aarch64-unknown-linux-gnu)
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-18.04
     env:
       RA_TARGET: aarch64-unknown-linux-gnu
       CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
@@ -253,7 +253,7 @@ jobs:
 
   publish:
     name: publish
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-18.04
     needs: ['dist-x86_64-pc-windows-msvc', 'dist-aarch64-pc-windows-msvc', 'dist-x86_64-unknown-linux-gnu', 'dist-x86_64-unknown-linux-musl', 'dist-aarch64-unknown-linux-gnu', 'dist-x86_64-apple-darwin', 'dist-aarch64-apple-darwin']
     steps:
     - name: Install Nodejs
