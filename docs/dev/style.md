@@ -257,6 +257,25 @@ if idx >= len {
 
 **Rationale:** it's useful to see the invariant relied upon by the rest of the function clearly spelled out.
 
+## Control Flow
+
+As a special case of the previous rule, do not hide control flow inside functions, push it to the caller:
+
+```rust
+// GOOD
+if cond {
+    f()
+}
+
+// BAD
+fn f() {
+    if !cond {
+        return;
+    }
+    ...
+}
+```
+
 ## Assertions
 
 Assert liberally.

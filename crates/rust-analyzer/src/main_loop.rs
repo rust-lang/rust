@@ -152,8 +152,10 @@ impl GlobalState {
             );
         }
 
-        self.fetch_workspaces_request();
-        self.fetch_workspaces_if_needed();
+        self.fetch_workspaces_queue.request_op();
+        if self.fetch_workspaces_queue.should_start_op() {
+            self.fetch_workspaces();
+        }
 
         while let Some(event) = self.next_event(&inbox) {
             if let Event::Lsp(lsp_server::Message::Notification(not)) = &event {
@@ -234,14 +236,14 @@ impl GlobalState {
                                     (Progress::Report, Some(msg))
                                 }
                                 ProjectWorkspaceProgress::End(workspaces) => {
-                                    self.fetch_workspaces_completed(workspaces);
+                                    self.fetch_workspaces_queue.op_completed(workspaces);
 
                                     let old = Arc::clone(&self.workspaces);
                                     self.switch_workspaces();
                                     let workspaces_updated = !Arc::ptr_eq(&old, &self.workspaces);
 
                                     if self.config.run_build_scripts() && workspaces_updated {
-                                        self.fetch_build_data_request()
+                                        self.fetch_build_data_queue.request_op()
                                     }
 
                                     (Progress::End, None)
@@ -257,7 +259,7 @@ impl GlobalState {
                                     (Some(Progress::Report), Some(msg))
                                 }
                                 BuildDataProgress::End(build_data_result) => {
-                                    self.fetch_build_data_completed(build_data_result);
+                                    self.fetch_build_data_queue.op_completed(build_data_result);
 
                                     self.switch_workspaces();
 
@@ -425,7 +427,6 @@ impl GlobalState {
             }
 
             if !was_quiescent || state_changed {
-                // Ensure that only one cache priming task can run at a time
                 self.prime_caches_queue.request_op();
 
                 // Refresh semantic tokens if the client supports it.
@@ -473,10 +474,13 @@ impl GlobalState {
         }
 
         if self.config.cargo_autoreload() {
-            self.fetch_workspaces_if_needed();
+            if self.fetch_workspaces_queue.should_start_op() {
+                self.fetch_workspaces();
+            }
         }
-        self.fetch_build_data_if_needed();
-
+        if self.fetch_build_data_queue.should_start_op() {
+            self.fetch_build_data();
+        }
         if self.prime_caches_queue.should_start_op() {
             self.task_pool.handle.spawn_with_sender({
                 let analysis = self.snapshot().analysis;
@@ -495,7 +499,18 @@ impl GlobalState {
             });
         }
 
-        self.report_new_status_if_needed();
+        let status = self.current_status();
+        if self.last_reported_status.as_ref() != Some(&status) {
+            self.last_reported_status = Some(status.clone());
+
+            if let (lsp_ext::Health::Error, Some(message)) = (status.health, &status.message) {
+                self.show_message(lsp_types::MessageType::Error, message.clone());
+            }
+
+            if self.config.server_status_notification() {
+                self.send_notification::<lsp_ext::ServerStatusNotification>(status);
+            }
+        }
 
         let loop_duration = loop_start.elapsed();
         if loop_duration > Duration::from_millis(100) {
@@ -534,8 +549,7 @@ impl GlobalState {
 
         RequestDispatcher { req: Some(req), global_state: self }
             .on_sync_mut::<lsp_ext::ReloadWorkspace>(|s, ()| {
-                s.fetch_workspaces_request();
-                s.fetch_workspaces_if_needed();
+                s.fetch_workspaces_queue.request_op();
                 Ok(())
             })?
             .on_sync_mut::<lsp_types::request::Shutdown>(|s, ()| {
