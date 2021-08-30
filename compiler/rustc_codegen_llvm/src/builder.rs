@@ -15,7 +15,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutError, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_target::abi::{self, Align, Size};
@@ -91,8 +91,9 @@ impl HasTargetSpec for Builder<'_, '_, 'tcx> {
 impl LayoutOf<'tcx> for Builder<'_, '_, 'tcx> {
     type LayoutOfResult = TyAndLayout<'tcx>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::LayoutOfResult {
-        self.cx.layout_of(ty)
+    #[inline]
+    fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
+        self.cx.handle_layout_err(err, span, ty)
     }
 }
 

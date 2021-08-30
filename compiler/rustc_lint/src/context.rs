@@ -1083,8 +1083,9 @@ impl<'tcx> ty::layout::HasParamEnv<'tcx> for LateContext<'tcx> {
 impl<'tcx> LayoutOf<'tcx> for LateContext<'tcx> {
     type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::LayoutOfResult {
-        self.tcx.layout_of(self.param_env.and(ty))
+    #[inline]
+    fn handle_layout_err(&self, err: LayoutError<'tcx>, _: Span, _: Ty<'tcx>) -> LayoutError<'tcx> {
+        err
     }
 }
 

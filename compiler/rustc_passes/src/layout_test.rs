@@ -3,9 +3,10 @@ use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::ItemKind;
-use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutError, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_span::symbol::sym;
+use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, TargetDataLayout};
 
 pub fn test_layout(tcx: TyCtxt<'_>) {
@@ -116,8 +117,13 @@ struct UnwrapLayoutCx<'tcx> {
 impl LayoutOf<'tcx> for UnwrapLayoutCx<'tcx> {
     type LayoutOfResult = TyAndLayout<'tcx>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::LayoutOfResult {
-        self.tcx.layout_of(self.param_env.and(ty)).unwrap()
+    fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
+        span_bug!(
+            span,
+            "`#[rustc_layout(..)]` test resulted in `layout_of({}) = Err({})`",
+            ty,
+            err
+        );
     }
 }
 

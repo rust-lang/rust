@@ -2095,35 +2095,74 @@ pub type TyAndLayout<'tcx> = rustc_target::abi::TyAndLayout<'tcx, Ty<'tcx>>;
 
 /// Trait for contexts that can compute layouts of types.
 pub trait LayoutOf<'tcx>: HasDataLayout + HasTyCtxt<'tcx> + HasParamEnv<'tcx> {
+    /// The `TyAndLayout`-wrapping type (or `TyAndLayout` itself), which will be
+    /// returned from `layout_of` (see also `handle_layout_err`).
     type LayoutOfResult: MaybeResult<TyAndLayout<'tcx>>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::LayoutOfResult;
+    /// `Span` to use for `tcx.at(span)`, from `layout_of`.
+    // FIXME(eddyb) perhaps make this mandatory to get contexts to track it better?
+    #[inline]
+    fn layout_tcx_at_span(&self) -> Span {
+        DUMMY_SP
+    }
+
+    /// Helper used for `layout_of`, to adapt `tcx.layout_of(...)` into a
+    /// `Self::LayoutOfResult` (which does not need to be a `Result<...>`).
+    ///
+    /// Most `impl`s, which propagate `LayoutError`s, should simply return `err`,
+    /// but this hook allows e.g. codegen to return only `TyAndLayout` from its
+    /// `cx.layout_of(...)`, without any `Result<...>` around it to deal with
+    /// (and any `LayoutError`s are turned into fatal errors or ICEs).
+    fn handle_layout_err(
+        &self,
+        err: LayoutError<'tcx>,
+        span: Span,
+        ty: Ty<'tcx>,
+    ) -> <Self::LayoutOfResult as MaybeResult<TyAndLayout<'tcx>>>::Error;
+
+    /// Computes the layout of a type. Note that this implicitly
+    /// executes in "reveal all" mode, and will normalize the input type.
+    #[inline]
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::LayoutOfResult {
+        self.spanned_layout_of(ty, DUMMY_SP)
+    }
+
+    /// Computes the layout of a type, at `span`. Note that this implicitly
+    /// executes in "reveal all" mode, and will normalize the input type.
     // FIXME(eddyb) avoid passing information like this, and instead add more
     // `TyCtxt::at`-like APIs to be able to do e.g. `cx.at(span).layout_of(ty)`.
-    fn spanned_layout_of(&self, ty: Ty<'tcx>, _span: Span) -> Self::LayoutOfResult {
-        self.layout_of(ty)
+    #[inline]
+    fn spanned_layout_of(&self, ty: Ty<'tcx>, span: Span) -> Self::LayoutOfResult {
+        let span = if !span.is_dummy() { span } else { self.layout_tcx_at_span() };
+        MaybeResult::from(
+            self.tcx()
+                .at(span)
+                .layout_of(self.param_env().and(ty))
+                .map_err(|err| self.handle_layout_err(err, span, ty)),
+        )
     }
 }
 
 impl LayoutOf<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
     type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
-    /// Computes the layout of a type. Note that this implicitly
-    /// executes in "reveal all" mode, and will normalize the input type.
     #[inline]
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::LayoutOfResult {
-        self.tcx.layout_of(self.param_env.and(ty))
+    fn handle_layout_err(&self, err: LayoutError<'tcx>, _: Span, _: Ty<'tcx>) -> LayoutError<'tcx> {
+        err
     }
 }
 
 impl LayoutOf<'tcx> for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
     type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
-    /// Computes the layout of a type. Note that this implicitly
-    /// executes in "reveal all" mode, and will normalize the input type.
     #[inline]
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::LayoutOfResult {
-        self.tcx.layout_of(self.param_env.and(ty))
+    fn layout_tcx_at_span(&self) -> Span {
+        self.tcx.span
+    }
+
+    #[inline]
+    fn handle_layout_err(&self, err: LayoutError<'tcx>, _: Span, _: Ty<'tcx>) -> LayoutError<'tcx> {
+        err
     }
 }
 
