@@ -141,7 +141,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
                         String::new(),
                         Applicability::MaybeIncorrect,
                     );
-                } else {
+                } else if receiver_ty.is_array() {
                     diag.multipart_suggestion(
                         "or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value",
                         vec![
