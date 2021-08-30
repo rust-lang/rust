@@ -836,7 +836,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Span {
         let lo = file_lo.lines[line_lo - 1] + col_lo;
         let hi = lo + len;
 
-        Ok(Span::new(lo, hi, ctxt))
+        Ok(Span::new(lo, hi, ctxt, None))
     }
 }
 
