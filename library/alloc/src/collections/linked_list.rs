@@ -300,7 +300,7 @@ impl<T> LinkedList<T> {
         let tail = self.tail.take();
         let len = mem::replace(&mut self.len, 0);
         if let Some(head) = head {
-            let tail = tail.unwrap_or_else(|| unsafe { core::hint::unreachable_unchecked() });
+            let tail = unsafe { tail.unwrap_unchecked() };
             Some((head, tail, len))
         } else {
             None
