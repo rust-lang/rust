@@ -64,6 +64,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
     let missing_fields = ctx.sema.record_literal_missing_fields(&field_list_parent);
     for (f, ty) in missing_fields.iter() {
         let field_expr = if let Some(local_candidate) = locals.get(&f.name(ctx.sema.db)) {
+            cov_mark::hit!(field_shorthand);
             let candidate_ty = local_candidate.ty(ctx.sema.db);
             if ty.could_unify_with(ctx.sema.db, &candidate_ty) {
                 None
@@ -344,6 +345,7 @@ fn f() {
 
     #[test]
     fn test_fill_struct_fields_shorthand() {
+        cov_mark::check!(field_shorthand);
         check_fix(
             r#"
 struct S { a: &'static str, b: i32 }
