@@ -15,7 +15,7 @@ use rustc_middle::mir::{
     Mutability,
 };
 use rustc_middle::ty::{self, fold::TypeVisitor, Ty, TyCtxt};
-use rustc_mir_dataflow::{Analysis, AnalysisDomain, GenKill, GenKillAnalysis, ResultsCursor};
+use rustc_mir_dataflow::{Analysis, AnalysisDomain, CallReturnPlaces, GenKill, GenKillAnalysis, ResultsCursor};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::sym;
@@ -499,11 +499,9 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeStorageLive {
 
     fn call_return_effect(
         &self,
-        _in_out: &mut impl GenKill<Self::Idx>,
+        _trans: &mut impl GenKill<Self::Idx>,
         _block: mir::BasicBlock,
-        _func: &mir::Operand<'tcx>,
-        _args: &[mir::Operand<'tcx>],
-        _return_place: mir::Place<'tcx>,
+        _return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
         // Nothing to do when a call returns successfully
     }
