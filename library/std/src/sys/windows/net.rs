@@ -449,7 +449,7 @@ impl Socket {
     pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
         let linger = c::linger {
             l_onoff: linger.is_some() as c_ushort,
-            l_linger: linger.map(|dur| dur.as_secs() as c_ushort).unwrap_or_default(),
+            l_linger: linger.unwrap_or_default().as_secs() as c_ushort,
         };
 
         net::setsockopt(self, c::SOL_SOCKET, c::SO_LINGER, linger)
