@@ -2417,7 +2417,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// has no attributes and is not targeted by a `break`.
     fn lower_block_expr(&mut self, b: &Block) -> hir::Expr<'hir> {
         let block = self.lower_block(b, false);
-        self.expr_block(block, AttrVec::new())
+        self.expr_block(block, Vec::new())
     }
 
     fn lower_anon_const(&mut self, c: &AnonConst) -> hir::AnonConst {

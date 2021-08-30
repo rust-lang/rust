@@ -875,7 +875,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     /// Construct `ExprKind::Err` for the given `span`.
     crate fn expr_err(&mut self, span: Span) -> hir::Expr<'hir> {
-        self.expr(span, hir::ExprKind::Err, AttrVec::new())
+        self.expr(span, hir::ExprKind::Err, Vec::new())
     }
 
     fn lower_impl_item(&mut self, i: &AssocItem) -> hir::ImplItem<'hir> {
@@ -1260,7 +1260,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let user_body = this.expr_drop_temps(
                         desugared_span,
                         this.arena.alloc(user_body),
-                        AttrVec::new(),
+                        Vec::new(),
                     );
 
                     // As noted above, create the final block like
@@ -1278,14 +1278,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         Some(user_body),
                     );
 
-                    this.expr_block(body, AttrVec::new())
+                    this.expr_block(body, Vec::new())
                 },
             );
 
-            (
-                this.arena.alloc_from_iter(parameters),
-                this.expr(body_span, async_expr, AttrVec::new()),
-            )
+            (this.arena.alloc_from_iter(parameters), this.expr(body_span, async_expr, Vec::new()))
         })
     }
 
