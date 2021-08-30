@@ -156,15 +156,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         segment.ident.name
                     ));
 
-                    let (self_adjusted, precise) = self.adjust_expr(pick, self_expr);
+                    let (self_adjusted, precise) = self.adjust_expr(pick, self_expr, sp);
                     if precise {
                         let args = args
                             .iter()
                             .skip(1)
                             .map(|arg| {
+                                let span = arg.span.find_ancestor_inside(sp).unwrap_or_default();
                                 format!(
                                     ", {}",
-                                    self.sess().source_map().span_to_snippet(arg.span).unwrap()
+                                    self.sess().source_map().span_to_snippet(span).unwrap()
                                 )
                             })
                             .collect::<String>();
@@ -275,7 +276,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut self_ty_name = self
                 .sess()
                 .source_map()
-                .span_to_snippet(self_ty_span)
+                .span_to_snippet(self_ty_span.find_ancestor_inside(span).unwrap_or_default())
                 .unwrap_or_else(|_| self_ty.to_string());
 
             // Get the number of generics the self type has (if an Adt) unless we can determine that
@@ -370,7 +371,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Creates a string version of the `expr` that includes explicit adjustments.
     /// Returns the string and also a bool indicating whther this is a *precise*
     /// suggestion.
-    fn adjust_expr(&self, pick: &Pick<'tcx>, expr: &hir::Expr<'tcx>) -> (String, bool) {
+    fn adjust_expr(
+        &self,
+        pick: &Pick<'tcx>,
+        expr: &hir::Expr<'tcx>,
+        outer: Span,
+    ) -> (String, bool) {
         let derefs = "*".repeat(pick.autoderefs);
 
         let autoref = match pick.autoref_or_ptr_adjustment {
@@ -379,12 +385,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(probe::AutorefOrPtrAdjustment::ToConstPtr) | None => "",
         };
 
-        let (expr_text, precise) =
-            if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
-                (expr_text, true)
-            } else {
-                ("(..)".to_string(), false)
-            };
+        let (expr_text, precise) = if let Ok(expr_text) = self
+            .sess()
+            .source_map()
+            .span_to_snippet(expr.span.find_ancestor_inside(outer).unwrap_or_default())
+        {
+            (expr_text, true)
+        } else {
+            ("(..)".to_string(), false)
+        };
 
         let adjusted_text = if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =
             pick.autoref_or_ptr_adjustment
