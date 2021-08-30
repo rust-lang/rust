@@ -712,7 +712,9 @@ fn render_impls(
                 None,
                 false,
                 true,
+                true,
                 &[],
+                true,
             );
             buffer.into_inner()
         })
@@ -1051,7 +1053,9 @@ fn render_assoc_items(
                 None,
                 false,
                 true,
+                true,
                 &[],
+                true,
             );
         }
     }
@@ -1251,9 +1255,12 @@ fn render_impl(
     use_absolute: Option<bool>,
     is_on_foreign_type: bool,
     show_default_items: bool,
+    // It'll exclude methods.
+    show_non_assoc_items: bool,
     // This argument is used to reference same type with different paths to avoid duplication
     // in documentation pages for trait with automatic implementations like "Send" and "Sync".
     aliases: &[String],
+    toggle_open_by_default: bool,
 ) {
     let cache = cx.cache();
     let traits = &cache.traits;
@@ -1277,16 +1284,18 @@ fn render_impl(
         is_default_item: bool,
         trait_: Option<&clean::Trait>,
         show_def_docs: bool,
+        show_non_assoc_items: bool,
     ) {
         let item_type = item.type_();
         let name = item.name.as_ref().unwrap();
 
-        let render_method_item = match render_mode {
-            RenderMode::Normal => true,
-            RenderMode::ForDeref { mut_: deref_mut_ } => {
-                should_render_item(&item, deref_mut_, &cx.cache)
-            }
-        };
+        let render_method_item = show_non_assoc_items
+            && match render_mode {
+                RenderMode::Normal => true,
+                RenderMode::ForDeref { mut_: deref_mut_ } => {
+                    should_render_item(&item, deref_mut_, &cx.cache)
+                }
+            };
 
         let in_trait_class = if trait_.is_some() { " trait-impl" } else { "" };
 
@@ -1453,6 +1462,7 @@ fn render_impl(
             false,
             trait_.map(|t| &t.trait_),
             show_def_docs,
+            show_non_assoc_items,
         );
     }
 
@@ -1466,6 +1476,7 @@ fn render_impl(
         containing_item: &clean::Item,
         render_mode: RenderMode,
         show_def_docs: bool,
+        show_non_assoc_items: bool,
     ) {
         for trait_item in &t.items {
             let n = trait_item.name;
@@ -1488,6 +1499,7 @@ fn render_impl(
                 true,
                 Some(t),
                 show_def_docs,
+                show_non_assoc_items,
             );
         }
     }
@@ -1508,6 +1520,7 @@ fn render_impl(
                 parent,
                 render_mode,
                 show_def_docs,
+                show_non_assoc_items,
             );
         }
     }
@@ -1515,7 +1528,11 @@ fn render_impl(
         let toggled = !(impl_items.is_empty() && default_impl_items.is_empty());
         if toggled {
             close_tags.insert_str(0, "</details>");
-            write!(w, "<details class=\"rustdoc-toggle implementors-toggle\" open>");
+            write!(
+                w,
+                "<details class=\"rustdoc-toggle implementors-toggle\"{}>",
+                if toggle_open_by_default { " open" } else { "" }
+            );
             write!(w, "<summary>")
         }
         render_impl_summary(
