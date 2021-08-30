@@ -17,3 +17,5 @@ tt = { path = "../tt", version = "0.0.0" }
 mbe = { path = "../mbe" }
 syntax = { path = "../syntax" }
 expect-test = "1.1"
+arbitrary = { version = "1", features = ["derive"] }
+oorandom = "11"

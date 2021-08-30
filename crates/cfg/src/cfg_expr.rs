@@ -50,6 +50,7 @@ impl fmt::Display for CfgAtom {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(test, derive(arbitrary::Arbitrary))]
 pub enum CfgExpr {
     Invalid,
     Atom(CfgAtom),
@@ -127,4 +128,18 @@ fn next_cfg_expr(it: &mut SliceIter<tt::TokenTree>) -> Option<CfgExpr> {
         }
     }
     Some(ret)
+}
+
+#[cfg(test)]
+impl arbitrary::Arbitrary<'_> for CfgAtom {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<Self> {
+        match u.int_in_range(0..=1)? {
+            0 => Ok(CfgAtom::Flag(String::arbitrary(u)?.into())),
+            1 => Ok(CfgAtom::KeyValue {
+                key: String::arbitrary(u)?.into(),
+                value: String::arbitrary(u)?.into(),
+            }),
+            _ => unreachable!(),
+        }
+    }
 }
