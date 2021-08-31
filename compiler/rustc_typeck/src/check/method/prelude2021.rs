@@ -273,11 +273,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 method_name.name
             ));
 
-            let mut self_ty_name = self
-                .sess()
-                .source_map()
-                .span_to_snippet(self_ty_span.find_ancestor_inside(span).unwrap_or_default())
-                .unwrap_or_else(|_| self_ty.to_string());
+            let mut self_ty_name = self_ty_span
+                .find_ancestor_inside(span)
+                .and_then(|span| self.sess().source_map().span_to_snippet(span).ok())
+                .unwrap_or_else(|| self_ty.to_string());
 
             // Get the number of generics the self type has (if an Adt) unless we can determine that
             // the user has written the self type with generics already which we (naively) do by looking
@@ -385,10 +384,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(probe::AutorefOrPtrAdjustment::ToConstPtr) | None => "",
         };
 
-        let (expr_text, precise) = if let Ok(expr_text) = self
-            .sess()
-            .source_map()
-            .span_to_snippet(expr.span.find_ancestor_inside(outer).unwrap_or_default())
+        let (expr_text, precise) = if let Some(expr_text) = expr
+            .span
+            .find_ancestor_inside(outer)
+            .and_then(|span| self.sess().source_map().span_to_snippet(span).ok())
         {
             (expr_text, true)
         } else {
