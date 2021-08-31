@@ -67,7 +67,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     E0785,
                     "cannot define inherent `impl` for a dyn auto trait"
                 )
-                .span_label(ty.span, "impl requires a principal trait")
+                .span_label(ty.span, "impl requires at least one non-auto trait")
                 .note("define and implement a new trait or type instead")
                 .emit();
             }
