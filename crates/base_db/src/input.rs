@@ -11,7 +11,7 @@ use std::{fmt, iter::FromIterator, ops, panic::RefUnwindSafe, str::FromStr, sync
 use cfg::CfgOptions;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::SmolStr;
-use tt::{ExpansionError, Subtree};
+use tt::Subtree;
 use vfs::{file_set::FileSet, FileId, VfsPath};
 
 /// Files are grouped into source roots. A source root is a directory on the
@@ -163,7 +163,13 @@ pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
         subtree: &Subtree,
         attrs: Option<&Subtree>,
         env: &Env,
-    ) -> Result<Subtree, ExpansionError>;
+    ) -> Result<Subtree, ProcMacroExpansionError>;
+}
+
+pub enum ProcMacroExpansionError {
+    Panic(String),
+    /// Things like "proc macro server was killed by OOM".
+    System(String),
 }
 
 #[derive(Debug, Clone)]

@@ -1,7 +1,7 @@
 //! Proc Macro Expander stub
 
 use crate::db::AstDatabase;
-use base_db::{CrateId, ProcMacroId};
+use base_db::{CrateId, ProcMacroExpansionError, ProcMacroId};
 use mbe::ExpandResult;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -42,7 +42,14 @@ impl ProcMacroExpander {
                 // Proc macros have access to the environment variables of the invoking crate.
                 let env = &krate_graph[calling_crate].env;
 
-                proc_macro.expander.expand(tt, attr_arg, env).map_err(mbe::ExpandError::from).into()
+                proc_macro
+                    .expander
+                    .expand(tt, attr_arg, env)
+                    .map_err(|err| match err {
+                        ProcMacroExpansionError::Panic(text) => mbe::ExpandError::Other(text),
+                        ProcMacroExpansionError::System(text) => mbe::ExpandError::Other(text),
+                    })
+                    .into()
             }
             None => ExpandResult::only_err(mbe::ExpandError::UnresolvedProcMacro),
         }
