@@ -41,7 +41,7 @@ macro_rules! maybe_whole_expr {
                     let path = path.clone();
                     $p.bump();
                     return Ok($p.mk_expr(
-                        $p.token.span,
+                        $p.prev_token.span,
                         ExprKind::Path(None, path),
                         AttrVec::new(),
                     ));
@@ -50,7 +50,7 @@ macro_rules! maybe_whole_expr {
                     let block = block.clone();
                     $p.bump();
                     return Ok($p.mk_expr(
-                        $p.token.span,
+                        $p.prev_token.span,
                         ExprKind::Block(block, None),
                         AttrVec::new(),
                     ));

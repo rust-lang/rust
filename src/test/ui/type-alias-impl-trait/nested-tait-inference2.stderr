@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `(): Foo<impl Debug>` is not satisfied
+  --> $DIR/nested-tait-inference2.rs:14:13
+   |
+LL | fn foo() -> impl Foo<FooX> {
+   |             ^^^^^^^^^^^^^^ the trait `Foo<impl Debug>` is not implemented for `()`
+   |
+   = help: the following implementations were found:
+             <() as Foo<()>>
+             <() as Foo<u32>>
+
+error: could not find defining uses
+  --> $DIR/nested-tait-inference2.rs:6:13
+   |
+LL | type FooX = impl Debug;
+   |             ^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

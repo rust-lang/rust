@@ -9,8 +9,8 @@
 /// listed. These impls will appear in the implement_ty_decoder! macro.
 #[macro_export]
 macro_rules! arena_types {
-    ($macro:path, $args:tt, $tcx:lifetime) => (
-        $macro!($args, [
+    ($macro:path, $tcx:lifetime) => (
+        $macro!([
             [] layouts: rustc_target::abi::Layout,
             // AdtDef are interned and compared by address
             [] adt_def: rustc_middle::ty::AdtDef,
@@ -109,4 +109,4 @@ macro_rules! arena_types {
     )
 }
 
-arena_types!(rustc_arena::declare_arena, [], 'tcx);
+arena_types!(rustc_arena::declare_arena, 'tcx);

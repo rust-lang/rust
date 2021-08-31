@@ -30,5 +30,14 @@ LL |         let _: u32 = 3u8.try_into().unwrap();
    = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/prelude.html>
 
-warning: 3 warnings emitted
+warning: trait method `try_into` will become ambiguous in Rust 2021
+  --> $DIR/future-prelude-collision-imported.rs:64:22
+   |
+LL |         let _: u32 = 3u8.try_into().unwrap();
+   |                      ^^^^^^^^^^^^^^ help: disambiguate the associated function: `TryIntoU32::try_into(3u8)`
+   |
+   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/prelude.html>
+
+warning: 4 warnings emitted
 

@@ -616,6 +616,9 @@ pub fn temp_dir() -> PathBuf {
 /// return the path of the symbolic link and other platforms will return the
 /// path of the symbolic link’s target.
 ///
+/// If the executable is renamed while it is running, platforms may return the
+/// path at the time it was loaded instead of the new path.
+///
 /// # Errors
 ///
 /// Acquiring the path of the current executable is a platform-specific operation
