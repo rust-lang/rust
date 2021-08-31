@@ -178,6 +178,11 @@ impl DefMap {
         path: &ModPath,
         shadow: BuiltinShadowMode,
     ) -> ResolvePathResult {
+        let _cx = stdx::panic_context::enter(format!(
+            "DefMap {:?} {:?} path {}",
+            self.krate, self.block, path
+        ));
+
         let mut segments = path.segments().iter().enumerate();
         let mut curr_per_ns: PerNs = match path.kind {
             PathKind::DollarCrate(krate) => {
