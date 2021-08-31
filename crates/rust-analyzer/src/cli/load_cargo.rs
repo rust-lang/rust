@@ -8,7 +8,7 @@ use hir::db::DefDatabase;
 use ide::{AnalysisHost, Change};
 use ide_db::base_db::CrateGraph;
 use proc_macro_api::ProcMacroClient;
-use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, WorkspaceBuildScripts};
+use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace};
 use vfs::{loader::Handle, AbsPath, AbsPathBuf};
 
 use crate::reload::{load_proc_macro, ProjectFolders, SourceRootConfig};
@@ -31,9 +31,14 @@ pub fn load_workspace_at(
 ) -> Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroClient>)> {
     let root = AbsPathBuf::assert(std::env::current_dir()?.join(root));
     let root = ProjectManifest::discover_single(&root)?;
-    let workspace = ProjectWorkspace::load(root, cargo_config, progress)?;
+    let mut workspace = ProjectWorkspace::load(root, cargo_config, progress)?;
 
-    load_workspace(workspace, cargo_config, load_config, progress)
+    if load_config.load_out_dirs_from_check {
+        let build_scripts = workspace.run_build_scripts(cargo_config, progress)?;
+        workspace.set_build_scripts(build_scripts)
+    }
+
+    load_workspace(workspace, load_config)
 }
 
 // Note: Since this function is used by external tools that use rust-analyzer as a library
@@ -42,10 +47,8 @@ pub fn load_workspace_at(
 // The reason both, `load_workspace_at` and `load_workspace` are `pub` is that some of
 // these tools need access to `ProjectWorkspace`, too, which `load_workspace_at` hides.
 pub fn load_workspace(
-    mut ws: ProjectWorkspace,
-    cargo_config: &CargoConfig,
+    ws: ProjectWorkspace,
     load_config: &LoadCargoConfig,
-    progress: &dyn Fn(String),
 ) -> Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroClient>)> {
     let (sender, receiver) = unbounded();
     let mut vfs = vfs::Vfs::default();
@@ -61,12 +64,6 @@ pub fn load_workspace(
     } else {
         None
     };
-
-    ws.set_build_scripts(if load_config.load_out_dirs_from_check {
-        ws.run_build_scripts(cargo_config, progress)?
-    } else {
-        WorkspaceBuildScripts::default()
-    });
 
     let crate_graph = ws.to_crate_graph(
         &mut |path: &AbsPath| load_proc_macro(proc_macro_client.as_ref(), path),

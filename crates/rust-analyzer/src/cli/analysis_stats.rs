@@ -20,16 +20,16 @@ use ide_db::base_db::{
 use itertools::Itertools;
 use oorandom::Rand32;
 use profile::{Bytes, StopWatch};
-use project_model::CargoConfig;
+use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace};
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 use stdx::format_to;
 use syntax::{AstNode, SyntaxNode};
-use vfs::{Vfs, VfsPath};
+use vfs::{AbsPathBuf, Vfs, VfsPath};
 
 use crate::cli::{
     flags,
-    load_cargo::{load_workspace_at, LoadCargoConfig},
+    load_cargo::{load_workspace, LoadCargoConfig},
     print_memory_usage,
     progress_report::ProgressReport,
     report_metric, Result, Verbosity,
@@ -50,7 +50,6 @@ impl flags::AnalysisStats {
             Rand32::new(seed)
         };
 
-        let mut db_load_sw = self.stop_watch();
         let mut cargo_config = CargoConfig::default();
         cargo_config.no_sysroot = self.no_sysroot;
         let load_cargo_config = LoadCargoConfig {
@@ -58,10 +57,33 @@ impl flags::AnalysisStats {
             with_proc_macro: !self.disable_proc_macros,
             prefill_caches: false,
         };
-        let (host, vfs, _proc_macro) =
-            load_workspace_at(&self.path, &cargo_config, &load_cargo_config, &|_| {})?;
+        let no_progress = &|_| ();
+
+        let mut db_load_sw = self.stop_watch();
+
+        let path = AbsPathBuf::assert(env::current_dir()?.join(&self.path));
+        let manifest = ProjectManifest::discover_single(&path)?;
+
+        let mut workspace = ProjectWorkspace::load(manifest, &cargo_config, no_progress)?;
+        let metadata_time = db_load_sw.elapsed();
+
+        let build_scripts_time = if self.disable_build_scripts {
+            None
+        } else {
+            let mut build_scripts_sw = self.stop_watch();
+            let bs = workspace.run_build_scripts(&cargo_config, no_progress)?;
+            workspace.set_build_scripts(bs);
+            Some(build_scripts_sw.elapsed())
+        };
+
+        let (host, vfs, _proc_macro) = load_workspace(workspace, &load_cargo_config)?;
         let db = host.raw_database();
-        eprintln!("{:<20} {}", "Database loaded:", db_load_sw.elapsed());
+        eprint!("{:<20} {}", "Database loaded:", db_load_sw.elapsed());
+        eprint!(" (metadata {}", metadata_time);
+        if let Some(build_scripts_time) = build_scripts_time {
+            eprint!("; build {}", build_scripts_time);
+        }
+        eprintln!(")");
 
         let mut analysis_sw = self.stop_watch();
         let mut num_crates = 0;
