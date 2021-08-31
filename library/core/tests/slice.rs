@@ -1,5 +1,6 @@
 use core::cell::Cell;
 use core::cmp::Ordering;
+use core::mem::MaybeUninit;
 use core::result::Result::{Err, Ok};
 
 #[test]
@@ -2148,8 +2149,6 @@ fn test_slice_run_destructors() {
 #[test]
 fn test_slice_fill_with_uninit() {
     // This should not UB. See #87891
-    use core::mem::MaybeUninit;
-
     let mut a = [MaybeUninit::<u8>::uninit(); 10];
     a.fill(MaybeUninit::uninit());
 }
