@@ -5,7 +5,7 @@ use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::{Adt, Ref, Ty};
+use rustc_middle::ty::{Adt, Array, Ref, Ty};
 use rustc_session::lint::builtin::RUST_2021_PRELUDE_COLLISIONS;
 use rustc_span::symbol::kw::{Empty, Underscore};
 use rustc_span::symbol::{sym, Ident};
@@ -38,10 +38,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        // These are the method names that were added to prelude in Rust 2021
-        if !matches!(segment.ident.name, sym::try_into) {
-            return;
-        }
+        let prelude_or_array_lint = match segment.ident.name {
+            // `try_into` was added to the prelude in Rust 2021.
+            sym::try_into => RUST_2021_PRELUDE_COLLISIONS,
+            // `into_iter` wasn't added to the prelude,
+            // but `[T; N].into_iter()` doesn't resolve to IntoIterator::into_iter
+            // before Rust 2021, which results in the same problem.
+            // It is only a problem for arrays.
+            sym::into_iter if let Array(..) = self_ty.kind() => {
+                // In this case, it wasn't really a prelude addition that was the problem.
+                // Instead, the problem is that the array-into_iter hack will no longer apply in Rust 2021.
+                rustc_lint::ARRAY_INTO_ITER
+            }
+            _ => return,
+        };
 
         // No need to lint if method came from std/core, as that will now be in the prelude
         if matches!(self.tcx.crate_name(pick.item.def_id.krate), sym::std | sym::core) {
@@ -69,7 +79,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Inherent impls only require not relying on autoref and autoderef in order to
             // ensure that the trait implementation won't be used
             self.tcx.struct_span_lint_hir(
-                RUST_2021_PRELUDE_COLLISIONS,
+                prelude_or_array_lint,
                 self_expr.hir_id,
                 self_expr.span,
                 |lint| {
@@ -130,7 +140,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // trait implementations require full disambiguation to not clash with the new prelude
             // additions (i.e. convert from dot-call to fully-qualified call)
             self.tcx.struct_span_lint_hir(
-                RUST_2021_PRELUDE_COLLISIONS,
+                prelude_or_array_lint,
                 call_expr.hir_id,
                 call_expr.span,
                 |lint| {
