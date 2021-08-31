@@ -133,13 +133,13 @@ fn next_cfg_expr(it: &mut SliceIter<tt::TokenTree>) -> Option<CfgExpr> {
 #[cfg(test)]
 impl arbitrary::Arbitrary<'_> for CfgAtom {
     fn arbitrary(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<Self> {
-        match u.int_in_range(0..=1)? {
-            0 => Ok(CfgAtom::Flag(String::arbitrary(u)?.into())),
-            1 => Ok(CfgAtom::KeyValue {
+        if u.arbitrary()? {
+            Ok(CfgAtom::Flag(String::arbitrary(u)?.into()))
+        } else {
+            Ok(CfgAtom::KeyValue {
                 key: String::arbitrary(u)?.into(),
                 value: String::arbitrary(u)?.into(),
-            }),
-            _ => unreachable!(),
+            })
         }
     }
 }
