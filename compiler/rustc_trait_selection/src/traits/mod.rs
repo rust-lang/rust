@@ -647,14 +647,14 @@ fn vtable_entries<'tcx>(
                     .filter(|item| item.kind == ty::AssocKind::Fn);
                 // Now list each method's DefId and InternalSubsts (for within its trait).
                 // If the method can never be called from this object, produce `Vacant`.
-                let own_entries = trait_methods.map(move |trait_method| {
+                let own_entries = trait_methods.filter_map(move |trait_method| {
                     debug!("vtable_entries: trait_method={:?}", trait_method);
                     let def_id = trait_method.def_id;
 
                     // Some methods cannot be called on an object; skip those.
                     if !is_vtable_safe_method(tcx, trait_ref.def_id(), &trait_method) {
                         debug!("vtable_entries: not vtable safe");
-                        return VtblEntry::Vacant;
+                        return None;
                     }
 
                     // The method may have some early-bound lifetimes; add regions for those.
@@ -681,7 +681,7 @@ fn vtable_entries<'tcx>(
                     let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
                     if impossible_predicates(tcx, predicates.predicates) {
                         debug!("vtable_entries: predicates do not hold");
-                        return VtblEntry::Vacant;
+                        return Some(VtblEntry::Vacant);
                     }
 
                     let instance = ty::Instance::resolve_for_vtable(
@@ -691,7 +691,7 @@ fn vtable_entries<'tcx>(
                         substs,
                     )
                     .expect("resolution failed during building vtable representation");
-                    VtblEntry::Method(instance)
+                    Some(VtblEntry::Method(instance))
                 });
 
                 entries.extend(own_entries);
