@@ -666,42 +666,22 @@ pub fn to_fragment_kind(call: &ast::MacroCall) -> FragmentKind {
     };
 
     match parent.kind() {
-        MACRO_ITEMS | SOURCE_FILE => FragmentKind::Items,
-        MACRO_STMTS => FragmentKind::Statements,
+        MACRO_ITEMS | SOURCE_FILE | ITEM_LIST => FragmentKind::Items,
+        MACRO_STMTS | EXPR_STMT | BLOCK_EXPR => FragmentKind::Statements,
         MACRO_PAT => FragmentKind::Pattern,
         MACRO_TYPE => FragmentKind::Type,
-        ITEM_LIST => FragmentKind::Items,
+
+        ARG_LIST | TRY_EXPR | TUPLE_EXPR | PAREN_EXPR | ARRAY_EXPR | FOR_EXPR | PATH_EXPR
+        | CLOSURE_EXPR | CONDITION | BREAK_EXPR | RETURN_EXPR | MATCH_EXPR | MATCH_ARM
+        | MATCH_GUARD | RECORD_EXPR_FIELD | CALL_EXPR | INDEX_EXPR | METHOD_CALL_EXPR
+        | FIELD_EXPR | AWAIT_EXPR | CAST_EXPR | REF_EXPR | PREFIX_EXPR | RANGE_EXPR | BIN_EXPR => {
+            FragmentKind::Expr
+        }
         LET_STMT => {
             // FIXME: Handle LHS Pattern
             FragmentKind::Expr
         }
-        EXPR_STMT => FragmentKind::Statements,
-        BLOCK_EXPR => FragmentKind::Statements,
-        ARG_LIST => FragmentKind::Expr,
-        TRY_EXPR => FragmentKind::Expr,
-        TUPLE_EXPR => FragmentKind::Expr,
-        PAREN_EXPR => FragmentKind::Expr,
-        ARRAY_EXPR => FragmentKind::Expr,
-        FOR_EXPR => FragmentKind::Expr,
-        PATH_EXPR => FragmentKind::Expr,
-        CLOSURE_EXPR => FragmentKind::Expr,
-        CONDITION => FragmentKind::Expr,
-        BREAK_EXPR => FragmentKind::Expr,
-        RETURN_EXPR => FragmentKind::Expr,
-        MATCH_EXPR => FragmentKind::Expr,
-        MATCH_ARM => FragmentKind::Expr,
-        MATCH_GUARD => FragmentKind::Expr,
-        RECORD_EXPR_FIELD => FragmentKind::Expr,
-        CALL_EXPR => FragmentKind::Expr,
-        INDEX_EXPR => FragmentKind::Expr,
-        METHOD_CALL_EXPR => FragmentKind::Expr,
-        FIELD_EXPR => FragmentKind::Expr,
-        AWAIT_EXPR => FragmentKind::Expr,
-        CAST_EXPR => FragmentKind::Expr,
-        REF_EXPR => FragmentKind::Expr,
-        PREFIX_EXPR => FragmentKind::Expr,
-        RANGE_EXPR => FragmentKind::Expr,
-        BIN_EXPR => FragmentKind::Expr,
+
         _ => {
             // Unknown , Just guess it is `Items`
             FragmentKind::Items
