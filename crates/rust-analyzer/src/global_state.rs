@@ -11,7 +11,7 @@ use ide::{Analysis, AnalysisHost, Cancellable, Change, FileId};
 use ide_db::base_db::CrateId;
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
-use proc_macro_api::ProcMacroClient;
+use proc_macro_api::ProcMacroServer;
 use project_model::{CargoWorkspace, ProjectWorkspace, Target, WorkspaceBuildScripts};
 use rustc_hash::FxHashMap;
 use vfs::AnchoredPathBuf;
@@ -60,7 +60,7 @@ pub(crate) struct GlobalState {
     pub(crate) shutdown_requested: bool,
     pub(crate) last_reported_status: Option<lsp_ext::ServerStatusParams>,
     pub(crate) source_root_config: SourceRootConfig,
-    pub(crate) proc_macro_client: Option<ProcMacroClient>,
+    pub(crate) proc_macro_client: Option<ProcMacroServer>,
 
     pub(crate) flycheck: Vec<FlycheckHandle>,
     pub(crate) flycheck_sender: Sender<flycheck::Message>,
