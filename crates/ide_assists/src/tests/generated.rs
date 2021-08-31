@@ -448,7 +448,7 @@ fn doctest_extract_struct_from_enum_variant() {
 enum A { $0One(u32, u32) }
 "#####,
         r#####"
-struct One(pub u32, pub u32);
+struct One(u32, u32);
 
 enum A { One(One) }
 "#####,
