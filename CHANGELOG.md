@@ -2904,6 +2904,7 @@ Released 2018-09-13
 [`imprecise_flops`]: https://rust-lang.github.io/rust-clippy/master/index.html#imprecise_flops
 [`inconsistent_digit_grouping`]: https://rust-lang.github.io/rust-clippy/master/index.html#inconsistent_digit_grouping
 [`inconsistent_struct_constructor`]: https://rust-lang.github.io/rust-clippy/master/index.html#inconsistent_struct_constructor
+[`index_refutable_slice`]: https://rust-lang.github.io/rust-clippy/master/index.html#index_refutable_slice
 [`indexing_slicing`]: https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
 [`ineffective_bit_mask`]: https://rust-lang.github.io/rust-clippy/master/index.html#ineffective_bit_mask
 [`inefficient_to_string`]: https://rust-lang.github.io/rust-clippy/master/index.html#inefficient_to_string

@@ -238,6 +238,7 @@ mod implicit_hasher;
 mod implicit_return;
 mod implicit_saturating_sub;
 mod inconsistent_struct_constructor;
+mod index_refutable_slice;
 mod indexing_slicing;
 mod infinite_iter;
 mod inherent_impl;
@@ -580,6 +581,13 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
 
     store.register_late_pass(|| Box::new(size_of_in_element_count::SizeOfInElementCount));
     store.register_late_pass(|| Box::new(same_name_method::SameNameMethod));
+    let max_suggested_slice_pattern_length = conf.max_suggested_slice_pattern_length;
+    store.register_late_pass(move || {
+        Box::new(index_refutable_slice::IndexRefutableSlice::new(
+            max_suggested_slice_pattern_length,
+            msrv,
+        ))
+    });
     store.register_late_pass(|| Box::new(map_clone::MapClone));
     store.register_late_pass(|| Box::new(map_err_ignore::MapErrIgnore));
     store.register_late_pass(|| Box::new(shadow::Shadow::default()));
