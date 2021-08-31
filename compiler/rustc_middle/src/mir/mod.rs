@@ -426,6 +426,11 @@ impl<'tcx> Body<'tcx> {
         (arg_count + 1..local_count).map(Local::new)
     }
 
+    #[inline]
+    pub fn drain_vars_and_temps<'a>(&'a mut self) -> impl Iterator<Item = LocalDecl<'tcx>> + 'a {
+        self.local_decls.drain(self.arg_count + 1..)
+    }
+
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
     /// invalidating statement indices in `Location`s.
     pub fn make_statement_nop(&mut self, location: Location) {
