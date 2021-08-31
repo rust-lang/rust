@@ -778,23 +778,41 @@ impl usize {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum FpCategory {
-    /// "Not a Number", often obtained by dividing by zero.
+    /// NaN (not a number): this value results from calculations like `(-1.0).sqrt()`.
+    ///
+    /// See [the documentation for `f32`](f32) for more information on the unusual properties
+    /// of NaN.
     #[stable(feature = "rust1", since = "1.0.0")]
     Nan,
 
-    /// Positive or negative infinity.
+    /// Positive or negative infinity, which often results from dividing a nonzero number
+    /// by zero.
     #[stable(feature = "rust1", since = "1.0.0")]
     Infinite,
 
     /// Positive or negative zero.
+    ///
+    /// See [the documentation for `f32`](f32) for more information on the signedness of zeroes.
     #[stable(feature = "rust1", since = "1.0.0")]
     Zero,
 
-    /// De-normalized floating point representation (less precise than `Normal`).
+    /// “Subnormal” or “denormal” floating point representation (less precise, relative to
+    /// their magnitude, than [`Normal`]).
+    ///
+    /// Subnormal numbers are larger in magnitude than [`Zero`] but smaller in magnitude than all
+    /// [`Normal`] numbers.
+    ///
+    /// [`Normal`]: Self::Normal
+    /// [`Zero`]: Self::Zero
     #[stable(feature = "rust1", since = "1.0.0")]
     Subnormal,
 
-    /// A regular floating point number.
+    /// A regular floating point number, not any of the exceptional categories.
+    ///
+    /// The smallest positive normal numbers are [`f32::MIN_POSITIVE`] and [`f64::MIN_POSITIVE`],
+    /// and the largest positive normal numbers are [`f32::MAX`] and [`f64::MAX`]. (Unlike signed
+    /// integers, floating point numbers are symmetric in their range, so negating any of these
+    /// constants will produce their negative counterpart.)
     #[stable(feature = "rust1", since = "1.0.0")]
     Normal,
 }
