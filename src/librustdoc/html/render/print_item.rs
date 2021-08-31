@@ -1642,8 +1642,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
             if let Variants::Multiple { variants, tag, .. } = &ty_layout.layout.variants {
                 if !variants.is_empty() {
                     w.write_str(
-                        "<p>\
-                            <strong>Size for each variant:</strong>\
+                        "<p><strong>Size for each variant:</strong></p>\
                             <ul>",
                     );
 
@@ -1665,7 +1664,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
                         write_size_of_layout(w, layout, tag_size);
                         writeln!(w, "</li>");
                     }
-                    w.write_str("</ul></p>");
+                    w.write_str("</ul>");
                 }
             }
         }
