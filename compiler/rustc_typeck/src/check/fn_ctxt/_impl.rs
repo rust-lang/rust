@@ -914,7 +914,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
 
         if result.is_ok() {
-            self.maybe_lint_bare_trait(qpath, hir_id);
+            self.maybe_lint_bare_trait(qpath, hir_id, span);
             self.register_wf_obligation(ty.into(), qself.span, traits::WellFormed(None));
         }
 
@@ -927,7 +927,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
     }
 
-    fn maybe_lint_bare_trait(&self, qpath: &QPath<'_>, hir_id: hir::HirId) {
+    fn maybe_lint_bare_trait(&self, qpath: &QPath<'_>, hir_id: hir::HirId, span: Span) {
         if let QPath::TypeRelative(self_ty, _) = qpath {
             if let TyKind::TraitObject([poly_trait_ref, ..], _, TraitObjectSyntax::None) =
                 self_ty.kind
@@ -935,10 +935,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let msg = "trait objects without an explicit `dyn` are deprecated";
                 let (sugg, app) = match self.tcx.sess.source_map().span_to_snippet(self_ty.span) {
                     Ok(s) if poly_trait_ref.trait_ref.path.is_global() => {
-                        (format!("<dyn ({})>", s), Applicability::MachineApplicable)
+                        (format!("dyn ({})", s), Applicability::MachineApplicable)
                     }
-                    Ok(s) => (format!("<dyn {}>", s), Applicability::MachineApplicable),
-                    Err(_) => ("<dyn <type>>".to_string(), Applicability::HasPlaceholders),
+                    Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
+                    Err(_) => ("dyn <type>".to_string(), Applicability::HasPlaceholders),
+                };
+                // Wrap in `<..>` if it isn't already.
+                let sugg = match self.tcx.sess.source_map().span_to_snippet(span) {
+                    Ok(s) if s.starts_with('<') => sugg,
+                    _ => format!("<{}>", sugg),
                 };
                 let replace = String::from("use `dyn`");
                 if self.sess().edition() >= Edition::Edition2021 {
