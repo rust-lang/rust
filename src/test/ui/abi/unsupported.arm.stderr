@@ -16,12 +16,6 @@ error[E0570]: `"wasm"` is not a supported ABI for the current target
 LL | extern "wasm" fn wasm() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0570]: `"aapcs"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:32:1
-   |
-LL | extern "aapcs" fn aapcs() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0570]: `"msp430-interrupt"` is not a supported ABI for the current target
   --> $DIR/unsupported.rs:36:1
    |
@@ -59,6 +53,6 @@ LL | extern "thiscall" fn thiscall() {}
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #87678 <https://github.com/rust-lang/rust/issues/87678>
 
-error: aborting due to 7 previous errors; 2 warnings emitted
+error: aborting due to 6 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0570`.
