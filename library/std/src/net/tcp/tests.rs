@@ -769,6 +769,21 @@ fn test_timeout_zero_duration() {
 
 #[test]
 #[cfg_attr(target_env = "sgx", ignore)]
+fn linger() {
+    let addr = next_test_ip4();
+    let _listener = t!(TcpListener::bind(&addr));
+
+    let stream = t!(TcpStream::connect(&("localhost", addr.port())));
+
+    assert_eq!(None, t!(stream.linger()));
+    t!(stream.set_linger(Some(Duration::from_secs(1))));
+    assert_eq!(Some(Duration::from_secs(1)), t!(stream.linger()));
+    t!(stream.set_linger(None));
+    assert_eq!(None, t!(stream.linger()));
+}
+
+#[test]
+#[cfg_attr(target_env = "sgx", ignore)]
 fn nodelay() {
     let addr = next_test_ip4();
     let _listener = t!(TcpListener::bind(&addr));

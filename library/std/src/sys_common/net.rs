@@ -297,6 +297,14 @@ impl TcpStream {
         self.inner.duplicate().map(|s| TcpStream { inner: s })
     }
 
+    pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
+        self.inner.set_linger(linger)
+    }
+
+    pub fn linger(&self) -> io::Result<Option<Duration>> {
+        self.inner.linger()
+    }
+
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
         self.inner.set_nodelay(nodelay)
     }

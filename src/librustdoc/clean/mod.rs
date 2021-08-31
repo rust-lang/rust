@@ -1702,12 +1702,28 @@ impl Clean<VariantStruct> for rustc_hir::VariantData<'_> {
     }
 }
 
+impl Clean<Vec<Item>> for hir::VariantData<'_> {
+    fn clean(&self, cx: &mut DocContext<'_>) -> Vec<Item> {
+        self.fields().iter().map(|x| x.clean(cx)).collect()
+    }
+}
+
 impl Clean<Item> for ty::VariantDef {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
         let kind = match self.ctor_kind {
             CtorKind::Const => Variant::CLike,
             CtorKind::Fn => Variant::Tuple(
-                self.fields.iter().map(|f| cx.tcx.type_of(f.did).clean(cx)).collect(),
+                self.fields
+                    .iter()
+                    .map(|field| {
+                        let name = Some(field.ident.name);
+                        let kind = StructFieldItem(cx.tcx.type_of(field.did).clean(cx));
+                        let what_rustc_thinks =
+                            Item::from_def_id_and_parts(field.did, name, kind, cx);
+                        // don't show `pub` for fields, which are always public
+                        Item { visibility: Visibility::Inherited, ..what_rustc_thinks }
+                    })
+                    .collect(),
             ),
             CtorKind::Fictive => Variant::Struct(VariantStruct {
                 struct_type: CtorKind::Fictive,
@@ -1737,13 +1753,7 @@ impl Clean<Variant> for hir::VariantData<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Variant {
         match self {
             hir::VariantData::Struct(..) => Variant::Struct(self.clean(cx)),
-            // Important note here: `Variant::Tuple` is used on tuple structs which are not in an
-            // enum (so where converting from `ty::VariantDef`). In case we are in an enum, the kind
-            // is provided by the `Variant` wrapper directly, and since we need the fields' name
-            // (even for a tuple struct variant!), it's simpler to just store it as a
-            // `Variant::Struct` instead of a `Variant::Tuple` (otherwise it would force us to make
-            // a lot of changes when rendering them to generate the name as well).
-            hir::VariantData::Tuple(..) => Variant::Struct(self.clean(cx)),
+            hir::VariantData::Tuple(..) => Variant::Tuple(self.clean(cx)),
             hir::VariantData::Unit(..) => Variant::CLike,
         }
     }

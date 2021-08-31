@@ -15,7 +15,7 @@ use crate::sys_common::net;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 
-use libc::{c_int, c_long, c_ulong};
+use libc::{c_int, c_long, c_ulong, c_ushort};
 
 pub type wrlen_t = i32;
 
@@ -444,6 +444,21 @@ impl Socket {
         let result =
             unsafe { c::ioctlsocket(self.as_raw_socket(), c::FIONBIO as c_int, &mut nonblocking) };
         cvt(result).map(drop)
+    }
+
+    pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
+        let linger = c::linger {
+            l_onoff: linger.is_some() as c_ushort,
+            l_linger: linger.unwrap_or_default().as_secs() as c_ushort,
+        };
+
+        net::setsockopt(self, c::SOL_SOCKET, c::SO_LINGER, linger)
+    }
+
+    pub fn linger(&self) -> io::Result<Option<Duration>> {
+        let val: c::linger = net::getsockopt(self, c::SOL_SOCKET, c::SO_LINGER)?;
+
+        Ok((val.l_onoff != 0).then(|| Duration::from_secs(val.l_linger as u64)))
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {

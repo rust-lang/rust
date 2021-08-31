@@ -156,15 +156,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         segment.ident.name
                     ));
 
-                    let (self_adjusted, precise) = self.adjust_expr(pick, self_expr);
+                    let (self_adjusted, precise) = self.adjust_expr(pick, self_expr, sp);
                     if precise {
                         let args = args
                             .iter()
                             .skip(1)
                             .map(|arg| {
+                                let span = arg.span.find_ancestor_inside(sp).unwrap_or_default();
                                 format!(
                                     ", {}",
-                                    self.sess().source_map().span_to_snippet(arg.span).unwrap()
+                                    self.sess().source_map().span_to_snippet(span).unwrap()
                                 )
                             })
                             .collect::<String>();
@@ -173,8 +174,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             sp,
                             "disambiguate the associated function",
                             format!(
-                                "{}::{}({}{})",
-                                trait_name, segment.ident.name, self_adjusted, args
+                                "{}::{}{}({}{})",
+                                trait_name,
+                                segment.ident.name,
+                                if let Some(args) = segment.args.as_ref().and_then(|args| self
+                                    .sess()
+                                    .source_map()
+                                    .span_to_snippet(args.span_ext)
+                                    .ok())
+                                {
+                                    // Keep turbofish.
+                                    format!("::{}", args)
+                                } else {
+                                    String::new()
+                                },
+                                self_adjusted,
+                                args,
                             ),
                             Applicability::MachineApplicable,
                         );
@@ -272,11 +287,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 method_name.name
             ));
 
-            let mut self_ty_name = self
-                .sess()
-                .source_map()
-                .span_to_snippet(self_ty_span)
-                .unwrap_or_else(|_| self_ty.to_string());
+            let mut self_ty_name = self_ty_span
+                .find_ancestor_inside(span)
+                .and_then(|span| self.sess().source_map().span_to_snippet(span).ok())
+                .unwrap_or_else(|| self_ty.to_string());
 
             // Get the number of generics the self type has (if an Adt) unless we can determine that
             // the user has written the self type with generics already which we (naively) do by looking
@@ -370,7 +384,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Creates a string version of the `expr` that includes explicit adjustments.
     /// Returns the string and also a bool indicating whther this is a *precise*
     /// suggestion.
-    fn adjust_expr(&self, pick: &Pick<'tcx>, expr: &hir::Expr<'tcx>) -> (String, bool) {
+    fn adjust_expr(
+        &self,
+        pick: &Pick<'tcx>,
+        expr: &hir::Expr<'tcx>,
+        outer: Span,
+    ) -> (String, bool) {
         let derefs = "*".repeat(pick.autoderefs);
 
         let autoref = match pick.autoref_or_ptr_adjustment {
@@ -379,12 +398,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(probe::AutorefOrPtrAdjustment::ToConstPtr) | None => "",
         };
 
-        let (expr_text, precise) =
-            if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
-                (expr_text, true)
-            } else {
-                ("(..)".to_string(), false)
-            };
+        let (expr_text, precise) = if let Some(expr_text) = expr
+            .span
+            .find_ancestor_inside(outer)
+            .and_then(|span| self.sess().source_map().span_to_snippet(span).ok())
+        {
+            (expr_text, true)
+        } else {
+            ("(..)".to_string(), false)
+        };
 
         let adjusted_text = if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =
             pick.autoref_or_ptr_adjustment

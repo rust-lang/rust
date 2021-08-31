@@ -12,6 +12,14 @@ use crate::time::{Duration, Instant};
 
 use libc::{c_int, c_void, size_t, sockaddr, socklen_t, MSG_PEEK};
 
+cfg_if::cfg_if! {
+    if #[cfg(target_vendor = "apple")] {
+        use libc::SO_LINGER_SEC as SO_LINGER;
+    } else {
+        use libc::SO_LINGER;
+    }
+}
+
 pub use crate::sys::{cvt, cvt_r};
 
 #[allow(unused_extern_crates)]
@@ -374,6 +382,21 @@ impl Socket {
         };
         cvt(unsafe { libc::shutdown(self.as_raw_fd(), how) })?;
         Ok(())
+    }
+
+    pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
+        let linger = libc::linger {
+            l_onoff: linger.is_some() as libc::c_int,
+            l_linger: linger.unwrap_or_default().as_secs() as libc::c_int,
+        };
+
+        setsockopt(self, libc::SOL_SOCKET, SO_LINGER, linger)
+    }
+
+    pub fn linger(&self) -> io::Result<Option<Duration>> {
+        let val: libc::linger = getsockopt(self, libc::SOL_SOCKET, SO_LINGER)?;
+
+        Ok((val.l_onoff != 0).then(|| Duration::from_secs(val.l_linger as u64)))
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
