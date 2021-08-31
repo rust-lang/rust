@@ -15,11 +15,12 @@ use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{
-        self, make, AstNode, AttrsOwner, GenericParamsOwner, NameOwner, TypeBoundsOwner,
-        VisibilityOwner,
+        self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, AttrsOwner,
+        GenericParamsOwner, NameOwner, TypeBoundsOwner, VisibilityOwner,
     },
     match_ast,
     ted::{self, Position},
+    SyntaxKind::*,
     SyntaxNode, T,
 };
 
@@ -34,7 +35,7 @@ use crate::{assist_context::AssistBuilder, AssistContext, AssistId, AssistKind, 
 // ```
 // ->
 // ```
-// struct One(pub u32, pub u32);
+// struct One(u32, u32);
 //
 // enum A { One(One) }
 // ```
@@ -89,6 +90,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                 });
             }
             builder.edit_file(ctx.frange.file_id);
+
             let variant = builder.make_mut(variant.clone());
             if let Some(references) = def_file_references {
                 let processed = process_references(
@@ -104,10 +106,18 @@ pub(crate) fn extract_struct_from_enum_variant(
                 });
             }
 
-            let def = create_struct_def(variant_name.clone(), &field_list, &enum_ast);
+            let indent = enum_ast.indent_level();
+            let def = create_struct_def(variant_name.clone(), &variant, &field_list, &enum_ast);
+            def.reindent_to(indent);
+
             let start_offset = &variant.parent_enum().syntax().clone();
-            ted::insert_raw(ted::Position::before(start_offset), def.syntax());
-            ted::insert_raw(ted::Position::before(start_offset), &make::tokens::blank_line());
+            ted::insert_all_raw(
+                ted::Position::before(start_offset),
+                vec![
+                    def.syntax().clone().into(),
+                    make::tokens::whitespace(&format!("\n\n{}", indent)).into(),
+                ],
+            );
 
             update_variant(&variant, enum_ast.generic_param_list());
         },
@@ -152,48 +162,81 @@ fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &Va
 
 fn create_struct_def(
     variant_name: ast::Name,
+    variant: &ast::Variant,
     field_list: &Either<ast::RecordFieldList, ast::TupleFieldList>,
     enum_: &ast::Enum,
 ) -> ast::Struct {
-    let pub_vis = make::visibility_pub();
+    let enum_vis = enum_.visibility();
 
-    let insert_pub = |node: &'_ SyntaxNode| {
-        let pub_vis = pub_vis.clone_for_update();
-        ted::insert(ted::Position::before(node), pub_vis.syntax());
+    let insert_vis = |node: &'_ SyntaxNode, vis: &'_ SyntaxNode| {
+        let vis = vis.clone_for_update();
+        ted::insert(ted::Position::before(node), vis);
     };
 
-    // for fields without any existing visibility, use pub visibility
-    let field_list = match field_list {
+    // for fields without any existing visibility, use visibility of enum
+    let field_list: ast::FieldList = match field_list {
         Either::Left(field_list) => {
             let field_list = field_list.clone_for_update();
 
-            field_list
-                .fields()
-                .filter(|field| field.visibility().is_none())
-                .filter_map(|field| field.name())
-                .for_each(|it| insert_pub(it.syntax()));
+            if let Some(vis) = &enum_vis {
+                field_list
+                    .fields()
+                    .filter(|field| field.visibility().is_none())
+                    .filter_map(|field| field.name())
+                    .for_each(|it| insert_vis(it.syntax(), vis.syntax()));
+            }
 
             field_list.into()
         }
         Either::Right(field_list) => {
             let field_list = field_list.clone_for_update();
 
-            field_list
-                .fields()
-                .filter(|field| field.visibility().is_none())
-                .filter_map(|field| field.ty())
-                .for_each(|it| insert_pub(it.syntax()));
+            if let Some(vis) = &enum_vis {
+                field_list
+                    .fields()
+                    .filter(|field| field.visibility().is_none())
+                    .filter_map(|field| field.ty())
+                    .for_each(|it| insert_vis(it.syntax(), vis.syntax()));
+            }
 
             field_list.into()
         }
     };
 
-    // FIXME: This uses all the generic params of the enum, but the variant might not use all of them.
-    let strukt =
-        make::struct_(enum_.visibility(), variant_name, enum_.generic_param_list(), field_list)
-            .clone_for_update();
+    field_list.reindent_to(IndentLevel::single());
 
-    // copy attributes
+    // FIXME: This uses all the generic params of the enum, but the variant might not use all of them.
+    let strukt = make::struct_(enum_vis, variant_name, enum_.generic_param_list(), field_list)
+        .clone_for_update();
+
+    // FIXME: Consider making this an actual function somewhere (like in `AttrsOwnerEdit`) after some deliberation
+    let attrs_and_docs = |node: &SyntaxNode| {
+        let mut select_next_ws = false;
+        node.children_with_tokens().filter(move |child| {
+            let accept = match child.kind() {
+                ATTR | COMMENT => {
+                    select_next_ws = true;
+                    return true;
+                }
+                WHITESPACE if select_next_ws => true,
+                _ => false,
+            };
+            select_next_ws = false;
+
+            accept
+        })
+    };
+
+    // copy attributes & comments from variant
+    let variant_attrs = attrs_and_docs(variant.syntax())
+        .map(|tok| match tok.kind() {
+            WHITESPACE => make::tokens::single_newline().into(),
+            _ => tok.into(),
+        })
+        .collect();
+    ted::insert_all(Position::first_child_of(strukt.syntax()), variant_attrs);
+
+    // copy attributes from enum
     ted::insert_all(
         Position::first_child_of(strukt.syntax()),
         enum_.attrs().map(|it| it.syntax().clone_for_update().into()).collect(),
@@ -310,7 +353,7 @@ mod tests {
         check_assist(
             extract_struct_from_enum_variant,
             "enum A { $0One(u32, u32) }",
-            r#"struct One(pub u32, pub u32);
+            r#"struct One(u32, u32);
 
 enum A { One(One) }"#,
         );
@@ -321,7 +364,7 @@ enum A { One(One) }"#,
         check_assist(
             extract_struct_from_enum_variant,
             "enum A { $0One { foo: u32, bar: u32 } }",
-            r#"struct One{ pub foo: u32, pub bar: u32 }
+            r#"struct One{ foo: u32, bar: u32 }
 
 enum A { One(One) }"#,
         );
@@ -332,7 +375,7 @@ enum A { One(One) }"#,
         check_assist(
             extract_struct_from_enum_variant,
             "enum A { $0One { foo: u32 } }",
-            r#"struct One{ pub foo: u32 }
+            r#"struct One{ foo: u32 }
 
 enum A { One(One) }"#,
         );
@@ -343,7 +386,7 @@ enum A { One(One) }"#,
         check_assist(
             extract_struct_from_enum_variant,
             r"enum En<T> { Var { a: T$0 } }",
-            r#"struct Var<T>{ pub a: T }
+            r#"struct Var<T>{ a: T }
 
 enum En<T> { Var(Var<T>) }"#,
         );
@@ -356,11 +399,57 @@ enum En<T> { Var(Var<T>) }"#,
             r#"#[derive(Debug)]
 #[derive(Clone)]
 enum Enum { Variant{ field: u32$0 } }"#,
-            r#"#[derive(Debug)]#[derive(Clone)] struct Variant{ pub field: u32 }
+            r#"#[derive(Debug)]#[derive(Clone)] struct Variant{ field: u32 }
 
 #[derive(Debug)]
 #[derive(Clone)]
 enum Enum { Variant(Variant) }"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_struct_indent_to_parent_enum() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+enum Enum {
+    Variant {
+        field: u32$0
+    }
+}"#,
+            r#"
+struct Variant{
+    field: u32
+}
+
+enum Enum {
+    Variant(Variant)
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_struct_indent_to_parent_enum_in_mod() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+mod indenting {
+    enum Enum {
+        Variant {
+            field: u32$0
+        }
+    }
+}"#,
+            r#"
+mod indenting {
+    struct Variant{
+        field: u32
+    }
+
+    enum Enum {
+        Variant(Variant)
+    }
+}"#,
         );
     }
 
@@ -380,12 +469,12 @@ enum A {
 }"#,
             r#"
 struct One{
-        // leading comment
-        /// doc comment
-        #[an_attr]
-        pub foo: u32
-        // trailing comment
-    }
+    // leading comment
+    /// doc comment
+    #[an_attr]
+    foo: u32
+    // trailing comment
+}
 
 enum A {
     One(One)
@@ -412,15 +501,15 @@ enum A {
 }"#,
             r#"
 struct One{
-        // comment
-        /// doc
-        #[attr]
-        pub foo: u32,
-        // comment
-        #[attr]
-        /// doc
-        pub bar: u32
-    }
+    // comment
+    /// doc
+    #[attr]
+    foo: u32,
+    // comment
+    #[attr]
+    /// doc
+    bar: u32
+}
 
 enum A {
     One(One)
@@ -434,9 +523,63 @@ enum A {
             extract_struct_from_enum_variant,
             "enum A { $0One(/* comment */ #[attr] u32, /* another */ u32 /* tail */) }",
             r#"
-struct One(/* comment */ #[attr] pub u32, /* another */ pub u32 /* tail */);
+struct One(/* comment */ #[attr] u32, /* another */ u32 /* tail */);
 
 enum A { One(One) }"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_struct_keep_comments_and_attrs_on_variant_struct() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+enum A {
+    /* comment */
+    // other
+    /// comment
+    #[attr]
+    $0One {
+        a: u32
+    }
+}"#,
+            r#"
+/* comment */
+// other
+/// comment
+#[attr]
+struct One{
+    a: u32
+}
+
+enum A {
+    One(One)
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_struct_keep_comments_and_attrs_on_variant_tuple() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+enum A {
+    /* comment */
+    // other
+    /// comment
+    #[attr]
+    $0One(u32, u32)
+}"#,
+            r#"
+/* comment */
+// other
+/// comment
+#[attr]
+struct One(u32, u32);
+
+enum A {
+    One(One)
+}"#,
         );
     }
 
@@ -444,9 +587,9 @@ enum A { One(One) }"#,
     fn test_extract_struct_keep_existing_visibility_named() {
         check_assist(
             extract_struct_from_enum_variant,
-            "enum A { $0One{ pub a: u32, pub(crate) b: u32, pub(super) c: u32, d: u32 } }",
+            "enum A { $0One{ a: u32, pub(crate) b: u32, pub(super) c: u32, d: u32 } }",
             r#"
-struct One{ pub a: u32, pub(crate) b: u32, pub(super) c: u32, pub d: u32 }
+struct One{ a: u32, pub(crate) b: u32, pub(super) c: u32, d: u32 }
 
 enum A { One(One) }"#,
         );
@@ -456,9 +599,9 @@ enum A { One(One) }"#,
     fn test_extract_struct_keep_existing_visibility_tuple() {
         check_assist(
             extract_struct_from_enum_variant,
-            "enum A { $0One(pub u32, pub(crate) u32, pub(super) u32, u32) }",
+            "enum A { $0One(u32, pub(crate) u32, pub(super) u32, u32) }",
             r#"
-struct One(pub u32, pub(crate) u32, pub(super) u32, pub u32);
+struct One(u32, pub(crate) u32, pub(super) u32, u32);
 
 enum A { One(One) }"#,
         );
@@ -471,7 +614,19 @@ enum A { One(One) }"#,
             r#"const One: () = ();
 enum A { $0One(u32, u32) }"#,
             r#"const One: () = ();
-struct One(pub u32, pub u32);
+struct One(u32, u32);
+
+enum A { One(One) }"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_struct_no_visibility() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            "enum A { $0One(u32, u32) }",
+            r#"
+struct One(u32, u32);
 
 enum A { One(One) }"#,
         );
@@ -482,9 +637,34 @@ enum A { One(One) }"#,
         check_assist(
             extract_struct_from_enum_variant,
             "pub enum A { $0One(u32, u32) }",
-            r#"pub struct One(pub u32, pub u32);
+            r#"
+pub struct One(pub u32, pub u32);
 
 pub enum A { One(One) }"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_struct_pub_in_mod_visibility() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            "pub(in something) enum A { $0One{ a: u32, b: u32 } }",
+            r#"
+pub(in something) struct One{ pub(in something) a: u32, pub(in something) b: u32 }
+
+pub(in something) enum A { One(One) }"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_struct_pub_crate_visibility() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            "pub(crate) enum A { $0One{ a: u32, b: u32, c: u32 } }",
+            r#"
+pub(crate) struct One{ pub(crate) a: u32, pub(crate) b: u32, pub(crate) c: u32 }
+
+pub(crate) enum A { One(One) }"#,
         );
     }
 
@@ -527,7 +707,7 @@ mod my_mod {
 
         pub struct MyField(pub u8, pub u8);
 
-pub enum MyEnum {
+        pub enum MyEnum {
             MyField(MyField),
         }
     }
@@ -553,7 +733,7 @@ fn f() {
 }
 "#,
             r#"
-struct V{ pub i: i32, pub j: i32 }
+struct V{ i: i32, j: i32 }
 
 enum E {
     V(V)
@@ -580,7 +760,7 @@ fn f() {
 }
 "#,
             r#"
-struct V(pub i32, pub i32);
+struct V(i32, i32);
 
 enum E {
     V(V)
@@ -612,7 +792,7 @@ fn f() {
 "#,
             r#"
 //- /main.rs
-struct V(pub i32, pub i32);
+struct V(i32, i32);
 
 enum E {
     V(V)
@@ -647,7 +827,7 @@ fn f() {
 "#,
             r#"
 //- /main.rs
-struct V{ pub i: i32, pub j: i32 }
+struct V{ i: i32, j: i32 }
 
 enum E {
     V(V)
@@ -677,7 +857,7 @@ fn foo() {
 }
 "#,
             r#"
-struct One{ pub a: u32, pub b: u32 }
+struct One{ a: u32, b: u32 }
 
 enum A { One(One) }
 
