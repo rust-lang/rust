@@ -124,6 +124,9 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
                 // vfmaq_n_f32_vfma : #instructions = 26 >= 22 (limit)
                 "usad8" | "vfma" | "vfms" => 27,
                 "qadd8" | "qsub8" | "sadd8" | "sel" | "shadd8" | "shsub8" | "usub8" | "ssub8" => 29,
+                // core_arch/src/arm_shared/simd32
+                // vst1q_s64_x4_vst1 : #instructions = 40 >= 22 (limit)
+                "vst1" => 41,
 
                 // Temporary, currently the fptosi.sat and fptoui.sat LLVM
                 // intrinsics emit unnecessary code on arm. This can be
