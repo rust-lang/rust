@@ -248,7 +248,6 @@ crate struct CrateLocator<'a> {
     crate_name: Symbol,
     exact_paths: Vec<CanonicalizedPath>,
     pub hash: Option<Svh>,
-    pub host_hash: Option<Svh>,
     extra_filename: Option<&'a str>,
     pub target: &'a Target,
     pub triple: TargetTriple,
@@ -299,7 +298,6 @@ impl<'a> CrateLocator<'a> {
         metadata_loader: &'a dyn MetadataLoader,
         crate_name: Symbol,
         hash: Option<Svh>,
-        host_hash: Option<Svh>,
         extra_filename: Option<&'a str>,
         is_host: bool,
         path_kind: PathKind,
@@ -334,7 +332,6 @@ impl<'a> CrateLocator<'a> {
                 Vec::new()
             },
             hash,
-            host_hash,
             extra_filename,
             target: if is_host { &sess.host } else { &sess.target },
             triple: if is_host {
@@ -807,7 +804,6 @@ fn find_plugin_registrar_impl<'a>(
         metadata_loader,
         name,
         None, // hash
-        None, // host_hash
         None, // extra_filename
         true, // is_host
         PathKind::Crate,

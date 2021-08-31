@@ -450,6 +450,7 @@ impl<'a> CrateLoader<'a> {
         &self,
         locator: &mut CrateLocator<'b>,
         path_kind: PathKind,
+        host_hash: Option<Svh>,
     ) -> Result<Option<(LoadResult, Option<Library>)>, CrateError>
     where
         'a: 'b,
@@ -471,7 +472,7 @@ impl<'a> CrateLoader<'a> {
                 Some(LoadResult::Loaded(library)) => Some(LoadResult::Loaded(library)),
                 None => return Ok(None),
             };
-            locator.hash = locator.host_hash;
+            locator.hash = host_hash;
             // Use the locator when looking for the host proc macro crate, as that is required
             // so we want it to affect the error message
             (locator, result)
@@ -551,7 +552,6 @@ impl<'a> CrateLoader<'a> {
                 &*self.metadata_loader,
                 name,
                 hash,
-                host_hash,
                 extra_filename,
                 false, // is_host
                 path_kind,
@@ -562,7 +562,7 @@ impl<'a> CrateLoader<'a> {
                 Some(res) => (res, None),
                 None => {
                     dep_kind = CrateDepKind::MacrosOnly;
-                    match self.load_proc_macro(&mut locator, path_kind)? {
+                    match self.load_proc_macro(&mut locator, path_kind, host_hash)? {
                         Some(res) => res,
                         None => return Err(locator.into_error()),
                     }
