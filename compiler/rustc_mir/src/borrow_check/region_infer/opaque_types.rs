@@ -82,15 +82,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                             .find(|ur_vid| self.eval_equal(vid, **ur_vid))
                             .and_then(|ur_vid| self.definitions[*ur_vid].external_name)
                             .unwrap_or(infcx.tcx.lifetimes.re_root_empty),
-                        ty::ReLateBound(..) => region,
-                        ty::ReStatic => region,
-                        _ => {
-                            infcx.tcx.sess.delay_span_bug(
-                                span,
-                                &format!("unexpected concrete region in borrowck: {:?}", region),
-                            );
-                            region
-                        }
+                        _ => region,
                     });
 
                 debug!(?universal_concrete_type, ?universal_substs);
