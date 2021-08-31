@@ -29,6 +29,7 @@ use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TypeFoldable};
 use rustc_session::config::{self, DebugInfo};
+use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_span::{self, BytePos, Pos, SourceFile, SourceFileAndLine, Span};
 use rustc_target::abi::{LayoutOf, Primitive, Size};
@@ -95,45 +96,52 @@ impl<'a, 'tcx> CrateDebugContext<'a, 'tcx> {
             composite_types_completed: Default::default(),
         }
     }
+
+    pub fn finalize(&self, sess: &Session) {
+        unsafe {
+            llvm::LLVMRustDIBuilderFinalize(self.builder);
+
+            // Debuginfo generation in LLVM by default uses a higher
+            // version of dwarf than macOS currently understands. We can
+            // instruct LLVM to emit an older version of dwarf, however,
+            // for macOS to understand. For more info see #11352
+            // This can be overridden using --llvm-opts -dwarf-version,N.
+            // Android has the same issue (#22398)
+            if let Some(version) = sess.target.dwarf_version {
+                llvm::LLVMRustAddModuleFlag(self.llmod, "Dwarf Version\0".as_ptr().cast(), version)
+            }
+
+            // Indicate that we want CodeView debug information on MSVC
+            if sess.target.is_like_msvc {
+                llvm::LLVMRustAddModuleFlag(self.llmod, "CodeView\0".as_ptr().cast(), 1)
+            }
+
+            // Prevent bitcode readers from deleting the debug info.
+            let ptr = "Debug Info Version\0".as_ptr();
+            llvm::LLVMRustAddModuleFlag(
+                self.llmod,
+                ptr.cast(),
+                llvm::LLVMRustDebugMetadataVersion(),
+            );
+        }
+    }
 }
 
 /// Creates any deferred debug metadata nodes
 pub fn finalize(cx: &CodegenCx<'_, '_>) {
-    if cx.dbg_cx.is_none() {
-        return;
-    }
+    if let Some(dbg_cx) = &cx.dbg_cx {
+        debug!("finalize");
 
-    debug!("finalize");
-
-    if gdb::needs_gdb_debug_scripts_section(cx) {
-        // Add a .debug_gdb_scripts section to this compile-unit. This will
-        // cause GDB to try and load the gdb_load_rust_pretty_printers.py file,
-        // which activates the Rust pretty printers for binary this section is
-        // contained in.
-        gdb::get_or_insert_gdb_debug_scripts_section_global(cx);
-    }
-
-    unsafe {
-        llvm::LLVMRustDIBuilderFinalize(DIB(cx));
-        // Debuginfo generation in LLVM by default uses a higher
-        // version of dwarf than macOS currently understands. We can
-        // instruct LLVM to emit an older version of dwarf, however,
-        // for macOS to understand. For more info see #11352
-        // This can be overridden using --llvm-opts -dwarf-version,N.
-        // Android has the same issue (#22398)
-        if let Some(version) = cx.sess().target.dwarf_version {
-            llvm::LLVMRustAddModuleFlag(cx.llmod, "Dwarf Version\0".as_ptr().cast(), version)
+        if gdb::needs_gdb_debug_scripts_section(cx) {
+            // Add a .debug_gdb_scripts section to this compile-unit. This will
+            // cause GDB to try and load the gdb_load_rust_pretty_printers.py file,
+            // which activates the Rust pretty printers for binary this section is
+            // contained in.
+            gdb::get_or_insert_gdb_debug_scripts_section_global(cx);
         }
 
-        // Indicate that we want CodeView debug information on MSVC
-        if cx.sess().target.is_like_msvc {
-            llvm::LLVMRustAddModuleFlag(cx.llmod, "CodeView\0".as_ptr().cast(), 1)
-        }
-
-        // Prevent bitcode readers from deleting the debug info.
-        let ptr = "Debug Info Version\0".as_ptr();
-        llvm::LLVMRustAddModuleFlag(cx.llmod, ptr.cast(), llvm::LLVMRustDebugMetadataVersion());
-    };
+        dbg_cx.finalize(cx.sess());
+    }
 }
 
 impl DebugInfoBuilderMethods for Builder<'a, 'll, 'tcx> {

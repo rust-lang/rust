@@ -120,7 +120,8 @@ pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Se
     fn codegen_allocator<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
-        mods: &mut Self::Module,
+        module_llvm: &mut Self::Module,
+        module_name: &str,
         kind: AllocatorKind,
         has_alloc_error_handler: bool,
     );
