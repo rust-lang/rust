@@ -190,6 +190,9 @@ pub struct Session {
     /// Tracks the current behavior of the CTFE engine when an error occurs.
     /// Options range from returning the error without a backtrace to returning an error
     /// and immediately printing the backtrace to stderr.
+    /// The `Lock` is only used by miri to allow setting `ctfe_backtrace` after analysis when
+    /// `MIRI_BACKTRACE` is set. This makes it only apply to miri's errors and not to all CTFE
+    /// errors.
     pub ctfe_backtrace: Lock<CtfeBacktrace>,
 
     /// This tracks where `-Zunleash-the-miri-inside-of-you` was used to get around a
