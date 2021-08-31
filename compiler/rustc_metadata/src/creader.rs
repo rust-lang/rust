@@ -511,12 +511,9 @@ impl<'a> CrateLoader<'a> {
         name: Symbol,
         span: Span,
         dep_kind: CrateDepKind,
-        dep: Option<(&'b CratePaths, &'b CrateDep)>,
     ) -> CrateNum {
-        if dep.is_none() {
-            self.used_extern_options.insert(name);
-        }
-        self.maybe_resolve_crate(name, dep_kind, dep).unwrap_or_else(|err| {
+        self.used_extern_options.insert(name);
+        self.maybe_resolve_crate(name, dep_kind, None).unwrap_or_else(|err| {
             let missing_core =
                 self.maybe_resolve_crate(sym::core, CrateDepKind::Explicit, None).is_err();
             err.report(&self.sess, span, missing_core)
@@ -753,7 +750,7 @@ impl<'a> CrateLoader<'a> {
         };
         info!("panic runtime not found -- loading {}", name);
 
-        let cnum = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit, None);
+        let cnum = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit);
         let data = self.cstore.get_crate_data(cnum);
 
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
@@ -793,7 +790,7 @@ impl<'a> CrateLoader<'a> {
             );
         }
 
-        let cnum = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit, None);
+        let cnum = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit);
         let data = self.cstore.get_crate_data(cnum);
 
         // Sanity check the loaded crate to ensure it is indeed a profiler runtime
@@ -1013,7 +1010,7 @@ impl<'a> CrateLoader<'a> {
                     CrateDepKind::Explicit
                 };
 
-                let cnum = self.resolve_crate(name, item.span, dep_kind, None);
+                let cnum = self.resolve_crate(name, item.span, dep_kind);
 
                 let path_len = definitions.def_path(def_id).data.len();
                 self.update_extern_crate(
@@ -1032,7 +1029,7 @@ impl<'a> CrateLoader<'a> {
     }
 
     pub fn process_path_extern(&mut self, name: Symbol, span: Span) -> CrateNum {
-        let cnum = self.resolve_crate(name, span, CrateDepKind::Explicit, None);
+        let cnum = self.resolve_crate(name, span, CrateDepKind::Explicit);
 
         self.update_extern_crate(
             cnum,
