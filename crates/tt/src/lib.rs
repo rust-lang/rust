@@ -274,18 +274,3 @@ impl Subtree {
 }
 
 pub mod buffer;
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum ExpansionError {
-    Unknown(String),
-    ExpansionError(String),
-}
-
-impl fmt::Display for ExpansionError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ExpansionError::Unknown(e) => e.fmt(f),
-            ExpansionError::ExpansionError(e) => write!(f, "proc macro returned error: {}", e),
-        }
-    }
-}

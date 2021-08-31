@@ -39,15 +39,9 @@ pub enum ExpandError {
     UnexpectedToken,
     BindingError(String),
     ConversionError,
-    ProcMacroError(tt::ExpansionError),
+    // FXME: no way mbe should know about proc macros.
     UnresolvedProcMacro,
     Other(String),
-}
-
-impl From<tt::ExpansionError> for ExpandError {
-    fn from(it: tt::ExpansionError) -> Self {
-        ExpandError::ProcMacroError(it)
-    }
 }
 
 impl fmt::Display for ExpandError {
@@ -57,7 +51,6 @@ impl fmt::Display for ExpandError {
             ExpandError::UnexpectedToken => f.write_str("unexpected token in input"),
             ExpandError::BindingError(e) => f.write_str(e),
             ExpandError::ConversionError => f.write_str("could not convert tokens"),
-            ExpandError::ProcMacroError(e) => e.fmt(f),
             ExpandError::UnresolvedProcMacro => f.write_str("unresolved proc macro"),
             ExpandError::Other(e) => f.write_str(e),
         }

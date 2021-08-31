@@ -5,7 +5,8 @@ use flycheck::{FlycheckConfig, FlycheckHandle};
 use hir::db::DefDatabase;
 use ide::Change;
 use ide_db::base_db::{
-    CrateGraph, Env, ProcMacro, ProcMacroExpander, ProcMacroKind, SourceRoot, VfsPath,
+    CrateGraph, Env, ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind,
+    SourceRoot, VfsPath,
 };
 use proc_macro_api::{MacroDylib, ProcMacroServer};
 use project_model::{ProjectWorkspace, WorkspaceBuildScripts};
@@ -606,12 +607,12 @@ pub(crate) fn load_proc_macro(client: Option<&ProcMacroServer>, path: &AbsPath) 
             subtree: &tt::Subtree,
             attrs: Option<&tt::Subtree>,
             env: &Env,
-        ) -> Result<tt::Subtree, tt::ExpansionError> {
+        ) -> Result<tt::Subtree, ProcMacroExpansionError> {
             let env = env.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
             match self.0.expand(subtree, attrs, env) {
                 Ok(Ok(subtree)) => Ok(subtree),
-                Ok(Err(err)) => Err(tt::ExpansionError::ExpansionError(err.0)),
-                Err(err) => Err(tt::ExpansionError::Unknown(err.to_string())),
+                Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err.0)),
+                Err(err) => Err(ProcMacroExpansionError::System(err.to_string())),
             }
         }
     }
