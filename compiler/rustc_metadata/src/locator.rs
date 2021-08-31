@@ -252,7 +252,6 @@ crate struct CrateLocator<'a> {
     pub target: &'a Target,
     pub triple: TargetTriple,
     pub filesearch: FileSearch<'a>,
-    root: Option<&'a CratePaths>,
     pub is_proc_macro: bool,
 
     // Mutable in-progress state or output.
@@ -301,7 +300,6 @@ impl<'a> CrateLocator<'a> {
         extra_filename: Option<&'a str>,
         is_host: bool,
         path_kind: PathKind,
-        root: Option<&'a CratePaths>,
     ) -> CrateLocator<'a> {
         // The all loop is because `--crate-type=rlib --crate-type=rlib` is
         // legal and produces both inside this type.
@@ -344,7 +342,6 @@ impl<'a> CrateLocator<'a> {
             } else {
                 sess.target_filesearch(path_kind)
             },
-            root,
             is_proc_macro: false,
             rejected_via_hash: Vec::new(),
             rejected_via_triple: Vec::new(),
@@ -709,10 +706,10 @@ impl<'a> CrateLocator<'a> {
         Ok(self.extract_lib(rlibs, rmetas, dylibs)?.map(|(_, lib)| lib))
     }
 
-    crate fn into_error(self) -> CrateError {
+    crate fn into_error(self, root: Option<CratePaths>) -> CrateError {
         CrateError::LocatorCombined(CombinedLocatorError {
             crate_name: self.crate_name,
-            root: self.root.cloned(),
+            root,
             triple: self.triple,
             dll_prefix: self.target.dll_prefix.clone(),
             dll_suffix: self.target.dll_suffix.clone(),
@@ -807,7 +804,6 @@ fn find_plugin_registrar_impl<'a>(
         None, // extra_filename
         true, // is_host
         PathKind::Crate,
-        None, // root
     );
 
     match locator.maybe_load_library_crate()? {
@@ -815,7 +811,7 @@ fn find_plugin_registrar_impl<'a>(
             Some(dylib) => Ok(dylib.0),
             None => Err(CrateError::NonDylibPlugin(name)),
         },
-        None => Err(locator.into_error()),
+        None => Err(locator.into_error(None)),
     }
 }
 

@@ -555,7 +555,6 @@ impl<'a> CrateLoader<'a> {
                 extra_filename,
                 false, // is_host
                 path_kind,
-                root,
             );
 
             match self.load(&mut locator)? {
@@ -564,7 +563,7 @@ impl<'a> CrateLoader<'a> {
                     dep_kind = CrateDepKind::MacrosOnly;
                     match self.load_proc_macro(&mut locator, path_kind, host_hash)? {
                         Some(res) => res,
-                        None => return Err(locator.into_error()),
+                        None => return Err(locator.into_error(root.cloned())),
                     }
                 }
             }
