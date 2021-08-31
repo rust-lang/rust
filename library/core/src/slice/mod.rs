@@ -583,6 +583,8 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
+    /// #![feature(slice_swap_unchecked)]
+    ///
     /// let mut v = ["a", "b", "c", "d"];
     /// // SAFETY: we know that 1 and 3 are both indices of the slice
     /// unsafe { v.swap_unchecked(1, 3) };
