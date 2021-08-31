@@ -239,47 +239,58 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let trait_path = self.trait_path_or_bare_name(span, expr_id, pick.item.container.id());
             let trait_generics = self.tcx.generics_of(pick.item.container.id());
 
-            let parameter_count = trait_generics.count() - (trait_generics.has_self as usize);
-            let trait_name = if parameter_count == 0 {
-                trait_path
-            } else {
-                format!(
-                    "{}<{}>",
-                    trait_path,
-                    std::iter::repeat("_").take(parameter_count).collect::<Vec<_>>().join(", ")
-                )
-            };
+            let trait_name =
+                if trait_generics.params.len() <= trait_generics.has_self as usize {
+                    trait_path
+                } else {
+                    let counts = trait_generics.own_counts();
+                    format!(
+                        "{}<{}>",
+                        trait_path,
+                        std::iter::repeat("'_")
+                            .take(counts.lifetimes)
+                            .chain(std::iter::repeat("_").take(
+                                counts.types + counts.consts - trait_generics.has_self as usize
+                            ))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
+                };
 
             let mut lint = lint.build(&format!(
                 "trait-associated function `{}` will become ambiguous in Rust 2021",
                 method_name.name
             ));
 
-            let self_ty_name = self
+            let mut self_ty_name = self
                 .sess()
                 .source_map()
                 .span_to_snippet(self_ty_span)
                 .unwrap_or_else(|_| self_ty.to_string());
 
-            let self_ty_generics_count = match self_ty.kind() {
-                // Get the number of generics the self type has (if an Adt) unless we can determine that
-                // the user has written the self type with generics already which we (naively) do by looking
-                // for a "<" in `self_ty_name`.
-                Adt(def, _) if !self_ty_name.contains('<') => self.tcx.generics_of(def.did).count(),
-                _ => 0,
-            };
-            let self_ty_generics = if self_ty_generics_count > 0 {
-                format!("<{}>", vec!["_"; self_ty_generics_count].join(", "))
-            } else {
-                String::new()
-            };
+            // Get the number of generics the self type has (if an Adt) unless we can determine that
+            // the user has written the self type with generics already which we (naively) do by looking
+            // for a "<" in `self_ty_name`.
+            if !self_ty_name.contains('<') {
+                if let Adt(def, _) = self_ty.kind() {
+                    let generics = self.tcx.generics_of(def.did);
+                    if !generics.params.is_empty() {
+                        let counts = generics.own_counts();
+                        self_ty_name += &format!(
+                            "<{}>",
+                            std::iter::repeat("'_")
+                                .take(counts.lifetimes)
+                                .chain(std::iter::repeat("_").take(counts.types + counts.consts))
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        );
+                    }
+                }
+            }
             lint.span_suggestion(
                 span,
                 "disambiguate the associated function",
-                format!(
-                    "<{}{} as {}>::{}",
-                    self_ty_name, self_ty_generics, trait_name, method_name.name,
-                ),
+                format!("<{} as {}>::{}", self_ty_name, trait_name, method_name.name,),
                 Applicability::MachineApplicable,
             );
 
