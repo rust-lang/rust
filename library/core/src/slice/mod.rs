@@ -560,15 +560,45 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn swap(&mut self, a: usize, b: usize) {
-        // Can't take two mutable loans from one vector, so instead use raw pointers.
-        let pa = ptr::addr_of_mut!(self[a]);
-        let pb = ptr::addr_of_mut!(self[b]);
-        // SAFETY: `pa` and `pb` have been created from safe mutable references and refer
-        // to elements in the slice and therefore are guaranteed to be valid and aligned.
-        // Note that accessing the elements behind `a` and `b` is checked and will
-        // panic when out of bounds.
+        assert!(a < self.len());
+        assert!(b < self.len());
+        // SAFETY: we just checked that both `a` and `b` are in bounds
+        unsafe { self.swap_unchecked(a, b) }
+    }
+
+    /// Swaps two elements in the slice, without doing bounds checking.
+    ///
+    /// For a safe alternative see [`swap`].
+    ///
+    /// # Arguments
+    ///
+    /// * a - The index of the first element
+    /// * b - The index of the second element
+    ///
+    /// # Safety
+    ///
+    /// Calling this method with an out-of-bounds index is *[undefined behavior]*.
+    /// The caller has to ensure that `a < self.len()` and `b < self.len()`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut v = ["a", "b", "c", "d"];
+    /// // SAFETY: we know that 1 and 3 are both indices of the slice
+    /// unsafe { v.swap_unchecked(1, 3) };
+    /// assert!(v == ["a", "d", "c", "b"]);
+    /// ```
+    ///
+    /// [`swap`]: slice::swap
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    #[unstable(feature = "slice_swap_unchecked", issue = "88539")]
+    pub unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
+        debug_assert!(a < self.len());
+        debug_assert!(b < self.len());
+        let ptr = self.as_mut_ptr();
+        // SAFETY: caller has to guarantee that `a < self.len()` and `b < self.len()`
         unsafe {
-            ptr::swap(pa, pb);
+            ptr::swap(ptr.add(a), ptr.add(b));
         }
     }
 
