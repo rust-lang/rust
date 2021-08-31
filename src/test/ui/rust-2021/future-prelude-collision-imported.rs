@@ -56,4 +56,15 @@ mod c {
     }
 }
 
+mod d {
+    use super::m::*;
+
+    fn main() {
+        // See https://github.com/rust-lang/rust/issues/88471
+        let _: u32 = 3u8.try_into().unwrap();
+        //~^ WARNING trait method `try_into` will become ambiguous in Rust 2021
+        //~^^ WARNING this is accepted in the current edition
+    }
+}
+
 fn main() {}
