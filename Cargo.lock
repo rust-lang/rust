@@ -52,9 +52,6 @@ name = "arbitrary"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "577b08a4acd7b99869f863c50011b01eb73424ccc798ecd996f2e24817adfca7"
-dependencies = [
- "derive_arbitrary",
-]
 
 [[package]]
 name = "arrayvec"
@@ -157,6 +154,7 @@ name = "cfg"
 version = "0.0.0"
 dependencies = [
  "arbitrary",
+ "derive_arbitrary",
  "expect-test",
  "mbe",
  "oorandom",

@@ -50,7 +50,7 @@ impl fmt::Display for CfgAtom {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(test, derive(arbitrary::Arbitrary))]
+#[cfg_attr(test, derive(derive_arbitrary::Arbitrary))]
 pub enum CfgExpr {
     Invalid,
     Atom(CfgAtom),
