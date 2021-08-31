@@ -941,6 +941,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             exprs.len()
         );
 
+        // The following check fixes #88097, where the compiler erroneously
+        // attempted to coerce a closure type to itself via a function pointer.
         if prev_ty == new_ty {
             return Ok(prev_ty);
         }
