@@ -715,7 +715,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                 clean::ResolvedPath { ref path, did, .. }
                 | clean::BorrowedRef {
                     type_: box clean::ResolvedPath { ref path, did, .. }, ..
-                } if !path.is_generic() => {
+                } if !path.is_assoc_ty() => {
                     let &mut (prev_did, ref mut has_duplicates) =
                         implementor_dups.entry(path.last()).or_insert((did, false));
                     if prev_did != did {
@@ -1411,7 +1411,7 @@ fn render_implementor(
     let use_absolute = match implementor.inner_impl().for_ {
         clean::ResolvedPath { ref path, .. }
         | clean::BorrowedRef { type_: box clean::ResolvedPath { ref path, .. }, .. }
-            if !path.is_generic() =>
+            if !path.is_assoc_ty() =>
         {
             implementor_dups[&path.last()].1
         }

@@ -754,7 +754,7 @@ fn fmt_type<'cx>(
         clean::Generic(name) => write!(f, "{}", name),
         clean::ResolvedPath { did, ref path } => {
             // Paths like `T::Output` and `Self::Output` should be rendered with all segments.
-            resolved_path(f, did, path, path.is_generic(), use_absolute, cx)
+            resolved_path(f, did, path, path.is_assoc_ty(), use_absolute, cx)
         }
         clean::DynTrait(ref bounds, ref lt) => {
             f.write_str("dyn ")?;
@@ -826,7 +826,7 @@ fn fmt_type<'cx>(
                 hir::Mutability::Not => "const",
             };
 
-            if matches!(**t, clean::Generic(_)) || t.is_generic() {
+            if matches!(**t, clean::Generic(_)) || t.is_assoc_ty() {
                 let text = if f.alternate() {
                     format!("*{} {:#}", m, t.print(cx))
                 } else {

@@ -128,7 +128,7 @@ impl<'a> DocFolder for ImplStripper<'a> {
                 return None;
             }
             if let Some(did) = imp.for_.def_id() {
-                if did.is_local() && !imp.for_.is_generic() && !self.retained.contains(&did.into())
+                if did.is_local() && !imp.for_.is_assoc_ty() && !self.retained.contains(&did.into())
                 {
                     debug!("ImplStripper: impl item for stripped type; removing");
                     return None;

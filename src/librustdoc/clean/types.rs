@@ -1498,9 +1498,9 @@ impl Type {
         }
     }
 
-    crate fn is_generic(&self) -> bool {
+    crate fn is_assoc_ty(&self) -> bool {
         match self {
-            ResolvedPath { path, .. } => path.is_generic(),
+            ResolvedPath { path, .. } => path.is_assoc_ty(),
             _ => false,
         }
     }
@@ -1990,7 +1990,7 @@ impl Path {
             + &self.segments.iter().map(|s| s.name.to_string()).collect::<Vec<_>>().join("::")
     }
 
-    crate fn is_generic(&self) -> bool {
+    crate fn is_assoc_ty(&self) -> bool {
         match self.res {
             Res::SelfTy(..) if self.segments.len() != 1 => true,
             Res::Def(DefKind::TyParam, _) if self.segments.len() != 1 => true,
