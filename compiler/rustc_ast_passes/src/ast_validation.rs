@@ -1442,7 +1442,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if !self.is_tilde_const_allowed {
                     self.err_handler()
                         .struct_span_err(bound.span(), "`~const` is not allowed here")
-                        .note("only allowed on bounds on traits' associated types, const fns, const impls and its associated functions")
+                        .note("only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions")
                         .emit();
                 }
             }
@@ -1616,7 +1616,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_ty, ty);
             }
             AssocItemKind::Fn(box FnKind(_, ref sig, ref generics, ref body))
-                if self.in_const_trait_impl =>
+                if self.in_const_trait_impl || ctxt == AssocCtxt::Trait =>
             {
                 self.visit_vis(&item.vis);
                 self.visit_ident(item.ident);

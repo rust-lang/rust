@@ -4,7 +4,7 @@ error: `~const` is not allowed here
 LL | fn rpit() -> impl ~const T { S }
    |                   ^^^^^^^^
    |
-   = note: only allowed on bounds on traits' associated types, const fns, const impls and its associated functions
+   = note: only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions
 
 error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:11:17
@@ -12,7 +12,7 @@ error: `~const` is not allowed here
 LL | fn apit(_: impl ~const T) {}
    |                 ^^^^^^^^
    |
-   = note: only allowed on bounds on traits' associated types, const fns, const impls and its associated functions
+   = note: only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions
 
 error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:14:50
@@ -20,7 +20,7 @@ error: `~const` is not allowed here
 LL | fn rpit_assoc_bound() -> impl IntoIterator<Item: ~const T> { Some(S) }
    |                                                  ^^^^^^^^
    |
-   = note: only allowed on bounds on traits' associated types, const fns, const impls and its associated functions
+   = note: only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions
 
 error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:17:48
@@ -28,7 +28,7 @@ error: `~const` is not allowed here
 LL | fn apit_assoc_bound(_: impl IntoIterator<Item: ~const T>) {}
    |                                                ^^^^^^^^
    |
-   = note: only allowed on bounds on traits' associated types, const fns, const impls and its associated functions
+   = note: only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions
 
 error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:20:15
@@ -36,7 +36,7 @@ error: `~const` is not allowed here
 LL | fn generic<P: ~const T>() {}
    |               ^^^^^^^^
    |
-   = note: only allowed on bounds on traits' associated types, const fns, const impls and its associated functions
+   = note: only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions
 
 error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:23:31
@@ -44,7 +44,7 @@ error: `~const` is not allowed here
 LL | fn where_clause<P>() where P: ~const T {}
    |                               ^^^^^^^^
    |
-   = note: only allowed on bounds on traits' associated types, const fns, const impls and its associated functions
+   = note: only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions
 
 error: `~const` and `?` are mutually exclusive
   --> $DIR/tilde-const-invalid-places.rs:26:25

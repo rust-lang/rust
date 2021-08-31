@@ -1,0 +1,67 @@
+error[E0277]: the trait bound `T: Bar` is not satisfied
+  --> $DIR/trait-where-clause.rs:14:5
+   |
+LL |     T::b();
+   |     ^^^^ the trait `Bar` is not implemented for `T`
+   |
+note: required by `Foo::b`
+  --> $DIR/trait-where-clause.rs:8:5
+   |
+LL |     fn b() where Self: ~const Bar;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider further restricting this bound
+   |
+LL | const fn test1<T: ~const Foo + Bar + Bar>() {
+   |                                    +++++
+
+error[E0277]: the trait bound `T: Bar` is not satisfied
+  --> $DIR/trait-where-clause.rs:16:5
+   |
+LL |     T::c::<T>();
+   |     ^^^^^^^^^ the trait `Bar` is not implemented for `T`
+   |
+note: required by `Foo::c`
+  --> $DIR/trait-where-clause.rs:9:5
+   |
+LL |     fn c<T: ~const Bar>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+help: consider further restricting this bound
+   |
+LL | const fn test1<T: ~const Foo + Bar + Bar>() {
+   |                                    +++++
+
+error[E0277]: the trait bound `T: Bar` is not satisfied
+  --> $DIR/trait-where-clause.rs:28:5
+   |
+LL |     T::b();
+   |     ^^^^ the trait `Bar` is not implemented for `T`
+   |
+note: required by `Foo::b`
+  --> $DIR/trait-where-clause.rs:8:5
+   |
+LL |     fn b() where Self: ~const Bar;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider further restricting this bound
+   |
+LL | fn test3<T: Foo + Bar>() {
+   |                 +++++
+
+error[E0277]: the trait bound `T: Bar` is not satisfied
+  --> $DIR/trait-where-clause.rs:30:5
+   |
+LL |     T::c::<T>();
+   |     ^^^^^^^^^ the trait `Bar` is not implemented for `T`
+   |
+note: required by `Foo::c`
+  --> $DIR/trait-where-clause.rs:9:5
+   |
+LL |     fn c<T: ~const Bar>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+help: consider further restricting this bound
+   |
+LL | fn test3<T: Foo + Bar>() {
+   |                 +++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
