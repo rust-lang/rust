@@ -3,7 +3,6 @@
 use crate::dylib;
 use crate::ProcMacroSrv;
 use expect_test::Expect;
-use proc_macro_api::ListMacrosTask;
 use std::str::FromStr;
 
 pub mod fixtures {
@@ -40,9 +39,9 @@ fn assert_expand_impl(macro_name: &str, input: &str, attr: Option<&str>, expect:
     expect.assert_eq(&format!("{:?}", res));
 }
 
-pub fn list() -> Vec<String> {
-    let task = ListMacrosTask { lib: fixtures::proc_macro_test_dylib_path() };
+pub(crate) fn list() -> Vec<String> {
+    let dylib_path = fixtures::proc_macro_test_dylib_path();
     let mut srv = ProcMacroSrv::default();
-    let res = srv.list_macros(&task).unwrap();
-    res.macros.into_iter().map(|(name, kind)| format!("{} [{:?}]", name, kind)).collect()
+    let res = srv.list_macros(&dylib_path).unwrap();
+    res.into_iter().map(|(name, kind)| format!("{} [{:?}]", name, kind)).collect()
 }

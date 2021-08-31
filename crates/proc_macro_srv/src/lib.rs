@@ -12,15 +12,18 @@
 #![allow(unreachable_pub)]
 
 mod dylib;
-
 mod abis;
 
-use proc_macro_api::{ExpansionResult, ExpansionTask, FlatTree, ListMacrosResult, ListMacrosTask};
 use std::{
     collections::{hash_map::Entry, HashMap},
     env, fs,
     path::{Path, PathBuf},
     time::SystemTime,
+};
+
+use proc_macro_api::{
+    msg::{ExpandMacro, FlatTree, PanicMessage},
+    ProcMacroKind,
 };
 
 #[derive(Default)]
@@ -29,8 +32,11 @@ pub(crate) struct ProcMacroSrv {
 }
 
 impl ProcMacroSrv {
-    pub fn expand(&mut self, task: ExpansionTask) -> Result<ExpansionResult, String> {
-        let expander = self.expander(task.lib.as_ref())?;
+    pub fn expand(&mut self, task: ExpandMacro) -> Result<FlatTree, PanicMessage> {
+        let expander = self.expander(task.lib.as_ref()).map_err(|err| {
+            debug_assert!(false, "should list macros before asking to expand");
+            PanicMessage(format!("failed to load macro: {}", err))
+        })?;
 
         let mut prev_env = HashMap::new();
         for (k, v) in &task.env {
@@ -51,15 +57,15 @@ impl ProcMacroSrv {
             }
         }
 
-        match result {
-            Ok(expansion) => Ok(ExpansionResult { expansion }),
-            Err(msg) => Err(format!("proc-macro panicked: {}", msg)),
-        }
+        result.map_err(PanicMessage)
     }
 
-    pub fn list_macros(&mut self, task: &ListMacrosTask) -> Result<ListMacrosResult, String> {
-        let expander = self.expander(task.lib.as_ref())?;
-        Ok(ListMacrosResult { macros: expander.list_macros() })
+    pub(crate) fn list_macros(
+        &mut self,
+        dylib_path: &Path,
+    ) -> Result<Vec<(String, ProcMacroKind)>, String> {
+        let expander = self.expander(dylib_path)?;
+        Ok(expander.list_macros())
     }
 
     fn expander(&mut self, path: &Path) -> Result<&dylib::Expander, String> {

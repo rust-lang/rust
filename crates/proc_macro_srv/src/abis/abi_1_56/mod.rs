@@ -7,8 +7,8 @@ mod proc_macro;
 #[allow(dead_code)]
 #[doc(hidden)]
 mod rustc_server;
-use libloading::Library;
 
+use libloading::Library;
 use proc_macro_api::ProcMacroKind;
 
 use super::PanicMessage;
