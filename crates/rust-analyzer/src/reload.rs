@@ -7,7 +7,7 @@ use ide::Change;
 use ide_db::base_db::{
     CrateGraph, Env, ProcMacro, ProcMacroExpander, ProcMacroKind, SourceRoot, VfsPath,
 };
-use proc_macro_api::ProcMacroClient;
+use proc_macro_api::ProcMacroServer;
 use project_model::{ProjectWorkspace, WorkspaceBuildScripts};
 use vfs::{file_set::FileSetConfig, AbsPath, AbsPathBuf, ChangeKind};
 
@@ -329,7 +329,7 @@ impl GlobalState {
         if self.proc_macro_client.is_none() {
             self.proc_macro_client = match self.config.proc_macro_srv() {
                 None => None,
-                Some((path, args)) => match ProcMacroClient::extern_process(path.clone(), args) {
+                Some((path, args)) => match ProcMacroServer::spawn(path.clone(), args) {
                     Ok(it) => Some(it),
                     Err(err) => {
                         tracing::error!(
@@ -556,15 +556,15 @@ impl SourceRootConfig {
     }
 }
 
-pub(crate) fn load_proc_macro(client: Option<&ProcMacroClient>, path: &AbsPath) -> Vec<ProcMacro> {
+pub(crate) fn load_proc_macro(client: Option<&ProcMacroServer>, path: &AbsPath) -> Vec<ProcMacro> {
     return client
-        .map(|it| it.by_dylib_path(path))
+        .map(|it| it.load_dylib(path))
         .unwrap_or_default()
         .into_iter()
         .map(expander_to_proc_macro)
         .collect();
 
-    fn expander_to_proc_macro(expander: proc_macro_api::ProcMacroProcessExpander) -> ProcMacro {
+    fn expander_to_proc_macro(expander: proc_macro_api::ProcMacro) -> ProcMacro {
         let name = expander.name().into();
         let kind = match expander.kind() {
             proc_macro_api::ProcMacroKind::CustomDerive => ProcMacroKind::CustomDerive,
@@ -576,7 +576,7 @@ pub(crate) fn load_proc_macro(client: Option<&ProcMacroClient>, path: &AbsPath) 
     }
 
     #[derive(Debug)]
-    struct Expander(proc_macro_api::ProcMacroProcessExpander);
+    struct Expander(proc_macro_api::ProcMacro);
 
     impl ProcMacroExpander for Expander {
         fn expand(

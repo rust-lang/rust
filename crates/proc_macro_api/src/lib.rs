@@ -26,58 +26,10 @@ pub use rpc::{
 };
 pub use version::{read_dylib_info, RustCInfo};
 
-#[derive(Debug, Clone)]
-pub struct ProcMacroProcessExpander {
-    process: Arc<Mutex<ProcMacroProcessSrv>>,
-    dylib_path: AbsPathBuf,
-    name: SmolStr,
-    kind: ProcMacroKind,
-}
-
-impl Eq for ProcMacroProcessExpander {}
-impl PartialEq for ProcMacroProcessExpander {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && self.kind == other.kind
-            && self.dylib_path == other.dylib_path
-            && Arc::ptr_eq(&self.process, &other.process)
-    }
-}
-
-impl ProcMacroProcessExpander {
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn kind(&self) -> ProcMacroKind {
-        self.kind
-    }
-
-    pub fn expand(
-        &self,
-        subtree: &Subtree,
-        attr: Option<&Subtree>,
-        env: Vec<(String, String)>,
-    ) -> Result<Subtree, tt::ExpansionError> {
-        let task = ExpansionTask {
-            macro_body: FlatTree::new(subtree),
-            macro_name: self.name.to_string(),
-            attributes: attr.map(FlatTree::new),
-            lib: self.dylib_path.to_path_buf().into(),
-            env,
-        };
-
-        let result: ExpansionResult = self
-            .process
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .send_task(msg::Request::ExpansionMacro(task))?;
-        Ok(result.expansion.to_subtree())
-    }
-}
-
+/// A handle to an external process which load dylibs with macros (.so or .dll)
+/// and runs actual macro expansion functions.
 #[derive(Debug)]
-pub struct ProcMacroClient {
+pub struct ProcMacroServer {
     /// Currently, the proc macro process expands all procedural macros sequentially.
     ///
     /// That means that concurrent salsa requests may block each other when expanding proc macros,
@@ -87,17 +39,39 @@ pub struct ProcMacroClient {
     process: Arc<Mutex<ProcMacroProcessSrv>>,
 }
 
-impl ProcMacroClient {
+/// A handle to a specific macro (a `#[proc_macro]` annotated function).
+///
+/// It exists withing a context of a specific [`ProcMacroProcess`] -- currently
+/// we share a single expander process for all macros.
+#[derive(Debug, Clone)]
+pub struct ProcMacro {
+    process: Arc<Mutex<ProcMacroProcessSrv>>,
+    dylib_path: AbsPathBuf,
+    name: SmolStr,
+    kind: ProcMacroKind,
+}
+
+impl Eq for ProcMacro {}
+impl PartialEq for ProcMacro {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.kind == other.kind
+            && self.dylib_path == other.dylib_path
+            && Arc::ptr_eq(&self.process, &other.process)
+    }
+}
+
+impl ProcMacroServer {
     /// Spawns an external process as the proc macro server and returns a client connected to it.
-    pub fn extern_process(
+    pub fn spawn(
         process_path: AbsPathBuf,
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
-    ) -> io::Result<ProcMacroClient> {
+    ) -> io::Result<ProcMacroServer> {
         let process = ProcMacroProcessSrv::run(process_path, args)?;
-        Ok(ProcMacroClient { process: Arc::new(Mutex::new(process)) })
+        Ok(ProcMacroServer { process: Arc::new(Mutex::new(process)) })
     }
 
-    pub fn by_dylib_path(&self, dylib_path: &AbsPath) -> Vec<ProcMacroProcessExpander> {
+    pub fn load_dylib(&self, dylib_path: &AbsPath) -> Vec<ProcMacro> {
         let _p = profile::span("ProcMacroClient::by_dylib_path");
         match version::read_dylib_info(dylib_path) {
             Ok(info) => {
@@ -129,12 +103,44 @@ impl ProcMacroClient {
 
         macros
             .into_iter()
-            .map(|(name, kind)| ProcMacroProcessExpander {
+            .map(|(name, kind)| ProcMacro {
                 process: self.process.clone(),
                 name: name.into(),
                 kind,
                 dylib_path: dylib_path.to_path_buf(),
             })
             .collect()
+    }
+}
+
+impl ProcMacro {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn kind(&self) -> ProcMacroKind {
+        self.kind
+    }
+
+    pub fn expand(
+        &self,
+        subtree: &Subtree,
+        attr: Option<&Subtree>,
+        env: Vec<(String, String)>,
+    ) -> Result<Subtree, tt::ExpansionError> {
+        let task = ExpansionTask {
+            macro_body: FlatTree::new(subtree),
+            macro_name: self.name.to_string(),
+            attributes: attr.map(FlatTree::new),
+            lib: self.dylib_path.to_path_buf().into(),
+            env,
+        };
+
+        let result: ExpansionResult = self
+            .process
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .send_task(msg::Request::ExpansionMacro(task))?;
+        Ok(result.expansion.to_subtree())
     }
 }

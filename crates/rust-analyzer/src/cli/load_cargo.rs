@@ -7,7 +7,7 @@ use crossbeam_channel::{unbounded, Receiver};
 use hir::db::DefDatabase;
 use ide::{AnalysisHost, Change};
 use ide_db::base_db::CrateGraph;
-use proc_macro_api::ProcMacroClient;
+use proc_macro_api::ProcMacroServer;
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace};
 use vfs::{loader::Handle, AbsPath, AbsPathBuf};
 
@@ -28,7 +28,7 @@ pub fn load_workspace_at(
     cargo_config: &CargoConfig,
     load_config: &LoadCargoConfig,
     progress: &dyn Fn(String),
-) -> Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroClient>)> {
+) -> Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroServer>)> {
     let root = AbsPathBuf::assert(std::env::current_dir()?.join(root));
     let root = ProjectManifest::discover_single(&root)?;
     let mut workspace = ProjectWorkspace::load(root, cargo_config, progress)?;
@@ -49,7 +49,7 @@ pub fn load_workspace_at(
 pub fn load_workspace(
     ws: ProjectWorkspace,
     load_config: &LoadCargoConfig,
-) -> Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroClient>)> {
+) -> Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroServer>)> {
     let (sender, receiver) = unbounded();
     let mut vfs = vfs::Vfs::default();
     let mut loader = {
@@ -60,7 +60,7 @@ pub fn load_workspace(
 
     let proc_macro_client = if load_config.with_proc_macro {
         let path = AbsPathBuf::assert(std::env::current_exe()?);
-        Some(ProcMacroClient::extern_process(path, &["proc-macro"]).unwrap())
+        Some(ProcMacroServer::spawn(path, &["proc-macro"]).unwrap())
     } else {
         None
     };
