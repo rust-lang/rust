@@ -17,6 +17,7 @@ use super::{
     collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_strs, notable_traits_decl,
     render_assoc_item, render_assoc_items, render_attributes_in_code, render_attributes_in_pre,
     render_impl, render_stability_since_raw, write_srclink, AssocItemLink, Context,
+    ImplRenderingParameters,
 };
 use crate::clean::{self, GetDefId};
 use crate::formats::item_type::ItemType;
@@ -734,13 +735,15 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     it,
                     assoc_link,
                     RenderMode::Normal,
-                    false,
                     None,
-                    true,
-                    false,
-                    true,
                     &[],
-                    false,
+                    ImplRenderingParameters {
+                        show_def_docs: false,
+                        is_on_foreign_type: true,
+                        show_default_items: false,
+                        show_non_assoc_items: true,
+                        toggle_open_by_default: false,
+                    },
                 );
             }
         }
@@ -1369,13 +1372,15 @@ fn render_implementor(
         trait_,
         AssocItemLink::Anchor(None),
         RenderMode::Normal,
-        false,
         Some(use_absolute),
-        false,
-        false,
-        false,
         aliases,
-        false,
+        ImplRenderingParameters {
+            show_def_docs: false,
+            is_on_foreign_type: false,
+            show_default_items: false,
+            show_non_assoc_items: false,
+            toggle_open_by_default: false,
+        },
     );
 }
 
