@@ -36,6 +36,7 @@ you can write:
     ],
     "editor.formatOnSave": true,
     "rust-analyzer.cargo.runBuildScripts": false,
+    "rust-analyzer.rustcSource": "./Cargo.toml",
     "rust-analyzer.procMacro.enable": false
 }
 ```
