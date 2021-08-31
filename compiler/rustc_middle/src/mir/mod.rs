@@ -412,8 +412,7 @@ impl<'tcx> Body<'tcx> {
     /// Returns an iterator over all function arguments.
     #[inline]
     pub fn args_iter(&self) -> impl Iterator<Item = Local> + ExactSizeIterator {
-        let arg_count = self.arg_count;
-        (1..arg_count + 1).map(Local::new)
+        (1..self.arg_count + 1).map(Local::new)
     }
 
     /// Returns an iterator over all user-defined variables and compiler-generated temporaries (all
@@ -422,9 +421,7 @@ impl<'tcx> Body<'tcx> {
     pub fn vars_and_temps_iter(
         &self,
     ) -> impl DoubleEndedIterator<Item = Local> + ExactSizeIterator {
-        let arg_count = self.arg_count;
-        let local_count = self.local_decls.len();
-        (arg_count + 1..local_count).map(Local::new)
+        (self.arg_count + 1..self.local_decls.len()).map(Local::new)
     }
 
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
