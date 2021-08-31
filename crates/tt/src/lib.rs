@@ -277,8 +277,6 @@ pub mod buffer;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ExpansionError {
-    IOError(String),
-    JsonError(String),
     Unknown(String),
     ExpansionError(String),
 }
@@ -286,8 +284,6 @@ pub enum ExpansionError {
 impl fmt::Display for ExpansionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ExpansionError::IOError(e) => write!(f, "I/O error: {}", e),
-            ExpansionError::JsonError(e) => write!(f, "JSON decoding error: {}", e),
             ExpansionError::Unknown(e) => e.fmt(f),
             ExpansionError::ExpansionError(e) => write!(f, "proc macro returned error: {}", e),
         }
