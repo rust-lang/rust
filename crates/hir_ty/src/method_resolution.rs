@@ -348,6 +348,7 @@ pub fn def_crates(
         }
         TyKind::Str => lang_item_crate!("str_alloc", "str"),
         TyKind::Slice(_) => lang_item_crate!("slice_alloc", "slice"),
+        TyKind::Array(..) => lang_item_crate!("array"),
         TyKind::Raw(Mutability::Not, _) => lang_item_crate!("const_ptr"),
         TyKind::Raw(Mutability::Mut, _) => lang_item_crate!("mut_ptr"),
         TyKind::Dyn(_) => {

@@ -37,6 +37,24 @@ fn infer_slice_method() {
 }
 
 #[test]
+fn infer_array_inherent_impl() {
+    check_types(
+        r#"
+        #[lang = "array"]
+        impl<T, const N: usize> [T; N] {
+            fn foo(&self) -> T {
+                loop {}
+            }
+        }
+        fn test(x: &[u8; 0]) {
+            <[_; 0]>::foo(x);
+          //^^^^^^^^^^^^^^^^ u8
+        }
+        "#,
+    );
+}
+
+#[test]
 fn infer_associated_method_struct() {
     check_infer(
         r#"
