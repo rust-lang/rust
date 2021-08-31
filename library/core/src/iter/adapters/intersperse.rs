@@ -4,7 +4,7 @@ use super::Peekable;
 ///
 /// This `struct` is created by [`Iterator::intersperse`]. See its documentation
 /// for more information.
-#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+#[stable(feature = "iter_intersperse", since = "1.56.0")]
 #[derive(Debug, Clone)]
 pub struct Intersperse<I: Iterator>
 where
@@ -24,7 +24,7 @@ where
     }
 }
 
-#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+#[stable(feature = "iter_intersperse", since = "1.56.0")]
 impl<I> Iterator for Intersperse<I>
 where
     I: Iterator,
@@ -61,7 +61,7 @@ where
 ///
 /// This `struct` is created by [`Iterator::intersperse_with`]. See its
 /// documentation for more information.
-#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+#[stable(feature = "iter_intersperse", since = "1.56.0")]
 pub struct IntersperseWith<I, G>
 where
     I: Iterator,
@@ -71,7 +71,7 @@ where
     needs_sep: bool,
 }
 
-#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+#[stable(feature = "iter_intersperse", since = "1.56.0")]
 impl<I, G> crate::fmt::Debug for IntersperseWith<I, G>
 where
     I: Iterator + crate::fmt::Debug,
@@ -87,7 +87,7 @@ where
     }
 }
 
-#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+#[stable(feature = "iter_intersperse", since = "1.56.0")]
 impl<I, G> crate::clone::Clone for IntersperseWith<I, G>
 where
     I: Iterator + crate::clone::Clone,
@@ -113,7 +113,7 @@ where
     }
 }
 
-#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+#[stable(feature = "iter_intersperse", since = "1.56.0")]
 impl<I, G> Iterator for IntersperseWith<I, G>
 where
     I: Iterator,

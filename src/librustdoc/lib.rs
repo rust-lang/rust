@@ -13,7 +13,6 @@
 #![feature(never_type)]
 #![feature(once_cell)]
 #![feature(type_ascription)]
-#![feature(iter_intersperse)]
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]
 
