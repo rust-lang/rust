@@ -174,8 +174,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             sp,
                             "disambiguate the associated function",
                             format!(
-                                "{}::{}({}{})",
-                                trait_name, segment.ident.name, self_adjusted, args
+                                "{}::{}{}({}{})",
+                                trait_name,
+                                segment.ident.name,
+                                if let Some(args) = segment.args.as_ref().and_then(|args| self
+                                    .sess()
+                                    .source_map()
+                                    .span_to_snippet(args.span_ext)
+                                    .ok())
+                                {
+                                    // Keep turbofish.
+                                    format!("::{}", args)
+                                } else {
+                                    String::new()
+                                },
+                                self_adjusted,
+                                args,
                             ),
                             Applicability::MachineApplicable,
                         );
