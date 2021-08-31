@@ -635,7 +635,7 @@ pub macro which_arena_for_type {
 }
 
 #[rustc_macro_transparency = "semitransparent"]
-pub macro declare_arena([], [$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) {
+pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) {
     #[derive(Default)]
     pub struct Arena<$tcx> {
         pub dropless: $crate::DroplessArena,

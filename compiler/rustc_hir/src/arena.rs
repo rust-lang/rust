@@ -9,8 +9,8 @@
 /// where `T` is the type listed. These impls will appear in the implement_ty_decoder! macro.
 #[macro_export]
 macro_rules! arena_types {
-    ($macro:path, $args:tt, $tcx:lifetime) => (
-        $macro!($args, [
+    ($macro:path, $tcx:lifetime) => (
+        $macro!([
             // HIR types
             [few] hir_krate: rustc_hir::Crate<$tcx>,
             [] arm: rustc_hir::Arm<$tcx>,
