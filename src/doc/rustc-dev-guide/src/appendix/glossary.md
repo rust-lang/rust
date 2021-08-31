@@ -71,7 +71,7 @@ Term                                                  | Meaning
 <span id="side-tables">side tables</span>      &nbsp; |  Because the AST and HIR are immutable once created, we often carry extra information about them in the form of hashtables, indexed by the id of a particular node.
 <span id="sigil">sigil</span>                  &nbsp; |  Like a keyword but composed entirely of non-alphanumeric tokens. For example, `&` is a sigil for references.
 <span id="soundness">soundness</span>          &nbsp; |  A technical term in type theory. Roughly, if a type system is sound, then a program that type-checks is type-safe. That is, one can never (in safe rust) force a value into a variable of the wrong type. (see "completeness").
-<span id="span">span</span>                    &nbsp; |  A location in the user's source code, used for error reporting primarily. These are like a file-name/line-number/column tuple on steroids: they carry a start/end point, and also track macro expansions and compiler desugaring. All while being packed into a few bytes (really, it's an index into a table). See the Span datatype for more.
+<span id="span">span</span>                    &nbsp; |  A location in the user's source code, used for error reporting primarily. These are like a file-name/line-number/column tuple on steroids: they carry a start/end point, and also track macro expansions and compiler desugaring. All while being packed into a few bytes (really, it's an index into a table). See the [`Span`] datatype for more.
 <span id="substs">substs</span>                &nbsp; |  The substitutions for a given generic type or item (e.g. the `i32`, `u32` in `HashMap<i32, u32>`).
 <span id="sysroot">sysroot</span>              &nbsp; |  The directory for build artifacts that are loaded by the compiler at runtime. ([see more](../building/bootstrapping.html#what-is-a-sysroot))
 <span id="tag">tag</span>                      &nbsp; |  The "tag" of an enum/generator encodes the [discriminant](#discriminant) of the active variant/state.  Tags can either be "direct" (simply storing the discriminant in a field) or use a ["niche"](#niche).
@@ -93,5 +93,6 @@ Term                                                  | Meaning
 
 [LLVM]: https://llvm.org/
 [lto]: https://llvm.org/docs/LinkTimeOptimization.html
+[`Span`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
 [thinlto]: https://clang.llvm.org/docs/ThinLTO.html
 [TLS]: https://llvm.org/docs/LangRef.html#thread-local-storage-models
