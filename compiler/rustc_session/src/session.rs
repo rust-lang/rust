@@ -36,7 +36,7 @@ use std::fmt;
 use std::io::Write;
 use std::num::NonZeroU32;
 use std::ops::{Div, Mul};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -797,6 +797,18 @@ impl Session {
             &self.host_tlib_path,
             kind,
         )
+    }
+
+    /// Returns a list of directories where target-specific tool binaries are located.
+    pub fn get_tools_search_paths(&self, self_contained: bool) -> Vec<PathBuf> {
+        let rustlib_path = rustc_target::target_rustlib_path(&self.sysroot, &config::host_triple());
+        let p = std::array::IntoIter::new([
+            Path::new(&self.sysroot),
+            Path::new(&rustlib_path),
+            Path::new("bin"),
+        ])
+        .collect::<PathBuf>();
+        if self_contained { vec![p.clone(), p.join("self-contained")] } else { vec![p] }
     }
 
     pub fn init_incr_comp_session(

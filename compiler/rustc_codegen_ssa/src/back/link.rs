@@ -637,7 +637,7 @@ fn link_dwarf_object<'a>(sess: &'a Session, executable_out_filename: &Path) {
     cmd.arg("-o");
     cmd.arg(&dwp_out_filename);
 
-    let mut new_path = sess.host_filesearch(PathKind::All).get_tools_search_paths(false);
+    let mut new_path = sess.get_tools_search_paths(false);
     if let Some(path) = env::var_os("PATH") {
         new_path.extend(env::split_paths(&path));
     }
@@ -2555,8 +2555,7 @@ fn add_gcc_ld_path(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
             match ld_impl {
                 LdImpl::Lld => {
                     if sess.target.lld_flavor == LldFlavor::Ld64 {
-                        let tools_path =
-                            sess.host_filesearch(PathKind::All).get_tools_search_paths(false);
+                        let tools_path = sess.get_tools_search_paths(false);
                         let ld64_exe = tools_path
                             .into_iter()
                             .map(|p| p.join("gcc-ld"))
@@ -2571,8 +2570,7 @@ fn add_gcc_ld_path(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
                             arg
                         });
                     } else {
-                        let tools_path =
-                            sess.host_filesearch(PathKind::All).get_tools_search_paths(false);
+                        let tools_path = sess.get_tools_search_paths(false);
                         let lld_path = tools_path
                             .into_iter()
                             .map(|p| p.join("gcc-ld"))

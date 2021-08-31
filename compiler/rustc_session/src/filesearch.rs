@@ -87,18 +87,6 @@ impl<'a> FileSearch<'a> {
     pub fn search_path_dirs(&self) -> Vec<PathBuf> {
         self.search_paths().map(|sp| sp.dir.to_path_buf()).collect()
     }
-
-    /// Returns a list of directories where target-specific tool binaries are located.
-    pub fn get_tools_search_paths(&self, self_contained: bool) -> Vec<PathBuf> {
-        let rustlib_path = rustc_target::target_rustlib_path(self.sysroot, &self.triple);
-        let p = std::array::IntoIter::new([
-            Path::new(&self.sysroot),
-            Path::new(&rustlib_path),
-            Path::new("bin"),
-        ])
-        .collect::<PathBuf>();
-        if self_contained { vec![p.clone(), p.join("self-contained")] } else { vec![p] }
-    }
 }
 
 pub fn make_target_lib_path(sysroot: &Path, target_triple: &str) -> PathBuf {
