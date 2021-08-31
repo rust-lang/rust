@@ -15,11 +15,12 @@ use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{
-        self, edit_in_place::Indent, make, AstNode, AttrsOwner, GenericParamsOwner, NameOwner,
-        TypeBoundsOwner, VisibilityOwner,
+        self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, AttrsOwner,
+        GenericParamsOwner, NameOwner, TypeBoundsOwner, VisibilityOwner,
     },
     match_ast,
     ted::{self, Position},
+    SyntaxKind::*,
     SyntaxNode, T,
 };
 
@@ -161,6 +162,7 @@ fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &Va
 
 fn create_struct_def(
     variant_name: ast::Name,
+    variant: &ast::Variant,
     field_list: &Either<ast::RecordFieldList, ast::TupleFieldList>,
     enum_: &ast::Enum,
 ) -> ast::Struct {
@@ -204,7 +206,34 @@ fn create_struct_def(
         make::struct_(enum_.visibility(), variant_name, enum_.generic_param_list(), field_list)
             .clone_for_update();
 
-    // copy attributes
+    // FIXME: Consider making this an actual function somewhere (like in `AttrsOwnerEdit`) after some deliberation
+    let attrs_and_docs = |node: &SyntaxNode| {
+        let mut select_next_ws = false;
+        node.children_with_tokens().filter(move |child| {
+            let accept = match child.kind() {
+                ATTR | COMMENT => {
+                    select_next_ws = true;
+                    return true;
+                }
+                WHITESPACE if select_next_ws => true,
+                _ => false,
+            };
+            select_next_ws = false;
+
+            accept
+        })
+    };
+
+    // copy attributes & comments from variant
+    let variant_attrs = attrs_and_docs(variant.syntax())
+        .map(|tok| match tok.kind() {
+            WHITESPACE => make::tokens::single_newline().into(),
+            _ => tok.into(),
+        })
+        .collect();
+    ted::insert_all(Position::first_child_of(strukt.syntax()), variant_attrs);
+
+    // copy attributes from enum
     ted::insert_all(
         Position::first_child_of(strukt.syntax()),
         enum_.attrs().map(|it| it.syntax().clone_for_update().into()).collect(),
@@ -494,6 +523,60 @@ enum A {
 struct One(/* comment */ #[attr] pub u32, /* another */ pub u32 /* tail */);
 
 enum A { One(One) }"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_struct_keep_comments_and_attrs_on_variant_struct() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+enum A {
+    /* comment */
+    // other
+    /// comment
+    #[attr]
+    $0One {
+        a: u32
+    }
+}"#,
+            r#"
+/* comment */
+// other
+/// comment
+#[attr]
+struct One {
+    pub a: u32
+}
+
+enum A {
+    One(One)
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_struct_keep_comments_and_attrs_on_variant_tuple() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+enum A {
+    /* comment */
+    // other
+    /// comment
+    #[attr]
+    $0One(u32, u32)
+}"#,
+            r#"
+/* comment */
+// other
+/// comment
+#[attr]
+struct One(pub u32, pub u32);
+
+enum A {
+    One(One)
+}"#,
         );
     }
 
