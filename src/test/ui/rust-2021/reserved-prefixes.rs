@@ -1,4 +1,4 @@
-// compile-flags: -Z unstable-options --edition 2021
+// edition:2021
 
 macro_rules! demo2 {
     ( $a:tt $b:tt ) => { println!("two tokens") };
