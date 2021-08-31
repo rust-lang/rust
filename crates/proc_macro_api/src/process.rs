@@ -1,7 +1,6 @@
 //! Handle process life-time and message passing for proc-macro client
 
 use std::{
-    convert::{TryFrom, TryInto},
     ffi::{OsStr, OsString},
     io::{self, BufRead, BufReader, Write},
     process::{Child, ChildStdin, ChildStdout, Command, Stdio},
@@ -11,8 +10,8 @@ use paths::{AbsPath, AbsPathBuf};
 use stdx::JodChild;
 
 use crate::{
-    msg::{ErrorCode, Message, Request, Response, ResponseError},
-    rpc::{ListMacrosResult, ListMacrosTask, ProcMacroKind},
+    msg::{Message, Request, Response},
+    ProcMacroKind, ServerError,
 };
 
 #[derive(Debug)]
@@ -38,42 +37,22 @@ impl ProcMacroProcessSrv {
     pub(crate) fn find_proc_macros(
         &mut self,
         dylib_path: &AbsPath,
-    ) -> Result<Vec<(String, ProcMacroKind)>, tt::ExpansionError> {
-        let task = ListMacrosTask { lib: dylib_path.to_path_buf().into() };
+    ) -> Result<Result<Vec<(String, ProcMacroKind)>, String>, ServerError> {
+        let request = Request::ListMacros { dylib_path: dylib_path.to_path_buf().into() };
 
-        let result: ListMacrosResult = self.send_task(Request::ListMacro(task))?;
-        Ok(result.macros)
+        let response = self.send_task(request)?;
+
+        match response {
+            Response::ListMacros(it) => Ok(it),
+            Response::ExpandMacro { .. } => {
+                Err(ServerError { message: "unexpected response".to_string(), io: None })
+            }
+        }
     }
 
-    pub(crate) fn send_task<R>(&mut self, req: Request) -> Result<R, tt::ExpansionError>
-    where
-        R: TryFrom<Response, Error = &'static str>,
-    {
+    pub(crate) fn send_task(&mut self, req: Request) -> Result<Response, ServerError> {
         let mut buf = String::new();
-        let res = match send_request(&mut self.stdin, &mut self.stdout, req, &mut buf) {
-            Ok(res) => res,
-            Err(err) => {
-                let result = self.process.child.try_wait();
-                tracing::error!(
-                    "proc macro server crashed, server process state: {:?}, server request error: {:?}",
-                    result,
-                    err
-                );
-                let res = Response::Error(ResponseError {
-                    code: ErrorCode::ServerErrorEnd,
-                    message: "proc macro server crashed".into(),
-                });
-                Some(res)
-            }
-        };
-
-        match res {
-            Some(Response::Error(err)) => Err(tt::ExpansionError::ExpansionError(err.message)),
-            Some(res) => Ok(res.try_into().map_err(|err| {
-                tt::ExpansionError::Unknown(format!("Fail to get response, reason : {:#?} ", err))
-            })?),
-            None => Err(tt::ExpansionError::Unknown("Empty result".into())),
-        }
+        send_request(&mut self.stdin, &mut self.stdout, req, &mut buf)
     }
 }
 
@@ -118,7 +97,10 @@ fn send_request(
     mut reader: &mut impl BufRead,
     req: Request,
     buf: &mut String,
-) -> io::Result<Option<Response>> {
-    req.write(&mut writer)?;
-    Response::read(&mut reader, buf)
+) -> Result<Response, ServerError> {
+    req.write(&mut writer)
+        .map_err(|err| ServerError { message: "failed to write request".into(), io: Some(err) })?;
+    let res = Response::read(&mut reader, buf)
+        .map_err(|err| ServerError { message: "failed to read response".into(), io: Some(err) })?;
+    res.ok_or_else(|| ServerError { message: "server exited".into(), io: None })
 }

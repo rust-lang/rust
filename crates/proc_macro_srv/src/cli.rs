@@ -1,8 +1,9 @@
 //! Driver for proc macro server
+use std::io;
+
+use proc_macro_api::msg::{self, Message};
 
 use crate::ProcMacroSrv;
-use proc_macro_api::msg::{self, Message};
-use std::io;
 
 pub fn run() -> io::Result<()> {
     let mut srv = ProcMacroSrv::default();
@@ -10,22 +11,12 @@ pub fn run() -> io::Result<()> {
 
     while let Some(req) = read_request(&mut buf)? {
         let res = match req {
-            msg::Request::ListMacro(task) => srv.list_macros(&task).map(msg::Response::ListMacro),
-            msg::Request::ExpansionMacro(task) => {
-                srv.expand(task).map(msg::Response::ExpansionMacro)
+            msg::Request::ListMacros { dylib_path } => {
+                msg::Response::ListMacros(srv.list_macros(&dylib_path))
             }
+            msg::Request::ExpandMacro(task) => msg::Response::ExpandMacro(srv.expand(task)),
         };
-
-        let msg = res.unwrap_or_else(|err| {
-            msg::Response::Error(msg::ResponseError {
-                code: msg::ErrorCode::ExpansionError,
-                message: err,
-            })
-        });
-
-        if let Err(err) = write_response(msg) {
-            eprintln!("Write message error: {}", err);
-        }
+        write_response(res)?
     }
 
     Ok(())
