@@ -58,21 +58,15 @@ class CargoTaskProvider implements vscode.TaskProvider {
 
         if (definition.type === TASK_TYPE && definition.command) {
             const args = [definition.command].concat(definition.args ?? []);
-            if (isWorkspaceFolder(task.scope)) {
-                return await buildCargoTask(task.scope, definition, task.name, args, this.config.cargoRunner);
-            }
+            return await buildCargoTask(task.scope, definition, task.name, args, this.config.cargoRunner);
         }
 
         return undefined;
     }
 }
 
-function isWorkspaceFolder(scope?: any): scope is vscode.WorkspaceFolder {
-    return (scope as vscode.WorkspaceFolder).name !== undefined;
-}
-
 export async function buildCargoTask(
-    target: vscode.WorkspaceFolder,
+    scope: vscode.WorkspaceFolder | vscode.TaskScope | undefined,
     definition: CargoTaskDefinition,
     name: string,
     args: string[],
@@ -115,14 +109,26 @@ export async function buildCargoTask(
         exec = new vscode.ProcessExecution(fullCommand[0], fullCommand.slice(1), definition);
     }
 
-    return new vscode.Task(
-        definition,
-        target,
-        name,
-        TASK_SOURCE,
-        exec,
-        ['$rustc']
-    );
+    if (scope) {
+        return new vscode.Task(
+            definition,
+            scope,
+            name,
+            TASK_SOURCE,
+            exec,
+            ['$rustc']
+        );
+    }
+    else {
+        // if the original task did not provide a scope retain the original lack of scope
+        return new vscode.Task(
+            definition,
+            name,
+            TASK_SOURCE,
+            exec,
+            ['$rustc']
+        );
+    }
 }
 
 export function activateTaskProvider(config: Config): vscode.Disposable {
