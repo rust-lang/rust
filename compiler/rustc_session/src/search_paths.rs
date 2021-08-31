@@ -9,17 +9,17 @@ pub struct SearchPath {
     pub files: Vec<SearchPathFile>,
 }
 
-// The obvious implementation of `SearchPath::files` is a `Vec<PathBuf>`. But
-// it is searched repeatedly by `find_library_crate`, and the searches involve
-// checking the prefix and suffix of the filename of each `PathBuf`. This is
-// doable, but very slow, because it involves calls to `file_name` and
-// `extension` that are themselves slow.
-//
-// This type augments the `PathBuf` with an `Option<String>` containing the
-// `PathBuf`'s filename. The prefix and suffix checking is much faster on the
-// `Option<String>` than the `PathBuf`. (It's an `Option` because
-// `Path::file_name` can fail; if that happens then all subsequent checking
-// will also fail, which is fine.)
+/// The obvious implementation of `SearchPath::files` is a `Vec<PathBuf>`. But
+/// it is searched repeatedly by `find_library_crate`, and the searches involve
+/// checking the prefix and suffix of the filename of each `PathBuf`. This is
+/// doable, but very slow, because it involves calls to `file_name` and
+/// `extension` that are themselves slow.
+///
+/// This type augments the `PathBuf` with an `Option<String>` containing the
+/// `PathBuf`'s filename. The prefix and suffix checking is much faster on the
+/// `Option<String>` than the `PathBuf`. (It's an `Option` because
+/// `Path::file_name` can fail; if that happens then all subsequent checking
+/// will also fail, which is fine.)
 #[derive(Clone, Debug)]
 pub struct SearchPathFile {
     pub path: PathBuf,
