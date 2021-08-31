@@ -16,28 +16,28 @@ macro_rules! b {
 // Implements the Not trait but with an output type
 // that's not bool. Should not suggest a rewrite
 #[derive(Debug)]
-enum A {
+enum ImplNotTraitWithoutBool {
     VariantX(bool),
     VariantY(u32),
 }
 
-impl PartialEq<bool> for A {
+impl PartialEq<bool> for ImplNotTraitWithoutBool {
     fn eq(&self, other: &bool) -> bool {
         match *self {
-            A::VariantX(b) => b == *other,
+            ImplNotTraitWithoutBool::VariantX(b) => b == *other,
             _ => false,
         }
     }
 }
 
-impl Not for A {
+impl Not for ImplNotTraitWithoutBool {
     type Output = Self;
 
     fn not(self) -> Self::Output {
         match self {
-            A::VariantX(b) => A::VariantX(!b),
-            A::VariantY(0) => A::VariantY(1),
-            A::VariantY(_) => A::VariantY(0),
+            ImplNotTraitWithoutBool::VariantX(b) => ImplNotTraitWithoutBool::VariantX(!b),
+            ImplNotTraitWithoutBool::VariantY(0) => ImplNotTraitWithoutBool::VariantY(1),
+            ImplNotTraitWithoutBool::VariantY(_) => ImplNotTraitWithoutBool::VariantY(0),
         }
     }
 }
@@ -45,15 +45,15 @@ impl Not for A {
 // This type implements the Not trait with an Output of
 // type bool. Using assert!(..) must be suggested
 #[derive(Debug)]
-struct B;
+struct ImplNotTraitWithBool;
 
-impl PartialEq<bool> for B {
+impl PartialEq<bool> for ImplNotTraitWithBool {
     fn eq(&self, other: &bool) -> bool {
         false
     }
 }
 
-impl Not for B {
+impl Not for ImplNotTraitWithBool {
     type Output = bool;
 
     fn not(self) -> Self::Output {
@@ -62,8 +62,8 @@ impl Not for B {
 }
 
 fn main() {
-    let a = A::VariantX(true);
-    let b = B {};
+    let a = ImplNotTraitWithoutBool::VariantX(true);
+    let b = ImplNotTraitWithBool;
 
     assert_eq!("a".len(), 1);
     assert_eq!("a".is_empty(), false);

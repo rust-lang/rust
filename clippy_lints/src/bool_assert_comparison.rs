@@ -40,23 +40,23 @@ fn is_bool_lit(e: &Expr<'_>) -> bool {
     ) && !e.span.from_expansion()
 }
 
-fn impl_not_trait_with_bool_out(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
+fn is_impl_not_trait_with_bool_out(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(e);
 
     cx.tcx
         .lang_items()
         .not_trait()
-        .filter(|id| implements_trait(cx, ty, *id, &[]))
-        .and_then(|id| {
-            cx.tcx.associated_items(id).find_by_name_and_kind(
+        .filter(|trait_id| implements_trait(cx, ty, *trait_id, &[]))
+        .and_then(|trait_id| {
+            cx.tcx.associated_items(trait_id).find_by_name_and_kind(
                 cx.tcx,
                 Ident::from_str("Output"),
                 ty::AssocKind::Type,
-                id,
+                trait_id,
             )
         })
-        .map_or(false, |item| {
-            let proj = cx.tcx.mk_projection(item.def_id, cx.tcx.mk_substs_trait(ty, &[]));
+        .map_or(false, |assoc_item| {
+            let proj = cx.tcx.mk_projection(assoc_item.def_id, cx.tcx.mk_substs_trait(ty, &[]));
             let nty = cx.tcx.normalize_erasing_regions(cx.param_env, proj);
 
             nty.is_bool()
@@ -82,7 +82,7 @@ impl<'tcx> LateLintPass<'tcx> for BoolAssertComparison {
                             return;
                         }
 
-                        if !impl_not_trait_with_bool_out(cx, a) || !impl_not_trait_with_bool_out(cx, b) {
+                        if !is_impl_not_trait_with_bool_out(cx, a) || !is_impl_not_trait_with_bool_out(cx, b) {
                             // At this point the expression which is not a boolean
                             // literal does not implement Not trait with a bool output,
                             // so we cannot suggest to rewrite our code
