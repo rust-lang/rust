@@ -93,20 +93,96 @@ depending on the target pointer size.
     };
 }
 
+macro_rules! widening_impl {
+    ($SelfT:ty, $WideT:ty, $BITS:literal) => {
+        /// Calculates the complete product `self * rhs` without the possibility to overflow.
+        ///
+        /// This returns the low-order (wrapping) bits and the high-order (overflow) bits
+        /// of the result as two separate values, in that order.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `u32` is used here.
+        ///
+        /// ```
+        /// #![feature(bigint_helper_methods)]
+        /// assert_eq!(5u32.widening_mul(2), (10, 0));
+        /// assert_eq!(1_000_000_000u32.widening_mul(10), (1410065408, 2));
+        /// ```
+        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn widening_mul(self, rhs: Self) -> (Self, Self) {
+            // note: longer-term this should be done via an intrinsic,
+            //   but for now we can deal without an impl for u128/i128
+            // SAFETY: overflow will be contained within the wider types
+            let wide = unsafe { (self as $WideT).unchecked_mul(rhs as $WideT) };
+            (wide as $SelfT, (wide >> $BITS) as $SelfT)
+        }
+
+        /// Calculates the "full multiplication" `self * rhs + carry`
+        /// without the possibility to overflow.
+        ///
+        /// This returns the low-order (wrapping) bits and the high-order (overflow) bits
+        /// of the result as two separate values, in that order.
+        ///
+        /// Performs "long multiplication" which takes in an extra amount to add, and may return an
+        /// additional amount of overflow. This allows for chaining together multiple
+        /// multiplications to create "big integers" which represent larger values.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `u32` is used here.
+        ///
+        /// ```
+        /// #![feature(bigint_helper_methods)]
+        /// assert_eq!(5u32.carrying_mul(2, 0), (10, 0));
+        /// assert_eq!(5u32.carrying_mul(2, 10), (20, 0));
+        /// assert_eq!(1_000_000_000u32.carrying_mul(10, 0), (1410065408, 2));
+        /// assert_eq!(1_000_000_000u32.carrying_mul(10, 10), (1410065418, 2));
+        /// ```
+        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn carrying_mul(self, rhs: Self, carry: Self) -> (Self, Self) {
+            // note: longer-term this should be done via an intrinsic,
+            //   but for now we can deal without an impl for u128/i128
+            // SAFETY: overflow will be contained within the wider types
+            let wide = unsafe {
+                (self as $WideT).unchecked_mul(rhs as $WideT).unchecked_add(carry as $WideT)
+            };
+            (wide as $SelfT, (wide >> $BITS) as $SelfT)
+        }
+    };
+}
+
 #[lang = "i8"]
 impl i8 {
+    widening_impl! { i8, i16, 8 }
     int_impl! { i8, i8, u8, 8, 7, -128, 127, 2, "-0x7e", "0xa", "0x12", "0x12", "0x48",
     "[0x12]", "[0x12]", "", "" }
 }
 
 #[lang = "i16"]
 impl i16 {
+    widening_impl! { i16, i32, 16 }
     int_impl! { i16, i16, u16, 16, 15, -32768, 32767, 4, "-0x5ffd", "0x3a", "0x1234", "0x3412",
     "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
 }
 
 #[lang = "i32"]
 impl i32 {
+    widening_impl! { i32, i64, 32 }
     int_impl! { i32, i32, u32, 32, 31, -2147483648, 2147483647, 8, "0x10000b3", "0xb301",
     "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78]", "", "" }
@@ -114,6 +190,7 @@ impl i32 {
 
 #[lang = "i64"]
 impl i64 {
+    widening_impl! { i64, i128, 64 }
     int_impl! { i64, i64, u64, 64, 63, -9223372036854775808, 9223372036854775807, 12,
     "0xaa00000000006e1", "0x6e10aa", "0x1234567890123456", "0x5634129078563412",
     "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
@@ -135,6 +212,7 @@ impl i128 {
 #[cfg(target_pointer_width = "16")]
 #[lang = "isize"]
 impl isize {
+    widening_impl! { isize, i32, 16 }
     int_impl! { isize, i16, usize, 16, 15, -32768, 32767, 4, "-0x5ffd", "0x3a", "0x1234",
     "0x3412", "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
@@ -143,6 +221,7 @@ impl isize {
 #[cfg(target_pointer_width = "32")]
 #[lang = "isize"]
 impl isize {
+    widening_impl! { isize, i64, 32 }
     int_impl! { isize, i32, usize, 32, 31, -2147483648, 2147483647, 8, "0x10000b3", "0xb301",
     "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78]",
@@ -152,6 +231,7 @@ impl isize {
 #[cfg(target_pointer_width = "64")]
 #[lang = "isize"]
 impl isize {
+    widening_impl! { isize, i128, 64 }
     int_impl! { isize, i64, usize, 64, 63, -9223372036854775808, 9223372036854775807,
     12, "0xaa00000000006e1", "0x6e10aa",  "0x1234567890123456", "0x5634129078563412",
      "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
@@ -164,6 +244,7 @@ const ASCII_CASE_MASK: u8 = 0b0010_0000;
 
 #[lang = "u8"]
 impl u8 {
+    widening_impl! { u8, u16, 8 }
     uint_impl! { u8, u8, 8, 255, 2, "0x82", "0xa", "0x12", "0x12", "0x48", "[0x12]",
     "[0x12]", "", "" }
 
@@ -697,18 +778,21 @@ impl u8 {
 
 #[lang = "u16"]
 impl u16 {
+    widening_impl! { u16, u32, 16 }
     uint_impl! { u16, u16, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
     "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
 }
 
 #[lang = "u32"]
 impl u32 {
+    widening_impl! { u32, u64, 32 }
     uint_impl! { u32, u32, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
     "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]", "", "" }
 }
 
 #[lang = "u64"]
 impl u64 {
+    widening_impl! { u64, u128, 64 }
     uint_impl! { u64, u64, 64, 18446744073709551615, 12, "0xaa00000000006e1", "0x6e10aa",
     "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
     "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
@@ -731,6 +815,7 @@ impl u128 {
 #[cfg(target_pointer_width = "16")]
 #[lang = "usize"]
 impl usize {
+    widening_impl! { usize, u32, 16 }
     uint_impl! { usize, u16, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
     "[0x34, 0x12]", "[0x12, 0x34]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
@@ -738,6 +823,7 @@ impl usize {
 #[cfg(target_pointer_width = "32")]
 #[lang = "usize"]
 impl usize {
+    widening_impl! { usize, u64, 32 }
     uint_impl! { usize, u32, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
     "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
@@ -746,6 +832,7 @@ impl usize {
 #[cfg(target_pointer_width = "64")]
 #[lang = "usize"]
 impl usize {
+    widening_impl! { usize, u128, 64 }
     uint_impl! { usize, u64, 64, 18446744073709551615, 12, "0xaa00000000006e1", "0x6e10aa",
     "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
     "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
