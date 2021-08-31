@@ -937,6 +937,19 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
     document_type_layout(w, cx, def_id);
 }
 
+fn print_tuple_struct_fields(w: &mut Buffer, cx: &Context<'_>, s: &[clean::Item]) {
+    for (i, ty) in s
+        .iter()
+        .map(|f| if let clean::StructFieldItem(ref ty) = *f.kind { ty } else { unreachable!() })
+        .enumerate()
+    {
+        if i > 0 {
+            w.write_str(",&nbsp;");
+        }
+        write!(w, "{}", ty.print(cx));
+    }
+}
+
 fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum) {
     wrap_into_docblock(w, |w| {
         wrap_item(w, "enum", |w| {
@@ -964,14 +977,9 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                     match *v.kind {
                         clean::VariantItem(ref var) => match var {
                             clean::Variant::CLike => write!(w, "{}", name),
-                            clean::Variant::Tuple(ref tys) => {
+                            clean::Variant::Tuple(ref s) => {
                                 write!(w, "{}(", name);
-                                for (i, ty) in tys.iter().enumerate() {
-                                    if i > 0 {
-                                        w.write_str(",&nbsp;")
-                                    }
-                                    write!(w, "{}", ty.print(cx));
-                                }
+                                print_tuple_struct_fields(w, cx, s);
                                 w.write_str(")");
                             }
                             clean::Variant::Struct(ref s) => {
@@ -1024,14 +1032,9 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                 id = id,
                 name = variant.name.as_ref().unwrap()
             );
-            if let clean::VariantItem(clean::Variant::Tuple(ref tys)) = *variant.kind {
+            if let clean::VariantItem(clean::Variant::Tuple(ref s)) = *variant.kind {
                 w.write_str("(");
-                for (i, ty) in tys.iter().enumerate() {
-                    if i > 0 {
-                        w.write_str(",&nbsp;");
-                    }
-                    write!(w, "{}", ty.print(cx));
-                }
+                print_tuple_struct_fields(w, cx, s);
                 w.write_str(")");
             }
             w.write_str("</code>");
@@ -1041,7 +1044,11 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
             document_non_exhaustive(w, variant);
 
             use crate::clean::Variant;
-            if let clean::VariantItem(Variant::Struct(ref s)) = *variant.kind {
+            if let Some((extra, fields)) = match *variant.kind {
+                clean::VariantItem(Variant::Struct(ref s)) => Some(("", &s.fields)),
+                clean::VariantItem(Variant::Tuple(ref fields)) => Some(("Tuple ", fields)),
+                _ => None,
+            } {
                 let variant_id = cx.derive_id(format!(
                     "{}.{}.fields",
                     ItemType::Variant,
@@ -1051,10 +1058,10 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                 write!(
                     w,
                     "<h3>{extra}Fields of <b>{name}</b></h3><div>",
-                    extra = if s.struct_type == CtorKind::Fn { "Tuple " } else { "" },
+                    extra = extra,
                     name = variant.name.as_ref().unwrap(),
                 );
-                for field in &s.fields {
+                for field in fields {
                     use crate::clean::StructFieldItem;
                     if let StructFieldItem(ref ty) = *field.kind {
                         let id = cx.derive_id(format!(
