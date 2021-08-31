@@ -255,11 +255,11 @@ impl Builder {
 fn make_dnf(expr: CfgExpr) -> CfgExpr {
     match expr {
         CfgExpr::Invalid | CfgExpr::Atom(_) | CfgExpr::Not(_) => expr,
-        CfgExpr::Any(e) => CfgExpr::Any(e.into_iter().map(make_dnf).collect()),
+        CfgExpr::Any(e) => flatten(CfgExpr::Any(e.into_iter().map(make_dnf).collect())),
         CfgExpr::All(e) => {
-            let e = e.into_iter().map(make_nnf).collect::<Vec<_>>();
+            let e = e.into_iter().map(make_dnf).collect::<Vec<_>>();
 
-            CfgExpr::Any(distribute_conj(&e))
+            flatten(CfgExpr::Any(distribute_conj(&e)))
         }
     }
 }
@@ -289,7 +289,7 @@ fn distribute_conj(conj: &[CfgExpr]) -> Vec<CfgExpr> {
         }
     }
 
-    let mut out = Vec::new();
+    let mut out = Vec::new(); // contains only `all()`
     let mut with = Vec::new();
 
     go(&mut out, &mut with, conj);
@@ -316,5 +316,30 @@ fn make_nnf(expr: CfgExpr) -> CfgExpr {
                 inner.into_iter().map(|expr| make_nnf(CfgExpr::Not(Box::new(expr)))).collect(),
             ),
         },
+    }
+}
+
+/// Collapses nested `any()` and `all()` predicates.
+fn flatten(expr: CfgExpr) -> CfgExpr {
+    match expr {
+        CfgExpr::All(inner) => CfgExpr::All(
+            inner
+                .into_iter()
+                .flat_map(|e| match e {
+                    CfgExpr::All(inner) => inner,
+                    _ => vec![e],
+                })
+                .collect(),
+        ),
+        CfgExpr::Any(inner) => CfgExpr::Any(
+            inner
+                .into_iter()
+                .flat_map(|e| match e {
+                    CfgExpr::Any(inner) => inner,
+                    _ => vec![e],
+                })
+                .collect(),
+        ),
+        _ => expr,
     }
 }

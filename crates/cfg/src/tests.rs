@@ -1,3 +1,4 @@
+use arbitrary::{Arbitrary, Unstructured};
 use expect_test::{expect, Expect};
 use mbe::syntax_node_to_token_tree;
 use syntax::{ast, AstNode};
@@ -131,6 +132,18 @@ fn nested() {
 }
 
 #[test]
+fn regression() {
+    check_dnf("#![cfg(all(not(not(any(any(any()))))))]", expect![[r##"#![cfg(any())]"##]]);
+    check_dnf("#![cfg(all(any(all(any()))))]", expect![[r##"#![cfg(any())]"##]]);
+    check_dnf("#![cfg(all(all(any())))]", expect![[r##"#![cfg(any())]"##]]);
+
+    check_dnf("#![cfg(all(all(any(), x)))]", expect![[r##"#![cfg(any())]"##]]);
+    check_dnf("#![cfg(all(all(any()), x))]", expect![[r##"#![cfg(any())]"##]]);
+    check_dnf("#![cfg(all(all(any(x))))]", expect![[r##"#![cfg(x)]"##]]);
+    check_dnf("#![cfg(all(all(any(x), x)))]", expect![[r##"#![cfg(all(x, x))]"##]]);
+}
+
+#[test]
 fn hints() {
     let mut opts = CfgOptions::default();
 
@@ -190,4 +203,22 @@ fn why_inactive() {
         &opts,
         expect![["test and test2 are enabled and a is disabled"]],
     );
+}
+
+#[test]
+fn proptest() {
+    const REPEATS: usize = 512;
+
+    let mut rng = oorandom::Rand32::new(123456789);
+    let mut buf = Vec::new();
+    for _ in 0..REPEATS {
+        buf.clear();
+        while buf.len() < 512 {
+            buf.extend(rng.rand_u32().to_ne_bytes());
+        }
+
+        let mut u = Unstructured::new(&buf);
+        let cfg = CfgExpr::arbitrary(&mut u).unwrap();
+        DnfExpr::new(cfg);
+    }
 }
