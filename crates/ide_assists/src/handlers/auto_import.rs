@@ -89,12 +89,13 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     if proposed_imports.is_empty() {
         return None;
     }
-    // we aren't interested in different namespaces
-    proposed_imports.dedup_by(|a, b| a.import_path == b.import_path);
 
     let range = ctx.sema.original_range(&syntax_under_caret).range;
     let group_label = group_label(import_assets.import_candidate());
     let scope = ImportScope::find_insert_use_container_with_macros(&syntax_under_caret, &ctx.sema)?;
+
+    // we aren't interested in different namespaces
+    proposed_imports.dedup_by(|a, b| a.import_path == b.import_path);
     for import in proposed_imports {
         acc.add_group(
             &group_label,
