@@ -147,7 +147,13 @@ public:
     bool AtomicAdd = Arch == Triple::nvptx || Arch == Triple::nvptx64 ||
                      Arch == Triple::amdgcn;
 
+    bool differentialReturn =
+        mode != DerivativeMode::ForwardMode &&
+        mode != DerivativeMode::ReverseModePrimal &&
+        cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy();
+
     std::map<int, Type *> byVal;
+    llvm::Value *differet = nullptr;
     llvm::Value *tape = nullptr;
     int allocatedTapeSize = -1;
     for (unsigned i = 1; i < CI->getNumArgOperands(); ++i) {
@@ -155,7 +161,13 @@ public:
 
       if (truei >= FT->getNumParams()) {
         if (mode == DerivativeMode::ReverseModeGradient) {
-          if (tape == nullptr) {
+          if (differentialReturn && differet == nullptr) {
+            differet = res;
+            if (CI->paramHasAttr(i, Attribute::ByVal))
+              differet = Builder.CreateLoad(differet);
+            assert(differet->getType() == cast<Function>(fn)->getReturnType());
+            continue;
+          } else if (tape == nullptr) {
             tape = res;
             if (CI->paramHasAttr(i, Attribute::ByVal))
               tape = Builder.CreateLoad(tape);
@@ -436,10 +448,6 @@ public:
       ++truei;
     }
 
-    bool differentialReturn =
-        mode != DerivativeMode::ForwardMode &&
-        cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy();
-
     DIFFE_TYPE retType = whatType(cast<Function>(fn)->getReturnType(), mode);
 
     std::map<Argument *, bool> volatile_args;
@@ -521,8 +529,13 @@ public:
     if (!newFunc)
       return false;
 
-    if (differentialReturn)
-      args.push_back(ConstantFP::get(cast<Function>(fn)->getReturnType(), 1.0));
+    if (differentialReturn) {
+      if (differet)
+        args.push_back(differet);
+      else
+        args.push_back(
+            ConstantFP::get(cast<Function>(fn)->getReturnType(), 1.0));
+    }
 
     if (tape && tapeType) {
       auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
@@ -555,8 +568,10 @@ public:
       for (auto arg : args) {
         llvm::errs() << " + " << *arg << "\n";
       }
-      EmitFailure("TooFewArguments", CI->getDebugLoc(), CI,
-                  "Too few arguments passed to __enzyme_autodiff");
+      auto modestr = to_string(mode);
+      EmitFailure(
+          "TooFewArguments", CI->getDebugLoc(), CI,
+          "Too few arguments passed to __enzyme_autodiff mode=", modestr);
       return false;
     }
     assert(args.size() == newFunc->getFunctionType()->getNumParams());
