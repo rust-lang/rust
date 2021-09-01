@@ -571,11 +571,20 @@ pub fn noop_visit_parenthesized_parameter_data<T: MutVisitor>(
 }
 
 pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
-    let Local { id, pat, ty, init, span, attrs, tokens } = local.deref_mut();
+    let Local { id, pat, ty, kind, span, attrs, tokens } = local.deref_mut();
     vis.visit_id(id);
     vis.visit_pat(pat);
     visit_opt(ty, |ty| vis.visit_ty(ty));
-    visit_opt(init, |init| vis.visit_expr(init));
+    match kind {
+        LocalKind::Decl => {}
+        LocalKind::Init(init) => {
+            vis.visit_expr(init);
+        }
+        LocalKind::InitElse(init, els) => {
+            vis.visit_expr(init);
+            vis.visit_block(els);
+        }
+    }
     vis.visit_span(span);
     visit_thin_attrs(attrs, vis);
     visit_lazy_tts(tokens, vis);

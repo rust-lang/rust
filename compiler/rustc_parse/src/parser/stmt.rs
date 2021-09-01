@@ -11,8 +11,9 @@ use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, TokenKind};
 use rustc_ast::util::classify;
-use rustc_ast::AstLike;
-use rustc_ast::{AttrStyle, AttrVec, Attribute, MacCall, MacCallStmt, MacStmtStyle};
+use rustc_ast::{
+    AstLike, AttrStyle, AttrVec, Attribute, LocalKind, MacCall, MacCallStmt, MacStmtStyle,
+};
 use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt};
 use rustc_ast::{StmtKind, DUMMY_NODE_ID};
 use rustc_errors::{Applicability, PResult};
@@ -292,8 +293,65 @@ impl<'a> Parser<'a> {
                 return Err(err);
             }
         };
+        let kind = match init {
+            None => LocalKind::Decl,
+            Some(init) => {
+                if self.eat_keyword(kw::Else) {
+                    let els = self.parse_block()?;
+                    self.check_let_else_init_bool_expr(&init);
+                    self.check_let_else_init_trailing_brace(&init);
+                    LocalKind::InitElse(init, els)
+                } else {
+                    LocalKind::Init(init)
+                }
+            }
+        };
         let hi = if self.token == token::Semi { self.token.span } else { self.prev_token.span };
-        Ok(P(ast::Local { ty, pat, init, id: DUMMY_NODE_ID, span: lo.to(hi), attrs, tokens: None }))
+        Ok(P(ast::Local { ty, pat, kind, id: DUMMY_NODE_ID, span: lo.to(hi), attrs, tokens: None }))
+    }
+
+    fn check_let_else_init_bool_expr(&self, init: &ast::Expr) {
+        if let ast::ExprKind::Binary(op, ..) = init.kind {
+            if op.node.lazy() {
+                let suggs = vec![
+                    (init.span.shrink_to_lo(), "(".to_string()),
+                    (init.span.shrink_to_hi(), ")".to_string()),
+                ];
+                self.struct_span_err(
+                    init.span,
+                    &format!(
+                        "a `{}` expression cannot be directly assigned in `let...else`",
+                        op.node.to_string()
+                    ),
+                )
+                .multipart_suggestion(
+                    "wrap the expression in parenthesis",
+                    suggs,
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+            }
+        }
+    }
+
+    fn check_let_else_init_trailing_brace(&self, init: &ast::Expr) {
+        if let Some(trailing) = classify::expr_trailing_brace(init) {
+            let err_span = trailing.span.with_lo(trailing.span.hi() - BytePos(1));
+            let suggs = vec![
+                (trailing.span.shrink_to_lo(), "(".to_string()),
+                (trailing.span.shrink_to_hi(), ")".to_string()),
+            ];
+            self.struct_span_err(
+                err_span,
+                "right curly brace `}` before `else` in a `let...else` statement not allowed",
+            )
+            .multipart_suggestion(
+                "try wrapping the expression in parenthesis",
+                suggs,
+                Applicability::MachineApplicable,
+            )
+            .emit();
+        }
     }
 
     /// Parses the RHS of a local variable declaration (e.g., `= 14;`).
@@ -495,13 +553,13 @@ impl<'a> Parser<'a> {
             StmtKind::Expr(_) | StmtKind::MacCall(_) => {}
             StmtKind::Local(ref mut local) if let Err(e) = self.expect_semi() => {
                 // We might be at the `,` in `let x = foo<bar, baz>;`. Try to recover.
-                match &mut local.init {
-                    Some(ref mut expr) => {
-                        self.check_mistyped_turbofish_with_multiple_type_params(e, expr)?;
-                        // We found `foo<bar, baz>`, have we fully recovered?
-                        self.expect_semi()?;
-                    }
-                    None => return Err(e),
+                match &mut local.kind {
+                    LocalKind::Init(expr) | LocalKind::InitElse(expr, _) => {
+                            self.check_mistyped_turbofish_with_multiple_type_params(e, expr)?;
+                            // We found `foo<bar, baz>`, have we fully recovered?
+                            self.expect_semi()?;
+                        }
+                        LocalKind::Decl => return Err(e),
                 }
                 eat_semi = false;
             }

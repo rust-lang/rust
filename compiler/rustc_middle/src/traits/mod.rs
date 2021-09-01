@@ -305,6 +305,9 @@ pub enum ObligationCauseCode<'tcx> {
     /// Intrinsic has wrong type
     IntrinsicType,
 
+    /// A let else block does not diverge
+    LetElse,
+
     /// Method receiver
     MethodReceiver,
 

@@ -676,6 +676,9 @@ declare_features! (
     /// Allows additional const parameter types, such as `&'static str` or user defined types
     (incomplete, adt_const_params, "1.56.0", Some(44580), None),
 
+    /// Allows `let...else` statements.
+    (active, let_else, "1.56.0", Some(87335), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

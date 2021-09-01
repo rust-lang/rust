@@ -1005,11 +1005,40 @@ pub struct Local {
     pub id: NodeId,
     pub pat: P<Pat>,
     pub ty: Option<P<Ty>>,
-    /// Initializer expression to set the value, if any.
-    pub init: Option<P<Expr>>,
+    pub kind: LocalKind,
     pub span: Span,
     pub attrs: AttrVec,
     pub tokens: Option<LazyTokenStream>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum LocalKind {
+    /// Local declaration.
+    /// Example: `let x;`
+    Decl,
+    /// Local declaration with an initializer.
+    /// Example: `let x = y;`
+    Init(P<Expr>),
+    /// Local declaration with an initializer and an `else` clause.
+    /// Example: `let Some(x) = y else { return };`
+    InitElse(P<Expr>, P<Block>),
+}
+
+impl LocalKind {
+    pub fn init(&self) -> Option<&Expr> {
+        match self {
+            Self::Decl => None,
+            Self::Init(i) | Self::InitElse(i, _) => Some(i),
+        }
+    }
+
+    pub fn init_else_opt(&self) -> Option<(&Expr, Option<&Block>)> {
+        match self {
+            Self::Decl => None,
+            Self::Init(init) => Some((init, None)),
+            Self::InitElse(init, els) => Some((init, Some(els))),
+        }
+    }
 }
 
 /// An arm of a 'match'.
