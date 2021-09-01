@@ -522,7 +522,12 @@ impl<'a> Parser<'a> {
             token::BinOp(token::Plus) => {
                 this.struct_span_err(lo, "leading `+` is not supported")
                     .span_label(lo, "unexpected `+`")
-                    .span_suggestion_short(lo, "remove the `+`", "".to_string(), Applicability::MachineApplicable)
+                    .span_suggestion_short(
+                        lo,
+                        "remove the `+`",
+                        "".to_string(),
+                        Applicability::MachineApplicable,
+                    )
                     .emit();
                 this.bump();
 
