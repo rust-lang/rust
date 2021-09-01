@@ -61,7 +61,7 @@ where
     }
 
     fn query(self, map: &QueryMap<D>) -> QueryStackFrame {
-        map.get(&self).unwrap().info.query.clone()
+        map.get(&self).unwrap().query.clone()
     }
 
     #[cfg(parallel_compiler)]
@@ -81,7 +81,7 @@ where
 }
 
 pub struct QueryJobInfo<D> {
-    pub info: QueryInfo,
+    pub query: QueryStackFrame,
     pub job: QueryJob<D>,
 }
 
@@ -155,7 +155,7 @@ where
 
         while let Some(job) = current_job {
             let info = query_map.get(&job).unwrap();
-            cycle.push(info.info.clone());
+            cycle.push(QueryInfo { span: info.job.span, query: info.query.clone() });
 
             if job == *self {
                 cycle.reverse();
@@ -170,7 +170,7 @@ where
                     .job
                     .parent
                     .as_ref()
-                    .map(|parent| (info.info.span, parent.query(&query_map)));
+                    .map(|parent| (info.job.span, parent.query(&query_map)));
                 return CycleError { usage, cycle };
             }
 
@@ -649,13 +649,10 @@ pub fn print_query_stack<CTX: QueryContext>(
         };
         let mut diag = Diagnostic::new(
             Level::FailureNote,
-            &format!(
-                "#{} [{}] {}",
-                i, query_info.info.query.name, query_info.info.query.description
-            ),
+            &format!("#{} [{}] {}", i, query_info.query.name, query_info.query.description),
         );
         diag.span =
-            tcx.dep_context().sess().source_map().guess_head_span(query_info.info.span).into();
+            tcx.dep_context().sess().source_map().guess_head_span(query_info.job.span).into();
         handler.force_print_diagnostic(diag);
 
         current_query = query_info.job.parent;
