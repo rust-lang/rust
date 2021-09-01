@@ -707,11 +707,7 @@ impl<T> [T] {
             // The resulting pointers `pa` and `pb` are therefore valid and
             // aligned, and can be read from and written to.
             unsafe {
-                // Unsafe swap to avoid the bounds check in safe swap.
-                let ptr = self.as_mut_ptr();
-                let pa = ptr.add(i);
-                let pb = ptr.add(ln - i - 1);
-                ptr::swap(pa, pb);
+                self.swap_unchecked(i, ln - i - 1);
             }
             i += 1;
         }
