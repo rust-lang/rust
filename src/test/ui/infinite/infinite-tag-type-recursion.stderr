@@ -17,7 +17,7 @@ error[E0391]: cycle detected when computing drop-check constraints for `MList`
 LL | enum MList { Cons(isize, MList), Nil }
    | ^^^^^^^^^^
    |
-   = note: ...which again requires computing drop-check constraints for `MList`, completing the cycle
+   = note: ...which immediately requires computing drop-check constraints for `MList` again
    = note: cycle used when computing dropck types for `Canonical { max_universe: U0, variables: [], value: ParamEnvAnd { param_env: ParamEnv { caller_bounds: [], reveal: UserFacing }, value: MList } }`
 
 error: aborting due to 2 previous errors

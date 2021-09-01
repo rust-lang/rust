@@ -4,7 +4,7 @@ error[E0391]: cycle detected when computing type of `<impl at $DIR/resolve-self-
 LL | impl Tr for Self {}
    |             ^^^^
    |
-   = note: ...which again requires computing type of `<impl at $DIR/resolve-self-in-impl.rs:14:1: 14:20>`, completing the cycle
+   = note: ...which immediately requires computing type of `<impl at $DIR/resolve-self-in-impl.rs:14:1: 14:20>` again
 note: cycle used when collecting item types in top-level module
   --> $DIR/resolve-self-in-impl.rs:1:1
    |
@@ -23,7 +23,7 @@ error[E0391]: cycle detected when computing type of `<impl at $DIR/resolve-self-
 LL | impl Tr for S<Self> {}
    |               ^^^^
    |
-   = note: ...which again requires computing type of `<impl at $DIR/resolve-self-in-impl.rs:15:1: 15:23>`, completing the cycle
+   = note: ...which immediately requires computing type of `<impl at $DIR/resolve-self-in-impl.rs:15:1: 15:23>` again
 note: cycle used when collecting item types in top-level module
   --> $DIR/resolve-self-in-impl.rs:1:1
    |
@@ -42,7 +42,7 @@ error[E0391]: cycle detected when computing type of `<impl at $DIR/resolve-self-
 LL | impl Self {}
    |      ^^^^
    |
-   = note: ...which again requires computing type of `<impl at $DIR/resolve-self-in-impl.rs:16:1: 16:13>`, completing the cycle
+   = note: ...which immediately requires computing type of `<impl at $DIR/resolve-self-in-impl.rs:16:1: 16:13>` again
 note: cycle used when collecting item types in top-level module
   --> $DIR/resolve-self-in-impl.rs:1:1
    |
@@ -61,7 +61,7 @@ error[E0391]: cycle detected when computing type of `<impl at $DIR/resolve-self-
 LL | impl S<Self> {}
    |        ^^^^
    |
-   = note: ...which again requires computing type of `<impl at $DIR/resolve-self-in-impl.rs:17:1: 17:16>`, completing the cycle
+   = note: ...which immediately requires computing type of `<impl at $DIR/resolve-self-in-impl.rs:17:1: 17:16>` again
 note: cycle used when collecting item types in top-level module
   --> $DIR/resolve-self-in-impl.rs:1:1
    |
@@ -80,7 +80,7 @@ error[E0391]: cycle detected when computing trait implemented by `<impl at $DIR/
 LL | impl Tr<Self::A> for S {}
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: ...which again requires computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:18:1: 18:26>`, completing the cycle
+   = note: ...which immediately requires computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:18:1: 18:26>` again
 note: cycle used when collecting item types in top-level module
   --> $DIR/resolve-self-in-impl.rs:1:1
    |

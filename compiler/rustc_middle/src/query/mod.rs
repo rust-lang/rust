@@ -120,7 +120,18 @@ rustc_queries! {
 
     /// Records the type of every item.
     query type_of(key: DefId) -> Ty<'tcx> {
-        desc { |tcx| "computing type of `{}`", tcx.def_path_str(key) }
+        desc { |tcx|
+            "{action} `{path}`",
+            action = {
+                use rustc_hir::def::DefKind;
+                match tcx.def_kind(key) {
+                    DefKind::TyAlias => "expanding type alias",
+                    DefKind::TraitAlias => "expanding trait alias",
+                    _ => "computing type of",
+                }
+            },
+            path = tcx.def_path_str(key),
+        }
         cache_on_disk_if { key.is_local() }
     }
 
