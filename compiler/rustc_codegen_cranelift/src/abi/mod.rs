@@ -5,7 +5,7 @@ mod pass_mode;
 mod returning;
 
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::ty::layout::FnAbiExt;
+use rustc_middle::ty::layout::FnAbiOf;
 use rustc_target::abi::call::{Conv, FnAbi};
 use rustc_target::spec::abi::Abi;
 
@@ -53,7 +53,7 @@ pub(crate) fn get_function_sig<'tcx>(
     inst: Instance<'tcx>,
 ) -> Signature {
     assert!(!inst.substs.needs_infer());
-    clif_sig_from_fn_abi(tcx, triple, &FnAbi::of_instance(&RevealAllLayoutCx(tcx), inst, &[]))
+    clif_sig_from_fn_abi(tcx, triple, &RevealAllLayoutCx(tcx).fn_abi_of_instance(inst, &[]))
 }
 
 /// Instance must be monomorphized
@@ -355,9 +355,9 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         .map(|op_arg| fx.monomorphize(op_arg.ty(fx.mir, fx.tcx)))
         .collect::<Vec<_>>();
     let fn_abi = if let Some(instance) = instance {
-        FnAbi::of_instance(&RevealAllLayoutCx(fx.tcx), instance, &extra_args)
+        RevealAllLayoutCx(fx.tcx).fn_abi_of_instance(instance, &extra_args)
     } else {
-        FnAbi::of_fn_ptr(&RevealAllLayoutCx(fx.tcx), fn_ty.fn_sig(fx.tcx), &extra_args)
+        RevealAllLayoutCx(fx.tcx).fn_abi_of_fn_ptr(fn_ty.fn_sig(fx.tcx), &extra_args)
     };
 
     let is_cold = instance
@@ -525,7 +525,7 @@ pub(crate) fn codegen_drop<'tcx>(
                     def: ty::InstanceDef::Virtual(drop_instance.def_id(), 0),
                     substs: drop_instance.substs,
                 };
-                let fn_abi = FnAbi::of_instance(&RevealAllLayoutCx(fx.tcx), virtual_drop, &[]);
+                let fn_abi = RevealAllLayoutCx(fx.tcx).fn_abi_of_instance(virtual_drop, &[]);
 
                 let sig = clif_sig_from_fn_abi(fx.tcx, fx.triple(), &fn_abi);
                 let sig = fx.bcx.import_signature(sig);
@@ -534,7 +534,7 @@ pub(crate) fn codegen_drop<'tcx>(
             _ => {
                 assert!(!matches!(drop_instance.def, InstanceDef::Virtual(_, _)));
 
-                let fn_abi = FnAbi::of_instance(&RevealAllLayoutCx(fx.tcx), drop_instance, &[]);
+                let fn_abi = RevealAllLayoutCx(fx.tcx).fn_abi_of_instance(drop_instance, &[]);
 
                 let arg_value = drop_place.place_ref(
                     fx,

@@ -15,14 +15,19 @@ use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_middle::mir::mono::CodegenUnit;
-use rustc_middle::ty::layout::{HasParamEnv, LayoutError, LayoutOfHelpers, TyAndLayout};
+use rustc_middle::ty::layout::{
+    FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, LayoutError, LayoutOfHelpers,
+    TyAndLayout,
+};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CFGuard, CrateType, DebugInfo};
 use rustc_session::Session;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
-use rustc_target::abi::{HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
+use rustc_target::abi::{
+    call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx,
+};
 use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
 use smallvec::SmallVec;
 
@@ -850,6 +855,43 @@ impl LayoutOfHelpers<'tcx> for CodegenCx<'ll, 'tcx> {
             self.sess().span_fatal(span, &err.to_string())
         } else {
             span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
+        }
+    }
+}
+
+impl FnAbiOfHelpers<'tcx> for CodegenCx<'ll, 'tcx> {
+    type FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>;
+
+    #[inline]
+    fn handle_fn_abi_err(
+        &self,
+        err: FnAbiError<'tcx>,
+        span: Span,
+        fn_abi_request: FnAbiRequest<'_, 'tcx>,
+    ) -> ! {
+        if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
+            self.sess().span_fatal(span, &err.to_string())
+        } else {
+            match fn_abi_request {
+                FnAbiRequest::OfFnPtr { sig, extra_args } => {
+                    span_bug!(
+                        span,
+                        "`fn_abi_of_fn_ptr({}, {:?})` failed: {}",
+                        sig,
+                        extra_args,
+                        err
+                    );
+                }
+                FnAbiRequest::OfInstance { instance, extra_args } => {
+                    span_bug!(
+                        span,
+                        "`fn_abi_of_instance({}, {:?})` failed: {}",
+                        instance,
+                        extra_args,
+                        err
+                    );
+                }
+            }
         }
     }
 }

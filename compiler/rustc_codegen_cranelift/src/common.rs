@@ -1,5 +1,7 @@
 use rustc_index::vec::IndexVec;
-use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers};
+use rustc_middle::ty::layout::{
+    FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
+};
 use rustc_middle::ty::SymbolName;
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Integer, Primitive};
@@ -266,6 +268,20 @@ impl<'tcx> LayoutOfHelpers<'tcx> for FunctionCx<'_, '_, 'tcx> {
     }
 }
 
+impl<'tcx> FnAbiOfHelpers<'tcx> for FunctionCx<'_, '_, 'tcx> {
+    type FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>;
+
+    #[inline]
+    fn handle_fn_abi_err(
+        &self,
+        err: FnAbiError<'tcx>,
+        span: Span,
+        fn_abi_request: FnAbiRequest<'_, 'tcx>,
+    ) -> ! {
+        RevealAllLayoutCx(self.tcx).handle_fn_abi_err(err, span, fn_abi_request)
+    }
+}
+
 impl<'tcx> layout::HasTyCtxt<'tcx> for FunctionCx<'_, '_, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
@@ -374,6 +390,43 @@ impl<'tcx> LayoutOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
             self.0.sess.span_fatal(span, &err.to_string())
         } else {
             span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
+        }
+    }
+}
+
+impl<'tcx> FnAbiOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
+    type FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>;
+
+    #[inline]
+    fn handle_fn_abi_err(
+        &self,
+        err: FnAbiError<'tcx>,
+        span: Span,
+        fn_abi_request: FnAbiRequest<'_, 'tcx>,
+    ) -> ! {
+        if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
+            self.0.sess.span_fatal(span, &err.to_string())
+        } else {
+            match fn_abi_request {
+                FnAbiRequest::OfFnPtr { sig, extra_args } => {
+                    span_bug!(
+                        span,
+                        "`fn_abi_of_fn_ptr({}, {:?})` failed: {}",
+                        sig,
+                        extra_args,
+                        err
+                    );
+                }
+                FnAbiRequest::OfInstance { instance, extra_args } => {
+                    span_bug!(
+                        span,
+                        "`fn_abi_of_instance({}, {:?})` failed: {}",
+                        instance,
+                        extra_args,
+                        err
+                    );
+                }
+            }
         }
     }
 }

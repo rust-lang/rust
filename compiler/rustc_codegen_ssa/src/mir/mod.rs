@@ -2,7 +2,7 @@ use crate::traits::*;
 use rustc_errors::ErrorReported;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt, TyAndLayout};
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_target::abi::call::{FnAbi, PassMode};
 
@@ -139,7 +139,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let mir = cx.tcx().instance_mir(instance.def);
 
-    let fn_abi = FnAbi::of_instance(cx, instance, &[]);
+    let fn_abi = cx.fn_abi_of_instance(instance, &[]);
     debug!("fn_abi: {:?}", fn_abi);
 
     let debug_context = cx.create_function_debug_context(instance, &fn_abi, llfn, &mir);

@@ -14,7 +14,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::{self, SwitchTargets};
-use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_span::source_map::Span;
@@ -337,7 +337,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0),
                     substs: drop_fn.substs,
                 };
-                let fn_abi = FnAbi::of_instance(&bx, virtual_drop, &[]);
+                let fn_abi = bx.fn_abi_of_instance(virtual_drop, &[]);
                 let vtable = args[1];
                 args = &args[..1];
                 (
@@ -346,7 +346,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     fn_abi,
                 )
             }
-            _ => (bx.get_fn_addr(drop_fn), FnAbi::of_instance(&bx, drop_fn, &[])),
+            _ => (bx.get_fn_addr(drop_fn), bx.fn_abi_of_instance(drop_fn, &[])),
         };
         helper.do_call(
             self,
@@ -433,7 +433,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Obtain the panic entry point.
         let def_id = common::langcall(bx.tcx(), Some(span), "", lang_item);
         let instance = ty::Instance::mono(bx.tcx(), def_id);
-        let fn_abi = FnAbi::of_instance(&bx, instance, &[]);
+        let fn_abi = bx.fn_abi_of_instance(instance, &[]);
         let llfn = bx.get_fn_addr(instance);
 
         // Codegen the actual panic invoke/call.
@@ -494,7 +494,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let def_id =
                     common::langcall(bx.tcx(), Some(source_info.span), "", LangItem::Panic);
                 let instance = ty::Instance::mono(bx.tcx(), def_id);
-                let fn_abi = FnAbi::of_instance(bx, instance, &[]);
+                let fn_abi = bx.fn_abi_of_instance(instance, &[]);
                 let llfn = bx.get_fn_addr(instance);
 
                 // Codegen the actual panic invoke/call.
@@ -579,8 +579,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             .collect::<Vec<_>>();
 
         let fn_abi = match instance {
-            Some(instance) => FnAbi::of_instance(&bx, instance, &extra_args),
-            None => FnAbi::of_fn_ptr(&bx, sig, &extra_args),
+            Some(instance) => bx.fn_abi_of_instance(instance, &extra_args),
+            None => bx.fn_abi_of_fn_ptr(sig, &extra_args),
         };
 
         if intrinsic == Some(sym::transmute) {
