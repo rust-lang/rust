@@ -710,11 +710,15 @@ fn render_impls(
                 containing_item,
                 assoc_link,
                 RenderMode::Normal,
-                true,
                 None,
-                false,
-                true,
                 &[],
+                ImplRenderingParameters {
+                    show_def_docs: true,
+                    is_on_foreign_type: false,
+                    show_default_items: true,
+                    show_non_assoc_items: true,
+                    toggle_open_by_default: true,
+                },
             );
             buffer.into_inner()
         })
@@ -1049,11 +1053,15 @@ fn render_assoc_items(
                 containing_item,
                 AssocItemLink::Anchor(None),
                 render_mode,
-                true,
                 None,
-                false,
-                true,
                 &[],
+                ImplRenderingParameters {
+                    show_def_docs: true,
+                    is_on_foreign_type: false,
+                    show_default_items: true,
+                    show_non_assoc_items: true,
+                    toggle_open_by_default: true,
+                },
             );
         }
     }
@@ -1243,6 +1251,16 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
     out.into_inner()
 }
 
+#[derive(Clone, Copy, Debug)]
+struct ImplRenderingParameters {
+    show_def_docs: bool,
+    is_on_foreign_type: bool,
+    show_default_items: bool,
+    /// Whether or not to show methods.
+    show_non_assoc_items: bool,
+    toggle_open_by_default: bool,
+}
+
 fn render_impl(
     w: &mut Buffer,
     cx: &Context<'_>,
@@ -1250,13 +1268,9 @@ fn render_impl(
     parent: &clean::Item,
     link: AssocItemLink<'_>,
     render_mode: RenderMode,
-    show_def_docs: bool,
     use_absolute: Option<bool>,
-    is_on_foreign_type: bool,
-    show_default_items: bool,
-    // This argument is used to reference same type with different paths to avoid duplication
-    // in documentation pages for trait with automatic implementations like "Send" and "Sync".
     aliases: &[String],
+    rendering_params: ImplRenderingParameters,
 ) {
     let cache = cx.cache();
     let traits = &cache.traits;
@@ -1279,17 +1293,18 @@ fn render_impl(
         render_mode: RenderMode,
         is_default_item: bool,
         trait_: Option<&clean::Trait>,
-        show_def_docs: bool,
+        rendering_params: ImplRenderingParameters,
     ) {
         let item_type = item.type_();
         let name = item.name.as_ref().unwrap();
 
-        let render_method_item = match render_mode {
-            RenderMode::Normal => true,
-            RenderMode::ForDeref { mut_: deref_mut_ } => {
-                should_render_item(&item, deref_mut_, cx.cache())
-            }
-        };
+        let render_method_item = rendering_params.show_non_assoc_items
+            && match render_mode {
+                RenderMode::Normal => true,
+                RenderMode::ForDeref { mut_: deref_mut_ } => {
+                    should_render_item(&item, deref_mut_, cx.cache())
+                }
+            };
 
         let in_trait_class = if trait_.is_some() { " trait-impl" } else { "" };
 
@@ -1312,18 +1327,32 @@ fn render_impl(
                         } else {
                             // In case the item isn't documented,
                             // provide short documentation from the trait.
-                            document_short(&mut doc_buffer, it, cx, link, parent, show_def_docs);
+                            document_short(
+                                &mut doc_buffer,
+                                it,
+                                cx,
+                                link,
+                                parent,
+                                rendering_params.show_def_docs,
+                            );
                         }
                     }
                 } else {
                     document_item_info(&mut info_buffer, cx, item, Some(parent));
-                    if show_def_docs {
+                    if rendering_params.show_def_docs {
                         document_full(&mut doc_buffer, item, cx);
                         short_documented = false;
                     }
                 }
             } else {
-                document_short(&mut doc_buffer, item, cx, link, parent, show_def_docs);
+                document_short(
+                    &mut doc_buffer,
+                    item,
+                    cx,
+                    link,
+                    parent,
+                    rendering_params.show_def_docs,
+                );
             }
         }
         let w = if short_documented && trait_.is_some() { interesting } else { boring };
@@ -1455,7 +1484,7 @@ fn render_impl(
             render_mode,
             false,
             trait_.map(|t| &t.trait_),
-            show_def_docs,
+            rendering_params,
         );
     }
 
@@ -1468,7 +1497,7 @@ fn render_impl(
         parent: &clean::Item,
         containing_item: &clean::Item,
         render_mode: RenderMode,
-        show_def_docs: bool,
+        rendering_params: ImplRenderingParameters,
     ) {
         for trait_item in &t.items {
             let n = trait_item.name;
@@ -1490,7 +1519,7 @@ fn render_impl(
                 render_mode,
                 true,
                 Some(t),
-                show_def_docs,
+                rendering_params,
             );
         }
     }
@@ -1499,7 +1528,7 @@ fn render_impl(
     // default items which weren't overridden in the implementation block.
     // We don't emit documentation for default items if they appear in the
     // Implementations on Foreign Types or Implementors sections.
-    if show_default_items {
+    if rendering_params.show_default_items {
         if let Some(t) = trait_ {
             render_default_items(
                 &mut default_impl_items,
@@ -1510,7 +1539,7 @@ fn render_impl(
                 &i.impl_item,
                 parent,
                 render_mode,
-                show_def_docs,
+                rendering_params,
             );
         }
     }
@@ -1518,7 +1547,11 @@ fn render_impl(
         let toggled = !(impl_items.is_empty() && default_impl_items.is_empty());
         if toggled {
             close_tags.insert_str(0, "</details>");
-            write!(w, "<details class=\"rustdoc-toggle implementors-toggle\" open>");
+            write!(
+                w,
+                "<details class=\"rustdoc-toggle implementors-toggle\"{}>",
+                if rendering_params.toggle_open_by_default { " open" } else { "" }
+            );
             write!(w, "<summary>")
         }
         render_impl_summary(
@@ -1527,9 +1560,9 @@ fn render_impl(
             i,
             parent,
             parent,
-            show_def_docs,
+            rendering_params.show_def_docs,
             use_absolute,
-            is_on_foreign_type,
+            rendering_params.is_on_foreign_type,
             aliases,
         );
         if toggled {
