@@ -16,6 +16,43 @@ pub type Word = u64;
 pub const WORD_BYTES: usize = mem::size_of::<Word>();
 pub const WORD_BITS: usize = WORD_BYTES * 8;
 
+pub trait BitRelations<Rhs> {
+    fn union(&mut self, other: &Rhs) -> bool;
+    fn subtract(&mut self, other: &Rhs) -> bool;
+    fn intersect(&mut self, other: &Rhs) -> bool;
+}
+
+macro_rules! bit_relations_inherent_impls {
+    () => {
+        /// Sets `self = self | other` and returns `true` if `self` changed
+        /// (i.e., if new bits were added).
+        pub fn union<Rhs>(&mut self, other: &Rhs) -> bool
+        where
+            Self: BitRelations<Rhs>,
+        {
+            <Self as BitRelations<Rhs>>::union(self, other)
+        }
+
+        /// Sets `self = self - other` and returns `true` if `self` changed.
+        /// (i.e., if any bits were removed).
+        pub fn subtract<Rhs>(&mut self, other: &Rhs) -> bool
+        where
+            Self: BitRelations<Rhs>,
+        {
+            <Self as BitRelations<Rhs>>::subtract(self, other)
+        }
+
+        /// Sets `self = self & other` and return `true` if `self` changed.
+        /// (i.e., if any bits were removed).
+        pub fn intersect<Rhs>(&mut self, other: &Rhs) -> bool
+        where
+            Self: BitRelations<Rhs>,
+        {
+            <Self as BitRelations<Rhs>>::intersect(self, other)
+        }
+    };
+}
+
 /// A fixed-size bitset type with a dense representation.
 ///
 /// NOTE: Use [`GrowableBitSet`] if you need support for resizing after creation.
@@ -134,25 +171,6 @@ impl<T: Idx> BitSet<T> {
         new_word != word
     }
 
-    /// Sets `self = self | other` and returns `true` if `self` changed
-    /// (i.e., if new bits were added).
-    pub fn union(&mut self, other: &impl UnionIntoBitSet<T>) -> bool {
-        other.union_into(self)
-    }
-
-    /// Sets `self = self - other` and returns `true` if `self` changed.
-    /// (i.e., if any bits were removed).
-    pub fn subtract(&mut self, other: &impl SubtractFromBitSet<T>) -> bool {
-        other.subtract_from(self)
-    }
-
-    /// Sets `self = self & other` and return `true` if `self` changed.
-    /// (i.e., if any bits were removed).
-    pub fn intersect(&mut self, other: &BitSet<T>) -> bool {
-        assert_eq!(self.domain_size, other.domain_size);
-        bitwise(&mut self.words, &other.words, |a, b| a & b)
-    }
-
     /// Gets a slice of the underlying words.
     pub fn words(&self) -> &[Word] {
         &self.words
@@ -208,33 +226,208 @@ impl<T: Idx> BitSet<T> {
 
         not_already
     }
+
+    bit_relations_inherent_impls! {}
 }
 
-/// This is implemented by all the bitsets so that BitSet::union() can be
-/// passed any type of bitset.
-pub trait UnionIntoBitSet<T: Idx> {
-    // Performs `other = other | self`.
-    fn union_into(&self, other: &mut BitSet<T>) -> bool;
-}
-
-/// This is implemented by all the bitsets so that BitSet::subtract() can be
-/// passed any type of bitset.
-pub trait SubtractFromBitSet<T: Idx> {
-    // Performs `other = other - self`.
-    fn subtract_from(&self, other: &mut BitSet<T>) -> bool;
-}
-
-impl<T: Idx> UnionIntoBitSet<T> for BitSet<T> {
-    fn union_into(&self, other: &mut BitSet<T>) -> bool {
+// dense REL dense
+impl<T: Idx> BitRelations<BitSet<T>> for BitSet<T> {
+    fn union(&mut self, other: &BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        bitwise(&mut other.words, &self.words, |a, b| a | b)
+        bitwise(&mut self.words, &other.words, |a, b| a | b)
+    }
+
+    fn subtract(&mut self, other: &BitSet<T>) -> bool {
+        assert_eq!(self.domain_size, other.domain_size);
+        bitwise(&mut self.words, &other.words, |a, b| a & !b)
+    }
+
+    fn intersect(&mut self, other: &BitSet<T>) -> bool {
+        assert_eq!(self.domain_size, other.domain_size);
+        bitwise(&mut self.words, &other.words, |a, b| a & b)
     }
 }
 
-impl<T: Idx> SubtractFromBitSet<T> for BitSet<T> {
-    fn subtract_from(&self, other: &mut BitSet<T>) -> bool {
-        assert_eq!(self.domain_size, other.domain_size);
-        bitwise(&mut other.words, &self.words, |a, b| a & !b)
+// Applies a function to mutate a bitset, and returns true if any
+// of the applications return true
+fn sequential_update<T: Idx>(
+    mut self_update: impl FnMut(T) -> bool,
+    it: impl Iterator<Item = T>,
+) -> bool {
+    let mut changed = false;
+    for elem in it {
+        changed |= self_update(elem);
+    }
+    changed
+}
+
+// Optimization of intersection for SparseBitSet that's generic
+// over the RHS
+fn sparse_intersect<T: Idx>(
+    set: &mut SparseBitSet<T>,
+    other_contains: impl Fn(&T) -> bool,
+) -> bool {
+    let size = set.elems.len();
+    set.elems.retain(|elem| other_contains(elem));
+    set.elems.len() != size
+}
+
+// Optimization of dense/sparse intersection. The resulting set is
+// guaranteed to be at most the size of the sparse set, and hence can be
+// represented as a sparse set. Therefore the sparse set is copied and filtered,
+// then returned as the new set.
+fn dense_sparse_intersect<T: Idx>(
+    dense: &BitSet<T>,
+    sparse: &SparseBitSet<T>,
+) -> (SparseBitSet<T>, bool) {
+    let mut sparse_copy = sparse.clone();
+    sparse_intersect(&mut sparse_copy, |el| dense.contains(*el));
+    let n = sparse_copy.len();
+    (sparse_copy, n != dense.count())
+}
+
+// hybrid REL dense
+impl<T: Idx> BitRelations<BitSet<T>> for HybridBitSet<T> {
+    fn union(&mut self, other: &BitSet<T>) -> bool {
+        assert_eq!(self.domain_size(), other.domain_size);
+        match self {
+            HybridBitSet::Sparse(sparse) => {
+                // `self` is sparse and `other` is dense. To
+                // merge them, we have two available strategies:
+                // * Densify `self` then merge other
+                // * Clone other then integrate bits from `self`
+                // The second strategy requires dedicated method
+                // since the usual `union` returns the wrong
+                // result. In the dedicated case the computation
+                // is slightly faster if the bits of the sparse
+                // bitset map to only few words of the dense
+                // representation, i.e. indices are near each
+                // other.
+                //
+                // Benchmarking seems to suggest that the second
+                // option is worth it.
+                let mut new_dense = other.clone();
+                let changed = new_dense.reverse_union_sparse(sparse);
+                *self = HybridBitSet::Dense(new_dense);
+                changed
+            }
+
+            HybridBitSet::Dense(dense) => dense.union(other),
+        }
+    }
+
+    fn subtract(&mut self, other: &BitSet<T>) -> bool {
+        assert_eq!(self.domain_size(), other.domain_size);
+        match self {
+            HybridBitSet::Sparse(sparse) => {
+                sequential_update(|elem| sparse.remove(elem), other.iter())
+            }
+            HybridBitSet::Dense(dense) => dense.subtract(other),
+        }
+    }
+
+    fn intersect(&mut self, other: &BitSet<T>) -> bool {
+        assert_eq!(self.domain_size(), other.domain_size);
+        match self {
+            HybridBitSet::Sparse(sparse) => sparse_intersect(sparse, |elem| other.contains(*elem)),
+            HybridBitSet::Dense(dense) => dense.intersect(other),
+        }
+    }
+}
+
+// dense REL hybrid
+impl<T: Idx> BitRelations<HybridBitSet<T>> for BitSet<T> {
+    fn union(&mut self, other: &HybridBitSet<T>) -> bool {
+        assert_eq!(self.domain_size, other.domain_size());
+        match other {
+            HybridBitSet::Sparse(sparse) => {
+                sequential_update(|elem| self.insert(elem), sparse.iter().cloned())
+            }
+            HybridBitSet::Dense(dense) => self.union(dense),
+        }
+    }
+
+    fn subtract(&mut self, other: &HybridBitSet<T>) -> bool {
+        assert_eq!(self.domain_size, other.domain_size());
+        match other {
+            HybridBitSet::Sparse(sparse) => {
+                sequential_update(|elem| self.remove(elem), sparse.iter().cloned())
+            }
+            HybridBitSet::Dense(dense) => self.subtract(dense),
+        }
+    }
+
+    fn intersect(&mut self, other: &HybridBitSet<T>) -> bool {
+        assert_eq!(self.domain_size, other.domain_size());
+        match other {
+            HybridBitSet::Sparse(sparse) => {
+                let (updated, changed) = dense_sparse_intersect(self, sparse);
+
+                // We can't directly assign the SparseBitSet to the BitSet, and
+                // doing `*self = updated.to_dense()` would cause a drop / reallocation. Instead,
+                // the BitSet is cleared and `updated` is copied into `self`.
+                self.clear();
+                for elem in updated.iter() {
+                    self.insert(*elem);
+                }
+                changed
+            }
+            HybridBitSet::Dense(dense) => self.intersect(dense),
+        }
+    }
+}
+
+// hybrid REL hybrid
+impl<T: Idx> BitRelations<HybridBitSet<T>> for HybridBitSet<T> {
+    fn union(&mut self, other: &HybridBitSet<T>) -> bool {
+        assert_eq!(self.domain_size(), other.domain_size());
+        match self {
+            HybridBitSet::Sparse(_) => {
+                match other {
+                    HybridBitSet::Sparse(other_sparse) => {
+                        // Both sets are sparse. Add the elements in
+                        // `other_sparse` to `self` one at a time. This
+                        // may or may not cause `self` to be densified.
+                        let mut changed = false;
+                        for elem in other_sparse.iter() {
+                            changed |= self.insert(*elem);
+                        }
+                        changed
+                    }
+
+                    HybridBitSet::Dense(other_dense) => self.union(other_dense),
+                }
+            }
+
+            HybridBitSet::Dense(self_dense) => self_dense.union(other),
+        }
+    }
+
+    fn subtract(&mut self, other: &HybridBitSet<T>) -> bool {
+        assert_eq!(self.domain_size(), other.domain_size());
+        match self {
+            HybridBitSet::Sparse(self_sparse) => {
+                sequential_update(|elem| self_sparse.remove(elem), other.iter())
+            }
+            HybridBitSet::Dense(self_dense) => self_dense.subtract(other),
+        }
+    }
+
+    fn intersect(&mut self, other: &HybridBitSet<T>) -> bool {
+        assert_eq!(self.domain_size(), other.domain_size());
+        match self {
+            HybridBitSet::Sparse(self_sparse) => {
+                sparse_intersect(self_sparse, |elem| other.contains(*elem))
+            }
+            HybridBitSet::Dense(self_dense) => match other {
+                HybridBitSet::Sparse(other_sparse) => {
+                    let (updated, changed) = dense_sparse_intersect(self_dense, other_sparse);
+                    *self = HybridBitSet::Sparse(updated);
+                    changed
+                }
+                HybridBitSet::Dense(other_dense) => self_dense.intersect(other_dense),
+            },
+        }
     }
 }
 
@@ -441,28 +634,8 @@ impl<T: Idx> SparseBitSet<T> {
     fn iter(&self) -> slice::Iter<'_, T> {
         self.elems.iter()
     }
-}
 
-impl<T: Idx> UnionIntoBitSet<T> for SparseBitSet<T> {
-    fn union_into(&self, other: &mut BitSet<T>) -> bool {
-        assert_eq!(self.domain_size, other.domain_size);
-        let mut changed = false;
-        for elem in self.iter() {
-            changed |= other.insert(*elem);
-        }
-        changed
-    }
-}
-
-impl<T: Idx> SubtractFromBitSet<T> for SparseBitSet<T> {
-    fn subtract_from(&self, other: &mut BitSet<T>) -> bool {
-        assert_eq!(self.domain_size, other.domain_size);
-        let mut changed = false;
-        for elem in self.iter() {
-            changed |= other.remove(*elem);
-        }
-        changed
-    }
+    bit_relations_inherent_impls! {}
 }
 
 /// A fixed-size bitset type with a hybrid representation: sparse when there
@@ -579,48 +752,6 @@ impl<T: Idx> HybridBitSet<T> {
         }
     }
 
-    pub fn union(&mut self, other: &HybridBitSet<T>) -> bool {
-        match self {
-            HybridBitSet::Sparse(self_sparse) => {
-                match other {
-                    HybridBitSet::Sparse(other_sparse) => {
-                        // Both sets are sparse. Add the elements in
-                        // `other_sparse` to `self` one at a time. This
-                        // may or may not cause `self` to be densified.
-                        assert_eq!(self.domain_size(), other.domain_size());
-                        let mut changed = false;
-                        for elem in other_sparse.iter() {
-                            changed |= self.insert(*elem);
-                        }
-                        changed
-                    }
-                    HybridBitSet::Dense(other_dense) => {
-                        // `self` is sparse and `other` is dense. To
-                        // merge them, we have two available strategies:
-                        // * Densify `self` then merge other
-                        // * Clone other then integrate bits from `self`
-                        // The second strategy requires dedicated method
-                        // since the usual `union` returns the wrong
-                        // result. In the dedicated case the computation
-                        // is slightly faster if the bits of the sparse
-                        // bitset map to only few words of the dense
-                        // representation, i.e. indices are near each
-                        // other.
-                        //
-                        // Benchmarking seems to suggest that the second
-                        // option is worth it.
-                        let mut new_dense = other_dense.clone();
-                        let changed = new_dense.reverse_union_sparse(self_sparse);
-                        *self = HybridBitSet::Dense(new_dense);
-                        changed
-                    }
-                }
-            }
-
-            HybridBitSet::Dense(self_dense) => self_dense.union(other),
-        }
-    }
-
     /// Converts to a dense set, consuming itself in the process.
     pub fn to_dense(self) -> BitSet<T> {
         match self {
@@ -635,24 +766,8 @@ impl<T: Idx> HybridBitSet<T> {
             HybridBitSet::Dense(dense) => HybridIter::Dense(dense.iter()),
         }
     }
-}
 
-impl<T: Idx> UnionIntoBitSet<T> for HybridBitSet<T> {
-    fn union_into(&self, other: &mut BitSet<T>) -> bool {
-        match self {
-            HybridBitSet::Sparse(sparse) => sparse.union_into(other),
-            HybridBitSet::Dense(dense) => dense.union_into(other),
-        }
-    }
-}
-
-impl<T: Idx> SubtractFromBitSet<T> for HybridBitSet<T> {
-    fn subtract_from(&self, other: &mut BitSet<T>) -> bool {
-        match self {
-            HybridBitSet::Sparse(sparse) => sparse.subtract_from(other),
-            HybridBitSet::Dense(dense) => dense.subtract_from(other),
-        }
-    }
+    bit_relations_inherent_impls! {}
 }
 
 pub enum HybridIter<'a, T: Idx> {
@@ -974,6 +1089,26 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         self.ensure_row(row).insert(column)
     }
 
+    /// Sets the cell at `(row, column)` to false. Put another way, delete
+    /// `column` from the bitset for `row`. Has no effect if `row` does not
+    /// exist.
+    ///
+    /// Returns `true` if this changed the matrix.
+    pub fn remove(&mut self, row: R, column: C) -> bool {
+        match self.rows.get_mut(row) {
+            Some(Some(row)) => row.remove(column),
+            _ => false,
+        }
+    }
+
+    /// Sets all columns at `row` to false. Has no effect if `row` does
+    /// not exist.
+    pub fn clear(&mut self, row: R) {
+        if let Some(Some(row)) = self.rows.get_mut(row) {
+            row.clear();
+        }
+    }
+
     /// Do the bits from `row` contain `column`? Put another way, is
     /// the matrix cell at `(row, column)` true?  Put yet another way,
     /// if the matrix represents (transitive) reachability, can
@@ -1002,11 +1137,6 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         }
     }
 
-    /// Union a row, `from`, into the `into` row.
-    pub fn union_into_row(&mut self, into: R, from: &HybridBitSet<C>) -> bool {
-        self.ensure_row(into).union(from)
-    }
-
     /// Insert all bits in the given row.
     pub fn insert_all_into_row(&mut self, row: R) {
         self.ensure_row(row).insert_all();
@@ -1024,6 +1154,45 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
 
     pub fn row(&self, row: R) -> Option<&HybridBitSet<C>> {
         if let Some(Some(row)) = self.rows.get(row) { Some(row) } else { None }
+    }
+
+    /// Interescts `row` with `set`. `set` can be either `BitSet` or
+    /// `HybridBitSet`. Has no effect if `row` does not exist.
+    ///
+    /// Returns true if the row was changed.
+    pub fn intersect_row<Set>(&mut self, row: R, set: &Set) -> bool
+    where
+        HybridBitSet<C>: BitRelations<Set>,
+    {
+        match self.rows.get_mut(row) {
+            Some(Some(row)) => row.intersect(set),
+            _ => false,
+        }
+    }
+
+    /// Subtracts `set from `row`. `set` can be either `BitSet` or
+    /// `HybridBitSet`. Has no effect if `row` does not exist.
+    ///
+    /// Returns true if the row was changed.
+    pub fn subtract_row<Set>(&mut self, row: R, set: &Set) -> bool
+    where
+        HybridBitSet<C>: BitRelations<Set>,
+    {
+        match self.rows.get_mut(row) {
+            Some(Some(row)) => row.subtract(set),
+            _ => false,
+        }
+    }
+
+    /// Unions `row` with `set`. `set` can be either `BitSet` or
+    /// `HybridBitSet`.
+    ///
+    /// Returns true if the row was changed.
+    pub fn union_row<Set>(&mut self, row: R, set: &Set) -> bool
+    where
+        HybridBitSet<C>: BitRelations<Set>,
+    {
+        self.ensure_row(row).union(set)
     }
 }
 
