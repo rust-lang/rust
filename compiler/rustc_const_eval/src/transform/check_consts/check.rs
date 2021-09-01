@@ -990,8 +990,10 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
 
                 // Check to see if the type of this place can ever have a drop impl. If not, this
                 // `Drop` terminator is frivolous.
-                let ty_needs_drop =
-                    dropped_place.ty(self.body, self.tcx).ty.needs_non_const_drop(self.tcx, self.param_env);
+                let ty_needs_drop = dropped_place
+                    .ty(self.body, self.tcx)
+                    .ty
+                    .needs_non_const_drop(self.tcx, self.param_env);
 
                 if !ty_needs_drop {
                     return;

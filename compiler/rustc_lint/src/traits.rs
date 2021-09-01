@@ -86,8 +86,8 @@ declare_lint_pass!(
 
 impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
-        use rustc_middle::ty::PredicateKind::*;
         use rustc_middle::ty;
+        use rustc_middle::ty::PredicateKind::*;
 
         let predicates = cx.tcx.explicit_predicates_of(item.def_id);
         for &(predicate, span) in predicates.predicates {
@@ -97,7 +97,7 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
             };
             if trait_predicate.constness == ty::BoundConstness::ConstIfConst {
                 // `~const Drop` definitely have meanings so avoid linting here.
-                continue
+                continue;
             }
             let def_id = trait_predicate.trait_ref.def_id;
             if cx.tcx.lang_items().drop_trait() == Some(def_id) {
