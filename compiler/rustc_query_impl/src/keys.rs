@@ -294,6 +294,16 @@ impl<'tcx> Key for ty::PolyTraitRef<'tcx> {
     }
 }
 
+impl<'tcx> Key for ty::PolyExistentialTraitRef<'tcx> {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        self.def_id().krate == LOCAL_CRATE
+    }
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        tcx.def_span(self.def_id())
+    }
+}
+
 impl<'tcx> Key for (ty::PolyTraitRef<'tcx>, ty::PolyTraitRef<'tcx>) {
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
