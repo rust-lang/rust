@@ -1,7 +1,6 @@
 //! Type inference for patterns.
 
-use std::iter::repeat;
-use std::sync::Arc;
+use std::{iter::repeat, sync::Arc};
 
 use chalk_ir::Mutability;
 use hir_def::{
@@ -10,9 +9,10 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 
-use super::{BindingMode, Expectation, InferenceContext, TypeMismatch};
 use crate::{
-    infer::{Adjust, Adjustment, AutoBorrow},
+    infer::{
+        Adjust, Adjustment, AutoBorrow, BindingMode, Expectation, InferenceContext, TypeMismatch,
+    },
     lower::lower_to_chalk_mutability,
     static_lifetime, Interner, Substitution, Ty, TyBuilder, TyExt, TyKind,
 };
