@@ -1,23 +1,28 @@
+// run-pass
 #![feature(const_trait_impl)]
 #![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
 #![feature(const_panic)]
 
-struct S;
+struct S<'a>(&'a mut u8);
 
-impl const Drop for S {
+impl<'a> const Drop for S<'a> {
     fn drop(&mut self) {
-        // NB: There is no way to tell that a const destructor is ran,
-        // because even if we can operate on mutable variables, it will
-        // not be reflected because everything is `const`. So we panic
-        // here, attempting to make the CTFE engine error.
-        panic!("much const drop")
-        //~^ ERROR evaluation of constant value failed
+        *self.0 += 1;
     }
 }
 
 const fn a<T: ~const Drop>(_: T) {}
 
-const _: () = a(S);
+const fn b() -> u8 {
+    let mut c = 0;
+    let _ = S(&mut c);
+    a(S(&mut c));
+    c
+}
 
-fn main() {}
+const C: u8 = b();
+
+fn main() {
+    assert_eq!(C, 2);
+}
