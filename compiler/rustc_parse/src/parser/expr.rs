@@ -535,7 +535,7 @@ impl<'a> Parser<'a> {
                 if let Some(sp) = this.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
                     this.sess.expr_parentheses_needed(&mut err, *sp);
                 } else {
-                   err.span_suggestion(
+                    err.span_suggestion(
                         lo,
                         "try removing the `+`",
                         "".to_string(),
