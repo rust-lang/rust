@@ -38,7 +38,7 @@ measureme = "9.1.2"
 libc = "0.2"
 
 [dev-dependencies]
-compiletest_rs = { version = "0.6", features = ["tmp"] }
+compiletest_rs = { version = "0.7", features = ["tmp"] }
 rustc_version = "0.3"
 colored = "2"
 
