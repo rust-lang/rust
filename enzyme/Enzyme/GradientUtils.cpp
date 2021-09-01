@@ -2487,6 +2487,116 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
   return res;
 }
 
+Constant *GradientUtils::GetOrCreateShadowConstant(
+    EnzymeLogic &Logic, TargetLibraryInfo &TLI, TypeAnalysis &TA,
+    Constant *oval, bool AtomicAdd, bool PostOpt) {
+  if (isa<ConstantPointerNull>(oval)) {
+    return oval;
+  } else if (isa<UndefValue>(oval)) {
+    return oval;
+  } else if (isa<ConstantInt>(oval)) {
+    return oval;
+  } else if (auto CD = dyn_cast<ConstantDataArray>(oval)) {
+    SmallVector<Constant *, 1> Vals;
+    for (size_t i = 0, len = CD->getNumElements(); i < len; i++) {
+      Vals.push_back(GetOrCreateShadowConstant(
+          Logic, TLI, TA, CD->getElementAsConstant(i), AtomicAdd, PostOpt));
+    }
+    return ConstantArray::get(CD->getType(), Vals);
+  } else if (auto CD = dyn_cast<ConstantArray>(oval)) {
+    SmallVector<Constant *, 1> Vals;
+    for (size_t i = 0, len = CD->getNumOperands(); i < len; i++) {
+      Vals.push_back(GetOrCreateShadowConstant(
+          Logic, TLI, TA, CD->getOperand(i), AtomicAdd, PostOpt));
+    }
+    return ConstantArray::get(CD->getType(), Vals);
+  } else if (auto CD = dyn_cast<ConstantStruct>(oval)) {
+    SmallVector<Constant *, 1> Vals;
+    for (size_t i = 0, len = CD->getNumOperands(); i < len; i++) {
+      Vals.push_back(GetOrCreateShadowConstant(
+          Logic, TLI, TA, CD->getOperand(i), AtomicAdd, PostOpt));
+    }
+    return ConstantStruct::get(CD->getType(), Vals);
+  } else if (auto CD = dyn_cast<ConstantVector>(oval)) {
+    SmallVector<Constant *, 1> Vals;
+    for (size_t i = 0, len = CD->getNumOperands(); i < len; i++) {
+      Vals.push_back(GetOrCreateShadowConstant(
+          Logic, TLI, TA, CD->getOperand(i), AtomicAdd, PostOpt));
+    }
+    return ConstantVector::get(Vals);
+  } else if (auto F = dyn_cast<Function>(oval)) {
+    return GetOrCreateShadowFunction(Logic, TLI, TA, F, AtomicAdd, PostOpt);
+  } else if (auto arg = dyn_cast<ConstantExpr>(oval)) {
+    auto C = GetOrCreateShadowConstant(Logic, TLI, TA, arg->getOperand(0),
+                                       AtomicAdd, PostOpt);
+    if (arg->isCast()) {
+      return arg->getWithOperandReplaced(0, C);
+    } else if (arg->getOpcode() == Instruction::GetElementPtr) {
+      return arg->getWithOperandReplaced(0, C);
+    }
+  } else if (auto arg = dyn_cast<GlobalVariable>(oval)) {
+    if (arg->getName() == "_ZTVN10__cxxabiv120__si_class_type_infoE" ||
+        arg->getName() == "_ZTVN10__cxxabiv117__class_type_infoE")
+      return arg;
+
+    if (hasMetadata(arg, "enzyme_shadow")) {
+      auto md = arg->getMetadata("enzyme_shadow");
+      if (!isa<MDTuple>(md)) {
+        llvm::errs() << *arg << "\n";
+        llvm::errs() << *md << "\n";
+        assert(0 && "cannot compute with global variable that doesn't have "
+                    "marked shadow global");
+        report_fatal_error(
+            "cannot compute with global variable that doesn't "
+            "have marked shadow global (metadata incorrect type)");
+      }
+      auto md2 = cast<MDTuple>(md);
+      assert(md2->getNumOperands() == 1);
+      auto gvemd = cast<ConstantAsMetadata>(md2->getOperand(0));
+      return gvemd->getValue();
+    }
+
+    auto Arch = llvm::Triple(arg->getParent()->getTargetTriple()).getArch();
+    int SharedAddrSpace = Arch == Triple::amdgcn
+                              ? (int)AMDGPU::HSAMD::AddressSpaceQualifier::Local
+                              : 3;
+    int AddrSpace = cast<PointerType>(arg->getType())->getAddressSpace();
+    if ((Arch == Triple::nvptx || Arch == Triple::nvptx64 ||
+         Arch == Triple::amdgcn) &&
+        AddrSpace == SharedAddrSpace) {
+      assert(0 && "shared memory not handled in meta global");
+    }
+
+    // Create global variable locally if not externally visible
+    if (arg->isConstant() || arg->hasInternalLinkage() ||
+        arg->hasPrivateLinkage() ||
+        (arg->hasExternalLinkage() && arg->hasInitializer())) {
+      Type *type = cast<PointerType>(arg->getType())->getElementType();
+      auto shadow = new GlobalVariable(
+          *arg->getParent(), type, arg->isConstant(), arg->getLinkage(),
+          arg->getInitializer()
+              ? GetOrCreateShadowConstant(Logic, TLI, TA,
+                                          cast<Constant>(arg->getOperand(0)),
+                                          AtomicAdd, PostOpt)
+              : Constant::getNullValue(type),
+          arg->getName() + "_shadow", arg, arg->getThreadLocalMode(),
+          arg->getType()->getAddressSpace(), arg->isExternallyInitialized());
+      arg->setMetadata("enzyme_shadow",
+                       MDTuple::get(shadow->getContext(),
+                                    {ConstantAsMetadata::get(shadow)}));
+#if LLVM_VERSION_MAJOR >= 11
+      shadow->setAlignment(arg->getAlign());
+#else
+      shadow->setAlignment(arg->getAlignment());
+#endif
+      shadow->setUnnamedAddr(arg->getUnnamedAddr());
+      return shadow;
+    }
+  }
+  llvm::errs() << " unknown constant to create shadow of: " << *oval << "\n";
+  llvm_unreachable("unknown constant to create shadow of");
+}
+
 Constant *GradientUtils::GetOrCreateShadowFunction(EnzymeLogic &Logic,
                                                    TargetLibraryInfo &TLI,
                                                    TypeAnalysis &TA,
@@ -2579,8 +2689,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     return oval;
   } else if (isa<UndefValue>(oval)) {
     return oval;
-  } else if (auto cint = dyn_cast<ConstantInt>(oval)) {
-    return cint;
+  } else if (isa<ConstantInt>(oval)) {
+    return oval;
   } else if (auto CD = dyn_cast<ConstantDataArray>(oval)) {
     SmallVector<Constant *, 1> Vals;
     for (size_t i = 0, len = CD->getNumElements(); i < len; i++) {

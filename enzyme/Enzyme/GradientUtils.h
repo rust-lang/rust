@@ -1323,6 +1323,12 @@ public:
   Value *invertPointerM(Value *val, IRBuilder<> &BuilderM,
                         bool nullShadow = false);
 
+  static Constant *GetOrCreateShadowConstant(EnzymeLogic &Logic,
+                                             TargetLibraryInfo &TLI,
+                                             TypeAnalysis &TA, Constant *F,
+                                             bool AtomicAdd = true,
+                                             bool PostOpt = false);
+
   static Constant *GetOrCreateShadowFunction(EnzymeLogic &Logic,
                                              TargetLibraryInfo &TLI,
                                              TypeAnalysis &TA, Function *F,

@@ -1067,17 +1067,13 @@ public:
 
     for (auto pair : toVirtual) {
       auto CI = pair.first;
-      Value *fn = CI->getArgOperand(0);
-      while (auto ci = dyn_cast<CastInst>(fn)) {
-        fn = ci->getOperand(0);
+      Constant *fn = dyn_cast<Constant>(CI->getArgOperand(0));
+      if (!fn) {
+        EmitFailure("IllegalVirtual", CI->getDebugLoc(), CI,
+                    "Cannot create virtual version of non-constant value ", *CI,
+                    *CI->getArgOperand(0));
+        return false;
       }
-      while (auto ci = dyn_cast<BlockAddress>(fn)) {
-        fn = ci->getFunction();
-      }
-      while (auto ci = dyn_cast<ConstantExpr>(fn)) {
-        fn = ci->getOperand(0);
-      }
-      auto F = cast<Function>(fn);
       TypeAnalysis TA(TLI);
 
       auto Arch =
@@ -1088,7 +1084,7 @@ public:
       bool AtomicAdd = Arch == Triple::nvptx || Arch == Triple::nvptx64 ||
                        Arch == Triple::amdgcn;
 
-      auto val = GradientUtils::GetOrCreateShadowFunction(Logic, TLI, TA, F,
+      auto val = GradientUtils::GetOrCreateShadowConstant(Logic, TLI, TA, fn,
                                                           AtomicAdd, PostOpt);
       CI->replaceAllUsesWith(ConstantExpr::getPointerCast(val, CI->getType()));
       CI->eraseFromParent();
