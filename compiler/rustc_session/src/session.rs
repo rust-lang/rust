@@ -170,15 +170,9 @@ pub struct Session {
     /// Data about code being compiled, gathered during compilation.
     pub code_stats: CodeStats,
 
-    /// If `-zfuel=crate=n` is specified, `Some(crate)`.
-    optimization_fuel_crate: Option<String>,
-
     /// Tracks fuel info if `-zfuel=crate=n` is specified.
     optimization_fuel: Lock<OptimizationFuel>,
 
-    // The next two are public because the driver needs to read them.
-    /// If `-zprint-fuel=crate`, `Some(crate)`.
-    pub print_fuel_crate: Option<String>,
     /// Always set to zero and incremented so that we can print fuel expended by a crate.
     pub print_fuel: AtomicU64,
 
@@ -196,6 +190,9 @@ pub struct Session {
     /// Tracks the current behavior of the CTFE engine when an error occurs.
     /// Options range from returning the error without a backtrace to returning an error
     /// and immediately printing the backtrace to stderr.
+    /// The `Lock` is only used by miri to allow setting `ctfe_backtrace` after analysis when
+    /// `MIRI_BACKTRACE` is set. This makes it only apply to miri's errors and not to all CTFE
+    /// errors.
     pub ctfe_backtrace: Lock<CtfeBacktrace>,
 
     /// This tracks where `-Zunleash-the-miri-inside-of-you` was used to get around a
@@ -890,7 +887,7 @@ impl Session {
     /// This expends fuel if applicable, and records fuel if applicable.
     pub fn consider_optimizing<T: Fn() -> String>(&self, crate_name: &str, msg: T) -> bool {
         let mut ret = true;
-        if let Some(ref c) = self.optimization_fuel_crate {
+        if let Some(c) = self.opts.debugging_opts.fuel.as_ref().map(|i| &i.0) {
             if c == crate_name {
                 assert_eq!(self.threads(), 1);
                 let mut fuel = self.optimization_fuel.lock();
@@ -903,7 +900,7 @@ impl Session {
                 }
             }
         }
-        if let Some(ref c) = self.print_fuel_crate {
+        if let Some(ref c) = self.opts.debugging_opts.print_fuel {
             if c == crate_name {
                 assert_eq!(self.threads(), 1);
                 self.print_fuel.fetch_add(1, SeqCst);
@@ -1261,12 +1258,10 @@ pub fn build_session(
     let local_crate_source_file =
         local_crate_source_file.map(|path| file_path_mapping.map_prefix(path).0);
 
-    let optimization_fuel_crate = sopts.debugging_opts.fuel.as_ref().map(|i| i.0.clone());
     let optimization_fuel = Lock::new(OptimizationFuel {
         remaining: sopts.debugging_opts.fuel.as_ref().map_or(0, |i| i.1),
         out_of_fuel: false,
     });
-    let print_fuel_crate = sopts.debugging_opts.print_fuel.clone();
     let print_fuel = AtomicU64::new(0);
 
     let cgu_reuse_tracker = if sopts.debugging_opts.query_dep_graph {
@@ -1314,9 +1309,7 @@ pub fn build_session(
             normalize_projection_ty: AtomicUsize::new(0),
         },
         code_stats: Default::default(),
-        optimization_fuel_crate,
         optimization_fuel,
-        print_fuel_crate,
         print_fuel,
         jobserver: jobserver::client(),
         driver_lint_caps,
