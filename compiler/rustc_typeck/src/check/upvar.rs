@@ -399,7 +399,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             };
 
+            // This restriction needs to be applied after we have handled adjustments for `move`
+            // closures. We want to make sure any adjustment that might make us move the place into
+            // the closure gets handled.
+            let (place, capture_kind) =
+                restrict_precision_for_drop_types(self, place, capture_kind, usage_span);
+
             capture_info.capture_kind = capture_kind;
+
             let capture_info = if let Some(existing) = processed.get(&place) {
                 determine_capture_info(*existing, capture_info)
             } else {
@@ -626,7 +633,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx.struct_span_lint_hir(
                 lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
                 closure_hir_id,
-                closure_head_span,
+                 closure_head_span,
                 |lint| {
                     let mut diagnostics_builder = lint.build(
                         format!(
@@ -1852,6 +1859,31 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         self.borrow(assignee_place, diag_expr_id, ty::BorrowKind::MutBorrow);
     }
 }
+
+/// Rust doesn't permit moving fields out of a type that implements drop
+fn restrict_precision_for_drop_types<'a, 'tcx>(
+    fcx: &'a FnCtxt<'a, 'tcx>,
+    mut place: Place<'tcx>,
+    mut curr_mode: ty::UpvarCapture<'tcx>,
+    span: Span,
+) -> (Place<'tcx>, ty::UpvarCapture<'tcx>) {
+    let is_copy_type = fcx.infcx.type_is_copy_modulo_regions(fcx.param_env, place.ty(), span);
+
+    if let (false, UpvarCapture::ByValue(..)) = (is_copy_type, curr_mode) {
+        for i in 0..place.projections.len() {
+            match place.ty_before_projection(i).kind() {
+                ty::Adt(def, _) if def.destructor(fcx.tcx).is_some() => {
+                    truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_mode, i);
+                    break;
+                }
+                _ => {}
+            }
+        }
+    }
+
+    (place, curr_mode)
+}
+
 /// Truncate `place` so that an `unsafe` block isn't required to capture it.
 /// - No projections are applied to raw pointers, since these require unsafe blocks. We capture
 ///   them completely.
