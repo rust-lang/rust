@@ -292,6 +292,7 @@ fn hover_try_expr(
         // special case for two options, there is no value in showing them
         if let Some(option_enum) = famous_defs.core_option_Option() {
             if inner == option_enum && body == option_enum {
+                cov_mark::hit!(hover_try_expr_opt_opt);
                 return None;
             }
         }
@@ -326,10 +327,10 @@ fn hover_try_expr(
     let body_ty = body_ty.display(sema.db).to_string();
     let ty_len_max = inner_ty.len().max(body_ty.len());
 
-    // "Propagated as: ".len() - " Type: ".len() = 8
-    let static_test_len_diff = 8 - s.len() as isize;
-    let tpad = static_test_len_diff.max(0) as usize;
-    let ppad = static_test_len_diff.min(0).abs() as usize;
+    let l = "Propagated as: ".len() - " Type: ".len();
+    let static_text_len_diff = l as isize - s.len() as isize;
+    let tpad = static_text_len_diff.max(0) as usize;
+    let ppad = static_text_len_diff.min(0).abs() as usize;
 
     res.markup = format!(
         "{bt_start}{} Type: {:>pad0$}\nPropagated as: {:>pad1$}\n{bt_end}",
@@ -368,12 +369,12 @@ fn hover_type_info(
         walk_and_push_ty(sema.db, &adjusted_ty, &mut push_new_def);
         let original = original.display(sema.db).to_string();
         let adjusted = adjusted_ty.display(sema.db).to_string();
+        let static_text_diff_len = "Coerced to: ".len() - "Type: ".len();
         format!(
             "{bt_start}Type: {:>apad$}\nCoerced to: {:>opad$}\n{bt_end}",
             original,
             adjusted,
-            // 6 base padding for difference of length of the two text prefixes
-            apad = 6 + adjusted.len().max(original.len()),
+            apad = static_text_diff_len + adjusted.len().max(original.len()),
             opad = original.len(),
             bt_start = if config.markdown() { "```text\n" } else { "" },
             bt_end = if config.markdown() { "```\n" } else { "" }
@@ -4429,6 +4430,7 @@ fn foo() -> NotResult<(), Short> {
 
     #[test]
     fn hover_try_expr_option() {
+        cov_mark::check!(hover_try_expr_opt_opt);
         check_hover_range(
             r#"
 //- minicore: option, try
