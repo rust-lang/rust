@@ -61,7 +61,7 @@ pub(crate) fn codegen_fn<'tcx>(
         instance,
         symbol_name,
         mir,
-        fn_abi: Some(RevealAllLayoutCx(tcx).fn_abi_of_instance(instance, &[])),
+        fn_abi: Some(RevealAllLayoutCx(tcx).fn_abi_of_instance(instance, ty::List::empty())),
 
         bcx,
         block_map,
