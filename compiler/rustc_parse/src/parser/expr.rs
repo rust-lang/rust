@@ -23,6 +23,8 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Pos};
 use std::mem;
 
+use tracing::debug;
+
 /// Possibly accepts an `token::Interpolated` expression (a pre-parsed expression
 /// dropped into the token stream, which happens while parsing the result of
 /// macro expansion). Placement of these is not as complex as I feared it would
@@ -355,6 +357,7 @@ impl<'a> Parser<'a> {
     /// but the next token implies this should be parsed as an expression.
     /// For example: `if let Some(x) = x { x } else { 0 } / 2`.
     fn error_found_expr_would_be_stmt(&self, lhs: &Expr) {
+        debug!("error_found_expr_would_be_stmt(lhs: {:?})", lhs);
         let mut err = self.struct_span_err(
             self.token.span,
             &format!("expected expression, found `{}`", pprust::token_to_string(&self.token),),
@@ -516,6 +519,15 @@ impl<'a> Parser<'a> {
             token::BinOp(token::And) | token::AndAnd => {
                 make_it!(this, attrs, |this, _| this.parse_borrow_expr(lo))
             }
+            token::BinOp(token::Plus) => {
+                this.struct_span_err(lo, "leading `+` is not supported")
+                    .span_label(lo, "unexpected `+`")
+                    .span_suggestion_short(lo, "remove the `+`", "".to_string(), Applicability::MachineApplicable)
+                    .emit();
+                this.bump();
+
+                this.parse_prefix_expr(None)
+            } // `+expr`
             token::Ident(..) if this.token.is_keyword(kw::Box) => {
                 make_it!(this, attrs, |this, _| this.parse_box_expr(lo))
             }

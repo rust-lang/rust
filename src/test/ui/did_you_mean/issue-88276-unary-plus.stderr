@@ -1,0 +1,83 @@
+error: leading `+` is not supported
+  --> $DIR/issue-88276-unary-plus.rs:4:13
+   |
+LL |     let _ = +1;
+   |             ^
+   |             |
+   |             unexpected `+`
+   |             help: remove the `+`
+
+error: leading `+` is not supported
+  --> $DIR/issue-88276-unary-plus.rs:5:14
+   |
+LL |     let _ = -+(1+2)*3;
+   |              ^
+   |              |
+   |              unexpected `+`
+   |              help: remove the `+`
+
+error: leading `+` is not supported
+  --> $DIR/issue-88276-unary-plus.rs:6:13
+   |
+LL |     let _ = +-+(1+2)*3;
+   |             ^
+   |             |
+   |             unexpected `+`
+   |             help: remove the `+`
+
+error: leading `+` is not supported
+  --> $DIR/issue-88276-unary-plus.rs:6:15
+   |
+LL |     let _ = +-+(1+2)*3;
+   |               ^
+   |               |
+   |               unexpected `+`
+   |               help: remove the `+`
+
+error: leading `+` is not supported
+  --> $DIR/issue-88276-unary-plus.rs:8:14
+   |
+LL |     let _ = -+-+(1+2)*3;
+   |              ^
+   |              |
+   |              unexpected `+`
+   |              help: remove the `+`
+
+error: leading `+` is not supported
+  --> $DIR/issue-88276-unary-plus.rs:8:16
+   |
+LL |     let _ = -+-+(1+2)*3;
+   |                ^
+   |                |
+   |                unexpected `+`
+   |                help: remove the `+`
+
+error: leading `+` is not supported
+  --> $DIR/issue-88276-unary-plus.rs:10:14
+   |
+LL |     let _ = (+&"hello");
+   |              ^
+   |              |
+   |              unexpected `+`
+   |              help: remove the `+`
+
+error: leading `+` is not supported
+  --> $DIR/issue-88276-unary-plus.rs:11:13
+   |
+LL |     let _ = +[+3, 4+6];
+   |             ^
+   |             |
+   |             unexpected `+`
+   |             help: remove the `+`
+
+error: leading `+` is not supported
+  --> $DIR/issue-88276-unary-plus.rs:11:15
+   |
+LL |     let _ = +[+3, 4+6];
+   |               ^
+   |               |
+   |               unexpected `+`
+   |               help: remove the `+`
+
+error: aborting due to 9 previous errors
+
