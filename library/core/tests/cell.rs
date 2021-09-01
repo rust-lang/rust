@@ -3,6 +3,38 @@ use core::default::Default;
 use std::mem::drop;
 
 #[test]
+fn smoketest_unsafe_cell() {
+    let mut x = UnsafeCell::new(10);
+    let ref_mut = &mut x;
+    unsafe {
+        // The asserts are repeated in order to ensure that `get()`
+        // is non-mutating.
+        assert_eq!(*ref_mut.get(), 10);
+        assert_eq!(*ref_mut.get(), 10);
+        *ref_mut.get_mut() += 5;
+        assert_eq!(*ref_mut.get(), 15);
+        assert_eq!(*ref_mut.get(), 15);
+        assert_eq!(x.into_inner(), 15);
+    }
+}
+
+#[test]
+fn unsafe_cell_raw_get() {
+    let x = UnsafeCell::new(10);
+    let ptr = &x as *const UnsafeCell<i32>;
+    unsafe {
+        // The asserts are repeated in order to ensure that `raw_get()`
+        // is non-mutating.
+        assert_eq!(*UnsafeCell::raw_get(ptr), 10);
+        assert_eq!(*UnsafeCell::raw_get(ptr), 10);
+        *UnsafeCell::raw_get(ptr) += 5;
+        assert_eq!(*UnsafeCell::raw_get(ptr), 15);
+        assert_eq!(*UnsafeCell::raw_get(ptr), 15);
+        assert_eq!(x.into_inner(), 15);
+    }
+}
+
+#[test]
 fn smoketest_cell() {
     let x = Cell::new(10);
     assert_eq!(x, Cell::new(10));

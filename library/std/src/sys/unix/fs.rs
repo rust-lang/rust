@@ -506,7 +506,8 @@ impl Iterator for ReadDir {
             let mut ret = DirEntry { entry: mem::zeroed(), dir: Arc::clone(&self.inner) };
             let mut entry_ptr = ptr::null_mut();
             loop {
-                if readdir64_r(self.inner.dirp.0, &mut ret.entry, &mut entry_ptr) != 0 {
+                let err = readdir64_r(self.inner.dirp.0, &mut ret.entry, &mut entry_ptr);
+                if err != 0 {
                     if entry_ptr.is_null() {
                         // We encountered an error (which will be returned in this iteration), but
                         // we also reached the end of the directory stream. The `end_of_stream`
@@ -514,7 +515,7 @@ impl Iterator for ReadDir {
                         // (instead of looping forever)
                         self.end_of_stream = true;
                     }
-                    return Some(Err(Error::last_os_error()));
+                    return Some(Err(Error::from_raw_os_error(err)));
                 }
                 if entry_ptr.is_null() {
                     return None;

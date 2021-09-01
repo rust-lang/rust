@@ -585,6 +585,8 @@ Here is the list of currently supported register classes:
 | PowerPC | `reg` | `r[0-31]` | `r` |
 | PowerPC | `reg_nonzero` | | `r[1-31]` | `b` |
 | PowerPC | `freg` | `f[0-31]` | `f` |
+| PowerPC | `cr` | `cr[0-7]`, `cr` | Only clobbers |
+| PowerPC | `xer` | `xer` | Only clobbers |
 | wasm32 | `local` | None\* | `r` |
 | BPF | `reg` | `r[0-10]` | `r` |
 | BPF | `wreg` | `w[0-10]` | `w` |
@@ -638,6 +640,8 @@ Each register class has constraints on which value types they can be used with. 
 | PowerPC | `reg` | None | `i8`, `i16`, `i32` |
 | PowerPC | `reg_nonzero` | None | `i8`, `i16`, `i32` |
 | PowerPC | `freg` | None | `f32`, `f64` |
+| PowerPC | `cr` | N/A | Only clobbers |
+| PowerPC | `xer` | N/A | Only clobbers |
 | wasm32 | `local` | None | `i8` `i16` `i32` `i64` `f32` `f64` |
 | BPF | `reg` | None | `i8` `i16` `i32` `i64` |
 | BPF | `wreg` | `alu32` | `i8` `i16` `i32` |

@@ -246,10 +246,7 @@ impl<T> BTreeSet<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
-    pub const fn new() -> BTreeSet<T>
-    where
-        T: Ord,
-    {
+    pub const fn new() -> BTreeSet<T> {
         BTreeSet { map: BTreeMap::new() }
     }
 
@@ -1192,7 +1189,7 @@ impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for BTreeSet<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Ord> Default for BTreeSet<T> {
+impl<T> Default for BTreeSet<T> {
     /// Creates an empty `BTreeSet`.
     fn default() -> BTreeSet<T> {
         BTreeSet::new()
