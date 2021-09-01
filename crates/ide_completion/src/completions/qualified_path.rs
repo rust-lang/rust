@@ -92,7 +92,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             for (name, def) in module_scope {
                 if ctx.in_use_tree() {
                     if let hir::ScopeDef::Unknown = def {
-                        if let Some(name_ref) = ctx.name_ref_syntax.as_ref() {
+                        if let Some(ast::NameLike::NameRef(name_ref)) = ctx.name_syntax.as_ref() {
                             if name_ref.syntax().text() == name.to_string().as_str() {
                                 // for `use self::foo$0`, don't suggest `foo` as a completion
                                 cov_mark::hit!(dont_complete_current_use);

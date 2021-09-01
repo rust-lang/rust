@@ -163,11 +163,11 @@ pub(crate) fn position_for_import<'a>(
     import_candidate: Option<&ImportCandidate>,
 ) -> Option<&'a SyntaxNode> {
     Some(match import_candidate {
-        Some(ImportCandidate::Path(_)) => ctx.name_ref_syntax.as_ref()?.syntax(),
+        Some(ImportCandidate::Path(_)) => ctx.name_syntax.as_ref()?.syntax(),
         Some(ImportCandidate::TraitAssocItem(_)) => ctx.path_qual()?.syntax(),
         Some(ImportCandidate::TraitMethod(_)) => ctx.dot_receiver()?.syntax(),
         None => ctx
-            .name_ref_syntax
+            .name_syntax
             .as_ref()
             .map(|name_ref| name_ref.syntax())
             .or_else(|| ctx.path_qual().map(|path| path.syntax()))
@@ -1200,6 +1200,23 @@ mod mud {
 "#,
             expect![[r#"
                 st Struct (use crate::Struct)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn flyimport_pattern() {
+        check(
+            r#"
+mod module {
+    pub struct Struct;
+}
+fn function() {
+    let Str$0
+}
+"#,
+            expect![[r#"
+                st Struct (use module::Struct)
             "#]],
         );
     }
