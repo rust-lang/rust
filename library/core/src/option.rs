@@ -1198,11 +1198,8 @@ impl<T> Option<T> {
     pub fn insert(&mut self, value: T) -> &mut T {
         *self = Some(value);
 
-        match self {
-            Some(v) => v,
-            // SAFETY: the code above just filled the option
-            None => unsafe { hint::unreachable_unchecked() },
-        }
+        // SAFETY: the code above just filled the option
+        unsafe { self.as_mut().unwrap_unchecked() }
     }
 
     /// Inserts `value` into the option if it is [`None`], then
