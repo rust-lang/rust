@@ -350,10 +350,8 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             .into_iter()
             .flat_map(|(ty, mut bounds)| {
                 if let Some(data) = ty_to_fn.get(&ty) {
-                    let (poly_trait, output) = (
-                        data.0.as_ref().expect("as_ref failed").clone(),
-                        data.1.as_ref().cloned().map(Box::new),
-                    );
+                    let (poly_trait, output) =
+                        (data.0.as_ref().unwrap().clone(), data.1.as_ref().cloned().map(Box::new));
                     let new_ty = match poly_trait.trait_ {
                         Type::ResolvedPath { ref path, ref did, ref is_generic } => {
                             let mut new_path = path.clone();
