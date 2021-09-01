@@ -1421,16 +1421,21 @@ impl<'a> Formatter<'a> {
             // If we're under the maximum length, and there's no minimum length
             // requirements, then we can just emit the string
             None => self.buf.write_str(s),
-            // If we're under the maximum width, check if we're over the minimum
-            // width, if so it's as easy as just emitting the string.
-            Some(width) if s.chars().count() >= width => self.buf.write_str(s),
-            // If we're under both the maximum and the minimum width, then fill
-            // up the minimum width with the specified string + some alignment.
             Some(width) => {
-                let align = rt::v1::Alignment::Left;
-                let post_padding = self.padding(width - s.chars().count(), align)?;
-                self.buf.write_str(s)?;
-                post_padding.write(self.buf)
+                let chars_count = s.chars().count();
+                // If we're under the maximum width, check if we're over the minimum
+                // width, if so it's as easy as just emitting the string.
+                if chars_count >= width {
+                    self.buf.write_str(s)
+                }
+                // If we're under both the maximum and the minimum width, then fill
+                // up the minimum width with the specified string + some alignment.
+                else {
+                    let align = rt::v1::Alignment::Left;
+                    let post_padding = self.padding(width - chars_count, align)?;
+                    self.buf.write_str(s)?;
+                    post_padding.write(self.buf)
+                }
             }
         }
     }
