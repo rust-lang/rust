@@ -226,7 +226,7 @@ fn find_related_tests(
     tests: &mut FxHashSet<Runnable>,
 ) {
     if let Some(refs) = references::find_all_refs(sema, position, search_scope) {
-        for (file_id, refs) in refs.references {
+        for (file_id, refs) in refs.into_iter().flat_map(|refs| refs.references) {
             let file = sema.parse(file_id);
             let file = file.syntax();
             let functions = refs.iter().filter_map(|(range, _)| {

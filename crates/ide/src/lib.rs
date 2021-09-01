@@ -405,7 +405,7 @@ impl Analysis {
         &self,
         position: FilePosition,
         search_scope: Option<SearchScope>,
-    ) -> Cancellable<Option<ReferenceSearchResult>> {
+    ) -> Cancellable<Option<Vec<ReferenceSearchResult>>> {
         self.with_db(|db| references::find_all_refs(&Semantics::new(db), position, search_scope))
     }
 

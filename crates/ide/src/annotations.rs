@@ -134,8 +134,8 @@ pub(crate) fn resolve_annotation(db: &RootDatabase, mut annotation: Annotation) 
         AnnotationKind::HasReferences { position, data } => {
             *data = find_all_refs(&Semantics::new(db), *position, None).map(|result| {
                 result
-                    .references
                     .into_iter()
+                    .flat_map(|res| res.references)
                     .map(|(file_id, access)| {
                         access.into_iter().map(move |(range, _)| FileRange { file_id, range })
                     })

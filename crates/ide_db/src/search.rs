@@ -71,6 +71,7 @@ pub enum ReferenceAccess {
 /// For `pub(crate)` things it's a crate, for `pub` things it's a crate and dependant crates.
 /// In some cases, the location of the references is known to within a `TextRange`,
 /// e.g. for things like local variables.
+#[derive(Clone)]
 pub struct SearchScope {
     entries: FxHashMap<FileId, Option<TextRange>>,
 }
