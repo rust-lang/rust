@@ -1128,6 +1128,18 @@ rustc_queries! {
         desc { "computing layout of `{}`", key.value }
     }
 
+    query fn_abi_of_fn_ptr(
+        key: ty::ParamEnvAnd<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
+    ) -> () {
+        desc { "computing call ABI of `{}` function pointers", key.value.0 }
+    }
+
+    query fn_abi_of_instance(
+        key: ty::ParamEnvAnd<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
+    ) -> () {
+        desc { "computing call ABI of `{}`", key.value.0 }
+    }
+
     query dylib_dependency_formats(_: CrateNum)
                                     -> &'tcx [(CrateNum, LinkagePreference)] {
         desc { "dylib dependency formats of crate" }
