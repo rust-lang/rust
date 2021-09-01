@@ -11,6 +11,7 @@ You may need following tooltips to catch up with common operations.
 
 Useful Rustc dev guide links:
 - [Stages of compilation](https://rustc-dev-guide.rust-lang.org/compiler-src.html#the-main-stages-of-compilation)
+- [Diagnostic items](https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html)
 - [Type checking](https://rustc-dev-guide.rust-lang.org/type-checking.html)
 - [Ty module](https://rustc-dev-guide.rust-lang.org/ty.html)
 
