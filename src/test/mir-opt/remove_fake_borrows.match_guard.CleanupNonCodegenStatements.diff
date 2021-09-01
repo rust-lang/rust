@@ -47,7 +47,6 @@
       }
   
       bb5: {
-          StorageDead(_8);                 // scope 0 at $DIR/remove_fake_borrows.rs:8:25: 8:26
 -         FakeRead(ForMatchGuard, _4);     // scope 0 at $DIR/remove_fake_borrows.rs:8:20: 8:21
 -         FakeRead(ForMatchGuard, _5);     // scope 0 at $DIR/remove_fake_borrows.rs:8:20: 8:21
 -         FakeRead(ForMatchGuard, _6);     // scope 0 at $DIR/remove_fake_borrows.rs:8:20: 8:21
@@ -57,6 +56,7 @@
 +         nop;                             // scope 0 at $DIR/remove_fake_borrows.rs:8:20: 8:21
 +         nop;                             // scope 0 at $DIR/remove_fake_borrows.rs:8:20: 8:21
           _0 = const 0_i32;                // scope 0 at $DIR/remove_fake_borrows.rs:8:25: 8:26
+          StorageDead(_8);                 // scope 0 at $DIR/remove_fake_borrows.rs:8:25: 8:26
           goto -> bb7;                     // scope 0 at $DIR/remove_fake_borrows.rs:8:25: 8:26
       }
   

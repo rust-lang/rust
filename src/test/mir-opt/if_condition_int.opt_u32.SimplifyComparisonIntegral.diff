@@ -13,20 +13,20 @@
           _3 = _1;                         // scope 0 at $DIR/if-condition-int.rs:12:8: 12:9
 -         _2 = Eq(move _3, const 42_u32);  // scope 0 at $DIR/if-condition-int.rs:12:8: 12:15
 -         StorageDead(_3);                 // scope 0 at $DIR/if-condition-int.rs:12:14: 12:15
--         switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/if-condition-int.rs:12:5: 12:32
+-         switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/if-condition-int.rs:12:8: 12:15
 +         nop;                             // scope 0 at $DIR/if-condition-int.rs:12:8: 12:15
 +         nop;                             // scope 0 at $DIR/if-condition-int.rs:12:14: 12:15
-+         switchInt(move _3) -> [42_u32: bb1, otherwise: bb2]; // scope 0 at $DIR/if-condition-int.rs:12:5: 12:32
++         switchInt(move _3) -> [42_u32: bb1, otherwise: bb2]; // scope 0 at $DIR/if-condition-int.rs:12:8: 12:15
       }
   
       bb1: {
-+         StorageDead(_3);                 // scope 0 at $DIR/if-condition-int.rs:12:5: 12:32
++         StorageDead(_3);                 // scope 0 at $DIR/if-condition-int.rs:12:8: 12:15
           _0 = const 0_u32;                // scope 0 at $DIR/if-condition-int.rs:12:18: 12:19
           goto -> bb3;                     // scope 0 at $DIR/if-condition-int.rs:12:5: 12:32
       }
   
       bb2: {
-+         StorageDead(_3);                 // scope 0 at $DIR/if-condition-int.rs:12:5: 12:32
++         StorageDead(_3);                 // scope 0 at $DIR/if-condition-int.rs:12:8: 12:15
           _0 = const 1_u32;                // scope 0 at $DIR/if-condition-int.rs:12:29: 12:30
           goto -> bb3;                     // scope 0 at $DIR/if-condition-int.rs:12:5: 12:32
       }

@@ -19,7 +19,7 @@
           _3 = _1;                         // scope 0 at $DIR/inline-diverging.rs:13:8: 13:9
           _2 = Gt(move _3, const 0_i32);   // scope 0 at $DIR/inline-diverging.rs:13:8: 13:13
           StorageDead(_3);                 // scope 0 at $DIR/inline-diverging.rs:13:12: 13:13
-          switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/inline-diverging.rs:13:5: 17:6
+          switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/inline-diverging.rs:13:8: 13:13
       }
   
       bb1: {

@@ -32,54 +32,54 @@
   
       bb1: {
           StorageDead(_3);                 // scope 2 at $DIR/issue-75439.rs:7:52: 7:53
-          switchInt(_2[0 of 4]) -> [0_u32: bb2, otherwise: bb4]; // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
+          switchInt(_2[0 of 4]) -> [0_u32: bb2, otherwise: bb8]; // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
       }
   
       bb2: {
-          switchInt(_2[1 of 4]) -> [0_u32: bb3, otherwise: bb4]; // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
+          switchInt(_2[1 of 4]) -> [0_u32: bb3, otherwise: bb8]; // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
       }
   
       bb3: {
-          switchInt(_2[2 of 4]) -> [0_u32: bb6, 4294901760_u32: bb7, otherwise: bb4]; // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
+          switchInt(_2[2 of 4]) -> [0_u32: bb5, 4294901760_u32: bb6, otherwise: bb8]; // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
       }
   
       bb4: {
-          discriminant(_0) = 0;            // scope 1 at $DIR/issue-75439.rs:12:9: 12:13
-          goto -> bb9;                     // scope 1 at $DIR/issue-75439.rs:9:5: 13:6
-      }
-  
-      bb5: {
           StorageLive(_5);                 // scope 1 at $DIR/issue-75439.rs:10:14: 10:38
           StorageLive(_6);                 // scope 4 at $DIR/issue-75439.rs:10:33: 10:35
           _6 = _4;                         // scope 4 at $DIR/issue-75439.rs:10:33: 10:35
-          _5 = transmute::<u32, [u8; 4]>(move _6) -> bb8; // scope 4 at $DIR/issue-75439.rs:10:23: 10:36
+          _5 = transmute::<u32, [u8; 4]>(move _6) -> bb7; // scope 4 at $DIR/issue-75439.rs:10:23: 10:36
                                            // mir::Constant
                                            // + span: $DIR/issue-75439.rs:10:23: 10:32
                                            // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u32) -> [u8; 4] {std::intrinsics::transmute::<u32, [u8; 4]>}, val: Value(Scalar(<ZST>)) }
       }
   
+      bb5: {
+          StorageLive(_4);                 // scope 1 at $DIR/issue-75439.rs:9:27: 9:29
+          _4 = _2[3 of 4];                 // scope 1 at $DIR/issue-75439.rs:9:27: 9:29
+          goto -> bb4;                     // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
+      }
+  
       bb6: {
           StorageLive(_4);                 // scope 1 at $DIR/issue-75439.rs:9:27: 9:29
           _4 = _2[3 of 4];                 // scope 1 at $DIR/issue-75439.rs:9:27: 9:29
-          goto -> bb5;                     // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
+          goto -> bb4;                     // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
       }
   
       bb7: {
-          StorageLive(_4);                 // scope 1 at $DIR/issue-75439.rs:9:27: 9:29
-          _4 = _2[3 of 4];                 // scope 1 at $DIR/issue-75439.rs:9:27: 9:29
-          goto -> bb5;                     // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
-      }
-  
-      bb8: {
           StorageDead(_6);                 // scope 4 at $DIR/issue-75439.rs:10:35: 10:36
           ((_0 as Some).0: [u8; 4]) = move _5; // scope 1 at $DIR/issue-75439.rs:10:9: 10:39
           discriminant(_0) = 1;            // scope 1 at $DIR/issue-75439.rs:10:9: 10:39
           StorageDead(_5);                 // scope 1 at $DIR/issue-75439.rs:10:38: 10:39
+          StorageDead(_4);                 // scope 1 at $DIR/issue-75439.rs:11:5: 11:6
+          goto -> bb9;                     // scope 1 at $DIR/issue-75439.rs:9:5: 13:6
+      }
+  
+      bb8: {
+          discriminant(_0) = 0;            // scope 1 at $DIR/issue-75439.rs:12:9: 12:13
           goto -> bb9;                     // scope 1 at $DIR/issue-75439.rs:9:5: 13:6
       }
   
       bb9: {
-          StorageDead(_4);                 // scope 1 at $DIR/issue-75439.rs:13:5: 13:6
           StorageDead(_2);                 // scope 0 at $DIR/issue-75439.rs:14:1: 14:2
           return;                          // scope 0 at $DIR/issue-75439.rs:14:2: 14:2
       }

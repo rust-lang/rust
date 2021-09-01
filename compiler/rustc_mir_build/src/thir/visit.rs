@@ -34,7 +34,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
             visitor.visit_expr(&visitor.thir()[value])
         }
         Box { value } => visitor.visit_expr(&visitor.thir()[value]),
-        If { cond, then, else_opt } => {
+        If { cond, then, else_opt, if_then_scope: _ } => {
             visitor.visit_expr(&visitor.thir()[cond]);
             visitor.visit_expr(&visitor.thir()[then]);
             if let Some(else_expr) = else_opt {

@@ -36,7 +36,7 @@
       }
   
       bb2: {
-          switchInt(move _3) -> [false: bb4, otherwise: bb3]; // scope 1 at $DIR/branch.rs:15:13: 20:6
+          switchInt(move _3) -> [false: bb4, otherwise: bb3]; // scope 1 at $DIR/branch.rs:15:16: 15:22
       }
   
       bb3: {

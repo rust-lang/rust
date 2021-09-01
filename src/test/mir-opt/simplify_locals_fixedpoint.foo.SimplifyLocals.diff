@@ -43,11 +43,11 @@
 -         _7 = Gt(move _8, const 42_u8);   // scope 0 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:20
 -         StorageDead(_8);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:5:19: 5:20
 -         StorageDead(_7);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:7:9: 7:10
+          StorageDead(_6);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:8:5: 8:6
           goto -> bb3;                     // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:5: 8:6
       }
   
       bb3: {
-          StorageDead(_6);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:8:5: 8:6
           drop(_1) -> bb4;                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:9:1: 9:2
       }
   

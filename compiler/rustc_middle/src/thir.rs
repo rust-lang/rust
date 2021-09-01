@@ -223,6 +223,7 @@ pub enum ExprKind<'tcx> {
     },
     /// An `if` expression.
     If {
+        if_then_scope: region::Scope,
         cond: ExprId,
         then: ExprId,
         else_opt: Option<ExprId>,
