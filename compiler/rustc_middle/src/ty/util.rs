@@ -336,16 +336,16 @@ impl<'tcx> TyCtxt<'tcx> {
         self.ensure().coherent_trait(drop_trait);
 
         let ty = self.type_of(adt_did);
-        let dtor_did = self.find_map_relevant_impl(drop_trait, ty, |impl_did| {
+        let (did, constness) = self.find_map_relevant_impl(drop_trait, ty, |impl_did| {
             if let Some(item) = self.associated_items(impl_did).in_definition_order().next() {
                 if validate(self, impl_did).is_ok() {
-                    return Some(item.def_id);
+                    return Some((item.def_id, self.impl_constness(impl_did)));
                 }
             }
             None
-        });
+        })?;
 
-        Some(ty::Destructor { did: dtor_did? })
+        Some(ty::Destructor { did, constness })
     }
 
     /// Returns the set of types that are required to be alive in
@@ -789,6 +789,35 @@ impl<'tcx> ty::TyS<'tcx> {
                 // query keys used.
                 let erased = tcx.normalize_erasing_regions(param_env, query_ty);
                 tcx.needs_drop_raw(param_env.and(erased))
+            }
+        }
+    }
+    /// If `ty.needs_non_const_drop(...)` returns true, then `ty` is definitely
+    /// non-copy and *might* have a non-const destructor attached; if it returns
+    /// `false`, then `ty` definitely has a const destructor or no destructor at all.
+    ///
+    /// (Note that this implies that if `ty` has a non-const destructor attached,
+    /// then `needs_non_const_drop` will definitely return `true` for `ty`.)
+    pub fn needs_non_const_drop(
+        &'tcx self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> bool {
+        // Avoid querying in simple cases.
+        match needs_drop_components(self, &tcx.data_layout) {
+            Err(AlwaysRequiresDrop) => true,
+            Ok(components) => {
+                let query_ty = match *components {
+                    [] => return false,
+                    // if we've got a single component, call the query with that
+                    // to increase the chance that we hit the query cache.
+                    [component_ty] => component_ty,
+                    _ => self,
+                };
+                // This doesn't depend on regions, so try to minimize distinct
+                // query keys used.
+                let erased = tcx.normalize_erasing_regions(param_env, query_ty);
+                tcx.needs_non_const_drop_raw(param_env.and(erased))
             }
         }
     }

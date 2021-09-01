@@ -5,7 +5,7 @@ use rustc_span::Span;
 
 use super::check::Qualifs;
 use super::ops::{self, NonConstOp};
-use super::qualifs::{NeedsDrop, Qualif};
+use super::qualifs::{NeedsNonConstDrop, Qualif};
 use super::ConstCx;
 
 /// Returns `true` if we should use the more precise live drop checker that runs after drop
@@ -78,7 +78,7 @@ impl Visitor<'tcx> for CheckLiveDrops<'mir, 'tcx> {
         match &terminator.kind {
             mir::TerminatorKind::Drop { place: dropped_place, .. } => {
                 let dropped_ty = dropped_place.ty(self.body, self.tcx).ty;
-                if !NeedsDrop::in_any_value_of_ty(self.ccx, dropped_ty) {
+                if !NeedsNonConstDrop::in_any_value_of_ty(self.ccx, dropped_ty) {
                     bug!(
                         "Drop elaboration left behind a Drop for a type that does not need dropping"
                     );

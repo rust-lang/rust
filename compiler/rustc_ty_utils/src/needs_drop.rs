@@ -1,22 +1,41 @@
 //! Check whether a type has (potentially) non-trivial drop glue.
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::util::{needs_drop_components, AlwaysRequiresDrop};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::Limit;
 use rustc_span::{sym, DUMMY_SP};
+use rustc_trait_selection::traits::{Obligation, ObligationCause, SelectionContext};
 
 type NeedsDropResult<T> = Result<T, AlwaysRequiresDrop>;
 
-fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-    let adt_fields =
-        move |adt_def: &ty::AdtDef| tcx.adt_drop_tys(adt_def.did).map(|tys| tys.iter());
+fn needs_drop_raw<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+    needs_non_const_drop: bool,
+) -> bool {
     // If we don't know a type doesn't need drop, for example if it's a type
     // parameter without a `Copy` bound, then we conservatively return that it
     // needs drop.
-    let res = NeedsDropTypes::new(tcx, query.param_env, query.value, adt_fields).next().is_some();
+    let res = if needs_non_const_drop {
+        let adt_components = move |adt_def: &ty::AdtDef| {
+            tcx.adt_drop_tys_non_const(adt_def.did).map(|tys| tys.iter())
+        };
+        NeedsDropTypes::new(tcx, query.param_env, query.value, adt_components, needs_non_const_drop)
+            .next()
+            .is_some()
+    } else {
+        let adt_components =
+            move |adt_def: &ty::AdtDef| tcx.adt_drop_tys(adt_def.did).map(|tys| tys.iter());
+        NeedsDropTypes::new(tcx, query.param_env, query.value, adt_components, needs_non_const_drop)
+            .next()
+            .is_some()
+    };
+
     debug!("needs_drop_raw({:?}) = {:?}", query, res);
     res
 }
@@ -27,9 +46,10 @@ fn has_significant_drop_raw<'tcx>(
 ) -> bool {
     let significant_drop_fields =
         move |adt_def: &ty::AdtDef| tcx.adt_significant_drop_tys(adt_def.did).map(|tys| tys.iter());
-    let res = NeedsDropTypes::new(tcx, query.param_env, query.value, significant_drop_fields)
-        .next()
-        .is_some();
+    let res =
+        NeedsDropTypes::new(tcx, query.param_env, query.value, significant_drop_fields, false)
+            .next()
+            .is_some();
     debug!("has_significant_drop_raw({:?}) = {:?}", query, res);
     res
 }
@@ -46,6 +66,7 @@ struct NeedsDropTypes<'tcx, F> {
     unchecked_tys: Vec<(Ty<'tcx>, usize)>,
     recursion_limit: Limit,
     adt_components: F,
+    needs_non_const_drop: bool,
 }
 
 impl<'tcx, F> NeedsDropTypes<'tcx, F> {
@@ -54,6 +75,7 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
         param_env: ty::ParamEnv<'tcx>,
         ty: Ty<'tcx>,
         adt_components: F,
+        needs_non_const_drop: bool,
     ) -> Self {
         let mut seen_tys = FxHashSet::default();
         seen_tys.insert(ty);
@@ -65,6 +87,7 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
             unchecked_tys: vec![(ty, 0)],
             recursion_limit: tcx.recursion_limit(),
             adt_components,
+            needs_non_const_drop,
         }
     }
 }
@@ -147,6 +170,35 @@ where
                             queue_type(self, subst_ty);
                         }
                     }
+                    ty::Param(_)
+                        if self.needs_non_const_drop && self.tcx.features().const_trait_impl =>
+                    {
+                        // Check if the param is bounded to have a `~const Drop` impl.
+                        let drop_trait = self.tcx.require_lang_item(hir::LangItem::Drop, None);
+                        let trait_ref = ty::TraitRef {
+                            def_id: drop_trait,
+                            substs: self.tcx.mk_substs_trait(component, &[]),
+                        };
+
+                        let obligation = Obligation::new(
+                            ObligationCause::dummy(),
+                            self.param_env,
+                            ty::Binder::dummy(ty::TraitPredicate {
+                                trait_ref,
+                                constness: ty::BoundConstness::ConstIfConst,
+                            }),
+                        );
+
+                        let implsrc = tcx.infer_ctxt().enter(|infcx| {
+                            let mut selcx =
+                                SelectionContext::with_constness(&infcx, hir::Constness::Const);
+                            selcx.select(&obligation)
+                        });
+
+                        if let Ok(Some(_)) = implsrc {
+                            return None;
+                        }
+                    }
                     ty::Array(..) | ty::Opaque(..) | ty::Projection(..) | ty::Param(_) => {
                         if ty == component {
                             // Return the type to the caller: they may be able
@@ -176,6 +228,7 @@ fn adt_drop_tys_helper(
     tcx: TyCtxt<'_>,
     def_id: DefId,
     adt_has_dtor: impl Fn(&ty::AdtDef) -> bool,
+    needs_non_const_drop: bool,
 ) -> Result<&ty::List<Ty<'_>>, AlwaysRequiresDrop> {
     let adt_components = move |adt_def: &ty::AdtDef| {
         if adt_def.is_manually_drop() {
@@ -194,7 +247,7 @@ fn adt_drop_tys_helper(
     let adt_ty = tcx.type_of(def_id);
     let param_env = tcx.param_env(def_id);
     let res: Result<Vec<_>, _> =
-        NeedsDropTypes::new(tcx, param_env, adt_ty, adt_components).collect();
+        NeedsDropTypes::new(tcx, param_env, adt_ty, adt_components, needs_non_const_drop).collect();
 
     debug!("adt_drop_tys(`{}`) = `{:?}`", tcx.def_path_str(def_id), res);
     res.map(|components| tcx.intern_type_list(&components))
@@ -202,7 +255,17 @@ fn adt_drop_tys_helper(
 
 fn adt_drop_tys(tcx: TyCtxt<'_>, def_id: DefId) -> Result<&ty::List<Ty<'_>>, AlwaysRequiresDrop> {
     let adt_has_dtor = |adt_def: &ty::AdtDef| adt_def.destructor(tcx).is_some();
-    adt_drop_tys_helper(tcx, def_id, adt_has_dtor)
+    adt_drop_tys_helper(tcx, def_id, adt_has_dtor, false)
+}
+
+fn adt_drop_tys_non_const(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+) -> Result<&ty::List<Ty<'_>>, AlwaysRequiresDrop> {
+    let adt_has_dtor = |adt_def: &ty::AdtDef| {
+        adt_def.destructor(tcx).map(|d| d.constness) == Some(hir::Constness::NotConst)
+    };
+    adt_drop_tys_helper(tcx, def_id, adt_has_dtor, true)
 }
 
 fn adt_significant_drop_tys(
@@ -215,14 +278,16 @@ fn adt_significant_drop_tys(
             .map(|dtor| !tcx.has_attr(dtor.did, sym::rustc_insignificant_dtor))
             .unwrap_or(false)
     };
-    adt_drop_tys_helper(tcx, def_id, adt_has_dtor)
+    adt_drop_tys_helper(tcx, def_id, adt_has_dtor, false)
 }
 
 pub(crate) fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
-        needs_drop_raw,
+        needs_drop_raw: |tcx, query| needs_drop_raw(tcx, query, false),
+        needs_non_const_drop_raw: |tcx, query| needs_drop_raw(tcx, query, true),
         has_significant_drop_raw,
         adt_drop_tys,
+        adt_drop_tys_non_const,
         adt_significant_drop_tys,
         ..*providers
     };

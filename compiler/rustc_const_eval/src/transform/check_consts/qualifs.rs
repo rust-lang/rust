@@ -17,7 +17,7 @@ pub fn in_any_value_of_ty(
 ) -> ConstQualifs {
     ConstQualifs {
         has_mut_interior: HasMutInterior::in_any_value_of_ty(cx, ty),
-        needs_drop: NeedsDrop::in_any_value_of_ty(cx, ty),
+        needs_drop: NeedsNonConstDrop::in_any_value_of_ty(cx, ty),
         custom_eq: CustomEq::in_any_value_of_ty(cx, ty),
         error_occured,
     }
@@ -97,10 +97,10 @@ impl Qualif for HasMutInterior {
 /// This must be ruled out (a) because we cannot run `Drop` during compile-time
 /// as that might not be a `const fn`, and (b) because implicit promotion would
 /// remove side-effects that occur as part of dropping that value.
-pub struct NeedsDrop;
+pub struct NeedsNonConstDrop;
 
-impl Qualif for NeedsDrop {
-    const ANALYSIS_NAME: &'static str = "flow_needs_drop";
+impl Qualif for NeedsNonConstDrop {
+    const ANALYSIS_NAME: &'static str = "flow_needs_nonconst_drop";
     const IS_CLEARED_ON_MOVE: bool = true;
 
     fn in_qualifs(qualifs: &ConstQualifs) -> bool {
@@ -112,7 +112,7 @@ impl Qualif for NeedsDrop {
     }
 
     fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> bool {
-        adt.has_dtor(cx.tcx)
+        adt.has_non_const_dtor(cx.tcx)
     }
 }
 
