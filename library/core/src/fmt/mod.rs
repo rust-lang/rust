@@ -402,7 +402,7 @@ impl<'a> Arguments<'a> {
 
         if self.args.is_empty() {
             pieces_length
-        } else if self.pieces[0] == "" && pieces_length < 16 {
+        } else if !self.pieces.is_empty() && self.pieces[0].is_empty() && pieces_length < 16 {
             // If the format string starts with an argument,
             // don't preallocate anything, unless length
             // of pieces is significant.
@@ -1163,7 +1163,7 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
                 }
                 // SAFETY: arg and args.args come from the same Arguments,
                 // which guarantees the indexes are always within bounds.
-                unsafe { run(&mut formatter, arg, &args.args) }?;
+                unsafe { run(&mut formatter, arg, args.args) }?;
                 idx += 1;
             }
         }
@@ -1409,7 +1409,7 @@ impl<'a> Formatter<'a> {
                 // we know that it can't panic. Use `get` + `unwrap_or` to avoid
                 // `unsafe` and otherwise don't emit any panic-related code
                 // here.
-                s.get(..i).unwrap_or(&s)
+                s.get(..i).unwrap_or(s)
             } else {
                 &s
             }
