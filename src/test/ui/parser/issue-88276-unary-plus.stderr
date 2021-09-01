@@ -5,7 +5,7 @@ LL |     let _ = +1;
    |             ^
    |             |
    |             unexpected `+`
-   |             help: remove the `+`
+   |             help: try removing the `+`
 
 error: leading `+` is not supported
   --> $DIR/issue-88276-unary-plus.rs:5:14
@@ -14,43 +14,43 @@ LL |     let _ = -+(1+2)*3;
    |              ^
    |              |
    |              unexpected `+`
-   |              help: remove the `+`
+   |              help: try removing the `+`
 
 error: leading `+` is not supported
-  --> $DIR/issue-88276-unary-plus.rs:6:13
-   |
-LL |     let _ = +-+(1+2)*3;
-   |             ^
-   |             |
-   |             unexpected `+`
-   |             help: remove the `+`
-
-error: leading `+` is not supported
-  --> $DIR/issue-88276-unary-plus.rs:6:15
-   |
-LL |     let _ = +-+(1+2)*3;
-   |               ^
-   |               |
-   |               unexpected `+`
-   |               help: remove the `+`
-
-error: leading `+` is not supported
-  --> $DIR/issue-88276-unary-plus.rs:8:14
+  --> $DIR/issue-88276-unary-plus.rs:6:14
    |
 LL |     let _ = -+-+(1+2)*3;
    |              ^
    |              |
    |              unexpected `+`
-   |              help: remove the `+`
+   |              help: try removing the `+`
 
 error: leading `+` is not supported
-  --> $DIR/issue-88276-unary-plus.rs:8:16
+  --> $DIR/issue-88276-unary-plus.rs:6:16
    |
 LL |     let _ = -+-+(1+2)*3;
    |                ^
    |                |
    |                unexpected `+`
-   |                help: remove the `+`
+   |                help: try removing the `+`
+
+error: leading `+` is not supported
+  --> $DIR/issue-88276-unary-plus.rs:8:18
+   |
+LL |     let _ = (1 + +2) * +3;
+   |                  ^
+   |                  |
+   |                  unexpected `+`
+   |                  help: try removing the `+`
+
+error: leading `+` is not supported
+  --> $DIR/issue-88276-unary-plus.rs:8:24
+   |
+LL |     let _ = (1 + +2) * +3;
+   |                        ^
+   |                        |
+   |                        unexpected `+`
+   |                        help: try removing the `+`
 
 error: leading `+` is not supported
   --> $DIR/issue-88276-unary-plus.rs:10:14
@@ -59,7 +59,7 @@ LL |     let _ = (+&"hello");
    |              ^
    |              |
    |              unexpected `+`
-   |              help: remove the `+`
+   |              help: try removing the `+`
 
 error: leading `+` is not supported
   --> $DIR/issue-88276-unary-plus.rs:11:13
@@ -68,7 +68,7 @@ LL |     let _ = +[+3, 4+6];
    |             ^
    |             |
    |             unexpected `+`
-   |             help: remove the `+`
+   |             help: try removing the `+`
 
 error: leading `+` is not supported
   --> $DIR/issue-88276-unary-plus.rs:11:15
@@ -77,7 +77,7 @@ LL |     let _ = +[+3, 4+6];
    |               ^
    |               |
    |               unexpected `+`
-   |               help: remove the `+`
+   |               help: try removing the `+`
 
 error: aborting due to 9 previous errors
 

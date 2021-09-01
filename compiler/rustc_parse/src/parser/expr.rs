@@ -165,9 +165,12 @@ impl<'a> Parser<'a> {
             if [token::DotDot, token::DotDotDot, token::DotDotEq].contains(&self.token.kind) {
                 return self.parse_prefix_range_expr(attrs);
             } else {
-                self.parse_prefix_expr(attrs)?
+                let result = self.parse_prefix_expr(attrs);
+                debug!("parse_prefix_expr result: {:?}", &result);
+                result?
             }
         };
+        debug!("parse_assoc_expr_with(lhs = {:?})", &lhs);
         let last_type_ascription_set = self.last_type_ascription.is_some();
 
         if !self.should_continue_as_assoc_expr(&lhs) {
@@ -175,8 +178,11 @@ impl<'a> Parser<'a> {
             return Ok(lhs);
         }
 
+        debug!("continue_as_assoc_expr");
+
         self.expected_tokens.push(TokenType::Operator);
         while let Some(op) = self.check_assoc_op() {
+            debug!("op: {:?}", op);
             // Adjust the span for interpolated LHS to point to the `$lhs` token
             // and not to what it refers to.
             let lhs_span = match self.prev_token.kind {
@@ -520,17 +526,25 @@ impl<'a> Parser<'a> {
                 make_it!(this, attrs, |this, _| this.parse_borrow_expr(lo))
             }
             token::BinOp(token::Plus) => {
-                this.struct_span_err(lo, "leading `+` is not supported")
-                    .span_label(lo, "unexpected `+`")
-                    .span_suggestion_short(
+                debug!("leading + detected: {:?}", lo);
+                let mut err = this.struct_span_err(lo, "leading `+` is not supported");
+                err.span_label(lo, "unexpected `+`");
+
+                // a block on the LHS might have been intended to be an expression instead
+                let sp = this.sess.source_map().start_point(lo);
+                if let Some(sp) = this.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
+                    this.sess.expr_parentheses_needed(&mut err, *sp);
+                } else {
+                   err.span_suggestion(
                         lo,
-                        "remove the `+`",
+                        "try removing the `+`",
                         "".to_string(),
                         Applicability::MachineApplicable,
-                    )
-                    .emit();
-                this.bump();
+                    );
+                }
+                err.emit();
 
+                this.bump();
                 this.parse_prefix_expr(None)
             } // `+expr`
             token::Ident(..) if this.token.is_keyword(kw::Box) => {
