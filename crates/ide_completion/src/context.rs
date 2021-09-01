@@ -93,10 +93,9 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) function_def: Option<ast::Fn>,
     /// The parent impl of the cursor position if it exists.
     pub(super) impl_def: Option<ast::Impl>,
-    pub(super) name_ref_syntax: Option<ast::NameRef>,
+    pub(super) name_syntax: Option<ast::NameLike>,
 
     // potentially set if we are completing a lifetime
-    pub(super) lifetime_syntax: Option<ast::Lifetime>,
     pub(super) lifetime_param_syntax: Option<ast::LifetimeParam>,
     pub(super) lifetime_allowed: bool,
     pub(super) is_label_ref: bool,
@@ -161,8 +160,7 @@ impl<'a> CompletionContext<'a> {
             expected_type: None,
             function_def: None,
             impl_def: None,
-            name_ref_syntax: None,
-            lifetime_syntax: None,
+            name_syntax: None,
             lifetime_param_syntax: None,
             lifetime_allowed: false,
             is_label_ref: false,
@@ -601,6 +599,8 @@ impl<'a> CompletionContext<'a> {
         self.completion_location =
             determine_location(&self.sema, original_file, offset, &name_like);
         self.prev_sibling = determine_prev_sibling(&name_like);
+        self.name_syntax =
+            find_node_at_offset(original_file, name_like.syntax().text_range().start());
         match name_like {
             ast::NameLike::Lifetime(lifetime) => {
                 self.classify_lifetime(original_file, lifetime, offset);
@@ -620,8 +620,6 @@ impl<'a> CompletionContext<'a> {
         lifetime: ast::Lifetime,
         offset: TextSize,
     ) {
-        self.lifetime_syntax =
-            find_node_at_offset(original_file, lifetime.syntax().text_range().start());
         if let Some(parent) = lifetime.syntax().parent() {
             if parent.kind() == ERROR {
                 return;
@@ -694,9 +692,6 @@ impl<'a> CompletionContext<'a> {
 
     fn classify_name_ref(&mut self, original_file: &SyntaxNode, name_ref: ast::NameRef) {
         self.fill_impl_def();
-
-        self.name_ref_syntax =
-            find_node_at_offset(original_file, name_ref.syntax().text_range().start());
 
         self.function_def = self
             .sema
