@@ -1038,6 +1038,24 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         it.for_each(|o| o.recursion_depth = cmp::max(min_depth, o.recursion_depth) + 1);
     }
 
+    fn check_recursion_depth<T: Display + TypeFoldable<'tcx>>(
+        &self,
+        depth: usize,
+        error_obligation: &Obligation<'tcx, T>,
+    ) -> Result<(), OverflowError> {
+        if !self.infcx.tcx.recursion_limit().value_within_limit(depth) {
+            match self.query_mode {
+                TraitQueryMode::Standard => {
+                    self.infcx.report_overflow_error(error_obligation, true);
+                }
+                TraitQueryMode::Canonical => {
+                    return Err(OverflowError);
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Checks that the recursion limit has not been exceeded.
     ///
     /// The weird return type of this function allows it to be used with the `try` (`?`)
@@ -1047,17 +1065,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &Obligation<'tcx, T>,
         error_obligation: &Obligation<'tcx, V>,
     ) -> Result<(), OverflowError> {
-        if !self.infcx.tcx.recursion_limit().value_within_limit(obligation.recursion_depth) {
-            match self.query_mode {
-                TraitQueryMode::Standard => {
-                    self.infcx().report_overflow_error(error_obligation, true);
-                }
-                TraitQueryMode::Canonical => {
-                    return Err(OverflowError);
-                }
-            }
-        }
-        Ok(())
+        self.check_recursion_depth(obligation.recursion_depth, error_obligation)
     }
 
     fn in_task<OP, R>(&mut self, op: OP) -> (R, DepNodeIndex)
@@ -1079,10 +1087,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         // Respect const trait obligations
         if self.is_trait_predicate_const(obligation.predicate.skip_binder()) {
-            if Some(obligation.predicate.skip_binder().trait_ref.def_id)
-                != tcx.lang_items().sized_trait()
-            // const Sized bounds are skipped
-            {
                 match candidate {
                     // const impl
                     ImplCandidate(def_id)
@@ -1097,12 +1101,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // generator, this will raise error in other places
                     // or ignore error with const_async_blocks feature
                     GeneratorCandidate => {}
+                    ConstDropCandidate => {}
                     _ => {
                         // reject all other types of candidates
                         return Err(Unimplemented);
                     }
                 }
-            }
         }
         // Treat negative impls as unimplemented, and reservation impls as ambiguity.
         if let ImplCandidate(def_id) = candidate {
@@ -1476,14 +1480,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             (
                 BuiltinCandidate { has_nested: false }
                 | DiscriminantKindCandidate
-                | PointeeCandidate,
+                | PointeeCandidate
+                | ConstDropCandidate,
                 _,
             ) => true,
             (
                 _,
                 BuiltinCandidate { has_nested: false }
                 | DiscriminantKindCandidate
-                | PointeeCandidate,
+                | PointeeCandidate
+                | ConstDropCandidate,
             ) => false,
 
             (ParamCandidate(other), ParamCandidate(victim)) => {

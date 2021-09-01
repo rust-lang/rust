@@ -28,7 +28,7 @@ use crate::traits::TraitNotObjectSafe;
 use crate::traits::VtblSegment;
 use crate::traits::{BuiltinDerivedObligation, ImplDerivedObligation};
 use crate::traits::{
-    ImplSourceAutoImplData, ImplSourceBuiltinData, ImplSourceClosureData,
+    ImplSourceAutoImplData, ImplSourceBuiltinData, ImplSourceClosureData, ImplSourceConstDropData,
     ImplSourceDiscriminantKindData, ImplSourceFnPointerData, ImplSourceGeneratorData,
     ImplSourceObjectData, ImplSourcePointeeData, ImplSourceTraitAliasData,
     ImplSourceTraitUpcastingData, ImplSourceUserDefinedData,
@@ -124,6 +124,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let data = self.confirm_trait_upcasting_unsize_candidate(obligation, idx)?;
                 Ok(ImplSource::TraitUpcasting(data))
             }
+
+            ConstDropCandidate => Ok(ImplSource::ConstDrop(ImplSourceConstDropData)),
         }
     }
 
