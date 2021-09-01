@@ -7,6 +7,8 @@ def_reg_class! {
         reg,
         reg_nonzero,
         freg,
+        cr,
+        xer,
     }
 }
 
@@ -44,6 +46,7 @@ impl PowerPCInlineAsmRegClass {
                 }
             }
             Self::freg => types! { _: F32, F64; },
+            Self::cr | Self::xer => &[],
         }
     }
 }
@@ -108,6 +111,16 @@ def_regs! {
         f29: freg = ["f29", "fr29"],
         f30: freg = ["f30", "fr30"],
         f31: freg = ["f31", "fr31"],
+        cr: cr = ["cr"],
+        cr0: cr = ["cr0"],
+        cr1: cr = ["cr1"],
+        cr2: cr = ["cr2"],
+        cr3: cr = ["cr3"],
+        cr4: cr = ["cr4"],
+        cr5: cr = ["cr5"],
+        cr6: cr = ["cr6"],
+        cr7: cr = ["cr7"],
+        xer: xer = ["xer"],
         #error = ["r1", "1", "sp"] =>
             "the stack pointer cannot be used as an operand for inline asm",
         #error = ["r2", "2"] =>
@@ -136,17 +149,55 @@ impl PowerPCInlineAsmReg {
         _arch: InlineAsmArch,
         _modifier: Option<char>,
     ) -> fmt::Result {
+        macro_rules! do_emit {
+            (
+                $($(($reg:ident, $value:literal)),*;)*
+            ) => {
+                out.write_str(match self {
+                    $($(Self::$reg => $value,)*)*
+                })
+            };
+        }
         // Strip off the leading prefix.
-        if self as u32 <= Self::r28 as u32 {
-            let index = self as u32 - Self::r28 as u32;
-            write!(out, "{}", index)
-        } else if self as u32 >= Self::f0 as u32 && self as u32 <= Self::f31 as u32 {
-            let index = self as u32 - Self::f31 as u32;
-            write!(out, "{}", index)
-        } else {
-            unreachable!()
+        do_emit! {
+            (r0, "0"), (r3, "3"), (r4, "4"), (r5, "5"), (r6, "6"), (r7, "7");
+            (r8, "8"), (r9, "9"), (r10, "10"), (r11, "11"), (r12, "12"), (r14, "14"), (r15, "15");
+            (r16, "16"), (r17, "17"), (r18, "18"), (r19, "19"), (r20, "20"), (r21, "21"), (r22, "22"), (r23, "23");
+            (r24, "24"), (r25, "25"), (r26, "26"), (r27, "27"), (r28, "28");
+            (f0, "0"), (f1, "1"), (f2, "2"), (f3, "3"), (f4, "4"), (f5, "5"), (f6, "6"), (f7, "7");
+            (f8, "8"), (f9, "9"), (f10, "10"), (f11, "11"), (f12, "12"), (f13, "13"), (f14, "14"), (f15, "15");
+            (f16, "16"), (f17, "17"), (f18, "18"), (f19, "19"), (f20, "20"), (f21, "21"), (f22, "22"), (f23, "23");
+            (f24, "24"), (f25, "25"), (f26, "26"), (f27, "27"), (f28, "28"), (f29, "29"), (f30, "30"), (f31, "31");
+            (cr, "cr");
+            (cr0, "0"), (cr1, "1"), (cr2, "2"), (cr3, "3"), (cr4, "4"), (cr5, "5"), (cr6, "6"), (cr7, "7");
+            (xer, "xer");
         }
     }
 
-    pub fn overlapping_regs(self, mut _cb: impl FnMut(PowerPCInlineAsmReg)) {}
+    pub fn overlapping_regs(self, mut cb: impl FnMut(PowerPCInlineAsmReg)) {
+        macro_rules! reg_conflicts {
+            (
+                $(
+                    $full:ident : $($field:ident)*
+                ),*;
+            ) => {
+                match self {
+                    $(
+                        Self::$full => {
+                            cb(Self::$full);
+                            $(cb(Self::$field);)*
+                        }
+                        $(Self::$field)|* => {
+                            cb(Self::$full);
+                            cb(self);
+                        }
+                    )*
+                    r => cb(r),
+                }
+            };
+        }
+        reg_conflicts! {
+            cr : cr0 cr1 cr2 cr3 cr4 cr5 cr6 cr7;
+        }
+    }
 }
