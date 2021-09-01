@@ -1745,7 +1745,7 @@ fn test_send() {
     }
 }
 
-#[allow(dead_code)]
+#[test]
 fn test_ord_absence() {
     fn map<K>(mut map: BTreeMap<K, ()>) {
         map.is_empty();
@@ -1784,6 +1784,12 @@ fn test_ord_absence() {
     fn map_clone<K: Clone>(mut map: BTreeMap<K, ()>) {
         map.clone_from(&map.clone());
     }
+
+    #[derive(Debug, Clone)]
+    struct NonOrd;
+    map(BTreeMap::<NonOrd, _>::new());
+    map_debug(BTreeMap::<NonOrd, _>::new());
+    map_clone(BTreeMap::<NonOrd, _>::default());
 }
 
 #[test]
