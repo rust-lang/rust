@@ -6,14 +6,14 @@
 // cdb-command: dx r1
 // cdb-check:r1               : (0xa..0xc) [Type: core::ops::range::Range<u32>]
 // cdb-command: dx r2
-// cdb-check:r2               : 0x14 [Type: core::ops::range::Range<u64> *]
+// cdb-check:r2               : (0x14..0x1e) [Type: core::ops::range::Range<u64>]
 
 // cdb-command: g
 
 // cdb-command: dx r1
 // cdb-check:r1               : (0x9..0x64) [Type: core::ops::range::Range<u32>]
 // cdb-command: dx r2
-// cdb-check:r2               : 0xc [Type: core::ops::range::Range<u64> *]
+// cdb-check:r2               : (0xc..0x5a) [Type: core::ops::range::Range<u64>]
 
 // cdb-command: g
 
@@ -22,8 +22,9 @@
 // cdb-check:    [variant]        : Some
 // cdb-check:    [+0x004] __0              : 0x4d2 [Type: [...]]
 // cdb-command: dx o2
-// cdb-check:o2               : 0x1 [Type: enum$<core::option::Option<u64> > *]
-// cdb-check:    [variant]
+// cdb-check:o2               : Some [Type: enum$<core::option::Option<u64> >]
+// cdb-check:    [variant]        : Some
+// cdb-check:    [+0x008] __0              : 0x162e [Type: unsigned __int64]
 
 // cdb-command: g
 
@@ -32,9 +33,9 @@
 // cdb-check:    [0]              : 0xa [Type: unsigned int]
 // cdb-check:    [1]              : 0x14 [Type: unsigned int]
 // cdb-command: dx t2
-// cdb-check:t2               : 0x1e [Type: tuple$<u64,u64> *]
-// cdb-check:    [0]              : Unable to read memory at Address 0x1e
-// cdb-check:    [1]              : Unable to read memory at Address 0x26
+// cdb-check:t2               : (0x1e, 0x28) [Type: tuple$<u64,u64>]
+// cdb-check:    [0]              : 0x1e [Type: unsigned __int64]
+// cdb-check:    [1]              : 0x28 [Type: unsigned __int64]
 
 // cdb-command: g
 

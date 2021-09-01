@@ -3,9 +3,11 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir;
 use rustc_middle::ty;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, Span};
+use rustc_target::abi::Abi;
 use rustc_target::abi::Size;
 
 use super::operand::{OperandRef, OperandValue};
@@ -368,21 +370,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         {
                             let arg_index = place.local.index() - 1;
                             if target_is_msvc {
-                                // Rust compiler decomposes every &str or slice argument into two components:
-                                // a pointer to the memory address where the data is stored and a usize representing
-                                // the length of the str (or slice). These components will later be used to reconstruct
-                                // the original argument inside the body of the function that owns it (see the
-                                // definition of debug_introduce_local for more details).
-                                //
-                                // Since the original argument is declared inside a function rather than being passed
-                                // in as an argument, it must be marked as a LocalVariable for MSVC debuggers to visualize
-                                // its data correctly. (See issue #81894 for an in-depth description of the problem).
-                                match *var_ty.kind() {
-                                    ty::Ref(_, inner_type, _) => match *inner_type.kind() {
-                                        ty::Slice(_) | ty::Str => VariableKind::LocalVariable,
-                                        _ => VariableKind::ArgumentVariable(arg_index + 1),
-                                    },
-                                    _ => VariableKind::ArgumentVariable(arg_index + 1),
+                                // ScalarPair parameters are spilled to the stack so they need to
+                                // be marked as a `LocalVariable` for MSVC debuggers to visualize
+                                // their data correctly. (See #81894 & #88625)
+                                let var_ty_layout = self.cx.layout_of(var_ty);
+                                if let Abi::ScalarPair(_, _) = var_ty_layout.abi {
+                                    VariableKind::LocalVariable
+                                } else {
+                                    VariableKind::ArgumentVariable(arg_index + 1)
                                 }
                             } else {
                                 // FIXME(eddyb) shouldn't `ArgumentVariable` indices be
