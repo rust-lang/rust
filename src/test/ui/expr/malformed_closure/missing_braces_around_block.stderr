@@ -1,4 +1,4 @@
-error: closure body that contain statements must be surrounded by braces
+error: closure bodies that contain statements must be surrounded by braces
   --> $DIR/missing_braces_around_block.rs:14:26
    |
 LL |     (1..num).reduce(|a, b|

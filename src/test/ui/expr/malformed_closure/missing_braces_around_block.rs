@@ -12,7 +12,7 @@
 fn main() {
     let num = 5;
     (1..num).reduce(|a, b|
-        //~^ ERROR: closure body that contain statements must be surrounded by braces
+        //~^ ERROR: closure bodies that contain statements must be surrounded by braces
         println!("{}", a);
         a * b
     ).unwrap();

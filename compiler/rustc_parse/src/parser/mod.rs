@@ -885,7 +885,7 @@ impl<'a> Parser<'a> {
         }
 
         expect_err.set_primary_message(
-            "closure body that contain statements must be surrounded by braces",
+            "closure bodies that contain statements must be surrounded by braces",
         );
 
         let preceding_pipe_span = right_pipe_span;
