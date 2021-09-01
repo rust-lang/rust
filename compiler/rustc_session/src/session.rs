@@ -131,9 +131,8 @@ pub struct Session {
     pub target: Target,
     pub host: Target,
     pub opts: config::Options,
-    pub host_tlib_path: SearchPath,
-    /// `None` if the host and target are the same.
-    pub target_tlib_path: Option<SearchPath>,
+    pub host_tlib_path: Lrc<SearchPath>,
+    pub target_tlib_path: Lrc<SearchPath>,
     pub parse_sess: ParseSess,
     pub sysroot: PathBuf,
     /// The name of the root source file of the crate, in the local file system.
@@ -784,8 +783,7 @@ impl Session {
             &self.sysroot,
             self.opts.target_triple.triple(),
             &self.opts.search_paths,
-            // `target_tlib_path == None` means it's the same as `host_tlib_path`.
-            self.target_tlib_path.as_ref().unwrap_or(&self.host_tlib_path),
+            &self.target_tlib_path,
             kind,
         )
     }
@@ -1254,11 +1252,13 @@ pub fn build_session(
 
     let host_triple = config::host_triple();
     let target_triple = sopts.target_triple.triple();
-    let host_tlib_path = SearchPath::from_sysroot_and_triple(&sysroot, host_triple);
+    let host_tlib_path = Lrc::new(SearchPath::from_sysroot_and_triple(&sysroot, host_triple));
     let target_tlib_path = if host_triple == target_triple {
-        None
+        // Use the same `SearchPath` if host and target triple are identical to avoid unnecessary
+        // rescanning of the target lib path and an unnecessary allocation.
+        host_tlib_path.clone()
     } else {
-        Some(SearchPath::from_sysroot_and_triple(&sysroot, target_triple))
+        Lrc::new(SearchPath::from_sysroot_and_triple(&sysroot, target_triple))
     };
 
     let file_path_mapping = sopts.file_path_mapping();
