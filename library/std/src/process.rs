@@ -1491,6 +1491,92 @@ impl From<fs::File> for Stdio {
     }
 }
 
+#[stable(feature = "stdio_from_stdio", since = "1.58.0")]
+impl From<io::Stdin> for Stdio {
+    /// Specify to inherit our stdin.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// #![feature(exit_status_error)]
+    /// use std::io;
+    /// use std::process::Command;
+    ///
+    /// # fn test() -> Result<(), Box<dyn std::error::Error>> {
+    /// let output = Command::new("wc").arg("-l")
+    ///     .stdin(io::stdin())
+    ///     .output()?;
+    /// output.status.exit_ok()?;
+    /// let input_lines: u64 = std::str::from_utf8(&output.stdout)?.trim().parse()?;
+    /// eprintln!("our standard input had {} lines", input_lines);
+    /// # Ok(())
+    /// # }
+    /// ```
+    fn from(inherit: io::Stdin) -> Stdio {
+        Stdio::from_inner(inherit.into())
+    }
+}
+
+#[stable(feature = "stdio_from_stdio", since = "1.58.0")]
+impl From<io::Stdout> for Stdio {
+    /// Redirect command stdout/stderr to our stdout
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(exit_status_error)]
+    /// use std::io;
+    /// use std::process::Command;
+    ///
+    /// # fn test() -> Result<(), Box<dyn std::error::Error>> {
+    /// let output = Command::new("whoami")
+    // "whoami" is a command which exists on both Unix and Winodows,
+    // and which succeeds, producing some stdout output but no stderr.
+    ///     .stdout(io::stdout())
+    ///     .output()?;
+    /// output.status.exit_ok()?;
+    /// assert!(output.stdout.is_empty());
+    /// # Ok(())
+    /// # }
+    /// #
+    /// # if cfg!(unix) {
+    /// #     test().unwrap();
+    /// # }
+    /// ```
+    fn from(inherit: io::Stdout) -> Stdio {
+        Stdio::from_inner(inherit.into())
+    }
+}
+
+#[stable(feature = "stdio_from_stdio", since = "1.58.0")]
+impl From<io::Stderr> for Stdio {
+    /// Redirect command stdout/stderr to our stderr
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(exit_status_error)]
+    /// use std::io;
+    /// use std::process::Command;
+    ///
+    /// # fn test() -> Result<(), Box<dyn std::error::Error>> {
+    /// let output = Command::new("whoami")
+    ///     .stdout(io::stderr())
+    ///     .output()?;
+    /// output.status.exit_ok()?;
+    /// assert!(output.stdout.is_empty());
+    /// # Ok(())
+    /// # }
+    /// #
+    /// # if cfg!(unix) {
+    /// #     test().unwrap();
+    /// # }
+    /// ```
+    fn from(inherit: io::Stderr) -> Stdio {
+        Stdio::from_inner(inherit.into())
+    }
+}
+
 /// Describes the result of a process after it has terminated.
 ///
 /// This `struct` is used to represent the exit status or other termination of a child process.
