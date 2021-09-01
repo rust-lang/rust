@@ -835,6 +835,12 @@ impl ty::layout::HasTyCtxt<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 }
 
+impl<'tcx, 'll> HasParamEnv<'tcx> for CodegenCx<'ll, 'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        ty::ParamEnv::reveal_all()
+    }
+}
+
 impl LayoutOfHelpers<'tcx> for CodegenCx<'ll, 'tcx> {
     type LayoutOfResult = TyAndLayout<'tcx>;
 
@@ -845,11 +851,5 @@ impl LayoutOfHelpers<'tcx> for CodegenCx<'ll, 'tcx> {
         } else {
             span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
         }
-    }
-}
-
-impl<'tcx, 'll> HasParamEnv<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        ty::ParamEnv::reveal_all()
     }
 }
