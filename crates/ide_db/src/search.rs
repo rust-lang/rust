@@ -442,9 +442,7 @@ impl<'a> FindUsages<'a> {
                         continue;
                     }
 
-                    if let Some(ast::NameLike::NameRef(name_ref)) =
-                        sema.find_node_at_offset_with_descend(&tree, offset)
-                    {
+                    for name_ref in sema.find_nodes_at_offset_with_descend(&tree, offset) {
                         if self.found_self_module_name_ref(&name_ref, sink) {
                             return;
                         }

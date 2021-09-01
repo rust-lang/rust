@@ -1,9 +1,11 @@
 use hir::{AsAssocItem, Impl, Semantics};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
+    helpers::pick_best_token,
     RootDatabase,
 };
-use syntax::{ast, AstNode};
+use itertools::Itertools;
+use syntax::{ast, AstNode, SyntaxKind::*, T};
 
 use crate::{display::TryToNav, FilePosition, NavigationTarget, RangeInfo};
 
@@ -26,52 +28,71 @@ pub(crate) fn goto_implementation(
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax().clone();
 
-    let node = sema.find_node_at_offset_with_descend(&syntax, position.offset)?;
-    let def = match &node {
-        ast::NameLike::Name(name) => NameClass::classify(&sema, name).map(|class| match class {
-            NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-            NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
-                Definition::Local(local_def)
-            }
-        }),
-        ast::NameLike::NameRef(name_ref) => {
-            NameRefClass::classify(&sema, name_ref).map(|class| match class {
-                NameRefClass::Definition(def) => def,
-                NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
-                    Definition::Local(local_ref)
+    let original_token =
+        pick_best_token(syntax.token_at_offset(position.offset), |kind| match kind {
+            IDENT | T![self] => 1,
+            _ => 0,
+        })?;
+    let range = original_token.text_range();
+    let navs =
+        sema.descend_into_macros_many(original_token)
+            .into_iter()
+            .filter_map(|token| token.parent().and_then(ast::NameLike::cast))
+            .filter_map(|node| {
+                let def = match &node {
+                    ast::NameLike::Name(name) => {
+                        NameClass::classify(&sema, name).map(|class| match class {
+                            NameClass::Definition(it) | NameClass::ConstReference(it) => it,
+                            NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
+                                Definition::Local(local_def)
+                            }
+                        })
+                    }
+                    ast::NameLike::NameRef(name_ref) => NameRefClass::classify(&sema, name_ref)
+                        .map(|class| match class {
+                            NameRefClass::Definition(def) => def,
+                            NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
+                                Definition::Local(local_ref)
+                            }
+                        }),
+                    ast::NameLike::Lifetime(_) => None,
+                }?;
+
+                match def {
+                    Definition::ModuleDef(def) => Some(def),
+                    _ => None,
                 }
             })
-        }
-        ast::NameLike::Lifetime(_) => None,
-    }?;
+            .unique()
+            .filter_map(|def| {
+                let navs = match def {
+                    hir::ModuleDef::Trait(trait_) => impls_for_trait(&sema, trait_),
+                    hir::ModuleDef::Adt(adt) => impls_for_ty(&sema, adt.ty(sema.db)),
+                    hir::ModuleDef::TypeAlias(alias) => impls_for_ty(&sema, alias.ty(sema.db)),
+                    hir::ModuleDef::BuiltinType(builtin) => {
+                        let module = sema.to_module_def(position.file_id)?;
+                        impls_for_ty(&sema, builtin.ty(sema.db, module))
+                    }
+                    hir::ModuleDef::Function(f) => {
+                        let assoc = f.as_assoc_item(sema.db)?;
+                        let name = assoc.name(sema.db)?;
+                        let trait_ = assoc.containing_trait_or_trait_impl(sema.db)?;
+                        impls_for_trait_item(&sema, trait_, name)
+                    }
+                    hir::ModuleDef::Const(c) => {
+                        let assoc = c.as_assoc_item(sema.db)?;
+                        let name = assoc.name(sema.db)?;
+                        let trait_ = assoc.containing_trait_or_trait_impl(sema.db)?;
+                        impls_for_trait_item(&sema, trait_, name)
+                    }
+                    _ => return None,
+                };
+                Some(navs)
+            })
+            .flatten()
+            .collect();
 
-    let def = match def {
-        Definition::ModuleDef(def) => def,
-        _ => return None,
-    };
-    let navs = match def {
-        hir::ModuleDef::Trait(trait_) => impls_for_trait(&sema, trait_),
-        hir::ModuleDef::Adt(adt) => impls_for_ty(&sema, adt.ty(sema.db)),
-        hir::ModuleDef::TypeAlias(alias) => impls_for_ty(&sema, alias.ty(sema.db)),
-        hir::ModuleDef::BuiltinType(builtin) => {
-            let module = sema.to_module_def(position.file_id)?;
-            impls_for_ty(&sema, builtin.ty(sema.db, module))
-        }
-        hir::ModuleDef::Function(f) => {
-            let assoc = f.as_assoc_item(sema.db)?;
-            let name = assoc.name(sema.db)?;
-            let trait_ = assoc.containing_trait_or_trait_impl(sema.db)?;
-            impls_for_trait_item(&sema, trait_, name)
-        }
-        hir::ModuleDef::Const(c) => {
-            let assoc = c.as_assoc_item(sema.db)?;
-            let name = assoc.name(sema.db)?;
-            let trait_ = assoc.containing_trait_or_trait_impl(sema.db)?;
-            impls_for_trait_item(&sema, trait_, name)
-        }
-        _ => return None,
-    };
-    Some(RangeInfo { range: node.syntax().text_range(), info: navs })
+    Some(RangeInfo { range, info: navs })
 }
 
 fn impls_for_ty(sema: &Semantics<RootDatabase>, ty: hir::Type) -> Vec<NavigationTarget> {
