@@ -199,9 +199,10 @@ impl Clean<GenericBound> for (ty::PolyTraitRef<'_>, &[TypeBinding]) {
             .collect_referenced_late_bound_regions(&poly_trait_ref)
             .into_iter()
             .filter_map(|br| match br {
-                ty::BrNamed(_, name) => {
-                    Some(GenericParamDef { name, kind: GenericParamDefKind::Lifetime })
-                }
+                ty::BrNamed(_, name) => Some(GenericParamDef {
+                    name,
+                    kind: GenericParamDefKind::Lifetime { outlives: vec![] },
+                }),
                 _ => None,
             })
             .collect();
@@ -412,7 +413,9 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
 impl Clean<GenericParamDef> for ty::GenericParamDef {
     fn clean(&self, cx: &mut DocContext<'_>) -> GenericParamDef {
         let (name, kind) = match self.kind {
-            ty::GenericParamDefKind::Lifetime => (self.name, GenericParamDefKind::Lifetime),
+            ty::GenericParamDefKind::Lifetime => {
+                (self.name, GenericParamDefKind::Lifetime { outlives: vec![] })
+            }
             ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
                 let default = if has_default {
                     let mut default = cx.tcx.type_of(self.def_id).clean(cx);
@@ -462,21 +465,15 @@ impl Clean<GenericParamDef> for hir::GenericParam<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> GenericParamDef {
         let (name, kind) = match self.kind {
             hir::GenericParamKind::Lifetime { .. } => {
-                let name = if !self.bounds.is_empty() {
-                    let mut bounds = self.bounds.iter().map(|bound| match bound {
-                        hir::GenericBound::Outlives(lt) => lt,
+                let outlives = self
+                    .bounds
+                    .iter()
+                    .map(|bound| match bound {
+                        hir::GenericBound::Outlives(lt) => lt.clean(cx),
                         _ => panic!(),
-                    });
-                    let name = bounds.next().expect("no more bounds").name.ident();
-                    let mut s = format!("{}: {}", self.name.ident(), name);
-                    for bound in bounds {
-                        s.push_str(&format!(" + {}", bound.name.ident()));
-                    }
-                    Symbol::intern(&s)
-                } else {
-                    self.name.ident().name
-                };
-                (name, GenericParamDefKind::Lifetime)
+                    })
+                    .collect();
+                (self.name.ident().name, GenericParamDefKind::Lifetime { outlives })
             }
             hir::GenericParamKind::Type { ref default, synthetic } => (
                 self.name.ident().name,
@@ -536,7 +533,7 @@ impl Clean<Generics> for hir::Generics<'_> {
             .map(|param| {
                 let param: GenericParamDef = param.clean(cx);
                 match param.kind {
-                    GenericParamDefKind::Lifetime => unreachable!(),
+                    GenericParamDefKind::Lifetime { .. } => unreachable!(),
                     GenericParamDefKind::Type { did, ref bounds, .. } => {
                         cx.impl_trait_bounds.insert(did.into(), bounds.clone());
                     }
@@ -569,7 +566,7 @@ impl Clean<Generics> for hir::Generics<'_> {
                     {
                         for param in &mut generics.params {
                             match param.kind {
-                                GenericParamDefKind::Lifetime => {}
+                                GenericParamDefKind::Lifetime { .. } => {}
                                 GenericParamDefKind::Type { bounds: ref mut ty_bounds, .. } => {
                                     if &param.name == name {
                                         mem::swap(bounds, ty_bounds);

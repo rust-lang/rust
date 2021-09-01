@@ -155,9 +155,23 @@ impl clean::GenericParamDef {
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
-        display_fn(move |f| match self.kind {
-            clean::GenericParamDefKind::Lifetime => write!(f, "{}", self.name),
-            clean::GenericParamDefKind::Type { ref bounds, ref default, .. } => {
+        display_fn(move |f| match &self.kind {
+            clean::GenericParamDefKind::Lifetime { outlives } => {
+                write!(f, "{}", self.name)?;
+
+                if !outlives.is_empty() {
+                    f.write_str(": ")?;
+                    for (i, lt) in outlives.iter().enumerate() {
+                        if i != 0 {
+                            f.write_str(" + ")?;
+                        }
+                        write!(f, "{}", lt.print())?;
+                    }
+                }
+
+                Ok(())
+            }
+            clean::GenericParamDefKind::Type { bounds, default, .. } => {
                 f.write_str(&*self.name.as_str())?;
 
                 if !bounds.is_empty() {
@@ -178,7 +192,7 @@ impl clean::GenericParamDef {
 
                 Ok(())
             }
-            clean::GenericParamDefKind::Const { ref ty, ref default, .. } => {
+            clean::GenericParamDefKind::Const { ty, default, .. } => {
                 if f.alternate() {
                     write!(f, "const {}: {:#}", self.name, ty.print(cx))?;
                 } else {

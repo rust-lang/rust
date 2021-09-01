@@ -331,9 +331,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 match br {
                     // We only care about named late bound regions, as we need to add them
                     // to the 'for<>' section
-                    ty::BrNamed(_, name) => {
-                        Some(GenericParamDef { name, kind: GenericParamDefKind::Lifetime })
-                    }
+                    ty::BrNamed(_, name) => Some(GenericParamDef {
+                        name,
+                        kind: GenericParamDefKind::Lifetime { outlives: vec![] },
+                    }),
                     _ => None,
                 }
             })
@@ -659,7 +660,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         bounds.insert(0, GenericBound::maybe_sized(self.cx));
                     }
                 }
-                GenericParamDefKind::Lifetime => {}
+                GenericParamDefKind::Lifetime { .. } => {}
                 GenericParamDefKind::Const { ref mut default, .. } => {
                     // We never want something like `impl<const N: usize = 10>`
                     default.take();
