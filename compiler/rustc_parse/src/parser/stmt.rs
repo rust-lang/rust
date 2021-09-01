@@ -21,8 +21,6 @@ use rustc_span::symbol::{kw, sym};
 
 use std::mem;
 
-use tracing::debug;
-
 impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.
     /// e.g., a `StmtKind::Semi` parses to a `StmtKind::Expr`, leaving the trailing `;` unconsumed.
@@ -420,7 +418,6 @@ impl<'a> Parser<'a> {
             if self.token == token::Eof {
                 break;
             }
-            debug!("parsing statements, stmts: {:?}", &stmts);
             let stmt = match self.parse_full_stmt(recover) {
                 Err(mut err) if recover.yes() => {
                     self.maybe_annotate_with_ascription(&mut err, false);

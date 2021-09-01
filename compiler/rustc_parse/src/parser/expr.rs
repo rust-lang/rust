@@ -23,8 +23,6 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Pos};
 use std::mem;
 
-use tracing::debug;
-
 /// Possibly accepts an `token::Interpolated` expression (a pre-parsed expression
 /// dropped into the token stream, which happens while parsing the result of
 /// macro expansion). Placement of these is not as complex as I feared it would
@@ -165,12 +163,9 @@ impl<'a> Parser<'a> {
             if [token::DotDot, token::DotDotDot, token::DotDotEq].contains(&self.token.kind) {
                 return self.parse_prefix_range_expr(attrs);
             } else {
-                let result = self.parse_prefix_expr(attrs);
-                debug!("parse_prefix_expr result: {:?}", &result);
-                result?
+                self.parse_prefix_expr(attrs)?
             }
         };
-        debug!("parse_assoc_expr_with(lhs = {:?})", &lhs);
         let last_type_ascription_set = self.last_type_ascription.is_some();
 
         if !self.should_continue_as_assoc_expr(&lhs) {
@@ -178,11 +173,8 @@ impl<'a> Parser<'a> {
             return Ok(lhs);
         }
 
-        debug!("continue_as_assoc_expr");
-
         self.expected_tokens.push(TokenType::Operator);
         while let Some(op) = self.check_assoc_op() {
-            debug!("op: {:?}", op);
             // Adjust the span for interpolated LHS to point to the `$lhs` token
             // and not to what it refers to.
             let lhs_span = match self.prev_token.kind {
@@ -363,7 +355,6 @@ impl<'a> Parser<'a> {
     /// but the next token implies this should be parsed as an expression.
     /// For example: `if let Some(x) = x { x } else { 0 } / 2`.
     fn error_found_expr_would_be_stmt(&self, lhs: &Expr) {
-        debug!("error_found_expr_would_be_stmt(lhs: {:?})", lhs);
         let mut err = self.struct_span_err(
             self.token.span,
             &format!("expected expression, found `{}`", pprust::token_to_string(&self.token),),
@@ -526,7 +517,6 @@ impl<'a> Parser<'a> {
                 make_it!(this, attrs, |this, _| this.parse_borrow_expr(lo))
             }
             token::BinOp(token::Plus) => {
-                debug!("leading + detected: {:?}", lo);
                 let mut err = this.struct_span_err(lo, "leading `+` is not supported");
                 err.span_label(lo, "unexpected `+`");
 
