@@ -2012,9 +2012,14 @@ impl Path {
 crate enum GenericArg {
     Lifetime(Lifetime),
     Type(Type),
-    Const(Constant),
+    Const(Box<Constant>),
     Infer,
 }
+
+// `GenericArg` can occur many times in a single `Path`, so make sure it
+// doesn't increase in size unexpectedly.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(GenericArg, 80);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate enum GenericArgs {
