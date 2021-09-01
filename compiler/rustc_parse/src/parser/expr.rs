@@ -1719,7 +1719,7 @@ impl<'a> Parser<'a> {
         let capture_clause = self.parse_capture_clause()?;
         let decl = self.parse_fn_block_decl()?;
         let decl_hi = self.prev_token.span;
-        let body = match decl.output {
+        let mut body = match decl.output {
             FnRetTy::Default(_) => {
                 let restrictions = self.restrictions - Restrictions::STMT_EXPR;
                 self.parse_expr_res(restrictions, None)?
@@ -1744,8 +1744,7 @@ impl<'a> Parser<'a> {
             // It is likely that the closure body is a block but where the
             // braces have been removed. We will recover and eat the next
             // statements later in the parsing process.
-
-            return Ok(self.mk_expr_err(lo.to(body.span)));
+            body = self.mk_expr_err(body.span);
         }
 
         Ok(self.mk_expr(
