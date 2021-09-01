@@ -1323,6 +1323,12 @@ public:
   Value *invertPointerM(Value *val, IRBuilder<> &BuilderM,
                         bool nullShadow = false);
 
+  static Constant *GetOrCreateShadowFunction(EnzymeLogic &Logic,
+                                             TargetLibraryInfo &TLI,
+                                             TypeAnalysis &TA, Function *F,
+                                             bool AtomicAdd = true,
+                                             bool PostOpt = false);
+
   void branchToCorrespondingTarget(
       BasicBlock *ctx, IRBuilder<> &BuilderM,
       const std::map<BasicBlock *,

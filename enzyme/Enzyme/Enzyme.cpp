@@ -725,6 +725,7 @@ public:
               Fn->getName() == "__enzyme_double" ||
               Fn->getName() == "__enzyme_integer" ||
               Fn->getName() == "__enzyme_pointer" ||
+              Fn->getName().contains("__enzyme_virtualreverse") ||
               Fn->getName().contains("__enzyme_call_inactive") ||
               Fn->getName().contains("__enzyme_autodiff") ||
               Fn->getName().contains("__enzyme_fwddiff") ||
@@ -763,6 +764,7 @@ public:
       }
 
     std::map<CallInst *, DerivativeMode> toLower;
+    std::map<CallInst *, DerivativeMode> toVirtual;
     std::set<CallInst *> InactiveCalls;
     std::set<CallInst *> IterCalls;
   retry:;
@@ -823,6 +825,10 @@ public:
               CI->addParamAttr(i, Attribute::NoCapture);
             }
           }
+        }
+        if (Fn->getName() == "__enzyme_virtualreverse") {
+          Fn->addFnAttr(Attribute::ReadNone);
+          CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
         }
         if (Fn->getName() == "__enzyme_iter") {
           Fn->addFnAttr(Attribute::ReadNone);
@@ -960,6 +966,7 @@ public:
         }
 
         bool enableEnzyme = false;
+        bool virtualCall = false;
         DerivativeMode mode;
         if (Fn->getName().contains("__enzyme_autodiff")) {
           enableEnzyme = true;
@@ -973,10 +980,13 @@ public:
         } else if (Fn->getName().contains("__enzyme_reverse")) {
           enableEnzyme = true;
           mode = DerivativeMode::ReverseModeGradient;
+        } else if (Fn->getName().contains("__enzyme_virtualreverse")) {
+          enableEnzyme = true;
+          virtualCall = true;
+          mode = DerivativeMode::ReverseModeCombined;
         }
 
         if (enableEnzyme) {
-          toLower[CI] = mode;
 
           Value *fn = CI->getArgOperand(0);
           while (auto ci = dyn_cast<CastInst>(fn)) {
@@ -1013,9 +1023,16 @@ public:
             }
             goto retry;
           }
-          if (auto dc = dyn_cast<Function>(fn))
+
+          if (virtualCall)
+            toVirtual[CI] = mode;
+          else
+            toLower[CI] = mode;
+
+          if (auto dc = dyn_cast<Function>(fn)) {
             Changed |=
                 lowerEnzymeCalls(*dc, /*PostOpt*/ true, successful, done);
+          }
         }
       }
     }
@@ -1046,6 +1063,36 @@ public:
       Changed = true;
       if (!successful)
         break;
+    }
+
+    for (auto pair : toVirtual) {
+      auto CI = pair.first;
+      Value *fn = CI->getArgOperand(0);
+      while (auto ci = dyn_cast<CastInst>(fn)) {
+        fn = ci->getOperand(0);
+      }
+      while (auto ci = dyn_cast<BlockAddress>(fn)) {
+        fn = ci->getFunction();
+      }
+      while (auto ci = dyn_cast<ConstantExpr>(fn)) {
+        fn = ci->getOperand(0);
+      }
+      auto F = cast<Function>(fn);
+      TypeAnalysis TA(TLI);
+
+      auto Arch =
+          llvm::Triple(
+              CI->getParent()->getParent()->getParent()->getTargetTriple())
+              .getArch();
+
+      bool AtomicAdd = Arch == Triple::nvptx || Arch == Triple::nvptx64 ||
+                       Arch == Triple::amdgcn;
+
+      auto val = GradientUtils::GetOrCreateShadowFunction(Logic, TLI, TA, F,
+                                                          AtomicAdd, PostOpt);
+      CI->replaceAllUsesWith(ConstantExpr::getPointerCast(val, CI->getType()));
+      CI->eraseFromParent();
+      Changed = true;
     }
 
     if (Changed) {
@@ -1199,7 +1246,8 @@ public:
     for (Function &F : M) {
       if (F.getName() == "__enzyme_float" || F.getName() == "__enzyme_double" ||
           F.getName() == "__enzyme_integer" ||
-          F.getName() == "__enzyme_pointer") {
+          F.getName() == "__enzyme_pointer" ||
+          F.getName().contains("__enzyme_virtualreverse")) {
         F.addFnAttr(Attribute::ReadNone);
         for (auto &arg : F.args()) {
           if (arg.getType()->isPointerTy()) {

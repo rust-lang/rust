@@ -2487,6 +2487,84 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
   return res;
 }
 
+Constant *GradientUtils::GetOrCreateShadowFunction(EnzymeLogic &Logic,
+                                                   TargetLibraryInfo &TLI,
+                                                   TypeAnalysis &TA,
+                                                   Function *fn, bool AtomicAdd,
+                                                   bool PostOpt) {
+  //! Todo allow tape propagation
+  //  Note that specifically this should _not_ be called with topLevel=true
+  //  (since it may not be valid to always assume we can recompute the
+  //  augmented primal) However, in the absence of a way to pass tape data
+  //  from an indirect augmented (and also since we dont presently allow
+  //  indirect augmented calls), topLevel MUST be true otherwise subcalls will
+  //  not be able to lookup the augmenteddata/subdata (triggering an assertion
+  //  failure, among much worse)
+  std::map<Argument *, bool> uncacheable_args;
+  FnTypeInfo type_args(fn);
+
+  // conservatively assume that we can only cache existing floating types
+  // (i.e. that all args are uncacheable)
+  std::vector<DIFFE_TYPE> types;
+  for (auto &a : fn->args()) {
+    uncacheable_args[&a] = !a.getType()->isFPOrFPVectorTy();
+    type_args.Arguments.insert(std::pair<Argument *, TypeTree>(&a, {}));
+    type_args.KnownValues.insert(
+        std::pair<Argument *, std::set<int64_t>>(&a, {}));
+    DIFFE_TYPE typ;
+    if (a.getType()->isFPOrFPVectorTy()) {
+      typ = DIFFE_TYPE::OUT_DIFF;
+    } else if (a.getType()->isIntegerTy() &&
+               cast<IntegerType>(a.getType())->getBitWidth() < 16) {
+      typ = DIFFE_TYPE::CONSTANT;
+    } else if (a.getType()->isVoidTy() || a.getType()->isEmptyTy()) {
+      typ = DIFFE_TYPE::CONSTANT;
+    } else {
+      typ = DIFFE_TYPE::DUP_ARG;
+    }
+    types.push_back(typ);
+  }
+
+  DIFFE_TYPE retType = fn->getReturnType()->isFPOrFPVectorTy()
+                           ? DIFFE_TYPE::OUT_DIFF
+                           : DIFFE_TYPE::DUP_ARG;
+  if (fn->getReturnType()->isVoidTy() || fn->getReturnType()->isEmptyTy() ||
+      (fn->getReturnType()->isIntegerTy() &&
+       cast<IntegerType>(fn->getReturnType())->getBitWidth() < 16))
+    retType = DIFFE_TYPE::CONSTANT;
+
+  // TODO re atomic add consider forcing it to be atomic always as fallback if
+  // used in a parallel context
+  auto &augdata = Logic.CreateAugmentedPrimal(
+      fn, retType, /*constant_args*/ types, TLI, TA,
+      /*returnUsed*/ !fn->getReturnType()->isEmptyTy() &&
+          !fn->getReturnType()->isVoidTy(),
+      type_args, uncacheable_args, /*forceAnonymousTape*/ true, AtomicAdd,
+      PostOpt);
+  Constant *newf = Logic.CreatePrimalAndGradient(
+      fn, retType, /*constant_args*/ types, TLI, TA,
+      /*returnValue*/ false, /*dretPtr*/ false,
+      DerivativeMode::ReverseModeGradient,
+      /*additionalArg*/ Type::getInt8PtrTy(fn->getContext()), type_args,
+      uncacheable_args,
+      /*map*/ &augdata, AtomicAdd);
+  if (!newf)
+    newf = UndefValue::get(fn->getType());
+  auto cdata = ConstantStruct::get(
+      StructType::get(newf->getContext(),
+                      {augdata.fn->getType(), newf->getType()}),
+      {augdata.fn, newf});
+  std::string globalname = ("_enzyme_" + fn->getName() + "'").str();
+  auto GV = fn->getParent()->getNamedValue(globalname);
+
+  if (GV == nullptr) {
+    GV = new GlobalVariable(*fn->getParent(), cdata->getType(), true,
+                            GlobalValue::LinkageTypes::InternalLinkage, cdata,
+                            globalname);
+  }
+  return ConstantExpr::getPointerCast(GV, fn->getType());
+}
+
 Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
                                      bool nullShadow) {
   assert(oval);
@@ -2768,78 +2846,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         std::make_pair((const Value *)oval, InvertedPointerVH(this, cs)));
     return cs;
   } else if (auto fn = dyn_cast<Function>(oval)) {
-    //! Todo allow tape propagation
-    //  Note that specifically this should _not_ be called with topLevel=true
-    //  (since it may not be valid to always assume we can recompute the
-    //  augmented primal) However, in the absence of a way to pass tape data
-    //  from an indirect augmented (and also since we dont presently allow
-    //  indirect augmented calls), topLevel MUST be true otherwise subcalls will
-    //  not be able to lookup the augmenteddata/subdata (triggering an assertion
-    //  failure, among much worse)
-    std::map<Argument *, bool> uncacheable_args;
-    FnTypeInfo type_args(fn);
-
-    // conservatively assume that we can only cache existing floating types
-    // (i.e. that all args are uncacheable)
-    std::vector<DIFFE_TYPE> types;
-    for (auto &a : fn->args()) {
-      uncacheable_args[&a] = !a.getType()->isFPOrFPVectorTy();
-      type_args.Arguments.insert(std::pair<Argument *, TypeTree>(&a, {}));
-      type_args.KnownValues.insert(
-          std::pair<Argument *, std::set<int64_t>>(&a, {}));
-      DIFFE_TYPE typ;
-      if (a.getType()->isFPOrFPVectorTy()) {
-        typ = DIFFE_TYPE::OUT_DIFF;
-      } else if (a.getType()->isIntegerTy() &&
-                 cast<IntegerType>(a.getType())->getBitWidth() < 16) {
-        typ = DIFFE_TYPE::CONSTANT;
-      } else if (a.getType()->isVoidTy() || a.getType()->isEmptyTy()) {
-        typ = DIFFE_TYPE::CONSTANT;
-      } else {
-        typ = DIFFE_TYPE::DUP_ARG;
-      }
-      types.push_back(typ);
-    }
-
-    DIFFE_TYPE retType = fn->getReturnType()->isFPOrFPVectorTy()
-                             ? DIFFE_TYPE::OUT_DIFF
-                             : DIFFE_TYPE::DUP_ARG;
-    if (fn->getReturnType()->isVoidTy() || fn->getReturnType()->isEmptyTy() ||
-        (fn->getReturnType()->isIntegerTy() &&
-         cast<IntegerType>(fn->getReturnType())->getBitWidth() < 16))
-      retType = DIFFE_TYPE::CONSTANT;
-
-    // TODO re atomic add consider forcing it to be atomic always as fallback if
-    // used in a parallel context
-    auto &augdata = Logic.CreateAugmentedPrimal(
-        fn, retType, /*constant_args*/ types, TLI, TA,
-        /*returnUsed*/ !fn->getReturnType()->isEmptyTy() &&
-            !fn->getReturnType()->isVoidTy(),
-        type_args, uncacheable_args, /*forceAnonymousTape*/ true, AtomicAdd,
-        /*PostOpt*/ false);
-    Constant *newf = Logic.CreatePrimalAndGradient(
-        fn, retType, /*constant_args*/ types, TLI, TA,
-        /*returnValue*/ false, /*dretPtr*/ false,
-        DerivativeMode::ReverseModeGradient,
-        /*additionalArg*/ Type::getInt8PtrTy(fn->getContext()), type_args,
-        uncacheable_args,
-        /*map*/ &augdata, AtomicAdd);
-    if (!newf)
-      newf = UndefValue::get(fn->getType());
-    auto cdata = ConstantStruct::get(
-        StructType::get(newf->getContext(),
-                        {augdata.fn->getType(), newf->getType()}),
-        {augdata.fn, newf});
-    std::string globalname = ("_enzyme_" + fn->getName() + "'").str();
-    auto GV = fn->getParent()->getNamedValue(globalname);
-
-    if (GV == nullptr) {
-      GV = new GlobalVariable(*fn->getParent(), cdata->getType(), true,
-                              GlobalValue::LinkageTypes::InternalLinkage, cdata,
-                              globalname);
-    }
-
-    return BuilderM.CreatePointerCast(GV, fn->getType());
+    return GetOrCreateShadowFunction(Logic, TLI, TA, fn, AtomicAdd);
   } else if (auto arg = dyn_cast<CastInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
     Value *invertOp = invertPointerM(arg->getOperand(0), bb);
