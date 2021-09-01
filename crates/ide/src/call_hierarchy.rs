@@ -46,7 +46,7 @@ pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Optio
 
     let mut calls = CallLocations::default();
 
-    for (file_id, references) in refs.references {
+    for (file_id, references) in refs.into_iter().flat_map(|refs| refs.references) {
         let file = sema.parse(file_id);
         let file = file.syntax();
         for (relative_range, token) in references

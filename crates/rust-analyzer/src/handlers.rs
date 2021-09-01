@@ -930,21 +930,25 @@ pub(crate) fn handle_references(
         Some(refs) => refs,
     };
 
-    let decl = if params.context.include_declaration {
-        refs.declaration.map(|decl| FileRange {
-            file_id: decl.nav.file_id,
-            range: decl.nav.focus_or_full_range(),
-        })
-    } else {
-        None
-    };
+    let include_declaration = params.context.include_declaration;
     let locations = refs
-        .references
         .into_iter()
-        .flat_map(|(file_id, refs)| {
-            refs.into_iter().map(move |(range, _)| FileRange { file_id, range })
+        .flat_map(|refs| {
+            let decl = if include_declaration {
+                refs.declaration.map(|decl| FileRange {
+                    file_id: decl.nav.file_id,
+                    range: decl.nav.focus_or_full_range(),
+                })
+            } else {
+                None
+            };
+            refs.references
+                .into_iter()
+                .flat_map(|(file_id, refs)| {
+                    refs.into_iter().map(move |(range, _)| FileRange { file_id, range })
+                })
+                .chain(decl)
         })
-        .chain(decl)
         .filter_map(|frange| to_proto::location(&snap, frange).ok())
         .collect();
 
@@ -1515,8 +1519,8 @@ fn show_ref_command_link(
             let line_index = snap.file_line_index(position.file_id).ok()?;
             let position = to_proto::position(&line_index, position.offset);
             let locations: Vec<_> = ref_search_res
-                .references
                 .into_iter()
+                .flat_map(|res| res.references)
                 .flat_map(|(file_id, ranges)| {
                     ranges.into_iter().filter_map(move |(range, _)| {
                         to_proto::location(snap, FileRange { file_id, range }).ok()
