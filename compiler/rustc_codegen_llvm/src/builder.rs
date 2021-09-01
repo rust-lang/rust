@@ -107,7 +107,7 @@ impl FnAbiOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
         &self,
         err: FnAbiError<'tcx>,
         span: Span,
-        fn_abi_request: FnAbiRequest<'_, 'tcx>,
+        fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         self.cx.handle_fn_abi_err(err, span, fn_abi_request)
     }

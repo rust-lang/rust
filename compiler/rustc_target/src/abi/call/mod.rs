@@ -601,6 +601,7 @@ pub struct FnAbi<'a, Ty> {
 }
 
 /// Error produced by attempting to adjust a `FnAbi`, for a "foreign" ABI.
+#[derive(Clone, Debug, HashStable_Generic)]
 pub enum AdjustForForeignAbiError {
     /// Target architecture doesn't support "foreign" (i.e. non-Rust) ABIs.
     Unsupported { arch: String, abi: spec::abi::Abi },

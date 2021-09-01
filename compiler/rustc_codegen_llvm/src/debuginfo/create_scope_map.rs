@@ -93,7 +93,7 @@ fn make_mir_scope(
                 ty::ParamEnv::reveal_all(),
                 callee,
             );
-            let callee_fn_abi = cx.fn_abi_of_instance(callee, &[]);
+            let callee_fn_abi = cx.fn_abi_of_instance(callee, ty::List::empty());
             cx.dbg_scope_fn(callee, &callee_fn_abi, None)
         }
         None => unsafe {

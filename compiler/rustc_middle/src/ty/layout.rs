@@ -1,4 +1,3 @@
-use crate::ich::StableHashingContext;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::subst::Subst;
@@ -6,7 +5,6 @@ use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
 
 use rustc_ast as ast;
 use rustc_attr as attr;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::BitSet;
@@ -23,9 +21,13 @@ use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Targ
 use std::cmp;
 use std::fmt;
 use std::iter;
-use std::mem;
 use std::num::NonZeroUsize;
 use std::ops::Bound;
+
+pub fn provide(providers: &mut ty::query::Providers) {
+    *providers =
+        ty::query::Providers { layout_of, fn_abi_of_fn_ptr, fn_abi_of_instance, ..*providers };
+}
 
 pub trait IntegerExt {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>, signed: bool) -> Ty<'tcx>;
@@ -191,7 +193,7 @@ pub const FAT_PTR_EXTRA: usize = 1;
 /// * Cranelift stores the base-2 log of the lane count in a 4 bit integer.
 pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
 
-#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, HashStable, TyEncodable, TyDecodable)]
 pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
     SizeOverflow(Ty<'tcx>),
@@ -246,10 +248,6 @@ fn layout_of<'tcx>(
             Ok(layout)
         })
     })
-}
-
-pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { layout_of, ..*providers };
 }
 
 pub struct LayoutCx<'tcx, C> {
@@ -2537,18 +2535,6 @@ where
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for LayoutError<'tcx> {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        use crate::ty::layout::LayoutError::*;
-        mem::discriminant(self).hash_stable(hcx, hasher);
-
-        match *self {
-            Unknown(t) | SizeOverflow(t) => t.hash_stable(hcx, hasher),
-        }
-    }
-}
-
 impl<'tcx> ty::Instance<'tcx> {
     // NOTE(eddyb) this is private to avoid using it from outside of
     // `fn_abi_of_instance` - any other uses are either too high-level
@@ -2807,6 +2793,7 @@ pub fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
 }
 
 /// Error produced by attempting to compute or adjust a `FnAbi`.
+#[derive(Clone, Debug, HashStable)]
 pub enum FnAbiError<'tcx> {
     /// Error produced by a `layout_of` call, while computing `FnAbi` initially.
     Layout(LayoutError<'tcx>),
@@ -2839,9 +2826,9 @@ impl<'tcx> fmt::Display for FnAbiError<'tcx> {
 // FIXME(eddyb) maybe use something like this for an unified `fn_abi_of`, not
 // just for error handling.
 #[derive(Debug)]
-pub enum FnAbiRequest<'a, 'tcx> {
-    OfFnPtr { sig: ty::PolyFnSig<'tcx>, extra_args: &'a [Ty<'tcx>] },
-    OfInstance { instance: ty::Instance<'tcx>, extra_args: &'a [Ty<'tcx>] },
+pub enum FnAbiRequest<'tcx> {
+    OfFnPtr { sig: ty::PolyFnSig<'tcx>, extra_args: &'tcx ty::List<Ty<'tcx>> },
+    OfInstance { instance: ty::Instance<'tcx>, extra_args: &'tcx ty::List<Ty<'tcx>> },
 }
 
 /// Trait for contexts that want to be able to compute `FnAbi`s.
@@ -2855,14 +2842,14 @@ pub trait FnAbiOfHelpers<'tcx>: LayoutOfHelpers<'tcx> {
     /// `Self::FnAbiOfResult` (which does not need to be a `Result<...>`).
     ///
     /// Most `impl`s, which propagate `FnAbiError`s, should simply return `err`,
-    /// but this hook allows e.g. codegen to return only `&FnABi` from its
+    /// but this hook allows e.g. codegen to return only `&FnAbi` from its
     /// `cx.fn_abi_of_*(...)`, without any `Result<...>` around it to deal with
     /// (and any `FnAbiError`s are turned into fatal errors or ICEs).
     fn handle_fn_abi_err(
         &self,
         err: FnAbiError<'tcx>,
         span: Span,
-        fn_abi_request: FnAbiRequest<'_, 'tcx>,
+        fn_abi_request: FnAbiRequest<'tcx>,
     ) -> <Self::FnAbiOfResult as MaybeResult<&'tcx FnAbi<'tcx, Ty<'tcx>>>>::Error;
 }
 
@@ -2876,18 +2863,15 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
     fn fn_abi_of_fn_ptr(
         &self,
         sig: ty::PolyFnSig<'tcx>,
-        extra_args: &[Ty<'tcx>],
+        extra_args: &'tcx ty::List<Ty<'tcx>>,
     ) -> Self::FnAbiOfResult {
         // FIXME(eddyb) get a better `span` here.
         let span = self.layout_tcx_at_span();
-        let cx = LayoutCx { tcx: self.tcx().at(span), param_env: self.param_env() };
+        let tcx = self.tcx().at(span);
 
-        MaybeResult::from(
-            cx.fn_abi_new_internal(sig, extra_args, None, CodegenFnAttrFlags::empty(), false)
-                .map_err(|err| {
-                    self.handle_fn_abi_err(err, span, FnAbiRequest::OfFnPtr { sig, extra_args })
-                }),
-        )
+        MaybeResult::from(tcx.fn_abi_of_fn_ptr(self.param_env().and((sig, extra_args))).map_err(
+            |err| self.handle_fn_abi_err(err, span, FnAbiRequest::OfFnPtr { sig, extra_args }),
+        ))
     }
 
     /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for
@@ -2899,36 +2883,19 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
     fn fn_abi_of_instance(
         &self,
         instance: ty::Instance<'tcx>,
-        extra_args: &[Ty<'tcx>],
+        extra_args: &'tcx ty::List<Ty<'tcx>>,
     ) -> Self::FnAbiOfResult {
         // FIXME(eddyb) get a better `span` here.
         let span = self.layout_tcx_at_span();
-        let cx = LayoutCx { tcx: self.tcx().at(span), param_env: self.param_env() };
-
-        let sig = instance.fn_sig_for_fn_abi(cx.tcx());
-
-        let caller_location = if instance.def.requires_caller_location(cx.tcx()) {
-            Some(cx.tcx.caller_location_ty())
-        } else {
-            None
-        };
-
-        let attrs = cx.tcx.codegen_fn_attrs(instance.def_id()).flags;
+        let tcx = self.tcx().at(span);
 
         MaybeResult::from(
-            cx.fn_abi_new_internal(
-                sig,
-                extra_args,
-                caller_location,
-                attrs,
-                matches!(instance.def, ty::InstanceDef::Virtual(..)),
-            )
-            .map_err(|err| {
+            tcx.fn_abi_of_instance(self.param_env().and((instance, extra_args))).map_err(|err| {
                 // HACK(eddyb) at least for definitions of/calls to `Instance`s,
                 // we can get some kind of span even if one wasn't provided.
                 // However, we don't do this early in order to avoid calling
                 // `def_span` unconditionally (which may have a perf penalty).
-                let span = if !span.is_dummy() { span } else { cx.tcx.def_span(instance.def_id()) };
+                let span = if !span.is_dummy() { span } else { tcx.def_span(instance.def_id()) };
                 self.handle_fn_abi_err(err, span, FnAbiRequest::OfInstance { instance, extra_args })
             }),
         )
@@ -2937,10 +2904,50 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
 
 impl<C: FnAbiOfHelpers<'tcx>> FnAbiOf<'tcx> for C {}
 
-impl<'tcx> LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
+fn fn_abi_of_fn_ptr<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    query: ty::ParamEnvAnd<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
+) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
+    let (param_env, (sig, extra_args)) = query.into_parts();
+
+    LayoutCx { tcx, param_env }.fn_abi_new_uncached(
+        sig,
+        extra_args,
+        None,
+        CodegenFnAttrFlags::empty(),
+        false,
+    )
+}
+
+fn fn_abi_of_instance<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    query: ty::ParamEnvAnd<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
+) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
+    let (param_env, (instance, extra_args)) = query.into_parts();
+
+    let sig = instance.fn_sig_for_fn_abi(tcx);
+
+    let caller_location = if instance.def.requires_caller_location(tcx) {
+        Some(tcx.caller_location_ty())
+    } else {
+        None
+    };
+
+    let attrs = tcx.codegen_fn_attrs(instance.def_id()).flags;
+
+    LayoutCx { tcx, param_env }.fn_abi_new_uncached(
+        sig,
+        extra_args,
+        caller_location,
+        attrs,
+        matches!(instance.def, ty::InstanceDef::Virtual(..)),
+    )
+}
+
+impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
     // FIXME(eddyb) perhaps group the signature/type-containing (or all of them?)
     // arguments of this method, into a separate `struct`.
-    fn fn_abi_new_internal(
+    fn fn_abi_new_uncached(
         &self,
         sig: ty::PolyFnSig<'tcx>,
         extra_args: &[Ty<'tcx>],
@@ -2949,7 +2956,7 @@ impl<'tcx> LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
         // FIXME(eddyb) replace this with something typed, like an `enum`.
         force_thin_self_ptr: bool,
     ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
-        debug!("FnAbi::new_internal({:?}, {:?})", sig, extra_args);
+        debug!("fn_abi_new_uncached({:?}, {:?})", sig, extra_args);
 
         let sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, sig);
 
@@ -3110,7 +3117,7 @@ impl<'tcx> LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
             can_unwind: fn_can_unwind(self.tcx(), codegen_fn_attr_flags, sig.abi),
         };
         self.fn_abi_adjust_for_abi(&mut fn_abi, sig.abi)?;
-        debug!("FnAbi::new_internal = {:?}", fn_abi);
+        debug!("fn_abi_new_uncached = {:?}", fn_abi);
         Ok(self.tcx.intern_fn_abi(fn_abi))
     }
 

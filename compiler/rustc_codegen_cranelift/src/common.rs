@@ -276,7 +276,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for FunctionCx<'_, '_, 'tcx> {
         &self,
         err: FnAbiError<'tcx>,
         span: Span,
-        fn_abi_request: FnAbiRequest<'_, 'tcx>,
+        fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         RevealAllLayoutCx(self.tcx).handle_fn_abi_err(err, span, fn_abi_request)
     }
@@ -402,7 +402,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
         &self,
         err: FnAbiError<'tcx>,
         span: Span,
-        fn_abi_request: FnAbiRequest<'_, 'tcx>,
+        fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
             self.0.sess.span_fatal(span, &err.to_string())

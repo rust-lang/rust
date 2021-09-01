@@ -80,7 +80,10 @@ impl CommentWriter {
             vec![
                 format!("symbol {}", tcx.symbol_name(instance).name),
                 format!("instance {:?}", instance),
-                format!("abi {:?}", RevealAllLayoutCx(tcx).fn_abi_of_instance(instance, &[])),
+                format!(
+                    "abi {:?}",
+                    RevealAllLayoutCx(tcx).fn_abi_of_instance(instance, ty::List::empty())
+                ),
                 String::new(),
             ]
         } else {

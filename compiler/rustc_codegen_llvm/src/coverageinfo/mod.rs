@@ -208,7 +208,7 @@ fn declare_unused_fn(cx: &CodegenCx<'ll, 'tcx>, def_id: &DefId) -> Instance<'tcx
                 hir::Unsafety::Unsafe,
                 Abi::Rust,
             )),
-            &[],
+            ty::List::empty(),
         ),
     );
 

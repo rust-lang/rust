@@ -42,7 +42,7 @@ pub fn get_fn(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value
         sym
     );
 
-    let fn_abi = cx.fn_abi_of_instance(instance, &[]);
+    let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
 
     let llfn = if let Some(llfn) = cx.get_declared_value(&sym) {
         // Create a fn pointer with the new signature.

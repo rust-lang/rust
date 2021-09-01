@@ -867,7 +867,7 @@ impl FnAbiOfHelpers<'tcx> for CodegenCx<'ll, 'tcx> {
         &self,
         err: FnAbiError<'tcx>,
         span: Span,
-        fn_abi_request: FnAbiRequest<'_, 'tcx>,
+        fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
             self.sess().span_fatal(span, &err.to_string())
