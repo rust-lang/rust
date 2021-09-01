@@ -1,7 +1,5 @@
 //! lint on missing cargo common metadata
 
-use std::path::PathBuf;
-
 use clippy_utils::{diagnostics::span_lint, is_lint_allowed};
 use rustc_hir::{hir_id::CRATE_HIR_ID, Crate};
 use rustc_lint::{LateContext, LateLintPass};
@@ -69,12 +67,8 @@ fn missing_warning(cx: &LateContext<'_>, package: &cargo_metadata::Package, fiel
     span_lint(cx, CARGO_COMMON_METADATA, DUMMY_SP, &message);
 }
 
-fn is_empty_str(value: &Option<String>) -> bool {
-    value.as_ref().map_or(true, String::is_empty)
-}
-
-fn is_empty_path(value: &Option<PathBuf>) -> bool {
-    value.as_ref().and_then(|x| x.to_str()).map_or(true, str::is_empty)
+fn is_empty_str<T: AsRef<std::ffi::OsStr>>(value: &Option<T>) -> bool {
+    value.as_ref().map_or(true, |s| s.as_ref().is_empty())
 }
 
 fn is_empty_vec(value: &[String]) -> bool {
@@ -98,7 +92,7 @@ impl LateLintPass<'_> for CargoCommonMetadata {
                     missing_warning(cx, &package, "package.description");
                 }
 
-                if is_empty_str(&package.license) && is_empty_path(&package.license_file) {
+                if is_empty_str(&package.license) && is_empty_str(&package.license_file) {
                     missing_warning(cx, &package, "either package.license or package.license_file");
                 }
 
@@ -106,7 +100,7 @@ impl LateLintPass<'_> for CargoCommonMetadata {
                     missing_warning(cx, &package, "package.repository");
                 }
 
-                if is_empty_path(&package.readme) {
+                if is_empty_str(&package.readme) {
                     missing_warning(cx, &package, "package.readme");
                 }
 
