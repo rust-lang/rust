@@ -2,7 +2,7 @@ use std::{hash::BuildHasherDefault, iter};
 
 use ast::make;
 use either::Either;
-use hir::{HirDisplay, Local, Semantics, TypeInfo};
+use hir::{HirDisplay, InFile, Local, Semantics, TypeInfo};
 use ide_db::{
     defs::{Definition, NameRefClass},
     search::{FileReference, ReferenceAccess, SearchScope},
@@ -17,7 +17,7 @@ use syntax::{
         edit::{AstNodeEdit, IndentLevel},
         AstNode,
     },
-    match_ast, ted,
+    match_ast, ted, SyntaxElement,
     SyntaxKind::{self, COMMENT},
     SyntaxNode, SyntaxToken, TextRange, TextSize, TokenAtOffset, WalkEvent, T,
 };
@@ -582,38 +582,45 @@ impl FunctionBody {
         &self,
         sema: &Semantics<RootDatabase>,
     ) -> (FxIndexSet<Local>, Option<ast::SelfParam>) {
-        // FIXME: currently usages inside macros are not found
         let mut self_param = None;
         let mut res = FxIndexSet::default();
-        self.walk_expr(&mut |expr| {
-            let name_ref = match expr {
-                ast::Expr::PathExpr(path_expr) => {
-                    path_expr.path().and_then(|it| it.as_single_name_ref())
-                }
-                _ => return,
-            };
-            if let Some(name_ref) = name_ref {
-                if let Some(
-                    NameRefClass::Definition(Definition::Local(local_ref))
-                    | NameRefClass::FieldShorthand { local_ref, field_ref: _ },
-                ) = NameRefClass::classify(sema, &name_ref)
-                {
-                    if local_ref.is_self(sema.db) {
-                        match local_ref.source(sema.db).value {
-                            Either::Right(it) => {
-                                self_param.replace(it);
-                            }
-                            Either::Left(_) => {
-                                stdx::never!(
-                                    "Local::is_self returned true, but source is IdentPat"
-                                );
-                            }
-                        }
-                    } else {
+        let mut cb = |name_ref: Option<_>| {
+            let local_ref =
+                match name_ref.and_then(|name_ref| NameRefClass::classify(sema, &name_ref)) {
+                    Some(
+                        NameRefClass::Definition(Definition::Local(local_ref))
+                        | NameRefClass::FieldShorthand { local_ref, field_ref: _ },
+                    ) => local_ref,
+                    _ => return,
+                };
+            let InFile { file_id, value } = local_ref.source(sema.db);
+            // locals defined inside macros are not relevant to us
+            if !file_id.is_macro() {
+                match value {
+                    Either::Right(it) => {
+                        self_param.replace(it);
+                    }
+                    Either::Left(_) => {
                         res.insert(local_ref);
                     }
                 }
             }
+        };
+        self.walk_expr(&mut |expr| match expr {
+            ast::Expr::PathExpr(path_expr) => {
+                cb(path_expr.path().and_then(|it| it.as_single_name_ref()))
+            }
+            ast::Expr::MacroCall(call) => {
+                if let Some(tt) = call.token_tree() {
+                    tt.syntax()
+                        .children_with_tokens()
+                        .flat_map(SyntaxElement::into_token)
+                        .filter(|it| it.kind() == SyntaxKind::IDENT)
+                        .flat_map(|t| sema.descend_into_macros_many(t))
+                        .for_each(|t| cb(t.parent().and_then(ast::NameRef::cast)));
+                }
+            }
+            _ => (),
         });
         (res, self_param)
     }
@@ -4154,6 +4161,35 @@ fn foo() {
 
 fn $0fun_name(y: &mut Foo) {
     y.foo();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_with_macro_arg() {
+        check_assist(
+            extract_function,
+            r#"
+macro_rules! m {
+    ($val:expr) => { $val };
+}
+fn main() {
+    let bar = "bar";
+    $0m!(bar);$0
+}
+"#,
+            r#"
+macro_rules! m {
+    ($val:expr) => { $val };
+}
+fn main() {
+    let bar = "bar";
+    fun_name(bar);
+}
+
+fn $0fun_name(bar: &str) {
+    m!(bar);
 }
 "#,
         );
