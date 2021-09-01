@@ -9,18 +9,15 @@ use std::str;
 
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
-use rustc_codegen_ssa::back::archive::{find_library, ArchiveBuilder};
-use rustc_codegen_ssa::{looks_like_rust_object_file, METADATA_FILENAME};
+use rustc_codegen_ssa::back::archive::ArchiveBuilder;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_middle::middle::cstore::{DllCallingConvention, DllImport};
 use rustc_session::Session;
-use rustc_span::symbol::Symbol;
 
 struct ArchiveConfig<'a> {
     pub sess: &'a Session,
     pub dst: PathBuf,
     pub src: Option<PathBuf>,
-    pub lib_search_paths: Vec<PathBuf>,
 }
 
 /// Helper for adding many files to an archive.
@@ -54,13 +51,7 @@ fn is_relevant_child(c: &Child<'_>) -> bool {
 }
 
 fn archive_config<'a>(sess: &'a Session, output: &Path, input: Option<&Path>) -> ArchiveConfig<'a> {
-    use rustc_codegen_ssa::back::link::archive_search_paths;
-    ArchiveConfig {
-        sess,
-        dst: output.to_path_buf(),
-        src: input.map(|p| p.to_path_buf()),
-        lib_search_paths: archive_search_paths(sess),
-    }
+    ArchiveConfig { sess, dst: output.to_path_buf(), src: input.map(|p| p.to_path_buf()) }
 }
 
 /// Map machine type strings to values of LLVM's MachineTypes enum.
@@ -111,57 +102,23 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             .collect()
     }
 
-    /// Adds all of the contents of a native library to this archive. This will
-    /// search in the relevant locations for a library named `name`.
-    fn add_native_library(&mut self, name: Symbol, verbatim: bool) {
-        let location =
-            find_library(name, verbatim, &self.config.lib_search_paths, self.config.sess);
-        self.add_archive(&location, |_| false).unwrap_or_else(|e| {
-            self.config.sess.fatal(&format!(
-                "failed to add native library {}: {}",
-                location.to_string_lossy(),
-                e
-            ));
+    fn add_archive<F>(&mut self, archive: &Path, skip: F) -> io::Result<()>
+    where
+        F: FnMut(&str) -> bool + 'static,
+    {
+        let archive_ro = match ArchiveRO::open(archive) {
+            Ok(ar) => ar,
+            Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
+        };
+        if self.additions.iter().any(|ar| ar.path() == archive) {
+            return Ok(());
+        }
+        self.additions.push(Addition::Archive {
+            path: archive.to_path_buf(),
+            archive: archive_ro,
+            skip: Box::new(skip),
         });
-    }
-
-    /// Adds all of the contents of the rlib at the specified path to this
-    /// archive.
-    ///
-    /// This ignores adding the bytecode from the rlib, and if LTO is enabled
-    /// then the object file also isn't added.
-    fn add_rlib(
-        &mut self,
-        rlib: &Path,
-        name: &str,
-        lto: bool,
-        skip_objects: bool,
-    ) -> io::Result<()> {
-        // Ignoring obj file starting with the crate name
-        // as simple comparison is not enough - there
-        // might be also an extra name suffix
-        let obj_start = name.to_owned();
-
-        self.add_archive(rlib, move |fname: &str| {
-            // Ignore metadata files, no matter the name.
-            if fname == METADATA_FILENAME {
-                return true;
-            }
-
-            // Don't include Rust objects if LTO is enabled
-            if lto && looks_like_rust_object_file(fname) {
-                return true;
-            }
-
-            // Otherwise if this is *not* a rust object and we're skipping
-            // objects then skip this file
-            if skip_objects && (!fname.starts_with(&obj_start) || !fname.ends_with(".o")) {
-                return true;
-            }
-
-            // ok, don't skip this
-            false
-        })
+        Ok(())
     }
 
     /// Adds an arbitrary file to this archive
@@ -268,25 +225,6 @@ impl<'a> LlvmArchiveBuilder<'a> {
         let src = self.config.src.as_ref()?;
         self.src_archive = Some(ArchiveRO::open(src).ok());
         self.src_archive.as_ref().unwrap().as_ref()
-    }
-
-    fn add_archive<F>(&mut self, archive: &Path, skip: F) -> io::Result<()>
-    where
-        F: FnMut(&str) -> bool + 'static,
-    {
-        let archive_ro = match ArchiveRO::open(archive) {
-            Ok(ar) => ar,
-            Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
-        };
-        if self.additions.iter().any(|ar| ar.path() == archive) {
-            return Ok(());
-        }
-        self.additions.push(Addition::Archive {
-            path: archive.to_path_buf(),
-            archive: archive_ro,
-            skip: Box::new(skip),
-        });
-        Ok(())
     }
 
     fn llvm_archive_kind(&self) -> Result<ArchiveKind, &str> {

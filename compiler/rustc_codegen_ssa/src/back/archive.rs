@@ -6,7 +6,7 @@ use rustc_span::symbol::Symbol;
 use std::io;
 use std::path::{Path, PathBuf};
 
-pub fn find_library(
+pub(super) fn find_library(
     name: Symbol,
     verbatim: bool,
     search_paths: &[PathBuf],
@@ -48,14 +48,9 @@ pub trait ArchiveBuilder<'a> {
     fn remove_file(&mut self, name: &str);
     fn src_files(&mut self) -> Vec<String>;
 
-    fn add_rlib(
-        &mut self,
-        path: &Path,
-        name: &str,
-        lto: bool,
-        skip_objects: bool,
-    ) -> io::Result<()>;
-    fn add_native_library(&mut self, name: Symbol, verbatim: bool);
+    fn add_archive<F>(&mut self, archive: &Path, skip: F) -> io::Result<()>
+    where
+        F: FnMut(&str) -> bool + 'static;
     fn update_symbols(&mut self);
 
     fn build(self);

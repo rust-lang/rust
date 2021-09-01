@@ -19,7 +19,7 @@ use rustc_target::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor, SplitDebuginfo};
 use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, SanitizerSet, Target};
 
-use super::archive::ArchiveBuilder;
+use super::archive::{find_library, ArchiveBuilder};
 use super::command::Command;
 use super::linker::{self, Linker};
 use super::rpath::{self, RPathConfig};
@@ -230,6 +230,9 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     tmpdir: &MaybeTempDir,
 ) -> Result<B, ErrorReported> {
     info!("preparing rlib to {:?}", out_filename);
+
+    let lib_search_paths = archive_search_paths(sess);
+
     let mut ab = <B as ArchiveBuilder>::new(sess, out_filename, None);
 
     for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
@@ -262,7 +265,15 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
             | NativeLibKind::Unspecified => continue,
         }
         if let Some(name) = lib.name {
-            ab.add_native_library(name, lib.verbatim.unwrap_or(false));
+            let location =
+                find_library(name, lib.verbatim.unwrap_or(false), &lib_search_paths, sess);
+            ab.add_archive(&location, |_| false).unwrap_or_else(|e| {
+                sess.fatal(&format!(
+                    "failed to add native library {}: {}",
+                    location.to_string_lossy(),
+                    e
+                ));
+            });
         }
     }
 
@@ -541,13 +552,35 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
             matches!(lib.kind, NativeLibKind::Static { bundle: None | Some(true), .. })
                 && !relevant_lib(sess, lib)
         });
-        ab.add_rlib(
-            path,
-            &name.as_str(),
-            are_upstream_rust_objects_already_included(sess)
-                && !ignored_for_lto(sess, &codegen_results.crate_info, cnum),
-            skip_object_files,
-        )
+
+        let lto = are_upstream_rust_objects_already_included(sess)
+            && !ignored_for_lto(sess, &codegen_results.crate_info, cnum);
+
+        // Ignoring obj file starting with the crate name
+        // as simple comparison is not enough - there
+        // might be also an extra name suffix
+        let obj_start = name.as_str().to_owned();
+
+        ab.add_archive(path, move |fname: &str| {
+            // Ignore metadata files, no matter the name.
+            if fname == METADATA_FILENAME {
+                return true;
+            }
+
+            // Don't include Rust objects if LTO is enabled
+            if lto && looks_like_rust_object_file(fname) {
+                return true;
+            }
+
+            // Otherwise if this is *not* a rust object and we're skipping
+            // objects then skip this file
+            if skip_object_files && (!fname.starts_with(&obj_start) || !fname.ends_with(".o")) {
+                return true;
+            }
+
+            // ok, don't skip this
+            false
+        })
         .unwrap();
 
         all_native_libs.extend(codegen_results.crate_info.native_libraries[&cnum].iter().cloned());
@@ -1218,7 +1251,7 @@ fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
     sess.split_debuginfo() == SplitDebuginfo::Unpacked
 }
 
-pub fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
+fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
     sess.target_filesearch(PathKind::Native).search_path_dirs()
 }
 
