@@ -3,6 +3,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(control_flow_enum)]
 #![feature(in_band_lifetimes)]
+#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate tracing;

@@ -10,6 +10,7 @@
 #![feature(once_cell)]
 #![feature(stmt_expr_attributes)]
 #![feature(trusted_step)]
+#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate tracing;

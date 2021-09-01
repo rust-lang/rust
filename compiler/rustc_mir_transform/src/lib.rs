@@ -1,4 +1,4 @@
-#![feature(bindings_after_at)]
+#![cfg_attr(bootstrap, feature(bindings_after_at))]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
@@ -12,6 +12,7 @@
 #![feature(never_type)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
+#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate tracing;
