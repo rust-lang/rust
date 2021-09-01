@@ -1630,14 +1630,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 (TypeError::Sorts(values), extra) => {
                     let sort_string = |ty: Ty<'tcx>| match (extra, ty.kind()) {
                         (true, ty::Opaque(def_id, _)) => {
-                            let pos = self
-                                .tcx
-                                .sess
-                                .source_map()
-                                .lookup_char_pos(self.tcx.def_span(*def_id).lo());
+                            let sm = self.tcx.sess.source_map();
+                            let pos = sm.lookup_char_pos(self.tcx.def_span(*def_id).lo());
                             format!(
                                 " (opaque type at <{}:{}:{}>)",
-                                pos.file.name.prefer_local(),
+                                sm.filename_for_diagnostics(&pos.file.name),
                                 pos.line,
                                 pos.col.to_usize() + 1,
                             )

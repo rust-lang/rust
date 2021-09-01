@@ -1113,7 +1113,7 @@ impl<'a> ExtCtxt<'a> {
                         span,
                         &format!(
                             "cannot resolve relative path in non-file source `{}`",
-                            other.prefer_local()
+                            self.source_map().filename_for_diagnostics(&other)
                         ),
                     ));
                 }

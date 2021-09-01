@@ -260,11 +260,12 @@ impl RealFileName {
         }
     }
 
-    pub fn to_string_lossy(&self, prefer_local: bool) -> Cow<'_, str> {
-        if prefer_local {
-            self.local_path_if_available().to_string_lossy()
-        } else {
-            self.remapped_path_if_available().to_string_lossy()
+    pub fn to_string_lossy(&self, display_pref: FileNameDisplayPreference) -> Cow<'_, str> {
+        match display_pref {
+            FileNameDisplayPreference::Local => self.local_path_if_available().to_string_lossy(),
+            FileNameDisplayPreference::Remapped => {
+                self.remapped_path_if_available().to_string_lossy()
+            }
         }
     }
 }
@@ -300,9 +301,15 @@ impl From<PathBuf> for FileName {
     }
 }
 
+#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
+pub enum FileNameDisplayPreference {
+    Remapped,
+    Local,
+}
+
 pub struct FileNameDisplay<'a> {
     inner: &'a FileName,
-    prefer_local: bool,
+    display_pref: FileNameDisplayPreference,
 }
 
 impl fmt::Display for FileNameDisplay<'_> {
@@ -310,7 +317,7 @@ impl fmt::Display for FileNameDisplay<'_> {
         use FileName::*;
         match *self.inner {
             Real(ref name) => {
-                write!(fmt, "{}", name.to_string_lossy(self.prefer_local))
+                write!(fmt, "{}", name.to_string_lossy(self.display_pref))
             }
             QuoteExpansion(_) => write!(fmt, "<quote expansion>"),
             MacroExpansion(_) => write!(fmt, "<macro expansion>"),
@@ -328,7 +335,7 @@ impl fmt::Display for FileNameDisplay<'_> {
 impl FileNameDisplay<'_> {
     pub fn to_string_lossy(&self) -> Cow<'_, str> {
         match self.inner {
-            FileName::Real(ref inner) => inner.to_string_lossy(self.prefer_local),
+            FileName::Real(ref inner) => inner.to_string_lossy(self.display_pref),
             _ => Cow::from(format!("{}", self)),
         }
     }
@@ -352,13 +359,17 @@ impl FileName {
     }
 
     pub fn prefer_remapped(&self) -> FileNameDisplay<'_> {
-        FileNameDisplay { inner: self, prefer_local: false }
+        FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Remapped }
     }
 
     // This may include transient local filesystem information.
     // Must not be embedded in build outputs.
     pub fn prefer_local(&self) -> FileNameDisplay<'_> {
-        FileNameDisplay { inner: self, prefer_local: true }
+        FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Local }
+    }
+
+    pub fn display(&self, display_pref: FileNameDisplayPreference) -> FileNameDisplay<'_> {
+        FileNameDisplay { inner: self, display_pref }
     }
 
     pub fn macro_expansion_source_code(src: &str) -> FileName {
