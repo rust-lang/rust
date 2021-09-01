@@ -779,15 +779,6 @@ impl<'a> Parser<'a> {
                             let token_str = pprust::token_kind_to_string(t);
 
                             match self.last_closure_body.take() {
-                                None => {
-                                    // Attempt to keep parsing if it was a similar separator.
-                                    if let Some(ref tokens) = t.similar_tokens() {
-                                        if tokens.contains(&self.token.kind) && !unclosed_delims {
-                                            self.bump();
-                                        }
-                                    }
-                                }
-
                                 Some(right_pipe_span) if self.token.kind == TokenKind::Semi => {
                                     // Finding a semicolon instead of a comma
                                     // after a closure body indicates that the
@@ -803,7 +794,14 @@ impl<'a> Parser<'a> {
                                     continue;
                                 }
 
-                                _ => {}
+                                _ => {
+                                    // Attempt to keep parsing if it was a similar separator.
+                                    if let Some(ref tokens) = t.similar_tokens() {
+                                        if tokens.contains(&self.token.kind) && !unclosed_delims {
+                                            self.bump();
+                                        }
+                                    }
+                                }
                             }
 
                             // If this was a missing `@` in a binding pattern
