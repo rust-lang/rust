@@ -28,11 +28,11 @@ pub(crate) fn prepare() {
     );
 
     clone_repo(
-        "stdsimd",
-        "https://github.com/rust-lang/stdsimd",
-        "be96995d8ddec03fac9a0caf4d4c51c7fbc33507",
+        "portable-simd",
+        "https://github.com/rust-lang/portable-simd",
+        "d42875302dd9e924f8d667b32e88989388989b79",
     );
-    apply_patches("stdsimd", Path::new("stdsimd"));
+    apply_patches("portable-simd", Path::new("portable-simd"));
 
     clone_repo(
         "simple-raytracer",

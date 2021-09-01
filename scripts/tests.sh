@@ -137,8 +137,8 @@ function extended_sysroot_tests() {
     fi
     popd
 
-    pushd stdsimd
-    echo "[TEST] rust-lang/stdsimd"
+    pushd portable-simd
+    echo "[TEST] rust-lang/portable-simd"
     ../build/cargo clean
     ../build/cargo build --all-targets --target $TARGET_TRIPLE
     if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
