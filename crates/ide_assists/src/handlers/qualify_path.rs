@@ -37,7 +37,7 @@ use crate::{
 // ```
 pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let (import_assets, syntax_under_caret) = find_importable_node(ctx)?;
-    let proposed_imports = import_assets.search_for_relative_paths(&ctx.sema);
+    let mut proposed_imports = import_assets.search_for_relative_paths(&ctx.sema);
     if proposed_imports.is_empty() {
         return None;
     }
@@ -69,6 +69,9 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
             QualifyCandidate::TraitMethod(ctx.sema.db, mcall_expr)
         }
     };
+
+    // we aren't interested in different namespaces
+    proposed_imports.dedup_by(|a, b| a.import_path == b.import_path);
 
     let group_label = group_label(candidate);
     for import in proposed_imports {
