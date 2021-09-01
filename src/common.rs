@@ -256,7 +256,7 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
     pub(crate) inline_asm_index: u32,
 }
 
-impl<'tcx> LayoutOf for FunctionCx<'_, '_, 'tcx> {
+impl<'tcx> LayoutOf<'tcx> for FunctionCx<'_, '_, 'tcx> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = TyAndLayout<'tcx>;
 
@@ -364,7 +364,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
 
 pub(crate) struct RevealAllLayoutCx<'tcx>(pub(crate) TyCtxt<'tcx>);
 
-impl<'tcx> LayoutOf for RevealAllLayoutCx<'tcx> {
+impl<'tcx> LayoutOf<'tcx> for RevealAllLayoutCx<'tcx> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = TyAndLayout<'tcx>;
 
