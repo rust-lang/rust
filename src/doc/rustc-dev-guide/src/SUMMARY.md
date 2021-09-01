@@ -132,6 +132,7 @@
     - [Creating Errors With SessionDiagnostic](./diagnostics/sessiondiagnostic.md)
     - [`LintStore`](./diagnostics/lintstore.md)
     - [Diagnostic Codes](./diagnostics/diagnostic-codes.md)
+    - [Diagnostic Items](./diagnostics/diagnostic-items.md)
 
 # MIR to Binaries
 
