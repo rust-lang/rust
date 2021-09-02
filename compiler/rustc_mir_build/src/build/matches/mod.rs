@@ -60,7 +60,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 })
             }
             ExprKind::Let { expr, ref pat } => {
-                this.lower_let_else(block, &this.thir[expr], pat, break_scope, variable_scope_span)
+                this.lower_let_expr(block, &this.thir[expr], pat, break_scope, variable_scope_span)
             }
             _ => {
                 let mutability = Mutability::Mut;
@@ -1754,7 +1754,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 // Pat binding - used for `let` and function parameters as well.
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    crate fn lower_let_else(
+    crate fn lower_let_expr(
         &mut self,
         mut block: BasicBlock,
         expr: &Expr<'tcx>,
@@ -1962,7 +1962,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Guard::IfLet(ref pat, scrutinee) => {
                         let s = &this.thir[scrutinee];
                         guard_span = s.span;
-                        this.lower_let_else(block, s, pat, match_scope, arm_span)
+                        this.lower_let_expr(block, s, pat, match_scope, arm_span)
                     }
                 });
 

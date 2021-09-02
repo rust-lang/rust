@@ -106,7 +106,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Let { expr, ref pat } => {
                 let scope = this.local_scope();
                 let (true_block, false_block) = this.in_if_then_scope(scope, |this| {
-                    this.lower_let_else(block, &this.thir[expr], pat, scope, expr_span)
+                    this.lower_let_expr(block, &this.thir[expr], pat, scope, expr_span)
                 });
 
                 let join_block = this.cfg.start_new_block();
