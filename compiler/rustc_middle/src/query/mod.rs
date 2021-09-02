@@ -1077,10 +1077,6 @@ rustc_queries! {
     query needs_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` needs drop", env.value }
     }
-    /// Query backing `Tys::needs_non_const_drop`.
-    query needs_non_const_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-        desc { "computing whether `{}` needs non-const drop", env.value }
-    }
     /// Query backing `TyS::has_significant_drop_raw`.
     query has_significant_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` has a significant drop", env.value }
@@ -1102,14 +1098,6 @@ rustc_queries! {
     /// then `Err(AlwaysRequiresDrop)` is returned.
     query adt_drop_tys(def_id: DefId) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
         desc { |tcx| "computing when `{}` needs drop", tcx.def_path_str(def_id) }
-        cache_on_disk_if { true }
-    }
-
-    /// A list of types where the ADT requires drop if and only if any of
-    /// those types require non-const drop. If the ADT is known to always need
-    /// non-const drop then `Err(AlwaysRequiresDrop)` is returned.
-    query adt_drop_tys_non_const(def_id: DefId) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
-        desc { |tcx| "computing when `{}` needs non-const drop", tcx.def_path_str(def_id) }
         cache_on_disk_if { true }
     }
 
