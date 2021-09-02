@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `{integer}: Tweedledee`
+error[E0275]: overflow evaluating the requirement `{integer}: Tweedledum`
   --> $DIR/simultaneous.rs:18:5
    |
 LL |     is_ee(4);
