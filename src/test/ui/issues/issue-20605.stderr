@@ -2,9 +2,12 @@ error[E0277]: the size for values of type `dyn Iterator<Item = &'a mut u8>` cann
   --> $DIR/issue-20605.rs:2:17
    |
 LL |     for item in *things { *item = 0 }
-   |                 ^^^^^^^ doesn't have a size known at compile-time
+   |                 ^^^^^^^
+   |                 |
+   |                 expected an implementor of trait `IntoIterator`
+   |                 help: consider mutably borrowing here: `&mut *things`
    |
-   = help: the trait `Sized` is not implemented for `dyn Iterator<Item = &'a mut u8>`
+   = note: the trait bound `dyn Iterator<Item = &'a mut u8>: IntoIterator` is not satisfied
    = note: required because of the requirements on the impl of `IntoIterator` for `dyn Iterator<Item = &'a mut u8>`
 note: required by `into_iter`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
