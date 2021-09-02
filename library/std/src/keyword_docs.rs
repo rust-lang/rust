@@ -119,7 +119,7 @@ mod break_keyword {}
 
 #[doc(keyword = "const")]
 //
-/// Compile-time constants and compile-time evaluable functions.
+/// Compile-time constants, compile-time evaluable functions, and raw pointers.
 ///
 /// ## Compile-time constants
 ///
