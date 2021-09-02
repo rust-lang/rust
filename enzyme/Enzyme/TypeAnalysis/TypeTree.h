@@ -152,7 +152,7 @@ public:
         auto found = mapping.find(tmp);
         if (found != mapping.end()) {
           // Already exists as is
-          if (found->second == CT)
+          if (found->second == CT || found->second == BaseType::Anything)
             return changed;
 
           if (intsAreLegalSubPointer &&
@@ -178,7 +178,7 @@ public:
         auto found = mapping.find(tmp);
         if (found != mapping.end()) {
           // Already exists as is
-          if (found->second == CT)
+          if (found->second == CT || found->second == BaseType::Anything)
             return changed;
 
           if (intsAreLegalSubPointer &&
