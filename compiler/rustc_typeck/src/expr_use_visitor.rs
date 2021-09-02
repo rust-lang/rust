@@ -21,29 +21,26 @@ use std::iter;
 
 use crate::mem_categorization as mc;
 
-///////////////////////////////////////////////////////////////////////////
-// The Delegate trait
-
 /// This trait defines the callbacks you can expect to receive when
 /// employing the ExprUseVisitor.
 pub trait Delegate<'tcx> {
-    // The value found at `place` is moved, depending
-    // on `mode`. Where `diag_expr_id` is the id used for diagnostics for `place`.
-    //
-    // Use of a `Copy` type in a ByValue context is considered a use
-    // by `ImmBorrow` and `borrow` is called instead. This is because
-    // a shared borrow is the "minimum access" that would be needed
-    // to perform a copy.
-    //
-    //
-    // The parameter `diag_expr_id` indicates the HIR id that ought to be used for
-    // diagnostics. Around pattern matching such as `let pat = expr`, the diagnostic
-    // id will be the id of the expression `expr` but the place itself will have
-    // the id of the binding in the pattern `pat`.
+    /// The value found at `place` is moved, depending
+    /// on `mode`. Where `diag_expr_id` is the id used for diagnostics for `place`.
+    ///
+    /// Use of a `Copy` type in a ByValue context is considered a use
+    /// by `ImmBorrow` and `borrow` is called instead. This is because
+    /// a shared borrow is the "minimum access" that would be needed
+    /// to perform a copy.
+    ///
+    ///
+    /// The parameter `diag_expr_id` indicates the HIR id that ought to be used for
+    /// diagnostics. Around pattern matching such as `let pat = expr`, the diagnostic
+    /// id will be the id of the expression `expr` but the place itself will have
+    /// the id of the binding in the pattern `pat`.
     fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId);
 
-    // The value found at `place` is being borrowed with kind `bk`.
-    // `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
+    /// The value found at `place` is being borrowed with kind `bk`.
+    /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
     fn borrow(
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,
@@ -51,44 +48,47 @@ pub trait Delegate<'tcx> {
         bk: ty::BorrowKind,
     );
 
-    // The path at `assignee_place` is being assigned to.
-    // `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
+    /// The path at `assignee_place` is being assigned to.
+    /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
     fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId);
 
-    // The `place` should be a fake read because of specified `cause`.
+    /// The `place` should be a fake read because of specified `cause`.
     fn fake_read(&mut self, place: Place<'tcx>, cause: FakeReadCause, diag_expr_id: hir::HirId);
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 enum ConsumeMode {
-    Copy, // reference to x where x has a type that copies
-    Move, // reference to x where x has a type that moves
+    /// reference to x where x has a type that copies
+    Copy,
+    /// reference to x where x has a type that moves
+    Move,
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum MutateMode {
     Init,
-    JustWrite,    // x = y
-    WriteAndRead, // x += y
+    /// Example: `x = y`
+    JustWrite,
+    /// Example: `x += y`
+    WriteAndRead,
 }
 
-///////////////////////////////////////////////////////////////////////////
-// The ExprUseVisitor type
-//
-// This is the code that actually walks the tree.
+/// The ExprUseVisitor type
+///
+/// This is the code that actually walks the tree.
 pub struct ExprUseVisitor<'a, 'tcx> {
     mc: mc::MemCategorizationContext<'a, 'tcx>,
     body_owner: LocalDefId,
     delegate: &'a mut dyn Delegate<'tcx>,
 }
 
-// If the MC results in an error, it's because the type check
-// failed (or will fail, when the error is uncovered and reported
-// during writeback). In this case, we just ignore this part of the
-// code.
-//
-// Note that this macro appears similar to try!(), but, unlike try!(),
-// it does not propagate the error.
+/// If the MC results in an error, it's because the type check
+/// failed (or will fail, when the error is uncovered and reported
+/// during writeback). In this case, we just ignore this part of the
+/// code.
+///
+/// Note that this macro appears similar to try!(), but, unlike try!(),
+/// it does not propagate the error.
 macro_rules! return_if_err {
     ($inp: expr) => {
         match $inp {
@@ -537,9 +537,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         self.walk_expr(with_expr);
     }
 
-    // Invoke the appropriate delegate calls for anything that gets
-    // consumed or borrowed as part of the automatic adjustment
-    // process.
+    /// Invoke the appropriate delegate calls for anything that gets
+    /// consumed or borrowed as part of the automatic adjustment
+    /// process.
     fn walk_adjustment(&mut self, expr: &hir::Expr<'_>) {
         let adjustments = self.mc.typeck_results.expr_adjustments(expr);
         let mut place_with_id = return_if_err!(self.mc.cat_expr_unadjusted(expr));
