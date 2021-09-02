@@ -47,7 +47,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::lint;
 use rustc_span::sym;
-use rustc_span::{BytePos, MultiSpan, Pos, Span, Symbol, DUMMY_SP};
+use rustc_span::{BytePos, MultiSpan, Pos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use rustc_data_structures::stable_map::FxHashMap;
@@ -680,15 +680,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         migrated_variables_concat
                     );
 
-                    // If the body was entirely expanded from a macro
-                    // invocation, i.e. the body is not contained inside the
-                    // closure span, then we walk up the expansion until we
-                    // find the span before the expansion.
-                    let closure_body_span = self.tcx.hir().span(body_id.hir_id)
-                        .find_ancestor_inside(closure_span)
-                        .unwrap_or(DUMMY_SP);
+                    let mut closure_body_span = {
+                        // If the body was entirely expanded from a macro
+                        // invocation, i.e. the body is not contained inside the
+                        // closure span, then we walk up the expansion until we
+                        // find the span before the expansion.
+                        let s = self.tcx.hir().span(body_id.hir_id);
+                        s.find_ancestor_inside(closure_span).unwrap_or(s)
+                    };
 
-                    if let Ok(s) = self.tcx.sess.source_map().span_to_snippet(closure_body_span) {
+                    if let Ok(mut s) = self.tcx.sess.source_map().span_to_snippet(closure_body_span) {
+                        if s.starts_with('$') {
+                            // Looks like a macro fragment. Try to find the real block.
+                            if let Some(hir::Node::Expr(&hir::Expr {
+                                kind: hir::ExprKind::Block(block, ..), ..
+                            })) = self.tcx.hir().find(body_id.hir_id) {
+                                // If the body is a block (with `{..}`), we use the span of that block.
+                                // E.g. with a `|| $body` expanded from a `m!({ .. })`, we use `{ .. }`, and not `$body`.
+                                // Since we know it's a block, we know we can insert the `let _ = ..` without
+                                // breaking the macro syntax.
+                                if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(block.span) {
+                                    closure_body_span = block.span;
+                                    s = snippet;
+                                }
+                            }
+                        }
+
                         let mut lines = s.lines();
                         let line1 = lines.next().unwrap_or_default();
 
