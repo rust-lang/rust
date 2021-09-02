@@ -12,7 +12,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
-use rustc_ast::{AstLike, Block, Inline, ItemKind, Local, MacArgs, MacCall};
+use rustc_ast::{AstLike, Block, Inline, ItemKind, MacArgs, MacCall};
 use rustc_ast::{MacCallStmt, MacStmtStyle, MetaItemKind, ModKind, NestedMetaItem};
 use rustc_ast::{NodeId, PatKind, Path, StmtKind, Unsafe};
 use rustc_ast_pretty::pprust;
@@ -559,7 +559,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         self.cx.force_mode = orig_force_mode;
 
         // Finally incorporate all the expanded macros into the input AST fragment.
-        let mut placeholder_expander = PlaceholderExpander::new(self.cx, self.monotonic);
+        let mut placeholder_expander = PlaceholderExpander::default();
         while let Some(expanded_fragments) = expanded_fragments.pop() {
             for (expn_id, expanded_fragment) in expanded_fragments.into_iter().rev() {
                 placeholder_expander
@@ -1061,13 +1061,51 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         attr
     }
 
+    fn take_stmt_bang(
+        &mut self,
+        stmt: ast::Stmt,
+    ) -> Result<(bool, MacCall, Vec<ast::Attribute>), ast::Stmt> {
+        match stmt.kind {
+            StmtKind::MacCall(mac) => {
+                let MacCallStmt { mac, style, attrs, .. } = mac.into_inner();
+                Ok((style == MacStmtStyle::Semicolon, mac, attrs.into()))
+            }
+            StmtKind::Item(ref item) if matches!(item.kind, ItemKind::MacCall(..)) => {
+                match stmt.kind {
+                    StmtKind::Item(item) => match item.into_inner() {
+                        ast::Item { kind: ItemKind::MacCall(mac), attrs, .. } => {
+                            Ok((mac.args.need_semicolon(), mac, attrs))
+                        }
+                        _ => unreachable!(),
+                    },
+                    _ => unreachable!(),
+                }
+            }
+            StmtKind::Semi(ref expr) if matches!(expr.kind, ast::ExprKind::MacCall(..)) => {
+                match stmt.kind {
+                    StmtKind::Semi(expr) => match expr.into_inner() {
+                        ast::Expr { kind: ast::ExprKind::MacCall(mac), attrs, .. } => {
+                            Ok((mac.args.need_semicolon(), mac, attrs.into()))
+                        }
+                        _ => unreachable!(),
+                    },
+                    _ => unreachable!(),
+                }
+            }
+            StmtKind::Local(..) | StmtKind::Empty | StmtKind::Item(..) | StmtKind::Semi(..) => {
+                Err(stmt)
+            }
+            StmtKind::Expr(..) => unreachable!(),
+        }
+    }
+
     fn configure<T: AstLike>(&mut self, node: T) -> Option<T> {
         self.cfg.configure(node)
     }
 
     // Detect use of feature-gated or invalid attributes on macro invocations
     // since they will not be detected after macro expansion.
-    fn check_attributes(&mut self, attrs: &[ast::Attribute], call: &MacCall) {
+    fn check_attributes(&self, attrs: &[ast::Attribute], call: &MacCall) {
         let features = self.cx.ecfg.features.unwrap();
         let mut attrs = attrs.iter().peekable();
         let mut span: Option<Span> = None;
@@ -1175,11 +1213,6 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 expr
             }
         });
-    }
-
-    // This is needed in order to set `lint_node_id` for `let` statements
-    fn visit_local(&mut self, local: &mut P<Local>) {
-        assign_id!(self, &mut local.id, || noop_visit_local(local, self));
     }
 
     fn flat_map_arm(&mut self, arm: ast::Arm) -> SmallVec<[ast::Arm; 1]> {
@@ -1299,31 +1332,39 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn flat_map_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
         let mut stmt = configure!(self, stmt);
 
-        // we'll expand attributes on expressions separately
-        if !stmt.is_expr() {
+        // We pull macro invocations (both attributes and fn-like macro calls) out of their
+        // `StmtKind`s and treat them as statement macro invocations, not as items or expressions.
+        // FIXME: invocations in semicolon-less expressions positions are expanded as expressions,
+        // changing that requires some compatibility measures.
+        let mut stmt = if !stmt.is_expr() {
             if let Some(attr) = self.take_first_attr(&mut stmt) {
                 return self
                     .collect_attr(attr, Annotatable::Stmt(P(stmt)), AstFragmentKind::Stmts)
                     .make_stmts();
             }
-        }
 
-        if let StmtKind::MacCall(mac) = stmt.kind {
-            let MacCallStmt { mac, style, attrs, tokens: _ } = mac.into_inner();
-            self.check_attributes(&attrs, &mac);
-            let mut placeholder =
-                self.collect_bang(mac, stmt.span, AstFragmentKind::Stmts).make_stmts();
+            let span = stmt.span;
+            match self.take_stmt_bang(stmt) {
+                Ok((add_semicolon, mac, attrs)) => {
+                    self.check_attributes(&attrs, &mac);
+                    let mut stmts =
+                        self.collect_bang(mac, span, AstFragmentKind::Stmts).make_stmts();
 
-            // If this is a macro invocation with a semicolon, then apply that
-            // semicolon to the final statement produced by expansion.
-            if style == MacStmtStyle::Semicolon {
-                if let Some(stmt) = placeholder.pop() {
-                    placeholder.push(stmt.add_trailing_semicolon());
+                    // If this is a macro invocation with a semicolon, then apply that
+                    // semicolon to the final statement produced by expansion.
+                    if add_semicolon {
+                        if let Some(stmt) = stmts.pop() {
+                            stmts.push(stmt.add_trailing_semicolon());
+                        }
+                    }
+
+                    return stmts;
                 }
+                Err(stmt) => stmt,
             }
-
-            return placeholder;
-        }
+        } else {
+            stmt
+        };
 
         // The only way that we can end up with a `MacCall` expression statement,
         // (as opposed to a `StmtKind::MacCall`) is if we have a macro as the
@@ -1338,14 +1379,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             }
         }
 
-        // The placeholder expander gives ids to statements, so we avoid folding the id here.
-        // We don't use `assign_id!` - it will be called when we visit statement's contents
-        // (e.g. an expression, item, or local)
-        let ast::Stmt { id, kind, span } = stmt;
-        let res = noop_flat_map_stmt_kind(kind, self)
-            .into_iter()
-            .map(|kind| ast::Stmt { id, kind, span })
-            .collect();
+        let res = assign_id!(self, &mut stmt.id, || noop_flat_map_stmt(stmt, self));
 
         self.cx.current_expansion.is_trailing_mac = false;
         res
