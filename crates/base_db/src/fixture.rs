@@ -210,6 +210,7 @@ impl ChangeFixture {
             let proc_lib_file = file_id;
             file_id.0 += 1;
 
+            let (proc_macro, source) = test_proc_macros(&proc_macros);
             let mut fs = FileSet::default();
             fs.insert(
                 proc_lib_file,
@@ -217,7 +218,7 @@ impl ChangeFixture {
             );
             roots.push(SourceRoot::new_library(fs));
 
-            change.change_file(proc_lib_file, Some(Arc::new(String::new())));
+            change.change_file(proc_lib_file, Some(Arc::new(String::from(source))));
 
             let all_crates = crate_graph.crates_in_topological_order();
 
@@ -228,7 +229,7 @@ impl ChangeFixture {
                 CfgOptions::default(),
                 CfgOptions::default(),
                 Env::default(),
-                test_proc_macros(&proc_macros),
+                proc_macro,
             );
 
             for krate in all_crates {
@@ -250,14 +251,22 @@ impl ChangeFixture {
     }
 }
 
-fn test_proc_macros(proc_macros: &[String]) -> Vec<ProcMacro> {
-    std::array::IntoIter::new([ProcMacro {
+fn test_proc_macros(proc_macros: &[String]) -> (Vec<ProcMacro>, String) {
+    // The source here is only required so that paths to the macros exist and are resolvable.
+    let source = r#"
+#[proc_macro_attribute]
+pub fn identity(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
+"#;
+    let proc_macros = std::array::IntoIter::new([ProcMacro {
         name: "identity".into(),
         kind: crate::ProcMacroKind::Attr,
         expander: Arc::new(IdentityProcMacroExpander),
     }])
     .filter(|pm| proc_macros.iter().any(|name| name == &pm.name))
-    .collect()
+    .collect();
+    (proc_macros, source.into())
 }
 
 #[derive(Debug, Clone, Copy)]

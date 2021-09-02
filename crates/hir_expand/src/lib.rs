@@ -370,6 +370,7 @@ impl ExpansionInfo {
     ) -> Option<impl Iterator<Item = InFile<SyntaxToken>> + '_> {
         assert_eq!(token.file_id, self.arg.file_id);
         let token_id = if let Some(item) = item {
+            // check if we are mapping down in an attribute input
             let call_id = match self.expanded.file_id.0 {
                 HirFileIdRepr::FileId(_) => return None,
                 HirFileIdRepr::MacroFile(macro_file) => macro_file.macro_call_id,

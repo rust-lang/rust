@@ -166,6 +166,15 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.speculative_expand(actual_macro_call, speculative_args, token_to_map)
     }
 
+    pub fn speculative_expand_attr_macro(
+        &self,
+        actual_macro_call: &ast::Item,
+        speculative_args: &ast::Item,
+        token_to_map: SyntaxToken,
+    ) -> Option<(SyntaxNode, SyntaxToken)> {
+        self.imp.speculative_expand_attr(actual_macro_call, speculative_args, token_to_map)
+    }
+
     // FIXME: Rename to descend_into_macros_single
     pub fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
         self.imp.descend_into_macros(token).pop().unwrap()
@@ -452,7 +461,24 @@ impl<'db> SemanticsImpl<'db> {
         hir_expand::db::expand_speculative(
             self.db.upcast(),
             macro_call_id,
-            speculative_args,
+            speculative_args.syntax(),
+            token_to_map,
+        )
+    }
+
+    fn speculative_expand_attr(
+        &self,
+        actual_macro_call: &ast::Item,
+        speculative_args: &ast::Item,
+        token_to_map: SyntaxToken,
+    ) -> Option<(SyntaxNode, SyntaxToken)> {
+        let sa = self.analyze(actual_macro_call.syntax());
+        let macro_call = InFile::new(sa.file_id, actual_macro_call.clone());
+        let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(macro_call))?;
+        hir_expand::db::expand_speculative(
+            self.db.upcast(),
+            macro_call_id,
+            speculative_args.syntax(),
             token_to_map,
         )
     }

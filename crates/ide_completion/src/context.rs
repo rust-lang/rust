@@ -175,48 +175,90 @@ impl<'a> CompletionContext<'a> {
             incomplete_let: false,
             no_completion_required: false,
         };
-
-        let mut original_file = original_file.syntax().clone();
-        let mut speculative_file = file_with_fake_ident.syntax().clone();
-        let mut offset = position.offset;
-        let mut fake_ident_token = fake_ident_token;
-
-        // Are we inside a macro call?
-        while let (Some(actual_macro_call), Some(macro_call_with_fake_ident)) = (
-            find_node_at_offset::<ast::MacroCall>(&original_file, offset),
-            find_node_at_offset::<ast::MacroCall>(&speculative_file, offset),
-        ) {
-            if actual_macro_call.path().as_ref().map(|s| s.syntax().text())
-                != macro_call_with_fake_ident.path().as_ref().map(|s| s.syntax().text())
-            {
-                break;
-            }
-            let speculative_args = match macro_call_with_fake_ident.token_tree() {
-                Some(tt) => tt,
-                None => break,
-            };
-            if let (Some(actual_expansion), Some(speculative_expansion)) = (
-                ctx.sema.expand(&actual_macro_call),
-                ctx.sema.speculative_expand(
-                    &actual_macro_call,
-                    &speculative_args,
-                    fake_ident_token,
-                ),
+        ctx.expand_and_fill(
+            original_file.syntax().clone(),
+            file_with_fake_ident.syntax().clone(),
+            position.offset,
+            fake_ident_token,
+        );
+        Some(ctx)
+    }
+    fn expand_and_fill(
+        &mut self,
+        mut original_file: SyntaxNode,
+        mut speculative_file: SyntaxNode,
+        mut offset: TextSize,
+        mut fake_ident_token: SyntaxToken,
+    ) {
+        loop {
+            if let (Some(actual_item), Some(item_with_fake_ident)) = (
+                find_node_at_offset::<ast::Item>(&original_file, offset),
+                find_node_at_offset::<ast::Item>(&speculative_file, offset),
             ) {
-                let new_offset = speculative_expansion.1.text_range().start();
-                if new_offset > actual_expansion.text_range().end() {
+                match (
+                    self.sema.expand_attr_macro(&actual_item),
+                    self.sema.speculative_expand_attr_macro(
+                        &actual_item,
+                        &item_with_fake_ident,
+                        fake_ident_token.clone(),
+                    ),
+                ) {
+                    (Some(actual_expansion), Some(speculative_expansion)) => {
+                        let new_offset = speculative_expansion.1.text_range().start();
+                        if new_offset > actual_expansion.text_range().end() {
+                            break;
+                        }
+                        original_file = actual_expansion;
+                        speculative_file = speculative_expansion.0;
+                        fake_ident_token = speculative_expansion.1;
+                        offset = new_offset;
+                        continue;
+                    }
+                    (None, None) => (),
+                    _ => break,
+                }
+            }
+
+            if let (Some(actual_macro_call), Some(macro_call_with_fake_ident)) = (
+                find_node_at_offset::<ast::MacroCall>(&original_file, offset),
+                find_node_at_offset::<ast::MacroCall>(&speculative_file, offset),
+            ) {
+                let mac_call_path0 = actual_macro_call.path().as_ref().map(|s| s.syntax().text());
+                let mac_call_path1 =
+                    macro_call_with_fake_ident.path().as_ref().map(|s| s.syntax().text());
+                if mac_call_path0 != mac_call_path1 {
                     break;
                 }
-                original_file = actual_expansion;
-                speculative_file = speculative_expansion.0;
-                fake_ident_token = speculative_expansion.1;
-                offset = new_offset;
+                let speculative_args = match macro_call_with_fake_ident.token_tree() {
+                    Some(tt) => tt,
+                    None => break,
+                };
+
+                if let (Some(actual_expansion), Some(speculative_expansion)) = (
+                    self.sema.expand(&actual_macro_call),
+                    self.sema.speculative_expand(
+                        &actual_macro_call,
+                        &speculative_args,
+                        fake_ident_token,
+                    ),
+                ) {
+                    let new_offset = speculative_expansion.1.text_range().start();
+                    if new_offset > actual_expansion.text_range().end() {
+                        break;
+                    }
+                    original_file = actual_expansion;
+                    speculative_file = speculative_expansion.0;
+                    fake_ident_token = speculative_expansion.1;
+                    offset = new_offset;
+                } else {
+                    break;
+                }
             } else {
                 break;
             }
         }
-        ctx.fill(&original_file, speculative_file, offset);
-        Some(ctx)
+
+        self.fill(&original_file, speculative_file, offset);
     }
 
     /// Checks whether completions in that particular case don't make much sense.
