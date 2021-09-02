@@ -182,10 +182,6 @@ mod mut_ptr;
 /// // Ensure that the last item was dropped.
 /// assert!(weak.upgrade().is_none());
 /// ```
-///
-/// Notice that the compiler performs this copy automatically when dropping packed structs,
-/// i.e., you do not usually have to worry about such issues unless you call `drop_in_place`
-/// manually.
 #[stable(feature = "drop_in_place", since = "1.8.0")]
 #[lang = "drop_in_place"]
 #[allow(unconditional_recursion)]
