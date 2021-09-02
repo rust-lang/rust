@@ -32,7 +32,7 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSource<'tcx, N> {
             super::ImplSource::TraitAlias(ref d) => write!(f, "{:?}", d),
 
             super::ImplSource::TraitUpcasting(ref d) => write!(f, "{:?}", d),
-            
+
             super::ImplSource::ConstDrop(ref d) => write!(f, "{:?}", d),
         }
     }

@@ -20,7 +20,7 @@ const fn check<T: ~const Drop>() {}
 
 macro_rules! check_all {
     ($($T:ty),*$(,)?) => {$(
-        const _: () = check::<$T>();  
+        const _: () = check::<$T>();
     )*};
 }
 

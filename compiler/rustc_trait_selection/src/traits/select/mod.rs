@@ -1087,26 +1087,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         // Respect const trait obligations
         if self.is_trait_predicate_const(obligation.predicate.skip_binder()) {
-                match candidate {
-                    // const impl
-                    ImplCandidate(def_id)
-                        if tcx.impl_constness(def_id) == hir::Constness::Const => {}
-                    // const param
-                    ParamCandidate(ty::ConstnessAnd {
-                        constness: ty::BoundConstness::ConstIfConst,
-                        ..
-                    }) => {}
-                    // auto trait impl
-                    AutoImplCandidate(..) => {}
-                    // generator, this will raise error in other places
-                    // or ignore error with const_async_blocks feature
-                    GeneratorCandidate => {}
-                    ConstDropCandidate => {}
-                    _ => {
-                        // reject all other types of candidates
-                        return Err(Unimplemented);
-                    }
+            match candidate {
+                // const impl
+                ImplCandidate(def_id) if tcx.impl_constness(def_id) == hir::Constness::Const => {}
+                // const param
+                ParamCandidate(ty::ConstnessAnd {
+                    constness: ty::BoundConstness::ConstIfConst,
+                    ..
+                }) => {}
+                // auto trait impl
+                AutoImplCandidate(..) => {}
+                // generator, this will raise error in other places
+                // or ignore error with const_async_blocks feature
+                GeneratorCandidate => {}
+                ConstDropCandidate => {}
+                _ => {
+                    // reject all other types of candidates
+                    return Err(Unimplemented);
                 }
+            }
         }
         // Treat negative impls as unimplemented, and reservation impls as ambiguity.
         if let ImplCandidate(def_id) = candidate {
