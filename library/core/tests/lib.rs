@@ -65,6 +65,7 @@
 #![feature(unsized_tuple_coercion)]
 #![feature(const_option)]
 #![feature(integer_atomics)]
+#![feature(int_roundings)]
 #![feature(slice_group_by)]
 #![feature(trusted_random_access)]
 #![feature(unsize)]
