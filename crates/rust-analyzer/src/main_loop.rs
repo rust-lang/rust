@@ -660,7 +660,7 @@ impl GlobalState {
                             doc.version = params.text_document.version;
                         }
                         None => {
-                            tracing::error!("expected DidChangeTextDocument: {}", path);
+                            tracing::error!("unexpected DidChangeTextDocument: {}; send DidOpenTextDocument first", path);
                             return Ok(());
                         }
                     };
