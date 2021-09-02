@@ -461,13 +461,16 @@ trait UnusedDelimLint {
         let lhs_needs_parens = {
             let mut innermost = inner;
             loop {
-                if let ExprKind::Binary(_, lhs, _rhs) = &innermost.kind {
-                    innermost = lhs;
-                    if !classify::expr_requires_semi_to_be_stmt(innermost) {
-                        break true;
-                    }
-                } else {
-                    break false;
+                innermost = match &innermost.kind {
+                    ExprKind::Binary(_, lhs, _rhs) => lhs,
+                    ExprKind::Call(fn_, _params) => fn_,
+                    ExprKind::Cast(expr, _ty) => expr,
+                    ExprKind::Type(expr, _ty) => expr,
+                    ExprKind::Index(base, _subscript) => base,
+                    _ => break false,
+                };
+                if !classify::expr_requires_semi_to_be_stmt(innermost) {
+                    break true;
                 }
             }
         };
