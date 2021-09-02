@@ -2,7 +2,7 @@
 
 #![allow(dead_code, incomplete_features)]
 #![warn(clippy::doc_markdown)]
-#![feature(custom_inner_attributes, const_generics, const_evaluatable_checked, const_option)]
+#![feature(custom_inner_attributes, generic_const_exprs, const_option)]
 #![rustfmt::skip]
 
 /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
@@ -203,7 +203,7 @@ fn issue_2343() {}
 /// __|_ _|__||_|
 fn pulldown_cmark_crash() {}
 
-// issue #7033 - const_evaluatable_checked ICE
+// issue #7033 - generic_const_exprs ICE
 struct S<T, const N: usize>
 where [(); N.checked_next_power_of_two().unwrap()]: {
     arr: [T; N.checked_next_power_of_two().unwrap()],

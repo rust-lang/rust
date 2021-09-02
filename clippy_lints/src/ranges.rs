@@ -51,7 +51,7 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// Will add unnecessary pair of parentheses when the
-    /// expression is not wrapped in a pair but starts with a opening parenthesis
+    /// expression is not wrapped in a pair but starts with an opening parenthesis
     /// and ends with a closing one.
     /// I.e., `let _ = (f()+1)..(f()+1)` results in `let _ = ((f()+1)..=f())`.
     ///
@@ -329,7 +329,7 @@ fn check_range_zip_with_len(cx: &LateContext<'_>, path: &PathSegment<'_>, args: 
         if let ExprKind::MethodCall(iter_path, _, iter_args, _) = iter.kind;
         if iter_path.ident.name == sym::iter;
         // range expression in `.zip()` call: `0..x.len()`
-        if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(zip_arg);
+        if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::Range::hir(zip_arg);
         if is_integer_const(cx, start, 0);
         // `.len()` call
         if let ExprKind::MethodCall(len_path, _, len_args, _) = end.kind;
@@ -356,7 +356,7 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
             start,
             end: Some(end),
             limits: RangeLimits::HalfOpen
-        }) = higher::range(expr);
+        }) = higher::Range::hir(expr);
         if let Some(y) = y_plus_one(cx, end);
         then {
             let span = if expr.span.from_expansion() {
@@ -401,7 +401,7 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
 // inclusive range minus one: `x..=(y-1)`
 fn check_inclusive_range_minus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
-        if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::range(expr);
+        if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::Range::hir(expr);
         if let Some(y) = y_minus_one(cx, end);
         then {
             span_lint_and_then(
@@ -438,8 +438,8 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
     fn is_for_loop_arg(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         let mut cur_expr = expr;
         while let Some(parent_expr) = get_parent_expr(cx, cur_expr) {
-            match higher::for_loop(parent_expr) {
-                Some((_, args, _, _)) if args.hir_id == expr.hir_id => return true,
+            match higher::ForLoop::hir(parent_expr) {
+                Some(higher::ForLoop { arg, .. }) if arg.hir_id == expr.hir_id => return true,
                 _ => cur_expr = parent_expr,
             }
         }
@@ -455,7 +455,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
     }
 
     if_chain! {
-        if let Some(higher::Range { start: Some(start), end: Some(end), limits }) = higher::range(expr);
+        if let Some(higher::Range { start: Some(start), end: Some(end), limits }) = higher::Range::hir(expr);
         let ty = cx.typeck_results().expr_ty(start);
         if let ty::Int(_) | ty::Uint(_) = ty.kind();
         if let Some((start_idx, _)) = constant(cx, cx.typeck_results(), start);

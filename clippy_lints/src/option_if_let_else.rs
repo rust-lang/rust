@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::higher;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{
@@ -8,9 +9,7 @@ use clippy_utils::{
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionSome;
-use rustc_hir::{
-    def::Res, Arm, BindingAnnotation, Block, Expr, ExprKind, MatchSource, Mutability, PatKind, Path, QPath, UnOp,
-};
+use rustc_hir::{def::Res, BindingAnnotation, Block, Expr, ExprKind, Mutability, PatKind, Path, QPath, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -88,20 +87,20 @@ struct OptionIfLetElseOccurence {
 
 /// Extracts the body of a given arm. If the arm contains only an expression,
 /// then it returns the expression. Otherwise, it returns the entire block
-fn extract_body_from_arm<'a>(arm: &'a Arm<'a>) -> Option<&'a Expr<'a>> {
+fn extract_body_from_expr<'a>(expr: &'a Expr<'a>) -> Option<&'a Expr<'a>> {
     if let ExprKind::Block(
         Block {
-            stmts: statements,
-            expr: Some(expr),
+            stmts: block_stmts,
+            expr: Some(block_expr),
             ..
         },
         _,
-    ) = &arm.body.kind
+    ) = expr.kind
     {
-        if let [] = statements {
-            Some(expr)
+        if let [] = block_stmts {
+            Some(block_expr)
         } else {
-            Some(arm.body)
+            Some(expr)
         }
     } else {
         None
@@ -125,22 +124,19 @@ fn format_option_in_sugg(cx: &LateContext<'_>, cond_expr: &Expr<'_>, as_ref: boo
 /// If this expression is the option if let/else construct we're detecting, then
 /// this function returns an `OptionIfLetElseOccurence` struct with details if
 /// this construct is found, or None if this construct is not found.
-fn detect_option_if_let_else<'tcx>(
-    cx: &'_ LateContext<'tcx>,
-    expr: &'_ Expr<'tcx>,
-) -> Option<OptionIfLetElseOccurence> {
+fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<OptionIfLetElseOccurence> {
     if_chain! {
         if !in_macro(expr.span); // Don't lint macros, because it behaves weirdly
         if !in_constant(cx, expr.hir_id);
-        if let ExprKind::Match(cond_expr, [some_arm, none_arm], MatchSource::IfLetDesugar{contains_else_clause: true})
-            = &expr.kind;
+        if let Some(higher::IfLet { let_pat, let_expr, if_then, if_else: Some(if_else) })
+            = higher::IfLet::hir(cx, expr);
         if !is_else_clause(cx.tcx, expr);
-        if !is_result_ok(cx, cond_expr); // Don't lint on Result::ok because a different lint does it already
-        if let PatKind::TupleStruct(struct_qpath, [inner_pat], _) = &some_arm.pat.kind;
+        if !is_result_ok(cx, let_expr); // Don't lint on Result::ok because a different lint does it already
+        if let PatKind::TupleStruct(struct_qpath, [inner_pat], _) = &let_pat.kind;
         if is_lang_ctor(cx, struct_qpath, OptionSome);
         if let PatKind::Binding(bind_annotation, _, id, _) = &inner_pat.kind;
-        if let Some(some_captures) = can_move_expr_to_closure(cx, some_arm.body);
-        if let Some(none_captures) = can_move_expr_to_closure(cx, none_arm.body);
+        if let Some(some_captures) = can_move_expr_to_closure(cx, if_then);
+        if let Some(none_captures) = can_move_expr_to_closure(cx, if_else);
         if some_captures
             .iter()
             .filter_map(|(id, &c)| none_captures.get(id).map(|&c2| (c, c2)))
@@ -148,23 +144,23 @@ fn detect_option_if_let_else<'tcx>(
 
         then {
             let capture_mut = if bind_annotation == &BindingAnnotation::Mutable { "mut " } else { "" };
-            let some_body = extract_body_from_arm(some_arm)?;
-            let none_body = extract_body_from_arm(none_arm)?;
+            let some_body = extract_body_from_expr(if_then)?;
+            let none_body = extract_body_from_expr(if_else)?;
             let method_sugg = if eager_or_lazy::is_eagerness_candidate(cx, none_body) {
                 "map_or"
             } else {
                 "map_or_else"
             };
             let capture_name = id.name.to_ident_string();
-            let (as_ref, as_mut) = match &cond_expr.kind {
+            let (as_ref, as_mut) = match &let_expr.kind {
                 ExprKind::AddrOf(_, Mutability::Not, _) => (true, false),
                 ExprKind::AddrOf(_, Mutability::Mut, _) => (false, true),
                 _ => (bind_annotation == &BindingAnnotation::Ref, bind_annotation == &BindingAnnotation::RefMut),
             };
-            let cond_expr = match &cond_expr.kind {
+            let cond_expr = match let_expr.kind {
                 // Pointer dereferencing happens automatically, so we can omit it in the suggestion
                 ExprKind::Unary(UnOp::Deref, expr) | ExprKind::AddrOf(_, _, expr) => expr,
-                _ => cond_expr,
+                _ => let_expr,
             };
             // Check if captures the closure will need conflict with borrows made in the scrutinee.
             // TODO: check all the references made in the scrutinee expression. This will require interacting

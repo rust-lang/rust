@@ -5,8 +5,7 @@
 // aux-build:helper.rs
 
 #![warn(clippy::missing_const_for_fn)]
-#![allow(incomplete_features)]
-#![feature(start, const_generics)]
+#![feature(start)]
 #![feature(custom_inner_attributes)]
 
 extern crate helper;

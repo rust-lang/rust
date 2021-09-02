@@ -1,6 +1,5 @@
 #![warn(clippy::missing_const_for_fn)]
 #![allow(incomplete_features, clippy::let_and_return)]
-#![feature(const_generics)]
 #![feature(custom_inner_attributes)]
 
 use std::mem::transmute;

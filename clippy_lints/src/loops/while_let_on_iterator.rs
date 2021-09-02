@@ -1,5 +1,6 @@
 use super::WHILE_LET_ON_ITERATOR;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::higher;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{
     get_enclosing_loop_or_closure, is_refutable, is_trait_method, match_def_path, paths, visitors::is_res_used,
@@ -7,27 +8,26 @@ use clippy_utils::{
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, ErasedMap, NestedVisitorMap, Visitor};
-use rustc_hir::{def::Res, Expr, ExprKind, HirId, Local, MatchSource, Mutability, Node, PatKind, QPath, UnOp};
+use rustc_hir::{def::Res, Expr, ExprKind, HirId, Local, Mutability, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_span::{symbol::sym, Span, Symbol};
 
 pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     let (scrutinee_expr, iter_expr, some_pat, loop_expr) = if_chain! {
-        if let ExprKind::Match(scrutinee_expr, [arm, _], MatchSource::WhileLetDesugar) = expr.kind;
+        if let Some(higher::WhileLet { if_then, let_pat, let_expr }) = higher::WhileLet::hir(expr);
         // check for `Some(..)` pattern
-        if let PatKind::TupleStruct(QPath::Resolved(None, pat_path), some_pat, _) = arm.pat.kind;
+        if let PatKind::TupleStruct(QPath::Resolved(None, pat_path), some_pat, _) = let_pat.kind;
         if let Res::Def(_, pat_did) = pat_path.res;
         if match_def_path(cx, pat_did, &paths::OPTION_SOME);
         // check for call to `Iterator::next`
-        if let ExprKind::MethodCall(method_name, _, [iter_expr], _) = scrutinee_expr.kind;
+        if let ExprKind::MethodCall(method_name, _, [iter_expr], _) = let_expr.kind;
         if method_name.ident.name == sym::next;
-        if is_trait_method(cx, scrutinee_expr, sym::Iterator);
-        if let Some(iter_expr) = try_parse_iter_expr(cx, iter_expr);
+        if is_trait_method(cx, let_expr, sym::Iterator);
+        if let Some(iter_expr_struct) = try_parse_iter_expr(cx, iter_expr);
         // get the loop containing the match expression
-        if let Some((_, Node::Expr(loop_expr))) = cx.tcx.hir().parent_iter(expr.hir_id).nth(1);
-        if !uses_iter(cx, &iter_expr, arm.body);
+        if !uses_iter(cx, &iter_expr_struct, if_then);
         then {
-            (scrutinee_expr, iter_expr, some_pat, loop_expr)
+            (let_expr, iter_expr_struct, some_pat, expr)
         } else {
             return;
         }
@@ -81,6 +81,7 @@ struct IterExpr {
     /// The path being used.
     path: Res,
 }
+
 /// Parses any expression to find out which field of which variable is used. Will return `None` if
 /// the expression might have side effects.
 fn try_parse_iter_expr(cx: &LateContext<'_>, mut e: &Expr<'_>) -> Option<IterExpr> {
@@ -285,6 +286,7 @@ fn needs_mutable_borrow(cx: &LateContext<'tcx>, iter_expr: &IterExpr, loop_expr:
     }
     impl Visitor<'tcx> for NestedLoopVisitor<'a, 'b, 'tcx> {
         type Map = ErasedMap<'tcx>;
+
         fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None
         }

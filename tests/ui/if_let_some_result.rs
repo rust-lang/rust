@@ -1,6 +1,7 @@
 // run-rustfix
 
 #![warn(clippy::if_let_some_result)]
+#![allow(dead_code)]
 
 fn str_to_int(x: &str) -> i32 {
     if let Some(y) = x.parse().ok() { y } else { 0 }
@@ -20,8 +21,8 @@ fn strange_some_no_else(x: &str) -> i32 {
     }
 }
 
-fn main() {
-    let _ = str_to_int("1");
-    let _ = str_to_int_ok("2");
-    let _ = strange_some_no_else("3");
+fn negative() {
+    while let Some(1) = "".parse().ok() {}
 }
+
+fn main() {}

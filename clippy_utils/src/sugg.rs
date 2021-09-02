@@ -116,7 +116,7 @@ impl<'a> Sugg<'a> {
     /// Generate a suggestion for an expression with the given snippet. This is used by the `hir_*`
     /// function variants of `Sugg`, since these use different snippet functions.
     fn hir_from_snippet(expr: &hir::Expr<'_>, snippet: Cow<'a, str>) -> Self {
-        if let Some(range) = higher::range(expr) {
+        if let Some(range) = higher::Range::hir(expr) {
             let op = match range.limits {
                 ast::RangeLimits::HalfOpen => AssocOp::DotDot,
                 ast::RangeLimits::Closed => AssocOp::DotDotEq,
@@ -128,6 +128,7 @@ impl<'a> Sugg<'a> {
             hir::ExprKind::AddrOf(..)
             | hir::ExprKind::Box(..)
             | hir::ExprKind::If(..)
+            | hir::ExprKind::Let(..)
             | hir::ExprKind::Closure(..)
             | hir::ExprKind::Unary(..)
             | hir::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
@@ -328,7 +329,7 @@ fn has_enclosing_paren(sugg: impl AsRef<str>) -> bool {
     }
 }
 
-// Copied from the rust standart library, and then edited
+/// Copied from the rust standard library, and then edited
 macro_rules! forward_binop_impls_to_ref {
     (impl $imp:ident, $method:ident for $t:ty, type Output = $o:ty) => {
         impl $imp<$t> for &$t {
@@ -433,7 +434,7 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> 
         matches!(op, AssocOp::ShiftLeft | AssocOp::ShiftRight)
     }
 
-    /// Returns `true` if the operator is a arithmetic operator
+    /// Returns `true` if the operator is an arithmetic operator
     /// (i.e., `+`, `-`, `*`, `/`, `%`).
     fn is_arith(op: AssocOp) -> bool {
         matches!(

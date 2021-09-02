@@ -316,8 +316,11 @@ impl<'a, 'b> SimilarNamesLocalVisitor<'a, 'b> {
 
 impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
     fn visit_local(&mut self, local: &'tcx Local) {
-        if let Some(ref init) = local.init {
-            self.apply(|this| walk_expr(this, &**init));
+        if let Some((init, els)) = &local.kind.init_else_opt() {
+            self.apply(|this| walk_expr(this, init));
+            if let Some(els) = els {
+                self.apply(|this| walk_block(this, els));
+            }
         }
         // add the pattern after the expression because the bindings aren't available
         // yet in the init

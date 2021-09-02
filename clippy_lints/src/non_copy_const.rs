@@ -122,7 +122,7 @@ fn is_unfrozen<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     // Ignore types whose layout is unknown since `is_freeze` reports every generic types as `!Freeze`,
     // making it indistinguishable from `UnsafeCell`. i.e. it isn't a tool to prove a type is
     // 'unfrozen'. However, this code causes a false negative in which
-    // a type contains a layout-unknown type, but also a unsafe cell like `const CELL: Cell<T>`.
+    // a type contains a layout-unknown type, but also an unsafe cell like `const CELL: Cell<T>`.
     // Yet, it's better than `ty.has_type_flags(TypeFlags::HAS_TY_PARAM | TypeFlags::HAS_PROJECTION)`
     // since it works when a pointer indirection involves (`Cell<*const T>`).
     // Making up a `ParamEnv` where every generic params and assoc types are `Freeze`is another option;
@@ -187,11 +187,7 @@ fn is_value_unfrozen_expr<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId, def_id: D
 
     let result = cx.tcx.const_eval_resolve(
         cx.param_env,
-        ty::Unevaluated {
-            def: ty::WithOptConstParam::unknown(def_id),
-            substs,
-            promoted: None,
-        },
+        ty::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs),
         None,
     );
     is_value_unfrozen_raw(cx, result, ty)
@@ -266,7 +262,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                 // in other words, lint consts whose value *could* be unfrozen, not definitely is.
                 // This feels inconsistent with how the lint treats generic types,
                 // which avoids linting types which potentially become unfrozen.
-                // One could check whether a unfrozen type have a *frozen variant*
+                // One could check whether an unfrozen type have a *frozen variant*
                 // (like `body_id_opt.map_or_else(|| !has_frozen_variant(...), ...)`),
                 // and do the same as the case of generic types at impl items.
                 // Note that it isn't sufficient to check if it has an enum
@@ -293,7 +289,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                 }) => {
                     if_chain! {
                         // Lint a trait impl item only when the definition is a generic type,
-                        // assuming a assoc const is not meant to be a interior mutable type.
+                        // assuming an assoc const is not meant to be an interior mutable type.
                         if let Some(of_trait_def_id) = of_trait_ref.trait_def_id();
                         if let Some(of_assoc_item) = specialization_graph::Node::Trait(of_trait_def_id)
                             .item(cx.tcx, impl_item.ident, AssocKind::Const, of_trait_def_id);

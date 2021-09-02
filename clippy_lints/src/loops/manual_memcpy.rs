@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(
         start: Some(start),
         end: Some(end),
         limits,
-    }) = higher::range(arg)
+    }) = higher::Range::hir(arg)
     {
         // the var must be a single name
         if let PatKind::Binding(_, canonical_id, _, _) = pat.kind {
@@ -265,7 +265,7 @@ impl std::ops::Sub<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
     }
 }
 
-/// a wrapper around `MinifyingSugg`, which carries a operator like currying
+/// a wrapper around `MinifyingSugg`, which carries an operator like currying
 /// so that the suggested code become more efficient (e.g. `foo + -bar` `foo - bar`).
 struct Offset {
     value: MinifyingSugg<'static>,

@@ -329,7 +329,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
         vec.iter().map(|elem| self.expr(elem)).collect::<Option<_>>()
     }
 
-    /// Lookup a possibly constant expression from a `ExprKind::Path`.
+    /// Lookup a possibly constant expression from an `ExprKind::Path`.
     fn fetch_path(&mut self, qpath: &QPath<'_>, id: HirId, ty: Ty<'tcx>) -> Option<Constant> {
         let res = self.typeck_results.qpath_res(qpath, id);
         match res {
@@ -346,11 +346,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     .tcx
                     .const_eval_resolve(
                         self.param_env,
-                        ty::Unevaluated {
-                            def: ty::WithOptConstParam::unknown(def_id),
-                            substs,
-                            promoted: None,
-                        },
+                        ty::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs),
                         None,
                     )
                     .ok()

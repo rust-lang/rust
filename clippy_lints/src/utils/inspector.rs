@@ -66,28 +66,6 @@ impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
             hir::ImplItemKind::TyAlias(_) => println!("associated type"),
         }
     }
-    // fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx
-    // hir::TraitItem) {
-    // if !has_attr(&item.attrs) {
-    // return;
-    // }
-    // }
-    //
-    // fn check_variant(&mut self, cx: &LateContext<'tcx>, var: &'tcx
-    // hir::Variant, _:
-    // &hir::Generics) {
-    // if !has_attr(&var.node.attrs) {
-    // return;
-    // }
-    // }
-    //
-    // fn check_field_def(&mut self, cx: &LateContext<'tcx>, field: &'tcx
-    // hir::FieldDef) {
-    // if !has_attr(&field.attrs) {
-    // return;
-    // }
-    // }
-    //
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if !has_attr(cx.sess(), cx.tcx.hir().attrs(expr.hir_id)) {
@@ -127,13 +105,6 @@ impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
             hir::StmtKind::Expr(e) | hir::StmtKind::Semi(e) => print_expr(cx, e, 0),
         }
     }
-    // fn check_foreign_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx
-    // hir::ForeignItem) {
-    // if !has_attr(&item.attrs) {
-    // return;
-    // }
-    // }
-    //
 }
 
 fn has_attr(sess: &Session, attrs: &[Attribute]) -> bool {
@@ -170,6 +141,10 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
             for arg in args {
                 print_expr(cx, arg, indent + 1);
             }
+        },
+        hir::ExprKind::Let(pat, expr, _) => {
+            print_pat(cx, pat, indent + 1);
+            print_expr(cx, expr, indent + 1);
         },
         hir::ExprKind::MethodCall(path, _, args, _) => {
             println!("{}MethodCall", ind);
@@ -405,6 +380,13 @@ fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
         hir::ItemKind::Fn(..) => {
             let item_ty = cx.tcx.type_of(did);
             println!("function of type {:#?}", item_ty);
+        },
+        hir::ItemKind::Macro(ref macro_def) => {
+            if macro_def.macro_rules {
+                println!("macro introduced by `macro_rules!`");
+            } else {
+                println!("macro introduced by `macro`");
+            }
         },
         hir::ItemKind::Mod(..) => println!("module"),
         hir::ItemKind::ForeignMod { abi, .. } => println!("foreign module with abi: {}", abi),

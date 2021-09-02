@@ -551,7 +551,7 @@ declare_lint_pass!(Loops => [
 impl<'tcx> LateLintPass<'tcx> for Loops {
     #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let Some((pat, arg, body, span)) = higher::for_loop(expr) {
+        if let Some(higher::ForLoop { pat, arg, body, span }) = higher::ForLoop::hir(expr) {
             // we don't want to check expanded macros
             // this check is not at the top of the function
             // since higher::for_loop expressions are marked as expansions
@@ -580,8 +580,8 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
 
         while_let_on_iterator::check(cx, expr);
 
-        if let Some((cond, body)) = higher::while_loop(expr) {
-            while_immutable_condition::check(cx, cond, body);
+        if let Some(higher::While { condition, body }) = higher::While::hir(expr) {
+            while_immutable_condition::check(cx, condition, body);
         }
 
         needless_collect::check(expr, cx);

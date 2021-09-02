@@ -964,7 +964,7 @@ Released 2020-11-19
   [#5907](https://github.com/rust-lang/rust-clippy/pull/5907)
 * [`suspicious_arithmetic_impl`]: extend to implementations of `BitAnd`, `BitOr`, `BitXor`, `Rem`, `Shl`, and `Shr`
   [#5884](https://github.com/rust-lang/rust-clippy/pull/5884)
-* [`invalid_atomic_ordering`]: detect misuse of `compare_exchange`, `compare_exchange_weak`, and `fetch_update`
+* `invalid_atomic_ordering`: detect misuse of `compare_exchange`, `compare_exchange_weak`, and `fetch_update`
   [#6025](https://github.com/rust-lang/rust-clippy/pull/6025)
 * Avoid [`redundant_pattern_matching`] triggering in macros
   [#6069](https://github.com/rust-lang/rust-clippy/pull/6069)
@@ -1451,7 +1451,7 @@ Released 2020-03-12
 * [`option_as_ref_deref`] [#4945](https://github.com/rust-lang/rust-clippy/pull/4945)
 * [`wildcard_in_or_patterns`] [#4960](https://github.com/rust-lang/rust-clippy/pull/4960)
 * [`iter_nth_zero`] [#4966](https://github.com/rust-lang/rust-clippy/pull/4966)
-* [`invalid_atomic_ordering`] [#4999](https://github.com/rust-lang/rust-clippy/pull/4999)
+* `invalid_atomic_ordering` [#4999](https://github.com/rust-lang/rust-clippy/pull/4999)
 * [`skip_while_next`] [#5067](https://github.com/rust-lang/rust-clippy/pull/5067)
 
 ### Moves and Deprecations
@@ -2712,7 +2712,6 @@ Released 2018-09-13
 [`integer_arithmetic`]: https://rust-lang.github.io/rust-clippy/master/index.html#integer_arithmetic
 [`integer_division`]: https://rust-lang.github.io/rust-clippy/master/index.html#integer_division
 [`into_iter_on_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#into_iter_on_ref
-[`invalid_atomic_ordering`]: https://rust-lang.github.io/rust-clippy/master/index.html#invalid_atomic_ordering
 [`invalid_null_ptr_usage`]: https://rust-lang.github.io/rust-clippy/master/index.html#invalid_null_ptr_usage
 [`invalid_regex`]: https://rust-lang.github.io/rust-clippy/master/index.html#invalid_regex
 [`invalid_upcast_comparisons`]: https://rust-lang.github.io/rust-clippy/master/index.html#invalid_upcast_comparisons

@@ -45,7 +45,7 @@ fn get_trait_predicates_for_trait_id<'tcx>(
     let mut preds = Vec::new();
     for (pred, _) in generics.predicates {
         if_chain! {
-            if let PredicateKind::Trait(poly_trait_pred, _) = pred.kind().skip_binder();
+            if let PredicateKind::Trait(poly_trait_pred) = pred.kind().skip_binder();
             let trait_pred = cx.tcx.erase_late_bound_regions(pred.kind().rebind(poly_trait_pred));
             if let Some(trait_def_id) = trait_id;
             if trait_def_id == trait_pred.trait_ref.def_id;
@@ -127,7 +127,7 @@ fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Spa
                 then {
                     let data = stmt.span.data();
                     // Make a span out of the semicolon for the help message
-                    Some((span, Some(Span::new(data.hi-BytePos(1), data.hi, data.ctxt))))
+                    Some((span, Some(data.with_lo(data.hi-BytePos(1)))))
                 } else {
                     Some((span, None))
                 }

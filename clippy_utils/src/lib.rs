@@ -259,6 +259,20 @@ pub fn in_macro(span: Span) -> bool {
     }
 }
 
+pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
+    matches!(
+        expr.kind,
+        ExprKind::Block(
+            Block {
+                stmts: [],
+                expr: None,
+                ..
+            },
+            _
+        ) | ExprKind::Tup([])
+    )
+}
+
 /// Checks if given pattern is a wildcard (`_`)
 pub fn is_wild(pat: &Pat<'_>) -> bool {
     matches!(pat.kind, PatKind::Wild)
@@ -588,7 +602,7 @@ pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
 /// For example, if `e` represents the `v[0].a.b[x]`
 /// this method will return a tuple, composed of a `Vec`
 /// containing the `Expr`s for `v[0], v[0].a, v[0].a.b, v[0].a.b[x]`
-/// and a `Expr` for root of them, `v`
+/// and an `Expr` for root of them, `v`
 fn projection_stack<'a, 'hir>(mut e: &'a Expr<'hir>) -> (Vec<&'a Expr<'hir>>, &'a Expr<'hir>) {
     let mut result = vec![];
     let root = loop {
@@ -793,6 +807,13 @@ pub fn capture_local_usage(cx: &LateContext<'tcx>, e: &Expr<'_>) -> CaptureKind 
                     if capture == CaptureKind::Value {
                         capture_expr_ty = e;
                     }
+                },
+                ExprKind::Let(pat, ..) => {
+                    let mutability = match pat_capture_kind(cx, pat) {
+                        CaptureKind::Value => Mutability::Not,
+                        CaptureKind::Ref(m) => m,
+                    };
+                    return CaptureKind::Ref(mutability);
                 },
                 ExprKind::Match(_, arms, _) => {
                     let mut mutability = Mutability::Not;
@@ -1098,7 +1119,7 @@ fn line_span<T: LintContext>(cx: &T, span: Span) -> Span {
     let source_map_and_line = cx.sess().source_map().lookup_line(span.lo()).unwrap();
     let line_no = source_map_and_line.line;
     let line_start = source_map_and_line.sf.lines[line_no];
-    Span::new(line_start, span.hi(), span.ctxt())
+    span.with_lo(line_start)
 }
 
 /// Gets the parent node, if any.
@@ -1182,17 +1203,6 @@ pub fn is_else_clause(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     let map = tcx.hir();
     let mut iter = map.parent_iter(expr.hir_id);
     match iter.next() {
-        Some((arm_id, Node::Arm(..))) => matches!(
-            iter.next(),
-            Some((
-                _,
-                Node::Expr(Expr {
-                    kind: ExprKind::Match(_, [_, else_arm], MatchSource::IfLetDesugar { .. }),
-                    ..
-                })
-            ))
-            if else_arm.hir_id == arm_id
-        ),
         Some((
             _,
             Node::Expr(Expr {
@@ -1591,15 +1601,15 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
     let mut conds = Vec::new();
     let mut blocks: Vec<&Block<'_>> = Vec::new();
 
-    while let ExprKind::If(cond, then_expr, ref else_expr) = expr.kind {
-        conds.push(cond);
-        if let ExprKind::Block(block, _) = then_expr.kind {
+    while let Some(higher::IfOrIfLet { cond, then, r#else }) = higher::IfOrIfLet::hir(expr) {
+        conds.push(&*cond);
+        if let ExprKind::Block(block, _) = then.kind {
             blocks.push(block);
         } else {
             panic!("ExprKind::If node is not an ExprKind::Block");
         }
 
-        if let Some(else_expr) = *else_expr {
+        if let Some(else_expr) = r#else {
             expr = else_expr;
         } else {
             break;
@@ -1809,7 +1819,7 @@ pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_>, did: DefId) -> bool {
         .predicates_of(did)
         .predicates
         .iter()
-        .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
+        .filter_map(|(p, _)| if p.is_global(cx.tcx) { Some(*p) } else { None });
     traits::impossible_predicates(
         cx.tcx,
         traits::elaborate_predicates(cx.tcx, predicates)
@@ -1855,7 +1865,7 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
     if is_primitive {
         // if we have wrappers like Array, Slice or Tuple, print these
         // and get the type enclosed in the slice ref
-        match expr_type.peel_refs().walk().nth(1).unwrap().expect_ty().kind() {
+        match expr_type.peel_refs().walk(cx.tcx).nth(1).unwrap().expect_ty().kind() {
             rustc_ty::Slice(..) => return Some("slice".into()),
             rustc_ty::Array(..) => return Some("array".into()),
             rustc_ty::Tuple(..) => return Some("tuple".into()),
@@ -1863,7 +1873,7 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
                 // is_recursively_primitive_type() should have taken care
                 // of the rest and we can rely on the type that is found
                 let refs_peeled = expr_type.peel_refs();
-                return Some(refs_peeled.walk().last().unwrap().to_string());
+                return Some(refs_peeled.walk(cx.tcx).last().unwrap().to_string());
             },
         }
     }

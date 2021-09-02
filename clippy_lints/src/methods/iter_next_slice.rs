@@ -18,7 +18,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, cal
     // since it is already covered by `&loops::ITER_NEXT_LOOP`
     let mut parent_expr_opt = get_parent_expr(cx, expr);
     while let Some(parent_expr) = parent_expr_opt {
-        if higher::for_loop(parent_expr).is_some() {
+        if higher::ForLoop::hir(parent_expr).is_some() {
             return;
         }
         parent_expr_opt = get_parent_expr(cx, parent_expr);
@@ -29,7 +29,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, cal
         if_chain! {
             if let hir::ExprKind::Index(caller_var, index_expr) = &caller_expr.kind;
             if let Some(higher::Range { start: Some(start_expr), end: None, limits: ast::RangeLimits::HalfOpen })
-                = higher::range(index_expr);
+                = higher::Range::hir(index_expr);
             if let hir::ExprKind::Lit(ref start_lit) = &start_expr.kind;
             if let ast::LitKind::Int(start_idx, _) = start_lit.node;
             then {

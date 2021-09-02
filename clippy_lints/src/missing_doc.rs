@@ -137,6 +137,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             },
             hir::ItemKind::Const(..)
             | hir::ItemKind::Enum(..)
+            | hir::ItemKind::Macro(..)
             | hir::ItemKind::Mod(..)
             | hir::ItemKind::Static(..)
             | hir::ItemKind::Struct(..)

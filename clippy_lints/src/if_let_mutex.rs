@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::higher;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::SpanlessEq;
 use if_chain::if_chain;
 use rustc_hir::intravisit::{self as visit, NestedVisitorMap, Visitor};
-use rustc_hir::{Expr, ExprKind, MatchSource};
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -42,7 +43,7 @@ declare_clippy_lint! {
 declare_lint_pass!(IfLetMutex => [IF_LET_MUTEX]);
 
 impl<'tcx> LateLintPass<'tcx> for IfLetMutex {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, ex: &'tcx Expr<'tcx>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         let mut arm_visit = ArmVisitor {
             mutex_lock_called: false,
             found_mutex: None,
@@ -53,25 +54,23 @@ impl<'tcx> LateLintPass<'tcx> for IfLetMutex {
             found_mutex: None,
             cx,
         };
-        if let ExprKind::Match(
-            op,
-            arms,
-            MatchSource::IfLetDesugar {
-                contains_else_clause: true,
-            },
-        ) = ex.kind
+        if let Some(higher::IfLet {
+            let_expr,
+            if_then,
+            if_else: Some(if_else),
+            ..
+        }) = higher::IfLet::hir(cx, expr)
         {
-            op_visit.visit_expr(op);
+            op_visit.visit_expr(let_expr);
             if op_visit.mutex_lock_called {
-                for arm in arms {
-                    arm_visit.visit_arm(arm);
-                }
+                arm_visit.visit_expr(if_then);
+                arm_visit.visit_expr(if_else);
 
                 if arm_visit.mutex_lock_called && arm_visit.same_mutex(cx, op_visit.found_mutex.unwrap()) {
                     span_lint_and_help(
                         cx,
                         IF_LET_MUTEX,
-                        ex.span,
+                        expr.span,
                         "calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock",
                         None,
                         "move the lock call outside of the `if let ...` expression",

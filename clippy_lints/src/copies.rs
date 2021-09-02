@@ -316,9 +316,10 @@ fn scan_block_for_eq(cx: &LateContext<'tcx>, blocks: &[&Block<'tcx>]) -> Option<
     let mut start_eq = usize::MAX;
     let mut end_eq = usize::MAX;
     let mut expr_eq = true;
-    for win in blocks.windows(2) {
-        let l_stmts = win[0].stmts;
-        let r_stmts = win[1].stmts;
+    let mut iter = blocks.windows(2);
+    while let Some(&[win0, win1]) = iter.next() {
+        let l_stmts = win0.stmts;
+        let r_stmts = win1.stmts;
 
         // `SpanlessEq` now keeps track of the locals and is therefore context sensitive clippy#6752.
         // The comparison therefore needs to be done in a way that builds the correct context.
@@ -335,22 +336,22 @@ fn scan_block_for_eq(cx: &LateContext<'tcx>, blocks: &[&Block<'tcx>]) -> Option<
             it1.zip(it2)
                 .fold(0, |acc, (l, r)| if evaluator.eq_stmt(l, r) { acc + 1 } else { 0 })
         };
-        let block_expr_eq = both(&win[0].expr, &win[1].expr, |l, r| evaluator.eq_expr(l, r));
+        let block_expr_eq = both(&win0.expr, &win1.expr, |l, r| evaluator.eq_expr(l, r));
 
         // IF_SAME_THEN_ELSE
         if_chain! {
             if block_expr_eq;
             if l_stmts.len() == r_stmts.len();
             if l_stmts.len() == current_start_eq;
-            if !is_lint_allowed(cx, IF_SAME_THEN_ELSE, win[0].hir_id);
-            if !is_lint_allowed(cx, IF_SAME_THEN_ELSE, win[1].hir_id);
+            if !is_lint_allowed(cx, IF_SAME_THEN_ELSE, win0.hir_id);
+            if !is_lint_allowed(cx, IF_SAME_THEN_ELSE, win1.hir_id);
             then {
                 span_lint_and_note(
                     cx,
                     IF_SAME_THEN_ELSE,
-                    win[0].span,
+                    win0.span,
                     "this `if` has identical blocks",
-                    Some(win[1].span),
+                    Some(win1.span),
                     "same as this",
                 );
 

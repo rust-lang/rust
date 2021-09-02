@@ -74,7 +74,7 @@ impl LateLintPass<'_> for PtrEq {
     }
 }
 
-// If the given expression is a cast to an usize, return the lhs of the cast
+// If the given expression is a cast to a usize, return the lhs of the cast
 // E.g., `foo as *const _ as usize` returns `foo as *const _`.
 fn expr_as_cast_to_usize<'tcx>(cx: &LateContext<'tcx>, cast_expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if cx.typeck_results().expr_ty(cast_expr) == cx.tcx.types.usize {

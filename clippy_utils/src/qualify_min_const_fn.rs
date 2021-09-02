@@ -36,7 +36,8 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: Option<&Ru
                 ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {:#?}", predicate),
                 ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {:#?}", predicate),
                 ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {:#?}", predicate),
-                ty::PredicateKind::Trait(pred, _) => {
+                ty::PredicateKind::Coerce(_) => panic!("coerce predicate on function: {:#?}", predicate),
+                ty::PredicateKind::Trait(pred) => {
                     if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                         continue;
                     }
@@ -85,7 +86,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: Option<&Ru
 }
 
 fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
-    for arg in ty.walk() {
+    for arg in ty.walk(tcx) {
         let ty = match arg.unpack() {
             GenericArgKind::Type(ty) => ty,
 

@@ -158,7 +158,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (Unary(lo, l), Unary(ro, r)) => mem::discriminant(lo) == mem::discriminant(ro) && eq_expr(l, r),
         (Lit(l), Lit(r)) => l.kind == r.kind,
         (Cast(l, lt), Cast(r, rt)) | (Type(l, lt), Type(r, rt)) => eq_expr(l, r) && eq_ty(lt, rt),
-        (Let(lp, le), Let(rp, re)) => eq_pat(lp, rp) && eq_expr(le, re),
+        (Let(lp, le, _), Let(rp, re, _)) => eq_pat(lp, rp) && eq_expr(le, re),
         (If(lc, lt, le), If(rc, rt, re)) => eq_expr(lc, rc) && eq_block(lt, rt) && eq_expr_opt(le, re),
         (While(lc, lt, ll), While(rc, rt, rl)) => eq_label(ll, rl) && eq_expr(lc, rc) && eq_block(lt, rt),
         (ForLoop(lp, li, lt, ll), ForLoop(rp, ri, rt, rl)) => {
@@ -221,7 +221,7 @@ pub fn eq_stmt(l: &Stmt, r: &Stmt) -> bool {
         (Local(l), Local(r)) => {
             eq_pat(&l.pat, &r.pat)
                 && both(&l.ty, &r.ty, |l, r| eq_ty(l, r))
-                && eq_expr_opt(&l.init, &r.init)
+                && eq_local_kind(&l.kind, &r.kind)
                 && over(&l.attrs, &r.attrs, |l, r| eq_attr(l, r))
         },
         (Item(l), Item(r)) => eq_item(l, r, eq_item_kind),
@@ -230,6 +230,16 @@ pub fn eq_stmt(l: &Stmt, r: &Stmt) -> bool {
         (MacCall(l), MacCall(r)) => {
             l.style == r.style && eq_mac_call(&l.mac, &r.mac) && over(&l.attrs, &r.attrs, |l, r| eq_attr(l, r))
         },
+        _ => false,
+    }
+}
+
+pub fn eq_local_kind(l: &LocalKind, r: &LocalKind) -> bool {
+    use LocalKind::*;
+    match (l, r) {
+        (Decl, Decl) => true,
+        (Init(l), Init(r)) => eq_expr(l, r),
+        (InitElse(li, le), InitElse(ri, re)) => eq_expr(li, ri) && eq_block(le, re),
         _ => false,
     }
 }
