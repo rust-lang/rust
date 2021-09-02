@@ -1,8 +1,8 @@
 error: expected one of `)`, `,`, or `:`, found `>`
-  --> $DIR/issue-58856-1.rs:3:14
+  --> $DIR/issue-58856-1.rs:3:9
    |
 LL |     fn b(self>
-   |         -    ^ help: `)` may belong here
+   |         ^    ^ help: `)` may belong here
    |         |
    |         unclosed delimiter
 

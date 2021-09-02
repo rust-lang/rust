@@ -1,10 +1,10 @@
 error: mismatched closing delimiter: `}`
-  --> $DIR/unclosed_delim_mod.rs:7:1
+  --> $DIR/unclosed_delim_mod.rs:5:7
    |
 LL | pub fn new() -> Result<Value, ()> {
    |                                   - closing delimiter possibly meant for this
 LL |     Ok(Value {
-   |       - unclosed delimiter
+   |       ^ unclosed delimiter
 LL |     }
 LL | }
    | ^ mismatched closing delimiter
