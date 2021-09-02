@@ -130,8 +130,8 @@ where
             for (k, v) in shard.active.iter() {
                 if let QueryResult::Started(ref job) = *v {
                     let id = QueryJobId::new(job.id, shard_id, kind);
-                    let info = QueryInfo { span: job.span, query: make_query(tcx, k.clone()) };
-                    jobs.insert(id, QueryJobInfo { info, job: job.clone() });
+                    let query = make_query(tcx, k.clone());
+                    jobs.insert(id, QueryJobInfo { query, job: job.clone() });
                 }
             }
         }
