@@ -20,11 +20,12 @@ impl rustc_driver::Callbacks for MiriCompilerCalls<'_> {
         compiler.session().abort_if_errors();
 
         queries.global_ctxt().unwrap().peek_mut().enter(|tcx| {
-            let (entry_def_id, _) = tcx.entry_fn(()).expect("no main or start function found");
+            let (entry_def_id, entry_type) =
+                tcx.entry_fn(()).expect("no main or start function found");
 
             self.bencher.iter(|| {
                 let config = miri::MiriConfig::default();
-                miri::eval_main(tcx, entry_def_id, config);
+                miri::eval_entry(tcx, entry_def_id, entry_type, config);
             });
         });
 
