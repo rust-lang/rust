@@ -171,7 +171,8 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                 // skip if there is a `self` parameter binding to a type
                 // that contains `Self` (i.e.: `self: Box<Self>`), see #4804
                 if let Some(trait_self_ty) = self.trait_self_ty {
-                    if map.name(cmt.hir_id) == kw::SelfLower && contains_ty(self.cx.tcx, cmt.place.ty(), trait_self_ty) {
+                    if map.name(cmt.hir_id) == kw::SelfLower && contains_ty(self.cx.tcx, cmt.place.ty(), trait_self_ty)
+                    {
                         return;
                     }
                 }

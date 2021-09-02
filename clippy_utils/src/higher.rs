@@ -92,7 +92,14 @@ impl<'hir> IfLet<'hir> {
             let hir = cx.tcx.hir();
             let mut iter = hir.parent_iter(expr.hir_id);
             if let Some((_, Node::Block(Block { stmts: [], .. }))) = iter.next() {
-                if let Some((_, Node::Expr(Expr { kind: ExprKind::Loop(_, _, LoopSource::While, _), .. }))) = iter.next() {
+                if let Some((
+                    _,
+                    Node::Expr(Expr {
+                        kind: ExprKind::Loop(_, _, LoopSource::While, _),
+                        ..
+                    }),
+                )) = iter.next()
+                {
                     // while loop desugar
                     return None;
                 }

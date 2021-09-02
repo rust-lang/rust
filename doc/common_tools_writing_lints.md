@@ -11,6 +11,7 @@ You may need following tooltips to catch up with common operations.
 
 Useful Rustc dev guide links:
 - [Stages of compilation](https://rustc-dev-guide.rust-lang.org/compiler-src.html#the-main-stages-of-compilation)
+- [Diagnostic items](https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html)
 - [Type checking](https://rustc-dev-guide.rust-lang.org/type-checking.html)
 - [Ty module](https://rustc-dev-guide.rust-lang.org/ty.html)
 
@@ -75,20 +76,21 @@ impl LateLintPass<'_> for MyStructLint {
 
 # Checking if a type implements a specific trait
 
-There are two ways to do this, depending if the target trait is part of lang items.
+There are three ways to do this, depending on if the target trait has a diagnostic item, lang item or neither.
 
 ```rust
-use clippy_utils::{implements_trait, match_trait_method, paths};
+use clippy_utils::{implements_trait, is_trait_method, match_trait_method, paths};
+use rustc_span::symbol::sym;
 
 impl LateLintPass<'_> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        // 1. Using expression and Clippy's convenient method
-        // we use `match_trait_method` function from Clippy's toolbox
-        if match_trait_method(cx, expr, &paths::INTO) {
-            // `expr` implements `Into` trait
+        // 1. Using diagnostic items with the expression
+        // we use `is_trait_method` function from Clippy's utils
+        if is_trait_method(cx, expr, sym::Iterator) {
+            // method call in `expr` belongs to `Iterator` trait
         }
 
-        // 2. Using type context `TyCtxt`
+        // 2. Using lang items with the expression type
         let ty = cx.typeck_results().expr_ty(expr);
         if cx.tcx.lang_items()
             // we are looking for the `DefId` of `Drop` trait in lang items
@@ -97,15 +99,20 @@ impl LateLintPass<'_> for MyStructLint {
             .map_or(false, |id| implements_trait(cx, ty, id, &[])) {
                 // `expr` implements `Drop` trait
             }
+
+        // 3. Using the type path with the expression
+        // we use `match_trait_method` function from Clippy's utils
+        if match_trait_method(cx, expr, &paths::INTO) {
+            // `expr` implements `Into` trait
+        }
     }
 }
 ```
 
-> Prefer using lang items, if the target trait is available there.
-
-A list of defined paths for Clippy can be found in [paths.rs][paths]
+> Prefer using diagnostic and lang items, if the target trait has one.
 
 We access lang items through the type context `tcx`. `tcx` is of type [`TyCtxt`][TyCtxt] and is defined in the `rustc_middle` crate.
+A list of defined paths for Clippy can be found in [paths.rs][paths]
 
 # Checking if a type defines a specific method
 

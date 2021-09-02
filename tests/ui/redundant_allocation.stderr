@@ -134,5 +134,14 @@ LL |     pub fn arc_test9<T>(foo: Arc<Rc<T>>) -> Arc<Rc<SubT<T>>> {
    = note: `Rc<SubT<T>>` is already on the heap, `Arc<Rc<SubT<T>>>` makes an extra allocation
    = help: consider using just `Arc<SubT<T>>` or `Rc<SubT<T>>`
 
-error: aborting due to 15 previous errors
+error: usage of `Rc<Box<Box<dyn T>>>`
+  --> $DIR/redundant_allocation.rs:97:27
+   |
+LL |     pub fn test_rc_box(_: Rc<Box<Box<dyn T>>>) {}
+   |                           ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Box<Box<dyn T>>` is already on the heap, `Rc<Box<Box<dyn T>>>` makes an extra allocation
+   = help: consider using just `Rc<Box<dyn T>>` or `Box<Box<dyn T>>`
+
+error: aborting due to 16 previous errors
 

@@ -96,28 +96,63 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
             if has_no_effect(cx, expr) {
                 span_lint_hir(cx, NO_EFFECT, expr.hir_id, stmt.span, "statement with no effect");
             } else if let Some(reduced) = reduce_expression(cx, expr) {
-                let mut snippet = String::new();
-                for e in reduced {
+                for e in &reduced {
                     if e.span.from_expansion() {
                         return;
                     }
-                    if let Some(snip) = snippet_opt(cx, e.span) {
-                        snippet.push_str(&snip);
-                        snippet.push(';');
-                    } else {
-                        return;
-                    }
                 }
-                span_lint_hir_and_then(
-                    cx,
-                    UNNECESSARY_OPERATION,
-                    expr.hir_id,
-                    stmt.span,
-                    "statement can be reduced",
-                    |diag| {
-                        diag.span_suggestion(stmt.span, "replace it with", snippet, Applicability::MachineApplicable);
-                    },
-                );
+                if let ExprKind::Index(..) = &expr.kind {
+                    let snippet;
+                    if_chain! {
+                        if let Some(arr) = snippet_opt(cx, reduced[0].span);
+                        if let Some(func) = snippet_opt(cx, reduced[1].span);
+                        then {
+                            snippet = format!("assert!({}.len() > {});", &arr, &func);
+                        } else {
+                            return;
+                        }
+                    }
+                    span_lint_hir_and_then(
+                        cx,
+                        UNNECESSARY_OPERATION,
+                        expr.hir_id,
+                        stmt.span,
+                        "unnecessary operation",
+                        |diag| {
+                            diag.span_suggestion(
+                                stmt.span,
+                                "statement can be written as",
+                                snippet,
+                                Applicability::MaybeIncorrect,
+                            );
+                        },
+                    );
+                } else {
+                    let mut snippet = String::new();
+                    for e in reduced {
+                        if let Some(snip) = snippet_opt(cx, e.span) {
+                            snippet.push_str(&snip);
+                            snippet.push(';');
+                        } else {
+                            return;
+                        }
+                    }
+                    span_lint_hir_and_then(
+                        cx,
+                        UNNECESSARY_OPERATION,
+                        expr.hir_id,
+                        stmt.span,
+                        "unnecessary operation",
+                        |diag| {
+                            diag.span_suggestion(
+                                stmt.span,
+                                "statement can be reduced to",
+                                snippet,
+                                Applicability::MachineApplicable,
+                            );
+                        },
+                    );
+                }
             }
         }
     }

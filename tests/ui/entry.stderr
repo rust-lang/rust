@@ -165,21 +165,23 @@ LL | |         m.insert(m!(k), m!(v));
 LL | |     }
    | |_____^ help: try this: `m.entry(m!(k)).or_insert_with(|| m!(v));`
 
-error: usage of `contains_key` followed by `insert` on a `BTreeMap`
-  --> $DIR/entry.rs:153:5
+error: usage of `contains_key` followed by `insert` on a `HashMap`
+  --> $DIR/entry.rs:151:5
    |
 LL | /     if !m.contains_key(&k) {
+LL | |         let x = (String::new(), String::new());
+LL | |         let _ = x.0;
 LL | |         m.insert(k, v);
-LL | |         foo();
 LL | |     }
    | |_____^
    |
 help: try this
    |
-LL ~     if let std::collections::btree_map::Entry::Vacant(e) = m.entry(k) {
-LL +         e.insert(v);
-LL +         foo();
-LL +     }
+LL ~     m.entry(k).or_insert_with(|| {
+LL +         let x = (String::new(), String::new());
+LL +         let _ = x.0;
+LL +         v
+LL +     });
    |
 
 error: aborting due to 10 previous errors

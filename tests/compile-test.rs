@@ -39,6 +39,7 @@ fn third_party_crates() -> String {
         "clippy_lints",
         "clippy_utils",
         "if_chain",
+        "itertools",
         "quote",
         "regex",
         "serde",

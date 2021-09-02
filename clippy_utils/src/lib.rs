@@ -2,6 +2,7 @@
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
 #![feature(rustc_private)]
+#![feature(control_flow_enum)]
 #![recursion_limit = "512"]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
@@ -62,23 +63,27 @@ use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
 
 use if_chain::if_chain;
-use rustc_ast::ast::{self, Attribute, BorrowKind, LitKind};
+use rustc_ast::ast::{self, Attribute, LitKind};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{self, walk_expr, ErasedMap, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{
     def, Arm, BindingAnnotation, Block, Body, Constness, Destination, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl,
-    ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource, Node, Param, Pat, PatKind, Path,
-    PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
+    ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource, Mutability, Node, Param, Pat,
+    PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
 use rustc_middle::hir::map::Map;
+use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::ty as rustc_ty;
-use rustc_middle::ty::{layout::IntegerExt, DefIdTree, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
+use rustc_middle::ty::binding::BindingMode;
+use rustc_middle::ty::{layout::IntegerExt, BorrowKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeFoldable, UpvarCapture};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -89,7 +94,7 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::Integer;
 
 use crate::consts::{constant, Constant};
-use crate::ty::{can_partially_move_ty, is_recursively_primitive_type};
+use crate::ty::{can_partially_move_ty, is_copy, is_recursively_primitive_type};
 
 pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {
     if let Ok(version) = RustcVersion::parse(msrv) {
@@ -255,7 +260,17 @@ pub fn in_macro(span: Span) -> bool {
 }
 
 pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
-    matches!(expr.kind, ExprKind::Block(Block { stmts: [], expr: None, .. }, _) | ExprKind::Tup([]))
+    matches!(
+        expr.kind,
+        ExprKind::Block(
+            Block {
+                stmts: [],
+                expr: None,
+                ..
+            },
+            _
+        ) | ExprKind::Tup([])
+    )
 }
 
 /// Checks if given pattern is a wildcard (`_`)
@@ -630,11 +645,46 @@ pub fn can_mut_borrow_both(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>) -
 }
 
 /// Checks if the top level expression can be moved into a closure as is.
-pub fn can_move_expr_to_closure_no_visit(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, jump_targets: &[HirId]) -> bool {
+/// Currently checks for:
+/// * Break/Continue outside the given loop HIR ids.
+/// * Yield/Return statments.
+/// * Inline assembly.
+/// * Usages of a field of a local where the type of the local can be partially moved.
+///
+/// For example, given the following function:
+///
+/// ```
+/// fn f<'a>(iter: &mut impl Iterator<Item = (usize, &'a mut String)>) {
+///     for item in iter {
+///         let s = item.1;
+///         if item.0 > 10 {
+///             continue;
+///         } else {
+///             s.clear();
+///         }
+///     }
+/// }
+/// ```
+///
+/// When called on the expression `item.0` this will return false unless the local `item` is in the
+/// `ignore_locals` set. The type `(usize, &mut String)` can have the second element moved, so it
+/// isn't always safe to move into a closure when only a single field is needed.
+///
+/// When called on the `continue` expression this will return false unless the outer loop expression
+/// is in the `loop_ids` set.
+///
+/// Note that this check is not recursive, so passing the `if` expression will always return true
+/// even though sub-expressions might return false.
+pub fn can_move_expr_to_closure_no_visit(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    loop_ids: &[HirId],
+    ignore_locals: &HirIdSet,
+) -> bool {
     match expr.kind {
         ExprKind::Break(Destination { target_id: Ok(id), .. }, _)
         | ExprKind::Continue(Destination { target_id: Ok(id), .. })
-            if jump_targets.contains(&id) =>
+            if loop_ids.contains(&id) =>
         {
             true
         },
@@ -646,25 +696,163 @@ pub fn can_move_expr_to_closure_no_visit(cx: &LateContext<'tcx>, expr: &'tcx Exp
         | ExprKind::LlvmInlineAsm(_) => false,
         // Accessing a field of a local value can only be done if the type isn't
         // partially moved.
-        ExprKind::Field(base_expr, _)
-            if matches!(
-                base_expr.kind,
-                ExprKind::Path(QPath::Resolved(_, Path { res: Res::Local(_), .. }))
-            ) && can_partially_move_ty(cx, cx.typeck_results().expr_ty(base_expr)) =>
-        {
+        ExprKind::Field(
+            &Expr {
+                hir_id,
+                kind:
+                    ExprKind::Path(QPath::Resolved(
+                        _,
+                        Path {
+                            res: Res::Local(local_id),
+                            ..
+                        },
+                    )),
+                ..
+            },
+            _,
+        ) if !ignore_locals.contains(local_id) && can_partially_move_ty(cx, cx.typeck_results().node_type(hir_id)) => {
             // TODO: check if the local has been partially moved. Assume it has for now.
             false
-        }
+        },
         _ => true,
     }
 }
 
-/// Checks if the expression can be moved into a closure as is.
-pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
+/// How a local is captured by a closure
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CaptureKind {
+    Value,
+    Ref(Mutability),
+}
+impl CaptureKind {
+    pub fn is_imm_ref(self) -> bool {
+        self == Self::Ref(Mutability::Not)
+    }
+}
+impl std::ops::BitOr for CaptureKind {
+    type Output = Self;
+    fn bitor(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (CaptureKind::Value, _) | (_, CaptureKind::Value) => CaptureKind::Value,
+            (CaptureKind::Ref(Mutability::Mut), CaptureKind::Ref(_))
+            | (CaptureKind::Ref(_), CaptureKind::Ref(Mutability::Mut)) => CaptureKind::Ref(Mutability::Mut),
+            (CaptureKind::Ref(Mutability::Not), CaptureKind::Ref(Mutability::Not)) => CaptureKind::Ref(Mutability::Not),
+        }
+    }
+}
+impl std::ops::BitOrAssign for CaptureKind {
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = *self | rhs;
+    }
+}
+
+/// Given an expression referencing a local, determines how it would be captured in a closure.
+/// Note as this will walk up to parent expressions until the capture can be determined it should
+/// only be used while making a closure somewhere a value is consumed. e.g. a block, match arm, or
+/// function argument (other than a receiver).
+pub fn capture_local_usage(cx: &LateContext<'tcx>, e: &Expr<'_>) -> CaptureKind {
+    fn pat_capture_kind(cx: &LateContext<'_>, pat: &Pat<'_>) -> CaptureKind {
+        let mut capture = CaptureKind::Ref(Mutability::Not);
+        pat.each_binding_or_first(&mut |_, id, span, _| match cx
+            .typeck_results()
+            .extract_binding_mode(cx.sess(), id, span)
+            .unwrap()
+        {
+            BindingMode::BindByValue(_) if !is_copy(cx, cx.typeck_results().node_type(id)) => {
+                capture = CaptureKind::Value;
+            },
+            BindingMode::BindByReference(Mutability::Mut) if capture != CaptureKind::Value => {
+                capture = CaptureKind::Ref(Mutability::Mut);
+            },
+            _ => (),
+        });
+        capture
+    }
+
+    debug_assert!(matches!(
+        e.kind,
+        ExprKind::Path(QPath::Resolved(None, Path { res: Res::Local(_), .. }))
+    ));
+
+    let map = cx.tcx.hir();
+    let mut child_id = e.hir_id;
+    let mut capture = CaptureKind::Value;
+    let mut capture_expr_ty = e;
+
+    for (parent_id, parent) in map.parent_iter(e.hir_id) {
+        if let [Adjustment {
+            kind: Adjust::Deref(_) | Adjust::Borrow(AutoBorrow::Ref(..)),
+            target,
+        }, ref adjust @ ..] = *cx
+            .typeck_results()
+            .adjustments()
+            .get(child_id)
+            .map_or(&[][..], |x| &**x)
+        {
+            if let rustc_ty::RawPtr(TypeAndMut { mutbl: mutability, .. }) | rustc_ty::Ref(_, _, mutability) =
+                *adjust.last().map_or(target, |a| a.target).kind()
+            {
+                return CaptureKind::Ref(mutability);
+            }
+        }
+
+        match parent {
+            Node::Expr(e) => match e.kind {
+                ExprKind::AddrOf(_, mutability, _) => return CaptureKind::Ref(mutability),
+                ExprKind::Index(..) | ExprKind::Unary(UnOp::Deref, _) => capture = CaptureKind::Ref(Mutability::Not),
+                ExprKind::Assign(lhs, ..) | ExprKind::Assign(_, lhs, _) if lhs.hir_id == child_id => {
+                    return CaptureKind::Ref(Mutability::Mut);
+                },
+                ExprKind::Field(..) => {
+                    if capture == CaptureKind::Value {
+                        capture_expr_ty = e;
+                    }
+                },
+                ExprKind::Match(_, arms, _) => {
+                    let mut mutability = Mutability::Not;
+                    for capture in arms.iter().map(|arm| pat_capture_kind(cx, arm.pat)) {
+                        match capture {
+                            CaptureKind::Value => break,
+                            CaptureKind::Ref(Mutability::Mut) => mutability = Mutability::Mut,
+                            CaptureKind::Ref(Mutability::Not) => (),
+                        }
+                    }
+                    return CaptureKind::Ref(mutability);
+                },
+                _ => break,
+            },
+            Node::Local(l) => match pat_capture_kind(cx, l.pat) {
+                CaptureKind::Value => break,
+                capture @ CaptureKind::Ref(_) => return capture,
+            },
+            _ => break,
+        }
+
+        child_id = parent_id;
+    }
+
+    if capture == CaptureKind::Value && is_copy(cx, cx.typeck_results().expr_ty(capture_expr_ty)) {
+        // Copy types are never automatically captured by value.
+        CaptureKind::Ref(Mutability::Not)
+    } else {
+        capture
+    }
+}
+
+/// Checks if the expression can be moved into a closure as is. This will return a list of captures
+/// if so, otherwise, `None`.
+pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<HirIdMap<CaptureKind>> {
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,
+        // Stack of potential break targets contained in the expression.
         loops: Vec<HirId>,
+        /// Local variables created in the expression. These don't need to be captured.
+        locals: HirIdSet,
+        /// Whether this expression can be turned into a closure.
         allow_closure: bool,
+        /// Locals which need to be captured, and whether they need to be by value, reference, or
+        /// mutable reference.
+        captures: HirIdMap<CaptureKind>,
     }
     impl Visitor<'tcx> for V<'_, 'tcx> {
         type Map = ErasedMap<'tcx>;
@@ -676,14 +864,55 @@ pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) ->
             if !self.allow_closure {
                 return;
             }
-            if let ExprKind::Loop(b, ..) = e.kind {
-                self.loops.push(e.hir_id);
-                self.visit_block(b);
-                self.loops.pop();
-            } else {
-                self.allow_closure &= can_move_expr_to_closure_no_visit(self.cx, e, &self.loops);
-                walk_expr(self, e);
+
+            match e.kind {
+                ExprKind::Path(QPath::Resolved(None, &Path { res: Res::Local(l), .. })) => {
+                    if !self.locals.contains(&l) {
+                        let cap = capture_local_usage(self.cx, e);
+                        self.captures.entry(l).and_modify(|e| *e |= cap).or_insert(cap);
+                    }
+                },
+                ExprKind::Closure(..) => {
+                    let closure_id = self.cx.tcx.hir().local_def_id(e.hir_id).to_def_id();
+                    for capture in self.cx.typeck_results().closure_min_captures_flattened(closure_id) {
+                        let local_id = match capture.place.base {
+                            PlaceBase::Local(id) => id,
+                            PlaceBase::Upvar(var) => var.var_path.hir_id,
+                            _ => continue,
+                        };
+                        if !self.locals.contains(&local_id) {
+                            let capture = match capture.info.capture_kind {
+                                UpvarCapture::ByValue(_) => CaptureKind::Value,
+                                UpvarCapture::ByRef(borrow) => match borrow.kind {
+                                    BorrowKind::ImmBorrow => CaptureKind::Ref(Mutability::Not),
+                                    BorrowKind::UniqueImmBorrow | BorrowKind::MutBorrow => {
+                                        CaptureKind::Ref(Mutability::Mut)
+                                    },
+                                },
+                            };
+                            self.captures
+                                .entry(local_id)
+                                .and_modify(|e| *e |= capture)
+                                .or_insert(capture);
+                        }
+                    }
+                },
+                ExprKind::Loop(b, ..) => {
+                    self.loops.push(e.hir_id);
+                    self.visit_block(b);
+                    self.loops.pop();
+                },
+                _ => {
+                    self.allow_closure &= can_move_expr_to_closure_no_visit(self.cx, e, &self.loops, &self.locals);
+                    walk_expr(self, e);
+                },
             }
+        }
+
+        fn visit_pat(&mut self, p: &'tcx Pat<'tcx>) {
+            p.each_binding_or_first(&mut |_, id, _, _| {
+                self.locals.insert(id);
+            });
         }
     }
 
@@ -691,9 +920,11 @@ pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) ->
         cx,
         allow_closure: true,
         loops: Vec::new(),
+        locals: HirIdSet::default(),
+        captures: HirIdMap::default(),
     };
     v.visit_expr(expr);
-    v.allow_closure
+    v.allow_closure.then(|| v.captures)
 }
 
 /// Returns the method names and argument list of nested method call expressions that make up
@@ -1708,7 +1939,7 @@ pub fn peel_hir_expr_while<'tcx>(
 pub fn peel_n_hir_expr_refs(expr: &'a Expr<'a>, count: usize) -> (&'a Expr<'a>, usize) {
     let mut remaining = count;
     let e = peel_hir_expr_while(expr, |e| match e.kind {
-        ExprKind::AddrOf(BorrowKind::Ref, _, e) if remaining != 0 => {
+        ExprKind::AddrOf(ast::BorrowKind::Ref, _, e) if remaining != 0 => {
             remaining -= 1;
             Some(e)
         },
@@ -1722,7 +1953,7 @@ pub fn peel_n_hir_expr_refs(expr: &'a Expr<'a>, count: usize) -> (&'a Expr<'a>, 
 pub fn peel_hir_expr_refs(expr: &'a Expr<'a>) -> (&'a Expr<'a>, usize) {
     let mut count = 0;
     let e = peel_hir_expr_while(expr, |e| match e.kind {
-        ExprKind::AddrOf(BorrowKind::Ref, _, e) => {
+        ExprKind::AddrOf(ast::BorrowKind::Ref, _, e) => {
             count += 1;
             Some(e)
         },

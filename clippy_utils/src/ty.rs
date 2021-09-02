@@ -10,7 +10,7 @@ use rustc_hir::{TyKind, Unsafety};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, TyCtxt, AdtDef, IntTy, Ty, TypeFoldable, UintTy};
+use rustc_middle::ty::{self, AdtDef, IntTy, Ty, TyCtxt, TypeFoldable, UintTy};
 use rustc_span::sym;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::DUMMY_SP;

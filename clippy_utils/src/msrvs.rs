@@ -13,6 +13,7 @@ macro_rules! msrv_aliases {
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
     1,53,0 { OR_PATTERNS }
+    1,52,0 { STR_SPLIT_ONCE }
     1,50,0 { BOOL_THEN }
     1,46,0 { CONST_IF_MATCH }
     1,45,0 { STR_STRIP_PREFIX }

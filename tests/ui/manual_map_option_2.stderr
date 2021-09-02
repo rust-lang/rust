@@ -1,0 +1,43 @@
+error: manual implementation of `Option::map`
+  --> $DIR/manual_map_option_2.rs:8:13
+   |
+LL |       let _ = match Some(0) {
+   |  _____________^
+LL | |         Some(x) => Some({
+LL | |             let y = (String::new(), String::new());
+LL | |             (x, y.0)
+LL | |         }),
+LL | |         None => None,
+LL | |     };
+   | |_____^
+   |
+   = note: `-D clippy::manual-map` implied by `-D warnings`
+help: try this
+   |
+LL ~     let _ = Some(0).map(|x| {
+LL +             let y = (String::new(), String::new());
+LL +             (x, y.0)
+LL ~         });
+   |
+
+error: manual implementation of `Option::map`
+  --> $DIR/manual_map_option_2.rs:50:13
+   |
+LL |       let _ = match &s {
+   |  _____________^
+LL | |         Some(x) => Some({
+LL | |             if let Some(ref s) = s { (x.clone(), s) } else { panic!() }
+LL | |         }),
+LL | |         None => None,
+LL | |     };
+   | |_____^
+   |
+help: try this
+   |
+LL ~     let _ = s.as_ref().map(|x| {
+LL +             if let Some(ref s) = s { (x.clone(), s) } else { panic!() }
+LL ~         });
+   |
+
+error: aborting due to 2 previous errors
+

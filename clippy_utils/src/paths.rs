@@ -68,6 +68,7 @@ pub const IO_WRITE: [&str; 3] = ["std", "io", "Write"];
 pub const IPADDR_V4: [&str; 5] = ["std", "net", "ip", "IpAddr", "V4"];
 pub const IPADDR_V6: [&str; 5] = ["std", "net", "ip", "IpAddr", "V6"];
 pub const ITER_REPEAT: [&str; 5] = ["core", "iter", "sources", "repeat", "repeat"];
+pub const ITERTOOLS_NEXT_TUPLE: [&str; 3] = ["itertools", "Itertools", "next_tuple"];
 #[cfg(feature = "internal-lints")]
 pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
 #[cfg(feature = "internal-lints")]

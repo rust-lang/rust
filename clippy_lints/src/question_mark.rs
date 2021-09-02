@@ -97,7 +97,8 @@ impl QuestionMark {
 
     fn check_if_let_some_and_early_return_none(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
-            if let Some(higher::IfLet { let_pat, let_expr, if_then, if_else: Some(if_else) }) = higher::IfLet::hir(cx, expr);
+            if let Some(higher::IfLet { let_pat, let_expr, if_then, if_else: Some(if_else) })
+                = higher::IfLet::hir(cx, expr);
             if Self::is_option(cx, let_expr);
 
             if let PatKind::TupleStruct(ref path1, fields, None) = let_pat.kind;

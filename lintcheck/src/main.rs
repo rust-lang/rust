@@ -21,6 +21,7 @@ use clap::{App, Arg, ArgMatches};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use walkdir::{DirEntry, WalkDir};
 
 #[cfg(not(windows))]
 const CLIPPY_DRIVER_PATH: &str = "target/debug/clippy-driver";
@@ -193,32 +194,41 @@ impl CrateSource {
                 }
             },
             CrateSource::Path { name, path, options } => {
-                use fs_extra::dir;
+                // copy path into the dest_crate_root but skip directories that contain a CACHEDIR.TAG file.
+                // The target/ directory contains a CACHEDIR.TAG file so it is the most commonly skipped directory
+                // as a result of this filter.
+                let dest_crate_root = PathBuf::from(LINTCHECK_SOURCES).join(name);
+                if dest_crate_root.exists() {
+                    println!("Deleting existing directory at {:?}", dest_crate_root);
+                    std::fs::remove_dir_all(&dest_crate_root).unwrap();
+                }
 
-                // simply copy the entire directory into our target dir
-                let copy_dest = PathBuf::from(format!("{}/", LINTCHECK_SOURCES));
+                println!("Copying {:?} to {:?}", path, dest_crate_root);
 
-                // the source path of the crate we copied,  ${copy_dest}/crate_name
-                let crate_root = copy_dest.join(name); // .../crates/local_crate
+                fn is_cache_dir(entry: &DirEntry) -> bool {
+                    std::fs::read(entry.path().join("CACHEDIR.TAG"))
+                        .map(|x| x.starts_with(b"Signature: 8a477f597d28d172789f06886806bc55"))
+                        .unwrap_or(false)
+                }
 
-                if crate_root.exists() {
-                    println!(
-                        "Not copying {} to {}, destination already exists",
-                        path.display(),
-                        crate_root.display()
-                    );
-                } else {
-                    println!("Copying {} to {}", path.display(), copy_dest.display());
+                for entry in WalkDir::new(path).into_iter().filter_entry(|e| !is_cache_dir(e)) {
+                    let entry = entry.unwrap();
+                    let entry_path = entry.path();
+                    let relative_entry_path = entry_path.strip_prefix(path).unwrap();
+                    let dest_path = dest_crate_root.join(relative_entry_path);
+                    let metadata = entry_path.symlink_metadata().unwrap();
 
-                    dir::copy(path, &copy_dest, &dir::CopyOptions::new()).unwrap_or_else(|_| {
-                        panic!("Failed to copy from {}, to  {}", path.display(), crate_root.display())
-                    });
+                    if metadata.is_dir() {
+                        std::fs::create_dir(dest_path).unwrap();
+                    } else if metadata.is_file() {
+                        std::fs::copy(entry_path, dest_path).unwrap();
+                    }
                 }
 
                 Crate {
                     version: String::from("local"),
                     name: name.clone(),
-                    path: crate_root,
+                    path: dest_crate_root,
                     options: options.clone(),
                 }
             },

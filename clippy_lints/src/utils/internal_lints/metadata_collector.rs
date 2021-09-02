@@ -82,7 +82,7 @@ This lint has the following configuration variables:
 /// `default`
 macro_rules! CONFIGURATION_VALUE_TEMPLATE {
     () => {
-        "* {name}: `{ty}`: {doc} (defaults to `{default}`)\n"
+        "* `{name}`: `{ty}`: {doc} (defaults to `{default}`)\n"
     };
 }
 

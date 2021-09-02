@@ -218,7 +218,10 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<LintTrigger> {
 
 fn expr_borrows(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
-    matches!(ty.kind(), ty::Ref(..)) || ty.walk(cx.tcx).any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(_)))
+    matches!(ty.kind(), ty::Ref(..))
+        || ty
+            .walk(cx.tcx)
+            .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(_)))
 }
 
 impl LateLintPass<'_> for UnnecessarySortBy {

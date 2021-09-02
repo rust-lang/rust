@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::visitors::LocalUsedVisitor;
+use clippy_utils::visitors::is_local_used;
 use clippy_utils::{higher, is_lang_ctor, is_unit_expr, path_to_local, peel_ref_operators, SpanlessEq};
 use if_chain::if_chain;
 use rustc_hir::LangItem::OptionNone;
@@ -56,11 +56,11 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleMatch {
                         check_arm(cx, true, arm.pat, arm.body, arm.guard.as_ref(), Some(els_arm.body));
                     }
                 }
-            }
+            },
             Some(IfLetOrMatch::IfLet(_, pat, body, els)) => {
                 check_arm(cx, false, pat, body, None, els);
-            }
-            None => {}
+            },
+            None => {},
         }
     }
 }
@@ -71,7 +71,7 @@ fn check_arm<'tcx>(
     outer_pat: &'tcx Pat<'tcx>,
     outer_then_body: &'tcx Expr<'tcx>,
     outer_guard: Option<&'tcx Guard<'tcx>>,
-    outer_else_body: Option<&'tcx Expr<'tcx>>
+    outer_else_body: Option<&'tcx Expr<'tcx>>,
 ) {
     let inner_expr = strip_singleton_blocks(outer_then_body);
     if_chain! {
@@ -106,14 +106,12 @@ fn check_arm<'tcx>(
             (Some(a), Some(b)) => SpanlessEq::new(cx).eq_expr(a, b),
         };
         // the binding must not be used in the if guard
-        let mut used_visitor = LocalUsedVisitor::new(cx, binding_id);
-        if outer_guard.map_or(true, |(Guard::If(e) | Guard::IfLet(_, e))| !used_visitor.check_expr(e));
-        // ...or anywhere in the inner expression
+        if outer_guard.map_or(true, |(Guard::If(e) | Guard::IfLet(_, e))| !is_local_used(cx, *e, binding_id));        // ...or anywhere in the inner expression
         if match inner {
             IfLetOrMatch::IfLet(_, _, body, els) => {
-                !used_visitor.check_expr(body) && els.map_or(true, |e| !used_visitor.check_expr(e))
+                !is_local_used(cx, body, binding_id) && els.map_or(true, |e| !is_local_used(cx, e, binding_id))
             },
-            IfLetOrMatch::Match(_, arms, ..) => !arms.iter().any(|arm| used_visitor.check_arm(arm)),
+            IfLetOrMatch::Match(_, arms, ..) => !arms.iter().any(|arm| is_local_used(cx, arm, binding_id)),
         };
         then {
             let msg = format!(
@@ -154,16 +152,26 @@ fn strip_singleton_blocks<'hir>(mut expr: &'hir Expr<'hir>) -> &'hir Expr<'hir> 
 enum IfLetOrMatch<'hir> {
     Match(&'hir Expr<'hir>, &'hir [Arm<'hir>], MatchSource),
     /// scrutinee, pattern, then block, else block
-    IfLet(&'hir Expr<'hir>, &'hir Pat<'hir>, &'hir Expr<'hir>, Option<&'hir Expr<'hir>>),
+    IfLet(
+        &'hir Expr<'hir>,
+        &'hir Pat<'hir>,
+        &'hir Expr<'hir>,
+        Option<&'hir Expr<'hir>>,
+    ),
 }
 
 impl<'hir> IfLetOrMatch<'hir> {
     fn parse(cx: &LateContext<'_>, expr: &Expr<'hir>) -> Option<Self> {
         match expr.kind {
             ExprKind::Match(expr, arms, source) => Some(Self::Match(expr, arms, source)),
-            _ => higher::IfLet::hir(cx, expr).map(|higher::IfLet { let_expr, let_pat, if_then, if_else }| {
-                Self::IfLet(let_expr, let_pat, if_then, if_else)
-            })
+            _ => higher::IfLet::hir(cx, expr).map(
+                |higher::IfLet {
+                     let_expr,
+                     let_pat,
+                     if_then,
+                     if_else,
+                 }| { Self::IfLet(let_expr, let_pat, if_then, if_else) },
+            ),
         }
     }
 }

@@ -5,12 +5,14 @@ use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::ty::{is_type_diagnostic_item, peel_mid_ty_refs_is_mutable};
 use clippy_utils::{
     can_move_expr_to_closure, in_constant, is_else_clause, is_lang_ctor, is_lint_allowed, path_to_local_id,
-    peel_hir_expr_refs,
+    peel_hir_expr_refs, peel_hir_expr_while, CaptureKind,
 };
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
-use rustc_hir::{Arm, BindingAnnotation, Block, Expr, ExprKind, HirId, Mutability, Pat, PatKind};
+use rustc_hir::{
+    def::Res, Arm, BindingAnnotation, Block, Expr, ExprKind, HirId, Mutability, Pat, PatKind, Path, QPath,
+};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -119,16 +121,14 @@ fn manage_lint<'tcx>(
         None => return,
     };
 
-    if cx.typeck_results().expr_ty(some_expr) == cx.tcx.types.unit && !is_lint_allowed(cx, OPTION_MAP_UNIT_FN, expr.hir_id) {
+    if cx.typeck_results().expr_ty(some_expr) == cx.tcx.types.unit
+        && !is_lint_allowed(cx, OPTION_MAP_UNIT_FN, expr.hir_id)
+    {
         return;
     }
 
     // `map` won't perform any adjustments.
     if !cx.typeck_results().expr_adjustments(some_expr).is_empty() {
-        return;
-    }
-
-    if !can_move_expr_to_closure(cx, some_expr) {
         return;
     }
 
@@ -140,6 +140,30 @@ fn manage_lint<'tcx>(
         Some(Mutability::Mut) => ".as_mut()",
         Some(Mutability::Not) => ".as_ref()",
         None => "",
+    };
+
+    match can_move_expr_to_closure(cx, some_expr) {
+        Some(captures) => {
+            // Check if captures the closure will need conflict with borrows made in the scrutinee.
+            // TODO: check all the references made in the scrutinee expression. This will require interacting
+            // with the borrow checker. Currently only `<local>[.<field>]*` is checked for.
+            if let Some(binding_ref_mutability) = binding_ref {
+                let e = peel_hir_expr_while(scrut, |e| match e.kind {
+                    ExprKind::Field(e, _) | ExprKind::AddrOf(_, _, e) => Some(e),
+                    _ => None,
+                });
+                if let ExprKind::Path(QPath::Resolved(None, Path { res: Res::Local(l), .. })) = e.kind {
+                    match captures.get(l) {
+                        Some(CaptureKind::Value | CaptureKind::Ref(Mutability::Mut)) => return,
+                        Some(CaptureKind::Ref(Mutability::Not)) if binding_ref_mutability == Mutability::Mut => {
+                            return;
+                        },
+                        Some(CaptureKind::Ref(Mutability::Not)) | None => (),
+                    }
+                }
+            }
+        },
+        None => return,
     };
 
     let mut app = Applicability::MachineApplicable;
@@ -213,7 +237,7 @@ fn manage_lint<'tcx>(
 fn can_pass_as_func(cx: &LateContext<'tcx>, binding: HirId, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     match expr.kind {
         ExprKind::Call(func, [arg])
-            if path_to_local_id (arg, binding) && cx.typeck_results().expr_adjustments(arg).is_empty() =>
+            if path_to_local_id(arg, binding) && cx.typeck_results().expr_adjustments(arg).is_empty() =>
         {
             Some(func)
         },

@@ -53,3 +53,12 @@ impl IteratorFalsePositives {
         self.foo as usize
     }
 }
+
+#[derive(Copy, Clone)]
+pub struct IteratorMethodFalsePositives;
+
+impl IteratorMethodFalsePositives {
+    pub fn filter(&self, _s: i32) -> std::vec::IntoIter<i32> {
+        unimplemented!();
+    }
+}

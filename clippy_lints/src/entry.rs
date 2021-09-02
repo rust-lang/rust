@@ -9,8 +9,9 @@ use clippy_utils::{
 use core::fmt::Write;
 use rustc_errors::Applicability;
 use rustc_hir::{
+    hir_id::HirIdSet,
     intravisit::{walk_expr, ErasedMap, NestedVisitorMap, Visitor},
-    Block, Expr, ExprKind, Guard, HirId, Local, Stmt, StmtKind, UnOp,
+    Block, Expr, ExprKind, Guard, HirId, Pat, Stmt, StmtKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -338,6 +339,8 @@ struct InsertSearcher<'cx, 'tcx> {
     edits: Vec<Edit<'tcx>>,
     /// A stack of loops the visitor is currently in.
     loops: Vec<HirId>,
+    /// Local variables created in the expression. These don't need to be captured.
+    locals: HirIdSet,
 }
 impl<'tcx> InsertSearcher<'_, 'tcx> {
     /// Visit the expression as a branch in control flow. Multiple insert calls can be used, but
@@ -385,13 +388,16 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                 }
             },
             StmtKind::Expr(e) => self.visit_expr(e),
-            StmtKind::Local(Local { init: Some(e), .. }) => {
-                self.allow_insert_closure &= !self.in_tail_pos;
-                self.in_tail_pos = false;
-                self.is_single_insert = false;
-                self.visit_expr(e);
+            StmtKind::Local(l) => {
+                self.visit_pat(l.pat);
+                if let Some(e) = l.init {
+                    self.allow_insert_closure &= !self.in_tail_pos;
+                    self.in_tail_pos = false;
+                    self.is_single_insert = false;
+                    self.visit_expr(e);
+                }
             },
-            _ => {
+            StmtKind::Item(_) => {
                 self.allow_insert_closure &= !self.in_tail_pos;
                 self.is_single_insert = false;
             },
@@ -473,6 +479,7 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                     // Each branch may contain it's own insert expression.
                     let mut is_map_used = self.is_map_used;
                     for arm in arms {
+                        self.visit_pat(arm.pat);
                         if let Some(Guard::If(guard) | Guard::IfLet(_, guard)) = arm.guard {
                             self.visit_non_tail_expr(guard);
                         }
@@ -498,7 +505,8 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                 },
                 _ => {
                     self.allow_insert_closure &= !self.in_tail_pos;
-                    self.allow_insert_closure &= can_move_expr_to_closure_no_visit(self.cx, expr, &self.loops);
+                    self.allow_insert_closure &=
+                        can_move_expr_to_closure_no_visit(self.cx, expr, &self.loops, &self.locals);
                     // Sub expressions are no longer in the tail position.
                     self.is_single_insert = false;
                     self.in_tail_pos = false;
@@ -506,6 +514,12 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                 },
             },
         }
+    }
+
+    fn visit_pat(&mut self, p: &'tcx Pat<'tcx>) {
+        p.each_binding_or_first(&mut |_, id, _, _| {
+            self.locals.insert(id);
+        });
     }
 }
 
@@ -632,6 +646,7 @@ fn find_insert_calls(
         in_tail_pos: true,
         is_single_insert: true,
         loops: Vec::new(),
+        locals: HirIdSet::default(),
     };
     s.visit_expr(expr);
     let allow_insert_closure = s.allow_insert_closure;
