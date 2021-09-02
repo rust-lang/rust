@@ -71,7 +71,7 @@ pub enum ReferenceAccess {
 /// For `pub(crate)` things it's a crate, for `pub` things it's a crate and dependant crates.
 /// In some cases, the location of the references is known to within a `TextRange`,
 /// e.g. for things like local variables.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SearchScope {
     entries: FxHashMap<FileId, Option<TextRange>>,
 }
@@ -216,6 +216,14 @@ impl Definition {
             return SearchScope::crate_graph(db);
         }
 
+        // def is crate root
+        // FIXME: We don't do searches for crates currently, as a crate does not actually have a single name
+        if let &Definition::ModuleDef(hir::ModuleDef::Module(module)) = self {
+            if module.crate_root(db) == module {
+                return SearchScope::reverse_dependencies(db, module.krate());
+            }
+        }
+
         let module = match self.module(db) {
             Some(it) => it,
             None => return SearchScope::empty(),
@@ -273,13 +281,22 @@ impl Definition {
         }
 
         if let Definition::Macro(macro_def) = self {
-            if macro_def.kind() == hir::MacroKind::Declarative {
-                return if macro_def.attrs(db).by_key("macro_export").exists() {
+            return match macro_def.kind() {
+                hir::MacroKind::Declarative => {
+                    if macro_def.attrs(db).by_key("macro_export").exists() {
+                        SearchScope::reverse_dependencies(db, module.krate())
+                    } else {
+                        SearchScope::krate(db, module.krate())
+                    }
+                }
+                hir::MacroKind::BuiltIn => SearchScope::crate_graph(db),
+                // FIXME: We don't actually see derives in derive attributes as these do not
+                // expand to something that references the derive macro in the output.
+                // We could get around this by emitting dummy `use DeriveMacroPathHere as _;` items maybe?
+                hir::MacroKind::Derive | hir::MacroKind::Attr | hir::MacroKind::ProcMacro => {
                     SearchScope::reverse_dependencies(db, module.krate())
-                } else {
-                    SearchScope::krate(db, module.krate())
-                };
-            }
+                }
+            };
         }
 
         let vis = self.visibility(db);
