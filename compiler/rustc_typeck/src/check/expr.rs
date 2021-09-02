@@ -1236,6 +1236,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             variant,
             fields,
             base_expr.is_none(),
+            expr.span,
         );
         if let Some(base_expr) = base_expr {
             // If check_expr_struct_fields hit an error, do not attempt to populate
@@ -1283,6 +1284,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         variant: &'tcx ty::VariantDef,
         ast_fields: &'tcx [hir::ExprField<'tcx>],
         check_completeness: bool,
+        expr_span: Span,
     ) -> bool {
         let tcx = self.tcx;
 
@@ -1334,7 +1336,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ident,
                     });
                 } else {
-                    self.report_unknown_field(adt_ty, variant, field, ast_fields, kind_name, span);
+                    self.report_unknown_field(
+                        adt_ty, variant, field, ast_fields, kind_name, expr_span,
+                    );
                 }
 
                 tcx.ty_error()
@@ -1467,7 +1471,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: &hir::ExprField<'_>,
         skip_fields: &[hir::ExprField<'_>],
         kind_name: &str,
-        ty_span: Span,
+        expr_span: Span,
     ) {
         if variant.is_recovered() {
             self.set_tainted_by_errors();
@@ -1511,7 +1515,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     err.span_label(field.ident.span, "field does not exist");
                     err.span_suggestion(
-                        ty_span,
+                        expr_span,
                         &format!(
                             "`{adt}::{variant}` is a tuple {kind_name}, use the appropriate syntax",
                             adt = ty,
@@ -1529,7 +1533,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_label(variant.ident.span, format!("`{adt}` defined here", adt = ty));
                     err.span_label(field.ident.span, "field does not exist");
                     err.span_suggestion(
-                        ty_span,
+                        expr_span,
                         &format!(
                             "`{adt}` is a tuple {kind_name}, use the appropriate syntax",
                             adt = ty,
