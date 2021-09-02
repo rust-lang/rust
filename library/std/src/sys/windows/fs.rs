@@ -357,7 +357,7 @@ impl File {
             let mut info: c::FILE_BASIC_INFO = mem::zeroed();
             let size = mem::size_of_val(&info);
             cvt(c::GetFileInformationByHandleEx(
-                self.handle.raw(),
+                self.handle.as_raw_handle(),
                 c::FileBasicInfo,
                 &mut info as *mut _ as *mut libc::c_void,
                 size as c::DWORD,
@@ -385,7 +385,7 @@ impl File {
             let mut info: c::FILE_STANDARD_INFO = mem::zeroed();
             let size = mem::size_of_val(&info);
             cvt(c::GetFileInformationByHandleEx(
-                self.handle.raw(),
+                self.handle.as_raw_handle(),
                 c::FileStandardInfo,
                 &mut info as *mut _ as *mut libc::c_void,
                 size as c::DWORD,
