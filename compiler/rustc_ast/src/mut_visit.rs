@@ -949,7 +949,7 @@ pub fn noop_visit_mt<T: MutVisitor>(MutTy { ty, mutbl: _ }: &mut MutTy, vis: &mu
 }
 
 pub fn noop_visit_block<T: MutVisitor>(block: &mut P<Block>, vis: &mut T) {
-    let Block { id, stmts, rules: _, span, tokens } = block.deref_mut();
+    let Block { id, stmts, rules: _, span, tokens, could_be_bare_literal: _ } = block.deref_mut();
     vis.visit_id(id);
     stmts.flat_map_in_place(|stmt| vis.flat_map_stmt(stmt));
     vis.visit_span(span);

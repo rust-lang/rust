@@ -574,7 +574,14 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn mk_block(&self, stmts: Vec<Stmt>, rules: BlockCheckMode, span: Span) -> P<Block> {
-        P(Block { stmts, id: DUMMY_NODE_ID, rules, span, tokens: None })
+        P(Block {
+            stmts,
+            id: DUMMY_NODE_ID,
+            rules,
+            span,
+            tokens: None,
+            could_be_bare_literal: false,
+        })
     }
 
     pub(super) fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {

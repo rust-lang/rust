@@ -446,11 +446,13 @@ impl<'a> Parser<'a> {
                         )
                         .emit();
                     *self = snapshot;
-                    Ok(self.mk_block(
+                    let mut tail = self.mk_block(
                         vec![self.mk_stmt_err(expr.span)],
                         s,
                         lo.to(self.prev_token.span),
-                    ))
+                    );
+                    tail.could_be_bare_literal = true;
+                    Ok(tail)
                 }
                 (Err(mut err), Ok(tail)) => {
                     // We have a block tail that contains a somehow valid type ascription expr.
@@ -463,7 +465,10 @@ impl<'a> Parser<'a> {
                     self.consume_block(token::Brace, ConsumeClosingDelim::Yes);
                     Err(err)
                 }
-                (Ok(_), Ok(tail)) => Ok(tail),
+                (Ok(_), Ok(mut tail)) => {
+                    tail.could_be_bare_literal = true;
+                    Ok(tail)
+                }
             });
         }
         None

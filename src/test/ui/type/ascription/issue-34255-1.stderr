@@ -3,6 +3,16 @@ error[E0425]: cannot find value `input_cells` in this scope
    |
 LL |         input_cells: Vec::new()
    |         ^^^^^^^^^^^ a field by this name exists in `Self`
+   |
+help: you might have meant to write a `struct` literal
+   |
+LL ~     pub fn new() -> Self { SomeStruct {
+LL |         input_cells: Vec::new()
+LL |
+LL |
+LL |
+LL ~     }}
+   |
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
   --> $DIR/issue-34255-1.rs:7:27

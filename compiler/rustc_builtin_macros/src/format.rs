@@ -867,6 +867,7 @@ impl<'a, 'b> Context<'a, 'b> {
             rules: BlockCheckMode::Unsafe(UnsafeSource::CompilerGenerated),
             span: self.macsp,
             tokens: None,
+            could_be_bare_literal: false,
         }));
 
         let ident = Ident::from_str_and_span("args", self.macsp);
