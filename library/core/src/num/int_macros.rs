@@ -1834,6 +1834,173 @@ macro_rules! int_impl {
             }
         }
 
+        /// Calculates the quotient of `self` and `rhs`, rounding the result towards negative infinity.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is 0 or the division results in overflow.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(int_roundings)]
+        #[doc = concat!("let a: ", stringify!($SelfT)," = 8;")]
+        /// let b = 3;
+        ///
+        /// assert_eq!(a.div_floor(b), 2);
+        /// assert_eq!(a.div_floor(-b), -3);
+        /// assert_eq!((-a).div_floor(b), -3);
+        /// assert_eq!((-a).div_floor(-b), 2);
+        /// ```
+        #[unstable(feature = "int_roundings", issue = "88581")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        pub const fn div_floor(self, rhs: Self) -> Self {
+            let d = self / rhs;
+            let r = self % rhs;
+            if (r > 0 && rhs < 0) || (r < 0 && rhs > 0) {
+                d - 1
+            } else {
+                d
+            }
+        }
+
+        /// Calculates the quotient of `self` and `rhs`, rounding the result towards positive infinity.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is 0 or the division results in overflow.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(int_roundings)]
+        #[doc = concat!("let a: ", stringify!($SelfT)," = 8;")]
+        /// let b = 3;
+        ///
+        /// assert_eq!(a.div_ceil(b), 3);
+        /// assert_eq!(a.div_ceil(-b), -2);
+        /// assert_eq!((-a).div_ceil(b), -2);
+        /// assert_eq!((-a).div_ceil(-b), 3);
+        /// ```
+        #[unstable(feature = "int_roundings", issue = "88581")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        pub const fn div_ceil(self, rhs: Self) -> Self {
+            let d = self / rhs;
+            let r = self % rhs;
+            if (r > 0 && rhs > 0) || (r < 0 && rhs < 0) {
+                d + 1
+            } else {
+                d
+            }
+        }
+
+        /// If `rhs` is positive, calculates the smallest value greater than or
+        /// equal to `self` that is a multiple of `rhs`. If `rhs` is negative,
+        /// calculates the largest value less than or equal to `self` that is a
+        /// multiple of `rhs`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is 0 or the operation results in overflow.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(int_roundings)]
+        #[doc = concat!("assert_eq!(16_", stringify!($SelfT), ".next_multiple_of(8), 16);")]
+        #[doc = concat!("assert_eq!(23_", stringify!($SelfT), ".next_multiple_of(8), 24);")]
+        #[doc = concat!("assert_eq!(16_", stringify!($SelfT), ".next_multiple_of(-8), 16);")]
+        #[doc = concat!("assert_eq!(23_", stringify!($SelfT), ".next_multiple_of(-8), 16);")]
+        #[doc = concat!("assert_eq!((-16_", stringify!($SelfT), ").next_multiple_of(8), -16);")]
+        #[doc = concat!("assert_eq!((-23_", stringify!($SelfT), ").next_multiple_of(8), -16);")]
+        #[doc = concat!("assert_eq!((-16_", stringify!($SelfT), ").next_multiple_of(-8), -16);")]
+        #[doc = concat!("assert_eq!((-23_", stringify!($SelfT), ").next_multiple_of(-8), -24);")]
+        /// ```
+        #[unstable(feature = "int_roundings", issue = "88581")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        pub const fn next_multiple_of(self, rhs: Self) -> Self {
+            // This would otherwise fail when calculating `r` when self == T::MIN.
+            if rhs == -1 {
+                return self;
+            }
+
+            let r = self % rhs;
+            let m = if (r > 0 && rhs < 0) || (r < 0 && rhs > 0) {
+                r + rhs
+            } else {
+                r
+            };
+
+            if m == 0 {
+                self
+            } else {
+                self + (rhs - m)
+            }
+        }
+
+        /// If `rhs` is positive, calculates the smallest value greater than or
+        /// equal to `self` that is a multiple of `rhs`. If `rhs` is negative,
+        /// calculates the largest value less than or equal to `self` that is a
+        /// multiple of `rhs`. Returns `None` if `rhs` is zero or the operation
+        /// would result in overflow.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(int_roundings)]
+        #[doc = concat!("assert_eq!(16_", stringify!($SelfT), ".checked_next_multiple_of(8), Some(16));")]
+        #[doc = concat!("assert_eq!(23_", stringify!($SelfT), ".checked_next_multiple_of(8), Some(24));")]
+        #[doc = concat!("assert_eq!(16_", stringify!($SelfT), ".checked_next_multiple_of(-8), Some(16));")]
+        #[doc = concat!("assert_eq!(23_", stringify!($SelfT), ".checked_next_multiple_of(-8), Some(16));")]
+        #[doc = concat!("assert_eq!((-16_", stringify!($SelfT), ").checked_next_multiple_of(8), Some(-16));")]
+        #[doc = concat!("assert_eq!((-23_", stringify!($SelfT), ").checked_next_multiple_of(8), Some(-16));")]
+        #[doc = concat!("assert_eq!((-16_", stringify!($SelfT), ").checked_next_multiple_of(-8), Some(-16));")]
+        #[doc = concat!("assert_eq!((-23_", stringify!($SelfT), ").checked_next_multiple_of(-8), Some(-24));")]
+        #[doc = concat!("assert_eq!(1_", stringify!($SelfT), ".checked_next_multiple_of(0), None);")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.checked_next_multiple_of(2), None);")]
+        /// ```
+        #[unstable(feature = "int_roundings", issue = "88581")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        pub const fn checked_next_multiple_of(self, rhs: Self) -> Option<Self> {
+            // This would otherwise fail when calculating `r` when self == T::MIN.
+            if rhs == -1 {
+                return Some(self);
+            }
+
+            let r = try_opt!(self.checked_rem(rhs));
+            let m = if (r > 0 && rhs < 0) || (r < 0 && rhs > 0) {
+                try_opt!(r.checked_add(rhs))
+            } else {
+                r
+            };
+
+            if m == 0 {
+                Some(self)
+            } else {
+                self.checked_add(try_opt!(rhs.checked_sub(m)))
+            }
+        }
+
         /// Returns the logarithm of the number with respect to an arbitrary base.
         ///
         /// This method might not be optimized owing to implementation details;
