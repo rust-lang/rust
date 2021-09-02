@@ -988,14 +988,12 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
 
                 let mut err_span = self.span;
 
-                // Check to see if the type of this place can ever have a drop impl. If not, this
-                // `Drop` terminator is frivolous.
-                let ty_needs_drop = dropped_place
-                    .ty(self.body, self.tcx)
-                    .ty
-                    .needs_non_const_drop(self.tcx, self.param_env);
+                let ty_needs_non_const_drop = qualifs::NeedsNonConstDrop::in_any_value_of_ty(
+                    self.ccx,
+                    dropped_place.ty(self.body, self.tcx).ty,
+                );
 
-                if !ty_needs_drop {
+                if !ty_needs_non_const_drop {
                     return;
                 }
 

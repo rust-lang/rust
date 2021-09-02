@@ -3,10 +3,14 @@
 //! See the `Qualif` trait for more info.
 
 use rustc_errors::ErrorReported;
+use rustc_hir as hir;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
 use rustc_span::DUMMY_SP;
-use rustc_trait_selection::traits;
+use rustc_trait_selection::traits::{
+    self, ImplSource, Obligation, ObligationCause, SelectionContext,
+};
 
 use super::ConstCx;
 
@@ -108,7 +112,28 @@ impl Qualif for NeedsNonConstDrop {
     }
 
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
-        ty.needs_drop(cx.tcx, cx.param_env)
+        let trait_ref = ty::TraitRef {
+            def_id: cx.tcx.require_lang_item(hir::LangItem::Drop, None),
+            substs: cx.tcx.mk_substs_trait(ty, &[]),
+        };
+        let obligation = Obligation::new(
+            ObligationCause::dummy(),
+            cx.param_env,
+            ty::Binder::dummy(ty::TraitPredicate {
+                trait_ref,
+                constness: ty::BoundConstness::ConstIfConst,
+            }),
+        );
+
+        let implsrc = cx.tcx.infer_ctxt().enter(|infcx| {
+            let mut selcx = SelectionContext::with_constness(&infcx, hir::Constness::Const);
+            selcx.select(&obligation)
+        });
+        match implsrc {
+            Ok(Some(ImplSource::ConstDrop(_)))
+            | Ok(Some(ImplSource::Param(_, ty::BoundConstness::ConstIfConst))) => false,
+            _ => true,
+        }
     }
 
     fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> bool {
