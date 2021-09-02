@@ -664,7 +664,7 @@ impl ToJson for SanitizerSet {
         self.into_iter()
             .map(|v| Some(v.as_str()?.to_json()))
             .collect::<Option<Vec<_>>>()
-            .unwrap_or(Vec::new())
+            .unwrap_or_default()
             .to_json()
     }
 }

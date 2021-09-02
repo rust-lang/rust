@@ -2605,8 +2605,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     binding.ident,
                 );
                 self.with(scope, |_, this| {
-                    let scope =
-                        Scope::Supertrait { lifetimes: lifetimes.unwrap_or(vec![]), s: this.scope };
+                    let scope = Scope::Supertrait {
+                        lifetimes: lifetimes.unwrap_or_default(),
+                        s: this.scope,
+                    };
                     this.with(scope, |_, this| this.visit_assoc_type_binding(binding));
                 });
             } else {

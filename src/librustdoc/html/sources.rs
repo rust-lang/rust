@@ -72,10 +72,9 @@ impl LocalSourcesCollector<'_, '_> {
             href.push('/');
         });
 
-        let src_fname = p.file_name().expect("source has no filename").to_os_string();
-        let mut fname = src_fname.clone();
-        fname.push(".html");
-        href.push_str(&fname.to_string_lossy());
+        let mut src_fname = p.file_name().expect("source has no filename").to_os_string();
+        src_fname.push(".html");
+        href.push_str(&src_fname.to_string_lossy());
         self.local_sources.insert(p, href);
     }
 }
