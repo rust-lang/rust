@@ -1658,19 +1658,19 @@ fn test_file_times() {
     let modified = SystemTime::UNIX_EPOCH + Duration::from_secs(54321);
     times = times.set_accessed(accessed).set_modified(modified);
     #[cfg(any(
-        windows,
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "watchos",
-        target_os = "tvos",
+    windows,
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "watchos",
+    target_os = "tvos",
     ))]
-    let created = SystemTime::UNIX_EPOCH + Duration::from_secs(32123);
+        let created = SystemTime::UNIX_EPOCH + Duration::from_secs(32123);
     #[cfg(any(
-        windows,
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "watchos",
-        target_os = "tvos",
+    windows,
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "watchos",
+    target_os = "tvos",
     ))]
     {
         times = times.set_created(created);
@@ -1678,16 +1678,16 @@ fn test_file_times() {
     match file.set_times(times) {
         // Allow unsupported errors on platforms which don't support setting times.
         #[cfg(not(any(
-            windows,
-            all(
-                unix,
-                not(any(
-                    target_os = "android",
-                    target_os = "redox",
-                    target_os = "espidf",
-                    target_os = "horizon"
-                ))
-            )
+        windows,
+        all(
+        unix,
+        not(any(
+        target_os = "android",
+        target_os = "redox",
+        target_os = "espidf",
+        target_os = "horizon"
+        ))
+        )
         )))]
         Err(e) if e.kind() == ErrorKind::Unsupported => return,
         Err(e) => panic!("error setting file times: {e:?}"),
@@ -1697,13 +1697,36 @@ fn test_file_times() {
     assert_eq!(metadata.accessed().unwrap(), accessed);
     assert_eq!(metadata.modified().unwrap(), modified);
     #[cfg(any(
-        windows,
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "watchos",
-        target_os = "tvos",
+    windows,
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "watchos",
+    target_os = "tvos",
     ))]
     {
         assert_eq!(metadata.created().unwrap(), created);
     }
+}
+
+#[test]
+#[cfg(any(target_os = "linux", target_os = "android"))]
+fn deep_traversal() -> crate::io::Result<()> {
+    use crate::fs::{create_dir_all, metadata, remove_dir_all, write};
+    use crate::iter::repeat;
+
+    let tmpdir = tmpdir();
+
+    let segment = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
+    let mut dir = tmpdir.join(segment);
+    repeat(segment).take(100).for_each(|name| dir.push(name));
+    assert!(dir.as_os_str().len() > libc::PATH_MAX as usize);
+    let file = dir.join("b");
+
+    create_dir_all(&dir).expect("deep create tailed");
+    write(&file, "foo").expect("deep write failed");
+    metadata(&file).expect("deep stat failed");
+    remove_dir_all(&dir).expect("deep remove failed");
+
+    Ok(())
 }

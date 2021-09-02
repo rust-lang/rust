@@ -475,7 +475,7 @@ impl Stdio {
                 opts.read(readable);
                 opts.write(!readable);
                 let path = unsafe { CStr::from_ptr(DEV_NULL.as_ptr() as *const _) };
-                let fd = File::open_c(&path, &opts)?;
+                let fd = File::open_c(None, &path, &opts)?;
                 Ok((ChildStdio::Owned(fd.into_inner()), None))
             }
 

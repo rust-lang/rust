@@ -420,7 +420,7 @@ cfg_if::cfg_if! {
     }
 }
 
-#[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita"))]
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
 mod unsupported {
     use crate::io;
 

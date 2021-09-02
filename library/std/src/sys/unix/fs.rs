@@ -3,7 +3,7 @@
 
 use crate::os::unix::prelude::*;
 
-use crate::ffi::{CStr, OsStr, OsString};
+use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
@@ -141,7 +141,8 @@ cfg_has_statx! {{
     // Default `stat64` contains no creation time and may have 32-bit `time_t`.
     unsafe fn try_statx(
         fd: c_int,
-        path: *const c_char,
+        raw_path: *const c_char,
+        path: &Path,
         flags: i32,
         mask: u32,
     ) -> Option<io::Result<FileAttr>> {
@@ -169,19 +170,17 @@ cfg_has_statx! {{
         }
 
         let mut buf: libc::statx = mem::zeroed();
-        if let Err(err) = cvt(statx(fd, path, flags, mask, &mut buf)) {
-            if STATX_SAVED_STATE.load(Ordering::Relaxed) == STATX_STATE::Present as u8 {
-                return Some(Err(err));
-            }
+        let result = match cvt(statx(fd, raw_path, flags, mask, &mut buf)) {
+            o @ Ok(_) => o,
+            e @ Err(_) if STATX_SAVED_STATE.load(Ordering::Relaxed) == STATX_STATE::Present as u8 => e,
 
             // Availability not checked yet.
             //
             // First try the cheap way.
-            if err.raw_os_error() == Some(libc::ENOSYS) {
+            Err(err) if err.raw_os_error() == Some(libc::ENOSYS) => {
                 STATX_SAVED_STATE.store(STATX_STATE::Unavailable as u8, Ordering::Relaxed);
-                return None;
-            }
-
+                return None
+            },
             // Error other than `ENOSYS` is not a good enough indicator -- it is
             // known that `EPERM` can be returned as a result of using seccomp to
             // block the syscall.
@@ -192,16 +191,27 @@ cfg_has_statx! {{
             // previous iteration of the code checked it for all errors and for now
             // this is retained.
             // FIXME what about transient conditions like `ENOMEM`?
-            let err2 = cvt(statx(0, ptr::null(), 0, libc::STATX_ALL, ptr::null_mut()))
-                .err()
-                .and_then(|e| e.raw_os_error());
-            if err2 == Some(libc::EFAULT) {
-                STATX_SAVED_STATE.store(STATX_STATE::Present as u8, Ordering::Relaxed);
-                return Some(Err(err));
-            } else {
-                STATX_SAVED_STATE.store(STATX_STATE::Unavailable as u8, Ordering::Relaxed);
-                return None;
+            e @ Err(_) => {
+                let err2 = cvt(statx(0, ptr::null(), 0, libc::STATX_ALL, ptr::null_mut()))
+                    .err()
+                    .and_then(|e| e.raw_os_error());
+                if err2 == Some(libc::EFAULT) {
+                    STATX_SAVED_STATE.store(STATX_STATE::Present as u8, Ordering::Relaxed);
+                    e
+                } else {
+                    STATX_SAVED_STATE.store(STATX_STATE::Unavailable as u8, Ordering::Relaxed);
+                    return None
+                }
             }
+        };
+
+        let result = long_filename_fallback!(path, result, |dirfd, file_name| {
+            // FIXME: use libc::AT_EMPTY_PATH
+            cvt(statx(dirfd.as_raw_fd(), file_name.as_ptr(), flags, mask, &mut buf))
+        });
+
+        if let Err(err) = result {
+            return Some(Err(err));
         }
 
         // We cannot fill `stat64` exhaustively because of private padding fields.
@@ -820,6 +830,7 @@ impl DirEntry {
             if let Some(ret) = unsafe { try_statx(
                 fd,
                 name,
+                self.file_name_os_str().as_ref(),
                 libc::AT_SYMLINK_NOFOLLOW | libc::AT_STATX_SYNC_AS_STAT,
                 libc::STATX_ALL,
             ) } {
@@ -1052,19 +1063,55 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        run_path_with_cstr(path, |path| File::open_c(path, opts))
+        let result = run_path_with_cstr(path, |path| File::open_c(None, &path, opts));
+
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        let result = {
+            use crate::io::ErrorKind;
+            match result {
+                Ok(file) => Ok(file),
+                Err(e) if e.kind() == ErrorKind::InvalidFilename => open_deep(path, opts),
+                Err(e) => Err(e),
+            }
+        };
+
+        result
     }
 
-    pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
+    pub fn open_c(
+        dirfd: Option<BorrowedFd<'_>>,
+        path: &CStr,
+        opts: &OpenOptions,
+    ) -> io::Result<File> {
         let flags = libc::O_CLOEXEC
             | opts.get_access_mode()?
             | opts.get_creation_mode()?
             | (opts.custom_flags as c_int & !libc::O_ACCMODE);
-        // The third argument of `open64` is documented to have type `mode_t`. On
-        // some platforms (like macOS, where `open64` is actually `open`), `mode_t` is `u16`.
-        // However, since this is a variadic function, C integer promotion rules mean that on
-        // the ABI level, this still gets passed as `c_int` (aka `u32` on Unix platforms).
-        let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as c_int) })?;
+        let fd = match dirfd {
+            None => {
+                // The third argument of `open64` is documented to have type `mode_t`. On
+                // some platforms (like macOS, where `open64` is actually `open`), `mode_t` is `u16`.
+                // However, since this is a variadic function, C integer promotion rules mean that on
+                // the ABI level, this still gets passed as `c_int` (aka `u32` on Unix platforms).
+                cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as c_int) })?
+            }
+            Some(dirfd) => {
+                cfg_if::cfg_if! {
+                    if #[cfg(any(target_os = "linux", target_os = "android"))] {
+                        use libc::openat64;
+                        cvt_r(|| unsafe {
+                            openat64(
+                                dirfd.as_raw_fd(),
+                                path.as_ptr(),
+                                flags
+                            )
+                        })?
+                    } else {
+                        return super::unsupported::unsupported()
+                    }
+                }
+            }
+        };
         Ok(File(unsafe { FileDesc::from_raw_fd(fd) }))
     }
 
@@ -1075,6 +1122,7 @@ impl File {
             if let Some(ret) = unsafe { try_statx(
                 fd,
                 b"\0" as *const _ as *const c_char,
+                "".as_ref(),
                 libc::AT_EMPTY_PATH | libc::AT_STATX_SYNC_AS_STAT,
                 libc::STATX_ALL,
             ) } {
@@ -1322,7 +1370,13 @@ impl DirBuilder {
     }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        run_path_with_cstr(p, |p| cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode) }).map(|_| ()))
+        let result = run_path_with_cstr(p, |p| cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode) }));
+
+        let result = long_filename_fallback!(p, result, |dirfd, file_name| {
+            cvt(unsafe { libc::mkdirat(dirfd.as_raw_fd(), file_name.as_ptr(), self.mode) })
+        });
+
+        result.map(|_| ())
     }
 
     pub fn set_mode(&mut self, mode: u32) {
@@ -1500,18 +1554,49 @@ impl fmt::Debug for File {
 }
 
 pub fn readdir(path: &Path) -> io::Result<ReadDir> {
-    let ptr = run_path_with_cstr(path, |p| unsafe { Ok(libc::opendir(p.as_ptr())) })?;
-    if ptr.is_null() {
-        Err(Error::last_os_error())
-    } else {
-        let root = path.to_path_buf();
-        let inner = InnerReadDir { dirp: Dir(ptr), root };
-        Ok(ReadDir::new(inner))
+
+    fn cvt_p<T>(ptr: *mut T) -> io::Result<*mut T> {
+        if ptr.is_null() {
+            return Err(Error::last_os_error());
+        }
+        Ok(ptr)
     }
+
+    let root = path.to_path_buf();
+    let ptr = cvt_p(run_path_with_cstr(path, |p| unsafe { Ok(libc::opendir(p.as_ptr())) })?);
+
+    let ptr = match ptr {
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        Err(e) if e.kind() == crate::io::ErrorKind::InvalidFilename => {
+            let mut opts = OpenOptions::new();
+            opts.read(true);
+            opts.custom_flags(libc::O_DIRECTORY);
+            let fd = File::open(path, &opts)?.into_raw_fd();
+            cvt_p(unsafe { libc::fdopendir(fd) })
+        }
+        other @ _ => other,
+    }?;
+
+    let inner = InnerReadDir { dirp: Dir(ptr), root };
+    Ok(ReadDir {
+        inner: Arc::new(inner),
+        #[cfg(not(any(
+            target_os = "solaris",
+            target_os = "illumos",
+            target_os = "fuchsia",
+            target_os = "redox",
+        )))]
+        end_of_stream: false,
+    })
 }
 
-pub fn unlink(p: &Path) -> io::Result<()> {
-    run_path_with_cstr(p, |p| cvt(unsafe { libc::unlink(p.as_ptr()) }).map(|_| ()))
+pub fn unlink(path: &Path) -> io::Result<()> {
+    let result = run_path_with_cstr(path, |p| cvt(unsafe { libc::unlink(p.as_ptr()) }));
+    let result = long_filename_fallback!(path, result, |dirfd, file_name| {
+        cvt(unsafe { libc::unlinkat(dirfd.as_raw_fd(), file_name.as_ptr(), 0) })
+    });
+
+    result.map(|_| ())
 }
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
@@ -1526,8 +1611,15 @@ pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
     run_path_with_cstr(p, |p| cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) }).map(|_| ()))
 }
 
-pub fn rmdir(p: &Path) -> io::Result<()> {
-    run_path_with_cstr(p, |p| cvt(unsafe { libc::rmdir(p.as_ptr()) }).map(|_| ()))
+pub fn rmdir(path: &Path) -> io::Result<()> {
+    let result = run_path_with_cstr(path, |p| cvt(unsafe { libc::rmdir(p.as_ptr()) }));
+
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    let result = long_filename_fallback!(path, result, |dirfd, file_name| {
+        cvt(unsafe { libc::unlinkat(dirfd.as_raw_fd(), file_name.as_ptr(), libc::AT_REMOVEDIR) })
+    });
+
+    result.map(|_| ())
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
@@ -1602,12 +1694,13 @@ pub fn link(original: &Path, link: &Path) -> io::Result<()> {
     })
 }
 
-pub fn stat(p: &Path) -> io::Result<FileAttr> {
-    run_path_with_cstr(p, |p| {
+pub fn stat(path: &Path) -> io::Result<FileAttr> {
+    run_path_with_cstr(path, |p| {
         cfg_has_statx! {
             if let Some(ret) = unsafe { try_statx(
                 libc::AT_FDCWD,
                 p.as_ptr(),
+                path,
                 libc::AT_STATX_SYNC_AS_STAT,
                 libc::STATX_ALL,
             ) } {
@@ -1621,12 +1714,13 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
     })
 }
 
-pub fn lstat(p: &Path) -> io::Result<FileAttr> {
-    run_path_with_cstr(p, |p| {
+pub fn lstat(path: &Path) -> io::Result<FileAttr> {
+    run_path_with_cstr(path, |p| {
         cfg_has_statx! {
             if let Some(ret) = unsafe { try_statx(
                 libc::AT_FDCWD,
                 p.as_ptr(),
+                path,
                 libc::AT_SYMLINK_NOFOLLOW | libc::AT_STATX_SYNC_AS_STAT,
                 libc::STATX_ALL,
             ) } {
@@ -1635,7 +1729,12 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
         }
 
         let mut stat: stat64 = unsafe { mem::zeroed() };
-        cvt(unsafe { lstat64(p.as_ptr(), &mut stat) })?;
+        let result = cvt(unsafe { lstat64(p.as_ptr(), &mut stat) });
+        long_filename_fallback!(path, result, |dirfd, file_name| {
+            cvt(unsafe {
+                fstatat64(dirfd.as_raw_fd(), file_name.as_ptr(), &mut stat, libc::AT_SYMLINK_NOFOLLOW)
+            })
+        })?;
         Ok(FileAttr::from_stat64(stat))
     })
 }
@@ -1652,6 +1751,76 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
         libc::free(r as *mut _);
         buf
     })))
+}
+
+#[cfg(any(target_os = "linux", target_os = "android"))]
+fn open_deep(path: &Path, opts: &OpenOptions) -> io::Result<File> {
+    use super::path::is_sep_byte;
+    use libc::O_PATH;
+    const MAX_SLICE: usize = (libc::PATH_MAX - 1) as usize;
+
+    let mut raw_path = path.as_os_str().as_bytes();
+    let mut at_path = None;
+
+    let mut dir_flags = OpenOptions::new();
+    dir_flags.read(true);
+    dir_flags.custom_flags(O_PATH);
+
+    while raw_path.len() > MAX_SLICE {
+        let sep_idx = match raw_path.iter().take(MAX_SLICE).rposition(|&byte| is_sep_byte(byte)) {
+            Some(idx) => idx,
+            _ => return Err(io::Error::from_raw_os_error(libc::ENAMETOOLONG)),
+        };
+
+        let (left, right) = raw_path.split_at(sep_idx + 1);
+        raw_path = right;
+
+        let to_open = CString::new(left)?;
+        let dirfd = at_path.as_ref().map(AsFd::as_fd);
+
+        at_path = Some(File::open_c(dirfd, &to_open, &dir_flags)?);
+    }
+
+    let to_open = CString::new(raw_path)?;
+    let dirfd = at_path.as_ref().map(AsFd::as_fd);
+
+    File::open_c(dirfd, &to_open, opts)
+}
+
+macro long_filename_fallback {
+    ($path:expr, $result:expr, $fallback:expr) => {
+        {
+            cfg_if::cfg_if! {
+                if #[cfg(any(target_os = "linux", target_os = "android"))] {
+                    fn deep_fallback<T>(result: io::Result<T>, path: &Path, mut fallback: impl FnMut(File, &CStr) -> io::Result<T>) -> io::Result<T> {
+                        use crate::io::ErrorKind;
+                        match result {
+                            ok @ Ok(_) => ok,
+                            Err(e) if e.kind() == ErrorKind::InvalidFilename => {
+                                if let Some(parent) = path.parent() {
+                                    let mut options = OpenOptions::new();
+                                    options.read(true);
+                                    options.custom_flags(libc::O_PATH);
+                                    let dirfd = open_deep(parent, &options)?;
+                                    let file_name = path.file_name().unwrap();
+                                    return run_path_with_cstr(file_name, |file_name| {
+                                        fallback(dirfd, file_name)
+                                    })
+                                }
+
+                                Err(e)
+                            },
+                            Err(e) => Err(e)
+                        }
+                    }
+
+                    deep_fallback($result, $path, $fallback)
+                } else {
+                    $result
+                }
+            }
+        }
+    }
 }
 
 fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> {
