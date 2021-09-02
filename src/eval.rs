@@ -149,10 +149,6 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 
     // Setup first stack-frame
     let entry_instance = ty::Instance::mono(tcx, entry_id);
-    /*let entry_mir = ecx.load_mir(entry_instance.def, None)?;
-    if main_mir.arg_count != 0 {
-        bug!("main function must not take any arguments");
-    }*/
 
     // First argument is constructed later, because its skipped if the entry function uses #[start]
 
@@ -227,16 +223,6 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         }
         argv
     };
-
-    /*let args: &[_] = match entry_type {
-        EntryFnType::Main => {
-            // First argument: pointer to `main()`.
-            let main_ptr = ecx.memory.create_fn_alloc(FnVal::Instance(main_instance));
-
-            &[Scalar::from_pointer(main_ptr, &ecx).into(), argc.into(), argv]
-        }
-        EntryFnType::Start => &[argc.into(), argv],
-    };*/
 
     // Return place (in static memory so that it does not count as leak).
     let ret_place = ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into())?;
