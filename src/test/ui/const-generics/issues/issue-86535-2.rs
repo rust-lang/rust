@@ -1,6 +1,6 @@
 // run-pass
 #![feature(adt_const_params, generic_const_exprs)]
-#![allow(incomplete_features)]                                                                                                                                                                                                                
+#![allow(incomplete_features)]
 
 pub trait Foo {
     const ASSOC_C: usize;
