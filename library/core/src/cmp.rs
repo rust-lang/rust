@@ -660,6 +660,18 @@ impl<T: Clone> Clone for Reverse<T> {
 /// This trait can be used with `#[derive]`. When `derive`d on structs, it will produce a
 /// [lexicographic](https://en.wikipedia.org/wiki/Lexicographic_order) ordering based on the top-to-bottom declaration order of the struct's members.
 /// When `derive`d on enums, variants are ordered by their top-to-bottom discriminant order.
+/// This means variants at the top are less than variants at the bottom.
+/// Here's an example:
+///
+/// ```
+/// #[derive(PartialEq, PartialOrd)]
+/// enum Size {
+///     Small,
+///     Large,
+/// }
+///
+/// assert!(Size::Small < Size::Large);
+/// ```
 ///
 /// ## Lexicographical comparison
 ///
