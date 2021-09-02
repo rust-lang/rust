@@ -205,6 +205,31 @@ macro_rules! uint_module {
                 assert_eq!(r.overflowing_pow(2), (1 as $T, true));
                 assert_eq!(r.saturating_pow(2), MAX);
             }
+
+            #[test]
+            fn test_div_floor() {
+                assert_eq!((8 as $T).div_floor(3), 2);
+            }
+
+            #[test]
+            fn test_div_ceil() {
+                assert_eq!((8 as $T).div_ceil(3), 3);
+            }
+
+            #[test]
+            fn test_next_multiple_of() {
+                assert_eq!((16 as $T).next_multiple_of(8), 16);
+                assert_eq!((23 as $T).next_multiple_of(8), 24);
+                assert_eq!(MAX.next_multiple_of(1), MAX);
+            }
+
+            #[test]
+            fn test_checked_next_multiple_of() {
+                assert_eq!((16 as $T).checked_next_multiple_of(8), Some(16));
+                assert_eq!((23 as $T).checked_next_multiple_of(8), Some(24));
+                assert_eq!((1 as $T).checked_next_multiple_of(0), None);
+                assert_eq!(MAX.checked_next_multiple_of(2), None);
+            }
         }
     };
 }

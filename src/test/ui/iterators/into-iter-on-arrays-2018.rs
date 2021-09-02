@@ -19,9 +19,12 @@ fn main() {
     //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
     //~| WARNING this changes meaning
 
-    // The `array_into_iter` lint doesn't cover other wrappers that deref to an array.
     let _: Iter<'_, i32> = Rc::new(array).into_iter();
+    //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
+    //~| WARNING this changes meaning
     let _: Iter<'_, i32> = Array(array).into_iter();
+    //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
+    //~| WARNING this changes meaning
 
     // But you can always use the trait method explicitly as an array.
     let _: IntoIter<i32, 10> = IntoIterator::into_iter(array);

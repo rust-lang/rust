@@ -74,39 +74,45 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
                 _ => return,
             };
 
-            // As this is a method call expression, we have at least one
-            // argument.
+            // As this is a method call expression, we have at least one argument.
             let receiver_arg = &args[0];
+            let receiver_ty = cx.typeck_results().expr_ty(receiver_arg);
+            let adjustments = cx.typeck_results().expr_adjustments(receiver_arg);
 
-            // Peel all `Box<_>` layers. We have to special case `Box` here as
-            // `Box` is the only thing that values can be moved out of via
-            // method call. `Box::new([1]).into_iter()` should trigger this
-            // lint.
-            let mut recv_ty = cx.typeck_results().expr_ty(receiver_arg);
-            let mut num_box_derefs = 0;
-            while recv_ty.is_box() {
-                num_box_derefs += 1;
-                recv_ty = recv_ty.boxed_ty();
+            let target = match adjustments.last() {
+                Some(Adjustment { kind: Adjust::Borrow(_), target }) => target,
+                _ => return,
+            };
+
+            let types =
+                std::iter::once(receiver_ty).chain(adjustments.iter().map(|adj| adj.target));
+
+            let mut found_array = false;
+
+            for ty in types {
+                match ty.kind() {
+                    // If we run into a &[T; N] or &[T] first, there's nothing to warn about.
+                    // It'll resolve to the reference version.
+                    ty::Ref(_, inner_ty, _) if inner_ty.is_array() => return,
+                    ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), ty::Slice(..)) => return,
+                    // Found an actual array type without matching a &[T; N] first.
+                    // This is the problematic case.
+                    ty::Array(..) => {
+                        found_array = true;
+                        break;
+                    }
+                    _ => {}
+                }
             }
 
-            // Make sure we found an array after peeling the boxes.
-            if !matches!(recv_ty.kind(), ty::Array(..)) {
+            if !found_array {
                 return;
             }
 
-            // Make sure that there is an autoref coercion at the expected
-            // position. The first `num_box_derefs` adjustments are the derefs
-            // of the box.
-            match cx.typeck_results().expr_adjustments(receiver_arg).get(num_box_derefs) {
-                Some(Adjustment { kind: Adjust::Borrow(_), .. }) => {}
-                _ => return,
-            }
-
             // Emit lint diagnostic.
-            let target = match *cx.typeck_results().expr_ty_adjusted(receiver_arg).kind() {
+            let target = match *target.kind() {
                 ty::Ref(_, inner_ty, _) if inner_ty.is_array() => "[T; N]",
                 ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), ty::Slice(..)) => "[T]",
-
                 // We know the original first argument type is an array type,
                 // we know that the first adjustment was an autoref coercion
                 // and we know that `IntoIterator` is the trait involved. The
@@ -135,7 +141,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
                         String::new(),
                         Applicability::MaybeIncorrect,
                     );
-                } else {
+                } else if receiver_ty.is_array() {
                     diag.multipart_suggestion(
                         "or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value",
                         vec![

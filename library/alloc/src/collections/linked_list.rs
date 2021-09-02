@@ -300,7 +300,10 @@ impl<T> LinkedList<T> {
         let tail = self.tail.take();
         let len = mem::replace(&mut self.len, 0);
         if let Some(head) = head {
-            let tail = tail.unwrap_or_else(|| unsafe { core::hint::unreachable_unchecked() });
+            // SAFETY: In a LinkedList, either both the head and tail are None because
+            // the list is empty, or both head and tail are Some because the list is populated.
+            // Since we have verified the head is Some, we are sure the tail is Some too.
+            let tail = unsafe { tail.unwrap_unchecked() };
             Some((head, tail, len))
         } else {
             None

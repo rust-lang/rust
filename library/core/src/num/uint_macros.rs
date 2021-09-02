@@ -1848,6 +1848,110 @@ macro_rules! uint_impl {
             self % rhs
         }
 
+        /// Calculates the quotient of `self` and `rhs`, rounding the result towards negative infinity.
+        ///
+        /// This is the same as performing `self / rhs` for all unsigned integers.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is 0.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(int_roundings)]
+        #[doc = concat!("assert_eq!(7_", stringify!($SelfT), ".div_floor(4), 1);")]
+        /// ```
+        #[unstable(feature = "int_roundings", issue = "88581")]
+        #[inline(always)]
+        #[rustc_inherit_overflow_checks]
+        pub const fn div_floor(self, rhs: Self) -> Self {
+            self / rhs
+        }
+
+        /// Calculates the quotient of `self` and `rhs`, rounding the result towards positive infinity.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is 0.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(int_roundings)]
+        #[doc = concat!("assert_eq!(7_", stringify!($SelfT), ".div_ceil(4), 2);")]
+        /// ```
+        #[unstable(feature = "int_roundings", issue = "88581")]
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        pub const fn div_ceil(self, rhs: Self) -> Self {
+            let d = self / rhs;
+            let r = self % rhs;
+            if r > 0 && rhs > 0 {
+                d + 1
+            } else {
+                d
+            }
+        }
+
+        /// Calculates the smallest value greater than or equal to `self` that
+        /// is a multiple of `rhs`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is 0 or the operation results in overflow.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(int_roundings)]
+        #[doc = concat!("assert_eq!(16_", stringify!($SelfT), ".next_multiple_of(8), 16);")]
+        #[doc = concat!("assert_eq!(23_", stringify!($SelfT), ".next_multiple_of(8), 24);")]
+        /// ```
+        #[unstable(feature = "int_roundings", issue = "88581")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        pub const fn next_multiple_of(self, rhs: Self) -> Self {
+            match self % rhs {
+                0 => self,
+                r => self + (rhs - r)
+            }
+        }
+
+        /// Calculates the smallest value greater than or equal to `self` that
+        /// is a multiple of `rhs`. If `rhs` is negative,
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(int_roundings)]
+        #[doc = concat!("assert_eq!(16_", stringify!($SelfT), ".checked_next_multiple_of(8), Some(16));")]
+        #[doc = concat!("assert_eq!(23_", stringify!($SelfT), ".checked_next_multiple_of(8), Some(24));")]
+        #[doc = concat!("assert_eq!(1_", stringify!($SelfT), ".checked_next_multiple_of(0), None);")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.checked_next_multiple_of(2), None);")]
+        /// ```
+        #[unstable(feature = "int_roundings", issue = "88581")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        pub const fn checked_next_multiple_of(self, rhs: Self) -> Option<Self> {
+            match try_opt!(self.checked_rem(rhs)) {
+                0 => Some(self),
+                r => self.checked_add(try_opt!(rhs.checked_sub(r)))
+            }
+        }
+
         /// Returns `true` if and only if `self == 2^k` for some `k`.
         ///
         /// # Examples
