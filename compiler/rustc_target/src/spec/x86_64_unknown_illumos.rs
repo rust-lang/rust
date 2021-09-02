@@ -1,10 +1,11 @@
-use crate::spec::{LinkerFlavor, Target};
+use crate::spec::{LinkerFlavor, SanitizerSet, Target};
 
 pub fn target() -> Target {
     let mut base = super::illumos_base::opts();
     base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m64".to_string(), "-std=c99".to_string()]);
     base.cpu = "x86-64".to_string();
     base.max_atomic_width = Some(64);
+    base.supported_sanitizers = SanitizerSet::ADDRESS;
 
     Target {
         // LLVM does not currently have a separate illumos target,

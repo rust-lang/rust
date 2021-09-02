@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, StackProbeType, Target};
+use crate::spec::{LinkerFlavor, SanitizerSet, StackProbeType, Target};
 
 pub fn target() -> Target {
     let mut base = super::solaris_base::opts();
@@ -8,6 +8,7 @@ pub fn target() -> Target {
     base.max_atomic_width = Some(64);
     // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
     base.stack_probes = StackProbeType::Call;
+    base.supported_sanitizers = SanitizerSet::ADDRESS;
 
     Target {
         llvm_target: "x86_64-pc-solaris".to_string(),
