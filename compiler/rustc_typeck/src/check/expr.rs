@@ -1514,7 +1514,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                     );
                     err.span_label(field.ident.span, "field does not exist");
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         expr_span,
                         &format!(
                             "`{adt}::{variant}` is a tuple {kind_name}, use the appropriate syntax",
@@ -1532,7 +1532,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {
                     err.span_label(variant.ident.span, format!("`{adt}` defined here", adt = ty));
                     err.span_label(field.ident.span, "field does not exist");
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         expr_span,
                         &format!(
                             "`{adt}` is a tuple {kind_name}, use the appropriate syntax",
