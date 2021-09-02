@@ -1311,10 +1311,11 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
         }
         hir::QPath::TypeRelative(ref qself, ref segment) => {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
-            let res = if let ty::Projection(proj) = ty.kind() {
-                Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id)
-            } else {
-                Res::Err
+            let res = match ty.kind() {
+                ty::Projection(proj) => Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id),
+                // Rustdoc handles `ty::Error`s by turning them into `Type::Infer`s.
+                ty::Error(_) => return Type::Infer,
+                _ => bug!("clean: expected associated type, found `{:?}`", ty),
             };
             let trait_path = hir::Path { span, res, segments: &[] }.clean(cx);
             Type::QPath {
@@ -1379,6 +1380,7 @@ impl Clean<Type> for hir::Ty<'_> {
                 DynTrait(bounds, lifetime)
             }
             TyKind::BareFn(ref barefn) => BareFunction(Box::new(barefn.clean(cx))),
+            // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
             TyKind::Infer | TyKind::Err => Infer,
             TyKind::Typeof(..) => panic!("unimplemented type {:?}", self.kind),
         }
