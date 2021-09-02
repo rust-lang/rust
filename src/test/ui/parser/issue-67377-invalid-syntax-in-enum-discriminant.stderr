@@ -1,107 +1,107 @@
 error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:5:42
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:5:27
    |
 LL |         V = [PhantomData; { [ () ].len() ].len() as isize,
-   |             -             -              ^ mismatched closing delimiter
+   |             -             ^              ^ mismatched closing delimiter
    |             |             |
    |             |             unclosed delimiter
    |             closing delimiter possibly meant for this
 
 error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:15:36
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:15:24
    |
 LL |         V = [Vec::new; { [].len()  ].len() as isize,
-   |             -          -           ^ mismatched closing delimiter
+   |             -          ^           ^ mismatched closing delimiter
    |             |          |
    |             |          unclosed delimiter
    |             closing delimiter possibly meant for this
 
 error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:36
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:24
    |
 LL |         V = [Vec::new; { [0].len() ].len() as isize,
-   |             -          -           ^ mismatched closing delimiter
+   |             -          ^           ^ mismatched closing delimiter
    |             |          |
    |             |          unclosed delimiter
    |             closing delimiter possibly meant for this
 
 error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:5:42
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:5:27
    |
 LL |         V = [PhantomData; { [ () ].len() ].len() as isize,
-   |             -             -              ^ mismatched closing delimiter
+   |             -             ^              ^ mismatched closing delimiter
    |             |             |
    |             |             unclosed delimiter
    |             closing delimiter possibly meant for this
 
 error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:15:36
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:15:24
    |
 LL |         V = [Vec::new; { [].len()  ].len() as isize,
-   |             -          -           ^ mismatched closing delimiter
+   |             -          ^           ^ mismatched closing delimiter
    |             |          |
    |             |          unclosed delimiter
    |             closing delimiter possibly meant for this
 
 error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:36
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:24
    |
 LL |         V = [Vec::new; { [0].len() ].len() as isize,
-   |             -          -           ^ mismatched closing delimiter
+   |             -          ^           ^ mismatched closing delimiter
    |             |          |
    |             |          unclosed delimiter
    |             closing delimiter possibly meant for this
 
 error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:5:42
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:5:27
    |
 LL |         V = [PhantomData; { [ () ].len() ].len() as isize,
-   |             -             -              ^ mismatched closing delimiter
+   |             -             ^              ^ mismatched closing delimiter
    |             |             |
    |             |             unclosed delimiter
    |             closing delimiter possibly meant for this
 
 error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:15:36
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:15:24
    |
 LL |         V = [Vec::new; { [].len()  ].len() as isize,
-   |             -          -           ^ mismatched closing delimiter
+   |             -          ^           ^ mismatched closing delimiter
    |             |          |
    |             |          unclosed delimiter
    |             closing delimiter possibly meant for this
 
 error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:36
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:24
    |
 LL |         V = [Vec::new; { [0].len() ].len() as isize,
-   |             -          -           ^ mismatched closing delimiter
+   |             -          ^           ^ mismatched closing delimiter
    |             |          |
    |             |          unclosed delimiter
    |             closing delimiter possibly meant for this
 
 error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:5:42
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:5:27
    |
 LL |         V = [PhantomData; { [ () ].len() ].len() as isize,
-   |             -             -              ^ mismatched closing delimiter
+   |             -             ^              ^ mismatched closing delimiter
    |             |             |
    |             |             unclosed delimiter
    |             closing delimiter possibly meant for this
 
 error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:15:36
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:15:24
    |
 LL |         V = [Vec::new; { [].len()  ].len() as isize,
-   |             -          -           ^ mismatched closing delimiter
+   |             -          ^           ^ mismatched closing delimiter
    |             |          |
    |             |          unclosed delimiter
    |             closing delimiter possibly meant for this
 
 error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:36
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:24
    |
 LL |         V = [Vec::new; { [0].len() ].len() as isize,
-   |             -          -           ^ mismatched closing delimiter
+   |             -          ^           ^ mismatched closing delimiter
    |             |          |
    |             |          unclosed delimiter
    |             closing delimiter possibly meant for this

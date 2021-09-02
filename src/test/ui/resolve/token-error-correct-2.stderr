@@ -1,8 +1,8 @@
 error: mismatched closing delimiter: `)`
-  --> $DIR/token-error-correct-2.rs:6:5
+  --> $DIR/token-error-correct-2.rs:4:12
    |
 LL |     if foo {
-   |            - unclosed delimiter
+   |            ^ unclosed delimiter
 LL |
 LL |     )
    |     ^ mismatched closing delimiter

@@ -1,8 +1,8 @@
 error: mismatched closing delimiter: `)`
-  --> $DIR/issue-10636-1.rs:4:1
+  --> $DIR/issue-10636-1.rs:1:12
    |
 LL | struct Obj {
-   |            - unclosed delimiter
+   |            ^ unclosed delimiter
 ...
 LL | )
    | ^ mismatched closing delimiter
