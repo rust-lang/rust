@@ -427,7 +427,7 @@ impl SourceMap {
         }
     }
 
-    fn span_to_string(&self, sp: Span, prefer_local: bool) -> String {
+    fn span_to_string(&self, sp: Span, filename_display_pref: FileNameDisplayPreference) -> String {
         if self.files.borrow().source_files.is_empty() || sp.is_dummy() {
             return "no-location".to_string();
         }
@@ -436,7 +436,7 @@ impl SourceMap {
         let hi = self.lookup_char_pos(sp.hi());
         format!(
             "{}:{}:{}: {}:{}",
-            if prefer_local { lo.file.name.prefer_local() } else { lo.file.name.prefer_remapped() },
+            lo.file.name.display(filename_display_pref),
             lo.line,
             lo.col.to_usize() + 1,
             hi.line,
@@ -446,18 +446,22 @@ impl SourceMap {
 
     /// Format the span location suitable for embedding in build artifacts
     pub fn span_to_embeddable_string(&self, sp: Span) -> String {
-        self.span_to_string(sp, false)
+        self.span_to_string(sp, FileNameDisplayPreference::Remapped)
     }
 
     /// Format the span location to be printed in diagnostics. Must not be emitted
     /// to build artifacts as this may leak local file paths. Use span_to_embeddable_string
     /// for string suitable for embedding.
     pub fn span_to_diagnostic_string(&self, sp: Span) -> String {
-        self.span_to_string(sp, true)
+        self.span_to_string(sp, self.path_mapping.filename_display_for_diagnostics)
     }
 
     pub fn span_to_filename(&self, sp: Span) -> FileName {
         self.lookup_char_pos(sp.lo()).file.name.clone()
+    }
+
+    pub fn filename_for_diagnostics<'a>(&self, filename: &'a FileName) -> FileNameDisplay<'a> {
+        filename.display(self.path_mapping.filename_display_for_diagnostics)
     }
 
     pub fn is_multiline(&self, sp: Span) -> bool {
@@ -1013,15 +1017,22 @@ impl SourceMap {
 #[derive(Clone)]
 pub struct FilePathMapping {
     mapping: Vec<(PathBuf, PathBuf)>,
+    filename_display_for_diagnostics: FileNameDisplayPreference,
 }
 
 impl FilePathMapping {
     pub fn empty() -> FilePathMapping {
-        FilePathMapping { mapping: vec![] }
+        FilePathMapping::new(Vec::new())
     }
 
     pub fn new(mapping: Vec<(PathBuf, PathBuf)>) -> FilePathMapping {
-        FilePathMapping { mapping }
+        let filename_display_for_diagnostics = if mapping.is_empty() {
+            FileNameDisplayPreference::Local
+        } else {
+            FileNameDisplayPreference::Remapped
+        };
+
+        FilePathMapping { mapping, filename_display_for_diagnostics }
     }
 
     /// Applies any path prefix substitution as defined by the mapping.

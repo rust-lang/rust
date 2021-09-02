@@ -464,7 +464,7 @@ impl DiagnosticSpan {
         });
 
         DiagnosticSpan {
-            file_name: start.file.name.prefer_local().to_string(),
+            file_name: je.sm.filename_for_diagnostics(&start.file.name).to_string(),
             byte_start: start.file.original_relative_byte_pos(span.lo()).0,
             byte_end: start.file.original_relative_byte_pos(span.hi()).0,
             line_start: start.line,
