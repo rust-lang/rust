@@ -9,7 +9,9 @@ use ide_db::{
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, LoopBodyOwner},
-    match_ast, AstNode, SyntaxNode, SyntaxToken, TextRange, TextSize, T,
+    match_ast, AstNode,
+    SyntaxKind::IDENT,
+    SyntaxNode, SyntaxToken, TextRange, TextSize, T,
 };
 
 use crate::{display::TryToNav, references, NavigationTarget};
@@ -46,9 +48,10 @@ pub(crate) fn highlight_related(
     let syntax = sema.parse(position.file_id).syntax().clone();
 
     let token = pick_best_token(syntax.token_at_offset(position.offset), |kind| match kind {
-        T![?] => 3, // prefer `?` when the cursor is sandwiched like in `await$0?`
-        T![->] => 2,
-        kind if kind.is_keyword() => 1,
+        T![?] => 4, // prefer `?` when the cursor is sandwiched like in `await$0?`
+        T![->] => 3,
+        kind if kind.is_keyword() => 2,
+        IDENT => 1,
         _ => 0,
     })?;
 
@@ -75,7 +78,7 @@ fn highlight_references(
     let defs = find_defs(sema, syntax, offset);
     let usages = defs
         .iter()
-        .flat_map(|&d| {
+        .filter_map(|&d| {
             d.usages(sema)
                 .set_scope(Some(SearchScope::single_file(file_id)))
                 .include_self_refs()
