@@ -520,7 +520,7 @@ impl<'hir> Map<'hir> {
     }
 
     /// Walks the contents of a crate. See also `Crate::visit_all_items`.
-    pub fn walk_crate(self, visitor: &mut impl Visitor<'hir>) {
+    pub fn walk_toplevel_module(self, visitor: &mut impl Visitor<'hir>) {
         let (top_mod, span, hir_id) = self.get_module(CRATE_DEF_ID);
         visitor.visit_mod(top_mod, span, hir_id);
     }

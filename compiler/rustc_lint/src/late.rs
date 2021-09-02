@@ -451,7 +451,7 @@ fn late_lint_pass_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, pass: T)
         // since the root module isn't visited as an item (because it isn't an
         // item), warn for it here.
         lint_callback!(cx, check_crate, krate);
-        tcx.hir().walk_crate(cx);
+        tcx.hir().walk_toplevel_module(cx);
         tcx.hir().walk_attributes(cx);
         lint_callback!(cx, check_crate_post, krate);
     })

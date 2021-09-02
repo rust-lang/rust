@@ -37,7 +37,7 @@ pub fn print_hir_stats(tcx: TyCtxt<'_>) {
         data: FxHashMap::default(),
         seen: FxHashSet::default(),
     };
-    tcx.hir().walk_crate(&mut collector);
+    tcx.hir().walk_toplevel_module(&mut collector);
     tcx.hir().walk_attributes(&mut collector);
     collector.print("HIR STATS");
 }

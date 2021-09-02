@@ -717,7 +717,7 @@ fn stability_index(tcx: TyCtxt<'tcx>, (): ()) -> Index<'tcx> {
             InheritDeprecation::Yes,
             InheritConstStability::No,
             InheritStability::No,
-            |v| tcx.hir().walk_crate(v),
+            |v| tcx.hir().walk_toplevel_module(v),
         );
     }
     index
@@ -909,7 +909,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         let krate = tcx.hir().krate();
         let mut missing = MissingStabilityAnnotations { tcx, access_levels };
         missing.check_missing_stability(CRATE_DEF_ID, tcx.hir().span(CRATE_HIR_ID));
-        tcx.hir().walk_crate(&mut missing);
+        tcx.hir().walk_toplevel_module(&mut missing);
         krate.visit_all_item_likes(&mut missing.as_deep_visitor());
     }
 

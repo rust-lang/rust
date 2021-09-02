@@ -144,7 +144,7 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
                     "".to_string(),
                     CRATE_HIR_ID,
                     tcx.hir().span(CRATE_HIR_ID),
-                    |this| tcx.hir().walk_crate(this),
+                    |this| tcx.hir().walk_toplevel_module(this),
                 );
 
                 collector
