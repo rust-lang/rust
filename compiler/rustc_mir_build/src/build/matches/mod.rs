@@ -63,7 +63,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.lower_let_else(block, &this.thir[expr], pat, break_scope, variable_scope_span)
             }
             _ => {
-                // TODO `as_temp`?
                 let mutability = Mutability::Mut;
                 let place =
                     unpack!(block = this.as_temp(block, Some(temp_scope), expr, mutability));
