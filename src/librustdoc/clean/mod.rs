@@ -1773,10 +1773,9 @@ impl Clean<GenericArgs> for hir::GenericArgs<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> GenericArgs {
         if self.parenthesized {
             let output = self.bindings[0].ty().clean(cx);
-            GenericArgs::Parenthesized {
-                inputs: self.inputs().clean(cx),
-                output: if output != Type::Tuple(Vec::new()) { Some(output) } else { None },
-            }
+            let output =
+                if output != Type::Tuple(Vec::new()) { Some(Box::new(output)) } else { None };
+            GenericArgs::Parenthesized { inputs: self.inputs().clean(cx), output }
         } else {
             GenericArgs::AngleBracketed {
                 args: self
