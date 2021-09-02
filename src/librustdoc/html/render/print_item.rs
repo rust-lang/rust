@@ -3,6 +3,7 @@ use clean::AttributesExt;
 use std::cmp::Ordering;
 use std::fmt;
 
+use rustc_attr::StabilityLevel;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -414,11 +415,10 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) ->
 
     // The "rustc_private" crates are permanently unstable so it makes no sense
     // to render "unstable" everywhere.
-    if item
-        .stability(tcx)
-        .as_ref()
-        .map(|s| s.level.is_unstable() && s.feature != sym::rustc_private)
-        == Some(true)
+    if item.stability(tcx).as_ref().map(|s| {
+        matches!(s.level, StabilityLevel::Unstable { feature, .. } if feature != sym::rustc_private)
+    })
+    == Some(true)
     {
         tags += &tag_html("unstable", "", "Experimental");
     }

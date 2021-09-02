@@ -4,6 +4,7 @@ use std::iter::once;
 use std::sync::Arc;
 
 use rustc_ast as ast;
+use rustc_attr::StabilityLevel;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -356,7 +357,7 @@ crate fn build_impl(
             }
 
             if let Some(stab) = tcx.lookup_stability(did) {
-                if stab.level.is_unstable() && stab.feature == sym::rustc_private {
+                if let StabilityLevel::Unstable { feature: sym::rustc_private, .. } = &stab.level {
                     return;
                 }
             }
@@ -388,7 +389,7 @@ crate fn build_impl(
             }
 
             if let Some(stab) = tcx.lookup_stability(did) {
-                if stab.level.is_unstable() && stab.feature == sym::rustc_private {
+                if let StabilityLevel::Unstable { feature: sym::rustc_private, .. } = &stab.level {
                     return;
                 }
             }

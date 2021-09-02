@@ -1141,8 +1141,7 @@ impl<'a> Resolver<'a> {
     ) {
         let span = path.span;
         if let Some(stability) = &ext.stability {
-            if let StabilityLevel::Unstable { reason, issue, is_soft } = stability.level {
-                let feature = stability.feature;
+            if let StabilityLevel::Unstable { reason, feature, issue, is_soft } = stability.level {
                 if !self.active_features.contains(&feature) && !span.allows_unstable(feature) {
                     let lint_buffer = &mut self.lint_buffer;
                     let soft_handler =

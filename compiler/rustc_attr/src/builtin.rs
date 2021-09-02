@@ -95,7 +95,6 @@ pub enum OptimizeAttr {
 #[derive(HashStable_Generic)]
 pub struct Stability {
     pub level: StabilityLevel,
-    pub feature: Symbol,
 }
 
 /// Represents the `#[rustc_const_unstable]` and `#[rustc_const_stable]` attributes.
@@ -103,7 +102,6 @@ pub struct Stability {
 #[derive(HashStable_Generic)]
 pub struct ConstStability {
     pub level: StabilityLevel,
-    pub feature: Symbol,
     /// whether the function has a `#[rustc_promotable]` attribute
     pub promotable: bool,
 }
@@ -113,8 +111,18 @@ pub struct ConstStability {
 #[derive(HashStable_Generic)]
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
-    Unstable { reason: Option<Symbol>, issue: Option<NonZeroU32>, is_soft: bool },
-    Stable { since: Symbol },
+    Unstable {
+        reason: Option<Symbol>,
+        feature: Symbol,
+        issue: Option<NonZeroU32>,
+        is_soft: bool,
+    },
+    Stable {
+        since: Symbol,
+        // feature flag, should not be set when the feature name remains in use
+        // for unstable items (i.e. when partially stabilizing a feature)
+        feature: Option<Symbol>,
+    },
 }
 
 impl StabilityLevel {
@@ -309,14 +317,12 @@ where
                                 );
                                 continue;
                             }
-                            let level = Unstable { reason, issue: issue_num, is_soft };
+                            let level = Unstable { reason, feature, issue: issue_num, is_soft };
                             if sym::unstable == meta_name {
-                                stab = Some((Stability { level, feature }, attr.span));
+                                stab = Some((Stability { level }, attr.span));
                             } else {
-                                const_stab = Some((
-                                    ConstStability { level, feature, promotable: false },
-                                    attr.span,
-                                ));
+                                const_stab =
+                                    Some((ConstStability { level, promotable: false }, attr.span));
                             }
                         }
                         (None, _, _) => {
@@ -385,21 +391,15 @@ where
                         }
                     }
 
-                    match (feature, since) {
-                        (Some(feature), Some(since)) => {
-                            let level = Stable { since };
+                    match since {
+                        Some(since) => {
+                            let level = Stable { since, feature };
                             if sym::stable == meta_name {
-                                stab = Some((Stability { level, feature }, attr.span));
+                                stab = Some((Stability { level }, attr.span));
                             } else {
-                                const_stab = Some((
-                                    ConstStability { level, feature, promotable: false },
-                                    attr.span,
-                                ));
+                                const_stab =
+                                    Some((ConstStability { level, promotable: false }, attr.span));
                             }
-                        }
-                        (None, _) => {
-                            handle_errors(&sess.parse_sess, attr.span, AttrError::MissingFeature);
-                            continue;
                         }
                         _ => {
                             handle_errors(&sess.parse_sess, attr.span, AttrError::MissingSince);

@@ -12,6 +12,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(never_type)]
 #![feature(once_cell)]
+#![feature(option_result_contains)]
 #![feature(type_ascription)]
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]

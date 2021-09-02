@@ -640,11 +640,13 @@ fn short_item_info(
 
     // Render unstable items. But don't render "rustc_private" crates (internal compiler crates).
     // Those crates are permanently unstable so it makes no sense to render "unstable" everywhere.
-    if let Some((StabilityLevel::Unstable { reason, issue, .. }, feature)) = item
+    if let Some(StabilityLevel::Unstable { reason, feature, issue, .. }) = item
         .stability(cx.tcx())
         .as_ref()
-        .filter(|stab| stab.feature != sym::rustc_private)
-        .map(|stab| (stab.level, stab.feature))
+        .filter(|stab| {
+            !matches!(stab.level, StabilityLevel::Unstable { feature: sym::rustc_private, .. })
+        })
+        .map(|stab| stab.level)
     {
         let mut message =
             "<span class=\"emoji\">🔬</span> This is a nightly-only experimental API.".to_owned();
@@ -801,7 +803,7 @@ fn render_stability_since_raw(
 
     match (ver, const_stability) {
         // stable and const stable
-        (Some(v), Some(ConstStability { level: StabilityLevel::Stable { since }, .. }))
+        (Some(v), Some(ConstStability { level: StabilityLevel::Stable { since, .. }, .. }))
             if Some(since.as_str()).as_deref() != containing_const_ver =>
         {
             write!(
@@ -813,7 +815,7 @@ fn render_stability_since_raw(
         // stable and const unstable
         (
             Some(v),
-            Some(ConstStability { level: StabilityLevel::Unstable { issue, .. }, feature, .. }),
+            Some(ConstStability { level: StabilityLevel::Unstable { issue, feature, .. }, .. }),
         ) => {
             write!(
                 w,

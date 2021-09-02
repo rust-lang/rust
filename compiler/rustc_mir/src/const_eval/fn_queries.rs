@@ -1,3 +1,4 @@
+use rustc_attr::StabilityLevel;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::hir::map::blocks::FnLikeNode;
@@ -27,7 +28,11 @@ pub fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 pub fn is_unstable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Symbol> {
     if tcx.is_const_fn_raw(def_id) {
         let const_stab = tcx.lookup_const_stability(def_id)?;
-        if const_stab.level.is_unstable() { Some(const_stab.feature) } else { None }
+        if let StabilityLevel::Unstable { feature, .. } = const_stab.level {
+            Some(feature)
+        } else {
+            None
+        }
     } else {
         None
     }

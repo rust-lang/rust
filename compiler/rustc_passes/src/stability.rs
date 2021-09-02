@@ -231,7 +231,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
             // Check if deprecated_since < stable_since. If it is,
             // this is *almost surely* an accident.
-            if let (&Some(dep_since), &attr::Stable { since: stab_since }) =
+            if let (&Some(dep_since), &attr::Stable { since: stab_since, .. }) =
                 (&depr.as_ref().and_then(|(d, _)| d.since), &stab.level)
             {
                 // Explicit version of iter::order::lt to handle parse errors properly
@@ -701,10 +701,10 @@ fn stability_index(tcx: TyCtxt<'tcx>, (): ()) -> Index<'tcx> {
             let stability = tcx.intern_stability(Stability {
                 level: attr::StabilityLevel::Unstable {
                     reason: Some(Symbol::intern(reason)),
+                    feature: sym::rustc_private,
                     issue: NonZeroU32::new(27812),
                     is_soft: false,
                 },
-                feature: sym::rustc_private,
             });
             annotator.parent_stab = Some(stability);
         }
