@@ -387,6 +387,9 @@ mod prim_unit {}
 
 #[doc(primitive = "pointer")]
 #[doc(alias = "ptr")]
+#[doc(alias = "*")]
+#[doc(alias = "*const")]
+#[doc(alias = "*mut")]
 //
 /// Raw, unsafe pointers, `*const T`, and `*mut T`.
 ///
