@@ -934,7 +934,6 @@ impl DirBuilderExt for fs::DirBuilder {
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(unix_chroot)]
 /// use std::os::unix::fs;
 ///
 /// fn main() -> std::io::Result<()> {
@@ -944,7 +943,7 @@ impl DirBuilderExt for fs::DirBuilder {
 ///     Ok(())
 /// }
 /// ```
-#[unstable(feature = "unix_chroot", issue = "84715")]
+#[stable(feature = "unix_chroot", since = "1.56.0")]
 #[cfg(not(any(target_os = "fuchsia", target_os = "vxworks")))]
 pub fn chroot<P: AsRef<Path>>(dir: P) -> io::Result<()> {
     sys::fs::chroot(dir.as_ref())
