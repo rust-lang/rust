@@ -30,6 +30,7 @@ use rustc_target::spec::abi::Abi;
 use rustc_typeck::check::intrinsic::intrinsic_operation_unsafety;
 use rustc_typeck::hir_ty_to_ty;
 
+use std::assert_matches::assert_matches;
 use std::collections::hash_map::Entry;
 use std::default::Default;
 use std::hash::Hash;
@@ -242,30 +243,6 @@ impl Clean<Lifetime> for hir::Lifetime {
     }
 }
 
-impl Clean<Lifetime> for hir::GenericParam<'_> {
-    fn clean(&self, _: &mut DocContext<'_>) -> Lifetime {
-        match self.kind {
-            hir::GenericParamKind::Lifetime { .. } => {
-                if !self.bounds.is_empty() {
-                    let mut bounds = self.bounds.iter().map(|bound| match bound {
-                        hir::GenericBound::Outlives(lt) => lt,
-                        _ => panic!(),
-                    });
-                    let name = bounds.next().expect("no more bounds").name.ident();
-                    let mut s = format!("{}: {}", self.name.ident(), name);
-                    for bound in bounds {
-                        s.push_str(&format!(" + {}", bound.name.ident()));
-                    }
-                    Lifetime(Symbol::intern(&s))
-                } else {
-                    Lifetime(self.name.ident().name)
-                }
-            }
-            _ => panic!(),
-        }
-    }
-}
-
 impl Clean<Constant> for hir::ConstArg {
     fn clean(&self, cx: &mut DocContext<'_>) -> Constant {
         Constant {
@@ -303,11 +280,30 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
 impl Clean<WherePredicate> for hir::WherePredicate<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> WherePredicate {
         match *self {
-            hir::WherePredicate::BoundPredicate(ref wbp) => WherePredicate::BoundPredicate {
-                ty: wbp.bounded_ty.clean(cx),
-                bounds: wbp.bounds.clean(cx),
-                bound_params: wbp.bound_generic_params.into_iter().map(|x| x.clean(cx)).collect(),
-            },
+            hir::WherePredicate::BoundPredicate(ref wbp) => {
+                let bound_params = wbp
+                    .bound_generic_params
+                    .into_iter()
+                    .map(|param| {
+                        // Higher-ranked params must be lifetimes.
+                        // Higher-ranked lifetimes can't have bounds.
+                        assert_matches!(
+                            param,
+                            hir::GenericParam {
+                                kind: hir::GenericParamKind::Lifetime { .. },
+                                bounds: [],
+                                ..
+                            }
+                        );
+                        Lifetime(param.name.ident().name)
+                    })
+                    .collect();
+                WherePredicate::BoundPredicate {
+                    ty: wbp.bounded_ty.clean(cx),
+                    bounds: wbp.bounds.clean(cx),
+                    bound_params,
+                }
+            }
 
             hir::WherePredicate::RegionPredicate(ref wrp) => WherePredicate::RegionPredicate {
                 lifetime: wrp.lifetime.clean(cx),

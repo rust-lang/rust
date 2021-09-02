@@ -1,0 +1,10 @@
+error: lifetime bounds cannot be used in this context
+  --> $DIR/bounded-hr-lifetime.rs:6:13
+   |
+LL |     for<'a: 'b + 'c> &'a (): std::fmt::Debug,
+   |             ^^   ^^
+
+error: Compilation failed, aborting rustdoc
+
+error: aborting due to 2 previous errors
+
