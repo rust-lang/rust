@@ -243,27 +243,6 @@ impl<T: fmt::Debug, const N: usize> fmt::Debug for [T; N] {
     }
 }
 
-// Note: the `#[rustc_skip_array_during_method_dispatch]` on `trait IntoIterator`
-// hides this implementation from explicit `.into_iter()` calls on editions < 2021,
-// so those calls will still resolve to the slice implementation, by reference.
-#[stable(feature = "array_into_iter_impl", since = "1.53.0")]
-impl<T, const N: usize> IntoIterator for [T; N] {
-    type Item = T;
-    type IntoIter = IntoIter<T, N>;
-
-    /// Creates a consuming iterator, that is, one that moves each value out of
-    /// the array (from start to end). The array cannot be used after calling
-    /// this unless `T` implements `Copy`, so the whole array is copied.
-    ///
-    /// Arrays have special behavior when calling `.into_iter()` prior to the
-    /// 2021 edition -- see the [array] Editions section for more information.
-    ///
-    /// [array]: prim@array
-    fn into_iter(self) -> Self::IntoIter {
-        IntoIter::new(self)
-    }
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, const N: usize> IntoIterator for &'a [T; N] {
     type Item = &'a T;
