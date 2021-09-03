@@ -1380,7 +1380,17 @@ pub fn noop_flat_map_stmt<T: MutVisitor>(
 ) -> SmallVec<[Stmt; 1]> {
     vis.visit_id(&mut id);
     vis.visit_span(&mut span);
-    noop_flat_map_stmt_kind(kind, vis).into_iter().map(|kind| Stmt { id, kind, span }).collect()
+    let stmts: SmallVec<_> = noop_flat_map_stmt_kind(kind, vis)
+        .into_iter()
+        .map(|kind| Stmt { id, kind, span })
+        .collect();
+    if stmts.len() > 1 {
+        panic!(
+            "cloning statement `NodeId`s is prohibited by default, \
+             the visitor should implement custom statement visiting"
+        );
+    }
+    stmts
 }
 
 pub fn noop_flat_map_stmt_kind<T: MutVisitor>(

@@ -10,6 +10,7 @@
 #![feature(proc_macro_span)]
 #![feature(try_blocks)]
 #![cfg_attr(bootstrap, allow(incomplete_features))] // if_let_guard
+#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate rustc_macros;
