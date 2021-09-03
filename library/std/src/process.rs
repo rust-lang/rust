@@ -2056,8 +2056,7 @@ impl<E: fmt::Debug> Termination for Result<!, E> {
 impl<E: fmt::Debug> Termination for Result<Infallible, E> {
     fn report(self) -> i32 {
         let Err(err) = self;
-        eprintln!("Error: {:?}", err);
-        ExitCode::FAILURE.report()
+        Err::<!, _>(err).report()
     }
 }
 
