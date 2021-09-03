@@ -142,6 +142,14 @@ fn copy_and_stamp(
     target_deps.push((target, dependency_type));
 }
 
+fn copy_llvm_libunwind(builder: &Builder<'_>, target: TargetSelection, libdir: &Path) -> PathBuf {
+    let libunwind_path = builder.ensure(native::Libunwind { target });
+    let libunwind_source = libunwind_path.join("libunwind.a");
+    let libunwind_target = libdir.join("libunwind.a");
+    builder.copy(&libunwind_source, &libunwind_target);
+    libunwind_target
+}
+
 /// Copies third party objects needed by various targets.
 fn copy_third_party_objects(
     builder: &Builder<'_>,
@@ -165,6 +173,15 @@ fn copy_third_party_objects(
                 .into_iter()
                 .map(|d| (d, DependencyType::Target)),
         );
+    }
+
+    if target == "x86_64-fortanix-unknown-sgx"
+        || builder.config.llvm_libunwind == LlvmLibunwind::InTree
+            && (target.contains("linux") || target.contains("fuchsia"))
+    {
+        let libunwind_path =
+            copy_llvm_libunwind(builder, target, &builder.sysroot_libdir(*compiler, target));
+        target_deps.push((libunwind_path, DependencyType::Target));
     }
 
     target_deps
@@ -208,6 +225,9 @@ fn copy_self_contained_objects(
             builder.copy(&src, &target);
             target_deps.push((target, DependencyType::TargetSelfContained));
         }
+
+        let libunwind_path = copy_llvm_libunwind(builder, target, &libdir_self_contained);
+        target_deps.push((libunwind_path, DependencyType::TargetSelfContained));
     } else if target.ends_with("-wasi") {
         let srcdir = builder
             .wasi_root(target)
@@ -232,18 +252,6 @@ fn copy_self_contained_objects(
             builder.copy(&src, &target);
             target_deps.push((target, DependencyType::TargetSelfContained));
         }
-    }
-
-    if target.contains("musl")
-        || target.contains("x86_64-fortanix-unknown-sgx")
-        || builder.config.llvm_libunwind == LlvmLibunwind::InTree
-            && (target.contains("linux") || target.contains("fuchsia"))
-    {
-        let libunwind_path = builder.ensure(native::Libunwind { target });
-        let libunwind_source = libunwind_path.join("libunwind.a");
-        let libunwind_target = libdir_self_contained.join("libunwind.a");
-        builder.copy(&libunwind_source, &libunwind_target);
-        target_deps.push((libunwind_target, DependencyType::TargetSelfContained));
     }
 
     target_deps

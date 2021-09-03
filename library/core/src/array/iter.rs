@@ -37,7 +37,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// Creates a new iterator over the given `array`.
     ///
     /// *Note*: this method might be deprecated in the future,
-    /// after [`IntoIterator` is implemented for arrays][array-into-iter].
+    /// since [`IntoIterator`] is now implemented for arrays.
     ///
     /// # Examples
     ///
@@ -48,8 +48,13 @@ impl<T, const N: usize> IntoIter<T, N> {
     ///     // The type of `value` is an `i32` here, instead of `&i32`
     ///     let _: i32 = value;
     /// }
+    ///
+    /// // Since Rust 1.53, arrays implement IntoIterator directly:
+    /// for value in [1, 2, 3, 4, 5] {
+    ///     // The type of `value` is an `i32` here, instead of `&i32`
+    ///     let _: i32 = value;
+    /// }
     /// ```
-    /// [array-into-iter]: https://github.com/rust-lang/rust/pull/65819
     #[stable(feature = "array_value_iter", since = "1.51.0")]
     pub fn new(array: [T; N]) -> Self {
         // SAFETY: The transmute here is actually safe. The docs of `MaybeUninit`
