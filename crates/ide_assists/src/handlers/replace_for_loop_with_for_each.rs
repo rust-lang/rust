@@ -50,14 +50,15 @@ pub(crate) fn replace_for_loop_with_for_each(acc: &mut Assists, ctx: &AssistCont
                 // We have either "for x in &col" and col implements a method called iter
                 //             or "for x in &mut col" and col implements a method called iter_mut
                 format_to!(buf, "{}.{}()", expr_behind_ref, method);
+            } else if matches!(iterable, ast::Expr::RangeExpr(..)) {
+                // range expressions need to be parenthesized for the syntax to be correct
+                format_to!(buf, "({})", iterable);
             } else if impls_core_iter(&ctx.sema, &iterable) {
                 format_to!(buf, "{}", iterable);
+            } else if let ast::Expr::RefExpr(_) = iterable {
+                format_to!(buf, "({}).into_iter()", iterable);
             } else {
-                if let ast::Expr::RefExpr(_) = iterable {
-                    format_to!(buf, "({}).into_iter()", iterable);
-                } else {
-                    format_to!(buf, "{}.into_iter()", iterable);
-                }
+                format_to!(buf, "{}.into_iter()", iterable);
             }
 
             format_to!(buf, ".for_each(|{}| {});", pat, body);
@@ -164,6 +165,42 @@ fn main() {
         v *= 2;
     });
 }",
+        )
+    }
+
+    #[test]
+    fn test_for_in_range() {
+        check_assist(
+            replace_for_loop_with_for_each,
+            r#"
+//- minicore: range, iterators
+impl<T> core::iter::Iterator for core::ops::Range<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
+fn main() {
+    for $0x in 0..92 {
+        print!("{}", x);
+    }
+}"#,
+            r#"
+impl<T> core::iter::Iterator for core::ops::Range<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
+fn main() {
+    (0..92).for_each(|x| {
+        print!("{}", x);
+    });
+}"#,
         )
     }
 
