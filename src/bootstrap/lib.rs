@@ -1043,7 +1043,7 @@ impl Build {
             options[1] = Some(format!("-Clink-arg=-Wl,{}", threads));
         }
 
-        std::array::IntoIter::new(options).flatten()
+        IntoIterator::into_iter(options).flatten()
     }
 
     /// Returns if this target should statically link the C runtime, if specified

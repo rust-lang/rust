@@ -1961,7 +1961,7 @@ impl<T, const N: usize> From<[T; N]> for LinkedList<T> {
     /// assert_eq!(list1, list2);
     /// ```
     fn from(arr: [T; N]) -> Self {
-        core::array::IntoIter::new(arr).collect()
+        Self::from_iter(arr)
     }
 }
 

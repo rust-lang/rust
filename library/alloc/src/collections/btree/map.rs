@@ -1305,11 +1305,11 @@ impl<K, V> BTreeMap<K, V> {
     pub(crate) fn bulk_build_from_sorted_iter<I>(iter: I) -> Self
     where
         K: Ord,
-        I: Iterator<Item = (K, V)>,
+        I: IntoIterator<Item = (K, V)>,
     {
         let mut root = Root::new();
         let mut length = 0;
-        root.bulk_push(DedupSortedIter::new(iter), &mut length);
+        root.bulk_push(DedupSortedIter::new(iter.into_iter()), &mut length);
         BTreeMap { root: Some(root), length }
     }
 }
@@ -1944,7 +1944,7 @@ impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
 
         // use stable sort to preserve the insertion order.
         inputs.sort_by(|a, b| a.0.cmp(&b.0));
-        BTreeMap::bulk_build_from_sorted_iter(inputs.into_iter())
+        BTreeMap::bulk_build_from_sorted_iter(inputs)
     }
 }
 
@@ -2061,7 +2061,7 @@ impl<K: Ord, V, const N: usize> From<[(K, V); N]> for BTreeMap<K, V> {
 
         // use stable sort to preserve the insertion order.
         arr.sort_by(|a, b| a.0.cmp(&b.0));
-        BTreeMap::bulk_build_from_sorted_iter(core::array::IntoIter::new(arr))
+        BTreeMap::bulk_build_from_sorted_iter(arr)
     }
 }
 

@@ -443,11 +443,11 @@ impl<T> PerNS<T> {
     }
 
     pub fn into_iter(self) -> IntoIter<T, 3> {
-        IntoIter::new([self.value_ns, self.type_ns, self.macro_ns])
+        [self.value_ns, self.type_ns, self.macro_ns].into_iter()
     }
 
     pub fn iter(&self) -> IntoIter<&T, 3> {
-        IntoIter::new([&self.value_ns, &self.type_ns, &self.macro_ns])
+        [&self.value_ns, &self.type_ns, &self.macro_ns].into_iter()
     }
 }
 
@@ -481,7 +481,7 @@ impl<T> PerNS<Option<T>> {
 
     /// Returns an iterator over the items which are `Some`.
     pub fn present_items(self) -> impl Iterator<Item = T> {
-        IntoIter::new([self.type_ns, self.value_ns, self.macro_ns]).flatten()
+        [self.type_ns, self.value_ns, self.macro_ns].into_iter().flatten()
     }
 }
 

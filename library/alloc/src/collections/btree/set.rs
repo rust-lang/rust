@@ -1106,7 +1106,7 @@ impl<T: Ord, const N: usize> From<[T; N]> for BTreeSet<T> {
 
         // use stable sort to preserve the insertion order.
         arr.sort();
-        let iter = core::array::IntoIter::new(arr).map(|k| (k, ()));
+        let iter = IntoIterator::into_iter(arr).map(|k| (k, ()));
         let map = BTreeMap::bulk_build_from_sorted_iter(iter);
         BTreeSet { map }
     }

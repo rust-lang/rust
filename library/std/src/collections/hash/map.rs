@@ -1186,7 +1186,7 @@ where
     /// assert_eq!(map1, map2);
     /// ```
     fn from(arr: [(K, V); N]) -> Self {
-        crate::array::IntoIter::new(arr).collect()
+        Self::from_iter(arr)
     }
 }
 

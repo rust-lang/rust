@@ -4,6 +4,7 @@ pub use self::FileMatch::*;
 
 use std::env;
 use std::fs;
+use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
 
 use crate::search_paths::{PathKind, SearchPath, SearchPathFile};
@@ -91,8 +92,7 @@ impl<'a> FileSearch<'a> {
 
 pub fn make_target_lib_path(sysroot: &Path, target_triple: &str) -> PathBuf {
     let rustlib_path = rustc_target::target_rustlib_path(sysroot, target_triple);
-    std::array::IntoIter::new([sysroot, Path::new(&rustlib_path), Path::new("lib")])
-        .collect::<PathBuf>()
+    PathBuf::from_iter([sysroot, Path::new(&rustlib_path), Path::new("lib")])
 }
 
 /// This function checks if sysroot is found using env::args().next(), and if it
