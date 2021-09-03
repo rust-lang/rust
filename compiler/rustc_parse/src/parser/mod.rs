@@ -35,7 +35,6 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{MultiSpan, Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::MultiSpan;
 use tracing::debug;
 
 use std::ops::Range;
