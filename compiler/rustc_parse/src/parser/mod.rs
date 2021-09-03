@@ -142,14 +142,17 @@ pub struct Parser<'a> {
     /// If present, this `Parser` is not parsing Rust code but rather a macro call.
     subparser_name: Option<&'static str>,
     capture_state: CaptureState,
-
     /// This allows us to recover when the user forget to add braces around
     /// multiple statements in the closure body.
-    pub last_closure_body: Option<(
-        Span, /* The whole body. */
-        Span, /* The closing `|` of the closure declarator. */
-        Span, /* What we parsed as closure body. */
-    )>,
+    pub last_closure_body: Option<ClosureSpans>,
+}
+
+/// Stores span informations about a closure.
+#[derive(Clone)]
+pub struct ClosureSpans {
+    pub whole_closure: Span,
+    pub closing_pipe: Span,
+    pub body: Span,
 }
 
 /// Indicates a range of tokens that should be replaced by
@@ -783,9 +786,7 @@ impl<'a> Parser<'a> {
                             let token_str = pprust::token_kind_to_string(t);
 
                             match self.last_closure_body.take() {
-                                Some((closure_span, right_pipe_span, expr_span))
-                                    if self.token.kind == TokenKind::Semi =>
-                                {
+                                Some(closure_spans) if self.token.kind == TokenKind::Semi => {
                                     // Finding a semicolon instead of a comma
                                     // after a closure body indicates that the
                                     // closure body may be a block but the user
@@ -793,9 +794,7 @@ impl<'a> Parser<'a> {
                                     // statements.
 
                                     self.recover_missing_braces_around_closure_body(
-                                        closure_span,
-                                        right_pipe_span,
-                                        expr_span,
+                                        closure_spans,
                                         expect_err,
                                     )?;
 
@@ -876,9 +875,7 @@ impl<'a> Parser<'a> {
 
     fn recover_missing_braces_around_closure_body(
         &mut self,
-        closure_span: Span,
-        right_pipe_span: Span,
-        expr_span: Span,
+        closure_spans: ClosureSpans,
         mut expect_err: DiagnosticBuilder<'_>,
     ) -> PResult<'a, ()> {
         let initial_semicolon = self.token.span;
@@ -891,7 +888,7 @@ impl<'a> Parser<'a> {
             "closure bodies that contain statements must be surrounded by braces",
         );
 
-        let preceding_pipe_span = right_pipe_span;
+        let preceding_pipe_span = closure_spans.closing_pipe;
         let following_token_span = self.token.span;
 
         let mut first_note = MultiSpan::from(vec![initial_semicolon]);
@@ -900,13 +897,16 @@ impl<'a> Parser<'a> {
             "this `;` turns the preceding expression into a statement".to_string(),
         );
         first_note.push_span_label(
-            expr_span,
+            closure_spans.body,
             "this expression is a statement because of the trailing semicolon".to_string(),
         );
         expect_err.span_note(first_note, "statement found outside of a block");
 
-        let mut second_note = MultiSpan::from(vec![closure_span]);
-        second_note.push_span_label(closure_span, "this is the parsed closure...".to_string());
+        let mut second_note = MultiSpan::from(vec![closure_spans.whole_closure]);
+        second_note.push_span_label(
+            closure_spans.whole_closure,
+            "this is the parsed closure...".to_string(),
+        );
         second_note.push_span_label(
             following_token_span,
             "...but likely you meant the closure to end here".to_string(),

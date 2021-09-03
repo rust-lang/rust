@@ -1,6 +1,8 @@
 use super::pat::{RecoverColon, RecoverComma, PARAM_EXPECTED};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{AttrWrapper, BlockMode, ForceCollect, Parser, PathStyle, Restrictions, TokenType};
+use super::{
+    AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Restrictions, TokenType,
+};
 use super::{SemiColonMode, SeqSep, TokenExpectType, TrailingToken};
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
@@ -1753,7 +1755,9 @@ impl<'a> Parser<'a> {
         );
 
         // Disable recovery for closure body
-        self.last_closure_body = Some((clo.span, decl_hi, body_span));
+        let spans =
+            ClosureSpans { whole_closure: clo.span, closing_pipe: decl_hi, body: body_span };
+        self.last_closure_body = Some(spans);
 
         Ok(clo)
     }
