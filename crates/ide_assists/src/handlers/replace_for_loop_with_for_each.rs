@@ -50,7 +50,7 @@ pub(crate) fn replace_for_loop_with_for_each(acc: &mut Assists, ctx: &AssistCont
                 // We have either "for x in &col" and col implements a method called iter
                 //             or "for x in &mut col" and col implements a method called iter_mut
                 format_to!(buf, "{}.{}()", expr_behind_ref, method);
-            } else if matches!(iterable, ast::Expr::RangeExpr(..)) {
+            } else if let ast::Expr::RangeExpr(..) = iterable {
                 // range expressions need to be parenthesized for the syntax to be correct
                 format_to!(buf, "({})", iterable);
             } else if impls_core_iter(&ctx.sema, &iterable) {
