@@ -13,7 +13,6 @@ use clippy_utils::{
     remove_blocks, strip_pat_refs,
 };
 use clippy_utils::{paths, search_same, SpanlessEq, SpanlessHash};
-use core::array;
 use core::iter::{once, ExactSizeIterator};
 use if_chain::if_chain;
 use rustc_ast::ast::{Attribute, LitKind};
@@ -1306,7 +1305,7 @@ fn check_match_like_matches<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) 
         return find_matches_sugg(
             cx,
             let_expr,
-            array::IntoIter::new([(&[][..], Some(let_pat), if_then, None), (&[][..], None, if_else, None)]),
+            IntoIterator::into_iter([(&[][..], Some(let_pat), if_then, None), (&[][..], None, if_else, None)]),
             expr,
             true,
         );
