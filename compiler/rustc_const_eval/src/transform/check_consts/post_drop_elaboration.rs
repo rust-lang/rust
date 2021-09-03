@@ -79,9 +79,9 @@ impl Visitor<'tcx> for CheckLiveDrops<'mir, 'tcx> {
             mir::TerminatorKind::Drop { place: dropped_place, .. } => {
                 let dropped_ty = dropped_place.ty(self.body, self.tcx).ty;
                 if !NeedsNonConstDrop::in_any_value_of_ty(self.ccx, dropped_ty) {
-                    bug!(
-                        "Drop elaboration left behind a Drop for a type that does not need dropping"
-                    );
+                    // Instead of throwing a bug, we just return here. This is because we have to
+                    // run custom `const Drop` impls.
+                    return;
                 }
 
                 if dropped_place.is_indirect() {
