@@ -42,7 +42,7 @@ fn main() {
                 "RUSTFLAGS",
                 env::var("RUSTFLAGS").unwrap_or(String::new()) + " -Cprefer-dynamic",
             );
-            std::array::IntoIter::new(["rustc".to_string()])
+            IntoIterator::into_iter(["rustc".to_string()])
                 .chain(env::args().skip(2))
                 .chain([
                     "--".to_string(),
@@ -56,7 +56,7 @@ fn main() {
                 "RUSTFLAGS",
                 env::var("RUSTFLAGS").unwrap_or(String::new()) + " -Cprefer-dynamic",
             );
-            std::array::IntoIter::new(["rustc".to_string()])
+            IntoIterator::into_iter(["rustc".to_string()])
                 .chain(env::args().skip(2))
                 .chain([
                     "--".to_string(),
