@@ -72,8 +72,8 @@ This flag controls the generation of debug information. It takes one of the
 following values:
 
 * `0` or `none`: no debug info at all (the default).
-* `line-directives-only`: line info directives only.
-* `line-tables-only`: line tables only.
+* `line-directives-only`: line info directives only, (For the nvptx* targets this enables [profiling](https://reviews.llvm.org/D46061), but on other targets the behavior is unspecified).
+* `line-tables-only`: line tables only, (Generates the minimal amount of debug info for backtraces with filename/line number info, but not anything else, i.e. variable or function parameter info).
 * `1` or `limited`: debug info without type information.
 * `2` or `full`: full debug info.
 
