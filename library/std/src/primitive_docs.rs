@@ -581,6 +581,8 @@ mod prim_pointer {}
 /// might be made consistent to the behavior of later editions.
 ///
 /// ```rust,edition2018
+/// // Rust 2015 and 2018:
+///
 /// # #![allow(array_into_iter)] // override our `deny(warnings)`
 /// let array: [i32; 3] = [0; 3];
 ///
@@ -604,11 +606,13 @@ mod prim_pointer {}
 /// }
 /// ```
 ///
-/// Starting in the 2021 edition, `array.into_iter()` will use `IntoIterator` normally to iterate
+/// Starting in the 2021 edition, `array.into_iter()` uses `IntoIterator` normally to iterate
 /// by value, and `iter()` should be used to iterate by reference like previous editions.
 ///
-/// ```rust,edition2021,ignore
-/// # // FIXME: ignored because 2021 testing is still unstable
+#[cfg_attr(bootstrap, doc = "```rust,edition2021,ignore")]
+#[cfg_attr(not(bootstrap), doc = "```rust,edition2021")]
+/// // Rust 2021:
+///
 /// let array: [i32; 3] = [0; 3];
 ///
 /// // This iterates by reference:
@@ -631,12 +635,12 @@ mod prim_pointer {}
 /// avoid the `into_iter` syntax on those editions. If an edition update is not
 /// viable/desired, there are multiple alternatives:
 /// * use `iter`, equivalent to the old behavior, creating references
-/// * use [`array::IntoIter`], equivalent to the post-2021 behavior (Rust 1.51+)
+/// * use [`IntoIterator::into_iter`], equivalent to the post-2021 behavior (Rust 1.53+)
 /// * replace `for ... in array.into_iter() {` with `for ... in array {`,
 ///   equivalent to the post-2021 behavior (Rust 1.53+)
 ///
 /// ```rust,edition2018
-/// use std::array::IntoIter;
+/// // Rust 2015 and 2018:
 ///
 /// let array: [i32; 3] = [0; 3];
 ///
@@ -647,7 +651,7 @@ mod prim_pointer {}
 /// }
 ///
 /// // This iterates by value:
-/// for item in IntoIter::new(array) {
+/// for item in IntoIterator::into_iter(array) {
 ///     let x: i32 = item;
 ///     println!("{}", x);
 /// }
@@ -660,7 +664,7 @@ mod prim_pointer {}
 ///
 /// // IntoIter can also start a chain.
 /// // This iterates by value:
-/// for item in IntoIter::new(array).enumerate() {
+/// for item in IntoIterator::into_iter(array).enumerate() {
 ///     let (i, x): (usize, i32) = item;
 ///     println!("array[{}] = {}", i, x);
 /// }
