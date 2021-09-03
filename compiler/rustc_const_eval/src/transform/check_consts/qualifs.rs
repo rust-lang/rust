@@ -119,10 +119,8 @@ impl Qualif for NeedsNonConstDrop {
             // without having the lang item present.
             return false;
         };
-        let trait_ref = ty::TraitRef {
-            def_id: drop_trait,
-            substs: cx.tcx.mk_substs_trait(ty, &[]),
-        };
+        let trait_ref =
+            ty::TraitRef { def_id: drop_trait, substs: cx.tcx.mk_substs_trait(ty, &[]) };
         let obligation = Obligation::new(
             ObligationCause::dummy(),
             cx.param_env,
