@@ -1,8 +1,8 @@
 error: expected one of `)`, `,`, `.`, `?`, or an operator, found `;`
-  --> $DIR/token-error-correct-3.rs:13:35
+  --> $DIR/token-error-correct-3.rs:13:21
    |
 LL |             callback(path.as_ref();
-   |                     -             ^ help: `)` may belong here
+   |                     ^             ^ help: `)` may belong here
    |                     |
    |                     unclosed delimiter
 
