@@ -112,8 +112,15 @@ impl Qualif for NeedsNonConstDrop {
     }
 
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
+        let drop_trait = if let Some(did) = cx.tcx.lang_items().drop_trait() {
+            did
+        } else {
+            // there is no way to define a type that needs non-const drop
+            // without having the lang item present.
+            return false;
+        };
         let trait_ref = ty::TraitRef {
-            def_id: cx.tcx.require_lang_item(hir::LangItem::Drop, None),
+            def_id: drop_trait,
             substs: cx.tcx.mk_substs_trait(ty, &[]),
         };
         let obligation = Obligation::new(
