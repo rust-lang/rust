@@ -74,7 +74,7 @@ mod vtable;
 mod prelude {
     pub(crate) use std::convert::{TryFrom, TryInto};
 
-    pub(crate) use rustc_span::Span;
+    pub(crate) use rustc_span::{Span, FileNameDisplayPreference};
 
     pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
     pub(crate) use rustc_middle::bug;
