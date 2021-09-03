@@ -5,10 +5,10 @@ LL |     type Foo = impl std::fmt::Debug;
    |                ^^^^^^^^^^^^^^^^^^^^
    |
 note: ...which requires type-checking `m::bar`...
-  --> $DIR/inference-cycle.rs:14:5
+  --> $DIR/inference-cycle.rs:15:9
    |
-LL |     pub fn bar() {
-   |     ^^^^^^^^^^^^
+LL |         is_send(foo()); // Today: error
+   |         ^^^^^^^
    = note: ...which requires evaluating trait selection obligation `impl std::fmt::Debug: std::marker::Send`...
    = note: ...which again requires computing type of `m::Foo::{opaque#0}`, completing the cycle
 note: cycle used when checking item types in module `m`

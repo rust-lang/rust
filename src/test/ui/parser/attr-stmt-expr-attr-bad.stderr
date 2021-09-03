@@ -12,11 +12,11 @@ error: expected expression, found `]`
 LL | #[cfg(FALSE)] fn e() { let _ = [#[attr]]; }
    |                                        ^ expected expression
 
-error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, or an operator, found `#`
+error: expected one of `!`, `.`, `::`, `;`, `?`, `else`, `{`, or an operator, found `#`
   --> $DIR/attr-stmt-expr-attr-bad.rs:9:35
    |
 LL | #[cfg(FALSE)] fn e() { let _ = foo#[attr](); }
-   |                                   ^ expected one of 7 possible tokens
+   |                                   ^ expected one of 8 possible tokens
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:11:36
@@ -70,11 +70,11 @@ LL | #[cfg(FALSE)] fn e() { let _ = -#![attr] 0; }
    |
    = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files. Outer attributes, like `#[test]`, annotate the item following them.
 
-error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, or an operator, found `#`
+error: expected one of `!`, `.`, `::`, `;`, `?`, `else`, `{`, or an operator, found `#`
   --> $DIR/attr-stmt-expr-attr-bad.rs:23:34
    |
 LL | #[cfg(FALSE)] fn e() { let _ = x #![attr] as Y; }
-   |                                  ^ expected one of 7 possible tokens
+   |                                  ^ expected one of 8 possible tokens
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:25:35
@@ -372,11 +372,11 @@ error: unexpected token: `#`
 LL | #[cfg(FALSE)] fn e() { let _ = x.#![attr]foo(); }
    |                                  ^
 
-error: expected one of `.`, `;`, `?`, or an operator, found `#`
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `#`
   --> $DIR/attr-stmt-expr-attr-bad.rs:100:34
    |
 LL | #[cfg(FALSE)] fn e() { let _ = x.#![attr]foo(); }
-   |                                  ^ expected one of `.`, `;`, `?`, or an operator
+   |                                  ^ expected one of `.`, `;`, `?`, `else`, or an operator
 
 error: unexpected token: `#`
   --> $DIR/attr-stmt-expr-attr-bad.rs:103:34
@@ -384,11 +384,11 @@ error: unexpected token: `#`
 LL | #[cfg(FALSE)] fn e() { let _ = x.#[attr]foo(); }
    |                                  ^
 
-error: expected one of `.`, `;`, `?`, or an operator, found `#`
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `#`
   --> $DIR/attr-stmt-expr-attr-bad.rs:103:34
    |
 LL | #[cfg(FALSE)] fn e() { let _ = x.#[attr]foo(); }
-   |                                  ^ expected one of `.`, `;`, `?`, or an operator
+   |                                  ^ expected one of `.`, `;`, `?`, `else`, or an operator
 
 error: expected statement after outer attribute
   --> $DIR/attr-stmt-expr-attr-bad.rs:108:37

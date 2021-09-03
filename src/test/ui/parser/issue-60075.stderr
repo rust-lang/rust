@@ -17,10 +17,10 @@ LL |     }
    |     - item list ends here
 
 error: mismatched closing delimiter: `)`
-  --> $DIR/issue-60075.rs:6:10
+  --> $DIR/issue-60075.rs:4:31
    |
 LL |     fn qux() -> Option<usize> {
-   |                               - unclosed delimiter
+   |                               ^ unclosed delimiter
 LL |         let _ = if true {
 LL |         });
    |          ^ mismatched closing delimiter

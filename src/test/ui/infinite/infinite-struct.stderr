@@ -18,7 +18,7 @@ error[E0391]: cycle detected when computing drop-check constraints for `Take`
 LL | struct Take(Take);
    | ^^^^^^^^^^^^^^^^^^
    |
-   = note: ...which again requires computing drop-check constraints for `Take`, completing the cycle
+   = note: ...which immediately requires computing drop-check constraints for `Take` again
    = note: cycle used when computing dropck types for `Canonical { max_universe: U0, variables: [], value: ParamEnvAnd { param_env: ParamEnv { caller_bounds: [], reveal: UserFacing }, value: Take } }`
 
 error: aborting due to 2 previous errors

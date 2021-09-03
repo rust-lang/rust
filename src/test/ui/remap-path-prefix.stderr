@@ -1,0 +1,9 @@
+error[E0425]: cannot find value `ferris` in this scope
+  --> remapped/remap-path-prefix.rs:8:5
+   |
+LL |     ferris
+   |     ^^^^^^ not found in this scope
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0425`.

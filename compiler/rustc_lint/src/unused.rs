@@ -1,7 +1,7 @@
 use crate::Lint;
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
-use rustc_ast::util::parser;
+use rustc_ast::util::{classify, parser};
 use rustc_ast::{ExprKind, StmtKind};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{pluralize, Applicability};
@@ -382,6 +382,7 @@ enum UnusedDelimsCtx {
     FunctionArg,
     MethodArg,
     AssignedValue,
+    AssignedValueLetElse,
     IfCond,
     WhileCond,
     ForIterExpr,
@@ -398,7 +399,9 @@ impl From<UnusedDelimsCtx> for &'static str {
         match ctx {
             UnusedDelimsCtx::FunctionArg => "function argument",
             UnusedDelimsCtx::MethodArg => "method argument",
-            UnusedDelimsCtx::AssignedValue => "assigned value",
+            UnusedDelimsCtx::AssignedValue | UnusedDelimsCtx::AssignedValueLetElse => {
+                "assigned value"
+            }
             UnusedDelimsCtx::IfCond => "`if` condition",
             UnusedDelimsCtx::WhileCond => "`while` condition",
             UnusedDelimsCtx::ForIterExpr => "`for` iterator expression",
@@ -441,14 +444,26 @@ trait UnusedDelimLint {
         right_pos: Option<BytePos>,
     );
 
-    fn is_expr_delims_necessary(inner: &ast::Expr, followed_by_block: bool) -> bool {
+    fn is_expr_delims_necessary(
+        inner: &ast::Expr,
+        followed_by_block: bool,
+        followed_by_else: bool,
+    ) -> bool {
+        if followed_by_else {
+            match inner.kind {
+                ast::ExprKind::Binary(op, ..) if op.node.lazy() => return true,
+                _ if classify::expr_trailing_brace(inner).is_some() => return true,
+                _ => {}
+            }
+        }
+
         // Prevent false-positives in cases like `fn x() -> u8 { ({ 0 } + 1) }`
         let lhs_needs_parens = {
             let mut innermost = inner;
             loop {
                 if let ExprKind::Binary(_, lhs, _rhs) = &innermost.kind {
                     innermost = lhs;
-                    if !rustc_ast::util::classify::expr_requires_semi_to_be_stmt(innermost) {
+                    if !classify::expr_requires_semi_to_be_stmt(innermost) {
                         break true;
                     }
                 } else {
@@ -618,15 +633,12 @@ trait UnusedDelimLint {
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
         match s.kind {
             StmtKind::Local(ref local) if Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX => {
-                if let Some(ref value) = local.init {
-                    self.check_unused_delims_expr(
-                        cx,
-                        &value,
-                        UnusedDelimsCtx::AssignedValue,
-                        false,
-                        None,
-                        None,
-                    );
+                if let Some((init, els)) = local.kind.init_else_opt() {
+                    let ctx = match els {
+                        None => UnusedDelimsCtx::AssignedValue,
+                        Some(_) => UnusedDelimsCtx::AssignedValueLetElse,
+                    };
+                    self.check_unused_delims_expr(cx, init, ctx, false, None, None);
                 }
             }
             StmtKind::Expr(ref expr) => {
@@ -702,7 +714,8 @@ impl UnusedDelimLint for UnusedParens {
     ) {
         match value.kind {
             ast::ExprKind::Paren(ref inner) => {
-                if !Self::is_expr_delims_necessary(inner, followed_by_block)
+                let followed_by_else = ctx == UnusedDelimsCtx::AssignedValueLetElse;
+                if !Self::is_expr_delims_necessary(inner, followed_by_block, followed_by_else)
                     && value.attrs.is_empty()
                     && !value.span.from_expansion()
                     && (ctx != UnusedDelimsCtx::LetScrutineeExpr
@@ -941,7 +954,7 @@ impl UnusedDelimLint for UnusedBraces {
                 // FIXME(const_generics): handle paths when #67075 is fixed.
                 if let [stmt] = inner.stmts.as_slice() {
                     if let ast::StmtKind::Expr(ref expr) = stmt.kind {
-                        if !Self::is_expr_delims_necessary(expr, followed_by_block)
+                        if !Self::is_expr_delims_necessary(expr, followed_by_block, false)
                             && (ctx != UnusedDelimsCtx::AnonConst
                                 || matches!(expr.kind, ast::ExprKind::Lit(_)))
                             && !cx.sess().source_map().is_multiline(value.span)

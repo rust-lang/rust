@@ -1,8 +1,8 @@
-error: expected one of `.`, `;`, `?`, or an operator, found keyword `let`
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found keyword `let`
   --> $DIR/missing-semicolon.rs:3:12
    |
 LL |         $( let x = $e1 )*;
-   |            ^^^ expected one of `.`, `;`, `?`, or an operator
+   |            ^^^ expected one of `.`, `;`, `?`, `else`, or an operator
 ...
 LL | fn main() { m!(0, 0; 0, 0); }
    |             --------------- in this macro invocation

@@ -224,7 +224,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         debug!("report_overflow_error_cycle: cycle={:?}", cycle);
 
-        self.report_overflow_error(&cycle[0], false);
+        // The 'deepest' obligation is most likely to have a useful
+        // cause 'backtrace'
+        self.report_overflow_error(cycle.iter().max_by_key(|p| p.recursion_depth).unwrap(), false);
     }
 
     fn report_selection_error(

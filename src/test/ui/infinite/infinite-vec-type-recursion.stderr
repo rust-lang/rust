@@ -1,10 +1,13 @@
-error[E0391]: cycle detected when computing type of `X`
+error[E0391]: cycle detected when expanding type alias `X`
   --> $DIR/infinite-vec-type-recursion.rs:1:14
    |
 LL | type X = Vec<X>;
    |              ^
    |
-   = note: ...which again requires computing type of `X`, completing the cycle
+   = note: ...which immediately requires expanding type alias `X` again
+   = note: type aliases cannot be recursive
+   = help: consider using a struct, enum, or union instead to break the cycle
+   = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
 note: cycle used when collecting item types in top-level module
   --> $DIR/infinite-vec-type-recursion.rs:1:1
    |

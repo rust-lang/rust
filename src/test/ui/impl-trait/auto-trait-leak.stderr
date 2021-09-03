@@ -30,10 +30,10 @@ note: ...which requires building MIR for `cycle1`...
 LL | fn cycle1() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires type-checking `cycle1`...
-  --> $DIR/auto-trait-leak.rs:12:1
+  --> $DIR/auto-trait-leak.rs:14:5
    |
-LL | fn cycle1() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     send(cycle2().clone());
+   |     ^^^^
    = note: ...which requires evaluating trait selection obligation `impl std::clone::Clone: std::marker::Send`...
 note: ...which requires computing type of `cycle2::{opaque#0}`...
   --> $DIR/auto-trait-leak.rs:19:16
@@ -66,10 +66,10 @@ note: ...which requires building MIR for `cycle2`...
 LL | fn cycle2() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires type-checking `cycle2`...
-  --> $DIR/auto-trait-leak.rs:19:1
+  --> $DIR/auto-trait-leak.rs:20:5
    |
-LL | fn cycle2() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     send(cycle1().clone());
+   |     ^^^^
    = note: ...which requires evaluating trait selection obligation `impl std::clone::Clone: std::marker::Send`...
    = note: ...which again requires computing type of `cycle1::{opaque#0}`, completing the cycle
 note: cycle used when checking item types in top-level module

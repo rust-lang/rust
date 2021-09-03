@@ -53,7 +53,7 @@ use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
 use rustc_hir::{ConstArg, GenericArg, InferKind, ParamName};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_session::lint::builtin::{BARE_TRAIT_OBJECTS, MISSING_ABI};
+use rustc_session::lint::builtin::BARE_TRAIT_OBJECTS;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::utils::{FlattenNonterminals, NtToTokenstream};
 use rustc_session::Session;
@@ -62,9 +62,8 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, CachingSourceMapView, DesugaringKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::spec::abi::Abi;
 
-use smallvec::{smallvec, SmallVec};
+use smallvec::SmallVec;
 use std::collections::BTreeMap;
 use std::mem;
 use tracing::{debug, trace};
@@ -77,6 +76,7 @@ macro_rules! arena_vec {
 }
 
 mod asm;
+mod block;
 mod expr;
 mod item;
 mod pat;
@@ -1360,7 +1360,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             TyKind::BareFn(ref f) => self.with_in_scope_lifetime_defs(&f.generic_params, |this| {
                 this.with_anonymous_lifetime_mode(AnonymousLifetimeMode::PassThrough, |this| {
-                    let span = this.sess.source_map().next_point(t.span.shrink_to_lo());
                     hir::TyKind::BareFn(this.arena.alloc(hir::BareFnTy {
                         generic_params: this.lower_generic_params(
                             &f.generic_params,
@@ -1368,7 +1367,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             ImplTraitContext::disallowed(),
                         ),
                         unsafety: this.lower_unsafety(f.unsafety),
-                        abi: this.lower_extern(f.ext, span, t.id),
+                        abi: this.lower_extern(f.ext),
                         decl: this.lower_fn_decl(&f.decl, None, false, None),
                         param_names: this.lower_fn_params_to_names(&f.decl),
                     }))
@@ -1791,24 +1790,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.arena.alloc_from_iter(output_lifetimes),
             self.arena.alloc_from_iter(output_lifetime_params),
         )
-    }
-
-    fn lower_local(&mut self, l: &Local) -> hir::Local<'hir> {
-        let ty = l
-            .ty
-            .as_ref()
-            .map(|t| self.lower_ty(t, ImplTraitContext::Disallowed(ImplTraitPosition::Binding)));
-        let init = l.init.as_ref().map(|e| self.lower_expr(e));
-        let hir_id = self.lower_node_id(l.id);
-        self.lower_attrs(hir_id, &l.attrs);
-        hir::Local {
-            hir_id,
-            ty,
-            pat: self.lower_pat(&l.pat),
-            init,
-            span: self.lower_span(l.span),
-            source: hir::LocalSource::Normal,
-        }
     }
 
     fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> &'hir [Ident] {
@@ -2396,23 +2377,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         bounds.iter().map(move |bound| self.lower_param_bound(bound, itctx.reborrow()))
     }
 
-    fn lower_block(&mut self, b: &Block, targeted_by_break: bool) -> &'hir hir::Block<'hir> {
-        self.arena.alloc(self.lower_block_noalloc(b, targeted_by_break))
-    }
-
-    fn lower_block_noalloc(&mut self, b: &Block, targeted_by_break: bool) -> hir::Block<'hir> {
-        let (stmts, expr) = match &*b.stmts {
-            [stmts @ .., Stmt { kind: StmtKind::Expr(e), .. }] => (stmts, Some(&*e)),
-            stmts => (stmts, None),
-        };
-        let stmts = self.arena.alloc_from_iter(stmts.iter().flat_map(|stmt| self.lower_stmt(stmt)));
-        let expr = expr.map(|e| self.lower_expr(e));
-        let rules = self.lower_block_check_mode(&b.rules);
-        let hir_id = self.lower_node_id(b.id);
-
-        hir::Block { hir_id, stmts, expr, rules, span: self.lower_span(b.span), targeted_by_break }
-    }
-
     /// Lowers a block directly to an expression, presuming that it
     /// has no attributes and is not targeted by a `break`.
     fn lower_block_expr(&mut self, b: &Block) -> hir::Expr<'hir> {
@@ -2425,65 +2389,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir_id: this.lower_node_id(c.id),
             body: this.lower_const_body(c.value.span, Some(&c.value)),
         })
-    }
-
-    fn lower_stmt(&mut self, s: &Stmt) -> SmallVec<[hir::Stmt<'hir>; 1]> {
-        let (hir_id, kind) = match s.kind {
-            StmtKind::Local(ref l) => {
-                let l = self.lower_local(l);
-                let hir_id = self.lower_node_id(s.id);
-                self.alias_attrs(hir_id, l.hir_id);
-                return smallvec![hir::Stmt {
-                    hir_id,
-                    kind: hir::StmtKind::Local(self.arena.alloc(l)),
-                    span: self.lower_span(s.span),
-                }];
-            }
-            StmtKind::Item(ref it) => {
-                // Can only use the ID once.
-                let mut id = Some(s.id);
-                return self
-                    .lower_item_id(it)
-                    .into_iter()
-                    .map(|item_id| {
-                        let hir_id = id
-                            .take()
-                            .map(|id| self.lower_node_id(id))
-                            .unwrap_or_else(|| self.next_id());
-
-                        hir::Stmt {
-                            hir_id,
-                            kind: hir::StmtKind::Item(item_id),
-                            span: self.lower_span(s.span),
-                        }
-                    })
-                    .collect();
-            }
-            StmtKind::Expr(ref e) => {
-                let e = self.lower_expr(e);
-                let hir_id = self.lower_node_id(s.id);
-                self.alias_attrs(hir_id, e.hir_id);
-                (hir_id, hir::StmtKind::Expr(e))
-            }
-            StmtKind::Semi(ref e) => {
-                let e = self.lower_expr(e);
-                let hir_id = self.lower_node_id(s.id);
-                self.alias_attrs(hir_id, e.hir_id);
-                (hir_id, hir::StmtKind::Semi(e))
-            }
-            StmtKind::Empty => return smallvec![],
-            StmtKind::MacCall(..) => panic!("shouldn't exist here"),
-        };
-        smallvec![hir::Stmt { hir_id, kind, span: self.lower_span(s.span) }]
-    }
-
-    fn lower_block_check_mode(&mut self, b: &BlockCheckMode) -> hir::BlockCheckMode {
-        match *b {
-            BlockCheckMode::Default => hir::BlockCheckMode::DefaultBlock,
-            BlockCheckMode::Unsafe(u) => {
-                hir::BlockCheckMode::UnsafeBlock(self.lower_unsafe_source(u))
-            }
-        }
     }
 
     fn lower_unsafe_source(&mut self, u: UnsafeSource) -> hir::UnsafeSource {
@@ -2840,26 +2745,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 );
                 err.emit();
             }
-        }
-    }
-
-    fn maybe_lint_missing_abi(&mut self, span: Span, id: NodeId, default: Abi) {
-        // FIXME(davidtwco): This is a hack to detect macros which produce spans of the
-        // call site which do not have a macro backtrace. See #61963.
-        let is_macro_callsite = self
-            .sess
-            .source_map()
-            .span_to_snippet(span)
-            .map(|snippet| snippet.starts_with("#["))
-            .unwrap_or(true);
-        if !is_macro_callsite {
-            self.resolver.lint_buffer().buffer_lint_with_diagnostic(
-                MISSING_ABI,
-                id,
-                span,
-                "extern declarations without an explicit ABI are deprecated",
-                BuiltinLintDiagnostics::MissingAbi(span, default),
-            )
         }
     }
 }

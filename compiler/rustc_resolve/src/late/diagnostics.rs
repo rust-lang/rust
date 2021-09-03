@@ -2090,7 +2090,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                                 self.is_unnamed(),
                                 self.is_underscore(),
                                 self.is_named(),
-                                sugg.starts_with("&"),
+                                sugg.starts_with('&'),
                             ) {
                                 (true, _, _, false) => (self.span_unnamed_borrow(), sugg),
                                 (true, _, _, true) => {

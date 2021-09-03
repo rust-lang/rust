@@ -1921,7 +1921,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     }
 
     /// Gets a mutable pointer to the wrapped value.
-    /// The difference to [`get`] is that this function accepts a raw pointer,
+    /// The difference from [`get`] is that this function accepts a raw pointer,
     /// which is useful to avoid the creation of temporary references.
     ///
     /// The result can be cast to a pointer of any kind.
@@ -1937,7 +1937,6 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// calling `get` would require creating a reference to uninitialized data:
     ///
     /// ```
-    /// #![feature(unsafe_cell_raw_get)]
     /// use std::cell::UnsafeCell;
     /// use std::mem::MaybeUninit;
     ///
@@ -1948,7 +1947,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// assert_eq!(uc.into_inner(), 5);
     /// ```
     #[inline(always)]
-    #[unstable(feature = "unsafe_cell_raw_get", issue = "66358")]
+    #[stable(feature = "unsafe_cell_raw_get", since = "1.56.0")]
     pub const fn raw_get(this: *const Self) -> *mut T {
         // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
         // #[repr(transparent)]. This exploits libstd's special status, there is

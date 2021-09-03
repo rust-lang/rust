@@ -160,7 +160,7 @@ impl<N: Idx> LivenessValues<N> {
     /// region. Returns whether any of them are newly added.
     crate fn add_elements(&mut self, row: N, locations: &HybridBitSet<PointIndex>) -> bool {
         debug!("LivenessValues::add_elements(row={:?}, locations={:?})", row, locations);
-        self.points.union_into_row(row, locations)
+        self.points.union_row(row, locations)
     }
 
     /// Adds all the control-flow points to the values for `r`.
@@ -294,7 +294,7 @@ impl<N: Idx> RegionValues<N> {
     /// the region `to` in `self`.
     crate fn merge_liveness<M: Idx>(&mut self, to: N, from: M, values: &LivenessValues<M>) {
         if let Some(set) = values.points.row(from) {
-            self.points.union_into_row(to, set);
+            self.points.union_row(to, set);
         }
     }
 

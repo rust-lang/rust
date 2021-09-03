@@ -104,17 +104,39 @@ fn hybrid_bitset() {
     assert!(dense10.superset(&dense10)); // dense + dense (self)
     assert!(dense256.superset(&dense10)); // dense + dense
 
-    let mut hybrid = sparse038;
+    let mut hybrid = sparse038.clone();
     assert!(!sparse01358.union(&hybrid)); // no change
     assert!(hybrid.union(&sparse01358));
     assert!(hybrid.superset(&sparse01358) && sparse01358.superset(&hybrid));
-    assert!(!dense10.union(&sparse01358));
     assert!(!dense256.union(&dense10));
-    let mut dense = dense10;
+
+    // dense / sparse where dense superset sparse
+    assert!(!dense10.clone().union(&sparse01358));
+    assert!(sparse01358.clone().union(&dense10));
+    assert!(dense10.clone().intersect(&sparse01358));
+    assert!(!sparse01358.clone().intersect(&dense10));
+    assert!(dense10.clone().subtract(&sparse01358));
+    assert!(sparse01358.clone().subtract(&dense10));
+
+    // dense / sparse where sparse superset dense
+    let dense038 = sparse038.to_dense();
+    assert!(!sparse01358.clone().union(&dense038));
+    assert!(dense038.clone().union(&sparse01358));
+    assert!(sparse01358.clone().intersect(&dense038));
+    assert!(!dense038.clone().intersect(&sparse01358));
+    assert!(sparse01358.clone().subtract(&dense038));
+    assert!(dense038.clone().subtract(&sparse01358));
+
+    let mut dense = dense10.clone();
     assert!(dense.union(&dense256));
     assert!(dense.superset(&dense256) && dense256.superset(&dense));
     assert!(hybrid.union(&dense256));
     assert!(hybrid.superset(&dense256) && dense256.superset(&hybrid));
+
+    assert!(!dense10.clone().intersect(&dense256));
+    assert!(dense256.clone().intersect(&dense10));
+    assert!(dense10.clone().subtract(&dense256));
+    assert!(dense256.clone().subtract(&dense10));
 
     assert_eq!(dense256.iter().count(), 256);
     let mut dense0 = dense256;
@@ -280,6 +302,72 @@ fn sparse_matrix_iter() {
         assert_eq!(i, j);
     }
     assert!(iter.next().is_none());
+}
+
+#[test]
+fn sparse_matrix_operations() {
+    let mut matrix: SparseBitMatrix<usize, usize> = SparseBitMatrix::new(100);
+    matrix.insert(3, 22);
+    matrix.insert(3, 75);
+    matrix.insert(2, 99);
+    matrix.insert(4, 0);
+
+    let mut disjoint: HybridBitSet<usize> = HybridBitSet::new_empty(100);
+    disjoint.insert(33);
+
+    let mut superset = HybridBitSet::new_empty(100);
+    superset.insert(22);
+    superset.insert(75);
+    superset.insert(33);
+
+    let mut subset = HybridBitSet::new_empty(100);
+    subset.insert(22);
+
+    // SparseBitMatrix::remove
+    {
+        let mut matrix = matrix.clone();
+        matrix.remove(3, 22);
+        assert!(!matrix.row(3).unwrap().contains(22));
+        matrix.remove(0, 0);
+        assert!(matrix.row(0).is_none());
+    }
+
+    // SparseBitMatrix::clear
+    {
+        let mut matrix = matrix.clone();
+        matrix.clear(3);
+        assert!(!matrix.row(3).unwrap().contains(75));
+        matrix.clear(0);
+        assert!(matrix.row(0).is_none());
+    }
+
+    // SparseBitMatrix::intersect_row
+    {
+        let mut matrix = matrix.clone();
+        assert!(!matrix.intersect_row(3, &superset));
+        assert!(matrix.intersect_row(3, &subset));
+        matrix.intersect_row(0, &disjoint);
+        assert!(matrix.row(0).is_none());
+    }
+
+    // SparseBitMatrix::subtract_row
+    {
+        let mut matrix = matrix.clone();
+        assert!(!matrix.subtract_row(3, &disjoint));
+        assert!(matrix.subtract_row(3, &subset));
+        assert!(matrix.subtract_row(3, &superset));
+        matrix.intersect_row(0, &disjoint);
+        assert!(matrix.row(0).is_none());
+    }
+
+    // SparseBitMatrix::union_row
+    {
+        let mut matrix = matrix.clone();
+        assert!(!matrix.union_row(3, &subset));
+        assert!(matrix.union_row(3, &disjoint));
+        matrix.union_row(0, &disjoint);
+        assert!(matrix.row(0).is_some());
+    }
 }
 
 /// Merge dense hybrid set into empty sparse hybrid set.

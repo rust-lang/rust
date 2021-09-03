@@ -1008,7 +1008,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut err = struct_span_err!(
             self.tcx.sess,
-            MultiSpan::from_spans(subpat_spans.clone()),
+            MultiSpan::from_spans(subpat_spans),
             E0023,
             "this pattern has {} field{}, but the corresponding {} has {} field{}",
             subpats.len(),

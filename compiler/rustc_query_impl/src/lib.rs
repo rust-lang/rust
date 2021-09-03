@@ -51,6 +51,8 @@ pub use on_disk_cache::OnDiskCache;
 mod profiling_support;
 pub use self::profiling_support::alloc_self_profile_query_strings;
 
+mod util;
+
 rustc_query_append! { [define_queries!][<'tcx>] }
 
 impl<'tcx> Queries<'tcx> {

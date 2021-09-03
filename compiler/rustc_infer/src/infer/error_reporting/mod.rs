@@ -781,6 +781,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     );
                 }
             }
+            ObligationCauseCode::LetElse => {
+                err.help("try adding a diverging expression, such as `return` or `panic!(..)`");
+                err.help("...or use `match` instead of `let...else`");
+            }
             _ => (),
         }
     }
@@ -1626,14 +1630,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 (TypeError::Sorts(values), extra) => {
                     let sort_string = |ty: Ty<'tcx>| match (extra, ty.kind()) {
                         (true, ty::Opaque(def_id, _)) => {
-                            let pos = self
-                                .tcx
-                                .sess
-                                .source_map()
-                                .lookup_char_pos(self.tcx.def_span(*def_id).lo());
+                            let sm = self.tcx.sess.source_map();
+                            let pos = sm.lookup_char_pos(self.tcx.def_span(*def_id).lo());
                             format!(
                                 " (opaque type at <{}:{}:{}>)",
-                                pos.file.name.prefer_local(),
+                                sm.filename_for_diagnostics(&pos.file.name),
                                 pos.line,
                                 pos.col.to_usize() + 1,
                             )
@@ -2592,6 +2593,7 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             }
             IfExpression { .. } => Error0308("`if` and `else` have incompatible types"),
             IfExpressionWithNoElse => Error0317("`if` may be missing an `else` clause"),
+            LetElse => Error0308("`else` clause of `let...else` does not diverge"),
             MainFunctionType => Error0580("`main` function has wrong type"),
             StartFunctionType => Error0308("`#[start]` function has wrong type"),
             IntrinsicType => Error0308("intrinsic has wrong type"),

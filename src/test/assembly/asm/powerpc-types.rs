@@ -194,3 +194,15 @@ check_reg!(reg_f32_f0, f32, "0", "f0", "fmr");
 // CHECK: fmr 0, 0
 // CHECK: #NO_APP
 check_reg!(reg_f64_f0, f64, "0", "f0", "fmr");
+
+// CHECK-LABEL: reg_f32_f18:
+// CHECK: #APP
+// CHECK: fmr 18, 18
+// CHECK: #NO_APP
+check_reg!(reg_f32_f18, f32, "18", "f18", "fmr");
+
+// CHECK-LABEL: reg_f64_f18:
+// CHECK: #APP
+// CHECK: fmr 18, 18
+// CHECK: #NO_APP
+check_reg!(reg_f64_f18, f64, "18", "f18", "fmr");

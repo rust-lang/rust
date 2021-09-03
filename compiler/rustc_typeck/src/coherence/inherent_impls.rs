@@ -60,6 +60,17 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
             ty::Dynamic(ref data, ..) if data.principal_def_id().is_some() => {
                 self.check_def_id(item, data.principal_def_id().unwrap());
             }
+            ty::Dynamic(..) => {
+                struct_span_err!(
+                    self.tcx.sess,
+                    ty.span,
+                    E0785,
+                    "cannot define inherent `impl` for a dyn auto trait"
+                )
+                .span_label(ty.span, "impl requires at least one non-auto trait")
+                .note("define and implement a new trait or type instead")
+                .emit();
+            }
             ty::Bool => {
                 self.check_primitive_impl(
                     item.def_id,

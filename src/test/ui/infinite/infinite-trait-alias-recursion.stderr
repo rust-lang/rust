@@ -1,0 +1,42 @@
+error[E0391]: cycle detected when computing the super predicates of `T1`
+  --> $DIR/infinite-trait-alias-recursion.rs:3:1
+   |
+LL | trait T1 = T2;
+   | ^^^^^^^^^^^^^^
+   |
+note: ...which requires computing the super traits of `T1`...
+  --> $DIR/infinite-trait-alias-recursion.rs:3:12
+   |
+LL | trait T1 = T2;
+   |            ^^
+note: ...which requires computing the super predicates of `T2`...
+  --> $DIR/infinite-trait-alias-recursion.rs:6:1
+   |
+LL | trait T2 = T3;
+   | ^^^^^^^^^^^^^^
+note: ...which requires computing the super traits of `T2`...
+  --> $DIR/infinite-trait-alias-recursion.rs:6:12
+   |
+LL | trait T2 = T3;
+   |            ^^
+note: ...which requires computing the super predicates of `T3`...
+  --> $DIR/infinite-trait-alias-recursion.rs:8:1
+   |
+LL | trait T3 = T1 + T3;
+   | ^^^^^^^^^^^^^^^^^^^
+note: ...which requires computing the super traits of `T3`...
+  --> $DIR/infinite-trait-alias-recursion.rs:8:12
+   |
+LL | trait T3 = T1 + T3;
+   |            ^^
+   = note: ...which again requires computing the super predicates of `T1`, completing the cycle
+   = note: trait aliases cannot be recursive
+note: cycle used when collecting item types in top-level module
+  --> $DIR/infinite-trait-alias-recursion.rs:3:1
+   |
+LL | trait T1 = T2;
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.

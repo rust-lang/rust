@@ -1,0 +1,15 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/ambiguous-inherent-assoc-ty.rs:11:27
+   |
+LL |     pub const AssocConst: Self::AssocTy = 42;
+   |                           ^^^^^^^^^^^^^ help: use fully-qualified syntax: `<Struct as Trait>::AssocTy`
+
+error[E0223]: ambiguous associated type
+  --> $DIR/ambiguous-inherent-assoc-ty.rs:11:27
+   |
+LL |     pub const AssocConst: Self::AssocTy = 42;
+   |                           ^^^^^^^^^^^^^ help: use fully-qualified syntax: `<Struct as Trait>::AssocTy`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0223`.

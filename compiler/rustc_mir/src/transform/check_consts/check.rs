@@ -9,7 +9,7 @@ use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::cast::CastTy;
-use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
 use rustc_middle::ty::{Binder, TraitPredicate, TraitRef};
 use rustc_span::{sym, Span, Symbol};
@@ -793,7 +793,7 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
 
                 let fn_ty = func.ty(body, tcx);
 
-                let (mut callee, substs) = match *fn_ty.kind() {
+                let (mut callee, mut substs) = match *fn_ty.kind() {
                     ty::FnDef(def_id, substs) => (def_id, substs),
 
                     ty::FnPtr(_) => {
@@ -846,29 +846,31 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                                 .iter()
                                 .find(|did| tcx.item_name(**did) == callee_name)
                             {
+                                // using internal substs is ok here, since this is only
+                                // used for the `resolve` call below
+                                substs = InternalSubsts::identity_for_item(tcx, did);
                                 callee = did;
                             }
                         }
-                        _ => {
-                            if !tcx.is_const_fn_raw(callee) {
-                                // At this point, it is only legal when the caller is marked with
-                                // #[default_method_body_is_const], and the callee is in the same
-                                // trait.
-                                let callee_trait = tcx.trait_of_item(callee);
-                                if callee_trait.is_some() {
-                                    if tcx.has_attr(caller, sym::default_method_body_is_const) {
-                                        if tcx.trait_of_item(caller) == callee_trait {
-                                            nonconst_call_permission = true;
-                                        }
+                        _ if !tcx.is_const_fn_raw(callee) => {
+                            // At this point, it is only legal when the caller is marked with
+                            // #[default_method_body_is_const], and the callee is in the same
+                            // trait.
+                            let callee_trait = tcx.trait_of_item(callee);
+                            if callee_trait.is_some() {
+                                if tcx.has_attr(caller, sym::default_method_body_is_const) {
+                                    if tcx.trait_of_item(caller) == callee_trait {
+                                        nonconst_call_permission = true;
                                     }
                                 }
+                            }
 
-                                if !nonconst_call_permission {
-                                    self.check_op(ops::FnCallNonConst);
-                                    return;
-                                }
+                            if !nonconst_call_permission {
+                                self.check_op(ops::FnCallNonConst);
+                                return;
                             }
                         }
+                        _ => {}
                     }
 
                     // Resolve a trait method call to its concrete implementation, which may be in a

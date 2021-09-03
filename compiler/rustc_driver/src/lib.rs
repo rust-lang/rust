@@ -423,10 +423,10 @@ fn run_compiler(
             sess.print_perf_stats();
         }
 
-        if sess.print_fuel_crate.is_some() {
+        if sess.opts.debugging_opts.print_fuel.is_some() {
             eprintln!(
                 "Fuel used by {}: {}",
-                sess.print_fuel_crate.as_ref().unwrap(),
+                sess.opts.debugging_opts.print_fuel.as_ref().unwrap(),
                 sess.print_fuel.load(SeqCst)
             );
         }

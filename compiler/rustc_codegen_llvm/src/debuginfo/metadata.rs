@@ -35,6 +35,7 @@ use rustc_middle::ty::{self, AdtKind, GeneratorSubsts, ParamEnv, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{self, DebugInfo};
 use rustc_span::symbol::{Interner, Symbol};
+use rustc_span::FileNameDisplayPreference;
 use rustc_span::{self, SourceFile, SourceFileHash, Span};
 use rustc_target::abi::{Abi, Align, HasDataLayout, Integer, LayoutOf, TagEncoding};
 use rustc_target::abi::{Int, Pointer, F32, F64};
@@ -771,7 +772,13 @@ pub fn file_metadata(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> &'ll 
     let hash = Some(&source_file.src_hash);
     let file_name = Some(source_file.name.prefer_remapped().to_string());
     let directory = if source_file.is_real_file() && !source_file.is_imported() {
-        Some(cx.sess().opts.working_dir.to_string_lossy(false).to_string())
+        Some(
+            cx.sess()
+                .opts
+                .working_dir
+                .to_string_lossy(FileNameDisplayPreference::Remapped)
+                .to_string(),
+        )
     } else {
         // If the path comes from an upstream crate we assume it has been made
         // independent of the compiler's working directory one way or another.
@@ -999,7 +1006,7 @@ pub fn compile_unit_metadata(
     let producer = format!("clang LLVM ({})", rustc_producer);
 
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
-    let work_dir = tcx.sess.opts.working_dir.to_string_lossy(false);
+    let work_dir = tcx.sess.opts.working_dir.to_string_lossy(FileNameDisplayPreference::Remapped);
     let flags = "\0";
     let output_filenames = tcx.output_filenames(());
     let out_dir = &output_filenames.out_directory;
