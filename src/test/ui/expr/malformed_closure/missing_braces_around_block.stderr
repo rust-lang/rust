@@ -7,11 +7,24 @@ LL |     (1..num).reduce(|a, b|
 LL |     ).unwrap();
    |     ^
    |
-help: This `;` turns the expression into a statement, which must be placed in a block
+note: statement found outside of a block
   --> $DIR/missing_braces_around_block.rs:16:26
    |
 LL |         println!("{}", a);
-   |                          ^
+   |         -----------------^ this `;` turns the preceding expression into a statement
+   |         |
+   |         this expression is a statement because of the trailing semicolon
+note: the closure body may be incorrectly delimited
+  --> $DIR/missing_braces_around_block.rs:14:21
+   |
+LL |       (1..num).reduce(|a, b|
+   |  _____________________^
+LL | |
+LL | |         println!("{}", a);
+   | |_________________________^ this is the parsed closure...
+LL |           a * b
+LL |       ).unwrap();
+   |       - ...but likely you meant the closure to end here
 help: try adding braces
    |
 LL ~     (1..num).reduce(|a, b| {

@@ -1736,9 +1736,6 @@ impl<'a> Parser<'a> {
             self.sess.gated_spans.gate(sym::async_closure, span);
         }
 
-        // Disable recovery for closure body
-        self.last_closure_body = Some(decl_hi);
-
         if self.token.kind == TokenKind::Semi && self.token_cursor.frame.delim == DelimToken::Paren
         {
             // It is likely that the closure body is a block but where the
@@ -1747,11 +1744,18 @@ impl<'a> Parser<'a> {
             body = self.mk_expr_err(body.span);
         }
 
-        Ok(self.mk_expr(
+        let body_span = body.span;
+
+        let clo = self.mk_expr(
             lo.to(body.span),
             ExprKind::Closure(capture_clause, asyncness, movability, decl, body, lo.to(decl_hi)),
             attrs,
-        ))
+        );
+
+        // Disable recovery for closure body
+        self.last_closure_body = Some((clo.span, decl_hi, body_span));
+
+        Ok(clo)
     }
 
     /// Parses an optional `move` prefix to a closure-like construct.
