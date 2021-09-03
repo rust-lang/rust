@@ -1,12 +1,11 @@
 // Verify that the only debuginfo generated are the line directives.
 //
-// ignore-windows
 // compile-flags: -C debuginfo=line-directives-only
 
 #[repr(C)]
 struct StructType {
     a: i64,
-    b: i32
+    b: i32,
 }
 
 extern "C" {
@@ -16,7 +15,7 @@ extern "C" {
 
 fn main() {
     unsafe {
-        let value: &mut StructType = &mut* creator();
+        let value: &mut StructType = &mut *creator();
         value.a = 7;
         save(value as *const StructType)
     }
