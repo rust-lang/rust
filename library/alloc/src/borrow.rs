@@ -4,6 +4,7 @@
 
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
+use core::hint::unreachable_unchecked;
 use core::ops::Deref;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::{Add, AddAssign};
@@ -278,7 +279,8 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
             Borrowed(borrowed) => {
                 *self = Owned(borrowed.to_owned());
                 match *self {
-                    Borrowed(..) => unreachable!(),
+                    // SAFETY: `self` has just been assigned to the `Owned` variant.
+                    Borrowed(..) => unsafe { unreachable_unchecked() },
                     Owned(ref mut owned) => owned,
                 }
             }
