@@ -204,9 +204,12 @@ impl<B: ?Sized + ToOwned> Clone for Cow<'_, B> {
     }
 
     fn clone_from(&mut self, source: &Self) {
-        match (self, source) {
-            (&mut Owned(ref mut dest), &Owned(ref o)) => o.borrow().clone_into(dest),
-            (t, s) => *t = s.clone(),
+        match self {
+            Owned(dest) => {
+                let src: &B = source.borrow();
+                src.clone_into(dest);
+            }
+            dest => *dest = source.clone(),
         }
     }
 }
