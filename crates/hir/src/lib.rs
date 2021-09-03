@@ -2960,9 +2960,9 @@ impl ScopeDef {
 impl From<ItemInNs> for ScopeDef {
     fn from(item: ItemInNs) -> Self {
         match item {
-            ItemInNs::Types(id) => ScopeDef::ModuleDef(id.into()),
-            ItemInNs::Values(id) => ScopeDef::ModuleDef(id.into()),
-            ItemInNs::Macros(id) => ScopeDef::MacroDef(id.into()),
+            ItemInNs::Types(id) => ScopeDef::ModuleDef(id),
+            ItemInNs::Values(id) => ScopeDef::ModuleDef(id),
+            ItemInNs::Macros(id) => ScopeDef::MacroDef(id),
         }
     }
 }

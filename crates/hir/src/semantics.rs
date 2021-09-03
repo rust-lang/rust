@@ -864,7 +864,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn is_unsafe_ident_pat(&self, ident_pat: &ast::IdentPat) -> bool {
-        if !ident_pat.ref_token().is_some() {
+        if ident_pat.ref_token().is_none() {
             return false;
         }
 

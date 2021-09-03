@@ -387,15 +387,17 @@ impl<'a> TyLoweringContext<'a> {
         res: Option<TypeNs>,
         remaining_segments: PathSegments<'_>,
     ) -> (Ty, Option<TypeNs>) {
-        if remaining_segments.len() == 1 {
-            // resolve unselected assoc types
-            let segment = remaining_segments.first().unwrap();
-            (self.select_associated_type(res, segment), None)
-        } else if remaining_segments.len() > 1 {
-            // FIXME report error (ambiguous associated type)
-            (TyKind::Error.intern(&Interner), None)
-        } else {
-            (ty, res)
+        match remaining_segments.len() {
+            0 => (ty, res),
+            1 => {
+                // resolve unselected assoc types
+                let segment = remaining_segments.first().unwrap();
+                (self.select_associated_type(res, segment), None)
+            }
+            _ => {
+                // FIXME report error (ambiguous associated type)
+                (TyKind::Error.intern(&Interner), None)
+            }
         }
     }
 

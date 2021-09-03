@@ -384,7 +384,7 @@ impl DefCollector<'_> {
         self.unresolved_imports.extend(partial_resolved);
         self.resolve_imports();
 
-        let unresolved_imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
+        let unresolved_imports = std::mem::take(&mut self.unresolved_imports);
         // show unresolved imports in completion, etc
         for directive in &unresolved_imports {
             self.record_resolved_import(directive)
@@ -417,7 +417,7 @@ impl DefCollector<'_> {
     fn reseed_with_unresolved_attribute(&mut self) -> ReachedFixedPoint {
         cov_mark::hit!(unresolved_attribute_fallback);
 
-        let mut unresolved_macros = std::mem::replace(&mut self.unresolved_macros, Vec::new());
+        let mut unresolved_macros = std::mem::take(&mut self.unresolved_macros);
         let pos = unresolved_macros.iter().position(|directive| {
             if let MacroDirectiveKind::Attr { ast_id, mod_item, attr } = &directive.kind {
                 self.skip_attrs.insert(ast_id.ast_id.with_value(*mod_item), attr.id);
@@ -689,7 +689,7 @@ impl DefCollector<'_> {
     /// Tries to resolve every currently unresolved import.
     fn resolve_imports(&mut self) -> ReachedFixedPoint {
         let mut res = ReachedFixedPoint::Yes;
-        let imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
+        let imports = std::mem::take(&mut self.unresolved_imports);
         let imports = imports
             .into_iter()
             .filter_map(|mut directive| {
@@ -1005,7 +1005,7 @@ impl DefCollector<'_> {
     }
 
     fn resolve_macros(&mut self) -> ReachedFixedPoint {
-        let mut macros = std::mem::replace(&mut self.unresolved_macros, Vec::new());
+        let mut macros = std::mem::take(&mut self.unresolved_macros);
         let mut resolved = Vec::new();
         let mut res = ReachedFixedPoint::Yes;
         macros.retain(|directive| {
@@ -1279,13 +1279,12 @@ impl DefCollector<'_> {
 
         for directive in &self.unresolved_imports {
             if let ImportSource::Import { id: import, use_tree } = &directive.import.source {
-                match (directive.import.path.segments().first(), &directive.import.path.kind) {
-                    (Some(krate), PathKind::Plain | PathKind::Abs) => {
-                        if diagnosed_extern_crates.contains(krate) {
-                            continue;
-                        }
+                if let (Some(krate), PathKind::Plain | PathKind::Abs) =
+                    (directive.import.path.segments().first(), &directive.import.path.kind)
+                {
+                    if diagnosed_extern_crates.contains(krate) {
+                        continue;
                     }
-                    _ => {}
                 }
 
                 self.def_map.diagnostics.push(DefDiagnostic::unresolved_import(
@@ -1579,13 +1578,13 @@ impl ModCollector<'_, '_> {
                 {
                     Ok((file_id, is_mod_rs, mod_dir)) => {
                         let item_tree = db.file_item_tree(file_id.into());
-                        if item_tree
+                        let is_enabled = item_tree
                             .top_level_attrs(db, self.def_collector.def_map.krate)
                             .cfg()
                             .map_or(true, |cfg| {
                                 self.def_collector.cfg_options.check(&cfg) != Some(false)
-                            })
-                        {
+                            });
+                        if is_enabled {
                             let module_id = self.push_child_module(
                                 module.name.clone(),
                                 ast_id,

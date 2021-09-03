@@ -86,11 +86,8 @@ impl TypeWalk for AliasTy {
 
 impl TypeWalk for GenericArg {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        match &self.interned() {
-            GenericArgData::Ty(ty) => {
-                ty.walk(f);
-            }
-            _ => {}
+        if let GenericArgData::Ty(ty) = &self.interned() {
+            ty.walk(f);
         }
     }
 }

@@ -339,12 +339,7 @@ impl CargoActor {
                         cargo_metadata::Message::CompilerMessage(msg) => {
                             self.sender.send(CargoMessage::Diagnostic(msg.message)).unwrap()
                         }
-
-                        cargo_metadata::Message::CompilerArtifact(_)
-                        | cargo_metadata::Message::BuildScriptExecuted(_)
-                        | cargo_metadata::Message::BuildFinished(_)
-                        | cargo_metadata::Message::TextLine(_)
-                        | _ => (),
+                        _ => (),
                     },
                     JsonMessage::Rustc(message) => {
                         self.sender.send(CargoMessage::Diagnostic(message)).unwrap()

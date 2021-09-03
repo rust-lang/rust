@@ -241,7 +241,7 @@ struct Struct {
     field: ()
 }
 "##;
-    let source_file = ast::SourceFile::parse(&source).ok().unwrap();
+    let source_file = ast::SourceFile::parse(source).ok().unwrap();
     let item = source_file.items().next().unwrap();
     let attr = item.attrs().nth(1).unwrap();
 
@@ -258,7 +258,7 @@ struct Struct {
     field: ()
 }
 "##;
-    let source_file = ast::SourceFile::parse(&source).ok().unwrap();
+    let source_file = ast::SourceFile::parse(source).ok().unwrap();
     let item = source_file.items().next().unwrap();
     let attr = item.attrs().nth(1).unwrap();
 

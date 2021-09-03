@@ -521,8 +521,8 @@ impl fmt::Display for CyclicDependenciesError {
         write!(
             f,
             "cyclic deps: {} -> {}, alternative path: {}",
-            render(&self.from()),
-            render(&self.to()),
+            render(self.from()),
+            render(self.to()),
             path
         )
     }

@@ -141,7 +141,7 @@ impl TraitImpls {
         let crate_def_map = db.crate_def_map(krate);
         impls.collect_def_map(db, &crate_def_map);
 
-        return Arc::new(impls);
+        Arc::new(impls)
     }
 
     pub(crate) fn trait_impls_in_block_query(
@@ -154,7 +154,7 @@ impl TraitImpls {
         let block_def_map = db.block_def_map(block)?;
         impls.collect_def_map(db, &block_def_map);
 
-        return Some(Arc::new(impls));
+        Some(Arc::new(impls))
     }
 
     fn collect_def_map(&mut self, db: &dyn HirDatabase, def_map: &DefMap) {

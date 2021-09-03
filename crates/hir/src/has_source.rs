@@ -60,9 +60,9 @@ impl HasSource for Adt {
     type Ast = ast::Adt;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
         match self {
-            Adt::Struct(s) => Some(s.source(db)?.map(|s| ast::Adt::Struct(s))),
-            Adt::Union(u) => Some(u.source(db)?.map(|u| ast::Adt::Union(u))),
-            Adt::Enum(e) => Some(e.source(db)?.map(|e| ast::Adt::Enum(e))),
+            Adt::Struct(s) => Some(s.source(db)?.map(ast::Adt::Struct)),
+            Adt::Union(u) => Some(u.source(db)?.map(ast::Adt::Union)),
+            Adt::Enum(e) => Some(e.source(db)?.map(ast::Adt::Enum)),
         }
     }
 }

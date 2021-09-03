@@ -245,8 +245,7 @@ impl<'a> InferenceContext<'a> {
             Pat::Wild => expected.clone(),
             Pat::Range { start, end } => {
                 let start_ty = self.infer_expr(*start, &Expectation::has_type(expected.clone()));
-                let end_ty = self.infer_expr(*end, &Expectation::has_type(start_ty));
-                end_ty
+                self.infer_expr(*end, &Expectation::has_type(start_ty))
             }
             Pat::Lit(expr) => self.infer_expr(*expr, &Expectation::has_type(expected.clone())),
             Pat::Box { inner } => match self.resolve_boxed_box() {
@@ -297,10 +296,7 @@ fn is_non_ref_pat(body: &hir_def::body::Body, pat: PatId) -> bool {
         // FIXME: ConstBlock/Path/Lit might actually evaluate to ref, but inference is unimplemented.
         Pat::Path(..) => true,
         Pat::ConstBlock(..) => true,
-        Pat::Lit(expr) => match body[*expr] {
-            Expr::Literal(Literal::String(..)) => false,
-            _ => true,
-        },
+        Pat::Lit(expr) => !matches!(body[*expr], Expr::Literal(Literal::String(..))),
         Pat::Bind {
             mode: BindingAnnotation::Mutable | BindingAnnotation::Unannotated,
             subpat: Some(subpat),
