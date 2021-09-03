@@ -18,41 +18,81 @@ pub mod raw;
 pub mod fortanix_sgx;
 
 // Unix, linux, wasi and windows are handled a bit differently.
-cfg_if::cfg_if! {
-    if #[cfg(all(
-            doc,
-            any(
-                all(target_arch = "wasm32", not(target_os = "wasi")),
-                all(target_vendor = "fortanix", target_env = "sgx")
-            )
-        ))]
-    {
-        #[unstable(issue = "none", feature = "std_internals")]
-        pub mod unix {}
-        #[unstable(issue = "none", feature = "std_internals")]
-        pub mod linux {}
-        #[unstable(issue = "none", feature = "std_internals")]
-        pub mod wasi {}
-        #[unstable(issue = "none", feature = "std_internals")]
-        pub mod windows {}
-    } else {
-        #[cfg(target_os = "hermit")]
-        #[path = "hermit/mod.rs"]
-        pub mod unix;
+#[cfg(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx")
+    )
+))]
+#[unstable(issue = "none", feature = "std_internals")]
+pub mod unix {}
+#[cfg(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx")
+    )
+))]
+#[unstable(issue = "none", feature = "std_internals")]
+pub mod linux {}
+#[cfg(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx")
+    )
+))]
+#[unstable(issue = "none", feature = "std_internals")]
+pub mod wasi {}
+#[cfg(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx")
+    )
+))]
+#[unstable(issue = "none", feature = "std_internals")]
+pub mod windows {}
 
-        #[cfg(any(unix, doc))]
-        pub mod unix;
+// unix
+#[cfg(not(any(
+    all(target_arch = "wasm32", not(target_os = "wasi")),
+    all(target_vendor = "fortanix", target_env = "sgx")
+)))]
+#[cfg(all(not(doc), target_os = "hermit"))]
+#[path = "hermit/mod.rs"]
+pub mod unix;
+#[cfg(not(any(
+    all(target_arch = "wasm32", not(target_os = "wasi")),
+    all(target_vendor = "fortanix", target_env = "sgx")
+)))]
+#[cfg(any(unix, doc))]
+pub mod unix;
 
-        #[cfg(any(target_os = "linux", target_os = "l4re", doc))]
-        pub mod linux;
+// linux
+#[cfg(not(any(
+    all(target_arch = "wasm32", not(target_os = "wasi")),
+    all(target_vendor = "fortanix", target_env = "sgx")
+)))]
+#[cfg(any(target_os = "linux", target_os = "l4re", doc))]
+pub mod linux;
 
-        #[cfg(any(target_os = "wasi", doc))]
-        pub mod wasi;
+// wasi
+#[cfg(not(any(
+    all(target_arch = "wasm32", not(target_os = "wasi")),
+    all(target_vendor = "fortanix", target_env = "sgx")
+)))]
+#[cfg(any(target_os = "wasi", doc))]
+pub mod wasi;
 
-        #[cfg(any(windows, doc))]
-        pub mod windows;
-    }
-}
+// windows
+#[cfg(not(any(
+    all(target_arch = "wasm32", not(target_os = "wasi")),
+    all(target_vendor = "fortanix", target_env = "sgx")
+)))]
+#[cfg(any(windows, doc))]
+pub mod windows;
 
 // Others.
 #[cfg(target_os = "android")]
