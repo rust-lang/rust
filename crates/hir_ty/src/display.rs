@@ -666,7 +666,7 @@ impl HirDisplay for Ty {
                         let substs = generics.type_params_subst(f.db);
                         let bounds =
                             f.db.generic_predicates(id.parent)
-                                .into_iter()
+                                .iter()
                                 .map(|pred| pred.clone().substitute(&Interner, &substs))
                                 .filter(|wc| match &wc.skip_binders() {
                                     WhereClause::Implemented(tr) => {

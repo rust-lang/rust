@@ -82,10 +82,10 @@ pub(super) struct IntRange {
 impl IntRange {
     #[inline]
     fn is_integral(ty: &Ty) -> bool {
-        match ty.kind(&Interner) {
-            TyKind::Scalar(Scalar::Char | Scalar::Int(_) | Scalar::Uint(_) | Scalar::Bool) => true,
-            _ => false,
-        }
+        matches!(
+            ty.kind(&Interner),
+            TyKind::Scalar(Scalar::Char | Scalar::Int(_) | Scalar::Uint(_) | Scalar::Bool)
+        )
     }
 
     fn is_singleton(&self) -> bool {
@@ -729,16 +729,12 @@ impl Fields {
                         })
                         .collect();
 
-                    if let Some((adt, substs)) = pcx.ty.as_adt() {
-                        if let hir_def::AdtId::EnumId(_) = adt {
-                            let enum_variant = match ctor {
-                                &Variant(id) => id,
-                                _ => unreachable!(),
-                            };
-                            PatKind::Variant { substs: substs.clone(), enum_variant, subpatterns }
-                        } else {
-                            PatKind::Leaf { subpatterns }
-                        }
+                    if let Some((hir_def::AdtId::EnumId(_), substs)) = pcx.ty.as_adt() {
+                        let enum_variant = match ctor {
+                            &Variant(id) => id,
+                            _ => unreachable!(),
+                        };
+                        PatKind::Variant { substs: substs.clone(), enum_variant, subpatterns }
                     } else {
                         PatKind::Leaf { subpatterns }
                     }

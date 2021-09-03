@@ -130,8 +130,7 @@ fn solve(
         let solution = if is_chalk_print() {
             let logging_db =
                 LoggingRustIrDatabaseLoggingOnDrop(LoggingRustIrDatabase::new(context));
-            let solution = solver.solve_limited(&logging_db.0, goal, &should_continue);
-            solution
+            solver.solve_limited(&logging_db.0, goal, &should_continue)
         } else {
             solver.solve_limited(&context, goal, &should_continue)
         };
@@ -143,10 +142,11 @@ fn solve(
 
     // don't set the TLS for Chalk unless Chalk debugging is active, to make
     // extra sure we only use it for debugging
-    let solution =
-        if is_chalk_debug() { crate::tls::set_current_program(db, solve) } else { solve() };
-
-    solution
+    if is_chalk_debug() {
+        crate::tls::set_current_program(db, solve)
+    } else {
+        solve()
+    }
 }
 
 struct LoggingRustIrDatabaseLoggingOnDrop<'a>(LoggingRustIrDatabase<Interner, ChalkContext<'a>>);

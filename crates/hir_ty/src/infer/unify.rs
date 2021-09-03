@@ -460,12 +460,9 @@ impl<'a> InferenceTable<'a> {
             self.new_type_var().inference_var(&Interner).expect("inference_var");
         let result = f(self);
         self.rollback_to(snapshot);
-
-        let result = result
-            .fold_with(&mut VarFudger { table: self, highest_known_var }, DebruijnIndex::INNERMOST)
-            .expect("fold_with with VarFudger");
-
         result
+            .fold_with(&mut VarFudger { table: self, highest_known_var }, DebruijnIndex::INNERMOST)
+            .expect("fold_with with VarFudger")
     }
 
     /// This checks whether any of the free variables in the `canonicalized`

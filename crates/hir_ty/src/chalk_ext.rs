@@ -242,7 +242,7 @@ impl TyExt for Ty {
                         let substs = TyBuilder::type_params_subst(db, id.parent);
                         let predicates = db
                             .generic_predicates(id.parent)
-                            .into_iter()
+                            .iter()
                             .map(|pred| pred.clone().substitute(&Interner, &substs))
                             .filter(|wc| match &wc.skip_binders() {
                                 WhereClause::Implemented(tr) => {

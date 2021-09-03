@@ -63,7 +63,7 @@ impl<'a> InferenceContext<'a> {
     /// Return the type after possible coercion.
     pub(super) fn infer_expr_coerce(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(expr, expected);
-        let ty = if let Some(target) = expected.only_has_type(&mut self.table) {
+        if let Some(target) = expected.only_has_type(&mut self.table) {
             match self.coerce(Some(expr), &ty, &target) {
                 Ok(res) => res.value,
                 Err(_) => {
@@ -77,9 +77,7 @@ impl<'a> InferenceContext<'a> {
             }
         } else {
             ty
-        };
-
-        ty
+        }
     }
 
     fn callable_sig_from_fn_trait(&mut self, ty: &Ty, num_args: usize) -> Option<(Vec<Ty>, Ty)> {
@@ -899,9 +897,7 @@ impl<'a> InferenceContext<'a> {
         if let Some(builtin_rhs) = self.builtin_binary_op_rhs_expectation(op, lhs_ty.clone()) {
             self.unify(&builtin_rhs, &rhs_ty);
         }
-        if let Some(builtin_ret) =
-            self.builtin_binary_op_return_ty(op, lhs_ty.clone(), rhs_ty.clone())
-        {
+        if let Some(builtin_ret) = self.builtin_binary_op_return_ty(op, lhs_ty, rhs_ty) {
             self.unify(&builtin_ret, &ret_ty);
         }
 
@@ -942,7 +938,7 @@ impl<'a> InferenceContext<'a> {
             }
         }
 
-        let ty = if let Some(expr) = tail {
+        if let Some(expr) = tail {
             self.infer_expr_coerce(expr, expected)
         } else {
             // Citing rustc: if there is no explicit tail expression,
@@ -961,8 +957,7 @@ impl<'a> InferenceContext<'a> {
                 }
                 TyBuilder::unit()
             }
-        };
-        ty
+        }
     }
 
     fn infer_method_call(
@@ -1032,7 +1027,7 @@ impl<'a> InferenceContext<'a> {
         inputs: Vec<Ty>,
     ) -> Vec<Ty> {
         if let Some(expected_ty) = expected_output.to_option(&mut self.table) {
-            let result = self.table.fudge_inference(|table| {
+            self.table.fudge_inference(|table| {
                 if table.try_unify(&expected_ty, &output).is_ok() {
                     table.resolve_with_fallback(inputs, |var, kind, _, _| match kind {
                         chalk_ir::VariableKind::Ty(tk) => var.to_ty(&Interner, tk).cast(&Interner),
@@ -1046,8 +1041,7 @@ impl<'a> InferenceContext<'a> {
                 } else {
                     Vec::new()
                 }
-            });
-            result
+            })
         } else {
             Vec::new()
         }

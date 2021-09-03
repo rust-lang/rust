@@ -686,17 +686,17 @@ impl SubPatSet {
                 SubPatSet::Empty => panic!("bug"),
                 SubPatSet::Full => {}
                 SubPatSet::Seq { subpats } => {
-                    for (_, sub_set) in subpats {
+                    for sub_set in subpats.values() {
                         fill_subpats(sub_set, unreachable_pats, cx);
                     }
                 }
                 SubPatSet::Alt { subpats, pat, alt_count, .. } => {
                     let expanded = pat.expand_or_pat(cx);
-                    for i in 0..*alt_count {
+                    for (i, &expanded) in expanded.iter().enumerate().take(*alt_count) {
                         let sub_set = subpats.get(&i).unwrap_or(&SubPatSet::Empty);
                         if sub_set.is_empty() {
                             // Found an unreachable subpattern.
-                            unreachable_pats.push(expanded[i]);
+                            unreachable_pats.push(expanded);
                         } else {
                             fill_subpats(sub_set, unreachable_pats, cx);
                         }

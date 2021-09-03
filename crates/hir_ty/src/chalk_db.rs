@@ -205,10 +205,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                 let (datas, binders) = (*datas).as_ref().into_value_and_skipped_binders();
                 let data = &datas.impl_traits[idx as usize];
                 let bound = OpaqueTyDatumBound {
-                    bounds: make_only_type_binders(
-                        1,
-                        data.bounds.skip_binders().iter().cloned().collect(),
-                    ),
+                    bounds: make_only_type_binders(1, data.bounds.skip_binders().to_vec()),
                     where_clauses: make_only_type_binders(0, vec![]),
                 };
                 chalk_ir::Binders::new(binders, bound)
@@ -309,7 +306,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         let sig_ty = substs.at(&Interner, 0).assert_ty_ref(&Interner).clone();
         let sig = &sig_ty.callable_sig(self.db).expect("first closure param should be fn ptr");
         let io = rust_ir::FnDefInputsAndOutputDatum {
-            argument_types: sig.params().iter().cloned().collect(),
+            argument_types: sig.params().to_vec(),
             return_type: sig.ret().clone(),
         };
         make_only_type_binders(0, io.shifted_in(&Interner))
@@ -675,7 +672,7 @@ pub(crate) fn fn_def_datum_query(
         inputs_and_output: make_only_type_binders(
             0,
             rust_ir::FnDefInputsAndOutputDatum {
-                argument_types: sig.params().iter().cloned().collect(),
+                argument_types: sig.params().to_vec(),
                 return_type: sig.ret().clone(),
             }
             .shifted_in(&Interner),

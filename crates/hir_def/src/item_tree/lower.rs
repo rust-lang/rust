@@ -264,8 +264,7 @@ impl<'a> Ctx<'a> {
         let name = Name::new_tuple_field(idx);
         let visibility = self.lower_visibility(field);
         let type_ref = self.lower_type_ref_opt(field.ty());
-        let res = Field { name, type_ref, visibility };
-        res
+        Field { name, type_ref, visibility }
     }
 
     fn lower_union(&mut self, union: &ast::Union) -> Option<FileItemTreeId<Union>> {
