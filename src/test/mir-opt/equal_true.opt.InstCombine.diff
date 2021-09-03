@@ -14,7 +14,7 @@
 -         _2 = Eq(move _3, const true);    // scope 0 at $DIR/equal_true.rs:4:8: 4:17
 +         _2 = move _3;                    // scope 0 at $DIR/equal_true.rs:4:8: 4:17
           StorageDead(_3);                 // scope 0 at $DIR/equal_true.rs:4:16: 4:17
-          switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/equal_true.rs:4:5: 4:34
+          switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/equal_true.rs:4:8: 4:17
       }
   
       bb1: {

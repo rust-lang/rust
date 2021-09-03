@@ -70,7 +70,6 @@ fn full_tested_match2() -> () {
     }
 
     bb7: {
-        StorageDead(_7);                 // scope 0 at $DIR/match_false_edges.rs:27:36: 27:37
         FakeRead(ForMatchGuard, _4);     // scope 0 at $DIR/match_false_edges.rs:27:26: 27:27
         FakeRead(ForGuardBinding, _6);   // scope 0 at $DIR/match_false_edges.rs:27:26: 27:27
         StorageLive(_5);                 // scope 0 at $DIR/match_false_edges.rs:27:14: 27:15
@@ -80,6 +79,7 @@ fn full_tested_match2() -> () {
         _1 = (const 1_i32, move _8);     // scope 2 at $DIR/match_false_edges.rs:27:31: 27:37
         StorageDead(_8);                 // scope 2 at $DIR/match_false_edges.rs:27:36: 27:37
         StorageDead(_5);                 // scope 0 at $DIR/match_false_edges.rs:27:36: 27:37
+        StorageDead(_7);                 // scope 0 at $DIR/match_false_edges.rs:27:36: 27:37
         StorageDead(_6);                 // scope 0 at $DIR/match_false_edges.rs:27:36: 27:37
         goto -> bb10;                    // scope 0 at $DIR/match_false_edges.rs:27:36: 27:37
     }

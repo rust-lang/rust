@@ -18,22 +18,22 @@
           ((_3 as Some).0: bool) = const true; // scope 0 at $DIR/discriminant.rs:11:34: 11:44
           discriminant(_3) = 1;            // scope 0 at $DIR/discriminant.rs:11:34: 11:44
 -         _4 = discriminant(_3);           // scope 0 at $DIR/discriminant.rs:11:21: 11:31
--         switchInt(move _4) -> [1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/discriminant.rs:11:21: 11:31
+-         switchInt(move _4) -> [1_isize: bb1, otherwise: bb3]; // scope 0 at $DIR/discriminant.rs:11:21: 11:31
 +         _4 = const 1_isize;              // scope 0 at $DIR/discriminant.rs:11:21: 11:31
-+         switchInt(const 1_isize) -> [1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/discriminant.rs:11:21: 11:31
++         switchInt(const 1_isize) -> [1_isize: bb1, otherwise: bb3]; // scope 0 at $DIR/discriminant.rs:11:21: 11:31
       }
   
       bb1: {
-          _2 = const 10_i32;               // scope 0 at $DIR/discriminant.rs:11:59: 11:61
-          goto -> bb4;                     // scope 0 at $DIR/discriminant.rs:11:13: 11:64
+          switchInt(((_3 as Some).0: bool)) -> [false: bb3, otherwise: bb2]; // scope 0 at $DIR/discriminant.rs:11:21: 11:31
       }
   
       bb2: {
-          switchInt(((_3 as Some).0: bool)) -> [false: bb1, otherwise: bb3]; // scope 0 at $DIR/discriminant.rs:11:21: 11:31
+          _2 = const 42_i32;               // scope 0 at $DIR/discriminant.rs:11:47: 11:49
+          goto -> bb4;                     // scope 0 at $DIR/discriminant.rs:11:13: 11:64
       }
   
       bb3: {
-          _2 = const 42_i32;               // scope 0 at $DIR/discriminant.rs:11:47: 11:49
+          _2 = const 10_i32;               // scope 0 at $DIR/discriminant.rs:11:59: 11:61
           goto -> bb4;                     // scope 0 at $DIR/discriminant.rs:11:13: 11:64
       }
   

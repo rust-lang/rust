@@ -29,7 +29,7 @@
 -     }
 - 
 -     bb3: {
--         switchInt(move _2) -> [false: bb5, otherwise: bb4]; // scope 0 at $DIR/const_goto.rs:12:5: 12:57
+-         switchInt(move _2) -> [false: bb5, otherwise: bb4]; // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
 -     }
 - 
 -     bb4: {

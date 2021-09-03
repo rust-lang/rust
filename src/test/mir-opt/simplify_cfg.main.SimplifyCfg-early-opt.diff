@@ -21,9 +21,9 @@
       }
   
 -     bb2: {
--         switchInt(move _2) -> [false: bb4, otherwise: bb3]; // scope 0 at $DIR/simplify_cfg.rs:9:9: 11:10
+-         switchInt(move _2) -> [false: bb4, otherwise: bb3]; // scope 0 at $DIR/simplify_cfg.rs:9:12: 9:17
 +     bb1: {
-+         switchInt(move _2) -> [false: bb3, otherwise: bb2]; // scope 0 at $DIR/simplify_cfg.rs:9:9: 11:10
++         switchInt(move _2) -> [false: bb3, otherwise: bb2]; // scope 0 at $DIR/simplify_cfg.rs:9:12: 9:17
       }
   
 -     bb3: {

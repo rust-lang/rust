@@ -9,7 +9,7 @@
       bb0: {
           StorageLive(_2);                 // scope 0 at $DIR/if-condition-int.rs:17:8: 17:9
           _2 = _1;                         // scope 0 at $DIR/if-condition-int.rs:17:8: 17:9
-          switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/if-condition-int.rs:17:5: 17:26
+          switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/if-condition-int.rs:17:8: 17:9
       }
   
       bb1: {

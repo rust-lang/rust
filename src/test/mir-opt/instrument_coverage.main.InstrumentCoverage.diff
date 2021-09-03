@@ -21,7 +21,7 @@
       }
   
       bb2: {
-          switchInt(move _2) -> [false: bb4, otherwise: bb3]; // scope 0 at /the/src/instrument_coverage.rs:12:9: 14:10
+          switchInt(move _2) -> [false: bb4, otherwise: bb3]; // scope 0 at /the/src/instrument_coverage.rs:12:12: 12:17
       }
   
       bb3: {

@@ -391,21 +391,22 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
         }
 
         hir::ExprKind::If(ref cond, ref then, Some(ref otherwise)) => {
-            // FIXME(matthewjasper): ideally the scope we use here would only
-            // contain the condition and then expression. This works, but
-            // can result in some extra drop flags.
+            let expr_cx = visitor.cx;
+            visitor.enter_scope(Scope { id: then.hir_id.local_id, data: ScopeData::IfThen });
             visitor.cx.var_parent = visitor.cx.parent;
             visitor.visit_expr(cond);
-            visitor.cx.var_parent = prev_cx.var_parent;
             visitor.visit_expr(then);
+            visitor.cx = expr_cx;
             visitor.visit_expr(otherwise);
         }
 
         hir::ExprKind::If(ref cond, ref then, None) => {
+            let expr_cx = visitor.cx;
+            visitor.enter_scope(Scope { id: then.hir_id.local_id, data: ScopeData::IfThen });
             visitor.cx.var_parent = visitor.cx.parent;
             visitor.visit_expr(cond);
-            visitor.cx.var_parent = prev_cx.var_parent;
             visitor.visit_expr(then);
+            visitor.cx = expr_cx;
         }
 
         _ => intravisit::walk_expr(visitor, expr),

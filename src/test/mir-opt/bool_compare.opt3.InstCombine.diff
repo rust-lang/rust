@@ -14,7 +14,7 @@
 -         _2 = Eq(move _3, const false);   // scope 0 at $DIR/bool_compare.rs:13:8: 13:18
 +         _2 = Not(move _3);               // scope 0 at $DIR/bool_compare.rs:13:8: 13:18
           StorageDead(_3);                 // scope 0 at $DIR/bool_compare.rs:13:17: 13:18
-          switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/bool_compare.rs:13:5: 13:35
+          switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/bool_compare.rs:13:8: 13:18
       }
   
       bb1: {

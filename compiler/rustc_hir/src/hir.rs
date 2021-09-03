@@ -1177,6 +1177,7 @@ pub struct Arm<'hir> {
 #[derive(Debug, HashStable_Generic)]
 pub enum Guard<'hir> {
     If(&'hir Expr<'hir>),
+    // FIXME use ExprKind::Let for this.
     IfLet(&'hir Pat<'hir>, &'hir Expr<'hir>),
 }
 

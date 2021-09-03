@@ -52,11 +52,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Match { scrutinee, ref arms } => {
                 this.match_expr(destination, expr_span, block, &this.thir[scrutinee], arms)
             }
-            ExprKind::If { cond, then, else_opt } => {
-                let local_scope = this.local_scope();
-                let (mut then_blk, mut else_blk) =
-                    this.then_else_blocks(block, &this.thir[cond], local_scope, source_info);
-                unpack!(then_blk = this.expr_into_dest(destination, then_blk, &this.thir[then]));
+            ExprKind::If { cond, then, else_opt, if_then_scope } => {
+                let then_blk;
+                let then_expr = &this.thir[then];
+                let then_source_info = this.source_info(then_expr.span);
+                let condition_scope = this.local_scope();
+
+                let mut else_blk = unpack!(
+                    then_blk = this.in_scope(
+                        (if_then_scope, then_source_info),
+                        LintLevel::Inherited,
+                        |this| {
+                            let (then_block, else_block) =
+                                this.in_if_then_scope(condition_scope, |this| {
+                                    let then_blk = unpack!(this.then_else_break(
+                                        block,
+                                        &this.thir[cond],
+                                        condition_scope,
+                                        condition_scope,
+                                        then_expr.span,
+                                    ));
+                                    this.expr_into_dest(destination, then_blk, then_expr)
+                                });
+                            then_block.and(else_block)
+                        },
+                    )
+                );
+
                 else_blk = if let Some(else_opt) = else_opt {
                     unpack!(this.expr_into_dest(destination, else_blk, &this.thir[else_opt]))
                 } else {
@@ -81,9 +103,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 join_block.unit()
             }
-            ExprKind::Let { ref pat, expr } => {
-                let (true_block, false_block) =
-                    this.lower_let(block, &this.thir[expr], pat, expr_span);
+            ExprKind::Let { expr, ref pat } => {
+                let scope = this.local_scope();
+                let (true_block, false_block) = this.in_if_then_scope(scope, |this| {
+                    this.lower_let_expr(block, &this.thir[expr], pat, scope, expr_span)
+                });
 
                 let join_block = this.cfg.start_new_block();
 

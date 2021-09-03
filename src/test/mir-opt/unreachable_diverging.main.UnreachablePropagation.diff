@@ -29,45 +29,46 @@
   
       bb1: {
           _3 = discriminant(_2);           // scope 1 at $DIR/unreachable_diverging.rs:14:12: 14:22
-          switchInt(move _3) -> [1_isize: bb3, otherwise: bb2]; // scope 1 at $DIR/unreachable_diverging.rs:14:12: 14:22
+-         switchInt(move _3) -> [1_isize: bb2, otherwise: bb6]; // scope 1 at $DIR/unreachable_diverging.rs:14:12: 14:22
++         switchInt(move _3) -> [1_isize: bb2, otherwise: bb5]; // scope 1 at $DIR/unreachable_diverging.rs:14:12: 14:22
       }
   
       bb2: {
-          _0 = const ();                   // scope 1 at $DIR/unreachable_diverging.rs:19:6: 19:6
-          StorageDead(_4);                 // scope 1 at $DIR/unreachable_diverging.rs:19:5: 19:6
-          StorageDead(_1);                 // scope 0 at $DIR/unreachable_diverging.rs:20:1: 20:2
-          StorageDead(_2);                 // scope 0 at $DIR/unreachable_diverging.rs:20:1: 20:2
-          return;                          // scope 0 at $DIR/unreachable_diverging.rs:20:2: 20:2
-      }
-  
-      bb3: {
           StorageLive(_4);                 // scope 1 at $DIR/unreachable_diverging.rs:14:17: 14:21
           _4 = move ((_2 as Some).0: Empty); // scope 1 at $DIR/unreachable_diverging.rs:14:17: 14:21
           StorageLive(_5);                 // scope 1 at $DIR/unreachable_diverging.rs:15:9: 17:10
           StorageLive(_6);                 // scope 1 at $DIR/unreachable_diverging.rs:15:12: 15:13
           _6 = _1;                         // scope 1 at $DIR/unreachable_diverging.rs:15:12: 15:13
--         switchInt(move _6) -> [false: bb5, otherwise: bb4]; // scope 1 at $DIR/unreachable_diverging.rs:15:9: 17:10
-+         goto -> bb4;                     // scope 1 at $DIR/unreachable_diverging.rs:15:9: 17:10
+-         switchInt(move _6) -> [false: bb4, otherwise: bb3]; // scope 1 at $DIR/unreachable_diverging.rs:15:12: 15:13
++         goto -> bb3;                     // scope 1 at $DIR/unreachable_diverging.rs:15:12: 15:13
       }
   
-      bb4: {
--         _5 = loop_forever() -> bb6;      // scope 1 at $DIR/unreachable_diverging.rs:16:13: 16:27
-+         _5 = loop_forever() -> bb5;      // scope 1 at $DIR/unreachable_diverging.rs:16:13: 16:27
+      bb3: {
+-         _5 = loop_forever() -> bb5;      // scope 1 at $DIR/unreachable_diverging.rs:16:13: 16:27
++         _5 = loop_forever() -> bb4;      // scope 1 at $DIR/unreachable_diverging.rs:16:13: 16:27
                                            // mir::Constant
                                            // + span: $DIR/unreachable_diverging.rs:16:13: 16:25
                                            // + literal: Const { ty: fn() {loop_forever}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb5: {
+      bb4: {
 -         _5 = const ();                   // scope 1 at $DIR/unreachable_diverging.rs:17:10: 17:10
--         goto -> bb6;                     // scope 1 at $DIR/unreachable_diverging.rs:15:9: 17:10
+-         goto -> bb5;                     // scope 1 at $DIR/unreachable_diverging.rs:15:9: 17:10
 -     }
 - 
--     bb6: {
+-     bb5: {
           StorageDead(_6);                 // scope 1 at $DIR/unreachable_diverging.rs:17:9: 17:10
           StorageDead(_5);                 // scope 1 at $DIR/unreachable_diverging.rs:17:9: 17:10
           StorageLive(_7);                 // scope 1 at $DIR/unreachable_diverging.rs:18:9: 18:22
           unreachable;                     // scope 1 at $DIR/unreachable_diverging.rs:18:15: 18:19
+      }
+  
+-     bb6: {
++     bb5: {
+          _0 = const ();                   // scope 1 at $DIR/unreachable_diverging.rs:19:6: 19:6
+          StorageDead(_1);                 // scope 0 at $DIR/unreachable_diverging.rs:20:1: 20:2
+          StorageDead(_2);                 // scope 0 at $DIR/unreachable_diverging.rs:20:1: 20:2
+          return;                          // scope 0 at $DIR/unreachable_diverging.rs:20:2: 20:2
       }
   }
   

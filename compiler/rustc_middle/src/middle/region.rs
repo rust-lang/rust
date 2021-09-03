@@ -94,6 +94,7 @@ impl fmt::Debug for Scope {
             ScopeData::CallSite => write!(fmt, "CallSite({:?})", self.id),
             ScopeData::Arguments => write!(fmt, "Arguments({:?})", self.id),
             ScopeData::Destruction => write!(fmt, "Destruction({:?})", self.id),
+            ScopeData::IfThen => write!(fmt, "IfThen({:?})", self.id),
             ScopeData::Remainder(fsi) => write!(
                 fmt,
                 "Remainder {{ block: {:?}, first_statement_index: {}}}",
@@ -119,6 +120,10 @@ pub enum ScopeData {
 
     /// Scope of destructors for temporaries of node-id.
     Destruction,
+
+    /// Scope of the condition and then block of an if expression
+    /// Used for variables introduced in an if-let expression.
+    IfThen,
 
     /// Scope following a `let id = expr;` binding in a block.
     Remainder(FirstStatementIndex),

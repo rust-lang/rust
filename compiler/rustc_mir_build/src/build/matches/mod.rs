@@ -35,42 +35,48 @@ use std::convert::TryFrom;
 use std::mem;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    pub(crate) fn then_else_blocks(
+    pub(crate) fn then_else_break(
         &mut self,
         mut block: BasicBlock,
         expr: &Expr<'tcx>,
-        scope: region::Scope,
-        source_info: SourceInfo,
-    ) -> (BasicBlock, BasicBlock) {
+        temp_scope: region::Scope,
+        break_scope: region::Scope,
+        variable_scope_span: Span,
+    ) -> BlockAnd<()> {
         let this = self;
         let expr_span = expr.span;
 
         match expr.kind {
             ExprKind::Scope { region_scope, lint_level, value } => {
-                let region_scope = (region_scope, source_info);
-                let then_block;
-                let else_block = unpack!(
-                    then_block = this.in_scope(region_scope, lint_level, |this| {
-                        let (then_block, else_block) =
-                            this.then_else_blocks(block, &this.thir[value], scope, source_info);
-                        then_block.and(else_block)
-                    })
-                );
-                (then_block, else_block)
+                let region_scope = (region_scope, this.source_info(expr_span));
+                this.in_scope(region_scope, lint_level, |this| {
+                    this.then_else_break(
+                        block,
+                        &this.thir[value],
+                        temp_scope,
+                        break_scope,
+                        variable_scope_span,
+                    )
+                })
             }
             ExprKind::Let { expr, ref pat } => {
-                // FIXME: Use correct span.
-                this.lower_let(block, &this.thir[expr], pat, expr_span)
+                this.lower_let_expr(block, &this.thir[expr], pat, break_scope, variable_scope_span)
             }
             _ => {
                 let mutability = Mutability::Mut;
-                let place = unpack!(block = this.as_temp(block, Some(scope), expr, mutability));
+                let place =
+                    unpack!(block = this.as_temp(block, Some(temp_scope), expr, mutability));
                 let operand = Operand::Move(Place::from(place));
+
                 let then_block = this.cfg.start_new_block();
                 let else_block = this.cfg.start_new_block();
                 let term = TerminatorKind::if_(this.tcx, operand, then_block, else_block);
+
+                let source_info = this.source_info(expr_span);
                 this.cfg.terminate(block, source_info, term);
-                (then_block, else_block)
+                this.break_for_else(else_block, break_scope, source_info);
+
+                then_block.unit()
             }
         }
     }
@@ -302,6 +308,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let arm_source_info = self.source_info(arm.span);
                 let arm_scope = (arm.scope, arm_source_info);
+                let match_scope = self.local_scope();
                 self.in_scope(arm_scope, arm.lint_level, |this| {
                     // `try_upvars_resolved` may fail if it is unable to resolve the given
                     // `PlaceBuilder` inside a closure. In this case, we don't want to include
@@ -340,6 +347,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         scrutinee_span,
                         Some(arm.span),
                         Some(arm.scope),
+                        Some(match_scope),
                     );
 
                     if let Some(source_scope) = scope {
@@ -384,6 +392,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_span: Span,
         arm_span: Option<Span>,
         arm_scope: Option<region::Scope>,
+        match_scope: Option<region::Scope>,
     ) -> BasicBlock {
         if candidate.subcandidates.is_empty() {
             // Avoid generating another `BasicBlock` when we only have one
@@ -395,6 +404,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 fake_borrow_temps,
                 scrutinee_span,
                 arm_span,
+                match_scope,
                 true,
             )
         } else {
@@ -431,6 +441,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         &fake_borrow_temps,
                         scrutinee_span,
                         arm_span,
+                        match_scope,
                         schedule_drops,
                     );
                     if arm_scope.is_none() {
@@ -614,6 +625,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             None,
             &fake_borrow_temps,
             irrefutable_pat.span,
+            None,
             None,
             None,
         )
@@ -1742,13 +1754,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 // Pat binding - used for `let` and function parameters as well.
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    pub fn lower_let(
+    crate fn lower_let_expr(
         &mut self,
         mut block: BasicBlock,
         expr: &Expr<'tcx>,
         pat: &Pat<'tcx>,
+        else_target: region::Scope,
         span: Span,
-    ) -> (BasicBlock, BasicBlock) {
+    ) -> BlockAnd<()> {
         let expr_span = expr.span;
         let expr_place_builder = unpack!(block = self.lower_scrutinee(block, expr, expr_span));
         let mut guard_candidate = Candidate::new(expr_place_builder.clone(), &pat, false);
@@ -1769,6 +1782,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             expr_place = expr_builder.into_place(self.tcx, self.typeck_results);
             opt_expr_place = Some((Some(&expr_place), expr_span));
         }
+        let otherwise_post_guard_block = otherwise_candidate.pre_binding_block.unwrap();
+        self.break_for_else(otherwise_post_guard_block, else_target, self.source_info(expr_span));
+
         self.declare_bindings(None, pat.span.to(span), pat, ArmHasGuard(false), opt_expr_place);
         let post_guard_block = self.bind_pattern(
             self.source_info(pat.span),
@@ -1778,9 +1794,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             expr.span,
             None,
             None,
+            None,
         );
-        let otherwise_post_guard_block = otherwise_candidate.pre_binding_block.unwrap();
-        (post_guard_block, otherwise_post_guard_block)
+
+        post_guard_block.unit()
     }
 
     /// Initializes each of the bindings from the candidate by
@@ -1799,6 +1816,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         fake_borrows: &Vec<(Place<'tcx>, Local)>,
         scrutinee_span: Span,
         arm_span: Option<Span>,
+        match_scope: Option<region::Scope>,
         schedule_drops: bool,
     ) -> BasicBlock {
         debug!("bind_and_guard_matched_candidate(candidate={:?})", candidate);
@@ -1929,17 +1947,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.push_assign(block, scrutinee_source_info, Place::from(temp), borrow);
             }
 
-            let (guard_span, (post_guard_block, otherwise_post_guard_block)) = match *guard {
-                Guard::If(e) => {
-                    let e = &self.thir[e];
-                    let source_info = self.source_info(e.span);
-                    (e.span, self.test_bool(block, e, source_info))
-                }
-                Guard::IfLet(ref pat, scrutinee) => {
-                    let s = &self.thir[scrutinee];
-                    (s.span, self.lower_let(block, s, pat, arm_span.unwrap()))
-                }
-            };
+            let arm_span = arm_span.unwrap();
+            let arm_scope = self.local_scope();
+            let match_scope = match_scope.unwrap();
+            let mut guard_span = rustc_span::DUMMY_SP;
+
+            let (post_guard_block, otherwise_post_guard_block) =
+                self.in_if_then_scope(match_scope, |this| match *guard {
+                    Guard::If(e) => {
+                        let e = &this.thir[e];
+                        guard_span = e.span;
+                        this.then_else_break(block, e, arm_scope, match_scope, arm_span)
+                    }
+                    Guard::IfLet(ref pat, scrutinee) => {
+                        let s = &this.thir[scrutinee];
+                        guard_span = s.span;
+                        this.lower_let_expr(block, s, pat, match_scope, arm_span)
+                    }
+                });
+
             let source_info = self.source_info(guard_span);
             let guard_end = self.source_info(tcx.sess.source_map().end_point(guard_span));
             let guard_frame = self.guard_context.pop().unwrap();
@@ -1955,10 +1981,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(unreachable, source_info, TerminatorKind::Unreachable);
                 unreachable
             });
-            let outside_scope = self.cfg.start_new_block();
-            self.exit_top_scope(otherwise_post_guard_block, outside_scope, source_info);
             self.false_edges(
-                outside_scope,
+                otherwise_post_guard_block,
                 otherwise_block,
                 candidate.next_candidate_pre_binding_block,
                 source_info,
