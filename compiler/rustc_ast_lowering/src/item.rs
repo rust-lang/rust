@@ -378,15 +378,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             this.lower_trait_ref(trait_ref, ImplTraitContext::disallowed())
                         });
 
-                        if let Some(ref trait_ref) = trait_ref {
-                            if let Res::Def(DefKind::Trait, def_id) = trait_ref.path.res {
-                                this.trait_impls
-                                    .entry(def_id)
-                                    .or_default()
-                                    .push(lowered_trait_def_id);
-                            }
-                        }
-
                         let lowered_ty = this.lower_ty(ty, ImplTraitContext::disallowed());
 
                         (trait_ref, lowered_ty)

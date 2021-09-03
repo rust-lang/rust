@@ -5,18 +5,18 @@ LL |     bar::<N>()
    |           ^ expected `u8`, found `usize`
 
 error[E0308]: mismatched types
-  --> $DIR/type_mismatch.rs:5:31
-   |
-LL | fn bar<const N: u8>() -> [u8; N] {}
-   |                               ^ expected `usize`, found `u8`
-
-error[E0308]: mismatched types
   --> $DIR/type_mismatch.rs:5:26
    |
 LL | fn bar<const N: u8>() -> [u8; N] {}
    |    ---                   ^^^^^^^ expected array `[u8; N]`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
+
+error[E0308]: mismatched types
+  --> $DIR/type_mismatch.rs:5:31
+   |
+LL | fn bar<const N: u8>() -> [u8; N] {}
+   |                               ^ expected `usize`, found `u8`
 
 error: aborting due to 3 previous errors
 

@@ -39,7 +39,6 @@ use rustc_ast::node_id::NodeMap;
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream, TokenTree};
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
-use rustc_ast::walk_list;
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
@@ -48,7 +47,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
-use rustc_hir::def_id::{DefId, DefIdMap, DefPathHash, LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{DefId, DefPathHash, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
 use rustc_hir::{ConstArg, GenericArg, InferKind, ParamName};
@@ -104,8 +103,6 @@ struct LoweringContext<'a, 'hir: 'a> {
     owners: IndexVec<LocalDefId, Option<hir::OwnerNode<'hir>>>,
     bodies: BTreeMap<hir::BodyId, hir::Body<'hir>>,
 
-    trait_impls: BTreeMap<DefId, Vec<LocalDefId>>,
-
     modules: BTreeMap<LocalDefId, hir::ModuleItems>,
 
     generator_kind: Option<hir::GeneratorKind>,
@@ -158,8 +155,6 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     current_module: LocalDefId,
 
-    type_def_lifetime_params: DefIdMap<usize>,
-
     current_hir_id_owner: (LocalDefId, u32),
     item_local_id_counters: NodeMap<u32>,
     node_id_to_hir_id: IndexVec<NodeId, Option<hir::HirId>>,
@@ -171,7 +166,7 @@ struct LoweringContext<'a, 'hir: 'a> {
 pub trait ResolverAstLowering {
     fn def_key(&mut self, id: DefId) -> DefKey;
 
-    fn item_generics_num_lifetimes(&self, def: DefId, sess: &Session) -> usize;
+    fn item_generics_num_lifetimes(&self, def: DefId) -> usize;
 
     fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>>;
 
@@ -326,7 +321,6 @@ pub fn lower_crate<'a, 'hir>(
         arena,
         owners: IndexVec::default(),
         bodies: BTreeMap::new(),
-        trait_impls: BTreeMap::new(),
         modules: BTreeMap::new(),
         attrs: BTreeMap::default(),
         catch_scopes: Vec::new(),
@@ -335,7 +329,6 @@ pub fn lower_crate<'a, 'hir>(
         is_in_trait_impl: false,
         is_in_dyn_type: false,
         anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
-        type_def_lifetime_params: Default::default(),
         current_module: CRATE_DEF_ID,
         current_hir_id_owner: (CRATE_DEF_ID, 0),
         item_local_id_counters: Default::default(),
@@ -451,26 +444,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             fn visit_item(&mut self, item: &'tcx Item) {
                 self.lctx.allocate_hir_id_counter(item.id);
 
-                match item.kind {
-                    ItemKind::Struct(_, ref generics)
-                    | ItemKind::Union(_, ref generics)
-                    | ItemKind::Enum(_, ref generics)
-                    | ItemKind::TyAlias(box TyAliasKind(_, ref generics, ..))
-                    | ItemKind::Trait(box TraitKind(_, _, ref generics, ..)) => {
-                        let def_id = self.lctx.resolver.local_def_id(item.id);
-                        let count = generics
-                            .params
-                            .iter()
-                            .filter(|param| {
-                                matches!(param.kind, ast::GenericParamKind::Lifetime { .. })
-                            })
-                            .count();
-                        self.lctx.type_def_lifetime_params.insert(def_id.to_def_id(), count);
-                    }
-                    ItemKind::Use(ref use_tree) => {
-                        self.allocate_use_tree_hir_id_counters(use_tree);
-                    }
-                    _ => {}
+                if let ItemKind::Use(ref use_tree) = item.kind {
+                    self.allocate_use_tree_hir_id_counters(use_tree);
                 }
 
                 visit::walk_item(self, item);
@@ -485,23 +460,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 self.lctx.allocate_hir_id_counter(item.id);
                 visit::walk_foreign_item(self, item);
             }
-
-            fn visit_ty(&mut self, t: &'tcx Ty) {
-                match t.kind {
-                    // Mirrors the case in visit::walk_ty
-                    TyKind::BareFn(ref f) => {
-                        walk_list!(self, visit_generic_param, &f.generic_params);
-                        // Mirrors visit::walk_fn_decl
-                        for parameter in &f.decl.inputs {
-                            // We don't lower the ids of argument patterns
-                            self.visit_pat(&parameter.pat);
-                            self.visit_ty(&parameter.ty)
-                        }
-                        self.visit_fn_ret_ty(&f.decl.output)
-                    }
-                    _ => visit::walk_ty(self, t),
-                }
-            }
         }
 
         self.lower_node_id(CRATE_NODE_ID);
@@ -514,10 +472,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.lower_attrs(hir::CRATE_HIR_ID, &c.attrs);
         self.owners.ensure_contains_elem(CRATE_DEF_ID, || None);
         self.owners[CRATE_DEF_ID] = Some(hir::OwnerNode::Crate(module));
-
-        let body_ids = body_ids(&self.bodies);
-        let proc_macros =
-            c.proc_macros.iter().map(|id| self.node_id_to_hir_id[*id].unwrap()).collect();
 
         let mut trait_map: FxHashMap<_, FxHashMap<_, _>> = FxHashMap::default();
         for (k, v) in self.resolver.take_trait_map().into_iter() {
@@ -551,10 +505,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let krate = hir::Crate {
             owners: self.owners,
             bodies: self.bodies,
-            body_ids,
-            trait_impls: self.trait_impls,
             modules: self.modules,
-            proc_macros,
             trait_map,
             attrs: self.attrs,
         };
@@ -2747,14 +2698,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
     }
-}
-
-fn body_ids(bodies: &BTreeMap<hir::BodyId, hir::Body<'_>>) -> Vec<hir::BodyId> {
-    // Sorting by span ensures that we get things in order within a
-    // file, and also puts the files in a sensible order.
-    let mut body_ids: Vec<_> = bodies.keys().cloned().collect();
-    body_ids.sort_by_key(|b| bodies[b].value.span);
-    body_ids
 }
 
 /// Helper struct for delayed construction of GenericArgs.

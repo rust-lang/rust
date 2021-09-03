@@ -1,9 +1,3 @@
-error[E0507]: cannot move out of static item `settings_dir`
-  --> $DIR/issue-64453.rs:14:37
-   |
-LL |     let settings_data = from_string(settings_dir);
-   |                                     ^^^^^^^^^^^^ move occurs because `settings_dir` has type `String`, which does not implement the `Copy` trait
-
 error: `Arguments::<'a>::new_v1` is not yet stable as a const fn
   --> $DIR/issue-64453.rs:4:31
    |
@@ -20,6 +14,12 @@ LL | static settings_dir: String = format!("");
    |                               ^^^^^^^^^^^
    |
    = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0507]: cannot move out of static item `settings_dir`
+  --> $DIR/issue-64453.rs:14:37
+   |
+LL |     let settings_data = from_string(settings_dir);
+   |                                     ^^^^^^^^^^^^ move occurs because `settings_dir` has type `String`, which does not implement the `Copy` trait
 
 error: aborting due to 3 previous errors
 

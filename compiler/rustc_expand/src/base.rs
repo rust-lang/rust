@@ -894,6 +894,14 @@ pub trait ResolverExpand {
     /// Decodes the proc-macro quoted span in the specified crate, with the specified id.
     /// No caching is performed.
     fn get_proc_macro_quoted_span(&self, krate: CrateNum, id: usize) -> Span;
+
+    /// The order of items in the HIR is unrelated to the order of
+    /// items in the AST. However, we generate proc macro harnesses
+    /// based on the AST order, and later refer to these harnesses
+    /// from the HIR. This field keeps track of the order in which
+    /// we generated proc macros harnesses, so that we can map
+    /// HIR proc macros items back to their harness items.
+    fn declare_proc_macro(&mut self, id: NodeId);
 }
 
 #[derive(Clone, Default)]
