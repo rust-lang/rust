@@ -606,8 +606,7 @@ mod prim_pointer {}
 ///     println!("array[{}] = {}", i, x);
 /// }
 ///
-/// // You can explicitly iterate an array by value using
-/// // `IntoIterator::into_iter` or `std::array::IntoIter::new`:
+/// // You can explicitly iterate an array by value using `IntoIterator::into_iter`
 /// for item in IntoIterator::into_iter(array).enumerate() {
 ///     let (i, x): (usize, i32) = item;
 ///     println!("array[{}] = {}", i, x);
