@@ -42,7 +42,7 @@ https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frust-analyzer
 * [S-actionable](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AS-actionable) and
   [S-unactionable](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AS-unactionable)
   specify if there are concrete steps to resolve or advance an issue. Roughly, actionable issues need only work to be fixed,
-  while unactionable ones are blocked either on user feedback (providing a reproducible example), or on larger architectural 
+  while unactionable ones are blocked either on user feedback (providing a reproducible example), or on larger architectural
   work or decisions. This classification is descriptive, not prescriptive, and might be wrong: Any unactionable issue might have a simple fix that we missed.
   Each triaged issue should have one of these labels.
 * [fun](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3Afun)
@@ -129,9 +129,10 @@ npm run lint
 
 Logging is done by both rust-analyzer and VS Code, so it might be tricky to figure out where logs go.
 
-Inside rust-analyzer, we use the standard `log` crate for logging, and `env_logger` for logging frontend.
+Inside rust-analyzer, we use the [`tracing`](https://docs.rs/tracing/) crate for logging,
+and [`tracing-subscriber`](https://docs.rs/tracing-subscriber) for logging frontend.
 By default, log goes to stderr, but the stderr itself is processed by VS Code.
-`--log-file <PATH>` CLI argument allows logging to file. 
+`--log-file <PATH>` CLI argument allows logging to file.
 Setting the `RA_LOG_FILE=<PATH>` environment variable will also log to file, it will also override `--log-file`.
 
 To see stderr in the running VS Code instance, go to the "Output" tab of the panel and select `rust-analyzer`.
