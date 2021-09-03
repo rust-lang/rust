@@ -16,6 +16,8 @@ use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder,
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
+use rustc_hir::GenericParam;
+use rustc_hir::Item;
 use rustc_hir::Node;
 use rustc_middle::mir::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::ExpectedFound;
@@ -1138,6 +1140,20 @@ trait InferCtxtPrivExt<'tcx> {
         obligation: &PredicateObligation<'tcx>,
     );
 
+    fn maybe_suggest_unsized_generics(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        span: Span,
+        node: Node<'hir>,
+    );
+
+    fn maybe_indirection_for_unsized(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        item: &'hir Item<'hir>,
+        param: &'hir GenericParam<'hir>,
+    ) -> bool;
+
     fn is_recursive_obligation(
         &self,
         obligated_types: &mut Vec<&ty::TyS<'tcx>>,
@@ -1816,7 +1832,10 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 ) => (pred, item_def_id, span),
                 _ => return,
             };
-
+        debug!(
+            "suggest_unsized_bound_if_applicable: pred={:?} item_def_id={:?} span={:?}",
+            pred, item_def_id, span
+        );
         let node = match (
             self.tcx.hir().get_if_local(item_def_id),
             Some(pred.def_id()) == self.tcx.lang_items().sized_trait(),
@@ -1824,80 +1843,105 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             (Some(node), true) => node,
             _ => return,
         };
+        self.maybe_suggest_unsized_generics(err, span, node);
+    }
+
+    fn maybe_suggest_unsized_generics(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        span: Span,
+        node: Node<'hir>,
+    ) {
         let generics = match node.generics() {
             Some(generics) => generics,
             None => return,
         };
-        for param in generics.params {
-            if param.span != span
-                || param.bounds.iter().any(|bound| {
-                    bound.trait_ref().and_then(|trait_ref| trait_ref.trait_def_id())
-                        == self.tcx.lang_items().sized_trait()
-                })
-            {
-                continue;
-            }
-            match node {
-                hir::Node::Item(
-                    item
-                    @
-                    hir::Item {
-                        kind:
-                            hir::ItemKind::Enum(..)
-                            | hir::ItemKind::Struct(..)
-                            | hir::ItemKind::Union(..),
-                        ..
-                    },
-                ) => {
-                    // Suggesting `T: ?Sized` is only valid in an ADT if `T` is only used in a
-                    // borrow. `struct S<'a, T: ?Sized>(&'a T);` is valid, `struct S<T: ?Sized>(T);`
-                    // is not.
-                    let mut visitor = FindTypeParam {
-                        param: param.name.ident().name,
-                        invalid_spans: vec![],
-                        nested: false,
-                    };
-                    visitor.visit_item(item);
-                    if !visitor.invalid_spans.is_empty() {
-                        let mut multispan: MultiSpan = param.span.into();
-                        multispan.push_span_label(
-                            param.span,
-                            format!("this could be changed to `{}: ?Sized`...", param.name.ident()),
-                        );
-                        for sp in visitor.invalid_spans {
-                            multispan.push_span_label(
-                                sp,
-                                format!(
-                                    "...if indirection were used here: `Box<{}>`",
-                                    param.name.ident(),
-                                ),
-                            );
-                        }
-                        err.span_help(
-                            multispan,
-                            &format!(
-                                "you could relax the implicit `Sized` bound on `{T}` if it were \
-                                 used through indirection like `&{T}` or `Box<{T}>`",
-                                T = param.name.ident(),
-                            ),
-                        );
-                        return;
-                    }
+        let sized_trait = self.tcx.lang_items().sized_trait();
+        debug!("maybe_suggest_unsized_generics: generics.params={:?}", generics.params);
+        debug!("maybe_suggest_unsized_generics: generics.where_clause={:?}", generics.where_clause);
+        let param = generics
+            .params
+            .iter()
+            .filter(|param| param.span == span)
+            .filter(|param| {
+                // Check that none of the explicit trait bounds is `Sized`. Assume that an explicit
+                // `Sized` bound is there intentionally and we don't need to suggest relaxing it.
+                param
+                    .bounds
+                    .iter()
+                    .all(|bound| bound.trait_ref().and_then(|tr| tr.trait_def_id()) != sized_trait)
+            })
+            .next();
+        let param = match param {
+            Some(param) => param,
+            _ => return,
+        };
+        debug!("maybe_suggest_unsized_generics: param={:?}", param);
+        match node {
+            hir::Node::Item(
+                item
+                @
+                hir::Item {
+                    // Only suggest indirection for uses of type parameters in ADTs.
+                    kind:
+                        hir::ItemKind::Enum(..) | hir::ItemKind::Struct(..) | hir::ItemKind::Union(..),
+                    ..
+                },
+            ) => {
+                if self.maybe_indirection_for_unsized(err, item, param) {
+                    return;
                 }
-                _ => {}
             }
-            let (span, separator) = match param.bounds {
-                [] => (span.shrink_to_hi(), ":"),
-                [.., bound] => (bound.span().shrink_to_hi(), " +"),
-            };
-            err.span_suggestion_verbose(
-                span,
-                "consider relaxing the implicit `Sized` restriction",
-                format!("{} ?Sized", separator),
-                Applicability::MachineApplicable,
-            );
-            return;
+            _ => {}
+        };
+        // Didn't add an indirection suggestion, so add a general suggestion to relax `Sized`.
+        let (span, separator) = match param.bounds {
+            [] => (span.shrink_to_hi(), ":"),
+            [.., bound] => (bound.span().shrink_to_hi(), " +"),
+        };
+        err.span_suggestion_verbose(
+            span,
+            "consider relaxing the implicit `Sized` restriction",
+            format!("{} ?Sized", separator),
+            Applicability::MachineApplicable,
+        );
+    }
+
+    fn maybe_indirection_for_unsized(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        item: &'hir Item<'hir>,
+        param: &'hir GenericParam<'hir>,
+    ) -> bool {
+        // Suggesting `T: ?Sized` is only valid in an ADT if `T` is only used in a
+        // borrow. `struct S<'a, T: ?Sized>(&'a T);` is valid, `struct S<T: ?Sized>(T);`
+        // is not. Look for invalid "bare" parameter uses, and suggest using indirection.
+        let mut visitor =
+            FindTypeParam { param: param.name.ident().name, invalid_spans: vec![], nested: false };
+        visitor.visit_item(item);
+        if visitor.invalid_spans.is_empty() {
+            return false;
         }
+        let mut multispan: MultiSpan = param.span.into();
+        multispan.push_span_label(
+            param.span,
+            format!("this could be changed to `{}: ?Sized`...", param.name.ident()),
+        );
+        for sp in visitor.invalid_spans {
+            multispan.push_span_label(
+                sp,
+                format!("...if indirection were used here: `Box<{}>`", param.name.ident()),
+            );
+        }
+        err.span_help(
+            multispan,
+            &format!(
+                "you could relax the implicit `Sized` bound on `{T}` if it were \
+                used through indirection like `&{T}` or `Box<{T}>`",
+                T = param.name.ident(),
+            ),
+        );
+        true
     }
 
     fn is_recursive_obligation(
@@ -1948,6 +1992,7 @@ impl<'v> Visitor<'v> for FindTypeParam {
                 if path.segments.len() == 1 && path.segments[0].ident.name == self.param =>
             {
                 if !self.nested {
+                    debug!("FindTypeParam::visit_ty: ty={:?}", ty);
                     self.invalid_spans.push(ty.span);
                 }
             }
