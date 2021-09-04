@@ -462,6 +462,9 @@ $ rust-analyzer analysis-stats .
 
 It is especially useful when the `repo` doesn't use external crates or the standard library.
 
+If you want to go as far as to modify the source code to debug the problem, be sure to take a look at the
+https://github.com/rust-analyzer/rust-analyzer/tree/master/docs/dev[dev docs]!
+
 == Configuration
 
 **Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/rust-analyzer/src/config.rs[config.rs]
