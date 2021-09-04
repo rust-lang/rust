@@ -18,7 +18,7 @@ impl bool {
         if self { Some(t) } else { None }
     }
 
-    /// Returns `Some` if the `bool` is [`true`](keyword.true.html), or `None` otherwise.
+    /// Returns `Some(f())` if the `bool` is [`true`](keyword.true.html), or `None` otherwise.
     ///
     /// # Examples
     ///
