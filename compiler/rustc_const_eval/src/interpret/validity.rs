@@ -520,7 +520,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 let value = self.read_scalar(value)?;
                 // NOTE: Keep this in sync with the array optimization for int/float
                 // types below!
-                if self.ctfe_mode.is_some() {
+                if M::enforce_number_validity(self.ecx) {
                     // Integers/floats in CTFE: Must be scalar bits, pointers are dangerous
                     let is_bits = value.check_init().map_or(false, |v| v.try_to_int().is_ok());
                     if !is_bits {
@@ -528,9 +528,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                             { "{}", value } expected { "initialized plain (non-pointer) bytes" }
                         )
                     }
-                } else {
-                    // At run-time, for now, we accept *anything* for these types, including
-                    // uninit. We should fix that, but let's start low.
                 }
                 Ok(true)
             }
@@ -855,9 +852,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     }
                 };
 
+                let allow_uninit_and_ptr = !M::enforce_number_validity(self.ecx);
                 match alloc.check_bytes(
                     alloc_range(Size::ZERO, size),
-                    /*allow_uninit_and_ptr*/ self.ctfe_mode.is_none(),
+                    allow_uninit_and_ptr,
                 ) {
                     // In the happy case, we needn't check anything else.
                     Ok(()) => {}
