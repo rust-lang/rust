@@ -1,6 +1,6 @@
 pub trait MyTrait {
     type Assoc;
-    const VALUE: u32;
+    const VALUE: u32 = 12;
     fn trait_function(&self);
     fn defaulted(&self) {}
     fn defaulted_override(&self) {}
@@ -38,9 +38,11 @@ impl MyTrait for Vec<u8> {
 }
 
 impl MyTrait for MyStruct {
+    // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedtype.Assoc-3"]//a[@class="anchor"]/@href' #associatedtype.Assoc-3
     // @has trait_impl_items_links_and_anchors/struct.MyStruct.html '//div[@id="associatedtype.Assoc"]//a[@class="type"]/@href' trait.MyTrait.html#associatedtype.Assoc
     // @has trait_impl_items_links_and_anchors/struct.MyStruct.html '//div[@id="associatedtype.Assoc"]//a[@class="anchor"]/@href' #associatedtype.Assoc
     type Assoc = bool;
+    // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedconstant.VALUE-3"]//a[@class="anchor"]/@href' #associatedconstant.VALUE-3
     // @has trait_impl_items_links_and_anchors/struct.MyStruct.html '//div[@id="associatedconstant.VALUE"]//a[@class="constant"]/@href' trait.MyTrait.html#associatedconstant.VALUE
     // @has trait_impl_items_links_and_anchors/struct.MyStruct.html '//div[@id="associatedconstant.VALUE"]//a[@class="anchor"]/@href' #associatedconstant.VALUE
     const VALUE: u32 = 20;
@@ -55,3 +57,10 @@ impl MyTrait for MyStruct {
 }
 
 pub struct MyStruct;
+
+// We check that associated items with default values aren't generated in the implementors list.
+impl MyTrait for (u8, u8) {
+    // @!has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedconstant.VALUE-4"]'
+    type Assoc = bool;
+    fn trait_function(&self) {}
+}

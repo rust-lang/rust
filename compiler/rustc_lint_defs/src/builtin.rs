@@ -3345,6 +3345,6 @@ declare_lint! {
     Warn,
     "use of unsupported calling convention",
     @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #00000 <https://github.com/rust-lang/rust/issues/00000>",
+        reference: "issue #87678 <https://github.com/rust-lang/rust/issues/87678>",
     };
 }
