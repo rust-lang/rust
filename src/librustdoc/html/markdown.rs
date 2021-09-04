@@ -56,9 +56,13 @@ pub(crate) fn main_body_opts() -> Options {
         | Options::ENABLE_SMART_PUNCTUATION
 }
 
-/// A subset of [`main_body_opts()`] used for rendering summaries.
+/// Options for rendering Markdown in summaries (e.g., in search results).
 pub(crate) fn summary_opts() -> Options {
-    Options::ENABLE_STRIKETHROUGH | Options::ENABLE_SMART_PUNCTUATION | Options::ENABLE_TABLES
+    Options::ENABLE_TABLES
+        | Options::ENABLE_FOOTNOTES
+        | Options::ENABLE_STRIKETHROUGH
+        | Options::ENABLE_TASKLISTS
+        | Options::ENABLE_SMART_PUNCTUATION
 }
 
 /// When `to_string` is called, this struct will emit the HTML corresponding to
