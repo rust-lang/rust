@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `T: SomeTrait<'_>` is not satisfied
+  --> $DIR/issue-85455.rs:8:5
+   |
+LL |     callee::<fn(&()) -> <T as SomeTrait<'_>>::Associated>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `SomeTrait<'_>` is not implemented for `T`
+   |
+help: consider restricting type parameter `T`
+   |
+LL | fn give_me_ice<T: SomeTrait<'_>>() {
+   |                 +++++++++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
