@@ -345,9 +345,9 @@ declare_lint_pass!(StrToString => [STR_TO_STRING]);
 impl LateLintPass<'_> for StrToString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         if_chain! {
-            if let ExprKind::MethodCall(path, _, args, _) = &expr.kind;
+            if let ExprKind::MethodCall(path, _, [self_arg, ..], _) = &expr.kind;
             if path.ident.name == sym!(to_string);
-            let ty = cx.typeck_results().expr_ty(&args[0]);
+            let ty = cx.typeck_results().expr_ty(self_arg);
             if let ty::Ref(_, ty, ..) = ty.kind();
             if *ty.kind() == ty::Str;
             then {
@@ -394,9 +394,9 @@ declare_lint_pass!(StringToString => [STRING_TO_STRING]);
 impl LateLintPass<'_> for StringToString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         if_chain! {
-            if let ExprKind::MethodCall(path, _, args, _) = &expr.kind;
+            if let ExprKind::MethodCall(path, _, [self_arg, ..], _) = &expr.kind;
             if path.ident.name == sym!(to_string);
-            let ty = cx.typeck_results().expr_ty(&args[0]);
+            let ty = cx.typeck_results().expr_ty(self_arg);
             if is_type_diagnostic_item(cx, ty, sym::string_type);
             then {
                 span_lint_and_help(

@@ -19,7 +19,7 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
             cx.typeck_results().expr_ty(expr),
         );
         lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
-    } else if let ExprKind::MethodCall(method_path, _, args, _) = expr.kind {
+    } else if let ExprKind::MethodCall(method_path, _, [self_arg, ..], _) = &expr.kind {
         if_chain! {
             if method_path.ident.name == sym!(cast);
             if let Some(generic_args) = method_path.args;
@@ -28,7 +28,7 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
             if !is_hir_ty_cfg_dependant(cx, cast_to);
             then {
                 let (cast_from, cast_to) =
-                    (cx.typeck_results().expr_ty(&args[0]), cx.typeck_results().expr_ty(expr));
+                    (cx.typeck_results().expr_ty(self_arg), cx.typeck_results().expr_ty(expr));
                 lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
             }
         }

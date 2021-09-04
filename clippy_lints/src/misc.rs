@@ -513,12 +513,12 @@ fn is_signum(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     }
 
     if_chain! {
-        if let ExprKind::MethodCall(method_name, _, expressions, _) = expr.kind;
+        if let ExprKind::MethodCall(method_name, _, [ref self_arg, ..], _) = expr.kind;
         if sym!(signum) == method_name.ident.name;
         // Check that the receiver of the signum() is a float (expressions[0] is the receiver of
         // the method call)
         then {
-            return is_float(cx, &expressions[0]);
+            return is_float(cx, self_arg);
         }
     }
     false
