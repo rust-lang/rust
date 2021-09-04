@@ -303,6 +303,7 @@ mod inner {
         pub fn actually_monotonic() -> bool {
             (cfg!(target_os = "linux") && cfg!(target_arch = "x86_64"))
                 || (cfg!(target_os = "linux") && cfg!(target_arch = "x86"))
+                || (cfg!(target_os = "linux") && cfg!(target_arch = "aarch64"))
                 || cfg!(target_os = "fuchsia")
         }
 
