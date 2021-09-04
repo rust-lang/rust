@@ -2024,7 +2024,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         // ensure that we issue lints in a repeatable order
         def_ids.sort_by_cached_key(|&def_id| self.tcx.def_path_hash(def_id));
 
-        for def_id in def_ids {
+        'lifetimes: for def_id in def_ids {
             debug!("check_uses_for_lifetimes_defined_by_scope: def_id = {:?}", def_id);
 
             let lifetimeuseset = self.lifetime_uses.remove(&def_id);
@@ -2066,6 +2066,27 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                     .any(|attr| attr.has_name(sym::automatically_derived))
                                 {
                                     continue;
+                                }
+
+                                // opaque types generated when desugaring an async function can have a single
+                                // use lifetime even if it is explicitly denied (Issue #77175)
+                                if let hir::Node::Item(hir::Item {
+                                    kind: hir::ItemKind::OpaqueTy(ref opaque),
+                                    ..
+                                }) = self.tcx.hir().get(parent_hir_id)
+                                {
+                                    if opaque.origin != hir::OpaqueTyOrigin::AsyncFn {
+                                        continue 'lifetimes;
+                                    }
+                                    // We want to do this only if the liftime identifier is already defined
+                                    // in the async function that generated this. Otherwise it could be
+                                    // an opaque type defined by the developer and we still want this
+                                    // lint to fail compilation
+                                    for p in opaque.generics.params {
+                                        if defined_by.contains_key(&p.name) {
+                                            continue 'lifetimes;
+                                        }
+                                    }
                                 }
                             }
                         }
