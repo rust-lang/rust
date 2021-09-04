@@ -8,7 +8,12 @@ use crate::{
     from_proto,
     global_state::GlobalState,
     line_index::{LineEndings, LineIndex, OffsetEncoding},
+    LspError,
 };
+
+pub(crate) fn invalid_params_error(message: String) -> LspError {
+    LspError { code: lsp_server::ErrorCode::InvalidParams as i32, message }
+}
 
 pub(crate) fn is_cancelled(e: &(dyn Error + 'static)) -> bool {
     e.downcast_ref::<Cancelled>().is_some()

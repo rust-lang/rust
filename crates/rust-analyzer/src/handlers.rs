@@ -40,7 +40,7 @@ use crate::{
         self, InlayHint, InlayHintsParams, PositionOrRange, ViewCrateGraphParams,
         WorkspaceSymbolParams,
     },
-    lsp_utils::all_edits_are_disjoint,
+    lsp_utils::{all_edits_are_disjoint, invalid_params_error},
     to_proto, LspError, Result,
 };
 
@@ -767,9 +767,8 @@ pub(crate) fn handle_completion_resolve(
     let _p = profile::span("handle_completion_resolve");
 
     if !all_edits_are_disjoint(&original_completion, &[]) {
-        return Err(LspError::new(
-            ErrorCode::InvalidParams as i32,
-            "Received a completion with overlapping edits, this is not LSP-compliant".into(),
+        return Err(invalid_params_error(
+            "Received a completion with overlapping edits, this is not LSP-compliant".to_string(),
         )
         .into());
     }
@@ -1038,7 +1037,7 @@ pub(crate) fn handle_code_action_resolve(
     let _p = profile::span("handle_code_action_resolve");
     let params = match code_action.data.take() {
         Some(it) => it,
-        None => Err("can't resolve code action without data")?,
+        None => return Err(invalid_params_error(format!("code action without data")).into()),
     };
 
     let file_id = from_proto::file_id(&snap, &params.code_action_params.text_document.uri)?;
@@ -1056,10 +1055,10 @@ pub(crate) fn handle_code_action_resolve(
     let (assist_index, assist_resolve) = match parse_action_id(&params.id) {
         Ok(parsed_data) => parsed_data,
         Err(e) => {
-            return Err(LspError::new(
-                ErrorCode::InvalidParams as i32,
-                format!("Failed to parse action id string '{}': {}", params.id, e),
-            )
+            return Err(invalid_params_error(format!(
+                "Failed to parse action id string '{}': {}",
+                params.id, e
+            ))
             .into())
         }
     };
@@ -1076,23 +1075,17 @@ pub(crate) fn handle_code_action_resolve(
 
     let assist = match assists.get(assist_index) {
         Some(assist) => assist,
-        None => return Err(LspError::new(
-            ErrorCode::InvalidParams as i32,
-            format!(
-                "Failed to find the assist for index {} provided by the resolve request. Resolve request assist id: {}",
-                assist_index, params.id,
-            ),
-        )
+        None => return Err(invalid_params_error(format!(
+            "Failed to find the assist for index {} provided by the resolve request. Resolve request assist id: {}",
+            assist_index, params.id,
+        ))
         .into())
     };
     if assist.id.0 != expected_assist_id || assist.id.1 != expected_kind {
-        return Err(LspError::new(
-            ErrorCode::InvalidParams as i32,
-            format!(
-                "Mismatching assist at index {} for the resolve parameters given. Resolve request assist id: {}, actual id: {:?}.",
-                assist_index, params.id, assist.id
-            ),
-        )
+        return Err(invalid_params_error(format!(
+            "Mismatching assist at index {} for the resolve parameters given. Resolve request assist id: {}, actual id: {:?}.",
+            assist_index, params.id, assist.id
+        ))
         .into());
     }
     let edit = to_proto::code_action(&snap, assist.clone(), None)?.edit;

@@ -895,6 +895,29 @@ fn foo() -> Option<Bar> {
 
 **Rationale:** reduce cognitive stack usage.
 
+Use `return Err(err)` to throw an error:
+
+```rust
+// GOOD
+fn f() -> Result<(), ()> {
+    if condition {
+        return Err(());
+    }
+    Ok(())
+}
+
+// BAD
+fn f() -> Result<(), ()> {
+    if condition {
+        Err(())?;
+    }
+    Ok(())
+}
+```
+
+**Rationale:** `return` has type `!`, which allows the compiler to flag dead
+code (`Err(...)?` is of unconstrained generic type `T`).
+
 ## Comparisons
 
 When doing multiple comparisons use `<`/`<=`, avoid `>`/`>=`.

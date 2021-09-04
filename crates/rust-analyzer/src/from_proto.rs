@@ -10,7 +10,9 @@ use crate::{
     from_json,
     global_state::GlobalStateSnapshot,
     line_index::{LineIndex, OffsetEncoding},
-    lsp_ext, Result,
+    lsp_ext,
+    lsp_utils::invalid_params_error,
+    Result,
 };
 
 pub(crate) fn abs_path(url: &lsp_types::Url) -> Result<AbsPathBuf> {
@@ -85,7 +87,8 @@ pub(crate) fn annotation(
     snap: &GlobalStateSnapshot,
     code_lens: lsp_types::CodeLens,
 ) -> Result<Annotation> {
-    let data = code_lens.data.unwrap();
+    let data =
+        code_lens.data.ok_or_else(|| invalid_params_error("code lens without data".to_string()))?;
     let resolve = from_json::<lsp_ext::CodeLensResolveData>("CodeLensResolveData", data)?;
 
     match resolve {
