@@ -21,7 +21,9 @@ use crate::{
     config::Config,
     global_state::GlobalStateSnapshot,
     line_index::{LineEndings, LineIndex, OffsetEncoding},
-    lsp_ext, semantic_tokens, Result,
+    lsp_ext,
+    lsp_utils::invalid_params_error,
+    semantic_tokens, Result,
 };
 
 pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::Position {
@@ -1198,7 +1200,9 @@ pub(crate) fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
 }
 
 pub(crate) fn rename_error(err: RenameError) -> crate::LspError {
-    crate::LspError { code: lsp_server::ErrorCode::InvalidParams as i32, message: err.to_string() }
+    // This is wrong, but we don't have a better alternative I suppose?
+    // https://github.com/microsoft/language-server-protocol/issues/1341
+    invalid_params_error(err.to_string())
 }
 
 #[cfg(test)]
