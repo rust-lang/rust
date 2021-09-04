@@ -1,6 +1,7 @@
 //! Codegen of a single function
 
 use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
+use rustc_ast::InlineAsmOptions;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::FnAbiOf;
@@ -379,9 +380,9 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
                 options,
                 destination,
                 line_spans: _,
-                cleanup,
+                cleanup: _,
             } => {
-                if cleanup.is_some() {
+                if options.contains(InlineAsmOptions::MAY_UNWIND) {
                     fx.tcx.sess.span_fatal(
                         source_info.span,
                         "cranelift doesn't support unwinding from inline assembly.",
