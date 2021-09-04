@@ -91,6 +91,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                         ControlFlow::CONTINUE
                     }
                     Node::Cast(_, _, ty) => {
+                        let ty = ty.subst(tcx, ct.substs);
                         if ty.has_infer_types_or_consts() {
                             failure_kind = FailureKind::MentionsInfer;
                         } else if ty.definitely_has_param_types_or_consts(tcx) {
