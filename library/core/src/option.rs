@@ -1942,8 +1942,8 @@ unsafe impl<A> TrustedLen for IntoIter<A> {}
 impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// Takes each element in the [`Iterator`]: if it is [`None`][Option::None],
     /// no further elements are taken, and the [`None`][Option::None] is
-    /// returned. Should no [`None`][Option::None] occur, a container with the
-    /// values of each [`Option`] is returned.
+    /// returned. Should no [`None`][Option::None] occur, a container of type
+    /// `V` containing the values of each [`Option`] is returned.
     ///
     /// # Examples
     ///
