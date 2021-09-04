@@ -1038,7 +1038,10 @@ pub(crate) fn handle_code_action_resolve(
     let _p = profile::span("handle_code_action_resolve");
     let params = match code_action.data.take() {
         Some(it) => it,
-        None => Err("can't resolve code action without data")?,
+        None => Err(LspError {
+            code: lsp_server::ErrorCode::InvalidParams as i32,
+            message: format!("code action without data"),
+        })?,
     };
 
     let file_id = from_proto::file_id(&snap, &params.code_action_params.text_document.uri)?;
