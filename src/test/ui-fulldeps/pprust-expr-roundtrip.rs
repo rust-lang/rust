@@ -106,6 +106,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                     rules: BlockCheckMode::Default,
                     span: DUMMY_SP,
                     tokens: None,
+                    could_be_bare_literal: false,
                 });
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::If(e, block.clone(), None)));
             }

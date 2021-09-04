@@ -383,6 +383,11 @@ struct DiagnosticMetadata<'ast> {
     /// Only used for better errors on `fn(): fn()`.
     current_type_ascription: Vec<Span>,
 
+    /// Only used for better errors on `let x = { foo: bar };`.
+    /// In the case of a parse error with `let x = { foo: bar, };`, this isn't needed, it's only
+    /// needed for cases where this parses as a correct type ascription.
+    current_block_could_be_bare_struct_literal: Option<Span>,
+
     /// Only used for better errors on `let <pat>: <expr, not type>;`.
     current_let_binding: Option<(Span, Option<Span>, Option<Span>)>,
 
@@ -1871,6 +1876,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 let instead = res.is_some();
                 let suggestion =
                     if res.is_none() { this.report_missing_type_error(path) } else { None };
+                // get_from_node_id
 
                 this.r.use_injections.push(UseError {
                     err,
@@ -2254,6 +2260,15 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             self.ribs[ValueNS].push(Rib::new(NormalRibKind));
         }
 
+        let prev = self.diagnostic_metadata.current_block_could_be_bare_struct_literal.take();
+        if let (true, [Stmt { kind: StmtKind::Expr(expr), .. }]) =
+            (block.could_be_bare_literal, &block.stmts[..])
+        {
+            if let ExprKind::Type(..) = expr.kind {
+                self.diagnostic_metadata.current_block_could_be_bare_struct_literal =
+                    Some(block.span);
+            }
+        }
         // Descend into the block.
         for stmt in &block.stmts {
             if let StmtKind::Item(ref item) = stmt.kind {
@@ -2267,6 +2282,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             self.visit_stmt(stmt);
         }
+        self.diagnostic_metadata.current_block_could_be_bare_struct_literal = prev;
 
         // Move back up.
         self.parent_scope.module = orig_module;
