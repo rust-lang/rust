@@ -2070,18 +2070,21 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
                                 // opaque types generated when desugaring an async function can have a single
                                 // use lifetime even if it is explicitly denied (Issue #77175)
-                                if let hir::Node::Item(item) = self.tcx.hir().get(parent_hir_id) {
-                                    if let hir::ItemKind::OpaqueTy(ref opaque) = item.kind {
-                                        if opaque.origin == hir::OpaqueTyOrigin::AsyncFn {
-                                            // We want to do this only if the liftime identifier is already defined
-                                            // in the async function that generated this. Otherwise it could be
-                                            // an opaque type defined by the developer and we still want this
-                                            // lint to fail compilation
-                                            for p in opaque.generics.params {
-                                                if defined_by.contains_key(&p.name) {
-                                                    continue 'lifetimes;
-                                                }
-                                            }
+                                if let hir::Node::Item(hir::Item {
+                                    kind: hir::ItemKind::OpaqueTy(ref opaque),
+                                    ..
+                                }) = self.tcx.hir().get(parent_hir_id)
+                                {
+                                    if opaque.origin != hir::OpaqueTyOrigin::AsyncFn {
+                                        continue 'lifetimes;
+                                    }
+                                    // We want to do this only if the liftime identifier is already defined
+                                    // in the async function that generated this. Otherwise it could be
+                                    // an opaque type defined by the developer and we still want this
+                                    // lint to fail compilation
+                                    for p in opaque.generics.params {
+                                        if defined_by.contains_key(&p.name) {
+                                            continue 'lifetimes;
                                         }
                                     }
                                 }
