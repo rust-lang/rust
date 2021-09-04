@@ -8,7 +8,6 @@
 //! In this case we try to build an abstract representation of this constant using
 //! `mir_abstract_const` which can then be checked for structural equality with other
 //! generic constants mentioned in the `caller_bounds` of the current environment.
-use crate::traits::ty::subst::GenericArg;
 use rustc_errors::ErrorReported;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
@@ -17,7 +16,7 @@ use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::abstract_const::{Node, NodeId, NotConstEvaluatable};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::mir::{self, Rvalue, StatementKind, TerminatorKind};
-use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::subst::{GenericArg, Subst, SubstsRef};
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
