@@ -37,7 +37,7 @@ use crate::{
 //     bar("", baz());
 // }
 //
-// fn bar(arg: &str, baz: Baz) ${0:-> ()} {
+// fn bar(arg: &str, baz: Baz) ${0:-> _} {
 //     todo!()
 // }
 //
@@ -342,7 +342,7 @@ impl FunctionBuilder {
 }
 
 /// Makes an optional return type along with whether the return type should be focused by the cursor.
-/// If we cannot infer what the return type should be, we create unit as a placeholder.
+/// If we cannot infer what the return type should be, we create a placeholder type.
 ///
 /// The rule for whether we focus a return type or not (and thus focus the function body),
 /// is rather simple:
@@ -357,14 +357,14 @@ fn make_return_type(
 ) -> (Option<ast::RetType>, bool) {
     let (ret_ty, should_focus_return_type) = {
         match ctx.sema.type_of_expr(call).map(TypeInfo::original) {
-            Some(ty) if ty.is_unknown() => (Some(make::ty_unit()), true),
-            None => (Some(make::ty_unit()), true),
+            Some(ty) if ty.is_unknown() => (Some(make::ty_placeholder()), true),
+            None => (Some(make::ty_placeholder()), true),
             Some(ty) if ty.is_unit() => (None, false),
             Some(ty) => {
                 let rendered = ty.display_source_code(ctx.db(), target_module.into());
                 match rendered {
                     Ok(rendered) => (Some(make::ty(&rendered)), false),
-                    Err(_) => (Some(make::ty_unit()), true),
+                    Err(_) => (Some(make::ty_placeholder()), true),
                 }
             }
         }
@@ -458,7 +458,7 @@ fn fn_args(
                     ty
                 }
             }
-            None => String::from("()"),
+            None => String::from("_"),
         });
     }
     deduplicate_arg_names(&mut arg_names);
@@ -639,7 +639,7 @@ fn foo() {
     bar();
 }
 
-fn bar() ${0:-> ()} {
+fn bar() ${0:-> _} {
     todo!()
 }
 ",
@@ -666,7 +666,7 @@ impl Foo {
     }
 }
 
-fn bar() ${0:-> ()} {
+fn bar() ${0:-> _} {
     todo!()
 }
 ",
@@ -690,7 +690,7 @@ fn foo1() {
     bar();
 }
 
-fn bar() ${0:-> ()} {
+fn bar() ${0:-> _} {
     todo!()
 }
 
@@ -716,7 +716,7 @@ mod baz {
         bar();
     }
 
-    fn bar() ${0:-> ()} {
+    fn bar() ${0:-> _} {
         todo!()
     }
 }
@@ -740,7 +740,7 @@ fn foo() {
     bar(BazBaz);
 }
 
-fn bar(baz_baz: BazBaz) ${0:-> ()} {
+fn bar(baz_baz: BazBaz) ${0:-> _} {
     todo!()
 }
 ",
@@ -763,7 +763,7 @@ fn foo() {
     bar(&BazBaz as *const BazBaz);
 }
 
-fn bar(baz_baz: *const BazBaz) ${0:-> ()} {
+fn bar(baz_baz: *const BazBaz) ${0:-> _} {
     todo!()
 }
 ",
@@ -788,7 +788,7 @@ fn foo() {
     bar(baz());
 }
 
-fn bar(baz: Baz) ${0:-> ()} {
+fn bar(baz: Baz) ${0:-> _} {
     todo!()
 }
 ",
@@ -1091,7 +1091,7 @@ fn foo() {
     bar(Baz::new);
 }
 
-fn bar(new: fn) ${0:-> ()} {
+fn bar(new: fn) ${0:-> _} {
     todo!()
 }
 ",
@@ -1115,7 +1115,7 @@ fn foo() {
     bar(closure)
 }
 
-fn bar(closure: ()) {
+fn bar(closure: _) {
     ${0:todo!()}
 }
 ",
@@ -1123,7 +1123,7 @@ fn bar(closure: ()) {
     }
 
     #[test]
-    fn unresolveable_types_default_to_unit() {
+    fn unresolveable_types_default_to_placeholder() {
         check_assist(
             generate_function,
             r"
@@ -1136,7 +1136,7 @@ fn foo() {
     bar(baz)
 }
 
-fn bar(baz: ()) {
+fn bar(baz: _) {
     ${0:todo!()}
 }
 ",
@@ -1400,7 +1400,7 @@ impl Foo {
         self.bar();
     }
 
-    fn bar(&self) ${0:-> ()} {
+    fn bar(&self) ${0:-> _} {
         todo!()
     }
 }
@@ -1422,7 +1422,7 @@ fn foo() {
     bar(42).await();
 }
 
-async fn bar(arg: i32) ${0:-> ()} {
+async fn bar(arg: i32) ${0:-> _} {
     todo!()
 }
 ",
@@ -1443,7 +1443,7 @@ fn foo() {S.bar();}
 impl S {
 
 
-fn bar(&self) ${0:-> ()} {
+fn bar(&self) ${0:-> _} {
     todo!()
 }
 }
@@ -1465,7 +1465,7 @@ impl S {}
 struct S;
 fn foo() {S.bar();}
 impl S {
-    fn bar(&self) ${0:-> ()} {
+    fn bar(&self) ${0:-> _} {
         todo!()
     }
 }
@@ -1490,7 +1490,7 @@ mod s {
 impl S {
 
 
-    pub(crate) fn bar(&self) ${0:-> ()} {
+    pub(crate) fn bar(&self) ${0:-> _} {
         todo!()
     }
 }
@@ -1523,7 +1523,7 @@ mod s {
 impl S {
 
 
-fn bar(&self) ${0:-> ()} {
+fn bar(&self) ${0:-> _} {
     todo!()
 }
 }
@@ -1546,7 +1546,7 @@ fn foo() {S.bar();}
 impl S {
 
 
-fn bar(&self) ${0:-> ()} {
+fn bar(&self) ${0:-> _} {
     todo!()
 }
 }
@@ -1568,7 +1568,7 @@ fn foo() {S::bar();}
 impl S {
 
 
-fn bar() ${0:-> ()} {
+fn bar() ${0:-> _} {
     todo!()
 }
 }
@@ -1590,7 +1590,7 @@ impl S {}
 struct S;
 fn foo() {S::bar();}
 impl S {
-    fn bar() ${0:-> ()} {
+    fn bar() ${0:-> _} {
         todo!()
     }
 }
@@ -1615,7 +1615,7 @@ mod s {
 impl S {
 
 
-    pub(crate) fn bar() ${0:-> ()} {
+    pub(crate) fn bar() ${0:-> _} {
         todo!()
     }
 }
@@ -1639,7 +1639,7 @@ fn foo() {S::bar();}
 impl S {
 
 
-fn bar() ${0:-> ()} {
+fn bar() ${0:-> _} {
     todo!()
 }
 }
