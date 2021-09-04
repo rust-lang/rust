@@ -21,8 +21,6 @@ fn forbid_first(num: i32) -> i32 {
     #![deny(unused)]
     //~^ ERROR: deny(unused) incompatible with previous forbid
     //~| WARNING being phased out
-    //~| ERROR: deny(unused) incompatible with previous forbid
-    //~| WARNING being phased out
     #![warn(unused)]
     #![allow(unused)]
 

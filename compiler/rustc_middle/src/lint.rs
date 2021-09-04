@@ -192,6 +192,7 @@ impl<'a> LintDiagnosticBuilder<'a> {
     /// Return the inner DiagnosticBuilder, first setting the primary message to `msg`.
     pub fn build(mut self, msg: &str) -> DiagnosticBuilder<'a> {
         self.0.set_primary_message(msg);
+        self.0.set_is_lint();
         self.0
     }
 

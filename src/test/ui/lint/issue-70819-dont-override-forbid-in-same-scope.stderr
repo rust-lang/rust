@@ -14,16 +14,5 @@ LL | #![forbid(forbidden_lint_groups)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
 
-error: deny(unused) incompatible with previous forbid
-  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:21:13
-   |
-LL |     #![forbid(unused)]
-   |               ------ `forbid` level set here
-LL |     #![deny(unused)]
-   |             ^^^^^^ overruled by previous forbid
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
