@@ -95,6 +95,9 @@ pub fn lifetime(text: &str) -> ast::Lifetime {
 pub fn ty(text: &str) -> ast::Type {
     ty_from_text(text)
 }
+pub fn ty_placeholder() -> ast::Type {
+    ty_from_text("_")
+}
 pub fn ty_unit() -> ast::Type {
     ty_from_text("()")
 }

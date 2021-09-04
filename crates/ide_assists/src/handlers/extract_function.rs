@@ -1319,7 +1319,7 @@ impl Function {
                     .type_arguments()
                     .nth(1)
                     .map(|ty| make_ty(&ty, ctx, module))
-                    .unwrap_or_else(make::ty_unit);
+                    .unwrap_or_else(make::ty_placeholder);
                 make::ext::ty_result(fun_ty.make_ty(ctx, module), handler_ty)
             }
             FlowHandler::If { .. } => make::ext::ty_bool(),
@@ -1327,7 +1327,7 @@ impl Function {
                 let handler_ty = action
                     .expr_ty(ctx)
                     .map(|ty| make_ty(&ty, ctx, module))
-                    .unwrap_or_else(make::ty_unit);
+                    .unwrap_or_else(make::ty_placeholder);
                 make::ext::ty_option(handler_ty)
             }
             FlowHandler::MatchOption { .. } => make::ext::ty_option(fun_ty.make_ty(ctx, module)),
@@ -1335,7 +1335,7 @@ impl Function {
                 let handler_ty = err
                     .expr_ty(ctx)
                     .map(|ty| make_ty(&ty, ctx, module))
-                    .unwrap_or_else(make::ty_unit);
+                    .unwrap_or_else(make::ty_placeholder);
                 make::ext::ty_result(fun_ty.make_ty(ctx, module), handler_ty)
             }
         };
@@ -1501,7 +1501,7 @@ fn with_tail_expr(block: ast::BlockExpr, tail_expr: ast::Expr) -> ast::BlockExpr
 }
 
 fn format_type(ty: &hir::Type, ctx: &AssistContext, module: hir::Module) -> String {
-    ty.display_source_code(ctx.db(), module.into()).ok().unwrap_or_else(|| "()".to_string())
+    ty.display_source_code(ctx.db(), module.into()).ok().unwrap_or_else(|| "_".to_string())
 }
 
 fn make_ty(ty: &hir::Type, ctx: &AssistContext, module: hir::Module) -> ast::Type {
@@ -4190,6 +4190,29 @@ fn main() {
 
 fn $0fun_name(bar: &str) {
     m!(bar);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn unresolveable_types_default_to_placeholder() {
+        check_assist(
+            extract_function,
+            r#"
+fn foo() {
+    let a = __unresolved;
+    let _ = $0{a}$0;
+}
+"#,
+            r#"
+fn foo() {
+    let a = __unresolved;
+    let _ = fun_name(a);
+}
+
+fn $0fun_name(a: _) -> _ {
+    a
 }
 "#,
         );

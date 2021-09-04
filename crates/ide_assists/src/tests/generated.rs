@@ -819,7 +819,7 @@ fn foo() {
     bar("", baz());
 }
 
-fn bar(arg: &str, baz: Baz) ${0:-> ()} {
+fn bar(arg: &str, baz: Baz) ${0:-> _} {
     todo!()
 }
 
