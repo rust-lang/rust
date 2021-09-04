@@ -16,7 +16,7 @@ use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::abstract_const::{Node, NodeId, NotConstEvaluatable};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::mir::{self, Rvalue, StatementKind, TerminatorKind};
-use rustc_middle::ty::subst::{GenericArg, Subst, SubstsRef};
+use rustc_middle::ty::subst::{Subst, SubstsRef};
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
@@ -80,7 +80,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                     Concrete,
                 }
                 let mut failure_kind = FailureKind::Concrete;
-                walk_abstract_const::<!, _>(tcx, ct, |node| match node.root(tcx, ct.substs) {
+                walk_abstract_const::<!, _>(tcx, ct, |node| match node.root(tcx) {
                     Node::Leaf(leaf) => {
                         if leaf.has_infer_types_or_consts() {
                             failure_kind = FailureKind::MentionsInfer;
@@ -185,8 +185,8 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 pub struct AbstractConst<'tcx> {
     // FIXME: Consider adding something like `IndexSlice`
     // and use this here.
-    pub inner: &'tcx [Node<'tcx>],
-    pub substs: SubstsRef<'tcx>,
+    inner: &'tcx [Node<'tcx>],
+    substs: SubstsRef<'tcx>,
 }
 
 impl<'tcx> AbstractConst<'tcx> {
@@ -216,10 +216,10 @@ impl<'tcx> AbstractConst<'tcx> {
     }
 
     #[inline]
-    pub fn root(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> Node<'tcx> {
-        let mut node = self.inner.last().copied().unwrap();
+    pub fn root(self, tcx: TyCtxt<'tcx>) -> Node<'tcx> {
+        let node = self.inner.last().copied().unwrap();
         if let Node::Leaf(leaf) = node {
-            node = Node::Leaf(leaf.subst(tcx, substs));
+            return Node::Leaf(leaf.subst(tcx, self.substs));
         }
         node
     }
@@ -589,7 +589,7 @@ where
         f: &mut dyn FnMut(AbstractConst<'tcx>) -> ControlFlow<R>,
     ) -> ControlFlow<R> {
         f(ct)?;
-        let root = ct.root(tcx, ct.substs);
+        let root = ct.root(tcx);
         match root {
             Node::Leaf(_) => ControlFlow::CONTINUE,
             Node::Binop(_, l, r) => {
@@ -617,14 +617,14 @@ pub(super) fn try_unify<'tcx>(
     // We substitute generics repeatedly to allow AbstractConsts to unify where a
     // ConstKind::Unevalated could be turned into an AbstractConst that would unify e.g.
     // Param(N) should unify with Param(T), substs: [Unevaluated("T2", [Unevaluated("T3", [Param(N)])])]
-    while let Node::Leaf(a_ct) = a.root(tcx, a.substs) {
+    while let Node::Leaf(a_ct) = a.root(tcx) {
         match AbstractConst::from_const(tcx, a_ct) {
             Ok(Some(a_act)) => a = a_act,
             Ok(None) => break,
             Err(_) => return true,
         }
     }
-    while let Node::Leaf(b_ct) = b.root(tcx, b.substs) {
+    while let Node::Leaf(b_ct) = b.root(tcx) {
         match AbstractConst::from_const(tcx, b_ct) {
             Ok(Some(b_act)) => b = b_act,
             Ok(None) => break,
@@ -632,7 +632,7 @@ pub(super) fn try_unify<'tcx>(
         }
     }
 
-    match (a.root(tcx, a.substs), b.root(tcx, b.substs)) {
+    match (a.root(tcx), b.root(tcx)) {
         (Node::Leaf(a_ct), Node::Leaf(b_ct)) => {
             if a_ct.ty != b_ct.ty {
                 return false;

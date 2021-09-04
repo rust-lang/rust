@@ -153,7 +153,7 @@ where
         tcx: TyCtxt<'tcx>,
         ct: AbstractConst<'tcx>,
     ) -> ControlFlow<V::BreakTy> {
-        const_evaluatable::walk_abstract_const(tcx, ct, |node| match node.root(tcx, ct.substs) {
+        const_evaluatable::walk_abstract_const(tcx, ct, |node| match node.root(tcx) {
             ACNode::Leaf(leaf) => self.visit_const(leaf),
             ACNode::Cast(_, _, ty) => self.visit_ty(ty),
             ACNode::Binop(..) | ACNode::UnaryOp(..) | ACNode::FunctionCall(_, _) => {

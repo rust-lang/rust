@@ -839,7 +839,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
             use rustc_middle::mir::abstract_const::Node;
             if let Ok(Some(ct)) = AbstractConst::new(self.tcx, uv.shrink()) {
                 const_evaluatable::walk_abstract_const(self.tcx, ct, |node| {
-                    match node.root(self.tcx, ct.substs) {
+                    match node.root(self.tcx) {
                         Node::Leaf(leaf) => self.visit_const(leaf),
                         Node::Cast(_, _, ty) => self.visit_ty(ty),
                         Node::Binop(..) | Node::UnaryOp(..) | Node::FunctionCall(_, _) => {
