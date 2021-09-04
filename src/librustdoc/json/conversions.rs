@@ -139,7 +139,7 @@ impl FromWithTcx<clean::GenericArg> for GenericArg {
         match arg {
             Lifetime(l) => GenericArg::Lifetime(l.0.to_string()),
             Type(t) => GenericArg::Type(t.into_tcx(tcx)),
-            Const(c) => GenericArg::Const(c.into_tcx(tcx)),
+            Const(box c) => GenericArg::Const(c.into_tcx(tcx)),
             Infer => GenericArg::Infer,
         }
     }
