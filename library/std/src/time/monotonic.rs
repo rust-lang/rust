@@ -5,7 +5,7 @@ pub(super) fn monotonize(raw: time::Instant) -> time::Instant {
     inner::monotonize(raw)
 }
 
-#[cfg(all(target_has_atomic = "64", not(target_has_atomic = "128")))]
+#[cfg(any(all(target_has_atomic = "64", not(target_has_atomic = "128")), target_arch = "aarch64"))]
 pub mod inner {
     use crate::sync::atomic::AtomicU64;
     use crate::sync::atomic::Ordering::*;
@@ -70,7 +70,7 @@ pub mod inner {
     }
 }
 
-#[cfg(target_has_atomic = "128")]
+#[cfg(all(target_has_atomic = "128", not(target_arch = "aarch64")))]
 pub mod inner {
     use crate::sync::atomic::AtomicU128;
     use crate::sync::atomic::Ordering::*;
