@@ -16,7 +16,7 @@ use ide_db::{
     helpers::{item_name, SnippetCap},
     RootDatabase, SymbolKind,
 };
-use syntax::TextRange;
+use syntax::{SyntaxKind, TextRange};
 
 use crate::{
     context::{PathCompletionContext, PathKind},
@@ -91,14 +91,18 @@ pub(crate) fn render_field(
     );
     item.set_relevance(CompletionRelevance {
         type_match: compute_type_match(ctx.completion, ty),
-        exact_name_match: compute_exact_name_match(ctx.completion, &name),
+        exact_name_match: compute_exact_name_match(ctx.completion, name.as_str()),
         ..CompletionRelevance::default()
     });
     item.kind(SymbolKind::Field)
         .detail(ty.display(ctx.db()).to_string())
         .set_documentation(field.docs(ctx.db()))
         .set_deprecated(is_deprecated)
-        .lookup_by(name);
+        .lookup_by(name.as_str());
+    let is_keyword = SyntaxKind::from_keyword(name.as_str()).is_some();
+    if is_keyword && !matches!(name.as_str(), "self" | "crate" | "super" | "Self") {
+        item.insert_text(String::from("r#") + name.as_str());
+    }
     if let Some(_ref_match) = compute_ref_match(ctx.completion, ty) {
         // FIXME
         // For now we don't properly calculate the edits for ref match
@@ -820,6 +824,23 @@ struct ManualVtable { f: fn(u8, u8) }
 
 fn main() -> ManualVtable {
     ManualVtable { f: foo }
+}
+"#,
+        );
+        check_edit(
+            "type",
+            r#"
+struct RawIdentTable { r#type: u32 }
+
+fn main() -> RawIdentTable {
+    RawIdentTable { t$0: 42 }
+}
+"#,
+            r#"
+struct RawIdentTable { r#type: u32 }
+
+fn main() -> RawIdentTable {
+    RawIdentTable { r#type: 42 }
 }
 "#,
         );
