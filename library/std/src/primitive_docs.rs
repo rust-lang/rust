@@ -578,10 +578,10 @@ mod prim_pointer {}
 /// # Editions
 ///
 /// Prior to Rust 1.53, arrays did not implement [`IntoIterator`] by value, so the method call
-/// <code>array.[into_iter()]</code> auto-referenced into a slice iterator.
-/// Right now, the old behavior is preserved in the 2015 and 2018 editions of Rust for
-/// compatibility, ignoring [`IntoIterator`] by value. In the future, the behavior on the 2015 and
-/// 2018 edition might be made consistent to the behavior of later editions.
+/// `array.into_iter()` auto-referenced into a [slice iterator](slice::iter). Right now, the old behavior
+/// is preserved in the 2015 and 2018 editions of Rust for compatibility, ignoring
+/// `IntoIterator` by value. In the future, the behavior on the 2015 and 2018 edition
+/// might be made consistent to the behavior of later editions.
 ///
 /// ```rust,edition2018
 /// # #![allow(array_into_iter)] // override our `deny(warnings)`
@@ -607,9 +607,8 @@ mod prim_pointer {}
 /// }
 /// ```
 ///
-/// Starting in the 2021 edition, <code>array.[into_iter()]</code>  will use [`IntoIterator`]
-/// normally to iterate by value, and [`iter()`](slice::iter) should be used to iterate by
-/// reference like previous editions.
+/// Starting in the 2021 edition, `array.into_iter()` will use `IntoIterator` normally to iterate
+/// by value, and `iter()` should be used to iterate by reference like previous editions.
 ///
 /// ```rust,edition2021,ignore
 /// # // FIXME: ignored because 2021 testing is still unstable
@@ -628,16 +627,16 @@ mod prim_pointer {}
 /// }
 /// ```
 ///
-/// Future language versions might start treating the <code>array.[into_iter()]</code>
+/// Future language versions might start treating the `array.into_iter()`
 /// syntax on editions 2015 and 2018 the same as on edition 2021. So code using
 /// those older editions should still be written with this change in mind, to
 /// prevent breakage in the future. The safest way to accomplish this is to
-/// avoid the [`into_iter`](IntoIterator::into_iter) syntax on those editions.
-/// If an edition update is not viable/desired, there are multiple alternatives:
-/// * use [`iter`](slice::iter), equivalent to the old behavior, creating references
+/// avoid the `into_iter` syntax on those editions. If an edition update is not
+/// viable/desired, there are multiple alternatives:
+/// * use `iter`, equivalent to the old behavior, creating references
 /// * use [`array::IntoIter`], equivalent to the post-2021 behavior (Rust 1.51+)
-/// * replace <code>[for] ... [in] array.[into_iter()] {</code>` with
-///   <code>[for] ... [in] array {</code>, equivalent to the post-2021 behavior (Rust 1.53+)
+/// * replace `for ... in array.into_iter() {` with `for ... in array {`,
+///   equivalent to the post-2021 behavior (Rust 1.53+)
 ///
 /// ```rust,edition2018
 /// use std::array::IntoIter;
@@ -676,9 +675,6 @@ mod prim_pointer {}
 /// [`Borrow`]: borrow::Borrow
 /// [`BorrowMut`]: borrow::BorrowMut
 /// [slice pattern]: ../reference/patterns.html#slice-patterns
-/// [into_iter()]: IntoIterator::into_iter
-/// [for]: keyword.for.html
-/// [in]: keyword.in.html
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_array {}
 
@@ -1097,7 +1093,7 @@ mod prim_usize {}
 /// The following traits are implemented for all `&T`, regardless of the type of its referent:
 ///
 /// * [`Copy`]
-/// * [`Clone`] \(Note that this will not defer to `T`'s [`Clone`] implementation if it exists!)
+/// * [`Clone`] \(Note that this will not defer to `T`'s `Clone` implementation if it exists!)
 /// * [`Deref`]
 /// * [`Borrow`]
 /// * [`Pointer`]
@@ -1106,7 +1102,7 @@ mod prim_usize {}
 /// [`Borrow`]: borrow::Borrow
 /// [`Pointer`]: fmt::Pointer
 ///
-/// `&mut T` references get all of the above except [`Copy`] and [`Clone`] (to prevent creating
+/// `&mut T` references get all of the above except `Copy` and `Clone` (to prevent creating
 /// multiple simultaneous mutable borrows), plus the following, regardless of the type of its
 /// referent:
 ///
@@ -1134,18 +1130,18 @@ mod prim_usize {}
 /// [`Hash`]: hash::Hash
 /// [`ToSocketAddrs`]: net::ToSocketAddrs
 ///
-/// `&mut T` references get all of the above except [`ToSocketAddrs`], plus the following, if `T`
+/// `&mut T` references get all of the above except `ToSocketAddrs`, plus the following, if `T`
 /// implements that trait:
 ///
 /// * [`AsMut`]
-/// * [`FnMut`] \(in addition, `&mut T` references get [`FnOnce`] if <code>T: [FnMut]</code>)
+/// * [`FnMut`] \(in addition, `&mut T` references get [`FnOnce`] if `T: FnMut`)
 /// * [`fmt::Write`]
 /// * [`Iterator`]
 /// * [`DoubleEndedIterator`]
 /// * [`ExactSizeIterator`]
 /// * [`FusedIterator`]
 /// * [`TrustedLen`]
-/// * [`Send`] \(note that `&T` references only get [`Send`] if <code>T: [Sync]</code>)
+/// * [`Send`] \(note that `&T` references only get `Send` if <code>T: [Sync]</code>)
 /// * [`io::Write`]
 /// * [`Read`]
 /// * [`Seek`]
@@ -1177,7 +1173,8 @@ mod prim_ref {}
 /// Function pointers are pointers that point to *code*, not data. They can be called
 /// just like functions. Like references, function pointers are, among other things, assumed to
 /// not be null, so if you want to pass a function pointer over FFI and be able to accommodate null
-/// pointers, make your type <code>[Option]\<fn()></code> with your required signature.
+/// pointers, make your type [`Option<fn()>`](core::option#options-and-pointers-nullable-pointers)
+/// with your required signature.
 ///
 /// ### Safety
 ///

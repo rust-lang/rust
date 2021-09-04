@@ -29,11 +29,11 @@ impl char {
     pub const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
 
     /// The version of [Unicode](https://www.unicode.org/) that the Unicode parts of
-    /// `char` and [`str`] methods are based on.
+    /// `char` and `str` methods are based on.
     ///
     /// New versions of Unicode are released regularly and subsequently all methods
     /// in the standard library depending on Unicode are updated. Therefore the
-    /// behavior of some `char` and [`str`] methods and the value of this constant
+    /// behavior of some `char` and `str` methods and the value of this constant
     /// changes over time. This is *not* considered to be a breaking change.
     ///
     /// The version numbering scheme is explained in
@@ -42,7 +42,7 @@ impl char {
     pub const UNICODE_VERSION: (u8, u8, u8) = crate::unicode::UNICODE_VERSION;
 
     /// Creates an iterator over the UTF-16 encoded code points in `iter`,
-    /// returning unpaired surrogates as [`Err`]s.
+    /// returning unpaired surrogates as `Err`s.
     ///
     /// # Examples
     ///
@@ -70,7 +70,7 @@ impl char {
     /// );
     /// ```
     ///
-    /// A lossy decoder can be obtained by replacing [`Err`] results with the replacement character:
+    /// A lossy decoder can be obtained by replacing `Err` results with the replacement character:
     ///
     /// ```
     /// use std::char::{decode_utf16, REPLACEMENT_CHARACTER};
@@ -93,7 +93,7 @@ impl char {
         super::decode::decode_utf16(iter)
     }
 
-    /// Converts a [`u32`] to a `char`.
+    /// Converts a `u32` to a `char`.
     ///
     /// Note that all `char`s are valid [`u32`]s, and can be cast to one with
     /// [`as`](keyword.as.html):
@@ -106,7 +106,7 @@ impl char {
     /// ```
     ///
     /// However, the reverse is not true: not all valid [`u32`]s are valid
-    /// `char`s. `from_u32()` will return [`None`] if the input is not a valid value
+    /// `char`s. `from_u32()` will return `None` if the input is not a valid value
     /// for a `char`.
     ///
     /// For an unsafe version of this function which ignores these checks, see
@@ -126,7 +126,7 @@ impl char {
     /// assert_eq!(Some('❤'), c);
     /// ```
     ///
-    /// Returning [`None`] when the input is not a valid `char`:
+    /// Returning `None` when the input is not a valid `char`:
     ///
     /// ```
     /// use std::char;
@@ -141,7 +141,7 @@ impl char {
         super::convert::from_u32(i)
     }
 
-    /// Converts a [`u32`] to a `char`, ignoring validity.
+    /// Converts a `u32` to a `char`, ignoring validity.
     ///
     /// Note that all `char`s are valid [`u32`]s, and can be cast to one with
     /// `as`:
@@ -190,7 +190,7 @@ impl char {
     /// sixteen, hexadecimal, to give some common values. Arbitrary
     /// radices are supported.
     ///
-    /// `from_digit()` will return [`None`] if the input is not a digit in
+    /// `from_digit()` will return `None` if the input is not a digit in
     /// the given radix.
     ///
     /// # Panics
@@ -214,7 +214,7 @@ impl char {
     /// assert_eq!(Some('b'), c);
     /// ```
     ///
-    /// Returning [`None`] when the input is not a digit:
+    /// Returning `None` when the input is not a digit:
     ///
     /// ```
     /// use std::char;
@@ -299,7 +299,7 @@ impl char {
     ///
     /// # Errors
     ///
-    /// Returns [`None`] if the `char` does not refer to a digit in the given radix.
+    /// Returns `None` if the `char` does not refer to a digit in the given radix.
     ///
     /// # Panics
     ///
@@ -360,7 +360,7 @@ impl char {
     /// println!();
     /// ```
     ///
-    /// Using [`println!`](macro.println.html)  directly:
+    /// Using `println! directly:
     ///
     /// ```
     /// println!("{}", '❤'.escape_unicode());
@@ -423,7 +423,7 @@ impl char {
     /// as `char`s.
     ///
     /// This will escape the characters similar to the [`Debug`](core::fmt::Debug) implementations
-    /// of [`str`] or `char`.
+    /// of `str` or `char`.
     ///
     /// # Examples
     ///
@@ -436,7 +436,7 @@ impl char {
     /// println!();
     /// ```
     ///
-    /// Using [`println!`](macro.println.html)  directly:
+    /// Using `println!` directly:
     ///
     /// ```
     /// println!("{}", '\n'.escape_debug());
@@ -490,7 +490,7 @@ impl char {
     /// println!();
     /// ```
     ///
-    /// Using [`println!`](macro.println.html) directly:
+    /// Using `println!` directly:
     ///
     /// ```
     /// println!("{}", '"'.escape_default());
@@ -543,9 +543,8 @@ impl char {
     /// assert_eq!(len, 4);
     /// ```
     ///
-    /// The <code>[&](reference)[str]</code> type guarantees that its contents are UTF-8,
-    /// and so we can compare the length it would take if each code point was represented
-    /// as a `char` vs in the <code>[&](reference)[str]</code> itself:
+    /// The `&str` type guarantees that its contents are UTF-8, and so we can compare the length it
+    /// would take if each code point was represented as a `char` vs in the `&str` itself:
     ///
     /// ```
     /// // as chars
@@ -638,7 +637,7 @@ impl char {
         unsafe { from_utf8_unchecked_mut(encode_utf8_raw(self as u32, dst)) }
     }
 
-    /// Encodes this character as UTF-16 into the provided [`u16`] buffer,
+    /// Encodes this character as UTF-16 into the provided `u16` buffer,
     /// and then returns the subslice of the buffer that contains the encoded character.
     ///
     /// # Panics
@@ -648,7 +647,7 @@ impl char {
     ///
     /// # Examples
     ///
-    /// In both of these examples, '𝕊' takes two [`u16`]s to encode.
+    /// In both of these examples, '𝕊' takes two `u16`s to encode.
     ///
     /// ```
     /// let mut b = [0; 2];
@@ -672,7 +671,7 @@ impl char {
         encode_utf16_raw(self as u32, dst)
     }
 
-    /// Returns [`true`](keyword.true.html) if this `char` has the `Alphabetic` property.
+    /// Returns `true` if this `char` has the `Alphabetic` property.
     ///
     /// `Alphabetic` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
     /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
@@ -702,7 +701,7 @@ impl char {
         }
     }
 
-    /// Returns [`true`](keyword.true.html) if this `char` has the `Lowercase` property.
+    /// Returns `true` if this `char` has the `Lowercase` property.
     ///
     /// `Lowercase` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
     /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
@@ -734,7 +733,7 @@ impl char {
         }
     }
 
-    /// Returns [`true`](keyword.true.html) if this `char` has the `Uppercase` property.
+    /// Returns `true` if this `char` has the `Uppercase` property.
     ///
     /// `Uppercase` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
     /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
@@ -766,7 +765,7 @@ impl char {
         }
     }
 
-    /// Returns [`true`](keyword.true.html) if this `char` has the `White_Space` property.
+    /// Returns `true` if this `char` has the `White_Space` property.
     ///
     /// `White_Space` is specified in the [Unicode Character Database][ucd] [`PropList.txt`].
     ///
@@ -794,8 +793,7 @@ impl char {
         }
     }
 
-    /// Returns [`true`](keyword.true.html) if this `char` satisfies either
-    /// [`is_alphabetic()`] or [`is_numeric()`].
+    /// Returns `true` if this `char` satisfies either [`is_alphabetic()`] or [`is_numeric()`].
     ///
     /// [`is_alphabetic()`]: #method.is_alphabetic
     /// [`is_numeric()`]: #method.is_numeric
@@ -820,7 +818,7 @@ impl char {
         self.is_alphabetic() || self.is_numeric()
     }
 
-    /// Returns [`true`](keyword.true.html) if this `char` has the general category for control codes.
+    /// Returns `true` if this `char` has the general category for control codes.
     ///
     /// Control codes (code points with the general category of `Cc`) are described in Chapter 4
     /// (Character Properties) of the [Unicode Standard] and specified in the [Unicode Character
@@ -845,7 +843,7 @@ impl char {
         unicode::Cc(self)
     }
 
-    /// Returns [`true`](keyword.true.html) if this `char` has the `Grapheme_Extend` property.
+    /// Returns `true` if this `char` has the `Grapheme_Extend` property.
     ///
     /// `Grapheme_Extend` is described in [Unicode Standard Annex #29 (Unicode Text
     /// Segmentation)][uax29] and specified in the [Unicode Character Database][ucd]
@@ -859,7 +857,7 @@ impl char {
         unicode::Grapheme_Extend(self)
     }
 
-    /// Returns [`true`](keyword.true.html) if this `char` has one of the general categories for numbers.
+    /// Returns `true` if this `char` has one of the general categories for numbers.
     ///
     /// The general categories for numbers (`Nd` for decimal digits, `Nl` for letter-like numeric
     /// characters, and `No` for other numeric characters) are specified in the [Unicode Character
@@ -927,7 +925,7 @@ impl char {
     /// println!();
     /// ```
     ///
-    /// Using [`println!`](macro.println.html) directly:
+    /// Using `println!` directly:
     ///
     /// ```
     /// println!("{}", 'İ'.to_lowercase());
@@ -992,7 +990,7 @@ impl char {
     /// println!();
     /// ```
     ///
-    /// Using [`println!`](macro.println.html) directly:
+    /// Using `println!` directly:
     ///
     /// ```
     /// println!("{}", 'ß'.to_uppercase());
