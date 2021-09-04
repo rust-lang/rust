@@ -360,7 +360,7 @@ impl char {
     /// println!();
     /// ```
     ///
-    /// Using `println! directly:
+    /// Using `println!` directly:
     ///
     /// ```
     /// println!("{}", '❤'.escape_unicode());
