@@ -1748,7 +1748,7 @@ impl<'a> Parser<'a> {
 
         let body_span = body.span;
 
-        let clo = self.mk_expr(
+        let closure = self.mk_expr(
             lo.to(body.span),
             ExprKind::Closure(capture_clause, asyncness, movability, decl, body, lo.to(decl_hi)),
             attrs,
@@ -1756,10 +1756,10 @@ impl<'a> Parser<'a> {
 
         // Disable recovery for closure body
         let spans =
-            ClosureSpans { whole_closure: clo.span, closing_pipe: decl_hi, body: body_span };
+            ClosureSpans { whole_closure: closure.span, closing_pipe: decl_hi, body: body_span };
         self.last_closure_body = Some(spans);
 
-        Ok(clo)
+        Ok(closure)
     }
 
     /// Parses an optional `move` prefix to a closure-like construct.
