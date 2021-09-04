@@ -1701,7 +1701,7 @@ impl<'a, T> IntoIterator for &'a mut Option<T> {
 
 #[stable(since = "1.12.0", feature = "option_from")]
 impl<T> From<T> for Option<T> {
-    /// Copies `val` into a new `Some`.
+    /// Moves `val` into a new [`Some`].
     ///
     /// # Examples
     ///
