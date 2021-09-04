@@ -11,7 +11,8 @@ doctest = false
 [dependencies]
 once_cell = "1.3.1"
 cfg-if = "1"
-libc = "0.2.73"
+# build issues on freebsd, see https://github.com/rust-analyzer/rust-analyzer/pull/10145#issuecomment-912925976
+libc = "=0.2.99"
 la-arena = { version = "0.2.0", path = "../../lib/arena" }
 countme = { version = "2.0.1", features = ["enable"] }
 jemalloc-ctl = { version = "0.4.1", package = "tikv-jemalloc-ctl", optional = true }
