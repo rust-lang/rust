@@ -144,7 +144,7 @@ pub struct Parser<'a> {
     capture_state: CaptureState,
     /// This allows us to recover when the user forget to add braces around
     /// multiple statements in the closure body.
-    pub last_closure_body: Option<ClosureSpans>,
+    pub current_closure: Option<ClosureSpans>,
 }
 
 /// Stores span informations about a closure.
@@ -451,7 +451,7 @@ impl<'a> Parser<'a> {
                 replace_ranges: Vec::new(),
                 inner_attr_ranges: Default::default(),
             },
-            last_closure_body: None,
+            current_closure: None,
         };
 
         // Make parser point to the first token.
@@ -774,10 +774,10 @@ impl<'a> Parser<'a> {
                 } else {
                     match self.expect(t) {
                         Ok(false) => {
-                            self.last_closure_body.take();
+                            self.current_closure.take();
                         }
                         Ok(true) => {
-                            self.last_closure_body.take();
+                            self.current_closure.take();
                             recovered = true;
                             break;
                         }
@@ -785,7 +785,7 @@ impl<'a> Parser<'a> {
                             let sp = self.prev_token.span.shrink_to_hi();
                             let token_str = pprust::token_kind_to_string(t);
 
-                            match self.last_closure_body.take() {
+                            match self.current_closure.take() {
                                 Some(closure_spans) if self.token.kind == TokenKind::Semi => {
                                     // Finding a semicolon instead of a comma
                                     // after a closure body indicates that the

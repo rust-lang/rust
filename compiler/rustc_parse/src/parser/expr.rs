@@ -94,7 +94,7 @@ impl<'a> Parser<'a> {
     /// Parses an expression.
     #[inline]
     pub fn parse_expr(&mut self) -> PResult<'a, P<Expr>> {
-        self.last_closure_body.take();
+        self.current_closure.take();
 
         self.parse_expr_res(Restrictions::empty(), None)
     }
@@ -1757,7 +1757,7 @@ impl<'a> Parser<'a> {
         // Disable recovery for closure body
         let spans =
             ClosureSpans { whole_closure: closure.span, closing_pipe: decl_hi, body: body_span };
-        self.last_closure_body = Some(spans);
+        self.current_closure = Some(spans);
 
         Ok(closure)
     }
