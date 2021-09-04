@@ -1,4 +1,6 @@
+use std::collections::BTreeMap;
 use std::mem;
+use std::path::Path;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
@@ -7,7 +9,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 
 use crate::clean::{self, GetDefId, ItemId};
-use crate::config::RenderOptions;
 use crate::fold::DocFolder;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
@@ -141,21 +142,19 @@ impl Cache {
         &mut self,
         mut krate: clean::Crate,
         tcx: TyCtxt<'_>,
-        render_options: &RenderOptions,
+        extern_html_root_urls: &BTreeMap<String, String>,
+        dst: &Path,
     ) -> clean::Crate {
         // Crawl the crate to build various caches used for the output
         debug!(?self.crate_version);
         self.traits = krate.external_traits.take();
-        let RenderOptions { extern_html_root_takes_precedence, output: dst, .. } = render_options;
 
         // Cache where all our extern crates are located
         // FIXME: this part is specific to HTML so it'd be nice to remove it from the common code
         for &e in &krate.externs {
             let name = e.name(tcx);
-            let extern_url =
-                render_options.extern_html_root_urls.get(&*name.as_str()).map(|u| &**u);
-            let location = e.location(extern_url, *extern_html_root_takes_precedence, dst, tcx);
-            self.extern_locations.insert(e.crate_num, location);
+            let extern_url = extern_html_root_urls.get(&*name.as_str()).map(|u| &**u);
+            self.extern_locations.insert(e.crate_num, e.location(extern_url, &dst, tcx));
             self.external_paths.insert(e.def_id(), (vec![name.to_string()], ItemType::Module));
         }
 

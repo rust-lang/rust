@@ -499,7 +499,9 @@ crate fn run_global_ctxt(
 
     let render_options = ctxt.render_options;
     let mut cache = ctxt.cache;
-    krate = tcx.sess.time("create_format_cache", || cache.populate(krate, tcx, &render_options));
+    krate = tcx.sess.time("create_format_cache", || {
+        cache.populate(krate, tcx, &render_options.extern_html_root_urls, &render_options.output)
+    });
 
     // The main crate doc comments are always collapsed.
     krate.collapsed = true;
