@@ -8,10 +8,9 @@ use base_db::CrateId;
 use db::TokenExpander;
 use either::Either;
 use mbe::Origin;
-use parser::SyntaxKind;
 use syntax::{
     ast::{self, AttrsOwner},
-    AstNode, SyntaxNode, TextRange, TextSize,
+    AstNode, SyntaxKind, SyntaxNode, TextRange, TextSize,
 };
 
 use crate::{

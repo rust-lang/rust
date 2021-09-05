@@ -440,7 +440,7 @@ impl<'a> Printer<'a> {
                 }
             }
             ModItem::MacroCall(it) => {
-                let MacroCall { path, ast_id: _, fragment: _ } = &self.tree[it];
+                let MacroCall { path, ast_id: _, expand_to: _ } = &self.tree[it];
                 wln!(self, "{}!(...);", path);
             }
             ModItem::MacroRules(it) => {

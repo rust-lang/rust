@@ -525,7 +525,6 @@ dependencies = [
  "la-arena",
  "limit",
  "mbe",
- "parser",
  "profile",
  "rustc-hash",
  "syntax",

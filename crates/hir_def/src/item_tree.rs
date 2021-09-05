@@ -51,7 +51,7 @@ use hir_expand::{
     ast_id_map::FileAstId,
     hygiene::Hygiene,
     name::{name, AsName, Name},
-    FragmentKind, HirFileId, InFile,
+    ExpandTo, HirFileId, InFile,
 };
 use la_arena::{Arena, Idx, RawIdx};
 use profile::Count;
@@ -739,7 +739,7 @@ pub struct MacroCall {
     /// Path to the called macro.
     pub path: Interned<ModPath>,
     pub ast_id: FileAstId<ast::MacroCall>,
-    pub fragment: FragmentKind,
+    pub expand_to: ExpandTo,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
