@@ -2823,6 +2823,7 @@ Released 2018-09-13
 [`needless_doctest_main`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_doctest_main
 [`needless_for_each`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_for_each
 [`needless_lifetimes`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_lifetimes
+[`needless_option_as_deref`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_option_as_deref
 [`needless_pass_by_value`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_pass_by_value
 [`needless_question_mark`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_question_mark
 [`needless_range_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_range_loop
