@@ -93,7 +93,7 @@
 +     bb6: {
           _0 = const 3_i32;                // scope 0 at $DIR/match-arm-scopes.rs:15:59: 15:60
           StorageDead(_10);                // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
-          StorageDead(_9);                 // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
+          StorageDead(_9);                 // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
 -         goto -> bb23;                    // scope 0 at no-location
 +         goto -> bb20;                    // scope 0 at no-location
       }
@@ -108,6 +108,7 @@
 -     bb11: {
 +     bb8: {
           StorageDead(_10);                // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
+          StorageDead(_9);                 // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
 -         FakeRead(ForMatchGuard, _3);     // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
 -         FakeRead(ForMatchGuard, _4);     // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
 -         FakeRead(ForGuardBinding, _6);   // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
@@ -123,7 +124,7 @@
 -     bb12: {
 +     bb9: {
           StorageDead(_10);                // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
-          StorageDead(_9);                 // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
+          StorageDead(_9);                 // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
           StorageDead(_8);                 // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
           StorageDead(_6);                 // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
 -         falseEdge -> [real: bb2, imaginary: bb3]; // scope 0 at $DIR/match-arm-scopes.rs:15:42: 15:73
@@ -149,7 +150,7 @@
 +     bb11: {
           _0 = const 3_i32;                // scope 0 at $DIR/match-arm-scopes.rs:15:59: 15:60
           StorageDead(_13);                // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
-          StorageDead(_12);                // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
+          StorageDead(_12);                // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
 -         goto -> bb23;                    // scope 0 at no-location
 +         goto -> bb20;                    // scope 0 at no-location
       }
@@ -164,6 +165,7 @@
 -     bb16: {
 +     bb13: {
           StorageDead(_13);                // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
+          StorageDead(_12);                // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
 -         FakeRead(ForMatchGuard, _3);     // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
 -         FakeRead(ForMatchGuard, _4);     // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
 -         FakeRead(ForGuardBinding, _6);   // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
@@ -179,7 +181,7 @@
 -     bb17: {
 +     bb14: {
           StorageDead(_13);                // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
-          StorageDead(_12);                // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
+          StorageDead(_12);                // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
           StorageDead(_8);                 // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
           StorageDead(_6);                 // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
 -         falseEdge -> [real: bb4, imaginary: bb5]; // scope 0 at $DIR/match-arm-scopes.rs:15:42: 15:73
@@ -190,7 +192,6 @@
 +     bb15: {
           StorageDead(_7);                 // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
           StorageDead(_5);                 // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
-          StorageDead(_12);                // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
           StorageDead(_8);                 // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
           StorageDead(_6);                 // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
 -         goto -> bb22;                    // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
