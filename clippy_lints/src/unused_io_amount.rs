@@ -45,20 +45,20 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
 
         match expr.kind {
             hir::ExprKind::Match(res, _, _) if is_try(cx, expr).is_some() => {
-                if let hir::ExprKind::Call(func, args) = res.kind {
+                if let hir::ExprKind::Call(func, [ref arg_0, ..]) = res.kind {
                     if matches!(
                         func.kind,
                         hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::TryTraitBranch, _))
                     ) {
-                        check_map_error(cx, &args[0], expr);
+                        check_map_error(cx, arg_0, expr);
                     }
                 } else {
                     check_map_error(cx, res, expr);
                 }
             },
-            hir::ExprKind::MethodCall(path, _, args, _) => match &*path.ident.as_str() {
+            hir::ExprKind::MethodCall(path, _, [ref arg_0, ..], _) => match &*path.ident.as_str() {
                 "expect" | "unwrap" | "unwrap_or" | "unwrap_or_else" => {
-                    check_map_error(cx, &args[0], expr);
+                    check_map_error(cx, arg_0, expr);
                 },
                 _ => (),
             },

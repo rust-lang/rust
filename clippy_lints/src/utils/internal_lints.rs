@@ -504,10 +504,10 @@ impl<'tcx> LateLintPass<'tcx> for CompilerLintFunctions {
         }
 
         if_chain! {
-            if let ExprKind::MethodCall(path, _, args, _) = expr.kind;
+            if let ExprKind::MethodCall(path, _, [self_arg, ..], _) = &expr.kind;
             let fn_name = path.ident;
             if let Some(sugg) = self.map.get(&*fn_name.as_str());
-            let ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
+            let ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
             if match_type(cx, ty, &paths::EARLY_CONTEXT)
                 || match_type(cx, ty, &paths::LATE_CONTEXT);
             then {

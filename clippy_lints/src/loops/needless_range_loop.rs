@@ -301,10 +301,10 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
             // a range index op
-            if let ExprKind::MethodCall(meth, _, args, _) = expr.kind;
+            if let ExprKind::MethodCall(meth, _, [args_0, args_1, ..], _) = &expr.kind;
             if (meth.ident.name == sym::index && match_trait_method(self.cx, expr, &paths::INDEX))
                 || (meth.ident.name == sym::index_mut && match_trait_method(self.cx, expr, &paths::INDEX_MUT));
-            if !self.check(&args[1], &args[0], expr);
+            if !self.check(args_1, args_0, expr);
             then { return }
         }
 
