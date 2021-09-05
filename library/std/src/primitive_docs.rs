@@ -3,16 +3,16 @@
 #[doc(alias = "false")]
 /// The boolean type.
 ///
-/// The `bool` represents a value, which could only be either `true` or `false`. If you cast
-/// a `bool` into an integer, `true` will be 1 and `false` will be 0.
+/// The `bool` represents a value, which could only be either [`true`] or [`false`]. If you cast
+/// a `bool` into an integer, [`true`] will be 1 and [`false`] will be 0.
 ///
 /// # Basic usage
 ///
 /// `bool` implements various traits, such as [`BitAnd`], [`BitOr`], [`Not`], etc.,
 /// which allow us to perform boolean operations using `&`, `|` and `!`.
 ///
-/// `if` requires a `bool` value as its conditional. [`assert!`], which is an
-/// important macro in testing, checks whether an expression is `true` and panics
+/// [`if`] requires a `bool` value as its conditional. [`assert!`], which is an
+/// important macro in testing, checks whether an expression is [`true`] and panics
 /// if it isn't.
 ///
 /// ```
@@ -20,9 +20,12 @@
 /// assert!(!bool_val);
 /// ```
 ///
+/// [`true`]: keyword.true.html
+/// [`false`]: keyword.false.html
 /// [`BitAnd`]: ops::BitAnd
 /// [`BitOr`]: ops::BitOr
 /// [`Not`]: ops::Not
+/// [`if`]: keyword.if.html
 ///
 /// # Examples
 ///
@@ -574,8 +577,8 @@ mod prim_pointer {}
 ///
 /// # Editions
 ///
-/// Prior to Rust 1.53, arrays did not implement `IntoIterator` by value, so the method call
-/// `array.into_iter()` auto-referenced into a slice iterator. Right now, the old behavior
+/// Prior to Rust 1.53, arrays did not implement [`IntoIterator`] by value, so the method call
+/// `array.into_iter()` auto-referenced into a [slice iterator](slice::iter). Right now, the old behavior
 /// is preserved in the 2015 and 2018 editions of Rust for compatibility, ignoring
 /// `IntoIterator` by value. In the future, the behavior on the 2015 and 2018 edition
 /// might be made consistent to the behavior of later editions.
@@ -833,7 +836,7 @@ mod prim_str {}
 /// ```
 ///
 /// The sequential nature of the tuple applies to its implementations of various
-/// traits.  For example, in `PartialOrd` and `Ord`, the elements are compared
+/// traits. For example, in [`PartialOrd`] and [`Ord`], the elements are compared
 /// sequentially until the first non-equal set is found.
 ///
 /// For more about tuples, see [the book](../book/ch03-02-data-types.html#the-tuple-type).
@@ -1037,14 +1040,16 @@ mod prim_usize {}
 /// References, both shared and mutable.
 ///
 /// A reference represents a borrow of some owned value. You can get one by using the `&` or `&mut`
-/// operators on a value, or by using a `ref` or `ref mut` pattern.
+/// operators on a value, or by using a [`ref`](keyword.ref.html) or
+/// <code>[ref](keyword.ref.html) [mut](keyword.mut.html)</code> pattern.
 ///
 /// For those familiar with pointers, a reference is just a pointer that is assumed to be
 /// aligned, not null, and pointing to memory containing a valid value of `T` - for example,
-/// `&bool` can only point to an allocation containing the integer values `1` (`true`) or `0`
-/// (`false`), but creating a `&bool` that points to an allocation containing
-/// the value `3` causes undefined behaviour.
-/// In fact, `Option<&T>` has the same memory representation as a
+/// <code>&[bool]</code> can only point to an allocation containing the integer values `1`
+/// ([`true`](keyword.true.html)) or `0` ([`false`](keyword.false.html)), but creating a
+/// <code>&[bool]</code> that points to an allocation containing the value `3` causes
+/// undefined behaviour.
+/// In fact, <code>[Option]\<&T></code> has the same memory representation as a
 /// nullable but aligned pointer, and can be passed across FFI boundaries as such.
 ///
 /// In most cases, references can be used much like the original value. Field access, method
@@ -1140,7 +1145,7 @@ mod prim_usize {}
 /// * [`ExactSizeIterator`]
 /// * [`FusedIterator`]
 /// * [`TrustedLen`]
-/// * [`Send`] \(note that `&T` references only get `Send` if `T: Sync`)
+/// * [`Send`] \(note that `&T` references only get `Send` if <code>T: [Sync]</code>)
 /// * [`io::Write`]
 /// * [`Read`]
 /// * [`Seek`]
@@ -1172,7 +1177,8 @@ mod prim_ref {}
 /// Function pointers are pointers that point to *code*, not data. They can be called
 /// just like functions. Like references, function pointers are, among other things, assumed to
 /// not be null, so if you want to pass a function pointer over FFI and be able to accommodate null
-/// pointers, make your type `Option<fn()>` with your required signature.
+/// pointers, make your type [`Option<fn()>`](core::option#options-and-pointers-nullable-pointers)
+/// with your required signature.
 ///
 /// ### Safety
 ///

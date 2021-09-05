@@ -96,7 +96,7 @@ impl char {
     /// Converts a `u32` to a `char`.
     ///
     /// Note that all `char`s are valid [`u32`]s, and can be cast to one with
-    /// `as`:
+    /// [`as`](keyword.as.html):
     ///
     /// ```
     /// let c = '💯';
@@ -372,7 +372,7 @@ impl char {
     /// println!("\\u{{2764}}");
     /// ```
     ///
-    /// Using `to_string`:
+    /// Using [`to_string`](string/trait.ToString.html#tymethod.to_string):
     ///
     /// ```
     /// assert_eq!('❤'.escape_unicode().to_string(), "\\u{2764}");
@@ -422,7 +422,7 @@ impl char {
     /// Returns an iterator that yields the literal escape code of a character
     /// as `char`s.
     ///
-    /// This will escape the characters similar to the `Debug` implementations
+    /// This will escape the characters similar to the [`Debug`](core::fmt::Debug) implementations
     /// of `str` or `char`.
     ///
     /// # Examples
@@ -448,7 +448,7 @@ impl char {
     /// println!("\\n");
     /// ```
     ///
-    /// Using `to_string`:
+    /// Using [`to_string`](string/trait.ToString.html#tymethod.to_string):
     ///
     /// ```
     /// assert_eq!('\n'.escape_debug().to_string(), "\\n");
@@ -502,7 +502,7 @@ impl char {
     /// println!("\\\"");
     /// ```
     ///
-    /// Using `to_string`:
+    /// Using [`to_string`](string/trait.ToString.html#tymethod.to_string):
     ///
     /// ```
     /// assert_eq!('"'.escape_default().to_string(), "\\\"");
@@ -937,7 +937,7 @@ impl char {
     /// println!("i\u{307}");
     /// ```
     ///
-    /// Using `to_string`:
+    /// Using [`to_string`](string/trait.ToString.html#tymethod.to_string):
     ///
     /// ```
     /// assert_eq!('C'.to_lowercase().to_string(), "c");
@@ -1002,7 +1002,7 @@ impl char {
     /// println!("SS");
     /// ```
     ///
-    /// Using `to_string`:
+    /// Using [`to_string`](string/trait.ToString.html#tymethod.to_string):
     ///
     /// ```
     /// assert_eq!('c'.to_uppercase().to_string(), "C");
@@ -1131,7 +1131,7 @@ impl char {
 
     /// Checks that two values are an ASCII case-insensitive match.
     ///
-    /// Equivalent to `to_ascii_lowercase(a) == to_ascii_lowercase(b)`.
+    /// Equivalent to <code>[to_ascii_lowercase]\(a) == [to_ascii_lowercase]\(b)</code>.
     ///
     /// # Examples
     ///
@@ -1144,6 +1144,8 @@ impl char {
     /// assert!(upper_a.eq_ignore_ascii_case(&upper_a));
     /// assert!(!upper_a.eq_ignore_ascii_case(&lower_z));
     /// ```
+    ///
+    /// [to_ascii_lowercase]: #method.to_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]

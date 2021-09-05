@@ -396,7 +396,7 @@ impl<T, const N: usize> [T; N] {
     ///
     /// This method is particularly useful if combined with other methods, like
     /// [`map`](#method.map). This way, you can avoid moving the original
-    /// array if its elements are not `Copy`.
+    /// array if its elements are not [`Copy`].
     ///
     /// ```
     /// #![feature(array_methods)]
