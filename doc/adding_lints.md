@@ -556,7 +556,7 @@ directory. Adding a configuration to a lint can be useful for thresholds or to c
 behavior that can be seen as a false positive for some users. Adding a configuration is done
 in the following steps:
 
-1. Adding a new configuration entry to [clippy_utils::conf](/clippy_utils/src/conf.rs)
+1. Adding a new configuration entry to [clippy_lints::utils::conf](/clippy_lints/src/utils/conf.rs)
     like this:
     ```rust
     /// Lint: LINT_NAME.
