@@ -1450,10 +1450,8 @@ pub(crate) fn impl_self_ty_recover(
 pub(crate) fn impl_trait_query(db: &dyn HirDatabase, impl_id: ImplId) -> Option<Binders<TraitRef>> {
     let impl_data = db.impl_data(impl_id);
     let resolver = impl_id.resolver(db.upcast());
-    let _cx = stdx::panic_context::enter(format!(
-        "impl_trait_query({:?} -> {:?}) resolver={:#?}",
-        impl_id, impl_data, resolver
-    ));
+    let _cx =
+        stdx::panic_context::enter(format!("impl_trait_query({:?} -> {:?})", impl_id, impl_data));
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
     let (self_ty, binders) = db.impl_self_ty(impl_id).into_value_and_skipped_binders();
