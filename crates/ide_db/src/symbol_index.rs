@@ -198,7 +198,7 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
 
 pub fn crate_symbols(db: &RootDatabase, krate: CrateId, query: Query) -> Vec<FileSymbol> {
     let _p = profile::span("crate_symbols").detail(|| format!("{:?}", query));
-    // FIXME(#4842): This now depends on CrateDefMap, why not build the entire symbol index from
+    // FIXME(#4842): This now depends on DefMap, why not build the entire symbol index from
     // that instead?
 
     let def_map = db.crate_def_map(krate);
