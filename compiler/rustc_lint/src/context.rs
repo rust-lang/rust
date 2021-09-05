@@ -31,7 +31,7 @@ use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::middle::stability;
-use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
 use rustc_serialize::json::Json;
@@ -41,7 +41,7 @@ use rustc_session::Session;
 use rustc_session::SessionLintStore;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
-use rustc_target::abi::{self, LayoutOf};
+use rustc_target::abi;
 use tracing::debug;
 
 use std::cell::Cell;
@@ -1080,12 +1080,12 @@ impl<'tcx> ty::layout::HasParamEnv<'tcx> for LateContext<'tcx> {
     }
 }
 
-impl<'tcx> LayoutOf<'tcx> for LateContext<'tcx> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
+impl<'tcx> LayoutOfHelpers<'tcx> for LateContext<'tcx> {
+    type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
-        self.tcx.layout_of(self.param_env.and(ty))
+    #[inline]
+    fn handle_layout_err(&self, err: LayoutError<'tcx>, _: Span, _: Ty<'tcx>) -> LayoutError<'tcx> {
+        err
     }
 }
 

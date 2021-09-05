@@ -2,13 +2,13 @@ use std::borrow::Cow;
 use std::convert::TryFrom;
 
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::ty::layout::{self, TyAndLayout};
+use rustc_middle::ty::layout::{self, LayoutOf as _, TyAndLayout};
 use rustc_middle::ty::Instance;
 use rustc_middle::{
     mir,
     ty::{self, Ty},
 };
-use rustc_target::abi::{self, LayoutOf as _};
+use rustc_target::abi;
 use rustc_target::spec::abi::Abi;
 
 use super::{

@@ -31,6 +31,7 @@
 #![feature(box_patterns)]
 #![feature(core_intrinsics)]
 #![feature(discriminant_kind)]
+#![feature(exhaustive_patterns)]
 #![feature(if_let_guard)]
 #![feature(never_type)]
 #![feature(extern_types)]

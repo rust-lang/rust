@@ -8,10 +8,10 @@ use std::hash::Hash;
 use rustc_ast::Mutability;
 use rustc_macros::HashStable;
 use rustc_middle::mir;
-use rustc_middle::ty::layout::{PrimitiveExt, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::{Abi, Align, FieldsShape, TagEncoding};
-use rustc_target::abi::{HasDataLayout, LayoutOf, Size, VariantIdx, Variants};
+use rustc_target::abi::{HasDataLayout, Size, VariantIdx, Variants};
 
 use super::{
     alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckInAllocMsg,

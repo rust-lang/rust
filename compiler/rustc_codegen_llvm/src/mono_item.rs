@@ -8,10 +8,9 @@ use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 pub use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{Linkage, Visibility};
-use rustc_middle::ty::layout::FnAbiExt;
+use rustc_middle::ty::layout::{FnAbiExt, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeFoldable};
 use rustc_session::config::CrateType;
-use rustc_target::abi::LayoutOf;
 use rustc_target::spec::RelocModel;
 use tracing::debug;
 

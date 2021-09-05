@@ -3,9 +3,9 @@ use std::convert::TryFrom;
 use rustc_ast::Mutability;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::TerminatorKind;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::subst::Subst;
 use rustc_span::{Span, Symbol};
-use rustc_target::abi::LayoutOf;
 
 use crate::interpret::{
     intrinsics::{InterpCx, Machine},

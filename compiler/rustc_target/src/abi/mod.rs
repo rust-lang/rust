@@ -13,7 +13,6 @@ use std::str::FromStr;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::json::{Json, ToJson};
-use rustc_span::Span;
 
 pub mod call;
 
@@ -1170,46 +1169,6 @@ impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
     type Target = &'a Layout;
     fn deref(&self) -> &&'a Layout {
         &self.layout
-    }
-}
-
-/// Trait for context types that can compute layouts of things.
-pub trait LayoutOf<'a>: Sized {
-    type Ty: TyAbiInterface<'a, Self>;
-    type TyAndLayout: MaybeResult<TyAndLayout<'a, Self::Ty>>;
-
-    fn layout_of(&self, ty: Self::Ty) -> Self::TyAndLayout;
-    fn spanned_layout_of(&self, ty: Self::Ty, _span: Span) -> Self::TyAndLayout {
-        self.layout_of(ty)
-    }
-}
-
-pub trait MaybeResult<T> {
-    type Error;
-
-    fn from(x: Result<T, Self::Error>) -> Self;
-    fn to_result(self) -> Result<T, Self::Error>;
-}
-
-impl<T> MaybeResult<T> for T {
-    type Error = !;
-
-    fn from(Ok(x): Result<T, Self::Error>) -> Self {
-        x
-    }
-    fn to_result(self) -> Result<T, Self::Error> {
-        Ok(self)
-    }
-}
-
-impl<T, E> MaybeResult<T> for Result<T, E> {
-    type Error = E;
-
-    fn from(x: Result<T, Self::Error>) -> Self {
-        x
-    }
-    fn to_result(self) -> Result<T, Self::Error> {
-        self
     }
 }
 

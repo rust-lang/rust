@@ -17,14 +17,14 @@ use rustc_middle::mir::{
     Location, Operand, Place, Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement,
     StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
 };
-use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{
     self, ConstInt, ConstKind, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_session::lint;
 use rustc_span::{def_id::DefId, Span};
-use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TargetDataLayout};
+use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 
@@ -330,12 +330,12 @@ struct ConstPropagator<'mir, 'tcx> {
     source_info: Option<SourceInfo>,
 }
 
-impl<'mir, 'tcx> LayoutOf<'tcx> for ConstPropagator<'mir, 'tcx> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
+impl<'mir, 'tcx> LayoutOfHelpers<'tcx> for ConstPropagator<'mir, 'tcx> {
+    type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
-        self.tcx.layout_of(self.param_env.and(ty))
+    #[inline]
+    fn handle_layout_err(&self, err: LayoutError<'tcx>, _: Span, _: Ty<'tcx>) -> LayoutError<'tcx> {
+        err
     }
 }
 

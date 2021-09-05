@@ -14,15 +14,15 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_middle::bug;
 use rustc_middle::mir::mono::CodegenUnit;
-use rustc_middle::ty::layout::{HasParamEnv, LayoutError, TyAndLayout};
+use rustc_middle::ty::layout::{HasParamEnv, LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CFGuard, CrateType, DebugInfo};
 use rustc_session::Session;
-use rustc_span::source_map::{Span, DUMMY_SP};
+use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
-use rustc_target::abi::{HasDataLayout, LayoutOf, PointeeInfo, Size, TargetDataLayout, VariantIdx};
+use rustc_target::abi::{HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
 use smallvec::SmallVec;
 
@@ -835,22 +835,16 @@ impl ty::layout::HasTyCtxt<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 }
 
-impl LayoutOf<'tcx> for CodegenCx<'ll, 'tcx> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = TyAndLayout<'tcx>;
+impl LayoutOfHelpers<'tcx> for CodegenCx<'ll, 'tcx> {
+    type LayoutOfResult = TyAndLayout<'tcx>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
-        self.spanned_layout_of(ty, DUMMY_SP)
-    }
-
-    fn spanned_layout_of(&self, ty: Ty<'tcx>, span: Span) -> Self::TyAndLayout {
-        self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap_or_else(|e| {
-            if let LayoutError::SizeOverflow(_) = e {
-                self.sess().span_fatal(span, &e.to_string())
-            } else {
-                bug!("failed to get layout for `{}`: {}", ty, e)
-            }
-        })
+    #[inline]
+    fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
+        if let LayoutError::SizeOverflow(_) = err {
+            self.sess().span_fatal(span, &err.to_string())
+        } else {
+            span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
+        }
     }
 }
 

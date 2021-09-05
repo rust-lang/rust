@@ -6,14 +6,14 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
-use rustc_middle::ty::layout::{IntegerExt, SizeSkeleton};
+use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::Abi;
-use rustc_target::abi::{Integer, LayoutOf, TagEncoding, Variants};
+use rustc_target::abi::{Integer, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
 
 use if_chain::if_chain;

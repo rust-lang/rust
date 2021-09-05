@@ -4,12 +4,12 @@ use crate::context::TypeLowering;
 use crate::type_::Type;
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
-use rustc_middle::ty::layout::{FnAbiExt, TyAndLayout};
+use rustc_middle::ty::layout::{FnAbiExt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_target::abi::{Abi, AddressSpace, Align, FieldsShape};
 use rustc_target::abi::{Int, Pointer, F32, F64};
-use rustc_target::abi::{LayoutOf, PointeeInfo, Scalar, Size, TyAbiInterface, Variants};
+use rustc_target::abi::{PointeeInfo, Scalar, Size, TyAbiInterface, Variants};
 use smallvec::{smallvec, SmallVec};
 use tracing::debug;
 

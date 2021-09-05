@@ -11,10 +11,11 @@ use rustc_middle::mir::{
     BinOp,
 };
 use rustc_middle::ty;
+use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_target::abi::{Abi, Align, LayoutOf as _, Primitive, Size};
+use rustc_target::abi::{Abi, Align, Primitive, Size};
 
 use super::{
     util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx, Machine, OpTy, PlaceTy,

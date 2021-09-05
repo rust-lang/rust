@@ -11,11 +11,12 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
 use rustc_middle::bug;
+use rustc_middle::ty::layout::LayoutOf;
 pub use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::Ty;
 use rustc_target::abi::call::ArgAbi;
 pub use rustc_target::abi::call::*;
-use rustc_target::abi::{self, HasDataLayout, Int, LayoutOf};
+use rustc_target::abi::{self, HasDataLayout, Int};
 pub use rustc_target::spec::abi::Abi;
 
 use libc::c_uint;

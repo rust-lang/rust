@@ -14,13 +14,13 @@ use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::{self, SwitchTargets};
-use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
+use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt, LayoutOf};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
-use rustc_target::abi::{self, HasDataLayout, LayoutOf};
+use rustc_target::abi::{self, HasDataLayout};
 use rustc_target::spec::abi::Abi;
 
 /// Used by `FunctionCx::codegen_terminator` for emitting common patterns

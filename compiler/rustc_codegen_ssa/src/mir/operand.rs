@@ -8,9 +8,9 @@ use crate::MemFlags;
 
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ConstValue, Pointer, Scalar};
-use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
-use rustc_target::abi::{Abi, Align, LayoutOf, Size};
+use rustc_target::abi::{Abi, Align, Size};
 
 use std::fmt;
 

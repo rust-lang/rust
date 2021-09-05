@@ -13,7 +13,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::{config::OptLevel, DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::DUMMY_SP;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::call::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
 };
@@ -2062,29 +2062,113 @@ impl<'tcx, T: HasTyCtxt<'tcx>> HasTyCtxt<'tcx> for LayoutCx<'tcx, T> {
     }
 }
 
-pub type TyAndLayout<'tcx> = rustc_target::abi::TyAndLayout<'tcx, Ty<'tcx>>;
+pub trait MaybeResult<T> {
+    type Error;
 
-impl LayoutOf<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
+    fn from(x: Result<T, Self::Error>) -> Self;
+    fn to_result(self) -> Result<T, Self::Error>;
+}
 
-    /// Computes the layout of a type. Note that this implicitly
-    /// executes in "reveal all" mode, and will normalize the input type.
-    #[inline]
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
-        self.tcx.layout_of(self.param_env.and(ty))
+impl<T> MaybeResult<T> for T {
+    type Error = !;
+
+    fn from(Ok(x): Result<T, Self::Error>) -> Self {
+        x
+    }
+    fn to_result(self) -> Result<T, Self::Error> {
+        Ok(self)
     }
 }
 
-impl LayoutOf<'tcx> for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
+impl<T, E> MaybeResult<T> for Result<T, E> {
+    type Error = E;
 
+    fn from(x: Result<T, Self::Error>) -> Self {
+        x
+    }
+    fn to_result(self) -> Result<T, Self::Error> {
+        self
+    }
+}
+
+pub type TyAndLayout<'tcx> = rustc_target::abi::TyAndLayout<'tcx, Ty<'tcx>>;
+
+/// Trait for contexts that want to be able to compute layouts of types.
+/// This automatically gives access to `LayoutOf`, through a blanket `impl`.
+pub trait LayoutOfHelpers<'tcx>: HasDataLayout + HasTyCtxt<'tcx> + HasParamEnv<'tcx> {
+    /// The `TyAndLayout`-wrapping type (or `TyAndLayout` itself), which will be
+    /// returned from `layout_of` (see also `handle_layout_err`).
+    type LayoutOfResult: MaybeResult<TyAndLayout<'tcx>>;
+
+    /// `Span` to use for `tcx.at(span)`, from `layout_of`.
+    // FIXME(eddyb) perhaps make this mandatory to get contexts to track it better?
+    #[inline]
+    fn layout_tcx_at_span(&self) -> Span {
+        DUMMY_SP
+    }
+
+    /// Helper used for `layout_of`, to adapt `tcx.layout_of(...)` into a
+    /// `Self::LayoutOfResult` (which does not need to be a `Result<...>`).
+    ///
+    /// Most `impl`s, which propagate `LayoutError`s, should simply return `err`,
+    /// but this hook allows e.g. codegen to return only `TyAndLayout` from its
+    /// `cx.layout_of(...)`, without any `Result<...>` around it to deal with
+    /// (and any `LayoutError`s are turned into fatal errors or ICEs).
+    fn handle_layout_err(
+        &self,
+        err: LayoutError<'tcx>,
+        span: Span,
+        ty: Ty<'tcx>,
+    ) -> <Self::LayoutOfResult as MaybeResult<TyAndLayout<'tcx>>>::Error;
+}
+
+/// Blanket extension trait for contexts that can compute layouts of types.
+pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode, and will normalize the input type.
     #[inline]
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
-        self.tcx.layout_of(self.param_env.and(ty))
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::LayoutOfResult {
+        self.spanned_layout_of(ty, DUMMY_SP)
+    }
+
+    /// Computes the layout of a type, at `span`. Note that this implicitly
+    /// executes in "reveal all" mode, and will normalize the input type.
+    // FIXME(eddyb) avoid passing information like this, and instead add more
+    // `TyCtxt::at`-like APIs to be able to do e.g. `cx.at(span).layout_of(ty)`.
+    #[inline]
+    fn spanned_layout_of(&self, ty: Ty<'tcx>, span: Span) -> Self::LayoutOfResult {
+        let span = if !span.is_dummy() { span } else { self.layout_tcx_at_span() };
+        MaybeResult::from(
+            self.tcx()
+                .at(span)
+                .layout_of(self.param_env().and(ty))
+                .map_err(|err| self.handle_layout_err(err, span, ty)),
+        )
+    }
+}
+
+impl<C: LayoutOfHelpers<'tcx>> LayoutOf<'tcx> for C {}
+
+impl LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
+    type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
+
+    #[inline]
+    fn handle_layout_err(&self, err: LayoutError<'tcx>, _: Span, _: Ty<'tcx>) -> LayoutError<'tcx> {
+        err
+    }
+}
+
+impl LayoutOfHelpers<'tcx> for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
+    type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
+
+    #[inline]
+    fn layout_tcx_at_span(&self) -> Span {
+        self.tcx.span
+    }
+
+    #[inline]
+    fn handle_layout_err(&self, err: LayoutError<'tcx>, _: Span, _: Ty<'tcx>) -> LayoutError<'tcx> {
+        err
     }
 }
 
@@ -2559,11 +2643,7 @@ impl<'tcx> ty::Instance<'tcx> {
 
 pub trait FnAbiExt<'tcx, C>
 where
-    C: LayoutOf<'tcx, Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
-        + HasDataLayout
-        + HasTargetSpec
-        + HasTyCtxt<'tcx>
-        + HasParamEnv<'tcx>,
+    C: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>> + HasTargetSpec,
 {
     /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
     ///
@@ -2746,11 +2826,7 @@ pub fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
 
 impl<'tcx, C> FnAbiExt<'tcx, C> for call::FnAbi<'tcx, Ty<'tcx>>
 where
-    C: LayoutOf<'tcx, Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
-        + HasDataLayout
-        + HasTargetSpec
-        + HasTyCtxt<'tcx>
-        + HasParamEnv<'tcx>,
+    C: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>> + HasTargetSpec,
 {
     fn of_fn_ptr(cx: &C, sig: ty::PolyFnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
         call::FnAbi::new_internal(cx, sig, extra_args, None, CodegenFnAttrFlags::empty(), false)

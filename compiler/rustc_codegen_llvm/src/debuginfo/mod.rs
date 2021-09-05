@@ -25,14 +25,14 @@ use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir;
-use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TypeFoldable};
 use rustc_session::config::{self, DebugInfo};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_span::{self, BytePos, Pos, SourceFile, SourceFileAndLine, Span};
-use rustc_target::abi::{LayoutOf, Primitive, Size};
+use rustc_target::abi::{Primitive, Size};
 
 use libc::c_uint;
 use smallvec::SmallVec;

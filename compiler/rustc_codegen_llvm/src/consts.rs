@@ -15,10 +15,11 @@ use rustc_middle::mir::interpret::{
     Scalar as InterpScalar,
 };
 use rustc_middle::mir::mono::MonoItem;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_target::abi::{
-    AddressSpace, Align, HasDataLayout, LayoutOf, Primitive, Scalar, Size, WrappingRange,
+    AddressSpace, Align, HasDataLayout, Primitive, Scalar, Size, WrappingRange,
 };
 use std::ops::Range;
 use tracing::debug;

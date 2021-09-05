@@ -8,18 +8,18 @@ use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_middle::ich::StableHashingContext;
 use rustc_middle::mir;
-use rustc_middle::ty::layout::{self, TyAndLayout};
+use rustc_middle::ty::layout::{self, LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_session::Limit;
 use rustc_span::{Pos, Span};
-use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
+use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
-    AllocId, GlobalId, Immediate, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory,
-    MemoryKind, Operand, Place, PlaceTy, Pointer, Provenance, Scalar, ScalarMaybeUninit,
-    StackPopJump,
+    AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace,
+    MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, Pointer, Provenance, Scalar,
+    ScalarMaybeUninit, StackPopJump,
 };
 use crate::transform::validate::equal_up_to_regions;
 use crate::util::storage::AlwaysLiveLocals;
@@ -313,15 +313,22 @@ where
     }
 }
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> LayoutOf<'tcx> for InterpCx<'mir, 'tcx, M> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = InterpResult<'tcx, TyAndLayout<'tcx>>;
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> LayoutOfHelpers<'tcx> for InterpCx<'mir, 'tcx, M> {
+    type LayoutOfResult = InterpResult<'tcx, TyAndLayout<'tcx>>;
 
     #[inline]
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
-        self.tcx
-            .layout_of(self.param_env.and(ty))
-            .map_err(|layout| err_inval!(Layout(layout)).into())
+    fn layout_tcx_at_span(&self) -> Span {
+        self.tcx.span
+    }
+
+    #[inline]
+    fn handle_layout_err(
+        &self,
+        err: LayoutError<'tcx>,
+        _: Span,
+        _: Ty<'tcx>,
+    ) -> InterpErrorInfo<'tcx> {
+        err_inval!(Layout(err)).into()
     }
 }
 

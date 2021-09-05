@@ -3,8 +3,8 @@ use std::convert::TryFrom;
 use rustc_apfloat::Float;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
-use rustc_middle::ty::{self, layout::TyAndLayout, FloatTy, Ty};
-use rustc_target::abi::LayoutOf;
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::{self, FloatTy, Ty};
 
 use super::{ImmTy, Immediate, InterpCx, Machine, PlaceTy};
 

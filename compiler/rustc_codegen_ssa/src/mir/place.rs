@@ -8,10 +8,10 @@ use crate::MemFlags;
 
 use rustc_middle::mir;
 use rustc_middle::mir::tcx::PlaceTy;
-use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::{Abi, Align, FieldsShape, Int, TagEncoding};
-use rustc_target::abi::{LayoutOf, VariantIdx, Variants};
+use rustc_target::abi::{VariantIdx, Variants};
 
 #[derive(Copy, Clone, Debug)]
 pub struct PlaceRef<'tcx, V> {

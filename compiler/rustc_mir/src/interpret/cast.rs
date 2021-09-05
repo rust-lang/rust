@@ -5,9 +5,9 @@ use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::mir::CastKind;
 use rustc_middle::ty::adjustment::PointerCast;
-use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
+use rustc_middle::ty::layout::{IntegerExt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, Ty, TypeAndMut};
-use rustc_target::abi::{Integer, LayoutOf, Variants};
+use rustc_target::abi::{Integer, Variants};
 
 use super::{
     util::ensure_monomorphic_enough, FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy,
