@@ -6,17 +6,16 @@ use base_db::{salsa, SourceDatabase};
 use itertools::Itertools;
 use limit::Limit;
 use mbe::{ExpandError, ExpandResult};
-use parser::{FragmentKind, T};
 use syntax::{
     algo::diff,
     ast::{self, AttrsOwner, NameOwner},
-    AstNode, GreenNode, Parse, SyntaxNode, SyntaxToken, TextRange,
+    AstNode, GreenNode, Parse, SyntaxNode, SyntaxToken, TextRange, T,
 };
 
 use crate::{
     ast_id_map::AstIdMap, hygiene::HygieneFrame, BuiltinAttrExpander, BuiltinDeriveExpander,
-    BuiltinFnLikeExpander, HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind, MacroCallLoc,
-    MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander,
+    BuiltinFnLikeExpander, ExpandTo, HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind,
+    MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander,
 };
 
 /// Total limit on the number of tokens produced by any macro invocation.
@@ -157,10 +156,9 @@ pub fn expand_speculative(
 
     let speculative_expansion = macro_def.expand(db, actual_macro_call, &tt);
 
-    let fragment_kind = macro_fragment_kind(db, actual_macro_call);
+    let expand_to = macro_expand_to(db, actual_macro_call);
 
-    let (node, tmap_2) =
-        mbe::token_tree_to_syntax_node(&speculative_expansion.value, fragment_kind).ok()?;
+    let (node, tmap_2) = token_tree_to_syntax_node(&speculative_expansion.value, expand_to).ok()?;
 
     let token_id = macro_def.map_id_down(token_id);
     let range = tmap_2.first_range_by_token(token_id, token_to_map.kind())?;
@@ -215,17 +213,17 @@ fn parse_macro_expansion(
         None => return ExpandResult { value: None, err: result.err },
     };
 
-    let fragment_kind = macro_fragment_kind(db, macro_file.macro_call_id);
+    let expand_to = macro_expand_to(db, macro_file.macro_call_id);
 
     tracing::debug!("expanded = {}", tt.as_debug_string());
-    tracing::debug!("kind = {:?}", fragment_kind);
+    tracing::debug!("kind = {:?}", expand_to);
 
-    let (parse, rev_token_map) = match mbe::token_tree_to_syntax_node(&tt, fragment_kind) {
+    let (parse, rev_token_map) = match token_tree_to_syntax_node(&tt, expand_to) {
         Ok(it) => it,
         Err(err) => {
             tracing::debug!(
                 "failed to parse expansion to {:?} = {}",
-                fragment_kind,
+                expand_to,
                 tt.as_debug_string()
             );
             return ExpandResult::only_err(err);
@@ -437,7 +435,21 @@ fn hygiene_frame(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<HygieneFrame> 
     Arc::new(HygieneFrame::new(db, file_id))
 }
 
-fn macro_fragment_kind(db: &dyn AstDatabase, id: MacroCallId) -> FragmentKind {
+fn macro_expand_to(db: &dyn AstDatabase, id: MacroCallId) -> ExpandTo {
     let loc: MacroCallLoc = db.lookup_intern_macro(id);
-    loc.kind.fragment_kind()
+    loc.kind.expand_to()
+}
+
+fn token_tree_to_syntax_node(
+    tt: &tt::Subtree,
+    expand_to: ExpandTo,
+) -> Result<(Parse<SyntaxNode>, mbe::TokenMap), ExpandError> {
+    let fragment = match expand_to {
+        ExpandTo::Statements => mbe::FragmentKind::Statements,
+        ExpandTo::Items => mbe::FragmentKind::Items,
+        ExpandTo::Pattern => mbe::FragmentKind::Pattern,
+        ExpandTo::Type => mbe::FragmentKind::Type,
+        ExpandTo::Expr => mbe::FragmentKind::Expr,
+    };
+    mbe::token_tree_to_syntax_node(tt, fragment)
 }

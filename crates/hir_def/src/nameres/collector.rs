@@ -14,7 +14,7 @@ use hir_expand::{
     builtin_macro::find_builtin_macro,
     name::{name, AsName, Name},
     proc_macro::ProcMacroExpander,
-    FragmentKind, HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
+    ExpandTo, HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 use hir_expand::{InFile, MacroCallLoc};
 use itertools::Itertools;
@@ -223,7 +223,7 @@ struct MacroDirective {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum MacroDirectiveKind {
-    FnLike { ast_id: AstIdWithPath<ast::MacroCall>, fragment: FragmentKind },
+    FnLike { ast_id: AstIdWithPath<ast::MacroCall>, expand_to: ExpandTo },
     Derive { ast_id: AstIdWithPath<ast::Item>, derive_attr: AttrId },
     Attr { ast_id: AstIdWithPath<ast::Item>, attr: Attr, mod_item: ModItem },
 }
@@ -1021,10 +1021,10 @@ impl DefCollector<'_> {
             };
 
             match &directive.kind {
-                MacroDirectiveKind::FnLike { ast_id, fragment } => {
+                MacroDirectiveKind::FnLike { ast_id, expand_to } => {
                     match macro_call_as_call_id(
                         ast_id,
-                        *fragment,
+                        *expand_to,
                         self.db,
                         self.def_map.krate,
                         &resolver,
@@ -1223,32 +1223,34 @@ impl DefCollector<'_> {
 
         for directive in &self.unresolved_macros {
             match &directive.kind {
-                MacroDirectiveKind::FnLike { ast_id, fragment } => match macro_call_as_call_id(
-                    ast_id,
-                    *fragment,
-                    self.db,
-                    self.def_map.krate,
-                    |path| {
-                        let resolved_res = self.def_map.resolve_path_fp_with_macro(
-                            self.db,
-                            ResolveMode::Other,
-                            directive.module_id,
-                            &path,
-                            BuiltinShadowMode::Module,
-                        );
-                        resolved_res.resolved_def.take_macros()
-                    },
-                    &mut |_| (),
-                ) {
-                    Ok(_) => (),
-                    Err(UnresolvedMacro { path }) => {
-                        self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
-                            directive.module_id,
-                            ast_id.ast_id,
-                            path,
-                        ));
+                MacroDirectiveKind::FnLike { ast_id, expand_to } => {
+                    match macro_call_as_call_id(
+                        ast_id,
+                        *expand_to,
+                        self.db,
+                        self.def_map.krate,
+                        |path| {
+                            let resolved_res = self.def_map.resolve_path_fp_with_macro(
+                                self.db,
+                                ResolveMode::Other,
+                                directive.module_id,
+                                &path,
+                                BuiltinShadowMode::Module,
+                            );
+                            resolved_res.resolved_def.take_macros()
+                        },
+                        &mut |_| (),
+                    ) {
+                        Ok(_) => (),
+                        Err(UnresolvedMacro { path }) => {
+                            self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
+                                directive.module_id,
+                                ast_id.ast_id,
+                                path,
+                            ));
+                        }
                     }
-                },
+                }
                 MacroDirectiveKind::Derive { .. } | MacroDirectiveKind::Attr { .. } => {
                     // FIXME: we might want to diagnose this too
                 }
@@ -1899,7 +1901,7 @@ impl ModCollector<'_, '_> {
         let mut error = None;
         match macro_call_as_call_id(
             &ast_id,
-            mac.fragment,
+            mac.expand_to,
             self.def_collector.db,
             self.def_collector.def_map.krate,
             |path| {
@@ -1930,12 +1932,11 @@ impl ModCollector<'_, '_> {
                 // Built-in macro failed eager expansion.
 
                 // FIXME: don't parse the file here
-                let fragment = hir_expand::to_fragment_kind(
-                    &ast_id.ast_id.to_node(self.def_collector.db.upcast()),
-                );
+                let macro_call = ast_id.ast_id.to_node(self.def_collector.db.upcast());
+                let expand_to = hir_expand::ExpandTo::from_call_site(&macro_call);
                 self.def_collector.def_map.diagnostics.push(DefDiagnostic::macro_error(
                     self.module_id,
-                    MacroCallKind::FnLike { ast_id: ast_id.ast_id, fragment },
+                    MacroCallKind::FnLike { ast_id: ast_id.ast_id, expand_to },
                     error.unwrap().to_string(),
                 ));
                 return;
@@ -1947,7 +1948,7 @@ impl ModCollector<'_, '_> {
         self.def_collector.unresolved_macros.push(MacroDirective {
             module_id: self.module_id,
             depth: self.macro_depth + 1,
-            kind: MacroDirectiveKind::FnLike { ast_id, fragment: mac.fragment },
+            kind: MacroDirectiveKind::FnLike { ast_id, expand_to: mac.expand_to },
         });
     }
 

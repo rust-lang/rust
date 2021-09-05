@@ -3,9 +3,10 @@ mod rule;
 
 use std::fmt::Write;
 
-use ::parser::FragmentKind;
 use syntax::{ast, AstNode, NodeOrToken, SyntaxNode, WalkEvent};
 use test_utils::assert_eq_text;
+
+use crate::FragmentKind;
 
 use super::*;
 

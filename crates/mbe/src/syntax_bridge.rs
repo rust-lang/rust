@@ -2,7 +2,7 @@
 
 use std::iter;
 
-use parser::{FragmentKind, ParseError, TreeSink};
+use parser::{ParseError, TreeSink};
 use rustc_hash::FxHashMap;
 use syntax::{
     ast::{self, make::tokens::doc_comment},
@@ -12,8 +12,9 @@ use syntax::{
 };
 use tt::buffer::{Cursor, TokenBuffer};
 
-use crate::{subtree_source::SubtreeTokenSource, tt_iter::TtIter};
-use crate::{ExpandError, TokenMap};
+use crate::{
+    subtree_source::SubtreeTokenSource, tt_iter::TtIter, ExpandError, FragmentKind, TokenMap,
+};
 
 /// Convert the syntax node to a `TokenTree` (what macro
 /// will consume).

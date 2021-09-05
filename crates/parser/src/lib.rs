@@ -98,12 +98,8 @@ pub enum FragmentKind {
     Block,
     Visibility,
     MetaItem,
-
-    // These kinds are used when parsing the result of expansion
-    // FIXME: use separate fragment kinds for macro inputs and outputs?
     Items,
     Statements,
-
     Attr,
 }
 

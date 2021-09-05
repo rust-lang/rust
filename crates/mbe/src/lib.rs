@@ -18,12 +18,14 @@ mod token_map;
 
 use std::fmt;
 
-pub use tt::{Delimiter, DelimiterKind, Punct};
-
 use crate::{
     parser::{parse_pattern, parse_template, MetaTemplate, Op},
     tt_iter::TtIter,
 };
+
+// FIXME: we probably should re-think  `token_tree_to_syntax_node` interfaces
+pub use ::parser::FragmentKind;
+pub use tt::{Delimiter, DelimiterKind, Punct};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseError {
@@ -39,7 +41,7 @@ pub enum ExpandError {
     UnexpectedToken,
     BindingError(String),
     ConversionError,
-    // FXME: no way mbe should know about proc macros.
+    // FIXME: no way mbe should know about proc macros.
     UnresolvedProcMacro,
     Other(String),
 }

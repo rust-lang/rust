@@ -554,16 +554,18 @@ fn option_env_expand(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{
-        name::AsName, test_db::TestDB, AstNode, EagerCallInfo, MacroCallId, MacroCallKind,
-        MacroCallLoc,
-    };
+    use std::sync::Arc;
+
     use base_db::{fixture::WithFixture, SourceDatabase};
     use expect_test::{expect, Expect};
-    use parser::FragmentKind;
-    use std::sync::Arc;
     use syntax::ast::NameOwner;
+
+    use crate::{
+        name::AsName, test_db::TestDB, AstNode, EagerCallInfo, ExpandTo, MacroCallId,
+        MacroCallKind, MacroCallLoc,
+    };
+
+    use super::*;
 
     fn expand_builtin_macro(ra_fixture: &str) -> String {
         let (db, file_id) = TestDB::with_single_file(ra_fixture);
@@ -599,7 +601,7 @@ mod tests {
                     eager: None,
                     kind: MacroCallKind::FnLike {
                         ast_id: AstId::new(file_id.into(), ast_id_map.ast_id(&macro_call)),
-                        fragment: FragmentKind::Expr,
+                        expand_to: ExpandTo::Expr,
                     },
                 };
 
@@ -614,7 +616,6 @@ mod tests {
                     local_inner: false,
                 };
 
-                let fragment = crate::to_fragment_kind(&macro_call);
                 let args = macro_call.token_tree().unwrap();
                 let parsed_args = mbe::syntax_node_to_token_tree(args.syntax()).0;
                 let call_id = AstId::new(file_id.into(), ast_id_map.ast_id(&macro_call));
@@ -626,10 +627,11 @@ mod tests {
                         arg_or_expansion: Arc::new(parsed_args.clone()),
                         included_file: None,
                     }),
-                    kind: MacroCallKind::FnLike { ast_id: call_id, fragment: FragmentKind::Expr },
+                    kind: MacroCallKind::FnLike { ast_id: call_id, expand_to: ExpandTo::Expr },
                 });
 
                 let expanded = expander.expand(&db, arg_id, &parsed_args).value.unwrap();
+                let expand_to = crate::ExpandTo::from_call_site(&macro_call);
                 let loc = MacroCallLoc {
                     def,
                     krate,
@@ -637,7 +639,7 @@ mod tests {
                         arg_or_expansion: Arc::new(expanded.subtree),
                         included_file: expanded.included_file,
                     }),
-                    kind: MacroCallKind::FnLike { ast_id: call_id, fragment },
+                    kind: MacroCallKind::FnLike { ast_id: call_id, expand_to },
                 };
 
                 let id: MacroCallId = db.intern_macro(loc);

@@ -19,7 +19,6 @@ use base_db::ProcMacroKind;
 use either::Either;
 
 pub use mbe::{ExpandError, ExpandResult};
-pub use parser::FragmentKind;
 
 use std::{hash::Hash, iter, sync::Arc};
 
@@ -268,7 +267,7 @@ pub struct MacroCallLoc {
 pub enum MacroCallKind {
     FnLike {
         ast_id: AstId<ast::MacroCall>,
-        fragment: FragmentKind,
+        expand_to: ExpandTo,
     },
     Derive {
         ast_id: AstId<ast::Item>,
@@ -327,11 +326,11 @@ impl MacroCallKind {
         }
     }
 
-    fn fragment_kind(&self) -> FragmentKind {
+    fn expand_to(&self) -> ExpandTo {
         match self {
-            MacroCallKind::FnLike { fragment, .. } => *fragment,
-            MacroCallKind::Derive { .. } => FragmentKind::Items,
-            MacroCallKind::Attr { .. } => FragmentKind::Items, // is this always correct?
+            MacroCallKind::FnLike { expand_to, .. } => *expand_to,
+            MacroCallKind::Derive { .. } => ExpandTo::Items,
+            MacroCallKind::Attr { .. } => ExpandTo::Items, // is this always correct?
         }
     }
 }
@@ -653,38 +652,61 @@ impl<N: AstNode> InFile<N> {
     }
 }
 
-/// Given a `MacroCallId`, return what `FragmentKind` it belongs to.
-/// FIXME: Not completed
-pub fn to_fragment_kind(call: &ast::MacroCall) -> FragmentKind {
-    use syntax::SyntaxKind::*;
+/// In Rust, macros expand token trees to token trees. When we want to turn a
+/// token tree into an AST node, we need to figure out what kind of AST node we
+/// want: something like `foo` can be a type, an expression, or a pattern.
+///
+/// Naively, one would think that "what this expands to" is a property of a
+/// particular macro: macro `m1` returns an item, while macro `m2` returns an
+/// expression, etc. That's not the case -- macros are polymorphic in the
+/// result, and can expand to any type of the AST node.
+///
+/// What defines the actual AST node is the syntactic context of the macro
+/// invocation. As a contrived example, in `let T![*] = T![*];` the first `T`
+/// expands to a pattern, while the second one expands to an expression.
+///
+/// `ExpandTo` captures this bit of information about a particular macro call
+/// site.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ExpandTo {
+    Statements,
+    Items,
+    Pattern,
+    Type,
+    Expr,
+}
 
-    let syn = call.syntax();
+impl ExpandTo {
+    pub fn from_call_site(call: &ast::MacroCall) -> ExpandTo {
+        use syntax::SyntaxKind::*;
 
-    let parent = match syn.parent() {
-        Some(it) => it,
-        None => return FragmentKind::Statements,
-    };
+        let syn = call.syntax();
 
-    match parent.kind() {
-        MACRO_ITEMS | SOURCE_FILE | ITEM_LIST => FragmentKind::Items,
-        MACRO_STMTS | EXPR_STMT | BLOCK_EXPR => FragmentKind::Statements,
-        MACRO_PAT => FragmentKind::Pattern,
-        MACRO_TYPE => FragmentKind::Type,
+        let parent = match syn.parent() {
+            Some(it) => it,
+            None => return ExpandTo::Statements,
+        };
 
-        ARG_LIST | TRY_EXPR | TUPLE_EXPR | PAREN_EXPR | ARRAY_EXPR | FOR_EXPR | PATH_EXPR
-        | CLOSURE_EXPR | CONDITION | BREAK_EXPR | RETURN_EXPR | MATCH_EXPR | MATCH_ARM
-        | MATCH_GUARD | RECORD_EXPR_FIELD | CALL_EXPR | INDEX_EXPR | METHOD_CALL_EXPR
-        | FIELD_EXPR | AWAIT_EXPR | CAST_EXPR | REF_EXPR | PREFIX_EXPR | RANGE_EXPR | BIN_EXPR => {
-            FragmentKind::Expr
-        }
-        LET_STMT => {
-            // FIXME: Handle LHS Pattern
-            FragmentKind::Expr
-        }
+        match parent.kind() {
+            MACRO_ITEMS | SOURCE_FILE | ITEM_LIST => ExpandTo::Items,
+            MACRO_STMTS | EXPR_STMT | BLOCK_EXPR => ExpandTo::Statements,
+            MACRO_PAT => ExpandTo::Pattern,
+            MACRO_TYPE => ExpandTo::Type,
 
-        _ => {
-            // Unknown , Just guess it is `Items`
-            FragmentKind::Items
+            ARG_LIST | TRY_EXPR | TUPLE_EXPR | PAREN_EXPR | ARRAY_EXPR | FOR_EXPR | PATH_EXPR
+            | CLOSURE_EXPR | CONDITION | BREAK_EXPR | RETURN_EXPR | MATCH_EXPR | MATCH_ARM
+            | MATCH_GUARD | RECORD_EXPR_FIELD | CALL_EXPR | INDEX_EXPR | METHOD_CALL_EXPR
+            | FIELD_EXPR | AWAIT_EXPR | CAST_EXPR | REF_EXPR | PREFIX_EXPR | RANGE_EXPR
+            | BIN_EXPR => ExpandTo::Expr,
+            LET_STMT => {
+                // FIXME: Handle LHS Pattern
+                ExpandTo::Expr
+            }
+
+            _ => {
+                // Unknown , Just guess it is `Items`
+                ExpandTo::Items
+            }
         }
     }
 }

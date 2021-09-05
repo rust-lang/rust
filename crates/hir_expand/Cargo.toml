@@ -19,7 +19,6 @@ itertools = "0.10.0"
 base_db = { path = "../base_db", version = "0.0.0" }
 cfg = { path = "../cfg", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
-parser = { path = "../parser", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }
 tt = { path = "../tt", version = "0.0.0" }
 mbe = { path = "../mbe", version = "0.0.0" }
