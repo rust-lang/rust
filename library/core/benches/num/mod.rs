@@ -1,5 +1,6 @@
 mod dec2flt;
 mod flt2dec;
+mod int_log;
 
 use std::str::FromStr;
 use test::Bencher;
