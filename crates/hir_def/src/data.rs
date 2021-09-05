@@ -154,6 +154,10 @@ impl TraitData {
         let tr_loc = tr.lookup(db);
         let item_tree = tr_loc.id.item_tree(db);
         let tr_def = &item_tree[tr_loc.id.value];
+        let _cx = stdx::panic_context::enter(format!(
+            "trait_data_query({:?} -> {:?} -> {:?})",
+            tr, tr_loc, tr_def
+        ));
         let name = tr_def.name.clone();
         let is_auto = tr_def.is_auto;
         let is_unsafe = tr_def.is_unsafe;
@@ -341,6 +345,10 @@ fn collect_items(
                 let ast_id_map = db.ast_id_map(tree_id.file_id());
                 let root = db.parse_or_expand(tree_id.file_id()).unwrap();
                 let call = ast_id_map.get(call.ast_id).to_node(&root);
+                let _cx = stdx::panic_context::enter(format!(
+                    "collect_items MacroCall: {}\nexpander={:#?}",
+                    call, expander
+                ));
                 let res = expander.enter_expand(db, call);
 
                 if let Ok(res) = res {
