@@ -587,7 +587,10 @@ impl Token {
     }
 
     pub fn is_numeric_lit(&self) -> bool {
-        matches!(self.kind, Literal(Lit { kind: LitKind::Integer, ..}) | Literal(Lit { kind: LitKind::Float, ..}))
+        matches!(
+            self.kind,
+            Literal(Lit { kind: LitKind::Integer, .. }) | Literal(Lit { kind: LitKind::Float, .. })
+        )
     }
 
     /// Returns `true` if the token is a non-raw identifier for which `pred` holds.
