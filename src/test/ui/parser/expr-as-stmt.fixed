@@ -5,7 +5,7 @@
 #![allow(unused_must_use)]
 
 fn foo() -> i32 {
-    ({2}) + {2} //~ ERROR leading `+` is not supported
+    ({2}) + {2} //~ ERROR expected expression, found `+`
     //~^ ERROR mismatched types
 }
 
@@ -16,7 +16,7 @@ fn bar() -> i32 {
 
 fn zul() -> u32 {
     let foo = 3;
-    ({ 42 }) + foo; //~ ERROR leading `+` is not supported
+    ({ 42 }) + foo; //~ ERROR expected expression, found `+`
     //~^ ERROR mismatched types
     32
 }

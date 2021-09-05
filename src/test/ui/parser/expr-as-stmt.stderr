@@ -1,8 +1,8 @@
-error: leading `+` is not supported
+error: expected expression, found `+`
   --> $DIR/expr-as-stmt.rs:8:9
    |
 LL |     {2} + {2}
-   |         ^ unexpected `+`
+   |         ^ expected expression
    |
 help: parentheses are required to parse this as an expression
    |
@@ -20,11 +20,11 @@ help: parentheses are required to parse this as an expression
 LL |     ({2}) + 2
    |     +   +
 
-error: leading `+` is not supported
+error: expected expression, found `+`
   --> $DIR/expr-as-stmt.rs:19:12
    |
 LL |     { 42 } + foo;
-   |            ^ unexpected `+`
+   |            ^ expected expression
    |
 help: parentheses are required to parse this as an expression
    |
