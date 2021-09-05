@@ -648,15 +648,24 @@ impl Step for Rustc {
             }
         }
 
+        let mut to_open = None;
         for krate in &compiler_crates {
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.
             // FIXME: Cargo should probably do this itself.
             t!(fs::create_dir_all(out_dir.join(krate)));
             cargo.arg("-p").arg(krate);
+            if to_open.is_none() {
+                to_open = Some(krate);
+            }
         }
 
         builder.run(&mut cargo.into());
+        // Let's open the first crate documentation page:
+        if let Some(krate) = to_open {
+            let index = out.join(krate).join("index.html");
+            open(builder, &index);
+        }
     }
 }
 
