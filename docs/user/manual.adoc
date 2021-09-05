@@ -616,23 +616,11 @@ See https://github.com/rust-analyzer/rust-project.json-example for a small examp
 
 You can set `RA_LOG` environmental variable to `rust_analyzer=info` to inspect how rust-analyzer handles config and project loading.
 
-Note that calls to `cargo check` are disabled when using `rust-project.json` by default, so compilation errors and warnings will no longer be sent to your LSP client. To enable these compilation errors you will need to specify explicitly what command rust-analyzer should run to perform the checks using the `checkOnSave.overrideCommand` configuration. The following example, explicitly enables calls to `cargo check` in neovim's configuration:
+Note that calls to `cargo check` are disabled when using `rust-project.json` by default, so compilation errors and warnings will no longer be sent to your LSP client. To enable these compilation errors you will need to specify explicitly what command rust-analyzer should run to perform the checks using the `checkOnSave.overrideCommand` configuration. As an example, the following configuration explicitly sets `cargo check` as the `checkOnSave` command.
 
-[source,vim]
+[source,json]
 ----
-lua << EOF
-nvim_lsp['rust_analyzer'].setup {
-  on_attach = on_attach,
-  settings = {
-    ["rust-analyzer"] = {
-      checkOnSave = {
-        overrideCommand = {"cargo", "check", "--message-format=json"},
-        enable = true,
-      }
-    }
-  }
-}
-EOF
+{ "rust-analyzer.checkOnSave.overrideCommand": ["cargo", "check", "--message-format=json"] }
 ----
 
 The `checkOnSave.overrideCommand` requires the command specified to output json error messages for rust-analyzer to consume. The `--message-format=json` flag does this for `cargo check` so whichever command you use must also output errors in this format. See the <<Configuration>> section for more information. 
