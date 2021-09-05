@@ -1,4 +1,5 @@
 use rustc_index::vec::IndexVec;
+use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers};
 use rustc_middle::ty::SymbolName;
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Integer, Primitive};
@@ -256,12 +257,12 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
     pub(crate) inline_asm_index: u32,
 }
 
-impl<'tcx> LayoutOf<'tcx> for FunctionCx<'_, '_, 'tcx> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = TyAndLayout<'tcx>;
+impl<'tcx> LayoutOfHelpers<'tcx> for FunctionCx<'_, '_, 'tcx> {
+    type LayoutOfResult = TyAndLayout<'tcx>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> TyAndLayout<'tcx> {
-        RevealAllLayoutCx(self.tcx).layout_of(ty)
+    #[inline]
+    fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
+        RevealAllLayoutCx(self.tcx).handle_layout_err(err, span, ty)
     }
 }
 
@@ -364,19 +365,16 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
 
 pub(crate) struct RevealAllLayoutCx<'tcx>(pub(crate) TyCtxt<'tcx>);
 
-impl<'tcx> LayoutOf<'tcx> for RevealAllLayoutCx<'tcx> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = TyAndLayout<'tcx>;
+impl<'tcx> LayoutOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
+    type LayoutOfResult = TyAndLayout<'tcx>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> TyAndLayout<'tcx> {
-        assert!(!ty.still_further_specializable());
-        self.0.layout_of(ParamEnv::reveal_all().and(&ty)).unwrap_or_else(|e| {
-            if let layout::LayoutError::SizeOverflow(_) = e {
-                self.0.sess.fatal(&e.to_string())
-            } else {
-                bug!("failed to get layout for `{}`: {}", ty, e)
-            }
-        })
+    #[inline]
+    fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
+        if let layout::LayoutError::SizeOverflow(_) = err {
+            self.0.sess.span_fatal(span, &err.to_string())
+        } else {
+            span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
+        }
     }
 }
 
