@@ -103,26 +103,39 @@ fn check_sig<'tcx>(cx: &LateContext<'tcx>, item_hir_id: hir::HirId, decl: &hir::
 fn check_ty<'tcx>(cx: &LateContext<'tcx>, span: Span, ty: Ty<'tcx>) {
     let ty = ty.peel_refs();
     if let Adt(def, substs) = ty.kind() {
-        if [sym::hashmap_type, sym::BTreeMap, sym::hashset_type, sym::BTreeMap]
+        let is_map_type = [sym::hashmap_type, sym::BTreeMap, sym::hashset_type, sym::BTreeMap]
             .iter()
-            .any(|diag_item| cx.tcx.is_diagnostic_item(*diag_item, def.did))
-            && is_mutable_type(cx, substs.type_at(0), span)
-        {
+            .any(|diag_item| cx.tcx.is_diagnostic_item(*diag_item, def.did));
+        if is_map_type && is_mutable_type(cx, substs.type_at(0), span, true) {
             span_lint(cx, MUTABLE_KEY_TYPE, span, "mutable key type");
         }
     }
 }
 
-fn is_mutable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span) -> bool {
+fn is_mutable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, is_top_level_type: bool) -> bool {
     match *ty.kind() {
-        RawPtr(TypeAndMut { ty: inner_ty, mutbl }) | Ref(_, inner_ty, mutbl) => {
-            mutbl == hir::Mutability::Mut || is_mutable_type(cx, inner_ty, span)
+        RawPtr(TypeAndMut { ty: inner_ty, mutbl }) => {
+            if is_top_level_type {
+                // Raw pointers are hashed by the address they point to, not what is pointed to.
+                // Therefore, using a raw pointer to any type as the top-level key type is OK.
+                // Using raw pointers _in_ the key type is not, because the wrapper type could
+                // provide a custom `impl` for `Hash` (which could deref the raw pointer).
+                //
+                // see:
+                // - clippy issue: https://github.com/rust-lang/rust-clippy/issues/6745
+                // - std code: https://github.com/rust-lang/rust/blob/1.54.0/library/core/src/hash/mod.rs#L717-L736
+                false
+            } else {
+                mutbl == hir::Mutability::Mut || is_mutable_type(cx, inner_ty, span, false)
+            }
         },
-        Slice(inner_ty) => is_mutable_type(cx, inner_ty, span),
+        Ref(_, inner_ty, mutbl) => mutbl == hir::Mutability::Mut || is_mutable_type(cx, inner_ty, span, false),
+        Slice(inner_ty) => is_mutable_type(cx, inner_ty, span, false),
         Array(inner_ty, size) => {
-            size.try_eval_usize(cx.tcx, cx.param_env).map_or(true, |u| u != 0) && is_mutable_type(cx, inner_ty, span)
+            size.try_eval_usize(cx.tcx, cx.param_env).map_or(true, |u| u != 0)
+                && is_mutable_type(cx, inner_ty, span, false)
         },
-        Tuple(..) => ty.tuple_fields().any(|ty| is_mutable_type(cx, ty, span)),
+        Tuple(..) => ty.tuple_fields().any(|ty| is_mutable_type(cx, ty, span, false)),
         Adt(..) => {
             !ty.has_escaping_bound_vars()
                 && cx.tcx.layout_of(cx.param_env.and(ty)).is_ok()
