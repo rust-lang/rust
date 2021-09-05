@@ -44,7 +44,7 @@ something that the library produces, but, for each derived value there's a
 "pure" function that computes the derived value.
 
 For example, there might be a function `ast(x: Path) -> AST`. The produced
-`AST` isn't a final value, it's an intermidiate value that the library would
+`AST` isn't a final value, it's an intermediate value that the library would
 use for the computation.
 
 This means that when you try to compute with the library, Salsa is going to
@@ -126,7 +126,7 @@ Example input query group:
 
 ```rust,ignore
 /// This attribute will process this tree, produce this tree as output, and produce
-/// a bunch of intermidiate stuff that Salsa also uses.  One of these things is a
+/// a bunch of intermediate stuff that Salsa also uses.  One of these things is a
 /// "StorageStruct", whose name we have specified in the attribute.
 ///
 /// This query group is a bunch of **input** queries, that do not rely on any
