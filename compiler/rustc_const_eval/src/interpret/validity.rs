@@ -625,7 +625,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             return Ok(());
         }
         // At least one value is excluded.
-        let valid_range = scalar_layout.valid_range.clone();
+        let valid_range = scalar_layout.valid_range;
         let WrappingRange { start, end } = valid_range;
         let max_value = u128::MAX >> (128 - op.layout.size.bits());
         assert!(end <= max_value);
