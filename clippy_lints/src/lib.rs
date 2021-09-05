@@ -1869,7 +1869,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(needless_bool::NeedlessBool));
     store.register_late_pass(|| Box::new(needless_bool::BoolComparison));
     store.register_late_pass(|| Box::new(needless_for_each::NeedlessForEach));
-    store.register_late_pass(|| Box::new(approx_const::ApproxConstant));
     store.register_late_pass(|| Box::new(misc::MiscLints));
     store.register_late_pass(|| Box::new(eta_reduction::EtaReduction));
     store.register_late_pass(|| Box::new(identity_op::IdentityOp));
@@ -1898,6 +1897,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     });
 
     let avoid_breaking_exported_api = conf.avoid_breaking_exported_api;
+    store.register_late_pass(move || Box::new(approx_const::ApproxConstant::new(msrv)));
     store.register_late_pass(move || Box::new(methods::Methods::new(avoid_breaking_exported_api, msrv)));
     store.register_late_pass(move || Box::new(matches::Matches::new(msrv)));
     store.register_early_pass(move || Box::new(manual_non_exhaustive::ManualNonExhaustive::new(msrv)));
