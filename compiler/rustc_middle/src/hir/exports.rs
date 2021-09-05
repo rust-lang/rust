@@ -11,23 +11,18 @@ use std::fmt::Debug;
 
 /// This is the replacement export map. It maps a module to all of the exports
 /// within.
-pub type ExportMap<Id> = FxHashMap<LocalDefId, Vec<Export<Id>>>;
+pub type ExportMap = FxHashMap<LocalDefId, Vec<Export>>;
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
-pub struct Export<Id> {
+pub struct Export {
     /// The name of the target.
     pub ident: Ident,
     /// The resolution of the target.
-    pub res: Res<Id>,
+    /// Local variables cannot be exported, so this `Res` doesn't need the ID parameter.
+    pub res: Res<!>,
     /// The span of the target.
     pub span: Span,
     /// The visibility of the export.
     /// We include non-`pub` exports for hygienic macros that get used from extern crates.
     pub vis: ty::Visibility,
-}
-
-impl<Id> Export<Id> {
-    pub fn map_id<R>(self, map: impl FnMut(Id) -> R) -> Export<R> {
-        Export { ident: self.ident, res: self.res.map_id(map), span: self.span, vis: self.vis }
-    }
 }

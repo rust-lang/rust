@@ -14,6 +14,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(format_args_capture)]
 #![feature(iter_zip)]
+#![feature(never_type)]
 #![feature(nll)]
 #![recursion_limit = "256"]
 #![allow(rustdoc::private_intra_doc_links)]
@@ -911,7 +912,7 @@ pub struct Resolver<'a> {
 
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
-    export_map: ExportMap<LocalDefId>,
+    export_map: ExportMap,
     trait_map: Option<NodeMap<Vec<TraitCandidate>>>,
 
     /// A map from nodes to anonymous modules.

@@ -1019,10 +1019,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     /// Iterates over each child of the given item.
-    fn each_child_of_item<F>(&self, id: DefIndex, mut callback: F, sess: &Session)
-    where
-        F: FnMut(Export<hir::HirId>),
-    {
+    fn each_child_of_item(&self, id: DefIndex, mut callback: impl FnMut(Export), sess: &Session) {
         if let Some(data) = &self.root.proc_macro_data {
             /* If we are loading as a proc macro, we want to return the view of this crate
              * as a proc macro crate.
