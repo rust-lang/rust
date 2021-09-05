@@ -178,9 +178,10 @@ impl DefMap {
         path: &ModPath,
         shadow: BuiltinShadowMode,
     ) -> ResolvePathResult {
+        let graph = db.crate_graph();
         let _cx = stdx::panic_context::enter(format!(
-            "DefMap {:?} {:?} path {}",
-            self.krate, self.block, path
+            "DefMap {:?} crate_name={:?} block={:?} path={}",
+            self.krate, graph[self.krate].display_name, self.block, path
         ));
 
         let mut segments = path.segments().iter().enumerate();
