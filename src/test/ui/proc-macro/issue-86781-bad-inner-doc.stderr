@@ -1,10 +1,16 @@
 error[E0753]: expected outer doc comment
-  --> $DIR/issue-86781-bad-inner-doc.rs:6:1
+  --> $DIR/issue-86781-bad-inner-doc.rs:7:1
    |
 LL | //! Inner doc comment
    | ^^^^^^^^^^^^^^^^^^^^^
+...
+LL | pub struct Foo;
+   | --------------- the inner doc comment doesn't annotate this struct
    |
-   = note: inner doc comments like this (starting with `//!` or `/*!`) can only appear before items
+help: to annotate the struct, change the doc comment from inner to outer style
+   |
+LL | /// Inner doc comment
+   |   ~
 
 error: aborting due to previous error
 

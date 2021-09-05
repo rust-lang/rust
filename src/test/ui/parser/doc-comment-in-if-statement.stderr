@@ -5,6 +5,11 @@ LL |     if true /*!*/ {}
    |             ^^^^^
    |
    = note: inner doc comments like this (starting with `//!` or `/*!`) can only appear before items
+help: you might have meant to write a regular comment
+   |
+LL -     if true /*!*/ {}
+LL +     if true /**/ {}
+   | 
 
 error: outer attributes are not allowed on `if` and `else` branches
   --> $DIR/doc-comment-in-if-statement.rs:2:13
