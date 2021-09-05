@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::{meets_msrv, msrvs};
 use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
 use rustc_hir::{Expr, ExprKind};
@@ -88,15 +88,13 @@ impl ApproxConstant {
                 if is_approx_const(constant, &s, min_digits)
                     && msrv.as_ref().map_or(true, |msrv| meets_msrv(self.msrv.as_ref(), msrv))
                 {
-                    span_lint(
+                    span_lint_and_help(
                         cx,
                         APPROX_CONSTANT,
                         e.span,
-                        &format!(
-                            "approximate value of `{}::consts::{}` found. \
-                             Consider using it directly",
-                            module, &name
-                        ),
+                        &format!("approximate value of `{}::consts::{}` found", module, &name),
+                        None,
+                        "consider using the constant directly",
                     );
                     return;
                 }
