@@ -1122,7 +1122,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 attributes: lower_attributes(attrs.to_owned(), &self.save_ctxt),
             },
         );
-        intravisit::walk_crate(self, krate);
+        self.tcx.hir().walk_toplevel_module(self);
     }
 
     fn process_bounds(&mut self, bounds: hir::GenericBounds<'tcx>) {

@@ -5,8 +5,10 @@ LL |         x.deref();
    |           ^^^^^ method not found in `&()`
    |
    = help: items from traits can only be used if the trait is in scope
-   = note: the following trait is implemented but not in scope; perhaps add a `use` for it:
-           `use std::ops::Deref;`
+help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+   |
+LL |     use std::ops::Deref;
+   |
 
 error: aborting due to previous error
 

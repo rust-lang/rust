@@ -6,8 +6,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, Res};
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
-use rustc_hir::intravisit;
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -1011,9 +1010,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         candidates: Vec<DefId>,
     ) {
         let module_did = self.tcx.parent_module(self.body_id);
-        let module_id = self.tcx.hir().local_def_id_to_hir_id(module_did);
-        let krate = self.tcx.hir().krate();
-        let (span, found_use) = UsePlacementFinder::check(self.tcx, krate, module_id);
+        let (span, found_use) = find_use_placement(self.tcx, module_did);
         if let Some(span) = span {
             let path_strings = candidates.iter().map(|did| {
                 // Produce an additional newline to separate the new use statement
@@ -1606,64 +1603,38 @@ pub fn provide(providers: &mut ty::query::Providers) {
     providers.all_traits = compute_all_traits;
 }
 
-struct UsePlacementFinder<'tcx> {
-    target_module: hir::HirId,
-    span: Option<Span>,
-    found_use: bool,
-    tcx: TyCtxt<'tcx>,
-}
+fn find_use_placement<'tcx>(tcx: TyCtxt<'tcx>, target_module: LocalDefId) -> (Option<Span>, bool) {
+    let mut span = None;
+    let mut found_use = false;
+    let (module, _, _) = tcx.hir().get_module(target_module);
 
-impl UsePlacementFinder<'tcx> {
-    fn check(
-        tcx: TyCtxt<'tcx>,
-        krate: &'tcx hir::Crate<'tcx>,
-        target_module: hir::HirId,
-    ) -> (Option<Span>, bool) {
-        let mut finder = UsePlacementFinder { target_module, span: None, found_use: false, tcx };
-        intravisit::walk_crate(&mut finder, krate);
-        (finder.span, finder.found_use)
-    }
-}
-
-impl intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
-    fn visit_mod(&mut self, module: &'tcx hir::Mod<'tcx>, _: Span, hir_id: hir::HirId) {
-        if self.span.is_some() {
-            return;
-        }
-        if hir_id != self.target_module {
-            intravisit::walk_mod(self, module, hir_id);
-            return;
-        }
-        // Find a `use` statement.
-        for &item_id in module.item_ids {
-            let item = self.tcx.hir().item(item_id);
-            match item.kind {
-                hir::ItemKind::Use(..) => {
-                    // Don't suggest placing a `use` before the prelude
-                    // import or other generated ones.
-                    if !item.span.from_expansion() {
-                        self.span = Some(item.span.shrink_to_lo());
-                        self.found_use = true;
-                        return;
-                    }
+    // Find a `use` statement.
+    for &item_id in module.item_ids {
+        let item = tcx.hir().item(item_id);
+        match item.kind {
+            hir::ItemKind::Use(..) => {
+                // Don't suggest placing a `use` before the prelude
+                // import or other generated ones.
+                if !item.span.from_expansion() {
+                    span = Some(item.span.shrink_to_lo());
+                    found_use = true;
+                    break;
                 }
-                // Don't place `use` before `extern crate`...
-                hir::ItemKind::ExternCrate(_) => {}
-                // ...but do place them before the first other item.
-                _ => {
-                    if self.span.map_or(true, |span| item.span < span) {
-                        if !item.span.from_expansion() {
-                            self.span = Some(item.span.shrink_to_lo());
-                            // Don't insert between attributes and an item.
-                            let attrs = self.tcx.hir().attrs(item.hir_id());
-                            // Find the first attribute on the item.
-                            // FIXME: This is broken for active attributes.
-                            for attr in attrs {
-                                if !attr.span.is_dummy()
-                                    && self.span.map_or(true, |span| attr.span < span)
-                                {
-                                    self.span = Some(attr.span.shrink_to_lo());
-                                }
+            }
+            // Don't place `use` before `extern crate`...
+            hir::ItemKind::ExternCrate(_) => {}
+            // ...but do place them before the first other item.
+            _ => {
+                if span.map_or(true, |span| item.span < span) {
+                    if !item.span.from_expansion() {
+                        span = Some(item.span.shrink_to_lo());
+                        // Don't insert between attributes and an item.
+                        let attrs = tcx.hir().attrs(item.hir_id());
+                        // Find the first attribute on the item.
+                        // FIXME: This is broken for active attributes.
+                        for attr in attrs {
+                            if !attr.span.is_dummy() && span.map_or(true, |span| attr.span < span) {
+                                span = Some(attr.span.shrink_to_lo());
                             }
                         }
                     }
@@ -1672,11 +1643,7 @@ impl intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
         }
     }
 
-    type Map = intravisit::ErasedMap<'tcx>;
-
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::None
-    }
+    (span, found_use)
 }
 
 fn print_disambiguation_help(

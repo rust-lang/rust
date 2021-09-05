@@ -691,7 +691,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
     debug!("find_opaque_ty_constraints: scope={:?}", scope);
 
     if scope == hir::CRATE_HIR_ID {
-        intravisit::walk_crate(&mut locator, tcx.hir().krate());
+        tcx.hir().walk_toplevel_module(&mut locator);
     } else {
         debug!("find_opaque_ty_constraints: scope={:?}", tcx.hir().get(scope));
         match tcx.hir().get(scope) {

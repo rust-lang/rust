@@ -9,6 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::intravisit as hir_visit;
 use rustc_hir::HirId;
 use rustc_middle::hir::map::Map;
+use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::common::to_readable_str;
 use rustc_span::Span;
 
@@ -25,18 +26,19 @@ struct NodeData {
 }
 
 struct StatCollector<'k> {
-    krate: Option<&'k hir::Crate<'k>>,
+    krate: Option<Map<'k>>,
     data: FxHashMap<&'static str, NodeData>,
     seen: FxHashSet<Id>,
 }
 
-pub fn print_hir_stats(krate: &hir::Crate<'_>) {
+pub fn print_hir_stats(tcx: TyCtxt<'_>) {
     let mut collector = StatCollector {
-        krate: Some(krate),
+        krate: Some(tcx.hir()),
         data: FxHashMap::default(),
         seen: FxHashSet::default(),
     };
-    hir_visit::walk_crate(&mut collector, krate);
+    tcx.hir().walk_toplevel_module(&mut collector);
+    tcx.hir().walk_attributes(&mut collector);
     collector.print("HIR STATS");
 }
 

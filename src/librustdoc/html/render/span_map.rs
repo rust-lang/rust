@@ -45,7 +45,7 @@ crate fn collect_spans_and_sources(
 
     if include_sources {
         if generate_link_to_definition {
-            intravisit::walk_crate(&mut visitor, tcx.hir().krate());
+            tcx.hir().walk_toplevel_module(&mut visitor);
         }
         let (krate, sources) = sources::collect_local_sources(tcx, src_root, krate);
         (krate, sources, visitor.matches)

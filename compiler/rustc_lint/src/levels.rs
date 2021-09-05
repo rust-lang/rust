@@ -37,7 +37,7 @@ fn lint_levels(tcx: TyCtxt<'_>, (): ()) -> LintLevelMap {
 
     let push = builder.levels.push(tcx.hir().attrs(hir::CRATE_HIR_ID), &store, true);
     builder.levels.register_id(hir::CRATE_HIR_ID);
-    intravisit::walk_crate(&mut builder, krate);
+    tcx.hir().walk_toplevel_module(&mut builder);
     builder.levels.pop(push);
 
     builder.levels.build_map()

@@ -5,8 +5,10 @@ LL |         s.the_fn();
    |           ^^^^^^ method not found in `&TheStruct`
    |
    = help: items from traits can only be used if the trait is in scope
-   = note: the following trait is implemented but not in scope; perhaps add a `use` for it:
-           `use Lib::TheTrait;`
+help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+   |
+LL |     use Lib::TheTrait;
+   |
 
 error: aborting due to previous error
 

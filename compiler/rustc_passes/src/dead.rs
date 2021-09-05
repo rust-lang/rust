@@ -775,5 +775,5 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     let krate = tcx.hir().krate();
     let live_symbols = find_live(tcx, access_levels, krate);
     let mut visitor = DeadVisitor { tcx, live_symbols };
-    intravisit::walk_crate(&mut visitor, krate);
+    tcx.hir().walk_toplevel_module(&mut visitor);
 }

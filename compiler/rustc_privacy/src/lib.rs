@@ -2169,7 +2169,7 @@ fn privacy_access_levels(tcx: TyCtxt<'_>, (): ()) -> &AccessLevels {
         changed: false,
     };
     loop {
-        intravisit::walk_crate(&mut visitor, tcx.hir().krate());
+        tcx.hir().walk_toplevel_module(&mut visitor);
         if visitor.changed {
             visitor.changed = false;
         } else {
@@ -2192,11 +2192,11 @@ fn check_private_in_public(tcx: TyCtxt<'_>, (): ()) {
         in_variant: false,
         old_error_set: Default::default(),
     };
-    intravisit::walk_crate(&mut visitor, krate);
+    tcx.hir().walk_toplevel_module(&mut visitor);
 
     let has_pub_restricted = {
         let mut pub_restricted_visitor = PubRestrictedVisitor { tcx, has_pub_restricted: false };
-        intravisit::walk_crate(&mut pub_restricted_visitor, krate);
+        tcx.hir().walk_toplevel_module(&mut pub_restricted_visitor);
         pub_restricted_visitor.has_pub_restricted
     };
 

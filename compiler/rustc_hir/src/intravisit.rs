@@ -32,7 +32,6 @@
 //! example generator inference, and possibly also HIR borrowck.
 
 use crate::hir::*;
-use crate::hir_id::CRATE_HIR_ID;
 use crate::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
 use rustc_ast::walk_list;
 use rustc_ast::{Attribute, Label};
@@ -474,17 +473,6 @@ pub trait Visitor<'v>: Sized {
     }
     fn visit_defaultness(&mut self, defaultness: &'v Defaultness) {
         walk_defaultness(self, defaultness);
-    }
-}
-
-/// Walks the contents of a crate. See also `Crate::visit_all_items`.
-pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate<'v>) {
-    let top_mod = krate.module();
-    visitor.visit_mod(top_mod, top_mod.inner, CRATE_HIR_ID);
-    for (&id, attrs) in krate.attrs.iter() {
-        for a in *attrs {
-            visitor.visit_attribute(id, a)
-        }
     }
 }
 

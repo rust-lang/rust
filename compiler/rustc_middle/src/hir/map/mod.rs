@@ -7,9 +7,9 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
-use rustc_hir::intravisit;
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::*;
 use rustc_index::vec::Idx;
@@ -519,6 +519,22 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    /// Walks the contents of a crate. See also `Crate::visit_all_items`.
+    pub fn walk_toplevel_module(self, visitor: &mut impl Visitor<'hir>) {
+        let (top_mod, span, hir_id) = self.get_module(CRATE_DEF_ID);
+        visitor.visit_mod(top_mod, span, hir_id);
+    }
+
+    /// Walks the attributes in a crate.
+    pub fn walk_attributes(self, visitor: &mut impl Visitor<'hir>) {
+        let krate = self.krate();
+        for (&id, attrs) in krate.attrs.iter() {
+            for a in *attrs {
+                visitor.visit_attribute(id, a)
+            }
+        }
+    }
+
     pub fn visit_item_likes_in_module<V>(&self, module: LocalDefId, visitor: &mut V)
     where
         V: ItemLikeVisitor<'hir>,
@@ -934,7 +950,8 @@ pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx IndexedHir<'tc
         &tcx.untracked_resolutions.definitions,
         hcx,
     );
-    intravisit::walk_crate(&mut collector, tcx.untracked_crate);
+    let top_mod = tcx.untracked_crate.module();
+    collector.visit_mod(top_mod, top_mod.inner, CRATE_HIR_ID);
 
     let map = collector.finalize_and_compute_crate_hash();
     tcx.arena.alloc(map)
