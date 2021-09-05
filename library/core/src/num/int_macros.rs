@@ -2026,7 +2026,7 @@ macro_rules! int_impl {
         #[track_caller]
         #[rustc_inherit_overflow_checks]
         #[allow(arithmetic_overflow)]
-        pub const fn log(self, base: Self) -> Self {
+        pub const fn log(self, base: Self) -> u32 {
             match self.checked_log(base) {
                 Some(n) => n,
                 None => {
@@ -2060,7 +2060,7 @@ macro_rules! int_impl {
         #[track_caller]
         #[rustc_inherit_overflow_checks]
         #[allow(arithmetic_overflow)]
-        pub const fn log2(self) -> Self {
+        pub const fn log2(self) -> u32 {
             match self.checked_log2() {
                 Some(n) => n,
                 None => {
@@ -2094,7 +2094,7 @@ macro_rules! int_impl {
         #[track_caller]
         #[rustc_inherit_overflow_checks]
         #[allow(arithmetic_overflow)]
-        pub const fn log10(self) -> Self {
+        pub const fn log10(self) -> u32 {
             match self.checked_log10() {
                 Some(n) => n,
                 None => {
@@ -2125,7 +2125,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
         #[inline]
-        pub const fn checked_log(self, base: Self) -> Option<Self> {
+        pub const fn checked_log(self, base: Self) -> Option<u32> {
             if self <= 0 || base <= 1 {
                 None
             } else {
@@ -2161,12 +2161,12 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
         #[inline]
-        pub const fn checked_log2(self) -> Option<Self> {
+        pub const fn checked_log2(self) -> Option<u32> {
             if self <= 0 {
                 None
             } else {
                 // SAFETY: We just checked that this number is positive
-                let log = (Self::BITS - 1) as Self - unsafe { intrinsics::ctlz_nonzero(self) };
+                let log = (Self::BITS - 1) - unsafe { intrinsics::ctlz_nonzero(self) as u32 };
                 Some(log)
             }
         }
@@ -2185,11 +2185,8 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
         #[inline]
-        pub const fn checked_log10(self) -> Option<Self> {
-            match int_log10::$ActualT(self as $ActualT) {
-                Some(s) => Some(s as Self),
-                None => None,
-            }
+        pub const fn checked_log10(self) -> Option<u32> {
+            int_log10::$ActualT(self as $ActualT)
         }
 
         /// Computes the absolute value of `self`.
