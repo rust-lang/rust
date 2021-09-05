@@ -38,10 +38,7 @@ declare_lint_pass!(OptionNeedlessDeref=> [
 
 impl<'tcx> LateLintPass<'tcx> for OptionNeedlessDeref {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.from_expansion() {
-            return;
-        }
-        if in_macro(expr.span) {
+        if expr.span.from_expansion() || in_macro(expr.span) {
             return;
         }
         let typeck = cx.typeck_results();
