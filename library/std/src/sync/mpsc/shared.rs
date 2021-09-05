@@ -248,7 +248,11 @@ impl<T> Packet<T> {
     // Returns true if blocking should proceed.
     fn decrement(&self, token: SignalToken) -> StartResult {
         unsafe {
-            assert_eq!(self.to_wake.load(Ordering::SeqCst), 0, "This is a known bug in rust. See https://github.com/rust-lang/rust/issues/39364");
+            assert_eq!(
+                self.to_wake.load(Ordering::SeqCst),
+                0,
+                "This is a known bug in rust. See https://github.com/rust-lang/rust/issues/39364"
+            );
             let ptr = token.cast_to_usize();
             self.to_wake.store(ptr, Ordering::SeqCst);
 
