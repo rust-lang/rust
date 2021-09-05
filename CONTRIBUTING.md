@@ -148,15 +148,15 @@ cd rustc
 ./x.py setup compiler
  # Now edit `config.toml` and under `[rust]` set `debug-assertions = true`.
 
-# Build a stage 1 rustc, and build the rustc libraries with that rustc.
+# Build a stage 2 rustc, and build the rustc libraries with that rustc.
 # This step can take 30 minutes or more.
-./x.py build --stage 1 compiler/rustc
+./x.py build --stage 2 compiler/rustc
 # If you change something, you can get a faster rebuild by doing
-./x.py build --keep-stage 0 --stage 1 compiler/rustc
+./x.py build --keep-stage 0 --stage 2 compiler/rustc
 # You may have to change the architecture in the next command
-rustup toolchain link stage1 build/x86_64-unknown-linux-gnu/stage1
+rustup toolchain link stage2 build/x86_64-unknown-linux-gnu/stage2
 # Now cd to your Miri directory, then configure rustup
-rustup override set stage1
+rustup override set stage2
 ```
 
 For more information about building and configuring a local compiler,
