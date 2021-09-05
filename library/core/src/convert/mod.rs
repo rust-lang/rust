@@ -532,7 +532,7 @@ where
 
 // From implies Into
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "none")]
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
 impl<T, U> const Into<U> for T
 where
     U: ~const From<T>,
@@ -544,7 +544,7 @@ where
 
 // From (and thus Into) is reflexive
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "none")]
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
 impl<T> const From<T> for T {
     fn from(t: T) -> T {
         t
