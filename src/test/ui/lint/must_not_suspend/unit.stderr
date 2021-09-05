@@ -1,0 +1,23 @@
+error: `Umm` held across a yield point, but should not be
+  --> $DIR/unit.rs:20:9
+   |
+LL |     let _guard = bar();
+   |         ^^^^^^
+LL |     other().await;
+   |     ------------- The value is held across this yield point
+   |
+note: the lint level is defined here
+  --> $DIR/unit.rs:3:9
+   |
+LL | #![deny(must_not_suspend)]
+   |         ^^^^^^^^^^^^^^^^
+   = note: You gotta use Umm's, ya know?
+help: `drop` this value before the yield point, or use a block (`{ ... }`) "
+                        to shrink its scope
+  --> $DIR/unit.rs:20:9
+   |
+LL |     let _guard = bar();
+   |         ^^^^^^
+
+error: aborting due to previous error
+

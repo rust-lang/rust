@@ -1,0 +1,19 @@
+warning: `Umm` held across a yield point, but should not be
+  --> $DIR/warn.rs:20:9
+   |
+LL |     let _guard = bar();
+   |         ^^^^^^
+LL |     other().await;
+   |     ------------- The value is held across this yield point
+   |
+   = note: `#[warn(must_not_suspend)]` on by default
+   = note: You gotta use Umm's, ya know?
+help: `drop` this value before the yield point, or use a block (`{ ... }`) "
+                        to shrink its scope
+  --> $DIR/warn.rs:20:9
+   |
+LL |     let _guard = bar();
+   |         ^^^^^^
+
+warning: 1 warning emitted
+

@@ -1,0 +1,39 @@
+error: implementer of `Wow` held across a yield point, but should not be
+  --> $DIR/trait.rs:21:9
+   |
+LL |     let _guard1 = r#impl();
+   |         ^^^^^^^
+...
+LL |     other().await;
+   |     ------------- The value is held across this yield point
+   |
+note: the lint level is defined here
+  --> $DIR/trait.rs:3:9
+   |
+LL | #![deny(must_not_suspend)]
+   |         ^^^^^^^^^^^^^^^^
+help: `drop` this value before the yield point, or use a block (`{ ... }`) "
+                        to shrink its scope
+  --> $DIR/trait.rs:21:9
+   |
+LL |     let _guard1 = r#impl();
+   |         ^^^^^^^
+
+error: boxed `Wow` trait object held across a yield point, but should not be
+  --> $DIR/trait.rs:22:9
+   |
+LL |     let _guard2 = r#dyn();
+   |         ^^^^^^^
+LL | 
+LL |     other().await;
+   |     ------------- The value is held across this yield point
+   |
+help: `drop` this value before the yield point, or use a block (`{ ... }`) "
+                        to shrink its scope
+  --> $DIR/trait.rs:22:9
+   |
+LL |     let _guard2 = r#dyn();
+   |         ^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -315,6 +315,13 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// [the reference]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute
+    pub MUST_NOT_SUSPEND,
+    Warn,
+    "Use of a `#[must_not_suspend]` value across a yield point",
+}
+
+declare_lint! {
     /// The `unused_extern_crates` lint guards against `extern crate` items
     /// that are never used.
     ///
@@ -2993,6 +3000,7 @@ declare_lint_pass! {
         CENUM_IMPL_DROP_CAST,
         CONST_EVALUATABLE_UNCHECKED,
         INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
+        MUST_NOT_SUSPEND,
         UNINHABITED_STATIC,
         FUNCTION_ITEM_REFERENCES,
         USELESS_DEPRECATED,

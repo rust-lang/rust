@@ -298,6 +298,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         UNUSED_LABELS,
         UNUSED_PARENS,
         UNUSED_BRACES,
+        MUST_NOT_SUSPEND,
         REDUNDANT_SEMICOLONS
     );
 

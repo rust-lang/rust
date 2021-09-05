@@ -5,6 +5,7 @@
 
 use super::FnCtxt;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_errors::pluralize;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -12,9 +13,11 @@ use rustc_hir::hir_id::HirIdSet;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind};
 use rustc_middle::middle::region::{self, YieldData};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::symbol::sym;
 use rustc_span::Span;
 use smallvec::SmallVec;
+use tracing::debug;
 
 struct InteriorVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -36,6 +39,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
     fn record(
         &mut self,
         ty: Ty<'tcx>,
+        hir_id: HirId,
         scope: Option<region::Scope>,
         expr: Option<&'tcx Expr<'tcx>>,
         source_span: Span,
@@ -117,6 +121,20 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             } else {
                 // Insert the type into the ordered set.
                 let scope_span = scope.map(|s| s.span(self.fcx.tcx, self.region_scope_tree));
+
+                check_must_not_suspend_ty(
+                    self.fcx,
+                    ty::ParamEnv::empty(),
+                    ty,
+                    hir_id,
+                    expr,
+                    source_span,
+                    yield_data.span,
+                    "",
+                    "",
+                    1,
+                );
+
                 self.types.insert(ty::GeneratorInteriorTypeCause {
                     span: source_span,
                     ty: &ty,
@@ -290,7 +308,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         if let PatKind::Binding(..) = pat.kind {
             let scope = self.region_scope_tree.var_scope(pat.hir_id.local_id);
             let ty = self.fcx.typeck_results.borrow().pat_ty(pat);
-            self.record(ty, Some(scope), None, pat.span, false);
+            self.record(ty, pat.hir_id, Some(scope), None, pat.span, false);
         }
     }
 
@@ -342,7 +360,14 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         // If there are adjustments, then record the final type --
         // this is the actual value that is being produced.
         if let Some(adjusted_ty) = self.fcx.typeck_results.borrow().expr_ty_adjusted_opt(expr) {
-            self.record(adjusted_ty, scope, Some(expr), expr.span, guard_borrowing_from_pattern);
+            self.record(
+                adjusted_ty,
+                expr.hir_id,
+                scope,
+                Some(expr),
+                expr.span,
+                guard_borrowing_from_pattern,
+            );
         }
 
         // Also record the unadjusted type (which is the only type if
@@ -380,9 +405,23 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                     tcx.mk_region(ty::RegionKind::ReErased),
                     ty::TypeAndMut { ty, mutbl: hir::Mutability::Not },
                 );
-                self.record(ref_ty, scope, Some(expr), expr.span, guard_borrowing_from_pattern);
+                self.record(
+                    ref_ty,
+                    expr.hir_id,
+                    scope,
+                    Some(expr),
+                    expr.span,
+                    guard_borrowing_from_pattern,
+                );
             }
-            self.record(ty, scope, Some(expr), expr.span, guard_borrowing_from_pattern);
+            self.record(
+                ty,
+                expr.hir_id,
+                scope,
+                Some(expr),
+                expr.span,
+                guard_borrowing_from_pattern,
+            );
         } else {
             self.fcx.tcx.sess.delay_span_bug(expr.span, "no type for node");
         }
@@ -408,4 +447,264 @@ impl<'a, 'tcx> Visitor<'tcx> for ArmPatCollector<'a> {
             self.guard_bindings_set.insert(id);
         }
     }
+}
+
+// Returns whether it emitted a diagnostic or not
+// Note that this fn and the proceding one are based on the code
+// for creating must_use diagnostics
+pub fn check_must_not_suspend_ty<'tcx>(
+    fcx: &FnCtxt<'_, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    hir_id: HirId,
+    expr: Option<&'tcx Expr<'tcx>>,
+    source_span: Span,
+    yield_span: Span,
+    descr_pre: &str,
+    descr_post: &str,
+    plural_len: usize,
+) -> bool {
+    if ty.is_unit()
+        || fcx.tcx.is_ty_uninhabited_from(fcx.tcx.parent_module(hir_id).to_def_id(), ty, param_env)
+    {
+        return true;
+    }
+
+    let plural_suffix = pluralize!(plural_len);
+
+    let emitted = match *ty.kind() {
+        ty::Adt(..) if ty.is_box() => {
+            let boxed_ty = ty.boxed_ty();
+            let descr_pre = &format!("{}boxed ", descr_pre);
+            check_must_not_suspend_ty(
+                fcx,
+                param_env,
+                boxed_ty,
+                hir_id,
+                expr,
+                source_span,
+                yield_span,
+                descr_pre,
+                descr_post,
+                plural_len,
+            )
+        }
+        ty::Adt(def, _) => check_must_not_suspend_def(
+            fcx.tcx,
+            def.did,
+            hir_id,
+            source_span,
+            yield_span,
+            descr_pre,
+            descr_post,
+        ),
+        ty::Opaque(def, _) => {
+            let mut has_emitted = false;
+            for &(predicate, _) in fcx.tcx.explicit_item_bounds(def) {
+                // We only look at the `DefId`, so it is safe to skip the binder here.
+                if let ty::PredicateKind::Trait(ref poly_trait_predicate) =
+                    predicate.kind().skip_binder()
+                {
+                    let def_id = poly_trait_predicate.trait_ref.def_id;
+                    let descr_pre = &format!("{}implementer{} of ", descr_pre, plural_suffix,);
+                    if check_must_not_suspend_def(
+                        fcx.tcx,
+                        def_id,
+                        hir_id,
+                        source_span,
+                        yield_span,
+                        descr_pre,
+                        descr_post,
+                    ) {
+                        has_emitted = true;
+                        break;
+                    }
+                }
+            }
+            has_emitted
+        }
+        ty::Dynamic(binder, _) => {
+            let mut has_emitted = false;
+            for predicate in binder.iter() {
+                if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
+                    let def_id = trait_ref.def_id;
+                    let descr_post = &format!(" trait object{}{}", plural_suffix, descr_post,);
+                    if check_must_not_suspend_def(
+                        fcx.tcx,
+                        def_id,
+                        hir_id,
+                        source_span,
+                        yield_span,
+                        descr_pre,
+                        descr_post,
+                    ) {
+                        has_emitted = true;
+                        break;
+                    }
+                }
+            }
+            has_emitted
+        }
+        ty::Tuple(ref tys) => {
+            let mut has_emitted = false;
+            /*
+            let spans = if let hir::ExprKind::Tup(comps) = &expr.kind {
+                debug_assert_eq!(comps.len(), tys.len());
+                comps.iter().map(|e| e.span).collect()
+            } else {
+                vec![]
+            };
+            */
+            let spans = vec![];
+            for (i, ty) in tys.iter().map(|k| k.expect_ty()).enumerate() {
+                let descr_post = &format!(" in tuple element {}", i);
+                let span = *spans.get(i).unwrap_or(&source_span);
+                if check_must_not_suspend_ty(
+                    fcx, param_env, ty, hir_id, expr, span, yield_span, descr_pre, descr_post,
+                    plural_len,
+                ) {
+                    has_emitted = true;
+                }
+            }
+            has_emitted
+        }
+        ty::Array(ty, len) => match len.try_eval_usize(fcx.tcx, param_env) {
+            // If the array is empty we don't lint, to avoid false positives
+            Some(0) | None => false,
+            // If the array is definitely non-empty, we can do `#[must_use]` checking.
+            Some(n) => {
+                let descr_pre = &format!("{}array{} of ", descr_pre, plural_suffix,);
+                check_must_not_suspend_ty(
+                    fcx,
+                    param_env,
+                    ty,
+                    hir_id,
+                    expr,
+                    source_span,
+                    yield_span,
+                    descr_pre,
+                    descr_post,
+                    n as usize + 1,
+                )
+            }
+        },
+        _ => false,
+    };
+
+    // Don't move onto the "return value" path if we already sent a diagnostic
+    if emitted {
+        return true;
+    }
+
+    match expr {
+        Some(expr) => match expr.kind {
+            hir::ExprKind::Call(ref callee, _) => {
+                match callee.kind {
+                    hir::ExprKind::Path(ref qpath) => {
+                        match fcx.typeck_results.borrow().qpath_res(qpath, callee.hir_id) {
+                            Res::Def(DefKind::Fn | DefKind::AssocFn, def_id) => {
+                                check_must_not_suspend_def(
+                                    fcx.tcx,
+                                    def_id,
+                                    hir_id,
+                                    source_span,
+                                    yield_span,
+                                    "return value of ",
+                                    "",
+                                )
+                            }
+
+                            // `Res::Local` if it was a closure, for which we
+                            // do not currently support must-not-suspend linting
+                            _ => false,
+                        }
+                    }
+                    _ => false,
+                }
+            }
+            hir::ExprKind::MethodCall(..) => {
+                if let Some(def_id) = fcx.typeck_results.borrow().type_dependent_def_id(expr.hir_id)
+                {
+                    check_must_not_suspend_def(
+                        fcx.tcx,
+                        def_id,
+                        hir_id,
+                        source_span,
+                        yield_span,
+                        "return value of ",
+                        "",
+                    )
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        },
+        None => false,
+    }
+}
+
+fn check_must_not_suspend_def(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    hir_id: HirId,
+    source_span: Span,
+    yield_span: Span,
+    descr_pre_path: &str,
+    descr_post_path: &str,
+) -> bool {
+    for attr in tcx.get_attrs(def_id).iter() {
+        if attr.has_name(sym::must_not_suspend) {
+            tcx.struct_span_lint_hir(
+                rustc_session::lint::builtin::MUST_NOT_SUSPEND,
+                hir_id,
+                source_span,
+                |lint| {
+                    let msg = format!(
+                        "{}`{}`{} held across a yield point, but should not be",
+                        descr_pre_path,
+                        tcx.def_path_str(def_id),
+                        descr_post_path
+                    );
+                    let mut err = lint.build(&msg);
+
+                    // Add optional reason note
+                    if let Some(note) = attr.value_str() {
+                        err.note(&note.as_str());
+                    }
+
+                    // add span pointing to the offending yield/await)
+                    err.span_label(yield_span, "The value is held across this yield point");
+
+                    // Add some quick suggestions on what to do
+                    err.span_help(
+                        source_span,
+                        "`drop` this value before the yield point, or use a block (`{ ... }`) \"
+                        to shrink its scope",
+                    );
+
+                    err.emit();
+                },
+            );
+
+            /*
+            cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
+                let msg = format!(
+                    "unused {}`{}`{} that must be used",
+                    descr_pre_path,
+                    cx.tcx.def_path_str(def_id),
+                    descr_post_path
+                );
+                let mut err = lint.build(&msg);
+                // check for #[must_use = "..."]
+                if let Some(note) = attr.value_str() {
+                    err.note(&note.as_str());
+                }
+                err.emit();
+            });
+            */
+            return true;
+        }
+    }
+    false
 }
