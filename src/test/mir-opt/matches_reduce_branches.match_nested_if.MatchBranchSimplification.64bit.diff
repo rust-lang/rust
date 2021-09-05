@@ -66,7 +66,7 @@
 +         _7 = move _2;                    // scope 0 at $DIR/matches_reduce_branches.rs:41:18: 41:76
           StorageDead(_2);                 // scope 0 at $DIR/matches_reduce_branches.rs:45:9: 45:10
 -         _1 = const true;                 // scope 0 at $DIR/matches_reduce_branches.rs:47:13: 47:17
--         goto -> bb9;                     // scope 0 at $DIR/matches_reduce_branches.rs:48:9: 48:10
+-         goto -> bb9;                     // scope 0 at $DIR/matches_reduce_branches.rs:47:13: 47:17
 -     }
 - 
 -     bb8: {

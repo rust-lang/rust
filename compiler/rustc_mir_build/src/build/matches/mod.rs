@@ -39,7 +39,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         expr: &Expr<'tcx>,
-        temp_scope: region::Scope,
+        temp_scope_override: Option<region::Scope>,
         break_scope: region::Scope,
         variable_scope_span: Span,
     ) -> BlockAnd<()> {
@@ -53,7 +53,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.then_else_break(
                         block,
                         &this.thir[value],
-                        temp_scope,
+                        temp_scope_override,
                         break_scope,
                         variable_scope_span,
                     )
@@ -63,6 +63,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.lower_let_expr(block, &this.thir[expr], pat, break_scope, variable_scope_span)
             }
             _ => {
+                let temp_scope = temp_scope_override.unwrap_or_else(|| this.local_scope());
                 let mutability = Mutability::Mut;
                 let place =
                     unpack!(block = this.as_temp(block, Some(temp_scope), expr, mutability));
@@ -1948,7 +1949,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             let arm_span = arm_span.unwrap();
-            let arm_scope = self.local_scope();
             let match_scope = match_scope.unwrap();
             let mut guard_span = rustc_span::DUMMY_SP;
 
@@ -1957,7 +1957,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Guard::If(e) => {
                         let e = &this.thir[e];
                         guard_span = e.span;
-                        this.then_else_break(block, e, arm_scope, match_scope, arm_span)
+                        this.then_else_break(block, e, None, match_scope, arm_span)
                     }
                     Guard::IfLet(ref pat, scrutinee) => {
                         let s = &this.thir[scrutinee];
