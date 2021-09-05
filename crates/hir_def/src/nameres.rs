@@ -1,14 +1,14 @@
 //! This module implements import-resolution/macro expansion algorithm.
 //!
-//! The result of this module is `CrateDefMap`: a data structure which contains:
+//! The result of this module is `DefMap`: a data structure which contains:
 //!
 //!   * a tree of modules for the crate
 //!   * for each module, a set of items visible in the module (directly declared
 //!     or imported)
 //!
-//! Note that `CrateDefMap` contains fully macro expanded code.
+//! Note that `DefMap` contains fully macro expanded code.
 //!
-//! Computing `CrateDefMap` can be partitioned into several logically
+//! Computing `DefMap` can be partitioned into several logically
 //! independent "phases". The phases are mutually recursive though, there's no
 //! strict ordering.
 //!
