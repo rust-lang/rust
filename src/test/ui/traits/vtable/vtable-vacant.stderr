@@ -7,12 +7,12 @@ error: Vtable entries for `<S as B>`: [
     Method(<S as B>::foo_b1),
     Vacant,
 ]
-  --> $DIR/vtable-vacant.rs:13:1
+  --> $DIR/vtable-vacant.rs:15:1
    |
 LL | / trait B: A {
 LL | |
 LL | |     fn foo_b1(&self) {}
-LL | |     fn foo_b2() where Self: Sized {}
+LL | |     fn foo_b2(&self) where Self: Send {}
 LL | | }
    | |_^
 

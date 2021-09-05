@@ -285,15 +285,10 @@ pub fn upcast_choices(
 /// that come from `trait_ref`, excluding its supertraits. Used in
 /// computing the vtable base for an upcast trait of a trait object.
 pub fn count_own_vtable_entries(tcx: TyCtxt<'tcx>, trait_ref: ty::PolyTraitRef<'tcx>) -> usize {
-    let mut entries = 0;
-    // Count number of methods and add them to the total offset.
-    // Skip over associated types and constants.
-    for trait_item in tcx.associated_items(trait_ref.def_id()).in_definition_order() {
-        if trait_item.kind == ty::AssocKind::Fn {
-            entries += 1;
-        }
-    }
-    entries
+    let existential_trait_ref =
+        trait_ref.map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
+    let existential_trait_ref = tcx.erase_regions(existential_trait_ref);
+    tcx.own_existential_vtable_entries(existential_trait_ref).len()
 }
 
 /// Given an upcast trait object described by `object`, returns the
@@ -304,22 +299,21 @@ pub fn get_vtable_index_of_object_method<N>(
     object: &super::ImplSourceObjectData<'tcx, N>,
     method_def_id: DefId,
 ) -> usize {
+    let existential_trait_ref = object
+        .upcast_trait_ref
+        .map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
+    let existential_trait_ref = tcx.erase_regions(existential_trait_ref);
     // Count number of methods preceding the one we are selecting and
     // add them to the total offset.
-    // Skip over associated types and constants, as those aren't stored in the vtable.
-    let mut entries = object.vtable_base;
-    for trait_item in tcx.associated_items(object.upcast_trait_ref.def_id()).in_definition_order() {
-        if trait_item.def_id == method_def_id {
-            // The item with the ID we were given really ought to be a method.
-            assert_eq!(trait_item.kind, ty::AssocKind::Fn);
-            return entries;
-        }
-        if trait_item.kind == ty::AssocKind::Fn {
-            entries += 1;
-        }
-    }
-
-    bug!("get_vtable_index_of_object_method: {:?} was not found", method_def_id);
+    let index = tcx
+        .own_existential_vtable_entries(existential_trait_ref)
+        .iter()
+        .copied()
+        .position(|def_id| def_id == method_def_id)
+        .unwrap_or_else(|| {
+            bug!("get_vtable_index_of_object_method: {:?} was not found", method_def_id);
+        });
+    object.vtable_base + index
 }
 
 pub fn closure_trait_ref_and_return_type(

@@ -625,6 +625,31 @@ fn dump_vtable_entries<'tcx>(
     tcx.sess.struct_span_err(sp, &msg).emit();
 }
 
+fn own_existential_vtable_entries<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_ref: ty::PolyExistentialTraitRef<'tcx>,
+) -> &'tcx [DefId] {
+    let trait_methods = tcx
+        .associated_items(trait_ref.def_id())
+        .in_definition_order()
+        .filter(|item| item.kind == ty::AssocKind::Fn);
+    // Now list each method's DefId (for within its trait).
+    let own_entries = trait_methods.filter_map(move |trait_method| {
+        debug!("own_existential_vtable_entry: trait_method={:?}", trait_method);
+        let def_id = trait_method.def_id;
+
+        // Some methods cannot be called on an object; skip those.
+        if !is_vtable_safe_method(tcx, trait_ref.def_id(), &trait_method) {
+            debug!("own_existential_vtable_entry: not vtable safe");
+            return None;
+        }
+
+        Some(def_id)
+    });
+
+    tcx.arena.alloc_from_iter(own_entries.into_iter())
+}
+
 /// Given a trait `trait_ref`, iterates the vtable entries
 /// that come from `trait_ref`, including its supertraits.
 fn vtable_entries<'tcx>(
@@ -641,21 +666,15 @@ fn vtable_entries<'tcx>(
                 entries.extend(COMMON_VTABLE_ENTRIES);
             }
             VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
-                let trait_methods = tcx
-                    .associated_items(trait_ref.def_id())
-                    .in_definition_order()
-                    .filter(|item| item.kind == ty::AssocKind::Fn);
-                // Now list each method's DefId and InternalSubsts (for within its trait).
-                // If the method can never be called from this object, produce `Vacant`.
-                let own_entries = trait_methods.map(move |trait_method| {
-                    debug!("vtable_entries: trait_method={:?}", trait_method);
-                    let def_id = trait_method.def_id;
+                let existential_trait_ref = trait_ref
+                    .map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
 
-                    // Some methods cannot be called on an object; skip those.
-                    if !is_vtable_safe_method(tcx, trait_ref.def_id(), &trait_method) {
-                        debug!("vtable_entries: not vtable safe");
-                        return VtblEntry::Vacant;
-                    }
+                // Lookup the shape of vtable for the trait.
+                let own_existential_entries =
+                    tcx.own_existential_vtable_entries(existential_trait_ref);
+
+                let own_entries = own_existential_entries.iter().copied().map(|def_id| {
+                    debug!("vtable_entries: trait_method={:?}", def_id);
 
                     // The method may have some early-bound lifetimes; add regions for those.
                     let substs = trait_ref.map_bound(|trait_ref| {
@@ -804,6 +823,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
         codegen_fulfill_obligation: codegen::codegen_fulfill_obligation,
+        own_existential_vtable_entries,
         vtable_entries,
         vtable_trait_upcasting_coercion_new_vptr_slot,
         subst_and_check_impossible_predicates,
