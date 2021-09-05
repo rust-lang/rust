@@ -8,8 +8,16 @@ LL | |  */
 LL | 
 LL |   #![recursion_limit="100"]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^ not permitted following an outer attribute
+LL |
+LL |   fn main() {}
+   |   ------------ the inner attribute doesn't annotate this function
    |
-   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files. Outer attributes, like `#[test]`, annotate the item following them.
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+help: to annotate the function, change the attribute from inner to outer style
+   |
+LL - #![recursion_limit="100"]
+LL + #[recursion_limit="100"]
+   | 
 
 error: aborting due to previous error
 

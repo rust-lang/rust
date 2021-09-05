@@ -3,8 +3,16 @@ error: an inner attribute is not permitted in this context
    |
 LL | #![lang = "foo"]
    | ^^^^^^^^^^^^^^^^
+LL |
+LL | fn foo() {}
+   | ----------- the inner attribute doesn't annotate this function
    |
-   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files. Outer attributes, like `#[test]`, annotate the item following them.
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+help: to annotate the function, change the attribute from inner to outer style
+   |
+LL - #![lang = "foo"]
+LL + #[lang = "foo"]
+   | 
 
 error[E0522]: definition of an unknown language item: `foo`
   --> $DIR/attr.rs:5:1

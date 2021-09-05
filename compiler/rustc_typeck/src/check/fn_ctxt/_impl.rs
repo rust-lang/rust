@@ -945,7 +945,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Ok(s) if s.starts_with('<') => sugg,
                     _ => format!("<{}>", sugg),
                 };
-                let replace = String::from("use `dyn`");
+                let sugg_label = "use `dyn`";
                 if self.sess().edition() >= Edition::Edition2021 {
                     let mut err = rustc_errors::struct_span_err!(
                         self.sess(),
@@ -956,8 +956,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     err.span_suggestion(
                         self_ty.span,
-                        &sugg,
-                        replace,
+                        sugg_label,
+                        sugg,
                         Applicability::MachineApplicable,
                     )
                     .emit();
@@ -968,7 +968,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self_ty.span,
                         |lint| {
                             let mut db = lint.build(msg);
-                            db.span_suggestion(self_ty.span, &replace, sugg, app);
+                            db.span_suggestion(self_ty.span, sugg_label, sugg, app);
                             db.emit()
                         },
                     );

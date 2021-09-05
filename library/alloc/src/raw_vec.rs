@@ -323,7 +323,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     pub fn reserve(&mut self, len: usize, additional: usize) {
         // Callers expect this function to be very cheap when there is already sufficient capacity.
         // Therefore, we move all the resizing and error-handling logic from grow_amortized and
-        // handle_reserve behind a call, while making sure that the this function is likely to be
+        // handle_reserve behind a call, while making sure that this function is likely to be
         // inlined as just a comparison and a call if the comparison fails.
         #[cold]
         fn do_reserve_and_handle<T, A: Allocator>(
