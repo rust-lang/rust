@@ -345,10 +345,7 @@ fn collect_items(
                 let ast_id_map = db.ast_id_map(tree_id.file_id());
                 let root = db.parse_or_expand(tree_id.file_id()).unwrap();
                 let call = ast_id_map.get(call.ast_id).to_node(&root);
-                let _cx = stdx::panic_context::enter(format!(
-                    "collect_items MacroCall: {}\nexpander={:#?}",
-                    call, expander
-                ));
+                let _cx = stdx::panic_context::enter(format!("collect_items MacroCall: {}", call));
                 let res = expander.enter_expand(db, call);
 
                 if let Ok(res) = res {
