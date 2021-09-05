@@ -558,7 +558,7 @@ impl ExprCollector<'_> {
             ast::Expr::MacroCall(e) => {
                 let macro_ptr = AstPtr::new(&e);
                 let mut ids = vec![];
-                self.collect_macro_call(e, macro_ptr, true, |this, expansion| {
+                self.collect_macro_call(e, macro_ptr, |this, expansion| {
                     ids.push(match expansion {
                         Some(it) => this.collect_expr(it),
                         None => this.alloc_expr(Expr::Missing, syntax_ptr.clone()),
@@ -582,7 +582,6 @@ impl ExprCollector<'_> {
         &mut self,
         e: ast::MacroCall,
         syntax_ptr: AstPtr<ast::MacroCall>,
-        is_error_recoverable: bool,
         mut collector: F,
     ) {
         // File containing the macro call. Expansion errors will be attached here.
@@ -620,18 +619,11 @@ impl ExprCollector<'_> {
 
         match res.value {
             Some((mark, expansion)) => {
-                // FIXME: Statements are too complicated to recover from error for now.
-                // It is because we don't have any hygiene for local variable expansion right now.
-                if !is_error_recoverable && res.err.is_some() {
-                    self.expander.exit(self.db, mark);
-                    collector(self, None);
-                } else {
-                    self.source_map.expansions.insert(macro_call, self.expander.current_file_id);
+                self.source_map.expansions.insert(macro_call, self.expander.current_file_id);
 
-                    let id = collector(self, Some(expansion));
-                    self.expander.exit(self.db, mark);
-                    id
-                }
+                let id = collector(self, Some(expansion));
+                self.expander.exit(self.db, mark);
+                id
             }
             None => collector(self, None),
         }
@@ -667,27 +659,21 @@ impl ExprCollector<'_> {
                     let macro_ptr = AstPtr::new(&m);
                     let syntax_ptr = AstPtr::new(&stmt.expr().unwrap());
 
-                    self.collect_macro_call(
-                        m,
-                        macro_ptr,
-                        false,
-                        |this, expansion| match expansion {
-                            Some(expansion) => {
-                                let statements: ast::MacroStmts = expansion;
+                    self.collect_macro_call(m, macro_ptr, |this, expansion| match expansion {
+                        Some(expansion) => {
+                            let statements: ast::MacroStmts = expansion;
 
-                                statements.statements().for_each(|stmt| this.collect_stmt(stmt));
-                                if let Some(expr) = statements.expr() {
-                                    let expr = this.collect_expr(expr);
-                                    this.statements_in_scope
-                                        .push(Statement::Expr { expr, has_semi });
-                                }
-                            }
-                            None => {
-                                let expr = this.alloc_expr(Expr::Missing, syntax_ptr.clone());
+                            statements.statements().for_each(|stmt| this.collect_stmt(stmt));
+                            if let Some(expr) = statements.expr() {
+                                let expr = this.collect_expr(expr);
                                 this.statements_in_scope.push(Statement::Expr { expr, has_semi });
                             }
-                        },
-                    );
+                        }
+                        None => {
+                            let expr = this.alloc_expr(Expr::Missing, syntax_ptr.clone());
+                            this.statements_in_scope.push(Statement::Expr { expr, has_semi });
+                        }
+                    });
                 } else {
                     let expr = self.collect_expr_opt(stmt.expr());
                     self.statements_in_scope.push(Statement::Expr { expr, has_semi });
@@ -889,7 +875,7 @@ impl ExprCollector<'_> {
                 Some(call) => {
                     let macro_ptr = AstPtr::new(&call);
                     let mut pat = None;
-                    self.collect_macro_call(call, macro_ptr, true, |this, expanded_pat| {
+                    self.collect_macro_call(call, macro_ptr, |this, expanded_pat| {
                         pat = Some(this.collect_pat_opt(expanded_pat));
                     });
 
