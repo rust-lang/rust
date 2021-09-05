@@ -17,6 +17,7 @@ use build_helper::{t, up_to_date};
 
 use crate::builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
+use crate::check;
 use crate::compile;
 use crate::config::{Config, TargetSelection};
 use crate::tool::{self, prepare_tool_cargo, SourceType, Tool};
@@ -438,7 +439,6 @@ impl Step for Std {
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, builder.config.build);
 
-        builder.ensure(compile::Std { compiler, target });
         let out_dir = builder.stage_out(compiler, Mode::Std).join(target.triple).join("doc");
 
         t!(fs::copy(builder.src.join("src/doc/rust.css"), out.join("rust.css")));
@@ -569,9 +569,10 @@ impl Step for Rustc {
         let out = builder.compiler_doc_out(target);
         t!(fs::create_dir_all(&out));
 
-        // Build rustc.
+        // Build the standard library, so that proc-macros can use it.
+        // (Normally, only the metadata would be necessary, but proc-macros are special since they run at compile-time.)
         let compiler = builder.compiler(stage, builder.config.build);
-        builder.ensure(compile::Rustc { compiler, target });
+        builder.ensure(compile::Std { compiler, target: builder.config.build });
 
         // This uses a shared directory so that librustdoc documentation gets
         // correctly built and merged with the rustc documentation. This is
@@ -699,21 +700,22 @@ macro_rules! tool_doc {
                     ),
                 );
 
-                // This is the intended out directory for compiler documentation.
-                let out = builder.compiler_doc_out(target);
-                t!(fs::create_dir_all(&out));
-
-                let compiler = builder.compiler(stage, builder.config.build);
-
                 if !builder.config.compiler_docs && !builder.was_invoked_explicitly::<Self>() {
                     builder.info("\tskipping - compiler/tool docs disabled");
                     return;
                 }
 
+                // This is the intended out directory for compiler documentation.
+                let out = builder.compiler_doc_out(target);
+                t!(fs::create_dir_all(&out));
+
                 // Build rustc docs so that we generate relative links.
                 builder.ensure(Rustc { stage, target });
+                // Rustdoc needs the rustc sysroot available to build.
+                builder.ensure(check::Rustc { target });
 
                 // Symlink compiler docs to the output directory of rustdoc documentation.
+                let compiler = builder.compiler(stage, builder.config.build);
                 let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target.triple).join("doc");
                 t!(fs::create_dir_all(&out_dir));
                 t!(symlink_dir_force(&builder.config, &out, &out_dir));

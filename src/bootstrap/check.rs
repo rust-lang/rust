@@ -55,7 +55,8 @@ fn cargo_subcommand(kind: Kind) -> &'static str {
         Kind::Check => "check",
         Kind::Clippy => "clippy",
         Kind::Fix => "fix",
-        _ => unreachable!(),
+        // Another top-level command is calling check
+        _ => "check",
     }
 }
 
