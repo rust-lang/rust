@@ -535,7 +535,7 @@ where
 #[rustc_const_unstable(feature = "const_convert", issue = "none")]
 impl<T, U> const Into<U> for T
 where
-    U: From<T>,
+    U: ~const From<T>,
 {
     fn into(self) -> U {
         U::from(self)
