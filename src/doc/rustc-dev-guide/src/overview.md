@@ -297,12 +297,7 @@ Compiler performance is a problem that we would like to improve on
 (and are always working on). One aspect of that is parallelizing
 `rustc` itself.
 
-Currently, there is only one part of rustc that is already parallel: codegen.
-During monomorphization, the compiler will split up all the code to be
-generated into smaller chunks called _codegen units_. These are then generated
-by independent instances of LLVM. Since they are independent, we can run them
-in parallel. At the end, the linker is run to combine all the codegen units
-together into one binary.
+Currently, there is only one part of rustc that is parallel by default: codegen.
 
 However, the rest of the compiler is still not yet parallel. There have been
 lots of efforts spent on this, but it is generally a hard problem. The current

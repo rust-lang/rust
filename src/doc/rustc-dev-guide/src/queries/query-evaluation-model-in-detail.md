@@ -211,29 +211,3 @@ much of a maintenance burden.
 
 To summarize: "Steal queries" break some of the rules in a controlled way.
 There are checks in place that make sure that nothing can go silently wrong.
-
-
-## Parallel Query Execution
-
-The query model has some properties that make it actually feasible to evaluate
-multiple queries in parallel without too much of an effort:
-
-- All data a query provider can access is accessed via the query context, so
-  the query context can take care of synchronizing access.
-- Query results are required to be immutable so they can safely be used by
-  different threads concurrently.
-
-The nightly compiler already implements parallel query evaluation as follows:
-
-When a query `foo` is evaluated, the cache table for `foo` is locked.
-
-- If there already is a result, we can clone it, release the lock and
-  we are done.
-- If there is no cache entry and no other active query invocation computing the
-  same result, we mark the key as being "in progress", release the lock and
-  start evaluating.
-- If there *is* another query invocation for the same key in progress, we
-  release the lock, and just block the thread until the other invocation has
-  computed the result we are waiting for. This cannot deadlock because, as
-  mentioned before, query invocations form a DAG. Some thread will always make
-  progress.
