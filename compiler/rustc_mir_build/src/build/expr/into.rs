@@ -326,10 +326,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let fields_map: FxHashMap<_, _> = fields
                     .into_iter()
                     .map(|f| {
+                        let local_info = Box::new(LocalInfo::AggregateTemp);
                         (
                             f.name,
                             unpack!(
-                                block = this.as_operand(block, Some(scope), &this.thir[f.expr])
+                                block = this.as_operand(
+                                    block,
+                                    Some(scope),
+                                    &this.thir[f.expr],
+                                    Some(local_info)
+                                )
                             ),
                         )
                     })
@@ -508,7 +514,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             ExprKind::Yield { value } => {
                 let scope = this.local_scope();
-                let value = unpack!(block = this.as_operand(block, Some(scope), &this.thir[value]));
+                let value =
+                    unpack!(block = this.as_operand(block, Some(scope), &this.thir[value], None));
                 let resume = this.cfg.start_new_block();
                 this.cfg.terminate(
                     block,

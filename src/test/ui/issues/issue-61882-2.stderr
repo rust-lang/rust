@@ -5,7 +5,7 @@ LL |         Self(&x);
    |              ^^
    |              |
    |              borrowed value does not live long enough
-   |              requires that `x` is borrowed for `'static`
+   |              this usage requires that `x` is borrowed for `'static`
 LL |
 LL |     }
    |     - `x` dropped here while still borrowed
