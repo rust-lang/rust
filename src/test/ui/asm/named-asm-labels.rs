@@ -1,4 +1,7 @@
-// only-x86_64
+// needs-asm-support
+// ignore-nvptx64
+// ignore-spirv
+// ignore-wasm32
 
 // Tests that the use of named labels in the `asm!` macro are linted against
 // except for in `#[naked]` fns.
@@ -99,9 +102,6 @@ fn main() {
         asm!("\x41\x42\x43\x3A\x20\x6E\x6F\x70"); //~ ERROR avoid using named labels
 
         // Non-label colons - should pass
-        // (most of these are stolen from other places)
-        asm!("{:l}", in(reg) 0i64);
-        asm!("{:e}", in(reg) 0f32);
         asm!("mov rax, qword ptr fs:[0]");
 
         // Comments

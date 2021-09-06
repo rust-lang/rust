@@ -1,5 +1,5 @@
 // check-pass
-// only-x86_64
+// needs-asm-support
 #![feature(asm)]
 #![feature(naked_functions)]
 #![crate_type = "lib"]
