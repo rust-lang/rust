@@ -672,4 +672,29 @@ impl Foo { fn foo(&mut self) { $0 } }"#,
             "#]],
         );
     }
+
+    #[test]
+    fn macro_completion_after_dot() {
+        check(
+            r#"
+macro_rules! m {
+    ($e:expr) => { $e };
+}
+
+struct Completable;
+
+impl Completable {
+    fn method(&self) {}
+}
+
+fn f() {
+    let c = Completable;
+    m!(c.$0);
+}
+    "#,
+            expect![[r#"
+                me method() fn(&self)
+            "#]],
+        );
+    }
 }
