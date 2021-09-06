@@ -173,8 +173,17 @@ impl CheckAttrVisitor<'tcx> {
             }
 
             // Warn on useless empty attributes.
-            if matches!(attr.name_or_empty(), sym::macro_use)
-                && attr.meta_item_list().map_or(false, |list| list.is_empty())
+            if matches!(
+                attr.name_or_empty(),
+                sym::macro_use
+                    | sym::allow
+                    | sym::warn
+                    | sym::deny
+                    | sym::forbid
+                    | sym::feature
+                    | sym::repr
+                    | sym::target_feature
+            ) && attr.meta_item_list().map_or(false, |list| list.is_empty())
             {
                 self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
                     lint.build("unused attribute")

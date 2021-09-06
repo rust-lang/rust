@@ -245,19 +245,6 @@ mod bench {
     impl S { }
 }
 
-#[repr()]
-mod repr {
-    mod inner { #![repr()] }
-
-    #[repr()] fn f() { }
-
-    struct S;
-
-    #[repr()] type T = S;
-
-    #[repr()] impl S { }
-}
-
 #[path = "3800"]
 mod path {
     mod inner { #![path="3800"] }

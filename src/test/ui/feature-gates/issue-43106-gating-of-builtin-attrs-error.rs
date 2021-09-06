@@ -134,4 +134,27 @@ mod start {
     //~^ ERROR: `start` attribute can only be used on functions
 }
 
+#[repr(C)]
+//~^ ERROR: attribute should be applied to a struct, enum, or union
+mod repr {
+//~^ NOTE not a struct, enum, or union
+    mod inner { #![repr(C)] }
+    //~^ ERROR: attribute should be applied to a struct, enum, or union
+    //~| NOTE not a struct, enum, or union
+
+    #[repr(C)] fn f() { }
+    //~^ ERROR: attribute should be applied to a struct, enum, or union
+    //~| NOTE not a struct, enum, or union
+
+    struct S;
+
+    #[repr(C)] type T = S;
+    //~^ ERROR: attribute should be applied to a struct, enum, or union
+    //~| NOTE not a struct, enum, or union
+
+    #[repr(C)] impl S { }
+    //~^ ERROR: attribute should be applied to a struct, enum, or union
+    //~| NOTE not a struct, enum, or union
+}
+
 fn main() {}
