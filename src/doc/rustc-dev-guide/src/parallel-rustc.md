@@ -30,7 +30,6 @@ multiple queries in parallel without too much of an effort:
 - Query results are required to be immutable so they can safely be used by
   different threads concurrently.
 
-
 When a query `foo` is evaluated, the cache table for `foo` is locked.
 
 - If there already is a result, we can clone it, release the lock and
@@ -51,11 +50,6 @@ compiler has stalled. There is a lot of design and correctness work that needs
 to be done. 
 
 These are the basic ideas in the effort to make `rustc` parallel:
-
-- All data a query provider can access is accessed via the query context, so
-  the query context can take care of synchronizing access.
-- Query results are required to be immutable so they can safely be used by
-  different threads concurrently.
 
 - There are a lot of loops in the compiler that just iterate over all items in
   a crate. These can possibly be parallelized.
