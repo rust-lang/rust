@@ -382,6 +382,7 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> String {
             [ident] => { $crate::SyntaxKind::IDENT };
             [shebang] => { $crate::SyntaxKind::SHEBANG };
         }
+        pub use T;
     };
 
     sourcegen::add_preamble("sourcegen_ast", sourcegen::reformat(ast.to_string()))

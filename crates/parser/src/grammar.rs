@@ -41,7 +41,7 @@ mod types;
 use crate::{
     parser::{CompletedMarker, Marker, Parser},
     SyntaxKind::{self, *},
-    TokenSet,
+    TokenSet, T,
 };
 
 pub(crate) mod entry_points {
