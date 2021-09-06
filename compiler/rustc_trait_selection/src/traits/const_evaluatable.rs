@@ -224,24 +224,13 @@ impl<'tcx> AbstractConst<'tcx> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct WorkNode<'tcx> {
-    node: Node<'tcx>,
-    span: Span,
-    used: bool,
-}
-
 struct AbstractConstBuilder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body_id: thir::ExprId,
+    /// `Lrc` is used to avoid borrowck difficulties in `recurse_build`
     body: Lrc<&'a thir::Thir<'tcx>>,
     /// The current WIP node tree.
-    ///
-    /// We require all nodes to be used in the final abstract const,
-    /// so we store this here. Note that we also consider nodes as used
-    /// if they are mentioned in an assert, so some used nodes are never
-    /// actually reachable by walking the [`AbstractConst`].
-    nodes: IndexVec<NodeId, WorkNode<'tcx>>,
+    nodes: IndexVec<NodeId, Node<'tcx>>,
 }
 
 impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
@@ -301,30 +290,6 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         Ok(Some(builder))
     }
 
-    fn add_node(&mut self, node: Node<'tcx>, span: Span) -> NodeId {
-        // Mark used nodes.
-        match node {
-            Node::Leaf(_) => (),
-            Node::Binop(_, lhs, rhs) => {
-                self.nodes[lhs].used = true;
-                self.nodes[rhs].used = true;
-            }
-            Node::UnaryOp(_, input) => {
-                self.nodes[input].used = true;
-            }
-            Node::FunctionCall(func, nodes) => {
-                self.nodes[func].used = true;
-                nodes.iter().for_each(|&n| self.nodes[n].used = true);
-            }
-            Node::Cast(operand, _) => {
-                self.nodes[operand].used = true;
-            }
-        }
-
-        // Nodes start as unused.
-        self.nodes.push(WorkNode { node, span, used: false })
-    }
-
     /// We do not allow all binary operations in abstract consts, so filter disallowed ones.
     fn check_binop(op: mir::BinOp) -> bool {
         use mir::BinOp::*;
@@ -348,23 +313,17 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
     /// encountering an unspported operation.
     fn build(mut self) -> Result<&'tcx [Node<'tcx>], ErrorReported> {
         debug!("Abstractconstbuilder::build: body={:?}", &*self.body);
-        let last = self.recurse_build(self.body_id)?;
-        self.nodes[last].used = true;
+        self.recurse_build(self.body_id)?;
 
         for n in self.nodes.iter() {
-            if let Node::Leaf(ty::Const { val: ty::ConstKind::Unevaluated(ct), ty: _ }) = n.node {
+            if let Node::Leaf(ty::Const { val: ty::ConstKind::Unevaluated(ct), ty: _ }) = n {
                 // `AbstractConst`s should not contain any promoteds as they require references which
                 // are not allowed.
                 assert_eq!(ct.promoted, None);
             }
         }
 
-        // FIXME I dont even think we can get unused nodes anymore with thir abstract const
-        if let Some(&unused) = self.nodes.iter().find(|n| !n.used) {
-            self.error(Some(unused.span), "dead code")?;
-        }
-
-        Ok(self.tcx.arena.alloc_from_iter(self.nodes.into_iter().map(|n| n.node)))
+        Ok(self.tcx.arena.alloc_from_iter(self.nodes.into_iter()))
     }
 
     fn recurse_build(&mut self, node: thir::ExprId) -> Result<NodeId, ErrorReported> {
@@ -380,7 +339,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             // subtle: associated consts are literals this arm handles
             // `<T as Trait>::ASSOC` as well as `12`
             &ExprKind::Literal { literal, .. }
-            | &ExprKind::StaticRef { literal, .. } => self.add_node(Node::Leaf(literal), node.span),
+            | &ExprKind::StaticRef { literal, .. } => self.nodes.push(Node::Leaf(literal)),
 
             // FIXME(generic_const_exprs) handle `from_hir_call` field
             ExprKind::Call { fun, args,  .. } => {
@@ -391,16 +350,16 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                     new_args.push(self.recurse_build(id)?);
                 }
                 let new_args = self.tcx.arena.alloc_slice(&new_args);
-                self.add_node(Node::FunctionCall(fun, new_args), node.span)
+                self.nodes.push(Node::FunctionCall(fun, new_args))
             },
             &ExprKind::Binary { op, lhs, rhs } if Self::check_binop(op) => {
                 let lhs = self.recurse_build(lhs)?;
                 let rhs = self.recurse_build(rhs)?;
-                self.add_node(Node::Binop(op, lhs, rhs), node.span)
+                self.nodes.push(Node::Binop(op, lhs, rhs))
             }
             &ExprKind::Unary { op, arg } if Self::check_unop(op) => {
                 let arg = self.recurse_build(arg)?;
-                self.add_node(Node::UnaryOp(op, arg), node.span)
+                self.nodes.push(Node::UnaryOp(op, arg))
             },
             // this is necessary so that the following compiles:
             //
@@ -416,7 +375,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             &ExprKind::Use { source}
             | &ExprKind::Cast { source } => {
                 let arg = self.recurse_build(source)?;
-                self.add_node(Node::Cast(arg, node.ty), node.span)
+                self.nodes.push(Node::Cast(arg, node.ty))
             },
 
             // FIXME(generic_const_exprs) we want to support these
