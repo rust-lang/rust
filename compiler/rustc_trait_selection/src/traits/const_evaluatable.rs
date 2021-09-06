@@ -418,8 +418,6 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 let arg = self.recurse_build(source)?;
                 self.add_node(Node::Cast(arg, node.ty), node.span)
             },
-            // never can arise even without panic/fail to terminate
-            &ExprKind::NeverToAny { source } => todo!(),
 
             // FIXME(generic_const_exprs) we want to support these
             ExprKind::AddressOf { .. }
@@ -428,6 +426,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             | ExprKind::Repeat { .. }
             | ExprKind::Array { .. }
             | ExprKind::Block { .. }
+            | ExprKind::NeverToAny { .. } // I dont think we can get this without adt construction
             | ExprKind::Tuple { .. }
             | ExprKind::Index { .. }
             | ExprKind::Field { .. }
