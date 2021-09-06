@@ -1663,7 +1663,7 @@ pub mod marker {
         const PERMITS_TRAVERSAL: bool = true;
     }
     impl BorrowType for Owned {
-        // Traversal isn't needede, it happens using the result of `borrow_mut`.
+        // Traversal isn't needed, it happens using the result of `borrow_mut`.
         // By disabling traversal, and only creating new references to roots,
         // we know that every reference of the `Owned` type is to a root node.
         const PERMITS_TRAVERSAL: bool = false;
