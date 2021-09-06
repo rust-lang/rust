@@ -392,6 +392,21 @@ impl Size {
         // Truncate (shift left to drop out leftover values, shift right to fill with zeroes).
         (value << shift) >> shift
     }
+
+    #[inline]
+    pub fn signed_min(&self) -> i128 {
+        self.sign_extend(1_u128 << (self.bits() - 1)) as i128
+    }
+
+    #[inline]
+    pub fn signed_max(&self) -> i128 {
+        i128::MAX >> (128 - self.bits())
+    }
+
+    #[inline]
+    pub fn unsigned_max(&self) -> u128 {
+        u128::MAX >> (128 - self.bits())
+    }
 }
 
 // Panicking addition, subtraction and multiplication for convenience.
@@ -775,7 +790,7 @@ impl WrappingRange {
     /// Returns `true` if `size` completely fills the range.
     #[inline]
     pub fn is_full_for(&self, size: Size) -> bool {
-        let max_value = u128::MAX >> (128 - size.bits());
+        let max_value = size.unsigned_max();
         debug_assert!(self.start <= max_value && self.end <= max_value);
         (self.start == 0 && self.end == max_value) || (self.end + 1 == self.start)
     }
@@ -1067,9 +1082,9 @@ impl Niche {
 
     pub fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
         let Scalar { value, valid_range: v } = self.scalar;
-        let bits = value.size(cx).bits();
-        assert!(bits <= 128);
-        let max_value = !0u128 >> (128 - bits);
+        let size = value.size(cx);
+        assert!(size.bits() <= 128);
+        let max_value = size.unsigned_max();
 
         // Find out how many values are outside the valid range.
         let niche = v.end.wrapping_add(1)..v.start;
@@ -1080,9 +1095,9 @@ impl Niche {
         assert!(count > 0);
 
         let Scalar { value, valid_range: v } = self.scalar;
-        let bits = value.size(cx).bits();
-        assert!(bits <= 128);
-        let max_value = !0u128 >> (128 - bits);
+        let size = value.size(cx);
+        assert!(size.bits() <= 128);
+        let max_value = size.unsigned_max();
 
         if count > max_value {
             return None;

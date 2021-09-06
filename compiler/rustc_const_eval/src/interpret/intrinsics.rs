@@ -234,7 +234,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     &r,
                 )?;
                 let val = if overflowed {
-                    let num_bits = l.layout.size.bits();
+                    let size = l.layout.size;
+                    let num_bits = size.bits();
                     if l.layout.abi.is_signed() {
                         // For signed ints the saturated value depends on the sign of the first
                         // term since the sign of the second term can be inferred from this and
@@ -259,10 +260,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // unsigned
                         if is_add {
                             // max unsigned
-                            Scalar::from_uint(
-                                u128::MAX >> (128 - num_bits),
-                                Size::from_bits(num_bits),
-                            )
+                            Scalar::from_uint(size.unsigned_max(), Size::from_bits(num_bits))
                         } else {
                             // underflow to 0
                             Scalar::from_uint(0u128, Size::from_bits(num_bits))
