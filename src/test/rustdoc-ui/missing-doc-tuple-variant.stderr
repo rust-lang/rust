@@ -1,0 +1,20 @@
+error: missing documentation for a struct field
+  --> $DIR/missing-doc-tuple-variant.rs:12:9
+   |
+LL |     Bar(String, u32),
+   |         ^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/missing-doc-tuple-variant.rs:3:9
+   |
+LL | #![deny(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+error: missing documentation for a struct field
+  --> $DIR/missing-doc-tuple-variant.rs:12:17
+   |
+LL |     Bar(String, u32),
+   |                 ^^^
+
+error: aborting due to 2 previous errors
+
