@@ -161,13 +161,13 @@ pub trait Pattern<'a>: Sized {
 pub enum SearchStep {
     /// Expresses that a match of the pattern has been found at
     /// `haystack[a..b]`.
-    Match(usize, usize),
+    Match(#[allow(missing_docs)] usize, #[allow(missing_docs)] usize),
     /// Expresses that `haystack[a..b]` has been rejected as a possible match
     /// of the pattern.
     ///
     /// Note that there might be more than one `Reject` between two `Match`es,
     /// there is no requirement for them to be combined into one.
-    Reject(usize, usize),
+    Reject(#[allow(missing_docs)] usize, #[allow(missing_docs)] usize),
     /// Expresses that every byte of the haystack has been visited, ending
     /// the iteration.
     Done,

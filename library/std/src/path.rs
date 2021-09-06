@@ -147,8 +147,12 @@ pub enum Prefix<'a> {
     /// server's hostname and a share name.
     #[stable(feature = "rust1", since = "1.0.0")]
     VerbatimUNC(
-        #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
-        #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[allow(missing_docs)]
+        &'a OsStr,
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[allow(missing_docs)]
+        &'a OsStr,
     ),
 
     /// Verbatim disk prefix, e.g., `\\?\C:`.
@@ -171,8 +175,12 @@ pub enum Prefix<'a> {
     /// UNC prefixes consist of the server's hostname and a share name.
     #[stable(feature = "rust1", since = "1.0.0")]
     UNC(
-        #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
-        #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[allow(missing_docs)]
+        &'a OsStr,
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[allow(missing_docs)]
+        &'a OsStr,
     ),
 
     /// Prefix `C:` for the given disk drive.
