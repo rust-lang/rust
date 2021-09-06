@@ -695,7 +695,8 @@ impl Attr {
         hygiene: &Hygiene,
         id: AttrId,
     ) -> Option<Attr> {
-        let (parse, _) = mbe::token_tree_to_syntax_node(tt, mbe::FragmentKind::MetaItem).ok()?;
+        let (parse, _) =
+            mbe::token_tree_to_syntax_node(tt, mbe::ParserEntryPoint::MetaItem).ok()?;
         let ast = ast::Meta::cast(parse.syntax_node())?;
 
         Self::from_src(db, ast, hygiene, id)

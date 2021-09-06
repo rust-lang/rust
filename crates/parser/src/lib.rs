@@ -71,23 +71,13 @@ pub trait TreeSink {
     fn error(&mut self, error: ParseError);
 }
 
-fn parse_from_tokens<F>(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink, f: F)
-where
-    F: FnOnce(&mut parser::Parser),
-{
-    let mut p = parser::Parser::new(token_source);
-    f(&mut p);
-    let events = p.finish();
-    event::process(tree_sink, events);
-}
-
-/// Parse given tokens into the given sink as a rust file.
-pub fn parse(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
-    parse_from_tokens(token_source, tree_sink, grammar::root);
-}
-
+/// rust-analyzer parser allows you to choose one of the possible entry points.
+///
+/// The primary consumer of this API are declarative macros, `$x:expr` matchers
+/// are implemented by calling into the parser with non-standard entry point.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub enum FragmentKind {
+pub enum ParserEntryPoint {
+    SourceFile,
     Path,
     Expr,
     Statement,
@@ -103,27 +93,37 @@ pub enum FragmentKind {
     Attr,
 }
 
-pub fn parse_fragment(
+/// Parse given tokens into the given sink as a rust file.
+pub fn parse_source_file(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+    parse(token_source, tree_sink, ParserEntryPoint::SourceFile);
+}
+
+pub fn parse(
     token_source: &mut dyn TokenSource,
     tree_sink: &mut dyn TreeSink,
-    fragment_kind: FragmentKind,
+    entry_point: ParserEntryPoint,
 ) {
-    let parser: fn(&'_ mut parser::Parser) = match fragment_kind {
-        FragmentKind::Path => grammar::fragments::path,
-        FragmentKind::Expr => grammar::fragments::expr,
-        FragmentKind::Type => grammar::fragments::type_,
-        FragmentKind::Pattern => grammar::fragments::pattern_single,
-        FragmentKind::Item => grammar::fragments::item,
-        FragmentKind::Block => grammar::fragments::block_expr,
-        FragmentKind::Visibility => grammar::fragments::opt_visibility,
-        FragmentKind::MetaItem => grammar::fragments::meta_item,
-        FragmentKind::Statement => grammar::fragments::stmt,
-        FragmentKind::StatementOptionalSemi => grammar::fragments::stmt_optional_semi,
-        FragmentKind::Items => grammar::fragments::macro_items,
-        FragmentKind::Statements => grammar::fragments::macro_stmts,
-        FragmentKind::Attr => grammar::fragments::attr,
+    let entry_point: fn(&'_ mut parser::Parser) = match entry_point {
+        ParserEntryPoint::SourceFile => grammar::entry_points::source_file,
+        ParserEntryPoint::Path => grammar::entry_points::path,
+        ParserEntryPoint::Expr => grammar::entry_points::expr,
+        ParserEntryPoint::Type => grammar::entry_points::type_,
+        ParserEntryPoint::Pattern => grammar::entry_points::pattern,
+        ParserEntryPoint::Item => grammar::entry_points::item,
+        ParserEntryPoint::Block => grammar::entry_points::block_expr,
+        ParserEntryPoint::Visibility => grammar::entry_points::visibility,
+        ParserEntryPoint::MetaItem => grammar::entry_points::meta_item,
+        ParserEntryPoint::Statement => grammar::entry_points::stmt,
+        ParserEntryPoint::StatementOptionalSemi => grammar::entry_points::stmt_optional_semi,
+        ParserEntryPoint::Items => grammar::entry_points::macro_items,
+        ParserEntryPoint::Statements => grammar::entry_points::macro_stmts,
+        ParserEntryPoint::Attr => grammar::entry_points::attr,
     };
-    parse_from_tokens(token_source, tree_sink, parser)
+
+    let mut p = parser::Parser::new(token_source);
+    entry_point(&mut p);
+    let events = p.finish();
+    event::process(tree_sink, events);
 }
 
 /// A parsing function for a specific braced-block.

@@ -44,20 +44,23 @@ use crate::{
     TokenSet,
 };
 
-pub(crate) fn root(p: &mut Parser) {
-    let m = p.start();
-    p.eat(SHEBANG);
-    items::mod_contents(p, false);
-    m.complete(p, SOURCE_FILE);
-}
-
-/// Various pieces of syntax that can be parsed by macros by example
-pub(crate) mod fragments {
+pub(crate) mod entry_points {
     use super::*;
 
-    pub(crate) use super::{
-        expressions::block_expr, paths::type_path as path, patterns::pattern_single, types::type_,
-    };
+    pub(crate) fn source_file(p: &mut Parser) {
+        let m = p.start();
+        p.eat(SHEBANG);
+        items::mod_contents(p, false);
+        m.complete(p, SOURCE_FILE);
+    }
+
+    pub(crate) use expressions::block_expr;
+
+    pub(crate) use paths::type_path as path;
+
+    pub(crate) use patterns::pattern_single as pattern;
+
+    pub(crate) use types::type_;
 
     pub(crate) fn expr(p: &mut Parser) {
         let _ = expressions::expr_with_attrs(p);
@@ -71,8 +74,8 @@ pub(crate) mod fragments {
         expressions::stmt(p, expressions::StmtWithSemi::Optional, false)
     }
 
-    pub(crate) fn opt_visibility(p: &mut Parser) {
-        let _ = super::opt_visibility(p);
+    pub(crate) fn visibility(p: &mut Parser) {
+        let _ = opt_visibility(p);
     }
 
     // Parse a meta item , which excluded [], e.g : #[ MetaItem ]

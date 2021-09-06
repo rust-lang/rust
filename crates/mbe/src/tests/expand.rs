@@ -1,4 +1,4 @@
-use ::parser::FragmentKind;
+use ::parser::ParserEntryPoint;
 use syntax::{
     SyntaxKind::{ERROR, IDENT},
     T,
@@ -55,7 +55,7 @@ macro_rules! foobar {
     )
     .expand_tt("foobar!(baz);");
 
-    let (node, token_map) = token_tree_to_syntax_node(&expanded, FragmentKind::Items).unwrap();
+    let (node, token_map) = token_tree_to_syntax_node(&expanded, ParserEntryPoint::Items).unwrap();
     let content = node.syntax_node().to_string();
 
     let get_text = |id, kind| -> String {
