@@ -1495,9 +1495,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut err = struct_span_err!(self.tcx().sess, span, E0223, "ambiguous associated type");
         if let (true, Ok(snippet)) = (
             self.tcx()
-                .sess
+                .resolutions(())
                 .confused_type_with_std_module
-                .borrow()
                 .keys()
                 .any(|full_span| full_span.contains(span)),
             self.tcx().sess.source_map().span_to_snippet(span),

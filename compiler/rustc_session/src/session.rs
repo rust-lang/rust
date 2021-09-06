@@ -183,10 +183,6 @@ pub struct Session {
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
-    /// Mapping from ident span to path span for paths that don't exist as written, but that
-    /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
-    pub confused_type_with_std_module: Lock<FxHashMap<Span, Span>>,
-
     /// Tracks the current behavior of the CTFE engine when an error occurs.
     /// Options range from returning the error without a backtrace to returning an error
     /// and immediately printing the backtrace to stderr.
@@ -1313,7 +1309,6 @@ pub fn build_session(
         print_fuel,
         jobserver: jobserver::client(),
         driver_lint_caps,
-        confused_type_with_std_module: Lock::new(Default::default()),
         ctfe_backtrace,
         miri_unleashed_features: Lock::new(Default::default()),
         asm_arch,

@@ -1999,9 +1999,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         let item_span =
                             path.iter().last().map_or(span, |segment| segment.ident.span);
 
-                        let mut hm = self.r.session.confused_type_with_std_module.borrow_mut();
-                        hm.insert(item_span, span);
-                        hm.insert(span, span);
+                        self.r.confused_type_with_std_module.insert(item_span, span);
+                        self.r.confused_type_with_std_module.insert(span, span);
                     }
                 }
 
