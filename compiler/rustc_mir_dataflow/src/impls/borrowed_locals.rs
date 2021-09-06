@@ -169,6 +169,7 @@ where
             }
 
             mir::Rvalue::Cast(..)
+            | mir::Rvalue::ShallowInitBox(..)
             | mir::Rvalue::Use(..)
             | mir::Rvalue::ThreadLocalRef(..)
             | mir::Rvalue::Repeat(..)

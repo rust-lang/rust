@@ -327,6 +327,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             Rvalue::Use(ref operand)
             | Rvalue::Repeat(ref operand, _)
             | Rvalue::Cast(_, ref operand, _)
+            | Rvalue::ShallowInitBox(ref operand, _)
             | Rvalue::UnaryOp(_, ref operand) => self.gather_operand(operand),
             Rvalue::BinaryOp(ref _binop, box (ref lhs, ref rhs))
             | Rvalue::CheckedBinaryOp(ref _binop, box (ref lhs, ref rhs)) => {

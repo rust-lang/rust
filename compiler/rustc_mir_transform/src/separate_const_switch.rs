@@ -204,6 +204,7 @@ fn is_likely_const<'tcx>(mut tracked_place: Place<'tcx>, block: &BasicBlockData<
                         | Rvalue::AddressOf(_, _)
                         | Rvalue::Cast(_, Operand::Constant(_), _)
                         | Rvalue::NullaryOp(_, _)
+                        | Rvalue::ShallowInitBox(_, _)
                         | Rvalue::UnaryOp(_, Operand::Constant(_)) => return true,
 
                         // These rvalues make things ambiguous
@@ -301,6 +302,7 @@ fn find_determining_place<'tcx>(
                     | Rvalue::ThreadLocalRef(_)
                     | Rvalue::AddressOf(_, _)
                     | Rvalue::NullaryOp(_, _)
+                    | Rvalue::ShallowInitBox(_, _)
                     | Rvalue::UnaryOp(_, Operand::Constant(_))
                     | Rvalue::Cast(_, Operand::Constant(_), _)
                     => return None,

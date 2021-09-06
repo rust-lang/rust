@@ -2200,6 +2200,12 @@ pub enum Rvalue<'tcx> {
     /// that `Foo` has a destructor. These rvalues can be optimized
     /// away after type-checking and before lowering.
     Aggregate(Box<AggregateKind<'tcx>>, Vec<Operand<'tcx>>),
+
+    /// Transmutes a `*mut u8` into shallow-initialized `Box<T>`.
+    ///
+    /// This is different a normal transmute because dataflow analysis will treat the box
+    /// as initialized but its content as uninitialized.
+    ShallowInitBox(Operand<'tcx>, Ty<'tcx>),
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
@@ -2449,6 +2455,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         }
                     }),
                 }
+            }
+
+            ShallowInitBox(ref place, ref ty) => {
+                write!(fmt, "ShallowInitBox({:?}, {:?})", place, ty)
             }
         }
     }

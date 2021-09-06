@@ -210,6 +210,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
                 });
                 Aggregate(kind, fields.fold_with(folder))
             }
+            ShallowInitBox(op, ty) => ShallowInitBox(op.fold_with(folder), ty.fold_with(folder)),
         }
     }
 
@@ -254,6 +255,10 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
                     }
                 }
                 fields.visit_with(visitor)
+            }
+            ShallowInitBox(ref op, ty) => {
+                op.visit_with(visitor)?;
+                ty.visit_with(visitor)
             }
         }
     }

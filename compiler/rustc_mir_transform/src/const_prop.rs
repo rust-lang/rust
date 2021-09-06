@@ -723,6 +723,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             | Rvalue::Repeat(..)
             | Rvalue::Len(..)
             | Rvalue::Cast(..)
+            | Rvalue::ShallowInitBox(..)
             | Rvalue::Discriminant(..)
             | Rvalue::NullaryOp(..) => {}
         }
