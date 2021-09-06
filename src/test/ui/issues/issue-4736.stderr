@@ -5,9 +5,12 @@ LL | struct NonCopyable(());
    |        ----------- `NonCopyable` defined here
 ...
 LL |     let z = NonCopyable{ p: () };
-   |             -----------  ^ field does not exist
-   |             |
-   |             help: `NonCopyable` is a tuple struct, use the appropriate syntax: `NonCopyable(/* fields */)`
+   |                          ^ field does not exist
+   |
+help: `NonCopyable` is a tuple struct, use the appropriate syntax
+   |
+LL |     let z = NonCopyable(/* fields */);
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 
