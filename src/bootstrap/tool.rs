@@ -377,6 +377,7 @@ bootstrap_tool!(
     LintDocs, "src/tools/lint-docs", "lint-docs";
     JsonDocCk, "src/tools/jsondocck", "jsondocck";
     HtmlChecker, "src/tools/html-checker", "html-checker";
+    BumpStage0, "src/tools/bump-stage0", "bump-stage0";
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]

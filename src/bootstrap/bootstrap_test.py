@@ -13,38 +13,18 @@ from shutil import rmtree
 import bootstrap
 
 
-class Stage0DataTestCase(unittest.TestCase):
-    """Test Case for stage0_data"""
-    def setUp(self):
-        self.rust_root = tempfile.mkdtemp()
-        os.mkdir(os.path.join(self.rust_root, "src"))
-        with open(os.path.join(self.rust_root, "src",
-                               "stage0.txt"), "w") as stage0:
-            stage0.write("#ignore\n\ndate: 2017-06-15\nrustc: beta\ncargo: beta\nrustfmt: beta")
-
-    def tearDown(self):
-        rmtree(self.rust_root)
-
-    def test_stage0_data(self):
-        """Extract data from stage0.txt"""
-        expected = {"date": "2017-06-15", "rustc": "beta", "cargo": "beta", "rustfmt": "beta"}
-        data = bootstrap.stage0_data(self.rust_root)
-        self.assertDictEqual(data, expected)
-
-
 class VerifyTestCase(unittest.TestCase):
     """Test Case for verify"""
     def setUp(self):
         self.container = tempfile.mkdtemp()
         self.src = os.path.join(self.container, "src.txt")
-        self.sums = os.path.join(self.container, "sums")
         self.bad_src = os.path.join(self.container, "bad.txt")
         content = "Hello world"
 
+        self.expected = hashlib.sha256(content.encode("utf-8")).hexdigest()
+
         with open(self.src, "w") as src:
             src.write(content)
-        with open(self.sums, "w") as sums:
-            sums.write(hashlib.sha256(content.encode("utf-8")).hexdigest())
         with open(self.bad_src, "w") as bad:
             bad.write("Hello!")
 
@@ -53,11 +33,11 @@ class VerifyTestCase(unittest.TestCase):
 
     def test_valid_file(self):
         """Check if the sha256 sum of the given file is valid"""
-        self.assertTrue(bootstrap.verify(self.src, self.sums, False))
+        self.assertTrue(bootstrap.verify(self.src, self.expected, False))
 
     def test_invalid_file(self):
         """Should verify that the file is invalid"""
-        self.assertFalse(bootstrap.verify(self.bad_src, self.sums, False))
+        self.assertFalse(bootstrap.verify(self.bad_src, self.expected, False))
 
 
 class ProgramOutOfDate(unittest.TestCase):
@@ -99,7 +79,6 @@ if __name__ == '__main__':
     TEST_LOADER = unittest.TestLoader()
     SUITE.addTest(doctest.DocTestSuite(bootstrap))
     SUITE.addTests([
-        TEST_LOADER.loadTestsFromTestCase(Stage0DataTestCase),
         TEST_LOADER.loadTestsFromTestCase(VerifyTestCase),
         TEST_LOADER.loadTestsFromTestCase(ProgramOutOfDate)])
 
