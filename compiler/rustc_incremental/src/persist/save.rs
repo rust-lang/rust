@@ -6,8 +6,6 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_session::Session;
 use std::fs;
-use std::io;
-use std::path::PathBuf;
 
 use super::data::*;
 use super::dirty_clean;
@@ -44,7 +42,14 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
         join(
             move || {
                 sess.time("incr_comp_persist_result_cache", || {
-                    save_in(sess, query_cache_path, "query cache", |e| encode_query_cache(tcx, e));
+                    // Drop the memory map so that we can remove the file and write to it.
+                    if let Some(odc) = &tcx.on_disk_cache {
+                        odc.drop_serialized_data(tcx);
+                    }
+
+                    file_format::save_in(sess, query_cache_path, "query cache", |e| {
+                        encode_query_cache(tcx, e)
+                    });
                 });
             },
             move || {
@@ -86,7 +91,9 @@ pub fn save_work_product_index(
     debug!("save_work_product_index()");
     dep_graph.assert_ignored();
     let path = work_products_path(sess);
-    save_in(sess, path, "work product index", |e| encode_work_product_index(&new_work_products, e));
+    file_format::save_in(sess, path, "work product index", |e| {
+        encode_work_product_index(&new_work_products, e)
+    });
 
     // We also need to clean out old work-products, as not all of them are
     // deleted during invalidation. Some object files don't change their
@@ -111,58 +118,6 @@ pub fn save_work_product_index(
             .map(|name| in_incr_comp_dir_sess(sess, name))
             .all(|path| path.exists())
     });
-}
-
-pub(crate) fn save_in<F>(sess: &Session, path_buf: PathBuf, name: &str, encode: F)
-where
-    F: FnOnce(&mut FileEncoder) -> FileEncodeResult,
-{
-    debug!("save: storing data in {}", path_buf.display());
-
-    // Delete the old file, if any.
-    // Note: It's important that we actually delete the old file and not just
-    // truncate and overwrite it, since it might be a shared hard-link, the
-    // underlying data of which we don't want to modify
-    match fs::remove_file(&path_buf) {
-        Ok(()) => {
-            debug!("save: remove old file");
-        }
-        Err(err) if err.kind() == io::ErrorKind::NotFound => (),
-        Err(err) => {
-            sess.err(&format!(
-                "unable to delete old {} at `{}`: {}",
-                name,
-                path_buf.display(),
-                err
-            ));
-            return;
-        }
-    }
-
-    let mut encoder = match FileEncoder::new(&path_buf) {
-        Ok(encoder) => encoder,
-        Err(err) => {
-            sess.err(&format!("failed to create {} at `{}`: {}", name, path_buf.display(), err));
-            return;
-        }
-    };
-
-    if let Err(err) = file_format::write_file_header(&mut encoder, sess.is_nightly_build()) {
-        sess.err(&format!("failed to write {} header to `{}`: {}", name, path_buf.display(), err));
-        return;
-    }
-
-    if let Err(err) = encode(&mut encoder) {
-        sess.err(&format!("failed to write {} to `{}`: {}", name, path_buf.display(), err));
-        return;
-    }
-
-    if let Err(err) = encoder.flush() {
-        sess.err(&format!("failed to flush {} to `{}`: {}", name, path_buf.display(), err));
-        return;
-    }
-
-    debug!("save: data written to disk successfully");
 }
 
 fn encode_work_product_index(

@@ -1,6 +1,7 @@
 use crate::QueryCtxt;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, OnceCell};
+use rustc_data_structures::memmap::Mmap;
+use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, OnceCell, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathHash;
@@ -42,7 +43,7 @@ const TAG_EXPN_DATA: u8 = 1;
 /// any side effects that have been emitted during a query.
 pub struct OnDiskCache<'sess> {
     // The complete cache data in serialized form.
-    serialized_data: Vec<u8>,
+    serialized_data: RwLock<Option<Mmap>>,
 
     // Collects all `QuerySideEffects` created during the current compilation
     // session.
@@ -182,7 +183,8 @@ impl EncodedSourceFileId {
 }
 
 impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
-    fn new(sess: &'sess Session, data: Vec<u8>, start_pos: usize) -> Self {
+    /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
+    fn new(sess: &'sess Session, data: Mmap, start_pos: usize) -> Self {
         debug_assert!(sess.opts.incremental.is_some());
 
         // Wrap in a scope so we can borrow `data`.
@@ -204,7 +206,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
         };
 
         Self {
-            serialized_data: data,
+            serialized_data: RwLock::new(Some(data)),
             file_index_to_stable_id: footer.file_index_to_stable_id,
             file_index_to_file: Default::default(),
             cnum_map: OnceCell::new(),
@@ -225,7 +227,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
 
     fn new_empty(source_map: &'sess SourceMap) -> Self {
         Self {
-            serialized_data: Vec::new(),
+            serialized_data: RwLock::new(None),
             file_index_to_stable_id: Default::default(),
             file_index_to_file: Default::default(),
             cnum_map: OnceCell::new(),
@@ -244,7 +246,31 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
         }
     }
 
-    fn serialize(&self, tcx: TyCtxt<'sess>, encoder: &mut FileEncoder) -> FileEncodeResult {
+    /// Execute all cache promotions and release the serialized backing Mmap.
+    ///
+    /// Cache promotions require invoking queries, which needs to read the serialized data.
+    /// In order to serialize the new on-disk cache, the former on-disk cache file needs to be
+    /// deleted, hence we won't be able to refer to its memmapped data.
+    fn drop_serialized_data(&self, tcx: TyCtxt<'tcx>) {
+        // Register any dep nodes that we reused from the previous session,
+        // but didn't `DepNode::construct` in this session. This ensures
+        // that their `DefPathHash` to `RawDefId` mappings are registered
+        // in 'latest_foreign_def_path_hashes' if necessary, since that
+        // normally happens in `DepNode::construct`.
+        tcx.dep_graph.register_reused_dep_nodes(tcx);
+
+        // Load everything into memory so we can write it out to the on-disk
+        // cache. The vast majority of cacheable query results should already
+        // be in memory, so this should be a cheap operation.
+        // Do this *before* we clone 'latest_foreign_def_path_hashes', since
+        // loading existing queries may cause us to create new DepNodes, which
+        // may in turn end up invoking `store_foreign_def_id_hash`
+        tcx.dep_graph.exec_cache_promotions(QueryCtxt::from_tcx(tcx));
+
+        *self.serialized_data.write() = None;
+    }
+
+    fn serialize<'tcx>(&self, tcx: TyCtxt<'tcx>, encoder: &mut FileEncoder) -> FileEncodeResult {
         // Serializing the `DepGraph` should not modify it.
         tcx.dep_graph.with_ignore(|| {
             // Allocate `SourceFileIndex`es.
@@ -265,21 +291,6 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
 
                 (file_to_file_index, file_index_to_stable_id)
             };
-
-            // Register any dep nodes that we reused from the previous session,
-            // but didn't `DepNode::construct` in this session. This ensures
-            // that their `DefPathHash` to `RawDefId` mappings are registered
-            // in 'latest_foreign_def_path_hashes' if necessary, since that
-            // normally happens in `DepNode::construct`.
-            tcx.dep_graph.register_reused_dep_nodes(tcx);
-
-            // Load everything into memory so we can write it out to the on-disk
-            // cache. The vast majority of cacheable query results should already
-            // be in memory, so this should be a cheap operation.
-            // Do this *before* we clone 'latest_foreign_def_path_hashes', since
-            // loading existing queries may cause us to create new DepNodes, which
-            // may in turn end up invoking `store_foreign_def_id_hash`
-            tcx.dep_graph.exec_cache_promotions(QueryCtxt::from_tcx(tcx));
 
             let latest_foreign_def_path_hashes = self.latest_foreign_def_path_hashes.lock().clone();
             let hygiene_encode_context = HygieneEncodeContext::default();
@@ -564,7 +575,7 @@ impl<'sess> OnDiskCache<'sess> {
         })
     }
 
-    fn with_decoder<'a, 'tcx, T, F: FnOnce(&mut CacheDecoder<'sess, 'tcx>) -> T>(
+    fn with_decoder<'a, 'tcx, T, F: for<'s> FnOnce(&mut CacheDecoder<'s, 'tcx>) -> T>(
         &'sess self,
         tcx: TyCtxt<'tcx>,
         pos: AbsoluteBytePos,
@@ -575,9 +586,10 @@ impl<'sess> OnDiskCache<'sess> {
     {
         let cnum_map = self.cnum_map.get_or_init(|| Self::compute_cnum_map(tcx));
 
+        let serialized_data = self.serialized_data.read();
         let mut decoder = CacheDecoder {
             tcx,
-            opaque: opaque::Decoder::new(&self.serialized_data[..], pos.to_usize()),
+            opaque: opaque::Decoder::new(serialized_data.as_deref().unwrap_or(&[]), pos.to_usize()),
             source_map: self.source_map,
             cnum_map,
             file_index_to_file: &self.file_index_to_file,

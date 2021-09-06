@@ -27,6 +27,7 @@ use crate::ty::{
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -71,7 +72,7 @@ use std::sync::Arc;
 
 pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
-    fn new(sess: &'tcx Session, data: Vec<u8>, start_pos: usize) -> Self
+    fn new(sess: &'tcx Session, data: Mmap, start_pos: usize) -> Self
     where
         Self: Sized;
 
@@ -99,6 +100,8 @@ pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     /// out for usage in the next compilation session.
     fn register_reused_dep_node(&self, tcx: TyCtxt<'tcx>, dep_node: &DepNode);
     fn store_foreign_def_id_hash(&self, def_id: DefId, hash: DefPathHash);
+
+    fn drop_serialized_data(&self, tcx: TyCtxt<'tcx>);
 
     fn serialize(&self, tcx: TyCtxt<'tcx>, encoder: &mut FileEncoder) -> FileEncodeResult;
 }
