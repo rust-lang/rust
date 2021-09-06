@@ -194,6 +194,7 @@ fn check_rvalue(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId, rvalue: &Rv
         },
         Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => Ok(()),
         Rvalue::NullaryOp(NullOp::Box, _) => Err((span, "heap allocations are not allowed in const fn".into())),
+        Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::UnaryOp(_, operand) => {
             let ty = operand.ty(body, tcx);
             if ty.is_integral() || ty.is_bool() {
