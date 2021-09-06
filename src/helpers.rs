@@ -7,9 +7,13 @@ use log::trace;
 
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_middle::mir;
-use rustc_middle::ty::{self, layout::TyAndLayout, List, TyCtxt};
+use rustc_middle::ty::{
+    self,
+    layout::{LayoutOf, TyAndLayout},
+    List, TyCtxt,
+};
 use rustc_span::Symbol;
-use rustc_target::abi::{Align, FieldsShape, LayoutOf, Size, Variants};
+use rustc_target::abi::{Align, FieldsShape, Size, Variants};
 use rustc_target::spec::abi::Abi;
 
 use rand::RngCore;

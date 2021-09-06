@@ -9,7 +9,8 @@ use std::os::unix::ffi::{OsStrExt, OsStringExt};
 #[cfg(windows)]
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
 
-use rustc_target::abi::{Align, LayoutOf, Size};
+use rustc_middle::ty::layout::LayoutOf;
+use rustc_target::abi::{Align, Size};
 
 use crate::*;
 

@@ -16,13 +16,13 @@ use rustc_middle::{
     mir,
     ty::{
         self,
-        layout::{LayoutCx, LayoutError, TyAndLayout},
+        layout::{LayoutCx, LayoutError, LayoutOf, TyAndLayout},
         Instance, TyCtxt,
     },
 };
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_target::abi::{LayoutOf, Size};
+use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
 use crate::*;
