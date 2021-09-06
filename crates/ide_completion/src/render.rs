@@ -101,7 +101,7 @@ pub(crate) fn render_field(
         .lookup_by(name.as_str());
     let is_keyword = SyntaxKind::from_keyword(name.as_str()).is_some();
     if is_keyword && !matches!(name.as_str(), "self" | "crate" | "super" | "Self") {
-        item.insert_text(String::from("r#") + name.as_str());
+        item.insert_text(format!("r#{}", name));
     }
     if let Some(_ref_match) = compute_ref_match(ctx.completion, ty) {
         // FIXME
