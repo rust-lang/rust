@@ -290,6 +290,12 @@ nav.sub {
 	overflow: auto;
 }
 
+.rustdoc:not(.source) .sidebar {
+	/* Ensure that sidebar does not overlap with content when horizontal
+	 * scrollbar is present */
+	z-index: 1;
+}
+
 /* Improve the scrollbar display on firefox */
 * {
 	scrollbar-width: initial;
