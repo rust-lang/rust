@@ -48,7 +48,22 @@ When a query `foo` is evaluated, the cache table for `foo` is locked.
 
 As of <!-- date: 2021-07 --> July 2021, work on explicitly parallelizing the
 compiler has stalled. There is a lot of design and correctness work that needs
-to be done.
+to be done. 
+
+These are the basic ideas in the effort to make `rustc` parallel:
+
+- All data a query provider can access is accessed via the query context, so
+  the query context can take care of synchronizing access.
+- Query results are required to be immutable so they can safely be used by
+  different threads concurrently.
+
+- There are a lot of loops in the compiler that just iterate over all items in
+  a crate. These can possibly be parallelized.
+- We can use (a custom fork of) [`rayon`] to run tasks in parallel. The custom
+  fork allows the execution of DAGs of tasks, not just trees.
+- There are currently a lot of global data structures that need to be made
+  thread-safe. A key strategy here has been converting interior-mutable
+  data-structures (e.g. `Cell`) into their thread-safe siblings (e.g. `Mutex`).
 
 [`rayon`]: https://crates.io/crates/rayon
 
