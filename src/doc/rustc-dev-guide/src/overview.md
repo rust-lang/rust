@@ -43,16 +43,17 @@ we'll talk about that later.
 - The lexer preserves full fidelity information for both IDEs and proc macros.
 - The parser [translates the token stream from the lexer into an Abstract Syntax
   Tree (AST)][parser]. It uses a recursive descent (top-down) approach to syntax
-  analysis. The crate entry points for the parser are the `Parser::parse_crate_mod()` and
-  `Parser::parse_mod()` methods found in `rustc_parse::parser::Parser`. The external
-  module parsing entry point is `rustc_expand::module::parse_external_mod`. And
-  the macro parser entry point is [`Parser::parse_nonterminal()`][parse_nonterminal].
+  analysis. The crate entry points for the parser are the
+  [`Parser::parse_crate_mod()`][parse_crate_mod] and [`Parser::parse_mod()`][parse_mod]
+  methods found in [`rustc_parse::parser::Parser`]. The external module parsing
+  entry point is [`rustc_expand::module::parse_external_mod`][parse_external_mod].
+  And the macro parser entry point is [`Parser::parse_nonterminal()`][parse_nonterminal].
 - Parsing is performed with a set of `Parser` utility methods including `fn bump`,
   `fn check`, `fn eat`, `fn expect`, `fn look_ahead`.
 - Parsing is organized by the semantic construct that is being parsed. Separate
-  `parse_*` methods can be found in `rustc_parse` `parser` directory. The source
-  file name follows the construct name. For example, the following files are found
-  in the parser:
+  `parse_*` methods can be found in [`rustc_parse` `parser`][rustc_parse_parser_dir]
+  directory. The source file name follows the construct name. For example, the
+  following files are found in the parser:
     - `expr.rs`
     - `pat.rs`
     - `ty.rs`
@@ -123,6 +124,11 @@ we'll talk about that later.
 [`simplify_try`]: https://github.com/rust-lang/rust/pull/66282
 [codegen]: https://rustc-dev-guide.rust-lang.org/backend/codegen.html
 [parse_nonterminal]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.parse_nonterminal
+[parse_crate_mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.parse_crate_mod
+[parse_mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.parse_mod
+[`rustc_parse::parser::Parser`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html
+[parse_external_mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/module/fn.parse_external_mod.html
+[rustc_parse_parser_dir]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_parse/src/parser
 
 ## How it does it
 
