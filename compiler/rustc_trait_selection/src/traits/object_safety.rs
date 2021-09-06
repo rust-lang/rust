@@ -843,7 +843,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
                         let leaf = leaf.subst(self.tcx, ct.substs);
                         self.visit_const(leaf)
                     }
-                    Node::Cast(_, _, ty) => self.visit_ty(ty),
+                    Node::Cast(_, ty) => self.visit_ty(ty),
                     Node::Block(_, _)
                     | Node::Binop(..)
                     | Node::UnaryOp(..)

@@ -158,7 +158,7 @@ where
                 let leaf = leaf.subst(tcx, ct.substs);
                 self.visit_const(leaf)
             }
-            ACNode::Cast(_, _, ty) => self.visit_ty(ty),
+            ACNode::Cast(_, ty) => self.visit_ty(ty),
             ACNode::Block(_, _)
             | ACNode::Binop(..)
             | ACNode::UnaryOp(..)

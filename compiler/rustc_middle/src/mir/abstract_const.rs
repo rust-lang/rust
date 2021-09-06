@@ -1,5 +1,5 @@
 //! A subset of a mir body used for const evaluatability checking.
-use crate::mir::{self, CastKind};
+use crate::mir;
 use crate::ty::{self, Ty};
 
 rustc_index::newtype_index! {
@@ -18,7 +18,7 @@ pub enum Node<'tcx> {
     UnaryOp(mir::UnOp, NodeId),
     FunctionCall(NodeId, &'tcx [NodeId]),
     Block(&'tcx [NodeId], Option<NodeId>),
-    Cast(CastKind, NodeId, Ty<'tcx>),
+    Cast(NodeId, Ty<'tcx>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]

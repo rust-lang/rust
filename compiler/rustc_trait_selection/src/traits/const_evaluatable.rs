@@ -92,7 +92,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 
                         ControlFlow::CONTINUE
                     }
-                    Node::Cast(_, _, ty) => {
+                    Node::Cast(_, ty) => {
                         let ty = ty.subst(tcx, ct.substs);
                         if ty.has_infer_types_or_consts() {
                             failure_kind = FailureKind::MentionsInfer;
@@ -292,7 +292,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 stmts.iter().for_each(|&id| self.nodes[id].used = true);
                 opt_expr.map(|e| self.nodes[e].used = true);
             }
-            Node::Cast(_, operand, _) => {
+            Node::Cast(operand, _) => {
                 self.nodes[operand].used = true;
             }
         }
@@ -335,6 +335,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             }
         }
 
+        // FIXME I dont even think we can get unused nodes anymore with thir abstract const
         if let Some(&unused) = self.nodes.iter().find(|n| !n.used) {
             self.error(Some(unused.span), "dead code")?;
         }
@@ -352,6 +353,8 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             &ExprKind::PlaceTypeAscription { source, .. } |
             &ExprKind::ValueTypeAscription { source, .. } => self.recurse_build(source)?,
 
+            // subtle: associated consts are literals this arm handles 
+            // `<T as Trait>::ASSOC` as well as `12` 
             &ExprKind::Literal { literal, .. }
             | &ExprKind::StaticRef { literal, .. } => self.add_node(Node::Leaf(literal), node.span),
 
@@ -375,14 +378,6 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 let arg = self.recurse_build(arg)?;
                 self.add_node(Node::UnaryOp(op, arg), node.span)
             },
-            // HACK: without this arm the following doesn't compile:
-            // ```
-            // fn foo<const N: usize>(_: [(); N + 1]) {
-            //     bar::<{ N + 1}>();
-            // }
-            // ```
-            // we ought to properly handle this in `try_unify`
-            ExprKind::Block { body: thir::Block { stmts: box [], expr: Some(e), .. }} => self.recurse_build(*e)?,
             ExprKind::Block { body } => {
                 let mut stmts = Vec::with_capacity(body.stmts.len());
                 for &id in body.stmts.iter() {
@@ -398,26 +393,34 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 let opt_expr = body.expr.map(|e| self.recurse_build(e)).transpose()?;
                 self.add_node(Node::Block(stmts, opt_expr), node.span)
             }
-            &ExprKind::Cast { source } => todo!(),
+            
+            // ExprKind::Use happens when a `hir::ExprKind::Cast` is a 
+            // "coercion cast" i.e. using a coercion or is a no-op.
+            // this is important so that `N as usize as usize` doesnt unify with `N as usize`
+            &ExprKind::Use { source} 
+            | &ExprKind::Cast { source } => {
+                let arg = self.recurse_build(source)?;
+                self.add_node(Node::Cast(arg, node.ty), node.span)
+            },
             // never can arise even without panic/fail to terminate
             &ExprKind::NeverToAny { source } => todo!(),
-            // i think this is a dummy usage of the expr to allow coercions
-            &ExprKind::Use { source } => todo!(),
 
-            ExprKind::Return { .. }
-            | ExprKind::Box { .. } // allocations not allowed in constants
-            | ExprKind::AssignOp { .. }
-            | ExprKind::AddressOf { .. } // FIXME(generic_const_exprs)
-            | ExprKind::Borrow { .. } // FIXME(generic_const_exprs)
-            | ExprKind::Deref { .. } // FIXME(generic_const_exprs)
-            | ExprKind::Repeat { .. } // FIXME(generic_const_exprs)
-            | ExprKind::Array { .. } // FIXME(generic_const_exprs)
-            | ExprKind::Tuple { .. } // FIXME(generic_const_exprs)
-            | ExprKind::Index { .. } // FIXME(generic_const_exprs)
-            | ExprKind::Field { .. } // FIXME(generic_const_exprs)
-            | ExprKind::ConstBlock { .. } // FIXME(generic_const_exprs)
-            | ExprKind::Adt(_) // FIXME(generic_const_exprs) we *should* permit this but dont currently
-            | ExprKind::Match { .. }
+            // FIXME(generic_const_exprs) we want to support these
+            ExprKind::AddressOf { .. }
+            | ExprKind::Borrow { .. }
+            | ExprKind::Deref { .. }
+            | ExprKind::Repeat { .. }
+            | ExprKind::Array { .. }
+            | ExprKind::Tuple { .. }
+            | ExprKind::Index { .. }
+            | ExprKind::Field { .. }
+            | ExprKind::ConstBlock { .. }
+            | ExprKind::Adt(_) => return self.error(
+                    Some(node.span), 
+                    "unsupported operation in generic constant, this may be supported in the future",
+                ).map(|never| never),
+
+            ExprKind::Match { .. }
             | ExprKind::VarRef { .. } //
             | ExprKind::UpvarRef { .. } // we dont permit let stmts so...
             | ExprKind::Closure { .. }
@@ -433,6 +436,9 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             | ExprKind::Pointer { .. } // dont know if this is correct
             | ExprKind::ThreadLocalRef(_)
             | ExprKind::LlvmInlineAsm { .. }
+            | ExprKind::Return { .. }
+            | ExprKind::Box { .. } // allocations not allowed in constants
+            | ExprKind::AssignOp { .. }
             | ExprKind::InlineAsm { .. }
             | ExprKind::Yield { .. } => return self.error(Some(node.span), "unsupported operation in generic constant").map(|never| never),
         })
@@ -521,7 +527,7 @@ where
                 }
                 ControlFlow::CONTINUE
             }
-            Node::Cast(_, operand, _) => recurse(tcx, ct.subtree(operand), f),
+            Node::Cast(operand, _) => recurse(tcx, ct.subtree(operand), f),
         }
     }
 
@@ -604,11 +610,27 @@ pub(super) fn try_unify<'tcx>(
                 && iter::zip(a_args, b_args)
                     .all(|(&an, &bn)| try_unify(tcx, a.subtree(an), b.subtree(bn)))
         }
-        (Node::Cast(a_cast_kind, a_operand, a_ty), Node::Cast(b_cast_kind, b_operand, b_ty))
-            if (a_ty == b_ty) && (a_cast_kind == b_cast_kind) =>
+        (Node::Cast(a_operand, a_ty), Node::Cast(b_operand, b_ty))
+            if (a_ty == b_ty) =>
         {
             try_unify(tcx, a.subtree(a_operand), b.subtree(b_operand))
         }
-        _ => false,
+        (Node::Block(a_stmts, a_opt_expr), Node::Block(b_stmts, b_opt_expr))
+            if a_stmts.len() == b_stmts.len() => {
+            a_stmts.iter().zip(b_stmts.iter()).all(|(&a_stmt, &b_stmt)| {
+                try_unify(tcx, a.subtree(a_stmt), b.subtree(b_stmt))
+            }) && match (a_opt_expr, b_opt_expr) {
+                (Some(a_expr), Some(b_expr)) => try_unify(tcx, a.subtree(a_expr), b.subtree(b_expr)),
+                (None, None) => true,
+                _ => false,
+            }
+        }
+        // use this over `_ => false` to make adding variants to `Node` less error prone
+        (Node::Block(..), _) 
+        | (Node::Cast(..), _) 
+        | (Node::FunctionCall(..), _) 
+        | (Node::UnaryOp(..), _) 
+        | (Node::Binop(..), _) 
+        | (Node::Leaf(..), _) => false,
     }
 }
