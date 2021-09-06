@@ -2,7 +2,7 @@
 
 As of <!-- date: 2021-09 --> September 2021, The only stage of the compiler 
 that is already parallel is codegen. The nightly compiler implements query evaluation,
-but there is a lot of correctness work that needs to be done. The lack of parallelism at other stages 
+but there is still a lot of work to be done. The lack of parallelism at other stages 
 also represents an opportunity for improving compiler performance. One can try out the current 
 parallel compiler work by enabling it in the `config.toml`.
 
