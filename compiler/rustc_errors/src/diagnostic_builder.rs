@@ -242,6 +242,7 @@ impl<'a> DiagnosticBuilder<'a> {
         sp: S,
         msg: &str,
     ) -> &mut Self);
+    forward!(pub fn set_is_lint(&mut self,) -> &mut Self);
 
     /// See [`Diagnostic::multipart_suggestion()`].
     pub fn multipart_suggestion(

@@ -17,9 +17,8 @@
 #![forbid(unused, non_snake_case)]
 #![forbid(forbidden_lint_groups)]
 
-#[allow(unused_variables)] //~ ERROR incompatible with previous
+#[allow(unused_variables)]
 //~^ ERROR incompatible with previous
-//~| WARNING this was previously accepted by the compiler
 //~| WARNING this was previously accepted by the compiler
 fn foo() {}
 
