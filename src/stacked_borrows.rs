@@ -9,8 +9,8 @@ use std::num::NonZeroU64;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::Mutability;
 use rustc_middle::mir::RetagKind;
-use rustc_middle::ty;
-use rustc_target::abi::{LayoutOf, Size};
+use rustc_middle::ty::{self, layout::LayoutOf};
+use rustc_target::abi::Size;
 
 use crate::*;
 

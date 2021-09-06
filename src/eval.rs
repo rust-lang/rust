@@ -6,8 +6,11 @@ use std::ffi::OsStr;
 use log::info;
 
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{self, layout::LayoutCx, TyCtxt};
-use rustc_target::abi::LayoutOf;
+use rustc_middle::ty::{
+    self,
+    layout::{LayoutCx, LayoutOf},
+    TyCtxt,
+};
 use rustc_target::spec::abi::Abi;
 
 use crate::*;

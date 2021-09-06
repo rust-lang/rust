@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
 use crate::*;
-use rustc_target::abi::LayoutOf;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_target::spec::abi::Abi;
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}

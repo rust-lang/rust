@@ -4,8 +4,9 @@ use std::ffi::{OsStr, OsString};
 use std::io::ErrorKind;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_mir::interpret::Pointer;
-use rustc_target::abi::{LayoutOf, Size};
+use rustc_target::abi::Size;
 
 use crate::*;
 

@@ -3,9 +3,9 @@ use std::iter;
 use log::trace;
 
 use rustc_apfloat::{Float, Round};
-use rustc_middle::ty::layout::IntegerExt;
+use rustc_middle::ty::layout::{IntegerExt, LayoutOf};
 use rustc_middle::{mir, mir::BinOp, ty, ty::FloatTy};
-use rustc_target::abi::{Align, Integer, LayoutOf};
+use rustc_target::abi::{Align, Integer};
 
 use crate::*;
 use helpers::check_arg_count;

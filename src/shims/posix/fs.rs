@@ -11,8 +11,8 @@ use std::time::SystemTime;
 use log::trace;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::ty;
-use rustc_target::abi::{Align, LayoutOf, Size};
+use rustc_middle::ty::{self, layout::LayoutOf};
+use rustc_target::abi::{Align, Size};
 
 use crate::*;
 use helpers::{check_arg_count, immty_from_int_checked, immty_from_uint_checked};
