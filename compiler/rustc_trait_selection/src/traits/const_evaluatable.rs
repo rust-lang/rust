@@ -267,7 +267,36 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         let builder =
             AbstractConstBuilder { tcx, body_id, body: Lrc::new(body), nodes: IndexVec::new() };
 
-        // FIXME non-constants should return Ok(None)
+        struct IsThirPolymorphic<'a, 'tcx> {
+            is_poly: bool,
+            thir: &'a thir::Thir<'tcx>,
+            tcx: TyCtxt<'tcx>,
+        }
+
+        use thir::visit;
+        impl<'a, 'tcx: 'a> visit::Visitor<'a, 'tcx> for IsThirPolymorphic<'a, 'tcx> {
+            fn thir(&self) -> &'a thir::Thir<'tcx> {
+                &self.thir
+            }
+
+            fn visit_expr(&mut self, expr: &thir::Expr<'tcx>) {
+                self.is_poly |= expr.ty.definitely_has_param_types_or_consts(self.tcx);
+                if self.is_poly {
+                    return;
+                }
+                visit::walk_expr(self, expr);
+            }
+
+            fn visit_const(&mut self, ct: &'tcx ty::Const<'tcx>) {
+                self.is_poly |= ct.definitely_has_param_types_or_consts(self.tcx);
+            }
+        }
+
+        let mut is_poly_vis = IsThirPolymorphic { is_poly: false, thir: body, tcx };
+        visit::walk_expr(&mut is_poly_vis, &body[body_id]);
+        if is_poly_vis.is_poly == false {
+            return Ok(None);
+        }
 
         Ok(Some(builder))
     }
