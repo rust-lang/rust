@@ -26,10 +26,10 @@ fn checked_log() {
         assert_eq!(i.checked_log(4), None);
     }
     for i in 1..=i16::MAX {
-        assert_eq!(i.checked_log(13), Some((i as f32).log(13.0) as i16));
+        assert_eq!(i.checked_log(13), Some((i as f32).log(13.0) as u32));
     }
     for i in 1..=u16::MAX {
-        assert_eq!(i.checked_log(13), Some((i as f32).log(13.0) as u16));
+        assert_eq!(i.checked_log(13), Some((i as f32).log(13.0) as u32));
     }
 }
 
@@ -46,19 +46,19 @@ fn checked_log2() {
     assert_eq!(0i16.checked_log2(), None);
 
     for i in 1..=u8::MAX {
-        assert_eq!(i.checked_log2(), Some((i as f32).log2() as u8));
+        assert_eq!(i.checked_log2(), Some((i as f32).log2() as u32));
     }
     for i in 1..=u16::MAX {
         // Guard against Android's imprecise f32::log2 implementation.
         if i != 8192 && i != 32768 {
-            assert_eq!(i.checked_log2(), Some((i as f32).log2() as u16));
+            assert_eq!(i.checked_log2(), Some((i as f32).log2() as u32));
         }
     }
     for i in i8::MIN..=0 {
         assert_eq!(i.checked_log2(), None);
     }
     for i in 1..=i8::MAX {
-        assert_eq!(i.checked_log2(), Some((i as f32).log2() as i8));
+        assert_eq!(i.checked_log2(), Some((i as f32).log2() as u32));
     }
     for i in i16::MIN..=0 {
         assert_eq!(i.checked_log2(), None);
@@ -66,7 +66,7 @@ fn checked_log2() {
     for i in 1..=i16::MAX {
         // Guard against Android's imprecise f32::log2 implementation.
         if i != 8192 {
-            assert_eq!(i.checked_log2(), Some((i as f32).log2() as i16));
+            assert_eq!(i.checked_log2(), Some((i as f32).log2() as u32));
         }
     }
 }
@@ -75,9 +75,9 @@ fn checked_log2() {
 #[test]
 #[cfg(not(target_os = "android"))]
 fn checked_log2_not_android() {
-    assert_eq!(8192u16.checked_log2(), Some((8192f32).log2() as u16));
-    assert_eq!(32768u16.checked_log2(), Some((32768f32).log2() as u16));
-    assert_eq!(8192i16.checked_log2(), Some((8192f32).log2() as i16));
+    assert_eq!(8192u16.checked_log2(), Some((8192f32).log2() as u32));
+    assert_eq!(32768u16.checked_log2(), Some((32768f32).log2() as u32));
+    assert_eq!(8192i16.checked_log2(), Some((8192f32).log2() as u32));
 }
 
 #[test]
@@ -91,10 +91,10 @@ fn checked_log10() {
         assert_eq!(i.checked_log10(), None);
     }
     for i in 1..=i16::MAX {
-        assert_eq!(i.checked_log10(), Some((i as f32).log10() as i16));
+        assert_eq!(i.checked_log10(), Some((i as f32).log10() as u32));
     }
     for i in 1..=u16::MAX {
-        assert_eq!(i.checked_log10(), Some((i as f32).log10() as u16));
+        assert_eq!(i.checked_log10(), Some((i as f32).log10() as u32));
     }
 }
 

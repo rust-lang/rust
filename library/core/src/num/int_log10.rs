@@ -116,8 +116,8 @@ mod unchecked {
 
 macro_rules! impl_checked {
     ($T:ident) => {
-        pub const fn $T(val: $T) -> Option<$T> {
-            if val > 0 { Some(unchecked::$T(val) as $T) } else { None }
+        pub const fn $T(val: $T) -> Option<u32> {
+            if val > 0 { Some(unchecked::$T(val)) } else { None }
         }
     };
 }
