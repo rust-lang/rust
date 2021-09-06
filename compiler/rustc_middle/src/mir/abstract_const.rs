@@ -17,6 +17,7 @@ pub enum Node<'tcx> {
     Binop(mir::BinOp, NodeId, NodeId),
     UnaryOp(mir::UnOp, NodeId),
     FunctionCall(NodeId, &'tcx [NodeId]),
+    Block(&'tcx [NodeId], Option<NodeId>),
     Cast(CastKind, NodeId, Ty<'tcx>),
 }
 

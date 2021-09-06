@@ -844,9 +844,10 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
                         self.visit_const(leaf)
                     }
                     Node::Cast(_, _, ty) => self.visit_ty(ty),
-                    Node::Binop(..) | Node::UnaryOp(..) | Node::FunctionCall(_, _) => {
-                        ControlFlow::CONTINUE
-                    }
+                    Node::Block(_, _)
+                    | Node::Binop(..)
+                    | Node::UnaryOp(..)
+                    | Node::FunctionCall(_, _) => ControlFlow::CONTINUE,
                 })
             } else {
                 ControlFlow::CONTINUE
