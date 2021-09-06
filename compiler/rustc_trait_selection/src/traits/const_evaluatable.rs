@@ -102,8 +102,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 
                         ControlFlow::CONTINUE
                     }
-                    Node::Block(_, _)
-                    | Node::Binop(_, _, _)
+                    Node::Binop(_, _, _)
                     | Node::UnaryOp(_, _)
                     | Node::FunctionCall(_, _) => ControlFlow::CONTINUE,
                 });
@@ -288,10 +287,6 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 self.nodes[func].used = true;
                 nodes.iter().for_each(|&n| self.nodes[n].used = true);
             }
-            Node::Block(stmts, opt_expr) => {
-                stmts.iter().for_each(|&id| self.nodes[id].used = true);
-                opt_expr.map(|e| self.nodes[e].used = true);
-            }
             Node::Cast(operand, _) => {
                 self.nodes[operand].used = true;
             }
@@ -378,22 +373,14 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 let arg = self.recurse_build(arg)?;
                 self.add_node(Node::UnaryOp(op, arg), node.span)
             },
-            ExprKind::Block { body } => {
-                let mut stmts = Vec::with_capacity(body.stmts.len());
-                for &id in body.stmts.iter() {
-                    match &self.body.stmts[id].kind {
-                        thir::StmtKind::Let { .. } => return self.error(
-                                Some(node.span),
-                                "let statements are not supported in generic constants",
-                            ).map(|never| never),
-                        thir::StmtKind::Expr { expr, .. } => stmts.push(self.recurse_build(*expr)?),
-                    }
-                };
-                let stmts = self.tcx.arena.alloc_slice(&stmts);
-                let opt_expr = body.expr.map(|e| self.recurse_build(e)).transpose()?;
-                self.add_node(Node::Block(stmts, opt_expr), node.span)
-            }
-            
+            // this is necessary so that the following compiles:
+            //
+            // ```
+            // fn foo<const N: usize>(a: [(); N + 1]) {
+            //     bar::<{ N + 1 }>();
+            // }
+            // ```
+            ExprKind::Block { body: thir::Block { stmts: box [], expr: Some(e), .. }} => self.recurse_build(*e)?,
             // ExprKind::Use happens when a `hir::ExprKind::Cast` is a 
             // "coercion cast" i.e. using a coercion or is a no-op.
             // this is important so that `N as usize as usize` doesnt unify with `N as usize`
@@ -411,6 +398,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             | ExprKind::Deref { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Array { .. }
+            | ExprKind::Block { .. }
             | ExprKind::Tuple { .. }
             | ExprKind::Index { .. }
             | ExprKind::Field { .. }
@@ -521,12 +509,6 @@ where
                 recurse(tcx, ct.subtree(func), f)?;
                 args.iter().try_for_each(|&arg| recurse(tcx, ct.subtree(arg), f))
             }
-            Node::Block(stmts, opt_expr) => {
-                for id in stmts.iter().copied().chain(opt_expr) {
-                    recurse(tcx, ct.subtree(id), f)?;
-                }
-                ControlFlow::CONTINUE
-            }
             Node::Cast(operand, _) => recurse(tcx, ct.subtree(operand), f),
         }
     }
@@ -615,19 +597,8 @@ pub(super) fn try_unify<'tcx>(
         {
             try_unify(tcx, a.subtree(a_operand), b.subtree(b_operand))
         }
-        (Node::Block(a_stmts, a_opt_expr), Node::Block(b_stmts, b_opt_expr))
-            if a_stmts.len() == b_stmts.len() => {
-            a_stmts.iter().zip(b_stmts.iter()).all(|(&a_stmt, &b_stmt)| {
-                try_unify(tcx, a.subtree(a_stmt), b.subtree(b_stmt))
-            }) && match (a_opt_expr, b_opt_expr) {
-                (Some(a_expr), Some(b_expr)) => try_unify(tcx, a.subtree(a_expr), b.subtree(b_expr)),
-                (None, None) => true,
-                _ => false,
-            }
-        }
         // use this over `_ => false` to make adding variants to `Node` less error prone
-        (Node::Block(..), _) 
-        | (Node::Cast(..), _) 
+        (Node::Cast(..), _) 
         | (Node::FunctionCall(..), _) 
         | (Node::UnaryOp(..), _) 
         | (Node::Binop(..), _) 
