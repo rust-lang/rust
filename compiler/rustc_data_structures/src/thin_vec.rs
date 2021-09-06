@@ -2,7 +2,7 @@ use crate::stable_hasher::{HashStable, StableHasher};
 
 use std::iter::FromIterator;
 
-/// A vector type optimized for cases where this size is usually 0 (cf. `SmallVector`).
+/// A vector type optimized for cases where this size is usually 0 (cf. `SmallVec`).
 /// The `Option<Box<..>>` wrapping allows us to represent a zero sized vector with `None`,
 /// which uses only a single (null) pointer.
 #[derive(Clone, Encodable, Decodable, Debug)]
