@@ -36,7 +36,7 @@ lsp-server = "0.5.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.2", default-features = false, features = ["env-filter", "registry", "fmt", "tracing-log"] }
 tracing-log = "0.1.2"
-tracing-tree = { version = "0.1.4" }
+tracing-tree = { version = "0.1.10" }
 always-assert = "0.1"
 
 stdx = { path = "../stdx", version = "0.0.0" }

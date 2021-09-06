@@ -39,5 +39,5 @@ tracing-subscriber = { version = "0.2", default-features = false, features = [
     "env-filter",
     "registry",
 ] }
-tracing-tree = { version = "0.1.4" }
+tracing-tree = { version = "0.1.10" }
 once_cell = { version = "1.5.0", features = ["unstable"] }
