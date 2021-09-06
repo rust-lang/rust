@@ -267,6 +267,18 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
 
+            if self.prev_token == token::BinOp(token::Plus)
+                && self.token == token::BinOp(token::Plus)
+            {
+                let op_span = self.prev_token.span.to(self.token.span);
+                // Eat the second `+`
+                self.bump();
+                // TODO: implement
+                let start_is_semi = false;
+                lhs = self.maybe_recover_from_postfix_increment(lhs, op_span, start_is_semi)?;
+                continue;
+            }
+
             let op = op.node;
             // Special cases:
             if op == AssocOp::As {
@@ -585,6 +597,19 @@ impl<'a> Parser<'a> {
             }
             token::Ident(..) if this.is_mistaken_not_ident_negation() => {
                 make_it!(this, attrs, |this, _| this.recover_not_expr(lo))
+            }
+            // Recover from `++x`
+            token::BinOp(token::Plus)
+                if this.look_ahead(1, |t| *t == token::BinOp(token::Plus)) =>
+            {
+                let prev_is_semi = this.prev_token == token::Semi;
+                let pre_span = this.token.span.to(this.look_ahead(1, |t| t.span));
+                // Eat both `+`s.
+                this.bump();
+                this.bump();
+
+                let operand_expr = this.parse_path_start_expr(Default::default())?;
+                this.maybe_recover_from_prefix_increment(operand_expr, pre_span, prev_is_semi)
             }
             _ => return this.parse_dot_or_call_expr(Some(attrs)),
         }

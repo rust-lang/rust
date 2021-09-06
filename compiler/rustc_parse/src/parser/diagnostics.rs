@@ -156,6 +156,52 @@ impl AttemptLocalParseRecovery {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+struct IncDecRecovery {
+    standalone: bool,
+    op: IncOrDec,
+    fixity: UnaryFixity,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum IncOrDec {
+    Inc,
+    // FIXME: `i--` recovery isn't implemented yet
+    #[allow(dead_code)]
+    Dec,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum UnaryFixity {
+    Pre,
+    Post,
+}
+
+impl IncOrDec {
+    fn chr(&self) -> char {
+        match self {
+            Self::Inc => '+',
+            Self::Dec => '-',
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        match self {
+            Self::Inc => "increment",
+            Self::Dec => "decrement",
+        }
+    }
+}
+
+impl std::fmt::Display for UnaryFixity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Pre => write!(f, "prefix"),
+            Self::Post => write!(f, "postfix"),
+        }
+    }
+}
+
 // SnapshotParser is used to create a snapshot of the parser
 // without causing duplicate errors being emitted when the `Parser`
 // is dropped.
@@ -1167,6 +1213,145 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    pub(super) fn maybe_recover_from_prefix_increment(
+        &mut self,
+        operand_expr: P<Expr>,
+        op_span: Span,
+        prev_is_semi: bool,
+    ) -> PResult<'a, P<Expr>> {
+        let kind = IncDecRecovery {
+            standalone: prev_is_semi,
+            op: IncOrDec::Inc,
+            fixity: UnaryFixity::Pre,
+        };
+
+        self.recover_from_inc_dec(operand_expr, kind, op_span)
+    }
+
+    pub(super) fn maybe_recover_from_postfix_increment(
+        &mut self,
+        operand_expr: P<Expr>,
+        op_span: Span,
+        prev_is_semi: bool,
+    ) -> PResult<'a, P<Expr>> {
+        let kind = IncDecRecovery {
+            standalone: prev_is_semi,
+            op: IncOrDec::Inc,
+            fixity: UnaryFixity::Post,
+        };
+
+        self.recover_from_inc_dec(operand_expr, kind, op_span)
+    }
+
+    fn recover_from_inc_dec(
+        &mut self,
+        base: P<Expr>,
+        kind: IncDecRecovery,
+        op_span: Span,
+    ) -> PResult<'a, P<Expr>> {
+        let mut err = self.struct_span_err(
+            op_span,
+            &format!("Rust has no {} {} operator", kind.fixity, kind.op.name()),
+        );
+        err.span_label(op_span, &format!("not a valid {} operator", kind.fixity));
+
+        if let ExprKind::Path(_, path) = &base.kind {
+            if let [segment] = path.segments.as_slice() {
+                let ident = segment.ident;
+                // (pre, post)
+                let spans = match kind.fixity {
+                    UnaryFixity::Pre => (op_span, ident.span.shrink_to_hi()),
+                    UnaryFixity::Post => (ident.span.shrink_to_lo(), op_span),
+                };
+
+                if !ident.is_reserved() {
+                    if kind.standalone {
+                        return self.inc_dec_standalone_recovery(base, err, kind, ident, spans);
+                    } else {
+                        match kind.fixity {
+                            UnaryFixity::Pre => {
+                                return self.prefix_inc_dec_suggest_and_recover(
+                                    base, err, kind, ident, spans,
+                                );
+                            }
+                            UnaryFixity::Post => {
+                                return self.postfix_inc_dec_suggest_and_recover(
+                                    base, err, kind, ident, spans,
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // base case
+        err.help(&format!("use `{}= 1` instead", kind.op.chr()));
+        err.emit();
+
+        Ok(base)
+    }
+
+    fn prefix_inc_dec_suggest_and_recover(
+        &mut self,
+        base: P<Expr>,
+        mut err: DiagnosticBuilder<'_>,
+        kind: IncDecRecovery,
+        ident: Ident,
+        (pre_span, post_span): (Span, Span),
+    ) -> PResult<'a, P<Expr>> {
+        err.multipart_suggestion(
+            &format!("use `{}= 1` instead", kind.op.chr()),
+            vec![
+                (pre_span, "{ ".to_string()),
+                (post_span, format!(" {}= 1; {} }}", kind.op.chr(), ident)),
+            ],
+            Applicability::MachineApplicable,
+        );
+        err.emit();
+        // TODO: recover
+        Ok(base)
+    }
+
+    fn postfix_inc_dec_suggest_and_recover(
+        &mut self,
+        base: P<Expr>,
+        mut err: DiagnosticBuilder<'_>,
+        kind: IncDecRecovery,
+        ident: Ident,
+        (pre_span, post_span): (Span, Span),
+    ) -> PResult<'a, P<Expr>> {
+        err.multipart_suggestion(
+            &format!("use `{}= 1` instead", kind.op.chr()),
+            vec![
+                (pre_span, "{ let tmp = ".to_string()),
+                (post_span, format!("; {} {}= 1; tmp }}", ident, kind.op.chr())),
+            ],
+            Applicability::MachineApplicable,
+        );
+        err.emit();
+        // TODO: recover
+        Ok(base)
+    }
+
+    fn inc_dec_standalone_recovery(
+        &mut self,
+        base: P<Expr>,
+        mut err: DiagnosticBuilder<'_>,
+        kind: IncDecRecovery,
+        _ident: Ident,
+        (pre_span, post_span): (Span, Span),
+    ) -> PResult<'a, P<Expr>> {
+        err.multipart_suggestion(
+            &format!("use `{}= 1` instead", kind.op.chr()),
+            vec![(pre_span, String::new()), (post_span, format!(" {}= 1", kind.op.chr()))],
+            Applicability::MachineApplicable,
+        );
+        err.emit();
+        // TODO: recover
+        Ok(base)
+    }
+
     /// Tries to recover from associated item paths like `[T]::AssocItem` / `(T, U)::AssocItem`.
     /// Attempts to convert the base expression/pattern/type into a type, parses the `::AssocItem`
     /// tail, and combines them into a `<Ty>::AssocItem` expression/pattern/type.
@@ -1882,49 +2067,6 @@ impl<'a> Parser<'a> {
             self.sess.expr_parentheses_needed(&mut err, *sp);
         }
         err.span_label(span, "expected expression");
-        if self.prev_token.kind == TokenKind::BinOp(token::Plus)
-            && self.token.kind == TokenKind::BinOp(token::Plus)
-            && self.look_ahead(1, |t| !t.is_lit())
-        {
-            let span = self.prev_token.span.to(self.token.span);
-            err.note("Rust has no dedicated increment operator");
-            err.span_suggestion_verbose(
-                span,
-                "try using `+= 1` instead",
-                " += 1".into(),
-                Applicability::Unspecified,
-            );
-        } else if self.token.kind == TokenKind::BinOp(token::Plus)
-            && self.look_ahead(1, |t| t.kind == TokenKind::BinOp(token::Plus))
-            && self.look_ahead(2, |t| !t.is_lit())
-        {
-            let target_span = self.look_ahead(2, |t| t.span);
-            let left_brace_span = target_span.shrink_to_lo();
-            let pre_span = self.token.span.to(self.look_ahead(1, |t| t.span));
-            let post_span = target_span.shrink_to_hi();
-
-            err.note("Rust has no dedicated increment operator");
-
-            if self.prev_token.kind == TokenKind::Semi {
-                err.multipart_suggestion(
-                    "try using `+= 1` instead",
-                    vec![(pre_span, String::new()), (post_span, " += 1".into())],
-                    Applicability::MachineApplicable,
-                );
-            } else if let Ok(target_snippet) = self.span_to_snippet(target_span) {
-                err.multipart_suggestion(
-                    "try using `+= 1` instead",
-                    vec![
-                        (left_brace_span, "{ ".to_string()),
-                        (pre_span, String::new()),
-                        (post_span, format!(" += 1; {} }}", target_snippet)),
-                    ],
-                    Applicability::MachineApplicable,
-                );
-            } else {
-                err.span_help(pre_span.to(target_span), "try using `+= 1` instead");
-            }
-        }
         err
     }
 
