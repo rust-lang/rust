@@ -992,6 +992,9 @@ pub enum LocalInfo<'tcx> {
     StaticRef { def_id: DefId, is_thread_local: bool },
     /// A temporary created that references the const with the given `DefId`
     ConstRef { def_id: DefId },
+    /// A temporary created during the creation of an aggregate
+    /// (e.g. a temporary for `foo` in `MyStruct { my_field: foo }`)
+    AggregateTemp,
 }
 
 impl<'tcx> LocalDecl<'tcx> {

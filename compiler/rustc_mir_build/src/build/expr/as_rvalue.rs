@@ -52,16 +52,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Repeat { value, count } => {
                 let value_operand =
-                    unpack!(block = this.as_operand(block, scope, &this.thir[value]));
+                    unpack!(block = this.as_operand(block, scope, &this.thir[value], None));
                 block.and(Rvalue::Repeat(value_operand, count))
             }
             ExprKind::Binary { op, lhs, rhs } => {
-                let lhs = unpack!(block = this.as_operand(block, scope, &this.thir[lhs]));
-                let rhs = unpack!(block = this.as_operand(block, scope, &this.thir[rhs]));
+                let lhs = unpack!(block = this.as_operand(block, scope, &this.thir[lhs], None));
+                let rhs = unpack!(block = this.as_operand(block, scope, &this.thir[rhs], None));
                 this.build_binary_op(block, op, expr_span, expr.ty, lhs, rhs)
             }
             ExprKind::Unary { op, arg } => {
-                let arg = unpack!(block = this.as_operand(block, scope, &this.thir[arg]));
+                let arg = unpack!(block = this.as_operand(block, scope, &this.thir[arg], None));
                 // Check for -MIN on signed integers
                 if this.check_overflow && op == UnOp::Neg && expr.ty.is_signed() {
                     let bool_ty = this.tcx.types.bool;
@@ -116,11 +116,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(Rvalue::Use(Operand::Move(Place::from(result))))
             }
             ExprKind::Cast { source } => {
-                let source = unpack!(block = this.as_operand(block, scope, &this.thir[source]));
+                let source =
+                    unpack!(block = this.as_operand(block, scope, &this.thir[source], None));
                 block.and(Rvalue::Cast(CastKind::Misc, source, expr.ty))
             }
             ExprKind::Pointer { cast, source } => {
-                let source = unpack!(block = this.as_operand(block, scope, &this.thir[source]));
+                let source =
+                    unpack!(block = this.as_operand(block, scope, &this.thir[source], None));
                 block.and(Rvalue::Cast(CastKind::Pointer(cast), source, expr.ty))
             }
             ExprKind::Array { ref fields } => {
@@ -155,7 +157,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let fields: Vec<_> = fields
                     .into_iter()
                     .copied()
-                    .map(|f| unpack!(block = this.as_operand(block, scope, &this.thir[f])))
+                    .map(|f| unpack!(block = this.as_operand(block, scope, &this.thir[f], None)))
                     .collect();
 
                 block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(el_ty)), fields))
@@ -166,7 +168,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let fields: Vec<_> = fields
                     .into_iter()
                     .copied()
-                    .map(|f| unpack!(block = this.as_operand(block, scope, &this.thir[f])))
+                    .map(|f| unpack!(block = this.as_operand(block, scope, &this.thir[f], None)))
                     .collect();
 
                 block.and(Rvalue::Aggregate(Box::new(AggregateKind::Tuple), fields))
@@ -242,7 +244,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                             &this.thir[arg],
                                         )
                                     ),
-                                    _ => unpack!(block = this.as_operand(block, scope, upvar)),
+                                    _ => {
+                                        unpack!(block = this.as_operand(block, scope, upvar, None))
+                                    }
                                 }
                             }
                         }
@@ -304,7 +308,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Category::of(&expr.kind),
                     Some(Category::Rvalue(RvalueFunc::AsRvalue))
                 ));
-                let operand = unpack!(block = this.as_operand(block, scope, expr));
+                let operand = unpack!(block = this.as_operand(block, scope, expr, None));
                 block.and(Rvalue::Use(operand))
             }
         }

@@ -1388,11 +1388,24 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             ConstraintCategory::Return(ReturnConstraint::Normal)
                         }
                     }
+                    Some(l)
+                        if matches!(
+                            body.local_decls[l].local_info,
+                            Some(box LocalInfo::AggregateTemp)
+                        ) =>
+                    {
+                        ConstraintCategory::Usage
+                    }
                     Some(l) if !body.local_decls[l].is_user_variable() => {
                         ConstraintCategory::Boring
                     }
                     _ => ConstraintCategory::Assignment,
                 };
+                debug!(
+                    "assignment category: {:?} {:?}",
+                    category,
+                    place.as_local().map(|l| &body.local_decls[l])
+                );
 
                 let place_ty = place.ty(body, tcx).ty;
                 let place_ty = self.normalize(place_ty, location);
