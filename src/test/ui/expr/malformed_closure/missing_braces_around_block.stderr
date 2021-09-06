@@ -11,7 +11,7 @@ note: statement found outside of a block
   --> $DIR/missing_braces_around_block.rs:16:26
    |
 LL |         println!("{}", a);
-   |         -----------------^ this `;` turns the preceding expression into a statement
+   |         -----------------^ this `;` turns the preceding closure into a statement
    |         |
    |         this expression is a statement because of the trailing semicolon
 note: the closure body may be incorrectly delimited

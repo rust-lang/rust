@@ -894,7 +894,7 @@ impl<'a> Parser<'a> {
         let mut first_note = MultiSpan::from(vec![initial_semicolon]);
         first_note.push_span_label(
             initial_semicolon,
-            "this `;` turns the preceding expression into a statement".to_string(),
+            "this `;` turns the preceding closure into a statement".to_string(),
         );
         first_note.push_span_label(
             closure_spans.body,
