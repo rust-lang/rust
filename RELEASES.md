@@ -1,20 +1,149 @@
+Version 1.55.0 (2021-09-09)
+============================
+
+Language
+--------
+- [You can now write open "from" range patterns (`X..`), which will start at `X` and
+  will end at the maximum value of the integer.][83918]
+- [You can now explicitly import the prelude of different editions
+  through `std::prelude` (e.g. `use std::prelude::rust_2021::*;`).][86294]
+
+Compiler
+--------
+- [Added tier 3\* support for `powerpc64le-unknown-freebsd`.][83572]
+
+\* Refer to Rust's [platform support page][platform-support-doc] for more
+   information on Rust's tiered platform support.
+
+Libraries
+---------
+
+- [Updated std's float parsing to use the Eisel-Lemire algorithm.][86761]
+  These improvements should in general provide faster string parsing of floats,
+  no longer reject certain valid floating point values, and reduce
+  the produced code size for non-stripped artifacts.
+- [`string::Drain` now implements `AsRef<str>` and `AsRef<[u8]>`.][86858]
+
+Stabilised APIs
+---------------
+
+- [`Bound::cloned`]
+- [`Drain::as_str`]
+- [`IntoInnerError::into_error`]
+- [`IntoInnerError::into_parts`]
+- [`MaybeUninit::assume_init_mut`]
+- [`MaybeUninit::assume_init_ref`]
+- [`MaybeUninit::write`]
+- [`array::map`]
+- [`ops::ControlFlow`]
+- [`x86::_bittest`]
+- [`x86::_bittestandcomplement`]
+- [`x86::_bittestandreset`]
+- [`x86::_bittestandset`]
+- [`x86_64::_bittest64`]
+- [`x86_64::_bittestandcomplement64`]
+- [`x86_64::_bittestandreset64`]
+- [`x86_64::_bittestandset64`]
+
+The following previously stable functions are now `const`.
+
+- [`str::from_utf8_unchecked`]
+- [`mem::transmute`]
+
+
+Cargo
+-----
+- [Cargo will now deduplicate compiler diagnostics to the terminal when invoking
+  rustc in parallel such as when using `cargo test`.][cargo/9675]
+- [The package definition in `cargo metadata` now includes the `"default_run"`
+  field from the manifest.][cargo/9550]
+- [Added `cargo d` as an alias for `cargo doc`.][cargo/9680]
+- [Added `{lib}` as formatting option for `cargo tree` to print the `"lib_name"`
+  of packages.][cargo/9663]
+
+Rustdoc
+-------
+- [Added "Go to item on exact match" search option.][85876]
+- [The "Implementors" section on traits no longer shows redundant
+  method definitions.][85970]
+- [Trait implementations are toggled open by default.][86260] This should make the
+  implementations more searchable by tools like `CTRL+F` in your browser.
+- [Intra-doc links should now correctly resolve associated items (e.g. methods)
+  through type aliases.][86334]
+- [Traits which are marked with `#[doc(hidden)]` will no longer appear in the
+  "Trait Implementations" section.][86513]
+
+
+Compatibility Notes
+-------------------
+- [std functions that return an `io::Error` will no longer use the
+  `ErrorKind::Other` variant.][85746] This is to better reflect that these
+  kinds of errors could be categorised [into newer more specific `ErrorKind`
+  variants][79965], and that they do not represent a user error.
+- [Using environment variable names with `process::Command` on Windows now
+  behaves as expected.][85270] Previously using envionment variables with
+  `Command` would cause them to be ASCII-uppercased.
+- [Rustdoc will now warn on using rustdoc lints that aren't prefixed
+  with `rustdoc::`][86849]
+
+[86849]: https://github.com/rust-lang/rust/pull/86849
+[86513]: https://github.com/rust-lang/rust/pull/86513
+[86334]: https://github.com/rust-lang/rust/pull/86334
+[86260]: https://github.com/rust-lang/rust/pull/86260
+[85970]: https://github.com/rust-lang/rust/pull/85970
+[85876]: https://github.com/rust-lang/rust/pull/85876
+[83572]: https://github.com/rust-lang/rust/pull/83572
+[86294]: https://github.com/rust-lang/rust/pull/86294
+[86858]: https://github.com/rust-lang/rust/pull/86858
+[86761]: https://github.com/rust-lang/rust/pull/86761
+[85769]: https://github.com/rust-lang/rust/pull/85769
+[85746]: https://github.com/rust-lang/rust/pull/85746
+[85305]: https://github.com/rust-lang/rust/pull/85305
+[85270]: https://github.com/rust-lang/rust/pull/85270
+[84111]: https://github.com/rust-lang/rust/pull/84111
+[83918]: https://github.com/rust-lang/rust/pull/83918
+[79965]: https://github.com/rust-lang/rust/pull/79965
+[87370]: https://github.com/rust-lang/rust/pull/87370
+[87298]: https://github.com/rust-lang/rust/pull/87298
+[cargo/9663]: https://github.com/rust-lang/cargo/pull/9663
+[cargo/9675]: https://github.com/rust-lang/cargo/pull/9675
+[cargo/9550]: https://github.com/rust-lang/cargo/pull/9550
+[cargo/9680]: https://github.com/rust-lang/cargo/pull/9680
+[cargo/9663]: https://github.com/rust-lang/cargo/pull/9663
+[`array::map`]: https://doc.rust-lang.org/stable/std/primitive.array.html#method.map
+[`Bound::cloned`]: https://doc.rust-lang.org/stable/std/ops/enum.Bound.html#method.cloned
+[`Drain::as_str`]: https://doc.rust-lang.org/stable/std/string/struct.Drain.html#method.as_str
+[`IntoInnerError::into_error`]: https://doc.rust-lang.org/stable/std/io/struct.IntoInnerError.html#method.into_error
+[`IntoInnerError::into_parts`]: https://doc.rust-lang.org/stable/std/io/struct.IntoInnerError.html#method.into_parts
+[`MaybeUninit::assume_init_mut`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init_mut
+[`MaybeUninit::assume_init_ref`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init_ref
+[`MaybeUninit::write`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.write
+[`Seek::rewind`]: https://doc.rust-lang.org/stable/std/io/trait.Seek.html#method.rewind
+[`mem::transmute`]: https://doc.rust-lang.org/stable/std/mem/fn.transmute.html
+[`ops::ControlFlow`]: https://doc.rust-lang.org/stable/std/ops/enum.ControlFlow.html
+[`str::from_utf8_unchecked`]: https://doc.rust-lang.org/stable/std/str/fn.from_utf8_unchecked.html
+[`x86::_bittest`]: https://doc.rust-lang.org/stable/core/arch/x86/fn._bittest.html
+[`x86::_bittestandcomplement`]: https://doc.rust-lang.org/stable/core/arch/x86/fn._bittestandcomplement.html
+[`x86::_bittestandreset`]: https://doc.rust-lang.org/stable/core/arch/x86/fn._bittestandreset.html
+[`x86::_bittestandset`]: https://doc.rust-lang.org/stable/core/arch/x86/fn._bittestandset.html
+[`x86_64::_bittest64`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittest64.html
+[`x86_64::_bittestandcomplement64`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittestandcomplement64.html
+[`x86_64::_bittestandreset64`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittestandreset64.html
+[`x86_64::_bittestandset64`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittestandset64.html
+
+
 Version 1.54.0 (2021-07-29)
 ============================
 
 Language
 -----------------------
 
-- [You can now use macros for values in built-in attribute macros.][83366]
-  While a seemingly minor addition on its own, this enables a lot of
-  powerful functionality when combined correctly. Most notably you can
-  now include external documentation in your crate by writing the following.
+- [You can now use macros for values in some built-in attributes.][83366]
+  This primarily allows you to call macros within the `#[doc]` attribute. For
+  example, to include external documentation in your crate, you can now write
+  the following:
   ```rust
   #![doc = include_str!("README.md")]
-  ```
-  You can also use this to include auto-generated modules:
-  ```rust
-  #[path = concat!(env!("OUT_DIR"), "/generated.rs")]
-  mod generated;
   ```
 
 - [You can now cast between unsized slice types (and types which contain
@@ -37,6 +166,7 @@ Compiler
 - [Improved debugger output for enums on Windows MSVC platforms.][85292]
 - [Added tier 3\* support for `bpfel-unknown-none`
    and `bpfeb-unknown-none`.][79608]
+- [`-Zmutable-noalias=yes`][82834] is enabled by default when using LLVM 12 or above.
 
 \* Refer to Rust's [platform support page][platform-support-doc] for more
    information on Rust's tiered platform support.
@@ -106,6 +236,7 @@ Compatibility Notes
 [83366]: https://github.com/rust-lang/rust/pull/83366
 [83278]: https://github.com/rust-lang/rust/pull/83278
 [85292]: https://github.com/rust-lang/rust/pull/85292
+[82834]: https://github.com/rust-lang/rust/pull/82834
 [cargo/9520]: https://github.com/rust-lang/cargo/pull/9520
 [cargo/9499]: https://github.com/rust-lang/cargo/pull/9499
 [cargo/9488]: https://github.com/rust-lang/cargo/pull/9488
@@ -168,7 +299,7 @@ Libraries
 - [`leading_zeros`, and `trailing_zeros` are now available on all
   `NonZero` integer types.][84082]
 - [`{f32, f64}::from_str` now parse and print special values
-  (`NaN`, `-0`) according to IEEE RFC 754.][78618]
+  (`NaN`, `-0`) according to IEEE 754.][78618]
 - [You can now index into slices using `(Bound<usize>, Bound<usize>)`.][77704]
 - [Add the `BITS` associated constant to all numeric types.][82565]
 
