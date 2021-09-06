@@ -311,6 +311,7 @@ mod tests {
                 suggestions: vec![],
                 span: span.unwrap_or_else(MultiSpan::new),
                 sort_span: DUMMY_SP,
+                is_lint: false,
             }
         }
 
