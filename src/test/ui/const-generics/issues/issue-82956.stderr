@@ -1,0 +1,21 @@
+error[E0433]: failed to resolve: use of undeclared type `IntoIter`
+  --> $DIR/issue-82956.rs:25:24
+   |
+LL |         let mut iter = IntoIter::new(self);
+   |                        ^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these items
+   |
+LL | use std::array::IntoIter;
+   |
+LL | use std::collections::binary_heap::IntoIter;
+   |
+LL | use std::collections::btree_map::IntoIter;
+   |
+LL | use std::collections::btree_set::IntoIter;
+   |
+     and 8 other candidates
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.

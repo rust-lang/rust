@@ -517,10 +517,19 @@ impl FileTypeExt for fs::FileType {
     }
 }
 
-/// Creates a new file symbolic link on the filesystem.
+/// Creates a new symlink to a non-directory file on the filesystem.
 ///
 /// The `link` path will be a file symbolic link pointing to the `original`
 /// path.
+///
+/// The `original` path should not be a directory or a symlink to a directory,
+/// otherwise the symlink will be broken. Use [`symlink_dir`] for directories.
+///
+/// This function currently corresponds to [`CreateSymbolicLinkW`][CreateSymbolicLinkW].
+/// Note that this [may change in the future][changes].
+///
+/// [CreateSymbolicLinkW]: https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createsymboliclinkw
+/// [changes]: io#platform-specific-behavior
 ///
 /// # Examples
 ///
@@ -537,10 +546,19 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io:
     sys::fs::symlink_inner(original.as_ref(), link.as_ref(), false)
 }
 
-/// Creates a new directory symlink on the filesystem.
+/// Creates a new symlink to a directory on the filesystem.
 ///
 /// The `link` path will be a directory symbolic link pointing to the `original`
 /// path.
+///
+/// The `original` path must be a directory or a symlink to a directory,
+/// otherwise the symlink will be broken. Use [`symlink_file`] for other files.
+///
+/// This function currently corresponds to [`CreateSymbolicLinkW`][CreateSymbolicLinkW].
+/// Note that this [may change in the future][changes].
+///
+/// [CreateSymbolicLinkW]: https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createsymboliclinkw
+/// [changes]: io#platform-specific-behavior
 ///
 /// # Examples
 ///
