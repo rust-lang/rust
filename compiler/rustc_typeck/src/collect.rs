@@ -46,7 +46,7 @@ use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::spec::{abi, SanitizerSet};
+use rustc_target::spec::{abi, PanicStrategy, SanitizerSet};
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
 use std::iter;
 
@@ -2681,6 +2681,13 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     let mut codegen_fn_attrs = CodegenFnAttrs::new();
     if tcx.should_inherit_track_caller(id) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
+    }
+
+    // With -Z panic-in-drop=abort, drop_in_place never unwinds.
+    if tcx.sess.opts.debugging_opts.panic_in_drop == PanicStrategy::Abort {
+        if Some(id) == tcx.lang_items().drop_in_place_fn() {
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
+        }
     }
 
     let supported_target_features = tcx.supported_target_features(LOCAL_CRATE);
