@@ -159,9 +159,9 @@ where
                 self.visit_const(leaf)
             }
             ACNode::Cast(_, ty) => self.visit_ty(ty),
-            ACNode::Binop(..)
-            | ACNode::UnaryOp(..)
-            | ACNode::FunctionCall(_, _) => ControlFlow::CONTINUE,
+            ACNode::Binop(..) | ACNode::UnaryOp(..) | ACNode::FunctionCall(_, _) => {
+                ControlFlow::CONTINUE
+            }
         })
     }
 

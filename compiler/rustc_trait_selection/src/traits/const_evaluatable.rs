@@ -102,9 +102,9 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 
                         ControlFlow::CONTINUE
                     }
-                    Node::Binop(_, _, _)
-                    | Node::UnaryOp(_, _)
-                    | Node::FunctionCall(_, _) => ControlFlow::CONTINUE,
+                    Node::Binop(_, _, _) | Node::UnaryOp(_, _) | Node::FunctionCall(_, _) => {
+                        ControlFlow::CONTINUE
+                    }
                 });
 
                 match failure_kind {
@@ -348,8 +348,8 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             &ExprKind::PlaceTypeAscription { source, .. } |
             &ExprKind::ValueTypeAscription { source, .. } => self.recurse_build(source)?,
 
-            // subtle: associated consts are literals this arm handles 
-            // `<T as Trait>::ASSOC` as well as `12` 
+            // subtle: associated consts are literals this arm handles
+            // `<T as Trait>::ASSOC` as well as `12`
             &ExprKind::Literal { literal, .. }
             | &ExprKind::StaticRef { literal, .. } => self.add_node(Node::Leaf(literal), node.span),
 
@@ -381,10 +381,10 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             // }
             // ```
             ExprKind::Block { body: thir::Block { stmts: box [], expr: Some(e), .. }} => self.recurse_build(*e)?,
-            // ExprKind::Use happens when a `hir::ExprKind::Cast` is a 
+            // ExprKind::Use happens when a `hir::ExprKind::Cast` is a
             // "coercion cast" i.e. using a coercion or is a no-op.
             // this is important so that `N as usize as usize` doesnt unify with `N as usize`
-            &ExprKind::Use { source} 
+            &ExprKind::Use { source}
             | &ExprKind::Cast { source } => {
                 let arg = self.recurse_build(source)?;
                 self.add_node(Node::Cast(arg, node.ty), node.span)
@@ -404,7 +404,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             | ExprKind::Field { .. }
             | ExprKind::ConstBlock { .. }
             | ExprKind::Adt(_) => return self.error(
-                    Some(node.span), 
+                    Some(node.span),
                     "unsupported operation in generic constant, this may be supported in the future",
                 ).map(|never| never),
 
@@ -417,7 +417,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             | ExprKind::Assign { .. }
             | ExprKind::LogicalOp { .. }
             | ExprKind::Unary { .. } //
-            | ExprKind::Binary { .. } // we handle valid unary/binary ops above 
+            | ExprKind::Binary { .. } // we handle valid unary/binary ops above
             | ExprKind::Break { .. }
             | ExprKind::Continue { .. }
             | ExprKind::If { .. }
@@ -592,16 +592,14 @@ pub(super) fn try_unify<'tcx>(
                 && iter::zip(a_args, b_args)
                     .all(|(&an, &bn)| try_unify(tcx, a.subtree(an), b.subtree(bn)))
         }
-        (Node::Cast(a_operand, a_ty), Node::Cast(b_operand, b_ty))
-            if (a_ty == b_ty) =>
-        {
+        (Node::Cast(a_operand, a_ty), Node::Cast(b_operand, b_ty)) if (a_ty == b_ty) => {
             try_unify(tcx, a.subtree(a_operand), b.subtree(b_operand))
         }
         // use this over `_ => false` to make adding variants to `Node` less error prone
-        (Node::Cast(..), _) 
-        | (Node::FunctionCall(..), _) 
-        | (Node::UnaryOp(..), _) 
-        | (Node::Binop(..), _) 
+        (Node::Cast(..), _)
+        | (Node::FunctionCall(..), _)
+        | (Node::UnaryOp(..), _)
+        | (Node::Binop(..), _)
         | (Node::Leaf(..), _) => false,
     }
 }
