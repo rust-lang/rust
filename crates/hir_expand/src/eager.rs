@@ -131,7 +131,7 @@ pub fn expand_eager_macro(
     let arg_file_id = arg_id;
 
     let parsed_args = diagnostic_sink
-        .result(mbe::token_tree_to_syntax_node(&parsed_args, mbe::FragmentKind::Expr))?
+        .result(mbe::token_tree_to_syntax_node(&parsed_args, mbe::ParserEntryPoint::Expr))?
         .0;
     let result = eager_macro_recur(
         db,

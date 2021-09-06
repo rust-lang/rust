@@ -1,7 +1,7 @@
 //! A "Parser" structure for token trees. We use this when parsing a declarative
 //! macro definition into a list of patterns and templates.
 
-use crate::{subtree_source::SubtreeTokenSource, ExpandError, ExpandResult};
+use crate::{subtree_source::SubtreeTokenSource, ExpandError, ExpandResult, ParserEntryPoint};
 
 use parser::TreeSink;
 use syntax::SyntaxKind;
@@ -92,7 +92,7 @@ impl<'a> TtIter<'a> {
 
     pub(crate) fn expect_fragment(
         &mut self,
-        fragment_kind: parser::FragmentKind,
+        entry_point: ParserEntryPoint,
     ) -> ExpandResult<Option<tt::TokenTree>> {
         struct OffsetTokenSink<'a> {
             cursor: Cursor<'a>,
@@ -119,10 +119,10 @@ impl<'a> TtIter<'a> {
         let mut src = SubtreeTokenSource::new(&buffer);
         let mut sink = OffsetTokenSink { cursor: buffer.begin(), error: false };
 
-        parser::parse_fragment(&mut src, &mut sink, fragment_kind);
+        parser::parse(&mut src, &mut sink, entry_point);
 
         let mut err = if !sink.cursor.is_root() || sink.error {
-            Some(err!("expected {:?}", fragment_kind))
+            Some(err!("expected {:?}", entry_point))
         } else {
             None
         };

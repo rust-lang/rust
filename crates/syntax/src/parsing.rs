@@ -20,7 +20,7 @@ pub(crate) fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
     let mut token_source = TextTokenSource::new(text, &tokens);
     let mut tree_sink = TextTreeSink::new(text, &tokens);
 
-    parser::parse(&mut token_source, &mut tree_sink);
+    parser::parse_source_file(&mut token_source, &mut tree_sink);
 
     let (tree, mut parser_errors) = tree_sink.finish();
     parser_errors.extend(lexer_errors);
@@ -29,9 +29,9 @@ pub(crate) fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
 }
 
 /// Returns `text` parsed as a `T` provided there are no parse errors.
-pub(crate) fn parse_text_fragment<T: AstNode>(
+pub(crate) fn parse_text_as<T: AstNode>(
     text: &str,
-    fragment_kind: parser::FragmentKind,
+    entry_point: parser::ParserEntryPoint,
 ) -> Result<T, ()> {
     let (tokens, lexer_errors) = tokenize(text);
     if !lexer_errors.is_empty() {
@@ -45,7 +45,7 @@ pub(crate) fn parse_text_fragment<T: AstNode>(
     // tokens. We arbitrarily give it a SourceFile.
     use parser::TreeSink;
     tree_sink.start_node(SyntaxKind::SOURCE_FILE);
-    parser::parse_fragment(&mut token_source, &mut tree_sink, fragment_kind);
+    parser::parse(&mut token_source, &mut tree_sink, entry_point);
     tree_sink.finish_node();
 
     let (tree, parser_errors) = tree_sink.finish();

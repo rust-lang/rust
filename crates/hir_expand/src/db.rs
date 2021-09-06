@@ -444,12 +444,12 @@ fn token_tree_to_syntax_node(
     tt: &tt::Subtree,
     expand_to: ExpandTo,
 ) -> Result<(Parse<SyntaxNode>, mbe::TokenMap), ExpandError> {
-    let fragment = match expand_to {
-        ExpandTo::Statements => mbe::FragmentKind::Statements,
-        ExpandTo::Items => mbe::FragmentKind::Items,
-        ExpandTo::Pattern => mbe::FragmentKind::Pattern,
-        ExpandTo::Type => mbe::FragmentKind::Type,
-        ExpandTo::Expr => mbe::FragmentKind::Expr,
+    let entry_point = match expand_to {
+        ExpandTo::Statements => mbe::ParserEntryPoint::Statements,
+        ExpandTo::Items => mbe::ParserEntryPoint::Items,
+        ExpandTo::Pattern => mbe::ParserEntryPoint::Pattern,
+        ExpandTo::Type => mbe::ParserEntryPoint::Type,
+        ExpandTo::Expr => mbe::ParserEntryPoint::Expr,
     };
-    mbe::token_tree_to_syntax_node(tt, fragment)
+    mbe::token_tree_to_syntax_node(tt, entry_point)
 }

@@ -6,7 +6,7 @@ use std::fmt::Write;
 use syntax::{ast, AstNode, NodeOrToken, SyntaxNode, WalkEvent};
 use test_utils::assert_eq_text;
 
-use crate::FragmentKind;
+use crate::ParserEntryPoint;
 
 use super::*;
 
@@ -44,13 +44,16 @@ macro_rules! impl_fixture {
             #[allow(unused)]
             fn expand_items(&self, invocation: &str) -> SyntaxNode {
                 let expanded = self.expand_tt(invocation);
-                token_tree_to_syntax_node(&expanded, FragmentKind::Items).unwrap().0.syntax_node()
+                token_tree_to_syntax_node(&expanded, ParserEntryPoint::Items)
+                    .unwrap()
+                    .0
+                    .syntax_node()
             }
 
             #[allow(unused)]
             fn expand_statements(&self, invocation: &str) -> SyntaxNode {
                 let expanded = self.expand_tt(invocation);
-                token_tree_to_syntax_node(&expanded, FragmentKind::Statements)
+                token_tree_to_syntax_node(&expanded, ParserEntryPoint::Statements)
                     .unwrap()
                     .0
                     .syntax_node()
@@ -59,7 +62,10 @@ macro_rules! impl_fixture {
             #[allow(unused)]
             fn expand_expr(&self, invocation: &str) -> SyntaxNode {
                 let expanded = self.expand_tt(invocation);
-                token_tree_to_syntax_node(&expanded, FragmentKind::Expr).unwrap().0.syntax_node()
+                token_tree_to_syntax_node(&expanded, ParserEntryPoint::Expr)
+                    .unwrap()
+                    .0
+                    .syntax_node()
             }
 
             #[allow(unused)]
@@ -76,17 +82,17 @@ macro_rules! impl_fixture {
             }
 
             fn assert_expand_items(&self, invocation: &str, expected: &str) -> &$name {
-                self.assert_expansion(FragmentKind::Items, invocation, expected);
+                self.assert_expansion(ParserEntryPoint::Items, invocation, expected);
                 self
             }
 
             #[allow(unused)]
             fn assert_expand_statements(&self, invocation: &str, expected: &str) -> &$name {
-                self.assert_expansion(FragmentKind::Statements, invocation, expected);
+                self.assert_expansion(ParserEntryPoint::Statements, invocation, expected);
                 self
             }
 
-            fn assert_expansion(&self, kind: FragmentKind, invocation: &str, expected: &str) {
+            fn assert_expansion(&self, kind: ParserEntryPoint, invocation: &str, expected: &str) {
                 let expanded = self.expand_tt(invocation);
                 assert_eq!(expanded.to_string(), expected);
 

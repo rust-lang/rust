@@ -24,7 +24,7 @@ use crate::{
 };
 
 // FIXME: we probably should re-think  `token_tree_to_syntax_node` interfaces
-pub use ::parser::FragmentKind;
+pub use ::parser::ParserEntryPoint;
 pub use tt::{Delimiter, DelimiterKind, Punct};
 
 #[derive(Debug, PartialEq, Eq)]

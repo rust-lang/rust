@@ -13,7 +13,7 @@ use syntax::{
 use tt::buffer::{Cursor, TokenBuffer};
 
 use crate::{
-    subtree_source::SubtreeTokenSource, tt_iter::TtIter, ExpandError, FragmentKind, TokenMap,
+    subtree_source::SubtreeTokenSource, tt_iter::TtIter, ExpandError, ParserEntryPoint, TokenMap,
 };
 
 /// Convert the syntax node to a `TokenTree` (what macro
@@ -49,7 +49,7 @@ pub fn syntax_node_to_token_tree_censored(
 
 pub fn token_tree_to_syntax_node(
     tt: &tt::Subtree,
-    fragment_kind: FragmentKind,
+    entry_point: ParserEntryPoint,
 ) -> Result<(Parse<SyntaxNode>, TokenMap), ExpandError> {
     let buffer = match tt {
         tt::Subtree { delimiter: None, token_trees } => {
@@ -59,7 +59,7 @@ pub fn token_tree_to_syntax_node(
     };
     let mut token_source = SubtreeTokenSource::new(&buffer);
     let mut tree_sink = TtTreeSink::new(buffer.begin());
-    parser::parse_fragment(&mut token_source, &mut tree_sink, fragment_kind);
+    parser::parse(&mut token_source, &mut tree_sink, entry_point);
     if tree_sink.roots.len() != 1 {
         return Err(ExpandError::ConversionError);
     }
@@ -100,7 +100,7 @@ pub fn parse_exprs_with_sep(tt: &tt::Subtree, sep: char) -> Vec<tt::Subtree> {
     let mut res = Vec::new();
 
     while iter.peek_n(0).is_some() {
-        let expanded = iter.expect_fragment(FragmentKind::Expr);
+        let expanded = iter.expect_fragment(ParserEntryPoint::Expr);
         if expanded.err.is_some() {
             break;
         }
@@ -790,7 +790,7 @@ mod tests {
             "#,
         )
         .expand_tt("stmts!();");
-        assert!(token_tree_to_syntax_node(&expansion, FragmentKind::Expr).is_err());
+        assert!(token_tree_to_syntax_node(&expansion, ParserEntryPoint::Expr).is_err());
     }
 
     #[test]
@@ -823,7 +823,7 @@ mod tests {
         let source_file = ast::SourceFile::parse("struct Foo { a: x::Y }").ok().unwrap();
         let struct_def = source_file.syntax().descendants().find_map(ast::Struct::cast).unwrap();
         let tt = syntax_node_to_token_tree(struct_def.syntax()).0;
-        token_tree_to_syntax_node(&tt, FragmentKind::Item).unwrap();
+        token_tree_to_syntax_node(&tt, ParserEntryPoint::Item).unwrap();
     }
 
     #[test]

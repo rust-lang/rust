@@ -69,7 +69,7 @@ use crate::{
 };
 
 use super::ExpandResult;
-use parser::FragmentKind::*;
+use parser::ParserEntryPoint::*;
 use smallvec::{smallvec, SmallVec};
 use syntax::SmolStr;
 
