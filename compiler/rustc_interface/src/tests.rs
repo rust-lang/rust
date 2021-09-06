@@ -743,6 +743,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(no_profiler_runtime, true);
     tracked!(osx_rpath_install_name, true);
     tracked!(panic_abort_tests, true);
+    tracked!(panic_in_drop, PanicStrategy::Abort);
     tracked!(partially_uninit_const_threshold, Some(123));
     tracked!(plt, Some(true));
     tracked!(polonius, true);
