@@ -32,4 +32,9 @@ fn moo(x: u32) -> bool {
     } > 0 //~ ERROR expected expression
 }
 
+fn qux() -> u32 {
+    {2} - 2 //~ ERROR cannot apply unary operator `-` to type `u32`
+    //~^ ERROR mismatched types
+}
+
 fn main() {}
