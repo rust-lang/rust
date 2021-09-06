@@ -488,6 +488,17 @@ pub struct MissingDoc {
 
     /// Private traits or trait items that leaked through. Don't check their methods.
     private_traits: FxHashSet<hir::HirId>,
+
+    /// In case we have:
+    ///
+    /// ```
+    /// enum Foo { Bar(u32) }
+    /// // or:
+    /// struct Bar(u32);
+    /// ```
+    ///
+    /// No need to require documentation on the unique field.
+    is_ignorable: bool,
 }
 
 impl_lint_pass!(MissingDoc => [MISSING_DOCS]);
@@ -518,7 +529,11 @@ fn has_doc(attr: &ast::Attribute) -> bool {
 
 impl MissingDoc {
     pub fn new() -> MissingDoc {
-        MissingDoc { doc_hidden_stack: vec![false], private_traits: FxHashSet::default() }
+        MissingDoc {
+            doc_hidden_stack: vec![false],
+            private_traits: FxHashSet::default(),
+            is_ignorable: false,
+        }
     }
 
     fn doc_hidden(&self) -> bool {
@@ -616,6 +631,12 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                 }
                 return;
             }
+            hir::ItemKind::Struct(hir::VariantData::Tuple(fields, _), _) => {
+                if fields.len() < 2 {
+                    // No need to check if there is missing documentation on the field.
+                    self.is_ignorable = true;
+                }
+            }
 
             hir::ItemKind::TyAlias(..)
             | hir::ItemKind::Fn(..)
@@ -661,14 +682,23 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, sf: &hir::FieldDef<'_>) {
-        if !sf.is_positional() {
-            let def_id = cx.tcx.hir().local_def_id(sf.hir_id);
-            self.check_missing_docs_attrs(cx, def_id, sf.span, "a", "struct field")
+        if self.is_ignorable {
+            self.is_ignorable = false;
+            return;
         }
+        let def_id = cx.tcx.hir().local_def_id(sf.hir_id);
+        self.check_missing_docs_attrs(cx, def_id, sf.span, "a", "struct field")
     }
 
     fn check_variant(&mut self, cx: &LateContext<'_>, v: &hir::Variant<'_>) {
         self.check_missing_docs_attrs(cx, cx.tcx.hir().local_def_id(v.id), v.span, "a", "variant");
+        if let hir::VariantData::Tuple(fields, _) = v.data {
+            if fields.len() < 2 {
+                // No need to check if there is missing documentation on the variant field.
+                self.is_ignorable = true;
+                return;
+            }
+        }
     }
 }
 
