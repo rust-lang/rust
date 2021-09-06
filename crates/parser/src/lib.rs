@@ -13,11 +13,9 @@
 //! Tests for this crate live in the `syntax` crate.
 //!
 //! [`Parser`]: crate::parser::Parser
-
 #![allow(rustdoc::private_intra_doc_links)]
-#[macro_use]
+
 mod token_set;
-#[macro_use]
 mod syntax_kind;
 mod event;
 mod parser;
