@@ -272,8 +272,12 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr("proc_macro", None, None),
     attr("proc_macro_attribute", None, None),
     attr("proc_macro_derive(…)", Some("proc_macro_derive"), Some("proc_macro_derive(${0:Trait})")),
-    attr("recursion_limit = …", Some("recursion_limit"), Some("recursion_limit = ${0:128}"))
-        .prefer_inner(),
+    attr(
+        r#"recursion_limit = "…""#,
+        Some("recursion_limit"),
+        Some(r#"recursion_limit = "${0:128}""#),
+    )
+    .prefer_inner(),
     attr("repr(…)", Some("repr"), Some("repr(${0:C})")),
     attr("should_panic", Some("should_panic"), Some(r#"should_panic"#)),
     attr(

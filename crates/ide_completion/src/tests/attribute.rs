@@ -75,7 +75,7 @@ fn attr_on_source_file() {
             at no_implicit_prelude
             at no_main
             at no_std
-            at recursion_limit = …
+            at recursion_limit = "…"
             at type_length_limit = …
             at windows_subsystem = "…"
         "#]],
