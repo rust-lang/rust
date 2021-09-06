@@ -319,6 +319,18 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
     }
 }
 
+#[cfg(not(bootstrap))]
+#[cfg(all(not(no_global_oom_handling), not(test)))]
+#[lang = "box_new"]
+#[inline]
+pub(crate) fn box_new<T>() -> *mut u8 {
+    let layout = Layout::new::<T>();
+    match Global.allocate(layout) {
+        Ok(ptr) => ptr.as_mut_ptr(),
+        Err(_) => handle_alloc_error(layout),
+    }
+}
+
 #[cfg_attr(not(test), lang = "box_free")]
 #[inline]
 // This signature has to be the same as `Box`, otherwise an ICE will happen.

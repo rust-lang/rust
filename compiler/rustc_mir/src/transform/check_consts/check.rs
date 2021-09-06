@@ -650,6 +650,7 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
 
             Rvalue::NullaryOp(NullOp::SizeOf, _) => {}
             Rvalue::NullaryOp(NullOp::Box, _) => self.check_op(ops::HeapAllocation),
+            Rvalue::InitBox(_, _) => {}
 
             Rvalue::UnaryOp(_, ref operand) => {
                 let ty = operand.ty(self.body, self.tcx);
@@ -896,6 +897,12 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                         }
                     }
 
+                    return;
+                }
+
+                let is_box_new = Some(callee) == tcx.lang_items().box_new_fn();
+                if is_box_new {
+                    self.check_op(ops::HeapAllocation);
                     return;
                 }
 

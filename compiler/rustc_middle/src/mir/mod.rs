@@ -2170,6 +2170,8 @@ pub enum Rvalue<'tcx> {
     /// that `Foo` has a destructor. These rvalues can be optimized
     /// away after type-checking and before lowering.
     Aggregate(Box<AggregateKind<'tcx>>, Vec<Operand<'tcx>>),
+
+    InitBox(Operand<'tcx>, Ty<'tcx>),
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -2417,6 +2419,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         }
                     }),
                 }
+            }
+
+            InitBox(ref place, ref ty) => {
+                write!(fmt, "{:?} as box {:?}", place, ty)
             }
         }
     }

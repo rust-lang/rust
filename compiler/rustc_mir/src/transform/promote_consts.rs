@@ -522,6 +522,8 @@ impl<'tcx> Validator<'_, 'tcx> {
                 NullOp::SizeOf => {}
             },
 
+            Rvalue::InitBox(_, _) => return Err(Unpromotable),
+
             Rvalue::UnaryOp(op, operand) => {
                 match op {
                     // These operations can never fail.

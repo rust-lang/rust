@@ -318,9 +318,8 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
             Rvalue::Use(ref operand)
             | Rvalue::Repeat(ref operand, _)
             | Rvalue::UnaryOp(_ /*un_op*/, ref operand)
-            | Rvalue::Cast(_ /*cast_kind*/, ref operand, _ /*ty*/) => {
-                self.consume_operand(location, operand)
-            }
+            | Rvalue::Cast(_ /*cast_kind*/, ref operand, _ /*ty*/)
+            | Rvalue::InitBox(ref operand, _ /*ty*/) => self.consume_operand(location, operand),
 
             Rvalue::Len(place) | Rvalue::Discriminant(place) => {
                 let af = match *rvalue {

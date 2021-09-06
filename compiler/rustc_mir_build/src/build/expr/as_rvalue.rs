@@ -5,6 +5,7 @@ use rustc_index::vec::Idx;
 use crate::build::expr::as_place::PlaceBase;
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
+use rustc_hir::lang_items::LangItem;
 use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::Place;
@@ -88,6 +89,39 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Box { value } => {
                 let value = &this.thir[value];
+                let tcx = this.tcx;
+
+                let u8_ptr = tcx.mk_mut_ptr(tcx.mk_mach_uint(ty::UintTy::U8));
+                let storage = this.local_decls.push(LocalDecl::new(u8_ptr, expr_span).internal());
+                this.cfg.push(
+                    block,
+                    Statement { source_info, kind: StatementKind::StorageLive(storage) },
+                );
+
+                let box_new = tcx.require_lang_item(LangItem::BoxNew, Some(source_info.span));
+                let box_new = Operand::function_handle(
+                    tcx,
+                    box_new,
+                    tcx.mk_substs([value.ty.into()].iter()),
+                    source_info.span,
+                );
+
+                let success = this.cfg.start_new_block();
+                this.cfg.terminate(
+                    block,
+                    source_info,
+                    TerminatorKind::Call {
+                        func: box_new,
+                        args: Vec::new(),
+                        destination: Some((Place::from(storage), success)),
+                        cleanup: None,
+                        from_hir_call: false,
+                        fn_span: source_info.span,
+                    },
+                );
+                this.diverge_from(block);
+                block = success;
+
                 // The `Box<T>` temporary created here is not a part of the HIR,
                 // and therefore is not considered during generator auto-trait
                 // determination. See the comment about `box` at `yield_in_scope`.
@@ -102,7 +136,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
 
                 // malloc some memory of suitable type (thus far, uninitialized):
-                let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
+                let box_ = Rvalue::InitBox(Operand::Move(Place::from(storage)), value.ty);
                 this.cfg.push_assign(block, source_info, Place::from(result), box_);
 
                 // initialize the box contents:

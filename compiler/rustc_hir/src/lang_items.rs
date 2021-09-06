@@ -294,6 +294,7 @@ language_item_table! {
     BeginPanicFmt,           sym::begin_panic_fmt,     begin_panic_fmt,            Target::Fn,             GenericRequirement::None;
 
     ExchangeMalloc,          sym::exchange_malloc,     exchange_malloc_fn,         Target::Fn,             GenericRequirement::None;
+    BoxNew,                  sym::box_new,             box_new_fn,                 Target::Fn,             GenericRequirement::Minimum(1);
     BoxFree,                 sym::box_free,            box_free_fn,                Target::Fn,             GenericRequirement::Minimum(1);
     DropInPlace,             sym::drop_in_place,       drop_in_place_fn,           Target::Fn,             GenericRequirement::Minimum(1);
     Oom,                     sym::oom,                 oom,                        Target::Fn,             GenericRequirement::None;
