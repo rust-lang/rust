@@ -61,3 +61,12 @@ pub enum Variants {
     A,
     B(u8),
 }
+
+// @has type_layout/enum.WithNiche.html 'Size: '
+// @has - //p '4 bytes'
+// @has - '<code>None</code>: 0 bytes'
+// @has - '<code>Some</code>: 4 bytes'
+pub enum WithNiche {
+    None,
+    Some(std::num::NonZeroU32),
+}

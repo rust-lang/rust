@@ -13,7 +13,7 @@ use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{Adt, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_target::abi::{Layout, Primitive, Variants};
+use rustc_target::abi::{Layout, Primitive, TagEncoding, Variants};
 
 use super::{
     collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_strs, notable_traits_decl,
@@ -1639,7 +1639,9 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
             w.write_str("<p><strong>Size:</strong> ");
             write_size_of_layout(w, ty_layout.layout, 0);
             writeln!(w, "</p>");
-            if let Variants::Multiple { variants, tag, .. } = &ty_layout.layout.variants {
+            if let Variants::Multiple { variants, tag, tag_encoding, .. } =
+                &ty_layout.layout.variants
+            {
                 if !variants.is_empty() {
                     w.write_str(
                         "<p><strong>Size for each variant:</strong></p>\
@@ -1652,10 +1654,12 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
                         span_bug!(tcx.def_span(ty_def_id), "not an adt")
                     };
 
-                    let tag_size = if let Primitive::Int(i, _) = tag.value {
+                    let tag_size = if let TagEncoding::Niche { .. } = tag_encoding {
+                        0
+                    } else if let Primitive::Int(i, _) = tag.value {
                         i.size().bytes()
                     } else {
-                        span_bug!(tcx.def_span(ty_def_id), "tag is not int")
+                        span_bug!(tcx.def_span(ty_def_id), "tag is neither niche nor int")
                     };
 
                     for (index, layout) in variants.iter_enumerated() {
