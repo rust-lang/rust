@@ -30,7 +30,7 @@ pub fn provide(providers: &mut Providers) {
 /// Determine which generic parameters are used by the function/method/closure represented by
 /// `def_id`. Returns a bitset where bits representing unused parameters are set (`is_empty`
 /// indicates all parameters are used).
-#[instrument(skip(tcx))]
+#[instrument(level = "debug", skip(tcx))]
 fn unused_generic_params(tcx: TyCtxt<'_>, def_id: DefId) -> FiniteBitSet<u32> {
     if !tcx.sess.opts.debugging_opts.polymorphize {
         // If polymorphization disabled, then all parameters are used.
@@ -100,7 +100,7 @@ fn unused_generic_params(tcx: TyCtxt<'_>, def_id: DefId) -> FiniteBitSet<u32> {
 /// Some parameters are considered used-by-default, such as non-generic parameters and the dummy
 /// generic parameters from closures, this function marks them as used. `leaf_is_closure` should
 /// be `true` if the item that `unused_generic_params` was invoked on is a closure.
-#[instrument(skip(tcx, def_id, generics, unused_parameters))]
+#[instrument(level = "debug", skip(tcx, def_id, generics, unused_parameters))]
 fn mark_used_by_default_parameters<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
@@ -158,7 +158,7 @@ fn mark_used_by_default_parameters<'tcx>(
 
 /// Search the predicates on used generic parameters for any unused generic parameters, and mark
 /// those as used.
-#[instrument(skip(tcx, def_id))]
+#[instrument(level = "debug", skip(tcx, def_id))]
 fn mark_used_by_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
@@ -196,7 +196,7 @@ fn mark_used_by_predicates<'tcx>(
 
 /// Emit errors for the function annotated by `#[rustc_polymorphize_error]`, labelling each generic
 /// parameter which was unused.
-#[instrument(skip(tcx, generics))]
+#[instrument(level = "debug", skip(tcx, generics))]
 fn emit_unused_generic_params_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
@@ -241,7 +241,7 @@ struct MarkUsedGenericParams<'a, 'tcx> {
 impl<'a, 'tcx> MarkUsedGenericParams<'a, 'tcx> {
     /// Invoke `unused_generic_params` on a body contained within the current item (e.g.
     /// a closure, generator or constant).
-    #[instrument(skip(self, def_id, substs))]
+    #[instrument(level = "debug", skip(self, def_id, substs))]
     fn visit_child_body(&mut self, def_id: DefId, substs: SubstsRef<'tcx>) {
         let unused = self.tcx.unused_generic_params(def_id);
         debug!(?self.unused_parameters, ?unused);
@@ -256,7 +256,7 @@ impl<'a, 'tcx> MarkUsedGenericParams<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
-    #[instrument(skip(self, local))]
+    #[instrument(level = "debug", skip(self, local))]
     fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
         if local == Local::from_usize(1) {
             let def_kind = self.tcx.def_kind(self.def_id);
@@ -286,7 +286,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
     fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
         Some(self.tcx)
     }
-    #[instrument(skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         if !c.potentially_has_param_types_or_consts() {
             return ControlFlow::CONTINUE;
@@ -319,7 +319,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         if !ty.potentially_has_param_types_or_consts() {
             return ControlFlow::CONTINUE;
@@ -361,7 +361,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a, 'tcx> {
         Some(self.tcx)
     }
 
-    #[instrument(skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         if !c.potentially_has_param_types_or_consts() {
             return ControlFlow::CONTINUE;
@@ -379,7 +379,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         if !ty.potentially_has_param_types_or_consts() {
             return ControlFlow::CONTINUE;
