@@ -78,6 +78,15 @@ impl Clone for Struct {
 }
 
 
+
+/// doc
+///
+/// ```
+/// println!("hello");
+/// ```
+#[derive(Clone)]
+pub struct NiceStruct;
+
 #[doc(hidden)]
 pub mod foo {
     pub fn bar() {}
