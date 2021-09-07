@@ -2201,6 +2201,8 @@ void createTerminator(DiffeGradientUtils *gutils,
 
     if (gutils->newFunc->getReturnType()->isVoidTy()) {
       assert(retargs.size() == 0);
+      gutils->erase(gutils->getNewFromOriginal(inst));
+      nBuilder.CreateRetVoid();
       return;
     }
 

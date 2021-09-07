@@ -7093,9 +7093,114 @@ public:
       return;
     }
 
-    bool modifyPrimal = shouldAugmentCall(orig, gutils, TR);
-
     bool foreignFunction = called == nullptr || called->empty();
+
+    FnTypeInfo nextTypeInfo(called);
+
+    if (called) {
+      nextTypeInfo = TR.getCallInfo(*orig, *called);
+    }
+
+    if (Mode == DerivativeMode::ForwardMode) {
+      IRBuilder<> Builder2(&call);
+      getForwardBuilder(Builder2);
+
+      bool retUsed = subretused;
+
+      SmallVector<Value *, 8> args;
+      std::vector<DIFFE_TYPE> argsInverted;
+      std::map<int, Type *> gradByVal;
+
+      for (unsigned i = 0; i < orig->getNumArgOperands(); ++i) {
+
+        auto argi = gutils->getNewFromOriginal(orig->getArgOperand(i));
+
+#if LLVM_VERSION_MAJOR >= 9
+        if (orig->isByValArgument(i)) {
+          gradByVal[args.size()] = orig->getParamByValType(i);
+        }
+#endif
+        args.push_back(argi);
+
+        if (gutils->isConstantValue(orig->getArgOperand(i)) &&
+            !foreignFunction) {
+          argsInverted.push_back(DIFFE_TYPE::CONSTANT);
+          continue;
+        }
+
+        auto argType = argi->getType();
+
+        if (!argType->isFPOrFPVectorTy() &&
+            (TR.query(orig->getArgOperand(i)).Inner0().isPossiblePointer() ||
+             foreignFunction)) {
+          DIFFE_TYPE ty = DIFFE_TYPE::DUP_ARG;
+          if (argType->isPointerTy()) {
+#if LLVM_VERSION_MAJOR >= 12
+            auto at = getUnderlyingObject(orig->getArgOperand(i), 100);
+#else
+            auto at = GetUnderlyingObject(
+                orig->getArgOperand(i),
+                gutils->oldFunc->getParent()->getDataLayout(), 100);
+#endif
+            if (auto arg = dyn_cast<Argument>(at)) {
+              if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
+                ty = DIFFE_TYPE::DUP_NONEED;
+              }
+            }
+          }
+          args.push_back(
+              gutils->invertPointerM(orig->getArgOperand(i), Builder2));
+          argsInverted.push_back(ty);
+
+          // Note sometimes whattype mistakenly says something should be
+          // constant [because composed of integer pointers alone]
+          assert(whatType(argType, Mode) == DIFFE_TYPE::DUP_ARG ||
+                 whatType(argType, Mode) == DIFFE_TYPE::CONSTANT);
+        } else {
+          if (foreignFunction)
+            assert(!argType->isIntOrIntVectorTy());
+
+          args.push_back(diffe(orig->getArgOperand(i), Builder2));
+          argsInverted.push_back(DIFFE_TYPE::DUP_ARG);
+        }
+      }
+
+      auto newcalled = gutils->Logic.CreatePrimalAndGradient(
+          cast<Function>(called), subretType, argsInverted, gutils->TLI,
+          TR.analyzer.interprocedural, /*returnValue*/ retUsed,
+          /*subdretptr*/ false, DerivativeMode::ForwardMode, nullptr,
+          nextTypeInfo, uncacheable_args, nullptr,
+          /*AtomicAdd*/ gutils->AtomicAdd);
+
+      assert(newcalled);
+      FunctionType *FT = cast<FunctionType>(
+          cast<PointerType>(newcalled->getType())->getElementType());
+
+      CallInst *diffes = Builder2.CreateCall(FT, newcalled, args);
+      diffes->setCallingConv(orig->getCallingConv());
+      diffes->setDebugLoc(gutils->getNewFromOriginal(orig->getDebugLoc()));
+#if LLVM_VERSION_MAJOR >= 9
+      for (auto pair : gradByVal) {
+        diffes->addParamAttr(
+            pair.first,
+            Attribute::getWithByValType(diffes->getContext(), pair.second));
+      }
+#endif
+
+      if (!gutils->isConstantValue(&call)) {
+        unsigned structidx = retUsed ? 1 : 0;
+        Value *diffe = Builder2.CreateExtractValue(diffes, {structidx});
+        setDiffe(&call, diffe, Builder2);
+      }
+
+      if (!subretused) {
+        eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
+      }
+
+      return;
+    }
+
+    bool modifyPrimal = shouldAugmentCall(orig, gutils, TR);
 
     SmallVector<Value *, 8> args;
     SmallVector<Value *, 8> pre_args;
@@ -7201,12 +7306,6 @@ public:
     Value *tape = nullptr;
     CallInst *augmentcall = nullptr;
     Value *cachereplace = nullptr;
-
-    FnTypeInfo nextTypeInfo(called);
-
-    if (called) {
-      nextTypeInfo = TR.getCallInfo(*orig, *called);
-    }
 
     // llvm::Optional<std::map<std::pair<Instruction*, std::string>,
     // unsigned>> sub_index_map;
