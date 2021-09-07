@@ -14,9 +14,6 @@ pub mod raw;
 // documented don't compile (missing things in `libc` which is empty),
 // so just omit them with an empty module and add the "unstable" attribute.
 
-#[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
-pub mod fortanix_sgx;
-
 // Unix, linux, wasi and windows are handled a bit differently.
 #[cfg(all(
     doc,
@@ -103,6 +100,8 @@ pub mod dragonfly;
 pub mod emscripten;
 #[cfg(target_os = "espidf")]
 pub mod espidf;
+#[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
+pub mod fortanix_sgx;
 #[cfg(target_os = "freebsd")]
 pub mod freebsd;
 #[cfg(target_os = "fuchsia")]
