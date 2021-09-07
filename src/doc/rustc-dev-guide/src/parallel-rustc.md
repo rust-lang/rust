@@ -43,6 +43,12 @@ When a query `foo` is evaluated, the cache table for `foo` is locked.
   mentioned before, query invocations form a DAG. Some thread will always make
   progress.
 
+## Rustdoc
+
+As of <!-- date: 2021-09--> September 2021, there are still a number of steps 
+to complete before rustdoc rendering can be made parallel. More details on
+this issue can be found [here][parallel-rustdoc].
+
 ## Current Status
 
 As of <!-- date: 2021-07 --> July 2021, work on explicitly parallelizing the
@@ -85,3 +91,4 @@ are a bit out of date):
 [irlo1]: https://internals.rust-lang.org/t/help-test-parallel-rustc/11503
 [tracking]: https://github.com/rust-lang/rust/issues/48685
 [monomorphization]:https://rustc-dev-guide.rust-lang.org/backend/monomorph.html
+[parallel-rustdoc]:https://github.com/rust-lang/rust/issues/82741
