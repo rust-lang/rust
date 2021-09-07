@@ -2001,7 +2001,8 @@ macro_rules! int_impl {
             }
         }
 
-        /// Returns the logarithm of the number with respect to an arbitrary base.
+        /// Returns the logarithm of the number with respect to an arbitrary base,
+        /// rounded down.
         ///
         /// This method might not be optimized owing to implementation details;
         /// `log2` can produce results more efficiently for base 2, and `log10`
@@ -2010,8 +2011,8 @@ macro_rules! int_impl {
         /// # Panics
         ///
         /// When the number is zero, or if the base is not at least 2; it
-        /// panics in debug mode and the return value is wrapped to 0 in release
-        /// mode (the only situation in which the method can return 0).
+        /// panics in debug mode and the return value is 0 in release
+        /// mode.
         ///
         /// # Examples
         ///
@@ -2039,13 +2040,12 @@ macro_rules! int_impl {
             }
         }
 
-        /// Returns the base 2 logarithm of the number.
+        /// Returns the base 2 logarithm of the number, rounded down.
         ///
         /// # Panics
         ///
         /// When the number is zero it panics in debug mode and the return value
-        /// is wrapped to 0 in release mode (the only situation in which the
-        /// method can return 0).
+        /// is 0 in release mode.
         ///
         /// # Examples
         ///
@@ -2073,13 +2073,12 @@ macro_rules! int_impl {
             }
         }
 
-        /// Returns the base 10 logarithm of the number.
+        /// Returns the base 10 logarithm of the number, rounded down.
         ///
         /// # Panics
         ///
         /// When the number is zero it panics in debug mode and the return value
-        /// is wrapped to 0 in release mode (the only situation in which the
-        /// method can return 0).
+        /// is 0 in release mode.
         ///
         /// # Example
         ///
@@ -2107,7 +2106,8 @@ macro_rules! int_impl {
             }
         }
 
-        /// Returns the logarithm of the number with respect to an arbitrary base.
+        /// Returns the logarithm of the number with respect to an arbitrary base,
+        /// rounded down.
         ///
         /// Returns `None` if the number is negative or zero, or if the base is not at least 2.
         ///
@@ -2147,7 +2147,7 @@ macro_rules! int_impl {
             }
         }
 
-        /// Returns the base 2 logarithm of the number.
+        /// Returns the base 2 logarithm of the number, rounded down.
         ///
         /// Returns `None` if the number is negative or zero.
         ///
@@ -2171,7 +2171,7 @@ macro_rules! int_impl {
             }
         }
 
-        /// Returns the base 10 logarithm of the number.
+        /// Returns the base 10 logarithm of the number, rounded down.
         ///
         /// Returns `None` if the number is negative or zero.
         ///
