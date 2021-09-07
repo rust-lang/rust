@@ -2,7 +2,9 @@ error[E0277]: the trait bound `{float}: Bar` is not satisfied
   --> $DIR/type_inference.rs:27:14
    |
 LL |     only_bar(x);
-   |              ^ the trait `Bar` is not implemented for `{float}`
+   |     -------- ^ the trait `Bar` is not implemented for `{float}`
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the following implementations were found:
              <i32 as Bar>

@@ -2,7 +2,9 @@ error[E0277]: `impl Sync` cannot be sent between threads safely
   --> $DIR/restrict-type-argument.rs:4:13
    |
 LL |     is_send(val);
-   |             ^^^ `impl Sync` cannot be sent between threads safely
+   |     ------- ^^^ `impl Sync` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
 note: required by a bound in `is_send`
   --> $DIR/restrict-type-argument.rs:1:15
@@ -18,7 +20,9 @@ error[E0277]: `S` cannot be sent between threads safely
   --> $DIR/restrict-type-argument.rs:8:13
    |
 LL |     is_send(val);
-   |             ^^^ `S` cannot be sent between threads safely
+   |     ------- ^^^ `S` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
 note: required by a bound in `is_send`
   --> $DIR/restrict-type-argument.rs:1:15
@@ -34,7 +38,9 @@ error[E0277]: `S` cannot be sent between threads safely
   --> $DIR/restrict-type-argument.rs:12:13
    |
 LL |     is_send(val);
-   |             ^^^ `S` cannot be sent between threads safely
+   |     ------- ^^^ `S` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
 note: required by a bound in `is_send`
   --> $DIR/restrict-type-argument.rs:1:15
@@ -50,7 +56,9 @@ error[E0277]: `S` cannot be sent between threads safely
   --> $DIR/restrict-type-argument.rs:20:13
    |
 LL |     is_send(val);
-   |             ^^^ `S` cannot be sent between threads safely
+   |     ------- ^^^ `S` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
 note: required by a bound in `is_send`
   --> $DIR/restrict-type-argument.rs:1:15
@@ -66,7 +74,9 @@ error[E0277]: `S` cannot be sent between threads safely
   --> $DIR/restrict-type-argument.rs:24:13
    |
 LL |     is_send(val);
-   |             ^^^ `S` cannot be sent between threads safely
+   |     ------- ^^^ `S` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
 note: required by a bound in `is_send`
   --> $DIR/restrict-type-argument.rs:1:15
@@ -82,7 +92,9 @@ error[E0277]: `S` cannot be sent between threads safely
   --> $DIR/restrict-type-argument.rs:28:13
    |
 LL |     is_send(val);
-   |             ^^^ `S` cannot be sent between threads safely
+   |     ------- ^^^ `S` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
 note: required by a bound in `is_send`
   --> $DIR/restrict-type-argument.rs:1:15

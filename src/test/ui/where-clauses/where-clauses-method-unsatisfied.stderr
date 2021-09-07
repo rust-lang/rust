@@ -2,7 +2,9 @@ error[E0277]: the trait bound `Bar: Eq` is not satisfied
   --> $DIR/where-clauses-method-unsatisfied.rs:18:14
    |
 LL |     x.equals(&x);
-   |              ^^ the trait `Eq` is not implemented for `Bar`
+   |       ------ ^^ the trait `Eq` is not implemented for `Bar`
+   |       |
+   |       required by a bound introduced by this call
 
 error: aborting due to previous error
 

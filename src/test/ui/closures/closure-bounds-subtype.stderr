@@ -2,7 +2,9 @@ error[E0277]: `F` cannot be shared between threads safely
   --> $DIR/closure-bounds-subtype.rs:13:22
    |
 LL |     take_const_owned(f);
-   |                      ^ `F` cannot be shared between threads safely
+   |     ---------------- ^ `F` cannot be shared between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
 note: required by a bound in `take_const_owned`
   --> $DIR/closure-bounds-subtype.rs:4:50

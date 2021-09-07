@@ -2,7 +2,9 @@ error[E0277]: `<impl Foo as Foo>::Bar` cannot be sent between threads safely
   --> $DIR/issue-79843-impl-trait-with-missing-bounds-on-async-fn.rs:14:20
    |
 LL |     assert_is_send(&bar);
-   |                    ^^^^ `<impl Foo as Foo>::Bar` cannot be sent between threads safely
+   |     -------------- ^^^^ `<impl Foo as Foo>::Bar` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Send` is not implemented for `<impl Foo as Foo>::Bar`
 note: required by a bound in `assert_is_send`
@@ -19,7 +21,9 @@ error[E0277]: `<impl Foo as Foo>::Bar` cannot be sent between threads safely
   --> $DIR/issue-79843-impl-trait-with-missing-bounds-on-async-fn.rs:24:20
    |
 LL |     assert_is_send(&bar);
-   |                    ^^^^ `<impl Foo as Foo>::Bar` cannot be sent between threads safely
+   |     -------------- ^^^^ `<impl Foo as Foo>::Bar` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Send` is not implemented for `<impl Foo as Foo>::Bar`
 note: required by a bound in `assert_is_send`

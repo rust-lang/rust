@@ -2,7 +2,9 @@ error[E0277]: expected a `Fn<()>` closure, found `extern "C" fn() {f}`
   --> $DIR/extern-wrong-value-type.rs:9:11
    |
 LL |     is_fn(f);
-   |           ^ expected an `Fn<()>` closure, found `extern "C" fn() {f}`
+   |     ----- ^ expected an `Fn<()>` closure, found `extern "C" fn() {f}`
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Fn<()>` is not implemented for `extern "C" fn() {f}`
    = note: wrap the `extern "C" fn() {f}` in a closure with no arguments: `|| { /* code */ }`

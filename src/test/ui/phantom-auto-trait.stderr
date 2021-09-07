@@ -2,7 +2,9 @@ error[E0277]: `T` cannot be shared between threads safely
   --> $DIR/phantom-auto-trait.rs:21:12
    |
 LL |     is_zen(x)
-   |            ^ `T` cannot be shared between threads safely
+   |     ------ ^ `T` cannot be shared between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
 note: required because of the requirements on the impl of `Zen` for `&T`
   --> $DIR/phantom-auto-trait.rs:10:24
@@ -29,7 +31,9 @@ error[E0277]: `T` cannot be shared between threads safely
   --> $DIR/phantom-auto-trait.rs:26:12
    |
 LL |     is_zen(x)
-   |            ^ `T` cannot be shared between threads safely
+   |     ------ ^ `T` cannot be shared between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
 note: required because of the requirements on the impl of `Zen` for `&T`
   --> $DIR/phantom-auto-trait.rs:10:24

@@ -119,7 +119,9 @@ error[E0593]: function is expected to take a single 2-tuple as argument, but it 
   --> $DIR/closure-arg-count.rs:24:57
    |
 LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(foo);
-   |                                                         ^^^ expected function that takes a single 2-tuple as argument
+   |                                                     --- ^^^ expected function that takes a single 2-tuple as argument
+   |                                                     |
+   |                                                     required by a bound introduced by this call
 ...
 LL | fn foo() {}
    | -------- takes 0 arguments
@@ -130,13 +132,17 @@ error[E0593]: closure is expected to take a single 2-tuple as argument, but it t
 LL |     let bar = |i, x, y| i;
    |               --------- takes 3 distinct arguments
 LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(bar);
-   |                                                         ^^^ expected closure that takes a single 2-tuple as argument
+   |                                                     --- ^^^ expected closure that takes a single 2-tuple as argument
+   |                                                     |
+   |                                                     required by a bound introduced by this call
 
 error[E0593]: function is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
   --> $DIR/closure-arg-count.rs:29:57
    |
 LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(qux);
-   |                                                         ^^^ expected function that takes a single 2-tuple as argument
+   |                                                     --- ^^^ expected function that takes a single 2-tuple as argument
+   |                                                     |
+   |                                                     required by a bound introduced by this call
 ...
 LL | fn qux(x: usize, y: usize) {}
    | -------------------------- takes 2 distinct arguments
@@ -145,13 +151,17 @@ error[E0593]: function is expected to take 1 argument, but it takes 2 arguments
   --> $DIR/closure-arg-count.rs:32:45
    |
 LL |     let _it = vec![1, 2, 3].into_iter().map(usize::checked_add);
-   |                                             ^^^^^^^^^^^^^^^^^^ expected function that takes 1 argument
+   |                                         --- ^^^^^^^^^^^^^^^^^^ expected function that takes 1 argument
+   |                                         |
+   |                                         required by a bound introduced by this call
 
 error[E0593]: function is expected to take 0 arguments, but it takes 1 argument
   --> $DIR/closure-arg-count.rs:35:10
    |
 LL |     call(Foo);
-   |          ^^^ expected function that takes 0 arguments
+   |     ---- ^^^ expected function that takes 0 arguments
+   |     |
+   |     required by a bound introduced by this call
 ...
 LL | struct Foo(u8);
    | --------------- takes 1 argument

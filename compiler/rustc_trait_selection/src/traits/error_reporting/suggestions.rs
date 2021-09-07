@@ -2297,9 +2297,19 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::FunctionArgumentObligation {
                 arg_hir_id: _,
-                call_hir_id: _,
+                call_hir_id,
                 ref parent_code,
             } => {
+                let hir = self.tcx.hir();
+                if let Some(Node::Expr(hir::Expr {
+                    kind:
+                        hir::ExprKind::Call(hir::Expr { span, .. }, _)
+                        | hir::ExprKind::MethodCall(_, span, ..),
+                    ..
+                })) = hir.find(call_hir_id)
+                {
+                    err.span_label(*span, "required by a bound in this call");
+                }
                 ensure_sufficient_stack(|| {
                     self.note_obligation_cause_code(
                         err,

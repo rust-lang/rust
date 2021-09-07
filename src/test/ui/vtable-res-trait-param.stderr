@@ -2,7 +2,9 @@ error[E0277]: the trait bound `{integer}: TraitA` is not satisfied
   --> $DIR/vtable-res-trait-param.rs:17:18
    |
 LL |     b.gimme_an_a(y)
-   |                  ^ the trait `TraitA` is not implemented for `{integer}`
+   |       ---------- ^ the trait `TraitA` is not implemented for `{integer}`
+   |       |
+   |       required by a bound introduced by this call
 
 error: aborting due to previous error
 

@@ -29,7 +29,10 @@ LL | #[derive(Clone)]
    |          ----- in this derive macro expansion
 LL | struct C {
 LL |     x: NoCloneOrEq
-   |     ^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `NoCloneOrEq`
+   |     ^^^^^^^^^^^^^^
+   |     |
+   |     the trait `Clone` is not implemented for `NoCloneOrEq`
+   |     required by a bound introduced by this call
    |
 note: required by `clone`
   --> $SRC_DIR/core/src/clone.rs:LL:COL

@@ -4,7 +4,9 @@ error[E0277]: the trait bound `Foo: Trait` is not satisfied
 LL |       let x = || {
    |  _____________-
 LL | |         f(Foo{});
-   | |           ^^^^^ the trait `Trait` is not implemented for `Foo`
+   | |         - ^^^^^ the trait `Trait` is not implemented for `Foo`
+   | |         |
+   | |         required by a bound introduced by this call
 LL | |         let y = || {
 LL | |             f(Foo{});
 LL | |         };
@@ -23,7 +25,9 @@ error[E0277]: the trait bound `Foo: Trait` is not satisfied
 LL |           let y = || {
    |  _________________-
 LL | |             f(Foo{});
-   | |               ^^^^^ the trait `Trait` is not implemented for `Foo`
+   | |             - ^^^^^ the trait `Trait` is not implemented for `Foo`
+   | |             |
+   | |             required by a bound introduced by this call
 LL | |         };
    | |_________- in this scope
    |
@@ -42,7 +46,9 @@ LL | |         f(Foo{});
 LL | |         let y = || {
 ...  |
 LL | |             f(Foo{});
-   | |               ^^^^^ the trait `Trait` is not implemented for `Foo`
+   | |             - ^^^^^ the trait `Trait` is not implemented for `Foo`
+   | |             |
+   | |             required by a bound introduced by this call
 ...  |
 LL | |     f(Foo{});
 LL | | }
@@ -63,7 +69,9 @@ LL | |         f(Foo{});
 LL | |         let y = || {
 ...  |
 LL | |     f(Foo{});
-   | |       ^^^^^ the trait `Trait` is not implemented for `Foo`
+   | |     - ^^^^^ the trait `Trait` is not implemented for `Foo`
+   | |     |
+   | |     required by a bound introduced by this call
 LL | | }
    | |_- in this scope
    |

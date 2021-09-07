@@ -2,7 +2,9 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/issue-62529-1.rs:80:10
    |
 LL |       task(annotate(
-   |  __________^
+   |  _____----_^
+   | |     |
+   | |     required by a bound introduced by this call
 LL | |
 LL | |
 LL | |         Annotate::<RefMutFamily<usize>>::new(),
@@ -26,7 +28,9 @@ error[E0277]: the size for values of type `impl Execute` cannot be known at comp
   --> $DIR/issue-62529-1.rs:80:10
    |
 LL |       task(annotate(
-   |  __________^
+   |  _____----_^
+   | |     |
+   | |     required by a bound introduced by this call
 LL | |
 LL | |
 LL | |         Annotate::<RefMutFamily<usize>>::new(),
@@ -50,7 +54,9 @@ error[E0277]: the trait bound `impl Execute: Execute` is not satisfied
   --> $DIR/issue-62529-1.rs:80:10
    |
 LL |       task(annotate(
-   |  __________^
+   |  _____----_^
+   | |     |
+   | |     required by a bound introduced by this call
 LL | |
 LL | |
 LL | |         Annotate::<RefMutFamily<usize>>::new(),

@@ -35,7 +35,9 @@ error[E0277]: expected a `Fn<(isize,)>` closure, found `{integer}`
   --> $DIR/fn-trait-formatting.rs:19:14
    |
 LL |     needs_fn(1);
-   |              ^ expected an `Fn<(isize,)>` closure, found `{integer}`
+   |     -------- ^ expected an `Fn<(isize,)>` closure, found `{integer}`
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Fn<(isize,)>` is not implemented for `{integer}`
 note: required by a bound in `needs_fn`

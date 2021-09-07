@@ -2,10 +2,11 @@ error[E0277]: the trait bound `&String: SomeTrait` is not satisfied
   --> $DIR/issue-62530.rs:13:26
    |
 LL |     takes_type_parameter(&string);  // Error
-   |                          ^^^^^^^
-   |                          |
-   |                          the trait `SomeTrait` is not implemented for `&String`
-   |                          help: consider adding dereference here: `&*string`
+   |     -------------------- ^^^^^^^
+   |     |                    |
+   |     |                    the trait `SomeTrait` is not implemented for `&String`
+   |     |                    help: consider adding dereference here: `&*string`
+   |     required by a bound introduced by this call
    |
 note: required by a bound in `takes_type_parameter`
   --> $DIR/issue-62530.rs:4:44

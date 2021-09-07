@@ -2,10 +2,11 @@ error[E0277]: the trait bound `i32: Tr` is not satisfied
   --> $DIR/issue-84973-2.rs:11:9
    |
 LL |     foo(a);
-   |         ^
-   |         |
-   |         expected an implementor of trait `Tr`
-   |         help: consider mutably borrowing here: `&mut a`
+   |     --- ^
+   |     |   |
+   |     |   expected an implementor of trait `Tr`
+   |     |   help: consider mutably borrowing here: `&mut a`
+   |     required by a bound introduced by this call
    |
 note: required by a bound in `foo`
   --> $DIR/issue-84973-2.rs:7:11

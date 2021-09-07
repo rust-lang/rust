@@ -2,10 +2,11 @@ error[E0277]: the trait bound `&Baz: Happy` is not satisfied
   --> $DIR/multiple-0.rs:34:9
    |
 LL |     foo(&baz);
-   |         ^^^^
-   |         |
-   |         the trait `Happy` is not implemented for `&Baz`
-   |         help: consider adding dereference here: `&***baz`
+   |     --- ^^^^
+   |     |   |
+   |     |   the trait `Happy` is not implemented for `&Baz`
+   |     |   help: consider adding dereference here: `&***baz`
+   |     required by a bound introduced by this call
    |
 note: required by a bound in `foo`
   --> $DIR/multiple-0.rs:30:26

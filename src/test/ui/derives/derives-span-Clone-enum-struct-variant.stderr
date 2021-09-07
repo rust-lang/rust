@@ -5,7 +5,10 @@ LL | #[derive(Clone)]
    |          ----- in this derive macro expansion
 ...
 LL |      x: Error
-   |      ^^^^^^^^ the trait `Clone` is not implemented for `Error`
+   |      ^^^^^^^^
+   |      |
+   |      the trait `Clone` is not implemented for `Error`
+   |      required by a bound introduced by this call
    |
 note: required by `clone`
   --> $SRC_DIR/core/src/clone.rs:LL:COL

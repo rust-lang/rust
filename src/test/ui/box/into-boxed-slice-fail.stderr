@@ -2,7 +2,9 @@ error[E0277]: the size for values of type `[u8]` cannot be known at compilation 
   --> $DIR/into-boxed-slice-fail.rs:7:35
    |
 LL |     let _ = Box::into_boxed_slice(boxed_slice);
-   |                                   ^^^^^^^^^^^ doesn't have a size known at compile-time
+   |             --------------------- ^^^^^^^^^^^ doesn't have a size known at compile-time
+   |             |
+   |             required by a bound introduced by this call
    |
    = help: the trait `Sized` is not implemented for `[u8]`
 note: required by `Box::<T, A>::into_boxed_slice`
@@ -24,7 +26,9 @@ error[E0277]: the size for values of type `dyn Debug` cannot be known at compila
   --> $DIR/into-boxed-slice-fail.rs:11:35
    |
 LL |     let _ = Box::into_boxed_slice(boxed_trait);
-   |                                   ^^^^^^^^^^^ doesn't have a size known at compile-time
+   |             --------------------- ^^^^^^^^^^^ doesn't have a size known at compile-time
+   |             |
+   |             required by a bound introduced by this call
    |
    = help: the trait `Sized` is not implemented for `dyn Debug`
 note: required by `Box::<T, A>::into_boxed_slice`

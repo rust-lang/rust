@@ -2,7 +2,9 @@ error[E0277]: expected a `Fn<(isize,)>` closure, found `S`
   --> $DIR/unboxed-closures-fnmut-as-fn.rs:28:21
    |
 LL |     let x = call_it(&S, 22);
-   |                     ^^ expected an `Fn<(isize,)>` closure, found `S`
+   |             ------- ^^ expected an `Fn<(isize,)>` closure, found `S`
+   |             |
+   |             required by a bound introduced by this call
    |
    = help: the trait `Fn<(isize,)>` is not implemented for `S`
 note: required by a bound in `call_it`

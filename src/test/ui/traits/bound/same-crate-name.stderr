@@ -2,7 +2,9 @@ error[E0277]: the trait bound `Foo: main::a::Bar` is not satisfied
   --> $DIR/same-crate-name.rs:31:20
    |
 LL |         a::try_foo(foo);
-   |                    ^^^ the trait `main::a::Bar` is not implemented for `Foo`
+   |         ---------- ^^^ the trait `main::a::Bar` is not implemented for `Foo`
+   |         |
+   |         required by a bound introduced by this call
    |
 help: trait impl with same name found
   --> $DIR/auxiliary/crate_a2.rs:5:1
@@ -20,7 +22,9 @@ error[E0277]: the trait bound `DoesNotImplementTrait: main::a::Bar` is not satis
   --> $DIR/same-crate-name.rs:38:20
    |
 LL |         a::try_foo(implements_no_traits);
-   |                    ^^^^^^^^^^^^^^^^^^^^ the trait `main::a::Bar` is not implemented for `DoesNotImplementTrait`
+   |         ---------- ^^^^^^^^^^^^^^^^^^^^ the trait `main::a::Bar` is not implemented for `DoesNotImplementTrait`
+   |         |
+   |         required by a bound introduced by this call
    |
 note: required by a bound in `try_foo`
   --> $DIR/auxiliary/crate_a1.rs:3:24
@@ -32,7 +36,9 @@ error[E0277]: the trait bound `ImplementsWrongTraitConditionally<isize>: main::a
   --> $DIR/same-crate-name.rs:45:20
    |
 LL |         a::try_foo(other_variant_implements_mismatched_trait);
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `main::a::Bar` is not implemented for `ImplementsWrongTraitConditionally<isize>`
+   |         ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `main::a::Bar` is not implemented for `ImplementsWrongTraitConditionally<isize>`
+   |         |
+   |         required by a bound introduced by this call
    |
 help: trait impl with same name found
   --> $DIR/auxiliary/crate_a2.rs:13:1
@@ -50,7 +56,9 @@ error[E0277]: the trait bound `ImplementsTraitForUsize<isize>: main::a::Bar` is 
   --> $DIR/same-crate-name.rs:51:20
    |
 LL |         a::try_foo(other_variant_implements_correct_trait);
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `main::a::Bar` is not implemented for `ImplementsTraitForUsize<isize>`
+   |         ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `main::a::Bar` is not implemented for `ImplementsTraitForUsize<isize>`
+   |         |
+   |         required by a bound introduced by this call
    |
    = help: the following implementations were found:
              <ImplementsTraitForUsize<usize> as main::a::Bar>
