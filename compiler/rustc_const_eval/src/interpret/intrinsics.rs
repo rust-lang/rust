@@ -260,7 +260,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // unsigned
                         if is_add {
                             // max unsigned
-                            Scalar::from_uint(size.unsigned_max(), Size::from_bits(num_bits))
+                            Scalar::from_uint(size.unsigned_int_max(), Size::from_bits(num_bits))
                         } else {
                             // underflow to 0
                             Scalar::from_uint(0u128, Size::from_bits(num_bits))

@@ -627,7 +627,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         // At least one value is excluded.
         let valid_range = scalar_layout.valid_range;
         let WrappingRange { start, end } = valid_range;
-        let max_value = op.layout.size.unsigned_max();
+        let max_value = op.layout.size.unsigned_int_max();
         assert!(end <= max_value);
         // Determine the allowed range
         let value = self.read_scalar(op)?;

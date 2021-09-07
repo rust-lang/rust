@@ -495,7 +495,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let param_ty = ty::ParamEnv::empty().and(ty);
         let size = self.tcx.layout_of(param_ty).unwrap().size;
-        let literal = ty::Const::from_bits(self.tcx, size.unsigned_max(), param_ty);
+        let literal = ty::Const::from_bits(self.tcx, size.unsigned_int_max(), param_ty);
 
         self.literal_operand(span, literal)
     }

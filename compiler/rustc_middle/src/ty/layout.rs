@@ -514,7 +514,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let scalar_unit = |value: Primitive| {
             let size = value.size(dl);
             assert!(size.bits() <= 128);
-            Scalar { value, valid_range: WrappingRange { start: 0, end: size.unsigned_max() } }
+            Scalar { value, valid_range: WrappingRange { start: 0, end: size.unsigned_int_max() } }
         };
         let scalar = |value: Primitive| tcx.intern_layout(Layout::scalar(self, scalar_unit(value)));
 
@@ -1266,7 +1266,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     }
                 }
 
-                let tag_mask = ity.size().unsigned_max();
+                let tag_mask = ity.size().unsigned_int_max();
                 let tag = Scalar {
                     value: Int(ity, signed),
                     valid_range: WrappingRange {
