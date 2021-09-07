@@ -579,7 +579,9 @@ pub(super) fn try_unify<'tcx>(
                 && iter::zip(a_args, b_args)
                     .all(|(&an, &bn)| try_unify(tcx, a.subtree(an), b.subtree(bn)))
         }
-        (Node::Cast(a_kind, a_operand, a_ty), Node::Cast(b_kind, b_operand, b_ty)) if (a_ty == b_ty) && (a_kind == b_kind) => {
+        (Node::Cast(a_kind, a_operand, a_ty), Node::Cast(b_kind, b_operand, b_ty))
+            if (a_ty == b_ty) && (a_kind == b_kind) =>
+        {
             try_unify(tcx, a.subtree(a_operand), b.subtree(b_operand))
         }
         // use this over `_ => false` to make adding variants to `Node` less error prone
