@@ -4,4 +4,13 @@ fn main() {
     //~^ ERROR [i32]` is not an iterator [E0277]
     //~^^ ERROR known at compilation time
   }
+  struct K {
+    n: i32,
+  }
+  let mut v2 = vec![K { n: 1 }, K { n: 1 }, K { n: 1 }];
+  for i2 in v2[1..] {
+    //~^ ERROR [K]` is not an iterator [E0277]
+    //~^^ ERROR known at compilation time
+    i2.n = 2;
+  }
 }
