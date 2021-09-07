@@ -1927,7 +1927,8 @@ macro_rules! uint_impl {
         }
 
         /// Calculates the smallest value greater than or equal to `self` that
-        /// is a multiple of `rhs`. If `rhs` is negative,
+        /// is a multiple of `rhs`. Returns `None` is `rhs` is zero or the
+        /// operation would result in overflow.
         ///
         /// # Examples
         ///
