@@ -3,14 +3,13 @@ use crate::traits::specialization_graph;
 use crate::ty::fast_reject;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{Ty, TyCtxt};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::DefPathHash;
-
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_errors::ErrorReported;
 use rustc_macros::HashStable;
+use std::collections::BTreeMap;
 
 /// A trait's definition with type information.
 #[derive(HashStable)]
@@ -70,7 +69,7 @@ pub enum TraitSpecializationKind {
 pub struct TraitImpls {
     blanket_impls: Vec<DefId>,
     /// Impls indexed by their simplified self type, for fast lookup.
-    non_blanket_impls: FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>,
+    non_blanket_impls: BTreeMap<fast_reject::StableSimplifiedType, Vec<DefId>>,
 }
 
 impl TraitImpls {
@@ -182,7 +181,7 @@ impl<'tcx> TyCtxt<'tcx> {
         //
         // I think we'll cross that bridge when we get to it.
         if let Some(simp) = fast_reject::simplify_type(self, self_ty, true) {
-            if let Some(impls) = impls.non_blanket_impls.get(&simp) {
+            if let Some(impls) = impls.non_blanket_impls.get(&simp.to_stable(self)) {
                 for &impl_def_id in impls {
                     if let result @ Some(_) = f(impl_def_id) {
                         return result;
@@ -222,7 +221,7 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
                 if let Some(simplified_self_ty) = simplified_self_ty {
                     impls
                         .non_blanket_impls
-                        .entry(simplified_self_ty)
+                        .entry(simplified_self_ty.to_stable(tcx))
                         .or_default()
                         .push(impl_def_id);
                 } else {
@@ -241,7 +240,11 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
         }
 
         if let Some(simplified_self_ty) = fast_reject::simplify_type(tcx, impl_self_ty, false) {
-            impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
+            impls
+                .non_blanket_impls
+                .entry(simplified_self_ty.to_stable(tcx))
+                .or_default()
+                .push(impl_def_id);
         } else {
             impls.blanket_impls.push(impl_def_id);
         }

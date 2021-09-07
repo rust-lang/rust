@@ -2,7 +2,7 @@ use super::OverlapError;
 
 use crate::traits;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::fast_reject::{self, SimplifiedType};
+use rustc_middle::ty::fast_reject::{self, StableSimplifiedType};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 
@@ -40,7 +40,7 @@ trait ChildrenExt {
         &mut self,
         tcx: TyCtxt<'tcx>,
         impl_def_id: DefId,
-        simplified_self: Option<SimplifiedType>,
+        simplified_self: Option<StableSimplifiedType>,
     ) -> Result<Inserted, OverlapError>;
 }
 
@@ -50,7 +50,7 @@ impl ChildrenExt for Children {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         if let Some(st) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false) {
             debug!("insert_blindly: impl_def_id={:?} st={:?}", impl_def_id, st);
-            self.nonblanket_impls.entry(st).or_default().push(impl_def_id)
+            self.nonblanket_impls.entry(st.to_stable(tcx)).or_default().push(impl_def_id)
         } else {
             debug!("insert_blindly: impl_def_id={:?} st=None", impl_def_id);
             self.blanket_impls.push(impl_def_id)
@@ -65,7 +65,7 @@ impl ChildrenExt for Children {
         let vec: &mut Vec<DefId>;
         if let Some(st) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false) {
             debug!("remove_existing: impl_def_id={:?} st={:?}", impl_def_id, st);
-            vec = self.nonblanket_impls.get_mut(&st).unwrap();
+            vec = self.nonblanket_impls.get_mut(&st.to_stable(tcx)).unwrap();
         } else {
             debug!("remove_existing: impl_def_id={:?} st=None", impl_def_id);
             vec = &mut self.blanket_impls;
@@ -81,7 +81,7 @@ impl ChildrenExt for Children {
         &mut self,
         tcx: TyCtxt<'tcx>,
         impl_def_id: DefId,
-        simplified_self: Option<SimplifiedType>,
+        simplified_self: Option<StableSimplifiedType>,
     ) -> Result<Inserted, OverlapError> {
         let mut last_lint = None;
         let mut replace_children = Vec::new();
@@ -222,7 +222,7 @@ fn iter_children(children: &mut Children) -> impl Iterator<Item = DefId> + '_ {
 
 fn filtered_children(
     children: &mut Children,
-    st: SimplifiedType,
+    st: StableSimplifiedType,
 ) -> impl Iterator<Item = DefId> + '_ {
     let nonblanket = children.nonblanket_impls.entry(st).or_default().iter();
     children.blanket_impls.iter().chain(nonblanket).cloned()
@@ -304,7 +304,8 @@ impl GraphExt for Graph {
 
         let mut parent = trait_def_id;
         let mut last_lint = None;
-        let simplified = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false);
+        let simplified =
+            fast_reject::simplify_type(tcx, trait_ref.self_ty(), false).map(|st| st.to_stable(tcx));
 
         // Descend the specialization tree, where `parent` is the current parent node.
         loop {

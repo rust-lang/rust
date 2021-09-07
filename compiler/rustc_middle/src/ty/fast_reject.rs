@@ -1,7 +1,7 @@
 use crate::ich::StableHashingContext;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, DefPathHash};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
@@ -9,6 +9,7 @@ use std::mem;
 use self::SimplifiedTypeGen::*;
 
 pub type SimplifiedType = SimplifiedTypeGen<DefId>;
+pub type StableSimplifiedType = SimplifiedTypeGen<DefPathHash>;
 
 /// See `simplify_type`
 ///
@@ -104,6 +105,12 @@ pub fn simplify_type(
         ty::Opaque(def_id, _) => Some(OpaqueSimplifiedType(def_id)),
         ty::Foreign(def_id) => Some(ForeignSimplifiedType(def_id)),
         ty::Placeholder(..) | ty::Bound(..) | ty::Infer(_) | ty::Error(_) => None,
+    }
+}
+
+impl SimplifiedType {
+    pub fn to_stable(self, tcx: TyCtxt<'tcx>) -> StableSimplifiedType {
+        self.map_def(|def_id| tcx.def_path_hash(def_id))
     }
 }
 

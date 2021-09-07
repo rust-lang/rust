@@ -1,12 +1,12 @@
 use crate::ich::{self, StableHashingContext};
-use crate::ty::fast_reject::SimplifiedType;
+use crate::ty::fast_reject::StableSimplifiedType;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{self, TyCtxt};
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_span::symbol::Ident;
+use std::collections::BTreeMap;
 
 /// A per-trait graph of impls in specialization order. At the moment, this
 /// graph forms a tree rooted with the trait itself, with all other nodes
@@ -62,7 +62,7 @@ pub struct Children {
     // together *all* the impls for a trait, and are populated prior to building
     // the specialization graph.
     /// Impls of the trait.
-    pub nonblanket_impls: FxHashMap<SimplifiedType, Vec<DefId>>,
+    pub nonblanket_impls: BTreeMap<StableSimplifiedType, Vec<DefId>>,
 
     /// Blanket impls associated with the trait.
     pub blanket_impls: Vec<DefId>,
