@@ -300,6 +300,69 @@ fn test_is_sign_negative() {
 }
 
 #[test]
+fn test_next_up() {
+    let tiny = f32::from_bits(1);
+    let tiny_up = f32::from_bits(2);
+    let max_down = f32::from_bits(0x7f7f_fffe);
+    let largest_subnormal = f32::from_bits(0x007f_ffff);
+    let smallest_normal = f32::from_bits(0x0080_0000);
+
+    // Check that NaNs roundtrip.
+    let nan0 = f32::NAN.to_bits();
+    let nan1 = f32::NAN.to_bits() ^ 0x002a_aaaa;
+    let nan2 = f32::NAN.to_bits() ^ 0x0055_5555;
+    assert_eq!(f32::from_bits(nan0).next_up().to_bits(), nan0);
+    assert_eq!(f32::from_bits(nan1).next_up().to_bits(), nan1);
+    assert_eq!(f32::from_bits(nan2).next_up().to_bits(), nan2);
+
+    assert_eq!(f32::NEG_INFINITY.next_up(), f32::MIN);
+    assert_eq!(f32::MIN.next_up(), -max_down);
+    assert_eq!((-1.0 - f32::EPSILON).next_up(), -1.0);
+    assert_eq!((-smallest_normal).next_up(), -largest_subnormal);
+    assert_eq!((-tiny_up).next_up(), -tiny);
+    assert_eq!((-tiny).next_up().to_bits(), (-0.0f32).to_bits());
+    assert_eq!((-0.0f32).next_up(), tiny);
+    assert_eq!(0.0f32.next_up(), tiny);
+    assert_eq!(tiny.next_up(), tiny_up);
+    assert_eq!(largest_subnormal.next_up(), smallest_normal);
+    assert_eq!(1.0f32.next_up(), 1.0 + f32::EPSILON);
+    assert_eq!(f32::MAX.next_up(), f32::INFINITY);
+    assert_eq!(f32::INFINITY.next_up(), f32::INFINITY);
+}
+
+#[test]
+fn test_next_down() {
+    let tiny = f32::from_bits(1);
+    let tiny_up = f32::from_bits(2);
+    let max_down = f32::from_bits(0x7f7f_fffe);
+    let largest_subnormal = f32::from_bits(0x007f_ffff);
+    let smallest_normal = f32::from_bits(0x0080_0000);
+
+    // Check that NaNs roundtrip.
+    let nan0 = f32::NAN.to_bits();
+    let nan1 = f32::NAN.to_bits() ^ 0x002a_aaaa;
+    let nan2 = f32::NAN.to_bits() ^ 0x0055_5555;
+    assert_eq!(f32::from_bits(nan0).next_down().to_bits(), nan0);
+    assert_eq!(f32::from_bits(nan1).next_down().to_bits(), nan1);
+    assert_eq!(f32::from_bits(nan2).next_down().to_bits(), nan2);
+
+    assert_eq!(f32::NEG_INFINITY.next_down(), f32::NEG_INFINITY);
+    assert_eq!(f32::MIN.next_down(), f32::NEG_INFINITY);
+    assert_eq!((-max_down).next_down(), f32::MIN);
+    assert_eq!((-1.0f32).next_down(), -1.0 - f32::EPSILON);
+    assert_eq!((-largest_subnormal).next_down(), -smallest_normal);
+    assert_eq!((-tiny).next_down(), -tiny_up);
+    assert_eq!((-0.0f32).next_down(), -tiny);
+    assert_eq!((0.0f32).next_down(), -tiny);
+    assert_eq!(tiny.next_down().to_bits(), 0.0f32.to_bits());
+    assert_eq!(tiny_up.next_down(), tiny);
+    assert_eq!(smallest_normal.next_down(), largest_subnormal);
+    assert_eq!((1.0 + f32::EPSILON).next_down(), 1.0f32);
+    assert_eq!(f32::MAX.next_down(), max_down);
+    assert_eq!(f32::INFINITY.next_down(), f32::MAX);
+}
+
+#[test]
 fn test_mul_add() {
     let nan: f32 = f32::NAN;
     let inf: f32 = f32::INFINITY;
