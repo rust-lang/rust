@@ -385,7 +385,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             | ExprKind::Repeat { .. }
             | ExprKind::Array { .. }
             | ExprKind::Block { .. }
-            | ExprKind::NeverToAny { .. } // I dont think we can get this without adt construction
+            | ExprKind::NeverToAny { .. }
             | ExprKind::Tuple { .. }
             | ExprKind::Index { .. }
             | ExprKind::Field { .. }
