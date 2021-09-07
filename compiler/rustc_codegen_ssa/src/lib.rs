@@ -3,6 +3,7 @@
 #![feature(box_patterns)]
 #![feature(try_blocks)]
 #![feature(in_band_lifetimes)]
+#![feature(once_cell)]
 #![feature(nll)]
 #![feature(associated_type_bounds)]
 #![recursion_limit = "256"]

@@ -36,6 +36,7 @@ use regex::Regex;
 use tempfile::Builder as TempFileBuilder;
 
 use std::ffi::OsString;
+use std::lazy::OnceCell;
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{ascii, char, env, fmt, fs, io, mem, str};
@@ -257,6 +258,19 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     // metadata of the rlib we're generating somehow.
     for lib in codegen_results.crate_info.used_libraries.iter() {
         match lib.kind {
+            NativeLibKind::Static { bundle: None | Some(true), whole_archive: Some(true) }
+                if flavor == RlibFlavor::Normal =>
+            {
+                // Don't allow mixing +bundle with +whole_archive since an rlib may contain
+                // multiple native libs, some of which are +whole-archive and some of which are
+                // -whole-archive and it isn't clear how we can currently handle such a
+                // situation correctly.
+                // See https://github.com/rust-lang/rust/issues/88085#issuecomment-901050897
+                sess.err(
+                    "the linking modifiers `+bundle` and `+whole-archive` are not compatible \
+                        with each other when generating rlibs",
+                );
+            }
             NativeLibKind::Static { bundle: None | Some(true), .. } => {}
             NativeLibKind::Static { bundle: Some(false), .. }
             | NativeLibKind::Dylib { .. }
@@ -1255,6 +1269,7 @@ fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
     sess.target_filesearch(PathKind::Native).search_path_dirs()
 }
 
+#[derive(PartialEq)]
 enum RlibFlavor {
     Normal,
     StaticlibBase,
@@ -2034,7 +2049,7 @@ fn add_local_native_libraries(
     let relevant_libs =
         codegen_results.crate_info.used_libraries.iter().filter(|l| relevant_lib(sess, l));
 
-    let search_path = archive_search_paths(sess);
+    let search_path = OnceCell::new();
     let mut last = (NativeLibKind::Unspecified, None);
     for lib in relevant_libs {
         let name = match lib.name {
@@ -2056,7 +2071,11 @@ fn add_local_native_libraries(
             }
             NativeLibKind::Static { bundle: None | Some(true), .. }
             | NativeLibKind::Static { whole_archive: Some(true), .. } => {
-                cmd.link_whole_staticlib(name, verbatim, &search_path);
+                cmd.link_whole_staticlib(
+                    name,
+                    verbatim,
+                    &search_path.get_or_init(|| archive_search_paths(sess)),
+                );
             }
             NativeLibKind::Static { .. } => cmd.link_staticlib(name, verbatim),
             NativeLibKind::RawDylib => {
@@ -2149,6 +2168,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
     }
 
     let mut compiler_builtins = None;
+    let search_path = OnceCell::new();
 
     for &cnum in deps.iter() {
         if group_start == Some(cnum) {
@@ -2182,16 +2202,35 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
                 // external build system already has the native dependencies defined, and it
                 // will provide them to the linker itself.
                 if sess.opts.debugging_opts.link_native_libraries {
-                    // Skip if this library is the same as the last.
                     let mut last = None;
                     for lib in &codegen_results.crate_info.native_libraries[&cnum] {
-                        if lib.name.is_some()
-                            && relevant_lib(sess, lib)
-                            && matches!(lib.kind, NativeLibKind::Static { bundle: Some(false), .. })
-                            && last != lib.name
-                        {
-                            cmd.link_staticlib(lib.name.unwrap(), lib.verbatim.unwrap_or(false));
-                            last = lib.name;
+                        if !relevant_lib(sess, lib) {
+                            // Skip libraries if they are disabled by `#[link(cfg=...)]`
+                            continue;
+                        }
+
+                        // Skip if this library is the same as the last.
+                        if last == lib.name {
+                            continue;
+                        }
+
+                        if let Some(static_lib_name) = lib.name {
+                            if let NativeLibKind::Static { bundle: Some(false), whole_archive } =
+                                lib.kind
+                            {
+                                let verbatim = lib.verbatim.unwrap_or(false);
+                                if whole_archive == Some(true) {
+                                    cmd.link_whole_staticlib(
+                                        static_lib_name,
+                                        verbatim,
+                                        search_path.get_or_init(|| archive_search_paths(sess)),
+                                    );
+                                } else {
+                                    cmd.link_staticlib(static_lib_name, verbatim);
+                                }
+
+                                last = lib.name;
+                            }
                         }
                     }
                 }

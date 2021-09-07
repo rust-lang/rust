@@ -1,0 +1,6 @@
+error: the linking modifiers `+bundle` and `+whole-archive` are not compatible with each other when generating rlibs
+
+error: could not find native static library `mylib`, perhaps an -L flag is missing?
+
+error: aborting due to 2 previous errors
+
