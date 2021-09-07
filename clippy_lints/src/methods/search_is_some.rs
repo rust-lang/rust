@@ -166,7 +166,6 @@ fn get_closure_suggestion<'tcx>(
         closure_span: search_arg.span,
         next_pos: search_arg.span.lo(),
         suggestion_start: String::new(),
-        suggestion_end: String::new(),
         applicability: Applicability::MachineApplicable,
     };
 
@@ -179,7 +178,7 @@ fn get_closure_suggestion<'tcx>(
     if visitor.suggestion_start.is_empty() {
         None
     } else {
-        Some(format!("{}{}", visitor.suggestion_start, visitor.suggestion_end))
+        Some(visitor.finish())
     }
 }
 
@@ -188,8 +187,15 @@ struct DerefDelegate<'a, 'tcx> {
     closure_span: Span,
     next_pos: BytePos,
     suggestion_start: String,
-    suggestion_end: String,
     applicability: Applicability,
+}
+
+impl DerefDelegate<'_, 'tcx> {
+    pub fn finish(&mut self) -> String {
+        let end_span = Span::new(self.next_pos, self.closure_span.hi(), self.closure_span.ctxt());
+        let end_snip = snippet_with_applicability(self.cx, end_span, "..", &mut self.applicability);
+        format!("{}{}", self.suggestion_start, end_snip)
+    }
 }
 
 impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
@@ -202,8 +208,6 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
             let span = map.span(cmt.hir_id);
             let start_span = Span::new(self.next_pos, span.lo(), span.ctxt());
             let start_snip = snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
-            let end_span = Span::new(span.hi(), self.closure_span.hi(), span.ctxt());
-            let end_snip = snippet_with_applicability(self.cx, end_span, "..", &mut self.applicability);
 
             if cmt.place.projections.is_empty() {
                 // handle item without any projection, that needs an explicit borrowing
@@ -225,7 +229,6 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                                         snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
 
                                     self.suggestion_start.push_str(&format!("{}&{}", start_snip, ident_str));
-                                    self.suggestion_end = end_snip.to_string();
                                     self.next_pos = span.hi();
                                 } else {
                                     self.applicability = Applicability::Unspecified;
@@ -258,7 +261,6 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
 
                 self.suggestion_start
                     .push_str(&format!("{}{}", start_snip, replacement_str));
-                self.suggestion_end = end_snip.to_string();
             }
             self.next_pos = span.hi();
         }
