@@ -1,3 +1,4 @@
+// check-pass
 #![feature(generic_const_exprs, adt_const_params, const_trait_impl)]
 #![allow(incomplete_features)]
 
