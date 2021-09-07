@@ -6,8 +6,7 @@ use std::fs::File;
 use std::io::{self, Read, Seek};
 use std::path::{Path, PathBuf};
 
-use rustc_codegen_ssa::back::archive::{find_library, ArchiveBuilder};
-use rustc_codegen_ssa::METADATA_FILENAME;
+use rustc_codegen_ssa::back::archive::ArchiveBuilder;
 use rustc_session::Session;
 
 use object::read::archive::ArchiveFile;
@@ -22,7 +21,6 @@ enum ArchiveEntry {
 pub(crate) struct ArArchiveBuilder<'a> {
     sess: &'a Session,
     dst: PathBuf,
-    lib_search_paths: Vec<PathBuf>,
     use_gnu_style_archive: bool,
     no_builtin_ranlib: bool,
 
@@ -34,8 +32,6 @@ pub(crate) struct ArArchiveBuilder<'a> {
 
 impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     fn new(sess: &'a Session, output: &Path, input: Option<&Path>) -> Self {
-        use rustc_codegen_ssa::back::link::archive_search_paths;
-
         let (src_archives, entries) = if let Some(input) = input {
             let read_cache = ReadCache::new(File::open(input).unwrap());
             let archive = ArchiveFile::parse(&read_cache).unwrap();
@@ -57,7 +53,6 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         ArArchiveBuilder {
             sess,
             dst: output.to_path_buf(),
-            lib_search_paths: archive_search_paths(sess),
             use_gnu_style_archive: sess.target.archive_format == "gnu",
             // FIXME fix builtin ranlib on macOS
             no_builtin_ranlib: sess.target.is_like_osx,
@@ -87,40 +82,29 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         ));
     }
 
-    fn add_native_library(&mut self, name: rustc_span::symbol::Symbol, verbatim: bool) {
-        let location = find_library(name, verbatim, &self.lib_search_paths, self.sess);
-        self.add_archive(location.clone(), |_| false).unwrap_or_else(|e| {
-            panic!("failed to add native library {}: {}", location.to_string_lossy(), e);
-        });
-    }
+    fn add_archive<F>(&mut self, archive_path: &Path, mut skip: F) -> std::io::Result<()>
+    where
+        F: FnMut(&str) -> bool + 'static,
+    {
+        let read_cache = ReadCache::new(std::fs::File::open(&archive_path)?);
+        let archive = ArchiveFile::parse(&read_cache).unwrap();
+        let archive_index = self.src_archives.len();
 
-    fn add_rlib(
-        &mut self,
-        rlib: &Path,
-        name: &str,
-        lto: bool,
-        skip_objects: bool,
-    ) -> io::Result<()> {
-        self.add_archive(rlib.to_owned(), move |fname: &str| {
-            // Ignore metadata files, no matter the name.
-            if fname == METADATA_FILENAME {
-                return true;
+        for entry in archive.members() {
+            let entry = entry.map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+            let file_name = String::from_utf8(entry.name().to_vec())
+                .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+            if !skip(&file_name) {
+                self.entries.push((
+                    file_name.into_bytes(),
+                    ArchiveEntry::FromArchive { archive_index, file_range: entry.file_range() },
+                ));
             }
+        }
 
-            // Don't include Rust objects if LTO is enabled
-            if lto && fname.starts_with(name) && fname.ends_with(".o") {
-                return true;
-            }
+        self.src_archives.push(read_cache.into_inner());
+        Ok(())
 
-            // Otherwise if this is *not* a rust object and we're skipping
-            // objects then skip this file
-            if skip_objects && (!fname.starts_with(name) || !fname.ends_with(".o")) {
-                return true;
-            }
-
-            // ok, don't skip this
-            false
-        })
     }
 
     fn update_symbols(&mut self) {}
@@ -263,31 +247,5 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         _tmpdir: &rustc_data_structures::temp_dir::MaybeTempDir,
     ) {
         bug!("injecting dll imports is not supported");
-    }
-}
-
-impl<'a> ArArchiveBuilder<'a> {
-    fn add_archive<F>(&mut self, archive_path: PathBuf, mut skip: F) -> io::Result<()>
-    where
-        F: FnMut(&str) -> bool,
-    {
-        let read_cache = ReadCache::new(std::fs::File::open(&archive_path)?);
-        let archive = ArchiveFile::parse(&read_cache).unwrap();
-        let archive_index = self.src_archives.len();
-
-        for entry in archive.members() {
-            let entry = entry.map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
-            let file_name = String::from_utf8(entry.name().to_vec())
-                .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
-            if !skip(&file_name) {
-                self.entries.push((
-                    file_name.into_bytes(),
-                    ArchiveEntry::FromArchive { archive_index, file_range: entry.file_range() },
-                ));
-            }
-        }
-
-        self.src_archives.push(read_cache.into_inner());
-        Ok(())
     }
 }
