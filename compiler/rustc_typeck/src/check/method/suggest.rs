@@ -434,7 +434,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                         if let Some(span) =
-                            tcx.sess.confused_type_with_std_module.borrow().get(&span)
+                            tcx.resolutions(()).confused_type_with_std_module.get(&span)
                         {
                             if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(*span) {
                                 err.span_suggestion(
