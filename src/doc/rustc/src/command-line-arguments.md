@@ -345,19 +345,6 @@ replacement is purely textual, with no consideration of the current system's
 pathname syntax. For example `--remap-path-prefix foo=bar` will match
 `foo/lib.rs` but not `./foo/lib.rs`.
 
-<a id="option-remap-cwd-prefix"></a>
-## `--remap-cwd-prefix`: remap paths under the cwd in output
-
-Remap all absolute paths that are rooted under the current working directory to
-be under the given value instead. The given value may be absolute or relative,
-or empty. This switch takes precidence over `--remap-path-prefix` in case they
-would both match a given path.
-
-This flag allows the command line to be universally reproducible, such that the
-same execution will work on all machines, regardless of build environment.
-
-This is an unstable option. Use `-Z remap-cwd-prefix=val` to specify a value.
-
 <a id="option-json"></a>
 ## `--json`: configure json messages printed by the compiler
 
