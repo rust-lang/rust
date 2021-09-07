@@ -167,5 +167,21 @@ LL |     let my_sq2 = 1.4142;
    |
    = help: consider using the constant directly
 
-error: aborting due to 21 previous errors
+error: approximate value of `f{32, 64}::consts::TAU` found
+  --> $DIR/approx_const.rs:61:18
+   |
+LL |     let my_tau = 6.2832;
+   |                  ^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::TAU` found
+  --> $DIR/approx_const.rs:62:22
+   |
+LL |     let almost_tau = 6.28;
+   |                      ^^^^
+   |
+   = help: consider using the constant directly
+
+error: aborting due to 23 previous errors
 
