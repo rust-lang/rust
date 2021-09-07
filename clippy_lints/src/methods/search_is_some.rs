@@ -41,6 +41,7 @@ pub(super) fn check<'tcx>(
         if search_snippet.lines().count() <= 1 {
             // suggest `any(|x| ..)` instead of `any(|&x| ..)` for `find(|&x| ..).is_some()`
             // suggest `any(|..| *..)` instead of `any(|..| **..)` for `find(|..| **..).is_some()`
+            let mut applicability = Applicability::MachineApplicable;
             let any_search_snippet = if_chain! {
                 if search_method == "find";
                 if let hir::ExprKind::Closure(_, _, body_id, ..) = search_arg.kind;
@@ -52,8 +53,12 @@ pub(super) fn check<'tcx>(
                     } else if let PatKind::Binding(..) = strip_pat_refs(closure_arg.pat).kind {
                         // `find()` provides a reference to the item, but `any` does not,
                         // so we should fix item usages for suggestion
-                        get_closure_suggestion(cx, search_arg, closure_body)
-                            .or_else(|| Some(search_snippet.to_string()))
+                        if let Some(closure_sugg) = get_closure_suggestion(cx, search_arg, closure_body) {
+                            applicability = closure_sugg.applicability;
+                            Some(closure_sugg.suggestion)
+                        } else {
+                            Some(search_snippet.to_string())
+                        }
                     } else {
                         None
                     }
@@ -73,7 +78,7 @@ pub(super) fn check<'tcx>(
                         "any({})",
                         any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
                     ),
-                    Applicability::MachineApplicable,
+                    applicability,
                 );
             } else {
                 let iter = snippet(cx, search_recv.span, "..");
@@ -88,7 +93,7 @@ pub(super) fn check<'tcx>(
                         iter,
                         any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
                     ),
-                    Applicability::MachineApplicable,
+                    applicability,
                 );
             }
         } else {
@@ -153,6 +158,11 @@ pub(super) fn check<'tcx>(
     }
 }
 
+struct ClosureSugg {
+    applicability: Applicability,
+    suggestion: String,
+}
+
 // Build suggestion gradually by handling closure arg specific usages,
 // such as explicit deref and borrowing cases.
 // Returns `None` if no such use cases have been triggered in closure body
@@ -160,7 +170,7 @@ fn get_closure_suggestion<'tcx>(
     cx: &LateContext<'_>,
     search_arg: &'tcx hir::Expr<'_>,
     closure_body: &hir::Body<'_>,
-) -> Option<String> {
+) -> Option<ClosureSugg> {
     let mut visitor = DerefDelegate {
         cx,
         closure_span: search_arg.span,
@@ -178,7 +188,10 @@ fn get_closure_suggestion<'tcx>(
     if visitor.suggestion_start.is_empty() {
         None
     } else {
-        Some(visitor.finish())
+        Some(ClosureSugg {
+            applicability: visitor.applicability,
+            suggestion: visitor.finish(),
+        })
     }
 }
 
