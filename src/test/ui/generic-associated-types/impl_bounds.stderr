@@ -16,15 +16,6 @@ LL |     type B<'a, 'b> where 'a: 'b;
 LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found
 
-error[E0276]: impl has stricter requirements than trait
-  --> $DIR/impl_bounds.rs:17:5
-   |
-LL |     type B<'a, 'b> where 'a: 'b;
-   |     ---------------------------- definition of `B` from trait
-...
-LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `'b: 'a`
-
 error[E0478]: lifetime bound not satisfied
   --> $DIR/impl_bounds.rs:17:5
    |
@@ -43,7 +34,7 @@ LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
    |                ^^
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/impl_bounds.rs:21:5
+  --> $DIR/impl_bounds.rs:20:5
    |
 LL |     type C where Self: Copy = String;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `T`
@@ -68,7 +59,7 @@ LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
    |       +++++++++++++++++++
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/impl_bounds.rs:23:5
+  --> $DIR/impl_bounds.rs:22:5
    |
 LL |     fn d() where Self: Copy {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `T`
@@ -92,7 +83,7 @@ help: consider restricting type parameter `T`
 LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
    |       +++++++++++++++++++
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0276, E0277, E0310, E0478.
-For more information about an error, try `rustc --explain E0276`.
+Some errors have detailed explanations: E0277, E0310, E0478.
+For more information about an error, try `rustc --explain E0277`.

@@ -7,15 +7,5 @@ LL |     type Assoc<'a, 'b>;
 LL |     type Assoc<'a, 'b> where 'a: 'b = ();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found
 
-error[E0276]: impl has stricter requirements than trait
-  --> $DIR/missing-where-clause-on-trait.rs:9:5
-   |
-LL |     type Assoc<'a, 'b>;
-   |     ------------------- definition of `Assoc` from trait
-...
-LL |     type Assoc<'a, 'b> where 'a: 'b = ();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `'a: 'b`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0276`.

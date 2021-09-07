@@ -55,6 +55,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             } = origin
             {
                 self.emit_associated_type_err(span, item_name, impl_item_def_id, trait_item_def_id);
+                return Some(ErrorReported);
             }
         }
         None
