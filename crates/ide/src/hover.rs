@@ -963,7 +963,7 @@ fn main() { let foo_test = fo$0o(); }
             "#]],
         );
 
-        // use literal `crate` in path
+        // Use literal `crate` in path
         check(
             r#"
 pub struct X;
@@ -983,6 +983,28 @@ fn main() { f$0oo(); }
             fn foo() -> crate::X
             ```
         "#]],
+        );
+
+        // Check `super` in path
+        check(
+            r#"
+pub struct X;
+
+mod m { pub fn foo() -> super::X { super::X } }
+
+fn main() { m::f$0oo(); }
+        "#,
+            expect![[r#"
+                *foo*
+
+                ```rust
+                test::m
+                ```
+
+                ```rust
+                pub fn foo() -> super::X
+                ```
+            "#]],
         );
     }
 
