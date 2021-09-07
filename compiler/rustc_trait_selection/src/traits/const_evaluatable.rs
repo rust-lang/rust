@@ -6,7 +6,7 @@
 //! this is not as easy.
 //!
 //! In this case we try to build an abstract representation of this constant using
-//! `mir_abstract_const` which can then be checked for structural equality with other
+//! `thir_abstract_const` which can then be checked for structural equality with other
 //! generic constants mentioned in the `caller_bounds` of the current environment.
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorReported;
@@ -14,9 +14,9 @@ use rustc_hir::def::DefKind;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir;
-use rustc_middle::mir::abstract_const::{Node, NodeId, NotConstEvaluatable};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir;
+use rustc_middle::thir::abstract_const::{Node, NodeId, NotConstEvaluatable};
 use rustc_middle::ty::subst::{Subst, SubstsRef};
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_session::lint;
@@ -197,7 +197,7 @@ impl<'tcx> AbstractConst<'tcx> {
         tcx: TyCtxt<'tcx>,
         uv: ty::Unevaluated<'tcx, ()>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorReported> {
-        let inner = tcx.mir_abstract_const_opt_const_arg(uv.def)?;
+        let inner = tcx.thir_abstract_const_opt_const_arg(uv.def)?;
         debug!("AbstractConst::new({:?}) = {:?}", uv, inner);
         Ok(inner.map(|inner| AbstractConst { inner, substs: uv.substs(tcx) }))
     }
@@ -421,10 +421,10 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
 }
 
 /// Builds an abstract const, do not use this directly, but use `AbstractConst::new` instead.
-pub(super) fn mir_abstract_const<'tcx>(
+pub(super) fn thir_abstract_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
-) -> Result<Option<&'tcx [mir::abstract_const::Node<'tcx>]>, ErrorReported> {
+) -> Result<Option<&'tcx [thir::abstract_const::Node<'tcx>]>, ErrorReported> {
     if tcx.features().generic_const_exprs {
         match tcx.def_kind(def.did) {
             // FIXME(generic_const_exprs): We currently only do this for anonymous constants,
@@ -435,7 +435,7 @@ pub(super) fn mir_abstract_const<'tcx>(
             DefKind::AnonConst => (),
             _ => return Ok(None),
         }
-        
+
         let body = tcx.thir_body(def);
         if body.0.borrow().exprs.is_empty() {
             // type error in constant, there is no thir

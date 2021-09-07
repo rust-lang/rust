@@ -48,11 +48,11 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
     match def {
         ty::WithOptConstParam { did, const_param_did: Some(const_param_did) } => {
             tcx.ensure().thir_check_unsafety_for_const_arg((did, const_param_did));
-            tcx.ensure().mir_abstract_const_of_const_arg((did, const_param_did));
+            tcx.ensure().thir_abstract_const_of_const_arg((did, const_param_did));
         }
         ty::WithOptConstParam { did, const_param_did: None } => {
             tcx.ensure().thir_check_unsafety(did);
-            tcx.ensure().mir_abstract_const(did);
+            tcx.ensure().thir_abstract_const(did);
         }
     }
 
