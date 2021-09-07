@@ -1141,7 +1141,7 @@ impl HirDisplay for Path {
                 write!(f, ">")?;
             }
             (_, PathKind::Plain) => {}
-            (_, PathKind::Abs) => write!(f, "::")?,
+            (_, PathKind::Abs) => write!(f, "")?,
             (_, PathKind::Crate) => write!(f, "crate")?,
             (_, PathKind::Super(0)) => write!(f, "self")?,
             (_, PathKind::Super(n)) => {
@@ -1154,7 +1154,7 @@ impl HirDisplay for Path {
         }
 
         for (seg_idx, segment) in self.segments().iter().enumerate() {
-            if seg_idx != 0 || matches!(self.kind(), PathKind::Crate) {
+            if !matches!(self.kind(), PathKind::Plain) || seg_idx > 0 {
                 write!(f, "::")?;
             }
             write!(f, "{}", segment.name)?;
