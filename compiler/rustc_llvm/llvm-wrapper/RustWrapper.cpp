@@ -203,20 +203,59 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
   report_fatal_error("bad AttributeKind");
 }
 
+template<typename T> static inline void AddAttribute(T *t, unsigned Index, Attribute Attr) {
+#if LLVM_VERSION_LT(14, 0)
+  t->addAttribute(Index, Attr);
+#else
+  // TODO(durin42): we should probably surface the explicit functions to Rust
+  // instead of this switch statement?
+  switch (Index) {
+    case AttributeList::ReturnIndex:
+      t->addRetAttr(Attr);
+      break;
+    case AttributeList::FunctionIndex:
+      t->addFnAttr(Attr);
+      break;
+    default:
+      t->addParamAttr(Index-AttributeList::FirstArgIndex, Attr);
+  }
+#endif
+}
+
 extern "C" void LLVMRustAddCallSiteAttribute(LLVMValueRef Instr, unsigned Index,
                                              LLVMRustAttribute RustAttr) {
   CallBase *Call = unwrap<CallBase>(Instr);
   Attribute Attr = Attribute::get(Call->getContext(), fromRust(RustAttr));
-  Call->addAttribute(Index, Attr);
+  AddAttribute(Call, Index, Attr);
 }
 
 extern "C" void LLVMRustAddCallSiteAttrString(LLVMValueRef Instr, unsigned Index,
                                               const char *Name) {
   CallBase *Call = unwrap<CallBase>(Instr);
   Attribute Attr = Attribute::get(Call->getContext(), Name);
-  Call->addAttribute(Index, Attr);
+  AddAttribute(Call, Index, Attr);
 }
 
+static inline void AddCallAttributes(CallBase *Call, unsigned Index, const AttrBuilder& B) {
+  AttributeList Attrs = Call->getAttributes();
+#if LLVM_VERSION_LT(14, 0)
+  Attrs = Attrs.addAttributes(Call->getContext(), Index, B);
+#else
+  // TODO(durin42): we should probably surface the explicit functions to Rust
+  // instead of this switch statement?
+  switch (Index) {
+    case AttributeList::ReturnIndex:
+      Attrs = Attrs.addRetAttributes(Call->getContext(), B);
+      break;
+    case AttributeList::FunctionIndex:
+      Attrs = Attrs.addFnAttributes(Call->getContext(), B);
+      break;
+    default:
+      Attrs = Attrs.addParamAttributes(Call->getContext(), Index-AttributeList::FirstArgIndex, B);
+  }
+#endif
+  Call->setAttributes(Attrs);
+}
 
 extern "C" void LLVMRustAddAlignmentCallSiteAttr(LLVMValueRef Instr,
                                                  unsigned Index,
@@ -224,8 +263,7 @@ extern "C" void LLVMRustAddAlignmentCallSiteAttr(LLVMValueRef Instr,
   CallBase *Call = unwrap<CallBase>(Instr);
   AttrBuilder B;
   B.addAlignmentAttr(Bytes);
-  Call->setAttributes(Call->getAttributes().addAttributes(
-      Call->getContext(), Index, B));
+  AddCallAttributes(Call, Index, B);
 }
 
 extern "C" void LLVMRustAddDereferenceableCallSiteAttr(LLVMValueRef Instr,
@@ -234,8 +272,7 @@ extern "C" void LLVMRustAddDereferenceableCallSiteAttr(LLVMValueRef Instr,
   CallBase *Call = unwrap<CallBase>(Instr);
   AttrBuilder B;
   B.addDereferenceableAttr(Bytes);
-  Call->setAttributes(Call->getAttributes().addAttributes(
-      Call->getContext(), Index, B));
+  AddCallAttributes(Call, Index, B);
 }
 
 extern "C" void LLVMRustAddDereferenceableOrNullCallSiteAttr(LLVMValueRef Instr,
@@ -244,15 +281,14 @@ extern "C" void LLVMRustAddDereferenceableOrNullCallSiteAttr(LLVMValueRef Instr,
   CallBase *Call = unwrap<CallBase>(Instr);
   AttrBuilder B;
   B.addDereferenceableOrNullAttr(Bytes);
-  Call->setAttributes(Call->getAttributes().addAttributes(
-      Call->getContext(), Index, B));
+  AddCallAttributes(Call, Index, B);
 }
 
 extern "C" void LLVMRustAddByValCallSiteAttr(LLVMValueRef Instr, unsigned Index,
                                              LLVMTypeRef Ty) {
   CallBase *Call = unwrap<CallBase>(Instr);
   Attribute Attr = Attribute::getWithByValType(Call->getContext(), unwrap(Ty));
-  Call->addAttribute(Index, Attr);
+  AddAttribute(Call, Index, Attr);
 }
 
 extern "C" void LLVMRustAddStructRetCallSiteAttr(LLVMValueRef Instr, unsigned Index,
@@ -263,28 +299,28 @@ extern "C" void LLVMRustAddStructRetCallSiteAttr(LLVMValueRef Instr, unsigned In
 #else
   Attribute Attr = Attribute::get(Call->getContext(), Attribute::StructRet);
 #endif
-  Call->addAttribute(Index, Attr);
+  AddAttribute(Call, Index, Attr);
 }
 
 extern "C" void LLVMRustAddFunctionAttribute(LLVMValueRef Fn, unsigned Index,
                                              LLVMRustAttribute RustAttr) {
   Function *A = unwrap<Function>(Fn);
   Attribute Attr = Attribute::get(A->getContext(), fromRust(RustAttr));
-  A->addAttribute(Index, Attr);
+  AddAttribute(A, Index, Attr);
 }
 
 extern "C" void LLVMRustAddAlignmentAttr(LLVMValueRef Fn,
                                          unsigned Index,
                                          uint32_t Bytes) {
   Function *A = unwrap<Function>(Fn);
-  A->addAttribute(Index, Attribute::getWithAlignment(
+  AddAttribute(A, Index, Attribute::getWithAlignment(
       A->getContext(), llvm::Align(Bytes)));
 }
 
 extern "C" void LLVMRustAddDereferenceableAttr(LLVMValueRef Fn, unsigned Index,
                                                uint64_t Bytes) {
   Function *A = unwrap<Function>(Fn);
-  A->addAttribute(Index, Attribute::getWithDereferenceableBytes(A->getContext(),
+  AddAttribute(A, Index, Attribute::getWithDereferenceableBytes(A->getContext(),
                                                                 Bytes));
 }
 
@@ -292,7 +328,7 @@ extern "C" void LLVMRustAddDereferenceableOrNullAttr(LLVMValueRef Fn,
                                                      unsigned Index,
                                                      uint64_t Bytes) {
   Function *A = unwrap<Function>(Fn);
-  A->addAttribute(Index, Attribute::getWithDereferenceableOrNullBytes(
+  AddAttribute(A, Index, Attribute::getWithDereferenceableOrNullBytes(
       A->getContext(), Bytes));
 }
 
@@ -300,7 +336,7 @@ extern "C" void LLVMRustAddByValAttr(LLVMValueRef Fn, unsigned Index,
                                      LLVMTypeRef Ty) {
   Function *F = unwrap<Function>(Fn);
   Attribute Attr = Attribute::getWithByValType(F->getContext(), unwrap(Ty));
-  F->addAttribute(Index, Attr);
+  AddAttribute(F, Index, Attr);
 }
 
 extern "C" void LLVMRustAddStructRetAttr(LLVMValueRef Fn, unsigned Index,
@@ -311,7 +347,7 @@ extern "C" void LLVMRustAddStructRetAttr(LLVMValueRef Fn, unsigned Index,
 #else
   Attribute Attr = Attribute::get(F->getContext(), Attribute::StructRet);
 #endif
-  F->addAttribute(Index, Attr);
+  AddAttribute(F, Index, Attr);
 }
 
 extern "C" void LLVMRustAddFunctionAttrStringValue(LLVMValueRef Fn,
@@ -319,7 +355,7 @@ extern "C" void LLVMRustAddFunctionAttrStringValue(LLVMValueRef Fn,
                                                    const char *Name,
                                                    const char *Value) {
   Function *F = unwrap<Function>(Fn);
-  F->addAttribute(Index, Attribute::get(
+  AddAttribute(F, Index, Attribute::get(
       F->getContext(), StringRef(Name), StringRef(Value)));
 }
 
@@ -330,7 +366,23 @@ extern "C" void LLVMRustRemoveFunctionAttributes(LLVMValueRef Fn,
   Attribute Attr = Attribute::get(F->getContext(), fromRust(RustAttr));
   AttrBuilder B(Attr);
   auto PAL = F->getAttributes();
-  auto PALNew = PAL.removeAttributes(F->getContext(), Index, B);
+  AttributeList PALNew;
+#if LLVM_VERSION_LT(14, 0)
+  PALNew = PAL.removeAttributes(F->getContext(), Index, B);
+#else
+  // TODO(durin42): we should probably surface the explicit functions to Rust
+  // instead of this switch statement?
+  switch (Index) {
+    case AttributeList::ReturnIndex:
+      PALNew = PAL.removeRetAttributes(F->getContext(), B);
+      break;
+    case AttributeList::FunctionIndex:
+      PALNew = PAL.removeFnAttributes(F->getContext(), B);
+      break;
+    default:
+      PALNew = PAL.removeParamAttributes(F->getContext(), Index-AttributeList::FirstArgIndex, B);
+  }
+#endif
   F->setAttributes(PALNew);
 }
 
