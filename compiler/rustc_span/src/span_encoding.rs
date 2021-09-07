@@ -4,7 +4,7 @@
 // The encoding format for inline spans were obtained by optimizing over crates in rustc/libstd.
 // See https://internals.rust-lang.org/t/rfc-compiler-refactoring-spans/1357/28
 
-use crate::def_id::LocalDefId;
+use crate::def_id::{DefIndex, LocalDefId};
 use crate::hygiene::SyntaxContext;
 use crate::SPAN_TRACK;
 use crate::{BytePos, SpanData};
@@ -13,8 +13,8 @@ use rustc_data_structures::fx::FxIndexSet;
 
 /// A compressed span.
 ///
-/// Whereas [`SpanData`] is 12 bytes, which is a bit too big to stick everywhere, `Span`
-/// is a form that only takes up 8 bytes, with less space for the length and
+/// Whereas [`SpanData`] is 16 bytes, which is a bit too big to stick everywhere, `Span`
+/// is a form that only takes up 8 bytes, with less space for the length, parent and
 /// context. The vast majority (99.9%+) of `SpanData` instances will fit within
 /// those 8 bytes; any `SpanData` whose fields don't fit into a `Span` are
 /// stored in a separate interner table, and the `Span` will index into that
@@ -25,10 +25,16 @@ use rustc_data_structures::fx::FxIndexSet;
 /// slower because only 80--90% of spans could be stored inline (even less in
 /// very large crates) and so the interner was used a lot more.
 ///
-/// Inline (compressed) format:
+/// Inline (compressed) format with no parent:
 /// - `span.base_or_index == span_data.lo`
 /// - `span.len_or_tag == len == span_data.hi - span_data.lo` (must be `<= MAX_LEN`)
 /// - `span.ctxt == span_data.ctxt` (must be `<= MAX_CTXT`)
+///
+/// Inline (compressed) format with root context:
+/// - `span.base_or_index == span_data.lo`
+/// - `span.len_or_tag == len == span_data.hi - span_data.lo` (must be `<= MAX_LEN`)
+/// - `span.len_or_tag` has top bit (`PARENT_MASK`) set
+/// - `span.ctxt == span_data.parent` (must be `<= MAX_CTXT`)
 ///
 /// Interned format:
 /// - `span.base_or_index == index` (indexes into the interner table)
@@ -76,7 +82,8 @@ pub struct Span {
     ctxt_or_zero: u16,
 }
 
-const LEN_TAG: u16 = 0b1000_0000_0000_0000;
+const LEN_TAG: u16 = 0b1111_1111_1111_1111;
+const PARENT_MASK: u16 = 0b1000_0000_0000_0000;
 const MAX_LEN: u32 = 0b0111_1111_1111_1111;
 const MAX_CTXT: u32 = 0b1111_1111_1111_1111;
 
@@ -97,15 +104,27 @@ impl Span {
 
         let (base, len, ctxt2) = (lo.0, hi.0 - lo.0, ctxt.as_u32());
 
-        if len <= MAX_LEN && ctxt2 <= MAX_CTXT && parent.is_none() {
-            // Inline format.
-            Span { base_or_index: base, len_or_tag: len as u16, ctxt_or_zero: ctxt2 as u16 }
-        } else {
-            // Interned format.
-            let index =
-                with_span_interner(|interner| interner.intern(&SpanData { lo, hi, ctxt, parent }));
-            Span { base_or_index: index, len_or_tag: LEN_TAG, ctxt_or_zero: 0 }
+        if len <= MAX_LEN && ctxt2 <= MAX_CTXT {
+            let len_or_tag = len as u16;
+            debug_assert_eq!(len_or_tag & PARENT_MASK, 0);
+            if let Some(parent) = parent {
+                // Inline format with parent.
+                let len_or_tag = len_or_tag | PARENT_MASK;
+                let parent = parent.local_def_index.as_u32();
+                if ctxt2 == SyntaxContext::root().as_u32() && parent <= MAX_CTXT {
+                    return Span { base_or_index: base, len_or_tag, ctxt_or_zero: parent as u16 };
+                }
+            } else if ctxt2 <= MAX_CTXT {
+                // Inline format.
+                let ctxt_or_zero = ctxt2 as u16;
+                return Span { base_or_index: base, len_or_tag, ctxt_or_zero };
+            }
         }
+
+        // Interned format.
+        let index =
+            with_span_interner(|interner| interner.intern(&SpanData { lo, hi, ctxt, parent }));
+        Span { base_or_index: index, len_or_tag: LEN_TAG, ctxt_or_zero: 0 }
     }
 
     #[inline]
@@ -123,12 +142,23 @@ impl Span {
     pub fn data_untracked(self) -> SpanData {
         if self.len_or_tag != LEN_TAG {
             // Inline format.
-            debug_assert!(self.len_or_tag as u32 <= MAX_LEN);
-            SpanData {
-                lo: BytePos(self.base_or_index),
-                hi: BytePos(self.base_or_index + self.len_or_tag as u32),
-                ctxt: SyntaxContext::from_u32(self.ctxt_or_zero as u32),
-                parent: None,
+            if self.len_or_tag & PARENT_MASK == 0 {
+                SpanData {
+                    lo: BytePos(self.base_or_index),
+                    hi: BytePos(self.base_or_index + self.len_or_tag as u32),
+                    ctxt: SyntaxContext::from_u32(self.ctxt_or_zero as u32),
+                    parent: None,
+                }
+            } else {
+                let len = self.len_or_tag & !PARENT_MASK;
+                let parent =
+                    LocalDefId { local_def_index: DefIndex::from_u32(self.ctxt_or_zero as u32) };
+                SpanData {
+                    lo: BytePos(self.base_or_index),
+                    hi: BytePos(self.base_or_index + len as u32),
+                    ctxt: SyntaxContext::root(),
+                    parent: Some(parent),
+                }
             }
         } else {
             // Interned format.
