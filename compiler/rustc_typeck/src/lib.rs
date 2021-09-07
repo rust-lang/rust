@@ -335,16 +335,20 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             // checking trait fulfillment, not this here. I'm not sure why it
             // works in the example in `fn test()` given in #88609? This also
             // probably isn't the best way to do this.
-            let normalized = infcx.partially_normalize_associated_types_in(
-                cause.clone(),
+            let InferOk { value: norm_return_ty, obligations } = infcx
+                .partially_normalize_associated_types_in(
+                    cause.clone(),
+                    ty::ParamEnv::empty(),
+                    return_ty,
+                );
+            fulfillment_cx.register_predicate_obligations(&infcx, obligations);
+            fulfillment_cx.register_bound(
+                &infcx,
                 ty::ParamEnv::empty(),
-                return_ty,
+                norm_return_ty,
+                term_id,
+                cause,
             );
-            let new_ty = normalized.value;
-            for obligation in normalized.obligations {
-                fulfillment_cx.register_predicate_obligation(&infcx, obligation);
-            }
-            fulfillment_cx.register_bound(&infcx, ty::ParamEnv::empty(), new_ty, term_id, cause);
             if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
                 infcx.report_fulfillment_errors(&err, None, false);
                 error = true;
