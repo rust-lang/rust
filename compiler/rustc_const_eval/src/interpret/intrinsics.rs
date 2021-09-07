@@ -5,6 +5,7 @@
 use std::convert::TryFrom;
 
 use rustc_hir::def_id::DefId;
+use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::{
     self,
     interpret::{ConstValue, GlobalId, InterpResult, Scalar},
@@ -166,7 +167,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let ty = match intrinsic_name {
                     sym::pref_align_of | sym::variant_count => self.tcx.types.usize,
                     sym::needs_drop => self.tcx.types.bool,
-                    sym::type_id => self.tcx.types.u64,
+                    sym::type_id => self
+                        .tcx
+                        .type_of(self.tcx.require_lang_item(LangItem::TypeId, Some(self.tcx.span))),
                     sym::type_name => self.tcx.mk_static_str(),
                     _ => bug!("already checked for nullary intrinsics"),
                 };

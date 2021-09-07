@@ -9,6 +9,7 @@ use crate::require_same_types;
 
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
+use rustc_hir::lang_items::LangItem;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, TyCtxt};
@@ -120,18 +121,17 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             .copied(),
     );
     let mk_va_list_ty = |mutbl| {
-        tcx.lang_items().va_list().map(|did| {
-            let region = tcx.mk_region(ty::ReLateBound(
-                ty::INNERMOST,
-                ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(0) },
-            ));
-            let env_region = tcx.mk_region(ty::ReLateBound(
-                ty::INNERMOST,
-                ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrEnv },
-            ));
-            let va_list_ty = tcx.type_of(did).subst(tcx, &[region.into()]);
-            (tcx.mk_ref(env_region, ty::TypeAndMut { ty: va_list_ty, mutbl }), va_list_ty)
-        })
+        let did = tcx.require_lang_item(LangItem::VaList, Some(it.span));
+        let region = tcx.mk_region(ty::ReLateBound(
+            ty::INNERMOST,
+            ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(0) },
+        ));
+        let env_region = tcx.mk_region(ty::ReLateBound(
+            ty::INNERMOST,
+            ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrEnv },
+        ));
+        let va_list_ty = tcx.type_of(did).subst(tcx, &[region.into()]);
+        (tcx.mk_ref(env_region, ty::TypeAndMut { ty: va_list_ty, mutbl }), va_list_ty)
     };
 
     let (n_tps, n_lts, inputs, output, unsafety) = if name_str.starts_with("atomic_") {
@@ -191,7 +191,9 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::needs_drop => (1, Vec::new(), tcx.types.bool),
 
             sym::type_name => (1, Vec::new(), tcx.mk_static_str()),
-            sym::type_id => (1, Vec::new(), tcx.types.u64),
+            sym::type_id => {
+                (1, Vec::new(), tcx.type_of(tcx.require_lang_item(LangItem::TypeId, Some(it.span))))
+            }
             sym::offset | sym::arith_offset => (
                 1,
                 vec![
@@ -366,23 +368,21 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 )
             }
 
-            sym::va_start | sym::va_end => match mk_va_list_ty(hir::Mutability::Mut) {
-                Some((va_list_ref_ty, _)) => (0, vec![va_list_ref_ty], tcx.mk_unit()),
-                None => bug!("`va_list` language item needed for C-variadic intrinsics"),
-            },
+            sym::va_start | sym::va_end => {
+                let (va_list_ref_ty, _) = mk_va_list_ty(hir::Mutability::Mut);
+                (0, vec![va_list_ref_ty], tcx.mk_unit())
+            }
 
-            sym::va_copy => match mk_va_list_ty(hir::Mutability::Not) {
-                Some((va_list_ref_ty, va_list_ty)) => {
-                    let va_list_ptr_ty = tcx.mk_mut_ptr(va_list_ty);
-                    (0, vec![va_list_ptr_ty, va_list_ref_ty], tcx.mk_unit())
-                }
-                None => bug!("`va_list` language item needed for C-variadic intrinsics"),
-            },
+            sym::va_copy => {
+                let (va_list_ref_ty, va_list_ty) = mk_va_list_ty(hir::Mutability::Not);
+                let va_list_ptr_ty = tcx.mk_mut_ptr(va_list_ty);
+                (0, vec![va_list_ptr_ty, va_list_ref_ty], tcx.mk_unit())
+            }
 
-            sym::va_arg => match mk_va_list_ty(hir::Mutability::Mut) {
-                Some((va_list_ref_ty, _)) => (1, vec![va_list_ref_ty], param(0)),
-                None => bug!("`va_list` language item needed for C-variadic intrinsics"),
-            },
+            sym::va_arg => {
+                let (va_list_ref_ty, _) = mk_va_list_ty(hir::Mutability::Mut);
+                (1, vec![va_list_ref_ty], param(0))
+            }
 
             sym::nontemporal_store => (1, vec![tcx.mk_mut_ptr(param(0)), param(0)], tcx.mk_unit()),
 

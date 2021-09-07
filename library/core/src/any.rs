@@ -594,6 +594,7 @@ impl dyn Any + Send + Sync {
 /// While `TypeId` implements `Hash`, `PartialOrd`, and `Ord`, it is worth
 /// noting that the hashes and ordering will vary between Rust releases. Beware
 /// of relying on them inside of your code!
+#[cfg_attr(not(bootstrap), lang = "TypeId")]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
@@ -620,7 +621,14 @@ impl TypeId {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
-        TypeId { t: intrinsics::type_id::<T>() }
+        #[cfg(bootstrap)]
+        {
+            TypeId { t: intrinsics::type_id::<T>() }
+        }
+        #[cfg(not(bootstrap))]
+        {
+            intrinsics::type_id::<T>()
+        }
     }
 }
 

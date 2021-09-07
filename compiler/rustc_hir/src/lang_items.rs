@@ -217,7 +217,7 @@ language_item_table! {
     IndexMut(Op),            sym::index_mut,           index_mut_trait,            Target::Trait,          GenericRequirement::Exact(1);
 
     UnsafeCell,              sym::unsafe_cell,         unsafe_cell_type,           Target::Struct,         GenericRequirement::None;
-    VaList,                  sym::va_list,             va_list,                    Target::Struct,         GenericRequirement::None;
+    VaList,                  sym::va_list,             va_list_type,               Target::Struct,         GenericRequirement::None;
 
     Deref,                   sym::deref,               deref_trait,                Target::Trait,          GenericRequirement::Exact(0);
     DerefMut,                sym::deref_mut,           deref_mut_trait,            Target::Trait,          GenericRequirement::Exact(0);
@@ -326,6 +326,8 @@ language_item_table! {
     Range,                   sym::Range,               range_struct,               Target::Struct,         GenericRequirement::None;
     RangeToInclusive,        sym::RangeToInclusive,    range_to_inclusive_struct,  Target::Struct,         GenericRequirement::None;
     RangeTo,                 sym::RangeTo,             range_to_struct,            Target::Struct,         GenericRequirement::None;
+
+    TypeId,                  sym::TypeId,              type_id_struct,             Target::Struct,         GenericRequirement::Exact(0);
 }
 
 pub enum GenericRequirement {

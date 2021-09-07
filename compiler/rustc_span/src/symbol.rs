@@ -266,6 +266,7 @@ symbols! {
         Ty,
         TyCtxt,
         TyKind,
+        TypeId,
         Unknown,
         UnsafeArg,
         Vec,
