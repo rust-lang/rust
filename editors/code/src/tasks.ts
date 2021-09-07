@@ -109,26 +109,14 @@ export async function buildCargoTask(
         exec = new vscode.ProcessExecution(fullCommand[0], fullCommand.slice(1), definition);
     }
 
-    if (scope) {
-        return new vscode.Task(
-            definition,
-            scope,
-            name,
-            TASK_SOURCE,
-            exec,
-            ['$rustc']
-        );
-    }
-    else {
-        // if the original task did not provide a scope retain the original lack of scope
-        return new vscode.Task(
-            definition,
-            name,
-            TASK_SOURCE,
-            exec,
-            ['$rustc']
-        );
-    }
+    return new vscode.Task(
+        definition,
+        scope ?? vscode.TaskScope.Workspace,
+        name,
+        TASK_SOURCE,
+        exec,
+        ['$rustc']
+    );
 }
 
 export function activateTaskProvider(config: Config): vscode.Disposable {
