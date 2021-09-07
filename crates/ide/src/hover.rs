@@ -3520,15 +3520,15 @@ fn foo() {
             r#"
 //- minicore: sized
 struct Foo<T>(T);
-trait Copy {}
-trait Clone {}
-impl<T: Copy + Clone> Foo<T$0> where T: Sized {}
+trait TraitA {}
+trait TraitB {}
+impl<T: TraitA + TraitB> Foo<T$0> where T: Sized {}
 "#,
             expect![[r#"
                 *T*
 
                 ```rust
-                T: Copy + Clone
+                T: TraitA + TraitB
                 ```
             "#]],
         );
@@ -3562,20 +3562,35 @@ impl<T: 'static> Foo<T$0> {}
     }
 
     #[test]
-    fn hover_type_param_not_sized() {
+    fn hover_type_param_sized_bounds() {
+        // implicit `: Sized` bound
         check(
             r#"
 //- minicore: sized
+trait Trait {}
 struct Foo<T>(T);
-trait Copy {}
-trait Clone {}
-impl<T: Copy + Clone> Foo<T$0> where T: ?Sized {}
+impl<T: Trait> Foo<T$0> {}
 "#,
             expect![[r#"
                 *T*
 
                 ```rust
-                T: Copy + Clone + ?Sized
+                T: Trait
+                ```
+            "#]],
+        );
+        check(
+            r#"
+//- minicore: sized
+trait Trait {}
+struct Foo<T>(T);
+impl<T: Trait + ?Sized> Foo<T$0> {}
+"#,
+            expect![[r#"
+                *T*
+
+                ```rust
+                T: Trait + ?Sized
                 ```
             "#]],
         );
