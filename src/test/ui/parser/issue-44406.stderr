@@ -9,17 +9,25 @@ help: you can escape reserved keywords to use them as identifiers
 LL |     foo!(r#true);
    |          ~~~~~~
 
-error: expected type, found keyword `true`
-  --> $DIR/issue-44406.rs:8:10
+error: invalid `struct` delimiters or `fn` call arguments
+  --> $DIR/issue-44406.rs:3:9
    |
 LL |         bar(baz: $rest)
-   |                - help: try using a semicolon: `;`
+   |         ^^^^^^^^^^^^^^^
 ...
 LL |     foo!(true);
-   |          ^^^^ expected type
+   |     ----------- in this macro invocation
    |
-   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
-   = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: if `bar` is a struct, use braces as delimiters
+   |
+LL |         bar {  }
+   |             ~
+help: if `bar` is a function, use the arguments directly
+   |
+LL -         bar(baz: $rest)
+LL +         bar(true);
+   | 
 
 error: aborting due to 2 previous errors
 

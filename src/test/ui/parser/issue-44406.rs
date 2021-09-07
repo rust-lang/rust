@@ -1,10 +1,10 @@
 macro_rules! foo {
     ($rest: tt) => {
-        bar(baz: $rest)
+        bar(baz: $rest) //~ ERROR invalid `struct` delimiters or `fn` call arguments
     }
 }
 
 fn main() {
-    foo!(true); //~ ERROR expected type, found keyword
+    foo!(true);
     //~^ ERROR expected identifier, found keyword
 }
