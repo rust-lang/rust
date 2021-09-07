@@ -20,7 +20,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
-use std::collections::BTreeSet;
+use std::collections::VecDeque;
 
 pub mod blocks;
 mod collector;
@@ -543,28 +543,28 @@ impl<'hir> Map<'hir> {
     {
         let module = self.tcx.hir_module_items(module);
 
-        for id in &module.items {
+        for id in module.items.iter() {
             visitor.visit_item(self.item(*id));
         }
 
-        for id in &module.trait_items {
+        for id in module.trait_items.iter() {
             visitor.visit_trait_item(self.trait_item(*id));
         }
 
-        for id in &module.impl_items {
+        for id in module.impl_items.iter() {
             visitor.visit_impl_item(self.impl_item(*id));
         }
 
-        for id in &module.foreign_items {
+        for id in module.foreign_items.iter() {
             visitor.visit_foreign_item(self.foreign_item(*id));
         }
     }
 
     pub fn for_each_module(&self, f: impl Fn(LocalDefId)) {
-        let mut queue = BTreeSet::default();
-        queue.insert(CRATE_DEF_ID);
+        let mut queue = VecDeque::new();
+        queue.push_back(CRATE_DEF_ID);
 
-        while let Some(id) = queue.pop_first() {
+        while let Some(id) = queue.pop_front() {
             f(id);
             let items = self.tcx.hir_module_items(id);
             queue.extend(items.submodules.iter().copied())
@@ -581,7 +581,7 @@ impl<'hir> Map<'hir> {
         {
             (*f)(module);
             let items = tcx.hir_module_items(module);
-            par_iter(&items.submodules).for_each(|&sm| par_iter_submodules(tcx, sm, f));
+            par_iter(&items.submodules[..]).for_each(|&sm| par_iter_submodules(tcx, sm, f));
         }
     }
 
@@ -1149,11 +1149,11 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
 pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalDefId) -> ModuleItems {
     let mut collector = ModuleCollector {
         tcx,
-        submodules: BTreeSet::default(),
-        items: BTreeSet::default(),
-        trait_items: BTreeSet::default(),
-        impl_items: BTreeSet::default(),
-        foreign_items: BTreeSet::default(),
+        submodules: Vec::default(),
+        items: Vec::default(),
+        trait_items: Vec::default(),
+        impl_items: Vec::default(),
+        foreign_items: Vec::default(),
     };
 
     let (hir_mod, span, hir_id) = tcx.hir().get_module(module_id);
@@ -1161,15 +1161,21 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalDefId) -> Module
 
     let ModuleCollector { submodules, items, trait_items, impl_items, foreign_items, .. } =
         collector;
-    return ModuleItems { submodules, items, trait_items, impl_items, foreign_items };
+    return ModuleItems {
+        submodules: submodules.into_boxed_slice(),
+        items: items.into_boxed_slice(),
+        trait_items: trait_items.into_boxed_slice(),
+        impl_items: impl_items.into_boxed_slice(),
+        foreign_items: foreign_items.into_boxed_slice(),
+    };
 
     struct ModuleCollector<'tcx> {
         tcx: TyCtxt<'tcx>,
-        submodules: BTreeSet<LocalDefId>,
-        items: BTreeSet<ItemId>,
-        trait_items: BTreeSet<TraitItemId>,
-        impl_items: BTreeSet<ImplItemId>,
-        foreign_items: BTreeSet<ForeignItemId>,
+        submodules: Vec<LocalDefId>,
+        items: Vec<ItemId>,
+        trait_items: Vec<TraitItemId>,
+        impl_items: Vec<ImplItemId>,
+        foreign_items: Vec<ForeignItemId>,
     }
 
     impl<'hir> Visitor<'hir> for ModuleCollector<'hir> {
@@ -1180,27 +1186,27 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalDefId) -> Module
         }
 
         fn visit_item(&mut self, item: &'hir Item<'hir>) {
-            self.items.insert(item.item_id());
+            self.items.push(item.item_id());
             if let ItemKind::Mod(..) = item.kind {
                 // If this declares another module, do not recurse inside it.
-                self.submodules.insert(item.def_id);
+                self.submodules.push(item.def_id);
             } else {
                 intravisit::walk_item(self, item)
             }
         }
 
         fn visit_trait_item(&mut self, item: &'hir TraitItem<'hir>) {
-            self.trait_items.insert(item.trait_item_id());
+            self.trait_items.push(item.trait_item_id());
             intravisit::walk_trait_item(self, item)
         }
 
         fn visit_impl_item(&mut self, item: &'hir ImplItem<'hir>) {
-            self.impl_items.insert(item.impl_item_id());
+            self.impl_items.push(item.impl_item_id());
             intravisit::walk_impl_item(self, item)
         }
 
         fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
-            self.foreign_items.insert(item.foreign_item_id());
+            self.foreign_items.push(item.foreign_item_id());
             intravisit::walk_foreign_item(self, item)
         }
     }

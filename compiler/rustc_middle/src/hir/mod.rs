@@ -17,7 +17,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::*;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::DUMMY_SP;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 /// Result of HIR indexing.
 #[derive(Debug)]
@@ -121,15 +121,15 @@ impl<'tcx> AttributeMap<'tcx> {
     }
 }
 
-#[derive(Default, Encodable, Debug, HashStable)]
+/// Gather the LocalDefId for each item-like within a module, including items contained within
+/// bodies.  The Ids are in visitor order.  This is used to partition a pass between modules.
+#[derive(Debug, HashStable)]
 pub struct ModuleItems {
-    // Use BTreeSets here so items are in the same order as in the
-    // list of all items in Crate
-    submodules: BTreeSet<LocalDefId>,
-    items: BTreeSet<ItemId>,
-    trait_items: BTreeSet<TraitItemId>,
-    impl_items: BTreeSet<ImplItemId>,
-    foreign_items: BTreeSet<ForeignItemId>,
+    submodules: Box<[LocalDefId]>,
+    items: Box<[ItemId]>,
+    trait_items: Box<[TraitItemId]>,
+    impl_items: Box<[ImplItemId]>,
+    foreign_items: Box<[ForeignItemId]>,
 }
 
 impl<'tcx> TyCtxt<'tcx> {
