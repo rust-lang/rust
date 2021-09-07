@@ -167,6 +167,7 @@ fn get_closure_suggestion<'tcx>(
         next_pos: None,
         suggestion_start: String::new(),
         suggestion_end: String::new(),
+        applicability: Applicability::MachineApplicable,
     };
 
     let fn_def_id = cx.tcx.hir().local_def_id(search_arg.hir_id);
@@ -188,6 +189,7 @@ struct DerefDelegate<'a, 'tcx> {
     next_pos: Option<BytePos>,
     suggestion_start: String,
     suggestion_end: String,
+    applicability: Applicability,
 }
 
 impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
@@ -203,9 +205,9 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
             } else {
                 self.closure_span.until(span)
             };
-            let start_snip = snippet(self.cx, start_span, "..");
+            let start_snip = snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
             let end_span = Span::new(span.hi(), self.closure_span.hi(), span.ctxt());
-            let end_snip = snippet(self.cx, end_span, "..");
+            let end_snip = snippet_with_applicability(self.cx, end_span, "..", &mut self.applicability);
 
             if cmt.place.projections.is_empty() {
                 // handle item without any projection, that needs an explicit borrowing
@@ -227,11 +229,14 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                                     } else {
                                         self.closure_span.until(span)
                                     };
-                                    let start_snip = snippet(self.cx, start_span, "..");
+                                    let start_snip =
+                                        snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
 
                                     self.suggestion_start.push_str(&format!("{}&{}", start_snip, ident_str));
                                     self.suggestion_end = end_snip.to_string();
                                     self.next_pos = Some(span.hi());
+                                } else {
+                                    self.applicability = Applicability::Unspecified;
                                 }
                             }
                             return;
