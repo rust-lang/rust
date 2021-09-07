@@ -337,7 +337,6 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             // `<T as Trait>::ASSOC` as well as `12`
             &ExprKind::Literal { literal, .. } => self.nodes.push(Node::Leaf(literal)),
 
-            // FIXME(generic_const_exprs): Handle `from_hir_call` field
             ExprKind::Call { fun, args,  .. } => {
                 let fun = self.recurse_build(*fun)?;
 
