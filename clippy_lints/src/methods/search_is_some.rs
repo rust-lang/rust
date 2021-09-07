@@ -164,7 +164,7 @@ fn get_closure_suggestion<'tcx>(
     let mut visitor = DerefDelegate {
         cx,
         closure_span: search_arg.span,
-        next_pos: None,
+        next_pos: search_arg.span.lo(),
         suggestion_start: String::new(),
         suggestion_end: String::new(),
         applicability: Applicability::MachineApplicable,
@@ -186,7 +186,7 @@ fn get_closure_suggestion<'tcx>(
 struct DerefDelegate<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     closure_span: Span,
-    next_pos: Option<BytePos>,
+    next_pos: BytePos,
     suggestion_start: String,
     suggestion_end: String,
     applicability: Applicability,
@@ -200,11 +200,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
             let map = self.cx.tcx.hir();
             let ident_str = map.name(id).to_string();
             let span = map.span(cmt.hir_id);
-            let start_span = if let Some(next_pos) = self.next_pos {
-                Span::new(next_pos, span.lo(), span.ctxt())
-            } else {
-                self.closure_span.until(span)
-            };
+            let start_span = Span::new(self.next_pos, span.lo(), span.ctxt());
             let start_snip = snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
             let end_span = Span::new(span.hi(), self.closure_span.hi(), span.ctxt());
             let end_snip = snippet_with_applicability(self.cx, end_span, "..", &mut self.applicability);
@@ -224,17 +220,13 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                             for arg in &args_to_handle {
                                 let arg_ty_kind = self.cx.typeck_results().expr_ty(arg).kind();
                                 if matches!(arg_ty_kind, ty::Ref(_, _, Mutability::Not)) {
-                                    let start_span = if let Some(next_pos) = self.next_pos {
-                                        Span::new(next_pos, span.lo(), span.ctxt())
-                                    } else {
-                                        self.closure_span.until(span)
-                                    };
+                                    let start_span = Span::new(self.next_pos, span.lo(), span.ctxt());
                                     let start_snip =
                                         snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
 
                                     self.suggestion_start.push_str(&format!("{}&{}", start_snip, ident_str));
                                     self.suggestion_end = end_snip.to_string();
-                                    self.next_pos = Some(span.hi());
+                                    self.next_pos = span.hi();
                                 } else {
                                     self.applicability = Applicability::Unspecified;
                                 }
@@ -268,7 +260,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                     .push_str(&format!("{}{}", start_snip, replacement_str));
                 self.suggestion_end = end_snip.to_string();
             }
-            self.next_pos = Some(span.hi());
+            self.next_pos = span.hi();
         }
     }
 
