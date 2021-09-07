@@ -196,7 +196,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// Note that this function does not return care whether
     /// `vid` has been unified with something else or not.
     pub fn var_diverges(&self, vid: ty::TyVid) -> Diverging {
-        self.storage.values.get(vid.index as usize).diverging
+        self.storage.values.get(vid.index()).diverging
     }
 
     /// Returns the origin that was given when `vid` was created.
@@ -204,7 +204,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// Note that this function does not return care whether
     /// `vid` has been unified with something else or not.
     pub fn var_origin(&self, vid: ty::TyVid) -> &TypeVariableOrigin {
-        &self.storage.values.get(vid.index as usize).origin
+        &self.storage.values.get(vid.as_usize()).origin
     }
 
     /// Records that `a == b`, depending on `dir`.
@@ -269,7 +269,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         assert_eq!(eq_key.vid, sub_key);
 
         let index = self.values().push(TypeVariableData { origin, diverging });
-        assert_eq!(eq_key.vid.index, index as u32);
+        assert_eq!(eq_key.vid.as_u32(), index as u32);
 
         debug!(
             "new_var(index={:?}, universe={:?}, diverging={:?}, origin={:?}",
@@ -357,11 +357,11 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         &mut self,
         value_count: usize,
     ) -> (Range<TyVid>, Vec<TypeVariableOrigin>) {
-        let range = TyVid { index: value_count as u32 }..TyVid { index: self.num_vars() as u32 };
+        let range = TyVid::from_usize(value_count)..TyVid::from_usize(self.num_vars());
         (
             range.start..range.end,
-            (range.start.index..range.end.index)
-                .map(|index| self.storage.values.get(index as usize).origin)
+            (range.start.as_usize()..range.end.as_usize())
+                .map(|index| self.storage.values.get(index).origin)
                 .collect(),
         )
     }
@@ -371,7 +371,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     pub fn unsolved_variables(&mut self) -> Vec<ty::TyVid> {
         (0..self.storage.values.len())
             .filter_map(|i| {
-                let vid = ty::TyVid { index: i as u32 };
+                let vid = ty::TyVid::from_usize(i);
                 match self.probe(vid) {
                     TypeVariableValue::Unknown { .. } => Some(vid),
                     TypeVariableValue::Known { .. } => None,
@@ -424,10 +424,10 @@ impl<'tcx> ut::UnifyKey for TyVidEqKey<'tcx> {
     type Value = TypeVariableValue<'tcx>;
     #[inline(always)]
     fn index(&self) -> u32 {
-        self.vid.index
+        self.vid.as_u32()
     }
     fn from_index(i: u32) -> Self {
-        TyVidEqKey::from(ty::TyVid { index: i })
+        TyVidEqKey::from(ty::TyVid::from_u32(i))
     }
     fn tag() -> &'static str {
         "TyVidEqKey"

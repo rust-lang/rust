@@ -742,7 +742,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let projection_ty = pred.skip_binder().projection_ty;
 
                                 let substs_with_infer_self = tcx.mk_substs(
-                                    iter::once(tcx.mk_ty_var(ty::TyVid { index: 0 }).into())
+                                    iter::once(tcx.mk_ty_var(ty::TyVid::from_u32(0)).into())
                                         .chain(projection_ty.substs.iter().skip(1)),
                                 );
 
