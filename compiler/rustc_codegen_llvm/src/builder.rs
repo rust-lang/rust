@@ -464,7 +464,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         ) {
             match scalar.value {
                 abi::Int(..) => {
-                    if !scalar.is_always_valid_for(bx) {
+                    if !scalar.is_always_valid(bx) {
                         bx.range_metadata(load, scalar.valid_range);
                     }
                 }

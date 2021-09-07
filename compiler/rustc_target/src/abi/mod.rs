@@ -830,7 +830,7 @@ impl Scalar {
 
     /// Returns `true` if all possible numbers are valid, i.e `valid_range` covers the whole layout
     #[inline]
-    pub fn is_always_valid_for<C: HasDataLayout>(&self, cx: &C) -> bool {
+    pub fn is_always_valid<C: HasDataLayout>(&self, cx: &C) -> bool {
         self.valid_range.is_full_for(self.value.size(cx))
     }
 }
@@ -1280,7 +1280,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 s.valid_range.contains(0)
             } else {
                 // The range must include all values.
-                s.is_always_valid_for(cx)
+                s.is_always_valid(cx)
             }
         };
 

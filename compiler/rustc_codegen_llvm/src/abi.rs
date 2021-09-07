@@ -541,7 +541,7 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             // become 0..0 when the type becomes i1, which would be rejected
             // by the LLVM verifier.
             if let Int(..) = scalar.value {
-                if !scalar.is_bool() && !scalar.is_always_valid_for(bx) {
+                if !scalar.is_bool() && !scalar.is_always_valid(bx) {
                     bx.range_metadata(callsite, scalar.valid_range);
                 }
             }

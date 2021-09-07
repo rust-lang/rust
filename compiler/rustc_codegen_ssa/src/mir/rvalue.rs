@@ -308,7 +308,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 // then `i1 1` (i.e., E::B) is effectively `i8 -1`.
                                 signed = !scalar.is_bool() && s;
 
-                                if !scalar.is_always_valid_for(bx.cx())
+                                if !scalar.is_always_valid(bx.cx())
                                     && scalar.valid_range.end >= scalar.valid_range.start
                                 {
                                     // We want `table[e as usize ± k]` to not
