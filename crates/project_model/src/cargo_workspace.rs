@@ -296,19 +296,19 @@ impl CargoWorkspace {
         let mut packages = Arena::default();
         let mut targets = Arena::default();
 
-        let ws_members = &meta.workspace_members;
-
         meta.packages.sort_by(|a, b| a.id.cmp(&b.id));
         for meta_pkg in &meta.packages {
             let cargo_metadata::Package {
                 id, edition, name, manifest_path, version, metadata, ..
             } = meta_pkg;
             let meta = from_value::<PackageMetadata>(metadata.clone()).unwrap_or_default();
-            let is_member = ws_members.contains(id);
             let edition = edition.parse::<Edition>().unwrap_or_else(|err| {
                 tracing::error!("Failed to parse edition {}", err);
                 Edition::CURRENT
             });
+            // We treat packages without source as "local" packages. That includes all members of
+            // the current workspace, as well as any path dependency outside the workspace.
+            let is_member = meta_pkg.source.is_none();
 
             let pkg = packages.alloc(PackageData {
                 id: id.repr.clone(),
