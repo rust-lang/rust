@@ -207,18 +207,7 @@ template<typename T> static inline void AddAttribute(T *t, unsigned Index, Attri
 #if LLVM_VERSION_LT(14, 0)
   t->addAttribute(Index, Attr);
 #else
-  // TODO(durin42): we should probably surface the explicit functions to Rust
-  // instead of this switch statement?
-  switch (Index) {
-    case AttributeList::ReturnIndex:
-      t->addRetAttr(Attr);
-      break;
-    case AttributeList::FunctionIndex:
-      t->addFnAttr(Attr);
-      break;
-    default:
-      t->addParamAttr(Index-AttributeList::FirstArgIndex, Attr);
-  }
+  t->addAttributeAtIndex(Index, Attr);
 #endif
 }
 
@@ -241,18 +230,7 @@ static inline void AddCallAttributes(CallBase *Call, unsigned Index, const AttrB
 #if LLVM_VERSION_LT(14, 0)
   Attrs = Attrs.addAttributes(Call->getContext(), Index, B);
 #else
-  // TODO(durin42): we should probably surface the explicit functions to Rust
-  // instead of this switch statement?
-  switch (Index) {
-    case AttributeList::ReturnIndex:
-      Attrs = Attrs.addRetAttributes(Call->getContext(), B);
-      break;
-    case AttributeList::FunctionIndex:
-      Attrs = Attrs.addFnAttributes(Call->getContext(), B);
-      break;
-    default:
-      Attrs = Attrs.addParamAttributes(Call->getContext(), Index-AttributeList::FirstArgIndex, B);
-  }
+  Attrs = Attrs.addAttributesAtIndex(Call->getContext(), Index, B);
 #endif
   Call->setAttributes(Attrs);
 }
@@ -370,18 +348,7 @@ extern "C" void LLVMRustRemoveFunctionAttributes(LLVMValueRef Fn,
 #if LLVM_VERSION_LT(14, 0)
   PALNew = PAL.removeAttributes(F->getContext(), Index, B);
 #else
-  // TODO(durin42): we should probably surface the explicit functions to Rust
-  // instead of this switch statement?
-  switch (Index) {
-    case AttributeList::ReturnIndex:
-      PALNew = PAL.removeRetAttributes(F->getContext(), B);
-      break;
-    case AttributeList::FunctionIndex:
-      PALNew = PAL.removeFnAttributes(F->getContext(), B);
-      break;
-    default:
-      PALNew = PAL.removeParamAttributes(F->getContext(), Index-AttributeList::FirstArgIndex, B);
-  }
+  PALNew = PAL.removeAttributesAtIndex(F->getContext(), Index, B);
 #endif
   F->setAttributes(PALNew);
 }
