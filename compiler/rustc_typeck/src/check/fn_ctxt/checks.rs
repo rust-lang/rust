@@ -354,8 +354,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     continue;
                 }
 
-                debug!("checking the argument");
                 let formal_ty = formal_tys[i];
+                debug!("checking argument {}: {:?} = {:?}", i, arg, formal_ty);
 
                 // The special-cased logic below has three functions:
                 // 1. Provide as good of an expected type as possible.
@@ -367,6 +367,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //    to, which is `expected_ty` if `rvalue_hint` returns an
                 //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
                 let coerce_ty = expected.only_has_type(self).unwrap_or(formal_ty);
+
+                // Cause selection errors caused by resolving a single argument to point at the
+                // argument and not the call. This is otherwise redundant with the `demand_coerce`
+                // call immediately after, but it lets us customize the span pointed to in the
+                // fulfillment error to be more accurate.
+                let _ = self.resolve_vars_with_obligations_and_mutate_fulfillment(
+                    coerce_ty,
+                    |errors| {
+                        // This is not coming from a macro or a `derive`.
+                        if sp.desugaring_kind().is_none()
+                        && !arg.span.from_expansion()
+                        // Do not change the spans of `async fn`s.
+                        && !matches!(
+                            expr.kind,
+                            hir::ExprKind::Call(
+                                hir::Expr {
+                                    kind: hir::ExprKind::Path(hir::QPath::LangItem(_, _)),
+                                    ..
+                                },
+                                _
+                            )
+                        ) {
+                            for error in errors {
+                                error.obligation.cause.make_mut().span = arg.span;
+                                error.points_at_arg_span = true;
+                            }
+                        }
+                    },
+                );
+
                 // We're processing function arguments so we definitely want to use
                 // two-phase borrows.
                 self.demand_coerce(&arg, checked_ty, coerce_ty, None, AllowTwoPhase::Yes);

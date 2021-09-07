@@ -83,7 +83,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// version (resolve_vars_if_possible), this version will
     /// also select obligations if it seems useful, in an effort
     /// to get more type information.
-    pub(in super::super) fn resolve_vars_with_obligations(&self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub(in super::super) fn resolve_vars_with_obligations(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.resolve_vars_with_obligations_and_mutate_fulfillment(ty, |_| {})
+    }
+
+    pub(in super::super) fn resolve_vars_with_obligations_and_mutate_fulfillment(
+        &self,
+        mut ty: Ty<'tcx>,
+        mutate_fulfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
+    ) -> Ty<'tcx> {
         debug!("resolve_vars_with_obligations(ty={:?})", ty);
 
         // No Infer()? Nothing needs doing.
@@ -103,7 +111,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // possible. This can help substantially when there are
         // indirect dependencies that don't seem worth tracking
         // precisely.
-        self.select_obligations_where_possible(false, |_| {});
+        self.select_obligations_where_possible(false, mutate_fulfillment_errors);
         ty = self.resolve_vars_if_possible(ty);
 
         debug!("resolve_vars_with_obligations: ty={:?}", ty);
