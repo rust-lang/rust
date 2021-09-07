@@ -422,9 +422,23 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_fn_decl(&self, fn_decl: &FnDecl, self_semantic: SelfSemantic) {
+        self.check_decl_num_args(fn_decl);
         self.check_decl_cvaradic_pos(fn_decl);
         self.check_decl_attrs(fn_decl);
         self.check_decl_self_param(fn_decl, self_semantic);
+    }
+
+    /// Emits fatal error if function declaration has more than `u16::MAX` arguments
+    /// Error is fatal to prevent errors during typechecking
+    fn check_decl_num_args(&self, fn_decl: &FnDecl) {
+        let max_num_args: usize = u16::MAX.into();
+        if fn_decl.inputs.len() > max_num_args {
+            let Param { span, .. } = fn_decl.inputs[0];
+            self.err_handler().span_fatal(
+                span,
+                &format!("function can not have more than {} arguments", max_num_args),
+            );
+        }
     }
 
     fn check_decl_cvaradic_pos(&self, fn_decl: &FnDecl) {
