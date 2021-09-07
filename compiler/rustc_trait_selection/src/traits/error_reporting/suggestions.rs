@@ -491,7 +491,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let code = if let ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } =
             &obligation.cause.code
         {
-            std::rc::Rc::clone(parent_code)
+            parent_code.clone()
         } else {
             return;
         };
@@ -687,7 +687,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             if let (ObligationCauseCode::FunctionArgumentObligation { parent_code, .. }, false) =
                 (&obligation.cause.code, points_at_for_iter)
             {
-                std::rc::Rc::clone(parent_code)
+                parent_code.clone()
             } else {
                 return false;
             };
