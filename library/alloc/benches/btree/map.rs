@@ -54,6 +54,50 @@ macro_rules! map_insert_seq_bench {
     };
 }
 
+macro_rules! map_from_iter_rand_bench {
+    ($name: ident, $n: expr, $map: ident) => {
+        #[bench]
+        pub fn $name(b: &mut Bencher) {
+            let n: usize = $n;
+            // setup
+            let mut rng = thread_rng();
+            let mut vec = Vec::with_capacity(n);
+
+            for _ in 0..n {
+                let i = rng.gen::<usize>() % n;
+                vec.push((i, i));
+            }
+
+            // measure
+            b.iter(|| {
+                let map: $map<_, _> = vec.iter().copied().collect();
+                black_box(map);
+            });
+        }
+    };
+}
+
+macro_rules! map_from_iter_seq_bench {
+    ($name: ident, $n: expr, $map: ident) => {
+        #[bench]
+        pub fn $name(b: &mut Bencher) {
+            let n: usize = $n;
+            // setup
+            let mut vec = Vec::with_capacity(n);
+
+            for i in 0..n {
+                vec.push((i, i));
+            }
+
+            // measure
+            b.iter(|| {
+                let map: $map<_, _> = vec.iter().copied().collect();
+                black_box(map);
+            });
+        }
+    };
+}
+
 macro_rules! map_find_rand_bench {
     ($name: ident, $n: expr, $map: ident) => {
         #[bench]
@@ -110,6 +154,12 @@ map_insert_rand_bench! {insert_rand_10_000, 10_000, BTreeMap}
 
 map_insert_seq_bench! {insert_seq_100,    100,    BTreeMap}
 map_insert_seq_bench! {insert_seq_10_000, 10_000, BTreeMap}
+
+map_from_iter_rand_bench! {from_iter_rand_100,    100,    BTreeMap}
+map_from_iter_rand_bench! {from_iter_rand_10_000, 10_000, BTreeMap}
+
+map_from_iter_seq_bench! {from_iter_seq_100,    100,    BTreeMap}
+map_from_iter_seq_bench! {from_iter_seq_10_000, 10_000, BTreeMap}
 
 map_find_rand_bench! {find_rand_100,    100,    BTreeMap}
 map_find_rand_bench! {find_rand_10_000, 10_000, BTreeMap}
