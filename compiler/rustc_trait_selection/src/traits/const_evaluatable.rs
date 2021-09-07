@@ -435,9 +435,8 @@ pub(super) fn mir_abstract_const<'tcx>(
             DefKind::AnonConst => (),
             _ => return Ok(None),
         }
-        debug!("mir_abstract_const: {:?}", def);
+        
         let body = tcx.thir_body(def);
-
         if body.0.borrow().exprs.is_empty() {
             // type error in constant, there is no thir
             return Err(ErrorReported);

@@ -28,7 +28,6 @@ crate fn mir_built<'tcx>(
     if let Some(def) = def.try_upgrade(tcx) {
         return tcx.mir_built(def);
     }
-    debug!("mir_built: def={:?}", def);
 
     let mut body = mir_build(tcx, def);
     if def.const_param_did.is_some() {
@@ -41,7 +40,6 @@ crate fn mir_built<'tcx>(
 
 /// Construct the MIR for a given `DefId`.
 fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {
-    debug!("mir_build: def={:?}", def);
     let id = tcx.hir().local_def_id_to_hir_id(def.did);
     let body_owner_kind = tcx.hir().body_owner_kind(id);
     let typeck_results = tcx.typeck_opt_const_arg(def);

@@ -149,9 +149,7 @@ impl<'tcx> Cx<'tcx> {
     }
 
     fn make_mirror_unadjusted(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Expr<'tcx> {
-        debug!("Expr::make_mirror_unadjusted: expr={:?}", expr);
         let expr_ty = self.typeck_results().expr_ty(expr);
-        debug!("Expr::make_mirror_unadjusted: expr_ty={:?}", expr_ty);
         let temp_lifetime = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
         let kind = match expr.kind {
@@ -764,7 +762,6 @@ impl<'tcx> Cx<'tcx> {
             hir::ExprKind::Err => unreachable!(),
         };
 
-        debug!("Expr::make_mirror_unadjusted: finish");
         Expr { temp_lifetime, ty: expr_ty, span: expr.span, kind }
     }
 
