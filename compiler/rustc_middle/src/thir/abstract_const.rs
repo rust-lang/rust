@@ -11,6 +11,14 @@ rustc_index::newtype_index! {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+pub enum CastKind {
+    /// thir::ExprKind::As
+    As,
+    /// thir::ExprKind::Use
+    Use,
+}
+
 /// A node of an `AbstractConst`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub enum Node<'tcx> {
@@ -18,7 +26,7 @@ pub enum Node<'tcx> {
     Binop(mir::BinOp, NodeId, NodeId),
     UnaryOp(mir::UnOp, NodeId),
     FunctionCall(NodeId, &'tcx [NodeId]),
-    Cast(NodeId, Ty<'tcx>),
+    Cast(CastKind, NodeId, Ty<'tcx>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]

@@ -15,7 +15,7 @@ use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir;
-use rustc_middle::thir::abstract_const::{Node, NodeId, NotConstEvaluatable};
+use rustc_middle::thir::abstract_const::{self, Node, NodeId, NotConstEvaluatable};
 use rustc_middle::ty::subst::{Subst, SubstsRef};
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_session::lint;
@@ -91,7 +91,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 
                         ControlFlow::CONTINUE
                     }
-                    Node::Cast(_, ty) => {
+                    Node::Cast(_, _, ty) => {
                         let ty = ty.subst(tcx, ct.substs);
                         if ty.has_infer_types_or_consts() {
                             failure_kind = FailureKind::MentionsInfer;
@@ -368,10 +368,13 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             // `ExprKind::Use` happens when a `hir::ExprKind::Cast` is a
             // "coercion cast" i.e. using a coercion or is a no-op.
             // This is important so that `N as usize as usize` doesnt unify with `N as usize`. (untested)
-            &ExprKind::Use { source}
-            | &ExprKind::Cast { source } => {
+            &ExprKind::Use { source } => {
                 let arg = self.recurse_build(source)?;
-                self.nodes.push(Node::Cast(arg, node.ty))
+                self.nodes.push(Node::Cast(abstract_const::CastKind::Use, arg, node.ty))
+            },
+            &ExprKind::Cast { source } => {
+                let arg = self.recurse_build(source)?;
+                self.nodes.push(Node::Cast(abstract_const::CastKind::As, arg, node.ty))
             },
 
             // FIXME(generic_const_exprs): We may want to support these.
@@ -494,7 +497,7 @@ where
                 recurse(tcx, ct.subtree(func), f)?;
                 args.iter().try_for_each(|&arg| recurse(tcx, ct.subtree(arg), f))
             }
-            Node::Cast(operand, _) => recurse(tcx, ct.subtree(operand), f),
+            Node::Cast(_, operand, _) => recurse(tcx, ct.subtree(operand), f),
         }
     }
 
@@ -577,7 +580,7 @@ pub(super) fn try_unify<'tcx>(
                 && iter::zip(a_args, b_args)
                     .all(|(&an, &bn)| try_unify(tcx, a.subtree(an), b.subtree(bn)))
         }
-        (Node::Cast(a_operand, a_ty), Node::Cast(b_operand, b_ty)) if (a_ty == b_ty) => {
+        (Node::Cast(a_kind, a_operand, a_ty), Node::Cast(b_kind, b_operand, b_ty)) if (a_ty == b_ty) && (a_kind == b_kind) => {
             try_unify(tcx, a.subtree(a_operand), b.subtree(b_operand))
         }
         // use this over `_ => false` to make adding variants to `Node` less error prone
