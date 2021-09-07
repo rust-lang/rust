@@ -53,8 +53,8 @@ impl CfgOverrides {
 /// the current workspace.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct PackageRoot {
-    /// Is a member of the current workspace
-    pub is_member: bool,
+    /// Is from the local filesystem and may be edited
+    pub is_local: bool,
     pub include: Vec<AbsPathBuf>,
     pub exclude: Vec<AbsPathBuf>,
 }
@@ -268,7 +268,7 @@ impl ProjectWorkspace {
             ProjectWorkspace::Json { project, sysroot, rustc_cfg: _ } => project
                 .crates()
                 .map(|(_, krate)| PackageRoot {
-                    is_member: krate.is_workspace_member,
+                    is_local: krate.is_workspace_member,
                     include: krate.include.clone(),
                     exclude: krate.exclude.clone(),
                 })
@@ -276,7 +276,7 @@ impl ProjectWorkspace {
                 .into_iter()
                 .chain(sysroot.as_ref().into_iter().flat_map(|sysroot| {
                     sysroot.crates().map(move |krate| PackageRoot {
-                        is_member: false,
+                        is_local: false,
                         include: vec![sysroot[krate].root.parent().to_path_buf()],
                         exclude: Vec::new(),
                     })
@@ -293,7 +293,7 @@ impl ProjectWorkspace {
                 cargo
                     .packages()
                     .map(|pkg| {
-                        let is_member = cargo[pkg].is_member;
+                        let is_local = cargo[pkg].is_local;
                         let pkg_root = cargo[pkg].manifest.parent().to_path_buf();
 
                         let mut include = vec![pkg_root.clone()];
@@ -319,23 +319,23 @@ impl ProjectWorkspace {
                         include.extend(extra_targets);
 
                         let mut exclude = vec![pkg_root.join(".git")];
-                        if is_member {
+                        if is_local {
                             exclude.push(pkg_root.join("target"));
                         } else {
                             exclude.push(pkg_root.join("tests"));
                             exclude.push(pkg_root.join("examples"));
                             exclude.push(pkg_root.join("benches"));
                         }
-                        PackageRoot { is_member, include, exclude }
+                        PackageRoot { is_local, include, exclude }
                     })
                     .chain(sysroot.into_iter().map(|sysroot| PackageRoot {
-                        is_member: false,
+                        is_local: false,
                         include: vec![sysroot.root().to_path_buf()],
                         exclude: Vec::new(),
                     }))
                     .chain(rustc.into_iter().flat_map(|rustc| {
                         rustc.packages().map(move |krate| PackageRoot {
-                            is_member: false,
+                            is_local: false,
                             include: vec![rustc[krate].manifest.parent().to_path_buf()],
                             exclude: Vec::new(),
                         })
@@ -345,12 +345,12 @@ impl ProjectWorkspace {
             ProjectWorkspace::DetachedFiles { files, sysroot, .. } => files
                 .into_iter()
                 .map(|detached_file| PackageRoot {
-                    is_member: true,
+                    is_local: true,
                     include: vec![detached_file.clone()],
                     exclude: Vec::new(),
                 })
                 .chain(sysroot.crates().map(|krate| PackageRoot {
-                    is_member: false,
+                    is_local: false,
                     include: vec![sysroot[krate].root.parent().to_path_buf()],
                     exclude: Vec::new(),
                 }))
