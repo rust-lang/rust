@@ -2312,14 +2312,17 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         _ => self.tcx.typeck(parent_id),
                     };
                     let ty = typeck_results.expr_ty_adjusted(expr);
-                    err.span_label(
-                        expr.peel_blocks().span,
-                        &if ty.references_error() {
-                            String::new()
-                        } else {
-                            format!("this tail expression is of type `{:?}`", ty)
-                        },
-                    );
+                    let span = expr.peel_blocks().span;
+                    if Some(span) != err.span.primary_span() {
+                        err.span_label(
+                            span,
+                            &if ty.references_error() {
+                                String::new()
+                            } else {
+                                format!("this tail expression is of type `{:?}`", ty)
+                            },
+                        );
+                    }
                 }
                 if let Some(Node::Expr(hir::Expr {
                     kind:
@@ -2328,7 +2331,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     ..
                 })) = hir.find(call_hir_id)
                 {
-                    err.span_label(*span, "required by a bound introduced by this call");
+                    if Some(*span) != err.span.primary_span() {
+                        err.span_label(*span, "required by a bound introduced by this call");
+                    }
                 }
                 ensure_sufficient_stack(|| {
                     self.note_obligation_cause_code(
