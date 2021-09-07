@@ -964,13 +964,15 @@ fn main() { let foo_test = fo$0o(); }
         );
 
         // use literal `crate` in path
-        check(r#"
+        check(
+            r#"
 pub struct X;
 
 fn foo() -> crate::X { X }
 
 fn main() { f$0oo(); }
-        "#, expect![[r#"
+        "#,
+            expect![[r#"
             *foo*
 
             ```rust
@@ -980,7 +982,8 @@ fn main() { f$0oo(); }
             ```rust
             fn foo() -> crate::X
             ```
-        "#]]);
+        "#]],
+        );
     }
 
     #[test]
