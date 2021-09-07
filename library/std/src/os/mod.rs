@@ -14,9 +14,6 @@ pub mod raw;
 // documented don't compile (missing things in `libc` which is empty),
 // so just omit them with an empty module and add the "unstable" attribute.
 
-#[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
-pub mod fortanix_sgx;
-
 // Unix, linux, wasi and windows are handled a bit differently.
 #[cfg(all(
     doc,
@@ -56,40 +53,55 @@ pub mod wasi {}
 pub mod windows {}
 
 // unix
-#[cfg(not(any(
-    all(target_arch = "wasm32", not(target_os = "wasi")),
-    all(target_vendor = "fortanix", target_env = "sgx")
+#[cfg(not(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx")
+    )
 )))]
-#[cfg(all(not(doc), target_os = "hermit"))]
+#[cfg(target_os = "hermit")]
 #[path = "hermit/mod.rs"]
 pub mod unix;
-#[cfg(not(any(
-    all(target_arch = "wasm32", not(target_os = "wasi")),
-    all(target_vendor = "fortanix", target_env = "sgx")
+#[cfg(not(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx")
+    )
 )))]
-#[cfg(any(unix, doc))]
+#[cfg(all(not(target_os = "hermit"), any(unix, doc)))]
 pub mod unix;
 
 // linux
-#[cfg(not(any(
-    all(target_arch = "wasm32", not(target_os = "wasi")),
-    all(target_vendor = "fortanix", target_env = "sgx")
+#[cfg(not(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx")
+    )
 )))]
 #[cfg(any(target_os = "linux", target_os = "l4re", doc))]
 pub mod linux;
 
 // wasi
-#[cfg(not(any(
-    all(target_arch = "wasm32", not(target_os = "wasi")),
-    all(target_vendor = "fortanix", target_env = "sgx")
+#[cfg(not(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx")
+    )
 )))]
 #[cfg(any(target_os = "wasi", doc))]
 pub mod wasi;
 
 // windows
-#[cfg(not(any(
-    all(target_arch = "wasm32", not(target_os = "wasi")),
-    all(target_vendor = "fortanix", target_env = "sgx")
+#[cfg(not(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx")
+    )
 )))]
 #[cfg(any(windows, doc))]
 pub mod windows;
@@ -103,6 +115,8 @@ pub mod dragonfly;
 pub mod emscripten;
 #[cfg(target_os = "espidf")]
 pub mod espidf;
+#[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
+pub mod fortanix_sgx;
 #[cfg(target_os = "freebsd")]
 pub mod freebsd;
 #[cfg(target_os = "fuchsia")]
