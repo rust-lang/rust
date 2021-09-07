@@ -15,4 +15,4 @@ perf.data.old
 /rand
 /regex
 /simple-raytracer
-/stdsimd
+/portable-simd
