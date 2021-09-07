@@ -67,6 +67,24 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
         String::from_utf8_lossy(Vec::leak(output.stdout))
     } else if cfg!(target_os = "windows") {
         panic!("disassembly unimplemented")
+    } else if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") {
+        // use LLVM objdump because it is not possible to enable TME support with otool
+        let objdump = env::var("OBJDUMP").unwrap_or_else(|_| "objdump".to_string());
+        let output = Command::new(objdump.clone())
+            .arg("--disassemble")
+            .arg("--no-show-raw-insn")
+            .arg("--mattr=+crc,+crypto,+tme")
+            .arg(&me)
+            .output()
+            .unwrap_or_else(|_| panic!("failed to execute objdump. OBJDUMP={}", objdump));
+        println!(
+            "{}\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.status.success());
+
+        String::from_utf8_lossy(Vec::leak(output.stdout))
     } else if cfg!(target_os = "macos") {
         let output = Command::new("otool")
             .arg("-vt")
