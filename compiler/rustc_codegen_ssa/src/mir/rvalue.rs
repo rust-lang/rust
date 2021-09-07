@@ -501,6 +501,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 )
             }
 
+            mir::Rvalue::NullaryOp(mir::NullOp::AlignOf, ty) => {
+                let ty = self.monomorphize(ty);
+                assert!(bx.cx().type_is_sized(ty));
+                let val = bx.cx().const_usize(bx.cx().layout_of(ty).align.abi.bytes());
+                let tcx = self.cx.tcx();
+                (
+                    bx,
+                    OperandRef {
+                        val: OperandValue::Immediate(val),
+                        layout: self.cx.layout_of(tcx.types.usize),
+                    },
+                )
+            }
+
             mir::Rvalue::NullaryOp(mir::NullOp::Box, content_ty) => {
                 let content_ty = self.monomorphize(content_ty);
                 let content_layout = bx.cx().layout_of(content_ty);

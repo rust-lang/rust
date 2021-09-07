@@ -284,6 +284,23 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(Scalar::from_machine_usize(layout.size.bytes(), self), &dest)?;
             }
 
+            NullaryOp(mir::NullOp::AlignOf, ty) => {
+                let ty = self.subst_from_current_frame_and_normalize_erasing_regions(ty);
+                let layout = self.layout_of(ty)?;
+                if layout.is_unsized() {
+                    // FIXME: This should be a span_bug (#80742)
+                    self.tcx.sess.delay_span_bug(
+                        self.frame().current_span(),
+                        &format!("SizeOf nullary MIR operator called for unsized type {}", ty),
+                    );
+                    throw_inval!(SizeOfUnsizedType(ty));
+                }
+                self.write_scalar(
+                    Scalar::from_machine_usize(layout.align.abi.bytes(), self),
+                    &dest,
+                )?;
+            }
+
             InitBox(ref operand, _) => {
                 let src = self.eval_operand(operand, None)?;
                 let v = self.read_immediate(&src)?;

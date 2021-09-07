@@ -520,6 +520,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             Rvalue::NullaryOp(op, _) => match op {
                 NullOp::Box => return Err(Unpromotable),
                 NullOp::SizeOf => {}
+                NullOp::AlignOf => {}
             },
 
             Rvalue::InitBox(_, _) => return Err(Unpromotable),

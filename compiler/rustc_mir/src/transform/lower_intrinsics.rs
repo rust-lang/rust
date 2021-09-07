@@ -105,6 +105,19 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             terminator.kind = TerminatorKind::Goto { target };
                         }
                     }
+                    sym::min_align_of => {
+                        if let Some((destination, target)) = *destination {
+                            let tp_ty = substs.type_at(0);
+                            block.statements.push(Statement {
+                                source_info: terminator.source_info,
+                                kind: StatementKind::Assign(Box::new((
+                                    destination,
+                                    Rvalue::NullaryOp(NullOp::AlignOf, tp_ty),
+                                ))),
+                            });
+                            terminator.kind = TerminatorKind::Goto { target };
+                        }
+                    }
                     sym::discriminant_value => {
                         if let (Some((destination, target)), Some(arg)) =
                             (*destination, args[0].place())
