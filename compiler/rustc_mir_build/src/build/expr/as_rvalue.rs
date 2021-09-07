@@ -91,32 +91,47 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let value = &this.thir[value];
                 let tcx = this.tcx;
 
-                let u8_ptr = tcx.mk_mut_ptr(tcx.mk_mach_uint(ty::UintTy::U8));
-                let storage = this.local_decls.push(LocalDecl::new(u8_ptr, expr_span).internal());
-                this.cfg.push(
+                let fake_scope = this.new_source_scope(
+                    expr_span,
+                    LintLevel::Inherited,
+                    Some(Safety::BuiltinUnsafe),
+                );
+                let fake_info = SourceInfo { span: expr_span, scope: fake_scope };
+
+                let size = this.temp(tcx.types.usize, expr_span);
+                this.cfg.push_assign(
                     block,
-                    Statement { source_info, kind: StatementKind::StorageLive(storage) },
+                    fake_info,
+                    size,
+                    Rvalue::NullaryOp(NullOp::SizeOf, value.ty),
                 );
 
-                let box_new = tcx.require_lang_item(LangItem::BoxNew, Some(source_info.span));
-                let box_new = Operand::function_handle(
+                let align = this.temp(tcx.types.usize, expr_span);
+                this.cfg.push_assign(
+                    block,
+                    fake_info,
+                    align,
+                    Rvalue::NullaryOp(NullOp::AlignOf, value.ty),
+                );
+
+                let exchange_malloc = Operand::function_handle(
                     tcx,
-                    box_new,
-                    tcx.mk_substs([value.ty.into()].iter()),
-                    source_info.span,
+                    tcx.require_lang_item(LangItem::ExchangeMalloc, Some(expr_span)),
+                    ty::List::empty(),
+                    expr_span,
                 );
-
+                let storage = this.temp(tcx.mk_mut_ptr(tcx.types.u8), expr_span);
                 let success = this.cfg.start_new_block();
                 this.cfg.terminate(
                     block,
-                    source_info,
+                    fake_info,
                     TerminatorKind::Call {
-                        func: box_new,
-                        args: Vec::new(),
+                        func: exchange_malloc,
+                        args: vec![Operand::Move(size), Operand::Move(align)],
                         destination: Some((Place::from(storage), success)),
                         cleanup: None,
                         from_hir_call: false,
-                        fn_span: source_info.span,
+                        fn_span: expr_span,
                     },
                 );
                 this.diverge_from(block);
