@@ -1,4 +1,8 @@
-use super::*;
+use super::{
+    Arm, Block, Expr, ExprKind, Guard, InlineAsmOperand, Pat, PatKind, Stmt, StmtKind, Thir,
+};
+use rustc_middle::ty::Const;
+
 pub trait Visitor<'a, 'tcx: 'a>: Sized {
     fn thir(&self) -> &'a Thir<'tcx>;
 

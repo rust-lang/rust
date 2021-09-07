@@ -8,7 +8,6 @@
 //! In this case we try to build an abstract representation of this constant using
 //! `thir_abstract_const` which can then be checked for structural equality with other
 //! generic constants mentioned in the `caller_bounds` of the current environment.
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorReported;
 use rustc_hir::def::DefKind;
 use rustc_index::vec::IndexVec;
@@ -227,8 +226,7 @@ impl<'tcx> AbstractConst<'tcx> {
 struct AbstractConstBuilder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body_id: thir::ExprId,
-    /// `Lrc` is used to avoid borrowck difficulties in `recurse_build`
-    body: Lrc<&'a thir::Thir<'tcx>>,
+    body: &'a thir::Thir<'tcx>,
     /// The current WIP node tree.
     nodes: IndexVec<NodeId, Node<'tcx>>,
 }
@@ -253,8 +251,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         (body, body_id): (&'a thir::Thir<'tcx>, thir::ExprId),
     ) -> Result<Option<AbstractConstBuilder<'a, 'tcx>>, ErrorReported> {
-        let builder =
-            AbstractConstBuilder { tcx, body_id, body: Lrc::new(body), nodes: IndexVec::new() };
+        let builder = AbstractConstBuilder { tcx, body_id, body, nodes: IndexVec::new() };
 
         struct IsThirPolymorphic<'a, 'tcx> {
             is_poly: bool,
@@ -328,7 +325,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
 
     fn recurse_build(&mut self, node: thir::ExprId) -> Result<NodeId, ErrorReported> {
         use thir::ExprKind;
-        let node = &self.body.clone().exprs[node];
+        let node = &self.body.exprs[node];
         debug!("recurse_build: node={:?}", node);
         Ok(match &node.kind {
             // I dont know if handling of these 3 is correct
@@ -338,10 +335,9 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
 
             // subtle: associated consts are literals this arm handles
             // `<T as Trait>::ASSOC` as well as `12`
-            &ExprKind::Literal { literal, .. }
-            | &ExprKind::StaticRef { literal, .. } => self.nodes.push(Node::Leaf(literal)),
+            &ExprKind::Literal { literal, .. } => self.nodes.push(Node::Leaf(literal)),
 
-            // FIXME(generic_const_exprs) handle `from_hir_call` field
+            // FIXME(generic_const_exprs): Handle `from_hir_call` field
             ExprKind::Call { fun, args,  .. } => {
                 let fun = self.recurse_build(*fun)?;
 
@@ -361,7 +357,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 let arg = self.recurse_build(arg)?;
                 self.nodes.push(Node::UnaryOp(op, arg))
             },
-            // this is necessary so that the following compiles:
+            // This is necessary so that the following compiles:
             //
             // ```
             // fn foo<const N: usize>(a: [(); N + 1]) {
@@ -369,16 +365,16 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             // }
             // ```
             ExprKind::Block { body: thir::Block { stmts: box [], expr: Some(e), .. }} => self.recurse_build(*e)?,
-            // ExprKind::Use happens when a `hir::ExprKind::Cast` is a
+            // `ExprKind::Use` happens when a `hir::ExprKind::Cast` is a
             // "coercion cast" i.e. using a coercion or is a no-op.
-            // this is important so that `N as usize as usize` doesnt unify with `N as usize`
+            // This is important so that `N as usize as usize` doesnt unify with `N as usize`. (untested)
             &ExprKind::Use { source}
             | &ExprKind::Cast { source } => {
                 let arg = self.recurse_build(source)?;
                 self.nodes.push(Node::Cast(arg, node.ty))
             },
 
-            // FIXME(generic_const_exprs) we want to support these
+            // FIXME(generic_const_exprs): We may want to support these.
             ExprKind::AddressOf { .. }
             | ExprKind::Borrow { .. }
             | ExprKind::Deref { .. }
@@ -390,21 +386,24 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             | ExprKind::Index { .. }
             | ExprKind::Field { .. }
             | ExprKind::ConstBlock { .. }
-            | ExprKind::Adt(_) => return self.error(
+            | ExprKind::Adt(_) => self.error(
                     Some(node.span),
                     "unsupported operation in generic constant, this may be supported in the future",
-                ).map(|never| never),
+                )?,
 
             ExprKind::Match { .. }
-            | ExprKind::VarRef { .. } //
-            | ExprKind::UpvarRef { .. } // we dont permit let stmts so...
+            // we dont permit let stmts so `VarRef` and `UpvarRef` cant happen
+            | ExprKind::VarRef { .. }
+            | ExprKind::UpvarRef { .. }
             | ExprKind::Closure { .. }
             | ExprKind::Let { .. } // let expressions imply control flow
             | ExprKind::Loop { .. }
             | ExprKind::Assign { .. }
+            | ExprKind::StaticRef { .. }
             | ExprKind::LogicalOp { .. }
-            | ExprKind::Unary { .. } //
-            | ExprKind::Binary { .. } // we handle valid unary/binary ops above
+            // we handle valid unary/binary ops above
+            | ExprKind::Unary { .. }
+            | ExprKind::Binary { .. }
             | ExprKind::Break { .. }
             | ExprKind::Continue { .. }
             | ExprKind::If { .. }
@@ -415,7 +414,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             | ExprKind::Box { .. } // allocations not allowed in constants
             | ExprKind::AssignOp { .. }
             | ExprKind::InlineAsm { .. }
-            | ExprKind::Yield { .. } => return self.error(Some(node.span), "unsupported operation in generic constant").map(|never| never),
+            | ExprKind::Yield { .. } => self.error(Some(node.span), "unsupported operation in generic constant")?,
         })
     }
 }
