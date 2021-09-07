@@ -50,7 +50,7 @@ impl ChildrenExt for Children {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         if let Some(st) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false) {
             debug!("insert_blindly: impl_def_id={:?} st={:?}", impl_def_id, st);
-            self.nonblanket_impls.entry(st.to_stable(tcx)).or_default().push(impl_def_id)
+            self.non_blanket_impls.entry(st.to_stable(tcx)).or_default().push(impl_def_id)
         } else {
             debug!("insert_blindly: impl_def_id={:?} st=None", impl_def_id);
             self.blanket_impls.push(impl_def_id)
@@ -65,7 +65,7 @@ impl ChildrenExt for Children {
         let vec: &mut Vec<DefId>;
         if let Some(st) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false) {
             debug!("remove_existing: impl_def_id={:?} st={:?}", impl_def_id, st);
-            vec = self.nonblanket_impls.get_mut(&st.to_stable(tcx)).unwrap();
+            vec = self.non_blanket_impls.get_mut(&st.to_stable(tcx)).unwrap();
         } else {
             debug!("remove_existing: impl_def_id={:?} st=None", impl_def_id);
             vec = &mut self.blanket_impls;
@@ -216,7 +216,7 @@ impl ChildrenExt for Children {
 }
 
 fn iter_children(children: &mut Children) -> impl Iterator<Item = DefId> + '_ {
-    let nonblanket = children.nonblanket_impls.iter_mut().flat_map(|(_, v)| v.iter());
+    let nonblanket = children.non_blanket_impls.iter_mut().flat_map(|(_, v)| v.iter());
     children.blanket_impls.iter().chain(nonblanket).cloned()
 }
 
@@ -224,7 +224,7 @@ fn filtered_children(
     children: &mut Children,
     st: StableSimplifiedType,
 ) -> impl Iterator<Item = DefId> + '_ {
-    let nonblanket = children.nonblanket_impls.entry(st).or_default().iter();
+    let nonblanket = children.non_blanket_impls.entry(st).or_default().iter();
     children.blanket_impls.iter().chain(nonblanket).cloned()
 }
 

@@ -55,14 +55,14 @@ pub struct Children {
     // Impls of a trait (or specializations of a given impl). To allow for
     // quicker lookup, the impls are indexed by a simplified version of their
     // `Self` type: impls with a simplifiable `Self` are stored in
-    // `nonblanket_impls` keyed by it, while all other impls are stored in
+    // `non_blanket_impls` keyed by it, while all other impls are stored in
     // `blanket_impls`.
     //
     // A similar division is used within `TraitDef`, but the lists there collect
     // together *all* the impls for a trait, and are populated prior to building
     // the specialization graph.
     /// Impls of the trait.
-    pub nonblanket_impls: BTreeMap<StableSimplifiedType, Vec<DefId>>,
+    pub non_blanket_impls: BTreeMap<StableSimplifiedType, Vec<DefId>>,
 
     /// Blanket impls associated with the trait.
     pub blanket_impls: Vec<DefId>,
@@ -238,8 +238,8 @@ pub fn ancestors(
 
 impl<'a> HashStable<StableHashingContext<'a>> for Children {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let Children { ref nonblanket_impls, ref blanket_impls } = *self;
+        let Children { ref non_blanket_impls, ref blanket_impls } = *self;
 
-        ich::hash_stable_trait_impls(hcx, hasher, blanket_impls, nonblanket_impls);
+        ich::hash_stable_trait_impls(hcx, hasher, blanket_impls, non_blanket_impls);
     }
 }
