@@ -2296,11 +2296,31 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 });
             }
             ObligationCauseCode::FunctionArgumentObligation {
-                arg_hir_id: _,
+                arg_hir_id,
                 call_hir_id,
                 ref parent_code,
             } => {
                 let hir = self.tcx.hir();
+                if let Some(Node::Expr(expr @ hir::Expr { kind: hir::ExprKind::Block(..), .. })) =
+                    hir.find(arg_hir_id)
+                {
+                    let in_progress_typeck_results =
+                        self.in_progress_typeck_results.map(|t| t.borrow());
+                    let parent_id = hir.local_def_id(hir.get_parent_item(arg_hir_id));
+                    let typeck_results: &TypeckResults<'tcx> = match &in_progress_typeck_results {
+                        Some(t) if t.hir_owner == parent_id => t,
+                        _ => self.tcx.typeck(parent_id),
+                    };
+                    let ty = typeck_results.expr_ty_adjusted(expr);
+                    err.span_label(
+                        expr.peel_blocks().span,
+                        &if ty.references_error() {
+                            String::new()
+                        } else {
+                            format!("this tail expression is of type `{:?}`", ty)
+                        },
+                    );
+                }
                 if let Some(Node::Expr(hir::Expr {
                     kind:
                         hir::ExprKind::Call(hir::Expr { span, .. }, _)
@@ -2308,7 +2328,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     ..
                 })) = hir.find(call_hir_id)
                 {
-                    err.span_label(*span, "required by a bound in this call");
+                    err.span_label(*span, "required by a bound introduced by this call");
                 }
                 ensure_sufficient_stack(|| {
                     self.note_obligation_cause_code(
