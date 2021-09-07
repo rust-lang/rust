@@ -1998,7 +1998,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                     &obligation,
                                     &traits::SelectionError::Unimplemented,
                                     false,
-                                    false,
                                 );
                             }
                         }

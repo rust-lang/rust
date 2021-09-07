@@ -9,6 +9,7 @@ use crate::check::{
 };
 
 use rustc_ast as ast;
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -324,6 +325,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.point_at_arg_instead_of_call_if_possible(
                         errors,
                         &final_arg_types[..],
+                        expr,
                         sp,
                         &args,
                     );
@@ -391,7 +393,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ) {
                             for error in errors {
                                 error.obligation.cause.make_mut().span = arg.span;
-                                error.points_at_arg_span = true;
+                                let code = error.obligation.cause.code.clone();
+                                error.obligation.cause.make_mut().code =
+                                    ObligationCauseCode::FunctionArgumentObligation {
+                                        arg_hir_id: arg.hir_id,
+                                        call_hir_id: expr.hir_id,
+                                        parent_code: Lrc::new(code),
+                                    };
                             }
                         }
                     },
@@ -937,6 +945,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         errors: &mut Vec<traits::FulfillmentError<'tcx>>,
         final_arg_types: &[(usize, Ty<'tcx>, Ty<'tcx>)],
+        expr: &'tcx hir::Expr<'tcx>,
         call_sp: Span,
         args: &'tcx [hir::Expr<'tcx>],
     ) {
@@ -986,7 +995,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // We make sure that only *one* argument matches the obligation failure
                     // and we assign the obligation's span to its expression's.
                     error.obligation.cause.make_mut().span = args[ref_in].span;
-                    error.points_at_arg_span = true;
+                    let code = error.obligation.cause.code.clone();
+                    error.obligation.cause.make_mut().code =
+                        ObligationCauseCode::FunctionArgumentObligation {
+                            arg_hir_id: args[ref_in].hir_id,
+                            call_hir_id: expr.hir_id,
+                            parent_code: Lrc::new(code),
+                        };
                 }
             }
         }

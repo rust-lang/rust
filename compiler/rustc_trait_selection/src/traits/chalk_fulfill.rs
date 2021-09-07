@@ -57,7 +57,6 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                 .map(|obligation| FulfillmentError {
                     obligation: obligation.clone(),
                     code: FulfillmentErrorCode::CodeAmbiguity,
-                    points_at_arg_span: false,
                     // FIXME - does Chalk have a notation of 'root obligation'?
                     // This is just for diagnostics, so it's okay if this is wrong
                     root_obligation: obligation.clone(),
@@ -112,7 +111,6 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                                     code: FulfillmentErrorCode::CodeSelectionError(
                                         SelectionError::Unimplemented,
                                     ),
-                                    points_at_arg_span: false,
                                     // FIXME - does Chalk have a notation of 'root obligation'?
                                     // This is just for diagnostics, so it's okay if this is wrong
                                     root_obligation: obligation,
@@ -129,7 +127,6 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                         code: FulfillmentErrorCode::CodeSelectionError(
                             SelectionError::Unimplemented,
                         ),
-                        points_at_arg_span: false,
                         // FIXME - does Chalk have a notation of 'root obligation'?
                         // This is just for diagnostics, so it's okay if this is wrong
                         root_obligation: obligation,
