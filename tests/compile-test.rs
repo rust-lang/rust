@@ -50,10 +50,6 @@ fn host_lib() -> PathBuf {
     option_env!("HOST_LIBS").map_or(cargo::CARGO_TARGET_DIR.join(env!("PROFILE")), PathBuf::from)
 }
 
-fn clippy_driver_path() -> PathBuf {
-    option_env!("CLIPPY_DRIVER_PATH").map_or(cargo::TARGET_LIB.join("clippy-driver"), PathBuf::from)
-}
-
 /// Produces a string with an `--extern` flag for all UI test crate
 /// dependencies.
 ///
@@ -122,6 +118,7 @@ fn default_config() -> compiletest::Config {
     }
     let current_exe_path = std::env::current_exe().unwrap();
     let deps_path = current_exe_path.parent().unwrap();
+    let profile_path = deps_path.parent().unwrap();
 
     // Using `-L dependency={}` enforces that external dependencies are added with `--extern`.
     // This is valuable because a) it allows us to monitor what external dependencies are used
@@ -137,7 +134,11 @@ fn default_config() -> compiletest::Config {
     ));
 
     config.build_base = host_lib().join("test_build_base");
-    config.rustc_path = clippy_driver_path();
+    config.rustc_path = profile_path.join(if cfg!(windows) {
+        "clippy-driver.exe"
+    } else {
+        "clippy-driver"
+    });
     config
 }
 

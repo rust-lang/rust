@@ -15,7 +15,12 @@ use std::process::Command;
 
 mod cargo;
 
-static CLIPPY_PATH: SyncLazy<PathBuf> = SyncLazy::new(|| cargo::TARGET_LIB.join("cargo-clippy"));
+static CLIPPY_PATH: SyncLazy<PathBuf> = SyncLazy::new(|| {
+    let mut path = std::env::current_exe().unwrap();
+    assert!(path.pop()); // deps
+    path.set_file_name("cargo-clippy");
+    path
+});
 
 #[test]
 fn dogfood_clippy() {
