@@ -128,7 +128,7 @@ fn default_config() -> compiletest::Config {
         extern_flags(),
     ));
 
-    config.build_base = profile_path.join("test_build_base");
+    config.build_base = profile_path.join("test");
     config.rustc_path = profile_path.join(if cfg!(windows) {
         "clippy-driver.exe"
     } else {

@@ -86,6 +86,6 @@ fn updated_since_clippy_build(path: &Path) -> Option<bool> {
 
 fn build_dir() -> PathBuf {
     let mut path = std::env::current_exe().unwrap();
-    path.set_file_name("test_build_base");
+    path.set_file_name("test");
     path
 }
