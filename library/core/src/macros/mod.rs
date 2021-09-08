@@ -842,7 +842,6 @@ pub(crate) mod builtin {
     /// This macro is used by the panic macros for the `const_panic` feature.
     ///
     /// This macro will be removed once `format_args` is allowed in const contexts.
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "const_format_args", issue = "none")]
     #[allow_internal_unstable(fmt_internals, const_fmt_arguments_new)]
     #[rustc_builtin_macro]
@@ -850,16 +849,6 @@ pub(crate) mod builtin {
     macro_rules! const_format_args {
         ($fmt:expr) => {{ /* compiler built-in */ }};
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
-    }
-
-    /// Same as `format_args`, but can be used in some const contexts.
-    #[cfg(bootstrap)]
-    #[unstable(feature = "const_format_args", issue = "none")]
-    #[macro_export]
-    macro_rules! const_format_args {
-        ($($t:tt)*) => {
-            $crate::format_args!($($t)*)
-        }
     }
 
     /// Same as `format_args`, but adds a newline in the end.

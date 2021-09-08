@@ -3,9 +3,7 @@
 #![feature(array_windows)]
 #![feature(crate_visibility_modifier)]
 #![feature(if_let_guard)]
-#![cfg_attr(bootstrap, feature(bindings_after_at))]
 #![feature(box_patterns)]
-#![cfg_attr(bootstrap, allow(incomplete_features))] // if_let_guard
 #![recursion_limit = "256"]
 
 use rustc_ast as ast;

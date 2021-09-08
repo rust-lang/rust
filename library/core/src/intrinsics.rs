@@ -1937,7 +1937,6 @@ extern "rust-intrinsic" {
     /// See documentation of [`std::hint::black_box`] for details.
     ///
     /// [`std::hint::black_box`]: crate::hint::black_box
-    #[cfg(not(bootstrap))]
     pub fn black_box<T>(dummy: T) -> T;
 }
 

@@ -450,7 +450,7 @@ pub fn panicking() -> bool {
 #[cfg_attr(not(feature = "panic_immediate_abort"), track_caller)]
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[cfg_attr(all(not(bootstrap), not(test)), lang = "begin_panic_fmt")]
+#[cfg_attr(not(test), lang = "begin_panic_fmt")]
 pub fn begin_panic_fmt(msg: &fmt::Arguments<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         intrinsics::abort()

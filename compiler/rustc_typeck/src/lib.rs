@@ -56,7 +56,6 @@ This API is completely unstable and subject to change.
 */
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![cfg_attr(bootstrap, feature(bindings_after_at))]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(format_args_capture)]
@@ -69,7 +68,6 @@ This API is completely unstable and subject to change.
 #![feature(never_type)]
 #![feature(slice_partition_dedup)]
 #![feature(control_flow_enum)]
-#![cfg_attr(bootstrap, allow(incomplete_features))] // if_let_guard
 #![recursion_limit = "256"]
 
 #[macro_use]

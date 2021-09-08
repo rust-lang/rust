@@ -154,18 +154,6 @@ pub fn spin_loop() {
 /// [`std::convert::identity`]: crate::convert::identity
 #[inline]
 #[unstable(feature = "bench_black_box", issue = "64102")]
-#[cfg_attr(not(bootstrap), allow(unused_mut))]
-#[cfg_attr(bootstrap, allow(deprecated))]
-pub fn black_box<T>(mut dummy: T) -> T {
-    #[cfg(bootstrap)]
-    // SAFETY: the inline assembly is a no-op.
-    unsafe {
-        llvm_asm!("" : : "r"(&mut dummy) : "memory" : "volatile");
-        dummy
-    }
-
-    #[cfg(not(bootstrap))]
-    {
-        crate::intrinsics::black_box(dummy)
-    }
+pub fn black_box<T>(dummy: T) -> T {
+    crate::intrinsics::black_box(dummy)
 }

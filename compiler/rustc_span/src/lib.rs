@@ -21,7 +21,6 @@
 #![feature(nll)]
 #![feature(min_specialization)]
 #![feature(thread_local_const_init)]
-#![cfg_attr(bootstrap, allow(incomplete_features))] // if_let_guard
 
 #[macro_use]
 extern crate rustc_macros;
