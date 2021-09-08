@@ -1,3 +1,6 @@
+//! This module provides LSIF types. This module is a temporary solution
+//! and it will go to its own repository in future
+
 use lsp_types::FoldingRange;
 use serde::{Deserialize, Serialize};
 

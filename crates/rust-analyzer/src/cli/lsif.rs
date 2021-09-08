@@ -16,7 +16,7 @@ use crate::cli::{
     load_cargo::{load_workspace, LoadCargoConfig},
     Result,
 };
-use crate::line_index::LineIndex;
+use crate::line_index::{LineEndings, LineIndex, OffsetEncoding};
 use crate::to_proto;
 
 /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
@@ -99,7 +99,11 @@ impl flags::Lsif {
                 .map(|it| {
                     to_proto::folding_range(
                         &*text,
-                        &LineIndex::with_default_options(line_index.clone()),
+                        &LineIndex {
+                            index: line_index.clone(),
+                            encoding: OffsetEncoding::Utf16,
+                            endings: LineEndings::Unix,
+                        },
                         false,
                         it,
                     )

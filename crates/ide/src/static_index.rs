@@ -1,3 +1,6 @@
+//! This module provides `StaticIndex` which is used for powering
+//! read-only code browsers and emitting LSIF
+
 use hir::{db::HirDatabase, Crate, Module};
 use ide_db::base_db::{FileId, SourceDatabaseExt};
 use ide_db::RootDatabase;
