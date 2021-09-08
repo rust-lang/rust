@@ -1,4 +1,4 @@
-use super::{plain_text_summary, short_markdown_summary};
+use super::{find_testable_code, plain_text_summary, short_markdown_summary};
 use super::{ErrorCodes, IdMap, Ignore, LangString, Markdown, MarkdownHtml};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 
@@ -299,4 +299,26 @@ fn test_markdown_html_escape() {
     t("`Struct<'a, T>`", "<p><code>Struct&lt;'a, T&gt;</code></p>\n");
     t("Struct<'a, T>", "<p>Struct&lt;’a, T&gt;</p>\n");
     t("Struct<br>", "<p>Struct&lt;br&gt;</p>\n");
+}
+
+#[test]
+fn test_find_testable_code_line() {
+    fn t(input: &str, expect: &[usize]) {
+        impl crate::doctest::Tester for Vec<usize> {
+            fn add_test(&mut self, _test: String, _config: LangString, line: usize) {
+                self.push(line);
+            }
+        }
+        let mut lines = Vec::<usize>::new();
+        find_testable_code(input, &mut lines, ErrorCodes::No, false, None);
+        assert_eq!(lines, expect);
+    }
+
+    t("", &[]);
+    t("```rust\n```", &[1]);
+    t(" ```rust\n```", &[1]);
+    t("\n```rust\n```", &[2]);
+    t("\n ```rust\n```", &[2]);
+    t("```rust\n```\n```rust\n```", &[1, 3]);
+    t("```rust\n```\n ```rust\n```", &[1, 3]);
 }
