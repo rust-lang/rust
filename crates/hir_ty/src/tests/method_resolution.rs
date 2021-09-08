@@ -1284,6 +1284,35 @@ fn f() {
 }
 
 #[test]
+fn resolve_const_generic_array_methods() {
+    check_types(
+        r#"
+#[lang = "array"]
+impl<T, const N: usize> [T; N] {
+    pub fn map<F, U>(self, f: F) -> [U; N]
+    where
+        F: FnMut(T) -> U,
+    { loop {} }
+}
+
+#[lang = "slice"]
+impl<T> [T] {
+    pub fn map<F, U>(self, f: F) -> &[U]
+    where
+        F: FnMut(T) -> U,
+    { loop {} }
+}
+
+fn f() {
+    let v = [1, 2].map::<_, usize>(|x| -> x * 2);
+    v;
+  //^ [usize; _]
+}
+    "#,
+    );
+}
+
+#[test]
 fn skip_array_during_method_dispatch() {
     check_types(
         r#"
