@@ -42,7 +42,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             continue;
         }
 
-        if stack.contains("rustc_mir::monomorphize::partitioning::collect_and_partition_mono_items")
+        if stack.contains("rustc_monomorphize::partitioning::collect_and_partition_mono_items")
             || stack.contains("rustc_incremental::assert_dep_graph::assert_dep_graph")
             || stack.contains("rustc_symbol_mangling::test::report_symbol_names")
         {
@@ -81,7 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         const COLLECT_AND_PARTITION_MONO_ITEMS: &str =
-            "rustc_mir::monomorphize::partitioning::collect_and_partition_mono_items";
+            "rustc_monomorphize::partitioning::collect_and_partition_mono_items";
         if let Some(index) = stack.find(COLLECT_AND_PARTITION_MONO_ITEMS) {
             stack = &stack[..index + COLLECT_AND_PARTITION_MONO_ITEMS.len()];
         }

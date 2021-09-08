@@ -11,13 +11,14 @@
 //! `optimized_mir` and pulls out the MIR bodies with the borrowck information
 //! from the thread local storage.
 
+extern crate rustc_borrowck;
 extern crate rustc_driver;
 extern crate rustc_hir;
 extern crate rustc_interface;
 extern crate rustc_middle;
-extern crate rustc_mir;
 extern crate rustc_session;
 
+use rustc_borrowck::consumers::BodyWithBorrowckFacts;
 use rustc_driver::Compilation;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
@@ -26,7 +27,6 @@ use rustc_interface::{Config, Queries};
 use rustc_middle::ty::query::query_values::mir_borrowck;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_mir::consumers::BodyWithBorrowckFacts;
 use rustc_session::Session;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -108,7 +108,7 @@ thread_local! {
 }
 
 fn mir_borrowck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> mir_borrowck<'tcx> {
-    let body_with_facts = rustc_mir::consumers::get_body_with_borrowck_facts(
+    let body_with_facts = rustc_borrowck::consumers::get_body_with_borrowck_facts(
         tcx,
         ty::WithOptConstParam::unknown(def_id),
     );
@@ -120,7 +120,7 @@ fn mir_borrowck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> mir_borrowck<'tc
         assert!(map.insert(def_id, body_with_facts).is_none());
     });
     let mut providers = Providers::default();
-    rustc_mir::provide(&mut providers);
+    rustc_borrowck::provide(&mut providers);
     let original_mir_borrowck = providers.mir_borrowck;
     original_mir_borrowck(tcx, def_id)
 }

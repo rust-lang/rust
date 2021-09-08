@@ -1,0 +1,23 @@
+[package]
+name = "rustc_mir_dataflow"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+polonius-engine = "0.13.0"
+regex = "1"
+smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+tracing = "0.1"
+rustc_ast = { path = "../rustc_ast" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_graphviz = { path = "../rustc_graphviz" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_index = { path = "../rustc_index" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_session = { path = "../rustc_session" }
+rustc_target = { path = "../rustc_target" }
+rustc_span = { path = "../rustc_span" }

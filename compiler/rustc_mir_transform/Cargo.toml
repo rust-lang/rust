@@ -1,0 +1,29 @@
+[package]
+name = "rustc_mir_transform"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+itertools = "0.9"
+smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+tracing = "0.1"
+rustc_ast = { path = "../rustc_ast" }
+rustc_attr = { path = "../rustc_attr" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_index = { path = "../rustc_index" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_const_eval = { path = "../rustc_const_eval" }
+rustc_mir_dataflow = { path = "../rustc_mir_dataflow" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_session = { path = "../rustc_session" }
+rustc_target = { path = "../rustc_target" }
+rustc_trait_selection = { path = "../rustc_trait_selection" }
+rustc_span = { path = "../rustc_span" }
+
+[dev-dependencies]
+coverage_test_macros = { path = "src/coverage/test_macros" }

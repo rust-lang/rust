@@ -42,17 +42,29 @@ pub use self::query::*;
 
 pub mod abstract_const;
 pub mod coverage;
+mod generic_graph;
+pub mod generic_graphviz;
 mod graph_cyclic_cache;
+pub mod graphviz;
 pub mod interpret;
 pub mod mono;
+pub mod patch;
 mod predecessors;
+pub mod pretty;
 mod query;
+pub mod spanview;
 pub mod tcx;
 pub mod terminator;
 pub use terminator::*;
 pub mod traversal;
 mod type_foldable;
 pub mod visit;
+
+pub use self::generic_graph::graphviz_safe_def_name;
+pub use self::graphviz::write_mir_graphviz;
+pub use self::pretty::{
+    create_dump_file, display_allocation, dump_enabled, dump_mir, write_mir_pretty, PassWhere,
+};
 
 /// Types for locals
 pub type LocalDecls<'tcx> = IndexVec<Local, LocalDecl<'tcx>>;
@@ -73,6 +85,22 @@ impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
     fn local_decls(&self) -> &LocalDecls<'tcx> {
         &self.local_decls
     }
+}
+
+/// A streamlined trait that you can implement to create a pass; the
+/// pass will be named after the type, and it will consist of a main
+/// loop that goes over each available MIR and applies `run_pass`.
+pub trait MirPass<'tcx> {
+    fn name(&self) -> Cow<'_, str> {
+        let name = std::any::type_name::<Self>();
+        if let Some(tail) = name.rfind(':') {
+            Cow::from(&name[tail + 1..])
+        } else {
+            Cow::from(name)
+        }
+    }
+
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>);
 }
 
 /// The various "big phases" that MIR goes through.
@@ -1142,7 +1170,7 @@ rustc_index::newtype_index! {
     /// [CFG]: https://rustc-dev-guide.rust-lang.org/appendix/background.html#cfg
     /// [data-flow analyses]:
     ///     https://rustc-dev-guide.rust-lang.org/appendix/background.html#what-is-a-dataflow-analysis
-    /// [`CriticalCallEdges`]: ../../rustc_mir/transform/add_call_guards/enum.AddCallGuards.html#variant.CriticalCallEdges
+    /// [`CriticalCallEdges`]: ../../rustc_const_eval/transform/add_call_guards/enum.AddCallGuards.html#variant.CriticalCallEdges
     /// [guide-mir]: https://rustc-dev-guide.rust-lang.org/mir/
     pub struct BasicBlock {
         derive [HashStable]

@@ -22,7 +22,7 @@ rustc_feature = { path = "../rustc_feature" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_hir_pretty = { path = "../rustc_hir_pretty" }
 rustc_metadata = { path = "../rustc_metadata" }
-rustc_mir = { path = "../rustc_mir" }
+rustc_const_eval = { path = "../rustc_const_eval" }
 rustc_parse = { path = "../rustc_parse" }
 rustc_plugin_impl = { path = "../rustc_plugin_impl" }
 rustc_save_analysis = { path = "../rustc_save_analysis" }

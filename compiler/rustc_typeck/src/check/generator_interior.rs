@@ -1,6 +1,6 @@
 //! This calculates the types which has storage which lives across a suspension point in a
 //! generator from the perspective of typeck. The actual types used at runtime
-//! is calculated in `rustc_mir::transform::generator` and may be a subset of the
+//! is calculated in `rustc_const_eval::transform::generator` and may be a subset of the
 //! types computed here.
 
 use super::FnCtxt;

@@ -1,0 +1,27 @@
+[package]
+name = "rustc_const_eval"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+either = "1.5.0"
+gsgdt = "0.1.2"
+tracing = "0.1"
+rustc_apfloat = { path = "../rustc_apfloat" }
+rustc_ast = { path = "../rustc_ast" }
+rustc_attr = { path = "../rustc_attr" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_index = { path = "../rustc_index" }
+rustc_infer = { path = "../rustc_infer" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_mir_dataflow = { path = "../rustc_mir_dataflow" }
+rustc_session = { path = "../rustc_session" }
+rustc_target = { path = "../rustc_target" }
+rustc_trait_selection = { path = "../rustc_trait_selection" }
+rustc_span = { path = "../rustc_span" }

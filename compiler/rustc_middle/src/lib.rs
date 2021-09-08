@@ -8,7 +8,7 @@
 //! - **MIR.** The "mid-level (M) intermediate representation (IR)" is
 //!   defined in the `mir` module. This module contains only the
 //!   *definition* of the MIR; the passes that transform and operate
-//!   on MIR are found in `rustc_mir` crate.
+//!   on MIR are found in `rustc_const_eval` crate.
 //! - **Types.** The internal representation of types used in rustc is
 //!   defined in the `ty` module. This includes the **type context**
 //!   (or `tcx`), which is the central context during most of
@@ -51,6 +51,8 @@
 #![feature(associated_type_defaults)]
 #![feature(iter_zip)]
 #![feature(thread_local_const_init)]
+#![feature(trusted_step)]
+#![feature(try_blocks)]
 #![feature(try_reserve)]
 #![feature(try_reserve_kind)]
 #![feature(nonzero_ops)]

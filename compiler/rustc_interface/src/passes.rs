@@ -4,6 +4,7 @@ use crate::util;
 
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::{self as ast, visit};
+use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
@@ -21,7 +22,6 @@ use rustc_middle::middle;
 use rustc_middle::middle::cstore::{MetadataLoader, MetadataLoaderDyn};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
-use rustc_mir as mir;
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, hir_stats, layout_test};
@@ -737,9 +737,12 @@ pub static DEFAULT_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|| {
     let providers = &mut Providers::default();
     providers.analysis = analysis;
     proc_macro_decls::provide(providers);
+    rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);
-    mir::provide(providers);
+    mir_borrowck::provide(providers);
     mir_build::provide(providers);
+    rustc_mir_transform::provide(providers);
+    rustc_monomorphize::provide(providers);
     rustc_privacy::provide(providers);
     typeck::provide(providers);
     ty::provide(providers);
@@ -911,7 +914,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
         for def_id in tcx.body_owners() {
             tcx.ensure().thir_check_unsafety(def_id);
             if !tcx.sess.opts.debugging_opts.thir_unsafeck {
-                mir::transform::check_unsafety::check_unsafety(tcx, def_id);
+                rustc_mir_transform::check_unsafety::check_unsafety(tcx, def_id);
             }
 
             if tcx.hir().body_const_context(def_id).is_some() {
@@ -1059,7 +1062,7 @@ pub fn start_codegen<'tcx>(
     info!("Post-codegen\n{:?}", tcx.debug_stats());
 
     if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
-        if let Err(e) = mir::transform::dump_mir::emit_mir(tcx, outputs) {
+        if let Err(e) = rustc_mir_transform::dump_mir::emit_mir(tcx, outputs) {
             tcx.sess.err(&format!("could not emit MIR: {}", e));
             tcx.sess.abort_if_errors();
         }

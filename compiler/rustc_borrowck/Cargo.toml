@@ -1,0 +1,30 @@
+[package]
+name = "rustc_borrowck"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+either = "1.5.0"
+itertools = "0.9"
+tracing = "0.1"
+polonius-engine = "0.13.0"
+smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_graphviz = { path = "../rustc_graphviz" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_index = { path = "../rustc_index" }
+rustc_infer = { path = "../rustc_infer" }
+rustc_lexer = { path = "../rustc_lexer" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_const_eval = { path = "../rustc_const_eval" }
+rustc_mir_dataflow = { path = "../rustc_mir_dataflow" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_session = { path = "../rustc_session" }
+rustc_target = { path = "../rustc_target" }
+rustc_trait_selection = { path = "../rustc_trait_selection" }
+rustc_traits = { path = "../rustc_traits" }
+rustc_span = { path = "../rustc_span" }

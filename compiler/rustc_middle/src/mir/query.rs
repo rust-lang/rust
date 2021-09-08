@@ -219,7 +219,7 @@ pub struct BorrowCheckResult<'tcx> {
 /// The result of the `mir_const_qualif` query.
 ///
 /// Each field (except `error_occured`) corresponds to an implementer of the `Qualif` trait in
-/// `rustc_mir/src/transform/check_consts/qualifs.rs`. See that file for more information on each
+/// `rustc_const_eval/src/transform/check_consts/qualifs.rs`. See that file for more information on each
 /// `Qualif`.
 #[derive(Clone, Copy, Debug, Default, TyEncodable, TyDecodable, HashStable)]
 pub struct ConstQualifs {
@@ -313,7 +313,7 @@ pub struct ClosureOutlivesRequirement<'tcx> {
 /// are interesting (for error reporting). Order of variants indicates sort
 /// order of the category, thereby influencing diagnostic output.
 ///
-/// See also `rustc_mir::borrow_check::constraints`.
+/// See also `rustc_const_eval::borrow_check::constraints`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable)]
 pub enum ConstraintCategory {
