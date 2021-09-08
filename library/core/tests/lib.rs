@@ -23,6 +23,7 @@
 #![feature(duration_consts_2)]
 #![feature(duration_constants)]
 #![feature(exact_size_is_empty)]
+#![feature(extend_one)]
 #![feature(extern_types)]
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
