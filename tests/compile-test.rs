@@ -104,7 +104,7 @@ fn extern_flags() -> String {
     }
     crates
         .into_iter()
-        .map(|(name, path)| format!("--extern {}={} ", name, path))
+        .map(|(name, path)| format!(" --extern {}={}", name, path))
         .collect()
 }
 
@@ -126,10 +126,13 @@ fn default_config() -> compiletest::Config {
     // Using `-L dependency={}` enforces that external dependencies are added with `--extern`.
     // This is valuable because a) it allows us to monitor what external dependencies are used
     // and b) it ensures that conflicting rlibs are resolved properly.
+    let host_libs = option_env!("HOST_LIBS")
+        .map(|p| format!(" -L dependency={}", Path::new(p).join("deps").display()))
+        .unwrap_or_default();
     config.target_rustcflags = Some(format!(
-        "--emit=metadata -L dependency={} -L dependency={} -Dwarnings -Zui-testing {}",
-        host_lib().join("deps").display(),
+        "--emit=metadata -Dwarnings -Zui-testing -L dependency={}{}{}",
         deps_path.display(),
+        host_libs,
         extern_flags(),
     ));
 
