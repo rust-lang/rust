@@ -48,8 +48,7 @@ pub struct MacroRefData {
 impl MacroRefData {
     pub fn new(name: String, callee: Span, cx: &LateContext<'_>) -> Self {
         let sm = cx.sess().source_map();
-        let mut path = sm.filename_for_diagnostics(&sm.span_to_filename(callee))
-            .to_string();
+        let mut path = sm.filename_for_diagnostics(&sm.span_to_filename(callee)).to_string();
 
         // std lib paths are <::std::module::file type>
         // so remove brackets, space and type.

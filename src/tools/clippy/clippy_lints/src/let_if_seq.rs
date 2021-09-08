@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
-use clippy_utils::{path_to_local_id, visitors::LocalUsedVisitor};
+use clippy_utils::{path_to_local_id, visitors::is_local_used};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -65,11 +65,10 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
                 if let hir::PatKind::Binding(mode, canonical_id, ident, None) = local.pat.kind;
                 if let hir::StmtKind::Expr(if_) = expr.kind;
                 if let hir::ExprKind::If(hir::Expr { kind: hir::ExprKind::DropTemps(cond), ..}, then, else_) = if_.kind;
-                let mut used_visitor = LocalUsedVisitor::new(cx, canonical_id);
-                if !used_visitor.check_expr(cond);
+                if !is_local_used(cx, *cond, canonical_id);
                 if let hir::ExprKind::Block(then, _) = then.kind;
                 if let Some(value) = check_assign(cx, canonical_id, &*then);
-                if !used_visitor.check_expr(value);
+                if !is_local_used(cx, value, canonical_id);
                 then {
                     let span = stmt.span.to(if_.span);
 
@@ -148,15 +147,13 @@ fn check_assign<'tcx>(
         if let hir::ExprKind::Assign(var, value, _) = expr.kind;
         if path_to_local_id(var, decl);
         then {
-            let mut v = LocalUsedVisitor::new(cx, decl);
-
-            if block.stmts.iter().take(block.stmts.len()-1).any(|stmt| v.check_stmt(stmt)) {
-                return None;
+            if block.stmts.iter().take(block.stmts.len()-1).any(|stmt| is_local_used(cx, stmt, decl)) {
+                None
+            } else {
+                Some(value)
             }
-
-            return Some(value);
+        } else {
+            None
         }
     }
-
-    None
 }

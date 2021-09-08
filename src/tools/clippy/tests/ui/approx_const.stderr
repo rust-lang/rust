@@ -1,130 +1,187 @@
-error: approximate value of `f{32, 64}::consts::E` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::E` found
   --> $DIR/approx_const.rs:4:16
    |
 LL |     let my_e = 2.7182;
    |                ^^^^^^
    |
    = note: `-D clippy::approx-constant` implied by `-D warnings`
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::E` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::E` found
   --> $DIR/approx_const.rs:5:20
    |
 LL |     let almost_e = 2.718;
    |                    ^^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::FRAC_1_PI` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::FRAC_1_PI` found
   --> $DIR/approx_const.rs:8:24
    |
 LL |     let my_1_frac_pi = 0.3183;
    |                        ^^^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::FRAC_1_SQRT_2` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::FRAC_1_SQRT_2` found
   --> $DIR/approx_const.rs:11:28
    |
 LL |     let my_frac_1_sqrt_2 = 0.70710678;
    |                            ^^^^^^^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::FRAC_1_SQRT_2` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::FRAC_1_SQRT_2` found
   --> $DIR/approx_const.rs:12:32
    |
 LL |     let almost_frac_1_sqrt_2 = 0.70711;
    |                                ^^^^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::FRAC_2_PI` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::FRAC_2_PI` found
   --> $DIR/approx_const.rs:15:24
    |
 LL |     let my_frac_2_pi = 0.63661977;
    |                        ^^^^^^^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::FRAC_2_SQRT_PI` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::FRAC_2_SQRT_PI` found
   --> $DIR/approx_const.rs:18:27
    |
 LL |     let my_frac_2_sq_pi = 1.128379;
    |                           ^^^^^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::FRAC_PI_2` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::FRAC_PI_2` found
   --> $DIR/approx_const.rs:21:24
    |
 LL |     let my_frac_pi_2 = 1.57079632679;
    |                        ^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::FRAC_PI_3` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::FRAC_PI_3` found
   --> $DIR/approx_const.rs:24:24
    |
 LL |     let my_frac_pi_3 = 1.04719755119;
    |                        ^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::FRAC_PI_4` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::FRAC_PI_4` found
   --> $DIR/approx_const.rs:27:24
    |
 LL |     let my_frac_pi_4 = 0.785398163397;
    |                        ^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::FRAC_PI_6` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::FRAC_PI_6` found
   --> $DIR/approx_const.rs:30:24
    |
 LL |     let my_frac_pi_6 = 0.523598775598;
    |                        ^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::FRAC_PI_8` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::FRAC_PI_8` found
   --> $DIR/approx_const.rs:33:24
    |
 LL |     let my_frac_pi_8 = 0.3926990816987;
    |                        ^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::LN_10` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::LN_10` found
   --> $DIR/approx_const.rs:36:20
    |
 LL |     let my_ln_10 = 2.302585092994046;
    |                    ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::LN_2` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::LN_2` found
   --> $DIR/approx_const.rs:39:19
    |
 LL |     let my_ln_2 = 0.6931471805599453;
    |                   ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::LOG10_E` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::LOG10_E` found
   --> $DIR/approx_const.rs:42:22
    |
 LL |     let my_log10_e = 0.4342944819032518;
    |                      ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::LOG2_E` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::LOG2_E` found
   --> $DIR/approx_const.rs:45:21
    |
 LL |     let my_log2_e = 1.4426950408889634;
    |                     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::LOG2_10` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::LOG2_10` found
   --> $DIR/approx_const.rs:48:19
    |
 LL |     let log2_10 = 3.321928094887362;
    |                   ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::LOG10_2` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::LOG10_2` found
   --> $DIR/approx_const.rs:51:19
    |
 LL |     let log10_2 = 0.301029995663981;
    |                   ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::PI` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::PI` found
   --> $DIR/approx_const.rs:54:17
    |
 LL |     let my_pi = 3.1415;
    |                 ^^^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::PI` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::PI` found
   --> $DIR/approx_const.rs:55:21
    |
 LL |     let almost_pi = 3.14;
    |                     ^^^^
+   |
+   = help: consider using the constant directly
 
-error: approximate value of `f{32, 64}::consts::SQRT_2` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::SQRT_2` found
   --> $DIR/approx_const.rs:58:18
    |
 LL |     let my_sq2 = 1.4142;
    |                  ^^^^^^
+   |
+   = help: consider using the constant directly
 
-error: aborting due to 21 previous errors
+error: approximate value of `f{32, 64}::consts::TAU` found
+  --> $DIR/approx_const.rs:61:18
+   |
+LL |     let my_tau = 6.2832;
+   |                  ^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::TAU` found
+  --> $DIR/approx_const.rs:62:22
+   |
+LL |     let almost_tau = 6.28;
+   |                      ^^^^
+   |
+   = help: consider using the constant directly
+
+error: aborting due to 23 previous errors
 

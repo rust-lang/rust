@@ -5,4 +5,5 @@ lintcheck = "run --target-dir lintcheck/target --package lintcheck --bin lintche
 collect-metadata = "test --test dogfood --features metadata-collector-lint -- run_metadata_collection_lint --ignored"
 
 [build]
-rustflags = ["-Zunstable-options"]
+# -Zbinary-dep-depinfo allows us to track which rlib files to use for compiling UI tests
+rustflags = ["-Zunstable-options", "-Zbinary-dep-depinfo"]

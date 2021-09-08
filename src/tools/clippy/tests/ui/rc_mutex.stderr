@@ -1,28 +1,35 @@
-error: found `Rc<Mutex<_>>`. Consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead
+error: usage of `Rc<Mutex<_>>`
   --> $DIR/rc_mutex.rs:8:10
    |
 LL |     foo: Rc<Mutex<i32>>,
    |          ^^^^^^^^^^^^^^
    |
    = note: `-D clippy::rc-mutex` implied by `-D warnings`
+   = help: consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead
 
-error: found `Rc<Mutex<_>>`. Consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead
-  --> $DIR/rc_mutex.rs:20:22
+error: usage of `Rc<Mutex<_>>`
+  --> $DIR/rc_mutex.rs:26:18
    |
-LL | pub fn test1<T>(foo: Rc<Mutex<T>>) {}
-   |                      ^^^^^^^^^^^^
+LL | fn test1<T>(foo: Rc<Mutex<T>>) {}
+   |                  ^^^^^^^^^^^^
+   |
+   = help: consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead
 
-error: found `Rc<Mutex<_>>`. Consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead
-  --> $DIR/rc_mutex.rs:22:19
+error: usage of `Rc<Mutex<_>>`
+  --> $DIR/rc_mutex.rs:27:15
    |
-LL | pub fn test2(foo: Rc<Mutex<MyEnum>>) {}
-   |                   ^^^^^^^^^^^^^^^^^
+LL | fn test2(foo: Rc<Mutex<MyEnum>>) {}
+   |               ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead
 
-error: found `Rc<Mutex<_>>`. Consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead
-  --> $DIR/rc_mutex.rs:24:19
+error: usage of `Rc<Mutex<_>>`
+  --> $DIR/rc_mutex.rs:28:15
    |
-LL | pub fn test3(foo: Rc<Mutex<SubT<usize>>>) {}
-   |                   ^^^^^^^^^^^^^^^^^^^^^^
+LL | fn test3(foo: Rc<Mutex<SubT<usize>>>) {}
+   |               ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead
 
 error: aborting due to 4 previous errors
 

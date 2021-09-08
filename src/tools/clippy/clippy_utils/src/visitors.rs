@@ -4,6 +4,7 @@ use rustc_hir::intravisit::{self, walk_expr, ErasedMap, NestedVisitorMap, Visito
 use rustc_hir::{def::Res, Arm, Block, Body, BodyId, Destination, Expr, ExprKind, HirId, Stmt};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
+use std::ops::ControlFlow;
 
 /// returns `true` if expr contains match expr desugared from try
 fn contains_try(expr: &hir::Expr<'_>) -> bool {
@@ -133,62 +134,6 @@ where
     }
 }
 
-pub struct LocalUsedVisitor<'hir> {
-    hir: Map<'hir>,
-    pub local_hir_id: HirId,
-    pub used: bool,
-}
-
-impl<'hir> LocalUsedVisitor<'hir> {
-    pub fn new(cx: &LateContext<'hir>, local_hir_id: HirId) -> Self {
-        Self {
-            hir: cx.tcx.hir(),
-            local_hir_id,
-            used: false,
-        }
-    }
-
-    fn check<T>(&mut self, t: T, visit: fn(&mut Self, T)) -> bool {
-        visit(self, t);
-        std::mem::replace(&mut self.used, false)
-    }
-
-    pub fn check_arm(&mut self, arm: &'hir Arm<'_>) -> bool {
-        self.check(arm, Self::visit_arm)
-    }
-
-    pub fn check_body(&mut self, body: &'hir Body<'_>) -> bool {
-        self.check(body, Self::visit_body)
-    }
-
-    pub fn check_expr(&mut self, expr: &'hir Expr<'_>) -> bool {
-        self.check(expr, Self::visit_expr)
-    }
-
-    pub fn check_stmt(&mut self, stmt: &'hir Stmt<'_>) -> bool {
-        self.check(stmt, Self::visit_stmt)
-    }
-}
-
-impl<'v> Visitor<'v> for LocalUsedVisitor<'v> {
-    type Map = Map<'v>;
-
-    fn visit_expr(&mut self, expr: &'v Expr<'v>) {
-        if self.used {
-            return;
-        }
-        if path_to_local_id(expr, self.local_hir_id) {
-            self.used = true;
-        } else {
-            walk_expr(self, expr);
-        }
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.hir)
-    }
-}
-
 /// A type which can be visited.
 pub trait Visitable<'tcx> {
     /// Calls the corresponding `visit_*` function on the visitor.
@@ -203,7 +148,22 @@ macro_rules! visitable_ref {
         }
     };
 }
+visitable_ref!(Arm, visit_arm);
 visitable_ref!(Block, visit_block);
+visitable_ref!(Body, visit_body);
+visitable_ref!(Expr, visit_expr);
+visitable_ref!(Stmt, visit_stmt);
+
+// impl<'tcx, I: IntoIterator> Visitable<'tcx> for I
+// where
+//     I::Item: Visitable<'tcx>,
+// {
+//     fn visit<V: Visitor<'tcx>>(self, visitor: &mut V) {
+//         for x in self {
+//             x.visit(visitor);
+//         }
+//     }
+// }
 
 /// Calls the given function for each break expression.
 pub fn visit_break_exprs<'tcx>(
@@ -259,4 +219,49 @@ pub fn is_res_used(cx: &LateContext<'_>, res: Res, body: BodyId) -> bool {
     let mut v = V { cx, res, found: false };
     v.visit_expr(&cx.tcx.hir().body(body).value);
     v.found
+}
+
+/// Calls the given function for each usage of the given local.
+pub fn for_each_local_usage<'tcx, B>(
+    cx: &LateContext<'tcx>,
+    visitable: impl Visitable<'tcx>,
+    id: HirId,
+    f: impl FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>,
+) -> ControlFlow<B> {
+    struct V<'tcx, B, F> {
+        map: Map<'tcx>,
+        id: HirId,
+        f: F,
+        res: ControlFlow<B>,
+    }
+    impl<'tcx, B, F: FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>> Visitor<'tcx> for V<'tcx, B, F> {
+        type Map = Map<'tcx>;
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+            NestedVisitorMap::OnlyBodies(self.map)
+        }
+
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
+            if self.res.is_continue() {
+                if path_to_local_id(e, self.id) {
+                    self.res = (self.f)(e);
+                } else {
+                    walk_expr(self, e);
+                }
+            }
+        }
+    }
+
+    let mut v = V {
+        map: cx.tcx.hir(),
+        id,
+        f,
+        res: ControlFlow::CONTINUE,
+    };
+    visitable.visit(&mut v);
+    v.res
+}
+
+/// Checks if the given local is used.
+pub fn is_local_used(cx: &LateContext<'tcx>, visitable: impl Visitable<'tcx>, id: HirId) -> bool {
+    for_each_local_usage(cx, visitable, id, |_| ControlFlow::BREAK).is_break()
 }

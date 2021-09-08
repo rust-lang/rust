@@ -118,7 +118,7 @@ enum AssertKind {
 fn match_assert_with_message<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<AssertKind> {
     if_chain! {
         if let Some(higher::If { cond, then, .. }) = higher::If::hir(expr);
-        if let ExprKind::Unary(UnOp::Not, ref expr) = cond.kind;
+        if let ExprKind::Unary(UnOp::Not, expr) = cond.kind;
         // bind the first argument of the `assert!` macro
         if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.typeck_results(), expr);
         // block

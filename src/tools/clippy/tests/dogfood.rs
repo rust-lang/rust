@@ -6,6 +6,8 @@
 // Dogfood cannot run on Windows
 #![cfg(not(windows))]
 #![feature(once_cell)]
+#![cfg_attr(feature = "deny-warnings", deny(warnings))]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 use std::lazy::SyncLazy;
 use std::path::PathBuf;

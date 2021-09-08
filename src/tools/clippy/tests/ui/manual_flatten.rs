@@ -91,6 +91,19 @@ fn main() {
         }
     }
 
+    struct Test {
+        a: usize,
+    }
+
+    let mut vec_of_struct = [Some(Test { a: 1 }), None];
+
+    // Usage of `if let` expression should not trigger lint
+    for n in vec_of_struct.iter_mut() {
+        if let Some(z) = n {
+            *n = None;
+        }
+    }
+
     // Using manual flatten should not trigger the lint
     for n in vec![Some(1), Some(2), Some(3)].iter().flatten() {
         println!("{}", n);

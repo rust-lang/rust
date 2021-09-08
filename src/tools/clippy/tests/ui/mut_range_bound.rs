@@ -1,14 +1,6 @@
 #![allow(unused)]
 
-fn main() {
-    mut_range_bound_upper();
-    mut_range_bound_lower();
-    mut_range_bound_both();
-    mut_range_bound_no_mutation();
-    immut_range_bound();
-    mut_borrow_range_bound();
-    immut_borrow_range_bound();
-}
+fn main() {}
 
 fn mut_range_bound_upper() {
     let mut m = 4;
@@ -60,4 +52,33 @@ fn immut_range_bound() {
     for i in 0..m {
         continue;
     } // no warning
+}
+
+fn mut_range_bound_break() {
+    let mut m = 4;
+    for i in 0..m {
+        if m == 4 {
+            m = 5; // no warning because of immediate break
+            break;
+        }
+    }
+}
+
+fn mut_range_bound_no_immediate_break() {
+    let mut m = 4;
+    for i in 0..m {
+        m = 2; // warning because it is not immediately followed by break
+        if m == 4 {
+            break;
+        }
+    }
+
+    let mut n = 3;
+    for i in n..10 {
+        if n == 4 {
+            n = 1; // FIXME: warning because is is not immediately followed by break
+            let _ = 2;
+            break;
+        }
+    }
 }

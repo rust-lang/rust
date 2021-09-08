@@ -2,10 +2,8 @@ use super::NEEDLESS_RANGE_LOOP;
 use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
 use clippy_utils::source::snippet;
 use clippy_utils::ty::has_iter_method;
-use clippy_utils::visitors::LocalUsedVisitor;
-use clippy_utils::{
-    contains_name, higher, is_integer_const, match_trait_method, path_to_local_id, paths, sugg, SpanlessEq,
-};
+use clippy_utils::visitors::is_local_used;
+use clippy_utils::{contains_name, higher, is_integer_const, match_trait_method, paths, sugg, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -256,43 +254,36 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
             if let ExprKind::Path(ref seqpath) = seqexpr.kind;
             if let QPath::Resolved(None, seqvar) = *seqpath;
             if seqvar.segments.len() == 1;
-            let index_used_directly = path_to_local_id(idx, self.var);
-            let indexed_indirectly = {
-                let mut used_visitor = LocalUsedVisitor::new(self.cx, self.var);
-                walk_expr(&mut used_visitor, idx);
-                used_visitor.used
-            };
-            if indexed_indirectly || index_used_directly;
+            if is_local_used(self.cx, idx, self.var);
             then {
                 if self.prefer_mutable {
                     self.indexed_mut.insert(seqvar.segments[0].ident.name);
                 }
+                let index_used_directly = matches!(idx.kind, ExprKind::Path(_));
                 let res = self.cx.qpath_res(seqpath, seqexpr.hir_id);
                 match res {
                     Res::Local(hir_id) => {
                         let parent_id = self.cx.tcx.hir().get_parent_item(expr.hir_id);
                         let parent_def_id = self.cx.tcx.hir().local_def_id(parent_id);
                         let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
-                        if indexed_indirectly {
-                            self.indexed_indirectly.insert(seqvar.segments[0].ident.name, Some(extent));
-                        }
                         if index_used_directly {
                             self.indexed_directly.insert(
                                 seqvar.segments[0].ident.name,
                                 (Some(extent), self.cx.typeck_results().node_type(seqexpr.hir_id)),
                             );
+                        } else {
+                            self.indexed_indirectly.insert(seqvar.segments[0].ident.name, Some(extent));
                         }
                         return false;  // no need to walk further *on the variable*
                     }
                     Res::Def(DefKind::Static | DefKind::Const, ..) => {
-                        if indexed_indirectly {
-                            self.indexed_indirectly.insert(seqvar.segments[0].ident.name, None);
-                        }
                         if index_used_directly {
                             self.indexed_directly.insert(
                                 seqvar.segments[0].ident.name,
                                 (None, self.cx.typeck_results().node_type(seqexpr.hir_id)),
                             );
+                        } else {
+                            self.indexed_indirectly.insert(seqvar.segments[0].ident.name, None);
                         }
                         return false;  // no need to walk further *on the variable*
                     }
@@ -310,10 +301,10 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
             // a range index op
-            if let ExprKind::MethodCall(meth, _, args, _) = expr.kind;
+            if let ExprKind::MethodCall(meth, _, [args_0, args_1, ..], _) = &expr.kind;
             if (meth.ident.name == sym::index && match_trait_method(self.cx, expr, &paths::INDEX))
                 || (meth.ident.name == sym::index_mut && match_trait_method(self.cx, expr, &paths::INDEX_MUT));
-            if !self.check(&args[1], &args[0], expr);
+            if !self.check(args_1, args_0, expr);
             then { return }
         }
 

@@ -148,7 +148,7 @@ declare_clippy_lint! {
     /// };
     /// ```
     pub BRANCHES_SHARING_CODE,
-    complexity,
+    nursery,
     "`if` statement with shared code in all blocks"
 }
 
