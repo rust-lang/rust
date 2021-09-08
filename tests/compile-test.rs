@@ -120,6 +120,8 @@ fn default_config() -> compiletest::Config {
         config.run_lib_path = path.clone();
         config.compile_lib_path = path;
     }
+    let current_exe_path = std::env::current_exe().unwrap();
+    let deps_path = current_exe_path.parent().unwrap();
 
     // Using `-L dependency={}` enforces that external dependencies are added with `--extern`.
     // This is valuable because a) it allows us to monitor what external dependencies are used
@@ -127,7 +129,7 @@ fn default_config() -> compiletest::Config {
     config.target_rustcflags = Some(format!(
         "--emit=metadata -L dependency={} -L dependency={} -Dwarnings -Zui-testing {}",
         host_lib().join("deps").display(),
-        cargo::TARGET_LIB.join("deps").display(),
+        deps_path.display(),
         extern_flags(),
     ));
 
