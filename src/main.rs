@@ -4,7 +4,6 @@
 
 use rustc_tools_util::VersionInfo;
 use std::env;
-use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::{self, Command};
 
@@ -14,7 +13,7 @@ Usage:
     cargo clippy [options] [--] [<opts>...]
 
 Common options:
-    --no-deps                Run Clippy only on the given crate, without linting the dependencies 
+    --no-deps                Run Clippy only on the given crate, without linting the dependencies
     --fix                    Automatically apply lint suggestions. This flag implies `--no-deps`
     -h, --help               Print this message
     -V, --version            Print version info and exit
@@ -116,22 +115,6 @@ impl ClippyCmd {
         path
     }
 
-    fn target_dir() -> Option<(&'static str, OsString)> {
-        env::var_os("CLIPPY_DOGFOOD")
-            .map(|_| {
-                env::var_os("CARGO_MANIFEST_DIR").map_or_else(
-                    || std::ffi::OsString::from("clippy_dogfood"),
-                    |d| {
-                        std::path::PathBuf::from(d)
-                            .join("target")
-                            .join("dogfood")
-                            .into_os_string()
-                    },
-                )
-            })
-            .map(|p| ("CARGO_TARGET_DIR", p))
-    }
-
     fn into_std_cmd(self) -> Command {
         let mut cmd = Command::new("cargo");
         let clippy_args: String = self
@@ -141,7 +124,6 @@ impl ClippyCmd {
             .collect();
 
         cmd.env("RUSTC_WORKSPACE_WRAPPER", Self::path())
-            .envs(ClippyCmd::target_dir())
             .env("CLIPPY_ARGS", clippy_args)
             .arg(self.cargo_subcommand)
             .args(&self.args);

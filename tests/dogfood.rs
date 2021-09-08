@@ -33,7 +33,6 @@ fn dogfood_clippy() {
     let mut command = Command::new(&*CLIPPY_PATH);
     command
         .current_dir(root_dir)
-        .env("CLIPPY_DOGFOOD", "1")
         .env("CARGO_INCREMENTAL", "0")
         .arg("clippy")
         .arg("--all-targets")
@@ -79,7 +78,6 @@ fn test_no_deps_ignores_path_deps_in_workspaces() {
     // Make sure that with the `--no-deps` argument Clippy does not run on `path_dep`.
     let output = Command::new(&*CLIPPY_PATH)
         .current_dir(&cwd)
-        .env("CLIPPY_DOGFOOD", "1")
         .env("CARGO_INCREMENTAL", "0")
         .arg("clippy")
         .args(&["-p", "subcrate"])
@@ -99,7 +97,6 @@ fn test_no_deps_ignores_path_deps_in_workspaces() {
         // Test that without the `--no-deps` argument, `path_dep` is linted.
         let output = Command::new(&*CLIPPY_PATH)
             .current_dir(&cwd)
-            .env("CLIPPY_DOGFOOD", "1")
             .env("CARGO_INCREMENTAL", "0")
             .arg("clippy")
             .args(&["-p", "subcrate"])
@@ -126,7 +123,6 @@ fn test_no_deps_ignores_path_deps_in_workspaces() {
     let successful_build = || {
         let output = Command::new(&*CLIPPY_PATH)
             .current_dir(&cwd)
-            .env("CLIPPY_DOGFOOD", "1")
             .env("CARGO_INCREMENTAL", "0")
             .arg("clippy")
             .args(&["-p", "subcrate"])
@@ -228,7 +224,6 @@ fn run_clippy_for_project(project: &str) {
 
     command
         .current_dir(root_dir.join(project))
-        .env("CLIPPY_DOGFOOD", "1")
         .env("CARGO_INCREMENTAL", "0")
         .arg("clippy")
         .arg("--all-targets")
