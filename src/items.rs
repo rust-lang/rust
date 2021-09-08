@@ -1960,14 +1960,17 @@ impl Rewrite for ast::Param {
         let param_attrs_result = self
             .attrs
             .rewrite(context, Shape::legacy(shape.width, shape.indent))?;
-        let (span, has_multiple_attr_lines) = if !self.attrs.is_empty() {
+        // N.B. Doc comments aren't typically valid syntax, but could appear
+        // in the presence of certain macros - https://github.com/rust-lang/rustfmt/issues/4936
+        let (span, has_multiple_attr_lines, has_doc_comments) = if !self.attrs.is_empty() {
             let num_attrs = self.attrs.len();
             (
                 mk_sp(self.attrs[num_attrs - 1].span.hi(), self.pat.span.lo()),
                 param_attrs_result.contains('\n'),
+                self.attrs.iter().any(|a| a.is_doc_comment()),
             )
         } else {
-            (mk_sp(self.span.lo(), self.span.lo()), false)
+            (mk_sp(self.span.lo(), self.span.lo()), false, false)
         };
 
         if let Some(ref explicit_self) = self.to_self() {
@@ -1989,7 +1992,7 @@ impl Rewrite for ast::Param {
                 param_name,
                 span,
                 shape,
-                !has_multiple_attr_lines,
+                !has_multiple_attr_lines && !has_doc_comments,
             )?;
 
             if !is_empty_infer(&*self.ty, self.pat.span) {
