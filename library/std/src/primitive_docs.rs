@@ -388,8 +388,11 @@ mod prim_char {}
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_unit {}
 
-#[doc(alias = "ptr")]
 #[doc(primitive = "pointer")]
+#[doc(alias = "ptr")]
+#[doc(alias = "*")]
+#[doc(alias = "*const")]
+#[doc(alias = "*mut")]
 //
 /// Raw, unsafe pointers, `*const T`, and `*mut T`.
 ///
@@ -502,10 +505,10 @@ mod prim_unit {}
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer {}
 
+#[doc(primitive = "array")]
 #[doc(alias = "[]")]
 #[doc(alias = "[T;N]")] // unfortunately, rustdoc doesn't have fuzzy search for aliases
 #[doc(alias = "[T; N]")]
-#[doc(primitive = "array")]
 /// A fixed-size array, denoted `[T; N]`, for the element type, `T`, and the
 /// non-negative compile-time constant size, `N`.
 ///

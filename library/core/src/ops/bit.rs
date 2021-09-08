@@ -30,6 +30,7 @@
 /// ```
 #[lang = "not"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(alias = "!")]
 pub trait Not {
     /// The resulting type after applying the `!` operator.
     #[stable(feature = "rust1", since = "1.0.0")]

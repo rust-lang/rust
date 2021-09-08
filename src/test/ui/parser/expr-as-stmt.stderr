@@ -9,11 +9,11 @@ help: parentheses are required to parse this as an expression
 LL |     ({2}) + {2}
    |     +   +
 
-error: expected expression, found `+`
+error: leading `+` is not supported
   --> $DIR/expr-as-stmt.rs:13:9
    |
 LL |     {2} + 2
-   |         ^ expected expression
+   |         ^ unexpected `+`
    |
 help: parentheses are required to parse this as an expression
    |

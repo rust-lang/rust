@@ -586,6 +586,13 @@ impl Token {
         self.is_non_raw_ident_where(|id| id.name.is_bool_lit())
     }
 
+    pub fn is_numeric_lit(&self) -> bool {
+        matches!(
+            self.kind,
+            Literal(Lit { kind: LitKind::Integer, .. }) | Literal(Lit { kind: LitKind::Float, .. })
+        )
+    }
+
     /// Returns `true` if the token is a non-raw identifier for which `pred` holds.
     pub fn is_non_raw_ident_where(&self, pred: impl FnOnce(Ident) -> bool) -> bool {
         match self.ident() {
