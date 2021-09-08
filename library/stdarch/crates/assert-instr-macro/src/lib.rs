@@ -58,6 +58,10 @@ pub fn assert_instr(
         &format!("stdarch_test_shim_{}_{}", name, instr_str),
         name.span(),
     );
+    let shim_name_ptr = syn::Ident::new(
+        &format!("stdarch_test_shim_{}_{}_ptr", name, instr_str).to_ascii_uppercase(),
+        name.span(),
+    );
     let mut inputs = Vec::new();
     let mut input_vals = Vec::new();
     let mut const_vals = Vec::new();
@@ -125,6 +129,9 @@ pub fn assert_instr(
     };
     let shim_name_str = format!("{}{}", shim_name, assert_name);
     let to_test = quote! {
+
+        const #shim_name_ptr : *const u8 = #shim_name_str.as_ptr();
+
         #attrs
         #[no_mangle]
         #[inline(never)]
@@ -140,17 +147,7 @@ pub fn assert_instr(
             // generate some code that's hopefully very tight in terms of
             // codegen but is otherwise unique to prevent code from being
             // folded.
-            //
-            // This is avoided on Wasm32 right now since these functions aren't
-            // inlined which breaks our tests since each intrinsic looks like it
-            // calls functions. Turns out functions aren't similar enough to get
-            // merged on wasm32 anyway. This bug is tracked at
-            // rust-lang/rust#74320.
-            #[cfg(not(target_arch = "wasm32"))]
-            ::stdarch_test::_DONT_DEDUP.store(
-                std::mem::transmute(#shim_name_str.as_bytes().as_ptr()),
-                std::sync::atomic::Ordering::Relaxed,
-            );
+            ::stdarch_test::_DONT_DEDUP = #shim_name_ptr;
             #name::<#(#const_vals),*>(#(#input_vals),*)
         }
     };

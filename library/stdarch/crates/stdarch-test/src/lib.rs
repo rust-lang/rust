@@ -14,7 +14,7 @@ extern crate cfg_if;
 
 pub use assert_instr_macro::*;
 pub use simd_test_macro::*;
-use std::{cmp, collections::HashSet, env, hash, hint::black_box, str, sync::atomic::AtomicPtr};
+use std::{cmp, collections::HashSet, env, hash, hint::black_box, str};
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
@@ -103,7 +103,7 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
             // failed inlining something.
             s[0].starts_with("call ") && s[1].starts_with("pop") // FIXME: original logic but does not match comment
         })
-    } else if cfg!(target_arch = "aarch64") {
+    } else if cfg!(target_arch = "aarch64") || cfg!(target_arch = "arm") {
         instrs.iter().any(|s| s.starts_with("bl "))
     } else {
         // FIXME: Add detection for other archs
@@ -189,4 +189,4 @@ pub fn assert_skip_test_ok(name: &str) {
 }
 
 // See comment in `assert-instr-macro` crate for why this exists
-pub static _DONT_DEDUP: AtomicPtr<u8> = AtomicPtr::new(b"".as_ptr() as *mut _);
+pub static mut _DONT_DEDUP: *const u8 = std::ptr::null();
