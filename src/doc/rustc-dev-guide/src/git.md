@@ -269,9 +269,9 @@ git push --force-with-lease (set origin to be the same as local)
 ```
 
 To avoid merges as per the [No-Merge Policy](#no-merge-policy), you may want to use
-`git config pull.ff only` (this will apply the config to the local repo).
-to avoid merge conflicts while pulling, without needing
-`--ff-only` or `--rebase` while `git pull`ing
+`git config pull.ff only` (this will apply the config only to the local repo)
+to ensure that Git doesn't create merge commits when `git pull`ing, without
+needing to pass `--ff-only` or `--rebase` every time.
 
 You can also `git push --force-with-lease` from master to keep your origin's master in sync with
 upstream.
