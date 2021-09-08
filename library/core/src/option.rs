@@ -1173,7 +1173,7 @@ impl<T> Option<T> {
     // Entry-like operations to insert a value and return a reference
     /////////////////////////////////////////////////////////////////////////
 
-    /// Inserts `value` into the option then returns a mutable reference to it.
+    /// Inserts `value` into the option, then returns a mutable reference to it.
     ///
     /// If the option already contains a value, the old value is dropped.
     ///
@@ -1397,7 +1397,7 @@ impl<T> Option<T> {
 }
 
 impl<T, U> Option<(T, U)> {
-    /// Unzips an option containing a tuple of two options
+    /// Unzips an option containing a tuple of two options.
     ///
     /// If `self` is `Some((a, b))` this method returns `(Some(a), Some(b))`.
     /// Otherwise, `(None, None)` is returned.
@@ -1500,7 +1500,7 @@ impl<T: Clone> Option<&mut T> {
 }
 
 impl<T: Default> Option<T> {
-    /// Returns the contained [`Some`] value or a default
+    /// Returns the contained [`Some`] value or a default.
     ///
     /// Consumes the `self` argument then, if [`Some`], returns the contained
     /// value, otherwise if [`None`], returns the [default value] for that
@@ -1561,7 +1561,7 @@ impl<T: DerefMut> Option<T> {
     /// Converts from `Option<T>` (or `&mut Option<T>`) to `Option<&mut T::Target>`.
     ///
     /// Leaves the original `Option` in-place, creating a new one containing a mutable reference to
-    /// the inner type's `Deref::Target` type.
+    /// the inner type's [`Deref::Target`] type.
     ///
     /// # Examples
     ///
@@ -1701,7 +1701,7 @@ impl<'a, T> IntoIterator for &'a mut Option<T> {
 
 #[stable(since = "1.12.0", feature = "option_from")]
 impl<T> From<T> for Option<T> {
-    /// Copies `val` into a new `Some`.
+    /// Moves `val` into a new [`Some`].
     ///
     /// # Examples
     ///
@@ -1942,8 +1942,8 @@ unsafe impl<A> TrustedLen for IntoIter<A> {}
 impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// Takes each element in the [`Iterator`]: if it is [`None`][Option::None],
     /// no further elements are taken, and the [`None`][Option::None] is
-    /// returned. Should no [`None`][Option::None] occur, a container with the
-    /// values of each [`Option`] is returned.
+    /// returned. Should no [`None`][Option::None] occur, a container of type
+    /// `V` containing the values of each [`Option`] is returned.
     ///
     /// # Examples
     ///
@@ -2039,7 +2039,7 @@ impl<T> ops::FromResidual for Option<T> {
 }
 
 impl<T> Option<Option<T>> {
-    /// Converts from `Option<Option<T>>` to `Option<T>`
+    /// Converts from `Option<Option<T>>` to `Option<T>`.
     ///
     /// # Examples
     ///
