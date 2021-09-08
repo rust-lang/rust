@@ -397,6 +397,21 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// One might think that modifying the mutable variable changes the loop bounds
     ///
+    /// ### Known problems
+    /// False positive when mutation is followed by a `break`, but the `break` is not immediately
+    /// after the mutation:
+    ///
+    /// ```rust
+    /// let mut x = 5;
+    /// for _ in 0..x {
+    ///     x += 1; // x is a range bound that is mutated
+    ///     ..; // some other expression
+    ///     break; // leaves the loop, so mutation is not an issue
+    /// }
+    /// ```
+    ///
+    /// False positive on nested loops ([#6072](https://github.com/rust-lang/rust-clippy/issues/6072))
+    ///
     /// ### Example
     /// ```rust
     /// let mut foo = 42;
