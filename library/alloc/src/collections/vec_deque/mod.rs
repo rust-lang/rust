@@ -417,24 +417,23 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Append all values from `src` to `self`, wrapping around if needed.
+    /// Append all values from `src` to `dst`, wrapping around if needed.
     /// Assumes capacity is sufficient.
     #[inline]
-    unsafe fn append_slice(&mut self, src: &[T]) {
-        debug_assert!(self.len() + src.len() + 1 <= self.cap());
-        let head_room = self.cap() - self.head;
-        if self.head < self.tail || src.len() <= head_room {
+    unsafe fn copy_slice(&mut self, dst: usize, src: &[T]) {
+        debug_assert!(src.len() <= self.cap());
+        let head_room = self.cap() - dst;
+        if src.len() <= head_room {
             unsafe {
-                ptr::copy_nonoverlapping(src.as_ptr(), self.ptr().add(self.head), src.len());
+                ptr::copy_nonoverlapping(src.as_ptr(), self.ptr().add(dst), src.len());
             }
         } else {
             let (left, right) = src.split_at(head_room);
             unsafe {
-                ptr::copy_nonoverlapping(left.as_ptr(), self.ptr().add(self.head), left.len());
+                ptr::copy_nonoverlapping(left.as_ptr(), self.ptr().add(dst), left.len());
                 ptr::copy_nonoverlapping(right.as_ptr(), self.ptr(), right.len());
             }
         }
-        self.head = self.wrap_add(self.head, src.len());
     }
 
     /// Frobs the head and tail sections around to handle the fact that we
@@ -2111,9 +2110,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
         self.reserve(other.len());
         unsafe {
             let (left, right) = other.as_slices();
-            self.append_slice(left);
-            self.append_slice(right);
+            self.copy_slice(self.head, left);
+            self.copy_slice(self.wrap_add(self.head, left.len()), right);
         }
+        // SAFETY: Update pointers after copying to avoid leaving doppelganger
+        // in case of panics.
+        self.head = self.wrap_add(self.head, other.len());
         // Silently drop values in `other`.
         other.tail = other.head;
     }
