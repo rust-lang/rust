@@ -1,5 +1,4 @@
 #![feature(test)] // compiletest_rs requires this attribute
-#![feature(once_cell)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
@@ -45,10 +44,6 @@ extern crate itertools;
 extern crate quote;
 #[allow(unused_extern_crates)]
 extern crate syn;
-
-fn host_lib() -> PathBuf {
-    option_env!("HOST_LIBS").map_or(cargo::CARGO_TARGET_DIR.join(env!("PROFILE")), PathBuf::from)
-}
 
 /// Produces a string with an `--extern` flag for all UI test crate
 /// dependencies.
@@ -133,7 +128,7 @@ fn default_config() -> compiletest::Config {
         extern_flags(),
     ));
 
-    config.build_base = host_lib().join("test_build_base");
+    config.build_base = profile_path.join("test_build_base");
     config.rustc_path = profile_path.join(if cfg!(windows) {
         "clippy-driver.exe"
     } else {

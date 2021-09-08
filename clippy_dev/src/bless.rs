@@ -85,10 +85,7 @@ fn updated_since_clippy_build(path: &Path) -> Option<bool> {
 }
 
 fn build_dir() -> PathBuf {
-    let profile = env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
-    let mut path = PathBuf::new();
-    path.push(CARGO_TARGET_DIR.clone());
-    path.push(profile);
-    path.push("test_build_base");
+    let mut path = std::env::current_exe().unwrap();
+    path.set_file_name("test_build_base");
     path
 }
