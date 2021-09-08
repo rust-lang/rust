@@ -71,7 +71,7 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
         let objdump = env::var("OBJDUMP").unwrap_or_else(|_| "objdump".to_string());
         let add_args = if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") {
             // Target features need to be enabled for LLVM objdump on Macos ARM64
-            vec!["--mattr=+crc,+crypto,+tme"]
+            vec!["--mattr=+v8.6a,+crypto,+tme"]
         } else {
             vec![]
         };
