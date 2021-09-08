@@ -1,5 +1,6 @@
 use clippy_utils::consts::{constant_simple, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::higher;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::match_type;
 use clippy_utils::{
@@ -17,8 +18,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::{
-    BinOpKind, Block, Crate, Expr, ExprKind, HirId, Item, Local, MatchSource, MutTy, Mutability, Node, Path, Stmt,
-    StmtKind, Ty, TyKind, UnOp,
+    BinOpKind, Block, Crate, Expr, ExprKind, HirId, Item, Local, MutTy, Mutability, Node, Path, Stmt, StmtKind, Ty,
+    TyKind, UnOp,
 };
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
@@ -503,10 +504,10 @@ impl<'tcx> LateLintPass<'tcx> for CompilerLintFunctions {
         }
 
         if_chain! {
-            if let ExprKind::MethodCall(path, _, args, _) = expr.kind;
+            if let ExprKind::MethodCall(path, _, [self_arg, ..], _) = &expr.kind;
             let fn_name = path.ident;
             if let Some(sugg) = self.map.get(&*fn_name.as_str());
-            let ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
+            let ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
             if match_type(cx, ty, &paths::EARLY_CONTEXT)
                 || match_type(cx, ty, &paths::LATE_CONTEXT);
             then {
@@ -1106,16 +1107,10 @@ impl<'tcx> LateLintPass<'tcx> for IfChainStyle {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        let (cond, then, els) = match expr.kind {
-            ExprKind::If(cond, then, els) => (Some(cond), then, els.is_some()),
-            ExprKind::Match(
-                _,
-                [arm, ..],
-                MatchSource::IfLetDesugar {
-                    contains_else_clause: els,
-                },
-            ) => (None, arm.body, els),
-            _ => return,
+        let (cond, then, els) = if let Some(higher::IfOrIfLet { cond, r#else, then }) = higher::IfOrIfLet::hir(expr) {
+            (cond, then, r#else.is_some())
+        } else {
+            return;
         };
         let then_block = match then.kind {
             ExprKind::Block(block, _) => block,
@@ -1131,7 +1126,6 @@ impl<'tcx> LateLintPass<'tcx> for IfChainStyle {
         };
         // check for `if a && b;`
         if_chain! {
-            if let Some(cond) = cond;
             if let ExprKind::Binary(op, _, _) = cond.kind;
             if op.node == BinOpKind::And;
             if cx.sess().source_map().is_multiline(cond.span);
@@ -1166,9 +1160,7 @@ fn check_nested_if_chains(
         _ => return,
     };
     if_chain! {
-        if matches!(tail.kind,
-            ExprKind::If(_, _, None)
-            | ExprKind::Match(.., MatchSource::IfLetDesugar { contains_else_clause: false }));
+        if let Some(higher::IfOrIfLet { r#else: None, .. }) = higher::IfOrIfLet::hir(tail);
         let sm = cx.sess().source_map();
         if head
             .iter()

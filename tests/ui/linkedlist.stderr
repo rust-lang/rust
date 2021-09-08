@@ -40,7 +40,15 @@ LL |     const BAR: Option<LinkedList<u8>>;
    = help: a `VecDeque` might work
 
 error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
-  --> $DIR/linkedlist.rs:25:15
+  --> $DIR/linkedlist.rs:24:29
+   |
+LL |     priv_linked_list_field: LinkedList<u8>,
+   |                             ^^^^^^^^^^^^^^
+   |
+   = help: a `VecDeque` might work
+
+error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
+  --> $DIR/linkedlist.rs:28:15
    |
 LL |     fn foo(_: LinkedList<u8>) {}
    |               ^^^^^^^^^^^^^^
@@ -48,20 +56,20 @@ LL |     fn foo(_: LinkedList<u8>) {}
    = help: a `VecDeque` might work
 
 error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
-  --> $DIR/linkedlist.rs:28:39
+  --> $DIR/linkedlist.rs:33:34
    |
-LL | pub fn test(my_favourite_linked_list: LinkedList<u8>) {
-   |                                       ^^^^^^^^^^^^^^
+LL | fn test(my_favorite_linked_list: LinkedList<u8>) {}
+   |                                  ^^^^^^^^^^^^^^
    |
    = help: a `VecDeque` might work
 
 error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
-  --> $DIR/linkedlist.rs:32:29
+  --> $DIR/linkedlist.rs:34:25
    |
-LL | pub fn test_ret() -> Option<LinkedList<u8>> {
-   |                             ^^^^^^^^^^^^^^
+LL | fn test_ret() -> Option<LinkedList<u8>> {
+   |                         ^^^^^^^^^^^^^^
    |
    = help: a `VecDeque` might work
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 

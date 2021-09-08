@@ -4,6 +4,11 @@
 
 use std::ops::{Deref, RangeFrom};
 
+fn approx_const() {
+    let log2_10 = 3.321928094887362;
+    let log10_2 = 0.301029995663981;
+}
+
 fn cloned_instead_of_copied() {
     let _ = [1].iter().cloned();
 }

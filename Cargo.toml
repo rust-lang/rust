@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.1.56"
+version = "0.1.57"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -32,11 +32,7 @@ tempfile = { version = "3.1.0", optional = true }
 cargo_metadata = "0.12"
 compiletest_rs = { version = "0.6.0", features = ["tmp"] }
 tester = "0.9"
-serde = { version = "1.0", features = ["derive"] }
-derive-new = "0.5"
 regex = "1.4"
-quote = "1"
-syn = { version = "1", features = ["full"] }
 # This is used by the `collect-metadata` alias.
 filetime = "0.2"
 
@@ -44,6 +40,15 @@ filetime = "0.2"
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
 # for more information.
 rustc-workspace-hack = "1.0.0"
+
+# UI test dependencies
+clippy_utils = { path = "clippy_utils" }
+derive-new = "0.5"
+if_chain = "1.0"
+itertools = "0.10.1"
+quote = "1"
+serde = { version = "1.0", features = ["derive"] }
+syn = { version = "1", features = ["full"] }
 
 [build-dependencies]
 rustc_tools_util = { version = "0.2.0", path = "rustc_tools_util" }

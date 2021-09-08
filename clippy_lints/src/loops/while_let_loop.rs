@@ -24,13 +24,13 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_block: &'
             }
         }
 
-        if let ExprKind::Match(ref matchexpr, ref arms, MatchSource::Normal) = inner.kind {
+        if let ExprKind::Match(matchexpr, arms, MatchSource::Normal) = inner.kind {
             if arms.len() == 2
                 && arms[0].guard.is_none()
                 && arms[1].guard.is_none()
-                && is_simple_break_expr(&arms[1].body)
+                && is_simple_break_expr(arms[1].body)
             {
-                could_be_while_let(cx, expr, &arms[0].pat, matchexpr);
+                could_be_while_let(cx, expr, arms[0].pat, matchexpr);
             }
         }
     }

@@ -31,11 +31,11 @@ declare_lint_pass!(OpenOptions => [NONSENSICAL_OPEN_OPTIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for OpenOptions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if let ExprKind::MethodCall(path, _, arguments, _) = e.kind {
-            let obj_ty = cx.typeck_results().expr_ty(&arguments[0]).peel_refs();
+        if let ExprKind::MethodCall(path, _, [self_arg, ..], _) = &e.kind {
+            let obj_ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
             if path.ident.name == sym!(open) && match_type(cx, obj_ty, &paths::OPEN_OPTIONS) {
                 let mut options = Vec::new();
-                get_open_options(cx, &arguments[0], &mut options);
+                get_open_options(cx, self_arg, &mut options);
                 check_open_options(cx, &options, e.span);
             }
         }

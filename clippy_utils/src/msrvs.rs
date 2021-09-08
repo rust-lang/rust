@@ -13,9 +13,12 @@ macro_rules! msrv_aliases {
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
     1,53,0 { OR_PATTERNS }
+    1,52,0 { STR_SPLIT_ONCE }
     1,50,0 { BOOL_THEN }
+    1,47,0 { TAU }
     1,46,0 { CONST_IF_MATCH }
     1,45,0 { STR_STRIP_PREFIX }
+    1,43,0 { LOG2_10, LOG10_2 }
     1,42,0 { MATCHES_MACRO }
     1,41,0 { RE_REBALANCING_COHERENCE, RESULT_MAP_OR_ELSE }
     1,40,0 { MEM_TAKE, NON_EXHAUSTIVE, OPTION_AS_DEREF }

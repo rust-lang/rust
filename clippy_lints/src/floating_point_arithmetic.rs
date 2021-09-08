@@ -332,8 +332,6 @@ fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
                         ),
                         Applicability::MachineApplicable,
                     );
-
-                    return;
                 }
             }
         }
@@ -364,22 +362,22 @@ fn detect_hypot(cx: &LateContext<'_>, args: &[Expr<'_>]) -> Option<String> {
         if_chain! {
             if let ExprKind::MethodCall(
                 PathSegment { ident: lmethod_name, .. },
-                ref _lspan,
-                largs,
+                _lspan,
+                [largs_0, largs_1, ..],
                 _
-            ) = add_lhs.kind;
+            ) = &add_lhs.kind;
             if let ExprKind::MethodCall(
                 PathSegment { ident: rmethod_name, .. },
-                ref _rspan,
-                rargs,
+                _rspan,
+                [rargs_0, rargs_1, ..],
                 _
-            ) = add_rhs.kind;
+            ) = &add_rhs.kind;
             if lmethod_name.as_str() == "powi" && rmethod_name.as_str() == "powi";
-            if let Some((lvalue, _)) = constant(cx, cx.typeck_results(), &largs[1]);
-            if let Some((rvalue, _)) = constant(cx, cx.typeck_results(), &rargs[1]);
+            if let Some((lvalue, _)) = constant(cx, cx.typeck_results(), largs_1);
+            if let Some((rvalue, _)) = constant(cx, cx.typeck_results(), rargs_1);
             if Int(2) == lvalue && Int(2) == rvalue;
             then {
-                return Some(format!("{}.hypot({})", Sugg::hir(cx, &largs[0], ".."), Sugg::hir(cx, &rargs[0], "..")));
+                return Some(format!("{}.hypot({})", Sugg::hir(cx, largs_0, ".."), Sugg::hir(cx, rargs_0, "..")));
             }
         }
     }
@@ -409,8 +407,8 @@ fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if cx.typeck_results().expr_ty(lhs).is_floating_point();
         if let Some((value, _)) = constant(cx, cx.typeck_results(), rhs);
         if F32(1.0) == value || F64(1.0) == value;
-        if let ExprKind::MethodCall(path, _, method_args, _) = lhs.kind;
-        if cx.typeck_results().expr_ty(&method_args[0]).is_floating_point();
+        if let ExprKind::MethodCall(path, _, [self_arg, ..], _) = &lhs.kind;
+        if cx.typeck_results().expr_ty(self_arg).is_floating_point();
         if path.ident.name.as_str() == "exp";
         then {
             span_lint_and_sugg(
@@ -421,7 +419,7 @@ fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 "consider using",
                 format!(
                     "{}.exp_m1()",
-                    Sugg::hir(cx, &method_args[0], "..")
+                    Sugg::hir(cx, self_arg, "..")
                 ),
                 Applicability::MachineApplicable,
             );
@@ -619,8 +617,8 @@ fn check_log_division(cx: &LateContext<'_>, expr: &Expr<'_>) {
             rhs,
         ) = &expr.kind;
         if are_same_base_logs(cx, lhs, rhs);
-        if let ExprKind::MethodCall(_, _, largs, _) = lhs.kind;
-        if let ExprKind::MethodCall(_, _, rargs, _) = rhs.kind;
+        if let ExprKind::MethodCall(_, _, [largs_self, ..], _) = &lhs.kind;
+        if let ExprKind::MethodCall(_, _, [rargs_self, ..], _) = &rhs.kind;
         then {
             span_lint_and_sugg(
                 cx,
@@ -628,7 +626,7 @@ fn check_log_division(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 expr.span,
                 "log base can be expressed more clearly",
                 "consider using",
-                format!("{}.log({})", Sugg::hir(cx, &largs[0], ".."), Sugg::hir(cx, &rargs[0], ".."),),
+                format!("{}.log({})", Sugg::hir(cx, largs_self, ".."), Sugg::hir(cx, rargs_self, ".."),),
                 Applicability::MachineApplicable,
             );
         }
