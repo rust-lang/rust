@@ -1,0 +1,50 @@
+error: leading `+` is not supported
+  --> $DIR/issue-88276-unary-plus.rs:4:13
+   |
+LL |     let _ = +1;
+   |             ^ unexpected `+`
+   |
+help: try removing the `+`
+   |
+LL -     let _ = +1;
+LL +     let _ = 1;
+   | 
+
+error: leading `+` is not supported
+  --> $DIR/issue-88276-unary-plus.rs:5:20
+   |
+LL |     let _ = (1.0 + +2.0) * +3.0;
+   |                    ^ unexpected `+`
+   |
+help: try removing the `+`
+   |
+LL -     let _ = (1.0 + +2.0) * +3.0;
+LL +     let _ = (1.0 + 2.0) * +3.0;
+   | 
+
+error: leading `+` is not supported
+  --> $DIR/issue-88276-unary-plus.rs:5:28
+   |
+LL |     let _ = (1.0 + +2.0) * +3.0;
+   |                            ^ unexpected `+`
+   |
+help: try removing the `+`
+   |
+LL -     let _ = (1.0 + +2.0) * +3.0;
+LL +     let _ = (1.0 + +2.0) * 3.0;
+   | 
+
+error: leading `+` is not supported
+  --> $DIR/issue-88276-unary-plus.rs:7:14
+   |
+LL |     let _ = [+3, 4+6];
+   |              ^ unexpected `+`
+   |
+help: try removing the `+`
+   |
+LL -     let _ = [+3, 4+6];
+LL +     let _ = [3, 4+6];
+   | 
+
+error: aborting due to 4 previous errors
+

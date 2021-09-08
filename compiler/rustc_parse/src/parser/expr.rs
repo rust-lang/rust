@@ -516,6 +516,26 @@ impl<'a> Parser<'a> {
             token::BinOp(token::And) | token::AndAnd => {
                 make_it!(this, attrs, |this, _| this.parse_borrow_expr(lo))
             }
+            token::BinOp(token::Plus) if this.look_ahead(1, |tok| tok.is_numeric_lit()) => {
+                let mut err = this.struct_span_err(lo, "leading `+` is not supported");
+                err.span_label(lo, "unexpected `+`");
+
+                // a block on the LHS might have been intended to be an expression instead
+                if let Some(sp) = this.sess.ambiguous_block_expr_parse.borrow().get(&lo) {
+                    this.sess.expr_parentheses_needed(&mut err, *sp);
+                } else {
+                    err.span_suggestion_verbose(
+                        lo,
+                        "try removing the `+`",
+                        "".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                }
+                err.emit();
+
+                this.bump();
+                this.parse_prefix_expr(None)
+            } // `+expr`
             token::Ident(..) if this.token.is_keyword(kw::Box) => {
                 make_it!(this, attrs, |this, _| this.parse_box_expr(lo))
             }

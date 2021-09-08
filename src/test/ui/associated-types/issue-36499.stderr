@@ -1,8 +1,14 @@
-error: expected expression, found `+`
+error: leading `+` is not supported
   --> $DIR/issue-36499.rs:4:9
    |
 LL |     2 + +2;
-   |         ^ expected expression
+   |         ^ unexpected `+`
+   |
+help: try removing the `+`
+   |
+LL -     2 + +2;
+LL +     2 + 2;
+   | 
 
 error: aborting due to previous error
 

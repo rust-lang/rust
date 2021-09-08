@@ -10,7 +10,7 @@ fn foo() -> i32 {
 }
 
 fn bar() -> i32 {
-    {2} + 2 //~ ERROR expected expression, found `+`
+    {2} + 2 //~ ERROR leading `+` is not supported
     //~^ ERROR mismatched types
 }
 
