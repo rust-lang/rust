@@ -206,13 +206,10 @@ fn check_final_expr<'tcx>(
         // an if/if let expr, check both exprs
         // note, if without else is going to be a type checking error anyways
         // (except for unit type functions) so we don't match it
-        ExprKind::Match(_, arms, source) => match source {
-            MatchSource::Normal => {
-                for arm in arms.iter() {
-                    check_final_expr(cx, arm.body, Some(arm.body.span), RetReplacement::Block);
-                }
-            },
-            _ => (),
+        ExprKind::Match(_, arms, MatchSource::Normal) => {
+            for arm in arms.iter() {
+                check_final_expr(cx, arm.body, Some(arm.body.span), RetReplacement::Block);
+            }
         },
         ExprKind::DropTemps(expr) => check_final_expr(cx, expr, None, RetReplacement::Empty),
         _ => (),

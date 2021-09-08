@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "deny-warnings", deny(warnings))]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(clippy::assertions_on_constants)]
 
 use std::fs::{self, DirEntry};

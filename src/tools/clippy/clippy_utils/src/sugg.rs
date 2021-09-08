@@ -329,7 +329,7 @@ fn has_enclosing_paren(sugg: impl AsRef<str>) -> bool {
     }
 }
 
-// Copied from the rust standart library, and then edited
+/// Copied from the rust standard library, and then edited
 macro_rules! forward_binop_impls_to_ref {
     (impl $imp:ident, $method:ident for $t:ty, type Output = $o:ty) => {
         impl $imp<$t> for &$t {

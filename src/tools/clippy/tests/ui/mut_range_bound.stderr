@@ -1,34 +1,59 @@
-error: attempt to mutate range bound within loop; note that the range of the loop is unchanged
-  --> $DIR/mut_range_bound.rs:16:9
+error: attempt to mutate range bound within loop
+  --> $DIR/mut_range_bound.rs:8:9
    |
 LL |         m = 5;
    |         ^
    |
    = note: `-D clippy::mut-range-bound` implied by `-D warnings`
+   = note: the range of the loop is unchanged
 
-error: attempt to mutate range bound within loop; note that the range of the loop is unchanged
-  --> $DIR/mut_range_bound.rs:23:9
+error: attempt to mutate range bound within loop
+  --> $DIR/mut_range_bound.rs:15:9
    |
 LL |         m *= 2;
    |         ^
+   |
+   = note: the range of the loop is unchanged
 
-error: attempt to mutate range bound within loop; note that the range of the loop is unchanged
-  --> $DIR/mut_range_bound.rs:31:9
+error: attempt to mutate range bound within loop
+  --> $DIR/mut_range_bound.rs:23:9
    |
 LL |         m = 5;
    |         ^
+   |
+   = note: the range of the loop is unchanged
 
-error: attempt to mutate range bound within loop; note that the range of the loop is unchanged
-  --> $DIR/mut_range_bound.rs:32:9
+error: attempt to mutate range bound within loop
+  --> $DIR/mut_range_bound.rs:24:9
    |
 LL |         n = 7;
    |         ^
+   |
+   = note: the range of the loop is unchanged
 
-error: attempt to mutate range bound within loop; note that the range of the loop is unchanged
-  --> $DIR/mut_range_bound.rs:46:22
+error: attempt to mutate range bound within loop
+  --> $DIR/mut_range_bound.rs:38:22
    |
 LL |         let n = &mut m; // warning
    |                      ^
+   |
+   = note: the range of the loop is unchanged
 
-error: aborting due to 5 previous errors
+error: attempt to mutate range bound within loop
+  --> $DIR/mut_range_bound.rs:70:9
+   |
+LL |         m = 2; // warning because it is not immediately followed by break
+   |         ^
+   |
+   = note: the range of the loop is unchanged
+
+error: attempt to mutate range bound within loop
+  --> $DIR/mut_range_bound.rs:79:13
+   |
+LL |             n = 1; // FIXME: warning because is is not immediately followed by break
+   |             ^
+   |
+   = note: the range of the loop is unchanged
+
+error: aborting due to 7 previous errors
 

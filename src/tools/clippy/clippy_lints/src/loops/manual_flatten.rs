@@ -2,6 +2,7 @@ use super::utils::make_iterator_snippet;
 use super::MANUAL_FLATTEN;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher;
+use clippy_utils::visitors::is_local_used;
 use clippy_utils::{is_lang_ctor, path_to_local_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -37,7 +38,8 @@ pub(super) fn check<'tcx>(
 
         if_chain! {
             if let Some(inner_expr) = inner_expr;
-            if let Some(higher::IfLet { let_pat, let_expr, if_else: None, .. }) = higher::IfLet::hir(cx, inner_expr);
+            if let Some(higher::IfLet { let_pat, let_expr, if_then, if_else: None })
+                = higher::IfLet::hir(cx, inner_expr);
             // Ensure match_expr in `if let` statement is the same as the pat from the for-loop
             if let PatKind::Binding(_, pat_hir_id, _, _) = pat.kind;
             if path_to_local_id(let_expr, pat_hir_id);
@@ -46,6 +48,8 @@ pub(super) fn check<'tcx>(
             let some_ctor = is_lang_ctor(cx, qpath, OptionSome);
             let ok_ctor = is_lang_ctor(cx, qpath, ResultOk);
             if some_ctor || ok_ctor;
+            // Ensure epxr in `if let` is not used afterwards
+            if !is_local_used(cx, if_then, pat_hir_id);
             then {
                 let if_let_type = if some_ctor { "Some" } else { "Ok" };
                 // Prepare the error message

@@ -1,0 +1,77 @@
+error: this `impl` can be derived
+  --> $DIR/derivable_impls.rs:18:1
+   |
+LL | / impl std::default::Default for FooDefault<'_> {
+LL | |     fn default() -> Self {
+LL | |         Self {
+LL | |             a: false,
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::derivable-impls` implied by `-D warnings`
+   = help: try annotating `FooDefault` with `#[derive(Default)]`
+
+error: this `impl` can be derived
+  --> $DIR/derivable_impls.rs:39:1
+   |
+LL | / impl std::default::Default for TupleDefault {
+LL | |     fn default() -> Self {
+LL | |         Self(false, 0, 0u64)
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = help: try annotating `TupleDefault` with `#[derive(Default)]`
+
+error: this `impl` can be derived
+  --> $DIR/derivable_impls.rs:91:1
+   |
+LL | / impl Default for StrDefault<'_> {
+LL | |     fn default() -> Self {
+LL | |         Self("")
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = help: try annotating `StrDefault` with `#[derive(Default)]`
+
+error: this `impl` can be derived
+  --> $DIR/derivable_impls.rs:117:1
+   |
+LL | / impl Default for Y {
+LL | |     fn default() -> Self {
+LL | |         Self(mac!())
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = help: try annotating `Y` with `#[derive(Default)]`
+
+error: this `impl` can be derived
+  --> $DIR/derivable_impls.rs:156:1
+   |
+LL | / impl Default for WithoutSelfCurly {
+LL | |     fn default() -> Self {
+LL | |         WithoutSelfCurly { a: false }
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = help: try annotating `WithoutSelfCurly` with `#[derive(Default)]`
+
+error: this `impl` can be derived
+  --> $DIR/derivable_impls.rs:164:1
+   |
+LL | / impl Default for WithoutSelfParan {
+LL | |     fn default() -> Self {
+LL | |         WithoutSelfParan(false)
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = help: try annotating `WithoutSelfParan` with `#[derive(Default)]`
+
+error: aborting due to 6 previous errors
+

@@ -14,12 +14,7 @@ use rustc_span::{symbol::sym, Span, Symbol};
 
 pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     let (scrutinee_expr, iter_expr, some_pat, loop_expr) = if_chain! {
-        if let Some(higher::WhileLet {
-            if_then,
-            let_pat,
-            let_expr,
-            ..
-        }) = higher::WhileLet::hir(expr);
+        if let Some(higher::WhileLet { if_then, let_pat, let_expr }) = higher::WhileLet::hir(expr);
         // check for `Some(..)` pattern
         if let PatKind::TupleStruct(QPath::Resolved(None, pat_path), some_pat, _) = let_pat.kind;
         if let Res::Def(_, pat_did) = pat_path.res;

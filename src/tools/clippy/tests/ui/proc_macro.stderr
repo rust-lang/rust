@@ -1,10 +1,11 @@
-error: approximate value of `f{32, 64}::consts::PI` found. Consider using it directly
+error: approximate value of `f{32, 64}::consts::PI` found
   --> $DIR/proc_macro.rs:10:14
    |
 LL |     let _x = 3.14;
    |              ^^^^
    |
    = note: `#[deny(clippy::approx_constant)]` on by default
+   = help: consider using the constant directly
 
 error: aborting due to previous error
 

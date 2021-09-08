@@ -293,7 +293,7 @@ dependencies = [
  "humantime 2.0.1",
  "ignore",
  "im-rc",
- "itertools 0.10.0",
+ "itertools 0.10.1",
  "jobserver",
  "lazy_static",
  "lazycell",
@@ -388,7 +388,7 @@ dependencies = [
  "flate2",
  "git2",
  "glob",
- "itertools 0.10.0",
+ "itertools 0.10.1",
  "lazy_static",
  "remove_dir_all",
  "serde_json",
@@ -554,13 +554,16 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.1.56"
+version = "0.1.57"
 dependencies = [
  "cargo_metadata 0.12.0",
  "clippy_lints",
+ "clippy_utils",
  "compiletest_rs 0.6.0",
  "derive-new",
  "filetime",
+ "if_chain",
+ "itertools 0.10.1",
  "quote",
  "regex",
  "rustc-workspace-hack",
@@ -587,7 +590,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.56"
+version = "0.1.57"
 dependencies = [
  "cargo_metadata 0.12.0",
  "clippy_utils",
@@ -608,14 +611,10 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.56"
+version = "0.1.57"
 dependencies = [
  "if_chain",
- "itertools 0.9.0",
- "regex-syntax",
  "rustc-semver",
- "serde",
- "unicode-normalization",
 ]
 
 [[package]]
@@ -1744,9 +1743,9 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37d572918e350e82412fe766d24b15e6682fb2ed2bbe018280caa810397cb319"
+checksum = "69ddb889f9d0d08a67338271fa9b62996bc788c7796a5c18cf057420aaed5eaf"
 dependencies = [
  "either",
 ]

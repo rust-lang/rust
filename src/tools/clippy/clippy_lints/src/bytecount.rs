@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::match_type;
-use clippy_utils::visitors::LocalUsedVisitor;
+use clippy_utils::visitors::is_local_used;
 use clippy_utils::{path_to_local_id, paths, peel_ref_operators, remove_blocks, strip_pat_refs};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -65,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for ByteCount {
                 return;
             };
             if ty::Uint(UintTy::U8) == *cx.typeck_results().expr_ty(needle).peel_refs().kind();
-            if !LocalUsedVisitor::new(cx, arg_id).check_expr(needle);
+            if !is_local_used(cx, needle, arg_id);
             then {
                 let haystack = if let ExprKind::MethodCall(path, _, args, _) =
                         filter_recv.kind {

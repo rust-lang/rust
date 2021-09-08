@@ -96,9 +96,9 @@ pub(super) fn check<'tcx>(
             (&paths::RESULT, true, &["or", "unwrap_or"], "else"),
         ];
 
-        if let hir::ExprKind::MethodCall(path, _, args, _) = &arg.kind {
+        if let hir::ExprKind::MethodCall(path, _, [self_arg, ..], _) = &arg.kind {
             if path.ident.name == sym::len {
-                let ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
+                let ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
 
                 match ty.kind() {
                     ty::Slice(_) | ty::Array(_, _) | ty::Str => return,

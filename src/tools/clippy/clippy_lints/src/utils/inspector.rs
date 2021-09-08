@@ -142,7 +142,7 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
                 print_expr(cx, arg, indent + 1);
             }
         },
-        hir::ExprKind::Let(ref pat, ref expr, _) => {
+        hir::ExprKind::Let(pat, expr, _) => {
             print_pat(cx, pat, indent + 1);
             print_expr(cx, expr, indent + 1);
         },

@@ -82,7 +82,7 @@ This lint has the following configuration variables:
 /// `default`
 macro_rules! CONFIGURATION_VALUE_TEMPLATE {
     () => {
-        "* {name}: `{ty}`: {doc} (defaults to `{default}`)\n"
+        "* `{name}`: `{ty}`: {doc} (defaults to `{default}`)\n"
     };
 }
 
@@ -785,8 +785,6 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for ApplicabilityResolver<'a, 'hir> {
                 intravisit::walk_expr(self, local_init);
             }
         };
-
-        // TODO xFrednet 2021-03-01: support function arguments?
 
         intravisit::walk_expr(self, expr);
     }
