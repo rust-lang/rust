@@ -2101,7 +2101,7 @@ macro_rules! direct_interners {
 
         impl<'tcx> TyCtxt<'tcx> {
             pub fn $method(self, v: $ty) -> &'tcx $ty {
-                self.interners.$name.intern_ref(&v, || {
+                self.interners.$name.intern(v, |v| {
                     Interned(self.interners.arena.alloc(v))
                 }).0
             }
