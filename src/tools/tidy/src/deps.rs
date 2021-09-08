@@ -38,6 +38,12 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("crossbeam-queue", "MIT/Apache-2.0 AND BSD-2-Clause"), // rls via rayon
     ("instant", "BSD-3-Clause"), // rustc_driver/tracing-subscriber/parking_lot
     ("snap", "BSD-3-Clause"),    // rustc
+    ("curve25519-dalek", "BSD-3-Clause"), // bump-stage0 via pgp
+    ("ed25519-dalek", "BSD-3-Clause"), // bump-stage0 via pgp
+    ("x25519-dalek", "BSD-3-Clause"), // bump-stage0 via pgp
+    ("keccak", "CC0-1.0"),       // bump-stage0 via pgp
+    ("simple_asn1", "ISC"),      // bump-stage0 via pgp
+    ("subtle", "BSD-3-Clause"),  // bump-stage0 via pgp
     // FIXME: this dependency violates the documentation comment above:
     ("fortanix-sgx-abi", "MPL-2.0"), // libstd but only for `sgx` target
 ];
@@ -191,6 +197,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "smallvec",
     "sharded-slab",
     "snap",
+    "spin",
     "stable_deref_trait",
     "stacker",
     "syn",

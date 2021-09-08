@@ -1,12 +1,16 @@
-use anyhow::Error;
+use anyhow::{Context, Error};
 use curl::easy::Easy;
 use indexmap::IndexMap;
+use pgp::{Deserializable, SignedPublicKey, StandaloneSignature};
 use std::collections::HashMap;
 use std::convert::TryInto;
+use std::io::Cursor;
 
 const DIST_SERVER: &str = "https://static.rust-lang.org";
 const COMPILER_COMPONENTS: &[&str] = &["rustc", "rust-std", "cargo"];
 const RUSTFMT_COMPONENTS: &[&str] = &["rustfmt-preview"];
+
+const RUST_GPG_KEY: &[u8] = include_bytes!("rust-gpg-key.asc");
 
 struct Tool {
     channel: Channel,
@@ -137,10 +141,15 @@ fn main() -> Result<(), Error> {
 }
 
 fn fetch_manifest(channel: &str) -> Result<Manifest, Error> {
-    Ok(toml::from_slice(&http_get(&format!(
-        "{}/dist/channel-rust-{}.toml",
-        DIST_SERVER, channel
-    ))?)?)
+    let key = SignedPublicKey::from_armor_single(Cursor::new(RUST_GPG_KEY))?.0;
+
+    let raw_asc = http_get(&format!("{}/dist/channel-rust-{}.toml.asc", DIST_SERVER, channel))?;
+    let signature = StandaloneSignature::from_armor_single(Cursor::new(&raw_asc))?.0;
+
+    let manifest = http_get(&format!("{}/dist/channel-rust-{}.toml", DIST_SERVER, channel))?;
+    signature.verify(&key, &manifest).context("failed to verify channel signature")?;
+
+    Ok(toml::from_slice(&manifest)?)
 }
 
 fn http_get(url: &str) -> Result<Vec<u8>, Error> {
