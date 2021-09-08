@@ -6,7 +6,7 @@ use clippy_utils::higher;
 use clippy_utils::source::{expr_block, indent_of, snippet, snippet_block, snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, match_type, peel_mid_ty_refs};
-use clippy_utils::visitors::LocalUsedVisitor;
+use clippy_utils::visitors::is_local_used;
 use clippy_utils::{
     get_parent_expr, in_macro, is_expn_of, is_lang_ctor, is_lint_allowed, is_refutable, is_unit_expr, is_wild,
     meets_msrv, msrvs, path_to_local, path_to_local_id, peel_hir_pat_refs, peel_n_hir_expr_refs, recurse_or_patterns,
@@ -631,7 +631,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 check_match_single_binding(cx, ex, arms, expr);
             }
         }
-        if let ExprKind::Match(ref ex, ref arms, _) = expr.kind {
+        if let ExprKind::Match(ex, arms, _) = expr.kind {
             check_match_ref_pats(cx, ex, arms.iter().map(|el| el.pat), expr);
         }
         if let Some(higher::IfLet { let_pat, let_expr, .. }) = higher::IfLet::hir(cx, expr) {
@@ -959,9 +959,7 @@ fn check_wild_err_arm<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm
                         // Looking for unused bindings (i.e.: `_e`)
                         for pat in inner.iter() {
                             if let PatKind::Binding(_, id, ident, None) = pat.kind {
-                                if ident.as_str().starts_with('_')
-                                    && !LocalUsedVisitor::new(cx, id).check_expr(arm.body)
-                                {
+                                if ident.as_str().starts_with('_') && !is_local_used(cx, arm.body, id) {
                                     ident_bind_name = (&ident.name.as_str()).to_string();
                                     matching_wild = true;
                                 }
@@ -1196,7 +1194,7 @@ where
 
     let (first_sugg, msg, title);
     let span = ex.span.source_callsite();
-    if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, ref inner) = ex.kind {
+    if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) = ex.kind {
         first_sugg = once((span, Sugg::hir_with_macro_callsite(cx, inner, "..").to_string()));
         msg = "try";
         title = "you don't need to add `&` to both the expression and the patterns";
@@ -1207,7 +1205,7 @@ where
     }
 
     let remaining_suggs = pats.filter_map(|pat| {
-        if let PatKind::Ref(ref refp, _) = pat.kind {
+        if let PatKind::Ref(refp, _) = pat.kind {
             Some((pat.span, snippet(cx, refp.span, "..").to_string()))
         } else {
             None
@@ -1367,7 +1365,7 @@ where
                 find_bool_lit(&arm.2.kind, is_if_let).map_or(false, |b| b == b0) && arm.3.is_none() && arm.0.is_empty()
             });
         then {
-            if let Some(ref last_pat) = last_pat_opt {
+            if let Some(last_pat) = last_pat_opt {
                 if !is_wild(last_pat) {
                     return false;
                 }
@@ -1829,13 +1827,13 @@ mod redundant_pattern_match {
             ..
         }) = higher::IfLet::hir(cx, expr)
         {
-            find_sugg_for_if_let(cx, expr, let_pat, let_expr, "if", if_else.is_some())
+            find_sugg_for_if_let(cx, expr, let_pat, let_expr, "if", if_else.is_some());
         }
         if let ExprKind::Match(op, arms, MatchSource::Normal) = &expr.kind {
-            find_sugg_for_match(cx, expr, op, arms)
+            find_sugg_for_match(cx, expr, op, arms);
         }
         if let Some(higher::WhileLet { let_pat, let_expr, .. }) = higher::WhileLet::hir(expr) {
-            find_sugg_for_if_let(cx, expr, let_pat, let_expr, "while", false)
+            find_sugg_for_if_let(cx, expr, let_pat, let_expr, "while", false);
         }
     }
 

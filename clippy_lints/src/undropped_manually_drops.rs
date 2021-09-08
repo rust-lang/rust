@@ -37,8 +37,8 @@ declare_lint_pass!(UndroppedManuallyDrops => [UNDROPPED_MANUALLY_DROPS]);
 
 impl LateLintPass<'tcx> for UndroppedManuallyDrops {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let Some(args) = match_function_call(cx, expr, &paths::DROP) {
-            let ty = cx.typeck_results().expr_ty(&args[0]);
+        if let Some([arg_0, ..]) = match_function_call(cx, expr, &paths::DROP) {
+            let ty = cx.typeck_results().expr_ty(arg_0);
             if is_type_lang_item(cx, ty, lang_items::LangItem::ManuallyDrop) {
                 span_lint_and_help(
                     cx,

@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
-use clippy_utils::{in_macro, is_diag_trait_item, is_lang_ctor, match_def_path, meets_msrv, msrvs, paths};
+use clippy_utils::ty::is_non_aggregate_primitive_type;
+use clippy_utils::{in_macro, is_default_equivalent, is_lang_ctor, match_def_path, meets_msrv, msrvs, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -194,64 +194,37 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
     }
 }
 
-/// Returns true if the `def_id` associated with the `path` is recognized as a "default-equivalent"
-/// constructor from the std library
-fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<'_>) -> bool {
-    let std_types_symbols = &[
-        sym::string_type,
-        sym::vec_type,
-        sym::vecdeque_type,
-        sym::LinkedList,
-        sym::hashmap_type,
-        sym::BTreeMap,
-        sym::hashset_type,
-        sym::BTreeSet,
-        sym::BinaryHeap,
-    ];
-
-    if let QPath::TypeRelative(_, method) = path {
-        if method.ident.name == sym::new {
-            if let Some(impl_did) = cx.tcx.impl_of_method(def_id) {
-                if let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def() {
-                    return std_types_symbols
-                        .iter()
-                        .any(|&symbol| cx.tcx.is_diagnostic_item(symbol, adt.did));
-                }
-            }
+fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
+    // disable lint for primitives
+    let expr_type = cx.typeck_results().expr_ty_adjusted(src);
+    if is_non_aggregate_primitive_type(expr_type) {
+        return;
+    }
+    // disable lint for Option since it is covered in another lint
+    if let ExprKind::Path(q) = &src.kind {
+        if is_lang_ctor(cx, q, OptionNone) {
+            return;
         }
     }
-    false
-}
+    if is_default_equivalent(cx, src) && !in_external_macro(cx.tcx.sess, expr_span) {
+        span_lint_and_then(
+            cx,
+            MEM_REPLACE_WITH_DEFAULT,
+            expr_span,
+            "replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`",
+            |diag| {
+                if !in_macro(expr_span) {
+                    let suggestion = format!("std::mem::take({})", snippet(cx, dest.span, ""));
 
-fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
-    if_chain! {
-        if let ExprKind::Call(repl_func, _) = src.kind;
-        if !in_external_macro(cx.tcx.sess, expr_span);
-        if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
-        if let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
-        if is_diag_trait_item(cx, repl_def_id, sym::Default)
-            || is_default_equivalent_ctor(cx, repl_def_id, repl_func_qpath);
-
-        then {
-            span_lint_and_then(
-                cx,
-                MEM_REPLACE_WITH_DEFAULT,
-                expr_span,
-                "replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`",
-                |diag| {
-                    if !in_macro(expr_span) {
-                        let suggestion = format!("std::mem::take({})", snippet(cx, dest.span, ""));
-
-                        diag.span_suggestion(
-                            expr_span,
-                            "consider using",
-                            suggestion,
-                            Applicability::MachineApplicable
-                        );
-                    }
+                    diag.span_suggestion(
+                        expr_span,
+                        "consider using",
+                        suggestion,
+                        Applicability::MachineApplicable,
+                    );
                 }
-            );
-        }
+            },
+        );
     }
 }
 

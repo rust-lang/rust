@@ -1,8 +1,8 @@
-error: you checked before that `unwrap()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
+error: called `unwrap` on `x` after checking its variant with `is_some`
   --> $DIR/complex_conditionals_nested.rs:8:13
    |
 LL |         if x.is_some() {
-   |            ----------- the check is happening here
+   |         -------------- help: try: `if let Some(..) = x`
 LL |             x.unwrap(); // unnecessary
    |             ^^^^^^^^^^
    |

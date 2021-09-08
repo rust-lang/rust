@@ -61,8 +61,8 @@ impl<'a, 'tcx> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
             // do not lint if the closure is called using an iterator (see #1141)
             if_chain! {
                 if let Some(parent) = get_parent_expr(self.cx, expr);
-                if let ExprKind::MethodCall(_, _, args, _) = parent.kind;
-                let caller = self.cx.typeck_results().expr_ty(&args[0]);
+                if let ExprKind::MethodCall(_, _, [self_arg, ..], _) = &parent.kind;
+                let caller = self.cx.typeck_results().expr_ty(self_arg);
                 if let Some(iter_id) = self.cx.tcx.get_diagnostic_item(sym::Iterator);
                 if implements_trait(self.cx, caller, iter_id, &[]);
                 then {

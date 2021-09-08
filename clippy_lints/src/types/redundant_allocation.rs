@@ -54,7 +54,13 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
         _ => return false,
     };
     let inner_span = match get_qpath_generic_tys(inner_qpath).next() {
-        Some(ty) => ty.span,
+        Some(ty) => {
+            // Box<Box<dyn T>> is smaller than Box<dyn T> because of wide pointers
+            if matches!(ty.kind, TyKind::TraitObject(..)) {
+                return false;
+            }
+            ty.span
+        },
         None => return false,
     };
     if inner_sym == outer_sym {

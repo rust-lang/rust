@@ -26,7 +26,7 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
         if chain_method.ident.name == sym!(collect) && is_trait_method(cx, &args[0], sym::Iterator);
         then {
             let ty = cx.typeck_results().expr_ty(&args[0]);
-            let mut applicability = Applicability::MachineApplicable;
+            let mut applicability = Applicability::MaybeIncorrect;
             let is_empty_sugg = "next().is_none()".to_string();
             let method_name = &*method.ident.name.as_str();
             let sugg = if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
@@ -113,7 +113,7 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
                                     (stmt.span, String::new()),
                                     (iter_call.span, iter_replacement)
                                 ],
-                                Applicability::MachineApplicable,// MaybeIncorrect,
+                                Applicability::MaybeIncorrect,
                             );
                         },
                     );

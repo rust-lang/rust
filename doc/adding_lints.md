@@ -556,14 +556,15 @@ directory. Adding a configuration to a lint can be useful for thresholds or to c
 behavior that can be seen as a false positive for some users. Adding a configuration is done
 in the following steps:
 
-1. Adding a new configuration entry to [clippy_utils::conf](/clippy_utils/src/conf.rs)
+1. Adding a new configuration entry to [clippy_lints::utils::conf](/clippy_lints/src/utils/conf.rs)
     like this:
     ```rust
-    /// Lint: LINT_NAME. <The configuration field doc comment>
+    /// Lint: LINT_NAME.
+    ///
+    /// <The configuration field doc comment>
     (configuration_ident: Type = DefaultValue),
     ```
-    The configuration value and identifier should usually be the same. The doc comment will be
-    automatically added to the lint documentation.
+    The doc comment will be automatically added to the lint documentation.
 2. Adding the configuration value to the lint impl struct:
     1. This first requires the definition of a lint impl struct. Lint impl structs are usually
         generated with the `declare_lint_pass!` macro. This struct needs to be defined manually

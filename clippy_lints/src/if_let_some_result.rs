@@ -46,10 +46,10 @@ impl<'tcx> LateLintPass<'tcx> for OkIfLet {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! { //begin checking variables
             if let Some(higher::IfLet { let_pat, let_expr, .. }) = higher::IfLet::hir(cx, expr);
-            if let ExprKind::MethodCall(_, ok_span, ref result_types, _) = let_expr.kind; //check is expr.ok() has type Result<T,E>.ok(, _)
-            if let PatKind::TupleStruct(QPath::Resolved(_, ref x), ref y, _)  = let_pat.kind; //get operation
+            if let ExprKind::MethodCall(_, ok_span, [ref result_types_0, ..], _) = let_expr.kind; //check is expr.ok() has type Result<T,E>.ok(, _)
+            if let PatKind::TupleStruct(QPath::Resolved(_, x), y, _)  = let_pat.kind; //get operation
             if method_chain_args(let_expr, &["ok"]).is_some(); //test to see if using ok() methoduse std::marker::Sized;
-            if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&result_types[0]), sym::result_type);
+            if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(result_types_0), sym::result_type);
             if rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_path(x, false)) == "Some";
 
             then {

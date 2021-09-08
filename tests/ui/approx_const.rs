@@ -57,4 +57,8 @@ fn main() {
 
     let my_sq2 = 1.4142;
     let no_sq2 = 1.414;
+
+    let my_tau = 6.2832;
+    let almost_tau = 6.28;
+    let no_tau = 6.3;
 }

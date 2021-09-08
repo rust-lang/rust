@@ -10,7 +10,7 @@ use rustc_hir::{TyKind, Unsafety};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, TyCtxt, AdtDef, IntTy, Ty, TypeFoldable, UintTy};
+use rustc_middle::ty::{self, AdtDef, IntTy, Ty, TyCtxt, TypeFoldable, UintTy};
 use rustc_span::sym;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::DUMMY_SP;
@@ -222,6 +222,13 @@ fn is_normalizable_helper<'tcx>(
     });
     cache.insert(ty, result);
     result
+}
+
+/// Returns true iff the given type is a non aggregate primitive (a bool or char, any integer or
+/// floating-point number type). For checking aggregation of primitive types (e.g. tuples and slices
+/// of primitive type) see `is_recursively_primitive_type`
+pub fn is_non_aggregate_primitive_type(ty: Ty<'_>) -> bool {
+    matches!(ty.kind(), ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_))
 }
 
 /// Returns true iff the given type is a primitive (a bool or char, any integer or floating-point

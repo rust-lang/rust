@@ -37,8 +37,10 @@ fn main() {
     let x = Some(());
     if x.is_some() {
         x.unwrap(); // unnecessary
+        x.expect("an error message"); // unnecessary
     } else {
         x.unwrap(); // will panic
+        x.expect("an error message"); // will panic
     }
     if x.is_none() {
         x.unwrap(); // will panic
@@ -52,9 +54,11 @@ fn main() {
     let mut x: Result<(), ()> = Ok(());
     if x.is_ok() {
         x.unwrap(); // unnecessary
+        x.expect("an error message"); // unnecessary
         x.unwrap_err(); // will panic
     } else {
         x.unwrap(); // will panic
+        x.expect("an error message"); // will panic
         x.unwrap_err(); // unnecessary
     }
     if x.is_err() {

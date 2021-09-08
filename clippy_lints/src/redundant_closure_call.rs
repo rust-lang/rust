@@ -51,9 +51,7 @@ impl ReturnVisitor {
 
 impl<'ast> ast_visit::Visitor<'ast> for ReturnVisitor {
     fn visit_expr(&mut self, ex: &'ast ast::Expr) {
-        if let ast::ExprKind::Ret(_) = ex.kind {
-            self.found_return = true;
-        } else if let ast::ExprKind::Try(_) = ex.kind {
+        if let ast::ExprKind::Ret(_) | ast::ExprKind::Try(_) = ex.kind {
             self.found_return = true;
         }
 

@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::visitors::LocalUsedVisitor;
+use clippy_utils::visitors::is_local_used;
 use if_chain::if_chain;
 use rustc_hir::{Impl, ImplItem, ImplItemKind, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -50,8 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
             if let ImplItemKind::Fn(.., body_id) = &impl_item.kind;
             let body = cx.tcx.hir().body(*body_id);
             if let [self_param, ..] = body.params;
-            let self_hir_id = self_param.pat.hir_id;
-            if !LocalUsedVisitor::new(cx, self_hir_id).check_body(body);
+            if !is_local_used(cx, body, self_param.pat.hir_id);
             then {
                 span_lint_and_help(
                     cx,
