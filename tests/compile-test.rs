@@ -1,5 +1,7 @@
 #![feature(test)] // compiletest_rs requires this attribute
 #![feature(once_cell)]
+#![cfg_attr(feature = "deny-warnings", deny(warnings))]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 use compiletest_rs as compiletest;
 use compiletest_rs::common::Mode as TestMode;
@@ -31,11 +33,17 @@ static TEST_DEPENDENCIES: &[&str] = &[
 
 // Test dependencies may need an `extern crate` here to ensure that they show up
 // in the depinfo file (otherwise cargo thinks they are unused)
+#[allow(unused_extern_crates)]
 extern crate clippy_utils;
+#[allow(unused_extern_crates)]
 extern crate derive_new;
+#[allow(unused_extern_crates)]
 extern crate if_chain;
+#[allow(unused_extern_crates)]
 extern crate itertools;
+#[allow(unused_extern_crates)]
 extern crate quote;
+#[allow(unused_extern_crates)]
 extern crate syn;
 
 fn host_lib() -> PathBuf {

@@ -1,3 +1,6 @@
+#![cfg_attr(feature = "deny-warnings", deny(warnings))]
+#![warn(rust_2018_idioms, unused_lifetimes)]
+
 use std::path::PathBuf;
 use std::process::Command;
 
