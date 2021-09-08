@@ -225,41 +225,28 @@ extern "C" void LLVMRustAddCallSiteAttrString(LLVMValueRef Instr, unsigned Index
   AddAttribute(Call, Index, Attr);
 }
 
-static inline void AddCallAttributes(CallBase *Call, unsigned Index, const AttrBuilder& B) {
-  AttributeList Attrs = Call->getAttributes();
-#if LLVM_VERSION_LT(14, 0)
-  Attrs = Attrs.addAttributes(Call->getContext(), Index, B);
-#else
-  Attrs = Attrs.addAttributesAtIndex(Call->getContext(), Index, B);
-#endif
-  Call->setAttributes(Attrs);
-}
-
 extern "C" void LLVMRustAddAlignmentCallSiteAttr(LLVMValueRef Instr,
                                                  unsigned Index,
                                                  uint32_t Bytes) {
   CallBase *Call = unwrap<CallBase>(Instr);
-  AttrBuilder B;
-  B.addAlignmentAttr(Bytes);
-  AddCallAttributes(Call, Index, B);
+  Attribute Attr = Attribute::getWithAlignment(Call->getContext(), Align(Bytes));
+  AddAttribute(Call, Index, Attr);
 }
 
 extern "C" void LLVMRustAddDereferenceableCallSiteAttr(LLVMValueRef Instr,
                                                        unsigned Index,
                                                        uint64_t Bytes) {
   CallBase *Call = unwrap<CallBase>(Instr);
-  AttrBuilder B;
-  B.addDereferenceableAttr(Bytes);
-  AddCallAttributes(Call, Index, B);
+  Attribute Attr = Attribute::getWithDereferenceableBytes(Call->getContext(), Bytes);
+  AddAttribute(Call, Index, Attr);
 }
 
 extern "C" void LLVMRustAddDereferenceableOrNullCallSiteAttr(LLVMValueRef Instr,
                                                              unsigned Index,
                                                              uint64_t Bytes) {
   CallBase *Call = unwrap<CallBase>(Instr);
-  AttrBuilder B;
-  B.addDereferenceableOrNullAttr(Bytes);
-  AddCallAttributes(Call, Index, B);
+  Attribute Attr = Attribute::getWithDereferenceableOrNullBytes(Call->getContext(), Bytes);
+  AddAttribute(Call, Index, Attr);
 }
 
 extern "C" void LLVMRustAddByValCallSiteAttr(LLVMValueRef Instr, unsigned Index,
