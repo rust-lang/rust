@@ -111,6 +111,8 @@ export async function buildCargoTask(
 
     return new vscode.Task(
         definition,
+        // scope can sometimes be undefined. in these situations we default to the workspace taskscope as
+        // recommended by the official docs: https://code.visualstudio.com/api/extension-guides/task-provider#task-provider)
         scope ?? vscode.TaskScope.Workspace,
         name,
         TASK_SOURCE,
