@@ -1358,7 +1358,6 @@ symbols! {
         unix,
         unlikely,
         unmarked_api,
-        unnamed_fields,
         unpin,
         unreachable,
         unreachable_code,
