@@ -125,16 +125,7 @@ fn parse(output: &str) -> HashSet<Function> {
                 cached_header = None;
                 break;
             }
-            let parts = if cfg!(target_os = "macos") {
-                // Each line of instructions should look like:
-                //
-                //      $addr    $instruction...
-                instruction
-                    .split_whitespace()
-                    .skip(1)
-                    .map(std::string::ToString::to_string)
-                    .collect::<Vec<String>>()
-            } else if cfg!(target_env = "msvc") {
+            let parts = if cfg!(target_env = "msvc") {
                 // Each line looks like:
                 //
                 // >  $addr: ab cd ef     $instr..
