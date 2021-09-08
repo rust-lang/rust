@@ -1,0 +1,30 @@
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/issue_74400.rs:12:5
+   |
+LL |     f(data, identity)
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'static`...
+
+error[E0308]: mismatched types
+  --> $DIR/issue_74400.rs:12:5
+   |
+LL |     f(data, identity)
+   |     ^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected type `for<'r> Fn<(&'r T,)>`
+              found type `Fn<(&T,)>`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue_74400.rs:12:5
+   |
+LL |     f(data, identity)
+   |     ^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: `fn(&'2 T) -> &'2 T {identity::<&'2 T>}` must implement `FnOnce<(&'1 T,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 T,)>`, for some specific lifetime `'2`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0310.
+For more information about an error, try `rustc --explain E0308`.
