@@ -1141,20 +1141,22 @@ impl HirDisplay for Path {
                 write!(f, ">")?;
             }
             (_, PathKind::Plain) => {}
-            (_, PathKind::Abs) => write!(f, "::")?,
+            (_, PathKind::Abs) => {}
             (_, PathKind::Crate) => write!(f, "crate")?,
             (_, PathKind::Super(0)) => write!(f, "self")?,
             (_, PathKind::Super(n)) => {
-                write!(f, "super")?;
-                for _ in 0..*n {
-                    write!(f, "::super")?;
+                for i in 0..*n {
+                    if i > 0 {
+                        write!(f, "::")?;
+                    }
+                    write!(f, "super")?;
                 }
             }
             (_, PathKind::DollarCrate(_)) => write!(f, "{{extern_crate}}")?,
         }
 
         for (seg_idx, segment) in self.segments().iter().enumerate() {
-            if seg_idx != 0 {
+            if !matches!(self.kind(), PathKind::Plain) || seg_idx > 0 {
                 write!(f, "::")?;
             }
             write!(f, "{}", segment.name)?;
