@@ -16,6 +16,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     autoderef,
+    consteval::{self, ConstExt},
     db::HirDatabase,
     from_foreign_def_id,
     primitive::{self, FloatTy, IntTy, UintTy},
@@ -725,7 +726,27 @@ fn iterate_inherent_methods(
     for krate in def_crates {
         let impls = db.inherent_impls_in_crate(krate);
 
-        for &impl_def in impls.for_self_ty(&self_ty.value) {
+        let impls_for_self_ty = impls.for_self_ty(&self_ty.value).iter().chain(
+            {
+                if let TyKind::Array(parameters, array_len) = self_ty.value.kind(&Interner) {
+                    if !array_len.is_unknown() {
+                        let unknown_array_len_ty =
+                            TyKind::Array(parameters.clone(), consteval::usize_const(None))
+                                .intern(&Interner);
+
+                        Some(impls.for_self_ty(&unknown_array_len_ty))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+            .into_iter()
+            .flatten(),
+        );
+
+        for &impl_def in impls_for_self_ty {
             for &item in db.impl_data(impl_def).items.iter() {
                 if !is_valid_candidate(
                     db,
@@ -803,7 +824,20 @@ fn is_valid_candidate(
                     None => return false,
                 };
                 if transformed_receiver_ty != receiver_ty.value {
-                    return false;
+                    match (
+                        transformed_receiver_ty.kind(&Interner),
+                        receiver_ty.value.kind(&Interner),
+                    ) {
+                        (
+                            TyKind::Array(transformed_array_ty, transformed_array_len),
+                            TyKind::Array(receiver_array_ty, receiver_array_len),
+                        ) if transformed_array_ty == receiver_array_ty
+                            && transformed_array_len.is_unknown()
+                            && !receiver_array_len.is_unknown() => {}
+                        _ => {
+                            return false;
+                        }
+                    }
                 }
             }
             if let Some(from_module) = visible_from_module {
