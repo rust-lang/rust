@@ -122,7 +122,12 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
         let (low, high) = self.iter.size_hint();
         // we could be entirely valid surrogates (2 elements per
         // char), or entirely non-surrogates (1 element per char)
-        (low.div_ceil(2), high)
+        //
+        // In addition to `self.iter`, there's potentially one
+        // additional number in `self.buf`.
+        // On odd lower bound, at least one element must stay unpaired
+        // (with other elements from `self.iter`).
+        (low.div_ceil(2), try { high?.checked_add(1)? })
     }
 }
 
