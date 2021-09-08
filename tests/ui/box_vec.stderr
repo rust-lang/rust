@@ -1,8 +1,8 @@
 error: you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`
-  --> $DIR/box_vec.rs:14:18
+  --> $DIR/box_vec.rs:18:14
    |
-LL | pub fn test(foo: Box<Vec<bool>>) {
-   |                  ^^^^^^^^^^^^^^
+LL | fn test(foo: Box<Vec<bool>>) {}
+   |              ^^^^^^^^^^^^^^
    |
    = note: `-D clippy::box-vec` implied by `-D warnings`
    = help: `Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation

@@ -17,7 +17,6 @@ pub mod fmt;
 pub mod new_lint;
 pub mod serve;
 pub mod setup;
-pub mod stderr_length_check;
 pub mod update_lints;
 
 static DEC_CLIPPY_LINT_RE: SyncLazy<Regex> = SyncLazy::new(|| {

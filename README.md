@@ -45,13 +45,13 @@ or in Travis CI.
 One way to use Clippy is by installing Clippy through rustup as a cargo
 subcommand.
 
-#### Step 1: Install rustup
+#### Step 1: Install Rustup
 
-You can install [rustup](https://rustup.rs/) on supported platforms. This will help
+You can install [Rustup](https://rustup.rs/) on supported platforms. This will help
 us install Clippy and its dependencies.
 
-If you already have rustup installed, update to ensure you have the latest
-rustup and compiler:
+If you already have Rustup installed, update to ensure you have the latest
+Rustup and compiler:
 
 ```terminal
 rustup update

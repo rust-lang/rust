@@ -1,10 +1,9 @@
 use crate as utils;
 use rustc_hir as hir;
-use rustc_hir::def::Res;
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::HirIdSet;
-use rustc_hir::{Expr, ExprKind, HirId, Path};
+use rustc_hir::{Expr, ExprKind, HirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
@@ -35,12 +34,8 @@ pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> 
     Some(delegate.used_mutably)
 }
 
-pub fn is_potentially_mutated<'tcx>(variable: &'tcx Path<'_>, expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> bool {
-    if let Res::Local(id) = variable.res {
-        mutated_variables(expr, cx).map_or(true, |mutated| mutated.contains(&id))
-    } else {
-        true
-    }
+pub fn is_potentially_mutated<'tcx>(variable: HirId, expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> bool {
+    mutated_variables(expr, cx).map_or(true, |mutated| mutated.contains(&variable))
 }
 
 struct MutVarsDelegate {

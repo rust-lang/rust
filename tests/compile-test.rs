@@ -1,10 +1,12 @@
 #![feature(test)] // compiletest_rs requires this attribute
 #![feature(once_cell)]
-#![feature(try_blocks)]
+#![cfg_attr(feature = "deny-warnings", deny(warnings))]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 use compiletest_rs as compiletest;
 use compiletest_rs::common::Mode as TestMode;
 
+use std::collections::HashMap;
 use std::env::{self, remove_var, set_var, var_os};
 use std::ffi::{OsStr, OsString};
 use std::fs;
@@ -16,6 +18,34 @@ mod cargo;
 // whether to run internal tests or not
 const RUN_INTERNAL_TESTS: bool = cfg!(feature = "internal-lints");
 
+/// All crates used in UI tests are listed here
+static TEST_DEPENDENCIES: &[&str] = &[
+    "clippy_utils",
+    "derive_new",
+    "if_chain",
+    "itertools",
+    "quote",
+    "regex",
+    "serde",
+    "serde_derive",
+    "syn",
+];
+
+// Test dependencies may need an `extern crate` here to ensure that they show up
+// in the depinfo file (otherwise cargo thinks they are unused)
+#[allow(unused_extern_crates)]
+extern crate clippy_utils;
+#[allow(unused_extern_crates)]
+extern crate derive_new;
+#[allow(unused_extern_crates)]
+extern crate if_chain;
+#[allow(unused_extern_crates)]
+extern crate itertools;
+#[allow(unused_extern_crates)]
+extern crate quote;
+#[allow(unused_extern_crates)]
+extern crate syn;
+
 fn host_lib() -> PathBuf {
     option_env!("HOST_LIBS").map_or(cargo::CARGO_TARGET_DIR.join(env!("PROFILE")), PathBuf::from)
 }
@@ -24,71 +54,58 @@ fn clippy_driver_path() -> PathBuf {
     option_env!("CLIPPY_DRIVER_PATH").map_or(cargo::TARGET_LIB.join("clippy-driver"), PathBuf::from)
 }
 
-// When we'll want to use `extern crate ..` for a dependency that is used
-// both by the crate and the compiler itself, we can't simply pass -L flags
-// as we'll get a duplicate matching versions. Instead, disambiguate with
-// `--extern dep=path`.
-// See https://github.com/rust-lang/rust-clippy/issues/4015.
-//
-// FIXME: We cannot use `cargo build --message-format=json` to resolve to dependency files.
-//        Because it would force-rebuild if the options passed to `build` command is not the same
-//        as what we manually pass to `cargo` invocation
-fn third_party_crates() -> String {
-    use std::collections::HashMap;
-    static CRATES: &[&str] = &[
-        "clippy_lints",
-        "clippy_utils",
-        "if_chain",
-        "quote",
-        "regex",
-        "serde",
-        "serde_derive",
-        "syn",
-    ];
-    let dep_dir = cargo::TARGET_LIB.join("deps");
-    let mut crates: HashMap<&str, Vec<PathBuf>> = HashMap::with_capacity(CRATES.len());
-    let mut flags = String::new();
-    for entry in fs::read_dir(dep_dir).unwrap().flatten() {
-        let path = entry.path();
-        if let Some(name) = try {
-            let name = path.file_name()?.to_str()?;
-            let (name, _) = name.strip_suffix(".rlib")?.strip_prefix("lib")?.split_once('-')?;
-            CRATES.iter().copied().find(|&c| c == name)?
-        } {
-            flags += &format!(" --extern {}={}", name, path.display());
-            crates.entry(name).or_default().push(path.clone());
+/// Produces a string with an `--extern` flag for all UI test crate
+/// dependencies.
+///
+/// The dependency files are located by parsing the depinfo file for this test
+/// module. This assumes the `-Z binary-dep-depinfo` flag is enabled. All test
+/// dependencies must be added to Cargo.toml at the project root. Test
+/// dependencies that are not *directly* used by this test module require an
+/// `extern crate` declaration.
+fn extern_flags() -> String {
+    let current_exe_depinfo = {
+        let mut path = env::current_exe().unwrap();
+        path.set_extension("d");
+        std::fs::read_to_string(path).unwrap()
+    };
+    let mut crates: HashMap<&str, &str> = HashMap::with_capacity(TEST_DEPENDENCIES.len());
+    for line in current_exe_depinfo.lines() {
+        // each dependency is expected to have a Makefile rule like `/path/to/crate-hash.rlib:`
+        let parse_name_path = || {
+            if line.starts_with(char::is_whitespace) {
+                return None;
+            }
+            let path_str = line.strip_suffix(':')?;
+            let path = Path::new(path_str);
+            if !matches!(path.extension()?.to_str()?, "rlib" | "so" | "dylib" | "dll") {
+                return None;
+            }
+            let (name, _hash) = path.file_stem()?.to_str()?.rsplit_once('-')?;
+            // the "lib" prefix is not present for dll files
+            let name = name.strip_prefix("lib").unwrap_or(name);
+            Some((name, path_str))
+        };
+        if let Some((name, path)) = parse_name_path() {
+            if TEST_DEPENDENCIES.contains(&name) {
+                // A dependency may be listed twice if it is available in sysroot,
+                // and the sysroot dependencies are listed first. As of the writing,
+                // this only seems to apply to if_chain.
+                crates.insert(name, path);
+            }
         }
     }
-    crates.retain(|_, paths| paths.len() > 1);
-    if !crates.is_empty() {
-        let crate_names = crates.keys().map(|s| format!("`{}`", s)).collect::<Vec<_>>().join(", ");
-        // add backslashes for an easy copy-paste `rm` command
-        let paths = crates
-            .into_values()
-            .flatten()
-            .map(|p| strip_current_dir(&p).display().to_string())
-            .collect::<Vec<_>>()
-            .join(" \\\n");
-        // Check which action should be done in order to remove compiled deps.
-        // If pre-installed version of compiler is used, `cargo clean` will do.
-        // Otherwise (for bootstrapped compiler), the dependencies directory
-        // must be removed manually.
-        let suggested_action = if std::env::var_os("RUSTC_BOOTSTRAP").is_some() {
-            "removing the stageN-tools directory"
-        } else {
-            "running `cargo clean`"
-        };
-
-        panic!(
-            "\n----------------------------------------------------------------------\n\
-            ERROR: Found multiple rlibs for crates: {}\n\
-            Try {} or remove the following files:\n\n{}\n\n\
-            For details on this error see https://github.com/rust-lang/rust-clippy/issues/7343\n\
-            ----------------------------------------------------------------------\n",
-            crate_names, suggested_action, paths
-        );
+    let not_found: Vec<&str> = TEST_DEPENDENCIES
+        .iter()
+        .copied()
+        .filter(|n| !crates.contains_key(n))
+        .collect();
+    if !not_found.is_empty() {
+        panic!("dependencies not found in depinfo: {:?}", not_found);
     }
-    flags
+    crates
+        .into_iter()
+        .map(|(name, path)| format!("--extern {}={} ", name, path))
+        .collect()
 }
 
 fn default_config() -> compiletest::Config {
@@ -104,11 +121,14 @@ fn default_config() -> compiletest::Config {
         config.compile_lib_path = path;
     }
 
+    // Using `-L dependency={}` enforces that external dependencies are added with `--extern`.
+    // This is valuable because a) it allows us to monitor what external dependencies are used
+    // and b) it ensures that conflicting rlibs are resolved properly.
     config.target_rustcflags = Some(format!(
-        "--emit=metadata -L {0} -L {1} -Dwarnings -Zui-testing {2}",
+        "--emit=metadata -L dependency={} -L dependency={} -Dwarnings -Zui-testing {}",
         host_lib().join("deps").display(),
         cargo::TARGET_LIB.join("deps").display(),
-        third_party_crates(),
+        extern_flags(),
     ));
 
     config.build_base = host_lib().join("test_build_base");
@@ -314,13 +334,4 @@ impl Drop for VarGuard {
             Some(value) => set_var(self.key, value),
         }
     }
-}
-
-fn strip_current_dir(path: &Path) -> &Path {
-    if let Ok(curr) = env::current_dir() {
-        if let Ok(stripped) = path.strip_prefix(curr) {
-            return stripped;
-        }
-    }
-    path
 }

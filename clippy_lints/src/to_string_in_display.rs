@@ -92,11 +92,11 @@ impl LateLintPass<'_> for ToStringInDisplay {
         if_chain! {
             if self.in_display_impl;
             if let Some(self_hir_id) = self.self_hir_id;
-            if let ExprKind::MethodCall(path, _, args, _) = expr.kind;
+            if let ExprKind::MethodCall(path, _, [ref self_arg, ..], _) = expr.kind;
             if path.ident.name == sym!(to_string);
             if let Some(expr_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
             if is_diag_trait_item(cx, expr_def_id, sym::ToString);
-            if path_to_local_id(&args[0], self_hir_id);
+            if path_to_local_id(self_arg, self_hir_id);
             then {
                 span_lint(
                     cx,

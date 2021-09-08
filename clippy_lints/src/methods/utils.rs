@@ -24,9 +24,9 @@ pub(super) fn derefs_to_slice<'tcx>(
         }
     }
 
-    if let hir::ExprKind::MethodCall(path, _, args, _) = expr.kind {
-        if path.ident.name == sym::iter && may_slice(cx, cx.typeck_results().expr_ty(&args[0])) {
-            Some(&args[0])
+    if let hir::ExprKind::MethodCall(path, _, [self_arg, ..], _) = &expr.kind {
+        if path.ident.name == sym::iter && may_slice(cx, cx.typeck_results().expr_ty(self_arg)) {
+            Some(self_arg)
         } else {
             None
         }

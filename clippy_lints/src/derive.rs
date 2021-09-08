@@ -105,9 +105,6 @@ declare_clippy_lint! {
     /// nothing more than copy the object, which is what `#[derive(Copy, Clone)]`
     /// gets you.
     ///
-    /// ### Known problems
-    /// Bounds of generic types are sometimes wrong: https://github.com/rust-lang/rust/issues/26925
-    ///
     /// ### Example
     /// ```rust,ignore
     /// #[derive(Copy)]

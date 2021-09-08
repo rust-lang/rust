@@ -1,6 +1,6 @@
 #![feature(associated_type_defaults)]
 #![warn(clippy::linkedlist)]
-#![allow(dead_code, clippy::needless_pass_by_value)]
+#![allow(unused, dead_code, clippy::needless_pass_by_value)]
 
 extern crate alloc;
 use alloc::collections::linked_list::LinkedList;
@@ -20,24 +20,29 @@ impl Foo for LinkedList<u8> {
     const BAR: Option<LinkedList<u8>> = None;
 }
 
-struct Bar;
+pub struct Bar {
+    priv_linked_list_field: LinkedList<u8>,
+    pub pub_linked_list_field: LinkedList<u8>,
+}
 impl Bar {
     fn foo(_: LinkedList<u8>) {}
 }
 
-pub fn test(my_favourite_linked_list: LinkedList<u8>) {
-    println!("{:?}", my_favourite_linked_list)
+// All of these test should be trigger the lint because they are not
+// part of the public api
+fn test(my_favorite_linked_list: LinkedList<u8>) {}
+fn test_ret() -> Option<LinkedList<u8>> {
+    None
 }
-
-pub fn test_ret() -> Option<LinkedList<u8>> {
-    unimplemented!();
-}
-
-pub fn test_local_not_linted() {
+fn test_local_not_linted() {
     let _: LinkedList<u8>;
 }
 
-fn main() {
-    test(LinkedList::new());
-    test_local_not_linted();
+// All of these test should be allowed because they are part of the
+// public api and `avoid_breaking_exported_api` is `false` by default.
+pub fn pub_test(the_most_awesome_linked_list: LinkedList<u8>) {}
+pub fn pub_test_ret() -> Option<LinkedList<u8>> {
+    None
 }
+
+fn main() {}

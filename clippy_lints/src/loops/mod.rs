@@ -397,6 +397,21 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// One might think that modifying the mutable variable changes the loop bounds
     ///
+    /// ### Known problems
+    /// False positive when mutation is followed by a `break`, but the `break` is not immediately
+    /// after the mutation:
+    ///
+    /// ```rust
+    /// let mut x = 5;
+    /// for _ in 0..x {
+    ///     x += 1; // x is a range bound that is mutated
+    ///     ..; // some other expression
+    ///     break; // leaves the loop, so mutation is not an issue
+    /// }
+    /// ```
+    ///
+    /// False positive on nested loops ([#6072](https://github.com/rust-lang/rust-clippy/issues/6072))
+    ///
     /// ### Example
     /// ```rust
     /// let mut foo = 42;
@@ -580,8 +595,8 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
 
         while_let_on_iterator::check(cx, expr);
 
-        if let Some(higher::While { if_cond, if_then, .. }) = higher::While::hir(&expr) {
-            while_immutable_condition::check(cx, if_cond, if_then);
+        if let Some(higher::While { condition, body }) = higher::While::hir(expr) {
+            while_immutable_condition::check(cx, condition, body);
         }
 
         needless_collect::check(expr, cx);

@@ -51,9 +51,29 @@ fn replace_with_default() {
 
     let mut binary_heap: BinaryHeap<i32> = BinaryHeap::new();
     let _ = std::mem::take(&mut binary_heap);
+
+    let mut tuple = (vec![1, 2], BinaryHeap::<i32>::new());
+    let _ = std::mem::take(&mut tuple);
+
+    let mut refstr = "hello";
+    let _ = std::mem::take(&mut refstr);
+
+    let mut slice: &[i32] = &[1, 2, 3];
+    let _ = std::mem::take(&mut slice);
+}
+
+// lint is disabled for primitives because in this case `take`
+// has no clear benefit over `replace` and sometimes is harder to read
+fn dont_lint_primitive() {
+    let mut pbool = true;
+    let _ = std::mem::replace(&mut pbool, false);
+
+    let mut pint = 5;
+    let _ = std::mem::replace(&mut pint, 0);
 }
 
 fn main() {
     replace_option_with_none();
     replace_with_default();
+    dont_lint_primitive();
 }

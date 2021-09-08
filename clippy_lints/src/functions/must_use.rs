@@ -26,7 +26,6 @@ pub(super) fn check_item(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
-            return;
         } else if is_public && !is_proc_macro(cx.sess(), attrs) && !attrs.iter().any(|a| a.has_name(sym::no_mangle)) {
             check_must_use_candidate(
                 cx,

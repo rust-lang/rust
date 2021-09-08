@@ -625,7 +625,10 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
                 .flat_map(HybridBitSet::iter)
                 .collect();
 
-            if ContainsRegion(self.cx.tcx).visit_ty(self.body.local_decls[*dest].ty).is_break() {
+            if ContainsRegion(self.cx.tcx)
+                .visit_ty(self.body.local_decls[*dest].ty)
+                .is_break()
+            {
                 mutable_variables.push(*dest);
             }
 

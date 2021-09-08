@@ -21,7 +21,7 @@ fn docs_link(diag: &mut DiagnosticBuilder<'_>, lint: &'static Lint) {
                 "for further information visit https://rust-lang.github.io/rust-clippy/{}/index.html#{}",
                 &option_env!("RUST_RELEASE_NUM").map_or("master".to_string(), |n| {
                     // extract just major + minor version and ignore patch versions
-                    format!("rust-{}", n.rsplitn(2, '.').nth(1).unwrap())
+                    format!("rust-{}", n.rsplit_once('.').unwrap().1)
                 }),
                 lint
             ));

@@ -19,6 +19,7 @@ serde_json = {version = "1.0"}
 tar = {version = "0.4.30"}
 toml = {version = "0.5"}
 ureq = {version = "2.0.0-rc3"}
+walkdir = {version = "2.3.2"}
 
 [features]
 deny-warnings = []

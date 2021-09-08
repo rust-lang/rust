@@ -6,33 +6,38 @@ use crate::{is_expn_of, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::{self, LitKind};
 use rustc_hir as hir;
-use rustc_hir::{Block, BorrowKind, Expr, ExprKind, LoopSource, Node, Pat, StmtKind, UnOp};
+use rustc_hir::{Arm, Block, BorrowKind, Expr, ExprKind, LoopSource, MatchSource, Node, Pat, StmtKind, UnOp};
 use rustc_lint::LateContext;
 use rustc_span::{sym, ExpnKind, Span, Symbol};
 
 /// The essential nodes of a desugared for loop as well as the entire span:
 /// `for pat in arg { body }` becomes `(pat, arg, body)`. Return `(pat, arg, body, span)`.
 pub struct ForLoop<'tcx> {
+    /// `for` loop item
     pub pat: &'tcx hir::Pat<'tcx>,
+    /// `IntoIterator` argument
     pub arg: &'tcx hir::Expr<'tcx>,
+    /// `for` loop body
     pub body: &'tcx hir::Expr<'tcx>,
+    /// entire `for` loop span
     pub span: Span,
 }
 
 impl<'tcx> ForLoop<'tcx> {
     #[inline]
+    /// Parses a desugared `for` loop
     pub fn hir(expr: &Expr<'tcx>) -> Option<Self> {
         if_chain! {
-            if let hir::ExprKind::Match(ref iterexpr, ref arms, hir::MatchSource::ForLoopDesugar) = expr.kind;
+            if let hir::ExprKind::Match(iterexpr, arms, hir::MatchSource::ForLoopDesugar) = expr.kind;
             if let Some(first_arm) = arms.get(0);
-            if let hir::ExprKind::Call(_, ref iterargs) = iterexpr.kind;
+            if let hir::ExprKind::Call(_, iterargs) = iterexpr.kind;
             if let Some(first_arg) = iterargs.get(0);
             if iterargs.len() == 1 && arms.len() == 1 && first_arm.guard.is_none();
-            if let hir::ExprKind::Loop(ref block, ..) = first_arm.body.kind;
+            if let hir::ExprKind::Loop(block, ..) = first_arm.body.kind;
             if block.expr.is_none();
             if let [ _, _, ref let_stmt, ref body ] = *block.stmts;
-            if let hir::StmtKind::Local(ref local) = let_stmt.kind;
-            if let hir::StmtKind::Expr(ref body_expr) = body.kind;
+            if let hir::StmtKind::Local(local) = let_stmt.kind;
+            if let hir::StmtKind::Expr(body_expr) = body.kind;
             then {
                 return Some(Self {
                     pat: &*local.pat,
@@ -46,14 +51,19 @@ impl<'tcx> ForLoop<'tcx> {
     }
 }
 
+/// An `if` expression without `DropTemps`
 pub struct If<'hir> {
+    /// `if` condition
     pub cond: &'hir Expr<'hir>,
-    pub r#else: Option<&'hir Expr<'hir>>,
+    /// `if` then expression
     pub then: &'hir Expr<'hir>,
+    /// `else` expression
+    pub r#else: Option<&'hir Expr<'hir>>,
 }
 
 impl<'hir> If<'hir> {
     #[inline]
+    /// Parses an `if` expression
     pub const fn hir(expr: &Expr<'hir>) -> Option<Self> {
         if let ExprKind::If(
             Expr {
@@ -64,21 +74,27 @@ impl<'hir> If<'hir> {
             r#else,
         ) = expr.kind
         {
-            Some(Self { cond, r#else, then })
+            Some(Self { cond, then, r#else })
         } else {
             None
         }
     }
 }
 
+/// An `if let` expression
 pub struct IfLet<'hir> {
+    /// `if let` pattern
     pub let_pat: &'hir Pat<'hir>,
+    /// `if let` scrutinee
     pub let_expr: &'hir Expr<'hir>,
+    /// `if let` then expression
     pub if_then: &'hir Expr<'hir>,
+    /// `if let` else expression
     pub if_else: Option<&'hir Expr<'hir>>,
 }
 
 impl<'hir> IfLet<'hir> {
+    /// Parses an `if let` expression
     pub fn hir(cx: &LateContext<'_>, expr: &Expr<'hir>) -> Option<Self> {
         if let ExprKind::If(
             Expr {
@@ -92,7 +108,14 @@ impl<'hir> IfLet<'hir> {
             let hir = cx.tcx.hir();
             let mut iter = hir.parent_iter(expr.hir_id);
             if let Some((_, Node::Block(Block { stmts: [], .. }))) = iter.next() {
-                if let Some((_, Node::Expr(Expr { kind: ExprKind::Loop(_, _, LoopSource::While, _), .. }))) = iter.next() {
+                if let Some((
+                    _,
+                    Node::Expr(Expr {
+                        kind: ExprKind::Loop(_, _, LoopSource::While, _),
+                        ..
+                    }),
+                )) = iter.next()
+                {
                     // while loop desugar
                     return None;
                 }
@@ -108,14 +131,49 @@ impl<'hir> IfLet<'hir> {
     }
 }
 
+/// An `if let` or `match` expression. Useful for lints that trigger on one or the other.
+pub enum IfLetOrMatch<'hir> {
+    /// Any `match` expression
+    Match(&'hir Expr<'hir>, &'hir [Arm<'hir>], MatchSource),
+    /// scrutinee, pattern, then block, else block
+    IfLet(
+        &'hir Expr<'hir>,
+        &'hir Pat<'hir>,
+        &'hir Expr<'hir>,
+        Option<&'hir Expr<'hir>>,
+    ),
+}
+
+impl<'hir> IfLetOrMatch<'hir> {
+    /// Parses an `if let` or `match` expression
+    pub fn parse(cx: &LateContext<'_>, expr: &Expr<'hir>) -> Option<Self> {
+        match expr.kind {
+            ExprKind::Match(expr, arms, source) => Some(Self::Match(expr, arms, source)),
+            _ => IfLet::hir(cx, expr).map(
+                |IfLet {
+                     let_expr,
+                     let_pat,
+                     if_then,
+                     if_else,
+                 }| { Self::IfLet(let_expr, let_pat, if_then, if_else) },
+            ),
+        }
+    }
+}
+
+/// An `if` or `if let` expression
 pub struct IfOrIfLet<'hir> {
+    /// `if` condition that is maybe a `let` expression
     pub cond: &'hir Expr<'hir>,
-    pub r#else: Option<&'hir Expr<'hir>>,
+    /// `if` then expression
     pub then: &'hir Expr<'hir>,
+    /// `else` expression
+    pub r#else: Option<&'hir Expr<'hir>>,
 }
 
 impl<'hir> IfOrIfLet<'hir> {
     #[inline]
+    /// Parses an `if` or `if let` expression
     pub const fn hir(expr: &Expr<'hir>) -> Option<Self> {
         if let ExprKind::If(cond, then, r#else) = expr.kind {
             if let ExprKind::DropTemps(new_cond) = cond.kind {
@@ -126,7 +184,7 @@ impl<'hir> IfOrIfLet<'hir> {
                 });
             }
             if let ExprKind::Let(..) = cond.kind {
-                return Some(Self { cond, r#else, then });
+                return Some(Self { cond, then, r#else });
             }
         }
         None
@@ -155,7 +213,7 @@ impl<'a> Range<'a> {
         }
 
         match expr.kind {
-            hir::ExprKind::Call(ref path, ref args)
+            hir::ExprKind::Call(path, args)
                 if matches!(
                     path.kind,
                     hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::RangeInclusiveNew, _))
@@ -167,7 +225,7 @@ impl<'a> Range<'a> {
                     limits: ast::RangeLimits::Closed,
                 })
             },
-            hir::ExprKind::Struct(ref path, ref fields, None) => match path {
+            hir::ExprKind::Struct(path, fields, None) => match &path {
                 hir::QPath::LangItem(hir::LangItem::RangeFull, _) => Some(Range {
                     start: None,
                     end: None,
@@ -213,7 +271,7 @@ impl<'a> VecArgs<'a> {
     /// from `vec!`.
     pub fn hir(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> Option<VecArgs<'a>> {
         if_chain! {
-            if let hir::ExprKind::Call(ref fun, ref args) = expr.kind;
+            if let hir::ExprKind::Call(fun, args) = expr.kind;
             if let hir::ExprKind::Path(ref qpath) = fun.kind;
             if is_expn_of(fun.span, "vec").is_some();
             if let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
@@ -225,10 +283,10 @@ impl<'a> VecArgs<'a> {
                 else if match_def_path(cx, fun_def_id, &paths::SLICE_INTO_VEC) && args.len() == 1 {
                     // `vec![a, b, c]` case
                     if_chain! {
-                        if let hir::ExprKind::Box(ref boxed) = args[0].kind;
-                        if let hir::ExprKind::Array(ref args) = boxed.kind;
+                        if let hir::ExprKind::Box(boxed) = args[0].kind;
+                        if let hir::ExprKind::Array(args) = boxed.kind;
                         then {
-                            return Some(VecArgs::Vec(&*args));
+                            return Some(VecArgs::Vec(args));
                         }
                     }
 
@@ -247,14 +305,17 @@ impl<'a> VecArgs<'a> {
     }
 }
 
+/// A desugared `while` loop
 pub struct While<'hir> {
-    pub if_cond: &'hir Expr<'hir>,
-    pub if_then: &'hir Expr<'hir>,
-    pub if_else: Option<&'hir Expr<'hir>>,
+    /// `while` loop condition
+    pub condition: &'hir Expr<'hir>,
+    /// `while` loop body
+    pub body: &'hir Expr<'hir>,
 }
 
 impl<'hir> While<'hir> {
     #[inline]
+    /// Parses a desugared `while` loop
     pub const fn hir(expr: &Expr<'hir>) -> Option<Self> {
         if let ExprKind::Loop(
             Block {
@@ -263,11 +324,11 @@ impl<'hir> While<'hir> {
                         kind:
                             ExprKind::If(
                                 Expr {
-                                    kind: ExprKind::DropTemps(if_cond),
+                                    kind: ExprKind::DropTemps(condition),
                                     ..
                                 },
-                                if_then,
-                                if_else_ref,
+                                body,
+                                _,
                             ),
                         ..
                     }),
@@ -278,59 +339,53 @@ impl<'hir> While<'hir> {
             _,
         ) = expr.kind
         {
-            let if_else = *if_else_ref;
-            return Some(Self {
-                if_cond,
-                if_then,
-                if_else,
-            });
+            return Some(Self { condition, body });
         }
         None
     }
 }
 
+/// A desugared `while let` loop
 pub struct WhileLet<'hir> {
-    pub if_expr: &'hir Expr<'hir>,
+    /// `while let` loop item pattern
     pub let_pat: &'hir Pat<'hir>,
+    /// `while let` loop scrutinee
     pub let_expr: &'hir Expr<'hir>,
+    /// `while let` loop body
     pub if_then: &'hir Expr<'hir>,
-    pub if_else: Option<&'hir Expr<'hir>>,
 }
 
 impl<'hir> WhileLet<'hir> {
     #[inline]
+    /// Parses a desugared `while let` loop
     pub const fn hir(expr: &Expr<'hir>) -> Option<Self> {
         if let ExprKind::Loop(
             Block {
-                expr: Some(if_expr), ..
+                expr:
+                    Some(Expr {
+                        kind:
+                            ExprKind::If(
+                                Expr {
+                                    kind: ExprKind::Let(let_pat, let_expr, _),
+                                    ..
+                                },
+                                if_then,
+                                _,
+                            ),
+                        ..
+                    }),
+                ..
             },
             _,
             LoopSource::While,
             _,
         ) = expr.kind
         {
-            if let Expr {
-                kind:
-                    ExprKind::If(
-                        Expr {
-                            kind: ExprKind::Let(let_pat, let_expr, _),
-                            ..
-                        },
-                        if_then,
-                        if_else_ref,
-                    ),
-                ..
-            } = if_expr
-            {
-                let if_else = *if_else_ref;
-                return Some(Self {
-                    if_expr,
-                    let_pat,
-                    let_expr,
-                    if_then,
-                    if_else,
-                });
-            }
+            return Some(Self {
+                let_pat,
+                let_expr,
+                if_then,
+            });
         }
         None
     }
@@ -532,7 +587,7 @@ pub fn is_from_for_desugar(local: &hir::Local<'_>) -> bool {
     // }
     // ```
     if_chain! {
-        if let Some(ref expr) = local.init;
+        if let Some(expr) = local.init;
         if let hir::ExprKind::Match(_, _, hir::MatchSource::ForLoopDesugar) = expr.kind;
         then {
             return true;
