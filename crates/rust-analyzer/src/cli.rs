@@ -8,6 +8,7 @@ mod highlight;
 mod analysis_stats;
 mod diagnostics;
 mod ssr;
+mod lsif;
 
 mod progress_report;
 

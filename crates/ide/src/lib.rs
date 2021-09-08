@@ -46,6 +46,7 @@ mod references;
 mod rename;
 mod runnables;
 mod ssr;
+mod static_index;
 mod status;
 mod syntax_highlighting;
 mod syntax_tree;
@@ -86,6 +87,7 @@ pub use crate::{
     references::ReferenceSearchResult,
     rename::RenameError,
     runnables::{Runnable, RunnableKind, TestId},
+    static_index::{StaticIndex, StaticIndexedFile},
     syntax_highlighting::{
         tags::{Highlight, HlMod, HlMods, HlOperator, HlPunct, HlTag},
         HlRange,

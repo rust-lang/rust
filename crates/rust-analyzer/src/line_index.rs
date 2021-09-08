@@ -18,6 +18,12 @@ pub(crate) struct LineIndex {
     pub(crate) encoding: OffsetEncoding,
 }
 
+impl LineIndex {
+    pub(crate) fn with_default_options(index: Arc<ide::LineIndex>) -> Self {
+        Self { index, endings: LineEndings::Unix, encoding: OffsetEncoding::Utf8 }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) enum LineEndings {
     Unix,
