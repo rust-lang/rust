@@ -1,7 +1,9 @@
 use std::cell::Cell;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::{Hash, Hasher};
+use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+use std::sync::Arc;
 
 struct Key(AtomicUsize);
 
@@ -64,4 +66,20 @@ fn main() {
 
     raw_ptr_is_ok(&mut HashMap::new());
     raw_mut_ptr_is_ok(&mut HashMap::new());
+
+    let _map = HashMap::<Cell<usize>, usize>::new();
+    let _map = HashMap::<&mut Cell<usize>, usize>::new();
+    let _map = HashMap::<&mut usize, usize>::new();
+    // Collection types from `std` who's impl of `Hash` or `Ord` delegate their type parameters
+    let _map = HashMap::<Vec<Cell<usize>>, usize>::new();
+    let _map = HashMap::<BTreeMap<Cell<usize>, ()>, usize>::new();
+    let _map = HashMap::<BTreeMap<(), Cell<usize>>, usize>::new();
+    let _map = HashMap::<BTreeSet<Cell<usize>>, usize>::new();
+    let _map = HashMap::<Option<Cell<usize>>, usize>::new();
+    let _map = HashMap::<Option<Vec<Cell<usize>>>, usize>::new();
+    let _map = HashMap::<Result<&mut usize, ()>, usize>::new();
+    // Smart pointers from `std` who's impl of `Hash` or `Ord` delegate their type parameters
+    let _map = HashMap::<Box<Cell<usize>>, usize>::new();
+    let _map = HashMap::<Rc<Cell<usize>>, usize>::new();
+    let _map = HashMap::<Arc<Cell<usize>>, usize>::new();
 }
