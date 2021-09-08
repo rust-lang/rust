@@ -125,7 +125,7 @@ fn parse(output: &str) -> HashSet<Function> {
                 cached_header = None;
                 break;
             }
-            let parts = if cfg!(target_env = "msvc") {
+            let mut parts = if cfg!(target_env = "msvc") {
                 // Each line looks like:
                 //
                 // >  $addr: ab cd ef     $instr..
@@ -152,6 +152,29 @@ fn parse(output: &str) -> HashSet<Function> {
                     .map(std::string::ToString::to_string)
                     .collect::<Vec<String>>()
             };
+
+            if cfg!(target_arch = "aarch64") {
+                // Normalize [us]shll.* ..., #0 instructions to the preferred form: [us]xtl.* ...
+                // as LLVM objdump does not do that.
+                // See https://developer.arm.com/documentation/ddi0602/latest/SIMD-FP-Instructions/UXTL--UXTL2--Unsigned-extend-Long--an-alias-of-USHLL--USHLL2-
+                // and https://developer.arm.com/documentation/ddi0602/latest/SIMD-FP-Instructions/SXTL--SXTL2--Signed-extend-Long--an-alias-of-SSHLL--SSHLL2-
+                // for details.
+                match (parts.first(), parts.last()) {
+                    (Some(instr), Some(last_arg))
+                        if (instr.starts_with("ushll.") || instr.starts_with("sshll."))
+                            && last_arg == "#0" =>
+                    {
+                        assert_eq!(parts.len(), 4);
+                        let mut new_parts = Vec::with_capacity(3);
+                        let new_instr = format!("{}{}{}", &instr[..1], "xtl", &instr[5..]);
+                        new_parts.push(new_instr);
+                        new_parts.push(parts[1].clone());
+                        new_parts.push(parts[2][0..parts[2].len() - 1].to_owned()); // strip trailing comma
+                        parts = new_parts;
+                    }
+                    _ => {}
+                };
+            }
             instructions.push(parts.join(" "));
         }
         let function = Function {
