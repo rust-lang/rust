@@ -985,14 +985,6 @@ impl<'a> State<'a> {
                 }
                 self.pclose();
             }
-            ast::TyKind::AnonymousStruct(ref fields, ..) => {
-                self.s.word("struct");
-                self.print_record_struct_body(fields, ty.span);
-            }
-            ast::TyKind::AnonymousUnion(ref fields, ..) => {
-                self.s.word("union");
-                self.print_record_struct_body(fields, ty.span);
-            }
             ast::TyKind::Paren(ref typ) => {
                 self.popen();
                 self.print_type(typ);
