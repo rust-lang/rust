@@ -13,6 +13,8 @@ use rustc_middle::ty::{
 };
 use rustc_target::spec::abi::Abi;
 
+use rustc_session::config::EntryFnType;
+
 use crate::*;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -120,12 +122,13 @@ impl Default for MiriConfig {
 }
 
 /// Returns a freshly created `InterpCx`, along with an `MPlaceTy` representing
-/// the location where the return value of the `start` lang item will be
+/// the location where the return value of the `start` function will be
 /// written to.
 /// Public because this is also used by `priroda`.
 pub fn create_ecx<'mir, 'tcx: 'mir>(
     tcx: TyCtxt<'tcx>,
-    main_id: DefId,
+    entry_id: DefId,
+    entry_type: EntryFnType,
     config: MiriConfig,
 ) -> InterpResult<'tcx, (InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>, MPlaceTy<'tcx, Tag>)> {
     let param_env = ty::ParamEnv::reveal_all();
@@ -148,26 +151,10 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     }
 
     // Setup first stack-frame
-    let main_instance = ty::Instance::mono(tcx, main_id);
-    let main_mir = ecx.load_mir(main_instance.def, None)?;
-    if main_mir.arg_count != 0 {
-        bug!("main function must not take any arguments");
-    }
+    let entry_instance = ty::Instance::mono(tcx, entry_id);
 
-    let start_id = tcx.lang_items().start_fn().unwrap();
-    let main_ret_ty = tcx.fn_sig(main_id).output();
-    let main_ret_ty = main_ret_ty.no_bound_vars().unwrap();
-    let start_instance = ty::Instance::resolve(
-        tcx,
-        ty::ParamEnv::reveal_all(),
-        start_id,
-        tcx.mk_substs(::std::iter::once(ty::subst::GenericArg::from(main_ret_ty))),
-    )
-    .unwrap()
-    .unwrap();
+    // First argument is constructed later, because its skipped if the entry function uses #[start]
 
-    // First argument: pointer to `main()`.
-    let main_ptr = ecx.memory.create_fn_alloc(FnVal::Instance(main_instance));
     // Second argument (argc): length of `config.args`.
     let argc = Scalar::from_machine_usize(u64::try_from(config.args.len()).unwrap(), &ecx);
     // Third argument (`argv`): created from `config.args`.
@@ -243,25 +230,58 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     // Return place (in static memory so that it does not count as leak).
     let ret_place = ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into())?;
     // Call start function.
-    ecx.call_function(
-        start_instance,
-        Abi::Rust,
-        &[Scalar::from_pointer(main_ptr, &ecx).into(), argc.into(), argv],
-        Some(&ret_place.into()),
-        StackPopCleanup::None { cleanup: true },
-    )?;
+
+    match entry_type {
+        EntryFnType::Main => {
+            let start_id = tcx.lang_items().start_fn().unwrap();
+            let main_ret_ty = tcx.fn_sig(entry_id).output();
+            let main_ret_ty = main_ret_ty.no_bound_vars().unwrap();
+            let start_instance = ty::Instance::resolve(
+                tcx,
+                ty::ParamEnv::reveal_all(),
+                start_id,
+                tcx.mk_substs(::std::iter::once(ty::subst::GenericArg::from(main_ret_ty))),
+            )
+            .unwrap()
+            .unwrap();
+
+            let main_ptr = ecx.memory.create_fn_alloc(FnVal::Instance(entry_instance));
+
+            ecx.call_function(
+                start_instance,
+                Abi::Rust,
+                &[Scalar::from_pointer(main_ptr, &ecx).into(), argc.into(), argv],
+                Some(&ret_place.into()),
+                StackPopCleanup::None { cleanup: true },
+            )?;
+        }
+        EntryFnType::Start => {
+            ecx.call_function(
+                entry_instance,
+                Abi::Rust,
+                &[argc.into(), argv],
+                Some(&ret_place.into()),
+                StackPopCleanup::None { cleanup: true },
+            )?;
+        }
+    }
 
     Ok((ecx, ret_place))
 }
 
-/// Evaluates the main function specified by `main_id`.
+/// Evaluates the entry function specified by `entry_id`.
 /// Returns `Some(return_code)` if program executed completed.
 /// Returns `None` if an evaluation error occured.
-pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) -> Option<i64> {
+pub fn eval_entry<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    entry_id: DefId,
+    entry_type: EntryFnType,
+    config: MiriConfig,
+) -> Option<i64> {
     // Copy setting before we move `config`.
     let ignore_leaks = config.ignore_leaks;
 
-    let (mut ecx, ret_place) = match create_ecx(tcx, main_id, config) {
+    let (mut ecx, ret_place) = match create_ecx(tcx, entry_id, entry_type, config) {
         Ok(v) => v,
         Err(err) => {
             err.print_backtrace();
