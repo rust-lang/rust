@@ -871,7 +871,6 @@ pub fn walk_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v GenericB
             visitor.visit_generic_args(span, args);
         }
         GenericBound::Outlives(ref lifetime) => visitor.visit_lifetime(lifetime),
-        GenericBound::Unsized(_) => {}
     }
 }
 

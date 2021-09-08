@@ -23,23 +23,29 @@ LL | struct S4<T>(T) where for<'a> T: ?Trait<'a>;
    |                               ^
 
 error: `?Trait` bounds are only permitted at the point where a type parameter is declared
-  --> $DIR/maybe-bounds-where.rs:20:18
+  --> $DIR/maybe-bounds-where.rs:21:18
    |
 LL |     fn f() where T: ?Sized {}
    |                  ^
 
+warning: default bound relaxed for a type parameter, but this does nothing because the given bound is not a default; only `?Sized` is supported
+  --> $DIR/maybe-bounds-where.rs:12:11
+   |
+LL | struct S4<T>(T) where for<'a> T: ?Trait<'a>;
+   |           ^
+
 error[E0203]: type parameter has more than one relaxed default bound, only one is supported
-  --> $DIR/maybe-bounds-where.rs:15:11
+  --> $DIR/maybe-bounds-where.rs:16:11
    |
 LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
    |           ^
 
 warning: default bound relaxed for a type parameter, but this does nothing because the given bound is not a default; only `?Sized` is supported
-  --> $DIR/maybe-bounds-where.rs:15:11
+  --> $DIR/maybe-bounds-where.rs:16:11
    |
 LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
    |           ^
 
-error: aborting due to 6 previous errors; 1 warning emitted
+error: aborting due to 6 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0203`.

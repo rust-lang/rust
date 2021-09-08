@@ -441,9 +441,11 @@ pub enum GenericBound<'hir> {
     Trait(PolyTraitRef<'hir>, TraitBoundModifier),
     // FIXME(davidtwco): Introduce `PolyTraitRef::LangItem`
     LangItemTrait(LangItem, Span, HirId, &'hir GenericArgs<'hir>),
-    Unsized(Span),
     Outlives(Lifetime),
 }
+
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(GenericBound<'_>, 48);
 
 impl GenericBound<'_> {
     pub fn trait_ref(&self) -> Option<&TraitRef<'_>> {
@@ -458,7 +460,6 @@ impl GenericBound<'_> {
             GenericBound::Trait(t, ..) => t.span,
             GenericBound::LangItemTrait(_, span, ..) => *span,
             GenericBound::Outlives(l) => l.span,
-            GenericBound::Unsized(span) => *span,
         }
     }
 }

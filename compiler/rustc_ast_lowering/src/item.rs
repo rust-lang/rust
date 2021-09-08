@@ -2,7 +2,6 @@ use super::{AnonymousLifetimeMode, LoweringContext, ParamMode};
 use super::{ImplTraitContext, ImplTraitPosition};
 use crate::Arena;
 
-use rustc_ast::node_id::NodeMap;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
@@ -1351,8 +1350,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         generics: &Generics,
         itctx: ImplTraitContext<'_, 'hir>,
     ) -> GenericsCtor<'hir> {
-        // Collect `?Trait` bounds in where clause and move them to parameter definitions.
-        let mut add_bounds: NodeMap<Vec<_>> = Default::default();
+        // Error if `?Trait` bounds in where clauses don't refer directly to type paramters.
+        // Note: we used to clone these bounds directly onto the type parameter (and avoid lowering
+        // these into hir when we lower thee where clauses), but this makes it quite difficult to
+        // keep track of the Span info. Now, `add_implicitly_sized` in `AstConv` checks both param bounds and
+        // where clauses for `?Sized`.
         for pred in &generics.where_clause.predicates {
             if let WherePredicate::BoundPredicate(ref bound_pred) = *pred {
                 'next_bound: for bound in &bound_pred.bounds {
@@ -1368,7 +1370,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             {
                                 for param in &generics.params {
                                     if def_id == self.resolver.local_def_id(param.id).to_def_id() {
-                                        add_bounds.entry(param.id).or_default().push(bound.clone());
                                         continue 'next_bound;
                                     }
                                 }
@@ -1386,7 +1387,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
 
         GenericsCtor {
-            params: self.lower_generic_params_mut(&generics.params, &add_bounds, itctx).collect(),
+            params: self.lower_generic_params_mut(&generics.params, itctx).collect(),
             where_clause: self.lower_where_clause(&generics.where_clause),
             span: self.lower_span(generics.span),
         }
@@ -1419,32 +1420,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ref bounded_ty,
                 ref bounds,
                 span,
-            }) => {
-                self.with_in_scope_lifetime_defs(&bound_generic_params, |this| {
-                    hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                        bound_generic_params: this.lower_generic_params(
-                            bound_generic_params,
-                            &NodeMap::default(),
-                            ImplTraitContext::disallowed(),
-                        ),
-                        bounded_ty: this.lower_ty(bounded_ty, ImplTraitContext::disallowed()),
-                        bounds: this.arena.alloc_from_iter(bounds.iter().map(
-                            |bound| match bound {
-                                // We used to ignore `?Trait` bounds, as they were copied into type
-                                // parameters already, but we need to keep them around only for
-                                // diagnostics when we suggest removal of `?Sized` bounds. See
-                                // `suggest_constraining_type_param`. This will need to change if
-                                // we ever allow something *other* than `?Sized`.
-                                GenericBound::Trait(p, TraitBoundModifier::Maybe) => {
-                                    hir::GenericBound::Unsized(this.lower_span(p.span))
-                                }
-                                _ => this.lower_param_bound(bound, ImplTraitContext::disallowed()),
-                            },
-                        )),
-                        span: this.lower_span(span),
-                    })
+            }) => self.with_in_scope_lifetime_defs(&bound_generic_params, |this| {
+                hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+                    bound_generic_params: this
+                        .lower_generic_params(bound_generic_params, ImplTraitContext::disallowed()),
+                    bounded_ty: this.lower_ty(bounded_ty, ImplTraitContext::disallowed()),
+                    bounds: this.arena.alloc_from_iter(bounds.iter().map(|bound| {
+                        this.lower_param_bound(bound, ImplTraitContext::disallowed())
+                    })),
+                    span: this.lower_span(span),
                 })
-            }
+            }),
             WherePredicate::RegionPredicate(WhereRegionPredicate {
                 ref lifetime,
                 ref bounds,

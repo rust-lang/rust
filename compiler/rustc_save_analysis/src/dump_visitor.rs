@@ -693,7 +693,6 @@ impl<'tcx> DumpVisitor<'tcx> {
                     (Some(self.tcx.require_lang_item(lang_item, Some(span))), span)
                 }
                 hir::GenericBound::Outlives(..) => continue,
-                hir::GenericBound::Unsized(_) => continue,
             };
 
             if let Some(id) = def_id {

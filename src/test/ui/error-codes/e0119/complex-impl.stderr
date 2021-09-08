@@ -6,7 +6,7 @@ LL | impl<R> External for (Q, R) {}
    |
    = note: conflicting implementation in crate `complex_impl_support`:
            - impl<'a, 'b, 'c, T, U, V, W> External for (T, M<'a, 'b, 'c, Box<U>, V, W>)
-             where <U as FnOnce<(T,)>>::Output == V, <V as Iterator>::Item == T, 'b: 'a, T: 'a, U: FnOnce<(T,)>, U: 'static, V: Iterator, V: Clone, W: Add, <W as Add>::Output: Copy;
+             where <U as FnOnce<(T,)>>::Output == V, <V as Iterator>::Item == T, 'b: 'a, T: 'a, U: 'static, U: FnOnce<(T,)>, V: Iterator, V: Clone, W: Add, <W as Add>::Output: Copy;
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/complex-impl.rs:9:1

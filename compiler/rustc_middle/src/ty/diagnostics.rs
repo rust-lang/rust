@@ -2,7 +2,6 @@
 
 use crate::ty::TyKind::*;
 use crate::ty::{InferTy, TyCtxt, TyS};
-use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -114,10 +113,8 @@ fn suggest_removing_unsized_bound(
     def_id: Option<DefId>,
 ) {
     // See if there's a `?Sized` bound that can be removed to suggest that.
-    // First look at the `where` clause because we can have `where T: ?Sized`, but that
-    // `?Sized` bound is *also* included in the `GenericParam` as a bound, which breaks
-    // the spans. Hence the somewhat involved logic that follows.
-    let mut where_unsized_bounds = FxHashSet::default();
+    // First look at the `where` clause because we can have `where T: ?Sized`,
+    // then look at params.
     for (where_pos, predicate) in generics.where_clause.predicates.iter().enumerate() {
         match predicate {
             WherePredicate::BoundPredicate(WhereBoundPredicate {
@@ -140,7 +137,6 @@ fn suggest_removing_unsized_bound(
             }) if segment.ident.as_str() == param_name => {
                 for (pos, bound) in bounds.iter().enumerate() {
                     match bound {
-                        hir::GenericBound::Unsized(_) => {}
                         hir::GenericBound::Trait(poly, hir::TraitBoundModifier::Maybe)
                             if poly.trait_ref.trait_def_id() == def_id => {}
                         _ => continue,
@@ -173,7 +169,6 @@ fn suggest_removing_unsized_bound(
                         //             ^^^^^^^^^
                         (_, pos, _, _) => bounds[pos - 1].span().shrink_to_hi().to(bound.span()),
                     };
-                    where_unsized_bounds.insert(bound.span());
                     err.span_suggestion_verbose(
                         sp,
                         "consider removing the `?Sized` bound to make the \
@@ -189,8 +184,7 @@ fn suggest_removing_unsized_bound(
     for (pos, bound) in param.bounds.iter().enumerate() {
         match bound {
             hir::GenericBound::Trait(poly, hir::TraitBoundModifier::Maybe)
-                if poly.trait_ref.trait_def_id() == def_id
-                    && !where_unsized_bounds.contains(&bound.span()) =>
+                if poly.trait_ref.trait_def_id() == def_id =>
             {
                 let sp = match (param.bounds.len(), pos) {
                     // T: ?Sized,
