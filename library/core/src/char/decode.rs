@@ -122,7 +122,7 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
         let (low, high) = self.iter.size_hint();
         // we could be entirely valid surrogates (2 elements per
         // char), or entirely non-surrogates (1 element per char)
-        (low / 2, high)
+        (low.div_ceil(2), high)
     }
 }
 
