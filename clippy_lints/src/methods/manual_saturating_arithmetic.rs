@@ -6,7 +6,7 @@ use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_target::abi::LayoutOf;
+use rustc_middle::ty::layout::LayoutOf;
 
 pub fn check(
     cx: &LateContext<'_>,

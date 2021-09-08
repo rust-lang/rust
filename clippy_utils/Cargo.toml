@@ -1,6 +1,6 @@
 [package]
 name = "clippy_utils"
-version = "0.1.56"
+version = "0.1.57"
 edition = "2018"
 publish = false
 

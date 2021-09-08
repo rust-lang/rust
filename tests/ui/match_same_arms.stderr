@@ -107,24 +107,6 @@ LL |         1 => 2,
    = help: ...or consider changing the match arm bodies
 
 error: this `match` has identical arm bodies
-  --> $DIR/match_same_arms.rs:33:14
-   |
-LL |         3 => 2, //~ ERROR 3rd matched arms have same body
-   |              ^
-   |
-note: same as this
-  --> $DIR/match_same_arms.rs:32:14
-   |
-LL |         2 => 2, //~ ERROR 2nd matched arms have same body
-   |              ^
-help: consider refactoring into `2 | 3`
-  --> $DIR/match_same_arms.rs:32:9
-   |
-LL |         2 => 2, //~ ERROR 2nd matched arms have same body
-   |         ^
-   = help: ...or consider changing the match arm bodies
-
-error: this `match` has identical arm bodies
   --> $DIR/match_same_arms.rs:50:55
    |
 LL |                 CommandInfo::External { name, .. } => name.to_string(),
@@ -142,5 +124,5 @@ LL |                 CommandInfo::BuiltIn { name, .. } => name.to_string(),
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: ...or consider changing the match arm bodies
 
-error: aborting due to 8 previous errors
+error: aborting due to 7 previous errors
 
