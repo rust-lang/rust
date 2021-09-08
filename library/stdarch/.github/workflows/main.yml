@@ -138,9 +138,8 @@ jobs:
           norun: true
         - target: aarch64-unknown-linux-gnu
           os: ubuntu-latest
-        # Temporarily disabled because otool crashes with "Out of memory", seems Github CI issue
-        #- target: x86_64-apple-darwin
-        #  os: macos-latest
+        - target: x86_64-apple-darwin
+          os: macos-11
         - target: x86_64-pc-windows-msvc
           os: windows-latest
         - target: i686-pc-windows-msvc
