@@ -709,6 +709,33 @@ fn iterate_trait_method_candidates(
     false
 }
 
+fn filter_inherent_impls_for_self_ty<'i>(
+    impls: &'i InherentImpls,
+    self_ty: &Ty,
+) -> impl Iterator<Item = &'i ImplId> {
+    // inherent methods on arrays are fingerprinted as [T; {unknown}], so we must also consider them when
+    // resolving a method call on an array with a known len
+    let array_impls = {
+        if let TyKind::Array(parameters, array_len) = self_ty.kind(&Interner) {
+            if !array_len.is_unknown() {
+                let unknown_array_len_ty =
+                    TyKind::Array(parameters.clone(), consteval::usize_const(None))
+                        .intern(&Interner);
+
+                Some(impls.for_self_ty(&unknown_array_len_ty))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+    .into_iter()
+    .flatten();
+
+    impls.for_self_ty(self_ty).iter().chain(array_impls)
+}
+
 fn iterate_inherent_methods(
     self_ty: &Canonical<Ty>,
     db: &dyn HirDatabase,
@@ -726,25 +753,7 @@ fn iterate_inherent_methods(
     for krate in def_crates {
         let impls = db.inherent_impls_in_crate(krate);
 
-        let impls_for_self_ty = impls.for_self_ty(&self_ty.value).iter().chain(
-            {
-                if let TyKind::Array(parameters, array_len) = self_ty.value.kind(&Interner) {
-                    if !array_len.is_unknown() {
-                        let unknown_array_len_ty =
-                            TyKind::Array(parameters.clone(), consteval::usize_const(None))
-                                .intern(&Interner);
-
-                        Some(impls.for_self_ty(&unknown_array_len_ty))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            }
-            .into_iter()
-            .flatten(),
-        );
+        let impls_for_self_ty = filter_inherent_impls_for_self_ty(&impls, &self_ty.value);
 
         for &impl_def in impls_for_self_ty {
             for &item in db.impl_data(impl_def).items.iter() {
@@ -798,6 +807,28 @@ pub fn resolve_indexing_op(
     None
 }
 
+fn is_transformed_receiver_ty_equal(transformed_receiver_ty: &Ty, receiver_ty: &Ty) -> bool {
+    if transformed_receiver_ty == receiver_ty {
+        return true;
+    }
+
+    // a transformed receiver may be considered equal (and a valid method call candidate) if it is an array
+    // with an unknown (i.e. generic) length, and the receiver is an array with the same item type but a known len,
+    // this allows inherent methods on arrays to be considered valid resolution candidates
+    match (transformed_receiver_ty.kind(&Interner), receiver_ty.kind(&Interner)) {
+        (
+            TyKind::Array(transformed_array_ty, transformed_array_len),
+            TyKind::Array(receiver_array_ty, receiver_array_len),
+        ) if transformed_array_ty == receiver_array_ty
+            && transformed_array_len.is_unknown()
+            && !receiver_array_len.is_unknown() =>
+        {
+            true
+        }
+        _ => false,
+    }
+}
+
 fn is_valid_candidate(
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
@@ -823,21 +854,9 @@ fn is_valid_candidate(
                     Some(ty) => ty,
                     None => return false,
                 };
-                if transformed_receiver_ty != receiver_ty.value {
-                    match (
-                        transformed_receiver_ty.kind(&Interner),
-                        receiver_ty.value.kind(&Interner),
-                    ) {
-                        (
-                            TyKind::Array(transformed_array_ty, transformed_array_len),
-                            TyKind::Array(receiver_array_ty, receiver_array_len),
-                        ) if transformed_array_ty == receiver_array_ty
-                            && transformed_array_len.is_unknown()
-                            && !receiver_array_len.is_unknown() => {}
-                        _ => {
-                            return false;
-                        }
-                    }
+
+                if !is_transformed_receiver_ty_equal(&transformed_receiver_ty, &receiver_ty.value) {
+                    return false;
                 }
             }
             if let Some(from_module) = visible_from_module {
