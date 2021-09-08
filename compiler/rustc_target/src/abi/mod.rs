@@ -792,7 +792,7 @@ impl WrappingRange {
     pub fn is_full_for(&self, size: Size) -> bool {
         let max_value = size.unsigned_int_max();
         debug_assert!(self.start <= max_value && self.end <= max_value);
-        (self.start == 0 && self.end == max_value) || (self.end.wrapping_add(1) == self.start)
+        self.start == (self.end.wrapping_add(1) & max_value)
     }
 }
 
