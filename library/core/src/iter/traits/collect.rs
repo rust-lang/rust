@@ -1,3 +1,5 @@
+use crate::marker::PhantomData;
+
 /// Conversion from an [`Iterator`].
 ///
 /// By implementing `FromIterator` for a type, you define how it will be
@@ -346,10 +348,37 @@ pub trait Extend<A> {
 
     /// Reserves capacity in a collection for the given number of additional elements.
     ///
-    /// The default implementation does nothing.
+    /// The default implementation forwards to `extend` with an iterator having
+    /// the given requested capacity as `size_hint`, which has the effect of
+    /// reserving if `extend` takes into account its argument's size hint in
+    /// order to reserve capacity.
     #[unstable(feature = "extend_one", issue = "72631")]
     fn extend_reserve(&mut self, additional: usize) {
-        let _ = additional;
+        struct ReserveHint<A> {
+            additional: usize,
+            item: PhantomData<A>,
+        }
+
+        // DO NOT implement TrustedLen, because the real len is actually 0.
+        impl<A> Iterator for ReserveHint<A> {
+            type Item = A;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                None
+            }
+
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                (self.additional, Some(self.additional))
+            }
+        }
+
+        impl<A> ExactSizeIterator for ReserveHint<A> {
+            fn len(&self) -> usize {
+                self.additional
+            }
+        }
+
+        self.extend(ReserveHint { additional, item: PhantomData })
     }
 }
 
