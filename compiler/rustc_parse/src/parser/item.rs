@@ -1469,7 +1469,10 @@ impl<'a> Parser<'a> {
         let (ident, is_raw) = self.ident_or_err()?;
         if !is_raw && ident.is_reserved() {
             let err = if self.check_fn_front_matter(false) {
-                let _ = self.parse_fn(&mut Vec::new(), |_| true, lo);
+                // We use `parse_fn` to get a span for the function
+                if let Err(mut db) = self.parse_fn(&mut Vec::new(), |_| true, lo) {
+                    db.delay_as_bug();
+                }
                 let mut err = self.struct_span_err(
                     lo.to(self.prev_token.span),
                     &format!("functions are not allowed in {} definitions", adt_ty),
