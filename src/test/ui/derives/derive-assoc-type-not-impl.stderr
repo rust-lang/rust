@@ -19,6 +19,10 @@ LL |     Bar::<NotClone> { x: 1 }.clone();
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
            candidate #1: `Clone`
+help: consider annotating `NotClone` with `#[derive(Clone)]`
+   |
+LL | #[derive(Clone)]
+   |
 
 error: aborting due to previous error
 

@@ -203,6 +203,7 @@ use self::Ordering::*;
     message = "can't compare `{Self}` with `{Rhs}`",
     label = "no implementation for `{Self} == {Rhs}`"
 )]
+#[rustc_diagnostic_item = "PartialEq"]
 pub trait PartialEq<Rhs: ?Sized = Self> {
     /// This method tests for `self` and `other` values to be equal, and is used
     /// by `==`.
@@ -269,6 +270,7 @@ pub macro PartialEq($item:item) {
 #[doc(alias = "==")]
 #[doc(alias = "!=")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "Eq"]
 pub trait Eq: PartialEq<Self> {
     // this method is used solely by #[deriving] to assert
     // that every component of a type implements #[deriving]
@@ -728,6 +730,7 @@ impl<T: Clone> Clone for Reverse<T> {
 #[doc(alias = "<=")]
 #[doc(alias = ">=")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "Ord"]
 pub trait Ord: Eq + PartialOrd<Self> {
     /// This method returns an [`Ordering`] between `self` and `other`.
     ///
@@ -984,6 +987,7 @@ impl PartialOrd for Ordering {
     message = "can't compare `{Self}` with `{Rhs}`",
     label = "no implementation for `{Self} < {Rhs}` and `{Self} > {Rhs}`"
 )]
+#[rustc_diagnostic_item = "PartialOrd"]
 pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     /// This method returns an ordering between `self` and `other` values if one exists.
     ///

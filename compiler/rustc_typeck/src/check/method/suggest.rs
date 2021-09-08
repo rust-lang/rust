@@ -829,6 +829,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.note(&format!(
                             "the following trait bounds were not satisfied:\n{bound_list}"
                         ));
+                        self.suggest_derive(&mut err, &unsatisfied_predicates);
+
                         unsatisfied_bounds = true;
                     }
                 }
@@ -969,6 +971,85 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             MethodError::BadReturnType => bug!("no return type expectations but got BadReturnType"),
         }
         None
+    }
+
+    fn suggest_derive(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        unsatisfied_predicates: &Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)>,
+    ) {
+        let derivables = [
+            sym::Eq,
+            sym::PartialEq,
+            sym::Ord,
+            sym::PartialOrd,
+            sym::Clone,
+            sym::Copy,
+            sym::Hash,
+            sym::Default,
+            sym::debug_trait,
+        ];
+        let mut derives = unsatisfied_predicates
+            .iter()
+            .filter_map(|(pred, _)| {
+                let trait_pred =
+                    if let ty::PredicateKind::Trait(trait_pred) = pred.kind().skip_binder() {
+                        trait_pred
+                    } else {
+                        return None;
+                    };
+                let trait_ref = trait_pred.trait_ref;
+                let adt_def = if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind() {
+                    adt_def
+                } else {
+                    return None;
+                };
+                if adt_def.did.is_local() {
+                    let diagnostic_items = self.tcx.diagnostic_items(trait_ref.def_id.krate);
+                    return derivables.iter().find_map(|trait_derivable| {
+                        let item_def_id =
+                            if let Some(item_def_id) = diagnostic_items.get(trait_derivable) {
+                                item_def_id
+                            } else {
+                                return None;
+                            };
+                        if item_def_id == &trait_pred.trait_ref.def_id
+                            && !(adt_def.is_enum() && *trait_derivable == sym::Default)
+                        {
+                            return Some((
+                                format!("{}", trait_ref.self_ty()),
+                                self.tcx.def_span(adt_def.did),
+                                format!("{}", trait_ref.print_only_trait_path()),
+                            ));
+                        }
+                        None
+                    });
+                }
+                None
+            })
+            .collect::<Vec<(String, Span, String)>>();
+        derives.sort();
+        let derives_grouped = derives.into_iter().fold(
+            Vec::<(String, Span, String)>::new(),
+            |mut acc, (self_name, self_span, trait_name)| {
+                if let Some((acc_self_name, _, ref mut traits)) = acc.last_mut() {
+                    if acc_self_name == &self_name {
+                        traits.push_str(format!(", {}", trait_name).as_str());
+                        return acc;
+                    }
+                }
+                acc.push((self_name, self_span, trait_name));
+                acc
+            },
+        );
+        for (self_name, self_span, traits) in &derives_grouped {
+            err.span_suggestion_verbose(
+                self_span.shrink_to_lo(),
+                &format!("consider annotating `{}` with `#[derive({})]`", self_name, traits),
+                format!("#[derive({})]\n", traits),
+                Applicability::MaybeIncorrect,
+            );
+        }
     }
 
     /// Print out the type for use in value namespace.

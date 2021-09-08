@@ -9,6 +9,10 @@ LL |     a.unwrap();
    |
    = note: the following trait bounds were not satisfied:
            `Foo: Debug`
+help: consider annotating `Foo` with `#[derive(Debug)]`
+   |
+LL | #[derive(Debug)]
+   |
 
 error: aborting due to previous error
 

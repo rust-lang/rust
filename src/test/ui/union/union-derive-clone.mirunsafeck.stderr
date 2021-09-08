@@ -16,6 +16,10 @@ LL |     let w = u.clone();
    = note: the following trait bounds were not satisfied:
            `CloneNoCopy: Copy`
            which is required by `U5<CloneNoCopy>: Clone`
+help: consider annotating `CloneNoCopy` with `#[derive(Copy)]`
+   |
+LL | #[derive(Copy)]
+   |
 
 error[E0277]: the trait bound `U1: Copy` is not satisfied
   --> $DIR/union-derive-clone.rs:6:10

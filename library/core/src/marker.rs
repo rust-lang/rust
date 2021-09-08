@@ -382,6 +382,7 @@ pub trait StructuralEq {
 // existing specializations on `Copy` that already exist in the standard
 // library, and there's no way to safely have this behavior right now.
 #[rustc_unsafe_specialization_marker]
+#[rustc_diagnostic_item = "Copy"]
 pub trait Copy: Clone {
     // Empty.
 }

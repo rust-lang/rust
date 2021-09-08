@@ -1,0 +1,84 @@
+error[E0599]: the method `test` exists for struct `Foo<Enum, CloneEnum>`, but its trait bounds were not satisfied
+  --> $DIR/derive-trait-for-method-call.rs:28:15
+   |
+LL | enum Enum {
+   | ---------
+   | |
+   | doesn't satisfy `Enum: Clone`
+   | doesn't satisfy `Enum: Default`
+...
+LL | enum CloneEnum {
+   | -------------- doesn't satisfy `CloneEnum: Default`
+...
+LL | struct Foo<X, Y> (X, Y);
+   | ------------------------ method `test` not found for this
+...
+LL |     let y = x.test();
+   |               ^^^^ method cannot be called on `Foo<Enum, CloneEnum>` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `Enum: Clone`
+           `Enum: Default`
+           `CloneEnum: Default`
+help: consider annotating `Enum` with `#[derive(Clone)]`
+   |
+LL | #[derive(Clone)]
+   |
+
+error[E0599]: the method `test` exists for struct `Foo<Struct, CloneStruct>`, but its trait bounds were not satisfied
+  --> $DIR/derive-trait-for-method-call.rs:34:15
+   |
+LL | struct Struct {
+   | -------------
+   | |
+   | doesn't satisfy `Struct: Clone`
+   | doesn't satisfy `Struct: Default`
+...
+LL | struct CloneStruct {
+   | ------------------ doesn't satisfy `CloneStruct: Default`
+...
+LL | struct Foo<X, Y> (X, Y);
+   | ------------------------ method `test` not found for this
+...
+LL |     let y = x.test();
+   |               ^^^^ method cannot be called on `Foo<Struct, CloneStruct>` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `Struct: Clone`
+           `Struct: Default`
+           `CloneStruct: Default`
+help: consider annotating `CloneStruct` with `#[derive(Default)]`
+   |
+LL | #[derive(Default)]
+   |
+help: consider annotating `Struct` with `#[derive(Clone, Default)]`
+   |
+LL | #[derive(Clone, Default)]
+   |
+
+error[E0599]: the method `test` exists for struct `Foo<Vec<Enum>, Instant>`, but its trait bounds were not satisfied
+  --> $DIR/derive-trait-for-method-call.rs:40:15
+   |
+LL | struct Foo<X, Y> (X, Y);
+   | ------------------------ method `test` not found for this
+...
+LL |     let y = x.test();
+   |               ^^^^ method cannot be called on `Foo<Vec<Enum>, Instant>` due to unsatisfied trait bounds
+   |
+  ::: $SRC_DIR/std/src/time.rs:LL:COL
+   |
+LL | pub struct Instant(time::Instant);
+   | ---------------------------------- doesn't satisfy `Instant: Default`
+   |
+  ::: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+LL | pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
+   | ------------------------------------------------------------------------------------------------ doesn't satisfy `Vec<Enum>: Clone`
+   |
+   = note: the following trait bounds were not satisfied:
+           `Vec<Enum>: Clone`
+           `Instant: Default`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0599`.
