@@ -6,7 +6,6 @@ use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{self, par_iter};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -571,13 +570,20 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn par_for_each_module(&self, f: impl Fn(LocalDefId) + sync::Sync) {
-        use rustc_data_structures::sync::ParallelIterator;
+    #[cfg(not(parallel_compiler))]
+    #[inline]
+    pub fn par_for_each_module(&self, f: impl Fn(LocalDefId)) {
+        self.for_each_module(f)
+    }
+
+    #[cfg(parallel_compiler)]
+    pub fn par_for_each_module(&self, f: impl Fn(LocalDefId) + Sync) {
+        use rustc_data_structures::sync::{par_iter, ParallelIterator};
         par_iter_submodules(self.tcx, CRATE_DEF_ID, &f);
 
         fn par_iter_submodules<F>(tcx: TyCtxt<'_>, module: LocalDefId, f: &F)
         where
-            F: Fn(LocalDefId) + sync::Sync,
+            F: Fn(LocalDefId) + Sync,
         {
             (*f)(module);
             let items = tcx.hir_module_items(module);
