@@ -52,3 +52,21 @@ pub struct Unsized([u8]);
 
 // @!has type_layout/trait.MyTrait.html 'Size: '
 pub trait MyTrait {}
+
+// @has type_layout/enum.Variants.html 'Size: '
+// @has - '2 bytes'
+// @has - '<code>A</code>: 0 bytes'
+// @has - '<code>B</code>: 1 byte'
+pub enum Variants {
+    A,
+    B(u8),
+}
+
+// @has type_layout/enum.WithNiche.html 'Size: '
+// @has - //p '4 bytes'
+// @has - '<code>None</code>: 0 bytes'
+// @has - '<code>Some</code>: 4 bytes'
+pub enum WithNiche {
+    None,
+    Some(std::num::NonZeroU32),
+}
