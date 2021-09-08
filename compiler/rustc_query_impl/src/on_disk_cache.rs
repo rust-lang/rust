@@ -1,7 +1,7 @@
 use crate::QueryCtxt;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
-use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, OnceCell, RwLock};
+use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathHash;
@@ -49,8 +49,6 @@ pub struct OnDiskCache<'sess> {
     // Collects all `QuerySideEffects` created during the current compilation
     // session.
     current_side_effects: Lock<FxHashMap<DepNodeIndex, QuerySideEffects>>,
-
-    cnum_map: OnceCell<UnhashMap<StableCrateId, CrateNum>>,
 
     source_map: &'sess SourceMap,
     file_index_to_stable_id: FxHashMap<SourceFileIndex, EncodedSourceFileId>,
@@ -139,8 +137,8 @@ struct EncodedSourceFileId {
 }
 
 impl EncodedSourceFileId {
-    fn translate(&self, cnum_map: &UnhashMap<StableCrateId, CrateNum>) -> StableSourceFileId {
-        let cnum = cnum_map[&self.stable_crate_id];
+    fn translate(&self, tcx: TyCtxt<'_>) -> StableSourceFileId {
+        let cnum = tcx.stable_crate_id_to_crate_num(self.stable_crate_id);
         StableSourceFileId { file_name_hash: self.file_name_hash, cnum }
     }
 
@@ -180,7 +178,6 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
             serialized_data: RwLock::new(Some(data)),
             file_index_to_stable_id: footer.file_index_to_stable_id,
             file_index_to_file: Default::default(),
-            cnum_map: OnceCell::new(),
             source_map: sess.source_map(),
             current_side_effects: Default::default(),
             query_result_index: footer.query_result_index.into_iter().collect(),
@@ -198,7 +195,6 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
             serialized_data: RwLock::new(None),
             file_index_to_stable_id: Default::default(),
             file_index_to_file: Default::default(),
-            cnum_map: OnceCell::new(),
             source_map,
             current_side_effects: Default::default(),
             query_result_index: Default::default(),
@@ -466,14 +462,11 @@ impl<'sess> OnDiskCache<'sess> {
     where
         T: Decodable<CacheDecoder<'a, 'tcx>>,
     {
-        let cnum_map = self.cnum_map.get_or_init(|| Self::compute_cnum_map(tcx));
-
         let serialized_data = self.serialized_data.read();
         let mut decoder = CacheDecoder {
             tcx,
             opaque: opaque::Decoder::new(serialized_data.as_deref().unwrap_or(&[]), pos.to_usize()),
             source_map: self.source_map,
-            cnum_map,
             file_index_to_file: &self.file_index_to_file,
             file_index_to_stable_id: &self.file_index_to_stable_id,
             alloc_decoding_session: self.alloc_decoding_state.new_decoding_session(),
@@ -483,23 +476,6 @@ impl<'sess> OnDiskCache<'sess> {
             hygiene_context: &self.hygiene_context,
         };
         f(&mut decoder)
-    }
-
-    // This function builds mapping from previous-session-`CrateNum` to
-    // current-session-`CrateNum`. There might be `CrateNum`s from the previous
-    // `Session` that don't occur in the current one. For these, the mapping
-    // maps to None.
-    fn compute_cnum_map(tcx: TyCtxt<'_>) -> UnhashMap<StableCrateId, CrateNum> {
-        tcx.dep_graph.with_ignore(|| {
-            tcx.crates(())
-                .iter()
-                .chain(std::iter::once(&LOCAL_CRATE))
-                .map(|&cnum| {
-                    let hash = tcx.def_path_hash(cnum.as_def_id()).stable_crate_id();
-                    (hash, cnum)
-                })
-                .collect()
-        })
     }
 }
 
@@ -512,7 +488,6 @@ pub struct CacheDecoder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     opaque: opaque::Decoder<'a>,
     source_map: &'a SourceMap,
-    cnum_map: &'a UnhashMap<StableCrateId, CrateNum>,
     file_index_to_file: &'a Lock<FxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
     file_index_to_stable_id: &'a FxHashMap<SourceFileIndex, EncodedSourceFileId>,
     alloc_decoding_session: AllocDecodingSession<'a>,
@@ -525,10 +500,10 @@ pub struct CacheDecoder<'a, 'tcx> {
 impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
     fn file_index_to_file(&self, index: SourceFileIndex) -> Lrc<SourceFile> {
         let CacheDecoder {
+            tcx,
             ref file_index_to_file,
             ref file_index_to_stable_id,
             ref source_map,
-            ref cnum_map,
             ..
         } = *self;
 
@@ -536,7 +511,7 @@ impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
             .borrow_mut()
             .entry(index)
             .or_insert_with(|| {
-                let stable_id = file_index_to_stable_id[&index].translate(cnum_map);
+                let stable_id = file_index_to_stable_id[&index].translate(tcx);
                 source_map
                     .source_file_by_stable_id(stable_id)
                     .expect("failed to lookup `SourceFile` in new context")
@@ -678,7 +653,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
             return Ok(expn_id);
         }
 
-        let krate = decoder.cnum_map[&hash.stable_crate_id()];
+        let krate = decoder.tcx.stable_crate_id_to_crate_num(hash.stable_crate_id());
 
         let expn_id = if krate == LOCAL_CRATE {
             // We look up the position of the associated `ExpnData` and decode it.
@@ -751,7 +726,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Span {
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for CrateNum {
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
         let stable_id = StableCrateId::decode(d)?;
-        let cnum = d.cnum_map[&stable_id];
+        let cnum = d.tcx.stable_crate_id_to_crate_num(stable_id);
         Ok(cnum)
     }
 }
