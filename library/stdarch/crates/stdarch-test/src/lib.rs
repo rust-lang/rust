@@ -90,17 +90,25 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
     // function, e.g., tzcntl in tzcntl %rax,%rax.
     let found = instrs.iter().any(|s| s.starts_with(expected));
 
-    // Look for `call` instructions in the disassembly to detect whether
-    // inlining failed: all intrinsics are `#[inline(always)]`, so
-    // calling one intrinsic from another should not generate `call`
-    // instructions.
-    let inlining_failed = instrs.windows(2).any(|s| {
-        // On 32-bit x86 position independent code will call itself and be
-        // immediately followed by a `pop` to learn about the current address.
-        // Let's not take that into account when considering whether a function
-        // failed inlining something.
-        s[0].contains("call") && (!cfg!(target_arch = "x86") || s[1].contains("pop"))
-    });
+    // Look for subroutine call instructions in the disassembly to detect whether
+    // inlining failed: all intrinsics are `#[inline(always)]`, so calling one
+    // intrinsic from another should not generate subroutine call instructions.
+    let inlining_failed = if cfg!(target_arch = "x86_64") || cfg!(target_arch = "wasm32") {
+        instrs.iter().any(|s| s.starts_with("call "))
+    } else if cfg!(target_arch = "x86") {
+        instrs.windows(2).any(|s| {
+            // On 32-bit x86 position independent code will call itself and be
+            // immediately followed by a `pop` to learn about the current address.
+            // Let's not take that into account when considering whether a function
+            // failed inlining something.
+            s[0].starts_with("call ") && s[1].starts_with("pop") // FIXME: original logic but does not match comment
+        })
+    } else if cfg!(target_arch = "aarch64") {
+        instrs.iter().any(|s| s.starts_with("bl "))
+    } else {
+        // FIXME: Add detection for other archs
+        false
+    };
 
     let instruction_limit = std::env::var("STDARCH_ASSERT_INSTR_LIMIT")
         .ok()
@@ -167,8 +175,8 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
         );
     } else if inlining_failed {
         panic!(
-            "instruction found, but the disassembly contains `call` \
-             instructions, which hint that inlining failed"
+            "instruction found, but the disassembly contains subroutine \
+             call instructions, which hint that inlining failed"
         );
     }
 }
