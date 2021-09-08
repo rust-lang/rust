@@ -58,21 +58,15 @@ class CargoTaskProvider implements vscode.TaskProvider {
 
         if (definition.type === TASK_TYPE && definition.command) {
             const args = [definition.command].concat(definition.args ?? []);
-            if (isWorkspaceFolder(task.scope)) {
-                return await buildCargoTask(task.scope, definition, task.name, args, this.config.cargoRunner);
-            }
+            return await buildCargoTask(task.scope, definition, task.name, args, this.config.cargoRunner);
         }
 
         return undefined;
     }
 }
 
-function isWorkspaceFolder(scope?: any): scope is vscode.WorkspaceFolder {
-    return (scope as vscode.WorkspaceFolder).name !== undefined;
-}
-
 export async function buildCargoTask(
-    target: vscode.WorkspaceFolder,
+    scope: vscode.WorkspaceFolder | vscode.TaskScope | undefined,
     definition: CargoTaskDefinition,
     name: string,
     args: string[],
@@ -117,7 +111,9 @@ export async function buildCargoTask(
 
     return new vscode.Task(
         definition,
-        target,
+        // scope can sometimes be undefined. in these situations we default to the workspace taskscope as
+        // recommended by the official docs: https://code.visualstudio.com/api/extension-guides/task-provider#task-provider)
+        scope ?? vscode.TaskScope.Workspace,
         name,
         TASK_SOURCE,
         exec,
