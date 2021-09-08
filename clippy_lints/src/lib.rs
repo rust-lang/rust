@@ -331,6 +331,7 @@ mod reference;
 mod regex;
 mod repeat_once;
 mod returns;
+mod same_name_method;
 mod self_assignment;
 mod self_named_constructors;
 mod semicolon_if_nothing_returned;
@@ -910,6 +911,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         repeat_once::REPEAT_ONCE,
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
+        same_name_method::SAME_NAME_METHOD,
         self_assignment::SELF_ASSIGNMENT,
         self_named_constructors::SELF_NAMED_CONSTRUCTORS,
         semicolon_if_nothing_returned::SEMICOLON_IF_NOTHING_RETURNED,
@@ -1053,6 +1055,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(panic_unimplemented::UNIMPLEMENTED),
         LintId::of(panic_unimplemented::UNREACHABLE),
         LintId::of(pattern_type_mismatch::PATTERN_TYPE_MISMATCH),
+        LintId::of(same_name_method::SAME_NAME_METHOD),
         LintId::of(shadow::SHADOW_REUSE),
         LintId::of(shadow::SHADOW_SAME),
         LintId::of(strings::STRING_ADD),
@@ -1923,6 +1926,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(move || Box::new(unnested_or_patterns::UnnestedOrPatterns::new(msrv)));
 
     store.register_late_pass(|| Box::new(size_of_in_element_count::SizeOfInElementCount));
+    store.register_late_pass(|| Box::new(same_name_method::SameNameMethod));
     store.register_late_pass(|| Box::new(map_clone::MapClone));
     store.register_late_pass(|| Box::new(map_err_ignore::MapErrIgnore));
     store.register_late_pass(|| Box::new(shadow::Shadow));
