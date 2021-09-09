@@ -1504,10 +1504,16 @@ macro_rules! uint_impl {
         #[unstable(feature = "int_abs_diff", issue = "none")]
         #[inline]
         pub const fn abs_diff(self, other: Self) -> Self {
-            if self < other {
-                other - self
+            if mem::size_of::<Self>() == 1 {
+                // Trick LLVM into generating the psadbw instruction when SSE2
+                // is available and this function is autovectorized for u8's.
+                (self as i32).wrapping_sub(other as i32).abs() as Self
             } else {
-                self - other
+                if self < other {
+                    other - self
+                } else {
+                    self - other
+                }
             }
         }
 
