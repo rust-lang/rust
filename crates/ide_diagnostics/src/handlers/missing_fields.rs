@@ -69,10 +69,10 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
             if ty.could_unify_with(ctx.sema.db, &candidate_ty) {
                 None
             } else {
-                Some(make::expr_unit())
+                Some(make::ext::expr_todo())
             }
         } else {
-            Some(make::expr_unit())
+            Some(make::ext::expr_todo())
         };
         let field =
             make::record_expr_field(make::name_ref(&f.name(ctx.sema.db).to_string()), field_expr)
@@ -167,7 +167,7 @@ fn main() {
 pub struct Foo { pub a: i32, pub b: i32 }
 "#,
             r#"
-fn some(, b: () ) {}
+fn some(, b: todo!() ) {}
 fn items() {}
 fn here() {}
 
@@ -196,7 +196,7 @@ fn test_fn() {
 struct TestStruct { one: i32, two: i64 }
 
 fn test_fn() {
-    let s = TestStruct { one: (), two: () };
+    let s = TestStruct { one: todo!(), two: todo!() };
 }
 "#,
         );
@@ -216,7 +216,7 @@ impl TestStruct {
 struct TestStruct { one: i32 }
 
 impl TestStruct {
-    fn test_fn() { let s = Self { one: () }; }
+    fn test_fn() { let s = Self { one: todo!() }; }
 }
 "#,
         );
@@ -264,7 +264,7 @@ fn test_fn() {
 struct TestStruct { one: i32, two: i64 }
 
 fn test_fn() {
-    let s = TestStruct{ two: 2, one: () };
+    let s = TestStruct{ two: 2, one: todo!() };
 }
 ",
         );
@@ -284,7 +284,7 @@ fn test_fn() {
 struct TestStruct { r#type: u8 }
 
 fn test_fn() {
-    TestStruct { r#type: ()  };
+    TestStruct { r#type: todo!()  };
 }
 ",
         );
@@ -335,8 +335,8 @@ struct S { a: (), b: () }
 
 fn f() {
     S {
-        a: (),
-        b: (),
+        a: todo!(),
+        b: todo!(),
     };
 }
 "#,
@@ -395,7 +395,7 @@ fn f() {
     let b = 1usize;
     S {
         a,
-        b: (),
+        b: todo!(),
     };
 }
 "#,
