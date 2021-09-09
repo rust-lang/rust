@@ -508,6 +508,7 @@ fn lang_attr_from_well_known_trait(attr: WellKnownTrait) -> &'static str {
         WellKnownTrait::Unpin => "unpin",
         WellKnownTrait::CoerceUnsized => "coerce_unsized",
         WellKnownTrait::DiscriminantKind => "discriminant_kind",
+        WellKnownTrait::Generator => "generator",
     }
 }
 

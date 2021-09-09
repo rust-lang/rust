@@ -17,9 +17,9 @@ ena = "0.14.0"
 tracing = "0.1"
 rustc-hash = "1.1.0"
 scoped-tls = "1"
-chalk-solve = { version = "0.70", default-features = false }
-chalk-ir = "0.70"
-chalk-recursive = { version = "0.70", default-features = false }
+chalk-solve = { version = "0.71", default-features = false }
+chalk-ir = "0.71"
+chalk-recursive = { version = "0.71", default-features = false }
 la-arena = { version = "0.2.0", path = "../../lib/arena" }
 once_cell = { version = "1.5.0" }
 
