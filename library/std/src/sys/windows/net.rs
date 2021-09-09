@@ -208,52 +208,7 @@ impl Socket {
     }
 
     pub fn duplicate(&self) -> io::Result<Socket> {
-        let mut info = unsafe { mem::zeroed::<c::WSAPROTOCOL_INFO>() };
-        let result = unsafe {
-            c::WSADuplicateSocketW(self.as_raw_socket(), c::GetCurrentProcessId(), &mut info)
-        };
-        cvt(result)?;
-        let socket = unsafe {
-            c::WSASocketW(
-                info.iAddressFamily,
-                info.iSocketType,
-                info.iProtocol,
-                &mut info,
-                0,
-                c::WSA_FLAG_OVERLAPPED | c::WSA_FLAG_NO_HANDLE_INHERIT,
-            )
-        };
-
-        if socket != c::INVALID_SOCKET {
-            unsafe { Ok(Self::from_inner(OwnedSocket::from_raw_socket(socket))) }
-        } else {
-            let error = unsafe { c::WSAGetLastError() };
-
-            if error != c::WSAEPROTOTYPE && error != c::WSAEINVAL {
-                return Err(io::Error::from_raw_os_error(error));
-            }
-
-            let socket = unsafe {
-                c::WSASocketW(
-                    info.iAddressFamily,
-                    info.iSocketType,
-                    info.iProtocol,
-                    &mut info,
-                    0,
-                    c::WSA_FLAG_OVERLAPPED,
-                )
-            };
-
-            if socket == c::INVALID_SOCKET {
-                return Err(last_error());
-            }
-
-            unsafe {
-                let socket = Self::from_inner(OwnedSocket::from_raw_socket(socket));
-                socket.set_no_inherit()?;
-                Ok(socket)
-            }
-        }
+        Ok(Self(self.0.duplicate()?))
     }
 
     fn recv_with_flags(&self, buf: &mut [u8], flags: c_int) -> io::Result<usize> {

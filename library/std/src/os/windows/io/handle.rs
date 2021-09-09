@@ -11,6 +11,7 @@ use crate::marker::PhantomData;
 use crate::mem::forget;
 use crate::ptr::NonNull;
 use crate::sys::c;
+use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 /// A borrowed handle.
@@ -107,6 +108,38 @@ impl BorrowedHandle<'_> {
     pub unsafe fn borrow_raw_handle(handle: RawHandle) -> Self {
         assert!(!handle.is_null());
         Self { handle: NonNull::new_unchecked(handle), _phantom: PhantomData }
+    }
+}
+
+impl OwnedHandle {
+    /// Creates a new `OwnedHandle` instance that shares the same underlying file handle
+    /// as the existing `OwnedHandle` instance.
+    pub fn try_clone(&self) -> crate::io::Result<FileDesc> {
+        let handle = self.duplicate(0, false, c::DUPLICATE_SAME_ACCESS)?;
+
+        Ok(unsafe { OwnedHandle::from_raw_handle(handle) })
+    }
+
+    pub(crate) fn duplicate(
+        &self,
+        access: c::DWORD,
+        inherit: bool,
+        options: c::DWORD,
+    ) -> io::Result<Self> {
+        let mut ret = 0 as c::HANDLE;
+        cvt(unsafe {
+            let cur_proc = c::GetCurrentProcess();
+            c::DuplicateHandle(
+                cur_proc,
+                self.as_raw_handle(),
+                cur_proc,
+                &mut ret,
+                access,
+                inherit as c::BOOL,
+                options,
+            )
+        })?;
+        unsafe { Ok(Self::from_raw_handle(ret)) }
     }
 }
 

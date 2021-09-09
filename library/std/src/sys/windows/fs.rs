@@ -455,7 +455,7 @@ impl File {
     }
 
     pub fn duplicate(&self) -> io::Result<File> {
-        Ok(File { handle: self.handle.duplicate(0, false, c::DUPLICATE_SAME_ACCESS)? })
+        Ok(Self(self.0.try_clone()?))
     }
 
     fn reparse_point<'a>(
