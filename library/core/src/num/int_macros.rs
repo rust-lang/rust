@@ -2227,6 +2227,46 @@ macro_rules! int_impl {
             }
         }
 
+        /// Computes the absolute difference between `self` and `other`.
+        ///
+        /// This function always returns the correct answer without overflow or
+        /// panics by returning an unsigned integer.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(int_abs_diff)]
+        #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".abs_diff(80), 20", stringify!($UnsignedT), ");")]
+        #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".abs_diff(110), 10", stringify!($UnsignedT), ");")]
+        #[doc = concat!("assert_eq!((-100", stringify!($SelfT), ").abs_diff(80), 180", stringify!($UnsignedT), ");")]
+        #[doc = concat!("assert_eq!((-100", stringify!($SelfT), ").abs_diff(-120), 20", stringify!($UnsignedT), ");")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.abs_diff(", stringify!($SelfT), "::MAX), ", stringify!($UnsignedT), "::MAX);")]
+        /// ```
+        #[unstable(feature = "int_abs_diff", issue = "none")]
+        #[inline]
+        pub const fn abs_diff(self, other: Self) -> $UnsignedT {
+            if self < other {
+                // Converting a non-negative x from signed to unsigned by using
+                // `x as U` is left unchanged, but a negative x is converted
+                // to value x + 2^N. Thus if `s` and `o` are binary variables
+                // respectively indicating whether `self` and `other` are
+                // negative, we are computing the mathematical value:
+                //
+                //    (other + o*2^N) - (self + s*2^N)    mod  2^N
+                //    other - self + (o-s)*2^N            mod  2^N
+                //    other - self                        mod  2^N
+                //
+                // Finally, taking the mod 2^N of the mathematical value of
+                // `other - self` does not change it as it already is
+                // in the range [0, 2^N).
+                (other as $UnsignedT).wrapping_sub(self as $UnsignedT)
+            } else {
+                (self as $UnsignedT).wrapping_sub(other as $UnsignedT)
+            }
+        }
+
         /// Returns a number representing sign of `self`.
         ///
         ///  - `0` if the number is zero
