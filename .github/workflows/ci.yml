@@ -208,8 +208,8 @@ jobs:
         features:
           - ""
           - "--features std"
-          - "--features const_evaluatable_checked"
-          - "--features std --features const_evaluatable_checked"
+          - "--features generic_const_exprs"
+          - "--features std --features generic_const_exprs"
 
     steps:
       - uses: actions/checkout@v2

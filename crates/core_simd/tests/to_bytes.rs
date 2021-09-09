@@ -1,6 +1,6 @@
-#![feature(portable_simd, const_generics, const_evaluatable_checked)]
+#![feature(portable_simd, generic_const_exprs, adt_const_params)]
 #![allow(incomplete_features)]
-#![cfg(feature = "const_evaluatable_checked")]
+#![cfg(feature = "generic_const_exprs")]
 
 use core_simd::Simd;
 

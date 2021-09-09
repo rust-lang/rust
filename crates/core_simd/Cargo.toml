@@ -9,9 +9,9 @@ categories = ["hardware-support", "no-std"]
 license = "MIT OR Apache-2.0"
 
 [features]
-default = ["std", "const_evaluatable_checked"]
+default = ["std", "generic_const_exprs"]
 std = []
-const_evaluatable_checked = []
+generic_const_exprs = []
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies.wasm-bindgen]
 version = "0.2"
