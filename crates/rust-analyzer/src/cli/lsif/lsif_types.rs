@@ -176,6 +176,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(unix)]
     fn metadata() {
         let data = Entry {
             id: lsp_types::NumberOrString::Number(1),
@@ -197,6 +198,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn document() {
         let data = Entry {
             id: lsp_types::NumberOrString::Number(1),
