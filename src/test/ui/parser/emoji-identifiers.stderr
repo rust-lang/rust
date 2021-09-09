@@ -48,10 +48,10 @@ error: identifiers cannot contain emojis: `i_like_to_😅_a_lot`
 LL | fn i_like_to_😅_a_lot() -> 👀 {
    |    ^^^^^^^^^^^^^^^^^^
 
-error: identifiers cannot contain emojis: `ABig👩‍👩‍👧‍👧Family`
+error: identifiers cannot contain emojis: `ABig👩👩👧👧Family`
   --> $DIR/emoji-identifiers.rs:1:8
    |
-LL | struct ABig👩‍👩‍👧‍👧Family;
+LL | struct ABig👩👩👧👧Family;
    |        ^^^^^^^^^^^^^^^^^^
 
 error[E0599]: no function or associated item named `full_of✨` found for struct `👀` in the current scope
