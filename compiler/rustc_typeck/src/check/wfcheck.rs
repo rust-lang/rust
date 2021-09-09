@@ -44,7 +44,7 @@ struct CheckWfFcxBuilder<'tcx> {
 impl<'tcx> CheckWfFcxBuilder<'tcx> {
     fn with_fcx<F>(&mut self, f: F)
     where
-        F: for<'b> FnOnce(&FnCtxt<'b, 'tcx>) -> Vec<Ty<'tcx>>,
+        F: for<'b> FnOnce(&FnCtxt<'b, 'tcx>) -> FxHashSet<Ty<'tcx>>,
     {
         let id = self.id;
         let span = self.span;
@@ -59,7 +59,7 @@ impl<'tcx> CheckWfFcxBuilder<'tcx> {
             }
             let wf_tys = f(&fcx);
             fcx.select_all_obligations_or_error();
-            fcx.regionck_item(id, span, &wf_tys);
+            fcx.regionck_item(id, span, wf_tys);
         });
     }
 }
@@ -394,7 +394,7 @@ fn check_associated_item(
         let item = fcx.tcx.associated_item(fcx.tcx.hir().local_def_id(item_id));
 
         let (mut implied_bounds, self_ty) = match item.container {
-            ty::TraitContainer(_) => (vec![], fcx.tcx.types.self_param),
+            ty::TraitContainer(_) => (FxHashSet::default(), fcx.tcx.types.self_param),
             ty::ImplContainer(def_id) => {
                 (fcx.impl_implied_bounds(def_id, span), fcx.tcx.type_of(def_id))
             }
@@ -553,7 +553,7 @@ fn check_type_defn<'tcx, F>(
         check_where_clauses(fcx, item.span, item.def_id.to_def_id(), None);
 
         // No implied bounds in a struct definition.
-        vec![]
+        FxHashSet::default()
     });
 }
 
@@ -579,7 +579,7 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
     for_item(tcx, item).with_fcx(|fcx| {
         check_where_clauses(fcx, item.span, item.def_id.to_def_id(), None);
 
-        vec![]
+        FxHashSet::default()
     });
 }
 
@@ -620,7 +620,7 @@ fn check_item_fn(
     for_id(tcx, item_id, span).with_fcx(|fcx| {
         let def_id = tcx.hir().local_def_id(item_id);
         let sig = tcx.fn_sig(def_id);
-        let mut implied_bounds = vec![];
+        let mut implied_bounds = FxHashSet::default();
         check_fn_or_method(fcx, ident.span, sig, decl, def_id.to_def_id(), &mut implied_bounds);
         implied_bounds
     })
@@ -659,7 +659,7 @@ fn check_item_type(tcx: TyCtxt<'_>, item_id: hir::HirId, ty_span: Span, allow_fo
         }
 
         // No implied bounds in a const, etc.
-        vec![]
+        FxHashSet::default()
     });
 }
 
@@ -918,14 +918,14 @@ fn check_fn_or_method<'fcx, 'tcx>(
     sig: ty::PolyFnSig<'tcx>,
     hir_decl: &hir::FnDecl<'_>,
     def_id: DefId,
-    implied_bounds: &mut Vec<Ty<'tcx>>,
+    implied_bounds: &mut FxHashSet<Ty<'tcx>>,
 ) {
     let sig = fcx.tcx.liberate_late_bound_regions(def_id, sig);
 
     // Unnormalized types in signature are WF too
     implied_bounds.extend(sig.inputs());
     // FIXME(#27579) return types should not be implied bounds
-    implied_bounds.push(sig.output());
+    implied_bounds.insert(sig.output());
 
     // Normalize the input and output types one at a time, using a different
     // `WellFormedLoc` for each. We cannot call `normalize_associated_types`
@@ -977,7 +977,7 @@ fn check_fn_or_method<'fcx, 'tcx>(
     );
 
     // FIXME(#27579) return types should not be implied bounds
-    implied_bounds.push(sig.output());
+    implied_bounds.insert(sig.output());
 
     debug!(?implied_bounds);
 
@@ -1513,7 +1513,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect()
     }
 
-    pub(super) fn impl_implied_bounds(&self, impl_def_id: DefId, span: Span) -> Vec<Ty<'tcx>> {
+    pub(super) fn impl_implied_bounds(
+        &self,
+        impl_def_id: DefId,
+        span: Span,
+    ) -> FxHashSet<Ty<'tcx>> {
         match self.tcx.impl_trait_ref(impl_def_id) {
             Some(trait_ref) => {
                 // Trait impl: take implied bounds from all types that
@@ -1526,7 +1530,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Inherent impl: take implied bounds from the `self` type.
                 let self_ty = self.tcx.type_of(impl_def_id);
                 let self_ty = self.normalize_associated_types_in(span, self_ty);
-                vec![self_ty]
+                std::array::IntoIter::new([self_ty]).collect()
             }
         }
     }

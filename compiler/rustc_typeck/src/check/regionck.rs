@@ -76,6 +76,7 @@ use crate::check::dropck;
 use crate::check::FnCtxt;
 use crate::mem_categorization as mc;
 use crate::middle::region;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -126,7 +127,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Region checking during the WF phase for items. `wf_tys` are the
     /// types from which we should derive implied bounds, if any.
-    pub fn regionck_item(&self, item_id: hir::HirId, span: Span, wf_tys: &[Ty<'tcx>]) {
+    pub fn regionck_item(&self, item_id: hir::HirId, span: Span, wf_tys: FxHashSet<Ty<'tcx>>) {
         debug!("regionck_item(item.id={:?}, wf_tys={:?})", item_id, wf_tys);
         let subject = self.tcx.hir().local_def_id(item_id);
         let mut rcx = RegionCtxt::new(self, item_id, Subject(subject), self.param_env);
@@ -149,7 +150,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fn_id: hir::HirId,
         body: &'tcx hir::Body<'tcx>,
         span: Span,
-        wf_tys: &[Ty<'tcx>],
+        wf_tys: FxHashSet<Ty<'tcx>>,
     ) {
         debug!("regionck_fn(id={})", fn_id);
         let subject = self.tcx.hir().body_owner_def_id(body.id());
@@ -286,15 +287,10 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         // because it will have no effect.
         //
         // FIXME(#27579) return types should not be implied bounds
-        let fn_sig_tys: Vec<_> =
+        let fn_sig_tys: FxHashSet<_> =
             fn_sig.inputs().iter().cloned().chain(Some(fn_sig.output())).collect();
 
-        self.outlives_environment.add_implied_bounds(
-            self.fcx,
-            &fn_sig_tys[..],
-            body_id.hir_id,
-            span,
-        );
+        self.outlives_environment.add_implied_bounds(self.fcx, fn_sig_tys, body_id.hir_id, span);
         self.outlives_environment.save_implied_bounds(body_id.hir_id);
         self.link_fn_params(&body.params);
         self.visit_body(body);
