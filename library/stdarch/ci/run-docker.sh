@@ -9,7 +9,7 @@ run() {
     target=$(echo "${1}" | sed 's/-emulated//')
     echo "Building docker container for TARGET=${1}"
     docker build -t stdarch -f "ci/docker/${1}/Dockerfile" ci/
-    mkdir -p target
+    mkdir -p target c_programs rust_programs
     echo "Running docker"
     # shellcheck disable=SC2016
     docker run \
@@ -29,6 +29,8 @@ run() {
       --volume "$(rustc --print sysroot)":/rust:ro \
       --volume "$(pwd)":/checkout:ro \
       --volume "$(pwd)"/target:/checkout/target \
+      --volume "$(pwd)"/c_programs:/checkout/c_programs \
+      --volume "$(pwd)"/rust_programs:/checkout/rust_programs \
       --init \
       --workdir /checkout \
       --privileged \

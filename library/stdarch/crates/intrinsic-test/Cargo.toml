@@ -1,0 +1,16 @@
+[package]
+name = "intrinsic-test"
+version = "0.1.0"
+authors = ["Jamie Cunliffe <Jamie.Cunliffe@arm.com>"]
+edition = "2018"
+
+[dependencies]
+lazy_static = "1.4.0"
+serde = { version = "1", features = ["derive"] }
+csv = "1.1"
+clap = "2.33.3"
+regex = "1.4.2"
+log = "0.4.11"
+pretty_env_logger = "0.4.0"
+rayon = "1.5.0"
+diff = "0.1.12"

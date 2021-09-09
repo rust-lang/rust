@@ -4,3 +4,5 @@ target
 tags
 crates/stdarch-gen/aarch64.rs
 crates/stdarch-gen/arm.rs
+c_programs/*
+rust_programs/*

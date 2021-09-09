@@ -65,6 +65,8 @@ cargo_test() {
 CORE_ARCH="--manifest-path=crates/core_arch/Cargo.toml"
 STD_DETECT="--manifest-path=crates/std_detect/Cargo.toml"
 STDARCH_EXAMPLES="--manifest-path=examples/Cargo.toml"
+INTRINSIC_TEST="--manifest-path=crates/intrinsic-test/Cargo.toml"
+
 cargo_test "${CORE_ARCH} --release"
 
 if [ "$NOSTD" != "1" ]; then
@@ -110,6 +112,11 @@ case ${TARGET} in
         ;;
 
 esac
+
+if [ "${TARGET}" = "aarch64-unknown-linux-gnu" ]; then
+    export CPPFLAGS="-fuse-ld=lld -I/usr/aarch64-linux-gnu/include/ -I/usr/aarch64-linux-gnu/include/c++/9/aarch64-linux-gnu/"
+    cargo run ${INTRINSIC_TEST} --release --bin intrinsic-test -- crates/intrinsic-test/neon-intrinsics.csv --runner "${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER}" --cppcompiler "clang++-12"
+fi
 
 if [ "$NORUN" != "1" ] && [ "$NOSTD" != 1 ]; then
     # Test examples
