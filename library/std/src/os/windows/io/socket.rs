@@ -126,7 +126,7 @@ impl OwnedSocket {
 
     #[cfg(not(target_vendor = "uwp"))]
     pub(crate) fn set_no_inherit(&self) -> io::Result<()> {
-        sys::cvt(unsafe {
+        cvt(unsafe {
             c::SetHandleInformation(self.as_raw_socket() as c::HANDLE, c::HANDLE_FLAG_INHERIT, 0)
         })
         .map(drop)
