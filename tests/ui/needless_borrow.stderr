@@ -1,16 +1,22 @@
 error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:14:15
+  --> $DIR/needless_borrow.rs:8:15
    |
-LL |     let c = x(&&a);
+LL |     let _ = x(&&a); // warn
    |               ^^^ help: change this to: `&a`
    |
    = note: `-D clippy::needless-borrow` implied by `-D warnings`
 
+error: this expression borrows a reference (`&mut i32`) that is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:12:13
+   |
+LL |     mut_ref(&mut &mut b); // warn
+   |             ^^^^^^^^^^^ help: change this to: `&mut b`
+
 error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:27:15
+  --> $DIR/needless_borrow.rs:26:15
    |
 LL |         46 => &&a,
    |               ^^^ help: change this to: `&a`
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
