@@ -8,7 +8,7 @@ use std::ptr;
 use std::str;
 
 use crate::llvm::archive_ro::{ArchiveRO, Child};
-use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
+use crate::llvm::{self, ArchiveKind, LLVMMachineType};
 use rustc_codegen_ssa::back::archive::ArchiveBuilder;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_middle::middle::cstore::{DllCallingConvention, DllImport};
@@ -54,6 +54,7 @@ fn archive_config<'a>(sess: &'a Session, output: &Path, input: Option<&Path>) ->
     ArchiveConfig { sess, dst: output.to_path_buf(), src: input.map(|p| p.to_path_buf()) }
 }
 
+#[allow(dead_code)]
 /// Map machine type strings to values of LLVM's MachineTypes enum.
 fn llvm_machine_type(cpu: &str) -> LLVMMachineType {
     match cpu {
@@ -152,60 +153,47 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
         dll_imports: &[DllImport],
         tmpdir: &MaybeTempDir,
     ) {
-        let output_path = {
-            let mut output_path: PathBuf = tmpdir.as_ref().to_path_buf();
-            output_path.push(format!("{}_imports", lib_name));
-            output_path.with_extension("lib")
-        };
+        let mut def_file_path = tmpdir.as_ref().to_path_buf();
+        def_file_path.push(format!("{}_imports", lib_name));
+        def_file_path.with_extension("def");
+        let mut output_path: PathBuf = tmpdir.as_ref().to_path_buf();
+        output_path.push(format!("{}_imports", lib_name));
+        output_path.with_extension("dll.a");
 
-        // we've checked for \0 characters in the library name already
-        let dll_name_z = CString::new(lib_name).unwrap();
-        // All import names are Rust identifiers and therefore cannot contain \0 characters.
-        // FIXME: when support for #[link_name] implemented, ensure that import.name values don't
-        // have any \0 characters
-        let import_name_vector: Vec<CString> = dll_imports
+        let import_name_vector: Vec<String> = dll_imports
             .iter()
             .map(|import: &DllImport| {
                 if self.config.sess.target.arch == "x86" {
-                    LlvmArchiveBuilder::i686_decorated_name(import)
+                    LlvmArchiveBuilder::i686_decorated_name(import).into_string().unwrap()
                 } else {
-                    CString::new(import.name.to_string()).unwrap()
+                    import.name.to_string()
                 }
             })
             .collect();
 
-        let output_path_z = rustc_fs_util::path_to_c_string(&output_path);
+        let def_file_content = format!("EXPORTS\n{}", &import_name_vector.join("\n"));
+        std::fs::write(&def_file_path, &def_file_content).unwrap();
+        std::fs::copy(&def_file_path, "d:/imports.def").unwrap();
 
-        tracing::trace!("invoking LLVMRustWriteImportLibrary");
-        tracing::trace!("  dll_name {:#?}", dll_name_z);
-        tracing::trace!("  output_path {}", output_path.display());
-        tracing::trace!(
-            "  import names: {}",
-            dll_imports.iter().map(|import| import.name.to_string()).collect::<Vec<_>>().join(", "),
-        );
+        let result = std::process::Command::new("dlltool")
+            .args([
+                "-d",
+                def_file_path.to_str().unwrap(),
+                "-D",
+                lib_name,
+                "-l",
+                output_path.to_str().unwrap(),
+            ])
+            .status();
 
-        let ffi_exports: Vec<LLVMRustCOFFShortExport> = import_name_vector
-            .iter()
-            .map(|name_z| LLVMRustCOFFShortExport::from_name(name_z.as_ptr()))
-            .collect();
-        let result = unsafe {
-            crate::llvm::LLVMRustWriteImportLibrary(
-                dll_name_z.as_ptr(),
-                output_path_z.as_ptr(),
-                ffi_exports.as_ptr(),
-                ffi_exports.len(),
-                llvm_machine_type(&self.config.sess.target.arch) as u16,
-                !self.config.sess.target.is_like_msvc,
-            )
-        };
-
-        if result == crate::llvm::LLVMRustResult::Failure {
+        if let Err(e) = result {
             self.config.sess.fatal(&format!(
                 "Error creating import library for {}: {}",
                 lib_name,
-                llvm::last_error().unwrap_or("unknown LLVM error".to_string())
+                e.to_string()
             ));
         }
+        std::fs::copy(&output_path, "d:/imports.dll.a").unwrap();
 
         self.add_archive(&output_path, |_| false).unwrap_or_else(|e| {
             self.config.sess.fatal(&format!(
