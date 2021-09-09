@@ -944,15 +944,15 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
 }
 
 fn print_tuple_struct_fields(w: &mut Buffer, cx: &Context<'_>, s: &[clean::Item]) {
-    for (i, ty) in s
-        .iter()
-        .map(|f| if let clean::StructFieldItem(ref ty) = *f.kind { ty } else { unreachable!() })
-        .enumerate()
-    {
+    for (i, ty) in s.iter().enumerate() {
         if i > 0 {
             w.write_str(",&nbsp;");
         }
-        write!(w, "{}", ty.print(cx));
+        match *ty.kind {
+            clean::StrippedItem(box clean::StructFieldItem(_)) => w.write_str("_"),
+            clean::StructFieldItem(ref ty) => write!(w, "{}", ty.print(cx)),
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -1068,24 +1068,27 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                     name = variant.name.as_ref().unwrap(),
                 );
                 for field in fields {
-                    use crate::clean::StructFieldItem;
-                    if let StructFieldItem(ref ty) = *field.kind {
-                        let id = cx.derive_id(format!(
-                            "variant.{}.field.{}",
-                            variant.name.as_ref().unwrap(),
-                            field.name.as_ref().unwrap()
-                        ));
-                        write!(
-                            w,
-                            "<span id=\"{id}\" class=\"variant small-section-header\">\
-                                 <a href=\"#{id}\" class=\"anchor field\"></a>\
-                                 <code>{f}:&nbsp;{t}</code>\
-                             </span>",
-                            id = id,
-                            f = field.name.as_ref().unwrap(),
-                            t = ty.print(cx)
-                        );
-                        document(w, cx, field, Some(variant));
+                    match *field.kind {
+                        clean::StrippedItem(box clean::StructFieldItem(_)) => {}
+                        clean::StructFieldItem(ref ty) => {
+                            let id = cx.derive_id(format!(
+                                "variant.{}.field.{}",
+                                variant.name.as_ref().unwrap(),
+                                field.name.as_ref().unwrap()
+                            ));
+                            write!(
+                                w,
+                                "<span id=\"{id}\" class=\"variant small-section-header\">\
+                                    <a href=\"#{id}\" class=\"anchor field\"></a>\
+                                    <code>{f}:&nbsp;{t}</code>\
+                                </span>",
+                                id = id,
+                                f = field.name.as_ref().unwrap(),
+                                t = ty.print(cx)
+                            );
+                            document(w, cx, field, Some(variant));
+                        }
+                        _ => unreachable!(),
                     }
                 }
                 w.write_str("</div></div>");
