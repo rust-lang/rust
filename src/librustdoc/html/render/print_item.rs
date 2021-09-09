@@ -256,6 +256,10 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
 
     debug!("{:?}", indices);
     let mut curty = None;
+    // See: https://github.com/rust-lang/rust/issues/88545
+    let item_table_block_size = 900usize;
+    let mut item_table_nth_element = 0usize;
+
     for &idx in &indices {
         let myitem = &items[idx];
         if myitem.is_stripped() {
@@ -280,6 +284,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 id = cx.derive_id(short.to_owned()),
                 name = name
             );
+            item_table_nth_element = 0;
         }
 
         match *myitem.kind {
@@ -385,6 +390,13 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                         .join(" "),
                 );
             }
+        }
+
+        item_table_nth_element += 1;
+        if item_table_nth_element > item_table_block_size {
+            w.write_str(ITEM_TABLE_CLOSE);
+            w.write_str(ITEM_TABLE_OPEN);
+            item_table_nth_element = 0;
         }
     }
 
