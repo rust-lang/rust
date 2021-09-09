@@ -229,14 +229,19 @@ fn find_related_tests(
         for (file_id, refs) in refs.into_iter().flat_map(|refs| refs.references) {
             let file = sema.parse(file_id);
             let file = file.syntax();
-            let functions = refs.iter().filter_map(|(range, _)| {
-                let token = file.token_at_offset(range.start()).next()?;
-                let token = sema.descend_into_macros(token);
-                token
-                    .ancestors()
-                    .find_map(ast::Fn::cast)
-                    .map(|f| hir::InFile::new(sema.hir_file_for(f.syntax()), f))
+
+            // create flattened vec of tokens
+            let tokens = refs.iter().flat_map(|(range, _)| {
+                match file.token_at_offset(range.start()).next() {
+                    Some(token) => sema.descend_into_macros_many(token),
+                    None => Default::default(),
+                }
             });
+
+            // find first suitable ancestor
+            let functions = tokens
+                .filter_map(|token| token.ancestors().find_map(ast::Fn::cast))
+                .map(|f| hir::InFile::new(sema.hir_file_for(f.syntax()), f));
 
             for fn_def in functions {
                 // #[test/bench] expands to just the item causing us to lose the attribute, so recover them by going out of the attribute
