@@ -372,7 +372,7 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
             for (_, ref mutbl, ref argspan) in decl
                 .inputs
                 .iter()
-                .filter_map(|ty| get_rptr_lm(ty))
+                .filter_map(get_rptr_lm)
                 .filter(|&(lt, _, _)| lt.name == out.name)
             {
                 if *mutbl == Mutability::Mut {

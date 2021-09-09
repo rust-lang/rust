@@ -69,8 +69,8 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
                     ty::Str => true,
                     _ => false,
                 };
-                if format_args.args.iter().all(|e| is_display_arg(e));
-                if format_args.fmt_expr.map_or(true, |e| check_unformatted(e));
+                if format_args.args.iter().all(is_display_arg);
+                if format_args.fmt_expr.map_or(true, check_unformatted);
                 then {
                     let is_new_string = match value.kind {
                         ExprKind::Binary(..) => true,
