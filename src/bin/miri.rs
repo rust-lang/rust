@@ -164,11 +164,14 @@ fn init_late_loggers(tcx: TyCtxt<'_>) {
             // used for everything, we only apply it to the parts of rustc that are
             // CTFE-related. Otherwise, we use it verbatim for `RUSTC_LOG`.
             // This way, if you set `MIRI_LOG=trace`, you get only the right parts of
-            // rustc traced, but you can also do `MIRI_LOG=miri=trace,rustc_mir::interpret=debug`.
+            // rustc traced, but you can also do `MIRI_LOG=miri=trace,rustc_const_eval::interpret=debug`.
             if log::Level::from_str(&var).is_ok() {
                 env::set_var(
                     "RUSTC_LOG",
-                    &format!("rustc_middle::mir::interpret={0},rustc_mir::interpret={0}", var),
+                    &format!(
+                        "rustc_middle::mir::interpret={0},rustc_const_eval::interpret={0}",
+                        var
+                    ),
                 );
             } else {
                 env::set_var("RUSTC_LOG", &var);

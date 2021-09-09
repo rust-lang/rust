@@ -457,7 +457,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn call_intrinsic(
-        ecx: &mut rustc_mir::interpret::InterpCx<'mir, 'tcx, Self>,
+        ecx: &mut rustc_const_eval::interpret::InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(&PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
@@ -482,7 +482,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn binary_ptr_op(
-        ecx: &rustc_mir::interpret::InterpCx<'mir, 'tcx, Self>,
+        ecx: &rustc_const_eval::interpret::InterpCx<'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: &ImmTy<'tcx, Tag>,
         right: &ImmTy<'tcx, Tag>,
