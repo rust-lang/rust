@@ -1,0 +1,11 @@
+error[E0786]: found invalid metadata files for crate `bar`
+  --> $DIR/invalid-so.rs:3:7
+   |
+LL | use ::bar;
+   |       ^^^
+   |
+   = note: invalid metadata version found: $DIR/auxiliary/libbar.so
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0786`.
