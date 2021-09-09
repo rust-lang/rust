@@ -6,11 +6,11 @@ edition = "2018"
 [dependencies]
 bytecount = "0.6"
 clap = "2.33"
-itertools = "0.9"
+itertools = "0.10"
 opener = "0.5"
-regex = "1"
+regex = "1.5"
 shell-escape = "0.1"
-walkdir = "2"
+walkdir = "2.3"
 
 [features]
 deny-warnings = []
