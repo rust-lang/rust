@@ -13,4 +13,3 @@ fn main() {
     let _ = i_like_to_😄_a_lot(); //~ ERROR cannot find function `i_like_to_😄_a_lot` in this scope
     //~^ ERROR identifiers cannot contain emojis
 }
-
