@@ -1812,7 +1812,20 @@ impl ModCollector<'_, '_> {
                     name = tt::Ident { text: it.clone(), id: tt::TokenId::unspecified() }.as_name();
                     &name
                 }
-                None => &mac.name,
+                None => {
+                    match attrs.by_key("rustc_builtin_macro").tt_values().next().and_then(|tt| {
+                        match tt.token_trees.first() {
+                            Some(tt::TokenTree::Leaf(tt::Leaf::Ident(name))) => Some(name),
+                            _ => None,
+                        }
+                    }) {
+                        Some(ident) => {
+                            name = ident.as_name();
+                            &name
+                        }
+                        None => &mac.name,
+                    }
+                }
             };
             let krate = self.def_collector.def_map.krate;
             match find_builtin_macro(name, krate, ast_id) {
