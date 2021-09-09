@@ -2105,8 +2105,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(float_equality_without_abs::FloatEqualityWithoutAbs));
     store.register_late_pass(|| Box::new(semicolon_if_nothing_returned::SemicolonIfNothingReturned));
     store.register_late_pass(|| Box::new(async_yields_async::AsyncYieldsAsync));
-    let disallowed_methods = conf.disallowed_methods.iter().cloned().collect::<FxHashSet<_>>();
-    store.register_late_pass(move || Box::new(disallowed_method::DisallowedMethod::new(&disallowed_methods)));
+    let disallowed_methods = conf.disallowed_methods.clone();
+    store.register_late_pass(move || Box::new(disallowed_method::DisallowedMethod::new(disallowed_methods.clone())));
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86AttSyntax));
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86IntelSyntax));
     store.register_late_pass(|| Box::new(undropped_manually_drops::UndroppedManuallyDrops));
