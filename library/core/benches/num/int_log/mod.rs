@@ -1,5 +1,3 @@
-#![feature(int_log)]
-
 use rand::Rng;
 use test::{black_box, Bencher};
 
