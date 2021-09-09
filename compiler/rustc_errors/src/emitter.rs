@@ -2054,8 +2054,17 @@ fn num_decimal_digits(num: usize) -> usize {
     MAX_DIGITS
 }
 
+const REPLACEMENTS: &[(char, &str)] = &[
+    ('\t', "    "),
+    ('\u{200D}', ""), // Replace ZWJ with nothing for consistent terminal output of grapheme clusters.
+];
+
 fn replace_tabs(str: &str) -> String {
-    str.replace('\t', "    ")
+    let mut output = str.to_string();
+    for (c, replacement) in REPLACEMENTS {
+        output = output.replace(*c, replacement);
+    }
+    output
 }
 
 fn draw_col_separator(buffer: &mut StyledBuffer, line: usize, col: usize) {
