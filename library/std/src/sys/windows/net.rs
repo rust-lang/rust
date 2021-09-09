@@ -129,7 +129,7 @@ impl Socket {
 
             unsafe {
                 let socket = Self::from_raw_socket(socket);
-                socket.set_no_inherit()?;
+                socket.0.set_no_inherit()?;
                 Ok(socket)
             }
         }
@@ -369,19 +369,6 @@ impl Socket {
             let nsec = (raw % 1000) * 1000000;
             Ok(Some(Duration::new(secs as u64, nsec as u32)))
         }
-    }
-
-    #[cfg(not(target_vendor = "uwp"))]
-    fn set_no_inherit(&self) -> io::Result<()> {
-        sys::cvt(unsafe {
-            c::SetHandleInformation(self.as_raw_socket() as c::HANDLE, c::HANDLE_FLAG_INHERIT, 0)
-        })
-        .map(drop)
-    }
-
-    #[cfg(target_vendor = "uwp")]
-    fn set_no_inherit(&self) -> io::Result<()> {
-        Err(io::Error::new_const(io::ErrorKind::Unsupported, &"Unavailable on UWP"))
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {

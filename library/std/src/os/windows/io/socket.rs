@@ -93,7 +93,7 @@ impl OwnedSocket {
         };
 
         if socket != c::INVALID_SOCKET {
-            unsafe { Ok(Self(OwnedSocket::from_raw_socket(socket))) }
+            unsafe { Ok(OwnedSocket::from_raw_socket(socket)) }
         } else {
             let error = unsafe { c::WSAGetLastError() };
 
@@ -117,11 +117,24 @@ impl OwnedSocket {
             }
 
             unsafe {
-                let socket = Self(OwnedSocket::from_raw_socket(socket));
+                let socket = OwnedSocket::from_raw_socket(socket);
                 socket.set_no_inherit()?;
                 Ok(socket)
             }
         }
+    }
+
+    #[cfg(not(target_vendor = "uwp"))]
+    pub(crate) fn set_no_inherit(&self) -> io::Result<()> {
+        sys::cvt(unsafe {
+            c::SetHandleInformation(self.as_raw_socket() as c::HANDLE, c::HANDLE_FLAG_INHERIT, 0)
+        })
+        .map(drop)
+    }
+
+    #[cfg(target_vendor = "uwp")]
+    pub(crate) fn set_no_inherit(&self) -> io::Result<()> {
+        Err(io::Error::new_const(io::ErrorKind::Unsupported, &"Unavailable on UWP"))
     }
 }
 

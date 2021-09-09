@@ -116,9 +116,7 @@ impl OwnedHandle {
     /// Creates a new `OwnedHandle` instance that shares the same underlying file handle
     /// as the existing `OwnedHandle` instance.
     pub fn try_clone(&self) -> crate::io::Result<Self> {
-        let handle = self.duplicate(0, false, c::DUPLICATE_SAME_ACCESS)?;
-
-        Ok(unsafe { OwnedHandle::from_raw_handle(handle) })
+        self.duplicate(0, false, c::DUPLICATE_SAME_ACCESS)
     }
 
     pub(crate) fn duplicate(

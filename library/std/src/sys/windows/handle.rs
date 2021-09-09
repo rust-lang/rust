@@ -229,12 +229,16 @@ impl Handle {
         Ok(written as usize)
     }
 
+    pub fn try_clone(&self) -> io::Result<Self> {
+        Ok(Self(self.0.try_clone()?))
+    }
+
     pub fn duplicate(
         &self,
         access: c::DWORD,
         inherit: bool,
         options: c::DWORD,
-    ) -> io::Result<Handle> {
+    ) -> io::Result<Self> {
         Ok(Self(self.0.duplicate(access, inherit, options)?))
     }
 }
