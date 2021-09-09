@@ -5,8 +5,8 @@ edition = "2018"
 publish = false
 
 [dependencies]
-if_chain = "1.0.0"
-rustc-semver="1.1.0"
+if_chain = "1.0"
+rustc-semver = "1.1"
 
 [features]
 deny-warnings = []
