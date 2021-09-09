@@ -11,10 +11,10 @@ extern crate rustc_apfloat;
 extern crate rustc_ast;
 #[macro_use]
 extern crate rustc_middle;
+extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_hir;
 extern crate rustc_index;
-extern crate rustc_mir;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
@@ -37,9 +37,9 @@ mod vector_clock;
 // Establish a "crate-wide prelude": we often import `crate::*`.
 
 // Make all those symbols available in the same place as our own.
-pub use rustc_mir::interpret::*;
+pub use rustc_const_eval::interpret::*;
 // Resolve ambiguity.
-pub use rustc_mir::interpret::{self, AllocMap, PlaceTy};
+pub use rustc_const_eval::interpret::{self, AllocMap, PlaceTy};
 
 pub use crate::shims::dlsym::{Dlsym, EvalContextExt as _};
 pub use crate::shims::env::{EnvVars, EvalContextExt as _};
