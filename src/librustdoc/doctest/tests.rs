@@ -52,7 +52,8 @@ assert_eq!(2+2, 4);
 fn make_test_no_crate_inject() {
     // Even if you do use the crate within the test, setting `opts.no_crate_inject` will skip
     // adding it anyway.
-    let opts = TestOptions { no_crate_inject: true, display_warnings: false, attrs: vec![] };
+    let opts =
+        TestOptions { no_crate_inject: true, display_doctest_warnings: false, attrs: vec![] };
     let input = "use asdf::qwop;
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
@@ -215,10 +216,10 @@ assert_eq!(2+2, 4);"
 }
 
 #[test]
-fn make_test_display_warnings() {
+fn make_test_display_doctest_warnings() {
     // If the user is asking to display doctest warnings, suppress the default `allow(unused)`.
     let mut opts = TestOptions::default();
-    opts.display_warnings = true;
+    opts.display_doctest_warnings = true;
     let input = "assert_eq!(2+2, 4);";
     let expected = "fn main() {
 assert_eq!(2+2, 4);

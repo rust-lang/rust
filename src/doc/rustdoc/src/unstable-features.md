@@ -222,13 +222,13 @@ all these files are linked from every page, changing where they are can be cumbe
 specially cache them. This flag will rename all these files in the output to include the suffix in
 the filename. For example, `light.css` would become `light-suf.css` with the above command.
 
-### `--display-warnings`: display warnings when documenting or running documentation tests
+### `--display-doctest-warnings`: display warnings when documenting or running documentation tests
 
 Using this flag looks like this:
 
 ```bash
-$ rustdoc src/lib.rs -Z unstable-options --display-warnings
-$ rustdoc --test src/lib.rs -Z unstable-options --display-warnings
+$ rustdoc src/lib.rs -Z unstable-options --display-doctest-warnings
+$ rustdoc --test src/lib.rs -Z unstable-options --display-doctest-warnings
 ```
 
 The intent behind this flag is to allow the user to see warnings that occur within their library or

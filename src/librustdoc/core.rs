@@ -204,7 +204,6 @@ crate fn create_config(
         lint_opts,
         describe_lints,
         lint_cap,
-        display_warnings,
         ..
     }: RustdocOptions,
 ) -> rustc_interface::Config {
@@ -237,7 +236,7 @@ crate fn create_config(
         maybe_sysroot,
         search_paths: libs,
         crate_types,
-        lint_opts: if !display_warnings { lint_opts } else { vec![] },
+        lint_opts,
         lint_cap,
         cg: codegen_options,
         externs,
