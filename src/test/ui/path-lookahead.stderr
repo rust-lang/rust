@@ -2,13 +2,18 @@ warning: unnecessary parentheses around `return` value
   --> $DIR/path-lookahead.rs:10:12
    |
 LL |     return (<T as ToString>::to_string(&arg));
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove these parentheses
+   |            ^                                ^
    |
 note: the lint level is defined here
   --> $DIR/path-lookahead.rs:5:9
    |
 LL | #![warn(unused_parens)]
    |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     return (<T as ToString>::to_string(&arg));
+LL +     return <T as ToString>::to_string(&arg);
+   | 
 
 warning: 1 warning emitted
 

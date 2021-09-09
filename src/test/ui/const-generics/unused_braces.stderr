@@ -2,13 +2,18 @@ warning: unnecessary braces around const expression
   --> $DIR/unused_braces.rs:9:14
    |
 LL |     let _: A<{ 7 }>;
-   |              ^^^^^ help: remove these braces
+   |              ^^ ^^
    |
 note: the lint level is defined here
   --> $DIR/unused_braces.rs:3:9
    |
 LL | #![warn(unused_braces)]
    |         ^^^^^^^^^^^^^
+help: remove these braces
+   |
+LL -     let _: A<{ 7 }>;
+LL +     let _: A<7>;
+   | 
 
 warning: 1 warning emitted
 
