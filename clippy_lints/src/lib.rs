@@ -241,6 +241,7 @@ mod int_plus_one;
 mod integer_division;
 mod invalid_upcast_comparisons;
 mod items_after_statements;
+mod iter_not_returning_iterator;
 mod large_const_arrays;
 mod large_enum_variant;
 mod large_stack_arrays;
@@ -674,6 +675,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         integer_division::INTEGER_DIVISION,
         invalid_upcast_comparisons::INVALID_UPCAST_COMPARISONS,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
+        iter_not_returning_iterator::ITER_NOT_RETURNING_ITERATOR,
         large_const_arrays::LARGE_CONST_ARRAYS,
         large_enum_variant::LARGE_ENUM_VARIANT,
         large_stack_arrays::LARGE_STACK_ARRAYS,
@@ -1104,6 +1106,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(infinite_iter::MAYBE_INFINITE_ITER),
         LintId::of(invalid_upcast_comparisons::INVALID_UPCAST_COMPARISONS),
         LintId::of(items_after_statements::ITEMS_AFTER_STATEMENTS),
+        LintId::of(iter_not_returning_iterator::ITER_NOT_RETURNING_ITERATOR),
         LintId::of(large_stack_arrays::LARGE_STACK_ARRAYS),
         LintId::of(let_underscore::LET_UNDERSCORE_DROP),
         LintId::of(literal_representation::LARGE_DIGIT_GROUPS),
@@ -2131,6 +2134,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(strlen_on_c_strings::StrlenOnCStrings));
     store.register_late_pass(move || Box::new(self_named_constructors::SelfNamedConstructors));
     store.register_late_pass(move || Box::new(feature_name::FeatureName));
+    store.register_late_pass(move || Box::new(iter_not_returning_iterator::IterNotReturningIterator));
 }
 
 #[rustfmt::skip]
