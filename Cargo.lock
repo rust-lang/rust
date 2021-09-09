@@ -26,9 +26,9 @@ dependencies = [
 
 [[package]]
 name = "aho-corasick"
-version = "0.7.13"
+version = "0.7.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "043164d8ba5c4c3035fec9bbee8647c0261d788f3474306f93bb65901cae0e86"
+checksum = "1e37cfd5e7657ada45f742d6e99ca5788580b5c529dc78faf11ece6dc702656f"
 dependencies = [
  "memchr",
 ]
@@ -559,7 +559,7 @@ dependencies = [
  "cargo_metadata 0.12.0",
  "clippy_lints",
  "clippy_utils",
- "compiletest_rs 0.6.0",
+ "compiletest_rs",
  "derive-new",
  "filetime",
  "if_chain",
@@ -581,7 +581,7 @@ version = "0.0.1"
 dependencies = [
  "bytecount",
  "clap",
- "itertools 0.9.0",
+ "itertools 0.10.1",
  "opener",
  "regex",
  "shell-escape",
@@ -595,7 +595,7 @@ dependencies = [
  "cargo_metadata 0.12.0",
  "clippy_utils",
  "if_chain",
- "itertools 0.9.0",
+ "itertools 0.10.1",
  "pulldown-cmark 0.8.0",
  "quine-mc_cluskey",
  "regex-syntax",
@@ -684,29 +684,6 @@ dependencies = [
  "tracing-subscriber",
  "unified-diff",
  "walkdir",
- "winapi",
-]
-
-[[package]]
-name = "compiletest_rs"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0086d6ad78cf409c3061618cd98e2789d5c9ce598fc9651611cf62eae0a599cb"
-dependencies = [
- "diff",
- "filetime",
- "getopts",
- "lazy_static",
- "libc",
- "log",
- "miow",
- "regex",
- "rustfix 0.5.1",
- "serde",
- "serde_derive",
- "serde_json",
- "tempfile",
- "tester",
  "winapi",
 ]
 
@@ -2272,7 +2249,7 @@ name = "miri"
 version = "0.1.0"
 dependencies = [
  "colored",
- "compiletest_rs 0.7.0",
+ "compiletest_rs",
  "env_logger 0.8.1",
  "getrandom 0.2.0",
  "hex 0.4.2",
@@ -3005,9 +2982,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.4.6"
+version = "1.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a26af418b574bd56588335b3a3659a65725d4e636eb1016c2f9e3b38c7cc759"
+checksum = "d07a8629359eb56f1e2fb1652bb04212c072a87ba68546a04065d525673ac461"
 dependencies = [
  "aho-corasick",
  "memchr",
