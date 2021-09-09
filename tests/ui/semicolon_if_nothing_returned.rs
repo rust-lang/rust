@@ -1,4 +1,5 @@
 #![warn(clippy::semicolon_if_nothing_returned)]
+#![allow(clippy::redundant_closure)]
 #![feature(label_break_value)]
 
 fn get_unit() {}
@@ -30,8 +31,8 @@ fn unsafe_checks_error() {
     use std::ptr;
 
     let mut s = MaybeUninit::<String>::uninit();
-    let _d = || unsafe { 
-        ptr::drop_in_place(s.as_mut_ptr()) 
+    let _d = || unsafe {
+        ptr::drop_in_place(s.as_mut_ptr())
     };
 }
 

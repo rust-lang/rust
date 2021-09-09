@@ -1,16 +1,16 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::higher::VecArgs;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::ty::{implements_trait, type_is_unsafe_function};
 use clippy_utils::usage::UsedAfterExprVisitor;
-use clippy_utils::{get_enclosing_loop_or_closure, higher};
-use clippy_utils::{is_adjusted, iter_input_pats};
+use clippy_utils::{get_enclosing_loop_or_closure, higher, path_to_local_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{def_id, Expr, ExprKind, Param, PatKind, QPath};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, ClosureKind, Ty};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{Expr, ExprKind, Param, PatKind, Unsafety};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
+use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::{self, ClosureKind, Ty, TypeFoldable};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -52,12 +52,6 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// It's unnecessary to create the closure.
     ///
-    /// ### Known problems
-    /// [#3071](https://github.com/rust-lang/rust-clippy/issues/3071),
-    /// [#3942](https://github.com/rust-lang/rust-clippy/issues/3942),
-    /// [#4002](https://github.com/rust-lang/rust-clippy/issues/4002)
-    ///
-    ///
     /// ### Example
     /// ```rust,ignore
     /// Some('a').map(|s| s.to_uppercase());
@@ -75,32 +69,16 @@ declare_lint_pass!(EtaReduction => [REDUNDANT_CLOSURE, REDUNDANT_CLOSURE_FOR_MET
 
 impl<'tcx> LateLintPass<'tcx> for EtaReduction {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if expr.span.from_expansion() {
             return;
         }
-
-        match expr.kind {
-            ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) => {
-                for arg in args {
-                    // skip `foo(macro!())`
-                    if arg.span.ctxt() == expr.span.ctxt() {
-                        check_closure(cx, arg);
-                    }
-                }
-            },
-            _ => (),
-        }
-    }
-}
-
-fn check_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    if let ExprKind::Closure(_, decl, eid, _, _) = expr.kind {
-        let body = cx.tcx.hir().body(eid);
-        let ex = &body.value;
-
-        if ex.span.ctxt() != expr.span.ctxt() {
-            if decl.inputs.is_empty() {
-                if let Some(VecArgs::Vec(&[])) = higher::VecArgs::hir(cx, ex) {
+        let body = match expr.kind {
+            ExprKind::Closure(_, _, id, _, _) => cx.tcx.hir().body(id),
+            _ => return,
+        };
+        if body.value.span.from_expansion() {
+            if body.params.is_empty() {
+                if let Some(VecArgs::Vec(&[])) = higher::VecArgs::hir(cx, &body.value) {
                     // replace `|| vec![]` with `Vec::new`
                     span_lint_and_sugg(
                         cx,
@@ -117,33 +95,30 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
             return;
         }
 
+        let closure_ty = cx.typeck_results().expr_ty(expr);
+
         if_chain!(
-            if let ExprKind::Call(caller, args) = ex.kind;
-
-            if let ExprKind::Path(_) = caller.kind;
-
-            // Not the same number of arguments, there is no way the closure is the same as the function return;
-            if args.len() == decl.inputs.len();
-
-            // Are the expression or the arguments type-adjusted? Then we need the closure
-            if !(is_adjusted(cx, ex) || args.iter().any(|arg| is_adjusted(cx, arg)));
-
-            let fn_ty = cx.typeck_results().expr_ty(caller);
-
-            if matches!(fn_ty.kind(), ty::FnDef(_, _) | ty::FnPtr(_) | ty::Closure(_, _));
-
-            if !type_is_unsafe_function(cx, fn_ty);
-
-            if compare_inputs(&mut iter_input_pats(decl, body), &mut args.iter());
-
+            if let ExprKind::Call(callee, args) = body.value.kind;
+            if let ExprKind::Path(_) = callee.kind;
+            if check_inputs(cx, body.params, args);
+            let callee_ty = cx.typeck_results().expr_ty_adjusted(callee);
+            let call_ty = cx.typeck_results().type_dependent_def_id(body.value.hir_id)
+                .map_or(callee_ty, |id| cx.tcx.type_of(id));
+            if check_sig(cx, closure_ty, call_ty);
+            let substs = cx.typeck_results().node_substs(callee.hir_id);
+            // This fixes some false positives that I don't entirely understand
+            if substs.is_empty() || !cx.typeck_results().expr_ty(expr).has_late_bound_regions();
+            // A type param function ref like `T::f` is not 'static, however
+            // it is if cast like `T::f as fn()`. This seems like a rustc bug.
+            if !substs.types().any(|t| matches!(t.kind(), ty::Param(_)));
             then {
                 span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure", |diag| {
-                    if let Some(mut snippet) = snippet_opt(cx, caller.span) {
+                    if let Some(mut snippet) = snippet_opt(cx, callee.span) {
                         if_chain! {
-                            if let ty::Closure(_, substs) = fn_ty.kind();
+                            if let ty::Closure(_, substs) = callee_ty.peel_refs().kind();
                             if let ClosureKind::FnMut = substs.as_closure().kind();
-                            if UsedAfterExprVisitor::is_found(cx, caller)
-                                || get_enclosing_loop_or_closure(cx.tcx, expr).is_some();
+                            if get_enclosing_loop_or_closure(cx.tcx, expr).is_some()
+                                || UsedAfterExprVisitor::is_found(cx, callee);
 
                             then {
                                 // Mutable closure is used after current expr; we cannot consume it.
@@ -162,110 +137,79 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         );
 
         if_chain!(
-            if let ExprKind::MethodCall(path, _, args, _) = ex.kind;
-
-            // Not the same number of arguments, there is no way the closure is the same as the function return;
-            if args.len() == decl.inputs.len();
-
-            // Are the expression or the arguments type-adjusted? Then we need the closure
-            if !(is_adjusted(cx, ex) || args.iter().skip(1).any(|arg| is_adjusted(cx, arg)));
-
-            let method_def_id = cx.typeck_results().type_dependent_def_id(ex.hir_id).unwrap();
-            if !type_is_unsafe_function(cx, cx.tcx.type_of(method_def_id));
-
-            if compare_inputs(&mut iter_input_pats(decl, body), &mut args.iter());
-
-            if let Some(name) = get_ufcs_type_name(cx, method_def_id, &args[0]);
-
+            if let ExprKind::MethodCall(path, _, args, _) = body.value.kind;
+            if check_inputs(cx, body.params, args);
+            let method_def_id = cx.typeck_results().type_dependent_def_id(body.value.hir_id).unwrap();
+            let substs = cx.typeck_results().node_substs(body.value.hir_id);
+            let call_ty = cx.tcx.type_of(method_def_id).subst(cx.tcx, substs);
+            if check_sig(cx, closure_ty, call_ty);
             then {
-                span_lint_and_sugg(
-                    cx,
-                    REDUNDANT_CLOSURE_FOR_METHOD_CALLS,
-                    expr.span,
-                    "redundant closure",
-                    "replace the closure with the method itself",
-                    format!("{}::{}", name, path.ident.name),
-                    Applicability::MachineApplicable,
-                );
+                span_lint_and_then(cx, REDUNDANT_CLOSURE_FOR_METHOD_CALLS, expr.span, "redundant closure", |diag| {
+                    let name = get_ufcs_type_name(cx, method_def_id);
+                    diag.span_suggestion(
+                        expr.span,
+                        "replace the closure with the method itself",
+                        format!("{}::{}", name, path.ident.name),
+                        Applicability::MachineApplicable,
+                    );
+                })
             }
         );
     }
 }
 
-/// Tries to determine the type for universal function call to be used instead of the closure
-fn get_ufcs_type_name(cx: &LateContext<'_>, method_def_id: def_id::DefId, self_arg: &Expr<'_>) -> Option<String> {
-    let expected_type_of_self = &cx.tcx.fn_sig(method_def_id).inputs_and_output().skip_binder()[0];
-    let actual_type_of_self = &cx.typeck_results().node_type(self_arg.hir_id);
-
-    if let Some(trait_id) = cx.tcx.trait_of_item(method_def_id) {
-        if match_borrow_depth(expected_type_of_self, actual_type_of_self)
-            && implements_trait(cx, actual_type_of_self, trait_id, &[])
-        {
-            return Some(cx.tcx.def_path_str(trait_id));
-        }
+fn check_inputs(cx: &LateContext<'_>, params: &[Param<'_>], call_args: &[Expr<'_>]) -> bool {
+    if params.len() != call_args.len() {
+        return false;
     }
-
-    cx.tcx.impl_of_method(method_def_id).and_then(|_| {
-        //a type may implicitly implement other type's methods (e.g. Deref)
-        if match_types(expected_type_of_self, actual_type_of_self) {
-            Some(get_type_name(cx, actual_type_of_self))
-        } else {
-            None
+    std::iter::zip(params, call_args).all(|(param, arg)| {
+        match param.pat.kind {
+            PatKind::Binding(_, id, ..) if path_to_local_id(arg, id) => {},
+            _ => return false,
+        }
+        match *cx.typeck_results().expr_adjustments(arg) {
+            [] => true,
+            [Adjustment {
+                kind: Adjust::Deref(None),
+                ..
+            }, Adjustment {
+                kind: Adjust::Borrow(AutoBorrow::Ref(_, mu2)),
+                ..
+            }] => {
+                // re-borrow with the same mutability is allowed
+                let ty = cx.typeck_results().expr_ty(arg);
+                matches!(*ty.kind(), ty::Ref(.., mu1) if mu1 == mu2.into())
+            },
+            _ => false,
         }
     })
 }
 
-fn match_borrow_depth(lhs: Ty<'_>, rhs: Ty<'_>) -> bool {
-    match (&lhs.kind(), &rhs.kind()) {
-        (ty::Ref(_, t1, mut1), ty::Ref(_, t2, mut2)) => mut1 == mut2 && match_borrow_depth(t1, t2),
-        (l, r) => !matches!((l, r), (ty::Ref(_, _, _), _) | (_, ty::Ref(_, _, _))),
+fn check_sig<'tcx>(cx: &LateContext<'tcx>, closure_ty: Ty<'tcx>, call_ty: Ty<'tcx>) -> bool {
+    let call_sig = call_ty.fn_sig(cx.tcx);
+    if call_sig.unsafety() == Unsafety::Unsafe {
+        return false;
     }
+    if !closure_ty.has_late_bound_regions() {
+        return true;
+    }
+    let substs = match closure_ty.kind() {
+        ty::Closure(_, substs) => substs,
+        _ => return false,
+    };
+    let closure_sig = cx.tcx.signature_unclosure(substs.as_closure().sig(), Unsafety::Normal);
+    cx.tcx.erase_late_bound_regions(closure_sig) == cx.tcx.erase_late_bound_regions(call_sig)
 }
 
-fn match_types(lhs: Ty<'_>, rhs: Ty<'_>) -> bool {
-    match (&lhs.kind(), &rhs.kind()) {
-        (ty::Bool, ty::Bool)
-        | (ty::Char, ty::Char)
-        | (ty::Int(_), ty::Int(_))
-        | (ty::Uint(_), ty::Uint(_))
-        | (ty::Str, ty::Str) => true,
-        (ty::Ref(_, t1, mut1), ty::Ref(_, t2, mut2)) => mut1 == mut2 && match_types(t1, t2),
-        (ty::Array(t1, _), ty::Array(t2, _)) | (ty::Slice(t1), ty::Slice(t2)) => match_types(t1, t2),
-        (ty::Adt(def1, _), ty::Adt(def2, _)) => def1 == def2,
-        (_, _) => false,
-    }
-}
-
-fn get_type_name(cx: &LateContext<'_>, ty: Ty<'_>) -> String {
-    match ty.kind() {
-        ty::Adt(t, _) => cx.tcx.def_path_str(t.did),
-        ty::Ref(_, r, _) => get_type_name(cx, r),
-        _ => ty.to_string(),
-    }
-}
-
-fn compare_inputs(
-    closure_inputs: &mut dyn Iterator<Item = &Param<'_>>,
-    call_args: &mut dyn Iterator<Item = &Expr<'_>>,
-) -> bool {
-    for (closure_input, function_arg) in closure_inputs.zip(call_args) {
-        if let PatKind::Binding(_, _, ident, _) = closure_input.pat.kind {
-            // XXXManishearth Should I be checking the binding mode here?
-            if let ExprKind::Path(QPath::Resolved(None, p)) = function_arg.kind {
-                if p.segments.len() != 1 {
-                    // If it's a proper path, it can't be a local variable
-                    return false;
-                }
-                if p.segments[0].ident.name != ident.name {
-                    // The two idents should be the same
-                    return false;
-                }
-            } else {
-                return false;
+fn get_ufcs_type_name(cx: &LateContext<'_>, method_def_id: DefId) -> String {
+    match cx.tcx.associated_item(method_def_id).container {
+        ty::TraitContainer(def_id) => cx.tcx.def_path_str(def_id),
+        ty::ImplContainer(def_id) => {
+            let ty = cx.tcx.type_of(def_id);
+            match ty.kind() {
+                ty::Adt(adt, _) => cx.tcx.def_path_str(adt.did),
+                _ => ty.to_string(),
             }
-        } else {
-            return false;
-        }
+        },
     }
-    true
 }
