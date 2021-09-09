@@ -4,7 +4,6 @@
 
 use super::raw::{AsRawHandle, FromRawHandle, IntoRawHandle, RawHandle};
 use crate::convert::TryFrom;
-use crate::ffi::c_void;
 use crate::fmt;
 use crate::fs;
 use crate::marker::PhantomData;
@@ -133,7 +132,7 @@ impl TryFrom<HandleOrNull> for OwnedHandle {
     #[inline]
     fn try_from(handle_or_null: HandleOrNull) -> Result<Self, ()> {
         let owned_handle = handle_or_null.0;
-        if owned_handle.handle.as_ptr().is_null() { Err(()) } else { Ok(owned_handle) }
+        if owned_handle.handle.is_null() { Err(()) } else { Ok(owned_handle) }
     }
 }
 
@@ -143,32 +142,28 @@ impl TryFrom<HandleOrInvalid> for OwnedHandle {
     #[inline]
     fn try_from(handle_or_invalid: HandleOrInvalid) -> Result<Self, ()> {
         let owned_handle = handle_or_invalid.0;
-        if owned_handle.handle.as_ptr() == c::INVALID_HANDLE_VALUE {
-            Err(())
-        } else {
-            Ok(owned_handle)
-        }
+        if owned_handle.handle == c::INVALID_HANDLE_VALUE { Err(()) } else { Ok(owned_handle) }
     }
 }
 
 impl AsRawHandle for BorrowedHandle<'_> {
     #[inline]
     fn as_raw_handle(&self) -> RawHandle {
-        self.handle.as_ptr()
+        self.handle
     }
 }
 
 impl AsRawHandle for OwnedHandle {
     #[inline]
     fn as_raw_handle(&self) -> RawHandle {
-        self.handle.as_ptr()
+        self.handle
     }
 }
 
 impl IntoRawHandle for OwnedHandle {
     #[inline]
     fn into_raw_handle(self) -> RawHandle {
-        let handle = self.handle.as_ptr();
+        let handle = self.handle;
         forget(self);
         handle
     }
@@ -244,7 +239,7 @@ impl Drop for OwnedHandle {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            let _ = c::CloseHandle(self.handle.as_ptr());
+            let _ = c::CloseHandle(self.handle);
         }
     }
 }
