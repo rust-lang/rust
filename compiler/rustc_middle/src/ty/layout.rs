@@ -3118,7 +3118,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         };
         self.fn_abi_adjust_for_abi(&mut fn_abi, sig.abi)?;
         debug!("fn_abi_new_uncached = {:?}", fn_abi);
-        Ok(self.tcx.intern_fn_abi(fn_abi))
+        Ok(self.tcx.arena.alloc(fn_abi))
     }
 
     fn fn_abi_adjust_for_abi(
