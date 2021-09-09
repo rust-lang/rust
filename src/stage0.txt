@@ -12,8 +12,8 @@
 # stable release's version number. `date` is the date where the release we're
 # bootstrapping off was released.
 
-date: 2021-07-29
-rustc: beta
+date: 2021-09-09
+rustc: 1.55.0
 
 # We use a nightly rustfmt to format the source because it solves some
 # bootstrapping issues with use of new syntax in this repo. If you're looking at
