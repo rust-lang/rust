@@ -1,16 +1,27 @@
+error: unknown start of token: \u{2796}
+  --> $DIR/emoji-identifiers.rs:13:33
+   |
+LL |     let _ = i_like_to_😄_a_lot() ➖ 4;
+   |                                  ^^
+   |
+help: Unicode character '➖' (Heavy Minus Sign) looks like '-' (Minus/Hyphen), but it is not
+   |
+LL |     let _ = i_like_to_😄_a_lot() - 4;
+   |                                  ~
+
 error[E0425]: cannot find function `i_like_to_😄_a_lot` in this scope
   --> $DIR/emoji-identifiers.rs:13:13
    |
 LL | fn i_like_to_😅_a_lot() -> 👀 {
    | ----------------------------- similarly named function `i_like_to_😅_a_lot` defined here
 ...
-LL |     let _ = i_like_to_😄_a_lot();
+LL |     let _ = i_like_to_😄_a_lot() ➖ 4;
    |             ^^^^^^^^^^^^^^^^^^ help: a function with a similar name exists: `i_like_to_😅_a_lot`
 
 error: identifiers cannot contain emojis: `i_like_to_😄_a_lot`
   --> $DIR/emoji-identifiers.rs:13:13
    |
-LL |     let _ = i_like_to_😄_a_lot();
+LL |     let _ = i_like_to_😄_a_lot() ➖ 4;
    |             ^^^^^^^^^^^^^^^^^^
 
 error: identifiers cannot contain emojis: `full_of_✨`
@@ -66,7 +77,7 @@ LL |     👀::full_of✨()
    |         function or associated item not found in `👀`
    |         help: there is an associated function with a similar name: `full_of_✨`
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0425, E0599.
 For more information about an error, try `rustc --explain E0425`.
