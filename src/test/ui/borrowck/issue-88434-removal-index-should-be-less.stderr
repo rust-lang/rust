@@ -1,0 +1,17 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-88434-removal-index-should-be-less.rs:10:5
+   |
+LL | const _CONST: &[u8] = &f(&[], |_| {});
+   |                        -------------- inside `_CONST` at $DIR/issue-88434-removal-index-should-be-less.rs:4:24
+...
+LL |     panic!()
+   |     ^^^^^^^^
+   |     |
+   |     the evaluated program panicked at 'explicit panic', $DIR/issue-88434-removal-index-should-be-less.rs:10:5
+   |     inside `f::<[closure@$DIR/issue-88434-removal-index-should-be-less.rs:4:31: 4:37]>` at $SRC_DIR/std/src/panic.rs:LL:COL
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.
