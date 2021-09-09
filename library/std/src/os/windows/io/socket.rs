@@ -4,7 +4,9 @@
 
 use super::raw::{AsRawSocket, FromRawSocket, IntoRawSocket, RawSocket};
 use crate::fmt;
+use crate::io;
 use crate::marker::PhantomData;
+use crate::mem;
 use crate::mem::forget;
 use crate::sys::c;
 use crate::sys::cvt;
@@ -91,7 +93,7 @@ impl OwnedSocket {
         };
 
         if socket != c::INVALID_SOCKET {
-            unsafe { Ok(Self::from_inner(OwnedSocket::from_raw_socket(socket))) }
+            unsafe { Ok(Self(OwnedSocket::from_raw_socket(socket))) }
         } else {
             let error = unsafe { c::WSAGetLastError() };
 
@@ -115,12 +117,17 @@ impl OwnedSocket {
             }
 
             unsafe {
-                let socket = Self::from_inner(OwnedSocket::from_raw_socket(socket));
+                let socket = Self(OwnedSocket::from_raw_socket(socket));
                 socket.set_no_inherit()?;
                 Ok(socket)
             }
         }
     }
+}
+
+/// Returns the last error from the Windows socket interface.
+fn last_error() -> io::Error {
+    io::Error::from_raw_os_error(unsafe { c::WSAGetLastError() })
 }
 
 impl AsRawSocket for BorrowedSocket<'_> {

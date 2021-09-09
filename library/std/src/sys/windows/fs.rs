@@ -455,7 +455,7 @@ impl File {
     }
 
     pub fn duplicate(&self) -> io::Result<File> {
-        Ok(Self(self.0.try_clone()?))
+        Ok(Self { handle: self.handle.try_clone()? })
     }
 
     fn reparse_point<'a>(

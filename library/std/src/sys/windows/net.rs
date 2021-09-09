@@ -208,7 +208,7 @@ impl Socket {
     }
 
     pub fn duplicate(&self) -> io::Result<Socket> {
-        Ok(Self(self.0.duplicate()?))
+        Ok(Self(self.0.try_clone()?))
     }
 
     fn recv_with_flags(&self, buf: &mut [u8], flags: c_int) -> io::Result<usize> {

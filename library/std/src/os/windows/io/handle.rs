@@ -7,6 +7,7 @@ use crate::convert::TryFrom;
 use crate::ffi::c_void;
 use crate::fmt;
 use crate::fs;
+use crate::io;
 use crate::marker::PhantomData;
 use crate::mem::forget;
 use crate::ptr::NonNull;
@@ -114,7 +115,7 @@ impl BorrowedHandle<'_> {
 impl OwnedHandle {
     /// Creates a new `OwnedHandle` instance that shares the same underlying file handle
     /// as the existing `OwnedHandle` instance.
-    pub fn try_clone(&self) -> crate::io::Result<FileDesc> {
+    pub fn try_clone(&self) -> crate::io::Result<Self> {
         let handle = self.duplicate(0, false, c::DUPLICATE_SAME_ACCESS)?;
 
         Ok(unsafe { OwnedHandle::from_raw_handle(handle) })
