@@ -1220,9 +1220,9 @@ dependencies = [
 
 [[package]]
 name = "pulldown-cmark-to-cmark"
-version = "6.0.2"
+version = "6.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95048382115a9da7be92ad51c84064d585b7da17472dcaa7f5eed8853c4c3707"
+checksum = "a72d775989b8b4cc8e5e924a99d6b3ed960da727f78394b7abd539301972e08e"
 dependencies = [
  "pulldown-cmark",
 ]
@@ -1749,14 +1749,14 @@ dependencies = [
 
 [[package]]
 name = "tracing-tree"
-version = "0.1.9"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1712b40907f8d9bc2bc66763ab61dec914b7123d7149e59feb0d4e2a95fc4967"
+checksum = "4d850f81a21b3877d4360a079c35b7b78f2674f2dafa5c9d381c53c65acebea3"
 dependencies = [
  "ansi_term",
  "atty",
  "termcolor",
- "tracing",
+ "tracing-core",
  "tracing-log",
  "tracing-subscriber",
 ]
@@ -1919,18 +1919,18 @@ checksum = "da260301476ad19a4733a0e930db8227a48ea04561e235a5102978145ec69fcc"
 
 [[package]]
 name = "xshell"
-version = "0.1.15"
+version = "0.1.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07a06b78bf7920975954d1bef9dadedbb522dc886e14532b7cd4c83a10601867"
+checksum = "eaad2035244c56da05573d4d7fda5f903c60a5f35b9110e157a14a1df45a9f14"
 dependencies = [
  "xshell-macros",
 ]
 
 [[package]]
 name = "xshell-macros"
-version = "0.1.15"
+version = "0.1.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2b955be4ccb0caffb7312052b5b9d31f24cac4c4898869290f1580cb6d73dc2"
+checksum = "4916a4a3cad759e499a3620523bf9545cc162d7a06163727dde97ce9aaa4cf39"
 
 [[package]]
 name = "xtask"
