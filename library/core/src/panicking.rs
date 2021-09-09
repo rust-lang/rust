@@ -48,13 +48,8 @@ pub fn panic(expr: &'static str) -> ! {
     // Arguments::new_v1 may allow the compiler to omit Formatter::pad from the
     // output binary, saving up to a few kilobytes.
     panic_fmt(
-        #[cfg(bootstrap)]
-        fmt::Arguments::new_v1(&[expr], &[]),
-        #[cfg(not(bootstrap))]
         // SAFETY: Arguments::new_v1 is safe with exactly one str and zero args
-        unsafe {
-            fmt::Arguments::new_v1(&[expr], &[])
-        },
+        unsafe { fmt::Arguments::new_v1(&[expr], &[]) },
     );
 }
 
@@ -82,7 +77,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
-#[cfg_attr(not(bootstrap), lang = "panic_fmt")] // needed for const-evaluated panics
+#[lang = "panic_fmt"] // needed for const-evaluated panics
 pub fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
@@ -102,7 +97,6 @@ pub fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
 }
 
 /// This function is used instead of panic_fmt in const eval.
-#[cfg(not(bootstrap))]
 #[lang = "const_panic_fmt"]
 pub const fn const_panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if let Some(msg) = fmt.as_str() {

@@ -333,7 +333,6 @@ enum FlagV1 {
 impl<'a> Arguments<'a> {
     /// When using the format_args!() macro, this function is used to generate the
     /// Arguments structure.
-    #[cfg(not(bootstrap))]
     #[doc(hidden)]
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
@@ -347,17 +346,6 @@ impl<'a> Arguments<'a> {
         }
         Arguments { pieces, fmt: None, args }
     }
-    #[cfg(bootstrap)]
-    #[doc(hidden)]
-    #[inline]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-    #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
-    pub const fn new_v1(pieces: &'a [&'static str], args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
-        if pieces.len() < args.len() || pieces.len() > args.len() + 1 {
-            panic!("invalid args");
-        }
-        Arguments { pieces, fmt: None, args }
-    }
 
     /// This function is used to specify nonstandard formatting parameters.
     /// The `pieces` array must be at least as long as `fmt` to construct
@@ -365,24 +353,11 @@ impl<'a> Arguments<'a> {
     /// `CountIsParam` or `CountIsNextParam` has to point to an argument
     /// created with `argumentusize`. However, failing to do so doesn't cause
     /// unsafety, but will ignore invalid .
-    #[cfg(not(bootstrap))]
     #[doc(hidden)]
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
     pub const unsafe fn new_v1_formatted(
-        pieces: &'a [&'static str],
-        args: &'a [ArgumentV1<'a>],
-        fmt: &'a [rt::v1::Argument],
-    ) -> Arguments<'a> {
-        Arguments { pieces, fmt: Some(fmt), args }
-    }
-    #[cfg(bootstrap)]
-    #[doc(hidden)]
-    #[inline]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-    #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
-    pub const fn new_v1_formatted(
         pieces: &'a [&'static str],
         args: &'a [ArgumentV1<'a>],
         fmt: &'a [rt::v1::Argument],

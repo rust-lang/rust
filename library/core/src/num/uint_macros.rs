@@ -2119,7 +2119,6 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
         // SAFETY: const sound because integers are plain old datatypes so we can always
         // transmute them to arrays of bytes
-        #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_fn_transmute))]
         #[inline]
         pub const fn to_ne_bytes(self) -> [u8; mem::size_of::<Self>()] {
             // SAFETY: integers are plain old datatypes so we can always transmute them to
@@ -2225,7 +2224,6 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
         // SAFETY: const sound because integers are plain old datatypes so we can always
         // transmute to them
-        #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_fn_transmute))]
         #[inline]
         pub const fn from_ne_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
             // SAFETY: integers are plain old datatypes so we can always transmute to them

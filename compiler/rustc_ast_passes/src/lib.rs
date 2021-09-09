@@ -4,7 +4,6 @@
 //!
 //! The crate also contains other misc AST visitors, e.g. `node_count` and `show_span`.
 
-#![cfg_attr(bootstrap, feature(bindings_after_at))]
 #![feature(iter_is_partitioned)]
 #![feature(box_patterns)]
 #![recursion_limit = "256"]

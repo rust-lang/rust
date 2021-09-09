@@ -69,7 +69,6 @@
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
 #![allow(explicit_outlives_requirements)]
-#![cfg_attr(bootstrap, allow(incomplete_features))] // if_let_guard
 //
 // Library features for const fns:
 #![feature(const_align_of_val)]
@@ -122,8 +121,6 @@
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_trait_bound)]
-#![cfg_attr(bootstrap, feature(const_fn_transmute))]
-#![cfg_attr(bootstrap, feature(const_fn_union))]
 #![feature(const_impl_trait)]
 #![feature(const_mut_refs)]
 #![feature(const_panic)]

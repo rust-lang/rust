@@ -615,8 +615,7 @@ mod prim_pointer {}
 /// Starting in the 2021 edition, `array.into_iter()` uses `IntoIterator` normally to iterate
 /// by value, and `iter()` should be used to iterate by reference like previous editions.
 ///
-#[cfg_attr(bootstrap, doc = "```rust,edition2021,ignore")]
-#[cfg_attr(not(bootstrap), doc = "```rust,edition2021")]
+/// ```rust,edition2021
 /// // Rust 2021:
 ///
 /// let array: [i32; 3] = [0; 3];

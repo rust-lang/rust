@@ -1,4 +1,3 @@
-#![cfg_attr(bootstrap, feature(bindings_after_at))]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
