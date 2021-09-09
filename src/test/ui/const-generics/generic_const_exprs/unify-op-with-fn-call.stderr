@@ -1,0 +1,10 @@
+error: unconstrained generic constant
+  --> $DIR/unify-op-with-fn-call.rs:28:12
+   |
+LL |     bar2::<{ std::ops::Add::add(N, N) }>();
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { std::ops::Add::add(N, N) }]:`
+
+error: aborting due to previous error
+
