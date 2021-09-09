@@ -15,6 +15,14 @@ pub struct Rename {
     pub rename: String,
 }
 
+/// A single disallowed method, used by the `DISALLOWED_METHOD` lint.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(untagged)]
+pub enum DisallowedMethod {
+    Simple(String),
+    WithReason { path: String, reason: Option<String> },
+}
+
 /// Conf with parse errors
 #[derive(Default)]
 pub struct TryConf {
@@ -243,7 +251,7 @@ define_Conf! {
     /// Lint: DISALLOWED_METHOD.
     ///
     /// The list of disallowed methods, written as fully qualified paths.
-    (disallowed_methods: Vec<String> = Vec::new()),
+    (disallowed_methods: Vec<crate::utils::conf::DisallowedMethod> = Vec::new()),
     /// Lint: DISALLOWED_TYPE.
     ///
     /// The list of disallowed types, written as fully qualified paths.
