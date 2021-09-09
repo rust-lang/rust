@@ -104,7 +104,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
         if e.span.from_expansion() {
             return;
         }
-        if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) = e.kind {
+        if let ExprKind::AddrOf(BorrowKind::Ref, mutability, inner) = e.kind {
             if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty(inner).kind() {
                 for adj3 in cx.typeck_results().expr_adjustments(e).windows(3) {
                     if let [Adjustment {
@@ -116,14 +116,20 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
                         ..
                     }] = *adj3
                     {
+                        let help_msg_ty = if matches!(mutability, Mutability::Not) {
+                            format!("&{}", ty)
+                        } else {
+                            format!("&mut {}", ty)
+                        };
+
                         span_lint_and_then(
                             cx,
                             NEEDLESS_BORROW,
                             e.span,
                             &format!(
-                                "this expression borrows a reference (`&{}`) that is immediately dereferenced \
+                                "this expression borrows a reference (`{}`) that is immediately dereferenced \
                              by the compiler",
-                                ty
+                                help_msg_ty
                             ),
                             |diag| {
                                 if let Some(snippet) = snippet_opt(cx, inner.span) {
