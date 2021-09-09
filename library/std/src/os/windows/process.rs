@@ -4,7 +4,7 @@
 
 #![stable(feature = "process_extensions", since = "1.2.0")]
 
-use crate::ffi::{c_void, OsStr};
+use crate::ffi::OsStr;
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
 };
@@ -166,17 +166,14 @@ pub trait CommandExt: Sealed {
     ///
     /// # Safety
     ///
-    /// - The data pointed to by `value` pointer must not be moved or aliased for the entire lifetime of
-    ///   the `Command`.
-    /// - The data pointed to by `value` pointer must be initialized.
-    /// - `size` must not exceed the size of the object pointed to by the `value` pointer.
-    /// - It must be safe to read the data pointed to by `value` from another thread.
+    /// - The attribute and value pair must be supplied in accordance with [Win32 API usage][1].
+    ///
+    /// [1]: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute
     #[unstable(feature = "windows_process_extensions_proc_thread_attributes", issue = "none")]
-    unsafe fn process_thread_attribute(
+    unsafe fn process_thread_attribute<T: Copy + Send + Sync + 'static>(
         &mut self,
         attribute: usize,
-        value: *mut c_void,
-        size: usize,
+        value: T,
     ) -> &mut process::Command;
 }
 
@@ -196,13 +193,12 @@ impl CommandExt for process::Command {
         self.as_inner_mut().raw_arg(raw_text.as_ref());
         self
     }
-    unsafe fn process_thread_attribute(
+    unsafe fn process_thread_attribute<T: Copy + Send + Sync + 'static>(
         &mut self,
         attribute: usize,
-        value: *mut c_void,
-        size: usize,
+        value: T,
     ) -> &mut process::Command {
-        self.as_inner_mut().process_thread_attribute(attribute, value, size);
+        self.as_inner_mut().process_thread_attribute(attribute, value);
         self
     }
 }

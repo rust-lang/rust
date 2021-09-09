@@ -412,17 +412,15 @@ fn test_creation_flags() {
 fn test_proc_thread_attributes() {
     use crate::os::windows::io::AsRawHandle;
     use crate::os::windows::process::CommandExt;
-    use crate::sys::c::{DWORD_PTR, HANDLE};
+    use crate::sys::c::DWORD_PTR;
     const PROC_THREAD_ATTRIBUTE_PARENT_PROCESS: DWORD_PTR = 0x00020000;
-    let mut parent = Command::new("cmd.exe").spawn().unwrap();
-    let mut parent_handle: HANDLE = parent.as_raw_handle();
 
+    let mut parent = Command::new("cmd.exe").spawn().unwrap();
     let mut child_cmd = Command::new("cmd.exe");
     unsafe {
         child_cmd.process_thread_attribute(
             PROC_THREAD_ATTRIBUTE_PARENT_PROCESS,
-            &mut parent_handle as *mut _ as *mut _,
-            crate::mem::size_of::<HANDLE>(),
+            parent.as_raw_handle() as isize,
         );
     }
     let mut child = child_cmd.spawn().unwrap();

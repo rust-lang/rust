@@ -254,8 +254,15 @@ impl Command {
     pub fn get_current_dir(&self) -> Option<&Path> {
         self.cwd.as_ref().map(|cwd| Path::new(cwd))
     }
-    pub fn process_thread_attribute(&mut self, attribute: usize, ptr: *mut c_void, size: usize) {
-        self.proc_thread_attributes.insert(attribute, ProcThreadAttributeValue { ptr, size });
+    pub unsafe fn process_thread_attribute<T: Copy + Send + Sync + 'static>(
+        &mut self,
+        attribute: usize,
+        value: T,
+    ) {
+        self.proc_thread_attributes.insert(
+            attribute,
+            ProcThreadAttributeValue { size: mem::size_of::<T>(), data: Box::new(value) },
+        );
     }
 
     pub fn spawn(
@@ -876,16 +883,10 @@ impl Drop for ProcThreadAttributeList {
     }
 }
 /// Wrapper around the value data to be used as a Process Thread Attribute.
-/// This exists primarily to force the raw pointer type to be `Send` and `Sync`
-/// without needing to `unsafe impl` them for `Command`.
-#[derive(Copy, Clone)]
 struct ProcThreadAttributeValue {
-    ptr: *mut c_void,
+    data: Box<dyn Send + Sync>,
     size: usize,
 }
-unsafe impl Send for ProcThreadAttributeValue {}
-unsafe impl Sync for ProcThreadAttributeValue {}
-
 fn make_proc_thread_attributes(
     attributes: &BTreeMap<usize, ProcThreadAttributeValue>,
 ) -> io::Result<ProcThreadAttributeList> {
@@ -902,13 +903,17 @@ fn make_proc_thread_attributes(
     // Add our attributes to the buffer.
     // It's theoretically possible for the count to overflow a u32. Therefore, make
     // sure we don't add more attributes than we actually initialized the buffer for.
-    for (&attribute, &value) in attributes.iter().take(count as usize) {
+    for (&attribute, value) in attributes.iter().take(count as usize) {
+        let value_ptr: *const (dyn Send + Sync) = &*value.data as *const _;
+        // let value_ptr = value_ptr as *const _;
+        let value_ptr = value_ptr as *const c_void;
+        let value_ptr = value_ptr as *mut c_void;
         cvt(unsafe {
             c::UpdateProcThreadAttribute(
                 attribute_list.0.as_mut_ptr().cast(),
                 0,
                 attribute,
-                value.ptr,
+                value_ptr,
                 value.size,
                 ptr::null_mut(),
                 ptr::null_mut(),
