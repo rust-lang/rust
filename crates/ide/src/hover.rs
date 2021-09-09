@@ -243,6 +243,9 @@ fn hover_ranged(
     })?;
     let res = match &expr_or_pat {
         Either::Left(ast::Expr::TryExpr(try_expr)) => hover_try_expr(sema, config, try_expr),
+        Either::Left(ast::Expr::PrefixExpr(prefix_expr)) if prefix_expr.op_kind() == Some(ast::UnaryOp::Deref) => {
+            hover_deref_expr(sema, config, prefix_expr)
+        }
         _ => None,
     };
     let res = res.or_else(|| hover_type_info(sema, config, &expr_or_pat));
@@ -343,6 +346,67 @@ fn hover_try_expr(
         bt_end = if config.markdown() { "```\n" } else { "" }
     )
     .into();
+    Some(res)
+}
+
+fn hover_deref_expr(
+    sema: &Semantics<RootDatabase>,
+    config: &HoverConfig,
+    deref_expr: &ast::PrefixExpr,
+) -> Option<HoverResult> {
+    let inner_ty = sema.type_of_expr(&deref_expr.expr()?)?.original;
+    let TypeInfo { original, adjusted } = sema.type_of_expr(&ast::Expr::from(deref_expr.clone()))?;
+
+    let mut res = HoverResult::default();
+    let mut targets: Vec<hir::ModuleDef> = Vec::new();
+    let mut push_new_def = |item: hir::ModuleDef| {
+        if !targets.contains(&item) {
+            targets.push(item);
+        }
+    };
+    walk_and_push_ty(sema.db, &inner_ty, &mut push_new_def);
+    walk_and_push_ty(sema.db, &original, &mut push_new_def);
+    
+    res.markup = if let Some(adjusted_ty) = adjusted {
+        walk_and_push_ty(sema.db, &adjusted_ty, &mut push_new_def);
+        let original = original.display(sema.db).to_string();
+        let adjusted = adjusted_ty.display(sema.db).to_string();
+        let inner = inner_ty.display(sema.db).to_string();
+        let type_len = "Type: ".len();
+        let coerced_len = "Coerced to: ".len();
+        let deref_len = "Derefenced from: ".len();
+        let max_len = (original.len() + type_len).max(adjusted.len() + coerced_len).max(inner.len() + deref_len);
+        format!(
+            "{bt_start}Type: {:>apad$}\nCoerced to: {:>opad$}\nDerefenced from: {:>ipad$}\n{bt_end}",
+            original,
+            adjusted,
+            inner,
+            apad = max_len - type_len,
+            opad = max_len - coerced_len,
+            ipad = max_len - deref_len,
+            bt_start = if config.markdown() { "```text\n" } else { "" },
+            bt_end = if config.markdown() { "```\n" } else { "" }
+        )
+        .into()
+    } else {
+        let original = original.display(sema.db).to_string();
+        let inner = inner_ty.display(sema.db).to_string();
+        let type_len = "Type: ".len();
+        let deref_len = "Derefenced from: ".len();
+        let max_len = (original.len() + type_len).max(inner.len() + deref_len);
+        format!(
+            "{bt_start}Type: {:>apad$}\nDerefenced from: {:>ipad$}\n{bt_end}",
+            original,
+            inner,
+            apad = max_len - type_len,
+            ipad = max_len - deref_len,
+            bt_start = if config.markdown() { "```text\n" } else { "" },
+            bt_end = if config.markdown() { "```\n" } else { "" }
+        )
+        .into()
+    };
+    res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
+
     Some(res)
 }
 
