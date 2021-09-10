@@ -1,5 +1,7 @@
 // run-pass
 
+#![allow(dead_code)]
+
 use std::rc::Rc;
 use std::ops::Deref;
 

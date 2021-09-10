@@ -28,7 +28,6 @@ fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
 /// things (e.g., each `DefId`/`DefPath` is only hashed once).
 #[derive(Clone)]
 pub struct StableHashingContext<'a> {
-    sess: &'a Session,
     definitions: &'a Definitions,
     cstore: &'a dyn CrateStore,
     pub(super) body_resolver: BodyResolver<'a>,
@@ -78,7 +77,6 @@ impl<'a> StableHashingContext<'a> {
             !always_ignore_spans && !sess.opts.debugging_opts.incremental_ignore_spans;
 
         StableHashingContext {
-            sess,
             body_resolver: BodyResolver(krate),
             definitions,
             cstore,

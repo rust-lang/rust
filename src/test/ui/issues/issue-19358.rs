@@ -1,4 +1,7 @@
 // run-pass
+
+#![allow(dead_code)]
+
 trait Trait { fn dummy(&self) { } }
 
 #[derive(Debug)]

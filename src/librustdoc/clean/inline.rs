@@ -557,7 +557,6 @@ fn build_macro(
     name: Symbol,
     import_def_id: Option<DefId>,
 ) -> clean::ItemKind {
-    let imported_from = cx.tcx.crate_name(def_id.krate);
     match CStore::from_tcx(cx.tcx).load_macro_untracked(def_id, cx.sess()) {
         LoadedMacro::MacroDef(item_def, _) => {
             if let ast::ItemKind::MacroDef(ref def) = item_def.kind {
@@ -569,7 +568,6 @@ fn build_macro(
                         def_id,
                         cx.tcx.visibility(import_def_id.unwrap_or(def_id)),
                     ),
-                    imported_from: Some(imported_from),
                 })
             } else {
                 unreachable!()

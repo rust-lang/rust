@@ -118,9 +118,6 @@ struct Scope {
     /// the region span of this scope within source code.
     region_scope: region::Scope,
 
-    /// the span of that region_scope
-    region_scope_span: Span,
-
     /// set of places to drop when exiting this scope. This starts
     /// out empty but grows as variables are declared during the
     /// building process. This is a stack, so we always drop from the
@@ -420,7 +417,6 @@ impl<'tcx> Scopes<'tcx> {
         self.scopes.push(Scope {
             source_scope: vis_scope,
             region_scope: region_scope.0,
-            region_scope_span: region_scope.1.span,
             drops: vec![],
             moved_locals: vec![],
             cached_unwind_block: None,

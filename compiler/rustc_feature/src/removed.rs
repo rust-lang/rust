@@ -16,7 +16,6 @@ macro_rules! declare_features {
                     since: $ver,
                     issue: to_nonzero($issue),
                     edition: None,
-                    description: concat!($($doc,)*),
                 }
             ),+
         ];
@@ -34,7 +33,6 @@ macro_rules! declare_features {
                     since: $ver,
                     issue: to_nonzero($issue),
                     edition: None,
-                    description: concat!($($doc,)*),
                 }
             ),+
         ];

@@ -3,6 +3,8 @@
 
 // Test that we can use raw ptrs when using `capture_disjoint_fields`.
 
+#![allow(dead_code)]
+
 #[derive(Debug)]
 struct S {
     s: String,

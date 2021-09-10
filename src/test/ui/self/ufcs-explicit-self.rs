@@ -1,5 +1,6 @@
 // run-pass
 #![feature(box_syntax)]
+#![allow(dead_code)]
 
 #[derive(Copy, Clone)]
 struct Foo {

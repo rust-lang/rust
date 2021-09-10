@@ -1,6 +1,6 @@
 // run-rustfix
 
-#![allow(unused_imports)]
+#![allow(unused_imports,dead_code)]
 #![deny(clippy::default_trait_access)]
 
 use std::default;
