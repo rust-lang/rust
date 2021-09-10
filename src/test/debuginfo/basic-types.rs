@@ -9,6 +9,10 @@
 // This fails on lldb 6.0.1 on x86-64 Fedora 28; so ignore Linux for now.
 // ignore-linux
 
+// This started failing in windows too. See https://github.com/rust-lang/rust/issues/88796
+// FIXME: fix and unignore this on windows
+// ignore-windows
+
 // compile-flags:-g
 
 // === GDB TESTS ===================================================================================
