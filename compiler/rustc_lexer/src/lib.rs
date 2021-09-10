@@ -413,8 +413,7 @@ impl Cursor<'_> {
                 let kind = Str { terminated };
                 Literal { kind, suffix_start }
             }
-            // Identifier (this should be checked after other variant that can
-            // start as identifier).
+            // Identifier starting with an emoji. Only lexed for graceful error recovery.
             c if !c.is_ascii() && unic_emoji_char::is_emoji(c) => {
                 self.fake_ident_or_unknown_prefix()
             }
