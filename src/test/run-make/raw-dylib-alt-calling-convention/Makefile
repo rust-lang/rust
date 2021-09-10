@@ -1,12 +1,12 @@
 # Test the behavior of #[link(.., kind = "raw-dylib")] with alternative calling conventions.
 
-# only-i686-pc-windows-msvc
+# only-i686-pc-windows-gnu
 
 -include ../../run-make-fulldeps/tools.mk
 
 all:
 	$(call COMPILE_OBJ,"$(TMPDIR)"/extern.obj,extern.c)
-	$(CC) "$(TMPDIR)"/extern.obj -link -dll -out:"$(TMPDIR)"/extern.dll
+	$(CC) "$(TMPDIR)"/extern.obj -shared -o "$(TMPDIR)"/extern.dll
 	$(RUSTC) --crate-type lib --crate-name raw_dylib_alt_calling_convention_test lib.rs
 	$(RUSTC) --crate-type bin driver.rs -L "$(TMPDIR)"
 	"$(TMPDIR)"/driver > "$(TMPDIR)"/output.txt

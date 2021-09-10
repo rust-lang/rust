@@ -164,7 +164,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             .iter()
             .map(|import: &DllImport| {
                 if self.config.sess.target.arch == "x86" {
-                    LlvmArchiveBuilder::i686_decorated_name(import).into_string().unwrap()
+                    LlvmArchiveBuilder::i686_decorated_name(import, true).into_string().unwrap()
                 } else {
                     import.name.to_string()
                 }
@@ -320,13 +320,17 @@ impl<'a> LlvmArchiveBuilder<'a> {
         }
     }
 
-    fn i686_decorated_name(import: &DllImport) -> CString {
+    fn i686_decorated_name(import: &DllImport, mingw: bool) -> CString {
         let name = import.name;
+        // MinGW doesn't want `_` prefix for `.def` file
+        let prefix = if mingw { "" } else { "_" };
         // We verified during construction that `name` does not contain any NULL characters, so the
         // conversion to CString is guaranteed to succeed.
         CString::new(match import.calling_convention {
-            DllCallingConvention::C => format!("_{}", name),
-            DllCallingConvention::Stdcall(arg_list_size) => format!("_{}@{}", name, arg_list_size),
+            DllCallingConvention::C => format!("{}{}", prefix, name),
+            DllCallingConvention::Stdcall(arg_list_size) => {
+                format!("{}{}@{}", prefix, name, arg_list_size)
+            }
             DllCallingConvention::Fastcall(arg_list_size) => format!("@{}@{}", name, arg_list_size),
             DllCallingConvention::Vectorcall(arg_list_size) => {
                 format!("{}@@{}", name, arg_list_size)
