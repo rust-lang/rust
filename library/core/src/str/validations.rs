@@ -22,7 +22,7 @@ fn utf8_acc_cont_byte(ch: u32, byte: u8) -> u32 {
 /// bits `10`).
 #[inline]
 pub(super) fn utf8_is_cont_byte(byte: u8) -> bool {
-    (byte & !CONT_MASK) == TAG_CONT_U8
+    (byte as i8) < -64
 }
 
 #[inline]
