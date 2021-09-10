@@ -40,16 +40,22 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            os: ubuntu-latest-xl
-            env: {}
-          - name: x86_64-gnu-llvm-10
-            os: ubuntu-latest-xl
-            env: {}
-          - name: x86_64-gnu-tools
+          - name: dist-aarch64-msvc
             env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
-            os: ubuntu-latest-xl
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=aarch64-pc-windows-msvc --enable-full-tools --enable-profiler"
+              SCRIPT: python x.py build library/std --stage=2
+              DIST_REQUIRE_ALL_TOOLS: 0
+            os: windows-latest-xl
+          # - name: mingw-check
+          #   os: ubuntu-latest-xl
+          #   env: {}
+          # - name: x86_64-gnu-llvm-10
+          #   os: ubuntu-latest-xl
+          #   env: {}
+          # - name: x86_64-gnu-tools
+          #   env:
+          #     CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
+          #   os: ubuntu-latest-xl
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
