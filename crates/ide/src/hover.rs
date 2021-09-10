@@ -3534,6 +3534,7 @@ impl<T: TraitA + TraitB> Foo<T$0> where T: Sized {}
         );
         check(
             r#"
+//- minicore: sized
 struct Foo<T>(T);
 impl<T> Foo<T$0> {}
 "#,
@@ -3548,6 +3549,7 @@ impl<T> Foo<T$0> {}
         // lifetimes bounds arent being tracked yet
         check(
             r#"
+//- minicore: sized
 struct Foo<T>(T);
 impl<T: 'static> Foo<T$0> {}
 "#,
