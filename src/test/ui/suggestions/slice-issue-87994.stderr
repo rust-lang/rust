@@ -1,0 +1,71 @@
+error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
+  --> $DIR/slice-issue-87994.rs:3:12
+   |
+LL |   for _ in v[1..] {
+   |            ^^^^^^
+   |            |
+   |            expected an implementor of trait `IntoIterator`
+   |            help: consider borrowing here: `&v[1..]`
+   |
+   = note: the trait bound `[i32]: IntoIterator` is not satisfied
+   = note: required because of the requirements on the impl of `IntoIterator` for `[i32]`
+note: required by `into_iter`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   |
+LL |     fn into_iter(self) -> Self::IntoIter;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `[i32]` is not an iterator
+  --> $DIR/slice-issue-87994.rs:3:12
+   |
+LL |   for _ in v[1..] {
+   |            ^^^^^^
+   |            |
+   |            expected an implementor of trait `IntoIterator`
+   |            help: consider borrowing here: `&v[1..]`
+   |
+   = note: the trait bound `[i32]: IntoIterator` is not satisfied
+   = note: required because of the requirements on the impl of `IntoIterator` for `[i32]`
+note: required by `into_iter`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   |
+LL |     fn into_iter(self) -> Self::IntoIter;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the size for values of type `[K]` cannot be known at compilation time
+  --> $DIR/slice-issue-87994.rs:11:13
+   |
+LL |   for i2 in v2[1..] {
+   |             ^^^^^^^
+   |             |
+   |             expected an implementor of trait `IntoIterator`
+   |             help: consider borrowing here: `&v2[1..]`
+   |
+   = note: the trait bound `[K]: IntoIterator` is not satisfied
+   = note: required because of the requirements on the impl of `IntoIterator` for `[K]`
+note: required by `into_iter`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   |
+LL |     fn into_iter(self) -> Self::IntoIter;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `[K]` is not an iterator
+  --> $DIR/slice-issue-87994.rs:11:13
+   |
+LL |   for i2 in v2[1..] {
+   |             ^^^^^^^
+   |             |
+   |             expected an implementor of trait `IntoIterator`
+   |             help: consider borrowing here: `&v2[1..]`
+   |
+   = note: the trait bound `[K]: IntoIterator` is not satisfied
+   = note: required because of the requirements on the impl of `IntoIterator` for `[K]`
+note: required by `into_iter`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   |
+LL |     fn into_iter(self) -> Self::IntoIter;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
