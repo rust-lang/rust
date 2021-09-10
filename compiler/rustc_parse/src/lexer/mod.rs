@@ -193,7 +193,7 @@ impl<'a> StringReader<'a> {
                 token::Ident(sym, is_raw_ident)
             }
             rustc_lexer::TokenKind::InvalidIdent
-                // Do not recover an identifier with emojis if the codepoint is a confusable
+                // Do not recover an identifier with emoji if the codepoint is a confusable
                 // with a recoverable substitution token, like `➖`.
                 if UNICODE_ARRAY
                     .iter()

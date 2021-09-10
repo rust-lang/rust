@@ -123,7 +123,7 @@ pub struct ParseSess {
     /// clashing with keywords in new editions.
     pub raw_identifier_spans: Lock<Vec<Span>>,
     /// Places where identifiers that contain invalid Unicode codepoints but that look like they
-    /// should be. Useful to avoid bad tokenization when encountering emojis. We group them to
+    /// should be. Useful to avoid bad tokenization when encountering emoji. We group them to
     /// provide a single error per unique incorrect identifier.
     pub bad_unicode_identifiers: Lock<FxHashMap<Symbol, Vec<Span>>>,
     source_map: Lrc<SourceMap>,
