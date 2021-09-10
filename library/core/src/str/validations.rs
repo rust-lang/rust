@@ -163,7 +163,7 @@ pub(super) fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             //               %xF4 %x80-8F 2( UTF8-tail )
             match w {
                 2 => {
-                    if next!() & !CONT_MASK != TAG_CONT_U8 {
+                    if !utf8_is_cont_byte(next!()) {
                         err!(Some(1))
                     }
                 }
@@ -175,7 +175,7 @@ pub(super) fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
                         | (0xEE..=0xEF, 0x80..=0xBF) => {}
                         _ => err!(Some(1)),
                     }
-                    if next!() & !CONT_MASK != TAG_CONT_U8 {
+                    if !utf8_is_cont_byte(next!()) {
                         err!(Some(2))
                     }
                 }
@@ -184,10 +184,10 @@ pub(super) fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
                         (0xF0, 0x90..=0xBF) | (0xF1..=0xF3, 0x80..=0xBF) | (0xF4, 0x80..=0x8F) => {}
                         _ => err!(Some(1)),
                     }
-                    if next!() & !CONT_MASK != TAG_CONT_U8 {
+                    if !utf8_is_cont_byte(next!()) {
                         err!(Some(2))
                     }
-                    if next!() & !CONT_MASK != TAG_CONT_U8 {
+                    if !utf8_is_cont_byte(next!()) {
                         err!(Some(3))
                     }
                 }
@@ -258,8 +258,6 @@ pub fn utf8_char_width(b: u8) -> usize {
 
 /// Mask of the value bits of a continuation byte.
 const CONT_MASK: u8 = 0b0011_1111;
-/// Value of the tag bits (tag mask is !CONT_MASK) of a continuation byte.
-const TAG_CONT_U8: u8 = 0b1000_0000;
 
 // truncate `&str` to length at most equal to `max`
 // return `true` if it were truncated, and the new str.
