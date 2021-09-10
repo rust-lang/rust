@@ -4510,4 +4510,68 @@ fn foo() -> Option<()> {
                 ```"#]],
         );
     }
+
+
+    #[test]
+    fn hover_deref_expr() {
+        check_hover_range(
+            r#"
+//- minicore: deref 
+struct DerefExample<T> {
+    value: T
+}
+
+impl<T> Deref for DerefExample<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+fn foo() {
+    let x = DerefExample { value: 0 };
+    let y: i32 = $0*x$0;
+}
+"#,
+            expect![[r#"
+                ```text
+                Type:                          i32
+                Derefenced from: DerefExample<i32>
+                ```
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hover_deref_expr_with_coercion() {
+        check_hover_range(
+            r#"
+//- minicore: deref 
+struct DerefExample<T> {
+    value: T
+}
+ 
+impl<T> Deref for DerefExample<T> {
+    type Target = T;
+ 
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+ 
+fn foo() {
+    let x = DerefExample { value: &&&&&0 };
+    let y: &i32 = $0*x$0;
+}
+"#,
+            expect![[r#"
+                ```text
+                Type:                          &&&&&i32
+                Coerced to:                        &i32
+                Derefenced from: DerefExample<&&&&&i32>
+                ```
+            "#]],
+        );
+    }
 }
