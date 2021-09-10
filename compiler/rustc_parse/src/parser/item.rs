@@ -765,10 +765,58 @@ impl<'a> Parser<'a> {
             if self.eat(&token::Colon) { self.parse_generic_bounds(None)? } else { Vec::new() };
         generics.where_clause = self.parse_where_clause()?;
 
-        let default = if self.eat(&token::Eq) { Some(self.parse_ty()?) } else { None };
-        self.expect_semi()?;
+        let default = if self.eat(&token::Eq) {
+            Some(self.parse_ty_recover_anon_adt(|this| this.expect_semi())?.0)
+        } else {
+            self.expect_semi()?;
+            None
+        };
 
         Ok((ident, ItemKind::TyAlias(Box::new(TyAliasKind(def, generics, bounds, default)))))
+    }
+
+    /// Parses a type. If a misparse happens, we attempt to parse the type again, allowing
+    /// anonymous `union`s and `struct`s in its place. If successful, we return this. The
+    /// anonymous ADTs will be disallowed elsewhere.
+    fn parse_ty_recover_anon_adt<F, R>(&mut self, after: F) -> PResult<'a, (P<Ty>, R)>
+    where
+        F: Fn(&mut Self) -> PResult<'a, R>,
+    {
+        if (self.token.is_keyword(kw::Union) | self.token.is_keyword(kw::Struct))
+            && self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace))
+        {
+            let mut snapshot = self.clone();
+            let mut err;
+            match self.parse_ty() {
+                Ok(ty) => match after(self) {
+                    Ok(r) => return Ok((ty, r)),
+                    Err(orig_err) => {
+                        err = orig_err;
+                    }
+                },
+                Err(orig_err) => {
+                    err = orig_err;
+                }
+            }
+            match snapshot.parse_ty_allow_anon_adt() {
+                Ok(ty) => match after(&mut snapshot) {
+                    Ok(r) => {
+                        err.delay_as_bug();
+                        *self = snapshot;
+                        return Ok((ty, r));
+                    }
+                    Err(mut snapshot_err) => snapshot_err.cancel(),
+                },
+                Err(mut snapshot_err) => {
+                    snapshot_err.cancel();
+                }
+            }
+            Err(err)
+        } else {
+            let ty = self.parse_ty()?;
+            let r = after(self)?;
+            Ok((ty, r))
+        }
     }
 
     /// Parses a `UseTree`.
@@ -1059,14 +1107,19 @@ impl<'a> Parser<'a> {
 
         // Parse the type of a `const` or `static mut?` item.
         // That is, the `":" $ty` fragment.
-        let ty = if self.eat(&token::Colon) {
-            self.parse_ty()?
+        let (ty, expr) = if self.eat(&token::Colon) {
+            self.parse_ty_recover_anon_adt(|this| {
+                let expr = if this.eat(&token::Eq) { Some(this.parse_expr()?) } else { None };
+                this.expect_semi()?;
+                Ok(expr)
+            })?
         } else {
-            self.recover_missing_const_type(id, m)
+            let ty = self.recover_missing_const_type(id, m);
+            let expr = if self.eat(&token::Eq) { Some(self.parse_expr()?) } else { None };
+            self.expect_semi()?;
+            (ty, expr)
         };
 
-        let expr = if self.eat(&token::Eq) { Some(self.parse_expr()?) } else { None };
-        self.expect_semi()?;
         Ok((id, ty, expr))
     }
 
@@ -1438,7 +1491,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, FieldDef> {
         let name = self.parse_field_ident(adt_ty, lo)?;
         self.expect_field_ty_separator()?;
-        let ty = self.parse_ty()?;
+        let ty = self.parse_ty_allow_anon_adt()?;
         if self.token.kind == token::Eq {
             self.bump();
             let const_expr = self.parse_anon_const_expr()?;

@@ -37,6 +37,12 @@ pub(super) enum AllowPlus {
     No,
 }
 
+#[derive(Copy, Clone, PartialEq)]
+pub(super) enum AllowAnonymousType {
+    Yes,
+    No,
+}
+
 #[derive(PartialEq)]
 pub(super) enum RecoverQPath {
     Yes,
@@ -98,9 +104,19 @@ impl<'a> Parser<'a> {
             AllowCVariadic::No,
             RecoverQPath::Yes,
             RecoverReturnSign::Yes,
+            AllowAnonymousType::No,
         )
     }
 
+    pub fn parse_ty_allow_anon_adt(&mut self) -> PResult<'a, P<Ty>> {
+        self.parse_ty_common(
+            AllowPlus::Yes,
+            AllowCVariadic::No,
+            RecoverQPath::Yes,
+            RecoverReturnSign::Yes,
+            AllowAnonymousType::Yes,
+        )
+    }
     /// Parse a type suitable for a function or function pointer parameter.
     /// The difference from `parse_ty` is that this version allows `...`
     /// (`CVarArgs`) at the top level of the type.
@@ -110,6 +126,7 @@ impl<'a> Parser<'a> {
             AllowCVariadic::Yes,
             RecoverQPath::Yes,
             RecoverReturnSign::Yes,
+            AllowAnonymousType::No,
         )
     }
 
@@ -125,6 +142,7 @@ impl<'a> Parser<'a> {
             AllowCVariadic::No,
             RecoverQPath::Yes,
             RecoverReturnSign::Yes,
+            AllowAnonymousType::No,
         )
     }
 
@@ -135,6 +153,7 @@ impl<'a> Parser<'a> {
             AllowCVariadic::Yes,
             RecoverQPath::Yes,
             RecoverReturnSign::OnlyFatArrow,
+            AllowAnonymousType::No,
         )
     }
 
@@ -152,6 +171,7 @@ impl<'a> Parser<'a> {
                 AllowCVariadic::No,
                 recover_qpath,
                 recover_return_sign,
+                AllowAnonymousType::No,
             )?;
             FnRetTy::Ty(ty)
         } else if recover_return_sign.can_recover(&self.token.kind) {
@@ -171,6 +191,7 @@ impl<'a> Parser<'a> {
                 AllowCVariadic::No,
                 recover_qpath,
                 recover_return_sign,
+                AllowAnonymousType::No,
             )?;
             FnRetTy::Ty(ty)
         } else {
@@ -184,6 +205,7 @@ impl<'a> Parser<'a> {
         allow_c_variadic: AllowCVariadic,
         recover_qpath: RecoverQPath,
         recover_return_sign: RecoverReturnSign,
+        allow_anonymous: AllowAnonymousType,
     ) -> PResult<'a, P<Ty>> {
         let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
@@ -226,19 +248,11 @@ impl<'a> Parser<'a> {
             }
         } else if self.eat_keyword(kw::Impl) {
             self.parse_impl_ty(&mut impl_dyn_multi)?
-        } else if self.token.is_keyword(kw::Union)
+        } else if allow_anonymous == AllowAnonymousType::Yes
+            && (self.token.is_keyword(kw::Union) | self.token.is_keyword(kw::Struct))
             && self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace))
         {
-            self.bump();
-            let (fields, recovered) = self.parse_record_struct_body("union")?;
-            let span = lo.to(self.prev_token.span);
-            self.sess.gated_spans.gate(sym::unnamed_fields, span);
-            TyKind::AnonymousUnion(fields, recovered)
-        } else if self.eat_keyword(kw::Struct) {
-            let (fields, recovered) = self.parse_record_struct_body("struct")?;
-            let span = lo.to(self.prev_token.span);
-            self.sess.gated_spans.gate(sym::unnamed_fields, span);
-            TyKind::AnonymousStruct(fields, recovered)
+            self.parse_anonymous_ty(lo)?
         } else if self.is_explicit_dyn_type() {
             self.parse_dyn_ty(&mut impl_dyn_multi)?
         } else if self.eat_lt() {
@@ -263,7 +277,27 @@ impl<'a> Parser<'a> {
             let mut err = self.struct_span_err(self.token.span, &msg);
             err.span_label(self.token.span, "expected type");
             self.maybe_annotate_with_ascription(&mut err, true);
-            return Err(err);
+
+            if allow_anonymous == AllowAnonymousType::No
+                && (self.token.is_keyword(kw::Union) || self.token.is_keyword(kw::Struct))
+                && self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace))
+            {
+                // Recover the parser from anonymous types anywhere other than field types.
+                let snapshot = self.clone();
+                match self.parse_anonymous_ty(lo) {
+                    Ok(ty) => {
+                        err.delay_as_bug();
+                        ty
+                    }
+                    Err(mut snapshot_err) => {
+                        snapshot_err.cancel();
+                        *self = snapshot;
+                        return Err(err);
+                    }
+                }
+            } else {
+                return Err(err);
+            }
         };
 
         let span = lo.to(self.prev_token.span);
@@ -275,6 +309,22 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(ty, allow_qpath_recovery)
     }
 
+    fn parse_anonymous_ty(&mut self, lo: Span) -> PResult<'a, TyKind> {
+        let is_union = self.token.is_keyword(kw::Union);
+        self.bump();
+        self.parse_record_struct_body(if is_union { "union" } else { "struct" }).map(
+            |(fields, recovered)| {
+                let span = lo.to(self.prev_token.span);
+                self.sess.gated_spans.gate(sym::unnamed_fields, span);
+                // These will be rejected during AST validation in `deny_anonymous_struct`.
+                return if is_union {
+                    TyKind::AnonymousUnion(fields, recovered)
+                } else {
+                    TyKind::AnonymousStruct(fields, recovered)
+                };
+            },
+        )
+    }
     /// Parses either:
     /// - `(TYPE)`, a parenthesized type.
     /// - `(TYPE,)`, a tuple with a single field of type TYPE.
