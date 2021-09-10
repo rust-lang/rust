@@ -3596,6 +3596,146 @@ impl<T: Trait + ?Sized> Foo<T$0> {}
         );
     }
 
+    mod type_param_sized_bounds {
+        use super::*;
+
+        #[test]
+        fn single_implicit() {
+            check(
+                r#"
+//- minicore: sized
+fn foo<T$0>() {}
+"#,
+                expect![[r#"
+                    *T*
+
+                    ```rust
+                    T
+                    ```
+                "#]],
+            );
+        }
+
+        #[test]
+        fn single_explicit() {
+            check(
+                r#"
+//- minicore: sized
+fn foo<T$0: Sized>() {}
+"#,
+                expect![[r#"
+                    *T*
+
+                    ```rust
+                    T
+                    ```
+                "#]],
+            );
+        }
+
+        #[test]
+        fn single_relaxed() {
+            check(
+                r#"
+//- minicore: sized
+fn foo<T$0: ?Sized>() {}
+"#,
+                expect![[r#"
+                    *T*
+
+                    ```rust
+                    T: ?Sized
+                    ```
+                "#]],
+            );
+        }
+
+        #[test]
+        fn multiple_implicit() {
+            check(
+                r#"
+//- minicore: sized
+trait Trait {}
+fn foo<T$0: Trait>() {}
+"#,
+                expect![[r#"
+                    *T*
+
+                    ```rust
+                    T: Trait
+                    ```
+                "#]],
+            );
+        }
+
+        #[test]
+        fn multiple_explicit() {
+            check(
+                r#"
+//- minicore: sized
+trait Trait {}
+fn foo<T$0: Trait + Sized>() {}
+"#,
+                expect![[r#"
+                    *T*
+
+                    ```rust
+                    T: Trait
+                    ```
+                "#]],
+            );
+        }
+
+        #[test]
+        fn multiple_relaxed() {
+            check(
+                r#"
+//- minicore: sized
+trait Trait {}
+fn foo<T$0: Trait + ?Sized>() {}
+"#,
+                expect![[r#"
+                    *T*
+
+                    ```rust
+                    T: Trait + ?Sized
+                    ```
+                "#]],
+            );
+        }
+
+        #[test]
+        fn mixed() {
+            check(
+                r#"
+//- minicore: sized
+fn foo<T$0: ?Sized + Sized + Sized>() {}
+"#,
+                expect![[r#"
+                    *T*
+
+                    ```rust
+                    T
+                    ```
+                "#]],
+            );
+            check(
+                r#"
+//- minicore: sized
+trait Trait {}
+fn foo<T$0: Sized + ?Sized + Sized + Trait>() {}
+"#,
+                expect![[r#"
+                    *T*
+
+                    ```rust
+                    T: Trait
+                    ```
+                "#]],
+            );
+        }
+    }
+
     #[test]
     fn hover_const_param() {
         check(

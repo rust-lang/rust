@@ -5,16 +5,19 @@ use hir_def::{
     type_ref::{TypeBound, TypeRef},
     AdtId, GenericDefId,
 };
-use hir_ty::display::{
-    write_bounds_like_dyn_trait_with_prefix, write_visibility, HirDisplay, HirDisplayError,
-    HirFormatter, SizedByDefault,
+use hir_ty::{
+    display::{
+        write_bounds_like_dyn_trait_with_prefix, write_visibility, HirDisplay, HirDisplayError,
+        HirFormatter, SizedByDefault,
+    },
+    Interner, TraitRefExt, WhereClause,
 };
-use hir_ty::Interner;
 use syntax::ast::{self, NameOwner};
 
 use crate::{
-    Adt, Const, ConstParam, Enum, Field, Function, GenericParam, HasVisibility, LifetimeParam,
-    Module, Static, Struct, Trait, TyBuilder, Type, TypeAlias, TypeParam, Union, Variant,
+    Adt, Const, ConstParam, Enum, Field, Function, GenericParam, HasCrate, HasVisibility,
+    LifetimeParam, Module, Static, Struct, Trait, TyBuilder, Type, TypeAlias, TypeParam, Union,
+    Variant,
 };
 
 impl HirDisplay for Function {
@@ -234,12 +237,24 @@ impl HirDisplay for GenericParam {
 impl HirDisplay for TypeParam {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         write!(f, "{}", self.name(f.db))?;
+        if f.omit_verbose_types() {
+            return Ok(());
+        }
+
         let bounds = f.db.generic_predicates_for_param(self.id);
         let substs = TyBuilder::type_params_subst(f.db, self.id.parent);
-        let predicates =
-            bounds.iter().cloned().map(|b| b.substitute(&Interner, &substs)).collect::<Vec<_>>();
-        if !(predicates.is_empty() || f.omit_verbose_types()) {
-            let default_sized = SizedByDefault::Sized { anchor: self.module(f.db).krate().id };
+        let predicates: Vec<_> =
+            bounds.iter().cloned().map(|b| b.substitute(&Interner, &substs)).collect();
+        let krate = self.id.parent.krate(f.db).id;
+        let sized_trait =
+            f.db.lang_item(krate, "sized".into()).and_then(|lang_item| lang_item.as_trait());
+        let has_only_sized_bound = predicates.iter().all(move |pred| match pred.skip_binders() {
+            WhereClause::Implemented(it) => Some(it.hir_trait_id()) == sized_trait,
+            _ => false,
+        });
+        let has_only_not_sized_bound = predicates.is_empty();
+        if !has_only_sized_bound || has_only_not_sized_bound {
+            let default_sized = SizedByDefault::Sized { anchor: krate };
             write_bounds_like_dyn_trait_with_prefix(":", &predicates, default_sized, f)?;
         }
         Ok(())
