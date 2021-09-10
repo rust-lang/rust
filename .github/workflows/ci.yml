@@ -46,6 +46,8 @@ jobs:
               SCRIPT: python x.py build library/std --stage=2
               DIST_REQUIRE_ALL_TOOLS: 0
             os: windows-latest-xl
+            vcsvars_arch: amd64
+            vcsvars_sdk: 10.0.19041.0
           # - name: mingw-check
           #   os: ubuntu-latest-xl
           #   env: {}
@@ -137,6 +139,12 @@ jobs:
       - name: ensure backported commits are in upstream branches
         run: src/ci/scripts/verify-backported-commits.sh
         if: success() && !env.SKIP_JOB
+      - name: run vcvarsall
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.vcsvars_arch }}
+          sdk: ${{ matrix.vcsvars_sdk }}
+        if: matrix.vcsvars_sdk != '' && success() && !env.SKIP_JOB
       - name: run the build
         run: src/ci/scripts/run-build-from-ci.sh
         env:
