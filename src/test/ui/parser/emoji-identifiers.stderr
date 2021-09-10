@@ -18,25 +18,25 @@ LL | fn i_like_to_😅_a_lot() -> 👀 {
 LL |     let _ = i_like_to_😄_a_lot() ➖ 4;
    |             ^^^^^^^^^^^^^^^^^^ help: a function with a similar name exists: `i_like_to_😅_a_lot`
 
-error: identifiers cannot contain emojis: `i_like_to_😄_a_lot`
+error: identifiers cannot contain emoji: `i_like_to_😄_a_lot`
   --> $DIR/emoji-identifiers.rs:13:13
    |
 LL |     let _ = i_like_to_😄_a_lot() ➖ 4;
    |             ^^^^^^^^^^^^^^^^^^
 
-error: identifiers cannot contain emojis: `full_of_✨`
+error: identifiers cannot contain emoji: `full_of_✨`
   --> $DIR/emoji-identifiers.rs:4:8
    |
 LL |     fn full_of_✨() -> 👀 {
    |        ^^^^^^^^^^
 
-error: identifiers cannot contain emojis: `full_of✨`
+error: identifiers cannot contain emoji: `full_of✨`
   --> $DIR/emoji-identifiers.rs:9:8
    |
 LL |     👀::full_of✨()
    |         ^^^^^^^^^
 
-error: identifiers cannot contain emojis: `👀`
+error: identifiers cannot contain emoji: `👀`
   --> $DIR/emoji-identifiers.rs:2:8
    |
 LL | struct 👀;
@@ -53,13 +53,13 @@ LL | fn i_like_to_😅_a_lot() -> 👀 {
 LL |     👀::full_of✨()
    |     ^^
 
-error: identifiers cannot contain emojis: `i_like_to_😅_a_lot`
+error: identifiers cannot contain emoji: `i_like_to_😅_a_lot`
   --> $DIR/emoji-identifiers.rs:8:4
    |
 LL | fn i_like_to_😅_a_lot() -> 👀 {
    |    ^^^^^^^^^^^^^^^^^^
 
-error: identifiers cannot contain emojis: `ABig👩👩👧👧Family`
+error: identifiers cannot contain emoji: `ABig👩👩👧👧Family`
   --> $DIR/emoji-identifiers.rs:1:8
    |
 LL | struct ABig👩👩👧👧Family;
