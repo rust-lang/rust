@@ -15,7 +15,7 @@
 //!   with networking objects like [`TcpListener`], [`TcpStream`] or [`UdpSocket`]
 //! * Other types are return or parameter types for various methods in this module
 //!
-//! Rust disables inheritance of socket objects to child processes by default when possible.  For 
+//! Rust disables inheritance of socket objects to child processes by default when possible.  For
 //! example, through the use of the `CLOEXEC` flag in UNIX systems or the `HANDLE_FLAG_INHERIT`
 //! flag on Windows.
 
