@@ -1700,41 +1700,72 @@ crate fn show_candidates(
         return;
     }
 
+    let mut accessible_path_strings: Vec<(String, &str)> = Vec::new();
+    let mut inaccessible_path_strings: Vec<(String, &str)> = Vec::new();
+
+    candidates.iter().for_each(|c| {
+        (if c.accessible { &mut accessible_path_strings } else { &mut inaccessible_path_strings })
+            .push((path_names_to_string(&c.path), c.descr))
+    });
+
     // we want consistent results across executions, but candidates are produced
     // by iterating through a hash map, so make sure they are ordered:
-    let mut path_strings: Vec<_> =
-        candidates.iter().map(|c| path_names_to_string(&c.path)).collect();
+    for path_strings in [&mut accessible_path_strings, &mut inaccessible_path_strings] {
+        path_strings.sort();
+        let core_path_strings =
+            path_strings.drain_filter(|p| p.starts_with("core::")).collect::<Vec<String>>();
+        path_strings.extend(core_path_strings);
+        path_strings.dedup();
+    }
 
-    path_strings.sort();
-    let core_path_strings =
-        path_strings.drain_filter(|p| p.starts_with("core::")).collect::<Vec<String>>();
-    path_strings.extend(core_path_strings);
-    path_strings.dedup();
+    if !accessible_path_strings.is_empty() {
+        let (determiner, kind) = if accessible_path_strings.len() == 1 {
+            ("this", accessible_path_strings[0].1)
+        } else {
+            ("one of these", "items")
+        };
 
-    let (determiner, kind) = if candidates.len() == 1 {
-        ("this", candidates[0].descr)
-    } else {
-        ("one of these", "items")
-    };
+        let instead = if instead { " instead" } else { "" };
+        let mut msg = format!("consider importing {} {}{}", determiner, kind, instead);
 
-    let instead = if instead { " instead" } else { "" };
-    let mut msg = format!("consider importing {} {}{}", determiner, kind, instead);
+        if let Some(span) = use_placement_span {
+            for candidate in &mut accessible_path_strings {
+                // produce an additional newline to separate the new use statement
+                // from the directly following item.
+                let additional_newline = if found_use { "" } else { "\n" };
+                candidate.0 = format!("use {};\n{}", &candidate.0, additional_newline);
+            }
 
-    if let Some(span) = use_placement_span {
-        for candidate in &mut path_strings {
-            // produce an additional newline to separate the new use statement
-            // from the directly following item.
-            let additional_newline = if found_use { "" } else { "\n" };
-            *candidate = format!("use {};\n{}", candidate, additional_newline);
+            err.span_suggestions(
+                span,
+                &msg,
+                accessible_path_strings.into_iter().map(|a| a.0),
+                Applicability::Unspecified,
+            );
+        } else {
+            msg.push(':');
+
+            for candidate in accessible_path_strings {
+                msg.push('\n');
+                msg.push_str(&candidate.0);
+            }
+
+            err.note(&msg);
         }
-
-        err.span_suggestions(span, &msg, path_strings.into_iter(), Applicability::Unspecified);
     } else {
-        msg.push(':');
+        assert!(!inaccessible_path_strings.is_empty());
 
-        for candidate in path_strings {
+        let (determiner, kind, verb1, verb2) = if inaccessible_path_strings.len() == 1 {
+            ("this", inaccessible_path_strings[0].1, "exists", "is")
+        } else {
+            ("these", "items", "exist", "are")
+        };
+
+        let mut msg = format!("{} {} {} but {} inaccessible:", determiner, kind, verb1, verb2);
+
+        for candidate in inaccessible_path_strings {
             msg.push('\n');
-            msg.push_str(&candidate);
+            msg.push_str(&candidate.0);
         }
 
         err.note(&msg);

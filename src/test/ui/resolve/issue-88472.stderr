@@ -1,0 +1,34 @@
+error[E0412]: cannot find type `Foo` in this scope
+  --> $DIR/issue-88472.rs:14:16
+   |
+LL |     type Bar = Foo;
+   |                ^^^ not found in this scope
+   |
+   = note: this struct exists but is inaccessible:
+           a::Foo
+
+error[E0412]: cannot find type `Eee` in this scope
+  --> $DIR/issue-88472.rs:29:16
+   |
+LL |     type Baz = Eee;
+   |                ^^^ not found in this scope
+   |
+   = note: these items exist but are inaccessible:
+           c::Eee
+           c::d::Eee
+
+warning: unused import: `crate::a::*`
+  --> $DIR/issue-88472.rs:12:9
+   |
+LL |     use crate::a::*;
+   |         ^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-88472.rs:4:9
+   |
+LL | #![warn(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0412`.
