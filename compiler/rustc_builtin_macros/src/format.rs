@@ -964,17 +964,19 @@ pub fn expand_preparsed_format_args(
         }
         Ok(fmt) => fmt,
         Err(err) => {
-            if let Some(mut err) = err {
+            if let Some((mut err, suggested)) = err {
                 let sugg_fmt = match args.len() {
                     0 => "{}".to_string(),
                     _ => format!("{}{{}}", "{} ".repeat(args.len())),
                 };
-                err.span_suggestion(
-                    fmt_sp.shrink_to_lo(),
-                    "you might be missing a string literal to format with",
-                    format!("\"{}\", ", sugg_fmt),
-                    Applicability::MaybeIncorrect,
-                );
+                if !suggested {
+                    err.span_suggestion(
+                        fmt_sp.shrink_to_lo(),
+                        "you might be missing a string literal to format with",
+                        format!("\"{}\", ", sugg_fmt),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
                 err.emit();
             }
             return DummyResult::raw_expr(sp, true);
