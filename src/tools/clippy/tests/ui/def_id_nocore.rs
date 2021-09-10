@@ -15,10 +15,11 @@ pub trait Copy {}
 pub unsafe trait Freeze {}
 
 #[lang = "start"]
-#[start]
-fn start(_argc: isize, _argv: *const *const u8) -> isize {
+fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8) -> isize {
     0
 }
+
+fn main() {}
 
 struct A;
 
