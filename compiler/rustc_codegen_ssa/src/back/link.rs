@@ -2426,7 +2426,14 @@ fn add_upstream_native_libraries(
                 NativeLibKind::Dylib { as_needed } => {
                     cmd.link_dylib(name, verbatim, as_needed.unwrap_or(true))
                 }
-                NativeLibKind::Unspecified => cmd.link_dylib(name, verbatim, true),
+                NativeLibKind::Unspecified => {
+                    cmd.link_dylib(
+                        name,
+                        verbatim,
+                        // FIXME: lld doesn't include some needed shared libraries without this, but includes some unneeded ones with this
+                        sess.opts.cg.link_args.iter().all(|arg| arg != "-fuse-ld=lld"),
+                    )
+                }
                 NativeLibKind::Framework { as_needed } => {
                     cmd.link_framework(name, as_needed.unwrap_or(true))
                 }
