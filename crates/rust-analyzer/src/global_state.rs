@@ -186,9 +186,9 @@ impl GlobalState {
             }
 
             for file in changed_files {
-                if file.is_created_or_deleted() {
-                    if let Some(path) = vfs.file_path(file.file_id).as_path() {
-                        fs_changes.push((path.to_path_buf(), file.change_kind));
+                if let Some(path) = vfs.file_path(file.file_id).as_path() {
+                    fs_changes.push((path.to_path_buf(), file.change_kind));
+                    if file.is_created_or_deleted() {
                         has_fs_changes = true;
                     }
                 }
