@@ -275,7 +275,8 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
             write!(
                 w,
                 "<h2 id=\"{id}\" class=\"section-header\">\
-                       <a href=\"#{id}\">{name}</a></h2>\n{}",
+                    <a href=\"#{id}\">{name}</a>\
+                 </h2>\n{}",
                 ITEM_TABLE_OPEN,
                 id = cx.derive_id(short.to_owned()),
                 name = name

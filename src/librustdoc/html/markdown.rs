@@ -445,6 +445,42 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
     }
 }
 
+/// Wrap HTML tables into `<div>` to prevent having the doc blocks width being too big.
+struct TableWrapper<'a, I: Iterator<Item = Event<'a>>> {
+    inner: I,
+    stored_events: VecDeque<Event<'a>>,
+}
+
+impl<'a, I: Iterator<Item = Event<'a>>> TableWrapper<'a, I> {
+    fn new(iter: I) -> Self {
+        Self { inner: iter, stored_events: VecDeque::new() }
+    }
+}
+
+impl<'a, I: Iterator<Item = Event<'a>>> Iterator for TableWrapper<'a, I> {
+    type Item = Event<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(first) = self.stored_events.pop_front() {
+            return Some(first);
+        }
+
+        let event = self.inner.next()?;
+
+        Some(match event {
+            Event::Start(Tag::Table(t)) => {
+                self.stored_events.push_back(Event::Start(Tag::Table(t)));
+                Event::Html(CowStr::Borrowed("<div>"))
+            }
+            Event::End(Tag::Table(t)) => {
+                self.stored_events.push_back(Event::Html(CowStr::Borrowed("</div>")));
+                Event::End(Tag::Table(t))
+            }
+            e => e,
+        })
+    }
+}
+
 type SpannedEvent<'a> = (Event<'a>, Range<usize>);
 
 /// Make headings links with anchor IDs and build up TOC.
@@ -993,6 +1029,7 @@ impl Markdown<'_> {
         let p = HeadingLinks::new(p, None, &mut ids);
         let p = Footnotes::new(p);
         let p = LinkReplacer::new(p.map(|(ev, _)| ev), links);
+        let p = TableWrapper::new(p);
         let p = CodeBlocks::new(p, codes, edition, playground);
         html::push_html(&mut s, p);
 
@@ -1013,7 +1050,8 @@ impl MarkdownWithToc<'_> {
         {
             let p = HeadingLinks::new(p, Some(&mut toc), &mut ids);
             let p = Footnotes::new(p);
-            let p = CodeBlocks::new(p.map(|(ev, _)| ev), codes, edition, playground);
+            let p = TableWrapper::new(p.map(|(ev, _)| ev));
+            let p = CodeBlocks::new(p, codes, edition, playground);
             html::push_html(&mut s, p);
         }
 
@@ -1041,7 +1079,8 @@ impl MarkdownHtml<'_> {
 
         let p = HeadingLinks::new(p, None, &mut ids);
         let p = Footnotes::new(p);
-        let p = CodeBlocks::new(p.map(|(ev, _)| ev), codes, edition, playground);
+        let p = TableWrapper::new(p.map(|(ev, _)| ev));
+        let p = CodeBlocks::new(p, codes, edition, playground);
         html::push_html(&mut s, p);
 
         s
