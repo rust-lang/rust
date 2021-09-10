@@ -294,7 +294,7 @@ impl GlobalState {
                         .workspaces
                         .iter()
                         .flat_map(|ws| ws.to_roots())
-                        .filter(|it| it.is_member)
+                        .filter(|it| it.is_local)
                         .flat_map(|root| {
                             root.include.into_iter().flat_map(|it| {
                                 [
@@ -514,12 +514,12 @@ impl ProjectFolders {
                 vfs::loader::Entry::Directories(dirs)
             };
 
-            if root.is_member {
+            if root.is_local {
                 res.watch.push(res.load.len());
             }
             res.load.push(entry);
 
-            if root.is_member {
+            if root.is_local {
                 local_filesets.push(fsc.len());
             }
             fsc.add_file_set(file_set_roots)
