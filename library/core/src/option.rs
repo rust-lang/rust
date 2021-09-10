@@ -589,10 +589,7 @@ impl<T> Option<T> {
     where
         U: PartialEq<T>,
     {
-        match self {
-            Some(y) => x == y,
-            None => false,
-        }
+        matches!(self, Some(y) if x == y)
     }
 
     /////////////////////////////////////////////////////////////////////////
