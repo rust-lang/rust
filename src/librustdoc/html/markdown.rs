@@ -48,7 +48,7 @@ use pulldown_cmark::{
 mod tests;
 
 /// Options for rendering Markdown in the main body of documentation.
-pub(crate) fn opts() -> Options {
+pub(crate) fn main_body_opts() -> Options {
     Options::ENABLE_TABLES
         | Options::ENABLE_FOOTNOTES
         | Options::ENABLE_STRIKETHROUGH
@@ -56,9 +56,13 @@ pub(crate) fn opts() -> Options {
         | Options::ENABLE_SMART_PUNCTUATION
 }
 
-/// A subset of [`opts()`] used for rendering summaries.
+/// Options for rendering Markdown in summaries (e.g., in search results).
 pub(crate) fn summary_opts() -> Options {
-    Options::ENABLE_STRIKETHROUGH | Options::ENABLE_SMART_PUNCTUATION | Options::ENABLE_TABLES
+    Options::ENABLE_TABLES
+        | Options::ENABLE_FOOTNOTES
+        | Options::ENABLE_STRIKETHROUGH
+        | Options::ENABLE_TASKLISTS
+        | Options::ENABLE_SMART_PUNCTUATION
 }
 
 /// When `to_string` is called, this struct will emit the HTML corresponding to
@@ -981,7 +985,7 @@ impl Markdown<'_> {
             }
         };
 
-        let p = Parser::new_with_broken_link_callback(md, opts(), Some(&mut replacer));
+        let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(&mut replacer));
         let p = p.into_offset_iter();
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
@@ -1000,7 +1004,7 @@ impl MarkdownWithToc<'_> {
     crate fn into_string(self) -> String {
         let MarkdownWithToc(md, mut ids, codes, edition, playground) = self;
 
-        let p = Parser::new_ext(md, opts()).into_offset_iter();
+        let p = Parser::new_ext(md, main_body_opts()).into_offset_iter();
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
@@ -1025,7 +1029,7 @@ impl MarkdownHtml<'_> {
         if md.is_empty() {
             return String::new();
         }
-        let p = Parser::new_ext(md, opts()).into_offset_iter();
+        let p = Parser::new_ext(md, main_body_opts()).into_offset_iter();
 
         // Treat inline HTML as plain text.
         let p = p.map(|event| match event.0 {
@@ -1099,7 +1103,7 @@ fn markdown_summary_with_limit(
         }
     };
 
-    let p = Parser::new_with_broken_link_callback(md, opts(), Some(&mut replacer));
+    let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
     let mut p = LinkReplacer::new(p, link_names);
 
     let mut buf = HtmlWithLimit::new(length_limit);
@@ -1246,7 +1250,8 @@ crate fn markdown_links(md: &str) -> Vec<MarkdownLink> {
         });
         None
     };
-    let p = Parser::new_with_broken_link_callback(md, opts(), Some(&mut push)).into_offset_iter();
+    let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(&mut push))
+        .into_offset_iter();
 
     // There's no need to thread an IdMap through to here because
     // the IDs generated aren't going to be emitted anywhere.
@@ -1285,7 +1290,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeB
         return code_blocks;
     }
 
-    let mut p = Parser::new_ext(md, opts()).into_offset_iter();
+    let mut p = Parser::new_ext(md, main_body_opts()).into_offset_iter();
 
     while let Some((event, offset)) = p.next() {
         if let Event::Start(Tag::CodeBlock(syntax)) = event {
