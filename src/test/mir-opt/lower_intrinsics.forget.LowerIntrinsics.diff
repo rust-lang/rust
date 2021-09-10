@@ -2,32 +2,32 @@
 + // MIR for `forget` after LowerIntrinsics
   
   fn forget(_1: T) -> () {
-      debug t => _1;                       // in scope 0 at $DIR/lower_intrinsics.rs:18:18: 18:19
-      let mut _0: ();                      // return place in scope 0 at $DIR/lower_intrinsics.rs:18:24: 18:24
-      let mut _2: T;                       // in scope 0 at $DIR/lower_intrinsics.rs:19:30: 19:31
+      debug t => _1;                       // in scope 0 at $DIR/lower_intrinsics.rs:23:18: 23:19
+      let mut _0: ();                      // return place in scope 0 at $DIR/lower_intrinsics.rs:23:24: 23:24
+      let mut _2: T;                       // in scope 0 at $DIR/lower_intrinsics.rs:24:30: 24:31
   
       bb0: {
-          StorageLive(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:19:30: 19:31
-          _2 = move _1;                    // scope 0 at $DIR/lower_intrinsics.rs:19:30: 19:31
--         _0 = std::intrinsics::forget::<T>(move _2) -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:19:5: 19:32
+          StorageLive(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:24:30: 24:31
+          _2 = move _1;                    // scope 0 at $DIR/lower_intrinsics.rs:24:30: 24:31
+-         _0 = std::intrinsics::forget::<T>(move _2) -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:24:5: 24:32
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:19:5: 19:29
+-                                          // + span: $DIR/lower_intrinsics.rs:24:5: 24:29
 -                                          // + literal: Const { ty: extern "rust-intrinsic" fn(T) {std::intrinsics::forget::<T>}, val: Value(Scalar(<ZST>)) }
-+         _0 = const ();                   // scope 0 at $DIR/lower_intrinsics.rs:19:5: 19:32
-+         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:19:5: 19:32
++         _0 = const ();                   // scope 0 at $DIR/lower_intrinsics.rs:24:5: 24:32
++         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:24:5: 24:32
       }
   
       bb1: {
-          StorageDead(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:19:31: 19:32
-          goto -> bb2;                     // scope 0 at $DIR/lower_intrinsics.rs:20:1: 20:2
+          StorageDead(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:24:31: 24:32
+          goto -> bb2;                     // scope 0 at $DIR/lower_intrinsics.rs:25:1: 25:2
       }
   
       bb2: {
-          return;                          // scope 0 at $DIR/lower_intrinsics.rs:20:2: 20:2
+          return;                          // scope 0 at $DIR/lower_intrinsics.rs:25:2: 25:2
       }
   
       bb3 (cleanup): {
-          resume;                          // scope 0 at $DIR/lower_intrinsics.rs:18:1: 20:2
+          resume;                          // scope 0 at $DIR/lower_intrinsics.rs:23:1: 25:2
       }
   }
   

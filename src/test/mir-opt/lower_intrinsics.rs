@@ -14,6 +14,11 @@ pub fn size_of<T>() -> usize {
     core::intrinsics::size_of::<T>()
 }
 
+// EMIT_MIR lower_intrinsics.align_of.LowerIntrinsics.diff
+pub fn align_of<T>() -> usize {
+    core::intrinsics::min_align_of::<T>()
+}
+
 // EMIT_MIR lower_intrinsics.forget.LowerIntrinsics.diff
 pub fn forget<T>(t: T) {
     core::intrinsics::forget(t)

@@ -1,27 +1,27 @@
 // MIR for `f_unit` before PreCodegen
 
 fn f_unit() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/lower_intrinsics.rs:28:17: 28:17
-    let mut _1: ();                      // in scope 0 at $DIR/lower_intrinsics.rs:29:16: 29:18
-    scope 1 (inlined f_dispatch::<()>) { // at $DIR/lower_intrinsics.rs:29:5: 29:19
-        debug t => _1;                   // in scope 1 at $DIR/lower_intrinsics.rs:29:5: 29:19
-        let _2: ();                      // in scope 1 at $DIR/lower_intrinsics.rs:29:5: 29:19
-        scope 2 (inlined std::mem::size_of::<()>) { // at $DIR/lower_intrinsics.rs:29:5: 29:19
+    let mut _0: ();                      // return place in scope 0 at $DIR/lower_intrinsics.rs:33:17: 33:17
+    let mut _1: ();                      // in scope 0 at $DIR/lower_intrinsics.rs:34:16: 34:18
+    scope 1 (inlined f_dispatch::<()>) { // at $DIR/lower_intrinsics.rs:34:5: 34:19
+        debug t => _1;                   // in scope 1 at $DIR/lower_intrinsics.rs:34:5: 34:19
+        let _2: ();                      // in scope 1 at $DIR/lower_intrinsics.rs:34:5: 34:19
+        scope 2 (inlined std::mem::size_of::<()>) { // at $DIR/lower_intrinsics.rs:34:5: 34:19
         }
     }
 
     bb0: {
-        StorageLive(_1);                 // scope 0 at $DIR/lower_intrinsics.rs:29:16: 29:18
-        StorageLive(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:29:5: 29:19
-        _2 = f_zst::<()>(const ()) -> bb1; // scope 1 at $DIR/lower_intrinsics.rs:29:5: 29:19
+        StorageLive(_1);                 // scope 0 at $DIR/lower_intrinsics.rs:34:16: 34:18
+        StorageLive(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:34:5: 34:19
+        _2 = f_zst::<()>(const ()) -> bb1; // scope 1 at $DIR/lower_intrinsics.rs:34:5: 34:19
                                          // mir::Constant
-                                         // + span: $DIR/lower_intrinsics.rs:29:5: 29:19
+                                         // + span: $DIR/lower_intrinsics.rs:34:5: 34:19
                                          // + literal: Const { ty: fn(()) {f_zst::<()>}, val: Value(Scalar(<ZST>)) }
     }
 
     bb1: {
-        StorageDead(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:29:5: 29:19
-        StorageDead(_1);                 // scope 0 at $DIR/lower_intrinsics.rs:29:18: 29:19
-        return;                          // scope 0 at $DIR/lower_intrinsics.rs:30:2: 30:2
+        StorageDead(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:34:5: 34:19
+        StorageDead(_1);                 // scope 0 at $DIR/lower_intrinsics.rs:34:18: 34:19
+        return;                          // scope 0 at $DIR/lower_intrinsics.rs:35:2: 35:2
     }
 }
