@@ -721,7 +721,7 @@ impl EmitterWriter {
         }
 
         let source_string = match file.get_line(line.line_index - 1) {
-            Some(s) => replace_tabs(&*s),
+            Some(s) => normalize_whitespace(&*s),
             None => return Vec::new(),
         };
 
@@ -1272,7 +1272,7 @@ impl EmitterWriter {
                 buffer.append(0, ": ", header_style);
             }
             for &(ref text, _) in msg.iter() {
-                buffer.append(0, &replace_tabs(text), header_style);
+                buffer.append(0, &normalize_whitespace(text), header_style);
             }
         }
 
@@ -1526,7 +1526,7 @@ impl EmitterWriter {
 
                             self.draw_line(
                                 &mut buffer,
-                                &replace_tabs(&unannotated_line),
+                                &normalize_whitespace(&unannotated_line),
                                 annotated_file.lines[line_idx + 1].line_index - 1,
                                 last_buffer_line_num,
                                 width_offset,
@@ -1648,7 +1648,7 @@ impl EmitterWriter {
                     buffer.puts(
                         row_num - 1,
                         max_line_num_len + 3,
-                        &replace_tabs(
+                        &normalize_whitespace(
                             &*file_lines
                                 .file
                                 .get_line(file_lines.lines[line_pos].line_index)
@@ -1674,7 +1674,7 @@ impl EmitterWriter {
                 }
 
                 // print the suggestion
-                buffer.append(row_num, &replace_tabs(line), Style::NoStyle);
+                buffer.append(row_num, &normalize_whitespace(line), Style::NoStyle);
 
                 // Colorize addition/replacements with green.
                 for &SubstitutionHighlight { start, end } in highlight_parts {
@@ -2059,7 +2059,7 @@ const REPLACEMENTS: &[(char, &str)] = &[
     ('\u{200D}', ""), // Replace ZWJ with nothing for consistent terminal output of grapheme clusters.
 ];
 
-fn replace_tabs(str: &str) -> String {
+fn normalize_whitespace(str: &str) -> String {
     let mut output = str.to_string();
     for (c, replacement) in REPLACEMENTS {
         output = output.replace(*c, replacement);
