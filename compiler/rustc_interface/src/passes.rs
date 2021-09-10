@@ -450,7 +450,7 @@ pub fn configure_and_expand(
         for (ident, spans) in identifiers.drain() {
             sess.diagnostic().span_err(
                 MultiSpan::from(spans),
-                &format!("identifiers cannot contain emojis: `{}`", ident),
+                &format!("identifiers cannot contain emoji: `{}`", ident),
             );
         }
     });
