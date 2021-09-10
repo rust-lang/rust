@@ -1,7 +1,7 @@
 //! This module provides LSIF types. This module is a temporary solution
 //! and it will go to its own repository in future
 
-use lsp_types::FoldingRange;
+use lsp_types::{FoldingRange, Hover};
 use serde::{Deserialize, Serialize};
 
 pub(crate) type RangeId = lsp_types::NumberOrString;
@@ -82,13 +82,16 @@ pub(crate) enum Vertex {
     FoldingRangeResult {
         result: Vec<FoldingRange>,
     },
+    HoverResult {
+        result: Hover,
+    }
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(tag = "label")]
 pub(crate) enum Edge {
-    Contains(EdgeData),
+    Contains(EdgeDataMultiIn),
     RefersTo(EdgeData),
     Item(Item),
 
@@ -121,6 +124,15 @@ pub(crate) struct EdgeData {
     pub(crate) in_v: lsp_types::NumberOrString,
     pub(crate) out_v: lsp_types::NumberOrString,
 }
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct EdgeDataMultiIn {
+    pub(crate) in_vs: Vec<lsp_types::NumberOrString>,
+    pub(crate) out_v: lsp_types::NumberOrString,
+}
+
+
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -230,25 +242,6 @@ mod tests {
 
         assert_eq!(serde_json::to_string(&data).unwrap(), text);
         assert_eq!(serde_json::from_str::<Entry>(&text).unwrap(), data);
-    }
-
-    #[test]
-    fn contains() {
-        let data = Entry {
-            id: lsp_types::NumberOrString::Number(5),
-            data: Element::Edge(Edge::Contains(EdgeData {
-                in_v: lsp_types::NumberOrString::Number(4),
-                out_v: lsp_types::NumberOrString::Number(1),
-            })),
-        };
-
-        let text = r#"{ "id": 5, "type": "edge", "label": "contains", "outV": 1, "inV": 4}"#
-            .replace(' ', "");
-
-        assert_eq!(
-            serde_json::from_str::<serde_json::Value>(&text).unwrap(),
-            serde_json::to_value(&data).unwrap()
-        );
     }
 
     #[test]

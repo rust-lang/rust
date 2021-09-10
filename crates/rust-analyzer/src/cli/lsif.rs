@@ -2,11 +2,11 @@
 
 use std::env;
 
-use ide::{StaticIndex, StaticIndexedFile};
+use ide::{StaticIndex, StaticIndexedFile, TokenStaticData};
 use ide_db::LineIndexDatabase;
 
 use ide_db::base_db::salsa::{self, ParallelDatabase};
-use lsp_types::NumberOrString;
+use lsp_types::{Hover, HoverContents, NumberOrString};
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace};
 use vfs::AbsPathBuf;
 
@@ -56,6 +56,38 @@ impl LsifManager {
     fn emit(&self, data: &str) {
         println!("{}", data);
     }
+
+    fn add_tokens(
+        &mut self,
+        line_index: &LineIndex,
+        doc_id: Id,
+        tokens: Vec<TokenStaticData>,
+    ) {
+        let tokens_id = tokens
+            .into_iter()
+            .map(|token| {
+                let token_id = self
+                    .add(Element::Vertex(Vertex::Range(to_proto::range(line_index, token.range))));
+                if let Some(hover) = token.hover {
+                    let hover_id = self.add(Element::Vertex(Vertex::HoverResult {
+                        result: Hover {
+                            contents: HoverContents::Markup(to_proto::markup_content(hover.markup)),
+                            range: None,
+                        },
+                    }));
+                    self.add(Element::Edge(Edge::Hover(EdgeData {
+                        in_v: hover_id.into(),
+                        out_v: token_id.into(),
+                    })));
+                }
+                token_id.into()
+            })
+            .collect();
+        self.add(Element::Edge(Edge::Contains(EdgeDataMultiIn {
+            in_vs: tokens_id,
+            out_v: doc_id.into(),
+        })));
+    }
 }
 
 impl flags::Lsif {
@@ -85,7 +117,7 @@ impl flags::Lsif {
             position_encoding: Encoding::Utf16,
             tool_info: None,
         }));
-        for StaticIndexedFile { file_id, folds } in si.files {
+        for StaticIndexedFile { file_id, folds, tokens } in si.files {
             let path = vfs.file_path(file_id);
             let path = path.as_path().unwrap();
             let doc_id = lsif.add(Element::Vertex(Vertex::Document(Document {
@@ -94,26 +126,21 @@ impl flags::Lsif {
             })));
             let text = analysis.file_text(file_id)?;
             let line_index = db.line_index(file_id);
+            let line_index = LineIndex {
+                index: line_index.clone(),
+                encoding: OffsetEncoding::Utf16,
+                endings: LineEndings::Unix,
+            };
             let result = folds
                 .into_iter()
-                .map(|it| {
-                    to_proto::folding_range(
-                        &*text,
-                        &LineIndex {
-                            index: line_index.clone(),
-                            encoding: OffsetEncoding::Utf16,
-                            endings: LineEndings::Unix,
-                        },
-                        false,
-                        it,
-                    )
-                })
+                .map(|it| to_proto::folding_range(&*text, &line_index, false, it))
                 .collect();
             let folding_id = lsif.add(Element::Vertex(Vertex::FoldingRangeResult { result }));
             lsif.add(Element::Edge(Edge::FoldingRange(EdgeData {
                 in_v: folding_id.into(),
                 out_v: doc_id.into(),
             })));
+            lsif.add_tokens(&line_index, doc_id, tokens);
         }
         Ok(())
     }
