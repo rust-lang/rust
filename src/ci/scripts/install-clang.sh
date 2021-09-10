@@ -37,6 +37,12 @@ if isMacOS; then
     # `clang-ar` by accident.
     ciCommandSetEnv AR "ar"
 elif isWindows && [[ ${CUSTOM_MINGW-0} -ne 1 ]]; then
+
+    if [[ ${WINDOWS_SDK_20348_HACK-0} -eq 1 ]]; then
+        rm -rf '/c/Program Files (x86)/Windows Kits/10/include/10.0.20348.0'
+        mv '/c/Program Files (x86)/Windows Kits/10/include/'10.0.{19041,20348}.0
+    fi
+
     # If we're compiling for MSVC then we, like most other distribution builders,
     # switch to clang as the compiler. This'll allow us eventually to enable LTO
     # amongst LLVM and rustc. Note that we only do this on MSVC as I don't think
