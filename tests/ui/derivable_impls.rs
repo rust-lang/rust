@@ -167,4 +167,44 @@ impl Default for WithoutSelfParan {
     }
 }
 
+// https://github.com/rust-lang/rust-clippy/issues/7655
+
+pub struct SpecializedImpl2<T> {
+    v: Vec<T>,
+}
+
+impl Default for SpecializedImpl2<String> {
+    fn default() -> Self {
+        Self { v: Vec::new() }
+    }
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/7654
+
+pub struct Color {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+}
+
+/// `#000000`
+impl Default for Color {
+    fn default() -> Self {
+        Color { r: 0, g: 0, b: 0 }
+    }
+}
+
+pub struct Color2 {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+}
+
+impl Default for Color2 {
+    /// `#000000`
+    fn default() -> Self {
+        Self { r: 0, g: 0, b: 0 }
+    }
+}
+
 fn main() {}

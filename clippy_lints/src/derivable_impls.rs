@@ -2,10 +2,9 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::{in_macro, is_automatically_derived, is_default_equivalent, remove_blocks};
 use rustc_hir::{
     def::{DefKind, Res},
-    Body, Expr, ExprKind, Impl, ImplItemKind, Item, ItemKind, Node, QPath,
+    Body, Expr, ExprKind, GenericArg, Impl, ImplItemKind, Item, ItemKind, Node, PathSegment, QPath, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::TypeFoldable;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
@@ -68,6 +67,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             if let ItemKind::Impl(Impl {
                 of_trait: Some(ref trait_ref),
                 items: [child],
+                self_ty,
                 ..
             }) = item.kind;
             if let attrs = cx.tcx.hir().attrs(item.hir_id());
@@ -80,9 +80,18 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             if let ImplItemKind::Fn(_, b) = &impl_item.kind;
             if let Body { value: func_expr, .. } = cx.tcx.hir().body(*b);
             if let Some(adt_def) = cx.tcx.type_of(item.def_id).ty_adt_def();
+            if !attrs.iter().any(|attr| attr.doc_str().is_some());
+            if let child_attrs = cx.tcx.hir().attrs(impl_item_hir);
+            if !child_attrs.iter().any(|attr| attr.doc_str().is_some());
             then {
-                if cx.tcx.type_of(item.def_id).definitely_has_param_types_or_consts(cx.tcx) {
-                    return;
+                if let TyKind::Path(QPath::Resolved(_, p)) = self_ty.kind {
+                    if let Some(PathSegment { args: Some(a), .. }) = p.segments.last() {
+                        for arg in a.args {
+                            if !matches!(arg, GenericArg::Lifetime(_)) {
+                                return;
+                            }
+                        }
+                    }
                 }
                 let should_emit = match remove_blocks(func_expr).kind {
                     ExprKind::Tup(fields) => fields.iter().all(|e| is_default_equivalent(cx, e)),
