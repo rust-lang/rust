@@ -10,8 +10,6 @@ pub fn target() -> Target {
         LinkerFlavor::Gcc,
         vec![
             "-specs=3dsx.specs".to_string(),
-            "-g".to_string(),
-            "-march=armv6k".to_string(),
             "-mtune=mpcore".to_string(),
             "-mfloat-abi=hard".to_string(),
             "-mtp=soft".to_string(),
@@ -19,7 +17,7 @@ pub fn target() -> Target {
     );
 
     Target {
-        llvm_target: "arm-none-eabihf".to_string(),
+        llvm_target: "armv6k-none-eabihf".to_string(),
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
         arch: "arm".to_string(),
