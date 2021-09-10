@@ -21,7 +21,8 @@
         allocator_api,
         slice_ptr_get,
         nonnull_slice_from_raw_parts,
-        maybe_uninit_array_assume_init
+        maybe_uninit_array_assume_init,
+        build_hasher_simple_hash_one
     )
 )]
 #![allow(
