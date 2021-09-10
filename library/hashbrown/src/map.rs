@@ -242,6 +242,7 @@ where
     move |x| k.eq(x.borrow())
 }
 
+#[cfg(not(feature = "nightly"))]
 #[cfg_attr(feature = "inline-more", inline)]
 pub(crate) fn make_hash<K, Q, S>(hash_builder: &S, val: &Q) -> u64
 where
@@ -255,6 +256,18 @@ where
     state.finish()
 }
 
+#[cfg(feature = "nightly")]
+#[cfg_attr(feature = "inline-more", inline)]
+pub(crate) fn make_hash<K, Q, S>(hash_builder: &S, val: &Q) -> u64
+where
+    K: Borrow<Q>,
+    Q: Hash + ?Sized,
+    S: BuildHasher,
+{
+    hash_builder.hash_one(val)
+}
+
+#[cfg(not(feature = "nightly"))]
 #[cfg_attr(feature = "inline-more", inline)]
 pub(crate) fn make_insert_hash<K, S>(hash_builder: &S, val: &K) -> u64
 where
@@ -265,6 +278,16 @@ where
     let mut state = hash_builder.build_hasher();
     val.hash(&mut state);
     state.finish()
+}
+
+#[cfg(feature = "nightly")]
+#[cfg_attr(feature = "inline-more", inline)]
+pub(crate) fn make_insert_hash<K, S>(hash_builder: &S, val: &K) -> u64
+where
+    K: Hash,
+    S: BuildHasher,
+{
+    hash_builder.hash_one(val)
 }
 
 #[cfg(feature = "ahash")]
@@ -4793,8 +4816,6 @@ mod test_map {
     #[test]
     #[cfg(feature = "raw")]
     fn test_into_iter_refresh() {
-        use core::hash::{BuildHasher, Hash, Hasher};
-
         #[cfg(miri)]
         const N: usize = 32;
         #[cfg(not(miri))]
@@ -4817,9 +4838,7 @@ mod test_map {
             loop {
                 // occasionally remove some elements
                 if i < n && rng.gen_bool(0.1) {
-                    let mut hasher = hash_builder.build_hasher();
-                    i.hash(&mut hasher);
-                    let hash_value = hasher.finish();
+                    let hash_value = super::make_insert_hash(&hash_builder, &i);
 
                     unsafe {
                         let e = map.table.find(hash_value, |q| q.0.eq(&i));
