@@ -316,7 +316,7 @@ impl<'a> Parser<'a> {
             |(fields, recovered)| {
                 let span = lo.to(self.prev_token.span);
                 self.sess.gated_spans.gate(sym::unnamed_fields, span);
-                // These will be rejected during AST validation in `deny_anonymous_struct`.
+                // These can be rejected during AST validation in `deny_anonymous_struct`.
                 return if is_union {
                     TyKind::AnonymousUnion(fields, recovered)
                 } else {
