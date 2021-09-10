@@ -50,9 +50,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 None => UniverseInfo::other(),
             };
             for u in old_universe..universe {
-                let info_universe =
-                    self.borrowck_context.constraints.universe_causes.push(universe_info.clone());
-                assert_eq!(u.as_u32() + 1, info_universe.as_u32());
+                self.borrowck_context
+                    .constraints
+                    .universe_causes
+                    .insert(u + 1, universe_info.clone());
             }
         }
 
@@ -70,9 +71,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let (instantiated, _) =
             self.infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
 
-        for _ in 0..canonical.max_universe.as_u32() {
+        for u in 0..canonical.max_universe.as_u32() {
             let info = UniverseInfo::other();
-            self.borrowck_context.constraints.universe_causes.push(info);
+            self.borrowck_context
+                .constraints
+                .universe_causes
+                .insert(ty::UniverseIndex::from_u32(u), info);
         }
 
         instantiated

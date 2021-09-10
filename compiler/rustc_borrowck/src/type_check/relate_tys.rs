@@ -81,14 +81,10 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
 
     fn create_next_universe(&mut self) -> ty::UniverseIndex {
         let universe = self.infcx.create_next_universe();
-        // FIXME: If we relate tys after normalizing with late-bound regions, there will
-        // be extra universes. A proper solution would be to somehow track those universes
-        // during projection, but here we just treat those as "other"
         self.borrowck_context
             .constraints
             .universe_causes
-            .ensure_contains_elem(universe, || UniverseInfo::other());
-        self.borrowck_context.constraints.universe_causes[universe] = self.universe_info.clone();
+            .insert(universe, self.universe_info.clone());
         universe
     }
 
