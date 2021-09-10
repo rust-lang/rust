@@ -333,10 +333,9 @@ impl Command {
             let mut set = MaybeUninit::<libc::sigset_t>::uninit();
             cvt(sigemptyset(set.as_mut_ptr()))?;
             cvt(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(), ptr::null_mut()))?;
-            let ret = sys::signal(libc::SIGPIPE, libc::SIG_DFL);
-            if ret == libc::SIG_ERR {
-                return Err(io::Error::last_os_error());
-            }
+            let mut action: libc::sigaction = mem::zeroed();
+            action.sa_sigaction = libc::SIG_DFL;
+            cvt(libc::sigaction(libc::SIGPIPE, &action as *const _, ptr::null_mut()))?;
         }
 
         for callback in self.get_closures().iter_mut() {
