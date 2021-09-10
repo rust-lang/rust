@@ -16,9 +16,4 @@ struct Foo {
     e: f32,
 }
 
-type A =
- struct {
-     field: u8,
- };
-
 fn main() { }
