@@ -239,7 +239,7 @@
 //! Iterators also provide a series of *adapter* methods for performing common
 //! threads to sequences. Among the adapters are functional favorites like `map`,
 //! `fold`, `skip` and `take`. Of particular interest to collections is the
-//! `rev` adapter, that reverses any iterator that supports this operation. Most
+//! `rev` adapter, which reverses any iterator that supports this operation. Most
 //! collections provide reversible iterators as the way to iterate over them in
 //! reverse order.
 //!
