@@ -375,7 +375,7 @@ Any reuse of a named label, local or otherwise, can result in a assembler or lin
 
 As a consequence, you should only use GNU assembler **numeric** [local labels] inside inline assembly code. Defining symbols in assembly code may lead to assembler and/or linker errors due to duplicate symbol definitions.
 
-Moreover, on x86 when using the default intel syntax, due to [an llvm bug], you shouldn't use labels exclusively made of `0` and `1` digits, e.g. `0`, `11` or `101010`, as they may end up being interpreted as binary values. Using `option(att_syntax)` will avoid any ambiguity, but that affects the syntax of the _entire_ `asm!` block.
+Moreover, on x86 when using the default intel syntax, due to [an llvm bug], you shouldn't use labels exclusively made of `0` and `1` digits, e.g. `0`, `11` or `101010`, as they may end up being interpreted as binary values. Using `options(att_syntax)` will avoid any ambiguity, but that affects the syntax of the _entire_ `asm!` block.
 
 ```rust,allow_fail
 #![feature(asm)]
