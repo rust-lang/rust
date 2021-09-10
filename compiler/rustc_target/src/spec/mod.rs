@@ -1421,7 +1421,7 @@ impl Default for TargetOptions {
             stack_probes: StackProbeType::None,
             min_global_align: None,
             default_codegen_units: None,
-            trap_unreachable: true,
+            trap_unreachable: false,
             requires_lto: false,
             singlethread: false,
             no_builtins: false,
