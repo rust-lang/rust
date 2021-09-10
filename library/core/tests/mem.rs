@@ -269,3 +269,53 @@ fn uninit_const_assume_init_read() {
     const FOO: u32 = unsafe { MaybeUninit::new(42).assume_init_read() };
     assert_eq!(FOO, 42);
 }
+
+#[test]
+fn uninit_array_index_mut() {
+    let mut v = MaybeUninit::<[i32; 4]>::uninit();
+
+    v[0].write(1);
+    v[1].write(2);
+    v[2].write(4);
+    v[3].write(8);
+
+    let v = unsafe { v.assume_init() };
+    assert_eq!(v, [1, 2, 4, 8]);
+}
+
+#[test]
+fn uninit_array_as_mut() {
+    let mut v = MaybeUninit::<[i32; 4]>::uninit();
+
+    v.as_mut()[0].write(1);
+    v.as_mut()[1].write(2);
+    v.as_mut()[2].write(4);
+    v.as_mut()[3].write(8);
+
+    let v = unsafe { v.assume_init() };
+    assert_eq!(v, [1, 2, 4, 8]);
+}
+
+#[test]
+fn uninit_array_loop_init() {
+    let mut v = MaybeUninit::<[i32; 4]>::uninit();
+
+    for v in &mut v {
+        v.write(42);
+    }
+
+    let v = unsafe { v.assume_init() };
+    assert_eq!(v, [42, 42, 42, 42]);
+}
+
+#[test]
+fn uninit_array_iter_mut() {
+    let mut v = MaybeUninit::<[i32; 4]>::uninit();
+
+    v.iter_mut().zip(1..=4).for_each(|(v, val)| {
+        v.write(val);
+    });
+
+    let v = unsafe { v.assume_init() };
+    assert_eq!(v, [1, 2, 4, 8]);
+}

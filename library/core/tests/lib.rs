@@ -34,6 +34,7 @@
 #![feature(slice_partition_at_index)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_array_assume_init)]
+#![feature(maybe_uninit_array_index)]
 #![feature(maybe_uninit_extra)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(min_specialization)]

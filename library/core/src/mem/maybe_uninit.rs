@@ -2,7 +2,9 @@ use crate::any::type_name;
 use crate::fmt;
 use crate::intrinsics;
 use crate::mem::ManuallyDrop;
+use crate::ops::{Index, IndexMut};
 use crate::ptr;
+use crate::slice::IterMut;
 
 /// A wrapper type to construct uninitialized instances of `T`.
 ///
@@ -1156,5 +1158,57 @@ impl<T> MaybeUninit<T> {
 
         // SAFETY: Valid elements have just been written into `this` so it is initialized
         unsafe { MaybeUninit::slice_assume_init_mut(this) }
+    }
+}
+
+impl<T, const N: usize> Index<usize> for MaybeUninit<[T; N]> {
+    type Output = MaybeUninit<T>;
+
+    #[inline]
+    fn index(&self, index: usize) -> &Self::Output {
+        Index::index(self.as_ref(), index)
+    }
+}
+
+impl<T, const N: usize> IndexMut<usize> for MaybeUninit<[T; N]> {
+    #[inline]
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        IndexMut::index_mut(self.as_mut(), index)
+    }
+}
+
+impl<T, const N: usize> AsRef<[MaybeUninit<T>]> for MaybeUninit<[T; N]> {
+    #[inline]
+    fn as_ref(&self) -> &[MaybeUninit<T>] {
+        let data = self.as_ptr().cast::<MaybeUninit<T>>();
+        // SAFETY: MaybeUninit<[T; N]> and [MaybeUninit<T>; N] have the same layout
+        // data points to N consecutive properly initialized values of type MaybeUninit<T>.
+        unsafe { crate::slice::from_raw_parts(data, N) }
+    }
+}
+
+impl<T, const N: usize> AsMut<[MaybeUninit<T>]> for MaybeUninit<[T; N]> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut [MaybeUninit<T>] {
+        let data = self.as_mut_ptr().cast::<MaybeUninit<T>>();
+        // SAFETY: MaybeUninit<[T; N]> and [MaybeUninit<T>; N] have the same layout
+        // data points to N consecutive properly initialized values of type MaybeUninit<T>.
+        unsafe { crate::slice::from_raw_parts_mut(data, N) }
+    }
+}
+
+impl<'a, T, const N: usize> IntoIterator for &'a mut MaybeUninit<[T; N]> {
+    type Item = &'a mut MaybeUninit<T>;
+    type IntoIter = IterMut<'a, MaybeUninit<T>>;
+
+    fn into_iter(self) -> IterMut<'a, MaybeUninit<T>> {
+        self.as_mut().iter_mut()
+    }
+}
+
+#[unstable(feature = "maybe_uninit_array_index", issue = "none")]
+impl<T, const N: usize> MaybeUninit<[T; N]> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, MaybeUninit<T>> {
+        self.as_mut().iter_mut()
     }
 }
