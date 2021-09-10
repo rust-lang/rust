@@ -11,6 +11,7 @@ use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeFoldable};
+use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::{Span, Spanned};
@@ -1261,7 +1262,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Require `..` if struct has non_exhaustive attribute.
-        if variant.is_field_list_non_exhaustive() && !adt.did.is_local() && !etc {
+        let non_exhaustive = variant.is_field_list_non_exhaustive() && !adt.did.is_local();
+        if non_exhaustive && !etc {
             self.error_foreign_non_exhaustive_spat(pat, adt.variant_descr(), fields.is_empty());
         }
 
@@ -1276,7 +1278,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if etc {
                 tcx.sess.struct_span_err(pat.span, "`..` cannot be used in union patterns").emit();
             }
-        } else if !etc && !unmentioned_fields.is_empty() {
+        } else if !unmentioned_fields.is_empty() {
             let accessible_unmentioned_fields: Vec<_> = unmentioned_fields
                 .iter()
                 .copied()
@@ -1284,16 +1286,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     field.vis.is_accessible_from(tcx.parent_module(pat.hir_id).to_def_id(), tcx)
                 })
                 .collect();
-
-            if accessible_unmentioned_fields.is_empty() {
-                unmentioned_err = Some(self.error_no_accessible_fields(pat, &fields));
-            } else {
-                unmentioned_err = Some(self.error_unmentioned_fields(
-                    pat,
-                    &accessible_unmentioned_fields,
-                    accessible_unmentioned_fields.len() != unmentioned_fields.len(),
-                    &fields,
-                ));
+            if non_exhaustive {
+                self.non_exhaustive_reachable_pattern(pat, &accessible_unmentioned_fields, adt_ty)
+            } else if !etc {
+                if accessible_unmentioned_fields.is_empty() {
+                    unmentioned_err = Some(self.error_no_accessible_fields(pat, &fields));
+                } else {
+                    unmentioned_err = Some(self.error_unmentioned_fields(
+                        pat,
+                        &accessible_unmentioned_fields,
+                        accessible_unmentioned_fields.len() != unmentioned_fields.len(),
+                        &fields,
+                    ));
+                }
             }
         }
         match (inexistent_fields_err, unmentioned_err) {
@@ -1602,6 +1607,51 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
         err
+    }
+
+    /// Report that a pattern for a `#[non_exhaustive]` struct marked with `non_exhaustive_omitted_patterns`
+    /// is not exhaustive enough.
+    ///
+    /// Nb: the partner lint for enums lives in `compiler/rustc_mir_build/src/thir/pattern/usefulness.rs`.
+    fn non_exhaustive_reachable_pattern(
+        &self,
+        pat: &Pat<'_>,
+        unmentioned_fields: &[(&ty::FieldDef, Ident)],
+        ty: Ty<'tcx>,
+    ) {
+        fn joined_uncovered_patterns(witnesses: &[&Ident]) -> String {
+            const LIMIT: usize = 3;
+            match witnesses {
+                [] => bug!(),
+                [witness] => format!("`{}`", witness),
+                [head @ .., tail] if head.len() < LIMIT => {
+                    let head: Vec<_> = head.iter().map(<_>::to_string).collect();
+                    format!("`{}` and `{}`", head.join("`, `"), tail)
+                }
+                _ => {
+                    let (head, tail) = witnesses.split_at(LIMIT);
+                    let head: Vec<_> = head.iter().map(<_>::to_string).collect();
+                    format!("`{}` and {} more", head.join("`, `"), tail.len())
+                }
+            }
+        }
+        let joined_patterns = joined_uncovered_patterns(
+            &unmentioned_fields.iter().map(|(_, i)| i).collect::<Vec<_>>(),
+        );
+
+        self.tcx.struct_span_lint_hir(NON_EXHAUSTIVE_OMITTED_PATTERNS, pat.hir_id, pat.span, |build| {
+        let mut lint = build.build("some fields are not explicitly listed");
+        lint.span_label(pat.span, format!("field{} {} not listed", rustc_errors::pluralize!(unmentioned_fields.len()), joined_patterns));
+
+        lint.help(
+            "ensure that all fields are mentioned explicitly by adding the suggested fields",
+        );
+        lint.note(&format!(
+            "the pattern is of type `{}` and the `non_exhaustive_omitted_patterns` attribute was found",
+            ty,
+        ));
+        lint.emit();
+    });
     }
 
     /// Returns a diagnostic reporting a struct pattern which does not mention some fields.

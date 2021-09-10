@@ -3010,6 +3010,7 @@ declare_lint_pass! {
         UNSUPPORTED_CALLING_CONVENTIONS,
         BREAK_WITH_LABEL_AND_LOOP,
         UNUSED_ATTRIBUTES,
+        NON_EXHAUSTIVE_OMITTED_PATTERNS,
     ]
 }
 
@@ -3415,4 +3416,57 @@ declare_lint! {
     pub BREAK_WITH_LABEL_AND_LOOP,
     Warn,
     "`break` expression with label and unlabeled loop as value expression"
+}
+
+declare_lint! {
+    /// The `non_exhaustive_omitted_patterns` lint detects when a wildcard (`_` or `..`) in a
+    /// pattern for a `#[non_exhaustive]` struct or enum is reachable.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs separate crate)
+    /// // crate A
+    /// #[non_exhaustive]
+    /// pub enum Bar {
+    ///     A,
+    ///     B, // added variant in non breaking change
+    /// }
+    ///
+    /// // in crate B
+    /// match Bar::A {
+    ///     Bar::A => {},
+    ///     #[warn(non_exhaustive_omitted_patterns)]
+    ///     _ => {},
+    /// }
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning: reachable patterns not covered of non exhaustive enum
+    ///    --> $DIR/reachable-patterns.rs:70:9
+    ///    |
+    /// LL |         _ => {}
+    ///    |         ^ pattern `B` not covered
+    ///    |
+    ///  note: the lint level is defined here
+    ///   --> $DIR/reachable-patterns.rs:69:16
+    ///    |
+    /// LL |         #[warn(non_exhaustive_omitted_patterns)]
+    ///    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ///    = help: ensure that all possible cases are being handled by adding the suggested match arms
+    ///    = note: the matched value is of type `Bar` and the `non_exhaustive_omitted_patterns` attribute was found
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Structs and enums tagged with `#[non_exhaustive]` force the user to add a
+    /// (potentially redundant) wildcard when pattern-matching, to allow for future
+    /// addition of fields or variants. The `non_exhaustive_omitted_patterns` lint
+    /// detects when such a wildcard happens to actually catch some fields/variants.
+    /// In other words, when the match without the wildcard would not be exhaustive.
+    /// This lets the user be informed if new fields/variants were added.
+    pub NON_EXHAUSTIVE_OMITTED_PATTERNS,
+    Allow,
+    "detect when patterns of types marked `non_exhaustive` are missed",
 }

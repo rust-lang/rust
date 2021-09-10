@@ -14,8 +14,9 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{HirId, Pat};
 use rustc_middle::thir::PatKind;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::lint::builtin::BINDINGS_WITH_VARIANT_NAME;
-use rustc_session::lint::builtin::{IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS};
+use rustc_session::lint::builtin::{
+    BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
+};
 use rustc_session::Session;
 use rustc_span::{DesugaringKind, ExpnKind, Span};
 use std::slice;
@@ -559,7 +560,7 @@ fn non_exhaustive_match<'p, 'tcx>(
     err.emit();
 }
 
-fn joined_uncovered_patterns(witnesses: &[super::Pat<'_>]) -> String {
+crate fn joined_uncovered_patterns(witnesses: &[super::Pat<'_>]) -> String {
     const LIMIT: usize = 3;
     match witnesses {
         [] => bug!(),
@@ -576,7 +577,7 @@ fn joined_uncovered_patterns(witnesses: &[super::Pat<'_>]) -> String {
     }
 }
 
-fn pattern_not_covered_label(witnesses: &[super::Pat<'_>], joined_patterns: &str) -> String {
+crate fn pattern_not_covered_label(witnesses: &[super::Pat<'_>], joined_patterns: &str) -> String {
     format!("pattern{} {} not covered", rustc_errors::pluralize!(witnesses.len()), joined_patterns)
 }
 
