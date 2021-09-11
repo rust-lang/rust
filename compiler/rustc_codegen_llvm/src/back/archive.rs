@@ -1,6 +1,7 @@
 //! A helper class for dealing with static archives
 
-use std::ffi::{CStr, CString};
+use std::env;
+use std::ffi::{CStr, CString, OsString};
 use std::io;
 use std::mem;
 use std::path::{Path, PathBuf};
@@ -8,7 +9,7 @@ use std::ptr;
 use std::str;
 
 use crate::llvm::archive_ro::{ArchiveRO, Child};
-use crate::llvm::{self, ArchiveKind, LLVMMachineType};
+use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
 use rustc_codegen_ssa::back::archive::ArchiveBuilder;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_middle::middle::cstore::{DllCallingConvention, DllImport};
@@ -54,7 +55,6 @@ fn archive_config<'a>(sess: &'a Session, output: &Path, input: Option<&Path>) ->
     ArchiveConfig { sess, dst: output.to_path_buf(), src: input.map(|p| p.to_path_buf()) }
 }
 
-#[allow(dead_code)]
 /// Map machine type strings to values of LLVM's MachineTypes enum.
 fn llvm_machine_type(cpu: &str) -> LLVMMachineType {
     match cpu {
@@ -153,47 +153,107 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
         dll_imports: &[DllImport],
         tmpdir: &MaybeTempDir,
     ) {
-        let mut def_file_path = tmpdir.as_ref().to_path_buf();
-        def_file_path.push(format!("{}_imports", lib_name));
-        def_file_path.with_extension("def");
-        let mut output_path: PathBuf = tmpdir.as_ref().to_path_buf();
-        output_path.push(format!("{}_imports", lib_name));
-        output_path.with_extension("dll.a");
+        let output_path = {
+            let mut output_path: PathBuf = tmpdir.as_ref().to_path_buf();
+            output_path.push(format!("{}_imports", lib_name));
+            output_path.with_extension("lib")
+        };
 
-        let import_name_vector: Vec<String> = dll_imports
+        // BFD doesn't work properly with short imports
+        let mingw_gnu_toolchain = self.config.sess.target.llvm_target.ends_with("pc-windows-gnu");
+
+        // All import names are Rust identifiers and therefore cannot contain \0 characters.
+        // FIXME: when support for #[link_name] implemented, ensure that import.name values don't
+        // have any \0 characters
+        let import_name_vector: Vec<CString> = dll_imports
             .iter()
             .map(|import: &DllImport| {
                 if self.config.sess.target.arch == "x86" {
-                    LlvmArchiveBuilder::i686_decorated_name(import, true).into_string().unwrap()
+                    LlvmArchiveBuilder::i686_decorated_name(import, mingw_gnu_toolchain)
                 } else {
-                    import.name.to_string()
+                    CString::new(import.name.to_string()).unwrap()
                 }
             })
             .collect();
 
-        let def_file_content = format!("EXPORTS\n{}", &import_name_vector.join("\n"));
-        std::fs::write(&def_file_path, &def_file_content).unwrap();
-        std::fs::copy(&def_file_path, "d:/imports.def").unwrap();
+        if mingw_gnu_toolchain {
+            let mut def_file_path = tmpdir.as_ref().to_path_buf();
+            def_file_path.push(format!("{}_imports", lib_name));
+            def_file_path.with_extension("def");
 
-        let result = std::process::Command::new("dlltool")
-            .args([
-                "-d",
-                def_file_path.to_str().unwrap(),
-                "-D",
-                lib_name,
-                "-l",
-                output_path.to_str().unwrap(),
-            ])
-            .status();
+            let def_file_content = format!(
+                "EXPORTS\n{}",
+                import_name_vector
+                    .iter()
+                    .map(|cstring| cstring.to_str().unwrap())
+                    .intersperse("\n")
+                    .collect::<String>()
+            );
+            std::fs::write(&def_file_path, def_file_content).unwrap();
 
-        if let Err(e) = result {
-            self.config.sess.fatal(&format!(
-                "Error creating import library for {}: {}",
-                lib_name,
-                e.to_string()
-            ));
-        }
-        std::fs::copy(&output_path, "d:/imports.dll.a").unwrap();
+            let dlltool = find_dlltool(self.config.sess);
+            let result = std::process::Command::new(dlltool)
+                .args([
+                    "-d",
+                    def_file_path.to_str().unwrap(),
+                    "-D",
+                    lib_name,
+                    "-l",
+                    output_path.to_str().unwrap(),
+                ])
+                .output();
+
+            match result {
+                Err(e) => {
+                    self.config.sess.fatal(&format!("Error calling dlltool: {}", e.to_string()))
+                }
+                Ok(output) if !output.status.success() => self.config.sess.fatal(&format!(
+                    "Dlltool could not create import library: {}\n{}",
+                    String::from_utf8_lossy(&output.stdout),
+                    String::from_utf8_lossy(&output.stderr)
+                )),
+                _ => {}
+            }
+        } else {
+            // we've checked for \0 characters in the library name already
+            let dll_name_z = CString::new(lib_name).unwrap();
+            let output_path_z = rustc_fs_util::path_to_c_string(&output_path);
+
+            tracing::trace!("invoking LLVMRustWriteImportLibrary");
+            tracing::trace!("  dll_name {:#?}", dll_name_z);
+            tracing::trace!("  output_path {}", output_path.display());
+            tracing::trace!(
+                "  import names: {}",
+                dll_imports
+                    .iter()
+                    .map(|import| import.name.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            );
+
+            let ffi_exports: Vec<LLVMRustCOFFShortExport> = import_name_vector
+                .iter()
+                .map(|name_z| LLVMRustCOFFShortExport::from_name(name_z.as_ptr()))
+                .collect();
+            let result = unsafe {
+                crate::llvm::LLVMRustWriteImportLibrary(
+                    dll_name_z.as_ptr(),
+                    output_path_z.as_ptr(),
+                    ffi_exports.as_ptr(),
+                    ffi_exports.len(),
+                    llvm_machine_type(&self.config.sess.target.arch) as u16,
+                    !self.config.sess.target.is_like_msvc,
+                )
+            };
+
+            if result == crate::llvm::LLVMRustResult::Failure {
+                self.config.sess.fatal(&format!(
+                    "Error creating import library for {}: {}",
+                    lib_name,
+                    llvm::last_error().unwrap_or("unknown LLVM error".to_string())
+                ));
+            }
+        };
 
         self.add_archive(&output_path, |_| false).unwrap_or_else(|e| {
             self.config.sess.fatal(&format!(
@@ -342,4 +402,27 @@ impl<'a> LlvmArchiveBuilder<'a> {
 
 fn string_to_io_error(s: String) -> io::Error {
     io::Error::new(io::ErrorKind::Other, format!("bad archive: {}", s))
+}
+
+fn find_dlltool(sess: &Session) -> OsString {
+    // When cross-compiling first try binary prefixed with target triple
+    if sess.host.llvm_target != sess.target.llvm_target {
+        let prefixed_dlltool = if sess.target.arch == "x86" {
+            "i686-w64-mingw32-dlltool"
+        } else {
+            "x86_64-w64-mingw32-dlltool"
+        };
+        let prefixed_dlltool = if cfg!(windows) {
+            [prefixed_dlltool, "exe"].concat()
+        } else {
+            prefixed_dlltool.to_string()
+        };
+        for dir in env::split_paths(&env::var_os("PATH").unwrap_or_default()) {
+            let full_path = dir.join(&prefixed_dlltool);
+            if full_path.is_file() {
+                return full_path.into_os_string();
+            }
+        }
+    }
+    OsString::from("dlltool")
 }
