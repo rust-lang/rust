@@ -3,7 +3,6 @@ use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext}
 use rustc_ast as ast;
 use rustc_ast::util::{classify, parser};
 use rustc_ast::{ExprKind, StmtKind};
-use rustc_ast_pretty::pprust;
 use rustc_errors::{pluralize, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -12,7 +11,7 @@ use rustc_middle::ty::adjustment;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::Symbol;
 use rustc_span::symbol::{kw, sym};
-use rustc_span::{BytePos, Span, DUMMY_SP};
+use rustc_span::{BytePos, MultiSpan, Span, DUMMY_SP};
 
 declare_lint! {
     /// The `unused_must_use` lint detects unused result of a type flagged as
@@ -491,77 +490,60 @@ trait UnusedDelimLint {
         left_pos: Option<BytePos>,
         right_pos: Option<BytePos>,
     ) {
-        let expr_text = if let Ok(snippet) = cx.sess().source_map().span_to_snippet(value.span) {
-            snippet
-        } else {
-            pprust::expr_to_string(value)
+        let spans = match value.kind {
+            ast::ExprKind::Block(ref block, None) if block.stmts.len() > 0 => {
+                let start = block.stmts[0].span;
+                let end = block.stmts[block.stmts.len() - 1].span;
+                if value.span.from_expansion() || start.from_expansion() || end.from_expansion() {
+                    (
+                        value.span.with_hi(value.span.lo() + BytePos(1)),
+                        value.span.with_lo(value.span.hi() - BytePos(1)),
+                    )
+                } else {
+                    (value.span.with_hi(start.lo()), value.span.with_lo(end.hi()))
+                }
+            }
+            ast::ExprKind::Paren(ref expr) => {
+                if value.span.from_expansion() || expr.span.from_expansion() {
+                    (
+                        value.span.with_hi(value.span.lo() + BytePos(1)),
+                        value.span.with_lo(value.span.hi() - BytePos(1)),
+                    )
+                } else {
+                    (value.span.with_hi(expr.span.lo()), value.span.with_lo(expr.span.hi()))
+                }
+            }
+            _ => return,
         };
         let keep_space = (
             left_pos.map_or(false, |s| s >= value.span.lo()),
             right_pos.map_or(false, |s| s <= value.span.hi()),
         );
-        self.emit_unused_delims(cx, value.span, &expr_text, ctx.into(), keep_space);
+        self.emit_unused_delims(cx, spans, ctx.into(), keep_space);
     }
 
     fn emit_unused_delims(
         &self,
         cx: &EarlyContext<'_>,
-        span: Span,
-        pattern: &str,
+        spans: (Span, Span),
         msg: &str,
         keep_space: (bool, bool),
     ) {
         // FIXME(flip1995): Quick and dirty fix for #70814. This should be fixed in rustdoc
         // properly.
-        if span == DUMMY_SP {
+        if spans.0 == DUMMY_SP || spans.1 == DUMMY_SP {
             return;
         }
 
-        cx.struct_span_lint(self.lint(), span, |lint| {
+        cx.struct_span_lint(self.lint(), MultiSpan::from(vec![spans.0, spans.1]), |lint| {
             let span_msg = format!("unnecessary {} around {}", Self::DELIM_STR, msg);
             let mut err = lint.build(&span_msg);
-            let mut ate_left_paren = false;
-            let mut ate_right_paren = false;
-            let parens_removed = pattern
-                .trim_matches(|c| match c {
-                    '(' | '{' => {
-                        if ate_left_paren {
-                            false
-                        } else {
-                            ate_left_paren = true;
-                            true
-                        }
-                    }
-                    ')' | '}' => {
-                        if ate_right_paren {
-                            false
-                        } else {
-                            ate_right_paren = true;
-                            true
-                        }
-                    }
-                    _ => false,
-                })
-                .trim();
-
-            let replace = {
-                let mut replace = if keep_space.0 {
-                    let mut s = String::from(" ");
-                    s.push_str(parens_removed);
-                    s
-                } else {
-                    String::from(parens_removed)
-                };
-
-                if keep_space.1 {
-                    replace.push(' ');
-                }
-                replace
-            };
-
+            let replacement = vec![
+                (spans.0, if keep_space.0 { " ".into() } else { "".into() }),
+                (spans.1, if keep_space.1 { " ".into() } else { "".into() }),
+            ];
             let suggestion = format!("remove these {}", Self::DELIM_STR);
-
-            err.span_suggestion_short(span, &suggestion, replace, Applicability::MachineApplicable);
+            err.multipart_suggestion(&suggestion, replacement, Applicability::MachineApplicable);
             err.emit();
         });
     }
@@ -770,14 +752,15 @@ impl UnusedParens {
                 // Otherwise proceed with linting.
                 _ => {}
             }
-
-            let pattern_text =
-                if let Ok(snippet) = cx.sess().source_map().span_to_snippet(value.span) {
-                    snippet
-                } else {
-                    pprust::pat_to_string(value)
-                };
-            self.emit_unused_delims(cx, value.span, &pattern_text, "pattern", (false, false));
+            let spans = if value.span.from_expansion() || inner.span.from_expansion() {
+                (
+                    value.span.with_hi(value.span.lo() + BytePos(1)),
+                    value.span.with_lo(value.span.hi() - BytePos(1)),
+                )
+            } else {
+                (value.span.with_hi(inner.span.lo()), value.span.with_lo(inner.span.hi()))
+            };
+            self.emit_unused_delims(cx, spans, "pattern", (false, false));
         }
     }
 }
@@ -870,14 +853,15 @@ impl EarlyLintPass for UnusedParens {
                     );
                 }
                 _ => {
-                    let pattern_text =
-                        if let Ok(snippet) = cx.sess().source_map().span_to_snippet(ty.span) {
-                            snippet
-                        } else {
-                            pprust::ty_to_string(ty)
-                        };
-
-                    self.emit_unused_delims(cx, ty.span, &pattern_text, "type", (false, false));
+                    let spans = if ty.span.from_expansion() || r.span.from_expansion() {
+                        (
+                            ty.span.with_hi(ty.span.lo() + BytePos(1)),
+                            ty.span.with_lo(ty.span.hi() - BytePos(1)),
+                        )
+                    } else {
+                        (ty.span.with_hi(r.span.lo()), ty.span.with_lo(r.span.hi()))
+                    };
+                    self.emit_unused_delims(cx, spans, "type", (false, false));
                 }
             }
         }
