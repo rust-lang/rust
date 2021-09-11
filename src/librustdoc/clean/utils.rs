@@ -94,7 +94,6 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
 fn external_generic_args(
     cx: &mut DocContext<'_>,
     did: DefId,
-    is_trait: bool,
     has_self: bool,
     bindings: Vec<TypeBinding>,
     substs: SubstsRef<'_>,
@@ -122,7 +121,7 @@ fn external_generic_args(
         })
         .collect();
 
-    if is_trait && cx.tcx.fn_trait_kind_from_lang_item(did).is_some() {
+    if cx.tcx.fn_trait_kind_from_lang_item(did).is_some() {
         assert!(ty_kind.is_some());
         let inputs = match ty_kind {
             Some(ty::Tuple(ref tys)) => tys.iter().map(|t| t.expect_ty().clean(cx)).collect(),
@@ -140,12 +139,9 @@ fn external_generic_args(
     }
 }
 
-/// `is_trait` should be set to `true` if called on a `TraitRef`, in order to sugar
-/// from `Fn<(A, B,), C>` to `Fn(A, B) -> C`
 pub(super) fn external_path(
     cx: &mut DocContext<'_>,
     did: DefId,
-    is_trait: bool,
     has_self: bool,
     bindings: Vec<TypeBinding>,
     substs: SubstsRef<'_>,
@@ -157,7 +153,7 @@ pub(super) fn external_path(
         res: Res::Def(def_kind, did),
         segments: vec![PathSegment {
             name,
-            args: external_generic_args(cx, did, is_trait, has_self, bindings, substs),
+            args: external_generic_args(cx, did, has_self, bindings, substs),
         }],
     }
 }
