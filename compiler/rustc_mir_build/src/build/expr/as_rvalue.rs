@@ -5,6 +5,7 @@ use rustc_index::vec::Idx;
 use crate::build::expr::as_place::PlaceBase;
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
+use rustc_hir::lang_items::LangItem;
 use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::Place;
@@ -88,6 +89,56 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Box { value } => {
                 let value = &this.thir[value];
+                let tcx = this.tcx;
+
+                // `exchange_malloc` is unsafe but box is safe, so need a new scope.
+                let synth_scope = this.new_source_scope(
+                    expr_span,
+                    LintLevel::Inherited,
+                    Some(Safety::BuiltinUnsafe),
+                );
+                let synth_info = SourceInfo { span: expr_span, scope: synth_scope };
+
+                let size = this.temp(tcx.types.usize, expr_span);
+                this.cfg.push_assign(
+                    block,
+                    synth_info,
+                    size,
+                    Rvalue::NullaryOp(NullOp::SizeOf, value.ty),
+                );
+
+                let align = this.temp(tcx.types.usize, expr_span);
+                this.cfg.push_assign(
+                    block,
+                    synth_info,
+                    align,
+                    Rvalue::NullaryOp(NullOp::AlignOf, value.ty),
+                );
+
+                // malloc some memory of suitable size and align:
+                let exchange_malloc = Operand::function_handle(
+                    tcx,
+                    tcx.require_lang_item(LangItem::ExchangeMalloc, Some(expr_span)),
+                    ty::List::empty(),
+                    expr_span,
+                );
+                let storage = this.temp(tcx.mk_mut_ptr(tcx.types.u8), expr_span);
+                let success = this.cfg.start_new_block();
+                this.cfg.terminate(
+                    block,
+                    synth_info,
+                    TerminatorKind::Call {
+                        func: exchange_malloc,
+                        args: vec![Operand::Move(size), Operand::Move(align)],
+                        destination: Some((Place::from(storage), success)),
+                        cleanup: None,
+                        from_hir_call: false,
+                        fn_span: expr_span,
+                    },
+                );
+                this.diverge_from(block);
+                block = success;
+
                 // The `Box<T>` temporary created here is not a part of the HIR,
                 // and therefore is not considered during generator auto-trait
                 // determination. See the comment about `box` at `yield_in_scope`.
@@ -101,8 +152,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.schedule_drop_storage_and_value(expr_span, scope, result);
                 }
 
-                // malloc some memory of suitable type (thus far, uninitialized):
-                let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
+                // Transmute `*mut u8` to the box (thus far, uninitialized):
+                let box_ = Rvalue::ShallowInitBox(Operand::Move(Place::from(storage)), value.ty);
                 this.cfg.push_assign(block, source_info, Place::from(result), box_);
 
                 // initialize the box contents:
