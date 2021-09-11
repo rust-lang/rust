@@ -163,7 +163,7 @@ pub(super) fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             //               %xF4 %x80-8F 2( UTF8-tail )
             match w {
                 2 => {
-                    if !utf8_is_cont_byte(next!()) {
+                    if next!() as i8 >= -64 {
                         err!(Some(1))
                     }
                 }
@@ -175,7 +175,7 @@ pub(super) fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
                         | (0xEE..=0xEF, 0x80..=0xBF) => {}
                         _ => err!(Some(1)),
                     }
-                    if !utf8_is_cont_byte(next!()) {
+                    if next!() as i8 >= -64 {
                         err!(Some(2))
                     }
                 }
@@ -184,10 +184,10 @@ pub(super) fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
                         (0xF0, 0x90..=0xBF) | (0xF1..=0xF3, 0x80..=0xBF) | (0xF4, 0x80..=0x8F) => {}
                         _ => err!(Some(1)),
                     }
-                    if !utf8_is_cont_byte(next!()) {
+                    if next!() as i8 >= -64 {
                         err!(Some(2))
                     }
-                    if !utf8_is_cont_byte(next!()) {
+                    if next!() as i8 >= -64 {
                         err!(Some(3))
                     }
                 }
