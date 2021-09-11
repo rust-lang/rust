@@ -433,6 +433,12 @@ impl Collector<'tcx> {
                 }
             }
         };
-        DllImport { name: item.ident.name, ordinal: None, calling_convention, span: item.span }
+
+        DllImport {
+            name: item.ident.name,
+            ordinal: self.tcx.codegen_fn_attrs(item.id.def_id).link_ordinal,
+            calling_convention,
+            span: item.span,
+        }
     }
 }

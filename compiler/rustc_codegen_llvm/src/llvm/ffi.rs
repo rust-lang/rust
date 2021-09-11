@@ -34,11 +34,18 @@ pub enum LLVMRustResult {
 #[repr(C)]
 pub struct LLVMRustCOFFShortExport {
     pub name: *const c_char,
+    pub ordinal_present: bool,
+    // value of `ordinal` only important when `ordinal_present` is true
+    pub ordinal: u16,
 }
 
 impl LLVMRustCOFFShortExport {
-    pub fn from_name(name: *const c_char) -> LLVMRustCOFFShortExport {
-        LLVMRustCOFFShortExport { name }
+    pub fn new(name: *const c_char, ordinal: Option<u16>) -> LLVMRustCOFFShortExport {
+        LLVMRustCOFFShortExport {
+            name,
+            ordinal_present: ordinal.is_some(),
+            ordinal: ordinal.unwrap_or(0),
+        }
     }
 }
 
