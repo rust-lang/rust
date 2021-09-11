@@ -1095,6 +1095,11 @@ impl CrateError {
                         == Symbol::intern(&sess.opts.debugging_opts.profiler_runtime)
                     {
                         err.note(&"the compiler may have been built without the profiler runtime");
+                    } else if crate_name.as_str().starts_with("rustc_") {
+                        err.help(
+                            "maybe you need to install the missing components with: \
+                             `rustup component add rust-src rustc-dev llvm-tools-preview`",
+                        );
                     }
                     err.span_label(span, "can't find crate");
                     err
