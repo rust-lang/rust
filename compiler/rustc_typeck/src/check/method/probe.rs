@@ -186,7 +186,7 @@ pub enum AutorefOrPtrAdjustment<'tcx> {
 impl<'tcx> AutorefOrPtrAdjustment<'tcx> {
     fn get_unsize(&self) -> Option<Ty<'tcx>> {
         match self {
-            AutorefOrPtrAdjustment::Autoref { mutbl: _, unsize } => unsize.clone(),
+            AutorefOrPtrAdjustment::Autoref { mutbl: _, unsize } => *unsize,
             AutorefOrPtrAdjustment::ToConstPtr => None,
         }
     }

@@ -448,7 +448,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                                             span_idx = Some(syn::Index::from(idx));
                                         } else {
                                             throw_span_err!(
-                                                info.span.clone().unwrap(),
+                                                info.span.unwrap(),
                                                 "type of field annotated with `#[suggestion(...)]` contains more than one Span"
                                             );
                                         }
@@ -460,7 +460,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                                             applicability_idx = Some(syn::Index::from(idx));
                                         } else {
                                             throw_span_err!(
-                                                info.span.clone().unwrap(),
+                                                info.span.unwrap(),
                                                 "type of field annotated with `#[suggestion(...)]` contains more than one Applicability"
                                             );
                                         }
@@ -479,7 +479,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                                     return Ok((span, applicability));
                                 }
                                 throw_span_err!(
-                                    info.span.clone().unwrap(),
+                                    info.span.unwrap(),
                                     "wrong types for suggestion",
                                     |diag| {
                                         diag.help("#[suggestion(...)] on a tuple field must be applied to fields of type (Span, Applicability)")
@@ -487,7 +487,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                                 );
                             }
                             _ => throw_span_err!(
-                                info.span.clone().unwrap(),
+                                info.span.unwrap(),
                                 "wrong field type for suggestion",
                                 |diag| {
                                     diag.help("#[suggestion(...)] should be applied to fields of type Span or (Span, Applicability)")
