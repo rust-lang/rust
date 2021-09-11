@@ -274,11 +274,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let scalar = alloc.read_scalar(alloc_range(Size::ZERO, mplace.layout.size))?;
                 Ok(Some(ImmTy { imm: scalar.into(), layout: mplace.layout }))
             }
-            Abi::ScalarPair(ref a, ref b) => {
+            Abi::ScalarPair(a, b) => {
                 // We checked `ptr_align` above, so all fields will have the alignment they need.
                 // We would anyway check against `ptr_align.restrict_for_offset(b_offset)`,
                 // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
-                let (a, b) = (&a.value, &b.value);
+                let (a, b) = (a.value, b.value);
                 let (a_size, b_size) = (a.size(self), b.size(self));
                 let b_offset = a_size.align_to(b.align(self).abi);
                 assert!(b_offset.bytes() > 0); // we later use the offset to tell apart the fields
@@ -648,7 +648,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
                 return Ok((discr, index));
             }
-            Variants::Multiple { ref tag, ref tag_encoding, tag_field, .. } => {
+            Variants::Multiple { tag, ref tag_encoding, tag_field, .. } => {
                 (tag, tag_encoding, tag_field)
             }
         };

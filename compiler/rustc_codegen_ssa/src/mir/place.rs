@@ -99,7 +99,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     // Also handles the first field of Scalar, ScalarPair, and Vector layouts.
                     self.llval
                 }
-                Abi::ScalarPair(ref a, ref b)
+                Abi::ScalarPair(a, b)
                     if offset == a.value.size(bx.cx()).align_to(b.value.align(bx.cx()).abi) =>
                 {
                     // Offset matches second field.
@@ -222,7 +222,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     .map_or(index.as_u32() as u128, |discr| discr.val);
                 return bx.cx().const_uint_big(cast_to, discr_val);
             }
-            Variants::Multiple { ref tag, ref tag_encoding, tag_field, .. } => {
+            Variants::Multiple { tag, ref tag_encoding, tag_field, .. } => {
                 (tag, tag_encoding, tag_field)
             }
         };

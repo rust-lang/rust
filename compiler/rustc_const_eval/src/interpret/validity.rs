@@ -618,40 +618,38 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     fn visit_scalar(
         &mut self,
         op: &OpTy<'tcx, M::PointerTag>,
-        scalar_layout: &ScalarAbi,
+        scalar_layout: ScalarAbi,
     ) -> InterpResult<'tcx> {
-        let value = self.read_scalar(op)?;
-        let valid_range = scalar_layout.valid_range.clone();
-        let WrappingRange { start: lo, end: hi } = valid_range;
-        // Determine the allowed range
-        // `max_hi` is as big as the size fits
-        let max_hi = u128::MAX >> (128 - op.layout.size.bits());
-        assert!(hi <= max_hi);
-        // We could also write `(hi + 1) % (max_hi + 1) == lo` but `max_hi + 1` overflows for `u128`
-        if (lo == 0 && hi == max_hi) || (hi + 1 == lo) {
+        if scalar_layout.valid_range.is_full_for(op.layout.size) {
             // Nothing to check
             return Ok(());
         }
-        // At least one value is excluded. Get the bits.
+        // At least one value is excluded.
+        let valid_range = scalar_layout.valid_range;
+        let WrappingRange { start, end } = valid_range;
+        let max_value = op.layout.size.unsigned_int_max();
+        assert!(end <= max_value);
+        // Determine the allowed range
+        let value = self.read_scalar(op)?;
         let value = try_validation!(
             value.check_init(),
             self.path,
             err_ub!(InvalidUninitBytes(None)) => { "{}", value }
-                expected { "something {}", wrapping_range_format(valid_range, max_hi) },
+                expected { "something {}", wrapping_range_format(valid_range, max_value) },
         );
         let bits = match value.try_to_int() {
             Err(_) => {
                 // So this is a pointer then, and casting to an int failed.
                 // Can only happen during CTFE.
                 let ptr = self.ecx.scalar_to_ptr(value);
-                if lo == 1 && hi == max_hi {
+                if start == 1 && end == max_value {
                     // Only null is the niche.  So make sure the ptr is NOT null.
                     if self.ecx.memory.ptr_may_be_null(ptr) {
                         throw_validation_failure!(self.path,
                             { "a potentially null pointer" }
                             expected {
                                 "something that cannot possibly fail to be {}",
-                                wrapping_range_format(valid_range, max_hi)
+                                wrapping_range_format(valid_range, max_value)
                             }
                         )
                     }
@@ -663,7 +661,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         { "a pointer" }
                         expected {
                             "something that cannot possibly fail to be {}",
-                            wrapping_range_format(valid_range, max_hi)
+                            wrapping_range_format(valid_range, max_value)
                         }
                     )
                 }
@@ -676,7 +674,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         } else {
             throw_validation_failure!(self.path,
                 { "{}", bits }
-                expected { "something {}", wrapping_range_format(valid_range, max_hi) }
+                expected { "something {}", wrapping_range_format(valid_range, max_value) }
             )
         }
     }
@@ -786,7 +784,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     { "a value of uninhabited type {:?}", op.layout.ty }
                 );
             }
-            Abi::Scalar(ref scalar_layout) => {
+            Abi::Scalar(scalar_layout) => {
                 self.visit_scalar(op, scalar_layout)?;
             }
             Abi::ScalarPair { .. } | Abi::Vector { .. } => {

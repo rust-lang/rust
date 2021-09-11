@@ -300,7 +300,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let llval = operand.immediate();
 
                         let mut signed = false;
-                        if let Abi::Scalar(ref scalar) = operand.layout.abi {
+                        if let Abi::Scalar(scalar) = operand.layout.abi {
                             if let Int(_, s) = scalar.value {
                                 // We use `i1` for bytes that are always `0` or `1`,
                                 // e.g., `#[repr(i8)] enum E { A, B }`, but we can't
@@ -308,8 +308,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 // then `i1 1` (i.e., E::B) is effectively `i8 -1`.
                                 signed = !scalar.is_bool() && s;
 
-                                let er = scalar.valid_range_exclusive(bx.cx());
-                                if er.end != er.start
+                                if !scalar.is_always_valid(bx.cx())
                                     && scalar.valid_range.end >= scalar.valid_range.start
                                 {
                                     // We want `table[e as usize ± k]` to not

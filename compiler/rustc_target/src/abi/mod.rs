@@ -7,7 +7,7 @@ use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::iter::Step;
 use std::num::NonZeroUsize;
-use std::ops::{Add, AddAssign, Deref, Mul, Range, RangeInclusive, Sub};
+use std::ops::{Add, AddAssign, Deref, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
 use rustc_index::vec::{Idx, IndexVec};
@@ -392,6 +392,21 @@ impl Size {
         // Truncate (shift left to drop out leftover values, shift right to fill with zeroes).
         (value << shift) >> shift
     }
+
+    #[inline]
+    pub fn signed_int_min(&self) -> i128 {
+        self.sign_extend(1_u128 << (self.bits() - 1)) as i128
+    }
+
+    #[inline]
+    pub fn signed_int_max(&self) -> i128 {
+        i128::MAX >> (128 - self.bits())
+    }
+
+    #[inline]
+    pub fn unsigned_int_max(&self) -> u128 {
+        u128::MAX >> (128 - self.bits())
+    }
 }
 
 // Panicking addition, subtraction and multiplication for convenience.
@@ -739,9 +754,8 @@ impl Primitive {
 ///
 ///    254 (-2), 255 (-1), 0, 1, 2
 ///
-/// This is intended specifically to mirror LLVM’s `!range` metadata,
-/// semantics.
-#[derive(Clone, PartialEq, Eq, Hash)]
+/// This is intended specifically to mirror LLVM’s `!range` metadata semantics.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub struct WrappingRange {
     pub start: u128,
@@ -759,13 +773,6 @@ impl WrappingRange {
         }
     }
 
-    /// Returns `true` if zero is contained in the range.
-    /// Equal to `range.contains(0)` but should be faster.
-    #[inline(always)]
-    pub fn contains_zero(&self) -> bool {
-        self.start > self.end || self.start == 0
-    }
-
     /// Returns `self` with replaced `start`
     #[inline(always)]
     pub fn with_start(mut self, start: u128) -> Self {
@@ -779,17 +786,29 @@ impl WrappingRange {
         self.end = end;
         self
     }
+
+    /// Returns `true` if `size` completely fills the range.
+    #[inline]
+    pub fn is_full_for(&self, size: Size) -> bool {
+        let max_value = size.unsigned_int_max();
+        debug_assert!(self.start <= max_value && self.end <= max_value);
+        self.start == (self.end.wrapping_add(1) & max_value)
+    }
 }
 
 impl fmt::Debug for WrappingRange {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "{}..={}", self.start, self.end)?;
+        if self.start > self.end {
+            write!(fmt, "(..={}) | ({}..)", self.end, self.start)?;
+        } else {
+            write!(fmt, "{}..={}", self.start, self.end)?;
+        }
         Ok(())
     }
 }
 
 /// Information about one scalar component of a Rust type.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub struct Scalar {
     pub value: Primitive,
@@ -803,25 +822,16 @@ pub struct Scalar {
 impl Scalar {
     #[inline]
     pub fn is_bool(&self) -> bool {
-        matches!(self.value, Int(I8, false))
-            && matches!(self.valid_range, WrappingRange { start: 0, end: 1 })
+        matches!(
+            self,
+            Scalar { value: Int(I8, false), valid_range: WrappingRange { start: 0, end: 1 } }
+        )
     }
 
-    /// Returns the valid range as a `x..y` range.
-    ///
-    /// If `x` and `y` are equal, the range is full, not empty.
-    pub fn valid_range_exclusive<C: HasDataLayout>(&self, cx: &C) -> Range<u128> {
-        // For a (max) value of -1, max will be `-1 as usize`, which overflows.
-        // However, that is fine here (it would still represent the full range),
-        // i.e., if the range is everything.
-        let bits = self.value.size(cx).bits();
-        assert!(bits <= 128);
-        let mask = !0u128 >> (128 - bits);
-        let start = self.valid_range.start;
-        let end = self.valid_range.end;
-        assert_eq!(start, start & mask);
-        assert_eq!(end, end & mask);
-        start..(end.wrapping_add(1) & mask)
+    /// Returns `true` if all possible numbers are valid, i.e `valid_range` covers the whole layout
+    #[inline]
+    pub fn is_always_valid<C: HasDataLayout>(&self, cx: &C) -> bool {
+        self.valid_range.is_full_for(self.value.size(cx))
     }
 }
 
@@ -960,7 +970,7 @@ impl AddressSpace {
 
 /// Describes how values of the type are passed by target ABIs,
 /// in terms of categories of C types there are ABI rules for.
-#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum Abi {
     Uninhabited,
     Scalar(Scalar),
@@ -988,8 +998,8 @@ impl Abi {
     /// Returns `true` if this is a single signed integer scalar
     #[inline]
     pub fn is_signed(&self) -> bool {
-        match *self {
-            Abi::Scalar(ref scal) => match scal.value {
+        match self {
+            Abi::Scalar(scal) => match scal.value {
                 Primitive::Int(_, signed) => signed,
                 _ => false,
             },
@@ -1058,7 +1068,7 @@ pub enum TagEncoding {
     },
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct Niche {
     pub offset: Size,
     pub scalar: Scalar,
@@ -1071,10 +1081,10 @@ impl Niche {
     }
 
     pub fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
-        let Scalar { value, valid_range: ref v } = self.scalar;
-        let bits = value.size(cx).bits();
-        assert!(bits <= 128);
-        let max_value = !0u128 >> (128 - bits);
+        let Scalar { value, valid_range: v } = self.scalar;
+        let size = value.size(cx);
+        assert!(size.bits() <= 128);
+        let max_value = size.unsigned_int_max();
 
         // Find out how many values are outside the valid range.
         let niche = v.end.wrapping_add(1)..v.start;
@@ -1084,10 +1094,10 @@ impl Niche {
     pub fn reserve<C: HasDataLayout>(&self, cx: &C, count: u128) -> Option<(u128, Scalar)> {
         assert!(count > 0);
 
-        let Scalar { value, valid_range: v } = self.scalar.clone();
-        let bits = value.size(cx).bits();
-        assert!(bits <= 128);
-        let max_value = !0u128 >> (128 - bits);
+        let Scalar { value, valid_range: v } = self.scalar;
+        let size = value.size(cx);
+        assert!(size.bits() <= 128);
+        let max_value = size.unsigned_int_max();
 
         if count > max_value {
             return None;
@@ -1138,7 +1148,7 @@ pub struct Layout {
 
 impl Layout {
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
-        let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar.clone());
+        let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
         let size = scalar.value.size(cx);
         let align = scalar.value.align(cx);
         Layout {
@@ -1264,25 +1274,22 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty: TyAbiInterface<'a, C>,
         C: HasDataLayout,
     {
-        let scalar_allows_raw_init = move |s: &Scalar| -> bool {
+        let scalar_allows_raw_init = move |s: Scalar| -> bool {
             if zero {
                 // The range must contain 0.
-                s.valid_range.contains_zero()
+                s.valid_range.contains(0)
             } else {
-                // The range must include all values. `valid_range_exclusive` handles
-                // the wrap-around using target arithmetic; with wrap-around then the full
-                // range is one where `start == end`.
-                let range = s.valid_range_exclusive(cx);
-                range.start == range.end
+                // The range must include all values.
+                s.is_always_valid(cx)
             }
         };
 
         // Check the ABI.
-        let valid = match &self.abi {
+        let valid = match self.abi {
             Abi::Uninhabited => false, // definitely UB
             Abi::Scalar(s) => scalar_allows_raw_init(s),
             Abi::ScalarPair(s1, s2) => scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2),
-            Abi::Vector { element: s, count } => *count == 0 || scalar_allows_raw_init(s),
+            Abi::Vector { element: s, count } => count == 0 || scalar_allows_raw_init(s),
             Abi::Aggregate { .. } => true, // Fields are checked below.
         };
         if !valid {

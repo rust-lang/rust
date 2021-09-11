@@ -133,7 +133,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             }
             sym::va_arg => {
                 match fn_abi.ret.layout.abi {
-                    abi::Abi::Scalar(ref scalar) => {
+                    abi::Abi::Scalar(scalar) => {
                         match scalar.value {
                             Primitive::Int(..) => {
                                 if self.cx().size_of(ret_ty).bytes() < 4 {

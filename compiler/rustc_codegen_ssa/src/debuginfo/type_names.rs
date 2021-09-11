@@ -404,7 +404,7 @@ fn push_debuginfo_type_name<'tcx>(
 
             // calculate the range of values for the dataful variant
             let dataful_discriminant_range =
-                &dataful_variant_layout.largest_niche.as_ref().unwrap().scalar.valid_range;
+                dataful_variant_layout.largest_niche.unwrap().scalar.valid_range;
 
             let min = dataful_discriminant_range.start;
             let min = tag.value.size(&tcx).truncate(min);

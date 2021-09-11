@@ -1327,10 +1327,7 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
             };
             let (variants, tag) = match layout.variants {
                 Variants::Multiple {
-                    tag_encoding: TagEncoding::Direct,
-                    ref tag,
-                    ref variants,
-                    ..
+                    tag_encoding: TagEncoding::Direct, tag, ref variants, ..
                 } => (variants, tag),
                 _ => return,
             };

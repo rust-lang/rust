@@ -45,18 +45,6 @@ impl<'tcx> fmt::Display for Discr<'tcx> {
     }
 }
 
-fn signed_min(size: Size) -> i128 {
-    size.sign_extend(1_u128 << (size.bits() - 1)) as i128
-}
-
-fn signed_max(size: Size) -> i128 {
-    i128::MAX >> (128 - size.bits())
-}
-
-fn unsigned_max(size: Size) -> u128 {
-    u128::MAX >> (128 - size.bits())
-}
-
 fn int_size_and_signed<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> (Size, bool) {
     let (int, signed) = match *ty.kind() {
         Int(ity) => (Integer::from_int_ty(&tcx, ity), true),
@@ -74,8 +62,8 @@ impl<'tcx> Discr<'tcx> {
     pub fn checked_add(self, tcx: TyCtxt<'tcx>, n: u128) -> (Self, bool) {
         let (size, signed) = int_size_and_signed(tcx, self.ty);
         let (val, oflo) = if signed {
-            let min = signed_min(size);
-            let max = signed_max(size);
+            let min = size.signed_int_min();
+            let max = size.signed_int_max();
             let val = size.sign_extend(self.val) as i128;
             assert!(n < (i128::MAX as u128));
             let n = n as i128;
@@ -86,7 +74,7 @@ impl<'tcx> Discr<'tcx> {
             let val = size.truncate(val);
             (val, oflo)
         } else {
-            let max = unsigned_max(size);
+            let max = size.unsigned_int_max();
             let val = self.val;
             let oflo = val > max - n;
             let val = if oflo { n - (max - val) - 1 } else { val + n };
@@ -621,7 +609,8 @@ impl<'tcx> ty::TyS<'tcx> {
         let val = match self.kind() {
             ty::Int(_) | ty::Uint(_) => {
                 let (size, signed) = int_size_and_signed(tcx, self);
-                let val = if signed { signed_max(size) as u128 } else { unsigned_max(size) };
+                let val =
+                    if signed { size.signed_int_max() as u128 } else { size.unsigned_int_max() };
                 Some(val)
             }
             ty::Char => Some(std::char::MAX as u128),
@@ -640,7 +629,7 @@ impl<'tcx> ty::TyS<'tcx> {
         let val = match self.kind() {
             ty::Int(_) | ty::Uint(_) => {
                 let (size, signed) = int_size_and_signed(tcx, self);
-                let val = if signed { size.truncate(signed_min(size) as u128) } else { 0 };
+                let val = if signed { size.truncate(size.signed_int_min() as u128) } else { 0 };
                 Some(val)
             }
             ty::Char => Some(0),

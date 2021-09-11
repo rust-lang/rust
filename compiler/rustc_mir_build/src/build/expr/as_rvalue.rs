@@ -494,9 +494,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     // Helper to get a `-1` value of the appropriate type
     fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let param_ty = ty::ParamEnv::empty().and(ty);
-        let bits = self.tcx.layout_of(param_ty).unwrap().size.bits();
-        let n = (!0u128) >> (128 - bits);
-        let literal = ty::Const::from_bits(self.tcx, n, param_ty);
+        let size = self.tcx.layout_of(param_ty).unwrap().size;
+        let literal = ty::Const::from_bits(self.tcx, size.unsigned_int_max(), param_ty);
 
         self.literal_operand(span, literal)
     }

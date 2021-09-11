@@ -322,7 +322,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             Abi::Uninhabited => Err(Heterogeneous),
 
             // The primitive for this algorithm.
-            Abi::Scalar(ref scalar) => {
+            Abi::Scalar(scalar) => {
                 let kind = match scalar.value {
                     abi::Int(..) | abi::Pointer => RegKind::Integer,
                     abi::F32 | abi::F64 => RegKind::Float,
@@ -450,9 +450,9 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     pub fn new(
         cx: &impl HasDataLayout,
         layout: TyAndLayout<'a, Ty>,
-        scalar_attrs: impl Fn(&TyAndLayout<'a, Ty>, &abi::Scalar, Size) -> ArgAttributes,
+        scalar_attrs: impl Fn(&TyAndLayout<'a, Ty>, abi::Scalar, Size) -> ArgAttributes,
     ) -> Self {
-        let mode = match &layout.abi {
+        let mode = match layout.abi {
             Abi::Uninhabited => PassMode::Ignore,
             Abi::Scalar(scalar) => PassMode::Direct(scalar_attrs(&layout, scalar, Size::ZERO)),
             Abi::ScalarPair(a, b) => PassMode::Pair(
@@ -504,7 +504,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
 
     pub fn extend_integer_width_to(&mut self, bits: u64) {
         // Only integers have signedness
-        if let Abi::Scalar(ref scalar) = self.layout.abi {
+        if let Abi::Scalar(scalar) = self.layout.abi {
             if let abi::Int(i, signed) = scalar.value {
                 if i.size().bits() < bits {
                     if let PassMode::Direct(ref mut attrs) = self.mode {

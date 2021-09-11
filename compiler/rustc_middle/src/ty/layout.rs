@@ -290,9 +290,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         // HACK(nox): We iter on `b` and then `a` because `max_by_key`
         // returns the last maximum.
-        let largest_niche = Niche::from_scalar(dl, b_offset, b.clone())
+        let largest_niche = Niche::from_scalar(dl, b_offset, b)
             .into_iter()
-            .chain(Niche::from_scalar(dl, Size::ZERO, a.clone()))
+            .chain(Niche::from_scalar(dl, Size::ZERO, a))
             .max_by_key(|niche| niche.available(dl));
 
         Layout {
@@ -401,7 +401,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             offsets[i as usize] = offset;
 
             if !repr.hide_niche() {
-                if let Some(mut niche) = field.largest_niche.clone() {
+                if let Some(mut niche) = field.largest_niche {
                     let available = niche.available(dl);
                     if available > largest_niche_available {
                         largest_niche_available = available;
@@ -449,12 +449,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             // For plain scalars, or vectors of them, we can't unpack
                             // newtypes for `#[repr(C)]`, as that affects C ABIs.
                             Abi::Scalar(_) | Abi::Vector { .. } if optimize => {
-                                abi = field.abi.clone();
+                                abi = field.abi;
                             }
                             // But scalar pairs are Rust-specific and get
                             // treated as aggregates by C ABIs anyway.
                             Abi::ScalarPair(..) => {
-                                abi = field.abi.clone();
+                                abi = field.abi;
                             }
                             _ => {}
                         }
@@ -463,14 +463,14 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 // Two non-ZST fields, and they're both scalars.
                 (
-                    Some((i, &TyAndLayout { layout: &Layout { abi: Abi::Scalar(ref a), .. }, .. })),
-                    Some((j, &TyAndLayout { layout: &Layout { abi: Abi::Scalar(ref b), .. }, .. })),
+                    Some((i, &TyAndLayout { layout: &Layout { abi: Abi::Scalar(a), .. }, .. })),
+                    Some((j, &TyAndLayout { layout: &Layout { abi: Abi::Scalar(b), .. }, .. })),
                     None,
                 ) => {
                     // Order by the memory placement, not source order.
                     let ((i, a), (j, b)) =
                         if offsets[i] < offsets[j] { ((i, a), (j, b)) } else { ((j, b), (i, a)) };
-                    let pair = self.scalar_pair(a.clone(), b.clone());
+                    let pair = self.scalar_pair(a, b);
                     let pair_offsets = match pair.fields {
                         FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
                             assert_eq!(memory_index, &[0, 1]);
@@ -512,9 +512,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let param_env = self.param_env;
         let dl = self.data_layout();
         let scalar_unit = |value: Primitive| {
-            let bits = value.size(dl).bits();
-            assert!(bits <= 128);
-            Scalar { value, valid_range: WrappingRange { start: 0, end: (!0 >> (128 - bits)) } }
+            let size = value.size(dl);
+            assert!(size.bits() <= 128);
+            Scalar { value, valid_range: WrappingRange { start: 0, end: size.unsigned_int_max() } }
         };
         let scalar = |value: Primitive| tcx.intern_layout(Layout::scalar(self, scalar_unit(value)));
 
@@ -609,7 +609,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         Abi::Aggregate { sized: true }
                     };
 
-                let largest_niche = if count != 0 { element.largest_niche.clone() } else { None };
+                let largest_niche = if count != 0 { element.largest_niche } else { None };
 
                 tcx.intern_layout(Layout {
                     variants: Variants::Single { index: VariantIdx::new(0) },
@@ -768,8 +768,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 // Compute the ABI of the element type:
                 let e_ly = self.layout_of(e_ty)?;
-                let e_abi = if let Abi::Scalar(ref scalar) = e_ly.abi {
-                    scalar.clone()
+                let e_abi = if let Abi::Scalar(scalar) = e_ly.abi {
+                    scalar
                 } else {
                     // This error isn't caught in typeck, e.g., if
                     // the element type of the vector is generic.
@@ -796,7 +796,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     variants: Variants::Single { index: VariantIdx::new(0) },
                     fields,
                     abi: Abi::Vector { element: e_abi, count: e_len },
-                    largest_niche: e_ly.largest_niche.clone(),
+                    largest_niche: e_ly.largest_niche,
                     size,
                     align,
                 })
@@ -843,13 +843,13 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         // If all non-ZST fields have the same ABI, forward this ABI
                         if optimize && !field.is_zst() {
                             // Normalize scalar_unit to the maximal valid range
-                            let field_abi = match &field.abi {
+                            let field_abi = match field.abi {
                                 Abi::Scalar(x) => Abi::Scalar(scalar_unit(x.value)),
                                 Abi::ScalarPair(x, y) => {
                                     Abi::ScalarPair(scalar_unit(x.value), scalar_unit(y.value))
                                 }
                                 Abi::Vector { element: x, count } => {
-                                    Abi::Vector { element: scalar_unit(x.value), count: *count }
+                                    Abi::Vector { element: scalar_unit(x.value), count }
                                 }
                                 Abi::Uninhabited | Abi::Aggregate { .. } => {
                                     Abi::Aggregate { sized: true }
@@ -970,7 +970,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 Niche::from_scalar(dl, Size::ZERO, scalar.clone())
                             };
                             if let Some(niche) = niche {
-                                match &st.largest_niche {
+                                match st.largest_niche {
                                     Some(largest_niche) => {
                                         // Replace the existing niche even if they're equal,
                                         // because this one is at a lower offset.
@@ -1045,7 +1045,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         let niche_candidate = variants[i]
                             .iter()
                             .enumerate()
-                            .filter_map(|(j, &field)| Some((j, field.largest_niche.as_ref()?)))
+                            .filter_map(|(j, field)| Some((j, field.largest_niche?)))
                             .max_by_key(|(_, niche)| niche.available(dl));
 
                         if let Some((field_index, niche, (niche_start, niche_scalar))) =
@@ -1078,31 +1078,24 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 Abi::Uninhabited
                             } else {
                                 match st[i].abi {
-                                    Abi::Scalar(_) => Abi::Scalar(niche_scalar.clone()),
-                                    Abi::ScalarPair(ref first, ref second) => {
+                                    Abi::Scalar(_) => Abi::Scalar(niche_scalar),
+                                    Abi::ScalarPair(first, second) => {
                                         // We need to use scalar_unit to reset the
                                         // valid range to the maximal one for that
                                         // primitive, because only the niche is
                                         // guaranteed to be initialised, not the
                                         // other primitive.
                                         if offset.bytes() == 0 {
-                                            Abi::ScalarPair(
-                                                niche_scalar.clone(),
-                                                scalar_unit(second.value),
-                                            )
+                                            Abi::ScalarPair(niche_scalar, scalar_unit(second.value))
                                         } else {
-                                            Abi::ScalarPair(
-                                                scalar_unit(first.value),
-                                                niche_scalar.clone(),
-                                            )
+                                            Abi::ScalarPair(scalar_unit(first.value), niche_scalar)
                                         }
                                     }
                                     _ => Abi::Aggregate { sized: true },
                                 }
                             };
 
-                            let largest_niche =
-                                Niche::from_scalar(dl, offset, niche_scalar.clone());
+                            let largest_niche = Niche::from_scalar(dl, offset, niche_scalar);
 
                             niche_filling_layout = Some(Layout {
                                 variants: Variants::Multiple {
@@ -1273,7 +1266,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     }
                 }
 
-                let tag_mask = !0u128 >> (128 - ity.size().bits());
+                let tag_mask = ity.size().unsigned_int_max();
                 let tag = Scalar {
                     value: Int(ity, signed),
                     valid_range: WrappingRange {
@@ -1283,7 +1276,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 };
                 let mut abi = Abi::Aggregate { sized: true };
                 if tag.value.size(dl) == size {
-                    abi = Abi::Scalar(tag.clone());
+                    abi = Abi::Scalar(tag);
                 } else {
                     // Try to use a ScalarPair for all tagged enums.
                     let mut common_prim = None;
@@ -1303,7 +1296,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             }
                         };
                         let prim = match field.abi {
-                            Abi::Scalar(ref scalar) => scalar.value,
+                            Abi::Scalar(scalar) => scalar.value,
                             _ => {
                                 common_prim = None;
                                 break;
@@ -1323,7 +1316,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         }
                     }
                     if let Some((prim, offset)) = common_prim {
-                        let pair = self.scalar_pair(tag.clone(), scalar_unit(prim));
+                        let pair = self.scalar_pair(tag, scalar_unit(prim));
                         let pair_offsets = match pair.fields {
                             FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
                                 assert_eq!(memory_index, &[0, 1]);
@@ -1347,7 +1340,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     abi = Abi::Uninhabited;
                 }
 
-                let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag.clone());
+                let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag);
 
                 let tagged_layout = Layout {
                     variants: Variants::Multiple {
@@ -1372,8 +1365,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         // pick the layout with the larger niche; otherwise,
                         // pick tagged as it has simpler codegen.
                         cmp::min_by_key(tagged_layout, niche_filling_layout, |layout| {
-                            let niche_size =
-                                layout.largest_niche.as_ref().map_or(0, |n| n.available(dl));
+                            let niche_size = layout.largest_niche.map_or(0, |n| n.available(dl));
                             (layout.size, cmp::Reverse(niche_size))
                         })
                     }
@@ -1560,7 +1552,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             value: Primitive::Int(discr_int, false),
             valid_range: WrappingRange { start: 0, end: max_discr },
         };
-        let tag_layout = self.tcx.intern_layout(Layout::scalar(self, tag.clone()));
+        let tag_layout = self.tcx.intern_layout(Layout::scalar(self, tag));
         let tag_layout = TyAndLayout { ty: discr_int_ty, layout: tag_layout };
 
         let promoted_layouts = ineligible_locals
@@ -1832,7 +1824,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 }
             }
 
-            Variants::Multiple { ref tag, ref tag_encoding, .. } => {
+            Variants::Multiple { tag, ref tag_encoding, .. } => {
                 debug!(
                     "print-type-size `{:#?}` adt general variants def {}",
                     layout.ty,
@@ -2240,7 +2232,7 @@ where
             i: usize,
         ) -> TyMaybeWithLayout<'tcx> {
             let tcx = cx.tcx();
-            let tag_layout = |tag: &Scalar| -> TyAndLayout<'tcx> {
+            let tag_layout = |tag: Scalar| -> TyAndLayout<'tcx> {
                 let layout = Layout::scalar(cx, tag.clone());
                 TyAndLayout { layout: tcx.intern_layout(layout), ty: tag.value.to_ty(tcx) }
             };
@@ -2329,7 +2321,7 @@ where
                             .nth(i)
                             .unwrap(),
                     ),
-                    Variants::Multiple { ref tag, tag_field, .. } => {
+                    Variants::Multiple { tag, tag_field, .. } => {
                         if i == tag_field {
                             return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
                         }
@@ -2347,7 +2339,7 @@ where
                         }
 
                         // Discriminant field for enums (where applicable).
-                        Variants::Multiple { ref tag, .. } => {
+                        Variants::Multiple { tag, .. } => {
                             assert_eq!(i, 0);
                             return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
                         }
@@ -2906,7 +2898,7 @@ where
 
         // Handle safe Rust thin and fat pointers.
         let adjust_for_rust_scalar = |attrs: &mut ArgAttributes,
-                                      scalar: &Scalar,
+                                      scalar: Scalar,
                                       layout: TyAndLayout<'tcx>,
                                       offset: Size,
                                       is_return: bool| {
@@ -2921,7 +2913,7 @@ where
                 return;
             }
 
-            if !scalar.valid_range.contains_zero() {
+            if !scalar.valid_range.contains(0) {
                 attrs.set(ArgAttribute::NonNull);
             }
 

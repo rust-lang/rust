@@ -68,7 +68,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         if let Some(prim) = field.val.try_to_scalar() {
                             let layout = bx.layout_of(field_ty);
                             let scalar = match layout.abi {
-                                Abi::Scalar(ref x) => x,
+                                Abi::Scalar(x) => x,
                                 _ => bug!("from_const: invalid ByVal layout: {:#?}", layout),
                             };
                             bx.scalar_to_backend(prim, scalar, bx.immediate_backend_type(layout))
