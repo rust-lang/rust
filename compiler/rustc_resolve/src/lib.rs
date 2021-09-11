@@ -1487,7 +1487,7 @@ impl<'a> Resolver<'a> {
                 .iter()
                 .map(|(ident, entry)| (ident.name, entry.introduced_by_item))
                 .collect(),
-            main_def: self.main_def.clone(),
+            main_def: self.main_def,
             trait_impls: self.trait_impls.clone(),
             proc_macros,
             confused_type_with_std_module: self.confused_type_with_std_module.clone(),

@@ -2445,7 +2445,7 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
             "get_provisional = {:#?}",
             self.map.borrow().get(&fresh_trait_ref),
         );
-        Some(self.map.borrow().get(&fresh_trait_ref)?.clone())
+        Some(*self.map.borrow().get(&fresh_trait_ref)?)
     }
 
     /// Insert a provisional result into the cache. The result came

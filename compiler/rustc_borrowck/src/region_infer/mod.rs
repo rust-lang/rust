@@ -1739,7 +1739,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     category: constraint.category,
                     from_closure: false,
                     span,
-                    variance_info: constraint.variance_info.clone(),
+                    variance_info: constraint.variance_info,
                 };
             }
             Locations::Single(loc) => loc,
@@ -1752,13 +1752,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 category,
                 from_closure: true,
                 span: span,
-                variance_info: constraint.variance_info.clone(),
+                variance_info: constraint.variance_info,
             })
             .unwrap_or(BlameConstraint {
                 category: constraint.category,
                 from_closure: false,
                 span: body.source_info(loc).span,
-                variance_info: constraint.variance_info.clone(),
+                variance_info: constraint.variance_info,
             })
     }
 
@@ -2001,7 +2001,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         category: constraint.category,
                         from_closure: false,
                         span: constraint.locations.span(body),
-                        variance_info: constraint.variance_info.clone(),
+                        variance_info: constraint.variance_info,
                     }
                 }
             })
