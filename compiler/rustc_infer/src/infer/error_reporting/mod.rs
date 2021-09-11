@@ -2345,7 +2345,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
                 err.span_suggestion(
                     generics.where_clause.tail_span_for_suggestion(),
-                    "consider adding a where clause".into(),
+                    "consider adding a where clause",
                     suggestion,
                     Applicability::MaybeIncorrect,
                 );
