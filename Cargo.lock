@@ -99,7 +99,6 @@ dependencies = [
  "profile",
  "rustc-hash",
  "salsa",
- "stdx",
  "syntax",
  "test_utils",
  "tt",
@@ -471,7 +470,6 @@ dependencies = [
  "hir_def",
  "hir_expand",
  "hir_ty",
- "indexmap",
  "itertools",
  "once_cell",
  "profile",
@@ -528,7 +526,6 @@ dependencies = [
  "profile",
  "rustc-hash",
  "syntax",
- "test_utils",
  "tracing",
  "tt",
 ]
@@ -641,7 +638,6 @@ dependencies = [
  "syntax",
  "test_utils",
  "text_edit",
- "tracing",
  "xshell",
 ]
 
@@ -898,7 +894,6 @@ dependencies = [
  "cov-mark",
  "expect-test",
  "parser",
- "profile",
  "rustc-hash",
  "smallvec",
  "stdx",
@@ -1127,8 +1122,6 @@ dependencies = [
 name = "proc_macro_api"
 version = "0.0.0"
 dependencies = [
- "crossbeam-channel",
- "jod-thread",
  "memmap2",
  "object",
  "paths",
@@ -1145,7 +1138,6 @@ dependencies = [
 name = "proc_macro_srv"
 version = "0.0.0"
 dependencies = [
- "cargo_metadata",
  "expect-test",
  "libloading",
  "mbe",
@@ -1154,8 +1146,6 @@ dependencies = [
  "paths",
  "proc_macro_api",
  "proc_macro_test",
- "test_utils",
- "toolchain",
  "tt",
 ]
 
@@ -1344,7 +1334,6 @@ dependencies = [
  "stdx",
  "syntax",
  "test_utils",
- "text_edit",
  "threadpool",
  "tikv-jemallocator",
  "toolchain",
@@ -1561,7 +1550,6 @@ dependencies = [
 name = "syntax"
 version = "0.0.0"
 dependencies = [
- "arrayvec",
  "cov-mark",
  "expect-test",
  "indexmap",
@@ -1848,7 +1836,6 @@ dependencies = [
  "jod-thread",
  "notify",
  "paths",
- "rustc-hash",
  "tracing",
  "vfs",
  "walkdir",
