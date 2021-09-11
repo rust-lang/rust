@@ -152,20 +152,17 @@ impl<'a> Resolver<'a> {
         module
     }
 
-    crate fn macro_def_scope(&mut self, expn_id: ExpnId) -> Module<'a> {
-        let def_id = match expn_id.expn_data().macro_def_id {
-            Some(def_id) => def_id,
-            None => {
-                return expn_id
-                    .as_local()
-                    .and_then(|expn_id| self.ast_transform_scopes.get(&expn_id))
-                    .unwrap_or(&self.graph_root);
-            }
-        };
-        self.macro_def_scope_from_def_id(def_id)
+    crate fn expn_def_scope(&mut self, expn_id: ExpnId) -> Module<'a> {
+        match expn_id.expn_data().macro_def_id {
+            Some(def_id) => self.macro_def_scope(def_id),
+            None => expn_id
+                .as_local()
+                .and_then(|expn_id| self.ast_transform_scopes.get(&expn_id))
+                .unwrap_or(&self.graph_root),
+        }
     }
 
-    crate fn macro_def_scope_from_def_id(&mut self, def_id: DefId) -> Module<'a> {
+    crate fn macro_def_scope(&mut self, def_id: DefId) -> Module<'a> {
         if let Some(id) = def_id.as_local() {
             self.local_macro_def_scopes[&id]
         } else {

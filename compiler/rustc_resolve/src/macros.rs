@@ -298,15 +298,14 @@ impl<'a> ResolverExpand for Resolver<'a> {
         )?;
 
         let span = invoc.span();
+        let def_id = res.opt_def_id();
         invoc_id.set_expn_data(
             ext.expn_data(
                 parent_scope.expansion,
                 span,
                 fast_print_path(path),
-                res.opt_def_id(),
-                res.opt_def_id().map(|macro_def_id| {
-                    self.macro_def_scope_from_def_id(macro_def_id).nearest_parent_mod()
-                }),
+                def_id,
+                def_id.map(|def_id| self.macro_def_scope(def_id).nearest_parent_mod()),
             ),
             self.create_stable_hashing_context(),
         );

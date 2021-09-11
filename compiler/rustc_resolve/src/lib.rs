@@ -2018,7 +2018,7 @@ impl<'a> Resolver<'a> {
         derive_fallback_lint_id: Option<NodeId>,
     ) -> Option<(Module<'a>, Option<NodeId>)> {
         if !module.expansion.outer_expn_is_descendant_of(*ctxt) {
-            return Some((self.macro_def_scope(ctxt.remove_mark()), None));
+            return Some((self.expn_def_scope(ctxt.remove_mark()), None));
         }
 
         if let ModuleKind::Block(..) = module.kind {
@@ -2087,7 +2087,7 @@ impl<'a> Resolver<'a> {
             ModuleOrUniformRoot::Module(m) => {
                 if let Some(def) = ident.span.normalize_to_macros_2_0_and_adjust(m.expansion) {
                     tmp_parent_scope =
-                        ParentScope { module: self.macro_def_scope(def), ..*parent_scope };
+                        ParentScope { module: self.expn_def_scope(def), ..*parent_scope };
                     adjusted_parent_scope = &tmp_parent_scope;
                 }
             }
@@ -2160,7 +2160,7 @@ impl<'a> Resolver<'a> {
             ctxt.adjust(ExpnId::root())
         };
         let module = match mark {
-            Some(def) => self.macro_def_scope(def),
+            Some(def) => self.expn_def_scope(def),
             None => {
                 debug!(
                     "resolve_crate_root({:?}): found no mark (ident.span = {:?})",
@@ -2185,7 +2185,7 @@ impl<'a> Resolver<'a> {
     fn resolve_self(&mut self, ctxt: &mut SyntaxContext, module: Module<'a>) -> Module<'a> {
         let mut module = self.get_module(module.nearest_parent_mod());
         while module.span.ctxt().normalize_to_macros_2_0() != *ctxt {
-            let parent = module.parent.unwrap_or_else(|| self.macro_def_scope(ctxt.remove_mark()));
+            let parent = module.parent.unwrap_or_else(|| self.expn_def_scope(ctxt.remove_mark()));
             module = self.get_module(parent.nearest_parent_mod());
         }
         module
