@@ -964,7 +964,7 @@ fn foo(&self) -> Self::T { String::new() }
         {
             let (span, sugg) = if has_params {
                 let pos = span.hi() - BytePos(1);
-                let span = Span::new(pos, pos, span.ctxt());
+                let span = Span::new(pos, pos, span.ctxt(), span.parent());
                 (span, format!(", {} = {}", assoc.ident, ty))
             } else {
                 let item_args = self.format_generic_args(assoc_substs);

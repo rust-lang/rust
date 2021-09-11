@@ -6,28 +6,35 @@
 // rev3 and make sure that the hash has not changed.
 
 // build-pass (FIXME(62277): could be check-pass?)
-// revisions: cfail1 cfail2 cfail3
-// compile-flags: -Z query-dep-graph -Zincremental-ignore-spans
-
+// revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
+// compile-flags: -Z query-dep-graph
+// [cfail1]compile-flags: -Zincremental-ignore-spans
+// [cfail2]compile-flags: -Zincremental-ignore-spans
+// [cfail3]compile-flags: -Zincremental-ignore-spans
+// [cfail4]compile-flags: -Zincremental-relative-spans
+// [cfail5]compile-flags: -Zincremental-relative-spans
+// [cfail6]compile-flags: -Zincremental-relative-spans
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
 #![crate_type="rlib"]
 
 // Add Arm ---------------------------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn add_arm(x: u32) -> u32 {
     match x {
         0 => 0,
         1 => 1,
+        /*---*/
         _ => 100,
     }
 }
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2",
-    except="hir_owner_nodes,optimized_mir,typeck")]
+#[cfg(not(any(cfail1,cfail4)))]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail6")]
 pub fn add_arm(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -40,7 +47,7 @@ pub fn add_arm(x: u32) -> u32 {
 
 
 // Change Order Of Arms --------------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_order_of_arms(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -49,10 +56,11 @@ pub fn change_order_of_arms(x: u32) -> u32 {
     }
 }
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2",
-    except="hir_owner_nodes,optimized_mir")]
+#[cfg(not(any(cfail1,cfail4)))]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_order_of_arms(x: u32) -> u32 {
     match x {
         1 => 1,
@@ -64,19 +72,20 @@ pub fn change_order_of_arms(x: u32) -> u32 {
 
 
 // Add Guard Clause ------------------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn add_guard_clause(x: u32, y: bool) -> u32 {
     match x {
         0 => 0,
-        1 => 1,
+        1      => 1,
         _ => 100,
     }
 }
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2",
-    except="hir_owner_nodes,optimized_mir,typeck")]
+#[cfg(not(any(cfail1,cfail4)))]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail6")]
 pub fn add_guard_clause(x: u32, y: bool) -> u32 {
     match x {
         0 => 0,
@@ -88,19 +97,20 @@ pub fn add_guard_clause(x: u32, y: bool) -> u32 {
 
 
 // Change Guard Clause ------------------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_guard_clause(x: u32, y: bool) -> u32 {
     match x {
         0 => 0,
-        1 if y => 1,
+        1 if  y => 1,
         _ => 100,
     }
 }
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2",
-    except="hir_owner_nodes,optimized_mir,typeck")]
+#[cfg(not(any(cfail1,cfail4)))]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_guard_clause(x: u32, y: bool) -> u32 {
     match x {
         0 => 0,
@@ -112,19 +122,20 @@ pub fn change_guard_clause(x: u32, y: bool) -> u32 {
 
 
 // Add @-Binding ---------------------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn add_at_binding(x: u32) -> u32 {
     match x {
         0 => 0,
         1 => 1,
-        _ => x,
+            _ => x,
     }
 }
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2",
-    except="hir_owner_nodes,optimized_mir,typeck")]
+#[cfg(not(any(cfail1,cfail4)))]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail6")]
 pub fn add_at_binding(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -136,7 +147,7 @@ pub fn add_at_binding(x: u32) -> u32 {
 
 
 // Change Name of @-Binding ----------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_name_of_at_binding(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -145,10 +156,11 @@ pub fn change_name_of_at_binding(x: u32) -> u32 {
     }
 }
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2",
-    except="hir_owner_nodes,optimized_mir")]
+#[cfg(not(any(cfail1,cfail4)))]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_name_of_at_binding(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -160,18 +172,19 @@ pub fn change_name_of_at_binding(x: u32) -> u32 {
 
 
 // Change Simple Binding To Pattern --------------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_simple_name_to_pattern(x: u32) -> u32 {
     match (x, x & 1) {
         (0, 0) => 0,
-        a => 1,
+         a     => 1,
     }
 }
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2",
-    except="hir_owner_nodes,optimized_mir,typeck")]
+#[cfg(not(any(cfail1,cfail4)))]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_simple_name_to_pattern(x: u32) -> u32 {
     match (x, x & 1) {
         (0, 0) => 0,
@@ -182,7 +195,7 @@ pub fn change_simple_name_to_pattern(x: u32) -> u32 {
 
 
 // Change Name In Pattern ------------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_name_in_pattern(x: u32) -> u32 {
     match (x, x & 1) {
         (a, 0) => 0,
@@ -191,10 +204,11 @@ pub fn change_name_in_pattern(x: u32) -> u32 {
     }
 }
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2",
-    except="hir_owner_nodes,optimized_mir")]
+#[cfg(not(any(cfail1,cfail4)))]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_name_in_pattern(x: u32) -> u32 {
     match (x, x & 1) {
         (b, 0) => 0,
@@ -206,18 +220,19 @@ pub fn change_name_in_pattern(x: u32) -> u32 {
 
 
 // Change Mutability Of Binding In Pattern -------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_mutability_of_binding_in_pattern(x: u32) -> u32 {
     match (x, x & 1) {
-        (a, 0) => 0,
+        (    a, 0) => 0,
         _ => 1,
     }
 }
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2",
-    except="hir_owner_nodes,optimized_mir,typeck")]
+#[cfg(not(any(cfail1,cfail4)))]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_mutability_of_binding_in_pattern(x: u32) -> u32 {
     match (x, x & 1) {
         (mut a, 0) => 0,
@@ -228,18 +243,19 @@ pub fn change_mutability_of_binding_in_pattern(x: u32) -> u32 {
 
 
 // Add `ref` To Binding In Pattern -------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn add_ref_to_binding_in_pattern(x: u32) -> u32 {
     match (x, x & 1) {
-        (a, 0) => 0,
+        (    a, 0) => 0,
         _ => 1,
     }
 }
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2",
-    except="hir_owner_nodes,optimized_mir,typeck")]
+#[cfg(not(any(cfail1,cfail4)))]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail6")]
 pub fn add_ref_to_binding_in_pattern(x: u32) -> u32 {
     match (x, x & 1) {
         (ref a, 0) => 0,
@@ -250,18 +266,19 @@ pub fn add_ref_to_binding_in_pattern(x: u32) -> u32 {
 
 
 // Add `&` To Binding In Pattern -------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn add_amp_to_binding_in_pattern(x: u32) -> u32 {
     match (&x, x & 1) {
-        (a, 0) => 0,
+        ( a, 0) => 0,
         _ => 1,
     }
 }
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2",
-except="hir_owner_nodes,optimized_mir,typeck")]
+#[cfg(not(any(cfail1,cfail4)))]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail6")]
 pub fn add_amp_to_binding_in_pattern(x: u32) -> u32 {
     match (&x, x & 1) {
         (&a, 0) => 0,
@@ -272,7 +289,7 @@ pub fn add_amp_to_binding_in_pattern(x: u32) -> u32 {
 
 
 // Change RHS Of Arm -----------------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_rhs_of_arm(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -281,10 +298,11 @@ pub fn change_rhs_of_arm(x: u32) -> u32 {
     }
 }
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2",
-    except="hir_owner_nodes,optimized_mir")]
+#[cfg(not(any(cfail1,cfail4)))]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_rhs_of_arm(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -296,19 +314,20 @@ pub fn change_rhs_of_arm(x: u32) -> u32 {
 
 
 // Add Alternative To Arm ------------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn add_alternative_to_arm(x: u32) -> u32 {
     match x {
-        0 => 0,
+        0     => 0,
         1 => 1,
         _ => 2,
     }
 }
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2",
-    except="hir_owner_nodes,optimized_mir,typeck")]
+#[cfg(not(any(cfail1,cfail4)))]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail6")]
 pub fn add_alternative_to_arm(x: u32) -> u32 {
     match x {
         0 | 7 => 0,

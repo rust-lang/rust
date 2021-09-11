@@ -422,7 +422,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let if_kind = hir::ExprKind::If(new_cond, self.arena.alloc(then), Some(else_expr));
         let if_expr = self.expr(span, if_kind, ThinVec::new());
         let block = self.block_expr(self.arena.alloc(if_expr));
-        hir::ExprKind::Loop(block, opt_label, hir::LoopSource::While, span.with_hi(cond.span.hi()))
+        let span = self.lower_span(span.with_hi(cond.span.hi()));
+        let opt_label = self.lower_label(opt_label);
+        hir::ExprKind::Loop(block, opt_label, hir::LoopSource::While, span)
     }
 
     /// Desugar `try { <stmts>; <expr> }` into `{ <stmts>; ::std::ops::Try::from_output(<expr>) }`,

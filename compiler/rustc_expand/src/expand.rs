@@ -588,7 +588,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         // Resolve `$crate`s in the fragment for pretty-printing.
         self.cx.resolver.resolve_dollar_crates();
 
-        let invocations = {
+        let mut invocations = {
             let mut collector = InvocationCollector {
                 // Non-derive macro invocations cannot see the results of cfg expansion - they
                 // will either be removed along with the item, or invoked before the cfg/cfg_attr
@@ -613,6 +613,19 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             self.cx
                 .resolver
                 .visit_ast_fragment_with_placeholders(self.cx.current_expansion.id, &fragment);
+
+            if self.cx.sess.opts.debugging_opts.incremental_relative_spans {
+                for (invoc, _) in invocations.iter_mut() {
+                    let expn_id = invoc.expansion_data.id;
+                    let parent_def = self.cx.resolver.invocation_parent(expn_id);
+                    let span = match &mut invoc.kind {
+                        InvocationKind::Bang { ref mut span, .. } => span,
+                        InvocationKind::Attr { attr, .. } => &mut attr.span,
+                        InvocationKind::Derive { path, .. } => &mut path.span,
+                    };
+                    *span = span.with_parent(Some(parent_def));
+                }
+            }
         }
 
         (fragment, invocations)

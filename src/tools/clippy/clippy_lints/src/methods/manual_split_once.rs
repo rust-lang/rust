@@ -182,7 +182,7 @@ fn parse_iter_usage(
                 },
                 _,
             ) => {
-                let parent_span = e.span.parent().unwrap();
+                let parent_span = e.span.parent_callsite().unwrap();
                 if parent_span.ctxt() == ctxt {
                     (Some(UnwrapKind::QuestionMark), parent_span)
                 } else {

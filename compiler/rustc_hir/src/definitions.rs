@@ -14,6 +14,7 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::Span;
 
 use std::fmt::{self, Write};
 use std::hash::Hash;
@@ -107,6 +108,8 @@ pub struct Definitions {
 
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     expansions_that_defined: FxHashMap<LocalDefId, ExpnId>,
+
+    def_id_to_span: IndexVec<LocalDefId, Span>,
 }
 
 /// A unique identifier that we can use to lookup a definition
@@ -324,7 +327,7 @@ impl Definitions {
     }
 
     /// Adds a root definition (no parent) and a few other reserved definitions.
-    pub fn new(stable_crate_id: StableCrateId) -> Definitions {
+    pub fn new(stable_crate_id: StableCrateId, crate_span: Span) -> Definitions {
         let key = DefKey {
             parent: None,
             disambiguated_data: DisambiguatedDefPathData {
@@ -341,11 +344,18 @@ impl Definitions {
         let root = LocalDefId { local_def_index: table.allocate(key, def_path_hash) };
         assert_eq!(root.local_def_index, CRATE_DEF_INDEX);
 
+        let mut def_id_to_span = IndexVec::new();
+        // A relative span's parent must be an absolute span.
+        debug_assert_eq!(crate_span.data_untracked().parent, None);
+        let _root = def_id_to_span.push(crate_span);
+        debug_assert_eq!(_root, root);
+
         Definitions {
             table,
             def_id_to_hir_id: Default::default(),
             hir_id_to_def_id: Default::default(),
             expansions_that_defined: Default::default(),
+            def_id_to_span,
         }
     }
 
@@ -361,6 +371,7 @@ impl Definitions {
         data: DefPathData,
         expn_id: ExpnId,
         mut next_disambiguator: impl FnMut(LocalDefId, DefPathData) -> u32,
+        span: Span,
     ) -> LocalDefId {
         debug!("create_def(parent={:?}, data={:?}, expn_id={:?})", parent, data, expn_id);
 
@@ -384,6 +395,11 @@ impl Definitions {
         if expn_id != ExpnId::root() {
             self.expansions_that_defined.insert(def_id, expn_id);
         }
+
+        // A relative span's parent must be an absolute span.
+        debug_assert_eq!(span.data_untracked().parent, None);
+        let _id = self.def_id_to_span.push(span);
+        debug_assert_eq!(_id, def_id);
 
         def_id
     }
@@ -410,6 +426,12 @@ impl Definitions {
 
     pub fn expansion_that_defined(&self, id: LocalDefId) -> ExpnId {
         self.expansions_that_defined.get(&id).copied().unwrap_or_else(ExpnId::root)
+    }
+
+    /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
+    #[inline]
+    pub fn def_span(&self, def_id: LocalDefId) -> Span {
+        self.def_id_to_span[def_id]
     }
 
     pub fn iter_local_def_id(&self) -> impl Iterator<Item = LocalDefId> + '_ {

@@ -589,7 +589,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // E.g. for `&format!("")`, where we want the span to the
                     // `format!()` invocation instead of its expansion.
                     if let Some(call_span) =
-                        iter::successors(Some(expr.span), |s| s.parent()).find(|&s| sp.contains(s))
+                        iter::successors(Some(expr.span), |s| s.parent_callsite())
+                            .find(|&s| sp.contains(s))
                     {
                         if sm.span_to_snippet(call_span).is_ok() {
                             return Some((

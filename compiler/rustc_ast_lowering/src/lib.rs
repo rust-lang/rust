@@ -165,6 +165,8 @@ struct LoweringContext<'a, 'hir: 'a> {
 pub trait ResolverAstLowering {
     fn def_key(&mut self, id: DefId) -> DefKey;
 
+    fn def_span(&self, id: LocalDefId) -> Span;
+
     fn item_generics_num_lifetimes(&self, def: DefId) -> usize;
 
     fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>>;
@@ -213,6 +215,11 @@ impl<'a> rustc_span::HashStableContext for LoweringHasher<'a> {
     #[inline]
     fn hash_spans(&self) -> bool {
         true
+    }
+
+    #[inline]
+    fn def_span(&self, id: LocalDefId) -> Span {
+        self.resolver.def_span(id)
     }
 
     #[inline]
@@ -711,9 +718,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// Intercept all spans entering HIR.
-    /// For now we are not doing anything with the intercepted spans.
+    /// Mark a span as relative to the current owning item.
     fn lower_span(&self, span: Span) -> Span {
-        span
+        if self.sess.opts.debugging_opts.incremental_relative_spans {
+            span.with_parent(Some(self.current_hir_id_owner.0))
+        } else {
+            // Do not make spans relative when not using incremental compilation.
+            span
+        }
     }
 
     fn lower_ident(&self, ident: Ident) -> Ident {
@@ -781,7 +793,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             node_id,
             DefPathData::LifetimeNs(str_name),
             ExpnId::root(),
-            span,
+            span.with_parent(None),
         );
 
         hir::GenericParam {
@@ -1513,7 +1525,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         def_node_id,
                         DefPathData::LifetimeNs(name.ident().name),
                         ExpnId::root(),
-                        span,
+                        span.with_parent(None),
                     );
 
                     let (name, kind) = match name {

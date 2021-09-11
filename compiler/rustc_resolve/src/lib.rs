@@ -1012,8 +1012,6 @@ pub struct Resolver<'a> {
 
     next_node_id: NodeId,
 
-    def_id_to_span: IndexVec<LocalDefId, Span>,
-
     node_id_to_def_id: FxHashMap<ast::NodeId, LocalDefId>,
     def_id_to_node_id: IndexVec<LocalDefId, ast::NodeId>,
 
@@ -1116,6 +1114,11 @@ impl ResolverAstLowering for Resolver<'_> {
         }
     }
 
+    #[inline]
+    fn def_span(&self, id: LocalDefId) -> Span {
+        self.definitions.def_span(id)
+    }
+
     fn item_generics_num_lifetimes(&self, def_id: DefId) -> usize {
         if let Some(def_id) = def_id.as_local() {
             self.item_generics_num_lifetimes[&def_id]
@@ -1197,9 +1200,7 @@ impl ResolverAstLowering for Resolver<'_> {
             disambiguator
         };
 
-        let def_id = self.definitions.create_def(parent, data, expn_id, next_disambiguator);
-
-        assert_eq!(self.def_id_to_span.push(span), def_id);
+        let def_id = self.definitions.create_def(parent, data, expn_id, next_disambiguator, span);
 
         // Some things for which we allocate `LocalDefId`s don't correspond to
         // anything in the AST, so they don't have a `NodeId`. For these cases
@@ -1223,6 +1224,11 @@ impl<'a, 'b> rustc_span::HashStableContext for ExpandHasher<'a, 'b> {
     #[inline]
     fn hash_spans(&self) -> bool {
         true
+    }
+
+    #[inline]
+    fn def_span(&self, id: LocalDefId) -> Span {
+        self.resolver.def_span(id)
     }
 
     #[inline]
@@ -1269,14 +1275,12 @@ impl<'a> Resolver<'a> {
         let mut module_map = FxHashMap::default();
         module_map.insert(root_local_def_id, graph_root);
 
-        let definitions = Definitions::new(session.local_stable_crate_id());
+        let definitions = Definitions::new(session.local_stable_crate_id(), krate.span);
         let root = definitions.get_root_def();
 
         let mut visibilities = FxHashMap::default();
         visibilities.insert(root_local_def_id, ty::Visibility::Public);
 
-        let mut def_id_to_span = IndexVec::default();
-        assert_eq!(def_id_to_span.push(rustc_span::DUMMY_SP), root);
         let mut def_id_to_node_id = IndexVec::default();
         assert_eq!(def_id_to_node_id.push(CRATE_NODE_ID), root);
         let mut node_id_to_def_id = FxHashMap::default();
@@ -1393,7 +1397,6 @@ impl<'a> Resolver<'a> {
                 .collect(),
             lint_buffer: LintBuffer::default(),
             next_node_id: NodeId::from_u32(1),
-            def_id_to_span,
             node_id_to_def_id,
             def_id_to_node_id,
             placeholder_field_indices: Default::default(),
@@ -3360,7 +3363,7 @@ impl<'a> Resolver<'a> {
     /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
     #[inline]
     pub fn opt_span(&self, def_id: DefId) -> Option<Span> {
-        if let Some(def_id) = def_id.as_local() { Some(self.def_id_to_span[def_id]) } else { None }
+        def_id.as_local().map(|def_id| self.definitions.def_span(def_id))
     }
 
     /// Checks if an expression refers to a function marked with

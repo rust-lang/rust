@@ -25,6 +25,16 @@ fn span_debug(span: rustc_span::Span, f: &mut fmt::Formatter<'_>) -> fmt::Result
     })
 }
 
+fn track_span_parent(def_id: rustc_span::def_id::LocalDefId) {
+    tls::with_opt(|tcx| {
+        if let Some(tcx) = tcx {
+            let _span = tcx.source_span(def_id);
+            // Sanity check: relative span's parent must be an absolute span.
+            debug_assert_eq!(_span.data_untracked().parent, None);
+        }
+    })
+}
+
 /// This is a callback from `rustc_ast` as it cannot access the implicit state
 /// in `rustc_middle` otherwise. It is used to when diagnostic messages are
 /// emitted and stores them in the current query, if there is one.
@@ -56,6 +66,7 @@ fn def_id_debug(def_id: rustc_hir::def_id::DefId, f: &mut fmt::Formatter<'_>) ->
 /// TyCtxt in.
 pub fn setup_callbacks() {
     rustc_span::SPAN_DEBUG.swap(&(span_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
+    rustc_span::SPAN_TRACK.swap(&(track_span_parent as fn(_)));
     rustc_hir::def_id::DEF_ID_DEBUG.swap(&(def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
     TRACK_DIAGNOSTICS.swap(&(track_diagnostic as fn(&_)));
 }

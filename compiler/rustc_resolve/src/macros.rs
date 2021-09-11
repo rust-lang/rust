@@ -180,6 +180,10 @@ impl<'a> ResolverExpand for Resolver<'a> {
         self.next_node_id()
     }
 
+    fn invocation_parent(&self, id: LocalExpnId) -> LocalDefId {
+        self.invocation_parents[&id].0
+    }
+
     fn resolve_dollar_crates(&mut self) {
         hygiene::update_dollar_crate_names(|ctxt| {
             let ident = Ident::new(kw::DollarCrate, DUMMY_SP.with_ctxt(ctxt));

@@ -4,7 +4,9 @@
 // The encoding format for inline spans were obtained by optimizing over crates in rustc/libstd.
 // See https://internals.rust-lang.org/t/rfc-compiler-refactoring-spans/1357/28
 
+use crate::def_id::LocalDefId;
 use crate::hygiene::SyntaxContext;
+use crate::SPAN_TRACK;
 use crate::{BytePos, SpanData};
 
 use rustc_data_structures::fx::FxIndexSet;
@@ -54,6 +56,10 @@ use rustc_data_structures::fx::FxIndexSet;
 ///   the code. No crates in `rustc-perf` need more than 15 bits for `ctxt`,
 ///   but larger crates might need more than 16 bits.
 ///
+/// In order to reliably use parented spans in incremental compilation,
+/// the dependency to the parent definition's span. This is performed
+/// using the callback `SPAN_TRACK` to access the query engine.
+///
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Span {
     base_or_index: u32,
@@ -70,25 +76,42 @@ pub const DUMMY_SP: Span = Span { base_or_index: 0, len_or_tag: 0, ctxt_or_zero:
 
 impl Span {
     #[inline]
-    pub fn new(mut lo: BytePos, mut hi: BytePos, ctxt: SyntaxContext) -> Self {
+    pub fn new(
+        mut lo: BytePos,
+        mut hi: BytePos,
+        ctxt: SyntaxContext,
+        parent: Option<LocalDefId>,
+    ) -> Self {
         if lo > hi {
             std::mem::swap(&mut lo, &mut hi);
         }
 
         let (base, len, ctxt2) = (lo.0, hi.0 - lo.0, ctxt.as_u32());
 
-        if len <= MAX_LEN && ctxt2 <= MAX_CTXT {
+        if len <= MAX_LEN && ctxt2 <= MAX_CTXT && parent.is_none() {
             // Inline format.
             Span { base_or_index: base, len_or_tag: len as u16, ctxt_or_zero: ctxt2 as u16 }
         } else {
             // Interned format.
-            let index = with_span_interner(|interner| interner.intern(&SpanData { lo, hi, ctxt }));
+            let index =
+                with_span_interner(|interner| interner.intern(&SpanData { lo, hi, ctxt, parent }));
             Span { base_or_index: index, len_or_tag: LEN_TAG, ctxt_or_zero: 0 }
         }
     }
 
     #[inline]
     pub fn data(self) -> SpanData {
+        let data = self.data_untracked();
+        if let Some(parent) = data.parent {
+            (*SPAN_TRACK)(parent);
+        }
+        data
+    }
+
+    /// Internal function to translate between an encoded span and the expanded representation.
+    /// This function must not be used outside the incremental engine.
+    #[inline]
+    pub fn data_untracked(self) -> SpanData {
         if self.len_or_tag != LEN_TAG {
             // Inline format.
             debug_assert!(self.len_or_tag as u32 <= MAX_LEN);
@@ -96,6 +119,7 @@ impl Span {
                 lo: BytePos(self.base_or_index),
                 hi: BytePos(self.base_or_index + self.len_or_tag as u32),
                 ctxt: SyntaxContext::from_u32(self.ctxt_or_zero as u32),
+                parent: None,
             }
         } else {
             // Interned format.

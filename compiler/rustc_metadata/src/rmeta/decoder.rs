@@ -536,7 +536,8 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
         let hi =
             (hi + source_file.translated_source_file.start_pos) - source_file.original_start_pos;
 
-        Ok(Span::new(lo, hi, ctxt))
+        // Do not try to decode parent for foreign spans.
+        Ok(Span::new(lo, hi, ctxt, None))
     }
 }
 

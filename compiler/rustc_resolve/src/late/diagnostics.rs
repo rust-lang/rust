@@ -768,6 +768,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                                             args[1].span.lo(),
                                             args.last().unwrap().span.hi(),
                                             call_span.ctxt(),
+                                            None,
                                         ))
                                     } else {
                                         None
