@@ -2,43 +2,71 @@ warning: unnecessary parentheses around function argument
   --> $DIR/try-block-unused-delims.rs:11:13
    |
 LL |     consume((try {}));
-   |             ^^^^^^^^ help: remove these parentheses
+   |             ^      ^
    |
 note: the lint level is defined here
   --> $DIR/try-block-unused-delims.rs:6:9
    |
 LL | #![warn(unused_parens, unused_braces)]
    |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     consume((try {}));
+LL +     consume(try {});
+   | 
 
 warning: unnecessary braces around function argument
   --> $DIR/try-block-unused-delims.rs:14:13
    |
 LL |     consume({ try {} });
-   |             ^^^^^^^^^^ help: remove these braces
+   |             ^^      ^^
    |
 note: the lint level is defined here
   --> $DIR/try-block-unused-delims.rs:6:24
    |
 LL | #![warn(unused_parens, unused_braces)]
    |                        ^^^^^^^^^^^^^
+help: remove these braces
+   |
+LL -     consume({ try {} });
+LL +     consume(try {});
+   | 
 
 warning: unnecessary parentheses around `match` scrutinee expression
   --> $DIR/try-block-unused-delims.rs:17:11
    |
 LL |     match (try {}) {
-   |           ^^^^^^^^ help: remove these parentheses
+   |           ^      ^
+   |
+help: remove these parentheses
+   |
+LL -     match (try {}) {
+LL +     match try {} {
+   | 
 
 warning: unnecessary parentheses around `let` scrutinee expression
   --> $DIR/try-block-unused-delims.rs:22:22
    |
 LL |     if let Err(()) = (try {}) {}
-   |                      ^^^^^^^^ help: remove these parentheses
+   |                      ^      ^
+   |
+help: remove these parentheses
+   |
+LL -     if let Err(()) = (try {}) {}
+LL +     if let Err(()) = try {} {}
+   | 
 
 warning: unnecessary parentheses around `match` scrutinee expression
   --> $DIR/try-block-unused-delims.rs:25:11
    |
 LL |     match (try {}) {
-   |           ^^^^^^^^ help: remove these parentheses
+   |           ^      ^
+   |
+help: remove these parentheses
+   |
+LL -     match (try {}) {
+LL +     match try {} {
+   | 
 
 warning: 5 warnings emitted
 
