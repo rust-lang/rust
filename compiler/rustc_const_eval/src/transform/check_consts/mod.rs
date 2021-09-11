@@ -82,7 +82,6 @@ pub fn is_lang_panic_fn(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
         || Some(def_id) == tcx.lang_items().panic_display()
         || Some(def_id) == tcx.lang_items().begin_panic_fn()
         || Some(def_id) == tcx.lang_items().panic_fmt()
-        || Some(def_id) == tcx.lang_items().begin_panic_fmt()
 }
 
 pub fn rustc_allow_const_fn_unstable(
