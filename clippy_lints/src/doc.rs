@@ -665,6 +665,7 @@ fn check_text(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, text: &str
             span.lo() + BytePos::from_usize(offset),
             span.lo() + BytePos::from_usize(offset + word.len()),
             span.ctxt(),
+            span.parent(),
         );
 
         check_word(cx, word, span);
