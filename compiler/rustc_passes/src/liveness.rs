@@ -775,7 +775,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         if blk.targeted_by_break {
             self.break_ln.insert(blk.hir_id, succ);
         }
-        let succ = self.propagate_through_opt_expr(blk.expr.as_deref(), succ);
+        let succ = self.propagate_through_opt_expr(blk.expr, succ);
         blk.stmts.iter().rev().fold(succ, |succ, stmt| self.propagate_through_stmt(stmt, succ))
     }
 
@@ -796,7 +796,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 // initialization, which is mildly more complex than checking
                 // once at the func header but otherwise equivalent.
 
-                let succ = self.propagate_through_opt_expr(local.init.as_deref(), succ);
+                let succ = self.propagate_through_opt_expr(local.init, succ);
                 self.define_bindings_in_pat(&local.pat, succ)
             }
             hir::StmtKind::Item(..) => succ,
