@@ -462,7 +462,6 @@ pub fn check_must_not_suspend_ty<'tcx>(
     descr_post: &str,
     plural_len: usize,
 ) -> bool {
-    debug!("FOUND TYPE: {:?}", ty);
     if ty.is_unit()
     // || fcx.tcx.is_ty_uninhabited_from(fcx.tcx.parent_module(hir_id).to_def_id(), ty, fcx.param_env)
     // FIXME: should this check is_ty_uninhabited_from
@@ -563,25 +562,20 @@ pub fn check_must_not_suspend_ty<'tcx>(
             }
             has_emitted
         }
-        ty::Array(ty, len) => match len.try_eval_usize(fcx.tcx, fcx.param_env) {
-            // If the array is empty we don't lint, to avoid false positives
-            Some(0) | None => false,
-            // If the array is definitely non-empty, we can do `#[must_use]` checking.
-            Some(n) => {
-                let descr_pre = &format!("{}array{} of ", descr_pre, plural_suffix,);
-                check_must_not_suspend_ty(
-                    fcx,
-                    ty,
-                    hir_id,
-                    expr,
-                    source_span,
-                    yield_span,
-                    descr_pre,
-                    descr_post,
-                    n as usize + 1,
-                )
-            }
-        },
+        ty::Array(ty, len) => {
+            let descr_pre = &format!("{}array{} of ", descr_pre, plural_suffix,);
+            check_must_not_suspend_ty(
+                fcx,
+                ty,
+                hir_id,
+                expr,
+                source_span,
+                yield_span,
+                descr_pre,
+                descr_post,
+                len.try_eval_usize(fcx.tcx, fcx.param_env).unwrap_or(0) as usize + 1,
+            )
+        }
         _ => false,
     }
 }
