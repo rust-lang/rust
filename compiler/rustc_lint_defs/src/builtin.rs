@@ -327,14 +327,16 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
+    /// #![feature(must_not_suspend)]
+    ///
     /// #[must_not_suspend]
     /// struct SyncThing {}
     ///
-    /// async fn yield() {}
+    /// async fn yield_now() {}
     ///
     /// pub async fn uhoh() {
     ///     let guard = SyncThing {};
-    ///     yield().await;
+    ///     yield_now().await;
     /// }
     /// ```
     pub MUST_NOT_SUSPEND,
