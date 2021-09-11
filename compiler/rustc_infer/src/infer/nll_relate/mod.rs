@@ -519,7 +519,7 @@ where
 
         let old_ambient_variance = self.ambient_variance;
         self.ambient_variance = self.ambient_variance.xform(variance);
-        self.ambient_variance_info = self.ambient_variance_info.clone().xform(info);
+        self.ambient_variance_info = self.ambient_variance_info.xform(info);
 
         debug!("relate_with_variance: ambient_variance = {:?}", self.ambient_variance);
 
@@ -597,12 +597,12 @@ where
 
         if self.ambient_covariance() {
             // Covariance: a <= b. Hence, `b: a`.
-            self.push_outlives(v_b, v_a, self.ambient_variance_info.clone());
+            self.push_outlives(v_b, v_a, self.ambient_variance_info);
         }
 
         if self.ambient_contravariance() {
             // Contravariant: b <= a. Hence, `a: b`.
-            self.push_outlives(v_a, v_b, self.ambient_variance_info.clone());
+            self.push_outlives(v_a, v_b, self.ambient_variance_info);
         }
 
         Ok(a)

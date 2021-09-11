@@ -73,7 +73,7 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
         search_paths: options.libs.clone(),
         crate_types,
         lint_opts: if !options.display_warnings { lint_opts } else { vec![] },
-        lint_cap: Some(options.lint_cap.clone().unwrap_or_else(|| lint::Forbid)),
+        lint_cap: Some(options.lint_cap.unwrap_or_else(|| lint::Forbid)),
         cg: options.codegen_options.clone(),
         externs: options.externs.clone(),
         unstable_features: options.render_options.unstable_features,
