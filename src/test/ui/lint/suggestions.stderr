@@ -10,13 +10,18 @@ warning: unnecessary parentheses around assigned value
   --> $DIR/suggestions.rs:48:31
    |
 LL |         let mut registry_no = (format!("NX-{}", 74205));
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove these parentheses
+   |                               ^                       ^
    |
 note: the lint level is defined here
   --> $DIR/suggestions.rs:4:21
    |
 LL | #![warn(unused_mut, unused_parens)] // UI tests pass `-A unused`—see Issue #43896
    |                     ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -         let mut registry_no = (format!("NX-{}", 74205));
+LL +         let mut registry_no = format!("NX-{}", 74205);
+   | 
 
 warning: variable does not need to be mutable
   --> $DIR/suggestions.rs:48:13

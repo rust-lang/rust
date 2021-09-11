@@ -2,49 +2,83 @@ error: unnecessary parentheses around `let` scrutinee expression
   --> $DIR/issue-74883-unused-paren-baren-yield.rs:14:29
    |
 LL |         while let Some(_) = ({yield}) {}
-   |                             ^^^^^^^^^ help: remove these parentheses
+   |                             ^       ^
    |
 note: the lint level is defined here
   --> $DIR/issue-74883-unused-paren-baren-yield.rs:3:24
    |
 LL | #![deny(unused_braces, unused_parens)]
    |                        ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -         while let Some(_) = ({yield}) {}
+LL +         while let Some(_) = {yield} {}
+   | 
 
 error: unnecessary parentheses around `let` scrutinee expression
   --> $DIR/issue-74883-unused-paren-baren-yield.rs:15:29
    |
 LL |         while let Some(_) = ((yield)) {}
-   |                             ^^^^^^^^^ help: remove these parentheses
+   |                             ^       ^
+   |
+help: remove these parentheses
+   |
+LL -         while let Some(_) = ((yield)) {}
+LL +         while let Some(_) = (yield) {}
+   | 
 
 error: unnecessary braces around block return value
   --> $DIR/issue-74883-unused-paren-baren-yield.rs:16:10
    |
 LL |         {{yield}};
-   |          ^^^^^^^ help: remove these braces
+   |          ^     ^
    |
 note: the lint level is defined here
   --> $DIR/issue-74883-unused-paren-baren-yield.rs:3:9
    |
 LL | #![deny(unused_braces, unused_parens)]
    |         ^^^^^^^^^^^^^
+help: remove these braces
+   |
+LL -         {{yield}};
+LL +         {yield};
+   | 
 
 error: unnecessary parentheses around block return value
   --> $DIR/issue-74883-unused-paren-baren-yield.rs:17:10
    |
 LL |         {( yield )};
-   |          ^^^^^^^^^ help: remove these parentheses
+   |          ^^     ^^
+   |
+help: remove these parentheses
+   |
+LL -         {( yield )};
+LL +         {yield};
+   | 
 
 error: unnecessary parentheses around block return value
   --> $DIR/issue-74883-unused-paren-baren-yield.rs:18:30
    |
 LL |         while let Some(_) = {(yield)} {}
-   |                              ^^^^^^^ help: remove these parentheses
+   |                              ^     ^
+   |
+help: remove these parentheses
+   |
+LL -         while let Some(_) = {(yield)} {}
+LL +         while let Some(_) = {yield} {}
+   | 
 
 error: unnecessary braces around block return value
   --> $DIR/issue-74883-unused-paren-baren-yield.rs:19:30
    |
 LL |         while let Some(_) = {{yield}} {}
-   |                              ^^^^^^^ help: remove these braces
+   |                              ^     ^
+   |
+help: remove these braces
+   |
+LL -         while let Some(_) = {{yield}} {}
+LL +         while let Some(_) = {yield} {}
+   | 
 
 error: aborting due to 6 previous errors
 

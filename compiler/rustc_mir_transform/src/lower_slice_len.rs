@@ -75,13 +75,11 @@ fn lower_slice_len_call<'tcx>(
                     let deref_arg = tcx.mk_place_deref(arg);
                     let r_value = Rvalue::Len(deref_arg);
                     let len_statement_kind = StatementKind::Assign(Box::new((*dest, r_value)));
-                    let add_statement = Statement {
-                        kind: len_statement_kind,
-                        source_info: terminator.source_info.clone(),
-                    };
+                    let add_statement =
+                        Statement { kind: len_statement_kind, source_info: terminator.source_info };
 
                     // modify terminator into simple Goto
-                    let new_terminator_kind = TerminatorKind::Goto { target: bb.clone() };
+                    let new_terminator_kind = TerminatorKind::Goto { target: *bb };
 
                     let patch = SliceLenPatchInformation { add_statement, new_terminator_kind };
 

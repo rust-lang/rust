@@ -680,42 +680,53 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ex.span,
                         format!("cannot apply unary operator `{}`", op.as_str()),
                     );
-                    match actual.kind() {
-                        Uint(_) if op == hir::UnOp::Neg => {
-                            err.note("unsigned values cannot be negated");
 
-                            if let hir::ExprKind::Unary(
-                                _,
-                                hir::Expr {
-                                    kind:
-                                        hir::ExprKind::Lit(Spanned {
-                                            node: ast::LitKind::Int(1, _),
-                                            ..
-                                        }),
-                                    ..
-                                },
-                            ) = ex.kind
-                            {
-                                err.span_suggestion(
-                                    ex.span,
-                                    &format!(
-                                        "you may have meant the maximum value of `{}`",
-                                        actual
-                                    ),
-                                    format!("{}::MAX", actual),
-                                    Applicability::MaybeIncorrect,
-                                );
+                    let sp = self.tcx.sess.source_map().start_point(ex.span);
+                    if let Some(sp) =
+                        self.tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp)
+                    {
+                        // If the previous expression was a block expression, suggest parentheses
+                        // (turning this into a binary subtraction operation instead.)
+                        // for example, `{2} - 2` -> `({2}) - 2` (see src\test\ui\parser\expr-as-stmt.rs)
+                        self.tcx.sess.parse_sess.expr_parentheses_needed(&mut err, *sp);
+                    } else {
+                        match actual.kind() {
+                            Uint(_) if op == hir::UnOp::Neg => {
+                                err.note("unsigned values cannot be negated");
+
+                                if let hir::ExprKind::Unary(
+                                    _,
+                                    hir::Expr {
+                                        kind:
+                                            hir::ExprKind::Lit(Spanned {
+                                                node: ast::LitKind::Int(1, _),
+                                                ..
+                                            }),
+                                        ..
+                                    },
+                                ) = ex.kind
+                                {
+                                    err.span_suggestion(
+                                        ex.span,
+                                        &format!(
+                                            "you may have meant the maximum value of `{}`",
+                                            actual
+                                        ),
+                                        format!("{}::MAX", actual),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                }
                             }
-                        }
-                        Str | Never | Char | Tuple(_) | Array(_, _) => {}
-                        Ref(_, ref lty, _) if *lty.kind() == Str => {}
-                        _ => {
-                            let missing_trait = match op {
-                                hir::UnOp::Neg => "std::ops::Neg",
-                                hir::UnOp::Not => "std::ops::Not",
-                                hir::UnOp::Deref => "std::ops::UnDerf",
-                            };
-                            suggest_impl_missing(&mut err, operand_ty, &missing_trait);
+                            Str | Never | Char | Tuple(_) | Array(_, _) => {}
+                            Ref(_, ref lty, _) if *lty.kind() == Str => {}
+                            _ => {
+                                let missing_trait = match op {
+                                    hir::UnOp::Neg => "std::ops::Neg",
+                                    hir::UnOp::Not => "std::ops::Not",
+                                    hir::UnOp::Deref => "std::ops::UnDerf",
+                                };
+                                suggest_impl_missing(&mut err, operand_ty, &missing_trait);
+                            }
                         }
                     }
                     err.emit();

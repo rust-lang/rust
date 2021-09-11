@@ -2,13 +2,18 @@ warning: unnecessary braces around function argument
   --> $DIR/unused_braces_borrow.rs:24:13
    |
 LL |     consume({ a.b });
-   |             ^^^^^^^ help: remove these braces
+   |             ^^   ^^
    |
 note: the lint level is defined here
   --> $DIR/unused_braces_borrow.rs:4:9
    |
 LL | #![warn(unused_braces)]
    |         ^^^^^^^^^^^^^
+help: remove these braces
+   |
+LL -     consume({ a.b });
+LL +     consume(a.b);
+   | 
 
 warning: 1 warning emitted
 

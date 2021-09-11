@@ -595,7 +595,7 @@ impl TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
             ty::ReLateBound(debruijn, br) if debruijn >= self.current_index => {
                 let universe = self.universe_for(debruijn);
                 let p = ty::PlaceholderRegion { universe, name: br.kind };
-                self.mapped_regions.insert(p.clone(), br);
+                self.mapped_regions.insert(p, br);
                 self.infcx.tcx.mk_region(ty::RePlaceholder(p))
             }
             _ => r,
@@ -613,7 +613,7 @@ impl TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
             ty::Bound(debruijn, bound_ty) if debruijn >= self.current_index => {
                 let universe = self.universe_for(debruijn);
                 let p = ty::PlaceholderType { universe, name: bound_ty.var };
-                self.mapped_types.insert(p.clone(), bound_ty);
+                self.mapped_types.insert(p, bound_ty);
                 self.infcx.tcx.mk_ty(ty::Placeholder(p))
             }
             _ if t.has_vars_bound_at_or_above(self.current_index) => t.super_fold_with(self),
@@ -637,7 +637,7 @@ impl TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
                     universe,
                     name: ty::BoundConst { var: bound_const, ty },
                 };
-                self.mapped_consts.insert(p.clone(), bound_const);
+                self.mapped_consts.insert(p, bound_const);
                 self.infcx.tcx.mk_const(ty::Const { val: ty::ConstKind::Placeholder(p), ty })
             }
             _ if ct.has_vars_bound_at_or_above(self.current_index) => ct.super_fold_with(self),

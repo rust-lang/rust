@@ -99,7 +99,29 @@ help: parentheses are required to parse this as an expression
 LL |     ({ 3 }) * 3
    |     +     +
 
-error: aborting due to 9 previous errors
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:36:6
+   |
+LL |     {2} - 2
+   |      ^ expected `()`, found integer
+   |
+help: you might have meant to return this value
+   |
+LL |     {return 2;} - 2
+   |      ++++++  +
 
-Some errors have detailed explanations: E0308, E0614.
+error[E0600]: cannot apply unary operator `-` to type `u32`
+  --> $DIR/expr-as-stmt.rs:36:9
+   |
+LL |     {2} - 2
+   |         ^^^ cannot apply unary operator `-`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     ({2}) - 2
+   |     +   +
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0308, E0600, E0614.
 For more information about an error, try `rustc --explain E0308`.

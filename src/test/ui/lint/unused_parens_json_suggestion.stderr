@@ -1,14 +1,19 @@
-{"message":"unnecessary parentheses around assigned value","code":{"code":"unused_parens","explanation":null},"level":"error","spans":[{"file_name":"$DIR/unused_parens_json_suggestion.rs","byte_start":596,"byte_end":609,"line_start":16,"line_end":16,"column_start":14,"column_end":27,"is_primary":true,"text":[{"text":"    let _a = (1 / (2 + 3));
+{"message":"unnecessary parentheses around assigned value","code":{"code":"unused_parens","explanation":null},"level":"error","spans":[{"file_name":"$DIR/unused_parens_json_suggestion.rs","byte_start":596,"byte_end":597,"line_start":16,"line_end":16,"column_start":14,"column_end":15,"is_primary":true,"text":[{"text":"    let _a = (1 / (2 + 3));
   --> $DIR/unused_parens_json_suggestion.rs:16:14
    |
 LL |     let _a = (1 / (2 + 3));
-   |              ^^^^^^^^^^^^^ help: remove these parentheses
+   |              ^           ^
    |
 note: the lint level is defined here
   --> $DIR/unused_parens_json_suggestion.rs:10:9
    |
 LL | #![deny(unused_parens)]
    |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     let _a = (1 / (2 + 3));
+LL +     let _a = 1 / (2 + 3);
+   | 
 
 "}
 {"message":"aborting due to previous error","code":null,"level":"error","spans":[],"children":[],"rendered":"error: aborting due to previous error
