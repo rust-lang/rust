@@ -446,7 +446,6 @@ impl Step for Std {
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, builder.config.build);
 
-        builder.ensure(compile::Std { compiler, target });
         let out_dir = builder.stage_out(compiler, Mode::Std).join(target.triple).join("doc");
 
         t!(fs::copy(builder.src.join("src/doc/rust.css"), out.join("rust.css")));
@@ -564,9 +563,10 @@ impl Step for Rustc {
         let out = builder.compiler_doc_out(target);
         t!(fs::create_dir_all(&out));
 
-        // Build rustc.
+        // Build the standard library, so that proc-macros can use it.
+        // (Normally, only the metadata would be necessary, but proc-macros are special since they run at compile-time.)
         let compiler = builder.compiler(stage, builder.config.build);
-        builder.ensure(compile::Rustc { compiler, target });
+        builder.ensure(compile::Std { compiler, target: builder.config.build });
 
         // This uses a shared directory so that librustdoc documentation gets
         // correctly built and merged with the rustc documentation. This is
