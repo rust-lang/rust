@@ -537,6 +537,18 @@ jobs:
           - name: dist-x86_64-linux
             os: ubuntu-latest-xl
             env: {}
+          - name: dist-i686-mingw
+            env:
+              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu"
+              SCRIPT: python x.py dist
+              CUSTOM_MINGW: 1
+            os: windows-latest-xl
+          - name: dist-x86_64-mingw
+            env:
+              SCRIPT: python x.py dist
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu"
+              CUSTOM_MINGW: 1
+            os: windows-latest-xl
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
