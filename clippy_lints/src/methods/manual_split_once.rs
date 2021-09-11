@@ -17,32 +17,25 @@ pub(super) fn check(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, se
     }
 
     let ctxt = expr.span.ctxt();
-    let usage = match parse_iter_usage(cx, ctxt, cx.tcx.hir().parent_iter(expr.hir_id)) {
+    let (method_name, msg, reverse) = if method_name == "splitn" {
+        ("split_once", "manual implementation of `split_once`", false)
+    } else {
+        ("rsplit_once", "manual implementation of `rsplit_once`", true)
+    };
+    let usage = match parse_iter_usage(cx, ctxt, cx.tcx.hir().parent_iter(expr.hir_id), reverse) {
         Some(x) => x,
         None => return,
-    };
-    let (method_name, msg) = if method_name == "splitn" {
-        ("split_once", "manual implementation of `split_once`")
-    } else {
-        ("rsplit_once", "manual implementation of `rsplit_once`")
     };
 
     let mut app = Applicability::MachineApplicable;
     let self_snip = snippet_with_context(cx, self_arg.span, ctxt, "..", &mut app).0;
     let pat_snip = snippet_with_context(cx, pat_arg.span, ctxt, "..", &mut app).0;
 
-    match usage.kind {
+    let sugg = match usage.kind {
         IterUsageKind::NextTuple => {
-            span_lint_and_sugg(
-                cx,
-                MANUAL_SPLIT_ONCE,
-                usage.span,
-                msg,
-                "try this",
-                format!("{}.{}({})", self_snip, method_name, pat_snip),
-                app,
-            );
+            format!("{}.{}({})", self_snip, method_name, pat_snip)
         },
+        IterUsageKind::RNextTuple => format!("{}.{}({}).map(|(x, y)| (y, x))", self_snip, method_name, pat_snip),
         IterUsageKind::Next => {
             let self_deref = {
                 let adjust = cx.typeck_results().expr_adjustments(self_arg);
@@ -58,7 +51,7 @@ pub(super) fn check(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, se
                     "*".repeat(adjust.len() - 2)
                 }
             };
-            let sugg = if usage.unwrap_kind.is_some() {
+            if usage.unwrap_kind.is_some() {
                 format!(
                     "{}.{}({}).map_or({}{}, |x| x.0)",
                     &self_snip, method_name, pat_snip, self_deref, &self_snip
@@ -68,9 +61,7 @@ pub(super) fn check(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, se
                     "Some({}.{}({}).map_or({}{}, |x| x.0))",
                     &self_snip, method_name, pat_snip, self_deref, &self_snip
                 )
-            };
-
-            span_lint_and_sugg(cx, MANUAL_SPLIT_ONCE, usage.span, msg, "try this", sugg, app);
+            }
         },
         IterUsageKind::Second => {
             let access_str = match usage.unwrap_kind {
@@ -78,23 +69,18 @@ pub(super) fn check(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, se
                 Some(UnwrapKind::QuestionMark) => "?.1",
                 None => ".map(|x| x.1)",
             };
-            span_lint_and_sugg(
-                cx,
-                MANUAL_SPLIT_ONCE,
-                usage.span,
-                msg,
-                "try this",
-                format!("{}.{}({}){}", self_snip, method_name, pat_snip, access_str),
-                app,
-            );
+            format!("{}.{}({}){}", self_snip, method_name, pat_snip, access_str)
         },
-    }
+    };
+
+    span_lint_and_sugg(cx, MANUAL_SPLIT_ONCE, usage.span, msg, "try this", sugg, app);
 }
 
 enum IterUsageKind {
     Next,
     Second,
     NextTuple,
+    RNextTuple,
 }
 
 enum UnwrapKind {
@@ -108,10 +94,12 @@ struct IterUsage {
     span: Span,
 }
 
+#[allow(clippy::too_many_lines)]
 fn parse_iter_usage(
     cx: &LateContext<'tcx>,
     ctxt: SyntaxContext,
     mut iter: impl Iterator<Item = (HirId, Node<'tcx>)>,
+    reverse: bool,
 ) -> Option<IterUsage> {
     let (kind, span) = match iter.next() {
         Some((_, Node::Expr(e))) if e.span.ctxt() == ctxt => {
@@ -124,20 +112,30 @@ fn parse_iter_usage(
             let iter_id = cx.tcx.get_diagnostic_item(sym::Iterator)?;
 
             match (&*name.ident.as_str(), args) {
-                ("next", []) if cx.tcx.trait_of_item(did) == Some(iter_id) => (IterUsageKind::Next, e.span),
+                ("next", []) if cx.tcx.trait_of_item(did) == Some(iter_id) => {
+                    if reverse {
+                        (IterUsageKind::Second, e.span)
+                    } else {
+                        (IterUsageKind::Next, e.span)
+                    }
+                },
                 ("next_tuple", []) => {
-                    if_chain! {
+                    return if_chain! {
                         if match_def_path(cx, did, &paths::ITERTOOLS_NEXT_TUPLE);
                         if let ty::Adt(adt_def, subs) = cx.typeck_results().expr_ty(e).kind();
                         if cx.tcx.is_diagnostic_item(sym::option_type, adt_def.did);
                         if let ty::Tuple(subs) = subs.type_at(0).kind();
                         if subs.len() == 2;
                         then {
-                            return Some(IterUsage { kind: IterUsageKind::NextTuple, span: e.span, unwrap_kind: None });
+                            Some(IterUsage {
+                                kind: if reverse { IterUsageKind::RNextTuple } else { IterUsageKind::NextTuple },
+                                span: e.span,
+                                unwrap_kind: None
+                            })
                         } else {
-                            return None;
+                            None
                         }
-                    }
+                    };
                 },
                 ("nth" | "skip", [idx_expr]) if cx.tcx.trait_of_item(did) == Some(iter_id) => {
                     if let Some((Constant::Int(idx), _)) = constant(cx, cx.typeck_results(), idx_expr) {
@@ -158,7 +156,7 @@ fn parse_iter_usage(
                                 }
                             }
                         };
-                        match idx {
+                        match if reverse { idx ^ 1 } else { idx } {
                             0 => (IterUsageKind::Next, span),
                             1 => (IterUsageKind::Second, span),
                             _ => return None,
