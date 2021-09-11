@@ -691,7 +691,7 @@ impl Build {
         // if its unset, if debug_assertions is on, then debug_logging will also be on
         // as well as tracing *ignoring* this feature when debug_assertions is on
         if !self.config.rust_debug_logging {
-            features.push_str(" max_level_info");
+            features.push_str(" max_level_debug");
         }
 
         features

@@ -22,4 +22,4 @@ optional = true
 [features]
 jemalloc = ['tikv-jemalloc-sys', 'tikv-jemallocator']
 llvm = ['rustc_driver/llvm']
-max_level_info = ['rustc_driver/max_level_info']
+max_level_debug = ['rustc_driver/max_level_debug']
