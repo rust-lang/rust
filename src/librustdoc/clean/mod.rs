@@ -164,14 +164,8 @@ impl Clean<Type> for (ty::TraitRef<'_>, &[TypeBinding]) {
             );
         }
         inline::record_extern_fqn(cx, trait_ref.def_id, kind);
-        let path = external_path(
-            cx,
-            trait_ref.def_id,
-            Some(trait_ref.def_id),
-            true,
-            bounds.to_vec(),
-            trait_ref.substs,
-        );
+        let path =
+            external_path(cx, trait_ref.def_id, true, true, bounds.to_vec(), trait_ref.substs);
 
         debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
 
@@ -1448,12 +1442,12 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     AdtKind::Enum => ItemType::Enum,
                 };
                 inline::record_extern_fqn(cx, did, kind);
-                let path = external_path(cx, did, None, false, vec![], substs);
+                let path = external_path(cx, did, false, false, vec![], substs);
                 ResolvedPath { path, did, is_generic: false }
             }
             ty::Foreign(did) => {
                 inline::record_extern_fqn(cx, did, ItemType::ForeignType);
-                let path = external_path(cx, did, None, false, vec![], InternalSubsts::empty());
+                let path = external_path(cx, did, false, false, vec![], InternalSubsts::empty());
                 ResolvedPath { path, did, is_generic: false }
             }
             ty::Dynamic(ref obj, ref reg) => {
@@ -1477,7 +1471,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
                 for did in dids {
                     let empty = cx.tcx.intern_substs(&[]);
-                    let path = external_path(cx, did, Some(did), false, vec![], empty);
+                    let path = external_path(cx, did, true, false, vec![], empty);
                     inline::record_extern_fqn(cx, did, ItemType::Trait);
                     let bound = PolyTrait {
                         trait_: ResolvedPath { path, did, is_generic: false },
@@ -1494,7 +1488,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     });
                 }
 
-                let path = external_path(cx, did, Some(did), false, bindings, substs);
+                let path = external_path(cx, did, true, false, bindings, substs);
                 bounds.insert(
                     0,
                     PolyTrait {
