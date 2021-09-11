@@ -175,7 +175,7 @@ impl CStore {
         }
     }
 
-    crate fn crate_dependencies_in_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
+    pub fn crate_dependencies_in_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
         let mut deps = Vec::new();
         if cnum == LOCAL_CRATE {
             self.iter_crate_data(|cnum, _| self.push_dependencies_in_postorder(&mut deps, cnum));
@@ -185,7 +185,7 @@ impl CStore {
         deps
     }
 
-    fn crate_dependencies_in_reverse_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
+    pub fn crate_dependencies_in_reverse_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
         let mut deps = self.crate_dependencies_in_postorder(cnum);
         deps.reverse();
         deps
