@@ -15,7 +15,6 @@ pub(super) fn check<'tcx>(
     pat: &'tcx Pat<'_>,
     arg: &'tcx Expr<'_>,
     body: &'tcx Expr<'_>,
-    expr: &'tcx Expr<'_>,
 ) {
     let pat_span = pat.span;
 
@@ -43,7 +42,7 @@ pub(super) fn check<'tcx>(
                 span_lint_and_then(
                     cx,
                     FOR_KV_MAP,
-                    expr.span,
+                    arg_span,
                     &format!("you seem to want to iterate on a map's {}s", kind),
                     |diag| {
                         let map = sugg::Sugg::hir(cx, arg, "map");

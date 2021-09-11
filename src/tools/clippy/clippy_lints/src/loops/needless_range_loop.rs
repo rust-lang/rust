@@ -144,7 +144,7 @@ pub(super) fn check<'tcx>(
                     span_lint_and_then(
                         cx,
                         NEEDLESS_RANGE_LOOP,
-                        expr.span,
+                        arg.span,
                         &format!("the loop variable `{}` is used to index `{}`", ident.name, indexed),
                         |diag| {
                             multispan_sugg(
@@ -170,7 +170,7 @@ pub(super) fn check<'tcx>(
                     span_lint_and_then(
                         cx,
                         NEEDLESS_RANGE_LOOP,
-                        expr.span,
+                        arg.span,
                         &format!("the loop variable `{}` is only used to index `{}`", ident.name, indexed),
                         |diag| {
                             multispan_sugg(
