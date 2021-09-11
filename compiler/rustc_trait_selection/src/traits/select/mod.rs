@@ -1487,10 +1487,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ) => false,
 
             (ParamCandidate(other), ParamCandidate(victim)) => {
-                let value_same_except_bound_vars = other.value.skip_binder()
+                let same_except_bound_vars = other.value.skip_binder()
                     == victim.value.skip_binder()
+                    && other.constness == victim.constness
                     && !other.value.skip_binder().has_escaping_bound_vars();
-                if value_same_except_bound_vars {
+                if same_except_bound_vars {
                     // See issue #84398. In short, we can generate multiple ParamCandidates which are
                     // the same except for unused bound vars. Just pick the one with the fewest bound vars
                     // or the current one if tied (they should both evaluate to the same answer). This is
