@@ -440,8 +440,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_info_for_items(&mut self) {
-        let krate = self.tcx.hir().krate();
-        self.encode_info_for_mod(CRATE_DEF_ID, krate.module());
+        self.encode_info_for_mod(CRATE_DEF_ID, self.tcx.hir().root_module());
 
         // Proc-macro crates only export proc-macro items, which are looked
         // up using `proc_macro_data`
@@ -449,7 +448,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             return;
         }
 
-        krate.visit_all_item_likes(&mut self.as_deep_visitor());
+        self.tcx.hir().visit_all_item_likes(&mut self.as_deep_visitor());
     }
 
     fn encode_def_path_table(&mut self) {
@@ -1782,7 +1781,7 @@ impl EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_impls()");
         let tcx = self.tcx;
         let mut visitor = ImplVisitor { tcx, impls: FxHashMap::default() };
-        tcx.hir().krate().visit_all_item_likes(&mut visitor);
+        tcx.hir().visit_all_item_likes(&mut visitor);
 
         let mut all_impls: Vec<_> = visitor.impls.into_iter().collect();
 

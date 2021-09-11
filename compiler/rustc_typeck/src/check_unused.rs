@@ -16,7 +16,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     }
 
     let mut visitor = CheckVisitor { tcx, used_trait_imports };
-    tcx.hir().krate().visit_all_item_likes(&mut visitor);
+    tcx.hir().visit_all_item_likes(&mut visitor);
 
     unused_crates_lint(tcx);
 }
@@ -111,7 +111,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
 
     // Collect all the extern crates (in a reliable order).
     let mut crates_to_lint = vec![];
-    tcx.hir().krate().visit_all_item_likes(&mut CollectExternCrateVisitor {
+    tcx.hir().visit_all_item_likes(&mut CollectExternCrateVisitor {
         crates_to_lint: &mut crates_to_lint,
     });
 

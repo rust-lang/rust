@@ -62,7 +62,7 @@ pub fn add_constraints_from_crate<'a, 'tcx>(
         constraints: Vec::new(),
     };
 
-    tcx.hir().krate().visit_all_item_likes(&mut constraint_cx);
+    tcx.hir().visit_all_item_likes(&mut constraint_cx);
 
     constraint_cx
 }

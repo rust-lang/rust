@@ -17,9 +17,8 @@ use rustc_span::Span;
 
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
 pub fn crate_inherent_impls(tcx: TyCtxt<'_>, (): ()) -> CrateInherentImpls {
-    let krate = tcx.hir().krate();
     let mut collect = InherentCollect { tcx, impls_map: Default::default() };
-    krate.visit_all_item_likes(&mut collect);
+    tcx.hir().visit_all_item_likes(&mut collect);
     collect.impls_map
 }
 

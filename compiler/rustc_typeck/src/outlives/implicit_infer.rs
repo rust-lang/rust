@@ -37,7 +37,7 @@ pub fn infer_predicates<'tcx>(
         };
 
         // Visit all the crates and infer predicates
-        tcx.hir().krate().visit_all_item_likes(&mut visitor);
+        tcx.hir().visit_all_item_likes(&mut visitor);
     }
 
     global_inferred_outlives

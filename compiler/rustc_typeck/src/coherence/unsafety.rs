@@ -9,7 +9,7 @@ use rustc_middle::ty::TyCtxt;
 
 pub fn check(tcx: TyCtxt<'_>) {
     let mut unsafety = UnsafetyChecker { tcx };
-    tcx.hir().krate().visit_all_item_likes(&mut unsafety);
+    tcx.hir().visit_all_item_likes(&mut unsafety);
 }
 
 struct UnsafetyChecker<'tcx> {

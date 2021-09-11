@@ -7,7 +7,7 @@ use rustc_span::symbol::sym;
 
 fn proc_macro_decls_static(tcx: TyCtxt<'_>, (): ()) -> Option<LocalDefId> {
     let mut finder = Finder { tcx, decls: None };
-    tcx.hir().krate().visit_all_item_likes(&mut finder);
+    tcx.hir().visit_all_item_likes(&mut finder);
 
     finder.decls.map(|id| tcx.hir().local_def_id(id))
 }

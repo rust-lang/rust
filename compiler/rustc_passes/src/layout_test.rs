@@ -12,7 +12,7 @@ use rustc_target::abi::{HasDataLayout, TargetDataLayout};
 pub fn test_layout(tcx: TyCtxt<'_>) {
     if tcx.features().rustc_attrs {
         // if the `rustc_attrs` feature is not enabled, don't bother testing layout
-        tcx.hir().krate().visit_all_item_likes(&mut LayoutTest { tcx });
+        tcx.hir().visit_all_item_likes(&mut LayoutTest { tcx });
     }
 }
 

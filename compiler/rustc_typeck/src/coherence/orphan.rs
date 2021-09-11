@@ -10,7 +10,7 @@ use rustc_trait_selection::traits;
 
 pub fn check(tcx: TyCtxt<'_>) {
     let mut orphan = OrphanChecker { tcx };
-    tcx.hir().krate().visit_all_item_likes(&mut orphan);
+    tcx.hir().visit_all_item_likes(&mut orphan);
 }
 
 struct OrphanChecker<'tcx> {

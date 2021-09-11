@@ -26,8 +26,7 @@ mod tests;
 crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     use crate::visit_lib::LibEmbargoVisitor;
 
-    let krate = cx.tcx.hir().krate();
-    let module = crate::visit_ast::RustdocVisitor::new(cx).visit(krate);
+    let module = crate::visit_ast::RustdocVisitor::new(cx).visit();
 
     let mut externs = Vec::new();
     for &cnum in cx.tcx.crates(()).iter() {

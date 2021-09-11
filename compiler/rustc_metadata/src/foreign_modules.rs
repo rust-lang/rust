@@ -5,7 +5,7 @@ use rustc_middle::ty::TyCtxt;
 
 crate fn collect(tcx: TyCtxt<'_>) -> Vec<ForeignModule> {
     let mut collector = Collector { modules: Vec::new() };
-    tcx.hir().krate().visit_all_item_likes(&mut collector);
+    tcx.hir().visit_all_item_likes(&mut collector);
     collector.modules
 }
 

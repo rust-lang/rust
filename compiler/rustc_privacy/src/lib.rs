@@ -2189,8 +2189,6 @@ fn privacy_access_levels(tcx: TyCtxt<'_>, (): ()) -> &AccessLevels {
 fn check_private_in_public(tcx: TyCtxt<'_>, (): ()) {
     let access_levels = tcx.privacy_access_levels(());
 
-    let krate = tcx.hir().krate();
-
     let mut visitor = ObsoleteVisiblePrivateTypesVisitor {
         tcx,
         access_levels: &access_levels,
@@ -2230,5 +2228,5 @@ fn check_private_in_public(tcx: TyCtxt<'_>, (): ()) {
             .filter_map(|hir_id| tcx.hir().opt_local_def_id(hir_id))
             .collect(),
     };
-    krate.visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
+    tcx.hir().visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
 }

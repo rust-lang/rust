@@ -1003,9 +1003,9 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
 
             let mut visitor = DumpVisitor::new(save_ctxt);
 
-            visitor.dump_crate_info(cratename, tcx.hir().krate());
+            visitor.dump_crate_info(cratename);
             visitor.dump_compilation_options(input, cratename);
-            visitor.process_crate(tcx.hir().krate());
+            visitor.process_crate();
 
             handler.save(&visitor.save_ctxt, &visitor.analysis())
         })

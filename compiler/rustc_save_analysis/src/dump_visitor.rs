@@ -18,7 +18,7 @@ use rustc_ast::walk_list;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind as HirDefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir_pretty::{bounds_to_string, fn_to_string, generic_params_to_string, ty_to_string};
 use rustc_middle::hir::map::Map;
@@ -128,7 +128,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         self.save_ctxt.lookup_def_id(ref_id)
     }
 
-    pub fn dump_crate_info(&mut self, name: &str, krate: &hir::Crate<'_>) {
+    pub fn dump_crate_info(&mut self, name: &str) {
         let source_file = self.tcx.sess.local_crate_source_file.as_ref();
         let crate_root = source_file.map(|source_file| {
             let source_file = Path::new(source_file);
@@ -146,7 +146,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             },
             crate_root: crate_root.unwrap_or_else(|| "<no source>".to_owned()),
             external_crates: self.save_ctxt.get_external_crates(),
-            span: self.span_from_span(krate.module().inner),
+            span: self.span_from_span(self.tcx.def_span(CRATE_DEF_ID)),
         };
 
         self.dumper.crate_prelude(data);
@@ -1090,13 +1090,13 @@ impl<'tcx> DumpVisitor<'tcx> {
         }
     }
 
-    pub(crate) fn process_crate(&mut self, krate: &'tcx hir::Crate<'tcx>) {
+    pub(crate) fn process_crate(&mut self) {
         let id = hir::CRATE_HIR_ID;
         let qualname =
             format!("::{}", self.tcx.def_path_str(self.tcx.hir().local_def_id(id).to_def_id()));
 
         let sm = self.tcx.sess.source_map();
-        let krate_mod = krate.module();
+        let krate_mod = self.tcx.hir().root_module();
         let filename = sm.span_to_filename(krate_mod.inner);
         let data_id = id_from_hir_id(id, &self.save_ctxt);
         let children =

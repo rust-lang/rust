@@ -10,8 +10,7 @@ use smallvec::SmallVec;
 use std::collections::hash_map::Entry;
 
 pub fn crate_inherent_impls_overlap_check(tcx: TyCtxt<'_>, (): ()) {
-    let krate = tcx.hir().krate();
-    krate.visit_all_item_likes(&mut InherentOverlapChecker { tcx });
+    tcx.hir().visit_all_item_likes(&mut InherentOverlapChecker { tcx });
 }
 
 struct InherentOverlapChecker<'tcx> {

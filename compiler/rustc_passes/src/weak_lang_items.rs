@@ -33,7 +33,7 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>, items: &mut lang_items::LanguageItem
 
     {
         let mut cx = Context { tcx, items };
-        tcx.hir().krate().visit_all_item_likes(&mut cx.as_deep_visitor());
+        tcx.hir().visit_all_item_likes(&mut cx.as_deep_visitor());
     }
     verify(tcx, items);
 }

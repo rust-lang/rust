@@ -160,9 +160,7 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxHashSet<LocalDefId> {
             NestedVisitorMap::None
         }
     }
-    tcx.hir()
-        .krate()
-        .visit_all_item_likes(&mut GatherCtors { tcx, set: &mut set }.as_deep_visitor());
+    tcx.hir().visit_all_item_likes(&mut GatherCtors { tcx, set: &mut set }.as_deep_visitor());
 
     set
 }
