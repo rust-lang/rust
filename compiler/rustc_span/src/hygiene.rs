@@ -1357,9 +1357,7 @@ fn for_all_expns_in<E>(
     mut f: impl FnMut(ExpnId, &ExpnData, ExpnHash) -> Result<(), E>,
 ) -> Result<(), E> {
     let all_data: Vec<_> = HygieneData::with(|data| {
-        expns
-            .map(|expn| (expn, data.expn_data(expn).clone(), data.expn_hash(expn).clone()))
-            .collect()
+        expns.map(|expn| (expn, data.expn_data(expn).clone(), data.expn_hash(expn))).collect()
     });
     for (expn, data, hash) in all_data.into_iter() {
         f(expn, &data, hash)?;

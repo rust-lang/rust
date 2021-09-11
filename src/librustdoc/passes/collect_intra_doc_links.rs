@@ -1323,7 +1323,7 @@ impl LinkCollector<'_, '_> {
         if let Some(ref cached) = self.visited_links.get(&key) {
             match cached {
                 Some(cached) => {
-                    self.kind_side_channel.set(cached.side_channel.clone());
+                    self.kind_side_channel.set(cached.side_channel);
                     return Some(cached.res.clone());
                 }
                 None if cache_resolution_failure => return None,

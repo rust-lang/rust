@@ -249,10 +249,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if let ObligationCauseCode::WellFormed(Some(wf_loc)) =
                     root_obligation.cause.code.peel_derives()
                 {
-                    if let Some(cause) = self.tcx.diagnostic_hir_wf_check((
-                        tcx.erase_regions(obligation.predicate),
-                        wf_loc.clone(),
-                    )) {
+                    if let Some(cause) = self
+                        .tcx
+                        .diagnostic_hir_wf_check((tcx.erase_regions(obligation.predicate), *wf_loc))
+                    {
                         obligation.cause = cause;
                         span = obligation.cause.span;
                     }
