@@ -25,9 +25,6 @@ paths = { path = "../paths", version = "0.0.0" }
 proc_macro_api = { path = "../proc_macro_api", version = "0.0.0" }
 
 [dev-dependencies]
-test_utils = { path = "../test_utils" }
-toolchain = { path = "../toolchain" }
-cargo_metadata = "0.14"
 expect-test = "1.1.0"
 
 # used as proc macro test targets

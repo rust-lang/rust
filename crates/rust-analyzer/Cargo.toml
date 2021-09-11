@@ -73,7 +73,6 @@ xshell = "0.1"
 test_utils = { path = "../test_utils" }
 sourcegen = { path = "../sourcegen" }
 mbe = { path = "../mbe" }
-tt = { path = "../tt" }
 
 [features]
 jemalloc = ["jemallocator", "profile/jemalloc"]
