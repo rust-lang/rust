@@ -1,0 +1,97 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/issue-88476.rs:20:13
+   |
+LL |     let x = #[rustc_capture_analysis] move || {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/issue-88476.rs:47:13
+   |
+LL |     let c = #[rustc_capture_analysis] move || {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error: First Pass analysis includes:
+  --> $DIR/issue-88476.rs:20:39
+   |
+LL |       let x = #[rustc_capture_analysis] move || {
+   |  _______________________________________^
+LL | |
+LL | |
+LL | |
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing f[(0, 0)] -> ImmBorrow
+  --> $DIR/issue-88476.rs:25:26
+   |
+LL |         println!("{:?}", f.0);
+   |                          ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/issue-88476.rs:20:39
+   |
+LL |       let x = #[rustc_capture_analysis] move || {
+   |  _______________________________________^
+LL | |
+LL | |
+LL | |
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture f[] -> ByValue
+  --> $DIR/issue-88476.rs:25:26
+   |
+LL |         println!("{:?}", f.0);
+   |                          ^^^
+
+error: First Pass analysis includes:
+  --> $DIR/issue-88476.rs:47:39
+   |
+LL |       let c = #[rustc_capture_analysis] move || {
+   |  _______________________________________^
+LL | |
+LL | |
+LL | |
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing character[(0, 0)] -> ImmBorrow
+  --> $DIR/issue-88476.rs:52:24
+   |
+LL |         println!("{}", character.hp)
+   |                        ^^^^^^^^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/issue-88476.rs:47:39
+   |
+LL |       let c = #[rustc_capture_analysis] move || {
+   |  _______________________________________^
+LL | |
+LL | |
+LL | |
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture character[(0, 0)] -> ByValue
+  --> $DIR/issue-88476.rs:52:24
+   |
+LL |         println!("{}", character.hp)
+   |                        ^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

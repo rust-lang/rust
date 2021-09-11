@@ -6,6 +6,10 @@
 // min-lldb-version: 310
 // min-cdb-version: 10.0.18317.1001
 
+// This started failing recently. See https://github.com/rust-lang/rust/issues/88796
+// FIXME: fix and unignore this
+// ignore-windows
+
 // === GDB TESTS ===================================================================================
 
 // gdb-command: run

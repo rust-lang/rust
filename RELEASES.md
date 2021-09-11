@@ -10,8 +10,7 @@ Language
 
 Compiler
 --------
-- [Added tier 3\* support for `powerpc-unknown-freebsd`.][87370]
-- [Added tier 3 support for `powerpc64le-unknown-freebsd`.][83572]
+- [Added tier 3\* support for `powerpc64le-unknown-freebsd`.][83572]
 
 \* Refer to Rust's [platform support page][platform-support-doc] for more
    information on Rust's tiered platform support.
@@ -24,17 +23,6 @@ Libraries
   no longer reject certain valid floating point values, and reduce
   the produced code size for non-stripped artifacts.
 - [`string::Drain` now implements `AsRef<str>` and `AsRef<[u8]>`.][86858]
-- [`collections::{BinaryHeap, BTreeSet, HashSet, LinkedList, VecDeque}` now
-  implement `From<[T; N]>`.][84111]
-- [`collections::{BTreeMap, HashMap}` now implement `From<[(K, V); N]>`.][84111]
-  This allows you to write the following;
-  ```rust
-  let highscores = std::collections::HashMap::from([
-      ("Alice", 9000u32),
-      ("Bob", 7250),
-      ("Charlie", 5500),
-  ]);
-  ```
 
 Stabilised APIs
 ---------------
@@ -60,7 +48,6 @@ Stabilised APIs
 The following previously stable functions are now `const`.
 
 - [`str::from_utf8_unchecked`]
-- [`mem::transmute`]
 
 
 Cargo
@@ -131,7 +118,6 @@ Compatibility Notes
 [`MaybeUninit::assume_init_ref`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init_ref
 [`MaybeUninit::write`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.write
 [`Seek::rewind`]: https://doc.rust-lang.org/stable/std/io/trait.Seek.html#method.rewind
-[`mem::transmute`]: https://doc.rust-lang.org/stable/std/mem/fn.transmute.html
 [`ops::ControlFlow`]: https://doc.rust-lang.org/stable/std/ops/enum.ControlFlow.html
 [`str::from_utf8_unchecked`]: https://doc.rust-lang.org/stable/std/str/fn.from_utf8_unchecked.html
 [`x86::_bittest`]: https://doc.rust-lang.org/stable/core/arch/x86/fn._bittest.html

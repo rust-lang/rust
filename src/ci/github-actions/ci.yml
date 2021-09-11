@@ -635,6 +635,9 @@ jobs:
               SCRIPT: python x.py dist
               # RLS does not build for aarch64-pc-windows-msvc. See rust-lang/rls#1693
               DIST_REQUIRE_ALL_TOOLS: 0
+              # Hack around this SDK version, because it doesn't work with clang.
+              # See https://github.com/rust-lang/rust/issues/88796
+              WINDOWS_SDK_20348_HACK: 1
             <<: *job-windows-xl
 
           - name: dist-i686-mingw
