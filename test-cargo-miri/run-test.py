@@ -102,6 +102,11 @@ def test_cargo_miri_run():
         "run.subcrate.stdout.ref", "run.subcrate.stderr.ref",
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
+    test("`cargo miri r` (subcrate, no ioslation)",
+        cargo_miri("r") + ["-p", "subcrate"],
+        "run.subcrate.stdout.ref", "run.subcrate.stderr.ref",
+        env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
+    )
     test("`cargo miri run` (custom target dir)",
         # Attempt to confuse the argument parser.
         cargo_miri("run") + ["--target-dir=custom-run", "--", "--target-dir=target/custom-run"],
@@ -143,6 +148,11 @@ def test_cargo_miri_test():
     )
     test("`cargo miri test` (subcrate, no isolation)",
         cargo_miri("test") + ["-p", "subcrate"],
+        "test.subcrate.stdout.ref", "test.stderr-proc-macro.ref",
+        env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
+    )
+    test("`cargo miri t` (subcrate, no isolation)",
+        cargo_miri("t") + ["-p", "subcrate"],
         "test.subcrate.stdout.ref", "test.stderr-proc-macro.ref",
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
