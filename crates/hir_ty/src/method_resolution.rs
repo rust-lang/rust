@@ -2,7 +2,7 @@
 //! For details about how this works in rustc, see the method lookup page in the
 //! [rustc guide](https://rust-lang.github.io/rustc-guide/method-lookup.html)
 //! and the corresponding code mostly in librustc_typeck/check/method/probe.rs.
-use std::{iter, sync::Arc};
+use std::{iter, ops::ControlFlow, sync::Arc};
 
 use arrayvec::ArrayVec;
 use base_db::{CrateId, Edition};
@@ -435,8 +435,11 @@ pub fn iterate_method_candidates<T>(
         mode,
         &mut |ty, item| {
             assert!(slot.is_none());
-            slot = callback(ty, item);
-            slot.is_some()
+            if let Some(it) = callback(ty, item) {
+                slot = Some(it);
+                return ControlFlow::Break(());
+            }
+            ControlFlow::Continue(())
         },
     );
     slot
@@ -451,8 +454,8 @@ pub fn iterate_method_candidates_dyn(
     visible_from_module: Option<ModuleId>,
     name: Option<&Name>,
     mode: LookupMode,
-    callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
-) -> bool {
+    callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
+) -> ControlFlow<()> {
     match mode {
         LookupMode::MethodCall => {
             // For method calls, rust first does any number of autoderef, and then one
@@ -480,7 +483,7 @@ pub fn iterate_method_candidates_dyn(
 
             let deref_chain = autoderef_method_receiver(db, krate, ty);
             for i in 0..deref_chain.len() {
-                if iterate_method_candidates_with_autoref(
+                iterate_method_candidates_with_autoref(
                     &deref_chain[i..],
                     db,
                     env.clone(),
@@ -489,11 +492,9 @@ pub fn iterate_method_candidates_dyn(
                     visible_from_module,
                     name,
                     callback,
-                ) {
-                    return true;
-                }
+                )?;
             }
-            false
+            ControlFlow::Continue(())
         }
         LookupMode::Path => {
             // No autoderef for path lookups
@@ -519,9 +520,9 @@ fn iterate_method_candidates_with_autoref(
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: Option<ModuleId>,
     name: Option<&Name>,
-    mut callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
-) -> bool {
-    if iterate_method_candidates_by_receiver(
+    mut callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
+) -> ControlFlow<()> {
+    iterate_method_candidates_by_receiver(
         &deref_chain[0],
         &deref_chain[1..],
         db,
@@ -531,15 +532,15 @@ fn iterate_method_candidates_with_autoref(
         visible_from_module,
         name,
         &mut callback,
-    ) {
-        return true;
-    }
+    )?;
+
     let refed = Canonical {
         binders: deref_chain[0].binders.clone(),
         value: TyKind::Ref(Mutability::Not, static_lifetime(), deref_chain[0].value.clone())
             .intern(&Interner),
     };
-    if iterate_method_candidates_by_receiver(
+
+    iterate_method_candidates_by_receiver(
         &refed,
         deref_chain,
         db,
@@ -549,15 +550,15 @@ fn iterate_method_candidates_with_autoref(
         visible_from_module,
         name,
         &mut callback,
-    ) {
-        return true;
-    }
+    )?;
+
     let ref_muted = Canonical {
         binders: deref_chain[0].binders.clone(),
         value: TyKind::Ref(Mutability::Mut, static_lifetime(), deref_chain[0].value.clone())
             .intern(&Interner),
     };
-    if iterate_method_candidates_by_receiver(
+
+    iterate_method_candidates_by_receiver(
         &ref_muted,
         deref_chain,
         db,
@@ -567,10 +568,7 @@ fn iterate_method_candidates_with_autoref(
         visible_from_module,
         name,
         &mut callback,
-    ) {
-        return true;
-    }
-    false
+    )
 }
 
 fn iterate_method_candidates_by_receiver(
@@ -582,13 +580,13 @@ fn iterate_method_candidates_by_receiver(
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: Option<ModuleId>,
     name: Option<&Name>,
-    mut callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
-) -> bool {
+    mut callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
+) -> ControlFlow<()> {
     // We're looking for methods with *receiver* type receiver_ty. These could
     // be found in any of the derefs of receiver_ty, so we have to go through
     // that.
     for self_ty in std::iter::once(receiver_ty).chain(rest_of_deref_chain) {
-        if iterate_inherent_methods(
+        iterate_inherent_methods(
             self_ty,
             db,
             env.clone(),
@@ -597,12 +595,11 @@ fn iterate_method_candidates_by_receiver(
             krate,
             visible_from_module,
             &mut callback,
-        ) {
-            return true;
-        }
+        )?
     }
+
     for self_ty in std::iter::once(receiver_ty).chain(rest_of_deref_chain) {
-        if iterate_trait_method_candidates(
+        iterate_trait_method_candidates(
             self_ty,
             db,
             env.clone(),
@@ -611,11 +608,10 @@ fn iterate_method_candidates_by_receiver(
             name,
             Some(receiver_ty),
             &mut callback,
-        ) {
-            return true;
-        }
+        )?
     }
-    false
+
+    ControlFlow::Continue(())
 }
 
 fn iterate_method_candidates_for_self_ty(
@@ -626,9 +622,9 @@ fn iterate_method_candidates_for_self_ty(
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: Option<ModuleId>,
     name: Option<&Name>,
-    mut callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
-) -> bool {
-    if iterate_inherent_methods(
+    mut callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
+) -> ControlFlow<()> {
+    iterate_inherent_methods(
         self_ty,
         db,
         env.clone(),
@@ -637,9 +633,7 @@ fn iterate_method_candidates_for_self_ty(
         krate,
         visible_from_module,
         &mut callback,
-    ) {
-        return true;
-    }
+    )?;
     iterate_trait_method_candidates(self_ty, db, env, krate, traits_in_scope, name, None, callback)
 }
 
@@ -651,22 +645,24 @@ fn iterate_trait_method_candidates(
     traits_in_scope: &FxHashSet<TraitId>,
     name: Option<&Name>,
     receiver_ty: Option<&Canonical<Ty>>,
-    callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
-) -> bool {
+    callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
+) -> ControlFlow<()> {
     let receiver_is_array = matches!(self_ty.value.kind(&Interner), chalk_ir::TyKind::Array(..));
     // if ty is `dyn Trait`, the trait doesn't need to be in scope
     let inherent_trait =
         self_ty.value.dyn_trait().into_iter().flat_map(|t| all_super_traits(db.upcast(), t));
-    let env_traits = if let TyKind::Placeholder(_) = self_ty.value.kind(&Interner) {
-        // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
-        env.traits_in_scope_from_clauses(&self_ty.value)
-            .flat_map(|t| all_super_traits(db.upcast(), t))
-            .collect()
-    } else {
-        Vec::new()
+    let env_traits = match self_ty.value.kind(&Interner) {
+        TyKind::Placeholder(_) => {
+            // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
+            env.traits_in_scope_from_clauses(&self_ty.value)
+                .flat_map(|t| all_super_traits(db.upcast(), t))
+                .collect()
+        }
+        _ => Vec::new(),
     };
     let traits =
         inherent_trait.chain(env_traits.into_iter()).chain(traits_in_scope.iter().copied());
+
     'traits: for t in traits {
         let data = db.trait_data(t);
 
@@ -701,12 +697,10 @@ fn iterate_trait_method_candidates(
             }
             known_implemented = true;
             // FIXME: we shouldn't be ignoring the binders here
-            if callback(&self_ty.value, *item) {
-                return true;
-            }
+            callback(&self_ty.value, *item)?
         }
     }
-    false
+    ControlFlow::Continue(())
 }
 
 fn filter_inherent_impls_for_self_ty<'i>(
@@ -744,12 +738,13 @@ fn iterate_inherent_methods(
     receiver_ty: Option<&Canonical<Ty>>,
     krate: CrateId,
     visible_from_module: Option<ModuleId>,
-    callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
-) -> bool {
+    callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
+) -> ControlFlow<()> {
     let def_crates = match def_crates(db, &self_ty.value, krate) {
         Some(k) => k,
-        None => return false,
+        None => return ControlFlow::Continue(()),
     };
+
     for krate in def_crates {
         let impls = db.inherent_impls_in_crate(krate);
 
@@ -779,13 +774,11 @@ fn iterate_inherent_methods(
                     continue;
                 }
                 let receiver_ty = receiver_ty.map(|x| &x.value).unwrap_or(&self_ty.value);
-                if callback(receiver_ty, item) {
-                    return true;
-                }
+                callback(receiver_ty, item)?;
             }
         }
     }
-    false
+    ControlFlow::Continue(())
 }
 
 /// Returns the self type for the index trait call.
