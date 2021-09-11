@@ -799,7 +799,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn with_scope<T>(&mut self, id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
-        if let Some(module) = self.r.module_map.get(&self.r.local_def_id(id).to_def_id()).copied() {
+        if let Some(module) = self.r.get_module(self.r.local_def_id(id).to_def_id()) {
             // Move down in the graph.
             let orig_module = replace(&mut self.parent_scope.module, module);
             self.with_rib(ValueNS, ModuleRibKind(module), |this| {

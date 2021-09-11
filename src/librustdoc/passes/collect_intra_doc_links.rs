@@ -759,7 +759,7 @@ fn traits_implemented_by(cx: &mut DocContext<'_>, type_: DefId, module: DefId) -
     let mut resolver = cx.resolver.borrow_mut();
     let in_scope_traits = cx.module_trait_cache.entry(module).or_insert_with(|| {
         resolver.access(|resolver| {
-            let parent_scope = &ParentScope::module(resolver.get_module(module), resolver);
+            let parent_scope = &ParentScope::module(resolver.expect_module(module), resolver);
             resolver
                 .traits_in_scope(None, parent_scope, SyntaxContext::root(), None)
                 .into_iter()

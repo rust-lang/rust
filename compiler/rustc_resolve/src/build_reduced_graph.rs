@@ -93,59 +93,76 @@ impl<'a> Resolver<'a> {
     }
 
     /// Walks up the tree of definitions starting at `def_id`,
-    /// stopping at the first `DefKind::Mod` encountered
-    fn nearest_parent_mod(&mut self, def_id: DefId) -> Module<'a> {
-        let def_key = self.cstore().def_key(def_id);
-
-        let mut parent_id = DefId {
-            krate: def_id.krate,
-            index: def_key.parent.expect("failed to get parent for module"),
-        };
-        // The immediate parent may not be a module
-        // (e.g. `const _: () =  { #[path = "foo.rs"] mod foo; };`)
-        // Walk up the tree until we hit a module or the crate root.
-        while parent_id.index != CRATE_DEF_INDEX
-            && self.cstore().def_kind(parent_id) != DefKind::Mod
-        {
-            let parent_def_key = self.cstore().def_key(parent_id);
-            parent_id.index = parent_def_key.parent.expect("failed to get parent for module");
+    /// stopping at the first encountered module.
+    /// Parent block modules for arbitrary def-ids are not recorded for the local crate,
+    /// and are not preserved in metadata for foreign crates, so block modules are never
+    /// returned by this function.
+    ///
+    /// For the local crate ignoring block modules may be incorrect, so use this method with care.
+    ///
+    /// For foreign crates block modules can be ignored without introducing observable differences,
+    /// moreover they has to be ignored right now because they are not kept in metadata.
+    /// Foreign parent modules are used for resolving names used by foreign macros with def-site
+    /// hygiene, therefore block module ignorability relies on macros with def-site hygiene and
+    /// block module parents being unreachable from other crates.
+    /// Reachable macros with block module parents exist due to `#[macro_export] macro_rules!`,
+    /// but they cannot use def-site hygiene, so the assumption holds
+    /// (<https://github.com/rust-lang/rust/pull/77984#issuecomment-712445508>).
+    fn get_nearest_non_block_module(&mut self, mut def_id: DefId) -> Module<'a> {
+        loop {
+            match self.get_module(def_id) {
+                Some(module) => return module,
+                None => {
+                    def_id.index =
+                        self.def_key(def_id).parent.expect("non-root `DefId` without parent")
+                }
+            }
         }
-        self.get_module(parent_id)
     }
 
-    pub fn get_module(&mut self, def_id: DefId) -> Module<'a> {
-        // Cache module resolution
-        if let Some(module) = self.module_map.get(&def_id) {
-            return *module;
+    pub fn expect_module(&mut self, def_id: DefId) -> Module<'a> {
+        self.get_module(def_id).expect("argument `DefId` is not a module")
+    }
+
+    /// If `def_id` refers to a module (in resolver's sense, i.e. a module item, crate root, enum,
+    /// or trait), then this function returns that module's resolver representation, otherwise it
+    /// returns `None`.
+    /// FIXME: `Module`s for local enums and traits are not currently found.
+    crate fn get_module(&mut self, def_id: DefId) -> Option<Module<'a>> {
+        if let module @ Some(..) = self.module_map.get(&def_id) {
+            return module.copied();
         }
 
-        assert!(!def_id.is_local());
-        let (name, parent) = if def_id.index == CRATE_DEF_INDEX {
-            // This is the crate root
-            (self.cstore().crate_name(def_id.krate), None)
+        if !def_id.is_local() {
+            let def_kind = self.cstore().def_kind(def_id);
+            match def_kind {
+                DefKind::Mod | DefKind::Enum | DefKind::Trait => {
+                    let def_key = self.cstore().def_key(def_id);
+                    let parent = def_key.parent.map(|index| {
+                        self.get_nearest_non_block_module(DefId { index, krate: def_id.krate })
+                    });
+                    let name = if def_id.index == CRATE_DEF_INDEX {
+                        self.cstore().crate_name(def_id.krate)
+                    } else {
+                        def_key.disambiguated_data.data.get_opt_name().expect("module without name")
+                    };
+
+                    let module = self.arenas.new_module(
+                        parent,
+                        ModuleKind::Def(def_kind, def_id, name),
+                        self.cstore().module_expansion_untracked(def_id, &self.session),
+                        self.cstore().get_span_untracked(def_id, &self.session),
+                        // FIXME: Account for `#[no_implicit_prelude]` attributes.
+                        parent.map_or(false, |module| module.no_implicit_prelude),
+                    );
+                    self.module_map.insert(def_id, module);
+                    Some(module)
+                }
+                _ => None,
+            }
         } else {
-            let def_key = self.cstore().def_key(def_id);
-            let name = def_key
-                .disambiguated_data
-                .data
-                .get_opt_name()
-                .expect("given a DefId that wasn't a module");
-
-            let parent = Some(self.nearest_parent_mod(def_id));
-            (name, parent)
-        };
-
-        // Allocate and return a new module with the information we found
-        let module = self.arenas.new_module(
-            parent,
-            ModuleKind::Def(DefKind::Mod, def_id, name),
-            self.cstore().module_expansion_untracked(def_id, &self.session),
-            self.cstore().get_span_untracked(def_id, &self.session),
-            // FIXME: Account for `#[no_implicit_prelude]` attributes.
-            parent.map_or(false, |module| module.no_implicit_prelude),
-        );
-        self.module_map.insert(def_id, module);
-        module
+            None
+        }
     }
 
     crate fn expn_def_scope(&mut self, expn_id: ExpnId) -> Module<'a> {
@@ -162,24 +179,7 @@ impl<'a> Resolver<'a> {
         if let Some(id) = def_id.as_local() {
             self.local_macro_def_scopes[&id]
         } else {
-            // This is not entirely correct - a `macro_rules!` macro may occur
-            // inside a 'block' module:
-            //
-            // ```rust
-            // const _: () = {
-            // #[macro_export]
-            // macro_rules! my_macro {
-            //     () => {};
-            // }
-            // `
-            // We don't record this information for external crates, so
-            // the module we compute here will be the closest 'mod' item
-            // (not necesssarily the actual parent of the `macro_rules!`
-            // macro). `macro_rules!` macros can't use def-site hygiene,
-            // so this hopefully won't be a problem.
-            //
-            // See https://github.com/rust-lang/rust/pull/77984#issuecomment-712445508
-            self.nearest_parent_mod(def_id)
+            self.get_nearest_non_block_module(def_id)
         }
     }
 
@@ -708,7 +708,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         local_def_id,
                     );
                     self.r.extern_crate_map.insert(local_def_id, crate_id);
-                    self.r.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX })
+                    self.r.expect_module(crate_id.as_def_id())
                 };
 
                 let used = self.process_macro_use_imports(item, module);

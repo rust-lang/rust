@@ -2167,9 +2167,8 @@ impl<'a> Resolver<'a> {
                 return self.graph_root;
             }
         };
-        let module =
-            self.get_module(module.def_id().map_or(LOCAL_CRATE, |def_id| def_id.krate).as_def_id());
-
+        let module = self
+            .expect_module(module.def_id().map_or(LOCAL_CRATE, |def_id| def_id.krate).as_def_id());
         debug!(
             "resolve_crate_root({:?}): got module {:?} ({:?}) (ident.span = {:?})",
             ident,
@@ -2181,10 +2180,10 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_self(&mut self, ctxt: &mut SyntaxContext, module: Module<'a>) -> Module<'a> {
-        let mut module = self.get_module(module.nearest_parent_mod());
+        let mut module = self.expect_module(module.nearest_parent_mod());
         while module.span.ctxt().normalize_to_macros_2_0() != *ctxt {
             let parent = module.parent.unwrap_or_else(|| self.expn_def_scope(ctxt.remove_mark()));
-            module = self.get_module(parent.nearest_parent_mod());
+            module = self.expect_module(parent.nearest_parent_mod());
         }
         module
     }
@@ -3267,7 +3266,7 @@ impl<'a> Resolver<'a> {
                 } else {
                     self.crate_loader.maybe_process_path_extern(ident.name)?
                 };
-                let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
+                let crate_root = self.expect_module(crate_id.as_def_id());
                 Some(
                     (crate_root, ty::Visibility::Public, DUMMY_SP, LocalExpnId::ROOT)
                         .to_name_binding(self.arenas),
@@ -3308,7 +3307,7 @@ impl<'a> Resolver<'a> {
                 tokens: None,
             }
         };
-        let module = self.get_module(module_id);
+        let module = self.expect_module(module_id);
         let parent_scope = &ParentScope::module(module, self);
         let res = self.resolve_ast_path(&path, ns, parent_scope).map_err(|_| ())?;
         Ok((path, res))

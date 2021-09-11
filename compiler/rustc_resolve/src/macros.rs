@@ -240,7 +240,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
         );
 
         let parent_scope =
-            parent_module.map_or(self.empty_module, |def_id| self.get_module(def_id));
+            parent_module.map_or(self.empty_module, |def_id| self.expect_module(def_id));
         self.ast_transform_scopes.insert(expn_id, parent_scope);
 
         expn_id
