@@ -2,9 +2,14 @@ warning: unnecessary parentheses around assigned value
   --> $DIR/issue-54752-async-block.rs:6:22
    |
 LL | fn main() { let _a = (async  { }); }
-   |                      ^^^^^^^^^^^^ help: remove these parentheses
+   |                      ^          ^
    |
    = note: `#[warn(unused_parens)]` on by default
+help: remove these parentheses
+   |
+LL - fn main() { let _a = (async  { }); }
+LL + fn main() { let _a = async  { }; }
+   | 
 
 warning: 1 warning emitted
 
