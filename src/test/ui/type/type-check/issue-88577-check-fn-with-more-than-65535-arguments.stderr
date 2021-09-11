@@ -1,0 +1,13 @@
+error: function can not have more than 65535 arguments
+  --> $DIR/issue-88577-check-fn-with-more-than-65535-arguments.rs:6:24
+   |
+LL |           fn _f($($t: ()),*) {}
+   |  ________________________^
+LL | |     }
+LL | | }
+LL | |
+LL | | many_args!{[_]########## ######}
+   | |____________^
+
+error: aborting due to previous error
+
