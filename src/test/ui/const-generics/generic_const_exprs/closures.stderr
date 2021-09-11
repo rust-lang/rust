@@ -4,7 +4,7 @@ error: overly complex generic constant
 LL | fn test<const N: usize>() -> [u8; N + (|| 42)()] {}
    |                                   ^^^^-------^^
    |                                       |
-   |                                       unsupported rvalue
+   |                                       unsupported operation in generic constant, this may be supported in the future
    |
    = help: consider moving this anonymous constant into a `const` function
 

@@ -2,9 +2,9 @@ error: overly complex generic constant
   --> $DIR/issue-67375.rs:7:17
    |
 LL |     inner: [(); { [|_: &T| {}; 0].len() }],
-   |                 ^^^----------^^^^^^^^^^^^
-   |                    |
-   |                    unsupported rvalue
+   |                 ^^---------------^^^^^^^^
+   |                   |
+   |                   unsupported operation in generic constant
    |
    = help: consider moving this anonymous constant into a `const` function
 

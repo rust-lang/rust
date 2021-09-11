@@ -10,7 +10,7 @@ error: overly complex generic constant
   --> $DIR/array-size-in-generic-struct-param.rs:19:15
    |
 LL |     arr: [u8; CFG.arr_size],
-   |               ^^^^^^^^^^^^ unsupported projection
+   |               ^^^^^^^^^^^^ unsupported operation in generic constant, this may be supported in the future
    |
    = help: consider moving this anonymous constant into a `const` function
 
