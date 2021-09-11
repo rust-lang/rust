@@ -6,6 +6,7 @@ trait T {
 
 #[derive(Debug)]
 struct S {
+    #[allow(dead_code)]
     s: isize,
 }
 
