@@ -31,7 +31,7 @@ pub mod db;
 
 mod display;
 
-use std::{iter, sync::Arc};
+use std::{iter, ops::ControlFlow, sync::Arc};
 
 use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, Edition, FileId};
@@ -2573,12 +2573,14 @@ impl Type {
             krate,
             traits_in_scope,
             name,
-            &mut |ty, assoc_item_id| match assoc_item_id {
-                AssocItemId::FunctionId(it) => {
-                    slot = callback(self.derived(ty.clone()), it.into());
-                    slot.is_some()
+            &mut |ty, assoc_item_id| {
+                if let AssocItemId::FunctionId(func) = assoc_item_id {
+                    if let Some(res) = callback(self.derived(ty.clone()), func.into()) {
+                        slot = Some(res);
+                        return ControlFlow::Break(());
+                    }
                 }
-                AssocItemId::ConstId(_) | AssocItemId::TypeAliasId(_) => false,
+                ControlFlow::Continue(())
             },
         );
         slot
@@ -2590,7 +2592,7 @@ impl Type {
         krate: Crate,
         traits_in_scope: &FxHashSet<TraitId>,
         name: Option<&Name>,
-        callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
+        callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
     ) {
         // There should be no inference vars in types passed here
         // FIXME check that?
@@ -2630,8 +2632,11 @@ impl Type {
             traits_in_scope,
             name,
             &mut |ty, assoc_item_id| {
-                slot = callback(self.derived(ty.clone()), assoc_item_id.into());
-                slot.is_some()
+                if let Some(res) = callback(self.derived(ty.clone()), assoc_item_id.into()) {
+                    slot = Some(res);
+                    return ControlFlow::Break(());
+                }
+                ControlFlow::Continue(())
             },
         );
         slot
@@ -2643,7 +2648,7 @@ impl Type {
         krate: Crate,
         traits_in_scope: &FxHashSet<TraitId>,
         name: Option<&Name>,
-        callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
+        callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
     ) {
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
 
