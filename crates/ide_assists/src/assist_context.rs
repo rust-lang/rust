@@ -294,6 +294,10 @@ impl AssistBuilder {
         let file_system_edit = FileSystemEdit::CreateFile { dst, initial_contents: content.into() };
         self.source_change.push_file_system_edit(file_system_edit);
     }
+    pub(crate) fn move_file(&mut self, src: FileId, dst: AnchoredPathBuf) {
+        let file_system_edit = FileSystemEdit::MoveFile { src, dst };
+        self.source_change.push_file_system_edit(file_system_edit);
+    }
 
     fn finish(mut self) -> SourceChange {
         self.commit();

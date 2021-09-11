@@ -142,7 +142,6 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
         (Some(assist), ExpectedResult::After(after)) => {
             let source_change =
                 assist.source_change.expect("Assist did not contain any source changes");
-            assert!(!source_change.source_file_edits.is_empty());
             let skip_header = source_change.source_file_edits.len() == 1
                 && source_change.file_system_edits.len() == 0;
 
@@ -160,15 +159,19 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
             }
 
             for file_system_edit in source_change.file_system_edits {
-                if let FileSystemEdit::CreateFile { dst, initial_contents } = file_system_edit {
-                    let sr = db.file_source_root(dst.anchor);
-                    let sr = db.source_root(sr);
-                    let mut base = sr.path_for_file(&dst.anchor).unwrap().clone();
-                    base.pop();
-                    let created_file_path = format!("{}{}", base.to_string(), &dst.path[1..]);
-                    format_to!(buf, "//- {}\n", created_file_path);
-                    buf.push_str(&initial_contents);
-                }
+                let (dst, contents) = match file_system_edit {
+                    FileSystemEdit::CreateFile { dst, initial_contents } => (dst, initial_contents),
+                    FileSystemEdit::MoveFile { src, dst } => {
+                        (dst, db.file_text(src).as_ref().to_owned())
+                    }
+                };
+                let sr = db.file_source_root(dst.anchor);
+                let sr = db.source_root(sr);
+                let mut base = sr.path_for_file(&dst.anchor).unwrap().clone();
+                base.pop();
+                let created_file_path = format!("{}{}", base.to_string(), &dst.path[1..]);
+                format_to!(buf, "//- {}\n", created_file_path);
+                buf.push_str(&contents);
             }
 
             assert_eq_text!(after, &buf);

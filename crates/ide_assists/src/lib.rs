@@ -96,6 +96,7 @@ mod handlers {
     mod move_bounds;
     mod move_guard;
     mod move_module_to_file;
+    mod promote_mod_file;
     mod pull_assignment_up;
     mod qualify_path;
     mod raw_string;
@@ -167,6 +168,7 @@ mod handlers {
             move_guard::move_arm_cond_to_match_guard,
             move_guard::move_guard_to_arm_body,
             move_module_to_file::move_module_to_file,
+            promote_mod_file::promote_mod_file,
             pull_assignment_up::pull_assignment_up,
             qualify_path::qualify_path,
             raw_string::add_hash,
