@@ -1842,7 +1842,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr_t
         );
         err.span_label(field.span, "method, not a field");
-        if !self.expr_in_place(expr.hir_id) {
+        let expr_is_call = if let hir::Node::Expr(parent_expr) =
+            self.tcx.hir().get(self.tcx.hir().get_parent_node(expr.hir_id))
+        {
+            matches!(parent_expr.kind, ExprKind::Call(..))
+        } else {
+            false
+        };
+        let expr_snippet =
+            self.tcx.sess.source_map().span_to_snippet(expr.span).unwrap_or(String::new());
+        if expr_is_call && expr_snippet.starts_with("(") && expr_snippet.ends_with(")") {
+            err.span_suggestion_short(
+                expr.span,
+                "remove wrapping parentheses to call the method",
+                expr_snippet[1..expr_snippet.len() - 1].to_owned(),
+                Applicability::MachineApplicable,
+            );
+        } else if !self.expr_in_place(expr.hir_id) {
             self.suggest_method_call(
                 &mut err,
                 "use parentheses to call the method",
