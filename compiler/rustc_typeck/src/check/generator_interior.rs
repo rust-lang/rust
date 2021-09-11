@@ -124,7 +124,6 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
 
                 check_must_not_suspend_ty(
                     self.fcx,
-                    ty::ParamEnv::empty(),
                     ty,
                     hir_id,
                     expr,
@@ -454,7 +453,6 @@ impl<'a, 'tcx> Visitor<'tcx> for ArmPatCollector<'a> {
 // for creating must_use diagnostics
 pub fn check_must_not_suspend_ty<'tcx>(
     fcx: &FnCtxt<'_, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
     hir_id: HirId,
     expr: Option<&'tcx Expr<'tcx>>,
@@ -464,8 +462,10 @@ pub fn check_must_not_suspend_ty<'tcx>(
     descr_post: &str,
     plural_len: usize,
 ) -> bool {
+    debug!("FOUND TYPE: {:?}", ty);
     if ty.is_unit()
-        || fcx.tcx.is_ty_uninhabited_from(fcx.tcx.parent_module(hir_id).to_def_id(), ty, param_env)
+    // || fcx.tcx.is_ty_uninhabited_from(fcx.tcx.parent_module(hir_id).to_def_id(), ty, fcx.param_env)
+    // FIXME: should this check is_ty_uninhabited_from
     {
         return true;
     }
@@ -478,7 +478,6 @@ pub fn check_must_not_suspend_ty<'tcx>(
             let descr_pre = &format!("{}boxed ", descr_pre);
             check_must_not_suspend_ty(
                 fcx,
-                param_env,
                 boxed_ty,
                 hir_id,
                 expr,
@@ -547,28 +546,24 @@ pub fn check_must_not_suspend_ty<'tcx>(
         }
         ty::Tuple(ref tys) => {
             let mut has_emitted = false;
-            /*
-            let spans = if let hir::ExprKind::Tup(comps) = &expr.kind {
+            let spans = if let Some(hir::ExprKind::Tup(comps)) = expr.map(|e| &e.kind) {
                 debug_assert_eq!(comps.len(), tys.len());
                 comps.iter().map(|e| e.span).collect()
             } else {
                 vec![]
             };
-            */
-            let spans = vec![];
             for (i, ty) in tys.iter().map(|k| k.expect_ty()).enumerate() {
                 let descr_post = &format!(" in tuple element {}", i);
                 let span = *spans.get(i).unwrap_or(&source_span);
                 if check_must_not_suspend_ty(
-                    fcx, param_env, ty, hir_id, expr, span, yield_span, descr_pre, descr_post,
-                    plural_len,
+                    fcx, ty, hir_id, expr, span, yield_span, descr_pre, descr_post, plural_len,
                 ) {
                     has_emitted = true;
                 }
             }
             has_emitted
         }
-        ty::Array(ty, len) => match len.try_eval_usize(fcx.tcx, param_env) {
+        ty::Array(ty, len) => match len.try_eval_usize(fcx.tcx, fcx.param_env) {
             // If the array is empty we don't lint, to avoid false positives
             Some(0) | None => false,
             // If the array is definitely non-empty, we can do `#[must_use]` checking.
@@ -576,7 +571,6 @@ pub fn check_must_not_suspend_ty<'tcx>(
                 let descr_pre = &format!("{}array{} of ", descr_pre, plural_suffix,);
                 check_must_not_suspend_ty(
                     fcx,
-                    param_env,
                     ty,
                     hir_id,
                     expr,

@@ -18,8 +18,8 @@ fn r#dyn() -> Box<dyn Wow> {
 async fn other() {}
 
 pub async fn uhoh() {
-    let _guard1 = r#impl(); //~ implementer of `Wow` held across
-    let _guard2 = r#dyn(); //~ boxed `Wow` trait object held across
+    let _guard1 = r#impl(); //~ ERROR implementer of `Wow` held across
+    let _guard2 = r#dyn(); //~ ERROR boxed `Wow` trait object held across
 
     other().await;
 }

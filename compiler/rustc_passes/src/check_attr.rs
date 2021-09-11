@@ -1018,15 +1018,15 @@ impl CheckAttrVisitor<'tcx> {
     /// Checks if `#[must_not_suspend]` is applied to a function. Returns `true` if valid.
     fn check_must_not_suspend(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
         match target {
-            Target::Fn | Target::Method(..) | Target::ForeignFn | Target::Closure => {
+            Target::Struct | Target::Enum | Target::Union | Target::Trait => true,
+            _ => {
                 self.tcx
                     .sess
-                    .struct_span_err(attr.span, "`must_not_suspend` attribute should be applied to a struct, enum, `impl Trait`, or `dyn Trait`")
-                        .span_label(*span, "is a function")
+                    .struct_span_err(attr.span, "`must_not_suspend` attribute should be applied to a struct, enum, or trait")
+                        .span_label(*span, "is not a struct, enum, or trait")
                         .emit();
                 false
             }
-            _ => true,
         }
     }
 

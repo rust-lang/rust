@@ -1,4 +1,4 @@
-error: `must_not_suspend` attribute should be applied to a struct, enum, `impl Trait`, or `dyn Trait`
+error: `must_not_suspend` attribute should be applied to a struct, enum, or trait
   --> $DIR/return.rs:5:1
    |
 LL |   #[must_not_suspend]
@@ -6,7 +6,7 @@ LL |   #[must_not_suspend]
 LL | / fn foo() -> i32 {
 LL | |     0
 LL | | }
-   | |_- is a function
+   | |_- is not a struct, enum, or trait
 
 error: aborting due to previous error
 

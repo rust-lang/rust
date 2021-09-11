@@ -17,7 +17,7 @@ fn bar() -> Box<Umm> {
 async fn other() {}
 
 pub async fn uhoh() {
-    let _guard = bar(); //~ boxed `Umm` held across
+    let _guard = bar(); //~ ERROR boxed `Umm` held across
     other().await;
 }
 

@@ -17,7 +17,7 @@ fn bar() -> Umm {
 async fn other() {}
 
 pub async fn uhoh() {
-    let _guard = bar(); //~ `Umm` held across
+    let _guard = bar(); //~ ERROR `Umm` held across
     other().await;
 }
 

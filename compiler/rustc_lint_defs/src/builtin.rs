@@ -315,7 +315,28 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// [the reference]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute
+    /// The `must_not_suspend` lint detects values that are marked with the `#[must_not_suspend]`
+    /// attribute being held across yield points. A "yield" point is usually a `.await` in an async
+    /// function.
+    ///
+    /// This attribute can be used to mark values that are semantically incorrect across yields
+    /// (like certain types of timers), values that have async alternatives, and values that
+    /// regularly cause problems with the `Send`-ness of async fn's returned futures (like
+    /// `MutexGuard`'s)
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #[must_not_suspend]
+    /// struct SyncThing {}
+    ///
+    /// async fn yield() {}
+    ///
+    /// pub async fn uhoh() {
+    ///     let guard = SyncThing {};
+    ///     yield().await;
+    /// }
+    /// ```
     pub MUST_NOT_SUSPEND,
     Warn,
     "Use of a `#[must_not_suspend]` value across a yield point",
