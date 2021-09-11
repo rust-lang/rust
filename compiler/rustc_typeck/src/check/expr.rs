@@ -1842,13 +1842,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr_t
         );
         err.span_label(field.span, "method, not a field");
-        let expr_is_call = if let hir::Node::Expr(parent_expr) =
-            self.tcx.hir().get(self.tcx.hir().get_parent_node(expr.hir_id))
-        {
-            matches!(parent_expr.kind, ExprKind::Call(..))
-        } else {
-            false
-        };
+        let expr_is_call =
+            if let hir::Node::Expr(hir::Expr { kind: ExprKind::Call(callee, _args), .. }) =
+                self.tcx.hir().get(self.tcx.hir().get_parent_node(expr.hir_id))
+            {
+                expr.hir_id == callee.hir_id
+            } else {
+                false
+            };
         let expr_snippet =
             self.tcx.sess.source_map().span_to_snippet(expr.span).unwrap_or(String::new());
         if expr_is_call && expr_snippet.starts_with("(") && expr_snippet.ends_with(")") {
