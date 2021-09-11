@@ -9,11 +9,9 @@ use crate::def_collector::collect_definitions;
 use crate::imports::{Import, ImportKind};
 use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use crate::Namespace::{self, MacroNS, TypeNS, ValueNS};
-use crate::{CrateLint, Determinacy, PathResult, ResolutionError, VisResolutionError};
-use crate::{
-    ExternPreludeEntry, ModuleOrUniformRoot, ParentScope, PerNS, Resolver, ResolverArenas,
-};
-use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
+use crate::{CrateLint, Determinacy, ExternPreludeEntry, Module, ModuleKind, ModuleOrUniformRoot};
+use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, PerNS, ResolutionError};
+use crate::{Resolver, ResolverArenas, Segment, ToNameBinding, VisResolutionError};
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AssocItem, AssocItemKind, MetaItemKind, StmtKind};
@@ -142,13 +140,14 @@ impl<'a> Resolver<'a> {
         };
 
         // Allocate and return a new module with the information we found
-        let kind = ModuleKind::Def(DefKind::Mod, def_id, name);
-        let module = self.arenas.alloc_module(ModuleData::new(
+        let module = self.arenas.new_module(
             parent,
-            kind,
+            ModuleKind::Def(DefKind::Mod, def_id, name),
             self.cstore().module_expansion_untracked(def_id, &self.session),
             self.cstore().get_span_untracked(def_id, &self.session),
-        ));
+            // FIXME: Account for `#[no_implicit_prelude]` attributes.
+            parent.map_or(false, |module| module.no_implicit_prelude),
+        );
         self.extern_module_map.insert(def_id, module);
         module
     }
@@ -767,13 +766,14 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             ItemKind::Mod(..) => {
-                let module_kind = ModuleKind::Def(DefKind::Mod, def_id, ident.name);
-                let module = self.r.arenas.alloc_module(ModuleData {
-                    no_implicit_prelude: parent.no_implicit_prelude || {
-                        self.r.session.contains_name(&item.attrs, sym::no_implicit_prelude)
-                    },
-                    ..ModuleData::new(Some(parent), module_kind, expansion.to_expn_id(), item.span)
-                });
+                let module = self.r.arenas.new_module(
+                    Some(parent),
+                    ModuleKind::Def(DefKind::Mod, def_id, ident.name),
+                    expansion.to_expn_id(),
+                    item.span,
+                    parent.no_implicit_prelude
+                        || self.r.session.contains_name(&item.attrs, sym::no_implicit_prelude),
+                );
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.r.module_map.insert(local_def_id, module);
 
@@ -806,9 +806,13 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             ItemKind::Enum(_, _) => {
-                let module_kind = ModuleKind::Def(DefKind::Enum, def_id, ident.name);
-                let module =
-                    self.r.new_module(parent, module_kind, expansion.to_expn_id(), item.span);
+                let module = self.r.arenas.new_module(
+                    Some(parent),
+                    ModuleKind::Def(DefKind::Enum, def_id, ident.name),
+                    expansion.to_expn_id(),
+                    item.span,
+                    parent.no_implicit_prelude,
+                );
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.parent_scope.module = module;
             }
@@ -876,9 +880,13 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
             ItemKind::Trait(..) => {
                 // Add all the items within to a new module.
-                let module_kind = ModuleKind::Def(DefKind::Trait, def_id, ident.name);
-                let module =
-                    self.r.new_module(parent, module_kind, expansion.to_expn_id(), item.span);
+                let module = self.r.arenas.new_module(
+                    Some(parent),
+                    ModuleKind::Def(DefKind::Trait, def_id, ident.name),
+                    expansion.to_expn_id(),
+                    item.span,
+                    parent.no_implicit_prelude,
+                );
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.parent_scope.module = module;
             }
@@ -915,11 +923,12 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let parent = self.parent_scope.module;
         let expansion = self.parent_scope.expansion;
         if self.block_needs_anonymous_module(block) {
-            let module = self.r.new_module(
-                parent,
+            let module = self.r.arenas.new_module(
+                Some(parent),
                 ModuleKind::Block(block.id),
                 expansion.to_expn_id(),
                 block.span,
+                parent.no_implicit_prelude,
             );
             self.r.block_map.insert(block.id, module);
             self.parent_scope.module = module; // Descend into the block.
@@ -935,11 +944,13 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         // Record primary definitions.
         match res {
             Res::Def(kind @ (DefKind::Mod | DefKind::Enum | DefKind::Trait), def_id) => {
-                let module = self.r.new_module(
-                    parent,
+                let module = self.r.arenas.new_module(
+                    Some(parent),
                     ModuleKind::Def(kind, def_id, ident.name),
                     expansion.to_expn_id(),
                     span,
+                    // FIXME: Account for `#[no_implicit_prelude]` attributes.
+                    parent.no_implicit_prelude,
                 );
                 self.r.define(parent, ident, TypeNS, (module, vis, span, expansion));
             }

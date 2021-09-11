@@ -41,7 +41,7 @@ use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefPathHash, LocalDefId};
-use rustc_hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::TraitCandidate;
 use rustc_index::vec::IndexVec;
@@ -533,7 +533,13 @@ pub struct ModuleData<'a> {
 type Module<'a> = &'a ModuleData<'a>;
 
 impl<'a> ModuleData<'a> {
-    fn new(parent: Option<Module<'a>>, kind: ModuleKind, expansion: ExpnId, span: Span) -> Self {
+    fn new(
+        parent: Option<Module<'a>>,
+        kind: ModuleKind,
+        expansion: ExpnId,
+        span: Span,
+        no_implicit_prelude: bool,
+    ) -> Self {
         let is_foreign = match kind {
             ModuleKind::Def(_, def_id, _) => !def_id.is_local(),
             ModuleKind::Block(_) => false,
@@ -544,7 +550,7 @@ impl<'a> ModuleData<'a> {
             lazy_resolutions: Default::default(),
             populate_on_access: Cell::new(is_foreign),
             unexpanded_invocations: Default::default(),
-            no_implicit_prelude: false,
+            no_implicit_prelude,
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new(Vec::new()),
             traits: RefCell::new(None),
@@ -1055,8 +1061,16 @@ pub struct ResolverArenas<'a> {
 }
 
 impl<'a> ResolverArenas<'a> {
-    fn alloc_module(&'a self, module: ModuleData<'a>) -> Module<'a> {
-        let module = self.modules.alloc(module);
+    fn new_module(
+        &'a self,
+        parent: Option<Module<'a>>,
+        kind: ModuleKind,
+        expn_id: ExpnId,
+        span: Span,
+        no_implicit_prelude: bool,
+    ) -> Module<'a> {
+        let module =
+            self.modules.alloc(ModuleData::new(parent, kind, expn_id, span, no_implicit_prelude));
         if module.def_id().map_or(true, |def_id| def_id.is_local()) {
             self.local_modules.borrow_mut().push(module);
         }
@@ -1258,26 +1272,29 @@ impl<'a> Resolver<'a> {
         metadata_loader: Box<MetadataLoaderDyn>,
         arenas: &'a ResolverArenas<'a>,
     ) -> Resolver<'a> {
-        let root_local_def_id = LocalDefId { local_def_index: CRATE_DEF_INDEX };
-        let root_def_id = root_local_def_id.to_def_id();
-        let root_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty);
-        let graph_root = arenas.alloc_module(ModuleData {
-            no_implicit_prelude: session.contains_name(&krate.attrs, sym::no_implicit_prelude),
-            ..ModuleData::new(None, root_module_kind, ExpnId::root(), krate.span)
-        });
-        let empty_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty);
-        let empty_module = arenas.alloc_module(ModuleData {
-            no_implicit_prelude: true,
-            ..ModuleData::new(Some(graph_root), empty_module_kind, ExpnId::root(), DUMMY_SP)
-        });
+        let root_def_id = CRATE_DEF_ID.to_def_id();
+        let graph_root = arenas.new_module(
+            None,
+            ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty),
+            ExpnId::root(),
+            krate.span,
+            session.contains_name(&krate.attrs, sym::no_implicit_prelude),
+        );
+        let empty_module = arenas.new_module(
+            None,
+            ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty),
+            ExpnId::root(),
+            DUMMY_SP,
+            true,
+        );
         let mut module_map = FxHashMap::default();
-        module_map.insert(root_local_def_id, graph_root);
+        module_map.insert(CRATE_DEF_ID, graph_root);
 
         let definitions = Definitions::new(session.local_stable_crate_id(), krate.span);
         let root = definitions.get_root_def();
 
         let mut visibilities = FxHashMap::default();
-        visibilities.insert(root_local_def_id, ty::Visibility::Public);
+        visibilities.insert(CRATE_DEF_ID, ty::Visibility::Public);
 
         let mut def_id_to_node_id = IndexVec::default();
         assert_eq!(def_id_to_node_id.push(CRATE_NODE_ID), root);
@@ -1627,17 +1644,6 @@ impl<'a> Resolver<'a> {
             kind = &binding.kind;
         }
         import_ids
-    }
-
-    fn new_module(
-        &self,
-        parent: Module<'a>,
-        kind: ModuleKind,
-        expn_id: ExpnId,
-        span: Span,
-    ) -> Module<'a> {
-        let module = ModuleData::new(Some(parent), kind, expn_id, span);
-        self.arenas.alloc_module(module)
     }
 
     fn new_key(&mut self, ident: Ident, ns: Namespace) -> BindingKey {
