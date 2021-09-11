@@ -1065,14 +1065,7 @@ impl EncodeContext<'a, 'tcx> {
         // items - we encode information about proc-macros later on.
         let reexports = if !self.is_proc_macro {
             match tcx.module_exports(local_def_id) {
-                Some(exports) => {
-                    let hir = self.tcx.hir();
-                    self.lazy(
-                        exports
-                            .iter()
-                            .map(|export| export.map_id(|id| hir.local_def_id_to_hir_id(id))),
-                    )
-                }
+                Some(exports) => self.lazy(exports),
                 _ => Lazy::empty(),
             }
         } else {

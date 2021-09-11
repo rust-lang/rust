@@ -359,7 +359,7 @@ struct RenderedConst(String);
 
 #[derive(MetadataEncodable, MetadataDecodable)]
 struct ModData {
-    reexports: Lazy<[Export<hir::HirId>]>,
+    reexports: Lazy<[Export]>,
     expansion: ExpnId,
 }
 

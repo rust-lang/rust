@@ -482,12 +482,13 @@ fn build_module(
     // visit each node at most once.
     for &item in cx.tcx.item_children(did).iter() {
         if item.vis == ty::Visibility::Public {
-            if let Some(def_id) = item.res.mod_def_id() {
+            let res = item.res.expect_non_local();
+            if let Some(def_id) = res.mod_def_id() {
                 if did == def_id || !visited.insert(def_id) {
                     continue;
                 }
             }
-            if let Res::PrimTy(p) = item.res {
+            if let Res::PrimTy(p) = res {
                 // Primitive types can't be inlined so generate an import instead.
                 let prim_ty = clean::PrimitiveType::from(p);
                 items.push(clean::Item {
@@ -500,7 +501,7 @@ fn build_module(
                         clean::ImportSource {
                             path: clean::Path {
                                 global: false,
-                                res: item.res,
+                                res,
                                 segments: vec![clean::PathSegment {
                                     name: prim_ty.as_sym(),
                                     args: clean::GenericArgs::AngleBracketed {
@@ -515,9 +516,7 @@ fn build_module(
                     ))),
                     cfg: None,
                 });
-            } else if let Some(i) =
-                try_inline(cx, did, None, item.res, item.ident.name, None, visited)
-            {
+            } else if let Some(i) = try_inline(cx, did, None, res, item.ident.name, None, visited) {
                 items.extend(i)
             }
         }
