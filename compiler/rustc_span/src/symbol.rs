@@ -934,7 +934,6 @@ symbols! {
         panic_unwind,
         panicking,
         param_attrs,
-        parent_trait,
         partial_cmp,
         partial_ord,
         passes,
