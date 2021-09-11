@@ -1,4 +1,6 @@
-use rustc_middle::thir::{self, *};
+use super::{
+    Arm, Block, Expr, ExprKind, Guard, InlineAsmOperand, Pat, PatKind, Stmt, StmtKind, Thir,
+};
 use rustc_middle::ty::Const;
 
 pub trait Visitor<'a, 'tcx: 'a>: Sized {
@@ -101,7 +103,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                 visitor.visit_expr(&visitor.thir()[field]);
             }
         }
-        Adt(box thir::Adt {
+        Adt(box crate::thir::Adt {
             ref fields,
             ref base,
             adt_def: _,

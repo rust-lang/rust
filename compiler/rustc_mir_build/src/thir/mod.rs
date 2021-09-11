@@ -11,4 +11,3 @@ crate mod cx;
 crate mod pattern;
 
 mod util;
-pub mod visit;
