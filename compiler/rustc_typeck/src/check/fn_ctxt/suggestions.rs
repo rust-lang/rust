@@ -484,8 +484,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 debug!("suggest_missing_return_type: return type {:?}", ty);
                 debug!("suggest_missing_return_type: expected type {:?}", ty);
                 let bound_vars = self.tcx.late_bound_vars(fn_id);
-                let ty = self.tcx.erase_late_bound_regions(Binder::bind_with_vars(ty, bound_vars));
+                let ty = Binder::bind_with_vars(ty, bound_vars);
                 let ty = self.normalize_associated_types_in(sp, ty);
+                let ty = self.tcx.erase_late_bound_regions(ty);
                 if self.can_coerce(expected, ty) {
                     err.span_label(sp, format!("expected `{}` because of return type", expected));
                     return true;
