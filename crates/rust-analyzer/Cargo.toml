@@ -46,7 +46,6 @@ ide_db = { path = "../ide_db", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }
 project_model = { path = "../project_model", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
-text_edit = { path = "../text_edit", version = "0.0.0" }
 vfs = { path = "../vfs", version = "0.0.0" }
 vfs-notify = { path = "../vfs-notify", version = "0.0.0" }
 cfg = { path = "../cfg", version = "0.0.0" }
