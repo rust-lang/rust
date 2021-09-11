@@ -2,7 +2,7 @@ use super::Pass;
 use crate::clean::*;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
-use crate::html::markdown::opts;
+use crate::html::markdown::main_body_opts;
 use core::ops::Range;
 use pulldown_cmark::{Event, Parser, Tag};
 use regex::Regex;
@@ -83,7 +83,7 @@ impl<'a, 'tcx> DocFolder for BareUrlsLinter<'a, 'tcx> {
                 });
             };
 
-            let mut p = Parser::new_ext(&dox, opts()).into_offset_iter();
+            let mut p = Parser::new_ext(&dox, main_body_opts()).into_offset_iter();
 
             while let Some((event, range)) = p.next() {
                 match event {

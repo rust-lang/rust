@@ -23,7 +23,7 @@ use rustc_middle::ty::{
 use rustc_middle::ty::{TypeAndMut, TypeckResults};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, MultiSpan, Span, DUMMY_SP};
+use rustc_span::{BytePos, DesugaringKind, ExpnKind, ForLoopLoc, MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use std::fmt;
 
@@ -680,7 +680,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         points_at_arg: bool,
         has_custom_message: bool,
     ) -> bool {
-        if !points_at_arg {
+        let span = obligation.cause.span;
+        let points_at_for_iter = matches!(
+            span.ctxt().outer_expn_data().kind,
+            ExpnKind::Desugaring(DesugaringKind::ForLoop(ForLoopLoc::IntoIter))
+        );
+
+        if !points_at_arg && !points_at_for_iter {
             return false;
         }
 
@@ -695,7 +701,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         never_suggest_borrow.push(self.tcx.get_diagnostic_item(sym::send_trait).unwrap());
 
-        let span = obligation.cause.span;
         let param_env = obligation.param_env;
         let trait_ref = trait_ref.skip_binder();
 
@@ -754,7 +759,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     );
 
                     // This if is to prevent a special edge-case
-                    if !span.from_expansion() {
+                    if matches!(
+                        span.ctxt().outer_expn_data().kind,
+                        ExpnKind::Root
+                            | ExpnKind::Desugaring(DesugaringKind::ForLoop(ForLoopLoc::IntoIter))
+                    ) {
                         // We don't want a borrowing suggestion on the fields in structs,
                         // ```
                         // struct Foo {

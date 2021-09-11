@@ -4,8 +4,10 @@ use crate::fold::{self, DocFolder};
 use crate::html::markdown::{find_testable_code, ErrorCodes};
 use crate::passes::doc_test_lints::{should_have_doc_example, Tests};
 use crate::passes::Pass;
+use rustc_hir as hir;
 use rustc_lint::builtin::MISSING_DOCS;
 use rustc_middle::lint::LintLevelSource;
+use rustc_middle::ty::DefIdTree;
 use rustc_session::lint;
 use rustc_span::FileName;
 use serde::Serialize;
@@ -221,10 +223,42 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                     .hir()
                     .local_def_id_to_hir_id(i.def_id.expect_def_id().expect_local());
                 let (level, source) = self.ctx.tcx.lint_level_at_node(MISSING_DOCS, hir_id);
+
+                // In case we have:
+                //
+                // ```
+                // enum Foo { Bar(u32) }
+                // // or:
+                // struct Bar(u32);
+                // ```
+                //
+                // there is no need to require documentation on the fields of tuple variants and
+                // tuple structs.
+                let should_be_ignored = i
+                    .def_id
+                    .as_def_id()
+                    .and_then(|def_id| self.ctx.tcx.parent(def_id))
+                    .and_then(|def_id| self.ctx.tcx.hir().get_if_local(def_id))
+                    .map(|node| {
+                        matches!(
+                            node,
+                            hir::Node::Variant(hir::Variant {
+                                data: hir::VariantData::Tuple(_, _),
+                                ..
+                            }) | hir::Node::Item(hir::Item {
+                                kind: hir::ItemKind::Struct(hir::VariantData::Tuple(_, _), _),
+                                ..
+                            })
+                        )
+                    })
+                    .unwrap_or(false);
+
                 // `missing_docs` is allow-by-default, so don't treat this as ignoring the item
-                // unless the user had an explicit `allow`
-                let should_have_docs =
-                    level != lint::Level::Allow || matches!(source, LintLevelSource::Default);
+                // unless the user had an explicit `allow`.
+                //
+                let should_have_docs = !should_be_ignored
+                    && (level != lint::Level::Allow || matches!(source, LintLevelSource::Default));
+
                 debug!("counting {:?} {:?} in {:?}", i.type_(), i.name, filename);
                 self.items.entry(filename).or_default().count_item(
                     has_docs,

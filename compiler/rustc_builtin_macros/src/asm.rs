@@ -510,7 +510,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
             match expr_to_spanned_string(ecx, template_expr, msg) {
                 Ok(template_part) => template_part,
                 Err(err) => {
-                    if let Some(mut err) = err {
+                    if let Some((mut err, _)) = err {
                         err.emit();
                     }
                     return None;

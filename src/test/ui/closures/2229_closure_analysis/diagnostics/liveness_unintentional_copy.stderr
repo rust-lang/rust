@@ -1,5 +1,5 @@
 warning: value assigned to `a` is never read
-  --> $DIR/liveness_unintentional_copy.rs:19:9
+  --> $DIR/liveness_unintentional_copy.rs:20:9
    |
 LL |         a = s;
    |         ^
@@ -13,7 +13,7 @@ LL | #![warn(unused)]
    = help: maybe it is overwritten before being read?
 
 warning: unused variable: `a`
-  --> $DIR/liveness_unintentional_copy.rs:19:9
+  --> $DIR/liveness_unintentional_copy.rs:20:9
    |
 LL |         a = s;
    |         ^
@@ -27,7 +27,7 @@ LL | #![warn(unused)]
    = help: did you mean to capture by reference instead?
 
 warning: unused variable: `a`
-  --> $DIR/liveness_unintentional_copy.rs:35:9
+  --> $DIR/liveness_unintentional_copy.rs:36:9
    |
 LL |         a += x;
    |         ^

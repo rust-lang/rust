@@ -758,6 +758,12 @@ impl server::Span for Rustc<'_> {
         let loc = self.sess.source_map().lookup_char_pos(span.hi());
         LineColumn { line: loc.line, column: loc.col.to_usize() }
     }
+    fn before(&mut self, span: Self::Span) -> Self::Span {
+        span.shrink_to_lo()
+    }
+    fn after(&mut self, span: Self::Span) -> Self::Span {
+        span.shrink_to_hi()
+    }
     fn join(&mut self, first: Self::Span, second: Self::Span) -> Option<Self::Span> {
         let self_loc = self.sess.source_map().lookup_char_pos(first.lo());
         let other_loc = self.sess.source_map().lookup_char_pos(second.lo());

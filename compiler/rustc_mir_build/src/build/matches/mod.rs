@@ -900,10 +900,7 @@ fn traverse_candidate<'pat, 'tcx: 'pat, C, T, I>(
 struct Binding<'tcx> {
     span: Span,
     source: Place<'tcx>,
-    name: Symbol,
     var_id: HirId,
-    var_ty: Ty<'tcx>,
-    mutability: Mutability,
     binding_mode: BindingMode,
 }
 

@@ -1134,6 +1134,7 @@ symbols! {
         rustc_synthetic,
         rustc_test_marker,
         rustc_then_this_would_need,
+        rustc_trivial_field_reads,
         rustc_unsafe_specialization_marker,
         rustc_variance,
         rustdoc,

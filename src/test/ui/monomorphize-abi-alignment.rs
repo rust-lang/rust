@@ -1,6 +1,7 @@
 // run-pass
 
 #![allow(non_upper_case_globals)]
+#![allow(dead_code)]
 /*!
  * On x86_64-linux-gnu and possibly other platforms, structs get 8-byte "preferred" alignment,
  * but their "ABI" alignment (i.e., what actually matters for data layout) is the largest alignment

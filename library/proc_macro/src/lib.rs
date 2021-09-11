@@ -357,6 +357,18 @@ impl Span {
         self.0.end().add_1_to_column()
     }
 
+    /// Creates an empty span pointing to directly before this span.
+    #[unstable(feature = "proc_macro_span_shrink", issue = "87552")]
+    pub fn before(&self) -> Span {
+        Span(self.0.before())
+    }
+
+    /// Creates an empty span pointing to directly after this span.
+    #[unstable(feature = "proc_macro_span_shrink", issue = "87552")]
+    pub fn after(&self) -> Span {
+        Span(self.0.after())
+    }
+
     /// Creates a new span encompassing `self` and `other`.
     ///
     /// Returns `None` if `self` and `other` are from different files.

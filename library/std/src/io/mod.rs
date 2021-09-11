@@ -1611,7 +1611,7 @@ pub trait Write {
     /// encountered.
     ///
     /// This method is primarily used to interface with the
-    /// [`format_args!()`] macro, but it is rare that this should
+    /// [`format_args!()`] macro, and it is rare that this should
     /// explicitly be called. The [`write!()`] macro should be favored to
     /// invoke this method instead.
     ///

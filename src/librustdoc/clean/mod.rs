@@ -1859,7 +1859,6 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                 }
                 ItemKind::Macro(ref macro_def) => MacroItem(Macro {
                     source: display_macro_source(cx, name, &macro_def, def_id, &item.vis),
-                    imported_from: None,
                 }),
                 ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref item_ids) => {
                     let items = item_ids

@@ -3,6 +3,7 @@
 // check-pass
 #![allow(unreachable_code)]
 #![warn(unused)]
+#![allow(dead_code)]
 
 #[derive(Debug)]
 struct Point {

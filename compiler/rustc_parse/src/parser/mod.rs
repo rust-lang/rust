@@ -142,6 +142,17 @@ pub struct Parser<'a> {
     /// If present, this `Parser` is not parsing Rust code but rather a macro call.
     subparser_name: Option<&'static str>,
     capture_state: CaptureState,
+    /// This allows us to recover when the user forget to add braces around
+    /// multiple statements in the closure body.
+    pub current_closure: Option<ClosureSpans>,
+}
+
+/// Stores span informations about a closure.
+#[derive(Clone)]
+pub struct ClosureSpans {
+    pub whole_closure: Span,
+    pub closing_pipe: Span,
+    pub body: Span,
 }
 
 /// Indicates a range of tokens that should be replaced by
@@ -440,6 +451,7 @@ impl<'a> Parser<'a> {
                 replace_ranges: Vec::new(),
                 inner_attr_ranges: Default::default(),
             },
+            current_closure: None,
         };
 
         // Make parser point to the first token.
@@ -761,8 +773,11 @@ impl<'a> Parser<'a> {
                     first = false;
                 } else {
                     match self.expect(t) {
-                        Ok(false) => {}
+                        Ok(false) => {
+                            self.current_closure.take();
+                        }
                         Ok(true) => {
+                            self.current_closure.take();
                             recovered = true;
                             break;
                         }
@@ -770,10 +785,29 @@ impl<'a> Parser<'a> {
                             let sp = self.prev_token.span.shrink_to_hi();
                             let token_str = pprust::token_kind_to_string(t);
 
-                            // Attempt to keep parsing if it was a similar separator.
-                            if let Some(ref tokens) = t.similar_tokens() {
-                                if tokens.contains(&self.token.kind) && !unclosed_delims {
-                                    self.bump();
+                            match self.current_closure.take() {
+                                Some(closure_spans) if self.token.kind == TokenKind::Semi => {
+                                    // Finding a semicolon instead of a comma
+                                    // after a closure body indicates that the
+                                    // closure body may be a block but the user
+                                    // forgot to put braces around its
+                                    // statements.
+
+                                    self.recover_missing_braces_around_closure_body(
+                                        closure_spans,
+                                        expect_err,
+                                    )?;
+
+                                    continue;
+                                }
+
+                                _ => {
+                                    // Attempt to keep parsing if it was a similar separator.
+                                    if let Some(ref tokens) = t.similar_tokens() {
+                                        if tokens.contains(&self.token.kind) && !unclosed_delims {
+                                            self.bump();
+                                        }
+                                    }
                                 }
                             }
 
@@ -837,6 +871,65 @@ impl<'a> Parser<'a> {
         }
 
         Ok((v, trailing, recovered))
+    }
+
+    fn recover_missing_braces_around_closure_body(
+        &mut self,
+        closure_spans: ClosureSpans,
+        mut expect_err: DiagnosticBuilder<'_>,
+    ) -> PResult<'a, ()> {
+        let initial_semicolon = self.token.span;
+
+        while self.eat(&TokenKind::Semi) {
+            let _ = self.parse_stmt(ForceCollect::Yes)?;
+        }
+
+        expect_err.set_primary_message(
+            "closure bodies that contain statements must be surrounded by braces",
+        );
+
+        let preceding_pipe_span = closure_spans.closing_pipe;
+        let following_token_span = self.token.span;
+
+        let mut first_note = MultiSpan::from(vec![initial_semicolon]);
+        first_note.push_span_label(
+            initial_semicolon,
+            "this `;` turns the preceding closure into a statement".to_string(),
+        );
+        first_note.push_span_label(
+            closure_spans.body,
+            "this expression is a statement because of the trailing semicolon".to_string(),
+        );
+        expect_err.span_note(first_note, "statement found outside of a block");
+
+        let mut second_note = MultiSpan::from(vec![closure_spans.whole_closure]);
+        second_note.push_span_label(
+            closure_spans.whole_closure,
+            "this is the parsed closure...".to_string(),
+        );
+        second_note.push_span_label(
+            following_token_span,
+            "...but likely you meant the closure to end here".to_string(),
+        );
+        expect_err.span_note(second_note, "the closure body may be incorrectly delimited");
+
+        expect_err.set_span(vec![preceding_pipe_span, following_token_span]);
+
+        let opening_suggestion_str = " {".to_string();
+        let closing_suggestion_str = "}".to_string();
+
+        expect_err.multipart_suggestion(
+            "try adding braces",
+            vec![
+                (preceding_pipe_span.shrink_to_hi(), opening_suggestion_str),
+                (following_token_span.shrink_to_lo(), closing_suggestion_str),
+            ],
+            Applicability::MaybeIncorrect,
+        );
+
+        expect_err.emit();
+
+        Ok(())
     }
 
     /// Parses a sequence, not including the closing delimiter. The function

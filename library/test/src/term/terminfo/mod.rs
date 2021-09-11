@@ -16,6 +16,7 @@ use parser::compiled::{msys_terminfo, parse};
 use searcher::get_dbpath_for_term;
 
 /// A parsed terminfo database entry.
+#[allow(unused)]
 #[derive(Debug)]
 pub(crate) struct TermInfo {
     /// Names for the terminal

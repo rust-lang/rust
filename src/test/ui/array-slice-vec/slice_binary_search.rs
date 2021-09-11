@@ -2,6 +2,7 @@
 
 // Test binary_search_by_key lifetime. Issue #34683
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct Assignment {
     topic: String,

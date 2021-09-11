@@ -263,7 +263,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         }
 
         if let Err(e) = result {
-            bug!("Error processing: {:?}: {:?}", self.mir_body.source.def_id(), e)
+            bug!("Error processing: {:?}: {:?}", self.mir_body.source.def_id(), e.message)
         };
 
         // Depending on current `debug_options()`, `alert_on_unused_expressions()` could panic, so

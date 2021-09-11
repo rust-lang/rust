@@ -522,6 +522,11 @@ nav.sub {
 	position: relative;
 }
 
+.docblock > * {
+	max-width: 100%;
+	overflow-x: auto;
+}
+
 .content .out-of-band {
 	flex-grow: 0;
 	text-align: right;

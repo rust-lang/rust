@@ -3,8 +3,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::{LitKind, StrStyle};
-use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::{BorrowKind, Expr, ExprKind, HirId};
+use rustc_hir::{BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{BytePos, Span};
@@ -53,10 +52,7 @@ declare_clippy_lint! {
 }
 
 #[derive(Clone, Default)]
-pub struct Regex {
-    spans: FxHashSet<Span>,
-    last: Option<HirId>,
-}
+pub struct Regex {}
 
 impl_lint_pass!(Regex => [INVALID_REGEX, TRIVIAL_REGEX]);
 
