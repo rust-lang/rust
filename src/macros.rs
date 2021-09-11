@@ -1247,7 +1247,12 @@ impl MacroParser {
                 let data = delimited_span.entire().data();
                 (
                     data.hi,
-                    Span::new(data.lo + BytePos(1), data.hi - BytePos(1), data.ctxt),
+                    Span::new(
+                        data.lo + BytePos(1),
+                        data.hi - BytePos(1),
+                        data.ctxt,
+                        data.parent,
+                    ),
                     delimited_span.entire(),
                 )
             }
