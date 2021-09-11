@@ -685,6 +685,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let Some(sp) =
                         self.tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp)
                     {
+                        // If the previous expression was a block expression, suggest parentheses
+                        // (turning this into a binary subtraction operation instead.)
+                        // for example, `{2} - 2` -> `({2}) - 2` (see src\test\ui\parser\expr-as-stmt.rs)
                         self.tcx.sess.parse_sess.expr_parentheses_needed(&mut err, *sp);
                     } else {
                         match actual.kind() {
