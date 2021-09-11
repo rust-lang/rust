@@ -34,7 +34,7 @@ pub struct AttrWrapper {
 
 // This struct is passed around very frequently,
 // so make sure it doesn't accidentally get larger
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(AttrWrapper, 16);
 
 impl AttrWrapper {
