@@ -472,7 +472,7 @@ pub fn check_must_not_suspend_ty<'tcx>(
 
     let plural_suffix = pluralize!(plural_len);
 
-    let emitted = match *ty.kind() {
+    match *ty.kind() {
         ty::Adt(..) if ty.is_box() => {
             let boxed_ty = ty.boxed_ty();
             let descr_pre = &format!("{}boxed ", descr_pre);
@@ -589,58 +589,6 @@ pub fn check_must_not_suspend_ty<'tcx>(
             }
         },
         _ => false,
-    };
-
-    // Don't move onto the "return value" path if we already sent a diagnostic
-    if emitted {
-        return true;
-    }
-
-    match expr {
-        Some(expr) => match expr.kind {
-            hir::ExprKind::Call(ref callee, _) => {
-                match callee.kind {
-                    hir::ExprKind::Path(ref qpath) => {
-                        match fcx.typeck_results.borrow().qpath_res(qpath, callee.hir_id) {
-                            Res::Def(DefKind::Fn | DefKind::AssocFn, def_id) => {
-                                check_must_not_suspend_def(
-                                    fcx.tcx,
-                                    def_id,
-                                    hir_id,
-                                    source_span,
-                                    yield_span,
-                                    "return value of ",
-                                    "",
-                                )
-                            }
-
-                            // `Res::Local` if it was a closure, for which we
-                            // do not currently support must-not-suspend linting
-                            _ => false,
-                        }
-                    }
-                    _ => false,
-                }
-            }
-            hir::ExprKind::MethodCall(..) => {
-                if let Some(def_id) = fcx.typeck_results.borrow().type_dependent_def_id(expr.hir_id)
-                {
-                    check_must_not_suspend_def(
-                        fcx.tcx,
-                        def_id,
-                        hir_id,
-                        source_span,
-                        yield_span,
-                        "return value of ",
-                        "",
-                    )
-                } else {
-                    false
-                }
-            }
-            _ => false,
-        },
-        None => false,
     }
 }
 
@@ -687,22 +635,6 @@ fn check_must_not_suspend_def(
                 },
             );
 
-            /*
-            cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
-                let msg = format!(
-                    "unused {}`{}`{} that must be used",
-                    descr_pre_path,
-                    cx.tcx.def_path_str(def_id),
-                    descr_post_path
-                );
-                let mut err = lint.build(&msg);
-                // check for #[must_use = "..."]
-                if let Some(note) = attr.value_str() {
-                    err.note(&note.as_str());
-                }
-                err.emit();
-            });
-            */
             return true;
         }
     }
