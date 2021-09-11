@@ -114,16 +114,12 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn get_module(&mut self, def_id: DefId) -> Module<'a> {
-        // If this is a local module, it will be in `module_map`, no need to recalculate it.
-        if let Some(def_id) = def_id.as_local() {
-            return self.module_map[&def_id];
-        }
-
         // Cache module resolution
-        if let Some(&module) = self.extern_module_map.get(&def_id) {
-            return module;
+        if let Some(module) = self.module_map.get(&def_id) {
+            return *module;
         }
 
+        assert!(!def_id.is_local());
         let (name, parent) = if def_id.index == CRATE_DEF_INDEX {
             // This is the crate root
             (self.cstore().crate_name(def_id.krate), None)
@@ -148,7 +144,7 @@ impl<'a> Resolver<'a> {
             // FIXME: Account for `#[no_implicit_prelude]` attributes.
             parent.map_or(false, |module| module.no_implicit_prelude),
         );
-        self.extern_module_map.insert(def_id, module);
+        self.module_map.insert(def_id, module);
         module
     }
 
@@ -772,7 +768,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         || self.r.session.contains_name(&item.attrs, sym::no_implicit_prelude),
                 );
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
-                self.r.module_map.insert(local_def_id, module);
+                self.r.module_map.insert(def_id, module);
 
                 // Descend into the module.
                 self.parent_scope.module = module;

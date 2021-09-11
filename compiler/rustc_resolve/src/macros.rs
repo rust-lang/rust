@@ -225,7 +225,8 @@ impl<'a> ResolverExpand for Resolver<'a> {
         features: &[Symbol],
         parent_module_id: Option<NodeId>,
     ) -> LocalExpnId {
-        let parent_module = parent_module_id.map(|module_id| self.local_def_id(module_id));
+        let parent_module =
+            parent_module_id.map(|module_id| self.local_def_id(module_id).to_def_id());
         let expn_id = LocalExpnId::fresh(
             ExpnData::allow_unstable(
                 ExpnKind::AstPass(pass),
@@ -233,13 +234,13 @@ impl<'a> ResolverExpand for Resolver<'a> {
                 self.session.edition(),
                 features.into(),
                 None,
-                parent_module.map(LocalDefId::to_def_id),
+                parent_module,
             ),
             self.create_stable_hashing_context(),
         );
 
-        let parent_scope = parent_module
-            .map_or(self.empty_module, |parent_def_id| self.module_map[&parent_def_id]);
+        let parent_scope =
+            parent_module.map_or(self.empty_module, |def_id| self.get_module(def_id));
         self.ast_transform_scopes.insert(expn_id, parent_scope);
 
         expn_id

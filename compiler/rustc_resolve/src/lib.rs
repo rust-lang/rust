@@ -943,8 +943,7 @@ pub struct Resolver<'a> {
     /// some AST passes can generate identifiers that only resolve to local or
     /// language items.
     empty_module: Module<'a>,
-    module_map: FxHashMap<LocalDefId, Module<'a>>,
-    extern_module_map: FxHashMap<DefId, Module<'a>>,
+    module_map: FxHashMap<DefId, Module<'a>>,
     binding_parent_modules: FxHashMap<PtrKey<'a, NameBinding<'a>>, Module<'a>>,
     underscore_disambiguator: u32,
 
@@ -1288,7 +1287,7 @@ impl<'a> Resolver<'a> {
             true,
         );
         let mut module_map = FxHashMap::default();
-        module_map.insert(CRATE_DEF_ID, graph_root);
+        module_map.insert(root_def_id, graph_root);
 
         let definitions = Definitions::new(session.local_stable_crate_id(), krate.span);
         let root = definitions.get_root_def();
@@ -1355,7 +1354,6 @@ impl<'a> Resolver<'a> {
             empty_module,
             module_map,
             block_map: Default::default(),
-            extern_module_map: FxHashMap::default(),
             binding_parent_modules: FxHashMap::default(),
             ast_transform_scopes: FxHashMap::default(),
 
