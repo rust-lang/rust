@@ -11,7 +11,6 @@ use crate::{NameBinding, NameBindingKind, PathResult, PrivacyError, ToNameBindin
 
 use rustc_ast::unwrap_or;
 use rustc_ast::NodeId;
-use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_errors::{pluralize, struct_span_err, Applicability};
@@ -1387,13 +1386,13 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
         let mut reexports = Vec::new();
 
-        module.for_each_child(self.r, |this, ident, _, binding| {
+        module.for_each_child(self.r, |_, ident, _, binding| {
             // Filter away ambiguous imports and anything that has def-site hygiene.
             // FIXME: Implement actual cross-crate hygiene.
             let is_good_import =
                 binding.is_import() && !binding.is_ambiguity() && !ident.span.from_expansion();
             if is_good_import || binding.is_macro_def() {
-                let res = binding.res().map_id(|id| this.local_def_id(id));
+                let res = binding.res().expect_non_local();
                 if res != def::Res::Err {
                     reexports.push(Export { ident, res, span: binding.span, vis: binding.vis });
                 }

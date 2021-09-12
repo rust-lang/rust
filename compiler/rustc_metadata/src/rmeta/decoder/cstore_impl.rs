@@ -5,7 +5,6 @@ use crate::rmeta::encoder;
 
 use rustc_ast as ast;
 use rustc_data_structures::stable_map::FxHashMap;
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -117,7 +116,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     optimized_mir => { tcx.arena.alloc(cdata.get_optimized_mir(tcx, def_id.index)) }
     mir_for_ctfe => { tcx.arena.alloc(cdata.get_mir_for_ctfe(tcx, def_id.index)) }
     promoted_mir => { tcx.arena.alloc(cdata.get_promoted_mir(tcx, def_id.index)) }
-    mir_abstract_const => { cdata.get_mir_abstract_const(tcx, def_id.index) }
+    thir_abstract_const => { cdata.get_thir_abstract_const(tcx, def_id.index) }
     unused_generic_params => { cdata.get_unused_generic_params(def_id.index) }
     const_param_default => { tcx.mk_const(cdata.get_const_param_default(tcx, def_id.index)) }
     mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
@@ -326,28 +325,27 @@ pub fn provide(providers: &mut Providers) {
             // (restrict scope of mutable-borrow of `visible_parent_map`)
             {
                 let visible_parent_map = &mut visible_parent_map;
-                let mut add_child =
-                    |bfs_queue: &mut VecDeque<_>, child: &Export<hir::HirId>, parent: DefId| {
-                        if child.vis != ty::Visibility::Public {
-                            return;
-                        }
+                let mut add_child = |bfs_queue: &mut VecDeque<_>, child: &Export, parent: DefId| {
+                    if child.vis != ty::Visibility::Public {
+                        return;
+                    }
 
-                        if let Some(child) = child.res.opt_def_id() {
-                            match visible_parent_map.entry(child) {
-                                Entry::Occupied(mut entry) => {
-                                    // If `child` is defined in crate `cnum`, ensure
-                                    // that it is mapped to a parent in `cnum`.
-                                    if child.is_local() && entry.get().is_local() {
-                                        entry.insert(parent);
-                                    }
-                                }
-                                Entry::Vacant(entry) => {
+                    if let Some(child) = child.res.opt_def_id() {
+                        match visible_parent_map.entry(child) {
+                            Entry::Occupied(mut entry) => {
+                                // If `child` is defined in crate `cnum`, ensure
+                                // that it is mapped to a parent in `cnum`.
+                                if child.is_local() && entry.get().is_local() {
                                     entry.insert(parent);
-                                    bfs_queue.push_back(child);
                                 }
                             }
+                            Entry::Vacant(entry) => {
+                                entry.insert(parent);
+                                bfs_queue.push_back(child);
+                            }
                         }
-                    };
+                    }
+                };
 
                 while let Some(def) = bfs_queue.pop_front() {
                     for child in tcx.item_children(def).iter() {
@@ -393,11 +391,7 @@ impl CStore {
         self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
-    pub fn item_children_untracked(
-        &self,
-        def_id: DefId,
-        sess: &Session,
-    ) -> Vec<Export<hir::HirId>> {
+    pub fn item_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<Export> {
         let mut result = vec![];
         self.get_crate_data(def_id.krate).each_child_of_item(
             def_id.index,

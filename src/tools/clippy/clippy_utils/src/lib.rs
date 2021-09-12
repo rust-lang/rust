@@ -520,7 +520,7 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
             }
         };
     }
-    fn item_child_by_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, name: &str) -> Option<&'tcx Export<HirId>> {
+    fn item_child_by_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, name: &str) -> Option<&'tcx Export> {
         tcx.item_children(def_id)
             .iter()
             .find(|item| item.ident.name.as_str() == name)
@@ -557,7 +557,7 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
                 None
             }
         });
-    try_res!(last).res
+    try_res!(last).res.expect_non_local()
 }
 
 /// Convenience function to get the `DefId` of a trait by path.

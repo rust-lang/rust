@@ -1,0 +1,11 @@
+error: `impl` associated type signature for `Assoc` doesn't match `trait` associated type signature
+  --> $DIR/missing-where-clause-on-trait.rs:9:5
+   |
+LL |     type Assoc<'a, 'b>;
+   |     ------------------- expected
+...
+LL |     type Assoc<'a, 'b> where 'a: 'b = ();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found
+
+error: aborting due to previous error
+

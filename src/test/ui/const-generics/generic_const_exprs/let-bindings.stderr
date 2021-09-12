@@ -2,9 +2,7 @@ error: overly complex generic constant
   --> $DIR/let-bindings.rs:6:68
    |
 LL | fn test<const N: usize>() -> [u8; { let x = N; N + 1 }] where [u8; { let x = N; N + 1 }]: Default {
-   |                                                                    ^^^^^^-^^^^^^^^^^^^^
-   |                                                                          |
-   |                                                                          unsupported statement
+   |                                                                    ^^^^^^^^^^^^^^^^^^^^ unsupported operation in generic constant, this may be supported in the future
    |
    = help: consider moving this anonymous constant into a `const` function
 
@@ -12,9 +10,7 @@ error: overly complex generic constant
   --> $DIR/let-bindings.rs:6:35
    |
 LL | fn test<const N: usize>() -> [u8; { let x = N; N + 1 }] where [u8; { let x = N; N + 1 }]: Default {
-   |                                   ^^^^^^-^^^^^^^^^^^^^
-   |                                         |
-   |                                         unsupported statement
+   |                                   ^^^^^^^^^^^^^^^^^^^^ unsupported operation in generic constant, this may be supported in the future
    |
    = help: consider moving this anonymous constant into a `const` function
 

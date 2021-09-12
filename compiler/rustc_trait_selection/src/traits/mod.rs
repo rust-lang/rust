@@ -827,16 +827,16 @@ pub fn provide(providers: &mut ty::query::Providers) {
         vtable_entries,
         vtable_trait_upcasting_coercion_new_vptr_slot,
         subst_and_check_impossible_predicates,
-        mir_abstract_const: |tcx, def_id| {
+        thir_abstract_const: |tcx, def_id| {
             let def_id = def_id.expect_local();
             if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
-                tcx.mir_abstract_const_of_const_arg(def)
+                tcx.thir_abstract_const_of_const_arg(def)
             } else {
-                const_evaluatable::mir_abstract_const(tcx, ty::WithOptConstParam::unknown(def_id))
+                const_evaluatable::thir_abstract_const(tcx, ty::WithOptConstParam::unknown(def_id))
             }
         },
-        mir_abstract_const_of_const_arg: |tcx, (did, param_did)| {
-            const_evaluatable::mir_abstract_const(
+        thir_abstract_const_of_const_arg: |tcx, (did, param_did)| {
+            const_evaluatable::thir_abstract_const(
                 tcx,
                 ty::WithOptConstParam { did, const_param_did: Some(param_did) },
             )

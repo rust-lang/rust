@@ -23,6 +23,7 @@ use rustc_middle::middle::exported_symbols::{
     metadata_symbol_name, ExportedSymbol, SymbolExportLevel,
 };
 use rustc_middle::mir::interpret;
+use rustc_middle::thir;
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
@@ -344,7 +345,7 @@ impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for &'tcx [mir::abstract_const::Node<'tcx>] {
+impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for &'tcx [thir::abstract_const::Node<'tcx>] {
     fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
         (**self).encode(s)
     }
@@ -1065,14 +1066,7 @@ impl EncodeContext<'a, 'tcx> {
         // items - we encode information about proc-macros later on.
         let reexports = if !self.is_proc_macro {
             match tcx.module_exports(local_def_id) {
-                Some(exports) => {
-                    let hir = self.tcx.hir();
-                    self.lazy(
-                        exports
-                            .iter()
-                            .map(|export| export.map_id(|id| hir.local_def_id_to_hir_id(id))),
-                    )
-                }
+                Some(exports) => self.lazy(exports),
                 _ => Lazy::empty(),
             }
         } else {
@@ -1304,9 +1298,10 @@ impl EncodeContext<'a, 'tcx> {
             if encode_const {
                 record!(self.tables.mir_for_ctfe[def_id.to_def_id()] <- self.tcx.mir_for_ctfe(def_id));
 
-                let abstract_const = self.tcx.mir_abstract_const(def_id);
+                // FIXME(generic_const_exprs): this feels wrong to have in `encode_mir`
+                let abstract_const = self.tcx.thir_abstract_const(def_id);
                 if let Ok(Some(abstract_const)) = abstract_const {
-                    record!(self.tables.mir_abstract_consts[def_id.to_def_id()] <- abstract_const);
+                    record!(self.tables.thir_abstract_consts[def_id.to_def_id()] <- abstract_const);
                 }
             }
             record!(self.tables.promoted_mir[def_id.to_def_id()] <- self.tcx.promoted_mir(def_id));

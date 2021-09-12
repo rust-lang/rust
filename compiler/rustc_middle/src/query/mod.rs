@@ -303,17 +303,17 @@ rustc_queries! {
     }
 
     /// Try to build an abstract representation of the given constant.
-    query mir_abstract_const(
+    query thir_abstract_const(
         key: DefId
-    ) -> Result<Option<&'tcx [mir::abstract_const::Node<'tcx>]>, ErrorReported> {
+    ) -> Result<Option<&'tcx [thir::abstract_const::Node<'tcx>]>, ErrorReported> {
         desc {
             |tcx| "building an abstract representation for {}", tcx.def_path_str(key),
         }
     }
     /// Try to build an abstract representation of the given constant.
-    query mir_abstract_const_of_const_arg(
+    query thir_abstract_const_of_const_arg(
         key: (LocalDefId, DefId)
-    ) -> Result<Option<&'tcx [mir::abstract_const::Node<'tcx>]>, ErrorReported> {
+    ) -> Result<Option<&'tcx [thir::abstract_const::Node<'tcx>]>, ErrorReported> {
         desc {
             |tcx|
             "building an abstract representation for the const argument {}",
@@ -1189,7 +1189,7 @@ rustc_queries! {
         desc { "traits in scope at a block" }
     }
 
-    query module_exports(def_id: LocalDefId) -> Option<&'tcx [Export<LocalDefId>]> {
+    query module_exports(def_id: LocalDefId) -> Option<&'tcx [Export]> {
         desc { |tcx| "looking up items exported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
@@ -1401,7 +1401,7 @@ rustc_queries! {
         eval_always
         desc { "fetching what a crate is named" }
     }
-    query item_children(def_id: DefId) -> &'tcx [Export<hir::HirId>] {
+    query item_children(def_id: DefId) -> &'tcx [Export] {
         desc { |tcx| "collecting child items of `{}`", tcx.def_path_str(def_id) }
     }
     query extern_mod_stmt_cnum(def_id: LocalDefId) -> Option<CrateNum> {

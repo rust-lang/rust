@@ -99,6 +99,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "...so that the definition in impl matches the definition from the trait",
                 );
             }
+            infer::CompareImplTypeObligation { span, .. } => {
+                label_or_note(
+                    span,
+                    "...so that the definition in impl matches the definition from the trait",
+                );
+            }
         }
     }
 
@@ -345,6 +351,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err
             }
             infer::CompareImplMethodObligation {
+                span,
+                item_name,
+                impl_item_def_id,
+                trait_item_def_id,
+            } => self.report_extra_impl_obligation(
+                span,
+                item_name,
+                impl_item_def_id,
+                trait_item_def_id,
+                &format!("`{}: {}`", sup, sub),
+            ),
+            infer::CompareImplTypeObligation {
                 span,
                 item_name,
                 impl_item_def_id,

@@ -212,7 +212,7 @@ impl ExternalCrate {
     crate fn keywords(&self, tcx: TyCtxt<'_>) -> ThinVec<(DefId, Symbol)> {
         let root = self.def_id();
 
-        let as_keyword = |res: Res| {
+        let as_keyword = |res: Res<!>| {
             if let Res::Def(DefKind::Mod, def_id) = res {
                 let attrs = tcx.get_attrs(def_id);
                 let mut keyword = None;
@@ -243,7 +243,8 @@ impl ExternalCrate {
                         hir::ItemKind::Use(ref path, hir::UseKind::Single)
                             if item.vis.node.is_pub() =>
                         {
-                            as_keyword(path.res).map(|(_, prim)| (id.def_id.to_def_id(), prim))
+                            as_keyword(path.res.expect_non_local())
+                                .map(|(_, prim)| (id.def_id.to_def_id(), prim))
                         }
                         _ => None,
                     }
@@ -274,7 +275,7 @@ impl ExternalCrate {
         // Also note that this does not attempt to deal with modules tagged
         // duplicately for the same primitive. This is handled later on when
         // rendering by delegating everything to a hash map.
-        let as_primitive = |res: Res| {
+        let as_primitive = |res: Res<!>| {
             if let Res::Def(DefKind::Mod, def_id) = res {
                 let attrs = tcx.get_attrs(def_id);
                 let mut prim = None;
@@ -309,7 +310,7 @@ impl ExternalCrate {
                         hir::ItemKind::Use(ref path, hir::UseKind::Single)
                             if item.vis.node.is_pub() =>
                         {
-                            as_primitive(path.res).map(|(_, prim)| {
+                            as_primitive(path.res.expect_non_local()).map(|(_, prim)| {
                                 // Pretend the primitive is local.
                                 (id.def_id.to_def_id(), prim)
                             })
@@ -1110,7 +1111,7 @@ impl GenericBound {
     crate fn maybe_sized(cx: &mut DocContext<'_>) -> GenericBound {
         let did = cx.tcx.require_lang_item(LangItem::Sized, None);
         let empty = cx.tcx.intern_substs(&[]);
-        let path = external_path(cx, cx.tcx.item_name(did), Some(did), false, vec![], empty);
+        let path = external_path(cx, did, false, vec![], empty);
         inline::record_extern_fqn(cx, did, ItemType::Trait);
         GenericBound::TraitBound(
             PolyTrait {

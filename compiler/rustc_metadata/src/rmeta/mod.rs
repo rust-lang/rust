@@ -15,6 +15,7 @@ use rustc_middle::hir::exports::Export;
 use rustc_middle::middle::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir;
+use rustc_middle::thir;
 use rustc_middle::ty::{self, ReprOptions, Ty};
 use rustc_serialize::opaque::Encoder;
 use rustc_session::config::SymbolManglingVersion;
@@ -305,7 +306,7 @@ define_tables! {
     mir: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
     mir_for_ctfe: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
     promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,
-    mir_abstract_consts: Table<DefIndex, Lazy!(&'tcx [mir::abstract_const::Node<'tcx>])>,
+    thir_abstract_consts: Table<DefIndex, Lazy!(&'tcx [thir::abstract_const::Node<'tcx>])>,
     const_defaults: Table<DefIndex, Lazy<rustc_middle::ty::Const<'tcx>>>,
     unused_generic_params: Table<DefIndex, Lazy<FiniteBitSet<u32>>>,
     // `def_keys` and `def_path_hashes` represent a lazy version of a
@@ -359,7 +360,7 @@ struct RenderedConst(String);
 
 #[derive(MetadataEncodable, MetadataDecodable)]
 struct ModData {
-    reexports: Lazy<[Export<hir::HirId>]>,
+    reexports: Lazy<[Export]>,
     expansion: ExpnId,
 }
 
