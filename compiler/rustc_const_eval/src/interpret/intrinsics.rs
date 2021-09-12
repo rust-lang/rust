@@ -160,17 +160,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(Scalar::from_machine_usize(result, self), dest)?;
             }
 
-            sym::min_align_of
-            | sym::pref_align_of
+            sym::pref_align_of
             | sym::needs_drop
             | sym::type_id
             | sym::type_name
             | sym::variant_count => {
                 let gid = GlobalId { instance, promoted: None };
                 let ty = match intrinsic_name {
-                    sym::min_align_of | sym::pref_align_of | sym::variant_count => {
-                        self.tcx.types.usize
-                    }
+                    sym::pref_align_of | sym::variant_count => self.tcx.types.usize,
                     sym::needs_drop => self.tcx.types.bool,
                     sym::type_id => self.tcx.types.u64,
                     sym::type_name => self.tcx.mk_static_str(),

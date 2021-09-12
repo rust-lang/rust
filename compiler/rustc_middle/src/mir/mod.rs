@@ -2277,6 +2277,8 @@ impl BinOp {
 pub enum NullOp {
     /// Returns the size of a value of that type
     SizeOf,
+    /// Returns the minimum alignment of a type
+    AlignOf,
     /// Creates a new uninitialized box for a value of that type
     Box,
 }

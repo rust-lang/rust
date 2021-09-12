@@ -1,0 +1,24 @@
+- // MIR for `align_of` before LowerIntrinsics
++ // MIR for `align_of` after LowerIntrinsics
+  
+  fn align_of() -> usize {
+      let mut _0: usize;                   // return place in scope 0 at $DIR/lower_intrinsics.rs:18:25: 18:30
+  
+      bb0: {
+-         _0 = std::intrinsics::min_align_of::<T>() -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:19:5: 19:42
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:19:5: 19:40
+-                                          // + literal: Const { ty: extern "rust-intrinsic" fn() -> usize {std::intrinsics::min_align_of::<T>}, val: Value(Scalar(<ZST>)) }
++         _0 = AlignOf(T);                 // scope 0 at $DIR/lower_intrinsics.rs:19:5: 19:42
++         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:19:5: 19:42
+      }
+  
+      bb1: {
+          return;                          // scope 0 at $DIR/lower_intrinsics.rs:20:2: 20:2
+      }
+  
+      bb2 (cleanup): {
+          resume;                          // scope 0 at $DIR/lower_intrinsics.rs:18:1: 20:2
+      }
+  }
+  

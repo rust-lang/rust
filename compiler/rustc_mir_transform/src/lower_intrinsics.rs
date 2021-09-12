@@ -92,14 +92,19 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         // since their semantics depend on the value of overflow-checks flag used
                         // during codegen. Issue #35310.
                     }
-                    sym::size_of => {
+                    sym::size_of | sym::min_align_of => {
                         if let Some((destination, target)) = *destination {
                             let tp_ty = substs.type_at(0);
+                            let null_op = match intrinsic_name {
+                                sym::size_of => NullOp::SizeOf,
+                                sym::min_align_of => NullOp::AlignOf,
+                                _ => bug!("unexpected intrinsic"),
+                            };
                             block.statements.push(Statement {
                                 source_info: terminator.source_info,
                                 kind: StatementKind::Assign(Box::new((
                                     destination,
-                                    Rvalue::NullaryOp(NullOp::SizeOf, tp_ty),
+                                    Rvalue::NullaryOp(null_op, tp_ty),
                                 ))),
                             });
                             terminator.kind = TerminatorKind::Goto { target };
