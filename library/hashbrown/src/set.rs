@@ -991,6 +991,28 @@ where
         self.map.insert(value, ()).is_none()
     }
 
+    /// Insert a value the set without checking if the value already exists in the set.
+    ///
+    /// This operation is safe if a value does not exist in the set.
+    ///
+    /// However, if a value exists in the set already, the behavior is unspecified:
+    /// this operation may panic, loop forever, or any following operation with the set
+    /// may panic, loop forever or return arbitrary result.
+    ///
+    /// That said, this operation (and following operations) are guaranteed to
+    /// not violate memory safety.
+    ///
+    /// This operation is faster than regular insert, because it does not perform
+    /// lookup before insertion.
+    ///
+    /// This operation is useful during initial population of the set.
+    /// For example, when constructing a set from another set, we know
+    /// that values are unique.
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn insert_unique_unchecked(&mut self, value: T) {
+        self.map.insert_unique_unchecked(value, ());
+    }
+
     /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
     /// one. Returns the replaced value.
     ///
