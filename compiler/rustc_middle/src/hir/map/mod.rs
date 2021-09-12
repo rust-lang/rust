@@ -580,7 +580,7 @@ impl<'hir> Map<'hir> {
         let krate = self.krate();
         for (owner, info) in krate.owners.iter_enumerated() {
             if let Some(info) = info {
-                for (&local_id, attrs) in info.attrs.iter() {
+                for (&local_id, attrs) in info.attrs.map.iter() {
                     let id = HirId { owner, local_id };
                     for a in *attrs {
                         visitor.visit_attribute(id, a)

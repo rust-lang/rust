@@ -8,14 +8,12 @@ pub mod place;
 
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
-use rustc_ast::Attribute;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::*;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_span::DUMMY_SP;
-use std::collections::BTreeMap;
 
 /// Top-level HIR node for current owner. This only contains the node for which
 /// `HirId::local_id == 0`, and excludes bodies.
@@ -33,24 +31,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Owner<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let Owner { node: _, node_hash } = self;
         node_hash.hash_stable(hcx, hasher)
-    }
-}
-
-/// Attributes owner by a HIR owner.
-#[derive(Copy, Clone, Debug, HashStable)]
-pub struct AttributeMap<'tcx> {
-    map: &'tcx BTreeMap<ItemLocalId, &'tcx [Attribute]>,
-}
-
-impl<'tcx> AttributeMap<'tcx> {
-    fn new(owner_info: &'tcx Option<OwnerInfo<'tcx>>) -> AttributeMap<'tcx> {
-        const FALLBACK: &'static BTreeMap<ItemLocalId, &'static [Attribute]> = &BTreeMap::new();
-        let map = owner_info.as_ref().map_or(FALLBACK, |info| &info.attrs);
-        AttributeMap { map }
-    }
-
-    fn get(&self, id: ItemLocalId) -> &'tcx [Attribute] {
-        self.map.get(&id).copied().unwrap_or(&[])
     }
 }
 
@@ -105,7 +85,8 @@ pub fn provide(providers: &mut Providers) {
         });
         parent
     };
-    providers.hir_attrs = |tcx, id| AttributeMap::new(&tcx.hir_crate(()).owners[id]);
+    providers.hir_attrs =
+        |tcx, id| tcx.hir_crate(()).owners[id].as_ref().map_or(AttributeMap::EMPTY, |o| &o.attrs);
     providers.source_span = |tcx, def_id| tcx.resolutions(()).definitions.def_span(def_id);
     providers.def_span = |tcx, def_id| tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP);
     providers.fn_arg_names = |tcx, id| {

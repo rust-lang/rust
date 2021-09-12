@@ -30,7 +30,6 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(core_intrinsics)]
-#![feature(const_btree_new)]
 #![feature(discriminant_kind)]
 #![feature(exhaustive_patterns)]
 #![feature(if_let_guard)]

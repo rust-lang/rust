@@ -476,6 +476,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let (nodes, parenting) =
             index::index_hir(self.sess, self.resolver.definitions(), node, &bodies);
         let nodes = hir::OwnerNodes { hash, node_hash, nodes, bodies };
+        let attrs = {
+            let mut hcx = self.resolver.create_stable_hashing_context();
+            let mut stable_hasher = StableHasher::new();
+            attrs.hash_stable(&mut hcx, &mut stable_hasher);
+            let hash = stable_hasher.finish();
+            hir::AttributeMap { map: attrs, hash }
+        };
 
         hir::OwnerInfo { nodes, parenting, attrs, trait_map }
     }
