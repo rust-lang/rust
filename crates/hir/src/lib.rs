@@ -2612,7 +2612,7 @@ impl Type {
             None,
             name,
             method_resolution::LookupMode::MethodCall,
-            callback,
+            &mut |ty, id| callback(&ty.value, id),
         );
     }
 
@@ -2664,7 +2664,7 @@ impl Type {
             None,
             name,
             method_resolution::LookupMode::Path,
-            callback,
+            &mut |ty, id| callback(&ty.value, id),
         );
     }
 

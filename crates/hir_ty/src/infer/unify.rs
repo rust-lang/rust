@@ -41,8 +41,13 @@ where
 }
 
 impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
-    pub(super) fn decanonicalize_ty(&self, ty: Ty) -> Ty {
-        chalk_ir::Substitute::apply(&self.free_vars, ty, &Interner)
+    /// this method is wrong and shouldn't exist
+    pub(super) fn decanonicalize_ty(&self, table: &mut InferenceTable, ty: Canonical<Ty>) -> Ty {
+        let mut vars = self.free_vars.clone();
+        while ty.binders.len(&Interner) > vars.len() {
+            vars.push(table.new_type_var().cast(&Interner));
+        }
+        chalk_ir::Substitute::apply(&vars, ty.value, &Interner)
     }
 
     pub(super) fn apply_solution(

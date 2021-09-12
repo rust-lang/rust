@@ -380,7 +380,7 @@ pub(crate) fn lookup_method(
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: Option<ModuleId>,
     name: &Name,
-) -> Option<(Ty, FunctionId)> {
+) -> Option<(Canonical<Ty>, FunctionId)> {
     iterate_method_candidates(
         ty,
         db,
@@ -421,7 +421,7 @@ pub fn iterate_method_candidates<T>(
     visible_from_module: Option<ModuleId>,
     name: Option<&Name>,
     mode: LookupMode,
-    mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
+    mut callback: impl FnMut(&Canonical<Ty>, AssocItemId) -> Option<T>,
 ) -> Option<T> {
     let mut slot = None;
     iterate_method_candidates_dyn(
@@ -454,7 +454,7 @@ pub fn iterate_method_candidates_dyn(
     visible_from_module: Option<ModuleId>,
     name: Option<&Name>,
     mode: LookupMode,
-    callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
+    callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     match mode {
         LookupMode::MethodCall => {
@@ -520,7 +520,7 @@ fn iterate_method_candidates_with_autoref(
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: Option<ModuleId>,
     name: Option<&Name>,
-    mut callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
+    mut callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     iterate_method_candidates_by_receiver(
         &deref_chain[0],
@@ -580,7 +580,7 @@ fn iterate_method_candidates_by_receiver(
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: Option<ModuleId>,
     name: Option<&Name>,
-    mut callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
+    mut callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     // We're looking for methods with *receiver* type receiver_ty. These could
     // be found in any of the derefs of receiver_ty, so we have to go through
@@ -622,7 +622,7 @@ fn iterate_method_candidates_for_self_ty(
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: Option<ModuleId>,
     name: Option<&Name>,
-    mut callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
+    mut callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     iterate_inherent_methods(
         self_ty,
@@ -645,7 +645,7 @@ fn iterate_trait_method_candidates(
     traits_in_scope: &FxHashSet<TraitId>,
     name: Option<&Name>,
     receiver_ty: Option<&Canonical<Ty>>,
-    callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
+    callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     let receiver_is_array = matches!(self_ty.value.kind(&Interner), chalk_ir::TyKind::Array(..));
     // if ty is `dyn Trait`, the trait doesn't need to be in scope
@@ -697,7 +697,7 @@ fn iterate_trait_method_candidates(
             }
             known_implemented = true;
             // FIXME: we shouldn't be ignoring the binders here
-            callback(&self_ty.value, *item)?
+            callback(&self_ty, *item)?
         }
     }
     ControlFlow::Continue(())
@@ -738,7 +738,7 @@ fn iterate_inherent_methods(
     receiver_ty: Option<&Canonical<Ty>>,
     krate: CrateId,
     visible_from_module: Option<ModuleId>,
-    callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
+    callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     let def_crates = match def_crates(db, &self_ty.value, krate) {
         Some(k) => k,
@@ -773,7 +773,7 @@ fn iterate_inherent_methods(
                     cov_mark::hit!(impl_self_type_match_without_receiver);
                     continue;
                 }
-                let receiver_ty = receiver_ty.map(|x| &x.value).unwrap_or(&self_ty.value);
+                let receiver_ty = receiver_ty.unwrap_or(&self_ty);
                 callback(receiver_ty, item)?;
             }
         }
