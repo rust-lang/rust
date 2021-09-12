@@ -5,6 +5,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::layout;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_target::spec::abi::Abi;
+use rustc_target::spec::PanicStrategy;
 
 /// A pass that runs which is targeted at ensuring that codegen guarantees about
 /// unwinding are upheld for compilations of panic=abort programs.
@@ -82,10 +83,11 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
                     };
                     layout::fn_can_unwind(tcx, flags, sig.abi())
                 }
-                TerminatorKind::Drop { .. }
-                | TerminatorKind::DropAndReplace { .. }
-                | TerminatorKind::Assert { .. }
-                | TerminatorKind::FalseUnwind { .. } => {
+                TerminatorKind::Drop { .. } | TerminatorKind::DropAndReplace { .. } => {
+                    tcx.sess.opts.debugging_opts.panic_in_drop == PanicStrategy::Unwind
+                        && layout::fn_can_unwind(tcx, CodegenFnAttrFlags::empty(), Abi::Rust)
+                }
+                TerminatorKind::Assert { .. } | TerminatorKind::FalseUnwind { .. } => {
                     layout::fn_can_unwind(tcx, CodegenFnAttrFlags::empty(), Abi::Rust)
                 }
                 _ => continue,

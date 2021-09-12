@@ -205,6 +205,7 @@ crate struct CrateRoot<'tcx> {
     hash: Svh,
     stable_crate_id: StableCrateId,
     panic_strategy: PanicStrategy,
+    panic_in_drop_strategy: PanicStrategy,
     edition: Edition,
     has_global_allocator: bool,
     has_panic_handler: bool,

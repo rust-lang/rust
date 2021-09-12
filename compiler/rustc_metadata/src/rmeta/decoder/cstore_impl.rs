@@ -159,6 +159,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     has_panic_handler => { cdata.root.has_panic_handler }
     is_profiler_runtime => { cdata.root.profiler_runtime }
     panic_strategy => { cdata.root.panic_strategy }
+    panic_in_drop_strategy => { cdata.root.panic_in_drop_strategy }
     extern_crate => {
         let r = *cdata.extern_crate.lock();
         r.map(|c| &*tcx.arena.alloc(c))

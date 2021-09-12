@@ -400,21 +400,35 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
                 continue;
             }
             let cnum = CrateNum::new(i + 1);
-            let found_strategy = tcx.panic_strategy(cnum);
-            let is_compiler_builtins = tcx.is_compiler_builtins(cnum);
-            if is_compiler_builtins || desired_strategy == found_strategy {
+            if tcx.is_compiler_builtins(cnum) {
                 continue;
             }
 
-            sess.err(&format!(
-                "the crate `{}` is compiled with the \
+            let found_strategy = tcx.panic_strategy(cnum);
+            if desired_strategy != found_strategy {
+                sess.err(&format!(
+                    "the crate `{}` is compiled with the \
                                panic strategy `{}` which is \
                                incompatible with this crate's \
                                strategy of `{}`",
-                tcx.crate_name(cnum),
-                found_strategy.desc(),
-                desired_strategy.desc()
-            ));
+                    tcx.crate_name(cnum),
+                    found_strategy.desc(),
+                    desired_strategy.desc()
+                ));
+            }
+
+            let found_drop_strategy = tcx.panic_in_drop_strategy(cnum);
+            if tcx.sess.opts.debugging_opts.panic_in_drop != found_drop_strategy {
+                sess.err(&format!(
+                    "the crate `{}` is compiled with the \
+                               panic-in-drop strategy `{}` which is \
+                               incompatible with this crate's \
+                               strategy of `{}`",
+                    tcx.crate_name(cnum),
+                    found_drop_strategy.desc(),
+                    tcx.sess.opts.debugging_opts.panic_in_drop.desc()
+                ));
+            }
         }
     }
 }

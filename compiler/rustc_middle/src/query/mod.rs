@@ -1167,6 +1167,10 @@ rustc_queries! {
         fatal_cycle
         desc { "query a crate's configured panic strategy" }
     }
+    query panic_in_drop_strategy(_: CrateNum) -> PanicStrategy {
+        fatal_cycle
+        desc { "query a crate's configured panic-in-drop strategy" }
+    }
     query is_no_builtins(_: CrateNum) -> bool {
         fatal_cycle
         desc { "test whether a crate has `#![no_builtins]`" }

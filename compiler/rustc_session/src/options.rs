@@ -349,6 +349,7 @@ mod desc {
     pub const parse_threads: &str = parse_number;
     pub const parse_passes: &str = "a space-separated list of passes, or `all`";
     pub const parse_panic_strategy: &str = "either `unwind` or `abort`";
+    pub const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
     pub const parse_sanitizers: &str =
         "comma separated list of sanitizers: `address`, `hwaddress`, `leak`, `memory` or `thread`";
@@ -549,10 +550,19 @@ mod parse {
         }
     }
 
-    crate fn parse_panic_strategy(slot: &mut Option<PanicStrategy>, v: Option<&str>) -> bool {
+    crate fn parse_opt_panic_strategy(slot: &mut Option<PanicStrategy>, v: Option<&str>) -> bool {
         match v {
             Some("unwind") => *slot = Some(PanicStrategy::Unwind),
             Some("abort") => *slot = Some(PanicStrategy::Abort),
+            _ => return false,
+        }
+        true
+    }
+
+    crate fn parse_panic_strategy(slot: &mut PanicStrategy, v: Option<&str>) -> bool {
+        match v {
+            Some("unwind") => *slot = PanicStrategy::Unwind,
+            Some("abort") => *slot = PanicStrategy::Abort,
             _ => return false,
         }
         true
@@ -958,7 +968,7 @@ options! {
         "optimization level (0-3, s, or z; default: 0)"),
     overflow_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "use overflow checks for integer arithmetic"),
-    panic: Option<PanicStrategy> = (None, parse_panic_strategy, [TRACKED],
+    panic: Option<PanicStrategy> = (None, parse_opt_panic_strategy, [TRACKED],
         "panic strategy to compile crate with"),
     passes: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "a list of extra LLVM passes to run (space separated)"),
@@ -1186,6 +1196,8 @@ options! {
         "pass `-install_name @rpath/...` to the macOS linker (default: no)"),
     panic_abort_tests: bool = (false, parse_bool, [TRACKED],
         "support compiling tests with panic=abort (default: no)"),
+    panic_in_drop: PanicStrategy = (PanicStrategy::Unwind, parse_panic_strategy, [TRACKED],
+        "panic strategy for panics in drops"),
     parse_only: bool = (false, parse_bool, [UNTRACKED],
         "parse only; do not compile, assemble, or link (default: no)"),
     partially_uninit_const_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
