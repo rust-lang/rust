@@ -9,6 +9,7 @@ use crate::traits::normalize_projection_type;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Style};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -678,19 +679,18 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         has_custom_message: bool,
     ) -> bool {
         let span = obligation.cause.span;
-        let points_at_for_iter = matches!(
-            span.ctxt().outer_expn_data().kind,
-            ExpnKind::Desugaring(DesugaringKind::ForLoop(ForLoopLoc::IntoIter))
-        );
 
-        let code =
-            if let (ObligationCauseCode::FunctionArgumentObligation { parent_code, .. }, false) =
-                (&obligation.cause.code, points_at_for_iter)
-            {
-                parent_code.clone()
-            } else {
-                return false;
-            };
+        let code = if let ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } =
+            &obligation.cause.code
+        {
+            parent_code.clone()
+        } else if let ExpnKind::Desugaring(DesugaringKind::ForLoop(ForLoopLoc::IntoIter)) =
+            span.ctxt().outer_expn_data().kind
+        {
+            Lrc::new(obligation.cause.code.clone())
+        } else {
+            return false;
+        };
 
         // List of traits for which it would be nonsensical to suggest borrowing.
         // For instance, immutable references are always Copy, so suggesting to
