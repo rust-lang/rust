@@ -70,6 +70,13 @@ pub union Union {
     b: f32,
 }
 
+// no code example and it's fine!
+impl Clone for Struct {
+    fn clone(&self) -> Self {
+        Self { field: self.field }
+    }
+}
+
 
 #[doc(hidden)]
 pub mod foo {
