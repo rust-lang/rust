@@ -143,8 +143,8 @@ macro validate_simd_type($fx:ident, $intrinsic:ident, $span:ident, $ty:expr) {
 }
 
 pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Option<Type> {
-    let (element, count) = match &layout.abi {
-        Abi::Vector { element, count } => (element.clone(), *count),
+    let (element, count) = match layout.abi {
+        Abi::Vector { element, count } => (element, count),
         _ => unreachable!(),
     };
 
