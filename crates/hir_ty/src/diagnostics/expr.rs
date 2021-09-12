@@ -22,7 +22,7 @@ use crate::{
 };
 
 pub(crate) use hir_def::{
-    body::{Body, BodySourceMap},
+    body::Body,
     expr::{Expr, ExprId, MatchArm, Pat, PatId},
     LocalFieldId, VariantId,
 };
@@ -264,8 +264,7 @@ impl ExprValidator {
         db: &dyn HirDatabase,
         infer: Arc<InferenceResult>,
     ) {
-        let (body, source_map): (Arc<Body>, Arc<BodySourceMap>) =
-            db.body_with_source_map(self.owner);
+        let body = db.body(self.owner);
 
         let match_expr_ty = if infer.type_of_expr[match_expr].is_unknown() {
             return;
@@ -330,21 +329,6 @@ impl ExprValidator {
             infer: &infer,
             db,
             pattern_arena: &pattern_arena,
-            panic_context: &|| {
-                use syntax::AstNode;
-                let match_expr_text = source_map
-                    .expr_syntax(match_expr)
-                    .ok()
-                    .and_then(|scrutinee_sptr| {
-                        let root = scrutinee_sptr.file_syntax(db.upcast());
-                        scrutinee_sptr.value.to_node(&root).syntax().parent()
-                    })
-                    .map(|node| node.to_string());
-                format!(
-                    "expression:\n{}",
-                    match_expr_text.as_deref().unwrap_or("<synthesized expr>")
-                )
-            },
         };
         let report = compute_match_usefulness(&cx, &m_arms);
 
