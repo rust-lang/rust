@@ -430,8 +430,6 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx>>(
 fn late_lint_pass_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, pass: T) {
     let access_levels = &tcx.privacy_access_levels(());
 
-    let krate = tcx.hir().krate();
-
     let context = LateContext {
         tcx,
         enclosing_body: None,
@@ -450,10 +448,10 @@ fn late_lint_pass_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, pass: T)
     cx.with_lint_attrs(hir::CRATE_HIR_ID, |cx| {
         // since the root module isn't visited as an item (because it isn't an
         // item), warn for it here.
-        lint_callback!(cx, check_crate, krate);
+        lint_callback!(cx, check_crate,);
         tcx.hir().walk_toplevel_module(cx);
         tcx.hir().walk_attributes(cx);
-        lint_callback!(cx, check_crate_post, krate);
+        lint_callback!(cx, check_crate_post,);
     })
 }
 

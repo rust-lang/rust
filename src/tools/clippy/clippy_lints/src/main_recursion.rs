@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet;
 use clippy_utils::{is_entrypoint_fn, is_no_std_crate};
 use if_chain::if_chain;
-use rustc_hir::{Crate, Expr, ExprKind, QPath};
+use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
@@ -33,7 +33,7 @@ pub struct MainRecursion {
 impl_lint_pass!(MainRecursion => [MAIN_RECURSION]);
 
 impl LateLintPass<'_> for MainRecursion {
-    fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
+    fn check_crate(&mut self, cx: &LateContext<'_>) {
         self.has_no_std_attr = is_no_std_crate(cx);
     }
 

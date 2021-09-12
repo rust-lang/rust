@@ -164,7 +164,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    crate fn items(&self) -> impl Iterator<Item = &'hir Item<'hir>> + 'hir {
+    pub fn items(&self) -> impl Iterator<Item = &'hir Item<'hir>> + 'hir {
         let krate = self.krate();
         krate.owners.iter().filter_map(|owner| match owner.as_ref()? {
             OwnerNode::Item(item) => Some(*item),

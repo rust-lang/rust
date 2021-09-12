@@ -1,7 +1,7 @@
 //! lint on missing cargo common metadata
 
 use clippy_utils::{diagnostics::span_lint, is_lint_allowed};
-use rustc_hir::{hir_id::CRATE_HIR_ID, Crate};
+use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::DUMMY_SP;
@@ -77,7 +77,7 @@ fn is_empty_vec(value: &[String]) -> bool {
 }
 
 impl LateLintPass<'_> for CargoCommonMetadata {
-    fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
+    fn check_crate(&mut self, cx: &LateContext<'_>) {
         if is_lint_allowed(cx, CARGO_COMMON_METADATA, CRATE_HIR_ID) {
             return;
         }

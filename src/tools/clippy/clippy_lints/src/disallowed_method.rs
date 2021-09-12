@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::fn_def_id;
 
-use rustc_hir::{def::Res, def_id::DefIdMap, Crate, Expr};
+use rustc_hir::{def::Res, def_id::DefIdMap, Expr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
@@ -70,7 +70,7 @@ impl DisallowedMethod {
 impl_lint_pass!(DisallowedMethod => [DISALLOWED_METHOD]);
 
 impl<'tcx> LateLintPass<'tcx> for DisallowedMethod {
-    fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
+    fn check_crate(&mut self, cx: &LateContext<'_>) {
         for conf in &self.conf_disallowed {
             let (path, reason) = match conf {
                 conf::DisallowedMethod::Simple(path) => (path, None),

@@ -584,7 +584,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         self.doc_hidden_stack.pop().expect("empty doc_hidden_stack");
     }
 
-    fn check_crate(&mut self, cx: &LateContext<'_>, _: &hir::Crate<'_>) {
+    fn check_crate(&mut self, cx: &LateContext<'_>) {
         self.check_missing_docs_attrs(
             cx,
             CRATE_DEF_ID,
