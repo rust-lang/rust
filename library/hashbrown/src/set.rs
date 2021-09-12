@@ -993,6 +993,8 @@ where
 
     /// Insert a value the set without checking if the value already exists in the set.
     ///
+    /// Returns a reference to the value just inserted.
+    ///
     /// This operation is safe if a value does not exist in the set.
     ///
     /// However, if a value exists in the set already, the behavior is unspecified:
@@ -1009,8 +1011,8 @@ where
     /// For example, when constructing a set from another set, we know
     /// that values are unique.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn insert_unique_unchecked(&mut self, value: T) {
-        self.map.insert_unique_unchecked(value, ());
+    pub fn insert_unique_unchecked(&mut self, value: T) -> &T {
+        self.map.insert_unique_unchecked(value, ()).0
     }
 
     /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
