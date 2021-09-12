@@ -83,10 +83,6 @@ pub fn report_object_safety_error(
                     messages.push(msg.clone());
                 }
             }
-            if trait_span.is_some() {
-                // Only provide the help if its a local trait, otherwise it's not actionable.
-                violation.solution(&mut err);
-            }
         }
     }
     let has_multi_span = !multi_span.is_empty();
@@ -104,5 +100,13 @@ pub fn report_object_safety_error(
          to be resolvable dynamically; for more information visit \
          <https://doc.rust-lang.org/reference/items/traits.html#object-safety>",
     );
+    if trait_span.is_some() {
+        let mut reported_violations: Vec<_> = reported_violations.into_iter().collect();
+        reported_violations.sort();
+        for violation in reported_violations {
+            // Only provide the help if its a local trait, otherwise it's not actionable.
+            violation.solution(&mut err);
+        }
+    }
     err
 }
