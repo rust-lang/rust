@@ -71,11 +71,12 @@ diff --git a/crates/core_simd/tests/masks.rs b/crates/core_simd/tests/masks.rs
 index 61d8e44..2bccae2 100644
 --- a/crates/core_simd/tests/masks.rs
 +++ b/crates/core_simd/tests/masks.rs
-@@ -67,18 +67,6 @@ macro_rules! test_mask_api {
+@@ -67,19 +67,6 @@ macro_rules! test_mask_api {
                  assert_eq!(int.to_array(), [-1, 0, 0, -1, 0, 0, -1, 0]);
                  assert_eq!(core_simd::Mask::<$type, 8>::from_int(int), mask);
              }
 -
+-            #[cfg(feature = "generic_const_exprs")]
 -            #[test]
 -            fn roundtrip_bitmask_conversion() {
 -                let values = [
