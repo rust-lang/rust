@@ -5,7 +5,7 @@ use clippy_utils::{get_parent_expr_for_hir, is_trait_method, strip_pat_refs};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::{self, Expr, ExprKind, HirId, PatKind};
+use rustc_hir::{self, ExprKind, HirId, PatKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::hir::place::ProjectionKind;
@@ -229,26 +229,23 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
             } else {
                 // cases where a parent call is using the item
                 // i.e.: suggest `.contains(&x)` for `.find(|x| [1, 2, 3].contains(x)).is_none()`
-                let parent_expr = get_parent_expr_for_hir(self.cx, cmt.hir_id);
-                if let Some(Expr { hir_id: _, kind, .. }) = parent_expr {
-                    if let ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) = kind {
-                        let args_to_handle = args.iter().filter(|arg| arg.hir_id == cmt.hir_id).collect::<Vec<_>>();
-                        if !args_to_handle.is_empty() {
-                            for arg in &args_to_handle {
-                                let arg_ty_kind = self.cx.typeck_results().expr_ty(arg).kind();
-                                if matches!(arg_ty_kind, ty::Ref(_, _, Mutability::Not)) {
-                                    let start_span = Span::new(self.next_pos, span.lo(), span.ctxt());
-                                    let start_snip =
-                                        snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
+                if let Some(parent_expr) = get_parent_expr_for_hir(self.cx, cmt.hir_id) {
+                    if let ExprKind::Call(..) | ExprKind::MethodCall(..) = parent_expr.kind {
+                        let expr = self.cx.tcx.hir().expect_expr(cmt.hir_id);
+                        let arg_ty_kind = self.cx.typeck_results().expr_ty(expr).kind();
 
-                                    self.suggestion_start.push_str(&format!("{}&{}", start_snip, ident_str));
-                                    self.next_pos = span.hi();
-                                } else {
-                                    self.applicability = Applicability::Unspecified;
-                                }
-                            }
-                            return;
+                        // Note: this should always be true, as `find` only gives us a reference which are not mutable
+                        if matches!(arg_ty_kind, ty::Ref(_, _, Mutability::Not)) {
+                            let start_span = Span::new(self.next_pos, span.lo(), span.ctxt());
+                            let start_snip =
+                                snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
+
+                            self.suggestion_start.push_str(&format!("{}&{}", start_snip, ident_str));
+                            self.next_pos = span.hi();
+                        } else {
+                            self.applicability = Applicability::Unspecified;
                         }
+                        return;
                     }
                 }
 
@@ -290,17 +287,17 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                             },
                             _ => false,
                         },
-                        ProjectionKind::Index => false, /* handled previously */
-                        // note: unable to capture `Subslice` kind in tests
-                        ProjectionKind::Subslice => false,
+                        // handled previously
+                        ProjectionKind::Index |
+                            // note: unable to trigger `Subslice` kind in tests
+                            ProjectionKind::Subslice => false,
                         ProjectionKind::Deref => {
                             // explicit deref for arrays should be avoided in the suggestion
                             // i.e.: `|sub| *sub[1..4].len() == 3` is not expected
                             match cmt.place.ty_before_projection(i).kind() {
                                 // dereferencing an array (i.e.: `|sub| sub[1..4].len() == 3`)
-                                ty::Ref(_, inner, _) => match inner.kind() {
-                                    ty::Ref(_, innermost, _) if innermost.is_array() => true,
-                                    _ => false,
+                                ty::Ref(_, inner, _) => {
+                                    matches!(inner.kind(), ty::Ref(_, innermost, _) if innermost.is_array())
                                 },
                                 _ => false,
                             }
