@@ -20,8 +20,7 @@ struct b8x4(pub i8, pub i8, pub i8, pub i8);
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq)]
-struct b8x8(pub i8, pub i8, pub i8, pub i8,
-            pub i8, pub i8, pub i8, pub i8);
+struct b8x8(pub i8, pub i8, pub i8, pub i8, pub i8, pub i8, pub i8, pub i8);
 
 extern "platform-intrinsic" {
     fn simd_select<T, U>(x: T, a: U, b: U) -> U;
@@ -50,15 +49,15 @@ fn main() {
         //~^ ERROR found non-SIMD `u32`
 
         simd_select_bitmask(0u16, x, x);
-        //~^ ERROR mask length `16` != other vector length `4`
-        //
+        //~^ ERROR invalid bitmask `u16`, expected `u8` or `[u8; 1]`
+
         simd_select_bitmask(0u8, 1u32, 2u32);
         //~^ ERROR found non-SIMD `u32`
 
         simd_select_bitmask(0.0f32, x, x);
-        //~^ ERROR `f32` is not an integral type
+        //~^ ERROR invalid bitmask `f32`, expected `u8` or `[u8; 1]`
 
         simd_select_bitmask("x", x, x);
-        //~^ ERROR `&str` is not an integral type
+        //~^ ERROR invalid bitmask `&str`, expected `u8` or `[u8; 1]`
     }
 }
