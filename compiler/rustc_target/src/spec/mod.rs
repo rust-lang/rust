@@ -705,6 +705,59 @@ impl ToJson for FramePointer {
     }
 }
 
+/// Controls use of stack canaries.
+#[derive(Clone, Copy, Debug, PartialEq, Hash, Eq)]
+pub enum StackProtector {
+    /// Disable stack canary generation.
+    None,
+
+    /// On LLVM, mark all generated LLVM functions with the `ssp` attribute (see
+    /// llvm/docs/LangRef.rst). This triggers stack canary generation in
+    /// functions which contain an array of a byte-sized type with more than
+    /// eight elements.
+    Basic,
+
+    /// On LLVM, mark all generated LLVM functions with the `sspstrong`
+    /// attribute (see llvm/docs/LangRef.rst). This triggers stack canary
+    /// generation in functions which either contain an array, or which take
+    /// the address of a local variable.
+    Strong,
+
+    /// Generate stack canaries in all functions.
+    All,
+}
+
+impl StackProtector {
+    fn as_str(&self) -> &'static str {
+        match self {
+            StackProtector::None => "none",
+            StackProtector::Basic => "basic",
+            StackProtector::Strong => "strong",
+            StackProtector::All => "all",
+        }
+    }
+}
+
+impl FromStr for StackProtector {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<StackProtector, ()> {
+        Ok(match s {
+            "none" => StackProtector::None,
+            "basic" => StackProtector::Basic,
+            "strong" => StackProtector::Strong,
+            "all" => StackProtector::All,
+            _ => return Err(()),
+        })
+    }
+}
+
+impl fmt::Display for StackProtector {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 macro_rules! supported_targets {
     ( $(($( $triple:literal, )+ $module:ident ),)+ ) => {
         $(mod $module;)+
@@ -1339,6 +1392,10 @@ pub struct TargetOptions {
 
     /// Minimum number of bits in #[repr(C)] enum. Defaults to 32.
     pub c_enum_min_bits: u64,
+
+    /// Whether the target supports stack canary checks. `true` by default,
+    /// since this is most common among tier 1 and tier 2 targets.
+    pub supports_stack_protector: bool,
 }
 
 impl Default for TargetOptions {
@@ -1444,6 +1501,7 @@ impl Default for TargetOptions {
             supported_sanitizers: SanitizerSet::empty(),
             default_adjusted_cabi: None,
             c_enum_min_bits: 32,
+            supports_stack_protector: true,
         }
     }
 }
@@ -2029,6 +2087,7 @@ impl Target {
         key!(supported_sanitizers, SanitizerSet)?;
         key!(default_adjusted_cabi, Option<Abi>)?;
         key!(c_enum_min_bits, u64);
+        key!(supports_stack_protector, bool);
 
         if base.is_builtin {
             // This can cause unfortunate ICEs later down the line.
@@ -2268,6 +2327,7 @@ impl ToJson for Target {
         target_option_val!(split_debuginfo);
         target_option_val!(supported_sanitizers);
         target_option_val!(c_enum_min_bits);
+        target_option_val!(supports_stack_protector);
 
         if let Some(abi) = self.default_adjusted_cabi {
             d.insert("default-adjusted-cabi".to_string(), Abi::name(abi).to_json());
