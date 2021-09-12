@@ -44,6 +44,10 @@ pub fn target() -> Target {
             // produce kernel functions that call other kernel functions.
             // This behavior is not supported by PTX ISA.
             merge_functions: MergeFunctions::Disabled,
+
+            // The LLVM backend does not support stack canaries for this target
+            supports_stack_protector: false,
+
             ..Default::default()
         },
     }
