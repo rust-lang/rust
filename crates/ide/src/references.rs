@@ -87,7 +87,10 @@ pub(crate) fn find_all_refs(
                 }
                 .map(|nav| {
                     let decl_range = nav.focus_or_full_range();
-                    Declaration { nav, access: decl_access(&def, &syntax, decl_range) }
+                    Declaration {
+                        access: decl_access(&def, sema.parse(nav.file_id).syntax(), decl_range),
+                        nav,
+                    }
                 });
                 if is_literal_search {
                     retain_adt_literal_usages(&mut usages, def, sema);
