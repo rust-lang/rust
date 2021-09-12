@@ -1,3 +1,188 @@
+Rust 1.56.0 (2021-10-21)
+========================
+
+Language
+--------
+
+- [The 2021 Edition is now stable.][rust#88100]
+  See [the edition guide][rust-2021-edition-guide] for more details.
+- [You can now specify explicit discriminant values on any Rust enum.][rust#86860]
+- [The pattern in `binding @ pattern` can now also introduce new bindings.][rust#85305]
+- [Union field access is permitted in `const fn`.][rust#85769]
+
+[rust-2021-edition-guide]: https://doc.rust-lang.org/nightly/edition-guide/rust-2021/index.html
+
+Compiler
+--------
+
+- [Upgrade to LLVM 13.][rust#87570]
+- [Support memory, address, and thread sanitizers on aarch64-unknown-freebsd.][rust#88023]
+- [Allow specifying an deployment target version for all iOS targets][rust#87699]
+- [Warnings can be forced on with `--force-warn`.][rust#87472]
+  This feature is primarily intended for usage by `cargo fix`, rather than end users.
+- [Promote `aarch64-apple-ios-sim` to Tier 2\*.][rust#87760]
+- [Add `powerpc-unknown-freebsd` at Tier 3\*.][rust#87370]
+
+\* Refer to Rust's [platform support page][platform-support-doc] for more
+information on Rust's tiered platform support.
+
+Libraries
+---------
+
+- [Allow writing of incomplete UTF-8 sequences via stdout/stderr on Windows.][rust#83342]
+  The Windows console still requires valid Unicode, but this change allows
+  splitting a UTF-8 character across multiple write calls. This allows, for
+  instance, programs that just read and write data buffers (e.g. copying a file
+  to stdout) without regard for Unicode or character boundaries.
+- [Prefer `AtomicU{64,128}` over Mutex for Instant backsliding protection.][rust#83093]
+  For this use case, atomics scale much better under contention.
+- [Implement `Extend<(A, B)>` for `(Extend<A>, Extend<B>)`][rust#85835]
+- [impl Default, Copy, Clone for std::io::Sink and std::io::Empty][rust#86744]
+- [`impl From<[(K, V); N]>` for all collections.][rust#84111]
+- [Remove `P: Unpin` bound on impl Future for Pin.][rust#81363]
+- [Treat invalid environment variable names as non-existent.][rust#86183]
+  Previously, the environment functions would panic if given a variable name
+  with an internal null character or equal sign (`=`). Now, these functions will
+  just treat such names as non-existent variables, since the OS cannot represent
+  the existence of a variable with such a name.
+
+Stabilised APIs
+---------------
+
+- [`std::os::unix::fs::chroot`]
+- [`Iterator::intersperse`]
+- [`Iterator::intersperse_with`]
+- [`UnsafeCell::raw_get`]
+- [`BufWriter::into_parts`]
+- [`core::panic::{UnwindSafe, RefUnwindSafe, AssertUnwindSafe}`]
+  These APIs were previously stable in `std`, but are now also available in `core`.
+- [`Vec::shrink_to`]
+- [`String::shrink_to`]
+- [`OsString::shrink_to`]
+- [`PathBuf::shrink_to`]
+- [`BinaryHeap::shrink_to`]
+- [`VecDeque::shrink_to`]
+- [`HashMap::shrink_to`]
+- [`HashSet::shrink_to`]
+- [`task::ready!`]
+
+These APIs are now usable in const contexts:
+
+- [`std::mem::transmute`]
+- [`[T]::first`][`slice::first`]
+- [`[T]::split_first`][`slice::split_first`]
+- [`[T]::last`][`slice::last`]
+- [`[T]::split_last`][`slice::split_last`]
+
+Cargo
+-----
+
+- [Cargo supports specifying a minimum supported Rust version in Cargo.toml.][`rust-version`]
+  This has no effect at present on dependency version selection.
+  We encourage crates to specify their minimum supported Rust version, and we encourage CI systems
+  that support Rust code to include a crate's specified minimum version in the text matrix for that
+  crate by default.
+
+Compatibility notes
+-------------------
+
+- [Update to new argument parsing rules on Windows.][rust#87580]
+  This adjusts Rust's standard library to match the behavior of the standard
+  libraries for C/C++. The rules have changed slightly over time, and this PR
+  brings us to the latest set of rules (changed in 2008).
+- [Disallow the aapcs calling convention on aarch64][rust#88399]
+  This was already not supported by LLVM; this change surfaces this lack of
+  support with a better error message.
+- [Make `SEMICOLON_IN_EXPRESSIONS_FROM_MACROS` warn by default][rust#87385]
+- [Warn when an escaped newline skips multiple lines.][rust#87671]
+- [Calls to `libc::getpid` / `std::process::id` from `Command::pre_exec`
+   may return different values on glibc <= 2.24.][rust#81825]
+   Rust now invokes the `clone3` system call directly, when available, to use new functionality
+   available via that system call. Older versions of glibc cache the result of `getpid`, and only
+   update that cache when calling glibc's clone/fork functions, so a direct system call bypasses
+   that cache update. glibc 2.25 and newer no longer cache `getpid` for exactly this reason.
+
+Internal changes
+----------------
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc
+and related tools.
+
+- [LLVM is compiled with PGO in published x86_64-unknown-linux-gnu artifacts.][rust#88069]
+  This improves the performance of most Rust builds.
+- [Unify representation of macros in internal data structures.][rust#88019]
+  This change fixes a host of bugs with the handling of macros by the compiler,
+  as well as rustdoc.
+
+[`std::os::unix::fs::chroot`]: https://doc.rust-lang.org/stable/std/os/unix/fs/fn.chroot.html
+[`Iterator::intersperse`]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html#method.intersperse
+[`Iterator::intersperse_with`]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html#method.intersperse
+[`UnsafeCell::raw_get`]: https://doc.rust-lang.org/stable/std/cell/struct.UnsafeCell.html#method.raw_get
+[`BufWriter::into_parts`]: https://doc.rust-lang.org/stable/std/io/struct.BufWriter.html#method.into_parts
+[`core::panic::{UnwindSafe, RefUnwindSafe, AssertUnwindSafe}`]: https://github.com/rust-lang/rust/pull/84662
+[`Vec::shrink_to`]: https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.shrink_to
+[`String::shrink_to`]: https://doc.rust-lang.org/stable/std/string/struct.String.html#method.shrink_to
+[`OsString::shrink_to`]: https://doc.rust-lang.org/stable/std/ffi/struct.OsString.html#method.shrink_to
+[`PathBuf::shrink_to`]: https://doc.rust-lang.org/stable/std/path/struct.PathBuf.html#method.shrink_to
+[`BinaryHeap::shrink_to`]: https://doc.rust-lang.org/stable/std/collections/struct.BinaryHeap.html#method.shrink_to
+[`VecDeque::shrink_to`]: https://doc.rust-lang.org/stable/std/collections/struct.VecDeque.html#method.shrink_to
+[`HashMap::shrink_to`]: https://doc.rust-lang.org/stable/std/collections/hash_map/struct.HashMap.html#method.shrink_to
+[`HashSet::shrink_to`]: https://doc.rust-lang.org/stable/std/collections/hash_set/struct.HashSet.html#method.shrink_to
+[`task::ready!`]: https://doc.rust-lang.org/stable/std/task/macro.ready.html
+[`std::mem::transmute`]: https://doc.rust-lang.org/stable/std/mem/fn.transmute.html
+[`slice::first`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.first
+[`slice::split_first`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.split_first
+[`slice::last`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.last
+[`slice::split_last`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.split_last
+[`rust-version`]: https://doc.rust-lang.org/nightly/cargo/reference/manifest.html#the-rust-version-field
+[rust#87671]: https://github.com/rust-lang/rust/pull/87671
+[rust#86183]: https://github.com/rust-lang/rust/pull/86183
+[rust#87385]: https://github.com/rust-lang/rust/pull/87385
+[rust#88100]: https://github.com/rust-lang/rust/pull/88100
+[rust#86860]: https://github.com/rust-lang/rust/pull/86860
+[rust#84039]: https://github.com/rust-lang/rust/pull/84039
+[rust#86492]: https://github.com/rust-lang/rust/pull/86492
+[rust#88363]: https://github.com/rust-lang/rust/pull/88363
+[rust#85305]: https://github.com/rust-lang/rust/pull/85305
+[rust#87832]: https://github.com/rust-lang/rust/pull/87832
+[rust#88069]: https://github.com/rust-lang/rust/pull/88069
+[rust#87472]: https://github.com/rust-lang/rust/pull/87472
+[rust#87699]: https://github.com/rust-lang/rust/pull/87699
+[rust#87570]: https://github.com/rust-lang/rust/pull/87570
+[rust#88023]: https://github.com/rust-lang/rust/pull/88023
+[rust#87760]: https://github.com/rust-lang/rust/pull/87760
+[rust#87370]: https://github.com/rust-lang/rust/pull/87370
+[rust#87580]: https://github.com/rust-lang/rust/pull/87580
+[rust#83342]: https://github.com/rust-lang/rust/pull/83342
+[rust#83093]: https://github.com/rust-lang/rust/pull/83093
+[rust#88177]: https://github.com/rust-lang/rust/pull/88177
+[rust#88548]: https://github.com/rust-lang/rust/pull/88548
+[rust#88551]: https://github.com/rust-lang/rust/pull/88551
+[rust#88299]: https://github.com/rust-lang/rust/pull/88299
+[rust#88220]: https://github.com/rust-lang/rust/pull/88220
+[rust#85835]: https://github.com/rust-lang/rust/pull/85835
+[rust#86879]: https://github.com/rust-lang/rust/pull/86879
+[rust#86744]: https://github.com/rust-lang/rust/pull/86744
+[rust#84662]: https://github.com/rust-lang/rust/pull/84662
+[rust#86593]: https://github.com/rust-lang/rust/pull/86593
+[rust#81050]: https://github.com/rust-lang/rust/pull/81050
+[rust#81363]: https://github.com/rust-lang/rust/pull/81363
+[rust#84111]: https://github.com/rust-lang/rust/pull/84111
+[rust#85769]: https://github.com/rust-lang/rust/pull/85769#issuecomment-854363720
+[rust#88490]: https://github.com/rust-lang/rust/pull/88490
+[rust#88269]: https://github.com/rust-lang/rust/pull/88269
+[rust#84176]: https://github.com/rust-lang/rust/pull/84176
+[rust#88399]: https://github.com/rust-lang/rust/pull/88399
+[rust#88227]: https://github.com/rust-lang/rust/pull/88227
+[rust#88200]: https://github.com/rust-lang/rust/pull/88200
+[rust#82776]: https://github.com/rust-lang/rust/pull/82776
+[rust#88077]: https://github.com/rust-lang/rust/pull/88077
+[rust#87728]: https://github.com/rust-lang/rust/pull/87728
+[rust#87050]: https://github.com/rust-lang/rust/pull/87050
+[rust#87619]: https://github.com/rust-lang/rust/pull/87619
+[rust#81825]: https://github.com/rust-lang/rust/pull/81825#issuecomment-808406918
+[rust#88019]: https://github.com/rust-lang/rust/pull/88019
+
 Version 1.55.0 (2021-09-09)
 ============================
 
