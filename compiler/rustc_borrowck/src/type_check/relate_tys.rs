@@ -80,10 +80,11 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
     }
 
     fn create_next_universe(&mut self) -> ty::UniverseIndex {
-        let info_universe =
-            self.borrowck_context.constraints.universe_causes.push(self.universe_info.clone());
         let universe = self.infcx.create_next_universe();
-        assert_eq!(info_universe, universe);
+        self.borrowck_context
+            .constraints
+            .universe_causes
+            .insert(universe, self.universe_info.clone());
         universe
     }
 

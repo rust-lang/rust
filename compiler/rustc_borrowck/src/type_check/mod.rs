@@ -136,6 +136,8 @@ pub(crate) fn type_check<'mir, 'tcx>(
     upvars: &[Upvar<'tcx>],
 ) -> MirTypeckResults<'tcx> {
     let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
+    let mut universe_causes = FxHashMap::default();
+    universe_causes.insert(ty::UniverseIndex::from_u32(0), UniverseInfo::other());
     let mut constraints = MirTypeckRegionConstraints {
         placeholder_indices: PlaceholderIndices::default(),
         placeholder_index_to_region: IndexVec::default(),
@@ -144,7 +146,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
         member_constraints: MemberConstraintSet::default(),
         closure_bounds_mapping: Default::default(),
         type_tests: Vec::default(),
-        universe_causes: IndexVec::from_elem_n(UniverseInfo::other(), 1),
+        universe_causes,
     };
 
     let CreateResult {
@@ -159,9 +161,9 @@ pub(crate) fn type_check<'mir, 'tcx>(
         &mut constraints,
     );
 
-    for _ in ty::UniverseIndex::ROOT..infcx.universe() {
+    for u in ty::UniverseIndex::ROOT..infcx.universe() {
         let info = UniverseInfo::other();
-        constraints.universe_causes.push(info);
+        constraints.universe_causes.insert(u, info);
     }
 
     let mut borrowck_context = BorrowCheckContext {
@@ -924,7 +926,7 @@ crate struct MirTypeckRegionConstraints<'tcx> {
     crate closure_bounds_mapping:
         FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>>,
 
-    crate universe_causes: IndexVec<ty::UniverseIndex, UniverseInfo<'tcx>>,
+    crate universe_causes: FxHashMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
     crate type_tests: Vec<TypeTest<'tcx>>,
 }

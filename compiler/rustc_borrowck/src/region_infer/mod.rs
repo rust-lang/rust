@@ -85,7 +85,7 @@ pub struct RegionInferenceContext<'tcx> {
         FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>>,
 
     /// Map universe indexes to information on why we created it.
-    universe_causes: IndexVec<ty::UniverseIndex, UniverseInfo<'tcx>>,
+    universe_causes: FxHashMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
     /// Contains the minimum universe of any variable within the same
     /// SCC. We will ensure that no SCC contains values that are not
@@ -256,7 +256,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             Location,
             FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>,
         >,
-        universe_causes: IndexVec<ty::UniverseIndex, UniverseInfo<'tcx>>,
+        universe_causes: FxHashMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
         type_tests: Vec<TypeTest<'tcx>>,
         liveness_constraints: LivenessValues<RegionVid>,
         elements: &Rc<RegionValueElements>,
@@ -2149,7 +2149,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     crate fn universe_info(&self, universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
-        self.universe_causes[universe].clone()
+        self.universe_causes[&universe].clone()
     }
 }
 
