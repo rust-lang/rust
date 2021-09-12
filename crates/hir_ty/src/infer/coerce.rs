@@ -277,7 +277,7 @@ impl<'a> InferenceContext<'a> {
                 continue;
             }
 
-            let referent_ty = canonicalized.decanonicalize_ty(referent_ty.value);
+            let referent_ty = canonicalized.decanonicalize_ty(&mut self.table, referent_ty);
 
             // At this point, we have deref'd `a` to `referent_ty`.  So
             // imagine we are coercing from `&'a mut Vec<T>` to `&'b mut [T]`.

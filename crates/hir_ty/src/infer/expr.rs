@@ -328,10 +328,8 @@ impl<'a> InferenceContext<'a> {
                     },
                 );
                 let res = derefs.by_ref().find_map(|(callee_deref_ty, _)| {
-                    self.callable_sig(
-                        &canonicalized.decanonicalize_ty(callee_deref_ty.value),
-                        args.len(),
-                    )
+                    let ty = &canonicalized.decanonicalize_ty(&mut self.table, callee_deref_ty);
+                    self.callable_sig(ty, args.len())
                 });
                 let (param_tys, ret_ty): (Vec<Ty>, Ty) = match res {
                     Some(res) => {
@@ -510,17 +508,20 @@ impl<'a> InferenceContext<'a> {
                     },
                 );
                 let ty = autoderef.by_ref().find_map(|(derefed_ty, _)| {
-                    let def_db = self.db.upcast();
                     let module = self.resolver.module();
+                    let db = self.db;
                     let is_visible = |field_id: &FieldId| {
                         module
                             .map(|mod_id| {
-                                self.db.field_visibilities(field_id.parent)[field_id.local_id]
-                                    .is_visible_from(def_db, mod_id)
+                                db.field_visibilities(field_id.parent)[field_id.local_id]
+                                    .is_visible_from(db.upcast(), mod_id)
                             })
                             .unwrap_or(true)
                     };
-                    match canonicalized.decanonicalize_ty(derefed_ty.value).kind(&Interner) {
+                    match canonicalized
+                        .decanonicalize_ty(&mut self.table, derefed_ty)
+                        .kind(&Interner)
+                    {
                         TyKind::Tuple(_, substs) => name.as_tuple_index().and_then(|idx| {
                             substs
                                 .as_slice(&Interner)
@@ -637,7 +638,7 @@ impl<'a> InferenceContext<'a> {
                                 },
                             ) {
                                 Some(derefed_ty) => {
-                                    canonicalized.decanonicalize_ty(derefed_ty.value)
+                                    canonicalized.decanonicalize_ty(&mut self.table, derefed_ty)
                                 }
                                 None => self.err_ty(),
                             }
@@ -740,8 +741,9 @@ impl<'a> InferenceContext<'a> {
                         krate,
                         index_trait,
                     );
-                    let self_ty =
-                        self_ty.map_or(self.err_ty(), |t| canonicalized.decanonicalize_ty(t.value));
+                    let self_ty = self_ty.map_or(self.err_ty(), |t| {
+                        canonicalized.decanonicalize_ty(&mut self.table, t)
+                    });
                     self.resolve_associated_type_with_params(
                         self_ty,
                         self.resolve_ops_index_output(),
@@ -987,7 +989,7 @@ impl<'a> InferenceContext<'a> {
         });
         let (receiver_ty, method_ty, substs) = match resolved {
             Some((ty, func)) => {
-                let ty = canonicalized_receiver.decanonicalize_ty(ty);
+                let ty = canonicalized_receiver.decanonicalize_ty(&mut self.table, ty);
                 let generics = generics(self.db.upcast(), func.into());
                 let substs = self.substs_for_method_call(generics, generic_args, &ty);
                 self.write_method_resolution(tgt_expr, func, substs.clone());

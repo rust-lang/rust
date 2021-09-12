@@ -1145,3 +1145,35 @@ impl<'a, T, DB: TypeMetadata> Output<'a, T, DB> {
         "#,
     );
 }
+
+#[test]
+fn bitslice_panic() {
+    check_no_mismatches(
+        r#"
+//- minicore: option, deref
+
+pub trait BitView {
+    type Store;
+}
+
+pub struct Lsb0;
+
+pub struct BitArray<V: BitView> { }
+
+pub struct BitSlice<T> { }
+
+impl<V: BitView> core::ops::Deref for BitArray<V> {
+    type Target = BitSlice<V::Store>;
+}
+
+impl<T> BitSlice<T> {
+    pub fn split_first(&self) -> Option<(T, &Self)> { loop {} }
+}
+
+fn multiexp_inner() {
+    let exp: &BitArray<Foo>;
+    exp.split_first();
+}
+        "#,
+    );
+}
