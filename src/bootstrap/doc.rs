@@ -590,10 +590,18 @@ impl Step for Rustc {
         cargo.rustdocflag("-Znormalize-docs");
         cargo.rustdocflag("--show-type-layout");
         compile::rustc_cargo(builder, &mut cargo, target);
+        cargo.arg("-Zunstable-options");
         cargo.arg("-Zskip-rustdoc-fingerprint");
 
         // Only include compiler crates, no dependencies of those, such as `libc`.
+        // Do link to dependencies on `docs.rs` however using `rustdoc-map`.
         cargo.arg("--no-deps");
+        cargo.arg("-Zrustdoc-map");
+
+        // FIXME: `-Zrustdoc-map` does not yet correctly work for transitive dependencies,
+        // once this is no longer an issue the special case for `ena` can be removed.
+        cargo.rustdocflag("--extern-html-root-url");
+        cargo.rustdocflag("ena=https://docs.rs/ena/latest/");
 
         // Find dependencies for top level crates.
         let mut compiler_crates = HashSet::new();
