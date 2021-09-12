@@ -152,6 +152,8 @@ pub struct TypeMap<'ll, 'tcx> {
     type_to_metadata: FxHashMap<Ty<'tcx>, &'ll DIType>,
     /// A map from types to `UniqueTypeId`. This is an N:1 mapping.
     type_to_unique_id: FxHashMap<Ty<'tcx>, UniqueTypeId>,
+    /// A map from `UniqueTypeId` to it's type-name string.
+    unique_id_to_type_name: FxHashMap<UniqueTypeId, String>,
 }
 
 impl TypeMap<'ll, 'tcx> {
@@ -201,12 +203,31 @@ impl TypeMap<'ll, 'tcx> {
         }
     }
 
+    /// Adds a `UniqueTypeId` to type-name mapping to the `TypeMap`. The
+    /// method will fail if the mapping already exists.
+    fn register_unique_id_with_type_name(
+        &mut self,
+        unique_type_id: UniqueTypeId,
+        type_name: String
+    ) {
+        if self.unique_id_to_type_name.insert(unique_type_id, type_name).is_some() {
+            bug!(
+                "type name for unique ID '{}' is already in the `TypeMap`!",
+                self.get_unique_type_id_as_string(unique_type_id)
+            );
+        }
+    }
+
     fn find_metadata_for_type(&self, type_: Ty<'tcx>) -> Option<&'ll DIType> {
         self.type_to_metadata.get(&type_).cloned()
     }
 
     fn find_metadata_for_unique_id(&self, unique_type_id: UniqueTypeId) -> Option<&'ll DIType> {
         self.unique_id_to_metadata.get(&unique_type_id).cloned()
+    }
+
+    fn find_type_name_for_unique_id(&self, unique_type_id: UniqueTypeId) -> Option<String> {
+        self.unique_id_to_type_name.get(&unique_type_id).cloned()
     }
 
     /// Gets the string representation of a `UniqueTypeId`. This method will fail if
@@ -374,6 +395,26 @@ macro_rules! return_if_metadata_created_in_meantime {
     };
 }
 
+fn check_type_name_cache(
+    cx: &CodegenCx<'ll, 'tcx>,
+    ty: Ty<'tcx>,
+    qualified: bool,
+) -> String {
+    let mut type_map = debug_context(cx).type_map.borrow_mut();
+    let unique_type_id = type_map.get_unique_type_id_of_type(cx, ty);
+    match type_map.find_type_name_for_unique_id(unique_type_id) {
+        Some(type_name) => { type_name },
+        None => {
+            let type_name = compute_debuginfo_type_name(cx.tcx, ty, qualified);
+            type_map.register_unique_id_with_type_name(
+                unique_type_id,
+                type_name.clone(),
+            );
+            type_name
+        },
+    }
+}
+
 fn fixed_vec_metadata(
     cx: &CodegenCx<'ll, 'tcx>,
     unique_type_id: UniqueTypeId,
@@ -422,7 +463,7 @@ fn vec_slice_metadata(
 
     return_if_metadata_created_in_meantime!(cx, unique_type_id);
 
-    let slice_type_name = compute_debuginfo_type_name(cx.tcx, slice_ptr_type, true);
+    let slice_type_name = check_type_name_cache(cx, slice_ptr_type, true);
 
     let (pointer_size, pointer_align) = cx.size_and_align_of(data_ptr_type);
     let (usize_size, usize_align) = cx.size_and_align_of(cx.tcx.types.usize);
@@ -520,10 +561,10 @@ fn trait_pointer_metadata(
         Some(trait_object_type) => match trait_object_type.kind() {
             ty::Adt(def, _) => (
                 Some(get_namespace_for_item(cx, def.did)),
-                compute_debuginfo_type_name(cx.tcx, trait_object_type, false),
+                check_type_name_cache(cx, trait_object_type, false),
             ),
             ty::RawPtr(_) | ty::Ref(..) => {
-                (NO_SCOPE_METADATA, compute_debuginfo_type_name(cx.tcx, trait_object_type, true))
+                (NO_SCOPE_METADATA, check_type_name_cache(cx, trait_object_type, true))
             }
             _ => {
                 bug!(
@@ -536,7 +577,7 @@ fn trait_pointer_metadata(
 
         // No object type, use the trait type directly (no scope here since the type
         // will be wrapped in the dyn$ synthetic type).
-        None => (NO_SCOPE_METADATA, compute_debuginfo_type_name(cx.tcx, trait_type, true)),
+        None => (NO_SCOPE_METADATA, check_type_name_cache(cx, trait_type, true)),
     };
 
     let file_metadata = unknown_file_metadata(cx);
@@ -987,7 +1028,7 @@ fn foreign_type_metadata(
 ) -> &'ll DIType {
     debug!("foreign_type_metadata: {:?}", t);
 
-    let name = compute_debuginfo_type_name(cx.tcx, t, false);
+    let name = check_type_name_cache(cx, t, false);
     create_struct_stub(cx, t, &name, unique_type_id, NO_SCOPE_METADATA, DIFlags::FlagZero)
 }
 
@@ -997,7 +1038,7 @@ fn pointer_type_metadata(
     pointee_type_metadata: &'ll DIType,
 ) -> &'ll DIType {
     let (pointer_size, pointer_align) = cx.size_and_align_of(pointer_type);
-    let name = compute_debuginfo_type_name(cx.tcx, pointer_type, false);
+    let name = check_type_name_cache(cx, pointer_type, false);
     unsafe {
         llvm::LLVMRustDIBuilderCreatePointerType(
             DIB(cx),
@@ -1300,7 +1341,7 @@ fn prepare_struct_metadata(
     unique_type_id: UniqueTypeId,
     span: Span,
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
-    let struct_name = compute_debuginfo_type_name(cx.tcx, struct_type, false);
+    let struct_name = check_type_name_cache(cx, struct_type, false);
 
     let (struct_def_id, variant) = match struct_type.kind() {
         ty::Adt(def, _) => (def.did, def.non_enum_variant()),
@@ -1406,7 +1447,7 @@ fn prepare_tuple_metadata(
     span: Span,
     containing_scope: Option<&'ll DIScope>,
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
-    let tuple_name = compute_debuginfo_type_name(cx.tcx, tuple_type, false);
+    let tuple_name = check_type_name_cache(cx, tuple_type, false);
 
     let struct_stub = create_struct_stub(
         cx,
@@ -1470,7 +1511,7 @@ fn prepare_union_metadata(
     unique_type_id: UniqueTypeId,
     span: Span,
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
-    let union_name = compute_debuginfo_type_name(cx.tcx, union_type, false);
+    let union_name = check_type_name_cache(cx, union_type, false);
 
     let (union_def_id, variant) = match union_type.kind() {
         ty::Adt(def, _) => (def.did, def.non_enum_variant()),
@@ -2025,7 +2066,7 @@ fn prepare_enum_metadata(
     outer_field_tys: Vec<Ty<'tcx>>,
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
     let tcx = cx.tcx;
-    let enum_name = compute_debuginfo_type_name(tcx, enum_type, false);
+    let enum_name = check_type_name_cache(cx, enum_type, false);
 
     let containing_scope = get_namespace_for_item(cx, enum_def_id);
     // FIXME: This should emit actual file metadata for the enum, but we
