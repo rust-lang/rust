@@ -228,7 +228,6 @@ impl<'a> Resolver<'a> {
     crate fn build_reduced_graph_external(&mut self, module: Module<'a>) {
         let def_id = module.def_id().expect("unpopulated module without a def-id");
         for child in self.cstore().item_children_untracked(def_id, self.session) {
-            let child = child.map_id(|_| panic!("unexpected id"));
             let parent_scope = ParentScope::module(module, self);
             BuildReducedGraphVisitor { r: self, parent_scope }
                 .build_reduced_graph_for_external_crate_res(child);
@@ -946,9 +945,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     }
 
     /// Builds the reduced graph for a single item in an external crate.
-    fn build_reduced_graph_for_external_crate_res(&mut self, child: Export<NodeId>) {
+    fn build_reduced_graph_for_external_crate_res(&mut self, child: Export) {
         let parent = self.parent_scope.module;
         let Export { ident, res, vis, span } = child;
+        let res = res.expect_non_local();
         let expansion = self.parent_scope.expansion;
         // Record primary definitions.
         match res {

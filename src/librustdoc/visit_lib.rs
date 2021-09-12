@@ -67,7 +67,7 @@ impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_item(&mut self, res: Res) {
+    fn visit_item(&mut self, res: Res<!>) {
         let def_id = res.def_id();
         let vis = self.tcx.visibility(def_id);
         let inherited_item_level = if vis == Visibility::Public { self.prev_level } else { None };

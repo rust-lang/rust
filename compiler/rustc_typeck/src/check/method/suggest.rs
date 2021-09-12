@@ -1655,7 +1655,7 @@ fn compute_all_traits(tcx: TyCtxt<'_>, (): ()) -> &[DefId] {
         tcx: TyCtxt<'_>,
         traits: &mut Vec<DefId>,
         external_mods: &mut FxHashSet<DefId>,
-        res: Res,
+        res: Res<!>,
     ) {
         match res {
             Res::Def(DefKind::Trait | DefKind::TraitAlias, def_id) => {
