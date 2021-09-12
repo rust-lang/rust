@@ -1227,6 +1227,22 @@ mod foo;
 }
 
 #[test]
+fn doctest_promote_mod_file() {
+    check_doc_test(
+        "promote_mod_file",
+        r#####"
+//- /main.rs
+mod a;
+//- /a.rs
+$0fn t() {}
+"#####,
+        r#####"
+fn t() {}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_pull_assignment_up() {
     check_doc_test(
         "pull_assignment_up",

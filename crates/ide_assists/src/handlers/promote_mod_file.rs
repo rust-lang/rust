@@ -14,12 +14,13 @@ use crate::assist_context::{AssistContext, Assists};
 // Moves inline module's contents to a separate file.
 //
 // ```
-// // a.rs
+// //- /main.rs
+// mod a;
+// //- /a.rs
 // $0fn t() {}
 // ```
 // ->
 // ```
-// // /a/mod.rs
 // fn t() {}
 // ```
 pub(crate) fn promote_mod_file(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
