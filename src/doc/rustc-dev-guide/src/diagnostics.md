@@ -222,9 +222,13 @@ Guidelines for different diagnostic levels:
   The error or warning portion should *not* suggest how to fix the problem,
   only the "help" sub-diagnostic should.
 
-- `note`: emitted to identify additional circumstances and parts of the code
-  that caused the warning or error. For example, the borrow checker will note
-  any previous conflicting borrows.
+- `note`: emitted to given more context and identify additional circumstances
+  and parts of the code that caused the warning or error. For example, the
+  borrow checker will note any previous conflicting borrows.
+
+  `help` vs `note`: `help` should be used to show changes the user can
+  possibly make to fix the problem. `note` should be used for everything else,
+  such as other context, information and facts, online resources to read, etc.
 
 Not to be confused with *lint levels*, whose guidelines are:
 
