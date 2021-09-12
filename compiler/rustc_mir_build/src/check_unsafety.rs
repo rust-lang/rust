@@ -1,5 +1,5 @@
 use crate::build::ExprCategory;
-use crate::thir::visit::{self, Visitor};
+use rustc_middle::thir::visit::{self, Visitor};
 
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;

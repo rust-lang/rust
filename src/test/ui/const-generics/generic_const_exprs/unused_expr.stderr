@@ -2,9 +2,7 @@ error: overly complex generic constant
   --> $DIR/unused_expr.rs:4:34
    |
 LL | fn add<const N: usize>() -> [u8; { N + 1; 5 }] {
-   |                                  ^^-----^^^^^
-   |                                    |
-   |                                    dead code
+   |                                  ^^^^^^^^^^^^ unsupported operation in generic constant, this may be supported in the future
    |
    = help: consider moving this anonymous constant into a `const` function
 
@@ -12,9 +10,7 @@ error: overly complex generic constant
   --> $DIR/unused_expr.rs:9:34
    |
 LL | fn div<const N: usize>() -> [u8; { N / 1; 5 }] {
-   |                                  ^^-----^^^^^
-   |                                    |
-   |                                    dead code
+   |                                  ^^^^^^^^^^^^ unsupported operation in generic constant, this may be supported in the future
    |
    = help: consider moving this anonymous constant into a `const` function
 
@@ -22,9 +18,7 @@ error: overly complex generic constant
   --> $DIR/unused_expr.rs:16:38
    |
 LL | fn fn_call<const N: usize>() -> [u8; { foo(N); 5 }] {
-   |                                      ^^------^^^^^
-   |                                        |
-   |                                        dead code
+   |                                      ^^^^^^^^^^^^^ unsupported operation in generic constant, this may be supported in the future
    |
    = help: consider moving this anonymous constant into a `const` function
 

@@ -303,17 +303,17 @@ rustc_queries! {
     }
 
     /// Try to build an abstract representation of the given constant.
-    query mir_abstract_const(
+    query thir_abstract_const(
         key: DefId
-    ) -> Result<Option<&'tcx [mir::abstract_const::Node<'tcx>]>, ErrorReported> {
+    ) -> Result<Option<&'tcx [thir::abstract_const::Node<'tcx>]>, ErrorReported> {
         desc {
             |tcx| "building an abstract representation for {}", tcx.def_path_str(key),
         }
     }
     /// Try to build an abstract representation of the given constant.
-    query mir_abstract_const_of_const_arg(
+    query thir_abstract_const_of_const_arg(
         key: (LocalDefId, DefId)
-    ) -> Result<Option<&'tcx [mir::abstract_const::Node<'tcx>]>, ErrorReported> {
+    ) -> Result<Option<&'tcx [thir::abstract_const::Node<'tcx>]>, ErrorReported> {
         desc {
             |tcx|
             "building an abstract representation for the const argument {}",

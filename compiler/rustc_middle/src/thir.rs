@@ -33,6 +33,9 @@ use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::fmt;
 use std::ops::Index;
 
+pub mod abstract_const;
+pub mod visit;
+
 newtype_index! {
     /// An index to an [`Arm`] stored in [`Thir::arms`]
     #[derive(HashStable)]

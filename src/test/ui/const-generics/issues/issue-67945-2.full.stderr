@@ -5,11 +5,10 @@ LL |       A: [(); {
    |  _____________^
 LL | |
 LL | |         let x: Option<Box<Self>> = None;
-   | |                                    ---- unsupported rvalue
 LL | |
 LL | |         0
 LL | |     }],
-   | |_____^
+   | |_____^ unsupported operation in generic constant, this may be supported in the future
    |
    = help: consider moving this anonymous constant into a `const` function
 

@@ -1,6 +1,6 @@
 //! Values computed by queries that use MIR.
 
-use crate::mir::{abstract_const, Body, Promoted};
+use crate::mir::{Body, Promoted};
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::vec_map::VecMap;
@@ -429,18 +429,6 @@ impl<'tcx> TyCtxt<'tcx> {
             self.mir_for_ctfe_of_const_arg((did, param_did))
         } else {
             self.mir_for_ctfe(def.did)
-        }
-    }
-
-    #[inline]
-    pub fn mir_abstract_const_opt_const_arg(
-        self,
-        def: ty::WithOptConstParam<DefId>,
-    ) -> Result<Option<&'tcx [abstract_const::Node<'tcx>]>, ErrorReported> {
-        if let Some((did, param_did)) = def.as_const_arg() {
-            self.mir_abstract_const_of_const_arg((did, param_did))
-        } else {
-            self.mir_abstract_const(def.did)
         }
     }
 }
