@@ -133,7 +133,7 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxHashSet<LocalDefId> {
     let mut set = FxHashSet::default();
 
     // All body-owners have MIR associated with them.
-    set.extend(tcx.body_owners());
+    set.extend(tcx.hir().body_owners());
 
     // Additionally, tuple struct/variant constructors have MIR, but
     // they don't have a BodyId, so we need to build them separately.

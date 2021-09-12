@@ -886,9 +886,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
         parallel!(
             {
                 sess.time("match_checking", || {
-                    tcx.par_body_owners(|def_id| {
-                        tcx.ensure().check_match(def_id.to_def_id());
-                    });
+                    tcx.hir().par_body_owners(|def_id| tcx.ensure().check_match(def_id.to_def_id()))
                 });
             },
             {
@@ -907,11 +905,11 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     });
 
     sess.time("MIR_borrow_checking", || {
-        tcx.par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id));
+        tcx.hir().par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id));
     });
 
     sess.time("MIR_effect_checking", || {
-        for def_id in tcx.body_owners() {
+        for def_id in tcx.hir().body_owners() {
             tcx.ensure().thir_check_unsafety(def_id);
             if !tcx.sess.opts.debugging_opts.thir_unsafeck {
                 rustc_mir_transform::check_unsafety::check_unsafety(tcx, def_id);

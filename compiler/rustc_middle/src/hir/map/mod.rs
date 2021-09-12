@@ -491,6 +491,17 @@ impl<'hir> Map<'hir> {
         Some(ccx)
     }
 
+    /// Returns an iterator of the `DefId`s for all body-owners in this
+    /// crate. If you would prefer to iterate over the bodies
+    /// themselves, you can do `self.hir().krate().body_ids.iter()`.
+    pub fn body_owners(self) -> impl Iterator<Item = LocalDefId> + 'hir {
+        self.krate().bodies.keys().map(move |&body_id| self.body_owner_def_id(body_id))
+    }
+
+    pub fn par_body_owners<F: Fn(LocalDefId) + Sync + Send>(self, f: F) {
+        par_for_each_in(&self.krate().bodies, |(&body_id, _)| f(self.body_owner_def_id(body_id)));
+    }
+
     pub fn ty_param_owner(&self, id: HirId) -> HirId {
         match self.get(id) {
             Node::Item(&Item { kind: ItemKind::Trait(..) | ItemKind::TraitAlias(..), .. }) => id,
