@@ -4,7 +4,6 @@ error[E0038]: the trait `A` cannot be made into an object
 LL |     let _x: &dyn A;
    |             ^^^^^^ `A` cannot be made into an object
    |
-   = help: consider moving `foo` to another trait
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/wf-object-safe.rs:5:23
    |
@@ -12,6 +11,7 @@ LL | trait A {
    |       - this trait cannot be made into an object...
 LL |     fn foo(&self, _x: &Self);
    |                       ^^^^^ ...because method `foo` references the `Self` type in this parameter
+   = help: consider moving `foo` to another trait
 
 error: aborting due to previous error
 
