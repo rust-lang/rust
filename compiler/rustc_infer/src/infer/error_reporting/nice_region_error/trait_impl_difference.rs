@@ -2,7 +2,7 @@
 
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
-use crate::infer::{Subtype, ValuePairs};
+use crate::infer::{SubregionOrigin, Subtype, ValuePairs};
 use crate::traits::ObligationCauseCode::CompareImplMethodObligation;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
@@ -11,42 +11,51 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::{MultiSpan, Span};
+use rustc_span::{MultiSpan, Span, Symbol};
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the `impl` doesn't conform to the `trait`.
     pub(super) fn try_report_impl_not_conforming_to_trait(&self) -> Option<ErrorReported> {
-        if let Some(ref error) = self.error {
-            debug!("try_report_impl_not_conforming_to_trait {:?}", error);
-            if let RegionResolutionError::SubSupConflict(
-                _,
-                var_origin,
-                sub_origin,
-                _sub,
-                sup_origin,
-                _sup,
-            ) = error.clone()
-            {
-                if let (&Subtype(ref sup_trace), &Subtype(ref sub_trace)) =
-                    (&sup_origin, &sub_origin)
+        let error = self.error.as_ref()?;
+        debug!("try_report_impl_not_conforming_to_trait {:?}", error);
+        if let RegionResolutionError::SubSupConflict(
+            _,
+            var_origin,
+            sub_origin,
+            _sub,
+            sup_origin,
+            _sup,
+        ) = error.clone()
+        {
+            if let (&Subtype(ref sup_trace), &Subtype(ref sub_trace)) = (&sup_origin, &sub_origin) {
+                if let (
+                    ValuePairs::Types(sub_expected_found),
+                    ValuePairs::Types(sup_expected_found),
+                    CompareImplMethodObligation { trait_item_def_id, .. },
+                ) = (&sub_trace.values, &sup_trace.values, &sub_trace.cause.code)
                 {
-                    if let (
-                        ValuePairs::Types(sub_expected_found),
-                        ValuePairs::Types(sup_expected_found),
-                        CompareImplMethodObligation { trait_item_def_id, .. },
-                    ) = (&sub_trace.values, &sup_trace.values, &sub_trace.cause.code)
-                    {
-                        if sup_expected_found == sub_expected_found {
-                            self.emit_err(
-                                var_origin.span(),
-                                sub_expected_found.expected,
-                                sub_expected_found.found,
-                                *trait_item_def_id,
-                            );
-                            return Some(ErrorReported);
-                        }
+                    if sup_expected_found == sub_expected_found {
+                        self.emit_err(
+                            var_origin.span(),
+                            sub_expected_found.expected,
+                            sub_expected_found.found,
+                            *trait_item_def_id,
+                        );
+                        return Some(ErrorReported);
                     }
                 }
+            }
+        }
+        if let RegionResolutionError::ConcreteFailure(origin, _, _) = error.clone() {
+            if let SubregionOrigin::CompareImplTypeObligation {
+                span,
+                item_name,
+                impl_item_def_id,
+                trait_item_def_id,
+            } = origin
+            {
+                self.emit_associated_type_err(span, item_name, impl_item_def_id, trait_item_def_id);
+                return Some(ErrorReported);
             }
         }
         None
@@ -105,6 +114,25 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                  argument, the other inputs and its output",
             );
         }
+        err.emit();
+    }
+
+    fn emit_associated_type_err(
+        &self,
+        span: Span,
+        item_name: Symbol,
+        impl_item_def_id: DefId,
+        trait_item_def_id: DefId,
+    ) {
+        let impl_sp = self.tcx().def_span(impl_item_def_id);
+        let trait_sp = self.tcx().def_span(trait_item_def_id);
+        let mut err = self
+            .tcx()
+            .sess
+            .struct_span_err(span, &format!("`impl` associated type signature for `{}` doesn't match `trait` associated type signature", item_name));
+        err.span_label(impl_sp, &format!("found"));
+        err.span_label(trait_sp, &format!("expected"));
+
         err.emit();
     }
 }

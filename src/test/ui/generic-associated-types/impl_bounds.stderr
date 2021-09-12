@@ -5,24 +5,16 @@ LL |     type A<'a> where Self: 'static = (&'a ());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `T: 'static`...
-   = note: ...so that the type `Fooy<T>` will meet its required lifetime bounds
+   = note: ...so that the definition in impl matches the definition from the trait
 
-error[E0478]: lifetime bound not satisfied
+error: `impl` associated type signature for `B` doesn't match `trait` associated type signature
   --> $DIR/impl_bounds.rs:17:5
    |
+LL |     type B<'a, 'b> where 'a: 'b;
+   |     ---------------------------- expected
+...
 LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: lifetime parameter instantiated with the lifetime `'b` as defined on the associated item at 17:16
-  --> $DIR/impl_bounds.rs:17:16
-   |
-LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
-   |                ^^
-note: but lifetime parameter must outlive the lifetime `'a` as defined on the associated item at 17:12
-  --> $DIR/impl_bounds.rs:17:12
-   |
-LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
-   |            ^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found
 
 error[E0478]: lifetime bound not satisfied
   --> $DIR/impl_bounds.rs:17:5
