@@ -83,8 +83,58 @@ impl<G> DepthFirstSearch<'graph, G>
 where
     G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors,
 {
-    pub fn new(graph: &'graph G, start_node: G::Node) -> Self {
-        Self { graph, stack: vec![start_node], visited: BitSet::new_empty(graph.num_nodes()) }
+    pub fn new(graph: &'graph G) -> Self {
+        Self { graph, stack: vec![], visited: BitSet::new_empty(graph.num_nodes()) }
+    }
+
+    /// Version of `push_start_node` that is convenient for chained
+    /// use.
+    pub fn with_start_node(mut self, start_node: G::Node) -> Self {
+        self.push_start_node(start_node);
+        self
+    }
+
+    /// Pushes another start node onto the stack. If the node
+    /// has not already been visited, then you will be able to
+    /// walk its successors (and so forth) after the current
+    /// contents of the stack are drained. If multiple start nodes
+    /// are added into the walk, then their mutual successors
+    /// will all be walked. You can use this method once the
+    /// iterator has been completely drained to add additional
+    /// start nodes.
+    pub fn push_start_node(&mut self, start_node: G::Node) {
+        if self.visited.insert(start_node) {
+            self.stack.push(start_node);
+        }
+    }
+
+    /// Searches all nodes reachable from the current start nodes.
+    /// This is equivalent to just invoke `next` repeatedly until
+    /// you get a `None` result.
+    pub fn complete_search(&mut self) {
+        while let Some(_) = self.next() {}
+    }
+
+    /// Returns true if node has been visited thus far.
+    /// A node is considered "visited" once it is pushed
+    /// onto the internal stack; it may not yet have been yielded
+    /// from the iterator. This method is best used after
+    /// the iterator is completely drained.
+    pub fn visited(&self, node: G::Node) -> bool {
+        self.visited.contains(node)
+    }
+}
+
+impl<G> std::fmt::Debug for DepthFirstSearch<'_, G>
+where
+    G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors,
+{
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut f = fmt.debug_set();
+        for n in self.visited.iter() {
+            f.entry(&n);
+        }
+        f.finish()
     }
 }
 
