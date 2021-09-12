@@ -6,6 +6,7 @@
 #![feature(in_band_lifetimes)]
 #![feature(once_cell)]
 #![feature(min_specialization)]
+#![feature(never_type)]
 #![recursion_limit = "256"]
 
 #[macro_use]

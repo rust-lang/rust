@@ -10,23 +10,12 @@ use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
 use rustc_ast::Attribute;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::*;
-use rustc_index::vec::{Idx, IndexVec};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_span::DUMMY_SP;
 use std::collections::BTreeMap;
-
-/// Result of HIR indexing for a given HIR owner.
-#[derive(Debug, HashStable)]
-pub struct IndexedHir<'hir> {
-    /// Contents of the HIR.
-    nodes: OwnerNodes<'hir>,
-    /// Map from each nested owner to its parent's local id.
-    parenting: FxHashMap<LocalDefId, ItemLocalId>,
-}
 
 /// Top-level HIR node for current owner. This only contains the node for which
 /// `HirId::local_id == 0`, and excludes bodies.
@@ -44,38 +33,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Owner<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let Owner { node: _, node_hash } = self;
         node_hash.hash_stable(hcx, hasher)
-    }
-}
-
-/// HIR node coupled with its parent's id in the same HIR owner.
-///
-/// The parent is trash when the node is a HIR owner.
-#[derive(Clone, Debug)]
-pub struct ParentedNode<'tcx> {
-    parent: ItemLocalId,
-    node: Node<'tcx>,
-}
-
-#[derive(Debug)]
-pub struct OwnerNodes<'tcx> {
-    /// Pre-computed hash of the full HIR.
-    hash: Fingerprint,
-    /// Pre-computed hash of the top node.
-    node_hash: Fingerprint,
-    /// Full HIR for the current owner.
-    // The zeroth node's parent is trash, but is never accessed.
-    nodes: IndexVec<ItemLocalId, Option<ParentedNode<'tcx>>>,
-    /// Content of local bodies.
-    bodies: &'tcx IndexVec<ItemLocalId, Option<&'tcx Body<'tcx>>>,
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for OwnerNodes<'tcx> {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        // We ignore the `nodes` and `bodies` fields since these refer to information included in
-        // `hash` which is hashed in the collector and used for the crate hash.
-        let OwnerNodes { hash, node_hash: _, nodes: _, bodies: _ } = *self;
-        hash.hash_stable(hcx, hasher);
     }
 }
 
@@ -125,23 +82,23 @@ pub fn provide(providers: &mut Providers) {
         hir.local_def_id(hir.get_module_parent_node(hir.local_def_id_to_hir_id(id)))
     };
     providers.hir_crate = |tcx, ()| tcx.untracked_crate;
-    providers.index_hir = map::index_hir;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
     providers.hir_owner = |tcx, id| {
-        let owner = tcx.index_hir(id)?;
-        let node = owner.nodes.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;
-        let node = node.as_owner().unwrap(); // Indexing must ensure it is an OwnerNode.
+        let owner = tcx.hir_crate(()).owners[id].as_ref()?;
+        let node = owner.node();
         Some(Owner { node, node_hash: owner.nodes.node_hash })
     };
-    providers.hir_owner_nodes = |tcx, id| tcx.index_hir(id).map(|i| &i.nodes);
+    providers.hir_owner_nodes = |tcx, id| tcx.hir_crate(()).owners[id].as_ref().map(|i| &i.nodes);
     providers.hir_owner_parent = |tcx, id| {
         let parent = tcx.untracked_resolutions.definitions.def_key(id).parent;
         let parent = parent.map_or(CRATE_HIR_ID, |local_def_index| {
             let def_id = LocalDefId { local_def_index };
             let mut parent_hir_id =
                 tcx.untracked_resolutions.definitions.local_def_id_to_hir_id(def_id);
-            if let Some(local_id) = tcx.index_hir(parent_hir_id.owner).unwrap().parenting.get(&id) {
+            if let Some(local_id) =
+                tcx.hir_crate(()).owners[parent_hir_id.owner].as_ref().unwrap().parenting.get(&id)
+            {
                 parent_hir_id.local_id = *local_id;
             }
             parent_hir_id

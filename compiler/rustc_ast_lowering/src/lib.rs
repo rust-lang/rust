@@ -33,6 +33,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(box_patterns)]
 #![feature(iter_zip)]
+#![feature(never_type)]
 #![recursion_limit = "256"]
 
 use rustc_ast::token::{self, Token};
@@ -78,6 +79,7 @@ macro_rules! arena_vec {
 mod asm;
 mod block;
 mod expr;
+mod index;
 mod item;
 mod pat;
 mod path;
@@ -434,6 +436,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.local_node_ids.push(owner);
 
         let item = f(self);
+        debug_assert_eq!(def_id, item.def_id());
         let info = self.make_owner_info(item);
 
         self.attrs = current_attrs;
@@ -470,8 +473,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         let (hash, node_hash) = self.hash_body(node, &bodies);
+        let (nodes, parenting) =
+            index::index_hir(self.sess, self.resolver.definitions(), node, &bodies);
+        let nodes = hir::OwnerNodes { hash, node_hash, nodes, bodies };
 
-        hir::OwnerInfo { hash, node_hash, node, attrs, bodies, trait_map }
+        hir::OwnerInfo { nodes, parenting, attrs, trait_map }
     }
 
     /// Hash the HIR node twice, one deep and one shallow hash.  This allows to differentiate

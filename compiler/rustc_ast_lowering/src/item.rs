@@ -101,7 +101,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let old_len = self.in_scope_lifetimes.len();
 
         let parent_generics =
-            match self.owners[parent_hir_id].as_ref().unwrap().node.expect_item().kind {
+            match self.owners[parent_hir_id].as_ref().unwrap().node().expect_item().kind {
                 hir::ItemKind::Impl(hir::Impl { ref generics, .. })
                 | hir::ItemKind::Trait(_, _, ref generics, ..) => generics.params,
                 _ => &[],

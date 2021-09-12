@@ -40,13 +40,6 @@ rustc_queries! {
         desc { "get the crate HIR" }
     }
 
-    /// The indexed HIR. This can be conveniently accessed by `tcx.hir()`.
-    /// Avoid calling this query directly.
-    query index_hir(_: LocalDefId) -> Option<&'tcx crate::hir::IndexedHir<'tcx>> {
-        eval_always
-        desc { "index HIR" }
-    }
-
     /// The items in a module.
     ///
     /// This can be conveniently accessed by `tcx.hir().visit_item_likes_in_module`.
@@ -76,7 +69,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
-    query hir_owner_nodes(key: LocalDefId) -> Option<&'tcx crate::hir::OwnerNodes<'tcx>> {
+    query hir_owner_nodes(key: LocalDefId) -> Option<&'tcx hir::OwnerNodes<'tcx>> {
         desc { |tcx| "HIR owner items in `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 

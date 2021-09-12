@@ -1,5 +1,3 @@
-use crate::hir::map::Map;
-use crate::hir::{IndexedHir, OwnerNodes, ParentedNode};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -12,16 +10,16 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::{Span, DUMMY_SP};
 
 use std::iter::repeat;
+use tracing::debug;
 
 /// A visitor that walks over the HIR and collects `Node`s into a HIR map.
 pub(super) struct NodeCollector<'a, 'hir> {
-    /// The crate
-    krate: &'hir Crate<'hir>,
-
     /// Source map
     source_map: &'a SourceMap,
+    bodies: &'a IndexVec<ItemLocalId, Option<&'hir Body<'hir>>>,
 
-    nodes: OwnerNodes<'hir>,
+    /// Outputs
+    nodes: IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>,
     parenting: FxHashMap<LocalDefId, ItemLocalId>,
 
     /// The parent of this node
@@ -42,28 +40,21 @@ fn insert_vec_map<K: Idx, V: Clone>(map: &mut IndexVec<K, Option<V>>, k: K, v: V
     map[k] = Some(v);
 }
 
-pub(super) fn collect<'a, 'hir: 'a>(
-    sess: &'a Session,
-    krate: &'hir Crate<'hir>,
-    definitions: &'a definitions::Definitions,
-    owner: LocalDefId,
-) -> Option<IndexedHir<'hir>> {
-    let info = krate.owners.get(owner)?.as_ref()?;
-    let item = info.node;
+pub(super) fn index_hir<'hir>(
+    sess: &Session,
+    definitions: &definitions::Definitions,
+    item: hir::OwnerNode<'hir>,
+    bodies: &IndexVec<ItemLocalId, Option<&'hir Body<'hir>>>,
+) -> (IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>, FxHashMap<LocalDefId, ItemLocalId>) {
     let mut nodes = IndexVec::new();
     nodes.push(Some(ParentedNode { parent: ItemLocalId::new(0), node: item.into() }));
     let mut collector = NodeCollector {
-        krate,
         source_map: sess.source_map(),
-        owner,
-        parent_node: ItemLocalId::new(0),
         definitions,
-        nodes: OwnerNodes {
-            hash: info.hash,
-            node_hash: info.node_hash,
-            nodes,
-            bodies: &info.bodies,
-        },
+        owner: item.def_id(),
+        parent_node: ItemLocalId::new(0),
+        nodes,
+        bodies,
         parenting: FxHashMap::default(),
     };
 
@@ -75,7 +66,7 @@ pub(super) fn collect<'a, 'hir: 'a>(
         OwnerNode::ForeignItem(item) => collector.visit_foreign_item(item),
     };
 
-    Some(IndexedHir { nodes: collector.nodes, parenting: collector.parenting })
+    (collector.nodes, collector.parenting)
 }
 
 impl<'a, 'hir> NodeCollector<'a, 'hir> {
@@ -87,17 +78,11 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         // owner of that node.
         if cfg!(debug_assertions) {
             if hir_id.owner != self.owner {
-                let node_str = match self.definitions.opt_hir_id_to_local_def_id(hir_id) {
-                    Some(def_id) => self.definitions.def_path(def_id).to_string_no_crate_verbose(),
-                    None => format!("{:?}", node),
-                };
-
-                span_bug!(
-                    span,
-                    "inconsistent DepNode at `{:?}` for `{}`: \
+                panic!(
+                    "inconsistent DepNode at `{:?}` for `{:?}`: \
                      current_dep_node_owner={} ({:?}), hir_id.owner={} ({:?})",
                     self.source_map.span_to_diagnostic_string(span),
-                    node_str,
+                    node,
                     self.definitions.def_path(self.owner).to_string_no_crate_verbose(),
                     self.owner,
                     self.definitions.def_path(hir_id.owner).to_string_no_crate_verbose(),
@@ -107,7 +92,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         }
 
         insert_vec_map(
-            &mut self.nodes.nodes,
+            &mut self.nodes,
             hir_id.local_id,
             ParentedNode { parent: self.parent_node, node: node },
         );
@@ -122,18 +107,12 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     }
 
     fn insert_nested(&mut self, item: LocalDefId) {
-        let dk_parent = self.definitions.def_key(item).parent.unwrap();
-        let dk_parent = LocalDefId { local_def_index: dk_parent };
-        let dk_parent = self.definitions.local_def_id_to_hir_id(dk_parent);
-        debug_assert_eq!(dk_parent.owner, self.owner, "Different parents for {:?}", item);
-        if dk_parent.local_id != self.parent_node {
-            self.parenting.insert(item, self.parent_node);
-        }
+        self.parenting.insert(item, self.parent_node);
     }
 }
 
 impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
-    type Map = Map<'hir>;
+    type Map = !;
 
     /// Because we want to track parent items and so forth, enable
     /// deep walking so that we walk nested items in the context of
@@ -161,8 +140,8 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_nested_body(&mut self, id: BodyId) {
-        let body = self.krate.body(id);
         debug_assert_eq!(id.hir_id.owner, self.owner);
+        let body = self.bodies[id.hir_id.local_id].unwrap();
         self.visit_body(body);
     }
 

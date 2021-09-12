@@ -1,4 +1,4 @@
-use crate::hir::{IndexedHir, ModuleItems, Owner};
+use crate::hir::{ModuleItems, Owner};
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -21,7 +21,6 @@ use rustc_target::spec::abi::Abi;
 use std::collections::VecDeque;
 
 pub mod blocks;
-mod collector;
 
 fn fn_decl<'hir>(node: Node<'hir>) -> Option<&'hir FnDecl<'hir>> {
     match node {
@@ -164,7 +163,7 @@ impl<'hir> Map<'hir> {
 
     pub fn items(&self) -> impl Iterator<Item = &'hir Item<'hir>> + 'hir {
         let krate = self.krate();
-        krate.owners.iter().filter_map(|owner| match owner.as_ref()?.node {
+        krate.owners.iter().filter_map(|owner| match owner.as_ref()?.node() {
             OwnerNode::Item(item) => Some(item),
             _ => None,
         })
@@ -497,7 +496,7 @@ impl<'hir> Map<'hir> {
             .owners
             .iter_enumerated()
             .flat_map(move |(owner, owner_info)| {
-                let bodies = &owner_info.as_ref()?.bodies;
+                let bodies = &owner_info.as_ref()?.nodes.bodies;
                 Some(bodies.iter_enumerated().filter_map(move |(local_id, body)| {
                     if body.is_none() {
                         return None;
@@ -518,7 +517,7 @@ impl<'hir> Map<'hir> {
         par_iter(&self.krate().owners.raw).enumerate().for_each(|(owner, owner_info)| {
             let owner = LocalDefId::new(owner);
             if let Some(owner_info) = owner_info {
-                par_iter(&owner_info.bodies.raw).enumerate().for_each(|(local_id, body)| {
+                par_iter(&owner_info.nodes.bodies.raw).enumerate().for_each(|(local_id, body)| {
                     if body.is_some() {
                         let local_id = ItemLocalId::new(local_id);
                         let hir_id = HirId { owner, local_id };
@@ -605,7 +604,7 @@ impl<'hir> Map<'hir> {
     {
         let krate = self.krate();
         for owner in krate.owners.iter().filter_map(Option::as_ref) {
-            match owner.node {
+            match owner.node() {
                 OwnerNode::Item(item) => visitor.visit_item(item),
                 OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
                 OwnerNode::ImplItem(item) => visitor.visit_impl_item(item),
@@ -621,7 +620,7 @@ impl<'hir> Map<'hir> {
         V: itemlikevisit::ParItemLikeVisitor<'hir> + Sync + Send,
     {
         let krate = self.krate();
-        par_for_each_in(&krate.owners.raw, |owner| match owner.as_ref().map(|o| o.node) {
+        par_for_each_in(&krate.owners.raw, |owner| match owner.as_ref().map(OwnerInfo::node) {
             Some(OwnerNode::Item(item)) => visitor.visit_item(item),
             Some(OwnerNode::ForeignItem(item)) => visitor.visit_foreign_item(item),
             Some(OwnerNode::ImplItem(item)) => visitor.visit_impl_item(item),
@@ -1065,20 +1064,6 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
     }
 }
 
-pub(super) fn index_hir<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    owner: LocalDefId,
-) -> Option<&'tcx IndexedHir<'tcx>> {
-    let map = collector::collect(
-        tcx.sess,
-        tcx.untracked_crate,
-        &tcx.untracked_resolutions.definitions,
-        owner,
-    )?;
-
-    Some(&*tcx.arena.alloc(map))
-}
-
 pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     debug_assert_eq!(crate_num, LOCAL_CRATE);
     let mut hir_body_nodes: Vec<_> = tcx
@@ -1088,7 +1073,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
         .all_def_path_hashes_and_def_ids()
         .filter_map(|(def_path_hash, local_def_index)| {
             let def_id = LocalDefId { local_def_index };
-            let hash = tcx.index_hir(def_id).as_ref()?.nodes.hash;
+            let hash = tcx.hir_crate(()).owners[def_id].as_ref()?.nodes.hash;
             Some((def_path_hash, hash, def_id))
         })
         .collect();
