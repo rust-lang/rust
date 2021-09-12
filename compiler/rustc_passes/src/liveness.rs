@@ -265,12 +265,13 @@ impl IrMaps<'tcx> {
         self.capture_info_map.insert(hir_id, Rc::new(cs));
     }
 
-    fn add_from_pat(&mut self, pat: &hir::Pat<'tcx>) {
+    fn collect_shorthand_field_ids(&self, pat: &hir::Pat<'tcx>) -> HirIdSet {
         // For struct patterns, take note of which fields used shorthand
         // (`x` rather than `x: x`).
         let mut shorthand_field_ids = HirIdSet::default();
         let mut pats = VecDeque::new();
         pats.push_back(pat);
+
         while let Some(pat) = pats.pop_front() {
             use rustc_hir::PatKind::*;
             match &pat.kind {
@@ -278,8 +279,10 @@ impl IrMaps<'tcx> {
                     pats.extend(inner_pat.iter());
                 }
                 Struct(_, fields, _) => {
-                    let ids = fields.iter().filter(|f| f.is_shorthand).map(|f| f.pat.hir_id);
-                    shorthand_field_ids.extend(ids);
+                    let (short, not_short): (Vec<&_>, Vec<&_>) =
+                        fields.iter().partition(|f| f.is_shorthand);
+                    shorthand_field_ids.extend(short.iter().map(|f| f.pat.hir_id));
+                    pats.extend(not_short.iter().map(|f| f.pat));
                 }
                 Ref(inner_pat, _) | Box(inner_pat) => {
                     pats.push_back(inner_pat);
@@ -295,6 +298,12 @@ impl IrMaps<'tcx> {
                 _ => {}
             }
         }
+
+        return shorthand_field_ids;
+    }
+
+    fn add_from_pat(&mut self, pat: &hir::Pat<'tcx>) {
+        let shorthand_field_ids = self.collect_shorthand_field_ids(pat);
 
         pat.each_binding(|_, hir_id, _, ident| {
             self.add_live_node_for_node(hir_id, VarDefNode(ident.span, hir_id));
@@ -373,15 +382,13 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
+        let shorthand_field_ids = self.collect_shorthand_field_ids(param.pat);
         param.pat.each_binding(|_bm, hir_id, _x, ident| {
             let var = match param.pat.kind {
-                rustc_hir::PatKind::Struct(_, fields, _) => Local(LocalInfo {
+                rustc_hir::PatKind::Struct(..) => Local(LocalInfo {
                     id: hir_id,
                     name: ident.name,
-                    is_shorthand: fields
-                        .iter()
-                        .find(|f| f.ident == ident)
-                        .map_or(false, |f| f.is_shorthand),
+                    is_shorthand: shorthand_field_ids.contains(&hir_id),
                 }),
                 _ => Param(hir_id, ident.name),
             };
