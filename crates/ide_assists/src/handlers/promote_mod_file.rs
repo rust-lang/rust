@@ -9,6 +9,19 @@ use syntax::{
 
 use crate::assist_context::{AssistContext, Assists};
 
+// Assist: promote_mod_file
+//
+// Moves inline module's contents to a separate file.
+//
+// ```
+// // a.rs
+// $0fn t() {}
+// ```
+// ->
+// ```
+// // /a/mod.rs
+// fn t() {}
+// ```
 pub(crate) fn promote_mod_file(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let source_file = ctx.find_node_at_offset::<ast::SourceFile>()?;
     let module = ctx.sema.to_module_def(ctx.frange.file_id)?;
