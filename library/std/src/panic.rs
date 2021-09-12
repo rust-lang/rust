@@ -14,19 +14,19 @@ use crate::thread::Result;
 #[cfg_attr(not(test), rustc_diagnostic_item = "std_panic_2015_macro")]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro panic_2015 {
-    () => ({
+    () => (
         $crate::rt::begin_panic("explicit panic")
-    }),
-    ($msg:expr $(,)?) => ({
+    ),
+    ($msg:expr $(,)?) => (
         $crate::rt::begin_panic($msg)
-    }),
+    ),
     // Special-case the single-argument case for const_panic.
-    ("{}", $arg:expr $(,)?) => ({
+    ("{}", $arg:expr $(,)?) => (
         $crate::rt::panic_display(&$arg)
-    }),
-    ($fmt:expr, $($arg:tt)+) => ({
+    ),
+    ($fmt:expr, $($arg:tt)+) => (
         $crate::rt::panic_fmt($crate::const_format_args!($fmt, $($arg)+))
-    }),
+    ),
 }
 
 #[doc(hidden)]
