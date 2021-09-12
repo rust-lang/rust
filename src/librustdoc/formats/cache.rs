@@ -98,9 +98,6 @@ crate struct Cache {
     stripped_mod: bool,
 
     crate search_index: Vec<IndexItem>,
-    crate deref_trait_did: Option<DefId>,
-    crate deref_mut_trait_did: Option<DefId>,
-    crate owned_box_did: Option<DefId>,
 
     // In rare case where a structure is defined in one module but implemented
     // in another, if the implementing module is parsed before defining module,

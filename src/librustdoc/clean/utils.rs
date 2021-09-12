@@ -29,10 +29,6 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     let krate = cx.tcx.hir().krate();
     let module = crate::visit_ast::RustdocVisitor::new(cx).visit(krate);
 
-    cx.cache.deref_trait_did = cx.tcx.lang_items().deref_trait();
-    cx.cache.deref_mut_trait_did = cx.tcx.lang_items().deref_mut_trait();
-    cx.cache.owned_box_did = cx.tcx.lang_items().owned_box();
-
     let mut externs = Vec::new();
     for &cnum in cx.tcx.crates(()).iter() {
         externs.push(ExternalCrate { crate_num: cnum });
@@ -97,7 +93,7 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
 
 fn external_generic_args(
     cx: &mut DocContext<'_>,
-    trait_did: Option<DefId>,
+    did: DefId,
     has_self: bool,
     bindings: Vec<TypeBinding>,
     substs: SubstsRef<'_>,
@@ -125,42 +121,38 @@ fn external_generic_args(
         })
         .collect();
 
-    match trait_did {
-        // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
-        Some(did) if cx.tcx.fn_trait_kind_from_lang_item(did).is_some() => {
-            assert!(ty_kind.is_some());
-            let inputs = match ty_kind {
-                Some(ty::Tuple(ref tys)) => tys.iter().map(|t| t.expect_ty().clean(cx)).collect(),
-                _ => return GenericArgs::AngleBracketed { args, bindings },
-            };
-            let output = None;
-            // FIXME(#20299) return type comes from a projection now
-            // match types[1].kind {
-            //     ty::Tuple(ref v) if v.is_empty() => None, // -> ()
-            //     _ => Some(types[1].clean(cx))
-            // };
-            GenericArgs::Parenthesized { inputs, output }
-        }
-        _ => GenericArgs::AngleBracketed { args, bindings },
+    if cx.tcx.fn_trait_kind_from_lang_item(did).is_some() {
+        let inputs = match ty_kind.unwrap() {
+            ty::Tuple(tys) => tys.iter().map(|t| t.expect_ty().clean(cx)).collect(),
+            _ => return GenericArgs::AngleBracketed { args, bindings },
+        };
+        let output = None;
+        // FIXME(#20299) return type comes from a projection now
+        // match types[1].kind {
+        //     ty::Tuple(ref v) if v.is_empty() => None, // -> ()
+        //     _ => Some(types[1].clean(cx))
+        // };
+        GenericArgs::Parenthesized { inputs, output }
+    } else {
+        GenericArgs::AngleBracketed { args, bindings }
     }
 }
 
-// trait_did should be set to a trait's DefId if called on a TraitRef, in order to sugar
-// from Fn<(A, B,), C> to Fn(A, B) -> C
 pub(super) fn external_path(
     cx: &mut DocContext<'_>,
-    name: Symbol,
-    trait_did: Option<DefId>,
+    did: DefId,
     has_self: bool,
     bindings: Vec<TypeBinding>,
     substs: SubstsRef<'_>,
 ) -> Path {
+    let def_kind = cx.tcx.def_kind(did);
+    let name = cx.tcx.item_name(did);
     Path {
         global: false,
-        res: Res::Err,
+        res: Res::Def(def_kind, did),
         segments: vec![PathSegment {
             name,
-            args: external_generic_args(cx, trait_did, has_self, bindings, substs),
+            args: external_generic_args(cx, did, has_self, bindings, substs),
         }],
     }
 }
@@ -409,8 +401,8 @@ crate fn print_const_expr(tcx: TyCtxt<'_>, body: hir::BodyId) -> String {
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt
-crate fn resolve_type(cx: &mut DocContext<'_>, path: Path, id: hir::HirId) -> Type {
-    debug!("resolve_type({:?},{:?})", path, id);
+crate fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
+    debug!("resolve_type({:?})", path);
 
     let is_generic = match path.res {
         Res::PrimTy(p) => return Primitive(PrimitiveType::from(p)),
@@ -418,7 +410,7 @@ crate fn resolve_type(cx: &mut DocContext<'_>, path: Path, id: hir::HirId) -> Ty
             return Generic(kw::SelfUpper);
         }
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => {
-            return Generic(Symbol::intern(&path.whole_name()));
+            return Generic(path.segments[0].name);
         }
         Res::SelfTy(..) | Res::Def(DefKind::TyParam | DefKind::AssocTy, _) => true,
         _ => false,

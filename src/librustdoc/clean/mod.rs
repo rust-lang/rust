@@ -164,14 +164,7 @@ impl Clean<Type> for (ty::TraitRef<'_>, &[TypeBinding]) {
             );
         }
         inline::record_extern_fqn(cx, trait_ref.def_id, kind);
-        let path = external_path(
-            cx,
-            cx.tcx.item_name(trait_ref.def_id),
-            Some(trait_ref.def_id),
-            true,
-            bounds.to_vec(),
-            trait_ref.substs,
-        );
+        let path = external_path(cx, trait_ref.def_id, true, bounds.to_vec(), trait_ref.substs);
 
         debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
 
@@ -906,7 +899,7 @@ impl Clean<bool> for hir::IsAuto {
 impl Clean<Type> for hir::TraitRef<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Type {
         let path = self.path.clean(cx);
-        resolve_type(cx, path, self.hir_ref_id)
+        resolve_type(cx, path)
     }
 }
 
@@ -1164,7 +1157,7 @@ impl Clean<Item> for ty::AssocItem {
 
 fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
     use rustc_hir::GenericParamCount;
-    let hir::Ty { hir_id, span, ref kind } = *hir_ty;
+    let hir::Ty { hir_id: _, span, ref kind } = *hir_ty;
     let qpath = match kind {
         hir::TyKind::Path(qpath) => qpath,
         _ => unreachable!(),
@@ -1271,7 +1264,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
                 return cx.enter_alias(ty_substs, lt_substs, ct_substs, |cx| ty.clean(cx));
             }
             let path = path.clean(cx);
-            resolve_type(cx, path, hir_id)
+            resolve_type(cx, path)
         }
         hir::QPath::Resolved(Some(ref qself), ref p) => {
             // Try to normalize `<X as Y>::T` to a type
@@ -1292,7 +1285,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
                 name: p.segments.last().expect("segments were empty").ident.name,
                 self_def_id: Some(DefId::local(qself.hir_id.owner.local_def_index)),
                 self_type: Box::new(qself.clean(cx)),
-                trait_: Box::new(resolve_type(cx, trait_path, hir_id)),
+                trait_: Box::new(resolve_type(cx, trait_path)),
             }
         }
         hir::QPath::TypeRelative(ref qself, ref segment) => {
@@ -1308,7 +1301,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
                 name: segment.ident.name,
                 self_def_id: res.opt_def_id(),
                 self_type: Box::new(qself.clean(cx)),
-                trait_: Box::new(resolve_type(cx, trait_path, hir_id)),
+                trait_: Box::new(resolve_type(cx, trait_path)),
             }
         }
         hir::QPath::LangItem(..) => bug!("clean: requiring documentation of lang item"),
@@ -1448,19 +1441,12 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     AdtKind::Enum => ItemType::Enum,
                 };
                 inline::record_extern_fqn(cx, did, kind);
-                let path = external_path(cx, cx.tcx.item_name(did), None, false, vec![], substs);
+                let path = external_path(cx, did, false, vec![], substs);
                 ResolvedPath { path, did, is_generic: false }
             }
             ty::Foreign(did) => {
                 inline::record_extern_fqn(cx, did, ItemType::ForeignType);
-                let path = external_path(
-                    cx,
-                    cx.tcx.item_name(did),
-                    None,
-                    false,
-                    vec![],
-                    InternalSubsts::empty(),
-                );
+                let path = external_path(cx, did, false, vec![], InternalSubsts::empty());
                 ResolvedPath { path, did, is_generic: false }
             }
             ty::Dynamic(ref obj, ref reg) => {
@@ -1484,8 +1470,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
                 for did in dids {
                     let empty = cx.tcx.intern_substs(&[]);
-                    let path =
-                        external_path(cx, cx.tcx.item_name(did), Some(did), false, vec![], empty);
+                    let path = external_path(cx, did, false, vec![], empty);
                     inline::record_extern_fqn(cx, did, ItemType::Trait);
                     let bound = PolyTrait {
                         trait_: ResolvedPath { path, did, is_generic: false },
@@ -1502,8 +1487,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     });
                 }
 
-                let path =
-                    external_path(cx, cx.tcx.item_name(did), Some(did), false, bindings, substs);
+                let path = external_path(cx, did, false, bindings, substs);
                 bounds.insert(
                     0,
                     PolyTrait {
