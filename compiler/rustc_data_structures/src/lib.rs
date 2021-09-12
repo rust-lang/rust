@@ -21,6 +21,7 @@
 #![feature(iter_map_while)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(min_specialization)]
+#![feature(never_type)]
 #![feature(type_alias_impl_trait)]
 #![feature(new_uninit)]
 #![feature(nll)]

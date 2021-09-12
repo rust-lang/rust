@@ -598,6 +598,11 @@ impl<Id> Res<Id> {
         }
     }
 
+    #[track_caller]
+    pub fn expect_non_local<OtherId>(self) -> Res<OtherId> {
+        self.map_id(|_| panic!("unexpected `Res::Local`"))
+    }
+
     pub fn macro_kind(self) -> Option<MacroKind> {
         match self {
             Res::Def(DefKind::Macro(kind), _) => Some(kind),
