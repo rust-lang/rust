@@ -220,7 +220,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
             let ident_str = map.name(id).to_string();
             let span = map.span(cmt.hir_id);
             let start_span = Span::new(self.next_pos, span.lo(), span.ctxt());
-            let start_snip = snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
+            let mut start_snip = snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
 
             if cmt.place.projections.is_empty() {
                 // handle item without any projection, that needs an explicit borrowing
@@ -255,19 +255,75 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                 // handle item projections by removing one explicit deref
                 // i.e.: suggest `*x` instead of `**x`
                 let mut replacement_str = ident_str;
-                let last_deref = cmt
-                    .place
-                    .projections
-                    .iter()
-                    .rposition(|proj| proj.kind == ProjectionKind::Deref);
 
-                if let Some(pos) = last_deref {
-                    let mut projections = cmt.place.projections.clone();
-                    projections.truncate(pos);
+                // handle index projection first
+                let index_handled = cmt.place.projections.iter().any(|proj| match proj.kind {
+                    // Index projection like `|x| foo[x]`
+                    // the index is dropped so we can't get it to build the suggestion,
+                    // so the span is set-up again to get more code, using `span.hi()` (i.e.: `foo[x]`)
+                    // instead of `span.lo()` (i.e.: `foo`)
+                    ProjectionKind::Index => {
+                        let start_span = Span::new(self.next_pos, span.hi(), span.ctxt());
+                        start_snip = snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
+                        replacement_str.clear();
+                        true
+                    },
+                    _ => false,
+                });
 
-                    for item in projections {
-                        if item.kind == ProjectionKind::Deref {
-                            replacement_str = format!("*{}", replacement_str);
+                // looking for projections other that need to be handled differently
+                let other_projections_handled = cmt.place.projections.iter().enumerate().any(|(i, proj)| {
+                    match proj.kind {
+                        // Field projection like `|v| v.foo`
+                        ProjectionKind::Field(idx, variant) => match cmt.place.ty_before_projection(i).kind() {
+                            ty::Adt(def, ..) => {
+                                replacement_str = format!(
+                                    "{}.{}",
+                                    replacement_str,
+                                    def.variants[variant].fields[idx as usize].ident.name.as_str()
+                                );
+                                true
+                            },
+                            ty::Tuple(_) => {
+                                replacement_str = format!("{}.{}", replacement_str, idx);
+                                true
+                            },
+                            _ => false,
+                        },
+                        ProjectionKind::Index => false, /* handled previously */
+                        // note: unable to capture `Subslice` kind in tests
+                        ProjectionKind::Subslice => false,
+                        ProjectionKind::Deref => {
+                            // explicit deref for arrays should be avoided in the suggestion
+                            // i.e.: `|sub| *sub[1..4].len() == 3` is not expected
+                            match cmt.place.ty_before_projection(i).kind() {
+                                // dereferencing an array (i.e.: `|sub| sub[1..4].len() == 3`)
+                                ty::Ref(_, inner, _) => match inner.kind() {
+                                    ty::Ref(_, innermost, _) if innermost.is_array() => true,
+                                    _ => false,
+                                },
+                                _ => false,
+                            }
+                        },
+                    }
+                });
+
+                // handle `ProjectionKind::Deref` if no special case detected
+                if !index_handled && !other_projections_handled {
+                    let last_deref = cmt
+                        .place
+                        .projections
+                        .iter()
+                        .rposition(|proj| proj.kind == ProjectionKind::Deref);
+
+                    if let Some(pos) = last_deref {
+                        let mut projections = cmt.place.projections.clone();
+                        projections.truncate(pos);
+
+                        for item in projections {
+                            if item.kind == ProjectionKind::Deref {
+                                replacement_str = format!("*{}", replacement_str);
+                            }
                         }
                     }
                 }

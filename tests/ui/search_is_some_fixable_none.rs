@@ -75,4 +75,30 @@ mod issue7392 {
             .map(|c| c.clone())
             .collect::<Vec<_>>();
     }
+
+    fn field_projection() {
+        struct Foo {
+            foo: i32,
+            bar: u32,
+        }
+        let vfoo = vec![Foo { foo: 1, bar: 2 }];
+        let _ = vfoo.iter().find(|v| v.foo == 1 && v.bar == 2).is_none();
+
+        let vfoo = vec![(42, Foo { foo: 1, bar: 2 })];
+        let _ = vfoo
+            .iter()
+            .find(|(i, v)| *i == 42 && v.foo == 1 && v.bar == 2)
+            .is_none();
+    }
+
+    fn index_projection() {
+        let vfoo = vec![[0, 1, 2, 3]];
+        let _ = vfoo.iter().find(|a| a[0] == 42).is_none();
+    }
+
+    #[allow(clippy::match_like_matches_macro)]
+    fn slice_projection() {
+        let vfoo = vec![[0, 1, 2, 3, 0, 1, 2, 3]];
+        let _ = vfoo.iter().find(|sub| sub[1..4].len() == 3).is_none();
+    }
 }

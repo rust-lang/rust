@@ -135,5 +135,39 @@ error: called `is_none()` after searching an `Iterator` with `find`
 LL |             .filter(|(c, _)| filter_hand.iter().find(|cc| c == *cc).is_none())
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!filter_hand.iter().any(|cc| c == cc)`
 
-error: aborting due to 22 previous errors
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:85:17
+   |
+LL |         let _ = vfoo.iter().find(|v| v.foo == 1 && v.bar == 2).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!vfoo.iter().any(|v| v.foo == 1 && v.bar == 2)`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:88:17
+   |
+LL |           let _ = vfoo
+   |  _________________^
+LL | |             .iter()
+LL | |             .find(|(i, v)| *i == 42 && v.foo == 1 && v.bar == 2)
+LL | |             .is_none();
+   | |______________________^
+   |
+help: use `!_.any()` instead
+   |
+LL ~         let _ = !vfoo
+LL ~             .iter().any(|(i, v)| *i == 42 && v.foo == 1 && v.bar == 2);
+   |
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:96:17
+   |
+LL |         let _ = vfoo.iter().find(|a| a[0] == 42).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!vfoo.iter().any(|a| a[0] == 42)`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:102:17
+   |
+LL |         let _ = vfoo.iter().find(|sub| sub[1..4].len() == 3).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!vfoo.iter().any(|sub| sub[1..4].len() == 3)`
+
+error: aborting due to 26 previous errors
 
