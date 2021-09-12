@@ -688,7 +688,7 @@ fn check_opaque_meets_bounds<'tcx>(
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
         let fcx = FnCtxt::new(&inh, param_env, hir_id);
-        fcx.regionck_item(hir_id, span, &[]);
+        fcx.regionck_item(hir_id, span, FxHashSet::default());
     });
 }
 

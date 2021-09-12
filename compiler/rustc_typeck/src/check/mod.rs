@@ -388,7 +388,7 @@ fn typeck_with_fallback<'tcx>(
             // from normalization. We could just discard these, but to align with
             // compare_method and elsewhere, we just add implied bounds for
             // these types.
-            let mut wf_tys = vec![];
+            let mut wf_tys = FxHashSet::default();
             // Compute the fty from point of view of inside the fn.
             let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
             wf_tys.extend(fn_sig.inputs_and_output.iter());
@@ -451,7 +451,7 @@ fn typeck_with_fallback<'tcx>(
 
             fcx.write_ty(id, expected_type);
 
-            (fcx, vec![])
+            (fcx, FxHashSet::default())
         };
 
         let fallback_has_occurred = fcx.type_inference_fallback();
@@ -475,7 +475,7 @@ fn typeck_with_fallback<'tcx>(
         fcx.select_all_obligations_or_error();
 
         if fn_sig.is_some() {
-            fcx.regionck_fn(id, body, span, &wf_tys);
+            fcx.regionck_fn(id, body, span, wf_tys);
         } else {
             fcx.regionck_expr(body);
         }

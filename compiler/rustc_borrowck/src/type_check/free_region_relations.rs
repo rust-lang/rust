@@ -259,7 +259,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
                 // We add implied bounds from both the unnormalized and normalized ty
                 // See issue #87748
                 let constraints_implied_1 = self.add_implied_bounds(ty);
-                let TypeOpOutput { output: ty, constraints: constraints1, .. } = self
+                let TypeOpOutput { output: norm_ty, constraints: constraints1, .. } = self
                     .param_env
                     .and(type_op::normalize::Normalize::new(ty))
                     .fully_perform(self.infcx)
@@ -286,8 +286,9 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
                 // }
                 // ```
                 // Both &Self::Bar and &() are WF
-                let constraints_implied_2 = self.add_implied_bounds(ty);
-                normalized_inputs_and_output.push(ty);
+                let constraints_implied_2 =
+                    if ty != norm_ty { self.add_implied_bounds(norm_ty) } else { None };
+                normalized_inputs_and_output.push(norm_ty);
                 constraints1.into_iter().chain(constraints_implied_1).chain(constraints_implied_2)
             })
             .collect();
