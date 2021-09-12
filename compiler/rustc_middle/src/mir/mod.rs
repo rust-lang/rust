@@ -40,7 +40,6 @@ use self::graph_cyclic_cache::GraphIsCyclicCache;
 use self::predecessors::{PredecessorCache, Predecessors};
 pub use self::query::*;
 
-pub mod abstract_const;
 pub mod coverage;
 mod generic_graph;
 pub mod generic_graphviz;

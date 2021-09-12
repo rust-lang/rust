@@ -1,0 +1,10 @@
+error: unconstrained generic constant
+  --> $DIR/abstract-consts-as-cast-5.rs:5:11
+   |
+LL |     bar::<{ N as usize as usize }>();
+   |           ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { N as usize as usize }]:`
+
+error: aborting due to previous error
+
