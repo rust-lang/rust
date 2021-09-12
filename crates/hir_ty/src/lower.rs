@@ -1024,7 +1024,7 @@ pub(crate) fn generic_predicates_for_param_query(
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
     let generics = generics(db.upcast(), param_id.parent);
-    resolver
+    let mut predicates: Vec<_> = resolver
         .where_predicates_in_scope()
         // we have to filter out all other predicates *first*, before attempting to lower them
         .filter(|pred| match pred {
@@ -1038,7 +1038,15 @@ pub(crate) fn generic_predicates_for_param_query(
             WherePredicate::Lifetime { .. } => false,
         })
         .flat_map(|pred| ctx.lower_where_predicate(pred, true).map(|p| make_binders(&generics, p)))
-        .collect()
+        .collect();
+
+    let subst = generics.bound_vars_subst(DebruijnIndex::INNERMOST);
+    let explicitly_unsized_tys = ctx.unsized_types.into_inner();
+    let implicitly_sized_predicates =
+        implicitly_sized_clauses(db, param_id.parent, &explicitly_unsized_tys, &subst, &resolver)
+            .map(|p| make_binders(&generics, crate::wrap_empty_binders(p)));
+    predicates.extend(implicitly_sized_predicates);
+    predicates.into()
 }
 
 pub(crate) fn generic_predicates_for_param_recover(
