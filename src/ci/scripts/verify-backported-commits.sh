@@ -18,14 +18,6 @@ verify_backported_commits_main() {
     exit 0
   fi
 
-  echo 'git: unshallowing the repository so we can check commits'
-  git fetch \
-    --no-tags \
-    --no-recurse-submodules \
-    --progress \
-    --prune \
-    --unshallow
-
   if [[ $ci_base_branch == "beta" ]]; then
     verify_cherries master "$BETA_LIMIT" \
       || exit 1
