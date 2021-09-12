@@ -8,13 +8,13 @@ extern crate rustc_hir;
 extern crate rustc_lint;
 #[macro_use]
 extern crate rustc_session;
-extern crate rustc_span;
 extern crate rustc_ast;
+extern crate rustc_span;
 
 use rustc_driver::plugin::Registry;
-use rustc_lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::symbol::Symbol;
-use rustc_ast::attr;
 
 declare_lint! {
     CRATE_NOT_OKAY,
@@ -25,13 +25,12 @@ declare_lint! {
 declare_lint_pass!(Pass => [CRATE_NOT_OKAY]);
 
 impl<'tcx> LateLintPass<'tcx> for Pass {
-    fn check_crate(&mut self, cx: &LateContext, krate: &rustc_hir::Crate) {
+    fn check_crate(&mut self, cx: &LateContext) {
         let attrs = cx.tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
+        let span = cx.tcx.def_span(CRATE_DEF_ID);
         if !cx.sess().contains_name(attrs, Symbol::intern("crate_okay")) {
             cx.lint(CRATE_NOT_OKAY, |lint| {
-                lint.build("crate is not marked with #![crate_okay]")
-                    .set_span(krate.module().inner)
-                    .emit()
+                lint.build("crate is not marked with #![crate_okay]").set_span(span).emit()
             });
         }
     }

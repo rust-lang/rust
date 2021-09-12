@@ -48,7 +48,6 @@ fn main() {
 pub struct CompilerCalls;
 
 impl rustc_driver::Callbacks for CompilerCalls {
-
     // In this callback we override the mir_borrowck query.
     fn config(&mut self, config: &mut Config) {
         assert!(config.override_queries.is_none());
@@ -64,12 +63,10 @@ impl rustc_driver::Callbacks for CompilerCalls {
     ) -> Compilation {
         compiler.session().abort_if_errors();
         queries.global_ctxt().unwrap().peek_mut().enter(|tcx| {
-
             // Collect definition ids of MIR bodies.
             let hir = tcx.hir();
-            let krate = hir.krate();
             let mut visitor = HirVisitor { bodies: Vec::new() };
-            krate.visit_all_item_likes(&mut visitor);
+            hir.visit_all_item_likes(&mut visitor);
 
             // Trigger borrow checking of all bodies.
             for def_id in visitor.bodies {
