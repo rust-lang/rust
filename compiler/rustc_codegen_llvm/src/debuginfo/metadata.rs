@@ -208,7 +208,7 @@ impl TypeMap<'ll, 'tcx> {
     fn register_unique_id_with_type_name(
         &mut self,
         unique_type_id: UniqueTypeId,
-        type_name: String
+        type_name: String,
     ) {
         if self.unique_id_to_type_name.insert(unique_type_id, type_name).is_some() {
             bug!(
@@ -395,23 +395,16 @@ macro_rules! return_if_metadata_created_in_meantime {
     };
 }
 
-fn check_type_name_cache(
-    cx: &CodegenCx<'ll, 'tcx>,
-    ty: Ty<'tcx>,
-    qualified: bool,
-) -> String {
+fn check_type_name_cache(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, qualified: bool) -> String {
     let mut type_map = debug_context(cx).type_map.borrow_mut();
     let unique_type_id = type_map.get_unique_type_id_of_type(cx, ty);
     match type_map.find_type_name_for_unique_id(unique_type_id) {
-        Some(type_name) => { type_name },
+        Some(type_name) => type_name,
         None => {
             let type_name = compute_debuginfo_type_name(cx.tcx, ty, qualified);
-            type_map.register_unique_id_with_type_name(
-                unique_type_id,
-                type_name.clone(),
-            );
+            type_map.register_unique_id_with_type_name(unique_type_id, type_name.clone());
             type_name
-        },
+        }
     }
 }
 
