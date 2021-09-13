@@ -146,7 +146,6 @@ impl<'a> Resolver<'a> {
         let module = self.arenas.alloc_module(ModuleData::new(
             parent,
             kind,
-            def_id,
             self.cstore().module_expansion_untracked(def_id, &self.session),
             self.cstore().get_span_untracked(def_id, &self.session),
         ));
@@ -274,7 +273,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         self.r.visibilities[&def_id.expect_local()]
                     }
                     // Otherwise, the visibility is restricted to the nearest parent `mod` item.
-                    _ => ty::Visibility::Restricted(self.parent_scope.module.nearest_parent_mod),
+                    _ => ty::Visibility::Restricted(self.parent_scope.module.nearest_parent_mod()),
                 })
             }
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
@@ -773,13 +772,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     no_implicit_prelude: parent.no_implicit_prelude || {
                         self.r.session.contains_name(&item.attrs, sym::no_implicit_prelude)
                     },
-                    ..ModuleData::new(
-                        Some(parent),
-                        module_kind,
-                        def_id,
-                        expansion.to_expn_id(),
-                        item.span,
-                    )
+                    ..ModuleData::new(Some(parent), module_kind, expansion.to_expn_id(), item.span)
                 });
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.r.module_map.insert(local_def_id, module);
@@ -814,13 +807,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
             ItemKind::Enum(_, _) => {
                 let module_kind = ModuleKind::Def(DefKind::Enum, def_id, ident.name);
-                let module = self.r.new_module(
-                    parent,
-                    module_kind,
-                    parent.nearest_parent_mod,
-                    expansion.to_expn_id(),
-                    item.span,
-                );
+                let module =
+                    self.r.new_module(parent, module_kind, expansion.to_expn_id(), item.span);
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.parent_scope.module = module;
             }
@@ -889,13 +877,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             ItemKind::Trait(..) => {
                 // Add all the items within to a new module.
                 let module_kind = ModuleKind::Def(DefKind::Trait, def_id, ident.name);
-                let module = self.r.new_module(
-                    parent,
-                    module_kind,
-                    parent.nearest_parent_mod,
-                    expansion.to_expn_id(),
-                    item.span,
-                );
+                let module =
+                    self.r.new_module(parent, module_kind, expansion.to_expn_id(), item.span);
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.parent_scope.module = module;
             }
@@ -935,7 +918,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             let module = self.r.new_module(
                 parent,
                 ModuleKind::Block(block.id),
-                parent.nearest_parent_mod,
                 expansion.to_expn_id(),
                 block.span,
             );
@@ -956,7 +938,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 let module = self.r.new_module(
                     parent,
                     ModuleKind::Def(kind, def_id, ident.name),
-                    def_id,
                     expansion.to_expn_id(),
                     span,
                 );
