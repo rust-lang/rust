@@ -190,7 +190,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         let scrut_ty = self.typeck_results.expr_ty_adjusted(scrut);
         let report = compute_match_usefulness(&cx, &arms, scrut.hir_id, scrut_ty);
 
-        report_arm_reachability(&cx, &report, |_, arm_span, arm_hir_id, catchall| {
+        report_arm_reachability(&cx, &report, |arm_span, arm_hir_id, catchall| {
             match source {
                 hir::MatchSource::ForLoopDesugar | hir::MatchSource::Normal => {
                     unreachable_pattern(cx.tcx, arm_span, arm_hir_id, catchall);
@@ -434,23 +434,14 @@ fn check_let_reachability<'p, 'tcx>(
     let arms = [MatchArm { pat, hir_id: pat_id, has_guard: false }];
     let report = compute_match_usefulness(&cx, &arms, pat_id, pat.ty);
 
-    report_arm_reachability(&cx, &report, |arm_index, arm_span, arm_hir_id, _| {
-        match let_source(cx.tcx, pat_id) {
-            LetSource::IfLet | LetSource::WhileLet => {
-                match arm_index {
-                    // The arm with the user-specified pattern.
-                    0 => unreachable_pattern(cx.tcx, arm_span, arm_hir_id, None),
-                    // The arm with the wildcard pattern.
-                    1 => irrefutable_let_pattern(cx.tcx, pat_id, arm_span),
-                    _ => bug!(),
-                }
-            }
-            LetSource::IfLetGuard if arm_index == 0 => {
-                unreachable_pattern(cx.tcx, arm_span, arm_hir_id, None);
-            }
-            _ => {}
+    match let_source(cx.tcx, pat_id) {
+        LetSource::IfLet | LetSource::WhileLet | LetSource::IfLetGuard => {
+            report_arm_reachability(&cx, &report, |arm_span, arm_hir_id, _| {
+                unreachable_pattern(cx.tcx, arm_span, arm_hir_id, None)
+            });
         }
-    });
+        _ => {}
+    }
 
     if report.non_exhaustiveness_witnesses.is_empty() {
         // The match is exhaustive, i.e. the `if let` pattern is irrefutable.
@@ -464,13 +455,13 @@ fn report_arm_reachability<'p, 'tcx, F>(
     report: &UsefulnessReport<'p, 'tcx>,
     unreachable: F,
 ) where
-    F: Fn(usize, Span, HirId, Option<Span>),
+    F: Fn(Span, HirId, Option<Span>),
 {
     use Reachability::*;
     let mut catchall = None;
-    for (arm_index, (arm, is_useful)) in report.arm_usefulness.iter().enumerate() {
+    for (arm, is_useful) in report.arm_usefulness.iter() {
         match is_useful {
-            Unreachable => unreachable(arm_index, arm.pat.span, arm.hir_id, catchall),
+            Unreachable => unreachable(arm.pat.span, arm.hir_id, catchall),
             Reachable(unreachables) if unreachables.is_empty() => {}
             // The arm is reachable, but contains unreachable subpatterns (from or-patterns).
             Reachable(unreachables) => {
