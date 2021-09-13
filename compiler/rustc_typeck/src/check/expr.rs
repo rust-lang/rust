@@ -1853,10 +1853,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr_snippet =
             self.tcx.sess.source_map().span_to_snippet(expr.span).unwrap_or(String::new());
         if expr_is_call && expr_snippet.starts_with("(") && expr_snippet.ends_with(")") {
-            err.span_suggestion_short(
-                expr.span,
+            let after_open = expr.span.lo() + rustc_span::BytePos(1);
+            let before_close = expr.span.hi() - rustc_span::BytePos(1);
+            err.multipart_suggestion(
                 "remove wrapping parentheses to call the method",
-                expr_snippet[1..expr_snippet.len() - 1].to_owned(),
+                vec![
+                    (expr.span.with_hi(after_open), String::new()),
+                    (expr.span.with_lo(before_close), String::new()),
+                ],
                 Applicability::MachineApplicable,
             );
         } else if !self.expr_in_place(expr.hir_id) {

@@ -2,10 +2,13 @@ error[E0615]: attempted to take value of method `unwrap` on type `Option<{intege
   --> $DIR/issue-88803-call-expr-method.rs:7:12
    |
 LL |         (a.unwrap)()
-   |         ---^^^^^^-
-   |         |  |
-   |         |  method, not a field
-   |         help: remove wrapping parentheses to call the method
+   |            ^^^^^^ method, not a field
+   |
+help: remove wrapping parentheses to call the method
+   |
+LL -         (a.unwrap)()
+LL +         a.unwrap()
+   | 
 
 error: aborting due to previous error
 
