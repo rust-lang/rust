@@ -32,6 +32,10 @@ use crate::ops::{Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign};
 ///
 /// assert_eq!(u32::MAX, (zero - one).0);
 /// ```
+///
+/// # Layout
+///
+/// `Wrapping<T>` is guaranteed to have the same layout and ABI as `T`.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default, Hash)]
 #[repr(transparent)]
