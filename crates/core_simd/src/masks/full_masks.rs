@@ -106,15 +106,8 @@ where
     #[inline]
     pub fn to_bitmask(self) -> [u8; LaneCount::<LANES>::BITMASK_LEN] {
         unsafe {
-            // TODO remove the transmute when rustc can use arrays of u8 as bitmasks
-            assert_eq!(
-                core::mem::size_of::<<LaneCount::<LANES> as SupportedLaneCount>::IntBitMask>(),
-                LaneCount::<LANES>::BITMASK_LEN,
-            );
-            let bitmask: <LaneCount<LANES> as SupportedLaneCount>::IntBitMask =
-                intrinsics::simd_bitmask(self.0);
             let mut bitmask: [u8; LaneCount::<LANES>::BITMASK_LEN] =
-                core::mem::transmute_copy(&bitmask);
+                crate::intrinsics::simd_bitmask(self.0);
 
             // There is a bug where LLVM appears to implement this operation with the wrong
             // bit order.
@@ -142,15 +135,7 @@ where
                 }
             }
 
-            // TODO remove the transmute when rustc can use arrays of u8 as bitmasks
-            assert_eq!(
-                core::mem::size_of::<<LaneCount::<LANES> as SupportedLaneCount>::IntBitMask>(),
-                LaneCount::<LANES>::BITMASK_LEN,
-            );
-            let bitmask: <LaneCount<LANES> as SupportedLaneCount>::IntBitMask =
-                core::mem::transmute_copy(&bitmask);
-
-            Self::from_int_unchecked(intrinsics::simd_select_bitmask(
+            Self::from_int_unchecked(crate::intrinsics::simd_select_bitmask(
                 bitmask,
                 Self::splat(true).to_int(),
                 Self::splat(false).to_int(),
