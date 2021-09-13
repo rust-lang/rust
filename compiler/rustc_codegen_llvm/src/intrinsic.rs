@@ -861,7 +861,7 @@ fn generic_simd_intrinsic(
         let (len, _) = arg_tys[1].simd_size_and_type(bx.tcx());
 
         let expected_int_bits = (len.max(8) - 1).next_power_of_two();
-        let expected_bytes = len / 8 + ((len % 8 > 1) as u64);
+        let expected_bytes = len / 8 + ((len % 8 > 0) as u64);
 
         let mask_ty = arg_tys[0];
         let mask = match mask_ty.kind() {
@@ -1073,7 +1073,7 @@ fn generic_simd_intrinsic(
         // * an array of `u8`
         // If the vector has less than 8 lanes, a u8 is returned with zeroed trailing bits.
         let expected_int_bits = in_len.max(8);
-        let expected_bytes = expected_int_bits / 8 + ((expected_int_bits % 8 > 1) as u64);
+        let expected_bytes = expected_int_bits / 8 + ((expected_int_bits % 8 > 0) as u64);
 
         // Integer vector <i{in_bitwidth} x in_len>:
         let (i_xn, in_elem_bitwidth) = match in_elem.kind() {
