@@ -211,6 +211,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     ) -> impl Iterator<Item = SyntaxNode> + '_ {
         token.parent().into_iter().flat_map(move |it| self.ancestors_with_macros(it))
     }
+
     pub fn ancestors_with_macros(&self, node: SyntaxNode) -> impl Iterator<Item = SyntaxNode> + '_ {
         self.imp.ancestors_with_macros(node)
     }

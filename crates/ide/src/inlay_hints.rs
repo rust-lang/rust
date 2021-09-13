@@ -64,17 +64,35 @@ pub(crate) fn inlay_hints(
     let file = sema.parse(file_id);
 
     let mut res = Vec::new();
-    for node in file.syntax().descendants() {
-        if let Some(expr) = ast::Expr::cast(node.clone()) {
-            get_chaining_hints(&mut res, &sema, config, expr);
-        }
+    let mut queue = vec![file.syntax().preorder()];
 
-        match_ast! {
-            match node {
-                ast::CallExpr(it) => { get_param_name_hints(&mut res, &sema, config, ast::Expr::from(it)); },
-                ast::MethodCallExpr(it) => { get_param_name_hints(&mut res, &sema, config, ast::Expr::from(it)); },
-                ast::IdentPat(it) => { get_bind_pat_hints(&mut res, &sema, config, it); },
-                _ => (),
+    while let Some(mut preorder) = queue.pop() {
+        while let Some(event) = preorder.next() {
+            let node = match event {
+                syntax::WalkEvent::Enter(node) => node,
+                syntax::WalkEvent::Leave(_) => continue,
+            };
+            if let Some(node) =
+                ast::Item::cast(node.clone()).and_then(|item| sema.expand_attr_macro(&item))
+            {
+                preorder.skip_subtree();
+                queue.push(node.preorder());
+                continue;
+            }
+
+            if let Some(expr) = ast::Expr::cast(node.clone()) {
+                get_chaining_hints(&mut res, &sema, config, &expr);
+                match expr {
+                    ast::Expr::CallExpr(it) => {
+                        get_param_name_hints(&mut res, &sema, config, ast::Expr::from(it));
+                    }
+                    ast::Expr::MethodCallExpr(it) => {
+                        get_param_name_hints(&mut res, &sema, config, ast::Expr::from(it));
+                    }
+                    _ => (),
+                }
+            } else if let Some(it) = ast::IdentPat::cast(node.clone()) {
+                get_bind_pat_hints(&mut res, &sema, config, it);
             }
         }
     }
@@ -85,7 +103,7 @@ fn get_chaining_hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<RootDatabase>,
     config: &InlayHintsConfig,
-    expr: ast::Expr,
+    expr: &ast::Expr,
 ) -> Option<()> {
     if !config.chaining_hints {
         return None;
@@ -117,7 +135,7 @@ fn get_chaining_hints(
             next_next = tokens.next()?.kind();
         }
         if next_next == T![.] {
-            let ty = sema.type_of_expr(&expr)?.original;
+            let ty = sema.type_of_expr(expr)?.original;
             if ty.is_unknown() {
                 return None;
             }
@@ -129,7 +147,7 @@ fn get_chaining_hints(
                 }
             }
             acc.push(InlayHint {
-                range: expr.syntax().text_range(),
+                range: sema.original_range(expr.syntax()).range,
                 kind: InlayKind::ChainingHint,
                 label: hint_iterator(sema, &famous_defs, config, &ty).unwrap_or_else(|| {
                     ty.display_truncated(sema.db, config.max_length).to_string().into()
@@ -167,7 +185,7 @@ fn get_param_name_hints(
         })
         .filter(|(param_name, arg)| !should_hide_param_name_hint(sema, &callable, param_name, arg))
         .map(|(param_name, arg)| InlayHint {
-            range: arg.syntax().text_range(),
+            range: sema.original_range(arg.syntax()).range,
             kind: InlayKind::ParameterHint,
             label: param_name.into(),
         });
@@ -197,8 +215,8 @@ fn get_bind_pat_hints(
 
     acc.push(InlayHint {
         range: match pat.name() {
-            Some(name) => name.syntax().text_range(),
-            None => pat.syntax().text_range(),
+            Some(name) => sema.original_range(name.syntax()).range,
+            None => sema.original_range(pat.syntax()).range,
         },
         kind: InlayKind::TypeHint,
         label: hint_iterator(sema, &famous_defs, config, &ty)
@@ -1462,6 +1480,69 @@ fn main() {
                         range: 174..189,
                         kind: ChainingHint,
                         label: "&mut MyIter",
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hints_in_attr_call() {
+        // chaining hints do not currently work as macros lose all whitespace information
+        check_expect(
+            TEST_CONFIG,
+            r#"
+//- proc_macros: identity, input_replace
+struct Struct;
+impl Struct {
+    fn chain(self) -> Self {
+        self
+    }
+}
+
+#[proc_macros::identity]
+fn main() {
+    let strukt = Struct;
+    strukt
+        .chain()
+        .chain()
+        .chain();
+    Struct::chain(strukt);
+}
+
+#[proc_macros::input_replace(
+    fn not_main() {
+        let strukt = Struct;
+        strukt
+            .chain()
+            .chain()
+            .chain();
+        Struct::chain(strukt);
+    }
+)]
+fn main() {}
+"#,
+            expect![[r#"
+                [
+                    InlayHint {
+                        range: 297..303,
+                        kind: TypeHint,
+                        label: "Struct",
+                    },
+                    InlayHint {
+                        range: 415..421,
+                        kind: ParameterHint,
+                        label: "self",
+                    },
+                    InlayHint {
+                        range: 125..131,
+                        kind: TypeHint,
+                        label: "Struct",
+                    },
+                    InlayHint {
+                        range: 223..229,
+                        kind: ParameterHint,
+                        label: "self",
                     },
                 ]
             "#]],
