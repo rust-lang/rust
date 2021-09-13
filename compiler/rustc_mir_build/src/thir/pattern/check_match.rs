@@ -434,14 +434,9 @@ fn check_let_reachability<'p, 'tcx>(
     let arms = [MatchArm { pat, hir_id: pat_id, has_guard: false }];
     let report = compute_match_usefulness(&cx, &arms, pat_id, pat.ty);
 
-    match let_source(cx.tcx, pat_id) {
-        LetSource::IfLet | LetSource::WhileLet | LetSource::IfLetGuard => {
-            report_arm_reachability(&cx, &report, |arm_span, arm_hir_id, _| {
-                unreachable_pattern(cx.tcx, arm_span, arm_hir_id, None)
-            });
-        }
-        _ => {}
-    }
+    report_arm_reachability(&cx, &report, |arm_span, arm_hir_id, _| {
+        unreachable_pattern(cx.tcx, arm_span, arm_hir_id, None)
+    });
 
     if report.non_exhaustiveness_witnesses.is_empty() {
         // The match is exhaustive, i.e. the `if let` pattern is irrefutable.
