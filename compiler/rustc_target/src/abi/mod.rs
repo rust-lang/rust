@@ -1099,19 +1099,53 @@ impl Niche {
         assert!(size.bits() <= 128);
         let max_value = size.unsigned_int_max();
 
-        if count > max_value {
+        let niche = v.end.wrapping_add(1)..v.start;
+        let available = niche.end.wrapping_sub(niche.start) & max_value;
+        if count > available {
             return None;
         }
 
-        // Compute the range of invalid values being reserved.
-        let start = v.end.wrapping_add(1) & max_value;
-        let end = v.end.wrapping_add(count) & max_value;
-
-        if v.contains(end) {
-            return None;
+        // Extend the range of valid values being reserved by moving either `v.start` or `v.end` bound.
+        // Given an eventual `Option<T>`, we try to maximize the chance for `None` to occupy the niche of zero.
+        // This is accomplished by prefering enums with 2 variants(`count==1`) and always taking the shortest path to niche zero.
+        // Having `None` in niche zero can enable some special optimizations.
+        //
+        // Bound selection criteria:
+        // 1. Select closest to zero given wrapping semantics.
+        // 2. Avoid moving past zero if possible.
+        //
+        // In practice this means that enums with `count > 1` are unlikely to claim niche zero, since they have to fit perfectly.
+        // If niche zero is already reserved, the selection of bounds are of little interest.
+        let move_start = |v: WrappingRange| {
+            let start = v.start.wrapping_sub(1) & max_value;
+            Some((start, Scalar { value, valid_range: v.with_start(start) }))
+        };
+        let move_end = |v: WrappingRange| {
+            let start = v.end.wrapping_add(1) & max_value;
+            let end = v.end.wrapping_add(count) & max_value;
+            Some((start, Scalar { value, valid_range: v.with_end(end) }))
+        };
+        let distance_end_zero = max_value - v.end;
+        if v.start > v.end {
+            // zero is unavailable because wrapping occurs
+            move_end(v)
+        } else if v.start <= distance_end_zero {
+            if count <= v.start {
+                move_start(v)
+            } else {
+                // moved past zero, use other bound
+                move_end(v)
+            }
+        } else {
+            let end = v.end.wrapping_add(count) & max_value;
+            let overshot_zero = (1..=v.end).contains(&end);
+            if overshot_zero {
+                // moved past zero, use other bound
+                move_start(v)
+            } else {
+                move_end(v)
+            }
         }
-
-        Some((start, Scalar { value, valid_range: v.with_end(end) }))
     }
 }
 
