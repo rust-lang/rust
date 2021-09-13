@@ -4542,7 +4542,7 @@ fn foo() {
 "#,
             expect![[r#"
                 ```text
-                Type:                          i32
+                Type:                            i32
                 Dereferenced from: DerefExample<i32>
                 ```
             "#]],
@@ -4575,8 +4575,8 @@ fn foo() {
 "#,
             expect![[r#"
                 ```text
-                Type:                          &&&&&i32
-                Coerced to:                        &i32
+                Type:                            &&&&&i32
+                Coerced to:                          &i32
                 Dereferenced from: DerefExample<&&&&&i32>
                 ```
             "#]],
