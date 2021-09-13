@@ -925,6 +925,11 @@ impl Step for RustdocGUI {
                     .env("RUSTDOC", builder.rustdoc(self.compiler))
                     .env("RUSTC", builder.rustc(self.compiler))
                     .current_dir(path);
+                // FIXME: implement a `// compile-flags` command or similar
+                //        instead of hard-coding this test
+                if entry.file_name() == "link_to_definition" {
+                    cargo.env("RUSTDOCFLAGS", "-Zunstable-options --generate-link-to-definition");
+                }
                 builder.run(&mut cargo);
             }
         }
