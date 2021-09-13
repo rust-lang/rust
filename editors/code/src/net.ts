@@ -124,9 +124,12 @@ export async function download(opts: DownloadOpts) {
         log.info(`Renamed old server binary ${opts.dest.fsPath} to ${oldServerPath.fsPath}`);
     } catch (err) {
         const fsErr = err as vscode.FileSystemError;
-        // This is supposed to return `FileNotFound`, alas...
-        if (!fsErr.code || fsErr.code !== "FileNotFound" && fsErr.code !== "EntryNotFound") {
-            log.error(`Cannot rename existing server instance: ${err}`);
+
+        // This is supposed to return `FileNotFound` (spelled as `EntryNotFound`)
+        // but instead `code` is `Unknown` and `name` is `EntryNotFound (FileSystemError) (FileSystemError)`.
+        // https://github.com/rust-analyzer/rust-analyzer/pull/10222
+        if (!fsErr.code || fsErr.code !== "EntryNotFound" && fsErr.name.indexOf("EntryNotFound") === -1) {
+            log.error(`Cannot rename existing server instance: ${err}"`);
         }
     }
     try {
