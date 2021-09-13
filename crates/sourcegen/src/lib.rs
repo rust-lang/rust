@@ -48,6 +48,7 @@ pub struct CommentBlock {
     pub id: String,
     pub line: usize,
     pub contents: Vec<String>,
+    is_doc: bool,
 }
 
 impl CommentBlock {
@@ -61,6 +62,13 @@ impl CommentBlock {
             .filter_map(|mut block| {
                 let first = block.contents.remove(0);
                 first.strip_prefix(&tag).map(|id| {
+                    if block.is_doc {
+                        panic!(
+                            "Use plain (non-doc) comments with tags like {}:\n    {}",
+                            tag, first
+                        )
+                    }
+
                     block.id = id.trim().to_string();
                     block
                 })
@@ -73,11 +81,16 @@ impl CommentBlock {
 
         let lines = text.lines().map(str::trim_start);
 
-        let dummy_block = CommentBlock { id: String::new(), line: 0, contents: Vec::new() };
+        let dummy_block =
+            CommentBlock { id: String::new(), line: 0, contents: Vec::new(), is_doc: false };
         let mut block = dummy_block.clone();
         for (line_num, line) in lines.enumerate() {
             match line.strip_prefix("//") {
                 Some(mut contents) => {
+                    if let Some('/' | '!') = contents.chars().next() {
+                        contents = &contents[1..];
+                        block.is_doc = true;
+                    }
                     if let Some(' ') = contents.chars().next() {
                         contents = &contents[1..];
                     }

@@ -1065,6 +1065,23 @@ fn main() {
 }
 
 #[test]
+fn doctest_line_to_block() {
+    check_doc_test(
+        "line_to_block",
+        r#####"
+   // Multi-line$0
+   // comment
+"#####,
+        r#####"
+  /*
+  Multi-line
+  comment
+  */
+"#####,
+    )
+}
+
+#[test]
 fn doctest_make_raw_string() {
     check_doc_test(
         "make_raw_string",
