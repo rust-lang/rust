@@ -1,4 +1,4 @@
-SOURCE_FILE@0..154
+SOURCE_FILE@0..247
   USE@0..17
     USE_KW@0..3 "use"
     WHITESPACE@3..4 " "
@@ -35,4 +35,74 @@ SOURCE_FILE@0..154
     SEMICOLON@123..124 ";"
   WHITESPACE@124..125 " "
   COMMENT@125..153 "// Rust 2018 - Unifor ..."
-  WHITESPACE@153..154 "\n"
+  WHITESPACE@153..155 "\n\n"
+  USE@155..178
+    USE_KW@155..158 "use"
+    WHITESPACE@158..159 " "
+    USE_TREE@159..177
+      PATH@159..177
+        PATH@159..171
+          PATH@159..163
+            PATH_SEGMENT@159..163
+              NAME_REF@159..163
+                SELF_KW@159..163 "self"
+          COLON2@163..165 "::"
+          PATH_SEGMENT@165..171
+            NAME_REF@165..171
+              IDENT@165..171 "module"
+        COLON2@171..173 "::"
+        PATH_SEGMENT@173..177
+          NAME_REF@173..177
+            IDENT@173..177 "Item"
+    SEMICOLON@177..178 ";"
+  WHITESPACE@178..179 "\n"
+  USE@179..195
+    USE_KW@179..182 "use"
+    WHITESPACE@182..183 " "
+    USE_TREE@183..194
+      PATH@183..194
+        PATH@183..188
+          PATH_SEGMENT@183..188
+            NAME_REF@183..188
+              CRATE_KW@183..188 "crate"
+        COLON2@188..190 "::"
+        PATH_SEGMENT@190..194
+          NAME_REF@190..194
+            IDENT@190..194 "Item"
+    SEMICOLON@194..195 ";"
+  WHITESPACE@195..196 "\n"
+  USE@196..219
+    USE_KW@196..199 "use"
+    WHITESPACE@199..200 " "
+    USE_TREE@200..218
+      PATH@200..218
+        PATH@200..210
+          PATH@200..204
+            PATH_SEGMENT@200..204
+              NAME_REF@200..204
+                SELF_KW@200..204 "self"
+          COLON2@204..206 "::"
+          PATH_SEGMENT@206..210
+            NAME_REF@206..210
+              IDENT@206..210 "some"
+        COLON2@210..212 "::"
+        PATH_SEGMENT@212..218
+          NAME_REF@212..218
+            IDENT@212..218 "Struct"
+    SEMICOLON@218..219 ";"
+  WHITESPACE@219..220 "\n"
+  USE@220..246
+    USE_KW@220..223 "use"
+    WHITESPACE@223..224 " "
+    USE_TREE@224..245
+      PATH@224..245
+        PATH@224..234
+          PATH_SEGMENT@224..234
+            NAME_REF@224..234
+              IDENT@224..234 "crate_name"
+        COLON2@234..236 "::"
+        PATH_SEGMENT@236..245
+          NAME_REF@236..245
+            IDENT@236..245 "some_item"
+    SEMICOLON@245..246 ";"
+  WHITESPACE@246..247 "\n"

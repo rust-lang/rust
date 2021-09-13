@@ -55,22 +55,20 @@ impl CommentBlock {
         assert!(tag.starts_with(char::is_uppercase));
 
         let tag = format!("{}:", tag);
-        let mut res = Vec::new();
-        for mut block in CommentBlock::do_extract(text, true) {
-            let first = block.contents.remove(0);
-            if let Some(id) = first.strip_prefix(&tag) {
-                block.id = id.trim().to_string();
-                res.push(block);
-            }
-        }
-        res
+        // Would be nice if we had `.retain_mut` here!
+        CommentBlock::extract_untagged(text)
+            .into_iter()
+            .filter_map(|mut block| {
+                let first = block.contents.remove(0);
+                first.strip_prefix(&tag).map(|id| {
+                    block.id = id.trim().to_string();
+                    block
+                })
+            })
+            .collect()
     }
 
     pub fn extract_untagged(text: &str) -> Vec<CommentBlock> {
-        CommentBlock::do_extract(text, false)
-    }
-
-    fn do_extract(text: &str, allow_blocks_with_empty_lines: bool) -> Vec<CommentBlock> {
         let mut res = Vec::new();
 
         let prefix = "// ";
@@ -79,7 +77,7 @@ impl CommentBlock {
         let dummy_block = CommentBlock { id: String::new(), line: 0, contents: Vec::new() };
         let mut block = dummy_block.clone();
         for (line_num, line) in lines.enumerate() {
-            if line == "//" && allow_blocks_with_empty_lines {
+            if line == "//" {
                 block.contents.push(String::new());
                 continue;
             }
