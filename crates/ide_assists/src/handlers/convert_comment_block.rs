@@ -6,21 +6,21 @@ use syntax::{
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
-/// Assist: line_to_block
-///
-/// Converts comments between block and single-line form
-///
-/// ```
-///    // Multi-line
-///    // comment
-/// ```
-/// ->
-/// ```
-///   /**
-///   Multi-line
-///   comment
-///   */
-/// ```
+// Assist: line_to_block
+//
+// Converts comments between block and single-line form.
+//
+// ```
+//    // Multi-line$0
+//    // comment
+// ```
+// ->
+// ```
+//   /*
+//   Multi-line
+//   comment
+//   */
+// ```
 pub(crate) fn convert_comment_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let comment = ctx.find_token_at_offset::<ast::Comment>()?;
     // Only allow comments which are alone on their line

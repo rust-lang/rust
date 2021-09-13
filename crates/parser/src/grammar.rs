@@ -194,10 +194,12 @@ fn opt_visibility(p: &mut Parser) -> bool {
         // crate fn main() { }
         // struct S { crate field: u32 }
         // struct T(crate u32);
-        //
-        // test crate_keyword_path
-        // fn foo() { crate::foo(); }
-        T![crate] if !p.nth_at(1, T![::]) => {
+        T![crate] => {
+            if p.nth_at(1, T![::]) {
+                // test crate_keyword_path
+                // fn foo() { crate::foo(); }
+                return false;
+            }
             let m = p.start();
             p.bump(T![crate]);
             m.complete(p, VISIBILITY);

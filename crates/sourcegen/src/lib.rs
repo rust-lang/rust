@@ -43,10 +43,12 @@ pub fn list_files(dir: &Path) -> Vec<PathBuf> {
     res
 }
 
+#[derive(Clone)]
 pub struct CommentBlock {
     pub id: String,
     pub line: usize,
     pub contents: Vec<String>,
+    is_doc: bool,
 }
 
 impl CommentBlock {
@@ -54,59 +56,60 @@ impl CommentBlock {
         assert!(tag.starts_with(char::is_uppercase));
 
         let tag = format!("{}:", tag);
-        let mut res = Vec::new();
-        for (line, mut block) in do_extract_comment_blocks(text, true) {
-            let first = block.remove(0);
-            if let Some(id) = first.strip_prefix(&tag) {
-                let id = id.trim().to_string();
-                let block = CommentBlock { id, line, contents: block };
-                res.push(block);
-            }
-        }
-        res
+        // Would be nice if we had `.retain_mut` here!
+        CommentBlock::extract_untagged(text)
+            .into_iter()
+            .filter_map(|mut block| {
+                let first = block.contents.remove(0);
+                first.strip_prefix(&tag).map(|id| {
+                    if block.is_doc {
+                        panic!(
+                            "Use plain (non-doc) comments with tags like {}:\n    {}",
+                            tag, first
+                        )
+                    }
+
+                    block.id = id.trim().to_string();
+                    block
+                })
+            })
+            .collect()
     }
 
     pub fn extract_untagged(text: &str) -> Vec<CommentBlock> {
         let mut res = Vec::new();
-        for (line, block) in do_extract_comment_blocks(text, false) {
-            let id = String::new();
-            let block = CommentBlock { id, line, contents: block };
-            res.push(block);
+
+        let lines = text.lines().map(str::trim_start);
+
+        let dummy_block =
+            CommentBlock { id: String::new(), line: 0, contents: Vec::new(), is_doc: false };
+        let mut block = dummy_block.clone();
+        for (line_num, line) in lines.enumerate() {
+            match line.strip_prefix("//") {
+                Some(mut contents) => {
+                    if let Some('/' | '!') = contents.chars().next() {
+                        contents = &contents[1..];
+                        block.is_doc = true;
+                    }
+                    if let Some(' ') = contents.chars().next() {
+                        contents = &contents[1..];
+                    }
+                    block.contents.push(contents.to_string());
+                }
+                None => {
+                    if !block.contents.is_empty() {
+                        let block = mem::replace(&mut block, dummy_block.clone());
+                        res.push(block);
+                    }
+                    block.line = line_num + 2;
+                }
+            }
+        }
+        if !block.contents.is_empty() {
+            res.push(block)
         }
         res
     }
-}
-
-fn do_extract_comment_blocks(
-    text: &str,
-    allow_blocks_with_empty_lines: bool,
-) -> Vec<(usize, Vec<String>)> {
-    let mut res = Vec::new();
-
-    let prefix = "// ";
-    let lines = text.lines().map(str::trim_start);
-
-    let mut block = (0, vec![]);
-    for (line_num, line) in lines.enumerate() {
-        if line == "//" && allow_blocks_with_empty_lines {
-            block.1.push(String::new());
-            continue;
-        }
-
-        let is_comment = line.starts_with(prefix);
-        if is_comment {
-            block.1.push(line[prefix.len()..].to_string());
-        } else {
-            if !block.1.is_empty() {
-                res.push(mem::take(&mut block));
-            }
-            block.0 = line_num + 2;
-        }
-    }
-    if !block.1.is_empty() {
-        res.push(block)
-    }
-    res
 }
 
 #[derive(Debug)]
