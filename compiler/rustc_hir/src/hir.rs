@@ -671,7 +671,7 @@ pub struct Crate<'hir> {
     pub attrs: BTreeMap<HirId, &'hir [Attribute]>,
 }
 
-impl<'hir> Crate<'hir> {
+impl Crate<'hir> {
     pub fn module(&self) -> &'hir Mod<'hir> {
         if let Some(OwnerNode::Crate(m)) = self.owners[CRATE_DEF_ID] { m } else { panic!() }
     }

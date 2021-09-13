@@ -160,7 +160,7 @@ impl<'hir> Map<'hir> {
     pub fn root_module(&self) -> &'hir Mod<'hir> {
         match self.tcx.hir_owner(CRATE_DEF_ID).map(|o| o.node) {
             Some(OwnerNode::Crate(item)) => item,
-            _ => panic!(),
+            _ => bug!(),
         }
     }
 
