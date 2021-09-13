@@ -21,6 +21,7 @@ use rustc_span::{BytePos, FileName, MultiSpan, Pos, RealFileName, SourceFile, Sp
 use pm::bridge::{server, TokenTree};
 use pm::{Delimiter, Level, LineColumn, Spacing};
 use std::ops::Bound;
+use std::path;
 use std::{ascii, panic};
 
 trait FromInternal<T> {
@@ -406,7 +407,7 @@ impl server::FreeFunctions for Rustc<'_> {
     }
 
     fn track_path(&mut self, path: &str) {
-        self.sess.file_depinfo.borrow_mut().insert(Symbol::intern(path));
+        self.sess.file_depinfo.borrow_mut().insert(path::PathBuf::from(path));
     }
 }
 

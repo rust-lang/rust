@@ -15,6 +15,7 @@ use std::marker;
 use std::mem;
 use std::ops::Bound;
 use std::panic;
+use std::path;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Once;
 use std::thread;
@@ -361,6 +362,7 @@ mark_noop! {
     LineColumn,
     Spacing,
     Bound<usize>,
+    path::PathBuf,
 }
 
 rpc_encode_decode!(

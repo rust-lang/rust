@@ -599,9 +599,8 @@ fn write_out_deps(
         // Account for explicitly marked-to-track files
         // (e.g. accessed in proc macros).
         let file_depinfo = sess.parse_sess.file_depinfo.borrow();
-        let extra_tracked_files = file_depinfo.iter().map(|path_sym| {
-            let path = PathBuf::from(&*path_sym.as_str());
-            let file = FileName::from(path);
+        let extra_tracked_files = file_depinfo.iter().map(|path| {
+            let file = FileName::from(path.clone());
             escape_dep_filename(&file.prefer_local().to_string())
         });
         files.extend(extra_tracked_files);
