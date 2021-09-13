@@ -5,6 +5,7 @@
 //!
 //! Use the `render_with_highlighting` to highlight some rust code.
 
+use crate::clean::PrimitiveType;
 use crate::html::escape::Escape;
 use crate::html::render::Context;
 
@@ -584,6 +585,13 @@ fn string<T: Display>(
                             .ok()
                             .map(|(url, _, _)| url)
                     }
+                    LinkFromSrc::Primitive(prim) => format::href_with_root_path(
+                        PrimitiveType::primitive_locations(context.tcx())[&prim],
+                        context,
+                        Some(context_info.root_path),
+                    )
+                    .ok()
+                    .map(|(url, _, _)| url),
                 }
             })
         {
