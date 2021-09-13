@@ -5,7 +5,7 @@ use std::sync::Arc;
 use base_db::{salsa, SourceDatabase};
 use itertools::Itertools;
 use limit::Limit;
-use mbe::{ExpandError, ExpandResult};
+use mbe::{syntax_node_to_token_tree, ExpandError, ExpandResult};
 use syntax::{
     algo::diff,
     ast::{self, AttrsOwner, NameOwner},
@@ -146,24 +146,57 @@ pub fn expand_speculative(
 ) -> Option<(SyntaxNode, SyntaxToken)> {
     let loc = db.lookup_intern_macro(actual_macro_call);
     let macro_def = db.macro_def(loc.def)?;
+    let token_range = token_to_map.text_range();
 
-    // Fetch token id in the speculative args
+    // Build the subtree and token mapping for the speculative args
     let censor = censor_for_macro_input(&loc, &speculative_args);
-    let (tt, args_tmap) = mbe::syntax_node_to_token_tree_censored(&speculative_args, censor);
-    let range = token_to_map.text_range().checked_sub(speculative_args.text_range().start())?;
-    let token_id = args_tmap.token_by_range(range)?;
+    let (mut tt, spec_args_tmap) =
+        mbe::syntax_node_to_token_tree_censored(&speculative_args, censor);
 
-    let speculative_expansion = if let MacroDefKind::ProcMacro(expander, ..) = loc.def.kind {
-        let attr_arg = match &loc.kind {
-            // FIXME make attr arg speculative as well
-            MacroCallKind::Attr { attr_args, .. } => {
-                let mut attr_args = attr_args.0.clone();
-                mbe::Shift::new(&tt).shift_all(&mut attr_args);
-                Some(attr_args)
+    let (attr_arg, token_id) = match loc.kind {
+        MacroCallKind::Attr { invoc_attr_index, .. } => {
+            // Attributes may have an input token tree, build the subtree and map for this as well
+            // then try finding a token id for our token if it is inside this input subtree.
+            let item = ast::Item::cast(speculative_args.clone())?;
+            let attr = item.attrs().nth(invoc_attr_index as usize)?;
+            match attr.token_tree() {
+                Some(token_tree) => {
+                    let (mut tree, map) = syntax_node_to_token_tree(attr.token_tree()?.syntax());
+                    tree.delimiter = None;
+
+                    let shift = mbe::Shift::new(&tt);
+                    shift.shift_all(&mut tree);
+
+                    let token_id = if token_tree.syntax().text_range().contains_range(token_range) {
+                        let attr_input_start =
+                            token_tree.left_delimiter_token()?.text_range().start();
+                        let range = token_range.checked_sub(attr_input_start)?;
+                        let token_id = shift.shift(map.token_by_range(range)?);
+                        Some(token_id)
+                    } else {
+                        None
+                    };
+                    (Some(tree), token_id)
+                }
+                _ => (None, None),
             }
-            _ => None,
-        };
+        }
+        _ => (None, None),
+    };
+    let token_id = match token_id {
+        Some(token_id) => token_id,
+        // token wasn't inside an attribute input so it has to be in the general macro input
+        None => {
+            let range = token_range.checked_sub(speculative_args.text_range().start())?;
+            let token_id = spec_args_tmap.token_by_range(range)?;
+            macro_def.map_id_down(token_id)
+        }
+    };
 
+    // Do the actual expansion, we need to directly expand the proc macro due to the attribute args
+    // Otherwise the expand query will fetch the non speculative attribute args and pass those instead.
+    let speculative_expansion = if let MacroDefKind::ProcMacro(expander, ..) = loc.def.kind {
+        tt.delimiter = None;
         expander.expand(db, loc.krate, &tt, attr_arg.as_ref())
     } else {
         macro_def.expand(db, actual_macro_call, &tt)
@@ -173,7 +206,6 @@ pub fn expand_speculative(
     let (node, rev_tmap) =
         token_tree_to_syntax_node(&speculative_expansion.value, expand_to).ok()?;
 
-    let token_id = macro_def.map_id_down(token_id);
     let range = rev_tmap.first_range_by_token(token_id, token_to_map.kind())?;
     let token = node.syntax_node().covering_element(range).into_token()?;
     Some((node.syntax_node(), token))

@@ -258,12 +258,23 @@ fn test_proc_macros(proc_macros: &[String]) -> (Vec<ProcMacro>, String) {
 pub fn identity(_attr: TokenStream, item: TokenStream) -> TokenStream {
     item
 }
+#[proc_macro_attribute]
+pub fn input_replace(attr: TokenStream, _item: TokenStream) -> TokenStream {
+    attr
+}
 "#;
-    let proc_macros = std::array::IntoIter::new([ProcMacro {
-        name: "identity".into(),
-        kind: crate::ProcMacroKind::Attr,
-        expander: Arc::new(IdentityProcMacroExpander),
-    }])
+    let proc_macros = std::array::IntoIter::new([
+        ProcMacro {
+            name: "identity".into(),
+            kind: crate::ProcMacroKind::Attr,
+            expander: Arc::new(IdentityProcMacroExpander),
+        },
+        ProcMacro {
+            name: "input_replace".into(),
+            kind: crate::ProcMacroKind::Attr,
+            expander: Arc::new(AttributeInputReplaceProcMacroExpander),
+        },
+    ])
     .filter(|pm| proc_macros.iter().any(|name| name == &pm.name))
     .collect();
     (proc_macros, source.into())
@@ -308,8 +319,9 @@ impl From<Fixture> for FileMeta {
     }
 }
 
+// Identity mapping
 #[derive(Debug)]
-pub struct IdentityProcMacroExpander;
+struct IdentityProcMacroExpander;
 impl ProcMacroExpander for IdentityProcMacroExpander {
     fn expand(
         &self,
@@ -318,5 +330,21 @@ impl ProcMacroExpander for IdentityProcMacroExpander {
         _: &Env,
     ) -> Result<Subtree, ProcMacroExpansionError> {
         Ok(subtree.clone())
+    }
+}
+
+// Pastes the attribute input as its output
+#[derive(Debug)]
+struct AttributeInputReplaceProcMacroExpander;
+impl ProcMacroExpander for AttributeInputReplaceProcMacroExpander {
+    fn expand(
+        &self,
+        _: &Subtree,
+        attrs: Option<&Subtree>,
+        _: &Env,
+    ) -> Result<Subtree, ProcMacroExpansionError> {
+        attrs
+            .cloned()
+            .ok_or_else(|| ProcMacroExpansionError::Panic("Expected attribute input".into()))
     }
 }

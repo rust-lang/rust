@@ -183,6 +183,7 @@ impl<'a> CompletionContext<'a> {
         );
         Some(ctx)
     }
+
     fn expand_and_fill(
         &mut self,
         mut original_file: SyntaxNode,
@@ -191,6 +192,7 @@ impl<'a> CompletionContext<'a> {
         mut fake_ident_token: SyntaxToken,
     ) {
         loop {
+            // Expand attributes
             if let (Some(actual_item), Some(item_with_fake_ident)) = (
                 find_node_at_offset::<ast::Item>(&original_file, offset),
                 find_node_at_offset::<ast::Item>(&speculative_file, offset),
@@ -219,6 +221,7 @@ impl<'a> CompletionContext<'a> {
                 }
             }
 
+            // Expand fn-like macro calls
             if let (Some(actual_macro_call), Some(macro_call_with_fake_ident)) = (
                 find_node_at_offset::<ast::MacroCall>(&original_file, offset),
                 find_node_at_offset::<ast::MacroCall>(&speculative_file, offset),
