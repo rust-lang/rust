@@ -7,7 +7,7 @@ LL |     test(array.len());
 help: you can convert a `usize` to a `u32` and panic if the converted value doesn't fit
    |
 LL |     test(array.len().try_into().unwrap());
-   |          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                     ++++++++++++++++++++
 
 error: aborting due to previous error
 

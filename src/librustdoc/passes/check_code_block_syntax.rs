@@ -101,9 +101,9 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
                     );
                 } else if empty_block {
                     diag.span_suggestion(
-                        sp.from_inner(InnerSpan::new(0, 3)),
+                        sp.from_inner(InnerSpan::new(0, 3)).shrink_to_hi(),
                         explanation,
-                        String::from("```text"),
+                        String::from("text"),
                         Applicability::MachineApplicable,
                     );
                 }

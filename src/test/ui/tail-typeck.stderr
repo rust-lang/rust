@@ -9,7 +9,7 @@ LL | fn f() -> isize { return g(); }
 help: you can convert a `usize` to an `isize` and panic if the converted value doesn't fit
    |
 LL | fn f() -> isize { return g().try_into().unwrap(); }
-   |                          ~~~~~~~~~~~~~~~~~~~~~~~
+   |                             ++++++++++++++++++++
 
 error: aborting due to previous error
 

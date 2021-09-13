@@ -1633,50 +1633,57 @@ impl<'a> Parser<'a> {
         {
             let rfc_note = "anonymous parameters are removed in the 2018 edition (see RFC 1685)";
 
-            let (ident, self_sugg, param_sugg, type_sugg) = match pat.kind {
-                PatKind::Ident(_, ident, _) => (
-                    ident,
-                    format!("self: {}", ident),
-                    format!("{}: TypeName", ident),
-                    format!("_: {}", ident),
-                ),
-                // Also catches `fn foo(&a)`.
-                PatKind::Ref(ref pat, mutab)
-                    if matches!(pat.clone().into_inner().kind, PatKind::Ident(..)) =>
-                {
-                    match pat.clone().into_inner().kind {
-                        PatKind::Ident(_, ident, _) => {
-                            let mutab = mutab.prefix_str();
-                            (
-                                ident,
-                                format!("self: &{}{}", mutab, ident),
-                                format!("{}: &{}TypeName", ident, mutab),
-                                format!("_: &{}{}", mutab, ident),
-                            )
+            let (ident, self_sugg, param_sugg, type_sugg, self_span, param_span, type_span) =
+                match pat.kind {
+                    PatKind::Ident(_, ident, _) => (
+                        ident,
+                        "self: ".to_string(),
+                        ": TypeName".to_string(),
+                        "_: ".to_string(),
+                        pat.span.shrink_to_lo(),
+                        pat.span.shrink_to_hi(),
+                        pat.span.shrink_to_lo(),
+                    ),
+                    // Also catches `fn foo(&a)`.
+                    PatKind::Ref(ref inner_pat, mutab)
+                        if matches!(inner_pat.clone().into_inner().kind, PatKind::Ident(..)) =>
+                    {
+                        match inner_pat.clone().into_inner().kind {
+                            PatKind::Ident(_, ident, _) => {
+                                let mutab = mutab.prefix_str();
+                                (
+                                    ident,
+                                    "self: ".to_string(),
+                                    format!("{}: &{}TypeName", ident, mutab),
+                                    "_: ".to_string(),
+                                    pat.span.shrink_to_lo(),
+                                    pat.span,
+                                    pat.span.shrink_to_lo(),
+                                )
+                            }
+                            _ => unreachable!(),
                         }
-                        _ => unreachable!(),
                     }
-                }
-                _ => {
-                    // Otherwise, try to get a type and emit a suggestion.
-                    if let Some(ty) = pat.to_ty() {
-                        err.span_suggestion_verbose(
-                            pat.span,
-                            "explicitly ignore the parameter name",
-                            format!("_: {}", pprust::ty_to_string(&ty)),
-                            Applicability::MachineApplicable,
-                        );
-                        err.note(rfc_note);
-                    }
+                    _ => {
+                        // Otherwise, try to get a type and emit a suggestion.
+                        if let Some(ty) = pat.to_ty() {
+                            err.span_suggestion_verbose(
+                                pat.span,
+                                "explicitly ignore the parameter name",
+                                format!("_: {}", pprust::ty_to_string(&ty)),
+                                Applicability::MachineApplicable,
+                            );
+                            err.note(rfc_note);
+                        }
 
-                    return None;
-                }
-            };
+                        return None;
+                    }
+                };
 
             // `fn foo(a, b) {}`, `fn foo(a<x>, b<y>) {}` or `fn foo(usize, usize) {}`
             if first_param {
                 err.span_suggestion(
-                    pat.span,
+                    self_span,
                     "if this is a `self` type, give it a parameter name",
                     self_sugg,
                     Applicability::MaybeIncorrect,
@@ -1686,14 +1693,14 @@ impl<'a> Parser<'a> {
             // `fn foo(HashMap: TypeName<u32>)`.
             if self.token != token::Lt {
                 err.span_suggestion(
-                    pat.span,
+                    param_span,
                     "if this is a parameter name, give it a type",
                     param_sugg,
                     Applicability::HasPlaceholders,
                 );
             }
             err.span_suggestion(
-                pat.span,
+                type_span,
                 "if this is a type, explicitly ignore the parameter name",
                 type_sugg,
                 Applicability::MachineApplicable,

@@ -7,7 +7,7 @@ LL |     f1(2i32, 4i32);
 help: change the type of the numeric literal from `i32` to `u32`
    |
 LL |     f1(2i32, 4u32);
-   |              ~~~~
+   |               ~~~
 
 error[E0277]: the trait bound `u32: Foo` is not satisfied
   --> $DIR/associated-types-path-2.rs:29:5
@@ -56,7 +56,7 @@ LL |     let _: i32 = f2(2i32);
 help: you can convert a `u32` to an `i32` and panic if the converted value doesn't fit
    |
 LL |     let _: i32 = f2(2i32).try_into().unwrap();
-   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                          ++++++++++++++++++++
 
 error: aborting due to 6 previous errors
 

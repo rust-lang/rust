@@ -14,7 +14,7 @@ LL | | /// ```
 help: mark blocks that do not contain Rust code as text
    |
 LL | /// ```text
-   |     ~~~~~~~
+   |        ++++
 
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:9:5
@@ -32,7 +32,7 @@ LL | | /// ```
 help: mark blocks that do not contain Rust code as text
    |
 LL | /// ```text
-   |     ~~~~~~~
+   |        ++++
 
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:21:5
@@ -47,7 +47,7 @@ LL | | /// ```
 help: mark blocks that do not contain Rust code as text
    |
 LL | /// ```text
-   |     ~~~~~~~
+   |        ++++
 
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:35:5
@@ -123,7 +123,7 @@ LL | | /// ```
 help: mark blocks that do not contain Rust code as text
    |
 LL | /// ```text
-   |     ~~~~~~~
+   |        ++++
 
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:92:9
@@ -148,7 +148,7 @@ LL | | /// ```
 help: mark blocks that do not contain Rust code as text
    |
 LL | /// ```text
-   |     ~~~~~~~
+   |        ++++
 
 warning: 12 warnings emitted
 

@@ -8,11 +8,11 @@ LL | fn a(B<) {}
 help: if this is a `self` type, give it a parameter name
    |
 LL | fn a(self: B<) {}
-   |      ~~~~~~~
+   |      +++++
 help: if this is a type, explicitly ignore the parameter name
    |
 LL | fn a(_: B<) {}
-   |      ~~~~
+   |      ++
 
 error: aborting due to previous error
 

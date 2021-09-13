@@ -17,7 +17,6 @@ use rustc_span::{BytePos, Span};
 
 use super::method::probe;
 
-use std::fmt;
 use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -772,9 +771,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // For now, don't suggest casting with `as`.
         let can_cast = false;
 
-        let prefix = if let Some(hir::Node::Expr(hir::Expr {
-            kind: hir::ExprKind::Struct(_, fields, _),
-            ..
+        let mut sugg = vec![];
+
+        if let Some(hir::Node::Expr(hir::Expr {
+            kind: hir::ExprKind::Struct(_, fields, _), ..
         })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
         {
             // `expr` is a literal field for a struct, only suggest if appropriate
@@ -783,12 +783,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .find(|field| field.expr.hir_id == expr.hir_id && field.is_shorthand)
             {
                 // This is a field literal
-                Some(field) => format!("{}: ", field.ident),
+                Some(field) => {
+                    sugg.push((field.ident.span.shrink_to_lo(), format!("{}: ", field.ident)));
+                }
                 // Likely a field was meant, but this field wasn't found. Do not suggest anything.
                 None => return false,
             }
-        } else {
-            String::new()
         };
 
         if let hir::ExprKind::Call(path, args) = &expr.kind {
@@ -843,28 +843,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             checked_ty, expected_ty,
         );
 
-        let with_opt_paren: fn(&dyn fmt::Display) -> String =
-            if expr.precedence().order() < PREC_POSTFIX {
-                |s| format!("({})", s)
-            } else {
-                |s| s.to_string()
-            };
+        let close_paren = if expr.precedence().order() < PREC_POSTFIX {
+            sugg.push((expr.span.shrink_to_lo(), "(".to_string()));
+            ")"
+        } else {
+            ""
+        };
 
-        let cast_suggestion = format!("{}{} as {}", prefix, with_opt_paren(&src), expected_ty);
-        let into_suggestion = format!("{}{}.into()", prefix, with_opt_paren(&src));
-        let suffix_suggestion = with_opt_paren(&format_args!(
-            "{}{}",
+        let mut cast_suggestion = sugg.clone();
+        cast_suggestion
+            .push((expr.span.shrink_to_hi(), format!("{} as {}", close_paren, expected_ty)));
+        let mut into_suggestion = sugg.clone();
+        into_suggestion.push((expr.span.shrink_to_hi(), format!("{}.into()", close_paren)));
+        let mut suffix_suggestion = sugg.clone();
+        suffix_suggestion.push((
             if matches!(
                 (&expected_ty.kind(), &checked_ty.kind()),
                 (ty::Int(_) | ty::Uint(_), ty::Float(_))
             ) {
                 // Remove fractional part from literal, for example `42.0f32` into `42`
                 let src = src.trim_end_matches(&checked_ty.to_string());
-                src.split('.').next().unwrap()
+                let len = src.split('.').next().unwrap().len();
+                expr.span.with_lo(expr.span.lo() + BytePos(len as u32))
             } else {
-                src.trim_end_matches(&checked_ty.to_string())
+                let len = src.trim_end_matches(&checked_ty.to_string()).len();
+                expr.span.with_lo(expr.span.lo() + BytePos(len as u32))
             },
-            expected_ty,
+            if expr.precedence().order() < PREC_POSTFIX {
+                // Readd `)`
+                format!("{})", expected_ty)
+            } else {
+                expected_ty.to_string()
+            },
         ));
         let literal_is_ty_suffixed = |expr: &hir::Expr<'_>| {
             if let hir::ExprKind::Lit(lit) = &expr.kind { lit.node.is_suffixed() } else { false }
@@ -891,22 +901,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .ok()
                         .map(|src| (expr, src))
                 });
-                let (span, msg, suggestion) = if let (Some((lhs_expr, lhs_src)), false) =
+                let (msg, suggestion) = if let (Some((lhs_expr, lhs_src)), false) =
                     (lhs_expr_and_src, exp_to_found_is_fallible)
                 {
                     let msg = format!(
                         "you can convert `{}` from `{}` to `{}`, matching the type of `{}`",
                         lhs_src, expected_ty, checked_ty, src
                     );
-                    let suggestion = format!("{}::from({})", checked_ty, lhs_src);
-                    (lhs_expr.span, msg, suggestion)
+                    let suggestion = vec![
+                        (lhs_expr.span.shrink_to_lo(), format!("{}::from(", checked_ty)),
+                        (lhs_expr.span.shrink_to_hi(), ")".to_string()),
+                    ];
+                    (msg, suggestion)
                 } else {
                     let msg = format!("{} and panic if the converted value doesn't fit", msg);
-                    let suggestion =
-                        format!("{}{}.try_into().unwrap()", prefix, with_opt_paren(&src));
-                    (expr.span, msg, suggestion)
+                    let mut suggestion = sugg.clone();
+                    suggestion.push((
+                        expr.span.shrink_to_hi(),
+                        format!("{}.try_into().unwrap()", close_paren),
+                    ));
+                    (msg, suggestion)
                 };
-                err.span_suggestion(span, &msg, suggestion, Applicability::MachineApplicable);
+                err.multipart_suggestion_verbose(
+                    &msg,
+                    suggestion,
+                    Applicability::MachineApplicable,
+                );
             };
 
         let suggest_to_change_suffix_or_into =
@@ -944,7 +964,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     into_suggestion.clone()
                 };
-                err.span_suggestion(expr.span, msg, suggestion, Applicability::MachineApplicable);
+                err.multipart_suggestion_verbose(msg, suggestion, Applicability::MachineApplicable);
             };
 
         match (&expected_ty.kind(), &checked_ty.kind()) {
@@ -998,16 +1018,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if found.bit_width() < exp.bit_width() {
                     suggest_to_change_suffix_or_into(err, false, true);
                 } else if literal_is_ty_suffixed(expr) {
-                    err.span_suggestion(
-                        expr.span,
+                    err.multipart_suggestion_verbose(
                         &lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else if can_cast {
                     // Missing try_into implementation for `f64` to `f32`
-                    err.span_suggestion(
-                        expr.span,
+                    err.multipart_suggestion_verbose(
                         &format!("{}, producing the closest possible value", cast_msg),
                         cast_suggestion,
                         Applicability::MaybeIncorrect, // lossy conversion
@@ -1017,16 +1035,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             (&ty::Uint(_) | &ty::Int(_), &ty::Float(_)) => {
                 if literal_is_ty_suffixed(expr) {
-                    err.span_suggestion(
-                        expr.span,
+                    err.multipart_suggestion_verbose(
                         &lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else if can_cast {
                     // Missing try_into implementation for `{float}` to `{integer}`
-                    err.span_suggestion(
-                        expr.span,
+                    err.multipart_suggestion_verbose(
                         &format!("{}, rounding the float towards zero", msg),
                         cast_suggestion,
                         Applicability::MaybeIncorrect, // lossy conversion
@@ -1037,8 +1053,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (&ty::Float(ref exp), &ty::Uint(ref found)) => {
                 // if `found` is `None` (meaning found is `usize`), don't suggest `.into()`
                 if exp.bit_width() > found.bit_width().unwrap_or(256) {
-                    err.span_suggestion(
-                        expr.span,
+                    err.multipart_suggestion_verbose(
                         &format!(
                             "{}, producing the floating point representation of the integer",
                             msg,
@@ -1047,16 +1062,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Applicability::MachineApplicable,
                     );
                 } else if literal_is_ty_suffixed(expr) {
-                    err.span_suggestion(
-                        expr.span,
+                    err.multipart_suggestion_verbose(
                         &lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else {
                     // Missing try_into implementation for `{integer}` to `{float}`
-                    err.span_suggestion(
-                        expr.span,
+                    err.multipart_suggestion_verbose(
                         &format!(
                             "{}, producing the floating point representation of the integer,
                                  rounded if necessary",
@@ -1071,8 +1084,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (&ty::Float(ref exp), &ty::Int(ref found)) => {
                 // if `found` is `None` (meaning found is `isize`), don't suggest `.into()`
                 if exp.bit_width() > found.bit_width().unwrap_or(256) {
-                    err.span_suggestion(
-                        expr.span,
+                    err.multipart_suggestion_verbose(
                         &format!(
                             "{}, producing the floating point representation of the integer",
                             &msg,
@@ -1081,16 +1093,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Applicability::MachineApplicable,
                     );
                 } else if literal_is_ty_suffixed(expr) {
-                    err.span_suggestion(
-                        expr.span,
+                    err.multipart_suggestion_verbose(
                         &lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else {
                     // Missing try_into implementation for `{integer}` to `{float}`
-                    err.span_suggestion(
-                        expr.span,
+                    err.multipart_suggestion_verbose(
                         &format!(
                             "{}, producing the floating point representation of the integer, \
                                 rounded if necessary",

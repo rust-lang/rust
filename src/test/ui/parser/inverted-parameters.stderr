@@ -38,15 +38,15 @@ LL | fn fizz(i32) {}
 help: if this is a `self` type, give it a parameter name
    |
 LL | fn fizz(self: i32) {}
-   |         ~~~~~~~~~
+   |         +++++
 help: if this is a parameter name, give it a type
    |
 LL | fn fizz(i32: TypeName) {}
-   |         ~~~~~~~~~~~~~
+   |            ++++++++++
 help: if this is a type, explicitly ignore the parameter name
    |
 LL | fn fizz(_: i32) {}
-   |         ~~~~~~
+   |         ++
 
 error: expected one of `:`, `@`, or `|`, found `S`
   --> $DIR/inverted-parameters.rs:27:23

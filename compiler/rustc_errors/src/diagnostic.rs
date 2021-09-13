@@ -304,6 +304,21 @@ impl Diagnostic {
         )
     }
 
+    /// Show a suggestion that has multiple parts to it, always as it's own subdiagnostic.
+    /// In other words, multiple changes need to be applied as part of this suggestion.
+    pub fn multipart_suggestion_verbose(
+        &mut self,
+        msg: &str,
+        suggestion: Vec<(Span, String)>,
+        applicability: Applicability,
+    ) -> &mut Self {
+        self.multipart_suggestion_with_style(
+            msg,
+            suggestion,
+            applicability,
+            SuggestionStyle::ShowAlways,
+        )
+    }
     /// [`Diagnostic::multipart_suggestion()`] but you can set the [`SuggestionStyle`].
     pub fn multipart_suggestion_with_style(
         &mut self,

@@ -16,7 +16,7 @@ LL |     bar::<isize>(i);  // i should not be re-coerced back to an isize
 help: you can convert a `usize` to an `isize` and panic if the converted value doesn't fit
    |
 LL |     bar::<isize>(i.try_into().unwrap());  // i should not be re-coerced back to an isize
-   |                  ~~~~~~~~~~~~~~~~~~~~~
+   |                   ++++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

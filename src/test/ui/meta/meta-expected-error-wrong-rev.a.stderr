@@ -9,7 +9,7 @@ LL |     let x: u32 = 22_usize;
 help: change the type of the numeric literal from `usize` to `u32`
    |
 LL |     let x: u32 = 22_u32;
-   |                  ~~~~~~
+   |                     ~~~
 
 error: aborting due to previous error
 

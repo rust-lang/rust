@@ -1687,14 +1687,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             constraint=constraint,
                         ));
                     } else {
-                        err.span_suggestion(
-                            span,
+                        err.span_suggestion_verbose(
+                            span.with_hi(assoc_name.span.lo()),
                             "use fully qualified syntax to disambiguate",
                             format!(
-                                "<{} as {}>::{}",
+                                "<{} as {}>::",
                                 ty_param_name(),
                                 bound.print_only_trait_path(),
-                                assoc_name,
                             ),
                             Applicability::MaybeIncorrect,
                         );

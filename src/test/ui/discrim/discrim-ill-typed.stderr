@@ -7,7 +7,7 @@ LL |         OhNo = 0_u8,
 help: change the type of the numeric literal from `u8` to `i8`
    |
 LL |         OhNo = 0_i8,
-   |                ~~~~
+   |                  ~~
 
 error[E0308]: mismatched types
   --> $DIR/discrim-ill-typed.rs:28:16
@@ -18,7 +18,7 @@ LL |         OhNo = 0_i8,
 help: change the type of the numeric literal from `i8` to `u8`
    |
 LL |         OhNo = 0_u8,
-   |                ~~~~
+   |                  ~~
 
 error[E0308]: mismatched types
   --> $DIR/discrim-ill-typed.rs:41:16
@@ -29,7 +29,7 @@ LL |         OhNo = 0_u16,
 help: change the type of the numeric literal from `u16` to `i16`
    |
 LL |         OhNo = 0_i16,
-   |                ~~~~~
+   |                  ~~~
 
 error[E0308]: mismatched types
   --> $DIR/discrim-ill-typed.rs:54:16
@@ -40,7 +40,7 @@ LL |         OhNo = 0_i16,
 help: change the type of the numeric literal from `i16` to `u16`
    |
 LL |         OhNo = 0_u16,
-   |                ~~~~~
+   |                  ~~~
 
 error[E0308]: mismatched types
   --> $DIR/discrim-ill-typed.rs:67:16
@@ -51,7 +51,7 @@ LL |         OhNo = 0_u32,
 help: change the type of the numeric literal from `u32` to `i32`
    |
 LL |         OhNo = 0_i32,
-   |                ~~~~~
+   |                  ~~~
 
 error[E0308]: mismatched types
   --> $DIR/discrim-ill-typed.rs:80:16
@@ -62,7 +62,7 @@ LL |         OhNo = 0_i32,
 help: change the type of the numeric literal from `i32` to `u32`
    |
 LL |         OhNo = 0_u32,
-   |                ~~~~~
+   |                  ~~~
 
 error[E0308]: mismatched types
   --> $DIR/discrim-ill-typed.rs:93:16
@@ -73,7 +73,7 @@ LL |         OhNo = 0_u64,
 help: change the type of the numeric literal from `u64` to `i64`
    |
 LL |         OhNo = 0_i64,
-   |                ~~~~~
+   |                  ~~~
 
 error[E0308]: mismatched types
   --> $DIR/discrim-ill-typed.rs:106:16
@@ -84,7 +84,7 @@ LL |         OhNo = 0_i64,
 help: change the type of the numeric literal from `i64` to `u64`
    |
 LL |         OhNo = 0_u64,
-   |                ~~~~~
+   |                  ~~~
 
 error: aborting due to 8 previous errors
 

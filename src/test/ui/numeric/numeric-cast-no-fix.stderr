@@ -47,7 +47,7 @@ LL |     x_u8 > -1_isize;
 help: you can convert `x_u8` from `u8` to `isize`, matching the type of `-1_isize`
    |
 LL |     isize::from(x_u8) > -1_isize;
-   |     ~~~~~~~~~~~~~~~~~
+   |     ++++++++++++    +
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-no-fix.rs:23:15
@@ -74,7 +74,7 @@ LL |     x_u64 > -1_i128;
 help: you can convert `x_u64` from `u64` to `i128`, matching the type of `-1_i128`
    |
 LL |     i128::from(x_u64) > -1_i128;
-   |     ~~~~~~~~~~~~~~~~~
+   |     +++++++++++     +
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-no-fix.rs:29:13
@@ -85,7 +85,7 @@ LL |     x_u32 > -1_i128;
 help: you can convert `x_u32` from `u32` to `i128`, matching the type of `-1_i128`
    |
 LL |     i128::from(x_u32) > -1_i128;
-   |     ~~~~~~~~~~~~~~~~~
+   |     +++++++++++     +
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-no-fix.rs:31:13
@@ -96,7 +96,7 @@ LL |     x_u16 > -1_i128;
 help: you can convert `x_u16` from `u16` to `i128`, matching the type of `-1_i128`
    |
 LL |     i128::from(x_u16) > -1_i128;
-   |     ~~~~~~~~~~~~~~~~~
+   |     +++++++++++     +
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-no-fix.rs:33:12
@@ -107,7 +107,7 @@ LL |     x_u8 > -1_i128;
 help: you can convert `x_u8` from `u8` to `i128`, matching the type of `-1_i128`
    |
 LL |     i128::from(x_u8) > -1_i128;
-   |     ~~~~~~~~~~~~~~~~
+   |     +++++++++++    +
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-no-fix.rs:36:15
@@ -142,7 +142,7 @@ LL |     x_u32 > -1_i64;
 help: you can convert `x_u32` from `u32` to `i64`, matching the type of `-1_i64`
    |
 LL |     i64::from(x_u32) > -1_i64;
-   |     ~~~~~~~~~~~~~~~~
+   |     ++++++++++     +
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-no-fix.rs:44:13
@@ -153,7 +153,7 @@ LL |     x_u16 > -1_i64;
 help: you can convert `x_u16` from `u16` to `i64`, matching the type of `-1_i64`
    |
 LL |     i64::from(x_u16) > -1_i64;
-   |     ~~~~~~~~~~~~~~~~
+   |     ++++++++++     +
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-no-fix.rs:46:12
@@ -164,7 +164,7 @@ LL |     x_u8 > -1_i64;
 help: you can convert `x_u8` from `u8` to `i64`, matching the type of `-1_i64`
    |
 LL |     i64::from(x_u8) > -1_i64;
-   |     ~~~~~~~~~~~~~~~
+   |     ++++++++++    +
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-no-fix.rs:49:15
@@ -207,7 +207,7 @@ LL |     x_u16 > -1_i32;
 help: you can convert `x_u16` from `u16` to `i32`, matching the type of `-1_i32`
    |
 LL |     i32::from(x_u16) > -1_i32;
-   |     ~~~~~~~~~~~~~~~~
+   |     ++++++++++     +
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-no-fix.rs:59:12
@@ -218,7 +218,7 @@ LL |     x_u8 > -1_i32;
 help: you can convert `x_u8` from `u8` to `i32`, matching the type of `-1_i32`
    |
 LL |     i32::from(x_u8) > -1_i32;
-   |     ~~~~~~~~~~~~~~~
+   |     ++++++++++    +
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-no-fix.rs:62:15
@@ -269,7 +269,7 @@ LL |     x_u8 > -1_i16;
 help: you can convert `x_u8` from `u8` to `i16`, matching the type of `-1_i16`
    |
 LL |     i16::from(x_u8) > -1_i16;
-   |     ~~~~~~~~~~~~~~~
+   |     ++++++++++    +
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-no-fix.rs:75:15

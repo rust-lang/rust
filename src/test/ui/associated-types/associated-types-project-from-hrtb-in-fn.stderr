@@ -2,7 +2,12 @@ error[E0212]: cannot use the associated type of a trait with uninferred generic 
   --> $DIR/associated-types-project-from-hrtb-in-fn.rs:13:8
    |
 LL |     x: I::A)
-   |        ^^^^ help: use a fully qualified path with inferred lifetimes: `<I as Foo<&isize>>::A`
+   |        ^^^^
+   |
+help: use a fully qualified path with inferred lifetimes
+   |
+LL |     x: <I as Foo<&isize>>::A)
+   |        ~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

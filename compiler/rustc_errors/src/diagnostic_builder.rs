@@ -258,6 +258,20 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    /// See [`Diagnostic::multipart_suggestion()`].
+    pub fn multipart_suggestion_verbose(
+        &mut self,
+        msg: &str,
+        suggestion: Vec<(Span, String)>,
+        applicability: Applicability,
+    ) -> &mut Self {
+        if !self.0.allow_suggestions {
+            return self;
+        }
+        self.0.diagnostic.multipart_suggestion_verbose(msg, suggestion, applicability);
+        self
+    }
+
     /// See [`Diagnostic::tool_only_multipart_suggestion()`].
     pub fn tool_only_multipart_suggestion(
         &mut self,

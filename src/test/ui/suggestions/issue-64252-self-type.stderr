@@ -8,11 +8,11 @@ LL | pub fn foo(Box<Self>) { }
 help: if this is a `self` type, give it a parameter name
    |
 LL | pub fn foo(self: Box<Self>) { }
-   |            ~~~~~~~~~
+   |            +++++
 help: if this is a type, explicitly ignore the parameter name
    |
 LL | pub fn foo(_: Box<Self>) { }
-   |            ~~~~~~
+   |            ++
 
 error: expected one of `:`, `@`, or `|`, found `<`
   --> $DIR/issue-64252-self-type.rs:10:15
@@ -24,11 +24,11 @@ LL |     fn bar(Box<Self>) { }
 help: if this is a `self` type, give it a parameter name
    |
 LL |     fn bar(self: Box<Self>) { }
-   |            ~~~~~~~~~
+   |            +++++
 help: if this is a type, explicitly ignore the parameter name
    |
 LL |     fn bar(_: Box<Self>) { }
-   |            ~~~~~~
+   |            ++
 
 error: aborting due to 2 previous errors
 

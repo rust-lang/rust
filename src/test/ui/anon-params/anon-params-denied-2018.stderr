@@ -8,15 +8,15 @@ LL |     fn foo(i32);
 help: if this is a `self` type, give it a parameter name
    |
 LL |     fn foo(self: i32);
-   |            ~~~~~~~~~
+   |            +++++
 help: if this is a parameter name, give it a type
    |
 LL |     fn foo(i32: TypeName);
-   |            ~~~~~~~~~~~~~
+   |               ++++++++++
 help: if this is a type, explicitly ignore the parameter name
    |
 LL |     fn foo(_: i32);
-   |            ~~~~~~
+   |            ++
 
 error: expected one of `:`, `@`, or `|`, found `)`
   --> $DIR/anon-params-denied-2018.rs:9:29
@@ -28,7 +28,7 @@ LL |     fn foo_with_ref(&mut i32);
 help: if this is a `self` type, give it a parameter name
    |
 LL |     fn foo_with_ref(self: &mut i32);
-   |                     ~~~~~~~~~~~~~~
+   |                     +++++
 help: if this is a parameter name, give it a type
    |
 LL |     fn foo_with_ref(i32: &mut TypeName);
@@ -36,7 +36,7 @@ LL |     fn foo_with_ref(i32: &mut TypeName);
 help: if this is a type, explicitly ignore the parameter name
    |
 LL |     fn foo_with_ref(_: &mut i32);
-   |                     ~~~~~~~~~~~
+   |                     ++
 
 error: expected one of `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
   --> $DIR/anon-params-denied-2018.rs:12:47
@@ -96,15 +96,15 @@ LL |     fn bar_with_default_impl(String, String) {}
 help: if this is a `self` type, give it a parameter name
    |
 LL |     fn bar_with_default_impl(self: String, String) {}
-   |                              ~~~~~~~~~~~~
+   |                              +++++
 help: if this is a parameter name, give it a type
    |
 LL |     fn bar_with_default_impl(String: TypeName, String) {}
-   |                              ~~~~~~~~~~~~~~~~
+   |                                    ++++++++++
 help: if this is a type, explicitly ignore the parameter name
    |
 LL |     fn bar_with_default_impl(_: String, String) {}
-   |                              ~~~~~~~~~
+   |                              ++
 
 error: expected one of `:`, `@`, or `|`, found `)`
   --> $DIR/anon-params-denied-2018.rs:22:44
@@ -116,11 +116,11 @@ LL |     fn bar_with_default_impl(String, String) {}
 help: if this is a parameter name, give it a type
    |
 LL |     fn bar_with_default_impl(String, String: TypeName) {}
-   |                                      ~~~~~~~~~~~~~~~~
+   |                                            ++++++++++
 help: if this is a type, explicitly ignore the parameter name
    |
 LL |     fn bar_with_default_impl(String, _: String) {}
-   |                                      ~~~~~~~~~
+   |                                      ++
 
 error: expected one of `:`, `@`, or `|`, found `,`
   --> $DIR/anon-params-denied-2018.rs:27:22
@@ -132,11 +132,11 @@ LL |     fn baz(a:usize, b, c: usize) -> usize {
 help: if this is a parameter name, give it a type
    |
 LL |     fn baz(a:usize, b: TypeName, c: usize) -> usize {
-   |                     ~~~~~~~~~~~
+   |                      ++++++++++
 help: if this is a type, explicitly ignore the parameter name
    |
 LL |     fn baz(a:usize, _: b, c: usize) -> usize {
-   |                     ~~~~
+   |                     ++
 
 error: aborting due to 9 previous errors
 
