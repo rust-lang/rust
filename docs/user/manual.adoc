@@ -1,3 +1,5 @@
+// IMPORTANT: the master copy of this document lives in the https://github.com/rust-analyzer/rust-analyzer repository
+
 = User Manual
 :toc: preamble
 :sectanchors:
@@ -623,7 +625,7 @@ Note that calls to `cargo check` are disabled when using `rust-project.json` by 
 { "rust-analyzer.checkOnSave.overrideCommand": ["cargo", "check", "--message-format=json"] }
 ----
 
-The `checkOnSave.overrideCommand` requires the command specified to output json error messages for rust-analyzer to consume. The `--message-format=json` flag does this for `cargo check` so whichever command you use must also output errors in this format. See the <<Configuration>> section for more information. 
+The `checkOnSave.overrideCommand` requires the command specified to output json error messages for rust-analyzer to consume. The `--message-format=json` flag does this for `cargo check` so whichever command you use must also output errors in this format. See the <<Configuration>> section for more information.
 
 == Security
 

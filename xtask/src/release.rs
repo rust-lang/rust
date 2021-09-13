@@ -45,7 +45,7 @@ impl flags::Release {
             let src = project_root().join("./docs/user/").join(adoc);
             let dst = website_root.join(adoc);
 
-            let contents = read_file(src)?.replace("\n\n===", "\n\n// IMPORTANT: master copy of this document lives in the https://github.com/rust-analyzer/rust-analyzer repository\n\n==");
+            let contents = read_file(src)?;
             write_file(dst, contents)?;
         }
 
