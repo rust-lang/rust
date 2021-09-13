@@ -1004,7 +1004,10 @@ LLVMRustOptimizeWithNewPassManager(
 #endif
   bool NeedThinLTOBufferPasses = UseThinLTOBuffers;
   if (!NoPrepopulatePasses) {
-    if (OptLevel == OptimizationLevel::O0) {
+    // The pre-link pipelines don't support O0 and require using budilO0DefaultPipeline() instead.
+    // At the same time, the LTO pipelines do support O0 and using them is required.
+    bool IsLTO = OptStage == LLVMRustOptStage::ThinLTO || OptStage == LLVMRustOptStage::FatLTO;
+    if (OptLevel == OptimizationLevel::O0 && !IsLTO) {
 #if LLVM_VERSION_GE(12, 0)
       for (const auto &C : PipelineStartEPCallbacks)
         PB.registerPipelineStartEPCallback(C);
