@@ -221,6 +221,29 @@ mod tests {
     }
 
     #[test]
+    fn goto_def_in_mac_call_in_attr_invoc() {
+        check(
+            r#"
+//- proc_macros: identity
+pub struct Struct {
+        // ^^^^^^
+    field: i32,
+}
+
+macro_rules! identity {
+    ($($tt:tt)*) => {$($tt)*};
+}
+
+#[proc_macros::identity]
+fn function() {
+    identity!(Struct$0 { field: 0 });
+}
+
+"#,
+        )
+    }
+
+    #[test]
     fn goto_def_for_extern_crate() {
         check(
             r#"
