@@ -1278,6 +1278,36 @@ where
         }
     }
 
+    /// Insert a key-value pair into the map without checking
+    /// if the key already exists in the map.
+    ///
+    /// Returns a reference to the key and value just inserted.
+    ///
+    /// This operation is safe if a key does not exist in the map.
+    ///
+    /// However, if a key exists in the map already, the behavior is unspecified:
+    /// this operation may panic, loop forever, or any following operation with the map
+    /// may panic, loop forever or return arbitrary result.
+    ///
+    /// That said, this operation (and following operations) are guaranteed to
+    /// not violate memory safety.
+    ///
+    /// This operation is faster than regular insert, because it does not perform
+    /// lookup before insertion.
+    ///
+    /// This operation is useful during initial population of the map.
+    /// For example, when constructing a map from another map, we know
+    /// that keys are unique.
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn insert_unique_unchecked(&mut self, k: K, v: V) -> (&K, &mut V) {
+        let hash = make_insert_hash::<K, S>(&self.hash_builder, &k);
+        let bucket = self
+            .table
+            .insert(hash, (k, v), make_hasher::<K, _, V, S>(&self.hash_builder));
+        let (k_ref, v_ref) = unsafe { bucket.as_mut() };
+        (k_ref, v_ref)
+    }
+
     /// Tries to insert a key-value pair into the map, and returns
     /// a mutable reference to the value in the entry.
     ///
@@ -3896,6 +3926,18 @@ mod test_map {
         assert!(m.remove(&1).is_some());
         assert_eq!(*m.get(&9).unwrap(), 4);
         assert_eq!(*m.get(&5).unwrap(), 3);
+    }
+
+    #[test]
+    fn test_insert_unique_unchecked() {
+        let mut map = HashMap::new();
+        let (k1, v1) = map.insert_unique_unchecked(10, 11);
+        assert_eq!((&10, &mut 11), (k1, v1));
+        let (k2, v2) = map.insert_unique_unchecked(20, 21);
+        assert_eq!((&20, &mut 21), (k2, v2));
+        assert_eq!(Some(&11), map.get(&10));
+        assert_eq!(Some(&21), map.get(&20));
+        assert_eq!(None, map.get(&30));
     }
 
     #[test]
