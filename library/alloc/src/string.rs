@@ -1834,10 +1834,14 @@ impl fmt::Display for FromUtf16Error {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Clone for String {
+    // Not marking it inline causes worse assembly to be generated.
+    // https://github.com/rust-lang/rust/issues/88905
+    #[inline]
     fn clone(&self) -> Self {
         String { vec: self.vec.clone() }
     }
 
+    #[inline]
     fn clone_from(&mut self, source: &Self) {
         self.vec.clone_from(&source.vec);
     }
