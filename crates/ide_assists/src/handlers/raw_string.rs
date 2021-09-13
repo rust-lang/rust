@@ -35,7 +35,7 @@ pub(crate) fn make_raw_string(acc: &mut Assists, ctx: &AssistContext) -> Option<
             if matches!(value, Cow::Borrowed(_)) {
                 // Avoid replacing the whole string to better position the cursor.
                 edit.insert(token.syntax().text_range().start(), format!("r{}", hashes));
-                edit.insert(token.syntax().text_range().end(), format!("{}", hashes));
+                edit.insert(token.syntax().text_range().end(), hashes);
             } else {
                 edit.replace(
                     token.syntax().text_range(),

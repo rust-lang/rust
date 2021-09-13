@@ -198,7 +198,7 @@ fn option_variants(
     sema: &Semantics<RootDatabase>,
     expr: &SyntaxNode,
 ) -> Option<(hir::Variant, hir::Variant)> {
-    let fam = FamousDefs(&sema, sema.scope(expr).krate());
+    let fam = FamousDefs(sema, sema.scope(expr).krate());
     let option_variants = fam.core_option_Option()?.variants(sema.db);
     match &*option_variants {
         &[variant0, variant1] => Some(if variant0.name(sema.db) == known::None {
@@ -224,7 +224,7 @@ fn is_invalid_body(
         invalid
     });
     if !invalid {
-        for_each_tail_expr(&expr, &mut |e| {
+        for_each_tail_expr(expr, &mut |e| {
             if invalid {
                 return;
             }

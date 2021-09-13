@@ -137,7 +137,7 @@ fn process_usage(
         return Some(range_to_remove(arg.syntax()));
     }
 
-    return None;
+    None
 }
 
 fn range_to_remove(node: &SyntaxNode) -> TextRange {

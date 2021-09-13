@@ -77,7 +77,7 @@ fn generate_fn_def_assist(
             })
             .collect();
         match fn_params_without_lifetime.len() {
-            1 => Some(fn_params_without_lifetime.into_iter().nth(0)?),
+            1 => Some(fn_params_without_lifetime.into_iter().next()?),
             0 => None,
             // multiple unnnamed is invalid. assist is not applicable
             _ => return None,
@@ -93,8 +93,9 @@ fn generate_fn_def_assist(
             make::lifetime_param(new_lifetime_param.clone()).clone_for_update().into(),
         );
         ted::replace(lifetime.syntax(), new_lifetime_param.clone_for_update().syntax());
-        loc_needing_lifetime
-            .map(|position| ted::insert(position, new_lifetime_param.clone_for_update().syntax()));
+        if let Some(position) = loc_needing_lifetime {
+            ted::insert(position, new_lifetime_param.clone_for_update().syntax());
+        }
     })
 }
 

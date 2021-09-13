@@ -227,14 +227,12 @@ fn find_imported_defs(ctx: &AssistContext, star: SyntaxToken) -> Option<Vec<Def>
     Some(
         [Direction::Prev, Direction::Next]
             .iter()
-            .map(|dir| {
+            .flat_map(|dir| {
                 parent_use_item_syntax
                     .siblings(dir.to_owned())
                     .filter(|n| ast::Use::can_cast(n.kind()))
             })
-            .flatten()
-            .filter_map(|n| Some(n.descendants().filter_map(ast::NameRef::cast)))
-            .flatten()
+            .flat_map(|n| n.descendants().filter_map(ast::NameRef::cast))
             .filter_map(|r| match NameRefClass::classify(&ctx.sema, &r)? {
                 NameRefClass::Definition(Definition::ModuleDef(def)) => Some(Def::ModuleDef(def)),
                 NameRefClass::Definition(Definition::Macro(def)) => Some(Def::MacroDef(def)),

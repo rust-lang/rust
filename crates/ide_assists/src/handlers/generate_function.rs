@@ -109,7 +109,7 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     };
     let function_builder = FunctionBuilder::from_call(ctx, &call, &path, target_module, target)?;
     let text_range = call.syntax().text_range();
-    let label = format!("Generate {} function", function_builder.fn_name.clone());
+    let label = format!("Generate {} function", function_builder.fn_name);
     add_func_to_accumulator(
         acc,
         ctx,
@@ -139,7 +139,7 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         FunctionBuilder::from_method_call(ctx, &call, &fn_name, target_module, target)?;
     let text_range = call.syntax().text_range();
     let adt_name = if impl_.is_none() { Some(adt.name(ctx.sema.db)) } else { None };
-    let label = format!("Generate {} method", function_builder.fn_name.clone());
+    let label = format!("Generate {} method", function_builder.fn_name);
     add_func_to_accumulator(
         acc,
         ctx,
@@ -369,7 +369,7 @@ fn make_return_type(
             }
         }
     };
-    let ret_type = ret_ty.map(|rt| make::ret_type(rt));
+    let ret_type = ret_ty.map(make::ret_type);
     (ret_type, should_focus_return_type)
 }
 
@@ -386,7 +386,7 @@ fn get_fn_target(
             file = in_file;
             target
         }
-        None => next_space_for_fn_after_call_site(FuncExpr::Func(call.clone()))?,
+        None => next_space_for_fn_after_call_site(FuncExpr::Func(call))?,
     };
     Some((target.clone(), file, get_insert_offset(&target)))
 }
@@ -397,7 +397,7 @@ fn get_method_target(
     impl_: &Option<ast::Impl>,
 ) -> Option<(GeneratedFunctionTarget, TextSize)> {
     let target = match impl_ {
-        Some(impl_) => next_space_for_fn_in_impl(&impl_)?,
+        Some(impl_) => next_space_for_fn_in_impl(impl_)?,
         None => {
             next_space_for_fn_in_module(ctx.sema.db, &target_module.definition_source(ctx.sema.db))?
                 .1
@@ -448,7 +448,7 @@ fn fn_args(
         });
         arg_types.push(match fn_arg_type(ctx, target_module, &arg) {
             Some(ty) => {
-                if ty.len() > 0 && ty.starts_with('&') {
+                if !ty.is_empty() && ty.starts_with('&') {
                     if let Some((new_ty, _)) = useless_type_special_case("", &ty[1..].to_owned()) {
                         new_ty
                     } else {

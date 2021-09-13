@@ -126,7 +126,7 @@ fn make_else_arm(
     if let Some(else_block) = else_block {
         let pattern = if let [(Either::Left(pat), _)] = conditionals {
             ctx.sema
-                .type_of_pat(&pat)
+                .type_of_pat(pat)
                 .and_then(|ty| TryEnum::from_ty(&ctx.sema, &ty.adjusted()))
                 .zip(Some(pat))
         } else {
@@ -134,7 +134,7 @@ fn make_else_arm(
         };
         let pattern = match pattern {
             Some((it, pat)) => {
-                if does_pat_match_variant(&pat, &it.sad_pattern()) {
+                if does_pat_match_variant(pat, &it.sad_pattern()) {
                     it.happy_pattern()
                 } else {
                     it.sad_pattern()
@@ -144,7 +144,7 @@ fn make_else_arm(
         };
         make::match_arm(iter::once(pattern), None, unwrap_trivial_block(else_block))
     } else {
-        make::match_arm(iter::once(make::wildcard_pat().into()), None, make::expr_unit().into())
+        make::match_arm(iter::once(make::wildcard_pat().into()), None, make::expr_unit())
     }
 }
 
@@ -257,7 +257,7 @@ fn is_empty_expr(expr: &ast::Expr) -> bool {
 }
 
 fn binds_name(sema: &hir::Semantics<RootDatabase>, pat: &ast::Pat) -> bool {
-    let binds_name_v = |pat| binds_name(&sema, &pat);
+    let binds_name_v = |pat| binds_name(sema, &pat);
     match pat {
         ast::Pat::IdentPat(pat) => !matches!(
             pat.name().and_then(|name| NameClass::classify(sema, &name)),

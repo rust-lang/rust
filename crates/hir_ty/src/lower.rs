@@ -410,52 +410,60 @@ impl<'a> TyLoweringContext<'a> {
     ) -> (Ty, Option<TypeNs>) {
         let ty = match resolution {
             TypeNs::TraitId(trait_) => {
-                let ty = if remaining_segments.len() == 1 {
-                    let trait_ref =
-                        self.lower_trait_ref_from_resolved_path(trait_, resolved_segment, None);
-                    let segment = remaining_segments.first().unwrap();
-                    let found = self
-                        .db
-                        .trait_data(trait_ref.hir_trait_id())
-                        .associated_type_by_name(segment.name);
-                    match found {
-                        Some(associated_ty) => {
-                            // FIXME handle type parameters on the segment
-                            TyKind::Alias(AliasTy::Projection(ProjectionTy {
-                                associated_ty_id: to_assoc_type_id(associated_ty),
-                                substitution: trait_ref.substitution,
-                            }))
-                            .intern(&Interner)
-                        }
-                        None => {
-                            // FIXME: report error (associated type not found)
-                            TyKind::Error.intern(&Interner)
+                let ty = match remaining_segments.len() {
+                    1 => {
+                        let trait_ref =
+                            self.lower_trait_ref_from_resolved_path(trait_, resolved_segment, None);
+                        let segment = remaining_segments.first().unwrap();
+                        let found = self
+                            .db
+                            .trait_data(trait_ref.hir_trait_id())
+                            .associated_type_by_name(segment.name);
+                        match found {
+                            Some(associated_ty) => {
+                                // FIXME handle type parameters on the segment
+                                TyKind::Alias(AliasTy::Projection(ProjectionTy {
+                                    associated_ty_id: to_assoc_type_id(associated_ty),
+                                    substitution: trait_ref.substitution,
+                                }))
+                                .intern(&Interner)
+                            }
+                            None => {
+                                // FIXME: report error (associated type not found)
+                                TyKind::Error.intern(&Interner)
+                            }
                         }
                     }
-                } else if remaining_segments.len() > 1 {
-                    // FIXME report error (ambiguous associated type)
-                    TyKind::Error.intern(&Interner)
-                } else {
-                    let self_ty = Some(
-                        TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
-                            .intern(&Interner),
-                    );
-                    let trait_ref = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
-                        ctx.lower_trait_ref_from_resolved_path(trait_, resolved_segment, self_ty)
-                    });
-                    let dyn_ty = DynTy {
-                        bounds: crate::make_only_type_binders(
-                            1,
-                            QuantifiedWhereClauses::from_iter(
-                                &Interner,
-                                Some(crate::wrap_empty_binders(WhereClause::Implemented(
-                                    trait_ref,
-                                ))),
+                    0 => {
+                        let self_ty = Some(
+                            TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
+                                .intern(&Interner),
+                        );
+                        let trait_ref = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
+                            ctx.lower_trait_ref_from_resolved_path(
+                                trait_,
+                                resolved_segment,
+                                self_ty,
+                            )
+                        });
+                        let dyn_ty = DynTy {
+                            bounds: crate::make_only_type_binders(
+                                1,
+                                QuantifiedWhereClauses::from_iter(
+                                    &Interner,
+                                    Some(crate::wrap_empty_binders(WhereClause::Implemented(
+                                        trait_ref,
+                                    ))),
+                                ),
                             ),
-                        ),
-                        lifetime: static_lifetime(),
-                    };
-                    TyKind::Dyn(dyn_ty).intern(&Interner)
+                            lifetime: static_lifetime(),
+                        };
+                        TyKind::Dyn(dyn_ty).intern(&Interner)
+                    }
+                    _ => {
+                        // FIXME report error (ambiguous associated type)
+                        TyKind::Error.intern(&Interner)
+                    }
                 };
                 return (ty, None);
             }

@@ -130,7 +130,7 @@ impl ProcMacroServer {
                 .into_iter()
                 .map(|(name, kind)| ProcMacro {
                     process: self.process.clone(),
-                    name: name.into(),
+                    name,
                     kind,
                     dylib_path: dylib.path.clone(),
                 })
