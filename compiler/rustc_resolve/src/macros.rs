@@ -305,7 +305,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
                 fast_print_path(path),
                 res.opt_def_id(),
                 res.opt_def_id().map(|macro_def_id| {
-                    self.macro_def_scope_from_def_id(macro_def_id).nearest_parent_mod
+                    self.macro_def_scope_from_def_id(macro_def_id).nearest_parent_mod()
                 }),
             ),
             self.create_stable_hashing_context(),

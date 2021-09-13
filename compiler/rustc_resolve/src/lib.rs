@@ -505,10 +505,6 @@ pub struct ModuleData<'a> {
     /// What kind of module this is, because this may not be a `mod`.
     kind: ModuleKind,
 
-    /// The [`DefId`] of the nearest `mod` item ancestor (which may be this module).
-    /// This may be the crate root.
-    nearest_parent_mod: DefId,
-
     /// Mapping between names and their (possibly in-progress) resolutions in this module.
     /// Resolutions in modules from other crates are not populated until accessed.
     lazy_resolutions: Resolutions<'a>,
@@ -536,19 +532,16 @@ pub struct ModuleData<'a> {
 type Module<'a> = &'a ModuleData<'a>;
 
 impl<'a> ModuleData<'a> {
-    fn new(
-        parent: Option<Module<'a>>,
-        kind: ModuleKind,
-        nearest_parent_mod: DefId,
-        expansion: ExpnId,
-        span: Span,
-    ) -> Self {
+    fn new(parent: Option<Module<'a>>, kind: ModuleKind, expansion: ExpnId, span: Span) -> Self {
+        let is_foreign = match kind {
+            ModuleKind::Def(_, def_id, _) => !def_id.is_local(),
+            ModuleKind::Block(_) => false,
+        };
         ModuleData {
             parent,
             kind,
-            nearest_parent_mod,
             lazy_resolutions: Default::default(),
-            populate_on_access: Cell::new(!nearest_parent_mod.is_local()),
+            populate_on_access: Cell::new(is_foreign),
             unexpanded_invocations: Default::default(),
             no_implicit_prelude: false,
             glob_importers: RefCell::new(Vec::new()),
@@ -556,6 +549,13 @@ impl<'a> ModuleData<'a> {
             traits: RefCell::new(None),
             span,
             expansion,
+        }
+    }
+
+    fn nearest_parent_mod(&self) -> DefId {
+        match self.kind {
+            ModuleKind::Def(DefKind::Mod, def_id, _) => def_id,
+            _ => self.parent.expect("non-root module without parent").nearest_parent_mod(),
         }
     }
 
@@ -1260,18 +1260,12 @@ impl<'a> Resolver<'a> {
         let root_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty);
         let graph_root = arenas.alloc_module(ModuleData {
             no_implicit_prelude: session.contains_name(&krate.attrs, sym::no_implicit_prelude),
-            ..ModuleData::new(None, root_module_kind, root_def_id, ExpnId::root(), krate.span)
+            ..ModuleData::new(None, root_module_kind, ExpnId::root(), krate.span)
         });
         let empty_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty);
         let empty_module = arenas.alloc_module(ModuleData {
             no_implicit_prelude: true,
-            ..ModuleData::new(
-                Some(graph_root),
-                empty_module_kind,
-                root_def_id,
-                ExpnId::root(),
-                DUMMY_SP,
-            )
+            ..ModuleData::new(Some(graph_root), empty_module_kind, ExpnId::root(), DUMMY_SP)
         });
         let mut module_map = FxHashMap::default();
         module_map.insert(root_local_def_id, graph_root);
@@ -1636,11 +1630,10 @@ impl<'a> Resolver<'a> {
         &self,
         parent: Module<'a>,
         kind: ModuleKind,
-        nearest_parent_mod: DefId,
         expn_id: ExpnId,
         span: Span,
     ) -> Module<'a> {
-        let module = ModuleData::new(Some(parent), kind, nearest_parent_mod, expn_id, span);
+        let module = ModuleData::new(Some(parent), kind, expn_id, span);
         self.arenas.alloc_module(module)
     }
 
@@ -2167,7 +2160,8 @@ impl<'a> Resolver<'a> {
                 return self.graph_root;
             }
         };
-        let module = self.get_module(DefId { index: CRATE_DEF_INDEX, ..module.nearest_parent_mod });
+        let module =
+            self.get_module(DefId { index: CRATE_DEF_INDEX, ..module.nearest_parent_mod() });
         debug!(
             "resolve_crate_root({:?}): got module {:?} ({:?}) (ident.span = {:?})",
             ident,
@@ -2179,10 +2173,10 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_self(&mut self, ctxt: &mut SyntaxContext, module: Module<'a>) -> Module<'a> {
-        let mut module = self.get_module(module.nearest_parent_mod);
+        let mut module = self.get_module(module.nearest_parent_mod());
         while module.span.ctxt().normalize_to_macros_2_0() != *ctxt {
             let parent = module.parent.unwrap_or_else(|| self.macro_def_scope(ctxt.remove_mark()));
-            module = self.get_module(parent.nearest_parent_mod);
+            module = self.get_module(parent.nearest_parent_mod());
         }
         module
     }
@@ -2896,7 +2890,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn is_accessible_from(&self, vis: ty::Visibility, module: Module<'a>) -> bool {
-        vis.is_accessible_from(module.nearest_parent_mod, self)
+        vis.is_accessible_from(module.nearest_parent_mod(), self)
     }
 
     fn set_binding_parent_module(&mut self, binding: &'a NameBinding<'a>, module: Module<'a>) {
@@ -2920,7 +2914,7 @@ impl<'a> Resolver<'a> {
             self.binding_parent_modules.get(&PtrKey(modularized)),
         ) {
             (Some(macro_rules), Some(modularized)) => {
-                macro_rules.nearest_parent_mod == modularized.nearest_parent_mod
+                macro_rules.nearest_parent_mod() == modularized.nearest_parent_mod()
                     && modularized.is_ancestor_of(macro_rules)
             }
             _ => false,
