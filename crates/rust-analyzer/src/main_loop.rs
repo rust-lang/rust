@@ -21,7 +21,7 @@ use crate::{
     handlers, lsp_ext,
     lsp_utils::{apply_document_changes, is_cancelled, notification_is, Progress},
     mem_docs::DocumentData,
-    reload::{BuildDataProgress, ProjectWorkspaceProgress},
+    reload::{self, BuildDataProgress, ProjectWorkspaceProgress},
     Result,
 };
 
@@ -693,7 +693,9 @@ impl GlobalState {
                     flycheck.update();
                 }
                 if let Ok(abs_path) = from_proto::abs_path(&params.text_document.uri) {
-                    this.maybe_refresh(&[(abs_path, ChangeKind::Modify)]);
+                    if reload::should_refresh_for_change(&abs_path, ChangeKind::Modify) {
+                        this.fetch_workspaces_queue.request_op();
+                    }
                 }
                 Ok(())
             })?

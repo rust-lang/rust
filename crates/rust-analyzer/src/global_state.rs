@@ -25,7 +25,7 @@ use crate::{
     main_loop::Task,
     mem_docs::MemDocs,
     op_queue::OpQueue,
-    reload::SourceRootConfig,
+    reload::{self, SourceRootConfig},
     thread_pool::TaskPool,
     to_proto::url_from_abs_path,
     Result,
@@ -175,7 +175,8 @@ impl GlobalState {
     pub(crate) fn process_changes(&mut self) -> bool {
         let _p = profile::span("GlobalState::process_changes");
         let mut fs_changes = Vec::new();
-        let mut has_fs_changes = false;
+        // A file was added or deleted
+        let mut has_structure_changes = false;
 
         let change = {
             let mut change = Change::new();
@@ -186,10 +187,14 @@ impl GlobalState {
             }
 
             for file in changed_files {
-                if file.is_created_or_deleted() {
-                    if let Some(path) = vfs.file_path(file.file_id).as_path() {
-                        fs_changes.push((path.to_path_buf(), file.change_kind));
-                        has_fs_changes = true;
+                if let Some(path) = vfs.file_path(file.file_id).as_path() {
+                    let path = path.to_path_buf();
+                    if reload::should_refresh_for_change(&path, file.change_kind) {
+                        self.fetch_workspaces_queue.request_op();
+                    }
+                    fs_changes.push((path, file.change_kind));
+                    if file.is_created_or_deleted() {
+                        has_structure_changes = true;
                     }
                 }
 
@@ -208,7 +213,7 @@ impl GlobalState {
                 };
                 change.change_file(file.file_id, text);
             }
-            if has_fs_changes {
+            if has_structure_changes {
                 let roots = self.source_root_config.partition(vfs);
                 change.set_roots(roots);
             }
@@ -216,7 +221,6 @@ impl GlobalState {
         };
 
         self.analysis_host.apply_change(change);
-        self.maybe_refresh(&fs_changes);
         true
     }
 
