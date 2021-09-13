@@ -190,20 +190,16 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         let scrut_ty = self.typeck_results.expr_ty_adjusted(scrut);
         let report = compute_match_usefulness(&cx, &arms, scrut.hir_id, scrut_ty);
 
-        report_arm_reachability(&cx, &report, |arm_span, arm_hir_id, catchall| {
-            match source {
-                hir::MatchSource::ForLoopDesugar | hir::MatchSource::Normal => {
-                    unreachable_pattern(cx.tcx, arm_span, arm_hir_id, catchall);
-                }
-                // Unreachable patterns in try and await expressions occur when one of
-                // the arms are an uninhabited type. Which is OK.
-                hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar => {}
+        match source {
+            hir::MatchSource::ForLoopDesugar | hir::MatchSource::Normal => {
+                report_arm_reachability(&cx, &report)
             }
-        });
+            // Unreachable patterns in try and await expressions occur when one of
+            // the arms are an uninhabited type. Which is OK.
+            hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar => {}
+        }
 
         // Check if the match is exhaustive.
-        // Note: An empty match isn't the same as an empty matrix for diagnostics purposes,
-        // since an empty matrix can occur when there are arms, if those arms all have guards.
         let is_empty_match = arms.is_empty();
         let witnesses = report.non_exhaustiveness_witnesses;
         if !witnesses.is_empty() {
@@ -434,9 +430,10 @@ fn check_let_reachability<'p, 'tcx>(
     let arms = [MatchArm { pat, hir_id: pat_id, has_guard: false }];
     let report = compute_match_usefulness(&cx, &arms, pat_id, pat.ty);
 
-    report_arm_reachability(&cx, &report, |arm_span, arm_hir_id, _| {
-        unreachable_pattern(cx.tcx, arm_span, arm_hir_id, None)
-    });
+    // Report if the pattern is unreachable, which can only occur when the type is uninhabited.
+    // This also reports unreachable sub-patterns though, so we can't just replace it with an
+    // `is_uninhabited` check.
+    report_arm_reachability(&cx, &report);
 
     if report.non_exhaustiveness_witnesses.is_empty() {
         // The match is exhaustive, i.e. the `if let` pattern is irrefutable.
@@ -445,18 +442,15 @@ fn check_let_reachability<'p, 'tcx>(
 }
 
 /// Report unreachable arms, if any.
-fn report_arm_reachability<'p, 'tcx, F>(
+fn report_arm_reachability<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     report: &UsefulnessReport<'p, 'tcx>,
-    unreachable: F,
-) where
-    F: Fn(Span, HirId, Option<Span>),
-{
+) {
     use Reachability::*;
     let mut catchall = None;
     for (arm, is_useful) in report.arm_usefulness.iter() {
         match is_useful {
-            Unreachable => unreachable(arm.pat.span, arm.hir_id, catchall),
+            Unreachable => unreachable_pattern(cx.tcx, arm.pat.span, arm.hir_id, catchall),
             Reachable(unreachables) if unreachables.is_empty() => {}
             // The arm is reachable, but contains unreachable subpatterns (from or-patterns).
             Reachable(unreachables) => {
