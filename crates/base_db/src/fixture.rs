@@ -6,11 +6,13 @@ use rustc_hash::FxHashMap;
 use test_utils::{
     extract_range_or_offset, Fixture, RangeOrOffset, CURSOR_MARKER, ESCAPED_CURSOR_MARKER,
 };
+use tt::Subtree;
 use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
     input::CrateName, Change, CrateDisplayName, CrateGraph, CrateId, Edition, Env, FileId,
-    FilePosition, FileRange, SourceDatabaseExt, SourceRoot, SourceRootId,
+    FilePosition, FileRange, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
+    SourceDatabaseExt, SourceRoot, SourceRootId,
 };
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
@@ -81,7 +83,7 @@ pub struct ChangeFixture {
 
 impl ChangeFixture {
     pub fn parse(ra_fixture: &str) -> ChangeFixture {
-        let (mini_core, fixture) = Fixture::parse(ra_fixture);
+        let (mini_core, proc_macros, fixture) = Fixture::parse(ra_fixture);
         let mut change = Change::new();
 
         let mut files = Vec::new();
@@ -203,6 +205,39 @@ impl ChangeFixture {
                 crate_graph.add_dep(krate, CrateName::new("core").unwrap(), core_crate).unwrap();
             }
         }
+
+        if !proc_macros.is_empty() {
+            let proc_lib_file = file_id;
+            file_id.0 += 1;
+
+            let mut fs = FileSet::default();
+            fs.insert(
+                proc_lib_file,
+                VfsPath::new_virtual_path("/sysroot/proc_macros/lib.rs".to_string()),
+            );
+            roots.push(SourceRoot::new_library(fs));
+
+            change.change_file(proc_lib_file, Some(Arc::new(String::new())));
+
+            let all_crates = crate_graph.crates_in_topological_order();
+
+            let proc_macros_crate = crate_graph.add_crate_root(
+                proc_lib_file,
+                Edition::Edition2021,
+                Some(CrateDisplayName::from_canonical_name("proc_macros".to_string())),
+                CfgOptions::default(),
+                CfgOptions::default(),
+                Env::default(),
+                test_proc_macros(&proc_macros),
+            );
+
+            for krate in all_crates {
+                crate_graph
+                    .add_dep(krate, CrateName::new("proc_macros").unwrap(), proc_macros_crate)
+                    .unwrap();
+            }
+        }
+
         let root = match current_source_root_kind {
             SourceRootKind::Local => SourceRoot::new_local(mem::take(&mut file_set)),
             SourceRootKind::Library => SourceRoot::new_library(mem::take(&mut file_set)),
@@ -213,6 +248,16 @@ impl ChangeFixture {
 
         ChangeFixture { file_position, files, change }
     }
+}
+
+fn test_proc_macros(proc_macros: &[String]) -> Vec<ProcMacro> {
+    std::array::IntoIter::new([ProcMacro {
+        name: "identity".into(),
+        kind: crate::ProcMacroKind::Attr,
+        expander: Arc::new(IdentityProcMacroExpander),
+    }])
+    .filter(|pm| proc_macros.iter().any(|name| name == &pm.name))
+    .collect()
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -251,5 +296,18 @@ impl From<Fixture> for FileMeta {
                 invalid => panic!("invalid source root kind '{}'", invalid),
             }),
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct IdentityProcMacroExpander;
+impl ProcMacroExpander for IdentityProcMacroExpander {
+    fn expand(
+        &self,
+        subtree: &Subtree,
+        _: Option<&Subtree>,
+        _: &Env,
+    ) -> Result<Subtree, ProcMacroExpansionError> {
+        Ok(subtree.clone())
     }
 }

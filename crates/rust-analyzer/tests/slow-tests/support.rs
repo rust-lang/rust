@@ -78,7 +78,8 @@ impl<'a> Project<'a> {
             profile::init_from(crate::PROFILE);
         });
 
-        let (mini_core, fixtures) = Fixture::parse(self.fixture);
+        let (mini_core, proc_macros, fixtures) = Fixture::parse(self.fixture);
+        assert!(proc_macros.is_empty());
         assert!(mini_core.is_none());
         for entry in fixtures {
             let path = tmp_dir.path().join(&entry.path['/'.len_utf8()..]);

@@ -92,19 +92,32 @@ impl Fixture {
     ///  //- other meta
     ///  ```
     ///
-    /// Fixture can also start with a minicore declaration:
+    /// Fixture can also start with a proc_macros and minicore declaration(in that order):
     ///
     /// ```
+    /// //- proc_macros: identity
     /// //- minicore: sized
     /// ```
     ///
-    /// That will include a subset of `libcore` into the fixture, see
+    /// That will include predefined proc macros and a subset of `libcore` into the fixture, see
     /// `minicore.rs` for what's available.
-    pub fn parse(ra_fixture: &str) -> (Option<MiniCore>, Vec<Fixture>) {
+    pub fn parse(ra_fixture: &str) -> (Option<MiniCore>, Vec<String>, Vec<Fixture>) {
         let fixture = trim_indent(ra_fixture);
         let mut fixture = fixture.as_str();
         let mut mini_core = None;
         let mut res: Vec<Fixture> = Vec::new();
+        let mut test_proc_macros = vec![];
+
+        if fixture.starts_with("//- proc_macros:") {
+            let first_line = fixture.split_inclusive('\n').next().unwrap();
+            test_proc_macros = first_line
+                .strip_prefix("//- proc_macros:")
+                .unwrap()
+                .split(',')
+                .map(|it| it.trim().to_string())
+                .collect();
+            fixture = &fixture[first_line.len()..];
+        }
 
         if fixture.starts_with("//- minicore:") {
             let first_line = fixture.split_inclusive('\n').next().unwrap();
@@ -144,7 +157,7 @@ impl Fixture {
             }
         }
 
-        (mini_core, res)
+        (mini_core, test_proc_macros, res)
     }
 
     //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
@@ -355,13 +368,15 @@ fn parse_fixture_checks_further_indented_metadata() {
 
 #[test]
 fn parse_fixture_gets_full_meta() {
-    let (mini_core, parsed) = Fixture::parse(
+    let (mini_core, proc_macros, parsed) = Fixture::parse(
         r#"
+//- proc_macros: identity
 //- minicore: coerce_unsized
 //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b,atom env:OUTDIR=path/to,OTHER=foo
 mod m;
 "#,
     );
+    assert_eq!(proc_macros, vec!["identity".to_string()]);
     assert_eq!(mini_core.unwrap().activated_flags, vec!["coerce_unsized".to_string()]);
     assert_eq!(1, parsed.len());
 
