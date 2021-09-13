@@ -10,6 +10,7 @@ use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::html::markdown::{find_testable_code, ErrorCodes, Ignore, LangString};
 use crate::visit_ast::inherits_doc_hidden;
+use rustc_hir as hir;
 use rustc_middle::lint::LintLevelSource;
 use rustc_session::lint;
 use rustc_span::symbol::sym;
@@ -67,13 +68,32 @@ crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> boo
                 | clean::ImportItem(_)
                 | clean::PrimitiveItem(_)
                 | clean::KeywordItem(_)
+                // check for trait impl
+                | clean::ImplItem(clean::Impl { trait_: Some(_), .. })
         )
     {
         return false;
     }
+
     // The `expect_def_id()` should be okay because `local_def_id_to_hir_id`
     // would presumably panic if a fake `DefIndex` were passed.
     let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.def_id.expect_def_id().expect_local());
+
+    // check if parent is trait impl
+    if let Some(parent_hir_id) = cx.tcx.hir().find_parent_node(hir_id) {
+        if let Some(parent_node) = cx.tcx.hir().find(parent_hir_id) {
+            if matches!(
+                parent_node,
+                hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }),
+                    ..
+                })
+            ) {
+                return false;
+            }
+        }
+    }
+
     if cx.tcx.hir().attrs(hir_id).lists(sym::doc).has_word(sym::hidden)
         || inherits_doc_hidden(cx.tcx, hir_id)
     {
