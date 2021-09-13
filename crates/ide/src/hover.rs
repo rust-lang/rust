@@ -377,12 +377,12 @@ fn hover_deref_expr(
         let inner = inner_ty.display(sema.db).to_string();
         let type_len = "Type: ".len();
         let coerced_len = "Coerced to: ".len();
-        let deref_len = "Derefenced from: ".len();
+        let deref_len = "Dereferenced from: ".len();
         let max_len = (original.len() + type_len)
             .max(adjusted.len() + coerced_len)
             .max(inner.len() + deref_len);
         format!(
-            "{bt_start}Type: {:>apad$}\nCoerced to: {:>opad$}\nDerefenced from: {:>ipad$}\n{bt_end}",
+            "{bt_start}Type: {:>apad$}\nCoerced to: {:>opad$}\nDereferenced from: {:>ipad$}\n{bt_end}",
             original,
             adjusted,
             inner,
@@ -397,10 +397,10 @@ fn hover_deref_expr(
         let original = original.display(sema.db).to_string();
         let inner = inner_ty.display(sema.db).to_string();
         let type_len = "Type: ".len();
-        let deref_len = "Derefenced from: ".len();
+        let deref_len = "Dereferenced from: ".len();
         let max_len = (original.len() + type_len).max(inner.len() + deref_len);
         format!(
-            "{bt_start}Type: {:>apad$}\nDerefenced from: {:>ipad$}\n{bt_end}",
+            "{bt_start}Type: {:>apad$}\nDereferenced from: {:>ipad$}\n{bt_end}",
             original,
             inner,
             apad = max_len - type_len,
@@ -4543,7 +4543,7 @@ fn foo() {
             expect![[r#"
                 ```text
                 Type:                          i32
-                Derefenced from: DerefExample<i32>
+                Dereferenced from: DerefExample<i32>
                 ```
             "#]],
         );
@@ -4577,7 +4577,7 @@ fn foo() {
                 ```text
                 Type:                          &&&&&i32
                 Coerced to:                        &i32
-                Derefenced from: DerefExample<&&&&&i32>
+                Dereferenced from: DerefExample<&&&&&i32>
                 ```
             "#]],
         );
