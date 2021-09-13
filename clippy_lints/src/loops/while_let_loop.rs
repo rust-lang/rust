@@ -65,7 +65,7 @@ fn extract_first_expr<'tcx>(block: &Block<'tcx>) -> Option<&'tcx Expr<'tcx>> {
 fn is_simple_break_expr(expr: &Expr<'_>) -> bool {
     match expr.kind {
         ExprKind::Break(dest, ref passed_expr) if dest.label.is_none() && passed_expr.is_none() => true,
-        ExprKind::Block(b, _) => extract_first_expr(b).map_or(false, |subexpr| is_simple_break_expr(subexpr)),
+        ExprKind::Block(b, _) => extract_first_expr(b).map_or(false, is_simple_break_expr),
         _ => false,
     }
 }
