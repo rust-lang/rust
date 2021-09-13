@@ -463,8 +463,10 @@ pub fn check_must_not_suspend_ty<'tcx>(
     plural_len: usize,
 ) -> bool {
     if ty.is_unit()
+    // FIXME: should this check `is_ty_uninhabited_from`. This query is not available in this stage
+    // of typeck (before ReVar and RePlaceholder are removed), but may remove noise, like in
+    // `must_use`
     // || fcx.tcx.is_ty_uninhabited_from(fcx.tcx.parent_module(hir_id).to_def_id(), ty, fcx.param_env)
-    // FIXME: should this check is_ty_uninhabited_from
     {
         return true;
     }
@@ -496,6 +498,7 @@ pub fn check_must_not_suspend_ty<'tcx>(
             descr_pre,
             descr_post,
         ),
+        // FIXME: support adding the attribute to TAITs
         ty::Opaque(def, _) => {
             let mut has_emitted = false;
             for &(predicate, _) in fcx.tcx.explicit_item_bounds(def) {
@@ -604,18 +607,18 @@ fn check_must_not_suspend_def(
                     );
                     let mut err = lint.build(&msg);
 
+                    // add span pointing to the offending yield/await
+                    err.span_label(yield_span, "the value is held across this yield point");
+
                     // Add optional reason note
                     if let Some(note) = attr.value_str() {
-                        err.note(&note.as_str());
+                        err.span_note(source_span, &note.as_str());
                     }
-
-                    // add span pointing to the offending yield/await)
-                    err.span_label(yield_span, "The value is held across this yield point");
 
                     // Add some quick suggestions on what to do
                     err.span_help(
                         source_span,
-                        "`drop` this value before the yield point, or use a block (`{ ... }`) \"
+                        "`drop` this value before the yield point, or use a block (`{ ... }`) \
                         to shrink its scope",
                     );
 
