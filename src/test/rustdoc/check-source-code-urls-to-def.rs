@@ -27,6 +27,8 @@ impl Foo {
 fn babar() {}
 
 // @has - '//a/@href' '/struct.String.html'
+// @has - '//a/@href' '/primitive.u32.html'
+// @has - '//a/@href' '/primitive.str.html'
 // @count - '//a[@href="../../src/foo/check-source-code-urls-to-def.rs.html#21"]' 5
 // @has - '//a[@href="../../source_code/struct.SourceCode.html"]' 'source_code::SourceCode'
 pub fn foo(a: u32, b: &str, c: String, d: Foo, e: bar::Bar, f: source_code::SourceCode) {
@@ -40,5 +42,9 @@ pub fn foo(a: u32, b: &str, c: String, d: Foo, e: bar::Bar, f: source_code::Sour
 
 // @has - '//a[@href="../../src/foo/auxiliary/source-code-bar.rs.html#14-16"]' 'bar::sub::Trait'
 // @has - '//a[@href="../../src/foo/auxiliary/source-code-bar.rs.html#14-16"]' 'Trait'
-pub fn foo2<T: bar::sub::Trait, V: Trait>(t: &T, v: &V) {
+pub fn foo2<T: bar::sub::Trait, V: Trait>(t: &T, v: &V, b: bool) {
 }
+
+// @has - '//a[@href="../../foo/primitive.bool.html"]' 'bool'
+#[doc(primitive = "bool")]
+mod whatever {}
