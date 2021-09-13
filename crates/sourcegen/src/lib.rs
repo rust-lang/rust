@@ -71,25 +71,25 @@ impl CommentBlock {
     pub fn extract_untagged(text: &str) -> Vec<CommentBlock> {
         let mut res = Vec::new();
 
-        let prefix = "// ";
         let lines = text.lines().map(str::trim_start);
 
         let dummy_block = CommentBlock { id: String::new(), line: 0, contents: Vec::new() };
         let mut block = dummy_block.clone();
         for (line_num, line) in lines.enumerate() {
-            if line == "//" {
-                block.contents.push(String::new());
-                continue;
-            }
-
-            let is_comment = line.starts_with(prefix);
-            if is_comment {
-                block.contents.push(line[prefix.len()..].to_string());
-            } else {
-                if !block.contents.is_empty() {
-                    res.push(mem::replace(&mut block, dummy_block.clone()));
+            match line.strip_prefix("//") {
+                Some(mut contents) => {
+                    if let Some(' ') = contents.chars().next() {
+                        contents = &contents[1..];
+                    }
+                    block.contents.push(contents.to_string());
                 }
-                block.line = line_num + 2;
+                None => {
+                    if !block.contents.is_empty() {
+                        let block = mem::replace(&mut block, dummy_block.clone());
+                        res.push(block);
+                    }
+                    block.line = line_num + 2;
+                }
             }
         }
         if !block.contents.is_empty() {

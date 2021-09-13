@@ -17,7 +17,7 @@ pub(crate) fn pattern(p: &mut Parser) {
     pattern_r(p, PAT_RECOVERY_SET);
 }
 
-/// Parses a pattern list separated by pipes `|`
+/// Parses a pattern list separated by pipes `|`.
 pub(super) fn pattern_top(p: &mut Parser) {
     pattern_top_r(p, PAT_RECOVERY_SET)
 }
@@ -27,14 +27,15 @@ pub(crate) fn pattern_single(p: &mut Parser) {
 }
 
 /// Parses a pattern list separated by pipes `|`
-/// using the given `recovery_set`
+/// using the given `recovery_set`.
 pub(super) fn pattern_top_r(p: &mut Parser, recovery_set: TokenSet) {
     p.eat(T![|]);
     pattern_r(p, recovery_set);
 }
 
 /// Parses a pattern list separated by pipes `|`, with no leading `|`,using the
-/// given `recovery_set`
+/// given `recovery_set`.
+
 // test or_pattern
 // fn main() {
 //     match () {
