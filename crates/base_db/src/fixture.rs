@@ -210,6 +210,7 @@ impl ChangeFixture {
             let proc_lib_file = file_id;
             file_id.0 += 1;
 
+            let (proc_macro, source) = test_proc_macros(&proc_macros);
             let mut fs = FileSet::default();
             fs.insert(
                 proc_lib_file,
@@ -217,7 +218,7 @@ impl ChangeFixture {
             );
             roots.push(SourceRoot::new_library(fs));
 
-            change.change_file(proc_lib_file, Some(Arc::new(String::new())));
+            change.change_file(proc_lib_file, Some(Arc::new(String::from(source))));
 
             let all_crates = crate_graph.crates_in_topological_order();
 
@@ -228,7 +229,7 @@ impl ChangeFixture {
                 CfgOptions::default(),
                 CfgOptions::default(),
                 Env::default(),
-                test_proc_macros(&proc_macros),
+                proc_macro,
             );
 
             for krate in all_crates {
@@ -250,14 +251,33 @@ impl ChangeFixture {
     }
 }
 
-fn test_proc_macros(proc_macros: &[String]) -> Vec<ProcMacro> {
-    std::array::IntoIter::new([ProcMacro {
-        name: "identity".into(),
-        kind: crate::ProcMacroKind::Attr,
-        expander: Arc::new(IdentityProcMacroExpander),
-    }])
+fn test_proc_macros(proc_macros: &[String]) -> (Vec<ProcMacro>, String) {
+    // The source here is only required so that paths to the macros exist and are resolvable.
+    let source = r#"
+#[proc_macro_attribute]
+pub fn identity(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
+#[proc_macro_attribute]
+pub fn input_replace(attr: TokenStream, _item: TokenStream) -> TokenStream {
+    attr
+}
+"#;
+    let proc_macros = std::array::IntoIter::new([
+        ProcMacro {
+            name: "identity".into(),
+            kind: crate::ProcMacroKind::Attr,
+            expander: Arc::new(IdentityProcMacroExpander),
+        },
+        ProcMacro {
+            name: "input_replace".into(),
+            kind: crate::ProcMacroKind::Attr,
+            expander: Arc::new(AttributeInputReplaceProcMacroExpander),
+        },
+    ])
     .filter(|pm| proc_macros.iter().any(|name| name == &pm.name))
-    .collect()
+    .collect();
+    (proc_macros, source.into())
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -299,8 +319,9 @@ impl From<Fixture> for FileMeta {
     }
 }
 
+// Identity mapping
 #[derive(Debug)]
-pub struct IdentityProcMacroExpander;
+struct IdentityProcMacroExpander;
 impl ProcMacroExpander for IdentityProcMacroExpander {
     fn expand(
         &self,
@@ -309,5 +330,21 @@ impl ProcMacroExpander for IdentityProcMacroExpander {
         _: &Env,
     ) -> Result<Subtree, ProcMacroExpansionError> {
         Ok(subtree.clone())
+    }
+}
+
+// Pastes the attribute input as its output
+#[derive(Debug)]
+struct AttributeInputReplaceProcMacroExpander;
+impl ProcMacroExpander for AttributeInputReplaceProcMacroExpander {
+    fn expand(
+        &self,
+        _: &Subtree,
+        attrs: Option<&Subtree>,
+        _: &Env,
+    ) -> Result<Subtree, ProcMacroExpansionError> {
+        attrs
+            .cloned()
+            .ok_or_else(|| ProcMacroExpansionError::Panic("Expected attribute input".into()))
     }
 }

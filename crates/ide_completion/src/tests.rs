@@ -15,6 +15,7 @@ mod item_list;
 mod item;
 mod pattern;
 mod predicate;
+mod proc_macros;
 mod record;
 mod sourcegen;
 mod type_pos;
@@ -23,7 +24,7 @@ mod visibility;
 
 use std::mem;
 
-use hir::{PrefixKind, Semantics};
+use hir::{db::DefDatabase, PrefixKind, Semantics};
 use ide_db::{
     base_db::{fixture::ChangeFixture, FileLoader, FilePosition},
     helpers::{
@@ -96,6 +97,7 @@ fn completion_list_with_config(config: CompletionConfig, ra_fixture: &str) -> St
 pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
     let change_fixture = ChangeFixture::parse(ra_fixture);
     let mut database = RootDatabase::default();
+    database.set_enable_proc_attr_macros(true);
     database.apply_change(change_fixture.change);
     let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");
     let offset = range_or_offset.expect_offset();
