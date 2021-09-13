@@ -1,5 +1,6 @@
 goto: file://|DOC_PATH|/test_docs/index.html
 click: ".srclink"
+wait-for: "#sidebar-toggle"
 click: "#sidebar-toggle"
 wait-for: 500
 fail: true
