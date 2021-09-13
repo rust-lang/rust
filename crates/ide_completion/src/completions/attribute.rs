@@ -22,7 +22,11 @@ mod repr;
 
 pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let attribute = ctx.attribute_under_caret.as_ref()?;
-    match (attribute.path().and_then(|p| p.as_single_name_ref()), attribute.token_tree()) {
+    let name_ref = match attribute.path() {
+        Some(p) => Some(p.as_single_name_ref()?),
+        None => None,
+    };
+    match (name_ref, attribute.token_tree()) {
         (Some(path), Some(token_tree)) => match path.text().as_str() {
             "derive" => derive::complete_derive(acc, ctx, token_tree),
             "repr" => repr::complete_repr(acc, ctx, token_tree),
