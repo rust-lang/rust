@@ -110,7 +110,9 @@ fn edit_struct_def(
         } else {
             edit.insert(tuple_fields_text_range.start(), ast::make::tokens::single_space().text());
         }
-        strukt.semicolon_token().map(|t| edit.delete(t.text_range()));
+        if let Some(t) = strukt.semicolon_token() {
+            edit.delete(t.text_range());
+        }
     } else {
         edit.insert(tuple_fields_text_range.start(), ast::make::tokens::single_space().text());
     }

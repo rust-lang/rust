@@ -33,7 +33,7 @@ pub(crate) fn toggle_ignore(acc: &mut Assists, ctx: &AssistContext) -> Option<()
             AssistId("toggle_ignore", AssistKind::None),
             "Ignore this test",
             attr.syntax().text_range(),
-            |builder| builder.insert(attr.syntax().text_range().end(), &format!("\n#[ignore]")),
+            |builder| builder.insert(attr.syntax().text_range().end(), "\n#[ignore]"),
         ),
         Some(ignore_attr) => acc.add(
             AssistId("toggle_ignore", AssistKind::None),

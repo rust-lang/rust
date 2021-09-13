@@ -231,7 +231,7 @@ fn create_struct_def(
     let variant_attrs = attrs_and_docs(variant.syntax())
         .map(|tok| match tok.kind() {
             WHITESPACE => make::tokens::single_newline().into(),
-            _ => tok.into(),
+            _ => tok,
         })
         .collect();
     ted::insert_all(Position::first_child_of(strukt.syntax()), variant_attrs);
@@ -251,12 +251,14 @@ fn update_variant(variant: &ast::Variant, generic: Option<ast::GenericParamList>
         Some(gpl) => {
             let gpl = gpl.clone_for_update();
             gpl.generic_params().for_each(|gp| {
-                match gp {
+                let tbl = match gp {
                     ast::GenericParam::LifetimeParam(it) => it.type_bound_list(),
                     ast::GenericParam::TypeParam(it) => it.type_bound_list(),
                     ast::GenericParam::ConstParam(_) => return,
+                };
+                if let Some(tbl) = tbl {
+                    tbl.remove();
                 }
-                .map(|it| it.remove());
             });
             make::ty(&format!("{}<{}>", name.text(), gpl.generic_params().join(", ")))
         }

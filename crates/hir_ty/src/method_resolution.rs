@@ -697,7 +697,7 @@ fn iterate_trait_method_candidates(
             }
             known_implemented = true;
             // FIXME: we shouldn't be ignoring the binders here
-            callback(&self_ty, *item)?
+            callback(self_ty, *item)?
         }
     }
     ControlFlow::Continue(())
@@ -773,7 +773,7 @@ fn iterate_inherent_methods(
                     cov_mark::hit!(impl_self_type_match_without_receiver);
                     continue;
                 }
-                let receiver_ty = receiver_ty.unwrap_or(&self_ty);
+                let receiver_ty = receiver_ty.unwrap_or(self_ty);
                 callback(receiver_ty, item)?;
             }
         }

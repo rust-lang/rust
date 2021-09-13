@@ -79,7 +79,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
             if let Anchor::Replace(stmt) = anchor {
                 cov_mark::hit!(test_extract_var_expr_stmt);
                 if stmt.semicolon_token().is_none() {
-                    buf.push_str(";");
+                    buf.push(';');
                 }
                 match ctx.config.snippet_cap {
                     Some(cap) => {
@@ -92,7 +92,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
                 return;
             }
 
-            buf.push_str(";");
+            buf.push(';');
 
             // We want to maintain the indent level,
             // but we do not want to duplicate possible

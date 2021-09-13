@@ -167,7 +167,7 @@ impl Assists {
             None
         };
 
-        let label = Label::new(label.into());
+        let label = Label::new(label);
         let group = group.cloned();
         self.buf.push(Assist { id, label, group, target, source_change });
         Some(())

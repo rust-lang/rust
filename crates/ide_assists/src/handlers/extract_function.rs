@@ -885,12 +885,9 @@ fn reference_is_exclusive(
 
 /// checks if this expr requires `&mut` access, recurses on field access
 fn expr_require_exclusive_access(ctx: &AssistContext, expr: &ast::Expr) -> Option<bool> {
-    match expr {
-        ast::Expr::MacroCall(_) => {
-            // FIXME: expand macro and check output for mutable usages of the variable?
-            return None;
-        }
-        _ => (),
+    if let ast::Expr::MacroCall(_) = expr {
+        // FIXME: expand macro and check output for mutable usages of the variable?
+        return None;
     }
 
     let parent = expr.syntax().parent()?;
