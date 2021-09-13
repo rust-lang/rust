@@ -35,7 +35,7 @@ use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::FileName;
+use rustc_span::{FileName, MultiSpan};
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
 use tempfile::Builder as TempFileBuilder;
@@ -442,6 +442,16 @@ pub fn configure_and_expand(
         info!("{} parse sess buffered_lints", buffered_lints.len());
         for early_lint in buffered_lints.drain(..) {
             resolver.lint_buffer().add_early_lint(early_lint);
+        }
+    });
+
+    // Gate identifiers containing invalid Unicode codepoints that were recovered during lexing.
+    sess.parse_sess.bad_unicode_identifiers.with_lock(|identifiers| {
+        for (ident, spans) in identifiers.drain() {
+            sess.diagnostic().span_err(
+                MultiSpan::from(spans),
+                &format!("identifiers cannot contain emoji: `{}`", ident),
+            );
         }
     });
 
