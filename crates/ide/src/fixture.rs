@@ -1,4 +1,5 @@
 //! Utilities for creating `Analysis` instances for tests.
+use hir::db::DefDatabase;
 use ide_db::base_db::fixture::ChangeFixture;
 use test_utils::{extract_annotations, RangeOrOffset};
 
@@ -44,6 +45,7 @@ pub(crate) fn range_or_position(ra_fixture: &str) -> (Analysis, FileId, RangeOrO
 /// Creates analysis from a multi-file fixture, returns positions marked with $0.
 pub(crate) fn annotations(ra_fixture: &str) -> (Analysis, FilePosition, Vec<(FileRange, String)>) {
     let mut host = AnalysisHost::default();
+    host.db.set_enable_proc_attr_macros(true);
     let change_fixture = ChangeFixture::parse(ra_fixture);
     host.db.apply_change(change_fixture.change);
     let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");

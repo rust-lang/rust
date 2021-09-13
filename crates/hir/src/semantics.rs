@@ -498,68 +498,65 @@ impl<'db> SemanticsImpl<'db> {
         // otherwise push the remapped tokens back into the queue as they can potentially be remapped again.
         while let Some(token) = queue.pop() {
             self.db.unwind_if_cancelled();
-
             let was_not_remapped = (|| {
-                for node in token.value.ancestors() {
-                    if let Some(macro_call) = ast::MacroCall::cast(node.clone()) {
-                        let tt = match macro_call.token_tree() {
-                            Some(tt) => tt,
-                            None => continue,
-                        };
-                        let l_delim = match tt.left_delimiter_token() {
-                            Some(it) => it.text_range().end(),
-                            None => tt.syntax().text_range().start(),
-                        };
-                        let r_delim = match tt.right_delimiter_token() {
-                            Some(it) => it.text_range().start(),
-                            None => tt.syntax().text_range().end(),
-                        };
-                        if !TextRange::new(l_delim, r_delim)
-                            .contains_range(token.value.text_range())
-                        {
-                            continue;
-                        }
-                        let file_id = match sa.expand(self.db, token.with_value(&macro_call)) {
-                            Some(file_id) => file_id,
-                            None => continue,
-                        };
-                        let tokens = cache
-                            .entry(file_id)
-                            .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
-                            .as_ref()?
-                            .map_token_down(self.db.upcast(), None, token.as_ref())?;
+                if let Some((call_id, item)) = token
+                    .value
+                    .ancestors()
+                    .filter_map(ast::Item::cast)
+                    .filter_map(|item| {
+                        self.with_ctx(|ctx| ctx.item_to_macro_call(token.with_value(item.clone())))
+                            .zip(Some(item))
+                    })
+                    .last()
+                {
+                    let file_id = call_id.as_file();
+                    let tokens = cache
+                        .entry(file_id)
+                        .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
+                        .as_ref()?
+                        .map_token_down(self.db.upcast(), Some(item), token.as_ref())?;
 
-                        let len = queue.len();
-                        queue.extend(tokens.inspect(|token| {
-                            if let Some(parent) = token.value.parent() {
-                                self.cache(find_root(&parent), token.file_id);
-                            }
-                        }));
-                        return (queue.len() != len).then(|| ());
-                    } else if let Some(item) = ast::Item::cast(node.clone()) {
-                        if let Some(call_id) = self
-                            .with_ctx(|ctx| ctx.item_to_macro_call(token.with_value(item.clone())))
-                        {
-                            let file_id = call_id.as_file();
-                            let tokens = cache
-                                .entry(file_id)
-                                .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
-                                .as_ref()?
-                                .map_token_down(self.db.upcast(), Some(item), token.as_ref())?;
-
-                            let len = queue.len();
-                            queue.extend(tokens.inspect(|token| {
-                                if let Some(parent) = token.value.parent() {
-                                    self.cache(find_root(&parent), token.file_id);
-                                }
-                            }));
-                            return (queue.len() != len).then(|| ());
+                    let len = queue.len();
+                    queue.extend(tokens.inspect(|token| {
+                        if let Some(parent) = token.value.parent() {
+                            self.cache(find_root(&parent), token.file_id);
                         }
+                    }));
+                    return (queue.len() != len).then(|| ());
+                }
+
+                if let Some(macro_call) = token.value.ancestors().find_map(ast::MacroCall::cast) {
+                    let tt = macro_call.token_tree()?;
+                    let l_delim = match tt.left_delimiter_token() {
+                        Some(it) => it.text_range().end(),
+                        None => tt.syntax().text_range().start(),
+                    };
+                    let r_delim = match tt.right_delimiter_token() {
+                        Some(it) => it.text_range().start(),
+                        None => tt.syntax().text_range().end(),
+                    };
+                    if !TextRange::new(l_delim, r_delim).contains_range(token.value.text_range()) {
+                        return None;
                     }
+                    let file_id = sa.expand(self.db, token.with_value(&macro_call))?;
+                    let tokens = cache
+                        .entry(file_id)
+                        .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
+                        .as_ref()?
+                        .map_token_down(self.db.upcast(), None, token.as_ref())?;
+
+                    let len = queue.len();
+                    queue.extend(tokens.inspect(|token| {
+                        if let Some(parent) = token.value.parent() {
+                            self.cache(find_root(&parent), token.file_id);
+                        }
+                    }));
+                    return (queue.len() != len).then(|| ());
                 }
                 None
             })()
             .is_none();
+
             if was_not_remapped {
                 res.push(token.value)
             }
