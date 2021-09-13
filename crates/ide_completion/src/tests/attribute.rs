@@ -34,6 +34,18 @@ use self as this;
 }
 
 #[test]
+fn doesnt_complete_qualified() {
+    check(
+        r#"
+struct Foo;
+#[foo::$0]
+use self as this;
+"#,
+        expect![[r#""#]],
+    )
+}
+
+#[test]
 fn inside_nested_attr() {
     check(r#"#[cfg($0)]"#, expect![[]])
 }
