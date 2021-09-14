@@ -217,7 +217,7 @@ a {
 	color: #c5c5c5;
 }
 body.source .example-wrap pre.rust a {
-	background: #c5c5c5;
+	background: #333;
 }
 
 .docblock:not(.type-decl) a:not(.srclink):not(.test-arrow),
