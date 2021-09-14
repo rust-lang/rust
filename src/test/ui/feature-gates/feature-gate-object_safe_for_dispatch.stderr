@@ -40,7 +40,6 @@ error[E0038]: the trait `NonObjectSafe3` cannot be made into an object
 LL | fn takes_non_object_safe_box(obj: Box<dyn NonObjectSafe3>) {
    |                                       ^^^^^^^^^^^^^^^^^^ `NonObjectSafe3` cannot be made into an object
    |
-   = help: consider moving `foo` to another trait
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/feature-gate-object_safe_for_dispatch.rs:11:8
    |
@@ -48,6 +47,7 @@ LL | trait NonObjectSafe3 {
    |       -------------- this trait cannot be made into an object...
 LL |     fn foo<T>(&self);
    |        ^^^ ...because method `foo` has generic type parameters
+   = help: consider moving `foo` to another trait
 
 error[E0038]: the trait `NonObjectSafe4` cannot be made into an object
   --> $DIR/feature-gate-object_safe_for_dispatch.rs:31:35
@@ -55,7 +55,6 @@ error[E0038]: the trait `NonObjectSafe4` cannot be made into an object
 LL | fn return_non_object_safe_rc() -> std::rc::Rc<dyn NonObjectSafe4> {
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `NonObjectSafe4` cannot be made into an object
    |
-   = help: consider moving `foo` to another trait
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/feature-gate-object_safe_for_dispatch.rs:15:22
    |
@@ -63,6 +62,7 @@ LL | trait NonObjectSafe4 {
    |       -------------- this trait cannot be made into an object...
 LL |     fn foo(&self, s: &Self);
    |                      ^^^^^ ...because method `foo` references the `Self` type in this parameter
+   = help: consider moving `foo` to another trait
 
 error[E0038]: the trait `NonObjectSafe1` cannot be made into an object
   --> $DIR/feature-gate-object_safe_for_dispatch.rs:38:16
