@@ -36,7 +36,7 @@ LLVM version: 10.0
 Additional labels can be added to this issue by including the following command
 (without the space after the @ symbol):
 
-`@rustbot label +<label>`
+@ rustbot label +<label>
 
 Common labels for this issue type are:
 * `I-suggestion-causes-error`
