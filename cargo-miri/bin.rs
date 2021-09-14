@@ -20,8 +20,8 @@ Usage:
     cargo miri [subcommand] [<cargo options>...] [--] [<program/test suite options>...]
 
 Subcommands:
-    run                      Run binaries
-    test                     Run tests
+    run, r                   Run binaries
+    test, t                  Run tests
     setup                    Only perform automatic setup, but without asking questions (for getting a proper libstd)
 
 The cargo options are exactly the same as for `cargo run` and `cargo test`, respectively.
@@ -524,8 +524,8 @@ fn phase_cargo_miri(mut args: env::Args) {
     // We cannot know which of those flags take arguments and which do not,
     // so we cannot detect subcommands later.
     let subcommand = match args.next().as_deref() {
-        Some("test") => MiriCommand::Test,
-        Some("run") => MiriCommand::Run,
+        Some("test" | "t") => MiriCommand::Test,
+        Some("run" | "r") => MiriCommand::Run,
         Some("setup") => MiriCommand::Setup,
         // Invalid command.
         _ =>
