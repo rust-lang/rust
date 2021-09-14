@@ -90,9 +90,11 @@ fn extern_flags() -> String {
         .copied()
         .filter(|n| !crates.contains_key(n))
         .collect();
-    if !not_found.is_empty() {
-        panic!("dependencies not found in depinfo: {:?}", not_found);
-    }
+    assert!(
+        not_found.is_empty(),
+        "dependencies not found in depinfo: {:?}",
+        not_found
+    );
     crates
         .into_iter()
         .map(|(name, path)| format!(" --extern {}={}", name, path))
