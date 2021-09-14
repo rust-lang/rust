@@ -40,6 +40,7 @@ use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt;
 use std::fs;
+use std::iter::Peekable;
 use std::path::PathBuf;
 use std::str;
 use std::string::ToString;
@@ -53,7 +54,10 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::{
+    symbol::{kw, sym, Symbol},
+    BytePos, FileName, RealFileName,
+};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
@@ -590,7 +594,7 @@ fn document_full_inner(
 
     match &*item.kind {
         clean::ItemKind::FunctionItem(f) | clean::ItemKind::MethodItem(f, _) => {
-            render_call_locations(w, cx, &f.call_locations);
+            render_call_locations(w, cx, &f.call_locations, item);
         }
         _ => {}
     }
@@ -2458,6 +2462,7 @@ fn render_call_locations(
     w: &mut Buffer,
     cx: &Context<'_>,
     call_locations: &Option<FnCallLocations>,
+    item: &clean::Item,
 ) {
     let call_locations = match call_locations.as_ref() {
         Some(call_locations) if call_locations.len() > 0 => call_locations,
@@ -2488,11 +2493,17 @@ fn render_call_locations(
     };
 
     // Generate the HTML for a single example, being the title and code block
-    let write_example = |w: &mut Buffer, (path, call_data): (&PathBuf, &CallData)| {
-        // FIXME(wcrichto): is there a better way to handle an I/O error than a panic?
-        //  When would such an error arise?
-        let contents =
-            fs::read_to_string(&path).expect(&format!("Failed to read file: {}", path.display()));
+    let tcx = cx.tcx();
+    let write_example = |w: &mut Buffer, (path, call_data): (&PathBuf, &CallData)| -> bool {
+        let contents = match fs::read_to_string(&path) {
+            Ok(contents) => contents,
+            Err(err) => {
+                let span = item.span(tcx).inner();
+                tcx.sess
+                    .span_err(span, &format!("failed to read file {}: {}", path.display(), err));
+                return false;
+            }
+        };
 
         // To reduce file sizes, we only want to embed the source code needed to understand the example, not
         // the entire file. So we find the smallest byte range that covers all items enclosing examples.
@@ -2522,23 +2533,42 @@ fn render_call_locations(
         let edition = cx.shared.edition();
         write!(
             w,
-            r#"<div class="scraped-example" data-code="{code}" data-locs="{locations}">
+            r#"<div class="scraped-example" data-locs="{locations}">
                 <div class="scraped-example-title">{title}</div>
                  <div class="code-wrapper">"#,
             title = example_url(call_data),
-            // The code and locations are encoded as data attributes, so they can be read
+            // The locations are encoded as a data attribute, so they can be read
             // later by the JS for interactions.
-            code = contents_subset.replace("\"", "&quot;"),
             locations = serde_json::to_string(&line_ranges).unwrap(),
         );
         write!(w, r#"<span class="prev">&pr;</span> <span class="next">&sc;</span>"#);
         write!(w, r#"<span class="expand">&varr;</span>"#);
 
-        // FIXME(wcrichto): where should file_span and root_path come from?
-        let file_span = rustc_span::DUMMY_SP;
-        let root_path = "".to_string();
+        // Look for the example file in the source map if it exists, otherwise return a dummy span
+        let file_span = (|| {
+            let source_map = tcx.sess.source_map();
+            let crate_src = tcx.sess.local_crate_source_file.as_ref()?;
+            let abs_crate_src = crate_src.canonicalize().ok()?;
+            let crate_root = abs_crate_src.parent()?.parent()?;
+            let rel_path = path.strip_prefix(crate_root).ok()?;
+            let files = source_map.files();
+            let file = files.iter().find(|file| match &file.name {
+                FileName::Real(RealFileName::LocalPath(other_path)) => rel_path == other_path,
+                _ => false,
+            })?;
+            Some(rustc_span::Span::with_root_ctxt(
+                file.start_pos + BytePos(min_byte),
+                file.start_pos + BytePos(max_byte),
+            ))
+        })()
+        .unwrap_or(rustc_span::DUMMY_SP);
+
+        // The root path is the inverse of Context::current
+        let root_path = vec!["../"; cx.current.len() - 1].join("");
+
         let mut decoration_info = FxHashMap::default();
         decoration_info.insert("highlight", byte_ranges);
+
         sources::print_src(
             w,
             contents_subset,
@@ -2550,6 +2580,8 @@ fn render_call_locations(
             Some(decoration_info),
         );
         write!(w, "</div></div>");
+
+        true
     };
 
     // The call locations are output in sequence, so that sequence needs to be determined.
@@ -2570,7 +2602,15 @@ fn render_call_locations(
 
     // Write just one example that's visible by default in the method's description.
     let mut it = ordered_locations.into_iter().peekable();
-    write_example(w, it.next().unwrap());
+    let write_and_skip_failure = |w: &mut Buffer, it: &mut Peekable<_>| {
+        while let Some(example) = it.next() {
+            if write_example(&mut *w, example) {
+                break;
+            }
+        }
+    };
+
+    write_and_skip_failure(w, &mut it);
 
     // Then add the remaining examples in a hidden section.
     if it.peek().is_some() {
@@ -2582,13 +2622,15 @@ fn render_call_locations(
                   </summary>
                   <div class="more-scraped-examples">
                     <div class="toggle-line"><div class="toggle-line-inner"></div></div>
-                    <div>
+                    <div class="more-scraped-examples-inner">
 "#
         );
 
         // Only generate inline code for MAX_FULL_EXAMPLES number of examples. Otherwise we could
         // make the page arbitrarily huge!
-        (&mut it).take(MAX_FULL_EXAMPLES).for_each(|ex| write_example(w, ex));
+        for _ in 0..MAX_FULL_EXAMPLES {
+            write_and_skip_failure(w, &mut it);
+        }
 
         // For the remaining examples, generate a <ul /> containing links to the source files.
         if it.peek().is_some() {

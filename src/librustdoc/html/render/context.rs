@@ -124,7 +124,6 @@ crate struct SharedContext<'tcx> {
     crate span_correspondance_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
     /// The [`Cache`] used during rendering.
     crate cache: Cache,
-    pub(super) repository_url: Option<String>,
 }
 
 impl SharedContext<'_> {
@@ -141,11 +140,7 @@ impl SharedContext<'_> {
     /// Returns the `collapsed_doc_value` of the given item if this is the main crate, otherwise
     /// returns the `doc_value`.
     crate fn maybe_collapsed_doc_value<'a>(&self, item: &'a clean::Item) -> Option<String> {
-        if self.collapsed {
-            item.collapsed_doc_value()
-        } else {
-            item.doc_value()
-        }
+        if self.collapsed { item.collapsed_doc_value() } else { item.doc_value() }
     }
 
     crate fn edition(&self) -> Edition {
@@ -351,7 +346,6 @@ impl<'tcx> Context<'tcx> {
         let hiline = span.hi(self.sess()).line;
         let lines =
             if loline == hiline { loline.to_string() } else { format!("{}-{}", loline, hiline) };
-
         Some(format!(
             "{root}src/{krate}/{path}#{lines}",
             root = Escape(&root),
@@ -395,7 +389,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             generate_redirect_map,
             show_type_layout,
             generate_link_to_definition,
-            repository_url,
             ..
         } = options;
 
@@ -487,7 +480,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             templates,
             span_correspondance_map: matches,
             cache,
-            repository_url,
         };
 
         // Add the default themes to the `Vec` of stylepaths

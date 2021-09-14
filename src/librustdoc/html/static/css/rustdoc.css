@@ -2020,7 +2020,7 @@ details.undocumented[open] > summary::before {
 .scraped-example:not(.expanded) .code-wrapper:before {
 	content: " ";
 	width: 100%;
-	height: 20px;
+	height: 10px;
 	position: absolute;
 	z-index: 100;
 	top: 0;
@@ -2030,7 +2030,7 @@ details.undocumented[open] > summary::before {
 .scraped-example:not(.expanded) .code-wrapper:after {
 	content: " ";
 	width: 100%;
-	height: 20px;
+	height: 10px;
 	position: absolute;
 	z-index: 100;
 	bottom: 0;
@@ -2078,10 +2078,15 @@ details.undocumented[open] > summary::before {
 }
 
 .more-scraped-examples {
-	padding-left: 10px;
-	margin-left: 15px;
+	margin-left: 25px;
 	display: flex;
 	flex-direction: row;
+	width: calc(100% - 25px);
+}
+
+.more-scraped-examples-inner {
+	/* 20px is width of toggle-line + toggle-line-inner */
+	width: calc(100% - 20px);
 }
 
 .toggle-line {
