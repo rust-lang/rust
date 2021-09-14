@@ -419,8 +419,12 @@ fn opts() -> Vec<RustcOptGroup> {
                 "URL",
             )
         }),
-        unstable("display-warnings", |o| {
-            o.optflagmulti("", "display-warnings", "to print code warnings when testing doc")
+        unstable("display-doctest-warnings", |o| {
+            o.optflagmulti(
+                "",
+                "display-doctest-warnings",
+                "show warnings that originate in doctests",
+            )
         }),
         stable("crate-version", |o| {
             o.optopt("", "crate-version", "crate version to print into documentation", "VERSION")

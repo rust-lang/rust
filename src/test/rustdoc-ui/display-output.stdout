@@ -1,0 +1,24 @@
+
+running 1 test
+test $DIR/display-output.rs - foo (line 6) ... ok
+
+successes:
+
+---- $DIR/display-output.rs - foo (line 6) stdout ----
+warning: unused variable: `x`
+  --> $DIR/display-output.rs:7:5
+   |
+LL | let x = 12;
+   |     ^ help: if this is intentional, prefix it with an underscore: `_x`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: 1 warning emitted
+
+
+
+successes:
+    $DIR/display-output.rs - foo (line 6)
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

@@ -137,7 +137,7 @@ crate struct Options {
     crate manual_passes: Vec<String>,
     /// Whether to display warnings during doc generation or while gathering doctests. By default,
     /// all non-rustdoc-specific lints are allowed when generating docs.
-    crate display_warnings: bool,
+    crate display_doctest_warnings: bool,
     /// Whether to run the `calculate-doc-coverage` pass, which counts the number of public items
     /// with and without documentation.
     crate show_coverage: bool,
@@ -192,7 +192,7 @@ impl fmt::Debug for Options {
             .field("persist_doctests", &self.persist_doctests)
             .field("default_passes", &self.default_passes)
             .field("manual_passes", &self.manual_passes)
-            .field("display_warnings", &self.display_warnings)
+            .field("display_doctest_warnings", &self.display_doctest_warnings)
             .field("show_coverage", &self.show_coverage)
             .field("crate_version", &self.crate_version)
             .field("render_options", &self.render_options)
@@ -632,7 +632,7 @@ impl Options {
         let proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
         let playground_url = matches.opt_str("playground-url");
         let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
-        let display_warnings = matches.opt_present("display-warnings");
+        let display_doctest_warnings = matches.opt_present("display-doctest-warnings");
         let sort_modules_alphabetically = !matches.opt_present("sort-modules-by-appearance");
         let resource_suffix = matches.opt_str("resource-suffix").unwrap_or_default();
         let enable_minification = !matches.opt_present("disable-minification");
@@ -696,7 +696,7 @@ impl Options {
             test_args,
             default_passes,
             manual_passes,
-            display_warnings,
+            display_doctest_warnings,
             show_coverage,
             crate_version,
             test_run_directory,
