@@ -60,6 +60,13 @@ pub fn panic_str(expr: &str) -> ! {
     panic_fmt(format_args!("{}", expr));
 }
 
+#[inline]
+#[track_caller]
+#[cfg_attr(not(bootstrap), lang = "panic_display")] // needed for const-evaluated panics
+pub fn panic_display<T: fmt::Display>(x: &T) -> ! {
+    panic_fmt(format_args!("{}", *x));
+}
+
 #[cold]
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[track_caller]

@@ -39,45 +39,61 @@ LL | const W: () = std::panic!(MSG);
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const_panic.rs:22:20
+  --> $DIR/const_panic.rs:22:16
+   |
+LL | const W2: () = std::panic!("{}", MSG);
+   |                ^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'hello', $DIR/const_panic.rs:22:16
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic.rs:25:20
    |
 LL | const Z_CORE: () = core::panic!("cheese");
-   |                    ^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'cheese', $DIR/const_panic.rs:22:20
+   |                    ^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'cheese', $DIR/const_panic.rs:25:20
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const_panic.rs:25:21
+  --> $DIR/const_panic.rs:28:21
    |
 LL | const Z2_CORE: () = core::panic!();
-   |                     ^^^^^^^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/const_panic.rs:25:21
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0080]: evaluation of constant value failed
-  --> $DIR/const_panic.rs:28:20
-   |
-LL | const Y_CORE: () = core::unreachable!();
-   |                    ^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic.rs:28:20
+   |                     ^^^^^^^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/const_panic.rs:28:21
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:31:20
    |
-LL | const X_CORE: () = core::unimplemented!();
-   |                    ^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'not implemented', $DIR/const_panic.rs:31:20
+LL | const Y_CORE: () = core::unreachable!();
+   |                    ^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic.rs:31:20
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:34:20
    |
-LL | const W_CORE: () = core::panic!(MSG);
-   |                    ^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'hello', $DIR/const_panic.rs:34:20
+LL | const X_CORE: () = core::unimplemented!();
+   |                    ^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'not implemented', $DIR/const_panic.rs:34:20
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 10 previous errors
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic.rs:37:20
+   |
+LL | const W_CORE: () = core::panic!(MSG);
+   |                    ^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'hello', $DIR/const_panic.rs:37:20
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic.rs:40:21
+   |
+LL | const W2_CORE: () = core::panic!("{}", MSG);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'hello', $DIR/const_panic.rs:40:21
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 12 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

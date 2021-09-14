@@ -283,6 +283,7 @@ language_item_table! {
     // a weak lang item, but do not have it defined.
     Panic,                   sym::panic,               panic_fn,                   Target::Fn,             GenericRequirement::None;
     PanicFmt,                sym::panic_fmt,           panic_fmt,                  Target::Fn,             GenericRequirement::None;
+    PanicDisplay,            sym::panic_display,       panic_display,              Target::Fn,             GenericRequirement::None;
     PanicStr,                sym::panic_str,           panic_str,                  Target::Fn,             GenericRequirement::None;
     ConstPanicFmt,           sym::const_panic_fmt,     const_panic_fmt,            Target::Fn,             GenericRequirement::None;
     PanicBoundsCheck,        sym::panic_bounds_check,  panic_bounds_check_fn,      Target::Fn,             GenericRequirement::None;

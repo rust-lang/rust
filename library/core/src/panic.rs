@@ -27,8 +27,13 @@ pub macro panic_2015 {
     ($msg:literal $(,)?) => (
         $crate::panicking::panic($msg)
     ),
+    // Use `panic_str` instead of `panic_display::<&str>` for non_fmt_panic lint.
     ($msg:expr $(,)?) => (
         $crate::panicking::panic_str($msg)
+    ),
+    // Special-case the single-argument case for const_panic.
+    ("{}", $arg:expr $(,)?) => (
+        $crate::panicking::panic_display(&$arg)
     ),
     ($fmt:expr, $($arg:tt)+) => (
         $crate::panicking::panic_fmt($crate::const_format_args!($fmt, $($arg)+))
@@ -43,6 +48,10 @@ pub macro panic_2015 {
 pub macro panic_2021 {
     () => (
         $crate::panicking::panic("explicit panic")
+    ),
+    // Special-case the single-argument case for const_panic.
+    ("{}", $arg:expr $(,)?) => (
+        $crate::panicking::panic_display(&$arg)
     ),
     ($($t:tt)+) => (
         $crate::panicking::panic_fmt($crate::const_format_args!($($t)+))
