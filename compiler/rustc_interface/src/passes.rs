@@ -447,7 +447,10 @@ pub fn configure_and_expand(
 
     // Gate identifiers containing invalid Unicode codepoints that were recovered during lexing.
     sess.parse_sess.bad_unicode_identifiers.with_lock(|identifiers| {
-        for (ident, spans) in identifiers.drain() {
+        let mut identifiers: Vec<_> = identifiers.drain().collect();
+        identifiers.sort_by_key(|&(key, _)| key);
+        for (ident, mut spans) in identifiers.into_iter() {
+            spans.sort();
             sess.diagnostic().span_err(
                 MultiSpan::from(spans),
                 &format!("identifiers cannot contain emoji: `{}`", ident),
