@@ -62,15 +62,10 @@ crate fn eval_nullary_intrinsic<'tcx>(
             ensure_monomorphic_enough(tcx, tp_ty)?;
             ConstValue::from_bool(tp_ty.needs_drop(tcx, param_env))
         }
-        sym::min_align_of | sym::pref_align_of => {
+        sym::pref_align_of => {
             // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
             let layout = tcx.layout_of(param_env.and(tp_ty)).map_err(|e| err_inval!(Layout(e)))?;
-            let n = match name {
-                sym::pref_align_of => layout.align.pref.bytes(),
-                sym::min_align_of => layout.align.abi.bytes(),
-                _ => bug!(),
-            };
-            ConstValue::from_machine_usize(n, &tcx)
+            ConstValue::from_machine_usize(layout.align.pref.bytes(), &tcx)
         }
         sym::type_id => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
