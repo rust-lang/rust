@@ -1507,4 +1507,23 @@ fn f() {
             "#]],
         )
     }
+
+    #[test]
+    fn attr_expanded() {
+        check(
+            r#"
+//- proc_macros: identity
+
+#[proc_macros::identity]
+fn func$0() {
+    func();
+}
+"#,
+            expect![[r#"
+                func Function FileId(0) 26..51 29..33
+
+                FileId(0) 42..46
+            "#]],
+        )
+    }
 }

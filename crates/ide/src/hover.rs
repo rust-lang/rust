@@ -1662,6 +1662,28 @@ id! {
     }
 
     #[test]
+    fn test_hover_through_attr() {
+        check(
+            r#"
+//- proc_macros: identity
+#[proc_macros::identity]
+fn foo$0() {}
+"#,
+            expect![[r#"
+                *foo*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                fn foo()
+                ```
+            "#]],
+        );
+    }
+
+    #[test]
     fn test_hover_through_expr_in_macro() {
         check(
             r#"

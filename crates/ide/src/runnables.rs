@@ -1738,6 +1738,88 @@ fn t1() {}
     }
 
     #[test]
+    fn attributed_module() {
+        check(
+            r#"
+//- proc_macros: identity
+//- /lib.rs
+$0
+#[proc_macros::identity]
+mod module {
+    #[test]
+    fn t0() {}
+    #[test]
+    fn t1() {}
+}
+"#,
+            &[TestMod, Test, Test],
+            expect![[r#"
+                [
+                    Runnable {
+                        use_name_in_title: true,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 26..94,
+                            focus_range: 30..36,
+                            name: "module",
+                            kind: Module,
+                            description: "mod module",
+                        },
+                        kind: TestMod {
+                            path: "module",
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: true,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 43..65,
+                            focus_range: 58..60,
+                            name: "t0",
+                            kind: Function,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "module::t0",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: true,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 70..92,
+                            focus_range: 85..87,
+                            name: "t1",
+                            kind: Function,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "module::t1",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg: None,
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
     fn find_no_tests() {
         check_tests(
             r#"

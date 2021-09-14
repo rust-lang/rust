@@ -16,7 +16,6 @@ use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
 use syntax::{
-    algo::find_node_at_offset,
     ast::{self, GenericParamsOwner, LoopBodyOwner},
     match_ast, AstNode, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize,
 };
@@ -241,10 +240,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         node: &SyntaxNode,
         offset: TextSize,
     ) -> Option<N> {
-        if let Some(it) = find_node_at_offset(node, offset) {
-            return Some(it);
-        }
-
         self.imp.descend_node_at_offset(node, offset).flatten().find_map(N::cast)
     }
 
