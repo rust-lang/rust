@@ -51,10 +51,11 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     assert!(!layout.is_unsized());
     let ret = ecx.allocate(layout, MemoryKind::Stack)?;
 
-    let name =
-        with_no_trimmed_paths(|| ty::tls::with(|tcx| tcx.def_path_str(cid.instance.def_id())));
-    let prom = cid.promoted.map_or_else(String::new, |p| format!("::promoted[{:?}]", p));
-    trace!("eval_body_using_ecx: pushing stack frame for global: {}{}", name, prom);
+    trace!(
+        "eval_body_using_ecx: pushing stack frame for global: {}{}",
+        with_no_trimmed_paths(|| ty::tls::with(|tcx| tcx.def_path_str(cid.instance.def_id()))),
+        cid.promoted.map_or_else(String::new, |p| format!("::promoted[{:?}]", p))
+    );
 
     ecx.push_stack_frame(
         cid.instance,
