@@ -1049,6 +1049,23 @@ impl<'a> Parser<'a> {
         let mut seq = self.parse_paren_expr_seq().map(|args| {
             self.mk_expr(lo.to(self.prev_token.span), self.mk_call(fun, args), AttrVec::new())
         });
+        if let Some(expr) =
+            self.maybe_recover_struct_lit_bad_delims(lo, open_paren, &mut seq, snapshot)
+        {
+            return expr;
+        }
+        self.recover_seq_parse_error(token::Paren, lo, seq)
+    }
+
+    /// If we encounter a parser state that looks like the user has written a `struct` literal with
+    /// parentheses instead of braces, recover the parser state and provide suggestions.
+    fn maybe_recover_struct_lit_bad_delims(
+        &mut self,
+        lo: Span,
+        open_paren: Span,
+        seq: &mut PResult<'a, P<Expr>>,
+        snapshot: Option<(Self, ExprKind)>,
+    ) -> Option<P<Expr>> {
         match (seq.as_mut(), snapshot) {
             (Err(ref mut err), Some((mut snapshot, ExprKind::Path(None, path)))) => {
                 let name = pprust::path_to_string(&path);
@@ -1079,7 +1096,7 @@ impl<'a> Parser<'a> {
                             Applicability::MaybeIncorrect,
                         )
                         .emit();
-                        return self.mk_expr_err(span);
+                        return Some(self.mk_expr_err(span));
                     }
                     Ok(_) => {}
                     Err(mut err) => err.emit(),
@@ -1087,7 +1104,7 @@ impl<'a> Parser<'a> {
             }
             _ => {}
         }
-        self.recover_seq_parse_error(token::Paren, lo, seq)
+        None
     }
 
     /// Parse an indexing expression `expr[...]`.
