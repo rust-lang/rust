@@ -1,5 +1,5 @@
 error: implementation of inherent method `to_string(&self) -> String` for type `A`
-  --> $DIR/inherent_to_string.rs:21:5
+  --> $DIR/inherent_to_string.rs:20:5
    |
 LL | /     fn to_string(&self) -> String {
 LL | |         "A.to_string()".to_string()
@@ -10,7 +10,7 @@ LL | |     }
    = help: implement trait `Display` for type `A` instead
 
 error: type `C` implements inherent method `to_string(&self) -> String` which shadows the implementation of `Display`
-  --> $DIR/inherent_to_string.rs:45:5
+  --> $DIR/inherent_to_string.rs:44:5
    |
 LL | /     fn to_string(&self) -> String {
 LL | |         "C.to_string()".to_string()

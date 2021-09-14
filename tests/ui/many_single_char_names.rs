@@ -1,4 +1,4 @@
-#[warn(clippy::many_single_char_names)]
+#![warn(clippy::many_single_char_names)]
 
 fn bla() {
     let a: i32;
