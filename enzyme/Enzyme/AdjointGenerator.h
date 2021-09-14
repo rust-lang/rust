@@ -7187,13 +7187,16 @@ public:
       }
 #endif
 
-      if (!gutils->isConstantValue(&call)) {
-        unsigned structidx = retUsed ? 1 : 0;
+      if (!newcalled->getReturnType()->isVoidTy()) {
+        unsigned structidx =
+            retUsed && subretType != DIFFE_TYPE::CONSTANT ? 1 : 0;
+        auto newcall = gutils->getNewFromOriginal(orig);
         Value *diffe = Builder2.CreateExtractValue(diffes, {structidx});
-        setDiffe(&call, diffe, Builder2);
-      }
-
-      if (!subretused) {
+        gutils->replaceAWithB(newcall, diffe);
+        gutils->erase(newcall);
+        if (!gutils->isConstantValue(&call))
+          setDiffe(&call, diffe, Builder2);
+      } else {
         eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
       }
 

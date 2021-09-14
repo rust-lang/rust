@@ -2170,10 +2170,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   return AugmentedCachedFunctions.find(tup)->second;
 }
 
-void createTerminator(DiffeGradientUtils *gutils,
-                      const std::vector<DIFFE_TYPE> &argTypes, BasicBlock *oBB,
-                      AllocaInst *retAlloca, AllocaInst *dretAlloca,
-                      DIFFE_TYPE retType) {
+void createTerminator(DiffeGradientUtils *gutils, BasicBlock *oBB,
+                      DIFFE_TYPE retType, ReturnType retVal) {
 
   BasicBlock *nBB = cast<BasicBlock>(gutils->getNewFromOriginal(oBB));
   assert(nBB);
@@ -2181,37 +2179,38 @@ void createTerminator(DiffeGradientUtils *gutils,
   nBuilder.setFastMathFlags(getFast());
 
   if (ReturnInst *inst = dyn_cast_or_null<ReturnInst>(oBB->getTerminator())) {
-    SmallVector<Value *, 4> retargs;
+    SmallVector<Value *, 2> retargs;
 
-    if (retAlloca) {
-      auto result = nBuilder.CreateLoad(retAlloca, "retreload");
-      // TODO reintroduce invariant load/group
-      // result->setMetadata(LLVMContext::MD_invariant_load,
-      // MDNode::get(retAlloca->getContext(), {}));
-      retargs.push_back(result);
+    switch (retVal) {
+    case ReturnType::Return: {
+      auto ret = inst->getOperand(0);
+      if (retType == DIFFE_TYPE::CONSTANT) {
+        retargs.push_back(gutils->getNewFromOriginal(ret));
+      } else {
+        retargs.push_back(gutils->diffe(ret, nBuilder));
+      }
+      break;
     }
-
-    if (dretAlloca) {
-      auto result = nBuilder.CreateLoad(dretAlloca, "dretreload");
-      // TODO reintroduce invariant load/group
-      // result->setMetadata(LLVMContext::MD_invariant_load,
-      // MDNode::get(dretAlloca->getContext(), {}));
-      retargs.push_back(result);
+    case ReturnType::TwoReturns: {
+      if (retType == DIFFE_TYPE::CONSTANT)
+        assert(false && "Invalid return type");
+      auto ret = inst->getOperand(0);
+      retargs.push_back(gutils->getNewFromOriginal(ret));
+      retargs.push_back(gutils->diffe(ret, nBuilder));
+      break;
     }
-
-    if (gutils->newFunc->getReturnType()->isVoidTy()) {
-      assert(retargs.size() == 0);
+    case ReturnType::Void: {
       gutils->erase(gutils->getNewFromOriginal(inst));
       nBuilder.CreateRetVoid();
       return;
     }
-
-    auto retVal = inst->getOperand(0);
-
-    if (gutils->isConstantValue(retVal)) {
-      retargs.push_back(ConstantFP::get(retVal->getType(), 0.0));
-    } else {
-      retargs.push_back(gutils->diffe(retVal, nBuilder));
+    default: {
+      llvm::errs() << "Invalid return type: " << to_string(retVal)
+                   << "for function: \n"
+                   << gutils->newFunc << "\n";
+      assert(false && "Invalid return type for function");
+      return;
+    }
     }
 
     Value *toret = UndefValue::get(gutils->newFunc->getReturnType());
@@ -2645,7 +2644,9 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   }
 
   // Whether we shuold actually return the value
-  bool returnValue = returnUsed && mode == DerivativeMode::ReverseModeCombined;
+  bool returnValue =
+      returnUsed && (mode == DerivativeMode::ReverseModeCombined ||
+                     mode == DerivativeMode::ForwardMode);
 
   // TODO change this to go by default function type assumptions
   bool hasconstant = false;
@@ -2770,9 +2771,8 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
                  : (dretPtr ? ReturnType::ArgsWithReturn : ReturnType::Args);
   }
 
-  bool diffeReturnArg = mode == DerivativeMode::ForwardMode
-                            ? false
-                            : retType == DIFFE_TYPE::OUT_DIFF;
+  bool diffeReturnArg =
+      mode != DerivativeMode::ForwardMode && retType == DIFFE_TYPE::OUT_DIFF;
 
   DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(
       *this, mode, todiff, TLI, TA, retType, diffeReturnArg, constant_args,
@@ -3066,8 +3066,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
         maker.visit(&*it);
       }
 
-      createTerminator(gutils, constant_args, &oBB, retAlloca, dretAlloca,
-                       retType);
+      createTerminator(gutils, &oBB, retType, retVal);
     }
   }
 

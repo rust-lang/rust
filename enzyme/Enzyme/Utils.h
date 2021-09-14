@@ -272,6 +272,30 @@ static inline std::string to_string(DIFFE_TYPE t) {
   }
 }
 
+/// Convert ReturnType to a string
+static inline std::string to_string(ReturnType t) {
+  switch (t) {
+  case ReturnType::ArgsWithReturn:
+    return "ArgsWithReturn";
+  case ReturnType::ArgsWithTwoReturns:
+    return "ArgsWithTwoReturns";
+  case ReturnType::Args:
+    return "Args";
+  case ReturnType::TapeAndReturn:
+    return "TapeAndReturn";
+  case ReturnType::TapeAndTwoReturns:
+    return "TapeAndTwoReturns";
+  case ReturnType::Tape:
+    return "Tape";
+  case ReturnType::TwoReturns:
+    return "TwoReturns";
+  case ReturnType::Return:
+    return "Return";
+  case ReturnType::Void:
+    return "Void";
+  }
+}
+
 #include <set>
 
 /// Attempt to automatically detect the differentiable
