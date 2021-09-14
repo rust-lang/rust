@@ -152,20 +152,11 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
-    // Allocate a `Block` for every basic block, except
-    // the start block, if nothing loops back to it.
-    let reentrant_start_block = !mir.predecessors()[mir::START_BLOCK].is_empty();
-    let cached_llbbs: IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>> =
-        mir.basic_blocks()
-            .indices()
-            .map(|bb| {
-                if bb == mir::START_BLOCK && !reentrant_start_block {
-                    Some(start_llbb)
-                } else {
-                    None
-                }
-            })
-            .collect();
+    let cached_llbbs: IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>> = mir
+        .basic_blocks()
+        .indices()
+        .map(|bb| if bb == mir::START_BLOCK { Some(start_llbb) } else { None })
+        .collect();
 
     let mut fx = FunctionCx {
         instance,
@@ -246,11 +237,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     // Apply debuginfo to the newly allocated locals.
     fx.debug_introduce_locals(&mut bx);
-
-    // Branch to the START block, if it's not the entry block.
-    if reentrant_start_block {
-        bx.br(fx.llbb(mir::START_BLOCK));
-    }
 
     // Codegen the body of each block using reverse postorder
     // FIXME(eddyb) reuse RPO iterator between `analysis` and this.
