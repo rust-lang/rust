@@ -569,7 +569,6 @@ impl<'db> SemanticsImpl<'db> {
         node: &SyntaxNode,
         offset: TextSize,
     ) -> impl Iterator<Item = impl Iterator<Item = SyntaxNode> + '_> + '_ {
-        // Handle macro token cases
         node.token_at_offset(offset)
             .map(move |token| self.descend_into_macros(token))
             .map(|descendants| {

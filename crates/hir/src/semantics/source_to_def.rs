@@ -131,8 +131,12 @@ impl SourceToDefCtx<'_, '_> {
 
     pub(super) fn module_to_def(&mut self, src: InFile<ast::Module>) -> Option<ModuleId> {
         let _p = profile::span("module_to_def");
-        let parent_declaration =
-            src.syntax().cloned().ancestors_with_macros(self.db.upcast()).skip(1).find_map(|it| {
+        let parent_declaration = src
+            .syntax()
+            .cloned()
+            .ancestors_with_macros_skip_attr_item(self.db.upcast())
+            .skip(1)
+            .find_map(|it| {
                 let m = ast::Module::cast(it.value.clone())?;
                 Some(it.with_value(m))
             });
@@ -306,7 +310,8 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     pub(super) fn find_container(&mut self, src: InFile<&SyntaxNode>) -> Option<ChildContainer> {
-        for container in src.cloned().ancestors_with_macros(self.db.upcast()).skip(1) {
+        for container in src.cloned().ancestors_with_macros_skip_attr_item(self.db.upcast()).skip(1)
+        {
             if let Some(res) = self.container_to_def(container) {
                 return Some(res);
             }
@@ -370,7 +375,8 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     fn find_generic_param_container(&mut self, src: InFile<&SyntaxNode>) -> Option<GenericDefId> {
-        for container in src.cloned().ancestors_with_macros(self.db.upcast()).skip(1) {
+        for container in src.cloned().ancestors_with_macros_skip_attr_item(self.db.upcast()).skip(1)
+        {
             let res: GenericDefId = match_ast! {
                 match (container.value) {
                     ast::Fn(it) => self.fn_to_def(container.with_value(it))?.into(),
@@ -388,7 +394,8 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     fn find_pat_or_label_container(&mut self, src: InFile<&SyntaxNode>) -> Option<DefWithBodyId> {
-        for container in src.cloned().ancestors_with_macros(self.db.upcast()).skip(1) {
+        for container in src.cloned().ancestors_with_macros_skip_attr_item(self.db.upcast()).skip(1)
+        {
             let res: DefWithBodyId = match_ast! {
                 match (container.value) {
                     ast::Const(it) => self.const_to_def(container.with_value(it))?.into(),
