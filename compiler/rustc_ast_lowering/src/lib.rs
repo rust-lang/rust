@@ -1301,15 +1301,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let kind = match t.kind {
             TyKind::Infer => hir::TyKind::Infer,
             TyKind::Err => hir::TyKind::Err,
-            // FIXME(unnamed_fields): IMPLEMENTATION IN PROGRESS
-            TyKind::AnonymousStruct(ref _fields, _recovered) => {
-                self.sess.struct_span_err(t.span, "anonymous structs are unimplemented").emit();
-                hir::TyKind::Err
-            }
-            TyKind::AnonymousUnion(ref _fields, _recovered) => {
-                self.sess.struct_span_err(t.span, "anonymous unions are unimplemented").emit();
-                hir::TyKind::Err
-            }
             TyKind::Slice(ref ty) => hir::TyKind::Slice(self.lower_ty(ty, itctx)),
             TyKind::Ptr(ref mt) => hir::TyKind::Ptr(self.lower_mt(mt, itctx)),
             TyKind::Rptr(ref region, ref mt) => {
