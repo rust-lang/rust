@@ -193,11 +193,6 @@ impl<'a> AstValidator<'a> {
                     }
                 }
             }
-            TyKind::AnonymousStruct(ref fields, ..) | TyKind::AnonymousUnion(ref fields, ..) => {
-                self.with_banned_assoc_ty_bound(|this| {
-                    walk_list!(this, visit_struct_field_def, fields)
-                });
-            }
             _ => visit::walk_ty(self, t),
         }
     }
@@ -205,7 +200,6 @@ impl<'a> AstValidator<'a> {
     fn visit_struct_field_def(&mut self, field: &'a FieldDef) {
         if let Some(ident) = field.ident {
             if ident.name == kw::Underscore {
-                self.check_anonymous_field(field);
                 self.visit_vis(&field.vis);
                 self.visit_ident(ident);
                 self.visit_ty_common(&field.ty);
@@ -249,66 +243,6 @@ impl<'a> AstValidator<'a> {
             err.note(note);
         }
         err.emit();
-    }
-
-    fn check_anonymous_field(&self, field: &FieldDef) {
-        let FieldDef { ty, .. } = field;
-        match &ty.kind {
-            TyKind::AnonymousStruct(..) | TyKind::AnonymousUnion(..) => {
-                // We already checked for `kw::Underscore` before calling this function,
-                // so skip the check
-            }
-            TyKind::Path(..) => {
-                // If the anonymous field contains a Path as type, we can't determine
-                // if the path is a valid struct or union, so skip the check
-            }
-            _ => {
-                let msg = "unnamed fields can only have struct or union types";
-                let label = "not a struct or union";
-                self.err_handler()
-                    .struct_span_err(field.span, msg)
-                    .span_label(ty.span, label)
-                    .emit();
-            }
-        }
-    }
-
-    fn deny_anonymous_struct(&self, ty: &Ty) {
-        match &ty.kind {
-            TyKind::AnonymousStruct(..) => {
-                self.err_handler()
-                    .struct_span_err(
-                        ty.span,
-                        "anonymous structs are not allowed outside of unnamed struct or union fields",
-                    )
-                    .span_label(ty.span, "anonymous struct declared here")
-                    .emit();
-            }
-            TyKind::AnonymousUnion(..) => {
-                self.err_handler()
-                    .struct_span_err(
-                        ty.span,
-                        "anonymous unions are not allowed outside of unnamed struct or union fields",
-                    )
-                    .span_label(ty.span, "anonymous union declared here")
-                    .emit();
-            }
-            _ => {}
-        }
-    }
-
-    fn deny_anonymous_field(&self, field: &FieldDef) {
-        if let Some(ident) = field.ident {
-            if ident.name == kw::Underscore {
-                self.err_handler()
-                    .struct_span_err(
-                        field.span,
-                        "anonymous fields are not allowed outside of structs or unions",
-                    )
-                    .span_label(ident.span, "anonymous field declared here")
-                    .emit()
-            }
-        }
     }
 
     fn check_decl_no_pat(decl: &FnDecl, mut report_err: impl FnMut(Span, Option<Ident>, bool)) {
@@ -1081,7 +1015,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_ty(&mut self, ty: &'a Ty) {
         self.visit_ty_common(ty);
-        self.deny_anonymous_struct(ty);
         self.walk_ty(ty)
     }
 
@@ -1096,7 +1029,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_field_def(&mut self, s: &'a FieldDef) {
-        self.deny_anonymous_field(s);
         visit::walk_field_def(self, s)
     }
 
