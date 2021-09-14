@@ -4,7 +4,6 @@ error[E0038]: the trait `Bar` cannot be made into an object
 LL | fn make_bar<T:Bar>(t: &T) -> &dyn Bar {
    |                              ^^^^^^^^ `Bar` cannot be made into an object
    |
-   = help: consider moving `bar` to another trait
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/object-safety-mentions-Self.rs:11:22
    |
@@ -12,6 +11,7 @@ LL | trait Bar {
    |       --- this trait cannot be made into an object...
 LL |     fn bar(&self, x: &Self);
    |                      ^^^^^ ...because method `bar` references the `Self` type in this parameter
+   = help: consider moving `bar` to another trait
 
 error[E0038]: the trait `Baz` cannot be made into an object
   --> $DIR/object-safety-mentions-Self.rs:28:30
@@ -19,7 +19,6 @@ error[E0038]: the trait `Baz` cannot be made into an object
 LL | fn make_baz<T:Baz>(t: &T) -> &dyn Baz {
    |                              ^^^^^^^^ `Baz` cannot be made into an object
    |
-   = help: consider moving `baz` to another trait
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/object-safety-mentions-Self.rs:15:22
    |
@@ -27,6 +26,7 @@ LL | trait Baz {
    |       --- this trait cannot be made into an object...
 LL |     fn baz(&self) -> Self;
    |                      ^^^^ ...because method `baz` references the `Self` type in its return type
+   = help: consider moving `baz` to another trait
 
 error: aborting due to 2 previous errors
 

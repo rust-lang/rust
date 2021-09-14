@@ -4,7 +4,6 @@ error[E0038]: the trait `Foo` cannot be made into an object
 LL | fn f(_arg : Box<dyn for<'a> Foo<A<'a> = &'a ()>>) {}
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Foo` cannot be made into an object
    |
-   = help: consider moving `A` to another trait
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/gat-in-trait-path.rs:5:10
    |
@@ -12,6 +11,7 @@ LL | trait Foo {
    |       --- this trait cannot be made into an object...
 LL |     type A<'a> where Self: 'a;
    |          ^ ...because it contains the generic associated type `A`
+   = help: consider moving `A` to another trait
 
 error: aborting due to previous error
 
