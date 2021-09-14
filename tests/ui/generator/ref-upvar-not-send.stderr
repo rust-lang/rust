@@ -5,14 +5,16 @@ LL |       assert_send(move || {
    |  _________________^
 LL | |
 LL | |
+LL | |
 LL | |         yield;
 LL | |         let _x = x;
 LL | |     });
    | |_____^ generator is not `Send`
    |
    = help: the trait `Sync` is not implemented for `*mut ()`
+   = note: consider using `std::sync::Arc<*mut ()>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: captured value is not `Send` because `&` references cannot be sent unless their referent is `Sync`
-  --> $DIR/ref-upvar-not-send.rs:19:18
+  --> $DIR/ref-upvar-not-send.rs:20:18
    |
 LL |         let _x = x;
    |                  ^ has type `&*mut ()` which is not `Send`, because `*mut ()` is not `Sync`
@@ -23,10 +25,11 @@ LL | fn assert_send<T: Send>(_: T) {}
    |                   ^^^^ required by this bound in `assert_send`
 
 error: generator cannot be sent between threads safely
-  --> $DIR/ref-upvar-not-send.rs:23:17
+  --> $DIR/ref-upvar-not-send.rs:24:17
    |
 LL |       assert_send(move || {
    |  _________________^
+LL | |
 LL | |
 LL | |
 LL | |         yield;
@@ -34,9 +37,10 @@ LL | |         let _y = y;
 LL | |     });
    | |_____^ generator is not `Send`
    |
-   = help: within `[generator@$DIR/ref-upvar-not-send.rs:23:17: 23:24]`, the trait `Send` is not implemented for `*mut ()`
+   = help: within `[generator@$DIR/ref-upvar-not-send.rs:24:17: 24:24]`, the trait `Send` is not implemented for `*mut ()`
+   = note: consider using `std::sync::Arc<*mut ()>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: captured value is not `Send` because `&mut` references cannot be sent unless their referent is `Send`
-  --> $DIR/ref-upvar-not-send.rs:27:18
+  --> $DIR/ref-upvar-not-send.rs:29:18
    |
 LL |         let _y = y;
    |                  ^ has type `&mut *mut ()` which is not `Send`, because `*mut ()` is not `Send`

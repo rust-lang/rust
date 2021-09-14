@@ -5,6 +5,7 @@ LL | pub fn foo() -> impl Future + Send {
    |                 ^^^^^^^^^^^^^^^^^^ future created by async block is not `Send`
    |
    = help: the trait `Sync` is not implemented for `(dyn Any + Send + 'static)`
+   = note: consider using `std::sync::Arc<(dyn Any + Send + 'static)>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: future is not `Send` as this value is used across an await
   --> $DIR/issue-64130-4-async-move.rs:27:23
    |

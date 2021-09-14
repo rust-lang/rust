@@ -6,6 +6,7 @@ LL |     is_zen(x)
    |     |
    |     required by a bound introduced by this call
    |
+   = note: consider using `std::sync::Arc<T>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required for `&T` to implement `Zen`
   --> $DIR/phantom-auto-trait.rs:10:24
    |
@@ -36,6 +37,7 @@ LL |     is_zen(x)
    |     |
    |     required by a bound introduced by this call
    |
+   = note: consider using `std::sync::Arc<T>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required for `&T` to implement `Zen`
   --> $DIR/phantom-auto-trait.rs:10:24
    |

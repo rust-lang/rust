@@ -21,11 +21,13 @@ fn main() {
     //~^ ERROR `Rc<Cell<i32>>` cannot be sent between threads safely
     //~| NOTE `Rc<Cell<i32>>` cannot be sent between threads safely
     //~| NOTE required by a bound
+    //~| NOTE use `std::sync::Arc` instead
 
     send(after());
     //~^ ERROR `Rc<Cell<i32>>` cannot be sent between threads safely
     //~| NOTE `Rc<Cell<i32>>` cannot be sent between threads safely
     //~| NOTE required by a bound
+    //~| NOTE use `std::sync::Arc` instead
 }
 
 // Deferred path, main has to wait until typeck finishes,

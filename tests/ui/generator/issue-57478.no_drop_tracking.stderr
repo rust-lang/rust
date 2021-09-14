@@ -11,6 +11,7 @@ LL | |     })
    | |_____^ generator is not `Send`
    |
    = help: within `[generator@$DIR/issue-57478.rs:13:17: 13:19]`, the trait `Send` is not implemented for `Foo`
+   = note: consider using `std::sync::Arc<Foo>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/issue-57478.rs:17:9
    |

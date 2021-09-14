@@ -5,6 +5,7 @@ LL | fn generic<T, U>(v: Foo<T, U>, f: fn(<Foo<T, U> as WithAssoc>::Output) -> i
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Foo<T, U>` cannot be sent between threads safely
    |
    = help: the trait `Send` is not implemented for `Foo<T, U>`
+   = note: consider using `std::sync::Arc<Foo<T, U>>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required for `Foo<T, U>` to implement `WithAssoc`
   --> $DIR/issue-83857-ub.rs:15:15
    |

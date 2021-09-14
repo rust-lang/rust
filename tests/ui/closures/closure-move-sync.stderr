@@ -11,6 +11,7 @@ LL | |     });
    | |_____^ `std::sync::mpsc::Receiver<()>` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `std::sync::mpsc::Receiver<()>`
+   = note: consider using `std::sync::Arc<std::sync::mpsc::Receiver<()>>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
    = note: required for `&std::sync::mpsc::Receiver<()>` to implement `Send`
 note: required because it's used within this closure
   --> $DIR/closure-move-sync.rs:6:27

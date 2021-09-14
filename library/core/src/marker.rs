@@ -76,8 +76,11 @@ macro marker_impls {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Send")]
 #[rustc_on_unimplemented(
+    on(_Self = "std::rc::Rc<T, A>", note = "use `std::sync::Arc` instead of `std::rc::Rc`"),
     message = "`{Self}` cannot be sent between threads safely",
-    label = "`{Self}` cannot be sent between threads safely"
+    label = "`{Self}` cannot be sent between threads safely",
+    note = "consider using `std::sync::Arc<{Self}>`; for more information visit \
+            <https://doc.rust-lang.org/book/ch16-03-shared-state.html>"
 )]
 pub unsafe auto trait Send {
     // empty.
@@ -628,8 +631,11 @@ impl<T: ?Sized> Copy for &T {}
         any(_Self = "core::cell::RefCell<T>", _Self = "std::cell::RefCell<T>"),
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead",
     ),
+    on(_Self = "std::rc::Rc<T, A>", note = "use `std::sync::Arc` instead of `std::rc::Rc`"),
     message = "`{Self}` cannot be shared between threads safely",
-    label = "`{Self}` cannot be shared between threads safely"
+    label = "`{Self}` cannot be shared between threads safely",
+    note = "consider using `std::sync::Arc<{Self}>`; for more information visit \
+            <https://doc.rust-lang.org/book/ch16-03-shared-state.html>"
 )]
 pub unsafe auto trait Sync {
     // FIXME(estebank): once support to add notes in `rustc_on_unimplemented`

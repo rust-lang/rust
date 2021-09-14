@@ -5,6 +5,7 @@ LL | impl Foo for std::rc::Rc<i8> { }
    |              ^^^^^^^^^^^^^^^ `Rc<i8>` cannot be sent between threads safely
    |
    = help: the trait `Send` is not implemented for `Rc<i8>`
+   = note: use `std::sync::Arc` instead of `std::rc::Rc`
 note: required by a bound in `Foo`
   --> $DIR/builtin-superkinds-simple.rs:4:13
    |

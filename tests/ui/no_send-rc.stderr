@@ -7,6 +7,7 @@ LL |     bar(x);
    |     required by a bound introduced by this call
    |
    = help: the trait `Send` is not implemented for `Rc<{integer}>`
+   = note: use `std::sync::Arc` instead of `std::rc::Rc`
 note: required by a bound in `bar`
   --> $DIR/no_send-rc.rs:3:11
    |
