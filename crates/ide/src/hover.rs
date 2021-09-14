@@ -375,20 +375,20 @@ fn hover_deref_expr(
         let original = original.display(sema.db).to_string();
         let adjusted = adjusted_ty.display(sema.db).to_string();
         let inner = inner_ty.display(sema.db).to_string();
-        let type_len = "Type: ".len();
+        let type_len = "To type: ".len();
         let coerced_len = "Coerced to: ".len();
         let deref_len = "Dereferenced from: ".len();
         let max_len = (original.len() + type_len)
             .max(adjusted.len() + coerced_len)
             .max(inner.len() + deref_len);
         format!(
-            "{bt_start}Type: {:>apad$}\nCoerced to: {:>opad$}\nDereferenced from: {:>ipad$}\n{bt_end}",
+            "{bt_start}Dereferenced from: {:>ipad$}\nTo type: {:>apad$}\nCoerced to: {:>opad$}\n{bt_end}",
+            inner,
             original,
             adjusted,
-            inner,
+            ipad = max_len - deref_len,
             apad = max_len - type_len,
             opad = max_len - coerced_len,
-            ipad = max_len - deref_len,
             bt_start = if config.markdown() { "```text\n" } else { "" },
             bt_end = if config.markdown() { "```\n" } else { "" }
         )
@@ -396,15 +396,15 @@ fn hover_deref_expr(
     } else {
         let original = original.display(sema.db).to_string();
         let inner = inner_ty.display(sema.db).to_string();
-        let type_len = "Type: ".len();
+        let type_len = "To type: ".len();
         let deref_len = "Dereferenced from: ".len();
         let max_len = (original.len() + type_len).max(inner.len() + deref_len);
         format!(
-            "{bt_start}Type: {:>apad$}\nDereferenced from: {:>ipad$}\n{bt_end}",
-            original,
+            "{bt_start}Dereferenced from: {:>ipad$}\nTo type: {:>apad$}\n{bt_end}",
             inner,
-            apad = max_len - type_len,
+            original,
             ipad = max_len - deref_len,
+            apad = max_len - type_len,
             bt_start = if config.markdown() { "```text\n" } else { "" },
             bt_end = if config.markdown() { "```\n" } else { "" }
         )
@@ -4542,8 +4542,8 @@ fn foo() {
 "#,
             expect![[r#"
                 ```text
-                Type:                            i32
                 Dereferenced from: DerefExample<i32>
+                To type:                         i32
                 ```
             "#]],
         );
@@ -4575,9 +4575,9 @@ fn foo() {
 "#,
             expect![[r#"
                 ```text
-                Type:                            &&&&&i32
-                Coerced to:                          &i32
                 Dereferenced from: DerefExample<&&&&&i32>
+                To type:                         &&&&&i32
+                Coerced to:                          &i32
                 ```
             "#]],
         );
