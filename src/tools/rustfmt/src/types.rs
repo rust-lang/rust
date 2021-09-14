@@ -1,15 +1,15 @@
 use std::iter::ExactSizeIterator;
 use std::ops::Deref;
 
-use rustc_ast::ast::{self, AttrVec, FnRetTy, Mutability};
-use rustc_span::{symbol::kw, symbol::Ident, BytePos, Pos, Span};
+use rustc_ast::ast::{self, FnRetTy, Mutability};
+use rustc_span::{symbol::kw, BytePos, Pos, Span};
 
+use crate::comment::{combine_strs_with_missing_comments, contains_comment};
 use crate::config::lists::*;
 use crate::config::{IndentStyle, TypeDensity, Version};
 use crate::expr::{
     format_expr, rewrite_assign_rhs, rewrite_call, rewrite_tuple, rewrite_unary_prefix, ExprType,
 };
-use crate::items::StructParts;
 use crate::lists::{
     definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
 };
@@ -23,11 +23,6 @@ use crate::spanned::Spanned;
 use crate::utils::{
     colon_spaces, extra_offset, first_line_width, format_extern, format_mutability,
     last_line_extendable, last_line_width, mk_sp, rewrite_ident,
-};
-use crate::DEFAULT_VISIBILITY;
-use crate::{
-    comment::{combine_strs_with_missing_comments, contains_comment},
-    items::format_struct_struct,
 };
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -768,54 +763,6 @@ impl Rewrite for ast::Ty {
             }
             ast::TyKind::Tup(ref items) => {
                 rewrite_tuple(context, items.iter(), self.span, shape, items.len() == 1)
-            }
-            ast::TyKind::AnonymousStruct(ref fields, recovered) => {
-                let ident = Ident::new(
-                    kw::Struct,
-                    mk_sp(self.span.lo(), self.span.lo() + BytePos(6)),
-                );
-                let data = ast::VariantData::Struct(fields.clone(), recovered);
-                let variant = ast::Variant {
-                    attrs: AttrVec::new(),
-                    id: self.id,
-                    span: self.span,
-                    vis: DEFAULT_VISIBILITY,
-                    ident,
-                    data,
-                    disr_expr: None,
-                    is_placeholder: false,
-                };
-                format_struct_struct(
-                    &context,
-                    &StructParts::from_variant(&variant),
-                    fields,
-                    shape.indent,
-                    None,
-                )
-            }
-            ast::TyKind::AnonymousUnion(ref fields, recovered) => {
-                let ident = Ident::new(
-                    kw::Union,
-                    mk_sp(self.span.lo(), self.span.lo() + BytePos(5)),
-                );
-                let data = ast::VariantData::Struct(fields.clone(), recovered);
-                let variant = ast::Variant {
-                    attrs: AttrVec::new(),
-                    id: self.id,
-                    span: self.span,
-                    vis: DEFAULT_VISIBILITY,
-                    ident,
-                    data,
-                    disr_expr: None,
-                    is_placeholder: false,
-                };
-                format_struct_struct(
-                    &context,
-                    &StructParts::from_variant(&variant),
-                    fields,
-                    shape.indent,
-                    None,
-                )
             }
             ast::TyKind::Path(ref q_self, ref path) => {
                 rewrite_path(context, PathContext::Type, q_self.as_ref(), path, shape)

@@ -1247,7 +1247,7 @@ impl<'a> Parser<'a> {
         Ok((class_name, ItemKind::Union(vdata, generics)))
     }
 
-    pub(super) fn parse_record_struct_body(
+    fn parse_record_struct_body(
         &mut self,
         adt_ty: &str,
     ) -> PResult<'a, (Vec<FieldDef>, /* recovered */ bool)> {
@@ -1481,28 +1481,22 @@ impl<'a> Parser<'a> {
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err()?;
         if !is_raw && ident.is_reserved() {
-            if ident.name == kw::Underscore {
-                self.sess.gated_spans.gate(sym::unnamed_fields, lo);
+            let err = if self.check_fn_front_matter(false) {
+                // We use `parse_fn` to get a span for the function
+                if let Err(mut db) = self.parse_fn(&mut Vec::new(), |_| true, lo) {
+                    db.delay_as_bug();
+                }
+                let mut err = self.struct_span_err(
+                    lo.to(self.prev_token.span),
+                    &format!("functions are not allowed in {} definitions", adt_ty),
+                );
+                err.help("unlike in C++, Java, and C#, functions are declared in `impl` blocks");
+                err.help("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information");
+                err
             } else {
-                let err = if self.check_fn_front_matter(false) {
-                    // We use `parse_fn` to get a span for the function
-                    if let Err(mut db) = self.parse_fn(&mut Vec::new(), |_| true, lo) {
-                        db.delay_as_bug();
-                    }
-                    let mut err = self.struct_span_err(
-                        lo.to(self.prev_token.span),
-                        &format!("functions are not allowed in {} definitions", adt_ty),
-                    );
-                    err.help(
-                        "unlike in C++, Java, and C#, functions are declared in `impl` blocks",
-                    );
-                    err.help("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information");
-                    err
-                } else {
-                    self.expected_ident_found()
-                };
-                return Err(err);
-            }
+                self.expected_ident_found()
+            };
+            return Err(err);
         }
         self.bump();
         Ok(ident)

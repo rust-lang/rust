@@ -985,14 +985,6 @@ impl<'a> State<'a> {
                 }
                 self.pclose();
             }
-            ast::TyKind::AnonymousStruct(ref fields, ..) => {
-                self.head("struct");
-                self.print_record_struct_body(&fields, ty.span);
-            }
-            ast::TyKind::AnonymousUnion(ref fields, ..) => {
-                self.head("union");
-                self.print_record_struct_body(&fields, ty.span);
-            }
             ast::TyKind::Paren(ref typ) => {
                 self.popen();
                 self.print_type(typ);
@@ -1413,7 +1405,12 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_record_struct_body(&mut self, fields: &[ast::FieldDef], span: rustc_span::Span) {
+    crate fn print_record_struct_body(
+        &mut self,
+        fields: &Vec<ast::FieldDef>,
+        span: rustc_span::Span,
+    ) {
+        self.nbsp();
         self.bopen();
         self.hardbreak_if_not_bol();
 
@@ -1462,7 +1459,6 @@ impl<'a> State<'a> {
             }
             ast::VariantData::Struct(ref fields, ..) => {
                 self.print_where_clause(&generics.where_clause);
-                self.nbsp();
                 self.print_record_struct_body(fields, span);
             }
         }
