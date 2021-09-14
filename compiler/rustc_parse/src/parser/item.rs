@@ -493,7 +493,20 @@ impl<'a> Parser<'a> {
         let ty_first = if self.token.is_keyword(kw::For) && self.look_ahead(1, |t| t != &token::Lt)
         {
             let span = self.prev_token.span.between(self.token.span);
-            self.struct_span_err(span, "missing trait in a trait impl").emit();
+            self.struct_span_err(span, "missing trait in a trait impl")
+                .span_suggestion(
+                    span,
+                    "add a trait here",
+                    " Trait ".into(),
+                    Applicability::HasPlaceholders,
+                )
+                .span_suggestion(
+                    span.to(self.token.span),
+                    "for an inherent impl, drop this `for`",
+                    "".into(),
+                    Applicability::MaybeIncorrect,
+                )
+                .emit();
             P(Ty {
                 kind: TyKind::Path(None, err_path(span)),
                 span,

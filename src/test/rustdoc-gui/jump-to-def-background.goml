@@ -1,0 +1,23 @@
+// We check the background color on the jump to definition links in the source code page.
+goto: file://|DOC_PATH|/src/link_to_definition/lib.rs.html
+
+// Set the theme to dark.
+local-storage: {"rustdoc-theme": "dark", "rustdoc-preferred-dark-theme": "dark", "rustdoc-use-system-theme": "false"}
+// We reload the page so the local storage settings are being used.
+reload:
+
+assert-css: ("body.source .example-wrap pre.rust a", {"background-color": "rgb(51, 51, 51)"}, ALL)
+
+// Set the theme to ayu.
+local-storage: {"rustdoc-theme": "ayu", "rustdoc-preferred-dark-theme": "ayu", "rustdoc-use-system-theme": "false"}
+// We reload the page so the local storage settings are being used.
+reload:
+
+assert-css: ("body.source .example-wrap pre.rust a", {"background-color": "rgb(51, 51, 51)"}, ALL)
+
+// Set the theme to light.
+local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
+// We reload the page so the local storage settings are being used.
+reload:
+
+assert-css: ("body.source .example-wrap pre.rust a", {"background-color": "rgb(238, 238, 238)"}, ALL)
