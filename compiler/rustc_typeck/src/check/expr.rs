@@ -1842,7 +1842,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr_t
         );
         err.span_label(field.span, "method, not a field");
-        if !self.expr_in_place(expr.hir_id) {
+        let expr_is_call =
+            if let hir::Node::Expr(hir::Expr { kind: ExprKind::Call(callee, _args), .. }) =
+                self.tcx.hir().get(self.tcx.hir().get_parent_node(expr.hir_id))
+            {
+                expr.hir_id == callee.hir_id
+            } else {
+                false
+            };
+        let expr_snippet =
+            self.tcx.sess.source_map().span_to_snippet(expr.span).unwrap_or(String::new());
+        if expr_is_call && expr_snippet.starts_with("(") && expr_snippet.ends_with(")") {
+            let after_open = expr.span.lo() + rustc_span::BytePos(1);
+            let before_close = expr.span.hi() - rustc_span::BytePos(1);
+            err.multipart_suggestion(
+                "remove wrapping parentheses to call the method",
+                vec![
+                    (expr.span.with_hi(after_open), String::new()),
+                    (expr.span.with_lo(before_close), String::new()),
+                ],
+                Applicability::MachineApplicable,
+            );
+        } else if !self.expr_in_place(expr.hir_id) {
             self.suggest_method_call(
                 &mut err,
                 "use parentheses to call the method",
