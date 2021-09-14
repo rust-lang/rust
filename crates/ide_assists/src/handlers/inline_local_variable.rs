@@ -107,6 +107,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
                     | ast::Expr::BreakExpr(_)
                     | ast::Expr::ReturnExpr(_)
                     | ast::Expr::MatchExpr(_)
+                    | ast::Expr::BlockExpr(_)
             );
             Some((range, name_ref, !(initializer || parent)))
         })
