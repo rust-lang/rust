@@ -184,14 +184,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.descend_into_macros(token)
     }
 
-    pub fn descend_node_at_offset<N: ast::AstNode>(
-        &self,
-        node: &SyntaxNode,
-        offset: TextSize,
-    ) -> Option<N> {
-        self.imp.descend_node_at_offset(node, offset).flatten().find_map(N::cast)
-    }
-
     pub fn hir_file_for(&self, syntax_node: &SyntaxNode) -> HirFileId {
         self.imp.find_file(syntax_node.clone()).file_id
     }
