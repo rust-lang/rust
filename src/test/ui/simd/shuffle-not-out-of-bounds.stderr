@@ -71,6 +71,12 @@ LL | |          16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1));
    |
    = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 6 previous errors
+error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: shuffle index #0 is out of bounds (limit 4)
+  --> $DIR/shuffle-not-out-of-bounds.rs:198:23
+   |
+LL |         let _: u8x2 = simd_shuffle(v, v, I);
+   |                       ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0511`.

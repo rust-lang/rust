@@ -1211,6 +1211,7 @@ symbols! {
         simd_select_bitmask,
         simd_shl,
         simd_shr,
+        simd_shuffle,
         simd_sub,
         simd_trunc,
         simd_xor,

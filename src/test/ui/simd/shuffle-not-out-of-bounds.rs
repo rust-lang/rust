@@ -188,4 +188,14 @@ fn main() {
          48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33,
          32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17,
          16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1));
+
+    extern "platform-intrinsic" {
+        fn simd_shuffle<T, I, U>(a: T, b: T, i: I) -> U;
+    }
+    let v = u8x2(0, 0);
+    const I: [u32; 2] = [4, 4];
+    unsafe {
+        let _: u8x2 = simd_shuffle(v, v, I);
+        //~^ ERROR invalid monomorphization of `simd_shuffle` intrinsic
+    }
 }
