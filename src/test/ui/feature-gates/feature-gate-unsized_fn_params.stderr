@@ -12,10 +12,10 @@ LL | fn foo(x: &dyn Foo) {
    |           +
 
 error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time
-  --> $DIR/feature-gate-unsized_fn_params.rs:24:5
+  --> $DIR/feature-gate-unsized_fn_params.rs:24:9
    |
 LL |     foo(*x);
-   |     ^^^ doesn't have a size known at compile-time
+   |         ^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Foo + 'static)`
    = note: all function arguments must have a statically known size
