@@ -1976,7 +1976,10 @@ details.undocumented[open] > summary::before {
 
 .scraped-example-title {
 	font-family: 'Fira Sans';
-	font-weight: 500;
+}
+
+.scraped-example-title a {
+	margin-left: 5px;
 }
 
 .scraped-example:not(.expanded) .code-wrapper pre.line-numbers,
@@ -2115,7 +2118,12 @@ h1 + .scraped-example {
 	margin-bottom: 20px;
 }
 
+.more-scraped-examples .scraped-example:last-child {
+	margin-bottom: 0;
+}
+
 .example-links a {
+	margin-top: 20px;
 	font-family: 'Fira Sans';
 }
 

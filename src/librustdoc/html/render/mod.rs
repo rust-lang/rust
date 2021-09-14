@@ -2482,16 +2482,6 @@ fn render_call_locations(
         id
     );
 
-    // Link to the source file containing a given example
-    let example_url = |call_data: &CallData| -> String {
-        format!(
-            r#"<a href="{root}{url}" target="_blank">{name}</a>"#,
-            root = cx.root_path(),
-            url = call_data.url,
-            name = call_data.display_name
-        )
-    };
-
     // Generate the HTML for a single example, being the title and code block
     let tcx = cx.tcx();
     let write_example = |w: &mut Buffer, (path, call_data): (&PathBuf, &CallData)| -> bool {
@@ -2534,9 +2524,13 @@ fn render_call_locations(
         write!(
             w,
             r#"<div class="scraped-example" data-locs="{locations}">
-                <div class="scraped-example-title">{title}</div>
-                 <div class="code-wrapper">"#,
-            title = example_url(call_data),
+                <div class="scraped-example-title">
+                   {name} <a href="{root}{url}" target="_blank">[src]</a>
+                </div>
+                <div class="code-wrapper">"#,
+            root = cx.root_path(),
+            url = call_data.url,
+            name = call_data.display_name,
             // The locations are encoded as a data attribute, so they can be read
             // later by the JS for interactions.
             locations = serde_json::to_string(&line_ranges).unwrap(),
@@ -2639,7 +2633,13 @@ fn render_call_locations(
                 r#"<div class="example-links">Additional examples can be found in:<br /><ul>"#
             );
             it.for_each(|(_, call_data)| {
-                write!(w, "<li>{}</li>", example_url(call_data));
+                write!(
+                    w,
+                    r#"<li><a href="{}{}" target="_blank">{}</a></li>"#,
+                    root = cx.root_path(),
+                    url = call_data.url,
+                    name = call_data.display_name
+                );
             });
             write!(w, "</ul></div>");
         }
