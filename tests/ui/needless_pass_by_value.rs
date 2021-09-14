@@ -3,7 +3,6 @@
     dead_code,
     clippy::single_match,
     clippy::redundant_pattern_matching,
-    clippy::many_single_char_names,
     clippy::option_option,
     clippy::redundant_clone
 )]

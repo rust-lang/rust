@@ -1,5 +1,5 @@
 error: strict comparison of `f32` or `f64`
-  --> $DIR/float_cmp.rs:58:5
+  --> $DIR/float_cmp.rs:57:5
    |
 LL |     ONE as f64 != 2.0;
    |     ^^^^^^^^^^^^^^^^^ help: consider comparing them within some margin of error: `(ONE as f64 - 2.0).abs() > error_margin`
@@ -8,7 +8,7 @@ LL |     ONE as f64 != 2.0;
    = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
 
 error: strict comparison of `f32` or `f64`
-  --> $DIR/float_cmp.rs:63:5
+  --> $DIR/float_cmp.rs:62:5
    |
 LL |     x == 1.0;
    |     ^^^^^^^^ help: consider comparing them within some margin of error: `(x - 1.0).abs() < error_margin`
@@ -16,7 +16,7 @@ LL |     x == 1.0;
    = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
 
 error: strict comparison of `f32` or `f64`
-  --> $DIR/float_cmp.rs:66:5
+  --> $DIR/float_cmp.rs:65:5
    |
 LL |     twice(x) != twice(ONE as f64);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider comparing them within some margin of error: `(twice(x) - twice(ONE as f64)).abs() > error_margin`
@@ -24,7 +24,7 @@ LL |     twice(x) != twice(ONE as f64);
    = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
 
 error: strict comparison of `f32` or `f64`
-  --> $DIR/float_cmp.rs:86:5
+  --> $DIR/float_cmp.rs:85:5
    |
 LL |     NON_ZERO_ARRAY[i] == NON_ZERO_ARRAY[j];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider comparing them within some margin of error: `(NON_ZERO_ARRAY[i] - NON_ZERO_ARRAY[j]).abs() < error_margin`
@@ -32,7 +32,7 @@ LL |     NON_ZERO_ARRAY[i] == NON_ZERO_ARRAY[j];
    = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
 
 error: strict comparison of `f32` or `f64` arrays
-  --> $DIR/float_cmp.rs:91:5
+  --> $DIR/float_cmp.rs:90:5
    |
 LL |     a1 == a2;
    |     ^^^^^^^^
@@ -40,7 +40,7 @@ LL |     a1 == a2;
    = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
 
 error: strict comparison of `f32` or `f64`
-  --> $DIR/float_cmp.rs:92:5
+  --> $DIR/float_cmp.rs:91:5
    |
 LL |     a1[0] == a2[0];
    |     ^^^^^^^^^^^^^^ help: consider comparing them within some margin of error: `(a1[0] - a2[0]).abs() < error_margin`

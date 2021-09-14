@@ -540,7 +540,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         std::mem::discriminant(&b.rules).hash(&mut self.s);
     }
 
-    #[allow(clippy::many_single_char_names, clippy::too_many_lines)]
+    #[allow(clippy::too_many_lines)]
     pub fn hash_expr(&mut self, e: &Expr<'_>) {
         let simple_const = self
             .maybe_typeck_results
