@@ -20,7 +20,6 @@ error[E0038]: the trait `SuperTrait` cannot be made into an object
 LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `SuperTrait` cannot be made into an object
    |
-   = help: consider moving `SubType` to another trait
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/issue-76535.rs:6:10
    |
@@ -28,6 +27,7 @@ LL | pub trait SuperTrait {
    |           ---------- this trait cannot be made into an object...
 LL |     type SubType<'a>: SubTrait;
    |          ^^^^^^^ ...because it contains the generic associated type `SubType`
+   = help: consider moving `SubType` to another trait
 
 error[E0038]: the trait `SuperTrait` cannot be made into an object
   --> $DIR/issue-76535.rs:36:57
@@ -35,7 +35,6 @@ error[E0038]: the trait `SuperTrait` cannot be made into an object
 LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
    |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `SuperTrait` cannot be made into an object
    |
-   = help: consider moving `SubType` to another trait
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/issue-76535.rs:6:10
    |
@@ -43,6 +42,7 @@ LL | pub trait SuperTrait {
    |           ---------- this trait cannot be made into an object...
 LL |     type SubType<'a>: SubTrait;
    |          ^^^^^^^ ...because it contains the generic associated type `SubType`
+   = help: consider moving `SubType` to another trait
    = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn SuperTrait<SubType = SubStruct<'_>>>>` for `Box<SuperStruct>`
    = note: required by cast to type `Box<dyn SuperTrait<SubType = SubStruct<'_>>>`
 
