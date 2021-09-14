@@ -1,3 +1,5 @@
+use std::{collections::HashSet, ops::ControlFlow};
+
 use either::Either;
 use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo};
 use ide_db::{
@@ -13,7 +15,7 @@ use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
     algo, ast, display::fn_as_proc_macro_label, match_ast, AstNode, Direction, SyntaxKind::*,
-    SyntaxNode, SyntaxToken, T,
+    SyntaxNode, SyntaxToken, TextRange, TextSize, T,
 };
 
 use crate::{
@@ -111,16 +113,68 @@ pub(crate) fn hover(
         kind if kind.is_trivia() => 0,
         _ => 1,
     })?;
-    let token = sema.descend_into_macros(token);
-    let node = token.parent()?;
+
+    let mut seen = HashSet::default();
+
+    let mut fallback = None;
+    sema.descend_into_macros_many(token.clone())
+        .iter()
+        .filter_map(|token| match token.parent() {
+            Some(node) => {
+                match find_hover_result(&sema, file_id, offset, config, token, &node, &mut seen) {
+                    Some(res) => match res {
+                        ControlFlow::Break(inner) => Some(inner),
+                        ControlFlow::Continue(_) => {
+                            if fallback.is_none() {
+                                // FIXME we're only taking the first fallback into account that's not `None`
+                                fallback = type_hover(&sema, config, &token);
+                            }
+                            None
+                        }
+                    },
+                    None => None,
+                }
+            }
+            None => None,
+        })
+        // reduce all descends into a single `RangeInfo`
+        // that spans from the earliest start to the latest end (fishy/FIXME),
+        // concatenates all `Markup`s with `\n---\n`,
+        // and accumulates all actions into its `actions` vector.
+        .reduce(|mut acc, RangeInfo { range, mut info }| {
+            let start = acc.range.start().min(range.start());
+            let end = acc.range.end().max(range.end());
+
+            acc.range = TextRange::new(start, end);
+            acc.info.actions.append(&mut info.actions);
+            acc.info.markup = Markup::from(format!("{}\n---\n{}", acc.info.markup, info.markup));
+            acc
+        })
+        .or(fallback)
+}
+
+fn find_hover_result(
+    sema: &Semantics<RootDatabase>,
+    file_id: FileId,
+    offset: TextSize,
+    config: &HoverConfig,
+    token: &SyntaxToken,
+    node: &SyntaxNode,
+    seen: &mut HashSet<Definition>,
+) -> Option<ControlFlow<RangeInfo<HoverResult>>> {
     let mut range_override = None;
+
+    // intra-doc links and attributes are special cased
+    // so don't add them to the `seen` duplicate check
+    let mut add_to_seen_definitions = true;
+
     let definition = match_ast! {
         match node {
-            ast::Name(name) => NameClass::classify(&sema, &name).map(|class| match class {
+            ast::Name(name) => NameClass::classify(sema, &name).map(|class| match class {
                 NameClass::Definition(it) | NameClass::ConstReference(it) => it,
                 NameClass::PatFieldShorthand { local_def, field_ref: _ } => Definition::Local(local_def),
             }),
-            ast::NameRef(name_ref) => NameRefClass::classify(&sema, &name_ref).map(|class| match class {
+            ast::NameRef(name_ref) => NameRefClass::classify(sema, &name_ref).map(|class| match class {
                 NameRefClass::Definition(def) => def,
                 NameRefClass::FieldShorthand { local_ref: _, field_ref } => {
                     Definition::Field(field_ref)
@@ -137,25 +191,37 @@ pub(crate) fn hover(
             ),
             _ => {
                 // intra-doc links
+                // FIXME: move comment + attribute special cases somewhere else to simplify control flow,
+                // hopefully simplifying the return type of this function in the process
+                // (the `Break`/`Continue` distinction is needed to decide whether to use fallback hovers)
+                //
+                // FIXME: hovering the intra doc link to `Foo` not working:
+                //
+                // #[identity]
+                // trait Foo {
+                //    /// [`Foo`]
+                // fn foo() {}
                 if token.kind() == COMMENT {
+                    add_to_seen_definitions = false;
                     cov_mark::hit!(no_highlight_on_comment_hover);
-                    let (attributes, def) = doc_attributes(&sema, &node)?;
-                    let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
+                    let (attributes, def) = doc_attributes(sema, node)?;
+                    let (docs, doc_mapping) = attributes.docs_with_rangemap(sema.db)?;
                     let (idl_range, link, ns) =
                         extract_definitions_from_docs(&docs).into_iter().find_map(|(range, link, ns)| {
                             let mapped = doc_mapping.map(range)?;
                             (mapped.file_id == file_id.into() && mapped.value.contains(offset)).then(||(mapped.value, link, ns))
                         })?;
                     range_override = Some(idl_range);
-                    Some(match resolve_doc_path_for_def(db,def, &link,ns)? {
+                    Some(match resolve_doc_path_for_def(sema.db,def, &link,ns)? {
                         Either::Left(it) => Definition::ModuleDef(it),
                         Either::Right(it) => Definition::Macro(it),
                     })
                 // attributes, require special machinery as they are mere ident tokens
                 } else if let Some(attr) = token.ancestors().find_map(ast::Attr::cast) {
+                    add_to_seen_definitions = false;
                     // lints
-                    if let res@Some(_) = try_hover_for_lint(&attr, &token) {
-                        return res;
+                    if let Some(res) = try_hover_for_lint(&attr, &token) {
+                        return Some(ControlFlow::Break(res));
                     // derives
                     } else {
                         range_override = Some(token.text_range());
@@ -169,20 +235,29 @@ pub(crate) fn hover(
     };
 
     if let Some(definition) = definition {
+        // skip duplicates
+        if seen.contains(&definition) {
+            return None;
+        }
+        if add_to_seen_definitions {
+            seen.insert(definition);
+        }
         let famous_defs = match &definition {
             Definition::ModuleDef(hir::ModuleDef::BuiltinType(_)) => {
                 Some(FamousDefs(&sema, sema.scope(&node).krate()))
             }
             _ => None,
         };
-        if let Some(markup) = hover_for_definition(db, definition, famous_defs.as_ref(), config) {
+        if let Some(markup) =
+            hover_for_definition(sema.db, definition, famous_defs.as_ref(), config)
+        {
             let mut res = HoverResult::default();
             res.markup = process_markup(sema.db, definition, &markup, config);
-            if let Some(action) = show_implementations_action(db, definition) {
+            if let Some(action) = show_implementations_action(sema.db, definition) {
                 res.actions.push(action);
             }
 
-            if let Some(action) = show_fn_references_action(db, definition) {
+            if let Some(action) = show_fn_references_action(sema.db, definition) {
                 res.actions.push(action);
             }
 
@@ -190,21 +265,27 @@ pub(crate) fn hover(
                 res.actions.push(action);
             }
 
-            if let Some(action) = goto_type_action_for_def(db, definition) {
+            if let Some(action) = goto_type_action_for_def(sema.db, definition) {
                 res.actions.push(action);
             }
 
             let range = range_override.unwrap_or_else(|| sema.original_range(&node).range);
-            return Some(RangeInfo::new(range, res));
+            return Some(ControlFlow::Break(RangeInfo::new(range, res)));
         }
     }
 
-    if let res @ Some(_) = hover_for_keyword(&sema, config, &token) {
-        return res;
+    if let Some(res) = hover_for_keyword(&sema, config, &token) {
+        return Some(ControlFlow::Break(res));
     }
 
-    // No definition below cursor, fall back to showing type hovers.
+    Some(ControlFlow::Continue(()))
+}
 
+fn type_hover(
+    sema: &Semantics<RootDatabase>,
+    config: &HoverConfig,
+    token: &SyntaxToken,
+) -> Option<RangeInfo<HoverResult>> {
     let node = token
         .ancestors()
         .take_while(|it| !ast::Item::can_cast(it.kind()))
@@ -214,7 +295,7 @@ pub(crate) fn hover(
         match node {
             ast::Expr(it) => Either::Left(it),
             ast::Pat(it) => Either::Right(it),
-            // If this node is a MACRO_CALL, it means that `descend_into_macros` failed to resolve.
+            // If this node is a MACRO_CALL, it means that `descend_into_macros_many` failed to resolve.
             // (e.g expanding a builtin macro). So we give up here.
             ast::MacroCall(_it) => return None,
             _ => return None,
@@ -223,6 +304,7 @@ pub(crate) fn hover(
 
     let res = hover_type_info(&sema, config, &expr_or_pat)?;
     let range = sema.original_range(&node).range;
+
     Some(RangeInfo::new(range, res))
 }
 
@@ -843,6 +925,82 @@ mod tests {
             )
             .unwrap();
         assert!(hover.is_none());
+    }
+
+    #[test]
+    fn hover_descend_macros_avoids_duplicates() {
+        check(
+            r#"
+macro_rules! dupe_use {
+    ($local:ident) => {
+        {
+            $local;
+            $local;
+        }
+    }
+}
+fn foo() {
+    let local = 0;
+    dupe_use!(local$0);
+}
+"#,
+            expect![[r#"
+            *local*
+
+            ```rust
+            let local: i32
+            ```
+        "#]],
+        );
+    }
+
+    #[test]
+    fn hover_shows_all_macro_descends() {
+        check(
+            r#"
+macro_rules! m {
+    ($name:ident) => {
+        /// Outer
+        fn $name() {}
+
+        mod module {
+            /// Inner
+            fn $name() {}
+        }
+    };
+}
+
+m!(ab$0c);
+            "#,
+            expect![[r#"
+            *abc*
+
+            ```rust
+            test::module
+            ```
+
+            ```rust
+            fn abc()
+            ```
+
+            ---
+
+            Inner
+            ---
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn abc()
+            ```
+
+            ---
+
+            Outer
+            "#]],
+        );
     }
 
     #[test]
