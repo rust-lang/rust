@@ -40,16 +40,30 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            os: ubuntu-latest-xl
-            env: {}
-          - name: x86_64-gnu-llvm-10
-            os: ubuntu-latest-xl
-            env: {}
-          - name: x86_64-gnu-tools
+          - name: x86_64-apple
             env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
-            os: ubuntu-latest-xl
+              SCRIPT: "./x.py --stage 2 test"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.8
+              MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+            os: macos-11
+          - name: dist-aarch64-apple
+            env:
+              SCRIPT: "./x.py dist --stage 2"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --host=aarch64-apple-darwin --target=aarch64-apple-darwin --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              SELECT_XCODE: /Applications/Xcode_12.2.app
+              USE_XCODE_CLANG: 1
+              MACOSX_DEPLOYMENT_TARGET: 11.0
+              MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+              JEMALLOC_SYS_WITH_LG_PAGE: 14
+            os: macos-11
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
@@ -297,7 +311,7 @@ jobs:
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
-            os: macos-latest
+            os: macos-11
           - name: dist-x86_64-apple-alt
             env:
               SCRIPT: "./x.py dist"
@@ -306,7 +320,7 @@ jobs:
               MACOSX_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
-            os: macos-latest
+            os: macos-11
           - name: x86_64-apple
             env:
               SCRIPT: "./x.py --stage 2 test"
@@ -316,7 +330,7 @@ jobs:
               MACOSX_STD_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
-            os: macos-latest
+            os: macos-11
           - name: dist-aarch64-apple
             env:
               SCRIPT: "./x.py dist --stage 2"
@@ -330,7 +344,7 @@ jobs:
               NO_DEBUG_ASSERTIONS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
               JEMALLOC_SYS_WITH_LG_PAGE: 14
-            os: macos-latest
+            os: macos-11
           - name: x86_64-msvc-1
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
