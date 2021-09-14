@@ -3,6 +3,8 @@
 // Ensure that unwinding code paths are eliminated from the output after
 // optimization.
 
+// CHECK-NOT: {{(call|invoke).*}}should_not_appear_in_output
+
 #![crate_type = "lib"]
 use std::any::Any;
 use std::mem::forget;
@@ -35,8 +37,6 @@ impl Drop for AssertNeverDrop {
     }
 }
 
-// CHECK-LABEL: normal_drop
-// CHECK-NOT: should_not_appear_in_output
 #[no_mangle]
 pub fn normal_drop(x: ExternDrop) {
     let guard = AssertNeverDrop;
@@ -44,8 +44,6 @@ pub fn normal_drop(x: ExternDrop) {
     forget(guard);
 }
 
-// CHECK-LABEL: indirect_drop
-// CHECK-NOT: should_not_appear_in_output
 #[no_mangle]
 pub fn indirect_drop(x: Box<dyn Any>) {
     let guard = AssertNeverDrop;
