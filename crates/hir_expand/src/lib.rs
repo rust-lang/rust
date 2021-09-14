@@ -186,6 +186,17 @@ impl HirFileId {
         }
     }
 
+    /// Return whether this file is an include macro
+    pub fn is_attr_macro(&self, db: &dyn db::AstDatabase) -> bool {
+        match self.0 {
+            HirFileIdRepr::MacroFile(macro_file) => {
+                let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+                matches!(loc.kind, MacroCallKind::Attr { .. })
+            }
+            _ => false,
+        }
+    }
+
     pub fn is_macro(self) -> bool {
         matches!(self.0, HirFileIdRepr::MacroFile(_))
     }
@@ -525,12 +536,32 @@ impl InFile<SyntaxNode> {
     pub fn ancestors_with_macros(
         self,
         db: &dyn db::AstDatabase,
-    ) -> impl Iterator<Item = InFile<SyntaxNode>> + '_ {
+    ) -> impl Iterator<Item = InFile<SyntaxNode>> + Clone + '_ {
         iter::successors(Some(self), move |node| match node.value.parent() {
             Some(parent) => Some(node.with_value(parent)),
             None => {
                 let parent_node = node.file_id.call_node(db)?;
                 Some(parent_node)
+            }
+        })
+    }
+
+    /// Skips the attributed item that caused the macro invocation we are climbing up
+    pub fn ancestors_with_macros_skip_attr_item(
+        self,
+        db: &dyn db::AstDatabase,
+    ) -> impl Iterator<Item = InFile<SyntaxNode>> + '_ {
+        iter::successors(Some(self), move |node| match node.value.parent() {
+            Some(parent) => Some(node.with_value(parent)),
+            None => {
+                let parent_node = node.file_id.call_node(db)?;
+                if node.file_id.is_attr_macro(db) {
+                    // macro call was an attributed item, skip it
+                    // FIXME: does this fail if this is a direct expansion of another macro?
+                    parent_node.map(|node| node.parent()).transpose()
+                } else {
+                    Some(parent_node)
+                }
             }
         })
     }

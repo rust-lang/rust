@@ -10,6 +10,7 @@ use crate::{fixture, FileRange, HlTag, TextRange};
 fn test_highlighting() {
     check_highlighting(
         r#"
+//- proc_macros: identity
 //- /main.rs crate:main deps:foo
 use inner::{self as inner_mod};
 mod inner {}
@@ -23,6 +24,7 @@ pub mod marker {
     pub trait Copy {}
 }
 
+#[proc_macros::identity]
 pub mod ops {
     #[lang = "fn_once"]
     pub trait FnOnce<Args> {}

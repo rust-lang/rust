@@ -1880,4 +1880,26 @@ fn main() { f$0()  }
             "error: No identifier available to rename",
         )
     }
+
+    #[test]
+    fn attributed_item() {
+        check(
+            "function",
+            r#"
+//- proc_macros: identity
+
+#[proc_macros::identity]
+fn func$0() {
+    func();
+}
+"#,
+            r#"
+
+#[proc_macros::identity]
+fn function() {
+    function();
+}
+"#,
+        )
+    }
 }

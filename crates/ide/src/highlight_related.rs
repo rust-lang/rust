@@ -414,6 +414,22 @@ fn foo() {
     }
 
     #[test]
+    fn test_hl_local_in_attr() {
+        check(
+            r#"
+//- proc_macros: identity
+#[proc_macros::identity]
+fn foo() {
+    let mut bar = 3;
+         // ^^^ write
+    bar$0;
+ // ^^^ read
+}
+"#,
+        );
+    }
+
+    #[test]
     fn test_multi_macro_usage() {
         check(
             r#"

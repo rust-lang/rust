@@ -31,6 +31,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
         SyntaxKind::IDENT => 1,
         _ => 0,
     })?;
+
     let descended = sema.descend_into_macros(tok.clone());
     if let Some(attr) = descended.ancestors().find_map(ast::Attr::cast) {
         if let Some((path, tt)) = attr.as_simple_call() {
@@ -45,6 +46,9 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
             }
         }
     }
+
+    // FIXME: Intermix attribute and bang! expansions
+    // currently we only recursively expand one of the two types
     let mut expanded = None;
     let mut name = None;
     for node in tok.ancestors() {

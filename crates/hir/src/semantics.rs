@@ -16,7 +16,6 @@ use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
 use syntax::{
-    algo::find_node_at_offset,
     ast::{self, GenericParamsOwner, LoopBodyOwner},
     match_ast, AstNode, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize,
 };
@@ -241,10 +240,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         node: &SyntaxNode,
         offset: TextSize,
     ) -> Option<N> {
-        if let Some(it) = find_node_at_offset(node, offset) {
-            return Some(it);
-        }
-
         self.imp.descend_node_at_offset(node, offset).flatten().find_map(N::cast)
     }
 
@@ -567,16 +562,25 @@ impl<'db> SemanticsImpl<'db> {
 
     // Note this return type is deliberate as [`find_nodes_at_offset_with_descend`] wants to stop
     // traversing the inner iterator when it finds a node.
+    // The outer iterator is over the tokens descendants
+    // The inner iterator is the ancestors of a descendant
     fn descend_node_at_offset(
         &self,
         node: &SyntaxNode,
         offset: TextSize,
     ) -> impl Iterator<Item = impl Iterator<Item = SyntaxNode> + '_> + '_ {
-        // Handle macro token cases
         node.token_at_offset(offset)
             .map(move |token| self.descend_into_macros(token))
-            .map(|it| it.into_iter().map(move |it| self.token_ancestors_with_macros(it)))
-            .flatten()
+            .map(|descendants| {
+                descendants.into_iter().map(move |it| self.token_ancestors_with_macros(it))
+            })
+            // re-order the tokens from token_at_offset by returning the ancestors with the smaller first nodes first
+            // See algo::ancestors_at_offset, which uses the same approach
+            .kmerge_by(|left, right| {
+                left.clone()
+                    .map(|node| node.text_range().len())
+                    .lt(right.clone().map(|node| node.text_range().len()))
+            })
     }
 
     fn original_range(&self, node: &SyntaxNode) -> FileRange {
@@ -594,11 +598,14 @@ impl<'db> SemanticsImpl<'db> {
     fn token_ancestors_with_macros(
         &self,
         token: SyntaxToken,
-    ) -> impl Iterator<Item = SyntaxNode> + '_ {
+    ) -> impl Iterator<Item = SyntaxNode> + Clone + '_ {
         token.parent().into_iter().flat_map(move |parent| self.ancestors_with_macros(parent))
     }
 
-    fn ancestors_with_macros(&self, node: SyntaxNode) -> impl Iterator<Item = SyntaxNode> + '_ {
+    fn ancestors_with_macros(
+        &self,
+        node: SyntaxNode,
+    ) -> impl Iterator<Item = SyntaxNode> + Clone + '_ {
         let node = self.find_file(node);
         node.ancestors_with_macros(self.db.upcast()).map(|it| it.value)
     }
