@@ -243,6 +243,11 @@ fn hover_ranged(
     })?;
     let res = match &expr_or_pat {
         Either::Left(ast::Expr::TryExpr(try_expr)) => hover_try_expr(sema, config, try_expr),
+        Either::Left(ast::Expr::PrefixExpr(prefix_expr))
+            if prefix_expr.op_kind() == Some(ast::UnaryOp::Deref) =>
+        {
+            hover_deref_expr(sema, config, prefix_expr)
+        }
         _ => None,
     };
     let res = res.or_else(|| hover_type_info(sema, config, &expr_or_pat));
@@ -343,6 +348,70 @@ fn hover_try_expr(
         bt_end = if config.markdown() { "```\n" } else { "" }
     )
     .into();
+    Some(res)
+}
+
+fn hover_deref_expr(
+    sema: &Semantics<RootDatabase>,
+    config: &HoverConfig,
+    deref_expr: &ast::PrefixExpr,
+) -> Option<HoverResult> {
+    let inner_ty = sema.type_of_expr(&deref_expr.expr()?)?.original;
+    let TypeInfo { original, adjusted } =
+        sema.type_of_expr(&ast::Expr::from(deref_expr.clone()))?;
+
+    let mut res = HoverResult::default();
+    let mut targets: Vec<hir::ModuleDef> = Vec::new();
+    let mut push_new_def = |item: hir::ModuleDef| {
+        if !targets.contains(&item) {
+            targets.push(item);
+        }
+    };
+    walk_and_push_ty(sema.db, &inner_ty, &mut push_new_def);
+    walk_and_push_ty(sema.db, &original, &mut push_new_def);
+
+    res.markup = if let Some(adjusted_ty) = adjusted {
+        walk_and_push_ty(sema.db, &adjusted_ty, &mut push_new_def);
+        let original = original.display(sema.db).to_string();
+        let adjusted = adjusted_ty.display(sema.db).to_string();
+        let inner = inner_ty.display(sema.db).to_string();
+        let type_len = "To type: ".len();
+        let coerced_len = "Coerced to: ".len();
+        let deref_len = "Dereferenced from: ".len();
+        let max_len = (original.len() + type_len)
+            .max(adjusted.len() + coerced_len)
+            .max(inner.len() + deref_len);
+        format!(
+            "{bt_start}Dereferenced from: {:>ipad$}\nTo type: {:>apad$}\nCoerced to: {:>opad$}\n{bt_end}",
+            inner,
+            original,
+            adjusted,
+            ipad = max_len - deref_len,
+            apad = max_len - type_len,
+            opad = max_len - coerced_len,
+            bt_start = if config.markdown() { "```text\n" } else { "" },
+            bt_end = if config.markdown() { "```\n" } else { "" }
+        )
+        .into()
+    } else {
+        let original = original.display(sema.db).to_string();
+        let inner = inner_ty.display(sema.db).to_string();
+        let type_len = "To type: ".len();
+        let deref_len = "Dereferenced from: ".len();
+        let max_len = (original.len() + type_len).max(inner.len() + deref_len);
+        format!(
+            "{bt_start}Dereferenced from: {:>ipad$}\nTo type: {:>apad$}\n{bt_end}",
+            inner,
+            original,
+            ipad = max_len - deref_len,
+            apad = max_len - type_len,
+            bt_start = if config.markdown() { "```text\n" } else { "" },
+            bt_end = if config.markdown() { "```\n" } else { "" }
+        )
+        .into()
+    };
+    res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
+
     Some(res)
 }
 
@@ -4645,6 +4714,73 @@ fn foo() -> Option<()> {
                 ```rust
                 <Option<i32> as Try>::Output
                 ```"#]],
+        );
+    }
+
+    #[test]
+    fn hover_deref_expr() {
+        check_hover_range(
+            r#"
+//- minicore: deref
+use core::ops::Deref;
+
+struct DerefExample<T> {
+    value: T
+}
+
+impl<T> Deref for DerefExample<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+fn foo() {
+    let x = DerefExample { value: 0 };
+    let y: i32 = $0*x$0;
+}
+"#,
+            expect![[r#"
+                ```text
+                Dereferenced from: DerefExample<i32>
+                To type:                         i32
+                ```
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hover_deref_expr_with_coercion() {
+        check_hover_range(
+            r#"
+//- minicore: deref
+use core::ops::Deref;
+
+struct DerefExample<T> {
+    value: T
+}
+
+impl<T> Deref for DerefExample<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+fn foo() {
+    let x = DerefExample { value: &&&&&0 };
+    let y: &i32 = $0*x$0;
+}
+"#,
+            expect![[r#"
+                ```text
+                Dereferenced from: DerefExample<&&&&&i32>
+                To type:                         &&&&&i32
+                Coerced to:                          &i32
+                ```
+            "#]],
         );
     }
 }
