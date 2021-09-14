@@ -525,7 +525,7 @@ impl InFile<SyntaxNode> {
     pub fn ancestors_with_macros(
         self,
         db: &dyn db::AstDatabase,
-    ) -> impl Iterator<Item = InFile<SyntaxNode>> + '_ {
+    ) -> impl Iterator<Item = InFile<SyntaxNode>> + Clone + '_ {
         iter::successors(Some(self), move |node| match node.value.parent() {
             Some(parent) => Some(node.with_value(parent)),
             None => {
