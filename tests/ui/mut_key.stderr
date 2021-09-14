@@ -1,5 +1,5 @@
 error: mutable key type
-  --> $DIR/mut_key.rs:27:32
+  --> $DIR/mut_key.rs:30:32
    |
 LL | fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> HashSet<Key> {
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,22 +7,100 @@ LL | fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> Hash
    = note: `-D clippy::mutable-key-type` implied by `-D warnings`
 
 error: mutable key type
-  --> $DIR/mut_key.rs:27:72
+  --> $DIR/mut_key.rs:30:72
    |
 LL | fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> HashSet<Key> {
    |                                                                        ^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:28:5
+  --> $DIR/mut_key.rs:31:5
    |
 LL |     let _other: HashMap<Key, bool> = HashMap::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:47:22
+  --> $DIR/mut_key.rs:58:22
    |
 LL | fn tuples_bad<U>(_m: &mut HashMap<(Key, U), bool>) {}
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: mutable key type
+  --> $DIR/mut_key.rs:70:5
+   |
+LL |     let _map = HashMap::<Cell<usize>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: mutable key type
+  --> $DIR/mut_key.rs:71:5
+   |
+LL |     let _map = HashMap::<&mut Cell<usize>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: mutable key type
+  --> $DIR/mut_key.rs:72:5
+   |
+LL |     let _map = HashMap::<&mut usize, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: mutable key type
+  --> $DIR/mut_key.rs:74:5
+   |
+LL |     let _map = HashMap::<Vec<Cell<usize>>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: mutable key type
+  --> $DIR/mut_key.rs:75:5
+   |
+LL |     let _map = HashMap::<BTreeMap<Cell<usize>, ()>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: mutable key type
+  --> $DIR/mut_key.rs:76:5
+   |
+LL |     let _map = HashMap::<BTreeMap<(), Cell<usize>>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: mutable key type
+  --> $DIR/mut_key.rs:77:5
+   |
+LL |     let _map = HashMap::<BTreeSet<Cell<usize>>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: mutable key type
+  --> $DIR/mut_key.rs:78:5
+   |
+LL |     let _map = HashMap::<Option<Cell<usize>>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: mutable key type
+  --> $DIR/mut_key.rs:79:5
+   |
+LL |     let _map = HashMap::<Option<Vec<Cell<usize>>>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: mutable key type
+  --> $DIR/mut_key.rs:80:5
+   |
+LL |     let _map = HashMap::<Result<&mut usize, ()>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: mutable key type
+  --> $DIR/mut_key.rs:82:5
+   |
+LL |     let _map = HashMap::<Box<Cell<usize>>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: mutable key type
+  --> $DIR/mut_key.rs:83:5
+   |
+LL |     let _map = HashMap::<Rc<Cell<usize>>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: mutable key type
+  --> $DIR/mut_key.rs:84:5
+   |
+LL |     let _map = HashMap::<Arc<Cell<usize>>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 17 previous errors
 

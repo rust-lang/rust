@@ -3,7 +3,7 @@ use clippy_utils::trait_ref_of_method;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TypeFoldable;
-use rustc_middle::ty::{Adt, Array, RawPtr, Ref, Slice, Tuple, Ty, TypeAndMut};
+use rustc_middle::ty::{Adt, Array, Ref, Slice, Tuple, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::sym;
@@ -19,10 +19,29 @@ declare_clippy_lint! {
     /// so having types with interior mutability is a bad idea.
     ///
     /// ### Known problems
-    /// It's correct to use a struct, that contains interior mutability
-    /// as a key, when its `Hash` implementation doesn't access any of the interior mutable types.
-    /// However, this lint is unable to recognize this, so it causes a false positive in theses cases.
-    /// The `bytes` crate is a great example of this.
+    ///
+    /// #### False Positives
+    /// It's correct to use a struct that contains interior mutability as a key, when its
+    /// implementation of `Hash` or `Ord` doesn't access any of the interior mutable types.
+    /// However, this lint is unable to recognize this, so it will often cause false positives in
+    /// theses cases.  The `bytes` crate is a great example of this.
+    ///
+    /// #### False Negatives
+    /// For custom `struct`s/`enum`s, this lint is unable to check for interior mutability behind
+    /// indirection.  For example, `struct BadKey<'a>(&'a Cell<usize>)` will be seen as immutable
+    /// and cause a false negative if its implementation of `Hash`/`Ord` accesses the `Cell`.
+    ///
+    /// This lint does check a few cases for indirection.  Firstly, using some standard library
+    /// types (`Option`, `Result`, `Box`, `Rc`, `Arc`, `Vec`, `VecDeque`, `BTreeMap` and
+    /// `BTreeSet`) directly as keys (e.g. in `HashMap<Box<Cell<usize>>, ()>`) **will** trigger the
+    /// lint, because the impls of `Hash`/`Ord` for these types directly call `Hash`/`Ord` on their
+    /// contained type.
+    ///
+    /// Secondly, the implementations of `Hash` and `Ord` for raw pointers (`*const T` or `*mut T`)
+    /// apply only to the **address** of the contained value.  Therefore, interior mutability
+    /// behind raw pointers (e.g. in `HashSet<*mut Cell<usize>>`) can't impact the value of `Hash`
+    /// or `Ord`, and therefore will not trigger this link.  For more info, see issue
+    /// [#6745](https://github.com/rust-lang/rust-clippy/issues/6745).
     ///
     /// ### Example
     /// ```rust
@@ -103,30 +122,52 @@ fn check_sig<'tcx>(cx: &LateContext<'tcx>, item_hir_id: hir::HirId, decl: &hir::
 fn check_ty<'tcx>(cx: &LateContext<'tcx>, span: Span, ty: Ty<'tcx>) {
     let ty = ty.peel_refs();
     if let Adt(def, substs) = ty.kind() {
-        if [sym::hashmap_type, sym::BTreeMap, sym::hashset_type, sym::BTreeMap]
+        let is_keyed_type = [sym::hashmap_type, sym::BTreeMap, sym::hashset_type, sym::BTreeSet]
             .iter()
-            .any(|diag_item| cx.tcx.is_diagnostic_item(*diag_item, def.did))
-            && is_mutable_type(cx, substs.type_at(0), span)
-        {
+            .any(|diag_item| cx.tcx.is_diagnostic_item(*diag_item, def.did));
+        if is_keyed_type && is_interior_mutable_type(cx, substs.type_at(0), span) {
             span_lint(cx, MUTABLE_KEY_TYPE, span, "mutable key type");
         }
     }
 }
 
-fn is_mutable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span) -> bool {
+/// Determines if a type contains interior mutability which would affect its implementation of
+/// [`Hash`] or [`Ord`].
+fn is_interior_mutable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span) -> bool {
     match *ty.kind() {
-        RawPtr(TypeAndMut { ty: inner_ty, mutbl }) | Ref(_, inner_ty, mutbl) => {
-            mutbl == hir::Mutability::Mut || is_mutable_type(cx, inner_ty, span)
-        },
-        Slice(inner_ty) => is_mutable_type(cx, inner_ty, span),
+        Ref(_, inner_ty, mutbl) => mutbl == hir::Mutability::Mut || is_interior_mutable_type(cx, inner_ty, span),
+        Slice(inner_ty) => is_interior_mutable_type(cx, inner_ty, span),
         Array(inner_ty, size) => {
-            size.try_eval_usize(cx.tcx, cx.param_env).map_or(true, |u| u != 0) && is_mutable_type(cx, inner_ty, span)
+            size.try_eval_usize(cx.tcx, cx.param_env).map_or(true, |u| u != 0)
+                && is_interior_mutable_type(cx, inner_ty, span)
         },
-        Tuple(..) => ty.tuple_fields().any(|ty| is_mutable_type(cx, ty, span)),
-        Adt(..) => {
-            !ty.has_escaping_bound_vars()
-                && cx.tcx.layout_of(cx.param_env.and(ty)).is_ok()
-                && !ty.is_freeze(cx.tcx.at(span), cx.param_env)
+        Tuple(..) => ty.tuple_fields().any(|ty| is_interior_mutable_type(cx, ty, span)),
+        Adt(def, substs) => {
+            // Special case for collections in `std` who's impl of `Hash` or `Ord` delegates to
+            // that of their type parameters.  Note: we don't include `HashSet` and `HashMap`
+            // because they have no impl for `Hash` or `Ord`.
+            let is_std_collection = [
+                sym::option_type,
+                sym::result_type,
+                sym::LinkedList,
+                sym::vec_type,
+                sym::vecdeque_type,
+                sym::BTreeMap,
+                sym::BTreeSet,
+                sym::Rc,
+                sym::Arc,
+            ]
+            .iter()
+            .any(|diag_item| cx.tcx.is_diagnostic_item(*diag_item, def.did));
+            let is_box = Some(def.did) == cx.tcx.lang_items().owned_box();
+            if is_std_collection || is_box {
+                // The type is mutable if any of its type parameters are
+                substs.types().any(|ty| is_interior_mutable_type(cx, ty, span))
+            } else {
+                !ty.has_escaping_bound_vars()
+                    && cx.tcx.layout_of(cx.param_env.and(ty)).is_ok()
+                    && !ty.is_freeze(cx.tcx.at(span), cx.param_env)
+            }
         },
         _ => false,
     }
