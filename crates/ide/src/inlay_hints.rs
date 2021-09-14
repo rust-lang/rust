@@ -62,38 +62,24 @@ pub(crate) fn inlay_hints(
     let _p = profile::span("inlay_hints");
     let sema = Semantics::new(db);
     let file = sema.parse(file_id);
+    let file = file.syntax();
 
     let mut res = Vec::new();
-    let mut queue = vec![file.syntax().preorder()];
 
-    while let Some(mut preorder) = queue.pop() {
-        while let Some(event) = preorder.next() {
-            let node = match event {
-                syntax::WalkEvent::Enter(node) => node,
-                syntax::WalkEvent::Leave(_) => continue,
-            };
-            if let Some(node) =
-                ast::Item::cast(node.clone()).and_then(|item| sema.expand_attr_macro(&item))
-            {
-                preorder.skip_subtree();
-                queue.push(node.preorder());
-                continue;
-            }
-
-            if let Some(expr) = ast::Expr::cast(node.clone()) {
-                get_chaining_hints(&mut res, &sema, config, &expr);
-                match expr {
-                    ast::Expr::CallExpr(it) => {
-                        get_param_name_hints(&mut res, &sema, config, ast::Expr::from(it));
-                    }
-                    ast::Expr::MethodCallExpr(it) => {
-                        get_param_name_hints(&mut res, &sema, config, ast::Expr::from(it));
-                    }
-                    _ => (),
+    for node in file.descendants() {
+        if let Some(expr) = ast::Expr::cast(node.clone()) {
+            get_chaining_hints(&mut res, &sema, config, &expr);
+            match expr {
+                ast::Expr::CallExpr(it) => {
+                    get_param_name_hints(&mut res, &sema, config, ast::Expr::from(it));
                 }
-            } else if let Some(it) = ast::IdentPat::cast(node.clone()) {
-                get_bind_pat_hints(&mut res, &sema, config, it);
+                ast::Expr::MethodCallExpr(it) => {
+                    get_param_name_hints(&mut res, &sema, config, ast::Expr::from(it));
+                }
+                _ => (),
             }
+        } else if let Some(it) = ast::IdentPat::cast(node.clone()) {
+            get_bind_pat_hints(&mut res, &sema, config, it);
         }
     }
     res
@@ -1480,69 +1466,6 @@ fn main() {
                         range: 174..189,
                         kind: ChainingHint,
                         label: "&mut MyIter",
-                    },
-                ]
-            "#]],
-        );
-    }
-
-    #[test]
-    fn hints_in_attr_call() {
-        // chaining hints do not currently work as macros lose all whitespace information
-        check_expect(
-            TEST_CONFIG,
-            r#"
-//- proc_macros: identity, input_replace
-struct Struct;
-impl Struct {
-    fn chain(self) -> Self {
-        self
-    }
-}
-
-#[proc_macros::identity]
-fn main() {
-    let strukt = Struct;
-    strukt
-        .chain()
-        .chain()
-        .chain();
-    Struct::chain(strukt);
-}
-
-#[proc_macros::input_replace(
-    fn not_main() {
-        let strukt = Struct;
-        strukt
-            .chain()
-            .chain()
-            .chain();
-        Struct::chain(strukt);
-    }
-)]
-fn main() {}
-"#,
-            expect![[r#"
-                [
-                    InlayHint {
-                        range: 297..303,
-                        kind: TypeHint,
-                        label: "Struct",
-                    },
-                    InlayHint {
-                        range: 415..421,
-                        kind: ParameterHint,
-                        label: "self",
-                    },
-                    InlayHint {
-                        range: 125..131,
-                        kind: TypeHint,
-                        label: "Struct",
-                    },
-                    InlayHint {
-                        range: 223..229,
-                        kind: ParameterHint,
-                        label: "self",
                     },
                 ]
             "#]],
