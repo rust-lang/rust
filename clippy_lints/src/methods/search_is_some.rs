@@ -50,12 +50,26 @@ pub(super) fn check<'tcx>(
                 then {
                     if let hir::PatKind::Ref(..) = closure_arg.pat.kind {
                         Some(search_snippet.replacen('&', "", 1))
-                    } else if let PatKind::Binding(..) = strip_pat_refs(closure_arg.pat).kind {
+                    } else if let PatKind::Binding(_, binding_id, _, _) = strip_pat_refs(closure_arg.pat).kind {
+                        // this binding is composed of at least two levels of references, so we need to remove one
+                        let binding_type = cx.typeck_results().node_type(binding_id);
+                        let innermost_is_ref = if let ty::Ref(_, inner,_) = binding_type.kind() {
+                            matches!(inner.kind(), ty::Ref(_, innermost, _) if innermost.is_ref())
+                        } else {
+                            false
+                        };
+
                         // `find()` provides a reference to the item, but `any` does not,
                         // so we should fix item usages for suggestion
                         if let Some(closure_sugg) = get_closure_suggestion(cx, search_arg, closure_body) {
                             applicability = closure_sugg.applicability;
-                            Some(closure_sugg.suggestion)
+                            if innermost_is_ref {
+                                Some(closure_sugg.suggestion.replacen('&', "", 1))
+                            } else {
+                                Some(closure_sugg.suggestion)
+                            }
+                        } else if innermost_is_ref {
+                            Some(search_snippet.replacen('&', "", 1))
                         } else {
                             Some(search_snippet.to_string())
                         }
@@ -230,7 +244,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                 // cases where a parent call is using the item
                 // i.e.: suggest `.contains(&x)` for `.find(|x| [1, 2, 3].contains(x)).is_none()`
                 if let Some(parent_expr) = get_parent_expr_for_hir(self.cx, cmt.hir_id) {
-                    if let ExprKind::Call(..) | ExprKind::MethodCall(..) = parent_expr.kind {
+                    if let ExprKind::Call(_, call_args) | ExprKind::MethodCall(_, _, call_args, _) = parent_expr.kind {
                         let expr = self.cx.tcx.hir().expect_expr(cmt.hir_id);
                         let arg_ty_kind = self.cx.typeck_results().expr_ty(expr).kind();
 
@@ -239,8 +253,13 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                             let start_span = Span::new(self.next_pos, span.lo(), span.ctxt());
                             let start_snip =
                                 snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
-
-                            self.suggestion_start.push_str(&format!("{}&{}", start_snip, ident_str));
+                            // do not suggest ampersand if the ident is the method caller
+                            let ident_sugg = if !call_args.is_empty() && call_args[0].hir_id == cmt.hir_id {
+                                format!("{}{}", start_snip, ident_str)
+                            } else {
+                                format!("{}&{}", start_snip, ident_str)
+                            };
+                            self.suggestion_start.push_str(&ident_sugg);
                             self.next_pos = span.hi();
                         } else {
                             self.applicability = Applicability::Unspecified;

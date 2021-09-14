@@ -98,4 +98,15 @@ mod issue7392 {
         let vfoo = vec![[0, 1, 2, 3, 0, 1, 2, 3]];
         let _ = vfoo.iter().any(|sub| sub[1..4].len() == 3);
     }
+
+    fn please(x: &u32) -> bool {
+        *x == 9
+    }
+
+    fn more_projections() {
+        let x = 19;
+        let ppx: &u32 = &x;
+        let _ = [ppx].iter().any(|ppp_x: &&u32| please(ppp_x));
+        let _ = [String::from("Hey hey")].iter().any(|s| s.len() == 2);
+    }
 }
