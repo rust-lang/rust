@@ -17,6 +17,8 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .function.unsafe    { color: #BC8383; }
 .trait.unsafe       { color: #BC8383; }
 .operator.unsafe    { color: #BC8383; }
+.mutable.unsafe     { color: #BC8383; text-decoration: underline; }
+.keyword.unsafe     { color: #BC8383; font-weight: bold; }
 .parameter          { color: #94BFF3; }
 .text               { color: #DCDCCC; }
 .type               { color: #7CB8BB; }
@@ -33,7 +35,6 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .mutable            { text-decoration: underline; }
 .escape_sequence    { color: #94BFF3; }
 .keyword            { color: #F0DFAF; font-weight: bold; }
-.keyword.unsafe     { color: #BC8383; font-weight: bold; }
 .control            { font-style: italic; }
 .reference          { font-style: italic; font-weight: bold; }
 
@@ -116,8 +117,6 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="function">str</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 <span class="brace">}</span>
 
-<span class="keyword">static</span> <span class="keyword">mut</span> <span class="static declaration mutable unsafe">STATIC_MUT</span><span class="colon">:</span> <span class="builtin_type">i32</span> <span class="operator">=</span> <span class="numeric_literal">0</span><span class="semicolon">;</span>
-
 <span class="keyword">fn</span> <span class="function declaration">foo</span><span class="angle">&lt;</span><span class="lifetime declaration">'a</span><span class="comma">,</span> <span class="type_param declaration">T</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="type_param">T</span> <span class="brace">{</span>
     <span class="function">foo</span><span class="operator">::</span><span class="angle">&lt;</span><span class="lifetime">'a</span><span class="comma">,</span> <span class="builtin_type">i32</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="parenthesis">)</span>
 <span class="brace">}</span>
@@ -185,10 +184,6 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
         <span class="keyword">let</span> <span class="variable declaration">x</span> <span class="operator">=</span> <span class="numeric_literal">92</span><span class="semicolon">;</span>
         <span class="variable mutable">vec</span><span class="operator">.</span><span class="unresolved_reference">push</span><span class="parenthesis">(</span><span class="struct">Foo</span> <span class="brace">{</span> <span class="field">x</span><span class="comma">,</span> <span class="field public">y</span><span class="colon">:</span> <span class="numeric_literal">1</span> <span class="brace">}</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="brace">}</span>
-    <span class="keyword unsafe">unsafe</span> <span class="brace">{</span>
-        <span class="variable mutable">vec</span><span class="operator">.</span><span class="unresolved_reference">set_len</span><span class="parenthesis">(</span><span class="numeric_literal">0</span><span class="parenthesis">)</span><span class="semicolon">;</span>
-        <span class="static mutable unsafe">STATIC_MUT</span> <span class="operator">=</span> <span class="numeric_literal">1</span><span class="semicolon">;</span>
-    <span class="brace">}</span>
 
     <span class="keyword control">for</span> <span class="variable declaration">e</span> <span class="keyword control">in</span> <span class="variable mutable">vec</span> <span class="brace">{</span>
         <span class="comment">// Do nothing</span>
@@ -255,9 +250,6 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="keyword">let</span> <span class="variable declaration">f2</span> <span class="operator">=</span> <span class="unresolved_reference">dance</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     futures::<span class="macro">join!</span><span class="parenthesis">(</span>f1<span class="comma">,</span> f2<span class="parenthesis">)</span><span class="semicolon">;</span>
 <span class="brace">}</span>
-
-<span class="keyword unsafe">unsafe</span> <span class="keyword">trait</span> <span class="trait declaration unsafe">Dangerous</span> <span class="brace">{</span><span class="brace">}</span>
-<span class="keyword">impl</span> <span class="trait unsafe">Dangerous</span> <span class="keyword">for</span> <span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
 
 <span class="keyword">fn</span> <span class="function declaration">use_foo_items</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
     <span class="keyword">let</span> <span class="variable declaration">bob</span> <span class="operator">=</span> <span class="module library">foo</span><span class="operator">::</span><span class="struct library">Person</span> <span class="brace">{</span>

@@ -89,8 +89,6 @@ fn str() {
     str();
 }
 
-static mut STATIC_MUT: i32 = 0;
-
 fn foo<'a, T>() -> T {
     foo::<'a, i32>()
 }
@@ -158,10 +156,6 @@ fn main() {
         let x = 92;
         vec.push(Foo { x, y: 1 });
     }
-    unsafe {
-        vec.set_len(0);
-        STATIC_MUT = 1;
-    }
 
     for e in vec {
         // Do nothing
@@ -228,9 +222,6 @@ async fn async_main() {
     let f2 = dance();
     futures::join!(f1, f2);
 }
-
-unsafe trait Dangerous {}
-impl Dangerous for () {}
 
 fn use_foo_items() {
     let bob = foo::Person {
@@ -514,6 +505,8 @@ fn main() {
 fn test_unsafe_highlighting() {
     check_highlighting(
         r#"
+static mut MUT_GLOBAL: Struct = Struct { field: 0 };
+static GLOBAL: Struct = Struct { field: 0 };
 unsafe fn unsafe_fn() {}
 
 union Union {
@@ -521,17 +514,10 @@ union Union {
     b: f32,
 }
 
-struct HasUnsafeFn;
-
-impl HasUnsafeFn {
+struct Struct { field: i32 }
+impl Struct {
     unsafe fn unsafe_method(&self) {}
 }
-
-struct TypeForStaticMut {
-    a: u8
-}
-
-static mut global_mut: TypeForStaticMut = TypeForStaticMut { a: 0 };
 
 #[repr(packed)]
 struct Packed {
@@ -540,8 +526,9 @@ struct Packed {
 
 unsafe trait UnsafeTrait {}
 unsafe impl UnsafeTrait for Packed {}
+impl !UnsafeTrait for () {}
 
-fn require_unsafe_trait<T: UnsafeTrait>(_: T) {}
+fn unsafe_trait_bound<T: UnsafeTrait>(_: T) {}
 
 trait DoTheAutoref {
     fn calls_autoref(&self);
@@ -562,13 +549,14 @@ fn main() {
             Union { b: 0 } => (),
             Union { a } => (),
         }
-        HasUnsafeFn.unsafe_method();
+        Struct { field: 0 }.unsafe_method();
 
         // unsafe deref
-        let y = *x;
+        *x;
 
         // unsafe access to a static mut
-        let a = global_mut.a;
+        MUT_GLOBAL.field;
+        GLOBAL.field;
 
         // unsafe ref of packed fields
         let packed = Packed { a: 0 };
