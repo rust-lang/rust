@@ -307,6 +307,9 @@ cfg_if::cfg_if! {
         #[link(name = "zircon")]
         #[link(name = "fdio")]
         extern "C" {}
+    } else if #[cfg(all(target_os = "linux", target_env = "uclibc"))] {
+        #[link(name = "dl")]
+        extern "C" {}
     }
 }
 
