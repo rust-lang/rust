@@ -301,6 +301,7 @@
 #![feature(new_uninit)]
 #![feature(nll)]
 #![feature(nonnull_slice_from_raw_parts)]
+#![feature(nonzero_generic_type_alias)]
 #![feature(once_cell)]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]

@@ -8,6 +8,55 @@ use super::from_str_radix;
 use super::{IntErrorKind, ParseIntError};
 use crate::intrinsics;
 
+/// Generic type alias for the non-zero type that corresponds to each integer
+/// primitive.
+///
+/// This type alias simply provides an alternative spelling of the various
+/// `NonZero` structs found in [`core::num`]. For example `NonZero<u16>` refers
+/// to the struct [`core::num::NonZeroU16`].
+///
+/// **Note:** this is *not* intended for writing code that is generic over
+/// multiple types of non-zero integers. The relevant trait bound you would need
+/// for that is not exposed. The only thing this is, is an alternative spelling.
+///
+/// # Example
+///
+/// Where this comes in handy is if the primitive types themselves are being
+/// used via a type alias, such as [`std::os::raw::c_char`][c_char]. The
+/// `c_char` type refers to either `i8` or `u8` depending on whether the
+/// platform's C character type is signed or unsigned, and without `NonZero<N>`
+/// there is not a straightforward way to name either `NonZeroI8` or `NonZeroU8`
+/// depending on which one a non-zero `c_char` corresponds to.
+///
+/// [c_char]: ../../std/os/raw/type.c_char.html
+///
+/// ```
+/// #![feature(nonzero_generic_type_alias)]
+///
+/// use std::num::NonZero;
+/// use std::os::raw::c_char;
+///
+/// // A separator that we're planning to use with nul-terminated C strings,
+/// // where \0 would be nonsensical.
+/// pub struct Separator {
+///     ch: NonZero<c_char>,
+/// }
+///
+/// impl Separator {
+///     pub fn new(ch: c_char) -> Option<Self> {
+///         NonZero::<c_char>::new(ch).map(|ch| Separator { ch })
+///     }
+/// }
+/// ```
+#[unstable(feature = "nonzero_generic_type_alias", issue = "82363")]
+pub type NonZero<N> = <N as IntegerPrimitive>::NonZero;
+
+// Not exposed at any publicly accessible path, only via NonZero<N>.
+#[unstable(feature = "nonzero_implementation_detail", issue = "none")]
+pub trait IntegerPrimitive {
+    type NonZero;
+}
+
 macro_rules! impl_nonzero_fmt {
     ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
         $(
@@ -40,6 +89,11 @@ macro_rules! nonzero_integers {
             #[rustc_layout_scalar_valid_range_start(1)]
             #[rustc_nonnull_optimization_guaranteed]
             pub struct $Ty($Int);
+
+            #[unstable(feature = "nonzero_implementation_detail", issue = "none")]
+            impl IntegerPrimitive for $Int {
+                type NonZero = $Ty;
+            }
 
             impl $Ty {
                 /// Creates a non-zero without checking whether the value is non-zero.

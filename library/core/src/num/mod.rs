@@ -59,6 +59,9 @@ pub use dec2flt::ParseFloatError;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use error::ParseIntError;
 
+#[unstable(feature = "nonzero_generic_type_alias", issue = "82363")]
+pub use nonzero::NonZero;
+
 #[stable(feature = "nonzero", since = "1.28.0")]
 pub use nonzero::{NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize};
 
