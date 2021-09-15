@@ -204,7 +204,7 @@ impl FromStr for SsrPattern {
     fn from_str(pattern_str: &str) -> Result<SsrPattern, SsrError> {
         let raw_pattern = pattern_str.parse()?;
         let parsed_rules = ParsedRule::new(&raw_pattern, None)?;
-        Ok(SsrPattern { raw: raw_pattern, parsed_rules })
+        Ok(SsrPattern { parsed_rules })
     }
 }
 

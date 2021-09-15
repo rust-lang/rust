@@ -55,7 +55,7 @@ impl fmt::Display for FlycheckConfig {
 pub struct FlycheckHandle {
     // XXX: drop order is significant
     sender: Sender<Restart>,
-    thread: jod_thread::JoinHandle,
+    _thread: jod_thread::JoinHandle,
 }
 
 impl FlycheckHandle {
@@ -71,7 +71,7 @@ impl FlycheckHandle {
             .name("Flycheck".to_owned())
             .spawn(move || actor.run(receiver))
             .expect("failed to spawn thread");
-        FlycheckHandle { sender, thread }
+        FlycheckHandle { sender, _thread: thread }
     }
 
     /// Schedule a re-start of the cargo check worker.

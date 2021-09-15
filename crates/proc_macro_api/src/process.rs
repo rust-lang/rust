@@ -16,7 +16,7 @@ use crate::{
 
 #[derive(Debug)]
 pub(crate) struct ProcMacroProcessSrv {
-    process: Process,
+    _process: Process,
     stdin: ChildStdin,
     stdout: BufReader<ChildStdout>,
 }
@@ -29,7 +29,7 @@ impl ProcMacroProcessSrv {
         let mut process = Process::run(process_path, args)?;
         let (stdin, stdout) = process.stdio().expect("couldn't access child stdio");
 
-        let srv = ProcMacroProcessSrv { process, stdin, stdout };
+        let srv = ProcMacroProcessSrv { _process: process, stdin, stdout };
 
         Ok(srv)
     }

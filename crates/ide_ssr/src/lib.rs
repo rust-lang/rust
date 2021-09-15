@@ -103,7 +103,6 @@ pub struct SsrRule {
 
 #[derive(Debug)]
 pub struct SsrPattern {
-    raw: parsing::RawPattern,
     parsed_rules: Vec<parsing::ParsedRule>,
 }
 

@@ -26,7 +26,6 @@ pub(crate) fn render_variant(
 #[derive(Debug)]
 struct EnumRender<'a> {
     ctx: RenderContext<'a>,
-    name: hir::Name,
     variant: hir::Variant,
     path: Option<hir::ModPath>,
     qualified_name: hir::ModPath,
@@ -58,7 +57,7 @@ impl<'a> EnumRender<'a> {
             ),
         };
 
-        EnumRender { ctx, name, variant, path, qualified_name, short_qualified_name, variant_kind }
+        EnumRender { ctx, variant, path, qualified_name, short_qualified_name, variant_kind }
     }
     fn render(self, import_to_add: Option<ImportEdit>) -> CompletionItem {
         let mut item = CompletionItem::new(

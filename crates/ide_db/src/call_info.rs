@@ -154,15 +154,6 @@ pub struct ActiveParameter {
 }
 
 impl ActiveParameter {
-    pub fn at(db: &RootDatabase, position: FilePosition) -> Option<Self> {
-        let sema = Semantics::new(db);
-        let file = sema.parse(position.file_id);
-        let file = file.syntax();
-        let token = file.token_at_offset(position.offset).next()?;
-        let token = sema.descend_into_macros(token);
-        Self::at_token(&sema, token)
-    }
-
     pub fn at_token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Option<Self> {
         let (signature, active_parameter) = call_info_impl(sema, token)?;
 
