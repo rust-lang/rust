@@ -1,7 +1,7 @@
 // check-pass
+#![feature(label_break_value)]
 
-
-// Issue #21633: reject duplicate loop labels in function bodies.
+// Issue #21633: reject duplicate loop labels and block labels in function bodies.
 //
 // This is testing the generalization (to the whole function body)
 // discussed here:
@@ -26,6 +26,8 @@ pub fn foo() {
     { 'lt: loop { break; } }
     { 'lt: while let Some(_) = None::<i32> { break; } }
                                          //~^ WARN label name `'lt` shadows a label name that is already in scope
+    { 'bl: {} }
+    { 'bl: {} } //~ WARN label name `'bl` shadows a label name that is already in scope
 }
 
 

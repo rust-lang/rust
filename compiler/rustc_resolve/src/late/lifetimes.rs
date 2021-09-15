@@ -1652,7 +1652,11 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body<'_>) {
     }
 
     fn expression_label(ex: &hir::Expr<'_>) -> Option<Ident> {
-        if let hir::ExprKind::Loop(_, Some(label), ..) = ex.kind { Some(label.ident) } else { None }
+        match ex.kind {
+            hir::ExprKind::Loop(_, Some(label), ..) => Some(label.ident),
+            hir::ExprKind::Block(_, Some(label)) => Some(label.ident),
+            _ => None,
+        }
     }
 
     fn check_if_label_shadows_lifetime(tcx: TyCtxt<'_>, mut scope: ScopeRef<'_>, label: Ident) {
