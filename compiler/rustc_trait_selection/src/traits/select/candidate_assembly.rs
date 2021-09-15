@@ -8,7 +8,7 @@
 use rustc_hir as hir;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, TypeFoldable};
+use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_target::spec::abi::Abi;
 
 use crate::traits::coherence::Conflict;
@@ -277,6 +277,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
         } else if lang_items.unsize_trait() == Some(def_id) {
             self.assemble_candidates_for_unsizing(obligation, &mut candidates);
+        } else if lang_items.drop_trait() == Some(def_id)
+            && obligation.predicate.skip_binder().constness == ty::BoundConstness::ConstIfConst
+        {
+            if self.is_in_const_context {
+                self.assemble_const_drop_candidates(obligation, &mut candidates)?;
+            } else {
+                debug!("passing ~const Drop bound; in non-const context");
+                // `~const Drop` when we are not in a const context has no effect.
+                candidates.vec.push(ConstDropCandidate)
+            }
         } else {
             if lang_items.clone_trait() == Some(def_id) {
                 // Same builtin conditions as `Copy`, i.e., every type which has builtin support
@@ -802,5 +812,119 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 candidates.ambiguous = true;
             }
         }
+    }
+
+    fn assemble_const_drop_candidates(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) -> Result<(), SelectionError<'tcx>> {
+        let mut stack: Vec<(Ty<'tcx>, usize)> = vec![(obligation.self_ty().skip_binder(), 0)];
+
+        while let Some((ty, depth)) = stack.pop() {
+            let mut noreturn = false;
+
+            self.check_recursion_depth(depth, obligation)?;
+            let mut copy_candidates = SelectionCandidateSet { vec: Vec::new(), ambiguous: false };
+            let mut copy_obligation =
+                obligation.with(obligation.predicate.rebind(ty::TraitPredicate {
+                    trait_ref: ty::TraitRef {
+                        def_id: self.tcx().require_lang_item(hir::LangItem::Copy, None),
+                        substs: self.tcx().mk_substs_trait(ty, &[]),
+                    },
+                    constness: ty::BoundConstness::NotConst,
+                }));
+            copy_obligation.recursion_depth = depth + 1;
+            self.assemble_candidates_from_impls(&copy_obligation, &mut copy_candidates);
+            let copy_conditions = self.copy_clone_conditions(&copy_obligation);
+            self.assemble_builtin_bound_candidates(copy_conditions, &mut copy_candidates);
+            if !copy_candidates.vec.is_empty() {
+                noreturn = true;
+            }
+            debug!(?copy_candidates.vec, "assemble_const_drop_candidates - copy");
+
+            match ty.kind() {
+                ty::Int(_)
+                | ty::Uint(_)
+                | ty::Float(_)
+                | ty::Infer(ty::IntVar(_))
+                | ty::Infer(ty::FloatVar(_))
+                | ty::FnPtr(_)
+                | ty::Never
+                | ty::Ref(..)
+                | ty::FnDef(..)
+                | ty::RawPtr(_)
+                | ty::Bool
+                | ty::Char
+                | ty::Str
+                | ty::Foreign(_) => {} // Do nothing. These types satisfy `const Drop`.
+
+                ty::Adt(def, subst) => {
+                    let mut set = SelectionCandidateSet { vec: Vec::new(), ambiguous: false };
+                    self.assemble_candidates_from_impls(
+                        &obligation.with(obligation.predicate.map_bound(|mut pred| {
+                            pred.trait_ref.substs = self.tcx().mk_substs_trait(ty, &[]);
+                            pred
+                        })),
+                        &mut set,
+                    );
+                    stack.extend(def.all_fields().map(|f| (f.ty(self.tcx(), subst), depth + 1)));
+
+                    debug!(?set.vec, "assemble_const_drop_candidates - ty::Adt");
+                    if set.vec.into_iter().any(|candidate| {
+                        if let SelectionCandidate::ImplCandidate(did) = candidate {
+                            matches!(self.tcx().impl_constness(did), hir::Constness::NotConst)
+                        } else {
+                            false
+                        }
+                    }) {
+                        if !noreturn {
+                            // has non-const Drop
+                            return Ok(());
+                        }
+                        debug!("not returning");
+                    }
+                }
+
+                ty::Array(ty, _) => stack.push((ty, depth + 1)),
+
+                ty::Tuple(_) => stack.extend(ty.tuple_fields().map(|t| (t, depth + 1))),
+
+                ty::Closure(_, substs) => {
+                    stack.extend(substs.as_closure().upvar_tys().map(|t| (t, depth + 1)))
+                }
+
+                ty::Generator(_, substs, _) => {
+                    let substs = substs.as_generator();
+                    stack.extend(substs.upvar_tys().map(|t| (t, depth + 1)));
+                    stack.push((substs.witness(), depth + 1));
+                }
+
+                ty::GeneratorWitness(tys) => stack.extend(
+                    self.tcx().erase_late_bound_regions(*tys).iter().map(|t| (t, depth + 1)),
+                ),
+
+                ty::Slice(ty) => stack.push((ty, depth + 1)),
+
+                ty::Opaque(..)
+                | ty::Dynamic(..)
+                | ty::Error(_)
+                | ty::Bound(..)
+                | ty::Infer(_)
+                | ty::Placeholder(_)
+                | ty::Projection(..)
+                | ty::Param(..) => {
+                    if !noreturn {
+                        return Ok(());
+                    }
+                    debug!("not returning");
+                }
+            }
+            debug!(?stack, "assemble_const_drop_candidates - in loop");
+        }
+        // all types have passed.
+        candidates.vec.push(ConstDropCandidate);
+
+        Ok(())
     }
 }

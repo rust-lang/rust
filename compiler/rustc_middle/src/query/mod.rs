@@ -552,14 +552,6 @@ rustc_queries! {
         desc { |tcx| "checking if item is const fn: `{}`", tcx.def_path_str(key) }
     }
 
-    /// Returns `true` if this is a const `impl`. **Do not call this function manually.**
-    ///
-    /// This query caches the base data for the `is_const_impl` helper function, which also
-    /// takes into account stability attributes (e.g., `#[rustc_const_unstable]`).
-    query is_const_impl_raw(key: DefId) -> bool {
-        desc { |tcx| "checking if item is const impl: `{}`", tcx.def_path_str(key) }
-    }
-
     query asyncness(key: DefId) -> hir::IsAsync {
         desc { |tcx| "checking if the function is async: `{}`", tcx.def_path_str(key) }
     }

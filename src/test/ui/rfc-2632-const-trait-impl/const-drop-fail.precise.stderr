@@ -1,0 +1,59 @@
+error: `~const` is not allowed here
+  --> $DIR/const-drop-fail.rs:27:35
+   |
+LL | struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
+   |                                   ^^^^^^^^
+   |
+   = note: only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions
+
+error[E0277]: the trait bound `NonTrivialDrop: Drop` is not satisfied
+  --> $DIR/const-drop-fail.rs:45:5
+   |
+LL |     NonTrivialDrop,
+   |     ^^^^^^^^^^^^^^ the trait `Drop` is not implemented for `NonTrivialDrop`
+   |
+note: required by a bound in `check`
+  --> $DIR/const-drop-fail.rs:36:19
+   |
+LL | const fn check<T: ~const Drop>(_: T) {}
+   |                   ^^^^^^^^^^^ required by this bound in `check`
+
+error[E0277]: the trait bound `ConstImplWithDropGlue: Drop` is not satisfied
+  --> $DIR/const-drop-fail.rs:47:5
+   |
+LL |     ConstImplWithDropGlue(NonTrivialDrop),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Drop` is not implemented for `ConstImplWithDropGlue`
+   |
+note: required by a bound in `check`
+  --> $DIR/const-drop-fail.rs:36:19
+   |
+LL | const fn check<T: ~const Drop>(_: T) {}
+   |                   ^^^^^^^^^^^ required by this bound in `check`
+
+error[E0277]: the trait bound `NonTrivialDrop: A` is not satisfied
+  --> $DIR/const-drop-fail.rs:49:5
+   |
+LL |     ConstDropImplWithBounds::<NonTrivialDrop>(PhantomData),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `A` is not implemented for `NonTrivialDrop`
+   |
+note: required by `ConstDropImplWithBounds`
+  --> $DIR/const-drop-fail.rs:27:1
+   |
+LL | struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `NonTrivialDrop: A` is not satisfied
+  --> $DIR/const-drop-fail.rs:49:5
+   |
+LL |     ConstDropImplWithBounds::<NonTrivialDrop>(PhantomData),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `A` is not implemented for `NonTrivialDrop`
+   |
+note: required by a bound in `ConstDropImplWithBounds`
+  --> $DIR/const-drop-fail.rs:27:35
+   |
+LL | struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
+   |                                   ^^^^^^^^ required by this bound in `ConstDropImplWithBounds`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

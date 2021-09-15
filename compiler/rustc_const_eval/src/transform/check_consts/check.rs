@@ -22,7 +22,7 @@ use std::mem;
 use std::ops::Deref;
 
 use super::ops::{self, NonConstOp, Status};
-use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop};
+use super::qualifs::{self, CustomEq, HasMutInterior, NeedsNonConstDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{is_lang_panic_fn, ConstCx, Qualif};
 use crate::const_eval::is_unstable_const_fn;
@@ -39,7 +39,7 @@ type QualifResults<'mir, 'tcx, Q> =
 #[derive(Default)]
 pub struct Qualifs<'mir, 'tcx> {
     has_mut_interior: Option<QualifResults<'mir, 'tcx, HasMutInterior>>,
-    needs_drop: Option<QualifResults<'mir, 'tcx, NeedsDrop>>,
+    needs_drop: Option<QualifResults<'mir, 'tcx, NeedsNonConstDrop>>,
     indirectly_mutable: Option<IndirectlyMutableResults<'mir, 'tcx>>,
 }
 
@@ -80,14 +80,14 @@ impl Qualifs<'mir, 'tcx> {
         location: Location,
     ) -> bool {
         let ty = ccx.body.local_decls[local].ty;
-        if !NeedsDrop::in_any_value_of_ty(ccx, ty) {
+        if !NeedsNonConstDrop::in_any_value_of_ty(ccx, ty) {
             return false;
         }
 
         let needs_drop = self.needs_drop.get_or_insert_with(|| {
             let ConstCx { tcx, body, .. } = *ccx;
 
-            FlowSensitiveAnalysis::new(NeedsDrop, ccx)
+            FlowSensitiveAnalysis::new(NeedsNonConstDrop, ccx)
                 .into_engine(tcx, &body)
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
@@ -988,12 +988,12 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
 
                 let mut err_span = self.span;
 
-                // Check to see if the type of this place can ever have a drop impl. If not, this
-                // `Drop` terminator is frivolous.
-                let ty_needs_drop =
-                    dropped_place.ty(self.body, self.tcx).ty.needs_drop(self.tcx, self.param_env);
+                let ty_needs_non_const_drop = qualifs::NeedsNonConstDrop::in_any_value_of_ty(
+                    self.ccx,
+                    dropped_place.ty(self.body, self.tcx).ty,
+                );
 
-                if !ty_needs_drop {
+                if !ty_needs_non_const_drop {
                     return;
                 }
 

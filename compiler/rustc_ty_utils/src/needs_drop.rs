@@ -11,12 +11,15 @@ use rustc_span::{sym, DUMMY_SP};
 type NeedsDropResult<T> = Result<T, AlwaysRequiresDrop>;
 
 fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-    let adt_fields =
+    let adt_components =
         move |adt_def: &ty::AdtDef| tcx.adt_drop_tys(adt_def.did).map(|tys| tys.iter());
+
     // If we don't know a type doesn't need drop, for example if it's a type
     // parameter without a `Copy` bound, then we conservatively return that it
     // needs drop.
-    let res = NeedsDropTypes::new(tcx, query.param_env, query.value, adt_fields).next().is_some();
+    let res =
+        NeedsDropTypes::new(tcx, query.param_env, query.value, adt_components).next().is_some();
+
     debug!("needs_drop_raw({:?}) = {:?}", query, res);
     res
 }

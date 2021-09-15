@@ -1669,7 +1669,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_ty, ty);
             }
             AssocItemKind::Fn(box FnKind(_, ref sig, ref generics, ref body))
-                if self.in_const_trait_impl || ctxt == AssocCtxt::Trait =>
+                if self.in_const_trait_impl
+                    || ctxt == AssocCtxt::Trait
+                    || matches!(sig.header.constness, Const::Yes(_)) =>
             {
                 self.visit_vis(&item.vis);
                 self.visit_ident(item.ident);

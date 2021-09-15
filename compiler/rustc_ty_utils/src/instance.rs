@@ -386,7 +386,8 @@ fn resolve_associated_item<'tcx>(
         | traits::ImplSource::TraitAlias(..)
         | traits::ImplSource::DiscriminantKind(..)
         | traits::ImplSource::Pointee(..)
-        | traits::ImplSource::TraitUpcasting(_) => None,
+        | traits::ImplSource::TraitUpcasting(_)
+        | traits::ImplSource::ConstDrop(_) => None,
     })
 }
 

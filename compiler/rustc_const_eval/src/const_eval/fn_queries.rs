@@ -1,5 +1,5 @@
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -34,8 +34,14 @@ pub fn is_unstable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Symbol> {
 }
 
 pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
-    let parent_id = tcx.hir().get_parent_did(hir_id);
-    if !parent_id.is_top_level_module() { is_const_impl_raw(tcx, parent_id) } else { false }
+    let parent_id = tcx.hir().get_parent_node(hir_id);
+    matches!(
+        tcx.hir().get(parent_id),
+        hir::Node::Item(hir::Item {
+            kind: hir::ItemKind::Impl(hir::Impl { constness: hir::Constness::Const, .. }),
+            ..
+        })
+    )
 }
 
 /// Checks whether the function has a `const` modifier or, in case it is an intrinsic, whether
@@ -70,19 +76,6 @@ fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     }
 }
 
-/// Checks whether the given item is an `impl` that has a `const` modifier.
-fn is_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let node = tcx.hir().get(hir_id);
-    matches!(
-        node,
-        hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::Impl(hir::Impl { constness: hir::Constness::Const, .. }),
-            ..
-        })
-    )
-}
-
 fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     is_const_fn(tcx, def_id)
         && match tcx.lookup_const_stability(def_id) {
@@ -103,10 +96,5 @@ fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        is_const_fn_raw,
-        is_const_impl_raw: |tcx, def_id| is_const_impl_raw(tcx, def_id.expect_local()),
-        is_promotable_const_fn,
-        ..*providers
-    };
+    *providers = Providers { is_const_fn_raw, is_promotable_const_fn, ..*providers };
 }

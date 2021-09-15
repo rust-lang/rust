@@ -324,16 +324,16 @@ impl<'tcx> TyCtxt<'tcx> {
         self.ensure().coherent_trait(drop_trait);
 
         let ty = self.type_of(adt_did);
-        let dtor_did = self.find_map_relevant_impl(drop_trait, ty, |impl_did| {
+        let (did, constness) = self.find_map_relevant_impl(drop_trait, ty, |impl_did| {
             if let Some(item) = self.associated_items(impl_did).in_definition_order().next() {
                 if validate(self, impl_did).is_ok() {
-                    return Some(item.def_id);
+                    return Some((item.def_id, self.impl_constness(impl_did)));
                 }
             }
             None
-        });
+        })?;
 
-        Some(ty::Destructor { did: dtor_did? })
+        Some(ty::Destructor { did, constness })
     }
 
     /// Returns the set of types that are required to be alive in

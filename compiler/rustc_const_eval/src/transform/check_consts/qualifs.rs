@@ -3,10 +3,14 @@
 //! See the `Qualif` trait for more info.
 
 use rustc_errors::ErrorReported;
+use rustc_hir as hir;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
 use rustc_span::DUMMY_SP;
-use rustc_trait_selection::traits;
+use rustc_trait_selection::traits::{
+    self, ImplSource, Obligation, ObligationCause, SelectionContext,
+};
 
 use super::ConstCx;
 
@@ -17,7 +21,7 @@ pub fn in_any_value_of_ty(
 ) -> ConstQualifs {
     ConstQualifs {
         has_mut_interior: HasMutInterior::in_any_value_of_ty(cx, ty),
-        needs_drop: NeedsDrop::in_any_value_of_ty(cx, ty),
+        needs_drop: NeedsNonConstDrop::in_any_value_of_ty(cx, ty),
         custom_eq: CustomEq::in_any_value_of_ty(cx, ty),
         error_occured,
     }
@@ -97,10 +101,10 @@ impl Qualif for HasMutInterior {
 /// This must be ruled out (a) because we cannot run `Drop` during compile-time
 /// as that might not be a `const fn`, and (b) because implicit promotion would
 /// remove side-effects that occur as part of dropping that value.
-pub struct NeedsDrop;
+pub struct NeedsNonConstDrop;
 
-impl Qualif for NeedsDrop {
-    const ANALYSIS_NAME: &'static str = "flow_needs_drop";
+impl Qualif for NeedsNonConstDrop {
+    const ANALYSIS_NAME: &'static str = "flow_needs_nonconst_drop";
     const IS_CLEARED_ON_MOVE: bool = true;
 
     fn in_qualifs(qualifs: &ConstQualifs) -> bool {
@@ -108,11 +112,37 @@ impl Qualif for NeedsDrop {
     }
 
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
-        ty.needs_drop(cx.tcx, cx.param_env)
+        let drop_trait = if let Some(did) = cx.tcx.lang_items().drop_trait() {
+            did
+        } else {
+            // there is no way to define a type that needs non-const drop
+            // without having the lang item present.
+            return false;
+        };
+        let trait_ref =
+            ty::TraitRef { def_id: drop_trait, substs: cx.tcx.mk_substs_trait(ty, &[]) };
+        let obligation = Obligation::new(
+            ObligationCause::dummy(),
+            cx.param_env,
+            ty::Binder::dummy(ty::TraitPredicate {
+                trait_ref,
+                constness: ty::BoundConstness::ConstIfConst,
+            }),
+        );
+
+        let implsrc = cx.tcx.infer_ctxt().enter(|infcx| {
+            let mut selcx = SelectionContext::with_constness(&infcx, hir::Constness::Const);
+            selcx.select(&obligation)
+        });
+        match implsrc {
+            Ok(Some(ImplSource::ConstDrop(_)))
+            | Ok(Some(ImplSource::Param(_, ty::BoundConstness::ConstIfConst))) => false,
+            _ => true,
+        }
     }
 
     fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> bool {
-        adt.has_dtor(cx.tcx)
+        adt.has_non_const_dtor(cx.tcx)
     }
 }
 

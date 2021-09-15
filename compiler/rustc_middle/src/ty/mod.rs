@@ -1377,6 +1377,8 @@ where
 pub struct Destructor {
     /// The `DefId` of the destructor method
     pub did: DefId,
+    /// The constness of the destructor method
+    pub constness: hir::Constness,
 }
 
 bitflags! {
