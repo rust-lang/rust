@@ -11,7 +11,7 @@ crate mod utils;
 
 use rustc_ast as ast;
 use rustc_attr as attr;
-use rustc_const_eval::const_eval::{is_const_fn, is_unstable_const_fn};
+use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -787,7 +787,7 @@ fn clean_fn_or_proc_macro(
             let mut func = (sig, generics, body_id).clean(cx);
             let def_id = item.def_id.to_def_id();
             func.header.constness =
-                if is_const_fn(cx.tcx, def_id) && is_unstable_const_fn(cx.tcx, def_id).is_none() {
+                if cx.tcx.is_const_fn(def_id) && is_unstable_const_fn(cx.tcx, def_id).is_none() {
                     hir::Constness::Const
                 } else {
                     hir::Constness::NotConst
