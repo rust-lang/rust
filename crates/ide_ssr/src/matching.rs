@@ -61,9 +61,6 @@ pub struct Match {
 /// Information about a placeholder bound in a match.
 #[derive(Debug)]
 pub(crate) struct PlaceholderMatch {
-    /// The node that the placeholder matched to. If set, then we'll search for further matches
-    /// within this node. It isn't set when we match tokens within a macro call's token tree.
-    pub(crate) node: Option<SyntaxNode>,
     pub(crate) range: FileRange,
     /// More matches, found within `node`.
     pub(crate) inner_matches: SsrMatches,
@@ -186,7 +183,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 self.validate_range(&original_range)?;
                 matches_out.placeholder_values.insert(
                     placeholder.ident.clone(),
-                    PlaceholderMatch::new(Some(code), original_range),
+                    PlaceholderMatch::from_range(original_range),
                 );
             }
             return Ok(());
@@ -715,18 +712,13 @@ fn recording_match_fail_reasons() -> bool {
 }
 
 impl PlaceholderMatch {
-    fn new(node: Option<&SyntaxNode>, range: FileRange) -> Self {
+    fn from_range(range: FileRange) -> Self {
         Self {
-            node: node.cloned(),
             range,
             inner_matches: SsrMatches::default(),
             autoderef_count: 0,
             autoref_kind: ast::SelfParamKind::Owned,
         }
-    }
-
-    fn from_range(range: FileRange) -> Self {
-        Self::new(None, range)
     }
 }
 
@@ -788,7 +780,6 @@ impl PatternIterator {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{MatchFinder, SsrRule};
 
     #[test]
@@ -803,14 +794,6 @@ mod tests {
         assert_eq!(matches.matches.len(), 1);
         assert_eq!(matches.matches[0].matched_node.text(), "foo(1+2)");
         assert_eq!(matches.matches[0].placeholder_values.len(), 1);
-        assert_eq!(
-            matches.matches[0].placeholder_values[&Var("x".to_string())]
-                .node
-                .as_ref()
-                .unwrap()
-                .text(),
-            "1+2"
-        );
 
         let edits = match_finder.edits();
         assert_eq!(edits.len(), 1);
