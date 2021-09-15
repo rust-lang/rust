@@ -655,8 +655,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
         let is_const_fn = match *fn_ty.kind() {
             ty::FnDef(def_id, _) => {
-                self.tcx.is_const_fn_raw(def_id)
-                    || is_lang_panic_fn(self.tcx, def_id)
+                self.tcx.is_const_fn_raw(def_id) || is_lang_panic_fn(self.tcx, def_id)
             }
             _ => false,
         };
