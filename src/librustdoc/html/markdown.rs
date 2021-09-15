@@ -1449,6 +1449,8 @@ fn init_id_map() -> FxHashMap<String, usize> {
         }}
     }
 
+    // IMPORTANT: Do NOT change the formatting or name of this macro
+    //            without updating the tidy check.
     html_id_map!(
         // This is the list of IDs used in Javascript.
         "help",

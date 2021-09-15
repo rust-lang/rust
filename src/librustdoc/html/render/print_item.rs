@@ -628,6 +628,8 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
     // Trait documentation
     document(w, cx, it, None, HeadingOffset::H2);
 
+    // This function is checked in tidy for rustdoc IDs. If you rename/update it, don't forget
+    // to update the `src/tools/tidy/rustdoc_html_ids.rs` file.
     fn write_small_section_header(w: &mut Buffer, id: &str, title: &str, extra_content: &str) {
         write!(
             w,

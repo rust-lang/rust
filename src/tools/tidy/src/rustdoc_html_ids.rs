@@ -1,6 +1,7 @@
 //! Checks that the rustdoc ID map is up-to-date. The goal here is to check a few things:
 //!
-//! * All IDs created by rustdoc (through JS or files generation) are declared in the ID map.
+//! * All IDs created by rustdoc (through JS or `.html` files generation) are declared in the
+//!   ID map.
 //! * There are no unused IDs.
 
 use std::collections::HashMap;
@@ -31,7 +32,8 @@ fn extract_ids(path: &Path, bad: &mut bool) -> HashMap<String, usize> {
         }
     }
     // We're now in the function body, time to retrieve the IDs!
-    while let Some(Ok(line)) = iter.next() {
+    while let Some(line) = iter.next() {
+        let line = line.unwrap();
         let line = line.trim_start();
         if line.starts_with("// ") {
             // It's a comment, ignoring this line...
@@ -44,13 +46,14 @@ fn extract_ids(path: &Path, bad: &mut bool) -> HashMap<String, usize> {
         if ids.insert(id.to_owned(), 0).is_some() {
             eprintln!(
                 "=> ID `{}` is defined more than once in the ID map in file `{}`",
-                id, ID_MAP_PATH
+                id,
+                path.display(),
             );
             *bad = true;
         }
     }
     if ids.is_empty() {
-        eprintln!("=> No IDs were found in rustdoc in file `{}`...", ID_MAP_PATH);
+        eprintln!("=> No IDs were found in rustdoc in file `{}`...", path.display());
         *bad = true;
     }
     ids
@@ -102,7 +105,11 @@ fn check_ids(
                 check_id(path, trimmed.split('"').skip(1).next().unwrap(), ids, line_nb, bad);
                 is_checking_small_section_header = None;
             }
-        } else if trimmed.starts_with("write_small_section_header(") {
+        } else if trimmed.contains("write_small_section_header(")
+            && !trimmed.contains("fn write_small_section_header(")
+        {
+            // First we extract the arguments.
+            let trimmed = trimmed.split("write_small_section_header(").skip(1).next().unwrap_or("");
             // This function is used to create section: the second argument of the function is an
             // ID and we need to check it as well, hence this specific check...
             if trimmed.contains(',') {
@@ -145,12 +152,12 @@ pub fn check(path: &Path, bad: &mut bool) {
     );
     if small_section_header_checked == 0 {
         eprintln!(
-            "No call to the `write_small_section_header` function was found. Was it renamed?",
+            "=> No call to the `write_small_section_header` function was found. Was it renamed?",
         );
         *bad = true;
     }
     for (id, nb) in ids {
-        if IDS_USED_IN_JS.iter().any(|i| i == &id) {
+        if IDS_USED_IN_JS.contains(&id.as_str()) {
             if nb != 0 {
                 eprintln!("=> ID `{}` is not supposed to be used in Rust code but in the JS!", id);
                 *bad = true;
