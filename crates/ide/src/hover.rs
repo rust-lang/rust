@@ -127,7 +127,8 @@ pub(crate) fn hover(
                         ControlFlow::Continue(_) => {
                             if fallback.is_none() {
                                 // FIXME we're only taking the first fallback into account that's not `None`
-                                fallback = type_hover(&sema, config, &token);
+                                fallback = hover_for_keyword(&sema, config, &token)
+                                    .or(type_hover(&sema, config, &token));
                             }
                             None
                         }
@@ -274,10 +275,6 @@ fn find_hover_result(
         }
     }
 
-    if let Some(res) = hover_for_keyword(&sema, config, &token) {
-        return Some(ControlFlow::Break(res));
-    }
-
     Some(ControlFlow::Continue(()))
 }
 
@@ -304,7 +301,6 @@ fn type_hover(
 
     let res = hover_type_info(&sema, config, &expr_or_pat)?;
     let range = sema.original_range(&node).range;
-
     Some(RangeInfo::new(range, res))
 }
 
