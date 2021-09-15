@@ -111,7 +111,17 @@ impl Qualif for NeedsNonConstDrop {
         qualifs.needs_drop
     }
 
-    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
+    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, mut ty: Ty<'tcx>) -> bool {
+        // Avoid selecting for simple cases.
+        match ty::util::needs_drop_components(ty, &cx.tcx.data_layout).as_deref() {
+            Ok([]) => return false,
+            Err(ty::util::AlwaysRequiresDrop) => return true,
+            // If we've got a single component, select with that
+            // to increase the chance that we hit the selection cache.
+            Ok([t]) => ty = t,
+            Ok([..]) => {}
+        }
+
         let drop_trait = if let Some(did) = cx.tcx.lang_items().drop_trait() {
             did
         } else {
