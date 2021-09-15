@@ -72,6 +72,7 @@ panic_immediate_abort = ["core/panic_immediate_abort"]
 # https://github.com/rust-lang/stdarch/blob/master/crates/std_detect/Cargo.toml
 std_detect_file_io = ["std_detect/std_detect_file_io"]
 std_detect_dlsym_getauxval = ["std_detect/std_detect_dlsym_getauxval"]
+std_detect_env_override = ["std_detect/std_detect_env_override"]
 
 [package.metadata.fortanix-sgx]
 # Maximum possible number of threads when testing
