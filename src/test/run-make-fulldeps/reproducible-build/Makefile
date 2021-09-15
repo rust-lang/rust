@@ -9,15 +9,16 @@ all:  \
 	opt \
 	link_paths \
 	remap_paths \
-	different_source_dirs_bin \
 	different_source_dirs_rlib \
 	remap_cwd_rlib \
 	remap_cwd_to_empty \
 	extern_flags
 
-# TODO: Deterministic builds of `bin` crate types are not deterministic with
-# debuginfo=2 on Windows.
-# See https://github.com/rust-lang/rust/pull/87320#issuecomment-920105533
+# TODO: Builds of `bin` crate types are not deterministic with debuginfo=2 on
+# Windows.
+# See: https://github.com/rust-lang/rust/pull/87320#issuecomment-920105533
+# Issue: https://github.com/rust-lang/rust/issues/88982
+#
 #	different_source_dirs_bin \
 #	remap_cwd_bin \
 
