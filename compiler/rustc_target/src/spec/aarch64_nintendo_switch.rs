@@ -1,10 +1,13 @@
 use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelroLevel, Target, TargetOptions};
 
+const LINKER_SCRIPT: &str = include_str!("./aarch64_nintendo_switch_linker_script.ld");
+
 /// A base target for Nintendo Switch devices using a pure LLVM toolchain.
 pub fn target() -> Target {
     let mut opts = TargetOptions {
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         linker: Some("rust-lld".into()),
+        link_script: Some(LINKER_SCRIPT.into()),
         os: "horizon".into(),
         max_atomic_width: Some(128),
         panic_strategy: PanicStrategy::Abort,
