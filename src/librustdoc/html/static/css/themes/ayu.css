@@ -286,8 +286,8 @@ details.undocumented > summary::before {
 	border-radius: 4px;
 }
 
-#help > div > span {
-	border-bottom-color: #5c6773;
+#help span.bottom, #help span.top {
+	border-color: #5c6773;
 }
 
 .since {
