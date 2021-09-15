@@ -41,8 +41,13 @@ impl<'a> MacroRender<'a> {
     }
 
     fn render(&self, import_to_add: Option<ImportEdit>) -> Option<CompletionItem> {
-        let mut item =
-            CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), &self.label());
+        let source_range = if self.ctx.completion.is_immediately_after_macro_bang() {
+            cov_mark::hit!(completes_macro_call_if_cursor_at_bang_token);
+            self.ctx.completion.token.parent().map(|it| it.text_range())
+        } else {
+            Some(self.ctx.source_range())
+        }?;
+        let mut item = CompletionItem::new(CompletionKind::Reference, source_range, &self.label());
         item.kind(SymbolKind::Macro)
             .set_documentation(self.docs.clone())
             .set_deprecated(self.ctx.is_deprecated(self.macro_))
@@ -229,5 +234,32 @@ macro_rules! foo { () => {} }
 fn main() { foo! {$0} }
 "#,
         )
+    }
+
+    #[test]
+    fn completes_macro_call_if_cursor_at_bang_token() {
+        // Regression test for https://github.com/rust-analyzer/rust-analyzer/issues/9904
+        cov_mark::check!(completes_macro_call_if_cursor_at_bang_token);
+        check_edit(
+            "foo!",
+            r#"
+macro_rules! foo {
+    () => {}
+}
+
+fn main() {
+    foo!$0
+}
+"#,
+            r#"
+macro_rules! foo {
+    () => {}
+}
+
+fn main() {
+    foo!($0)
+}
+"#,
+        );
     }
 }

@@ -438,6 +438,10 @@ impl<'a> CompletionContext<'a> {
         }
     }
 
+    pub(crate) fn is_immediately_after_macro_bang(&self) -> bool {
+        self.token.kind() == BANG && self.token.parent().map_or(false, |it| it.kind() == MACRO_CALL)
+    }
+
     /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items.
     pub(crate) fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
         self.scope.process_all_names(&mut |name, def| {
