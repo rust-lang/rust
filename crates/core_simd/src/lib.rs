@@ -3,6 +3,7 @@
 #![feature(
     adt_const_params,
     const_fn_trait_bound,
+    const_panic,
     platform_intrinsics,
     repr_simd,
     simd_ffi,

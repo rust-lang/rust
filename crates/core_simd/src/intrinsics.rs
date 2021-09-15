@@ -54,11 +54,7 @@ extern "platform-intrinsic" {
     pub(crate) fn simd_ge<T, U>(x: T, y: T) -> U;
 
     // shufflevector
-    pub(crate) fn simd_shuffle2<T, U>(x: T, y: T, idx: [u32; 2]) -> U;
-    pub(crate) fn simd_shuffle4<T, U>(x: T, y: T, idx: [u32; 4]) -> U;
-    pub(crate) fn simd_shuffle8<T, U>(x: T, y: T, idx: [u32; 8]) -> U;
-    pub(crate) fn simd_shuffle16<T, U>(x: T, y: T, idx: [u32; 16]) -> U;
-    pub(crate) fn simd_shuffle32<T, U>(x: T, y: T, idx: [u32; 32]) -> U;
+    pub(crate) fn simd_shuffle<T, U, V>(x: T, y: T, idx: U) -> V;
 
     pub(crate) fn simd_gather<T, U, V>(val: T, ptr: U, mask: V) -> T;
     pub(crate) fn simd_scatter<T, U, V>(val: T, ptr: U, mask: V);

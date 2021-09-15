@@ -1,7 +1,8 @@
 #[macro_use]
-mod permute;
-#[macro_use]
 mod reduction;
+
+#[macro_use]
+mod swizzle;
 
 pub(crate) mod intrinsics;
 
@@ -27,5 +28,6 @@ pub mod simd {
     pub use crate::core_simd::lane_count::{LaneCount, SupportedLaneCount};
     pub use crate::core_simd::masks::*;
     pub use crate::core_simd::select::Select;
+    pub use crate::core_simd::swizzle::*;
     pub use crate::core_simd::vector::*;
 }
