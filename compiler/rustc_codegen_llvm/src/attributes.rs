@@ -305,9 +305,12 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     let mut function_features = codegen_fn_attrs
         .target_features
         .iter()
-        .map(|f| {
+        .flat_map(|f| {
             let feature = &f.as_str();
-            format!("+{}", llvm_util::to_llvm_feature(cx.tcx.sess, feature))
+            llvm_util::to_llvm_feature(cx.tcx.sess, feature)
+                .into_iter()
+                .map(|f| format!("+{}", f))
+                .collect::<Vec<String>>()
         })
         .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match x {
             InstructionSetAttr::ArmA32 => "-thumb-mode".to_string(),
