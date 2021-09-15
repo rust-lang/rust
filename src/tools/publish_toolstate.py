@@ -299,7 +299,13 @@ try:
     if repo:
         github_token = os.environ.get('TOOLSTATE_REPO_ACCESS_TOKEN')
         if github_token:
-            validate_maintainers(repo, github_token)
+            # FIXME: This is currently broken. Starting on 2021-09-15, GitHub
+            # seems to have changed it so that to list the collaborators
+            # requires admin permissions. I think this will probably just need
+            # to be removed since we are probably not going to use an admin
+            # token, and I don't see another way to do this.
+            print('maintainer validation disabled')
+            # validate_maintainers(repo, github_token)
         else:
             print('skipping toolstate maintainers validation since no GitHub token is present')
         # When validating maintainers don't run the full script.
