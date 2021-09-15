@@ -944,24 +944,30 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
                 Normalized { value: projected_ty, obligations: projected_obligations }
             };
 
-            let mut canonical =
-                SelectionContext::with_query_mode(selcx.infcx(), TraitQueryMode::Canonical);
-            result.obligations.drain_filter(|projected_obligation| {
-                // If any global obligations always apply, considering regions, then we don't
-                // need to include them. The `is_global` check rules out inference variables,
-                // so there's no need for the caller of `opt_normalize_projection_type`
-                // to evaluate them.
-                // Note that we do *not* discard obligations that evaluate to
-                // `EvaluatedtoOkModuloRegions`. Evaluating these obligations
-                // inside of a query (e.g. `evaluate_obligation`) can change
-                // the result to `EvaluatedToOkModuloRegions`, while an
-                // `EvaluatedToOk` obligation will never change the result.
-                // See #85360 for more details
-                projected_obligation.is_global(canonical.tcx())
-                    && canonical
-                        .evaluate_root_obligation(projected_obligation)
-                        .map_or(false, |res| res.must_apply_considering_regions())
-            });
+            // In intercrate mode, things are more complicated, and the 'evaluation result'
+            // may not be the same as the evaluation result in a normal `SelectionContext`.
+            // To avoid having to deal with this, always keep all of the sub-obligations
+            // in intercrate mode.
+            if !selcx.is_intercrate() {
+                let mut canonical =
+                    SelectionContext::with_query_mode(selcx.infcx(), TraitQueryMode::Canonical);
+                result.obligations.drain_filter(|projected_obligation| {
+                    // If any global obligations always apply, considering regions, then we don't
+                    // need to include them. The `is_global` check rules out inference variables,
+                    // so there's no need for the caller of `opt_normalize_projection_type`
+                    // to evaluate them.
+                    // Note that we do *not* discard obligations that evaluate to
+                    // `EvaluatedtoOkModuloRegions`. Evaluating these obligations
+                    // inside of a query (e.g. `evaluate_obligation`) can change
+                    // the result to `EvaluatedToOkModuloRegions`, while an
+                    // `EvaluatedToOk` obligation will never change the result.
+                    // See #85360 for more details
+                    projected_obligation.is_global(canonical.tcx())
+                        && canonical
+                            .evaluate_root_obligation(projected_obligation)
+                            .map_or(false, |res| res.must_apply_considering_regions())
+                });
+            }
 
             infcx.inner.borrow_mut().projection_cache().insert_ty(cache_key, result.clone());
             obligations.extend(result.obligations);

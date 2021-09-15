@@ -315,6 +315,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx.tcx
     }
 
+    pub fn is_intercrate(&self) -> bool {
+        self.intercrate
+    }
+
     /// Returns `true` if the trait predicate is considerd `const` to this selection context.
     pub fn is_trait_predicate_const(&self, pred: ty::TraitPredicate<'_>) -> bool {
         match pred.constness {
