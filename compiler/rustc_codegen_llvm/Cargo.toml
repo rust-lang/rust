@@ -16,6 +16,7 @@ snap = "1"
 tracing = "0.1"
 rustc_middle = { path = "../rustc_middle" }
 rustc-demangle = "0.1.21"
+rustc_arena = { path = "../rustc_arena" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
 rustc_data_structures = { path = "../rustc_data_structures" }

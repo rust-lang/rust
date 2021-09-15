@@ -3654,6 +3654,7 @@ dependencies = [
  "libc",
  "measureme",
  "rustc-demangle",
+ "rustc_arena",
  "rustc_ast",
  "rustc_attr",
  "rustc_codegen_ssa",
