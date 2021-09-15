@@ -3,6 +3,8 @@
 // cdb-only
 // min-cdb-version: 10.0.21287.1005
 // compile-flags:-g
+// FIXME: Failed on update to 10.0.22000.1
+// ignore-windows
 
 // === CDB TESTS ==================================================================================
 //
