@@ -17,6 +17,8 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .function.unsafe    { color: #BC8383; }
 .trait.unsafe       { color: #BC8383; }
 .operator.unsafe    { color: #BC8383; }
+.mutable.unsafe     { color: #BC8383; text-decoration: underline; }
+.keyword.unsafe     { color: #BC8383; font-weight: bold; }
 .parameter          { color: #94BFF3; }
 .text               { color: #DCDCCC; }
 .type               { color: #7CB8BB; }
@@ -33,30 +35,24 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .mutable            { text-decoration: underline; }
 .escape_sequence    { color: #94BFF3; }
 .keyword            { color: #F0DFAF; font-weight: bold; }
-.keyword.unsafe     { color: #BC8383; font-weight: bold; }
 .control            { font-style: italic; }
 .reference          { font-style: italic; font-weight: bold; }
 
 .unresolved_reference { color: #FC5555; text-decoration: wavy underline; }
 </style>
-<pre><code><span class="keyword unsafe">unsafe</span> <span class="keyword">fn</span> <span class="function declaration unsafe">unsafe_fn</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
+<pre><code><span class="keyword">static</span> <span class="keyword">mut</span> <span class="static declaration mutable unsafe">MUT_GLOBAL</span><span class="colon">:</span> <span class="struct">Struct</span> <span class="operator">=</span> <span class="struct">Struct</span> <span class="brace">{</span> <span class="field">field</span><span class="colon">:</span> <span class="numeric_literal">0</span> <span class="brace">}</span><span class="semicolon">;</span>
+<span class="keyword">static</span> <span class="static declaration">GLOBAL</span><span class="colon">:</span> <span class="struct">Struct</span> <span class="operator">=</span> <span class="struct">Struct</span> <span class="brace">{</span> <span class="field">field</span><span class="colon">:</span> <span class="numeric_literal">0</span> <span class="brace">}</span><span class="semicolon">;</span>
+<span class="keyword unsafe">unsafe</span> <span class="keyword">fn</span> <span class="function declaration unsafe">unsafe_fn</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
 
 <span class="keyword">union</span> <span class="union declaration">Union</span> <span class="brace">{</span>
     <span class="field declaration">a</span><span class="colon">:</span> <span class="builtin_type">u32</span><span class="comma">,</span>
     <span class="field declaration">b</span><span class="colon">:</span> <span class="builtin_type">f32</span><span class="comma">,</span>
 <span class="brace">}</span>
 
-<span class="keyword">struct</span> <span class="struct declaration">HasUnsafeFn</span><span class="semicolon">;</span>
-
-<span class="keyword">impl</span> <span class="struct">HasUnsafeFn</span> <span class="brace">{</span>
+<span class="keyword">struct</span> <span class="struct declaration">Struct</span> <span class="brace">{</span> <span class="field declaration">field</span><span class="colon">:</span> <span class="builtin_type">i32</span> <span class="brace">}</span>
+<span class="keyword">impl</span> <span class="struct">Struct</span> <span class="brace">{</span>
     <span class="keyword unsafe">unsafe</span> <span class="keyword">fn</span> <span class="function associated declaration reference unsafe">unsafe_method</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
 <span class="brace">}</span>
-
-<span class="keyword">struct</span> <span class="struct declaration">TypeForStaticMut</span> <span class="brace">{</span>
-    <span class="field declaration">a</span><span class="colon">:</span> <span class="builtin_type">u8</span>
-<span class="brace">}</span>
-
-<span class="keyword">static</span> <span class="keyword">mut</span> <span class="static declaration mutable unsafe">global_mut</span><span class="colon">:</span> <span class="struct">TypeForStaticMut</span> <span class="operator">=</span> <span class="struct">TypeForStaticMut</span> <span class="brace">{</span> <span class="field">a</span><span class="colon">:</span> <span class="numeric_literal">0</span> <span class="brace">}</span><span class="semicolon">;</span>
 
 <span class="attribute attribute">#</span><span class="attribute attribute">[</span><span class="builtin_attr attribute">repr</span><span class="parenthesis attribute">(</span><span class="none attribute">packed</span><span class="parenthesis attribute">)</span><span class="attribute attribute">]</span>
 <span class="keyword">struct</span> <span class="struct declaration">Packed</span> <span class="brace">{</span>
@@ -65,8 +61,9 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 <span class="keyword unsafe">unsafe</span> <span class="keyword">trait</span> <span class="trait declaration unsafe">UnsafeTrait</span> <span class="brace">{</span><span class="brace">}</span>
 <span class="keyword unsafe">unsafe</span> <span class="keyword">impl</span> <span class="trait unsafe">UnsafeTrait</span> <span class="keyword">for</span> <span class="struct">Packed</span> <span class="brace">{</span><span class="brace">}</span>
+<span class="keyword">impl</span> <span class="punctuation">!</span><span class="trait">UnsafeTrait</span> <span class="keyword">for</span> <span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
 
-<span class="keyword">fn</span> <span class="function declaration">require_unsafe_trait</span><span class="angle">&lt;</span><span class="type_param declaration">T</span><span class="colon">:</span> <span class="trait">UnsafeTrait</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="punctuation">_</span><span class="colon">:</span> <span class="type_param">T</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
+<span class="keyword">fn</span> <span class="function declaration">unsafe_trait_bound</span><span class="angle">&lt;</span><span class="type_param declaration">T</span><span class="colon">:</span> <span class="trait">UnsafeTrait</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="punctuation">_</span><span class="colon">:</span> <span class="type_param">T</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
 
 <span class="keyword">trait</span> <span class="trait declaration">DoTheAutoref</span> <span class="brace">{</span>
     <span class="keyword">fn</span> <span class="function associated declaration reference trait">calls_autoref</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span><span class="semicolon">;</span>
@@ -87,13 +84,14 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
             <span class="union">Union</span> <span class="brace">{</span> <span class="field unsafe">b</span><span class="colon">:</span> <span class="numeric_literal">0</span> <span class="brace">}</span> <span class="operator">=&gt;</span> <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="comma">,</span>
             <span class="union">Union</span> <span class="brace">{</span> <span class="field unsafe">a</span> <span class="brace">}</span> <span class="operator">=&gt;</span> <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="comma">,</span>
         <span class="brace">}</span>
-        <span class="struct">HasUnsafeFn</span><span class="operator">.</span><span class="function associated reference unsafe">unsafe_method</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+        <span class="struct">Struct</span> <span class="brace">{</span> <span class="field">field</span><span class="colon">:</span> <span class="numeric_literal">0</span> <span class="brace">}</span><span class="operator">.</span><span class="function associated reference unsafe">unsafe_method</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 
         <span class="comment">// unsafe deref</span>
-        <span class="keyword">let</span> <span class="variable declaration">y</span> <span class="operator">=</span> <span class="operator unsafe">*</span><span class="variable">x</span><span class="semicolon">;</span>
+        <span class="operator unsafe">*</span><span class="variable">x</span><span class="semicolon">;</span>
 
         <span class="comment">// unsafe access to a static mut</span>
-        <span class="keyword">let</span> <span class="variable declaration">a</span> <span class="operator">=</span> <span class="static mutable unsafe">global_mut</span><span class="operator">.</span><span class="field">a</span><span class="semicolon">;</span>
+        <span class="static mutable unsafe">MUT_GLOBAL</span><span class="operator">.</span><span class="field">field</span><span class="semicolon">;</span>
+        <span class="static">GLOBAL</span><span class="operator">.</span><span class="field">field</span><span class="semicolon">;</span>
 
         <span class="comment">// unsafe ref of packed fields</span>
         <span class="keyword">let</span> <span class="variable declaration">packed</span> <span class="operator">=</span> <span class="struct">Packed</span> <span class="brace">{</span> <span class="field">a</span><span class="colon">:</span> <span class="numeric_literal">0</span> <span class="brace">}</span><span class="semicolon">;</span>

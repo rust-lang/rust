@@ -286,7 +286,9 @@ fn highlight_name_ref(
                     Definition::ModuleDef(hir::ModuleDef::Trait(trait_))
                         if trait_.is_unsafe(db) =>
                     {
-                        if ast::Impl::for_trait_name_ref(&name_ref).is_some() {
+                        if ast::Impl::for_trait_name_ref(&name_ref)
+                            .map_or(false, |impl_| impl_.unsafe_token().is_some())
+                        {
                             h |= HlMod::Unsafe;
                         }
                     }
