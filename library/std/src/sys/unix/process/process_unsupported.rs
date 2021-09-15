@@ -2,8 +2,7 @@ use crate::convert::{TryFrom, TryInto};
 use crate::fmt;
 use crate::io;
 use crate::io::ErrorKind;
-use crate::num::NonZeroI32;
-use crate::os::raw::NonZero_c_int;
+use crate::num::{NonZero, NonZeroI32};
 use crate::sys;
 use crate::sys::cvt;
 use crate::sys::pipe::AnonPipe;
@@ -107,7 +106,7 @@ impl fmt::Display for ExitStatus {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub struct ExitStatusError(NonZero_c_int);
+pub struct ExitStatusError(NonZero<c_int>);
 
 impl Into<ExitStatus> for ExitStatusError {
     fn into(self) -> ExitStatus {

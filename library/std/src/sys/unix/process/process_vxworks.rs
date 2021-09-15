@@ -1,8 +1,7 @@
 use crate::convert::{TryFrom, TryInto};
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
-use crate::num::NonZeroI32;
-use crate::os::raw::NonZero_c_int;
+use crate::num::{NonZero, NonZeroI32};
 use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
@@ -196,7 +195,7 @@ impl ExitStatus {
         // https://pubs.opengroup.org/onlinepubs/9699919799/functions/wait.html .  If it is not
         // true for a platform pretending to be Unix, the tests (our doctests, and also
         // procsss_unix/tests.rs) will spot it.  `ExitStatusError::code` assumes this too.
-        match NonZero_c_int::try_from(self.0) {
+        match NonZero::<c_int>::try_from(self.0) {
             Ok(failure) => Err(ExitStatusError(failure)),
             Err(_) => Ok(()),
         }
@@ -248,7 +247,7 @@ impl fmt::Display for ExitStatus {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub struct ExitStatusError(NonZero_c_int);
+pub struct ExitStatusError(NonZero<c_int>);
 
 impl Into<ExitStatus> for ExitStatusError {
     fn into(self) -> ExitStatus {
