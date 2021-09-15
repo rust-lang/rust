@@ -19,15 +19,9 @@ pub fn target() -> Target {
         ..Default::default()
     };
 
-    opts.pre_link_args.insert(
-        LinkerFlavor::Lld(LldFlavor::Ld),
-        vec![],
-    );
+    opts.pre_link_args.insert(LinkerFlavor::Lld(LldFlavor::Ld), vec![]);
 
-    opts.post_link_args.insert(
-        LinkerFlavor::Lld(LldFlavor::Ld),
-        vec!["--no-gc-sections".to_string(), "--eh-frame-hdr".to_string()],
-    );
+    opts.post_link_args.insert(LinkerFlavor::Lld(LldFlavor::Ld), vec![]);
 
     Target {
         llvm_target: "aarch64-unknown-none".into(),
