@@ -1624,14 +1624,15 @@ impl Symbol {
 
     /// Maps a string to its interned representation.
     pub fn intern(string: &str) -> Self {
-        with_interner(|interner| interner.intern(string))
+        with_session_globals(|session_globals| session_globals.symbol_interner.intern(string))
     }
 
     /// Convert to a `SymbolStr`. This is a slowish operation because it
     /// requires locking the symbol interner.
     pub fn as_str(self) -> SymbolStr {
-        with_interner(|interner| unsafe {
-            SymbolStr { string: std::mem::transmute::<&str, &str>(interner.get(self)) }
+        with_session_globals(|session_globals| {
+            let symbol_str = session_globals.symbol_interner.get(self);
+            unsafe { SymbolStr { string: std::mem::transmute::<&str, &str>(symbol_str) } }
         })
     }
 
@@ -1640,7 +1641,7 @@ impl Symbol {
     }
 
     pub fn len(self) -> usize {
-        with_interner(|interner| interner.get(self).len())
+        with_session_globals(|session_globals| session_globals.symbol_interner.get(self).len())
     }
 
     pub fn is_empty(self) -> bool {
@@ -1877,11 +1878,6 @@ impl Ident {
     pub fn is_raw_guess(self) -> bool {
         self.name.can_be_raw() && self.is_reserved()
     }
-}
-
-#[inline]
-fn with_interner<T, F: FnOnce(&Interner) -> T>(f: F) -> T {
-    with_session_globals(|session_globals| f(&session_globals.symbol_interner))
 }
 
 /// An alternative to [`Symbol`], useful when the chars within the symbol need to
