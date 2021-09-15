@@ -1910,7 +1910,9 @@ impl<T, E> const ops::Try for Result<T, E> {
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 #[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T, E, F: ~const From<E>> const ops::FromResidual<Result<convert::Infallible, E>> for Result<T, F> {
+impl<T, E, F: ~const From<E>> const ops::FromResidual<Result<convert::Infallible, E>>
+    for Result<T, F>
+{
     #[inline]
     fn from_residual(residual: Result<convert::Infallible, E>) -> Self {
         match residual {
