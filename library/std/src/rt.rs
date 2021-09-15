@@ -59,10 +59,10 @@ fn lang_start<T: crate::process::Termination + 'static>(
     argc: isize,
     argv: *const *const u8,
 ) -> isize {
-    lang_start_internal(
+    let Ok(v) = lang_start_internal(
         &move || crate::sys_common::backtrace::__rust_begin_short_backtrace(main).report(),
         argc,
         argv,
-    )
-    .into_ok()
+    );
+    v
 }
