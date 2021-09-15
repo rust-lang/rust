@@ -1726,7 +1726,7 @@ impl Interner {
     }
 
     #[inline]
-    pub(crate) fn intern(&self, string: &str) -> Symbol {
+    fn intern(&self, string: &str) -> Symbol {
         let mut inner = self.0.lock();
         if let Some(&name) = inner.names.get(string) {
             return name;
@@ -1748,7 +1748,7 @@ impl Interner {
 
     // Get the symbol as a string. `Symbol::as_str()` should be used in
     // preference to this function.
-    pub(crate) fn get(&self, symbol: Symbol) -> &str {
+    fn get(&self, symbol: Symbol) -> &str {
         self.0.lock().strings[symbol.0.as_usize()]
     }
 }
