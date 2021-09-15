@@ -126,12 +126,13 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                     self.fcx,
                     ty,
                     hir_id,
-                    expr,
-                    source_span,
-                    yield_data.span,
-                    "",
-                    "",
-                    1,
+                    SuspendCheckData {
+                        expr,
+                        source_span,
+                        yield_span: yield_data.span,
+                        plural_len: 1,
+                        ..Default::default()
+                    },
                 );
 
                 self.types.insert(ty::GeneratorInteriorTypeCause {
@@ -448,6 +449,16 @@ impl<'a, 'tcx> Visitor<'tcx> for ArmPatCollector<'a> {
     }
 }
 
+#[derive(Default)]
+pub struct SuspendCheckData<'a, 'tcx> {
+    expr: Option<&'tcx Expr<'tcx>>,
+    source_span: Span,
+    yield_span: Span,
+    descr_pre: &'a str,
+    descr_post: &'a str,
+    plural_len: usize,
+}
+
 // Returns whether it emitted a diagnostic or not
 // Note that this fn and the proceding one are based on the code
 // for creating must_use diagnostics
@@ -455,12 +466,7 @@ pub fn check_must_not_suspend_ty<'tcx>(
     fcx: &FnCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
     hir_id: HirId,
-    expr: Option<&'tcx Expr<'tcx>>,
-    source_span: Span,
-    yield_span: Span,
-    descr_pre: &str,
-    descr_post: &str,
-    plural_len: usize,
+    data: SuspendCheckData<'_, 'tcx>,
 ) -> bool {
     if ty.is_unit()
     // FIXME: should this check `is_ty_uninhabited_from`. This query is not available in this stage
@@ -468,36 +474,18 @@ pub fn check_must_not_suspend_ty<'tcx>(
     // `must_use`
     // || fcx.tcx.is_ty_uninhabited_from(fcx.tcx.parent_module(hir_id).to_def_id(), ty, fcx.param_env)
     {
-        return true;
+        return false;
     }
 
-    let plural_suffix = pluralize!(plural_len);
+    let plural_suffix = pluralize!(data.plural_len);
 
     match *ty.kind() {
         ty::Adt(..) if ty.is_box() => {
             let boxed_ty = ty.boxed_ty();
-            let descr_pre = &format!("{}boxed ", descr_pre);
-            check_must_not_suspend_ty(
-                fcx,
-                boxed_ty,
-                hir_id,
-                expr,
-                source_span,
-                yield_span,
-                descr_pre,
-                descr_post,
-                plural_len,
-            )
+            let descr_pre = &format!("{}boxed ", data.descr_pre);
+            check_must_not_suspend_ty(fcx, boxed_ty, hir_id, SuspendCheckData { descr_pre, ..data })
         }
-        ty::Adt(def, _) => check_must_not_suspend_def(
-            fcx.tcx,
-            def.did,
-            hir_id,
-            source_span,
-            yield_span,
-            descr_pre,
-            descr_post,
-        ),
+        ty::Adt(def, _) => check_must_not_suspend_def(fcx.tcx, def.did, hir_id, data),
         // FIXME: support adding the attribute to TAITs
         ty::Opaque(def, _) => {
             let mut has_emitted = false;
@@ -507,15 +495,12 @@ pub fn check_must_not_suspend_ty<'tcx>(
                     predicate.kind().skip_binder()
                 {
                     let def_id = poly_trait_predicate.trait_ref.def_id;
-                    let descr_pre = &format!("{}implementer{} of ", descr_pre, plural_suffix,);
+                    let descr_pre = &format!("{}implementer{} of ", data.descr_pre, plural_suffix);
                     if check_must_not_suspend_def(
                         fcx.tcx,
                         def_id,
                         hir_id,
-                        source_span,
-                        yield_span,
-                        descr_pre,
-                        descr_post,
+                        SuspendCheckData { descr_pre, ..data },
                     ) {
                         has_emitted = true;
                         break;
@@ -529,15 +514,12 @@ pub fn check_must_not_suspend_ty<'tcx>(
             for predicate in binder.iter() {
                 if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
                     let def_id = trait_ref.def_id;
-                    let descr_post = &format!(" trait object{}{}", plural_suffix, descr_post,);
+                    let descr_post = &format!(" trait object{}{}", plural_suffix, data.descr_post);
                     if check_must_not_suspend_def(
                         fcx.tcx,
                         def_id,
                         hir_id,
-                        source_span,
-                        yield_span,
-                        descr_pre,
-                        descr_post,
+                        SuspendCheckData { descr_post, ..data },
                     ) {
                         has_emitted = true;
                         break;
@@ -548,7 +530,7 @@ pub fn check_must_not_suspend_ty<'tcx>(
         }
         ty::Tuple(ref tys) => {
             let mut has_emitted = false;
-            let spans = if let Some(hir::ExprKind::Tup(comps)) = expr.map(|e| &e.kind) {
+            let spans = if let Some(hir::ExprKind::Tup(comps)) = data.expr.map(|e| &e.kind) {
                 debug_assert_eq!(comps.len(), tys.len());
                 comps.iter().map(|e| e.span).collect()
             } else {
@@ -556,9 +538,12 @@ pub fn check_must_not_suspend_ty<'tcx>(
             };
             for (i, ty) in tys.iter().map(|k| k.expect_ty()).enumerate() {
                 let descr_post = &format!(" in tuple element {}", i);
-                let span = *spans.get(i).unwrap_or(&source_span);
+                let span = *spans.get(i).unwrap_or(&data.source_span);
                 if check_must_not_suspend_ty(
-                    fcx, ty, hir_id, expr, span, yield_span, descr_pre, descr_post, plural_len,
+                    fcx,
+                    ty,
+                    hir_id,
+                    SuspendCheckData { descr_post, source_span: span, ..data },
                 ) {
                     has_emitted = true;
                 }
@@ -566,17 +551,17 @@ pub fn check_must_not_suspend_ty<'tcx>(
             has_emitted
         }
         ty::Array(ty, len) => {
-            let descr_pre = &format!("{}array{} of ", descr_pre, plural_suffix,);
+            let descr_pre = &format!("{}array{} of ", data.descr_pre, plural_suffix);
             check_must_not_suspend_ty(
                 fcx,
                 ty,
                 hir_id,
-                expr,
-                source_span,
-                yield_span,
-                descr_pre,
-                descr_post,
-                len.try_eval_usize(fcx.tcx, fcx.param_env).unwrap_or(0) as usize + 1,
+                SuspendCheckData {
+                    descr_pre,
+                    plural_len: len.try_eval_usize(fcx.tcx, fcx.param_env).unwrap_or(0) as usize
+                        + 1,
+                    ..data
+                },
             )
         }
         _ => false,
@@ -587,39 +572,38 @@ fn check_must_not_suspend_def(
     tcx: TyCtxt<'_>,
     def_id: DefId,
     hir_id: HirId,
-    source_span: Span,
-    yield_span: Span,
-    descr_pre_path: &str,
-    descr_post_path: &str,
+    data: SuspendCheckData<'_, '_>,
 ) -> bool {
     for attr in tcx.get_attrs(def_id).iter() {
         if attr.has_name(sym::must_not_suspend) {
             tcx.struct_span_lint_hir(
                 rustc_session::lint::builtin::MUST_NOT_SUSPEND,
                 hir_id,
-                source_span,
+                data.source_span,
                 |lint| {
                     let msg = format!(
-                        "{}`{}`{} held across a yield point, but should not be",
-                        descr_pre_path,
+                        "{}`{}`{} held across a suspend point, but should not be",
+                        data.descr_pre,
                         tcx.def_path_str(def_id),
-                        descr_post_path
+                        data.descr_post,
                     );
                     let mut err = lint.build(&msg);
 
                     // add span pointing to the offending yield/await
-                    err.span_label(yield_span, "the value is held across this yield point");
+                    err.span_label(data.yield_span, "the value is held across this suspend point");
 
                     // Add optional reason note
                     if let Some(note) = attr.value_str() {
-                        err.span_note(source_span, &note.as_str());
+                        // FIXME(guswynn): consider formatting this better
+                        err.span_note(data.source_span, &note.as_str());
                     }
 
                     // Add some quick suggestions on what to do
+                    // FIXME: can `drop` work as a suggestion here as well?
                     err.span_help(
-                        source_span,
-                        "`drop` this value before the yield point, or use a block (`{ ... }`) \
-                        to shrink its scope",
+                        data.source_span,
+                        "consider using a block (`{ ... }`) \
+                        to shrink the value's scope, ending before the suspend point",
                     );
 
                     err.emit();

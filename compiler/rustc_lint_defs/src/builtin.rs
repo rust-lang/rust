@@ -315,7 +315,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `must_not_suspend` lint guards against values that shouldn't be held across yield points
+    /// The `must_not_suspend` lint guards against values that shouldn't be held across suspend points
     /// (`.await`)
     ///
     /// ### Example
@@ -339,10 +339,10 @@ declare_lint! {
     /// ### Explanation
     ///
     /// The `must_not_suspend` lint detects values that are marked with the `#[must_not_suspend]`
-    /// attribute being held across yield points. A "yield" point is usually a `.await` in an async
+    /// attribute being held across suspend points. A "suspend" point is usually a `.await` in an async
     /// function.
     ///
-    /// This attribute can be used to mark values that are semantically incorrect across yields
+    /// This attribute can be used to mark values that are semantically incorrect across suspends
     /// (like certain types of timers), values that have async alternatives, and values that
     /// regularly cause problems with the `Send`-ness of async fn's returned futures (like
     /// `MutexGuard`'s)
