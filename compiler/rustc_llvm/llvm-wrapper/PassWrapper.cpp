@@ -879,8 +879,8 @@ LLVMRustOptimizeWithNewPassManager(
           MPM.addPass(ModuleMemorySanitizerPass(Options));
 #else
           MPM.addPass(MemorySanitizerPass(Options));
-          MPM.addPass(createModuleToFunctionPassAdaptor(MemorySanitizerPass(Options)));
 #endif
+          MPM.addPass(createModuleToFunctionPassAdaptor(MemorySanitizerPass(Options)));
         }
       );
 #else
@@ -905,8 +905,8 @@ LLVMRustOptimizeWithNewPassManager(
           MPM.addPass(ModuleThreadSanitizerPass());
 #else
           MPM.addPass(ThreadSanitizerPass());
-          MPM.addPass(createModuleToFunctionPassAdaptor(ThreadSanitizerPass()));
 #endif
+          MPM.addPass(createModuleToFunctionPassAdaptor(ThreadSanitizerPass()));
         }
       );
 #else
