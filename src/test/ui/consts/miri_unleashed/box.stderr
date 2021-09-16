@@ -2,7 +2,7 @@ error[E0080]: could not evaluate static initializer
   --> $DIR/box.rs:10:11
    |
 LL |     &mut *(box 0)
-   |           ^^^^^^^ "heap allocations via `box` keyword" needs an rfc before being allowed inside constants
+   |           ^^^^^^^ calling non-const function `alloc::alloc::exchange_malloc`
 
 warning: skipping const checks
    |
