@@ -159,9 +159,9 @@ use super::SpecExtend;
 /// This will be a max-heap.
 ///
 /// It is a logic error for an item to be modified in such a way that the
-/// item's ordering relative to any other item, as determined by the `Ord`
+/// item's ordering relative to any other item, as determined by the [`Ord`]
 /// trait, changes while it is in the heap. This is normally only possible
-/// through `Cell`, `RefCell`, global state, I/O, or unsafe code. The
+/// through [`Cell`], [`RefCell`], global state, I/O, or unsafe code. The
 /// behavior resulting from such a logic error is not specified, but will
 /// not result in undefined behavior. This could include panics, incorrect
 /// results, aborts, memory leaks, and non-termination.
@@ -219,7 +219,7 @@ use super::SpecExtend;
 ///
 /// ## Min-heap
 ///
-/// Either `std::cmp::Reverse` or a custom `Ord` implementation can be used to
+/// Either [`core::cmp::Reverse`] or a custom [`Ord`] implementation can be used to
 /// make `BinaryHeap` a min-heap. This makes `heap.pop()` return the smallest
 /// value instead of the greatest one.
 ///
@@ -250,6 +250,10 @@ use super::SpecExtend;
 /// The value for `push` is an expected cost; the method documentation gives a
 /// more detailed analysis.
 ///
+/// [`core::cmp::Reverse`]: core::cmp::Reverse
+/// [`Ord`]: core::cmp::Ord
+/// [`Cell`]: core::cell::Cell
+/// [`RefCell`]: core::cell::RefCell
 /// [push]: BinaryHeap::push
 /// [pop]: BinaryHeap::pop
 /// [peek]: BinaryHeap::peek
