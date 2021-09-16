@@ -665,8 +665,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         if i == 2 && intrinsic.as_str().starts_with("simd_shuffle") {
                             if let mir::Operand::Constant(constant) = arg {
                                 let c = self.eval_mir_constant(constant);
-                                let (llval, ty) =
-                                    self.simd_shuffle_indices(&bx, constant.span, constant.ty(), c);
+                                let (llval, ty) = self.simd_shuffle_indices(
+                                    &bx,
+                                    constant.span,
+                                    self.monomorphize(constant.ty()),
+                                    c,
+                                );
                                 return OperandRef {
                                     val: Immediate(llval),
                                     layout: bx.layout_of(ty),
