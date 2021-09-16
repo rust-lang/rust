@@ -915,6 +915,7 @@ impl From<CString> for Box<CStr> {
 
 #[stable(feature = "cow_from_cstr", since = "1.28.0")]
 impl<'a> From<CString> for Cow<'a, CStr> {
+    /// Converts a [`CString`] into an owned [`Cow`] without copying or allocating.
     #[inline]
     fn from(s: CString) -> Cow<'a, CStr> {
         Cow::Owned(s)
@@ -923,6 +924,7 @@ impl<'a> From<CString> for Cow<'a, CStr> {
 
 #[stable(feature = "cow_from_cstr", since = "1.28.0")]
 impl<'a> From<&'a CStr> for Cow<'a, CStr> {
+    /// Converts a [`CStr`] into a borrowed [`Cow`] without copying or allocating.
     #[inline]
     fn from(s: &'a CStr) -> Cow<'a, CStr> {
         Cow::Borrowed(s)
@@ -931,6 +933,7 @@ impl<'a> From<&'a CStr> for Cow<'a, CStr> {
 
 #[stable(feature = "cow_from_cstr", since = "1.28.0")]
 impl<'a> From<&'a CString> for Cow<'a, CStr> {
+    /// Converts a `&`[`CString`] into a borrowed [`Cow`] without copying or allocating.
     #[inline]
     fn from(s: &'a CString) -> Cow<'a, CStr> {
         Cow::Borrowed(s.as_c_str())
