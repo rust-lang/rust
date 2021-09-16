@@ -20,7 +20,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Operand<'tcx>> {
         let local_scope = self.local_scope();
-        self.as_operand(block, Some(local_scope), expr)
+        self.as_operand(block, Some(local_scope), expr, None)
     }
 
     /// Returns an operand suitable for use until the end of the current scope expression and
@@ -85,6 +85,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// temporary `tmp = x`, so that we capture the value of `x` at
     /// this time.
     ///
+    /// If we end up needing to create a temporary, then we will use
+    /// `local_info` as its `LocalInfo`, unless `as_temporary`
+    /// has already assigned it a non-`None` `LocalInfo`.
+    /// Normally, you should use `None` for `local_info`
+    ///
     /// The operand is known to be live until the end of `scope`.
     ///
     /// Like `as_local_call_operand`, except that the argument will
@@ -94,15 +99,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut block: BasicBlock,
         scope: Option<region::Scope>,
         expr: &Expr<'tcx>,
+        local_info: Option<Box<LocalInfo<'tcx>>>,
     ) -> BlockAnd<Operand<'tcx>> {
-        debug!("as_operand(block={:?}, expr={:?})", block, expr);
+        debug!("as_operand(block={:?}, expr={:?} local_info={:?})", block, expr, local_info);
         let this = self;
 
         if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
             let source_info = this.source_info(expr.span);
             let region_scope = (region_scope, source_info);
             return this.in_scope(region_scope, lint_level, |this| {
-                this.as_operand(block, scope, &this.thir[value])
+                this.as_operand(block, scope, &this.thir[value], local_info)
             });
         }
 
@@ -115,6 +121,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             Category::Place | Category::Rvalue(..) => {
                 let operand = unpack!(block = this.as_temp(block, scope, expr, Mutability::Mut));
+                if this.local_decls[operand].local_info.is_none() {
+                    this.local_decls[operand].local_info = local_info;
+                }
                 block.and(Operand::Move(Place::from(operand)))
             }
         }
@@ -167,6 +176,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        this.as_operand(block, scope, expr)
+        this.as_operand(block, scope, expr, None)
     }
 }

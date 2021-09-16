@@ -5,7 +5,7 @@ LL |     SomeStruct::<&'static u32> { t: &c };
    |                                     ^^
    |                                     |
    |                                     borrowed value does not live long enough
-   |                                     requires that `c` is borrowed for `'static`
+   |                                     this usage requires that `c` is borrowed for `'static`
 LL | }
    | - `c` dropped here while still borrowed
 
@@ -19,7 +19,7 @@ LL |     SomeStruct::<&'a u32> { t: &c };
    |                                ^^
    |                                |
    |                                borrowed value does not live long enough
-   |                                requires that `c` is borrowed for `'a`
+   |                                this usage requires that `c` is borrowed for `'a`
 LL | }
    | - `c` dropped here while still borrowed
 
@@ -33,7 +33,7 @@ LL |         SomeStruct::<&'a u32> { t: &c };
    |                                    ^^
    |                                    |
    |                                    borrowed value does not live long enough
-   |                                    requires that `c` is borrowed for `'a`
+   |                                    this usage requires that `c` is borrowed for `'a`
 LL |     };
    |     - `c` dropped here while still borrowed
 
