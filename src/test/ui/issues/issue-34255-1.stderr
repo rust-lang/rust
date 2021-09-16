@@ -1,13 +1,18 @@
-error: expected type, found `42`
-  --> $DIR/issue-34255-1.rs:8:24
+error: invalid `struct` delimiters or `fn` call arguments
+  --> $DIR/issue-34255-1.rs:8:5
    |
 LL |     Test::Drill(field: 42);
-   |                      - ^^ expected type
-   |                      |
-   |                      tried to parse a type due to this type ascription
+   |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
-   = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
+help: if `Test::Drill` is a struct, use braces as delimiters
+   |
+LL |     Test::Drill { field: 42 };
+   |                 ~           ~
+help: if `Test::Drill` is a function, use the arguments directly
+   |
+LL -     Test::Drill(field: 42);
+LL +     Test::Drill(42);
+   | 
 
 error: aborting due to previous error
 

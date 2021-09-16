@@ -14,7 +14,9 @@ pub use super::{
 };
 
 /// This function computes Polonius facts for the given body. It makes a copy of
-/// the body because it needs to regenerate the region identifiers.
+/// the body because it needs to regenerate the region identifiers. This function
+/// should never be invoked during a typical compilation session due to performance
+/// issues with Polonius.
 ///
 /// Note:
 /// *   This function will panic if the required body was already stolen. This
@@ -22,8 +24,6 @@ pub use super::{
 ///     because they are evaluated during typechecking. The panic can be avoided
 ///     by overriding the `mir_borrowck` query. You can find a complete example
 ///     that shows how to do this at `src/test/run-make/obtain-borrowck/`.
-/// *   This function will also panic if computation of Polonius facts
-///     (`-Zpolonius` flag) is not enabled.
 ///
 /// *   Polonius is highly unstable, so expect regular changes in its signature or other details.
 pub fn get_body_with_borrowck_facts<'tcx>(

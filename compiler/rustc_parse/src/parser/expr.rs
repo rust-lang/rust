@@ -907,6 +907,12 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn look_ahead_type_ascription_as_field(&mut self) -> bool {
+        self.look_ahead(1, |t| t.is_ident())
+            && self.look_ahead(2, |t| t == &token::Colon)
+            && self.look_ahead(3, |t| t.can_begin_expr())
+    }
+
     fn parse_dot_suffix_expr(&mut self, lo: Span, base: P<Expr>) -> PResult<'a, P<Expr>> {
         match self.token.uninterpolate().kind {
             token::Ident(..) => self.parse_dot_suffix(base, lo),
@@ -1056,10 +1062,74 @@ impl<'a> Parser<'a> {
 
     /// Parse a function call expression, `expr(...)`.
     fn parse_fn_call_expr(&mut self, lo: Span, fun: P<Expr>) -> P<Expr> {
-        let seq = self.parse_paren_expr_seq().map(|args| {
+        let snapshot = if self.token.kind == token::OpenDelim(token::Paren)
+            && self.look_ahead_type_ascription_as_field()
+        {
+            Some((self.clone(), fun.kind.clone()))
+        } else {
+            None
+        };
+        let open_paren = self.token.span;
+
+        let mut seq = self.parse_paren_expr_seq().map(|args| {
             self.mk_expr(lo.to(self.prev_token.span), self.mk_call(fun, args), AttrVec::new())
         });
+        if let Some(expr) =
+            self.maybe_recover_struct_lit_bad_delims(lo, open_paren, &mut seq, snapshot)
+        {
+            return expr;
+        }
         self.recover_seq_parse_error(token::Paren, lo, seq)
+    }
+
+    /// If we encounter a parser state that looks like the user has written a `struct` literal with
+    /// parentheses instead of braces, recover the parser state and provide suggestions.
+    fn maybe_recover_struct_lit_bad_delims(
+        &mut self,
+        lo: Span,
+        open_paren: Span,
+        seq: &mut PResult<'a, P<Expr>>,
+        snapshot: Option<(Self, ExprKind)>,
+    ) -> Option<P<Expr>> {
+        match (seq.as_mut(), snapshot) {
+            (Err(ref mut err), Some((mut snapshot, ExprKind::Path(None, path)))) => {
+                let name = pprust::path_to_string(&path);
+                snapshot.bump(); // `(`
+                match snapshot.parse_struct_fields(path.clone(), false, token::Paren) {
+                    Ok((fields, ..)) if snapshot.eat(&token::CloseDelim(token::Paren)) => {
+                        // We have are certain we have `Enum::Foo(a: 3, b: 4)`, suggest
+                        // `Enum::Foo { a: 3, b: 4 }` or `Enum::Foo(3, 4)`.
+                        *self = snapshot;
+                        let close_paren = self.prev_token.span;
+                        let span = lo.to(self.prev_token.span);
+                        err.cancel();
+                        self.struct_span_err(
+                            span,
+                            "invalid `struct` delimiters or `fn` call arguments",
+                        )
+                        .multipart_suggestion(
+                            &format!("if `{}` is a struct, use braces as delimiters", name),
+                            vec![(open_paren, " { ".to_string()), (close_paren, " }".to_string())],
+                            Applicability::MaybeIncorrect,
+                        )
+                        .multipart_suggestion(
+                            &format!("if `{}` is a function, use the arguments directly", name),
+                            fields
+                                .into_iter()
+                                .map(|field| (field.span.until(field.expr.span), String::new()))
+                                .collect(),
+                            Applicability::MaybeIncorrect,
+                        )
+                        .emit();
+                        return Some(self.mk_expr_err(span));
+                    }
+                    Ok(_) => {}
+                    Err(mut err) => err.emit(),
+                }
+            }
+            _ => {}
+        }
+        None
     }
 
     /// Parse an indexing expression `expr[...]`.
@@ -2374,14 +2444,12 @@ impl<'a> Parser<'a> {
             .emit();
     }
 
-    /// Precondition: already parsed the '{'.
-    pub(super) fn parse_struct_expr(
+    pub(super) fn parse_struct_fields(
         &mut self,
-        qself: Option<ast::QSelf>,
         pth: ast::Path,
-        attrs: AttrVec,
         recover: bool,
-    ) -> PResult<'a, P<Expr>> {
+        close_delim: token::DelimToken,
+    ) -> PResult<'a, (Vec<ExprField>, ast::StructRest, bool)> {
         let mut fields = Vec::new();
         let mut base = ast::StructRest::None;
         let mut recover_async = false;
@@ -2393,11 +2461,11 @@ impl<'a> Parser<'a> {
             e.note("for more on editions, read https://doc.rust-lang.org/edition-guide");
         };
 
-        while self.token != token::CloseDelim(token::Brace) {
+        while self.token != token::CloseDelim(close_delim) {
             if self.eat(&token::DotDot) {
                 let exp_span = self.prev_token.span;
                 // We permit `.. }` on the left-hand side of a destructuring assignment.
-                if self.check(&token::CloseDelim(token::Brace)) {
+                if self.check(&token::CloseDelim(close_delim)) {
                     self.sess.gated_spans.gate(sym::destructuring_assignment, self.prev_token.span);
                     base = ast::StructRest::Rest(self.prev_token.span.shrink_to_hi());
                     break;
@@ -2438,7 +2506,7 @@ impl<'a> Parser<'a> {
                 }
             };
 
-            match self.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Brace)]) {
+            match self.expect_one_of(&[token::Comma], &[token::CloseDelim(close_delim)]) {
                 Ok(_) => {
                     if let Some(f) = parsed_field.or(recovery_field) {
                         // Only include the field if there's no parse error for the field name.
@@ -2469,8 +2537,21 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+        Ok((fields, base, recover_async))
+    }
 
-        let span = pth.span.to(self.token.span);
+    /// Precondition: already parsed the '{'.
+    pub(super) fn parse_struct_expr(
+        &mut self,
+        qself: Option<ast::QSelf>,
+        pth: ast::Path,
+        attrs: AttrVec,
+        recover: bool,
+    ) -> PResult<'a, P<Expr>> {
+        let lo = pth.span;
+        let (fields, base, recover_async) =
+            self.parse_struct_fields(pth.clone(), recover, token::Brace)?;
+        let span = lo.to(self.token.span);
         self.expect(&token::CloseDelim(token::Brace))?;
         let expr = if recover_async {
             ExprKind::Err

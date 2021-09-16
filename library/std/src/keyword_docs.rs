@@ -77,7 +77,7 @@ mod as_keyword {}
 ///     '_inner: for j in 1..=200 {
 ///         println!("    inner iteration (j): {}", j);
 ///         if j >= 3 {
-///             // breaks from inner loop, let's outer loop continue.
+///             // breaks from inner loop, lets outer loop continue.
 ///             break;
 ///         }
 ///         if i >= 2 {
