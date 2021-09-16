@@ -113,12 +113,6 @@ impl NavigationTarget {
     }
 
     #[cfg(test)]
-    pub(crate) fn assert_match(&self, expected: &str) {
-        let actual = self.debug_render();
-        test_utils::assert_eq_text!(expected.trim(), actual.trim(),);
-    }
-
-    #[cfg(test)]
     pub(crate) fn debug_render(&self) -> String {
         let mut buf = format!(
             "{} {:?} {:?} {:?}",
