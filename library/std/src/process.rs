@@ -1029,6 +1029,84 @@ impl Command {
     pub fn get_current_dir(&self) -> Option<&Path> {
         self.inner.get_current_dir()
     }
+
+    /// Convenience wrapper around [`Command::status`].
+    ///
+    /// Returns an error if the command exited with non-zero status.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #![feature(command_easy_api)]
+    /// use std::process::Command;
+    ///
+    /// let res = Command::new("cat")
+    ///                   .arg("no-such-file.txt")
+    ///                   .run();
+    /// assert!(res.is_err());
+    /// ```
+    #[unstable(feature = "command_easy_api", issue = "none")]
+    pub fn run(&mut self) -> io::Result<()> {
+        let status = self.status()?;
+        self.check_status(status)
+    }
+
+    /// Convenience wrapper around [`Command::output`] to get the contents of
+    /// standard output as [`String`].
+    ///
+    /// The final newline (`\n`) is stripped from the output. Unlike
+    /// [`Command::output`], `stderr` is inherited by default.
+    ///
+    /// Returns an error if the command exited with non-zero status or if the
+    /// output was not valid UTF-8.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #![feature(command_easy_api)]
+    /// use std::process::Command;
+    /// let output = Command::new("git")
+    ///                      .args(["rev-parse", "--short", "1.0.0"])
+    ///                      .read_stdout()?;
+    ///
+    /// assert_eq!(output, "55bd4f8ff2b");
+    /// # Ok::<(), std::io::Error>(())
+    /// ```
+    #[unstable(feature = "command_easy_api", issue = "none")]
+    pub fn read_stdout(&mut self) -> io::Result<String> {
+        // FIXME: This shouldn't override the stderr to inherit, and merely use
+        // a default.
+        self.stderr(Stdio::inherit());
+
+        let output = self.output()?;
+        self.check_status(output.status)?;
+        let mut stdout = output.stdout;
+        if stdout.last() == Some(&b'\n') {
+            stdout.pop();
+        }
+        String::from_utf8(stdout).map_err(|_| {
+            io::Error::new_const(
+                io::ErrorKind::InvalidData,
+                format!("command {:?} produced non-UTF-8 output"),
+            )
+        })
+    }
+
+    fn check_status(&self, status: ExitStatus) -> io::Result<()> {
+        if status.success() {
+            Ok(())
+        } else {
+            Err(io::Error::new_const(
+                io::ErrorKind::Uncategorized,
+                match status.code() {
+                    Some(code) => {
+                        format!("command {:?} exited with non zero status ({})", self, code)
+                    }
+                    None => format!("command {:?} was terminated", self),
+                },
+            ))
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
