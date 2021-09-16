@@ -21,7 +21,7 @@ use crate::str::from_utf8_unchecked;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct EscapeDefault {
-    range: Range<usize>,
+    range: Range<u8>,
     data: [u8; 4],
 }
 
@@ -114,7 +114,7 @@ pub fn escape_default(c: u8) -> EscapeDefault {
 impl Iterator for EscapeDefault {
     type Item = u8;
     fn next(&mut self) -> Option<u8> {
-        self.range.next().map(|i| self.data[i])
+        self.range.next().map(|i| self.data[i as usize])
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.range.size_hint()
@@ -126,7 +126,7 @@ impl Iterator for EscapeDefault {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl DoubleEndedIterator for EscapeDefault {
     fn next_back(&mut self) -> Option<u8> {
-        self.range.next_back().map(|i| self.data[i])
+        self.range.next_back().map(|i| self.data[i as usize])
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -138,7 +138,9 @@ impl FusedIterator for EscapeDefault {}
 impl fmt::Display for EscapeDefault {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // SAFETY: ok because `escape_default` created only valid utf-8 data
-        f.write_str(unsafe { from_utf8_unchecked(&self.data[self.range.clone()]) })
+        f.write_str(unsafe {
+            from_utf8_unchecked(&self.data[(self.range.start as usize)..(self.range.end as usize)])
+        })
     }
 }
 
