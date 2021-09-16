@@ -9,6 +9,10 @@ pub struct RemoveZsts;
 
 impl<'tcx> MirPass<'tcx> for RemoveZsts {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        // Avoid query cycles (generators require optimized MIR for layout).
+        if tcx.type_of(body.source.def_id()).is_generator() {
+            return;
+        }
         let param_env = tcx.param_env(body.source.def_id());
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         for block in basic_blocks.iter_mut() {
