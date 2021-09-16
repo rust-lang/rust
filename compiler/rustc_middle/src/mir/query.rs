@@ -332,17 +332,15 @@ pub enum ConstraintCategory {
     CopyBound,
     SizedBound,
     Assignment,
+    /// A constraint that came from a usage of a variable (e.g. in an ADT expression
+    /// like `Foo { field: my_val }`)
+    Usage,
     OpaqueType,
     ClosureUpvar(hir::HirId),
 
     /// A "boring" constraint (caused by the given location) is one that
     /// the user probably doesn't want to see described in diagnostics,
     /// because it is kind of an artifact of the type system setup.
-    /// Example: `x = Foo { field: y }` technically creates
-    /// intermediate regions representing the "type of `Foo { field: y
-    /// }`", and data flows from `y` into those variables, but they
-    /// are not very interesting. The assignment into `x` on the other
-    /// hand might be.
     Boring,
     // Boring and applicable everywhere.
     BoringNoLocation,
