@@ -164,8 +164,10 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
     upvars: &[Upvar<'tcx>],
+    use_polonius: bool,
 ) -> NllOutput<'tcx> {
-    let mut all_facts = AllFacts::enabled(infcx.tcx).then_some(AllFacts::default());
+    let mut all_facts =
+        (use_polonius || AllFacts::enabled(infcx.tcx)).then_some(AllFacts::default());
 
     let universal_regions = Rc::new(universal_regions);
 
@@ -281,7 +283,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
             all_facts.write_to_dir(dir_path, location_table).unwrap();
         }
 
-        if infcx.tcx.sess.opts.debugging_opts.polonius {
+        if use_polonius {
             let algorithm =
                 env::var("POLONIUS_ALGORITHM").unwrap_or_else(|_| String::from("Hybrid"));
             let algorithm = Algorithm::from_str(&algorithm).unwrap();
