@@ -495,11 +495,16 @@ impl<'a> Parser<'a> {
             None => {
                 let after_eq = eq.shrink_to_hi();
                 let before_next = self.token.span.shrink_to_lo();
+                let the_type_placeholder = if matches!(self.token.kind, token::Comma | token::Gt) {
+                    " TheType"
+                } else {
+                    " TheType "
+                };
                 self.struct_span_err(after_eq.to(before_next), "missing type to the right of `=`")
                     .span_suggestion(
                         self.sess.source_map().next_point(eq).to(before_next),
                         "to constrain the associated type, add a type after `=`",
-                        " TheType".to_string(),
+                        the_type_placeholder.to_string(),
                         Applicability::HasPlaceholders,
                     )
                     .span_suggestion(
@@ -571,6 +576,19 @@ impl<'a> Parser<'a> {
                     // Try to recover from possible `const` arg without braces.
                     return self.recover_const_arg(start, err).map(Some);
                 }
+            }
+        } else if self.eat_keyword_noexpect(kw::Const) {
+            // Detect and recover from the old, pre-RFC2000 syntax for const generics.
+            let mut err = self.struct_span_err(
+                start,
+                "expected lifetime, type, or constant, found keyword `const`",
+            );
+            if self.check_const_arg() {
+                err.emit();
+                GenericArg::Const(self.parse_const_arg()?)
+            } else {
+                let after_kw_const = self.token.span;
+                return self.recover_const_arg(after_kw_const, err).map(Some);
             }
         } else {
             return Ok(None);

@@ -1,0 +1,8 @@
+error: expected lifetime, type, or constant, found keyword `const`
+  --> $DIR/issue-89013-no-assoc.rs:9:10
+   |
+LL | impl Foo<const 3> for Bar {
+   |          ^^^^^
+
+error: aborting due to previous error
+
