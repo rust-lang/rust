@@ -913,6 +913,11 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                     return;
                 }
 
+                if Some(callee) == tcx.lang_items().exchange_malloc_fn() {
+                    self.check_op(ops::HeapAllocation);
+                    return;
+                }
+
                 // `async` blocks get lowered to `std::future::from_generator(/* a closure */)`.
                 let is_async_block = Some(callee) == tcx.lang_items().from_generator_fn();
                 if is_async_block {
