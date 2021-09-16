@@ -120,7 +120,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
 
     unsafe fn reset_sigpipe() {
         #[cfg(not(any(target_os = "emscripten", target_os = "fuchsia")))]
-        assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != libc::SIG_ERR);
+        rtassert!(signal(libc::SIGPIPE, libc::SIG_IGN) != libc::SIG_ERR);
     }
 }
 
