@@ -911,6 +911,7 @@ function hideThemeButtonState() {
         });
 
         var book_info = document.createElement("span");
+        book_info.className = "top";
         book_info.innerHTML = "You can find more information in \
             <a href=\"https://doc.rust-lang.org/rustdoc/\">the rustdoc book</a>.";
 
@@ -960,6 +961,14 @@ function hideThemeButtonState() {
         container.appendChild(book_info);
         container.appendChild(div_shortcuts);
         container.appendChild(div_infos);
+
+        var rustdoc_version = document.createElement("span");
+        rustdoc_version.className = "bottom";
+        var rustdoc_version_code = document.createElement("code");
+        rustdoc_version_code.innerText = "/* INSERT RUSTDOC_VERSION HERE */";
+        rustdoc_version.appendChild(rustdoc_version_code);
+
+        container.appendChild(rustdoc_version);
 
         popup.appendChild(container);
         insertAfter(popup, searchState.outputElement());
