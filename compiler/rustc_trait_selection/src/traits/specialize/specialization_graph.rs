@@ -216,7 +216,7 @@ impl ChildrenExt for Children {
 }
 
 fn iter_children(children: &mut Children) -> impl Iterator<Item = DefId> + '_ {
-    let nonblanket = children.non_blanket_impls.iter_mut().flat_map(|(_, v)| v.iter());
+    let nonblanket = children.non_blanket_impls.iter().flat_map(|(_, v)| v.iter());
     children.blanket_impls.iter().chain(nonblanket).cloned()
 }
 

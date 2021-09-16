@@ -1,4 +1,3 @@
-use crate::ich::{self, StableHashingContext};
 use crate::traits::specialization_graph;
 use crate::ty::fast_reject;
 use crate::ty::fold::TypeFoldable;
@@ -7,8 +6,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::DefPathHash;
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorReported;
 use rustc_macros::HashStable;
 
@@ -66,11 +64,11 @@ pub enum TraitSpecializationKind {
     AlwaysApplicable,
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, HashStable)]
 pub struct TraitImpls {
     blanket_impls: Vec<DefId>,
     /// Impls indexed by their simplified self type, for fast lookup.
-    non_blanket_impls: FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>,
+    non_blanket_impls: FxIndexMap<fast_reject::SimplifiedType, Vec<DefId>>,
 }
 
 impl TraitImpls {
@@ -248,12 +246,4 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
     }
 
     impls
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for TraitImpls {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let TraitImpls { ref blanket_impls, ref non_blanket_impls } = *self;
-
-        ich::hash_stable_trait_impls(hcx, hasher, blanket_impls, non_blanket_impls);
-    }
 }
