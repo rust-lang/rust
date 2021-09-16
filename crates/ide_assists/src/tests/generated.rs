@@ -368,6 +368,30 @@ impl Point {
 }
 
 #[test]
+fn doctest_convert_while_to_loop() {
+    check_doc_test(
+        "convert_while_to_loop",
+        r#####"
+fn main() {
+    $0while cond {
+        foo();
+    }
+}
+"#####,
+        r#####"
+fn main() {
+    loop {
+        if !cond {
+            break;
+        }
+        foo();
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_destructure_tuple_binding() {
     check_doc_test(
         "destructure_tuple_binding",
