@@ -1,7 +1,7 @@
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{ColorConfig, ErrorReported};
+use rustc_errors::{ColorConfig, ErrorReported, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::intravisit;
@@ -149,7 +149,9 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
 
                 collector
             });
-            compiler.session().abort_if_errors();
+            if compiler.session().diagnostic().has_errors_or_lint_errors() {
+                FatalError.raise();
+            }
 
             let unused_extern_reports = collector.unused_extern_reports.clone();
             let compiling_test_count = collector.compiling_test_count.load(Ordering::SeqCst);
