@@ -1,4 +1,5 @@
 #![allow(dead_code)] // stack_guard isn't used right now on all platforms
+#![allow(unused_unsafe)] // thread_local with `const {}` triggers this liny
 
 use crate::cell::RefCell;
 use crate::sys::thread::guard::Guard;
@@ -9,7 +10,7 @@ struct ThreadInfo {
     thread: Thread,
 }
 
-thread_local! { static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(None) }
+thread_local! { static THREAD_INFO: RefCell<Option<ThreadInfo>> = const { RefCell::new(None) } }
 
 impl ThreadInfo {
     fn with<R, F>(f: F) -> Option<R>
