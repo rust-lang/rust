@@ -875,8 +875,12 @@ LLVMRustOptimizeWithNewPassManager(
 #if LLVM_VERSION_GE(11, 0)
       OptimizerLastEPCallbacks.push_back(
         [Options](ModulePassManager &MPM, OptimizationLevel Level) {
+#if LLVM_VERSION_GE(14, 0)
+          MPM.addPass(ModuleMemorySanitizerPass(Options));
+#else
           MPM.addPass(MemorySanitizerPass(Options));
           MPM.addPass(createModuleToFunctionPassAdaptor(MemorySanitizerPass(Options)));
+#endif
         }
       );
 #else
@@ -897,8 +901,12 @@ LLVMRustOptimizeWithNewPassManager(
 #if LLVM_VERSION_GE(11, 0)
       OptimizerLastEPCallbacks.push_back(
         [](ModulePassManager &MPM, OptimizationLevel Level) {
+#if LLVM_VERSION_GE(14, 0)
+          MPM.addPass(ModuleThreadSanitizerPass());
+#else
           MPM.addPass(ThreadSanitizerPass());
           MPM.addPass(createModuleToFunctionPassAdaptor(ThreadSanitizerPass()));
+#endif
         }
       );
 #else
