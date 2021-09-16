@@ -17,12 +17,13 @@ impl ThreadInfo {
         F: FnOnce(&mut ThreadInfo) -> R,
     {
         THREAD_INFO
-            .try_with(move |c| {
-                if c.borrow().is_none() {
-                    *c.borrow_mut() =
-                        Some(ThreadInfo { stack_guard: None, thread: Thread::new(None) })
-                }
-                f(c.borrow_mut().as_mut().unwrap())
+            .try_with(move |thread_info| {
+                let mut thread_info = thread_info.borrow_mut();
+                let thread_info = thread_info.get_or_insert_with(|| ThreadInfo {
+                    stack_guard: None,
+                    thread: Thread::new(None),
+                });
+                f(thread_info)
             })
             .ok()
     }
