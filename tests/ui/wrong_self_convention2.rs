@@ -68,3 +68,22 @@ mod issue7179 {
         fn as_byte_slice(slice: &[Self]) -> &[u8];
     }
 }
+
+mod issue3414 {
+    struct CellLikeThing<T>(T);
+
+    impl<T> CellLikeThing<T> {
+        // don't trigger
+        fn into_inner(this: Self) -> T {
+            this.0
+        }
+    }
+
+    impl<T> std::ops::Deref for CellLikeThing<T> {
+        type Target = T;
+
+        fn deref(&self) -> &T {
+            &self.0
+        }
+    }
+}
