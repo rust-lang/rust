@@ -66,7 +66,6 @@ pub trait InferCtxtExt<'tcx> {
         root_obligation: &PredicateObligation<'tcx>,
         error: &SelectionError<'tcx>,
         fallback_has_occurred: bool,
-        points_at_arg: bool,
     );
 
     /// Given some node representing a fn-like thing in the HIR map,
@@ -237,7 +236,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         root_obligation: &PredicateObligation<'tcx>,
         error: &SelectionError<'tcx>,
         fallback_has_occurred: bool,
-        points_at_arg: bool,
     ) {
         let tcx = self.tcx;
         let mut span = obligation.cause.span;
@@ -387,7 +385,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             &obligation,
                             &mut err,
                             &trait_ref,
-                            points_at_arg,
                             have_alt_message,
                         ) {
                             self.note_obligation_cause(&mut err, &obligation);
@@ -430,8 +427,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             err.span_label(enclosing_scope_span, s.as_str());
                         }
 
-                        self.suggest_dereferences(&obligation, &mut err, trait_ref, points_at_arg);
-                        self.suggest_fn_call(&obligation, &mut err, trait_ref, points_at_arg);
+                        self.suggest_dereferences(&obligation, &mut err, trait_ref);
+                        self.suggest_fn_call(&obligation, &mut err, trait_ref);
                         self.suggest_remove_reference(&obligation, &mut err, trait_ref);
                         self.suggest_semicolon_removal(&obligation, &mut err, span, trait_ref);
                         self.note_version_mismatch(&mut err, &trait_ref);
@@ -500,12 +497,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         // Changing mutability doesn't make a difference to whether we have
                         // an `Unsize` impl (Fixes ICE in #71036)
                         if !is_unsize {
-                            self.suggest_change_mut(
-                                &obligation,
-                                &mut err,
-                                trait_ref,
-                                points_at_arg,
-                            );
+                            self.suggest_change_mut(&obligation, &mut err, trait_ref);
                         }
 
                         // If this error is due to `!: Trait` not implemented but `(): Trait` is
@@ -1214,7 +1206,6 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     &error.root_obligation,
                     selection_error,
                     fallback_has_occurred,
-                    error.points_at_arg_span,
                 );
             }
             FulfillmentErrorCode::CodeProjectionError(ref e) => {

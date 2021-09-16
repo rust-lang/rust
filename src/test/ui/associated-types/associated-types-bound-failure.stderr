@@ -2,7 +2,9 @@ error[E0277]: the trait bound `<G as GetToInt>::R: ToInt` is not satisfied
   --> $DIR/associated-types-bound-failure.rs:19:19
    |
 LL |     ToInt::to_int(&g.get())
-   |                   ^^^^^^^^ the trait `ToInt` is not implemented for `<G as GetToInt>::R`
+   |     ------------- ^^^^^^^^ the trait `ToInt` is not implemented for `<G as GetToInt>::R`
+   |     |
+   |     required by a bound introduced by this call
    |
 note: required by `ToInt::to_int`
   --> $DIR/associated-types-bound-failure.rs:6:5

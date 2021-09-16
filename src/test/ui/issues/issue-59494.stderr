@@ -2,7 +2,9 @@ error[E0277]: expected a `Fn<(_,)>` closure, found `impl Fn<(((_, _), _),)>`
   --> $DIR/issue-59494.rs:21:22
    |
 LL |     let t8 = t8n(t7, t7p(f, g));
-   |                      ^^^^^^^^^ expected an `Fn<(_,)>` closure, found `impl Fn<(((_, _), _),)>`
+   |              ---     ^^^^^^^^^ expected an `Fn<(_,)>` closure, found `impl Fn<(((_, _), _),)>`
+   |              |
+   |              required by a bound introduced by this call
    |
    = help: the trait `Fn<(_,)>` is not implemented for `impl Fn<(((_, _), _),)>`
 note: required by a bound in `t8n`

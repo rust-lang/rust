@@ -5,7 +5,9 @@ LL | async fn foo() {}
    |          --- consider calling this function
 ...
 LL |     bar(foo);
-   |         ^^^ `fn() -> impl Future {foo}` is not a future
+   |     --- ^^^ `fn() -> impl Future {foo}` is not a future
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Future` is not implemented for `fn() -> impl Future {foo}`
 note: required by a bound in `bar`
@@ -24,7 +26,9 @@ error[E0277]: `[closure@$DIR/async-fn-ctor-passed-as-arg-where-it-should-have-be
 LL |     let async_closure = async || ();
    |                         -------- consider calling this closure
 LL |     bar(async_closure);
-   |         ^^^^^^^^^^^^^ `[closure@$DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:11:25: 11:36]` is not a future
+   |     --- ^^^^^^^^^^^^^ `[closure@$DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:11:25: 11:36]` is not a future
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Future` is not implemented for `[closure@$DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:11:25: 11:36]`
 note: required by a bound in `bar`

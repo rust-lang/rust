@@ -5,10 +5,19 @@ LL |         Some(x * 2)
    |              ^ not found in this scope
 
 error[E0277]: expected a `FnOnce<({integer},)>` closure, found `Option<_>`
-  --> $DIR/ruby_style_closure.rs:10:22
+  --> $DIR/ruby_style_closure.rs:10:31
    |
-LL |     let p = Some(45).and_then({
-   |                      ^^^^^^^^ expected an `FnOnce<({integer},)>` closure, found `Option<_>`
+LL |       let p = Some(45).and_then({
+   |  ______________________--------_^
+   | |                      |
+   | |                      required by a bound introduced by this call
+LL | |
+LL | |         |x| println!("doubling {}", x);
+LL | |         Some(x * 2)
+   | |         -----------
+LL | |
+LL | |     });
+   | |_____^ expected an `FnOnce<({integer},)>` closure, found `Option<_>`
    |
    = help: the trait `FnOnce<({integer},)>` is not implemented for `Option<_>`
 

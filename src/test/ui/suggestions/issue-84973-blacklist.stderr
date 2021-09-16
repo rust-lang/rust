@@ -2,7 +2,9 @@ error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/issue-84973-blacklist.rs:15:12
    |
 LL |     f_copy("".to_string());
-   |            ^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |     ------ ^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |     |
+   |     required by a bound introduced by this call
    |
 note: required by a bound in `f_copy`
   --> $DIR/issue-84973-blacklist.rs:6:14
@@ -14,7 +16,9 @@ error[E0277]: the trait bound `S: Clone` is not satisfied
   --> $DIR/issue-84973-blacklist.rs:16:13
    |
 LL |     f_clone(S);
-   |             ^ the trait `Clone` is not implemented for `S`
+   |     ------- ^ the trait `Clone` is not implemented for `S`
+   |     |
+   |     required by a bound introduced by this call
    |
 note: required by a bound in `f_clone`
   --> $DIR/issue-84973-blacklist.rs:7:15
@@ -39,7 +43,9 @@ error[E0277]: the size for values of type `dyn Fn()` cannot be known at compilat
   --> $DIR/issue-84973-blacklist.rs:22:13
    |
 LL |     f_sized(*ref_cl);
-   |             ^^^^^^^ doesn't have a size known at compile-time
+   |     ------- ^^^^^^^ doesn't have a size known at compile-time
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Sized` is not implemented for `dyn Fn()`
 note: required by a bound in `f_sized`
@@ -49,10 +55,12 @@ LL | fn f_sized<T: Sized>(t: T) {}
    |            ^ required by this bound in `f_sized`
 
 error[E0277]: `Rc<{integer}>` cannot be sent between threads safely
-  --> $DIR/issue-84973-blacklist.rs:28:12
+  --> $DIR/issue-84973-blacklist.rs:27:12
    |
 LL |     f_send(rc);
-   |            ^^ `Rc<{integer}>` cannot be sent between threads safely
+   |     ------ ^^ `Rc<{integer}>` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Send` is not implemented for `Rc<{integer}>`
 note: required by a bound in `f_send`
@@ -61,16 +69,6 @@ note: required by a bound in `f_send`
 LL | fn f_send<T: Send>(t: T) {}
    |              ^^^^ required by this bound in `f_send`
 
-error[E0277]: the size for values of type `dyn Fn()` cannot be known at compilation time
-  --> $DIR/issue-84973-blacklist.rs:22:5
-   |
-LL |     f_sized(*ref_cl);
-   |     ^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `dyn Fn()`
-   = note: all function arguments must have a statically known size
-   = help: unsized fn params are gated as an unstable feature
-
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

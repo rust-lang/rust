@@ -5,7 +5,9 @@ LL | fn takes_mut(x: &mut isize) { }
    | --------------------------- found signature of `for<'r> fn(&'r mut isize) -> _`
 ...
 LL |     apply(&3, takes_mut);
-   |               ^^^^^^^^^ expected signature of `fn(&{integer}) -> _`
+   |     -----     ^^^^^^^^^ expected signature of `fn(&{integer}) -> _`
+   |     |
+   |     required by a bound introduced by this call
    |
 note: required by a bound in `apply`
   --> $DIR/fn-variance-1.rs:5:37
@@ -20,7 +22,9 @@ LL | fn takes_imm(x: &isize) { }
    | ----------------------- found signature of `for<'r> fn(&'r isize) -> _`
 ...
 LL |     apply(&mut 3, takes_imm);
-   |                   ^^^^^^^^^ expected signature of `fn(&mut {integer}) -> _`
+   |     -----         ^^^^^^^^^ expected signature of `fn(&mut {integer}) -> _`
+   |     |
+   |     required by a bound introduced by this call
    |
 note: required by a bound in `apply`
   --> $DIR/fn-variance-1.rs:5:37

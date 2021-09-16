@@ -2,7 +2,9 @@ error[E0277]: the size for values of type `[{integer}]` cannot be known at compi
   --> $DIR/issue-17651.rs:5:18
    |
 LL |     (|| Box::new(*(&[0][..])))();
-   |                  ^^^^^^^^^^^ doesn't have a size known at compile-time
+   |         -------- ^^^^^^^^^^^ doesn't have a size known at compile-time
+   |         |
+   |         required by a bound introduced by this call
    |
    = help: the trait `Sized` is not implemented for `[{integer}]`
 note: required by `Box::<T>::new`
@@ -11,16 +13,6 @@ note: required by `Box::<T>::new`
 LL |     pub fn new(x: T) -> Self {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the size for values of type `[{integer}]` cannot be known at compilation time
-  --> $DIR/issue-17651.rs:5:9
-   |
-LL |     (|| Box::new(*(&[0][..])))();
-   |         ^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `[{integer}]`
-   = note: all function arguments must have a statically known size
-   = help: unsized fn params are gated as an unstable feature
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0277`.

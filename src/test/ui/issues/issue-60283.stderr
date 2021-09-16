@@ -2,10 +2,11 @@ error[E0631]: type mismatch in function arguments
   --> $DIR/issue-60283.rs:17:13
    |
 LL |     foo((), drop)
-   |             ^^^^
-   |             |
-   |             expected signature of `for<'a> fn(<() as Trait<'a>>::Item) -> _`
-   |             found signature of `fn(()) -> _`
+   |     ---     ^^^^
+   |     |       |
+   |     |       expected signature of `for<'a> fn(<() as Trait<'a>>::Item) -> _`
+   |     |       found signature of `fn(()) -> _`
+   |     required by a bound introduced by this call
    |
 note: required by a bound in `foo`
   --> $DIR/issue-60283.rs:12:16
@@ -20,7 +21,9 @@ error[E0277]: the size for values of type `<() as Trait<'_>>::Item` cannot be kn
   --> $DIR/issue-60283.rs:17:13
    |
 LL |     foo((), drop)
-   |             ^^^^ doesn't have a size known at compile-time
+   |     ---     ^^^^ doesn't have a size known at compile-time
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Sized` is not implemented for `<() as Trait<'_>>::Item`
 note: required by a bound in `std::mem::drop`

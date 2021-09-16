@@ -2,7 +2,9 @@ error[E0277]: `UnsafeCell<MySync<{integer}>>` cannot be shared between threads s
   --> $DIR/typeck-unsafe-always-share.rs:19:10
    |
 LL |     test(us);
-   |          ^^ `UnsafeCell<MySync<{integer}>>` cannot be shared between threads safely
+   |     ---- ^^ `UnsafeCell<MySync<{integer}>>` cannot be shared between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Sync` is not implemented for `UnsafeCell<MySync<{integer}>>`
 note: required by a bound in `test`
@@ -15,7 +17,9 @@ error[E0277]: `UnsafeCell<NoSync>` cannot be shared between threads safely
   --> $DIR/typeck-unsafe-always-share.rs:23:10
    |
 LL |     test(uns);
-   |          ^^^ `UnsafeCell<NoSync>` cannot be shared between threads safely
+   |     ---- ^^^ `UnsafeCell<NoSync>` cannot be shared between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Sync` is not implemented for `UnsafeCell<NoSync>`
 note: required by a bound in `test`
@@ -46,7 +50,9 @@ error[E0277]: `NoSync` cannot be shared between threads safely
   --> $DIR/typeck-unsafe-always-share.rs:30:10
    |
 LL |     test(NoSync);
-   |          ^^^^^^ `NoSync` cannot be shared between threads safely
+   |     ---- ^^^^^^ `NoSync` cannot be shared between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Sync` is not implemented for `NoSync`
 note: required by a bound in `test`

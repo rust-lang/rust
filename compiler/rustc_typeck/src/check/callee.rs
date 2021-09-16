@@ -72,7 +72,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let original_callee_ty = self.check_expr(callee_expr);
+        let original_callee_ty = match &callee_expr.kind {
+            hir::ExprKind::Path(hir::QPath::Resolved(..) | hir::QPath::TypeRelative(..)) => self
+                .check_expr_with_expectation_and_args(
+                    callee_expr,
+                    Expectation::NoExpectation,
+                    arg_exprs,
+                ),
+            _ => self.check_expr(callee_expr),
+        };
+
         let expr_ty = self.structurally_resolved_type(call_expr.span, original_callee_ty);
 
         let mut autoderef = self.autoderef(callee_expr.span, expr_ty);

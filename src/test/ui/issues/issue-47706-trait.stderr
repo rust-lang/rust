@@ -4,7 +4,9 @@ error[E0593]: function is expected to take a single 0-tuple as argument, but it 
 LL |     fn f(&self, _: ()) {
    |     ------------------ takes 2 distinct arguments
 LL |         None::<()>.map(Self::f);
-   |                        ^^^^^^^ expected function that takes a single 0-tuple as argument
+   |                    --- ^^^^^^^ expected function that takes a single 0-tuple as argument
+   |                    |
+   |                    required by a bound introduced by this call
 
 error: aborting due to previous error
 

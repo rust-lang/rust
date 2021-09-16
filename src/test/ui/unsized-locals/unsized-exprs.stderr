@@ -12,9 +12,11 @@ error[E0277]: the size for values of type `[u8]` cannot be known at compilation 
   --> $DIR/unsized-exprs.rs:24:22
    |
 LL |     udrop::<A<[u8]>>(A { 0: *foo() });
-   |                      ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |     ---------------- ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |     |
+   |     required by a bound introduced by this call
    |
-   = help: within `A<[u8]>`, the trait `Sized` is not implemented for `[u8]`
+   = help: the trait `Sized` is not implemented for `[u8]`
 note: required because it appears within the type `A<[u8]>`
   --> $DIR/unsized-exprs.rs:3:8
    |

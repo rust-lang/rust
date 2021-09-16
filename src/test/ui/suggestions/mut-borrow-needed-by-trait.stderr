@@ -2,7 +2,9 @@ error[E0277]: the trait bound `&dyn std::io::Write: std::io::Write` is not satis
   --> $DIR/mut-borrow-needed-by-trait.rs:17:29
    |
 LL |     let fp = BufWriter::new(fp);
-   |                             ^^ the trait `std::io::Write` is not implemented for `&dyn std::io::Write`
+   |              -------------- ^^ the trait `std::io::Write` is not implemented for `&dyn std::io::Write`
+   |              |
+   |              required by a bound introduced by this call
    |
    = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`, but not for `&dyn std::io::Write`
 note: required by `BufWriter::<W>::new`

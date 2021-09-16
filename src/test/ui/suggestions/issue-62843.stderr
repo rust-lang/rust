@@ -2,10 +2,11 @@ error[E0277]: expected a `FnMut<(char,)>` closure, found `String`
   --> $DIR/issue-62843.rs:4:32
    |
 LL |     println!("{:?}", line.find(pattern));
-   |                                ^^^^^^^
-   |                                |
-   |                                expected an implementor of trait `Pattern<'_>`
-   |                                help: consider borrowing here: `&pattern`
+   |                           ---- ^^^^^^^
+   |                           |    |
+   |                           |    expected an implementor of trait `Pattern<'_>`
+   |                           |    help: consider borrowing here: `&pattern`
+   |                           required by a bound introduced by this call
    |
    = note: the trait bound `String: Pattern<'_>` is not satisfied
    = note: required because of the requirements on the impl of `Pattern<'_>` for `String`

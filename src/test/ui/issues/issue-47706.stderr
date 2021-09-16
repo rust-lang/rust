@@ -5,7 +5,9 @@ LL |     pub fn new(foo: Option<i32>, _: ()) -> Foo {
    |     ------------------------------------------ takes 2 arguments
 ...
 LL |         self.foo.map(Foo::new)
-   |                      ^^^^^^^^ expected function that takes 1 argument
+   |                  --- ^^^^^^^^ expected function that takes 1 argument
+   |                  |
+   |                  required by a bound introduced by this call
 
 error[E0593]: function is expected to take 0 arguments, but it takes 1 argument
   --> $DIR/issue-47706.rs:27:9
@@ -14,7 +16,9 @@ LL |     Bar(i32),
    |     -------- takes 1 argument
 ...
 LL |     foo(Qux::Bar);
-   |         ^^^^^^^^ expected function that takes 0 arguments
+   |     --- ^^^^^^^^ expected function that takes 0 arguments
+   |     |
+   |     required by a bound introduced by this call
    |
 note: required by a bound in `foo`
   --> $DIR/issue-47706.rs:22:8

@@ -2,7 +2,9 @@ error[E0277]: `Rc<{integer}>` cannot be sent between threads safely
   --> $DIR/no_send-rc.rs:7:9
    |
 LL |     bar(x);
-   |         ^ `Rc<{integer}>` cannot be sent between threads safely
+   |     --- ^ `Rc<{integer}>` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Send` is not implemented for `Rc<{integer}>`
 note: required by a bound in `bar`

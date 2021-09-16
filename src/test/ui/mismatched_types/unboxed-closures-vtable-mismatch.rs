@@ -16,5 +16,6 @@ pub fn main() {
     let z = call_it(3, f);
     //~^ ERROR type mismatch
     //~| NOTE expected signature of `fn(isize, isize) -> _`
+    //~| NOTE required by a bound introduced by this call
     println!("{}", z);
 }

@@ -9,6 +9,7 @@ use crate::traits::normalize_projection_type;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Style};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -54,7 +55,6 @@ pub trait InferCtxtExt<'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'tcx>,
         trait_ref: ty::PolyTraitRef<'tcx>,
-        points_at_arg: bool,
     );
 
     fn get_closure_name(
@@ -69,7 +69,6 @@ pub trait InferCtxtExt<'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
         trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
-        points_at_arg: bool,
     );
 
     fn suggest_add_reference_to_arg(
@@ -77,7 +76,6 @@ pub trait InferCtxtExt<'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
         trait_ref: &ty::Binder<'tcx, ty::TraitRef<'tcx>>,
-        points_at_arg: bool,
         has_custom_message: bool,
     ) -> bool;
 
@@ -93,7 +91,6 @@ pub trait InferCtxtExt<'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
         trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
-        points_at_arg: bool,
     );
 
     fn suggest_semicolon_removal(
@@ -490,16 +487,19 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'tcx>,
         trait_ref: ty::PolyTraitRef<'tcx>,
-        points_at_arg: bool,
     ) {
         // It only make sense when suggesting dereferences for arguments
-        if !points_at_arg {
+        let code = if let ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } =
+            &obligation.cause.code
+        {
+            parent_code.clone()
+        } else {
             return;
-        }
+        };
         let param_env = obligation.param_env;
         let body_id = obligation.cause.body_id;
         let span = obligation.cause.span;
-        let real_trait_ref = match &obligation.cause.code {
+        let real_trait_ref = match &*code {
             ObligationCauseCode::ImplDerivedObligation(cause)
             | ObligationCauseCode::DerivedObligation(cause)
             | ObligationCauseCode::BuiltinDerivedObligation(cause) => cause.parent_trait_ref,
@@ -584,7 +584,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
         trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
-        points_at_arg: bool,
     ) {
         let self_ty = match trait_ref.self_ty().no_bound_vars() {
             None => return,
@@ -656,11 +655,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
             _ => return,
         };
-        if points_at_arg {
+        if matches!(obligation.cause.code, ObligationCauseCode::FunctionArgumentObligation { .. }) {
             // When the obligation error has been ensured to have been caused by
             // an argument, the `obligation.cause.span` points at the expression
-            // of the argument, so we can provide a suggestion. This is signaled
-            // by `points_at_arg`. Otherwise, we give a more general note.
+            // of the argument, so we can provide a suggestion. Otherwise, we give
+            // a more general note.
             err.span_suggestion_verbose(
                 obligation.cause.span.shrink_to_hi(),
                 &msg,
@@ -677,18 +676,21 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
         trait_ref: &ty::Binder<'tcx, ty::TraitRef<'tcx>>,
-        points_at_arg: bool,
         has_custom_message: bool,
     ) -> bool {
         let span = obligation.cause.span;
-        let points_at_for_iter = matches!(
-            span.ctxt().outer_expn_data().kind,
-            ExpnKind::Desugaring(DesugaringKind::ForLoop(ForLoopLoc::IntoIter))
-        );
 
-        if !points_at_arg && !points_at_for_iter {
+        let code = if let ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } =
+            &obligation.cause.code
+        {
+            parent_code.clone()
+        } else if let ExpnKind::Desugaring(DesugaringKind::ForLoop(ForLoopLoc::IntoIter)) =
+            span.ctxt().outer_expn_data().kind
+        {
+            Lrc::new(obligation.cause.code.clone())
+        } else {
             return false;
-        }
+        };
 
         // List of traits for which it would be nonsensical to suggest borrowing.
         // For instance, immutable references are always Copy, so suggesting to
@@ -787,7 +789,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             return false;
         };
 
-        if let ObligationCauseCode::ImplDerivedObligation(obligation) = &obligation.cause.code {
+        if let ObligationCauseCode::ImplDerivedObligation(obligation) = &*code {
             let expected_trait_ref = obligation.parent_trait_ref.skip_binder();
             let new_imm_trait_ref =
                 ty::TraitRef::new(obligation.parent_trait_ref.def_id(), imm_substs);
@@ -799,7 +801,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 return try_borrowing(new_mut_trait_ref, expected_trait_ref, true, &[]);
             }
         } else if let ObligationCauseCode::BindingObligation(_, _)
-        | ObligationCauseCode::ItemObligation(_) = &obligation.cause.code
+        | ObligationCauseCode::ItemObligation(_) = &*code
         {
             if try_borrowing(
                 ty::TraitRef::new(trait_ref.def_id, imm_substs),
@@ -891,8 +893,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
         trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
-        points_at_arg: bool,
     ) {
+        let points_at_arg = matches!(
+            obligation.cause.code,
+            ObligationCauseCode::FunctionArgumentObligation { .. },
+        );
+
         let span = obligation.cause.span;
         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
             let refs_number =
@@ -2284,6 +2290,56 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         err,
                         &parent_predicate,
                         &data.parent_code,
+                        obligated_types,
+                        seen_requirements,
+                    )
+                });
+            }
+            ObligationCauseCode::FunctionArgumentObligation {
+                arg_hir_id,
+                call_hir_id,
+                ref parent_code,
+            } => {
+                let hir = self.tcx.hir();
+                if let Some(Node::Expr(expr @ hir::Expr { kind: hir::ExprKind::Block(..), .. })) =
+                    hir.find(arg_hir_id)
+                {
+                    let in_progress_typeck_results =
+                        self.in_progress_typeck_results.map(|t| t.borrow());
+                    let parent_id = hir.local_def_id(hir.get_parent_item(arg_hir_id));
+                    let typeck_results: &TypeckResults<'tcx> = match &in_progress_typeck_results {
+                        Some(t) if t.hir_owner == parent_id => t,
+                        _ => self.tcx.typeck(parent_id),
+                    };
+                    let ty = typeck_results.expr_ty_adjusted(expr);
+                    let span = expr.peel_blocks().span;
+                    if Some(span) != err.span.primary_span() {
+                        err.span_label(
+                            span,
+                            &if ty.references_error() {
+                                String::new()
+                            } else {
+                                format!("this tail expression is of type `{:?}`", ty)
+                            },
+                        );
+                    }
+                }
+                if let Some(Node::Expr(hir::Expr {
+                    kind:
+                        hir::ExprKind::Call(hir::Expr { span, .. }, _)
+                        | hir::ExprKind::MethodCall(_, span, ..),
+                    ..
+                })) = hir.find(call_hir_id)
+                {
+                    if Some(*span) != err.span.primary_span() {
+                        err.span_label(*span, "required by a bound introduced by this call");
+                    }
+                }
+                ensure_sufficient_stack(|| {
+                    self.note_obligation_cause_code(
+                        err,
+                        predicate,
+                        &parent_code,
                         obligated_types,
                         seen_requirements,
                     )

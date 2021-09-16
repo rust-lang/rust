@@ -2,7 +2,9 @@ error[E0277]: the trait bound `&T: std::io::Read` is not satisfied
   --> $DIR/suggest-change-mut.rs:12:48
    |
 LL |         let mut stream_reader = BufReader::new(&stream);
-   |                                                ^^^^^^^ the trait `std::io::Read` is not implemented for `&T`
+   |                                 -------------- ^^^^^^^ the trait `std::io::Read` is not implemented for `&T`
+   |                                 |
+   |                                 required by a bound introduced by this call
    |
 note: required by `BufReader::<R>::new`
   --> $SRC_DIR/std/src/io/buffered/bufreader.rs:LL:COL

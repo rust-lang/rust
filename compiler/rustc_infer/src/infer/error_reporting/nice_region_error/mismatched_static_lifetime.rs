@@ -29,7 +29,13 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             SubregionOrigin::Subtype(box TypeTrace { ref cause, .. }) => cause,
             _ => return None,
         };
-        let (parent, impl_def_id) = match &cause.code {
+        // If we added a "points at argument expression" obligation, we remove it here, we care
+        // about the original obligation only.
+        let code = match &cause.code {
+            ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => &*parent_code,
+            _ => &cause.code,
+        };
+        let (parent, impl_def_id) = match code {
             ObligationCauseCode::MatchImpl(parent, impl_def_id) => (parent, impl_def_id),
             _ => return None,
         };

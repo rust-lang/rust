@@ -66,10 +66,6 @@ pub type Selection<'tcx> = ImplSource<'tcx, PredicateObligation<'tcx>>;
 pub struct FulfillmentError<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
     pub code: FulfillmentErrorCode<'tcx>,
-    /// Diagnostics only: we opportunistically change the `code.span` when we encounter an
-    /// obligation error caused by a call argument. When this is the case, we also signal that in
-    /// this field to ensure accuracy of suggestions.
-    pub points_at_arg_span: bool,
     /// Diagnostics only: the 'root' obligation which resulted in
     /// the failure to process `obligation`. This is the obligation
     /// that was initially passed to `register_predicate_obligation`
@@ -128,7 +124,7 @@ impl<'tcx> FulfillmentError<'tcx> {
         code: FulfillmentErrorCode<'tcx>,
         root_obligation: PredicateObligation<'tcx>,
     ) -> FulfillmentError<'tcx> {
-        FulfillmentError { obligation, code, points_at_arg_span: false, root_obligation }
+        FulfillmentError { obligation, code, root_obligation }
     }
 }
 

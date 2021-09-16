@@ -162,6 +162,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
+        self.check_expr_with_expectation_and_args(expr, expected, &[])
+    }
+
+    /// Same as `check_expr_with_expectation`, but allows us to pass in the arguments of a
+    /// `ExprKind::Call` when evaluating its callee when it is an `ExprKind::Path`.
+    pub(super) fn check_expr_with_expectation_and_args(
+        &self,
+        expr: &'tcx hir::Expr<'tcx>,
+        expected: Expectation<'tcx>,
+        args: &'tcx [hir::Expr<'tcx>],
+    ) -> Ty<'tcx> {
         if self.tcx().sess.verbose() {
             // make this code only run with -Zverbose because it is probably slow
             if let Ok(lint_str) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
@@ -198,7 +209,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let old_diverges = self.diverges.replace(Diverges::Maybe);
         let old_has_errors = self.has_errors.replace(false);
 
-        let ty = ensure_sufficient_stack(|| self.check_expr_kind(expr, expected));
+        let ty = ensure_sufficient_stack(|| match &expr.kind {
+            hir::ExprKind::Path(
+                qpath @ hir::QPath::Resolved(..) | qpath @ hir::QPath::TypeRelative(..),
+            ) => self.check_expr_path(qpath, expr, args),
+            _ => self.check_expr_kind(expr, expected),
+        });
 
         // Warn for non-block expressions with diverging children.
         match expr.kind {
@@ -261,7 +277,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Path(QPath::LangItem(lang_item, _)) => {
                 self.check_lang_item_path(lang_item, expr)
             }
-            ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr),
+            ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr, &[]),
             ExprKind::InlineAsm(asm) => self.check_expr_asm(asm),
             ExprKind::LlvmInlineAsm(asm) => {
                 for expr in asm.outputs_exprs.iter().chain(asm.inputs_exprs.iter()) {
@@ -481,10 +497,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.resolve_lang_item_path(lang_item, expr.span, expr.hir_id).1
     }
 
-    fn check_expr_path(
+    pub(crate) fn check_expr_path(
         &self,
         qpath: &'tcx hir::QPath<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
+        args: &'tcx [hir::Expr<'tcx>],
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let (res, opt_ty, segs) =
@@ -517,16 +534,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // We just want to check sizedness, so instead of introducing
                     // placeholder lifetimes with probing, we just replace higher lifetimes
                     // with fresh vars.
+                    let span = args.get(i).map(|a| a.span).unwrap_or(expr.span);
                     let input = self
                         .replace_bound_vars_with_fresh_vars(
-                            expr.span,
+                            span,
                             infer::LateBoundRegionConversionTime::FnCall,
                             fn_sig.input(i),
                         )
                         .0;
                     self.require_type_is_sized_deferred(
                         input,
-                        expr.span,
+                        span,
                         traits::SizedArgumentType(None),
                     );
                 }

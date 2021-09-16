@@ -2,7 +2,9 @@ error[E0277]: expected a `Fn<(&isize,)>` closure, found `for<'r> extern "C" fn(&
   --> $DIR/unboxed-closures-wrong-abi.rs:20:21
    |
 LL |     let x = call_it(&square, 22);
-   |                     ^^^^^^^ expected an `Fn<(&isize,)>` closure, found `for<'r> extern "C" fn(&'r isize) -> isize {square}`
+   |             ------- ^^^^^^^ expected an `Fn<(&isize,)>` closure, found `for<'r> extern "C" fn(&'r isize) -> isize {square}`
+   |             |
+   |             required by a bound introduced by this call
    |
    = help: the trait `for<'r> Fn<(&'r isize,)>` is not implemented for `for<'r> extern "C" fn(&'r isize) -> isize {square}`
 note: required by a bound in `call_it`
@@ -15,7 +17,9 @@ error[E0277]: expected a `FnMut<(&isize,)>` closure, found `for<'r> extern "C" f
   --> $DIR/unboxed-closures-wrong-abi.rs:25:25
    |
 LL |     let y = call_it_mut(&mut square, 22);
-   |                         ^^^^^^^^^^^ expected an `FnMut<(&isize,)>` closure, found `for<'r> extern "C" fn(&'r isize) -> isize {square}`
+   |             ----------- ^^^^^^^^^^^ expected an `FnMut<(&isize,)>` closure, found `for<'r> extern "C" fn(&'r isize) -> isize {square}`
+   |             |
+   |             required by a bound introduced by this call
    |
    = help: the trait `for<'r> FnMut<(&'r isize,)>` is not implemented for `for<'r> extern "C" fn(&'r isize) -> isize {square}`
 note: required by a bound in `call_it_mut`
@@ -28,7 +32,9 @@ error[E0277]: expected a `FnOnce<(&isize,)>` closure, found `for<'r> extern "C" 
   --> $DIR/unboxed-closures-wrong-abi.rs:30:26
    |
 LL |     let z = call_it_once(square, 22);
-   |                          ^^^^^^ expected an `FnOnce<(&isize,)>` closure, found `for<'r> extern "C" fn(&'r isize) -> isize {square}`
+   |             ------------ ^^^^^^ expected an `FnOnce<(&isize,)>` closure, found `for<'r> extern "C" fn(&'r isize) -> isize {square}`
+   |             |
+   |             required by a bound introduced by this call
    |
    = help: the trait `for<'r> FnOnce<(&'r isize,)>` is not implemented for `for<'r> extern "C" fn(&'r isize) -> isize {square}`
 note: required by a bound in `call_it_once`

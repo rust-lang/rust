@@ -21,7 +21,6 @@ fn main() {
     let ref_cl: &dyn Fn() -> () = &cl;
     f_sized(*ref_cl);
     //~^ ERROR: the size for values of type `dyn Fn()` cannot be known at compilation time [E0277]
-    //~| ERROR: the size for values of type `dyn Fn()` cannot be known at compilation time [E0277]
 
     use std::rc::Rc;
     let rc = Rc::new(0);

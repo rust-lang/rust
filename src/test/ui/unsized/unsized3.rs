@@ -44,8 +44,6 @@ fn f9<X: ?Sized>(x1: Box<S<X>>) {
 fn f10<X: ?Sized>(x1: Box<S<X>>) {
     f5(&(32, *x1));
     //~^ ERROR the size for values of type
-    //~| ERROR the size for values of type
 }
 
-pub fn main() {
-}
+pub fn main() {}

@@ -2,7 +2,9 @@ error[E0277]: `[static generator@$DIR/static-not-unpin.rs:11:25: 13:6]` cannot b
   --> $DIR/static-not-unpin.rs:14:18
    |
 LL |     assert_unpin(generator);
-   |                  ^^^^^^^^^ the trait `Unpin` is not implemented for `[static generator@$DIR/static-not-unpin.rs:11:25: 13:6]`
+   |     ------------ ^^^^^^^^^ the trait `Unpin` is not implemented for `[static generator@$DIR/static-not-unpin.rs:11:25: 13:6]`
+   |     |
+   |     required by a bound introduced by this call
    |
    = note: consider using `Box::pin`
 note: required by a bound in `assert_unpin`

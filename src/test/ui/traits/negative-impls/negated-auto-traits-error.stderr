@@ -2,7 +2,9 @@ error[E0277]: `dummy::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:23:11
    |
 LL |     Outer(TestType);
-   |           ^^^^^^^^ `dummy::TestType` cannot be sent between threads safely
+   |     ----- ^^^^^^^^ `dummy::TestType` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Send` is not implemented for `dummy::TestType`
 note: required by `Outer`
@@ -28,7 +30,9 @@ error[E0277]: `dummy1b::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:32:13
    |
 LL |     is_send(TestType);
-   |             ^^^^^^^^ `dummy1b::TestType` cannot be sent between threads safely
+   |     ------- ^^^^^^^^ `dummy1b::TestType` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Send` is not implemented for `dummy1b::TestType`
 note: required by a bound in `is_send`
@@ -41,9 +45,11 @@ error[E0277]: `dummy1c::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:40:13
    |
 LL |     is_send((8, TestType));
-   |             ^^^^^^^^^^^^^ `dummy1c::TestType` cannot be sent between threads safely
+   |     ------- ^^^^^^^^^^^^^ `dummy1c::TestType` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
-   = help: within `({integer}, dummy1c::TestType)`, the trait `Send` is not implemented for `dummy1c::TestType`
+   = help: the trait `Send` is not implemented for `dummy1c::TestType`
    = note: required because it appears within the type `({integer}, dummy1c::TestType)`
 note: required by a bound in `is_send`
   --> $DIR/negated-auto-traits-error.rs:16:15
@@ -55,10 +61,11 @@ error[E0277]: `dummy2::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:48:13
    |
 LL |     is_send(Box::new(TestType));
-   |             ^^^^^^^^^^^^^^^^^^
-   |             |
-   |             expected an implementor of trait `Send`
-   |             help: consider borrowing here: `&Box::new(TestType)`
+   |     ------- ^^^^^^^^^^^^^^^^^^
+   |     |       |
+   |     |       expected an implementor of trait `Send`
+   |     |       help: consider borrowing here: `&Box::new(TestType)`
+   |     required by a bound introduced by this call
    |
    = note: the trait bound `dummy2::TestType: Send` is not satisfied
    = note: required because of the requirements on the impl of `Send` for `Unique<dummy2::TestType>`
@@ -73,9 +80,11 @@ error[E0277]: `dummy3::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:56:13
    |
 LL |     is_send(Box::new(Outer2(TestType)));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ `dummy3::TestType` cannot be sent between threads safely
+   |     ------- ^^^^^^^^^^^^^^^^^^^^^^^^^^ `dummy3::TestType` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
-   = help: within `Outer2<dummy3::TestType>`, the trait `Send` is not implemented for `dummy3::TestType`
+   = help: the trait `Send` is not implemented for `dummy3::TestType`
 note: required because it appears within the type `Outer2<dummy3::TestType>`
   --> $DIR/negated-auto-traits-error.rs:12:8
    |
@@ -93,10 +102,11 @@ error[E0277]: `main::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:66:13
    |
 LL |     is_sync(Outer2(TestType));
-   |             ^^^^^^^^^^^^^^^^
-   |             |
-   |             expected an implementor of trait `Sync`
-   |             help: consider borrowing here: `&Outer2(TestType)`
+   |     ------- ^^^^^^^^^^^^^^^^
+   |     |       |
+   |     |       expected an implementor of trait `Sync`
+   |     |       help: consider borrowing here: `&Outer2(TestType)`
+   |     required by a bound introduced by this call
    |
    = note: the trait bound `main::TestType: Sync` is not satisfied
 note: required because of the requirements on the impl of `Sync` for `Outer2<main::TestType>`

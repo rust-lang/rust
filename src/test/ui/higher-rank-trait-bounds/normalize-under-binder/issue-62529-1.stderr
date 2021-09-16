@@ -1,11 +1,19 @@
 error[E0631]: type mismatch in closure arguments
   --> $DIR/issue-62529-1.rs:80:10
    |
-LL |     task(annotate(
-   |          ^^^^^^^^ expected signature of `for<'r> fn(<RefMutFamily<usize> as FamilyLt<'r>>::Out) -> _`
-...
-LL |         |value: &mut usize| {
-   |         ------------------- found signature of `for<'r> fn(&'r mut usize) -> _`
+LL |       task(annotate(
+   |  _____----_^
+   | |     |
+   | |     required by a bound introduced by this call
+LL | |
+LL | |
+LL | |         Annotate::<RefMutFamily<usize>>::new(),
+LL | |         |value: &mut usize| {
+   | |         ------------------- found signature of `for<'r> fn(&'r mut usize) -> _`
+LL | |             *value = 2;
+LL | |         }
+LL | |     ));
+   | |_____^ expected signature of `for<'r> fn(<RefMutFamily<usize> as FamilyLt<'r>>::Out) -> _`
    |
 note: required by a bound in `annotate`
   --> $DIR/issue-62529-1.rs:44:8
@@ -20,7 +28,9 @@ error[E0277]: the size for values of type `impl Execute` cannot be known at comp
   --> $DIR/issue-62529-1.rs:80:10
    |
 LL |       task(annotate(
-   |  __________^
+   |  _____----_^
+   | |     |
+   | |     required by a bound introduced by this call
 LL | |
 LL | |
 LL | |         Annotate::<RefMutFamily<usize>>::new(),
@@ -44,7 +54,9 @@ error[E0277]: the trait bound `impl Execute: Execute` is not satisfied
   --> $DIR/issue-62529-1.rs:80:10
    |
 LL |       task(annotate(
-   |  __________^
+   |  _____----_^
+   | |     |
+   | |     required by a bound introduced by this call
 LL | |
 LL | |
 LL | |         Annotate::<RefMutFamily<usize>>::new(),

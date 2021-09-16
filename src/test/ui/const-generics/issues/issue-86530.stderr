@@ -2,7 +2,9 @@ error[E0277]: the trait bound `&str: X` is not satisfied
   --> $DIR/issue-86530.rs:16:7
    |
 LL |     z(" ");
-   |       ^^^ the trait `X` is not implemented for `&str`
+   |     - ^^^ the trait `X` is not implemented for `&str`
+   |     |
+   |     required by a bound introduced by this call
    |
 note: required by a bound in `z`
   --> $DIR/issue-86530.rs:10:8
