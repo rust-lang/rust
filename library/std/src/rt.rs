@@ -16,6 +16,8 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(unused_macros)]
 
+use crate::ffi::CString;
+
 // Re-export some of our utilities which are expected by other crates.
 pub use crate::panicking::{begin_panic, begin_panic_fmt, panic_count};
 
@@ -38,7 +40,7 @@ unsafe fn init(argc: isize, argv: *const *const u8) {
         // created. Note that this isn't necessary in general for new threads,
         // but we just do this to name the main thread and to give it correct
         // info about the stack bounds.
-        let thread = Thread::new(Some("main".to_owned()));
+        let thread = Thread::new(Some(CString::new("main").unwrap()));
         thread_info::set(main_guard, thread);
     }
 }
