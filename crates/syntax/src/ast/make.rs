@@ -316,6 +316,11 @@ pub fn expr_if(
 pub fn expr_for_loop(pat: ast::Pat, expr: ast::Expr, block: ast::BlockExpr) -> ast::Expr {
     expr_from_text(&format!("for {} in {} {}", pat, expr, block))
 }
+
+pub fn expr_loop(block: ast::BlockExpr) -> ast::Expr {
+    expr_from_text(&format!("loop {}", block))
+}
+
 pub fn expr_prefix(op: SyntaxKind, expr: ast::Expr) -> ast::Expr {
     let token = token(op);
     expr_from_text(&format!("{}{}", token, expr))
