@@ -1766,108 +1766,111 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         };
 
-        self.cdata.source_map_import_info.get_or_init(|| {
-            let external_source_map = self.root.source_map.decode(self);
+        self.cdata.source_map_import_info.get_or_init(
+            #[inline(never)]
+            || {
+                let external_source_map = self.root.source_map.decode(self);
 
-            external_source_map
-                .map(|source_file_to_import| {
-                    // We can't reuse an existing SourceFile, so allocate a new one
-                    // containing the information we need.
-                    let rustc_span::SourceFile {
-                        mut name,
-                        src_hash,
-                        start_pos,
-                        end_pos,
-                        mut lines,
-                        mut multibyte_chars,
-                        mut non_narrow_chars,
-                        mut normalized_pos,
-                        name_hash,
-                        ..
-                    } = source_file_to_import;
+                external_source_map
+                    .map(|source_file_to_import| {
+                        // We can't reuse an existing SourceFile, so allocate a new one
+                        // containing the information we need.
+                        let rustc_span::SourceFile {
+                            mut name,
+                            src_hash,
+                            start_pos,
+                            end_pos,
+                            mut lines,
+                            mut multibyte_chars,
+                            mut non_narrow_chars,
+                            mut normalized_pos,
+                            name_hash,
+                            ..
+                        } = source_file_to_import;
 
-                    // If this file is under $sysroot/lib/rustlib/src/ but has not been remapped
-                    // during rust bootstrapping by `remap-debuginfo = true`, and the user
-                    // wish to simulate that behaviour by -Z simulate-remapped-rust-src-base,
-                    // then we change `name` to a similar state as if the rust was bootstrapped
-                    // with `remap-debuginfo = true`.
-                    // This is useful for testing so that tests about the effects of
-                    // `try_to_translate_virtual_to_real` don't have to worry about how the
-                    // compiler is bootstrapped.
-                    if let Some(virtual_dir) =
-                        &sess.opts.debugging_opts.simulate_remapped_rust_src_base
-                    {
-                        if let Some(real_dir) = &sess.opts.real_rust_source_base_dir {
-                            if let rustc_span::FileName::Real(ref mut old_name) = name {
-                                if let rustc_span::RealFileName::LocalPath(local) = old_name {
-                                    if let Ok(rest) = local.strip_prefix(real_dir) {
-                                        *old_name = rustc_span::RealFileName::Remapped {
-                                            local_path: None,
-                                            virtual_name: virtual_dir.join(rest),
-                                        };
+                        // If this file is under $sysroot/lib/rustlib/src/ but has not been remapped
+                        // during rust bootstrapping by `remap-debuginfo = true`, and the user
+                        // wish to simulate that behaviour by -Z simulate-remapped-rust-src-base,
+                        // then we change `name` to a similar state as if the rust was bootstrapped
+                        // with `remap-debuginfo = true`.
+                        // This is useful for testing so that tests about the effects of
+                        // `try_to_translate_virtual_to_real` don't have to worry about how the
+                        // compiler is bootstrapped.
+                        if let Some(virtual_dir) =
+                            &sess.opts.debugging_opts.simulate_remapped_rust_src_base
+                        {
+                            if let Some(real_dir) = &sess.opts.real_rust_source_base_dir {
+                                if let rustc_span::FileName::Real(ref mut old_name) = name {
+                                    if let rustc_span::RealFileName::LocalPath(local) = old_name {
+                                        if let Ok(rest) = local.strip_prefix(real_dir) {
+                                            *old_name = rustc_span::RealFileName::Remapped {
+                                                local_path: None,
+                                                virtual_name: virtual_dir.join(rest),
+                                            };
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
 
-                    // If this file's path has been remapped to `/rustc/$hash`,
-                    // we might be able to reverse that (also see comments above,
-                    // on `try_to_translate_virtual_to_real`).
-                    try_to_translate_virtual_to_real(&mut name);
+                        // If this file's path has been remapped to `/rustc/$hash`,
+                        // we might be able to reverse that (also see comments above,
+                        // on `try_to_translate_virtual_to_real`).
+                        try_to_translate_virtual_to_real(&mut name);
 
-                    let source_length = (end_pos - start_pos).to_usize();
+                        let source_length = (end_pos - start_pos).to_usize();
 
-                    // Translate line-start positions and multibyte character
-                    // position into frame of reference local to file.
-                    // `SourceMap::new_imported_source_file()` will then translate those
-                    // coordinates to their new global frame of reference when the
-                    // offset of the SourceFile is known.
-                    for pos in &mut lines {
-                        *pos = *pos - start_pos;
-                    }
-                    for mbc in &mut multibyte_chars {
-                        mbc.pos = mbc.pos - start_pos;
-                    }
-                    for swc in &mut non_narrow_chars {
-                        *swc = *swc - start_pos;
-                    }
-                    for np in &mut normalized_pos {
-                        np.pos = np.pos - start_pos;
-                    }
+                        // Translate line-start positions and multibyte character
+                        // position into frame of reference local to file.
+                        // `SourceMap::new_imported_source_file()` will then translate those
+                        // coordinates to their new global frame of reference when the
+                        // offset of the SourceFile is known.
+                        for pos in &mut lines {
+                            *pos = *pos - start_pos;
+                        }
+                        for mbc in &mut multibyte_chars {
+                            mbc.pos = mbc.pos - start_pos;
+                        }
+                        for swc in &mut non_narrow_chars {
+                            *swc = *swc - start_pos;
+                        }
+                        for np in &mut normalized_pos {
+                            np.pos = np.pos - start_pos;
+                        }
 
-                    let local_version = sess.source_map().new_imported_source_file(
-                        name,
-                        src_hash,
-                        name_hash,
-                        source_length,
-                        self.cnum,
-                        lines,
-                        multibyte_chars,
-                        non_narrow_chars,
-                        normalized_pos,
-                        start_pos,
-                        end_pos,
-                    );
-                    debug!(
-                        "CrateMetaData::imported_source_files alloc \
+                        let local_version = sess.source_map().new_imported_source_file(
+                            name,
+                            src_hash,
+                            name_hash,
+                            source_length,
+                            self.cnum,
+                            lines,
+                            multibyte_chars,
+                            non_narrow_chars,
+                            normalized_pos,
+                            start_pos,
+                            end_pos,
+                        );
+                        debug!(
+                            "CrateMetaData::imported_source_files alloc \
                          source_file {:?} original (start_pos {:?} end_pos {:?}) \
                          translated (start_pos {:?} end_pos {:?})",
-                        local_version.name,
-                        start_pos,
-                        end_pos,
-                        local_version.start_pos,
-                        local_version.end_pos
-                    );
+                            local_version.name,
+                            start_pos,
+                            end_pos,
+                            local_version.start_pos,
+                            local_version.end_pos
+                        );
 
-                    ImportedSourceFile {
-                        original_start_pos: start_pos,
-                        original_end_pos: end_pos,
-                        translated_source_file: local_version,
-                    }
-                })
-                .collect()
-        })
+                        ImportedSourceFile {
+                            original_start_pos: start_pos,
+                            original_end_pos: end_pos,
+                            translated_source_file: local_version,
+                        }
+                    })
+                    .collect()
+            },
+        )
     }
 }
 
