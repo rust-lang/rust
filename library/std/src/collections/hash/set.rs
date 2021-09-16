@@ -1237,9 +1237,10 @@ pub struct Iter<'a, K: 'a> {
 /// An owning iterator over the items of a `HashSet`.
 ///
 /// This `struct` is created by the [`into_iter`] method on [`HashSet`]
-/// (provided by the `IntoIterator` trait). See its documentation for more.
+/// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: IntoIterator::into_iter
+/// [`IntoIterator`]: crate::iter::IntoIterator
 ///
 /// # Examples
 ///

@@ -1259,9 +1259,10 @@ impl<T> FusedIterator for Iter<'_, T> {}
 /// An owning iterator over the elements of a `BinaryHeap`.
 ///
 /// This `struct` is created by [`BinaryHeap::into_iter()`]
-/// (provided by the `IntoIterator` trait). See its documentation for more.
+/// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: BinaryHeap::into_iter
+/// [`IntoIterator`]: core::iter::IntoIterator
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct IntoIter<T> {
