@@ -194,7 +194,7 @@ fn deref_by_trait(
             // would have to pass the solution up to the inference context, but
             // that requires a larger refactoring (especially if the deref
             // happens during method resolution). So for the moment, we just
-            // check that we're not in the situation we're we would actually
+            // check that we're not in the situation where we would actually
             // need to handle the values of the additional variables, i.e.
             // they're just being 'passed through'. In the 'standard' case where
             // we have `impl<T> Deref for Foo<T> { Target = T }`, that should be
