@@ -1,5 +1,5 @@
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_nondefining_use.rs:13:21
+  --> $DIR/generic_nondefining_use.rs:16:21
    |
 LL | fn concrete_ty() -> OneTy<u32> {
    |                     ^^^^^^^^^^
@@ -10,8 +10,14 @@ note: used non-generic type `u32` for generic parameter
 LL | type OneTy<T> = impl Debug;
    |            ^
 
+error: could not find defining uses
+  --> $DIR/generic_nondefining_use.rs:7:17
+   |
+LL | type OneTy<T> = impl Debug;
+   |                 ^^^^^^^^^^
+
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_nondefining_use.rs:18:27
+  --> $DIR/generic_nondefining_use.rs:21:27
    |
 LL | type OneLifetime<'a> = impl Debug;
    |                  -- cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
@@ -19,17 +25,29 @@ LL | type OneLifetime<'a> = impl Debug;
 LL | fn concrete_lifetime() -> OneLifetime<'static> {
    |                           ^^^^^^^^^^^^^^^^^^^^
 
+error: could not find defining uses
+  --> $DIR/generic_nondefining_use.rs:9:24
+   |
+LL | type OneLifetime<'a> = impl Debug;
+   |                        ^^^^^^^^^^
+
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_nondefining_use.rs:23:24
+  --> $DIR/generic_nondefining_use.rs:26:24
    |
 LL | fn concrete_const() -> OneConst<{ 123 }> {
    |                        ^^^^^^^^^^^^^^^^^
    |
 note: used non-generic constant `123_usize` for generic parameter
-  --> $DIR/generic_nondefining_use.rs:9:21
+  --> $DIR/generic_nondefining_use.rs:11:21
    |
 LL | type OneConst<const X: usize> = impl Debug;
    |                     ^
 
-error: aborting due to 3 previous errors
+error: could not find defining uses
+  --> $DIR/generic_nondefining_use.rs:11:33
+   |
+LL | type OneConst<const X: usize> = impl Debug;
+   |                                 ^^^^^^^^^^
+
+error: aborting due to 6 previous errors
 

@@ -1,5 +1,5 @@
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_duplicate_param_use.rs:12:30
+  --> $DIR/generic_duplicate_param_use.rs:15:30
    |
 LL | fn one_ty<T: Debug>(t: T) -> TwoTys<T, T> {
    |                              ^^^^^^^^^^^^
@@ -10,29 +10,47 @@ note: type used multiple times
 LL | type TwoTys<T, U> = impl Debug;
    |             ^  ^
 
+error: could not find defining uses
+  --> $DIR/generic_duplicate_param_use.rs:8:21
+   |
+LL | type TwoTys<T, U> = impl Debug;
+   |                     ^^^^^^^^^^
+
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_duplicate_param_use.rs:17:36
+  --> $DIR/generic_duplicate_param_use.rs:20:36
    |
 LL | fn one_lifetime<'a>(t: &'a u32) -> TwoLifetimes<'a, 'a> {
    |                                    ^^^^^^^^^^^^^^^^^^^^
    |
 note: lifetime used multiple times
-  --> $DIR/generic_duplicate_param_use.rs:9:19
+  --> $DIR/generic_duplicate_param_use.rs:10:19
    |
 LL | type TwoLifetimes<'a, 'b> = impl Debug;
    |                   ^^  ^^
 
+error: could not find defining uses
+  --> $DIR/generic_duplicate_param_use.rs:10:29
+   |
+LL | type TwoLifetimes<'a, 'b> = impl Debug;
+   |                             ^^^^^^^^^^
+
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_duplicate_param_use.rs:22:50
+  --> $DIR/generic_duplicate_param_use.rs:25:50
    |
 LL | fn one_const<const N: usize>(t: *mut [u8; N]) -> TwoConsts<N, N> {
    |                                                  ^^^^^^^^^^^^^^^
    |
 note: constant used multiple times
-  --> $DIR/generic_duplicate_param_use.rs:10:22
+  --> $DIR/generic_duplicate_param_use.rs:12:22
    |
 LL | type TwoConsts<const X: usize, const Y: usize> = impl Debug;
    |                      ^               ^
 
-error: aborting due to 3 previous errors
+error: could not find defining uses
+  --> $DIR/generic_duplicate_param_use.rs:12:50
+   |
+LL | type TwoConsts<const X: usize, const Y: usize> = impl Debug;
+   |                                                  ^^^^^^^^^^
+
+error: aborting due to 6 previous errors
 

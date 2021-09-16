@@ -4,18 +4,6 @@ error[E0282]: type annotations needed
 LL |     None
    |     ^^^^ cannot infer type for type parameter `T` declared on the enum `Option`
 
-error: concrete type differs from previous defining opaque type use
-  --> $DIR/incomplete-inference.rs:10:1
-   |
-LL | fn baz() -> Foo {
-   | ^^^^^^^^^^^^^^^ expected `[type error]`, got `Option<()>`
-   |
-note: previous use here
-  --> $DIR/incomplete-inference.rs:5:1
-   |
-LL | fn bar() -> Foo {
-   | ^^^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0282`.

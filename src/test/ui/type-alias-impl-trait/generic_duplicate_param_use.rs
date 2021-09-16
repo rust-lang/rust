@@ -6,8 +6,11 @@ fn main() {}
 
 // test that unused generic parameters are ok
 type TwoTys<T, U> = impl Debug;
+//~^ ERROR could not find defining uses
 type TwoLifetimes<'a, 'b> = impl Debug;
+//~^ ERROR could not find defining uses
 type TwoConsts<const X: usize, const Y: usize> = impl Debug;
+//~^ ERROR could not find defining uses
 
 fn one_ty<T: Debug>(t: T) -> TwoTys<T, T> {
     //~^ ERROR non-defining opaque type use in defining scope

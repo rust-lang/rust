@@ -1,5 +1,5 @@
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_duplicate_lifetime_param.rs:7:26
+  --> $DIR/generic_duplicate_lifetime_param.rs:8:26
    |
 LL | fn one<'a>(t: &'a ()) -> Two<'a, 'a> {
    |                          ^^^^^^^^^^^
@@ -10,5 +10,11 @@ note: lifetime used multiple times
 LL | type Two<'a, 'b> = impl std::fmt::Debug;
    |          ^^  ^^
 
-error: aborting due to previous error
+error: could not find defining uses
+  --> $DIR/generic_duplicate_lifetime_param.rs:5:20
+   |
+LL | type Two<'a, 'b> = impl std::fmt::Debug;
+   |                    ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 

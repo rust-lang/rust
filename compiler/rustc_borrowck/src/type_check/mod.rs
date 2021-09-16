@@ -14,6 +14,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::canonical::QueryRegionConstraints;
+use rustc_infer::infer::opaque_types::OpaqueTypeDecl;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{
@@ -193,16 +194,17 @@ pub(crate) fn type_check<'mir, 'tcx>(
 
             opaque_type_values
                 .into_iter()
-                .filter_map(|(opaque_type_key, decl)| {
-                    let mut revealed_ty = infcx.resolve_vars_if_possible(decl.concrete_ty);
-                    if revealed_ty.has_infer_types_or_consts() {
+                .filter_map(|(opaque_type_key, mut decl)| {
+                    decl.concrete_ty = infcx.resolve_vars_if_possible(decl.concrete_ty);
+                    if decl.concrete_ty.has_infer_types_or_consts() {
                         infcx.tcx.sess.delay_span_bug(
                             body.span,
-                            &format!("could not resolve {:#?}", revealed_ty.kind()),
+                            &format!("could not resolve {:#?}", decl.concrete_ty.kind()),
                         );
-                        revealed_ty = infcx.tcx.ty_error();
+                        decl.concrete_ty = infcx.tcx.ty_error();
                     }
-                    let concrete_is_opaque = if let ty::Opaque(def_id, _) = revealed_ty.kind() {
+                    let concrete_is_opaque = if let ty::Opaque(def_id, _) = decl.concrete_ty.kind()
+                    {
                         *def_id == opaque_type_key.def_id
                     } else {
                         false
@@ -234,7 +236,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
                         );
                         None
                     } else {
-                        Some((opaque_type_key, revealed_ty))
+                        Some((opaque_type_key, decl))
                     }
                 })
                 .collect()
@@ -890,7 +892,7 @@ struct BorrowCheckContext<'a, 'tcx> {
 crate struct MirTypeckResults<'tcx> {
     crate constraints: MirTypeckRegionConstraints<'tcx>,
     crate universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-    crate opaque_type_values: VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
+    crate opaque_type_values: VecMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>,
 }
 
 /// A collection of region constraints that must be satisfied for the

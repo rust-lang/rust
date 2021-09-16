@@ -1,5 +1,5 @@
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_duplicate_param_use3.rs:10:27
+  --> $DIR/generic_duplicate_param_use3.rs:11:27
    |
 LL | fn one<T: Debug>(t: T) -> Two<T, T> {
    |                           ^^^^^^^^^
@@ -10,5 +10,29 @@ note: type used multiple times
 LL | type Two<T, U> = impl Debug;
    |          ^  ^
 
-error: aborting due to previous error
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/generic_duplicate_param_use3.rs:20:1
+   |
+LL | fn three<T, U: Debug>(_: T, u: U) -> Two<T, U> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `T`, got `U`
+   |
+note: previous use here
+  --> $DIR/generic_duplicate_param_use3.rs:16:1
+   |
+LL | fn two<T: Debug, U>(t: T, _: U) -> Two<T, U> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error[E0277]: `T` doesn't implement `Debug`
+  --> $DIR/generic_duplicate_param_use3.rs:8:18
+   |
+LL | type Two<T, U> = impl Debug;
+   |                  ^^^^^^^^^^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+help: consider restricting type parameter `T`
+   |
+LL | type Two<T: std::fmt::Debug, U> = impl Debug;
+   |           +++++++++++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

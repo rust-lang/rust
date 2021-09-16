@@ -16,7 +16,16 @@ LL |     const FUN: fn() -> Self::Item = || ();
    = help: the following implementations were found:
              <&() as Bug>
 
-error: aborting due to 2 previous errors
+error: non-defining opaque type use in defining scope
+  --> $DIR/issue-60371.rs:12:37
+   |
+LL | impl Bug for &() {
+   |              - cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
+...
+LL |     const FUN: fn() -> Self::Item = || ();
+   |                                     ^^^^^
+
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0277, E0658.
 For more information about an error, try `rustc --explain E0277`.

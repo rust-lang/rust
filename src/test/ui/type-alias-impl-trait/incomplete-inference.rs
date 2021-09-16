@@ -8,7 +8,6 @@ fn bar() -> Foo {
 }
 
 fn baz() -> Foo {
-    //~^ ERROR: concrete type differs from previous defining opaque type use
     Some(())
 }
 
