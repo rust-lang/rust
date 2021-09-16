@@ -524,8 +524,8 @@ pub mod task {
 pub mod rt;
 
 // Platform-abstraction modules
-mod sys_common;
 mod sys;
+mod sys_common;
 
 pub mod alloc;
 
