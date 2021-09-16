@@ -3,12 +3,16 @@
 use indexmap::IndexMap;
 
 use hir::Semantics;
-use ide_db::{call_info::FnCallNode, RootDatabase};
-use syntax::{ast, AstNode, TextRange};
-
-use crate::{
-    display::TryToNav, goto_definition, references, FilePosition, NavigationTarget, RangeInfo,
+use ide_db::{
+    call_info::FnCallNode,
+    defs::{Definition, NameClass, NameRefClass},
+    helpers::pick_best_token,
+    search::FileReference,
+    RootDatabase,
 };
+use syntax::{ast, AstNode, SyntaxKind::NAME, TextRange};
+
+use crate::{display::TryToNav, goto_definition, FilePosition, NavigationTarget, RangeInfo};
 
 #[derive(Debug, Clone)]
 pub struct CallItem {
@@ -17,12 +21,6 @@ pub struct CallItem {
 }
 
 impl CallItem {
-    #[cfg(test)]
-    pub(crate) fn assert_match(&self, expected: &str) {
-        let actual = self.debug_render();
-        test_utils::assert_eq_text!(expected.trim(), actual.trim(),);
-    }
-
     #[cfg(test)]
     pub(crate) fn debug_render(&self) -> String {
         format!("{} : {:?}", self.target.debug_render(), self.ranges)
@@ -36,30 +34,45 @@ pub(crate) fn call_hierarchy(
     goto_definition::goto_definition(db, position)
 }
 
-pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Option<Vec<CallItem>> {
-    let sema = Semantics::new(db);
+pub(crate) fn incoming_calls(
+    db: &RootDatabase,
+    FilePosition { file_id, offset }: FilePosition,
+) -> Option<Vec<CallItem>> {
+    let sema = &Semantics::new(db);
 
-    // 1. Find all refs
-    // 2. Loop through refs and determine unique fndef. This will become our `from: CallHierarchyItem,` in the reply.
-    // 3. Add ranges relative to the start of the fndef.
-    let refs = references::find_all_refs(&sema, position, None)?;
-
+    let file = sema.parse(file_id);
+    let file = file.syntax();
     let mut calls = CallLocations::default();
 
-    for (file_id, references) in refs.into_iter().flat_map(|refs| refs.references) {
-        let file = sema.parse(file_id);
-        let file = file.syntax();
-        for (relative_range, token) in references
-            .into_iter()
-            .filter_map(|(range, _)| Some(range).zip(file.token_at_offset(range.start()).next()))
-        {
-            let token = sema.descend_into_macros(token);
+    let references = sema
+        .find_nodes_at_offset_with_descend(file, offset)
+        .filter_map(move |node| match node {
+            ast::NameLike::NameRef(name_ref) => match NameRefClass::classify(sema, &name_ref)? {
+                NameRefClass::Definition(
+                    def @ Definition::ModuleDef(hir::ModuleDef::Function(_)),
+                ) => Some(def),
+                _ => None,
+            },
+            ast::NameLike::Name(name) => match NameClass::classify(sema, &name)? {
+                NameClass::Definition(def @ Definition::ModuleDef(hir::ModuleDef::Function(_))) => {
+                    Some(def)
+                }
+                _ => None,
+            },
+            ast::NameLike::Lifetime(_) => None,
+        })
+        .flat_map(|func| func.usages(sema).all());
+
+    for (_, references) in references {
+        let references = references.into_iter().map(|FileReference { name, .. }| name);
+        for name in references {
             // This target is the containing function
-            if let Some(nav) = token.ancestors().find_map(|node| {
+            let nav = sema.ancestors_with_macros(name.syntax().clone()).find_map(|node| {
                 let def = ast::Fn::cast(node).and_then(|fn_| sema.to_def(&fn_))?;
                 def.try_to_nav(sema.db)
-            }) {
-                calls.add(&nav, relative_range);
+            });
+            if let Some(nav) = nav {
+                calls.add(nav, sema.original_range(name.syntax()).range);
             }
         }
     }
@@ -72,15 +85,22 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
     let file_id = position.file_id;
     let file = sema.parse(file_id);
     let file = file.syntax();
-    let token = file.token_at_offset(position.offset).next()?;
-    let token = sema.descend_into_macros(token);
-
+    let token = pick_best_token(file.token_at_offset(position.offset), |kind| match kind {
+        NAME => 1,
+        _ => 0,
+    })?;
     let mut calls = CallLocations::default();
 
-    token
-        .parent()
+    sema.descend_into_macros_many(token)
         .into_iter()
-        .flat_map(|it| it.descendants())
+        .filter_map(|it| it.ancestors().nth(1).and_then(ast::Item::cast))
+        .filter_map(|item| match item {
+            ast::Item::Const(c) => c.body().map(|it| it.syntax().descendants()),
+            ast::Item::Fn(f) => f.body().map(|it| it.syntax().descendants()),
+            ast::Item::Static(s) => s.body().map(|it| it.syntax().descendants()),
+            _ => None,
+        })
+        .flatten()
         .filter_map(|node| FnCallNode::with_node_exact(&node))
         .filter_map(|call_node| {
             let name_ref = call_node.name_ref()?;
@@ -99,7 +119,7 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
             }?;
             Some((func_target, name_ref.syntax().text_range()))
         })
-        .for_each(|(nav, range)| calls.add(&nav, range));
+        .for_each(|(nav, range)| calls.add(nav, range));
 
     Some(calls.into_items())
 }
@@ -110,8 +130,8 @@ struct CallLocations {
 }
 
 impl CallLocations {
-    fn add(&mut self, target: &NavigationTarget, range: TextRange) {
-        self.funcs.entry(target.clone()).or_default().push(range);
+    fn add(&mut self, target: NavigationTarget, range: TextRange) {
+        self.funcs.entry(target).or_default().push(range);
     }
 
     fn into_items(self) -> Vec<CallItem> {
@@ -121,38 +141,34 @@ impl CallLocations {
 
 #[cfg(test)]
 mod tests {
+    use expect_test::{expect, Expect};
     use ide_db::base_db::FilePosition;
+    use itertools::Itertools;
 
     use crate::fixture;
 
     fn check_hierarchy(
         ra_fixture: &str,
-        expected: &str,
-        expected_incoming: &[&str],
-        expected_outgoing: &[&str],
+        expected: Expect,
+        expected_incoming: Expect,
+        expected_outgoing: Expect,
     ) {
         let (analysis, pos) = fixture::position(ra_fixture);
 
         let mut navs = analysis.call_hierarchy(pos).unwrap().unwrap().info;
         assert_eq!(navs.len(), 1);
         let nav = navs.pop().unwrap();
-        nav.assert_match(expected);
+        expected.assert_eq(&nav.debug_render());
 
         let item_pos =
             FilePosition { file_id: nav.file_id, offset: nav.focus_or_full_range().start() };
         let incoming_calls = analysis.incoming_calls(item_pos).unwrap().unwrap();
-        assert_eq!(incoming_calls.len(), expected_incoming.len());
-
-        for call in 0..incoming_calls.len() {
-            incoming_calls[call].assert_match(expected_incoming[call]);
-        }
+        expected_incoming
+            .assert_eq(&incoming_calls.into_iter().map(|call| call.debug_render()).join("\n"));
 
         let outgoing_calls = analysis.outgoing_calls(item_pos).unwrap().unwrap();
-        assert_eq!(outgoing_calls.len(), expected_outgoing.len());
-
-        for call in 0..outgoing_calls.len() {
-            outgoing_calls[call].assert_match(expected_outgoing[call]);
-        }
+        expected_outgoing
+            .assert_eq(&outgoing_calls.into_iter().map(|call| call.debug_render()).join("\n"));
     }
 
     #[test]
@@ -165,9 +181,9 @@ fn caller() {
     call$0ee();
 }
 "#,
-            "callee Function FileId(0) 0..14 3..9",
-            &["caller Function FileId(0) 15..44 18..24 : [33..39]"],
-            &[],
+            expect![["callee Function FileId(0) 0..14 3..9"]],
+            expect![["caller Function FileId(0) 15..44 18..24 : [33..39]"]],
+            expect![[]],
         );
     }
 
@@ -181,9 +197,9 @@ fn caller() {
     callee();
 }
 "#,
-            "callee Function FileId(0) 0..14 3..9",
-            &["caller Function FileId(0) 15..44 18..24 : [33..39]"],
-            &[],
+            expect![["callee Function FileId(0) 0..14 3..9"]],
+            expect![["caller Function FileId(0) 15..44 18..24 : [33..39]"]],
+            expect![[]],
         );
     }
 
@@ -198,9 +214,9 @@ fn caller() {
     callee();
 }
 "#,
-            "callee Function FileId(0) 0..14 3..9",
-            &["caller Function FileId(0) 15..58 18..24 : [33..39, 47..53]"],
-            &[],
+            expect![["callee Function FileId(0) 0..14 3..9"]],
+            expect![["caller Function FileId(0) 15..58 18..24 : [33..39, 47..53]"]],
+            expect![[]],
         );
     }
 
@@ -218,12 +234,11 @@ fn caller2() {
     callee();
 }
 "#,
-            "callee Function FileId(0) 0..14 3..9",
-            &[
-                "caller1 Function FileId(0) 15..45 18..25 : [34..40]",
-                "caller2 Function FileId(0) 47..77 50..57 : [66..72]",
-            ],
-            &[],
+            expect![["callee Function FileId(0) 0..14 3..9"]],
+            expect![["
+                caller1 Function FileId(0) 15..45 18..25 : [34..40]
+                caller2 Function FileId(0) 47..77 50..57 : [66..72]"]],
+            expect![[]],
         );
     }
 
@@ -247,12 +262,11 @@ mod tests {
     }
 }
 "#,
-            "callee Function FileId(0) 0..14 3..9",
-            &[
-                "caller1 Function FileId(0) 15..45 18..25 : [34..40]",
-                "test_caller Function FileId(0) 95..149 110..121 : [134..140]",
-            ],
-            &[],
+            expect![["callee Function FileId(0) 0..14 3..9"]],
+            expect![[r#"
+                caller1 Function FileId(0) 15..45 18..25 : [34..40]
+                test_caller Function FileId(0) 95..149 110..121 : [134..140]"#]],
+            expect![[]],
         );
     }
 
@@ -271,9 +285,9 @@ fn caller() {
 //- /foo/mod.rs
 pub fn callee() {}
 "#,
-            "callee Function FileId(1) 0..18 7..13",
-            &["caller Function FileId(0) 27..56 30..36 : [45..51]"],
-            &[],
+            expect![["callee Function FileId(1) 0..18 7..13"]],
+            expect![["caller Function FileId(0) 27..56 30..36 : [45..51]"]],
+            expect![[]],
         );
     }
 
@@ -288,9 +302,9 @@ fn call$0er() {
     callee();
 }
 "#,
-            "caller Function FileId(0) 15..58 18..24",
-            &[],
-            &["callee Function FileId(0) 0..14 3..9 : [33..39, 47..53]"],
+            expect![["caller Function FileId(0) 15..58 18..24"]],
+            expect![[]],
+            expect![["callee Function FileId(0) 0..14 3..9 : [33..39, 47..53]"]],
         );
     }
 
@@ -309,9 +323,9 @@ fn call$0er() {
 //- /foo/mod.rs
 pub fn callee() {}
 "#,
-            "caller Function FileId(0) 27..56 30..36",
-            &[],
-            &["callee Function FileId(1) 0..18 7..13 : [45..51]"],
+            expect![["caller Function FileId(0) 27..56 30..36"]],
+            expect![[]],
+            expect![["callee Function FileId(1) 0..18 7..13 : [45..51]"]],
         );
     }
 
@@ -332,9 +346,9 @@ fn caller3() {
 
 }
 "#,
-            "caller2 Function FileId(0) 33..64 36..43",
-            &["caller1 Function FileId(0) 0..31 3..10 : [19..26]"],
-            &["caller3 Function FileId(0) 66..83 69..76 : [52..59]"],
+            expect![["caller2 Function FileId(0) 33..64 36..43"]],
+            expect![["caller1 Function FileId(0) 0..31 3..10 : [19..26]"]],
+            expect![["caller3 Function FileId(0) 66..83 69..76 : [52..59]"]],
         );
     }
 
@@ -352,9 +366,9 @@ fn main() {
     a$0()
 }
 "#,
-            "a Function FileId(0) 0..18 3..4",
-            &["main Function FileId(0) 31..52 34..38 : [47..48]"],
-            &["b Function FileId(0) 20..29 23..24 : [13..14]"],
+            expect![["a Function FileId(0) 0..18 3..4"]],
+            expect![["main Function FileId(0) 31..52 34..38 : [47..48]"]],
+            expect![["b Function FileId(0) 20..29 23..24 : [13..14]"]],
         );
 
         check_hierarchy(
@@ -369,9 +383,81 @@ fn main() {
     a()
 }
 "#,
-            "b Function FileId(0) 20..29 23..24",
-            &["a Function FileId(0) 0..18 3..4 : [13..14]"],
-            &[],
+            expect![["b Function FileId(0) 20..29 23..24"]],
+            expect![["a Function FileId(0) 0..18 3..4 : [13..14]"]],
+            expect![[]],
+        );
+    }
+
+    #[test]
+    fn test_call_hierarchy_in_macros_incoming() {
+        check_hierarchy(
+            r#"
+macro_rules! define {
+    ($ident:ident) => {
+        fn $ident {}
+    }
+}
+macro_rules! call {
+    ($ident:ident) => {
+        $ident()
+    }
+}
+define!(callee)
+fn caller() {
+    call!(call$0ee);
+}
+"#,
+            expect![[r#"callee Function FileId(0) 144..159 152..158"#]],
+            expect![[r#"caller Function FileId(0) 160..194 163..169 : [184..190]"#]],
+            expect![[]],
+        );
+        check_hierarchy(
+            r#"
+macro_rules! define {
+    ($ident:ident) => {
+        fn $ident {}
+    }
+}
+macro_rules! call {
+    ($ident:ident) => {
+        $ident()
+    }
+}
+define!(cal$0lee)
+fn caller() {
+    call!(callee);
+}
+"#,
+            expect![[r#"callee Function FileId(0) 144..159 152..158"#]],
+            expect![[r#"caller Function FileId(0) 160..194 163..169 : [184..190]"#]],
+            expect![[]],
+        );
+    }
+
+    #[test]
+    fn test_call_hierarchy_in_macros_outgoing() {
+        check_hierarchy(
+            r#"
+macro_rules! define {
+    ($ident:ident) => {
+        fn $ident {}
+    }
+}
+macro_rules! call {
+    ($ident:ident) => {
+        $ident()
+    }
+}
+define!(callee)
+fn caller$0() {
+    call!(callee);
+}
+"#,
+            expect![[r#"caller Function FileId(0) 160..194 163..169"#]],
+            expect![[]],
+            // FIXME
+            expect![[]],
         );
     }
 }
