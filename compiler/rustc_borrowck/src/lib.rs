@@ -154,11 +154,6 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     debug!("do_mir_borrowck(def = {:?})", def);
 
-    assert!(
-        !return_body_with_facts || infcx.tcx.sess.opts.debugging_opts.polonius,
-        "borrowck facts can be requested only when Polonius is enabled"
-    );
-
     let tcx = infcx.tcx;
     let param_env = tcx.param_env(def.did);
     let id = tcx.hir().local_def_id_to_hir_id(def.did);
@@ -235,6 +230,8 @@ fn do_mir_borrowck<'a, 'tcx>(
     let borrow_set =
         Rc::new(BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &mdpe.move_data));
 
+    let use_polonius = return_body_with_facts || infcx.tcx.sess.opts.debugging_opts.polonius;
+
     // Compute non-lexical lifetimes.
     let nll::NllOutput {
         regioncx,
@@ -254,6 +251,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         &mdpe.move_data,
         &borrow_set,
         &upvars,
+        use_polonius,
     );
 
     // Dump MIR results into a file, if that is enabled. This let us

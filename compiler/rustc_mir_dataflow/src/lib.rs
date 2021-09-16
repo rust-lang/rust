@@ -28,8 +28,8 @@ pub use self::drop_flag_effects::{
     on_lookup_result_bits,
 };
 pub use self::framework::{
-    fmt, lattice, visit_results, Analysis, AnalysisDomain, Backward, Direction, Engine, Forward,
-    GenKill, GenKillAnalysis, JoinSemiLattice, Results, ResultsCursor, ResultsRefCursor,
+    fmt, graphviz, lattice, visit_results, Analysis, AnalysisDomain, Backward, Direction, Engine,
+    Forward, GenKill, GenKillAnalysis, JoinSemiLattice, Results, ResultsCursor, ResultsRefCursor,
     ResultsVisitable, ResultsVisitor,
 };
 
