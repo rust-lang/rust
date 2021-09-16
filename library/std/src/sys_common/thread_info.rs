@@ -39,6 +39,9 @@ pub fn stack_guard() -> Option<Guard> {
 }
 
 pub fn set(stack_guard: Option<Guard>, thread: Thread) {
-    THREAD_INFO.with(|c| rtassert!(c.borrow().is_none()));
-    THREAD_INFO.with(move |c| *c.borrow_mut() = Some(ThreadInfo { stack_guard, thread }));
+    THREAD_INFO.with(move |thread_info| {
+        let mut thread_info = thread_info.borrow_mut();
+        rtassert!(thread_info.is_none());
+        *thread_info = Some(ThreadInfo { stack_guard, thread });
+    });
 }
