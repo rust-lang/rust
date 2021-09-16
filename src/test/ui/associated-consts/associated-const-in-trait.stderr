@@ -4,7 +4,6 @@ error[E0038]: the trait `Trait` cannot be made into an object
 LL | impl dyn Trait {
    |      ^^^^^^^^^ `Trait` cannot be made into an object
    |
-   = help: consider moving `N` to another trait
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/associated-const-in-trait.rs:6:11
    |
@@ -12,6 +11,7 @@ LL | trait Trait {
    |       ----- this trait cannot be made into an object...
 LL |     const N: usize;
    |           ^ ...because it contains this associated `const`
+   = help: consider moving `N` to another trait
 
 error: aborting due to previous error
 
