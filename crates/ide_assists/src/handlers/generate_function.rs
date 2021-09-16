@@ -438,10 +438,7 @@ fn fn_args(
     let mut arg_names = Vec::new();
     let mut arg_types = Vec::new();
     for arg in call.arg_list()?.args() {
-        arg_names.push(match fn_arg_name(&arg) {
-            Some(name) => name,
-            None => String::from("arg"),
-        });
+        arg_names.push(fn_arg_name(&arg));
         arg_types.push(match fn_arg_type(ctx, target_module, &arg) {
             Some(ty) => {
                 if !ty.is_empty() && ty.starts_with('&') {
@@ -506,18 +503,21 @@ fn deduplicate_arg_names(arg_names: &mut Vec<String>) {
     }
 }
 
-fn fn_arg_name(fn_arg: &ast::Expr) -> Option<String> {
-    match fn_arg {
-        ast::Expr::CastExpr(cast_expr) => fn_arg_name(&cast_expr.expr()?),
-        _ => {
-            let s = fn_arg
-                .syntax()
-                .descendants()
-                .filter(|d| ast::NameRef::can_cast(d.kind()))
-                .last()?
-                .to_string();
+fn fn_arg_name(arg_expr: &ast::Expr) -> String {
+    let name = (|| match arg_expr {
+        ast::Expr::CastExpr(cast_expr) => Some(fn_arg_name(&cast_expr.expr()?)),
+        expr => {
+            let s = expr.syntax().descendants().filter_map(ast::NameRef::cast).last()?.to_string();
             Some(to_lower_snake_case(&s))
         }
+    })();
+    match name {
+        Some(mut name) if name.starts_with(|c: char| c.is_ascii_digit()) => {
+            name.insert_str(0, "arg");
+            name
+        }
+        Some(name) => name,
+        None => "arg".to_string(),
     }
 }
 
@@ -1647,12 +1647,12 @@ fn bar() ${0:-> _} {
     fn no_panic_on_invalid_global_path() {
         check_assist(
             generate_function,
-            r#"
+            r"
 fn main() {
     ::foo$0();
 }
-"#,
-            r#"
+",
+            r"
 fn main() {
     ::foo();
 }
@@ -1660,7 +1660,30 @@ fn main() {
 fn foo() ${0:-> _} {
     todo!()
 }
-"#,
+",
+        )
+    }
+
+    #[test]
+    fn handle_tuple_indexing() {
+        check_assist(
+            generate_function,
+            r"
+fn main() {
+    let a = ((),);
+    foo$0(a.0);
+}
+",
+            r"
+fn main() {
+    let a = ((),);
+    foo(a.0);
+}
+
+fn foo(arg0: ()) ${0:-> _} {
+    todo!()
+}
+",
         )
     }
 }
