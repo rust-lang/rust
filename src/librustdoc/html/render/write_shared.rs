@@ -105,10 +105,10 @@ impl Context<'_> {
         self.dst.join(&filename)
     }
 
-    fn write_shared<C: AsRef<[u8]>>(
+    fn write_shared(
         &self,
         resource: SharedResource<'_>,
-        contents: C,
+        contents: impl 'static + Send + AsRef<[u8]>,
         emit: &[EmitType],
     ) -> Result<(), Error> {
         if resource.should_emit(emit) {
@@ -121,25 +121,23 @@ impl Context<'_> {
     fn write_minify(
         &self,
         resource: SharedResource<'_>,
-        contents: &str,
+        contents: impl 'static + Send + AsRef<str> + AsRef<[u8]>,
         minify: bool,
         emit: &[EmitType],
     ) -> Result<(), Error> {
-        let tmp;
-        let contents = if minify {
-            tmp = if resource.extension() == Some(&OsStr::new("css")) {
+        if minify {
+            let contents = contents.as_ref();
+            let contents = if resource.extension() == Some(&OsStr::new("css")) {
                 minifier::css::minify(contents).map_err(|e| {
                     Error::new(format!("failed to minify CSS file: {}", e), resource.path(self))
                 })?
             } else {
                 minifier::js::minify(contents)
             };
-            tmp.as_bytes()
+            self.write_shared(resource, contents, emit)
         } else {
-            contents.as_bytes()
-        };
-
-        self.write_shared(resource, contents, emit)
+            self.write_shared(resource, contents, emit)
+        }
     }
 }
 
@@ -155,15 +153,21 @@ pub(super) fn write_shared(
     let lock_file = cx.dst.join(".lock");
     let _lock = try_err!(flock::Lock::new(&lock_file, true, true, true), &lock_file);
 
-    // The weird `: &_` is to work around a borrowck bug: https://github.com/rust-lang/rust/issues/41078#issuecomment-293646723
-    let write_minify = |p, c: &_| {
+    // Minified resources are usually toolchain resources. If they're not, they should use `cx.write_minify` directly.
+    fn write_minify(
+        basename: &'static str,
+        contents: impl 'static + Send + AsRef<str> + AsRef<[u8]>,
+        cx: &Context<'_>,
+        options: &RenderOptions,
+    ) -> Result<(), Error> {
         cx.write_minify(
-            SharedResource::ToolchainSpecific { basename: p },
-            c,
+            SharedResource::ToolchainSpecific { basename },
+            contents,
             options.enable_minification,
             &options.emit,
         )
-    };
+    }
+
     // Toolchain resources should never be dynamic.
     let write_toolchain = |p: &'static _, c: &'static _| {
         cx.write_shared(SharedResource::ToolchainSpecific { basename: p }, c, &options.emit)
@@ -210,12 +214,12 @@ pub(super) fn write_shared(
         "details.undocumented > summary::before, details.rustdoc-toggle > summary::before",
         "toggle-plus.svg",
     );
-    write_minify("rustdoc.css", &rustdoc_css)?;
+    write_minify("rustdoc.css", rustdoc_css, cx, options)?;
 
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
-    write_minify("settings.css", static_files::SETTINGS_CSS)?;
-    write_minify("noscript.css", static_files::NOSCRIPT_CSS)?;
+    write_minify("settings.css", static_files::SETTINGS_CSS, cx, options)?;
+    write_minify("noscript.css", static_files::NOSCRIPT_CSS, cx, options)?;
 
     // To avoid "light.css" to be overwritten, we'll first run over the received themes and only
     // then we'll run over the "official" styles.
@@ -228,9 +232,9 @@ pub(super) fn write_shared(
 
         // Handle the official themes
         match theme {
-            "light" => write_minify("light.css", static_files::themes::LIGHT)?,
-            "dark" => write_minify("dark.css", static_files::themes::DARK)?,
-            "ayu" => write_minify("ayu.css", static_files::themes::AYU)?,
+            "light" => write_minify("light.css", static_files::themes::LIGHT, cx, options)?,
+            "dark" => write_minify("dark.css", static_files::themes::DARK, cx, options)?,
+            "ayu" => write_minify("ayu.css", static_files::themes::AYU, cx, options)?,
             _ => {
                 // Handle added third-party themes
                 let filename = format!("{}.{}", theme, extension);
@@ -264,26 +268,30 @@ pub(super) fn write_shared(
     // Maybe we can change the representation to move this out of main.js?
     write_minify(
         "main.js",
-        &static_files::MAIN_JS.replace(
+        static_files::MAIN_JS.replace(
             "/* INSERT THEMES HERE */",
             &format!(" = {}", serde_json::to_string(&themes).unwrap()),
         ),
+        cx,
+        options,
     )?;
-    write_minify("search.js", static_files::SEARCH_JS)?;
-    write_minify("settings.js", static_files::SETTINGS_JS)?;
+    write_minify("search.js", static_files::SEARCH_JS, cx, options)?;
+    write_minify("settings.js", static_files::SETTINGS_JS, cx, options)?;
 
     if cx.include_sources {
-        write_minify("source-script.js", static_files::sidebar::SOURCE_SCRIPT)?;
+        write_minify("source-script.js", static_files::sidebar::SOURCE_SCRIPT, cx, options)?;
     }
 
     {
         write_minify(
             "storage.js",
-            &format!(
+            format!(
                 "var resourcesSuffix = \"{}\";{}",
                 cx.shared.resource_suffix,
                 static_files::STORAGE_JS
             ),
+            cx,
+            options,
         )?;
     }
 
@@ -292,12 +300,12 @@ pub(super) fn write_shared(
         // This varies based on the invocation, so it can't go through the write_minify wrapper.
         cx.write_minify(
             SharedResource::InvocationSpecific { basename: "theme.css" },
-            &buffer,
+            buffer,
             options.enable_minification,
             &options.emit,
         )?;
     }
-    write_minify("normalize.css", static_files::NORMALIZE_CSS)?;
+    write_minify("normalize.css", static_files::NORMALIZE_CSS, cx, options)?;
     for (name, contents) in &*FILES_UNVERSIONED {
         cx.write_shared(SharedResource::Unversioned { name }, contents, &options.emit)?;
     }
@@ -512,7 +520,7 @@ pub(super) fn write_shared(
                 content,
                 &cx.shared.style_files,
             );
-            cx.shared.fs.write(&dst, v.as_bytes())?;
+            cx.shared.fs.write(dst, v)?;
         }
     }
 
@@ -603,7 +611,7 @@ pub(super) fn write_shared(
              }",
         );
         v.push_str("})()");
-        cx.shared.fs.write(&mydst, &v)?;
+        cx.shared.fs.write(mydst, v)?;
     }
     Ok(())
 }

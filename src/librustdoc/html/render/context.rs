@@ -574,7 +574,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             |buf: &mut Buffer| all.print(buf),
             &self.shared.style_files,
         );
-        self.shared.fs.write(final_file, v.as_bytes())?;
+        self.shared.fs.write(final_file, v)?;
 
         // Generating settings page.
         page.title = "Rustdoc settings";
@@ -596,14 +596,14 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             )?,
             &style_files,
         );
-        self.shared.fs.write(&settings_file, v.as_bytes())?;
+        self.shared.fs.write(settings_file, v)?;
         if let Some(ref redirections) = self.shared.redirections {
             if !redirections.borrow().is_empty() {
                 let redirect_map_path =
                     self.dst.join(&*crate_name.as_str()).join("redirect-map.json");
                 let paths = serde_json::to_string(&*redirections.borrow()).unwrap();
                 self.shared.ensure_dir(&self.dst.join(&*crate_name.as_str()))?;
-                self.shared.fs.write(&redirect_map_path, paths.as_bytes())?;
+                self.shared.fs.write(redirect_map_path, paths)?;
             }
         }
 
@@ -641,7 +641,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         if !buf.is_empty() {
             self.shared.ensure_dir(&self.dst)?;
             let joint_dst = self.dst.join("index.html");
-            scx.fs.write(&joint_dst, buf.as_bytes())?;
+            scx.fs.write(joint_dst, buf)?;
         }
 
         // Render sidebar-items.js used throughout this module.
@@ -653,7 +653,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             let items = self.build_sidebar_items(module);
             let js_dst = self.dst.join("sidebar-items.js");
             let v = format!("initSidebarItems({});", serde_json::to_string(&items).unwrap());
-            scx.fs.write(&js_dst, &v)?;
+            scx.fs.write(js_dst, v)?;
         }
         Ok(())
     }
@@ -687,7 +687,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             let file_name = &item_path(item_type, &name.as_str());
             self.shared.ensure_dir(&self.dst)?;
             let joint_dst = self.dst.join(file_name);
-            self.shared.fs.write(&joint_dst, buf.as_bytes())?;
+            self.shared.fs.write(joint_dst, buf)?;
 
             if !self.render_redirect_pages {
                 self.shared.all.borrow_mut().append(full_path(self, &item), &item_type);
@@ -705,7 +705,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 } else {
                     let v = layout::redirect(file_name);
                     let redir_dst = self.dst.join(redir_name);
-                    self.shared.fs.write(&redir_dst, v.as_bytes())?;
+                    self.shared.fs.write(redir_dst, v)?;
                 }
             }
         }

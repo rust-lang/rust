@@ -208,7 +208,7 @@ impl SourceCollector<'_, 'tcx> {
             },
             &self.cx.shared.style_files,
         );
-        self.cx.shared.fs.write(&cur, v.as_bytes())?;
+        self.cx.shared.fs.write(cur, v)?;
         self.emitted_local_sources.insert(p);
         Ok(())
     }
