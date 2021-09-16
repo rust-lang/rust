@@ -76,7 +76,7 @@ mod unreachable_prop;
 use rustc_const_eval::transform::check_consts;
 use rustc_const_eval::transform::promote_consts;
 use rustc_const_eval::transform::validate;
-use rustc_const_eval::transform::MirPass;
+pub use rustc_const_eval::transform::MirPass;
 use rustc_mir_dataflow::rustc_peek;
 
 pub fn provide(providers: &mut Providers) {
