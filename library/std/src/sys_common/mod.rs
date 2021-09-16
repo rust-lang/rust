@@ -28,8 +28,6 @@ pub mod memchr;
 pub mod mutex;
 pub mod process;
 pub mod remutex;
-#[macro_use]
-pub mod rt;
 pub mod rwlock;
 pub mod thread;
 pub mod thread_info;
