@@ -279,7 +279,7 @@ LL | const fn no_apit(_x: impl std::fmt::Debug) {}
    |                  |
    |                  constant functions cannot evaluate destructors
 
-error[E0658]: trait bounds other than `Sized` on const fn parameters are unstable
+error[E0658]: trait objects in const fn are unstable
   --> $DIR/min_const_fn.rs:132:23
    |
 LL | const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {}
@@ -288,7 +288,7 @@ LL | const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {}
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn_trait_bound)]` to the crate attributes to enable
 
-error[E0658]: trait bounds other than `Sized` on const fn parameters are unstable
+error[E0658]: trait objects in const fn are unstable
   --> $DIR/min_const_fn.rs:134:32
    |
 LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
@@ -297,7 +297,7 @@ LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn_trait_bound)]` to the crate attributes to enable
 
-error[E0658]: trait bounds other than `Sized` on const fn parameters are unstable
+error[E0658]: trait objects in const fn are unstable
   --> $DIR/min_const_fn.rs:139:41
    |
 LL | const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1 }
@@ -308,7 +308,7 @@ LL | const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn_trait_bound)]` to the crate attributes to enable
 
-error[E0658]: trait bounds other than `Sized` on const fn parameters are unstable
+error[E0658]: trait objects in const fn are unstable
   --> $DIR/min_const_fn.rs:139:42
    |
 LL | const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1 }
@@ -319,7 +319,7 @@ LL | const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn_trait_bound)]` to the crate attributes to enable
 
-error[E0658]: trait bounds other than `Sized` on const fn parameters are unstable
+error[E0658]: trait objects in const fn are unstable
   --> $DIR/min_const_fn.rs:139:42
    |
 LL | const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1 }

@@ -599,7 +599,7 @@ pub mod ty {
         }
 
         fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-            let mut builder = feature_err(
+            let mut err = feature_err(
                 &ccx.tcx.sess.parse_sess,
                 sym::const_fn_trait_bound,
                 span,
@@ -608,12 +608,51 @@ pub mod ty {
 
             match ccx.fn_sig() {
                 Some(fn_sig) if !fn_sig.span.contains(span) => {
-                    builder.span_label(fn_sig.span, "function declared as const here");
+                    err.span_label(fn_sig.span, "function declared as const here");
                 }
                 _ => {}
             }
 
-            builder
+            err
+        }
+    }
+
+    #[derive(Debug)]
+    pub struct DynTrait(pub mir::LocalKind);
+    impl NonConstOp for DynTrait {
+        fn importance(&self) -> DiagnosticImportance {
+            match self.0 {
+                mir::LocalKind::Var | mir::LocalKind::Temp => DiagnosticImportance::Secondary,
+                mir::LocalKind::ReturnPointer | mir::LocalKind::Arg => {
+                    DiagnosticImportance::Primary
+                }
+            }
+        }
+
+        fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
+            if ccx.const_kind() != hir::ConstContext::ConstFn {
+                Status::Allowed
+            } else {
+                Status::Unstable(sym::const_fn_trait_bound)
+            }
+        }
+
+        fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+            let mut err = feature_err(
+                &ccx.tcx.sess.parse_sess,
+                sym::const_fn_trait_bound,
+                span,
+                "trait objects in const fn are unstable",
+            );
+
+            match ccx.fn_sig() {
+                Some(fn_sig) if !fn_sig.span.contains(span) => {
+                    err.span_label(fn_sig.span, "function declared as const here");
+                }
+                _ => {}
+            }
+
+            err
         }
     }
 

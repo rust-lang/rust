@@ -384,11 +384,11 @@ impl Checker<'mir, 'tcx> {
                         match pred.skip_binder() {
                             ty::ExistentialPredicate::AutoTrait(_)
                             | ty::ExistentialPredicate::Projection(_) => {
-                                self.check_op(ops::ty::TraitBound(kind))
+                                self.check_op(ops::ty::DynTrait(kind))
                             }
                             ty::ExistentialPredicate::Trait(trait_ref) => {
                                 if Some(trait_ref.def_id) != self.tcx.lang_items().sized_trait() {
-                                    self.check_op(ops::ty::TraitBound(kind))
+                                    self.check_op(ops::ty::DynTrait(kind))
                                 }
                             }
                         }
