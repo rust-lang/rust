@@ -607,7 +607,8 @@ fn type_param_predicates(
                 ItemKind::Trait(_, _, ref generics, ..) => {
                     // Implied `Self: Trait` and supertrait bounds.
                     if param_id == item_hir_id {
-                        let identity_trait_ref = ty::TraitRef::identity(tcx, item_def_id);
+                        let identity_trait_ref =
+                            ty::Binder::dummy(ty::TraitRef::identity(tcx, item_def_id));
                         extend =
                             Some((identity_trait_ref.without_const().to_predicate(tcx), item.span));
                     }
@@ -2002,11 +2003,14 @@ fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
             // *current* state of an external file.
             span = tcx.sess.source_map().guess_head_span(span);
         }
-        result.predicates =
-            tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(std::iter::once((
-                ty::TraitRef::identity(tcx, def_id).without_const().to_predicate(tcx),
+        result.predicates = tcx.arena.alloc_from_iter(
+            result.predicates.iter().copied().chain(std::iter::once((
+                ty::Binder::dummy(ty::TraitRef::identity(tcx, def_id))
+                    .without_const()
+                    .to_predicate(tcx),
                 span,
-            ))));
+            ))),
+        );
     }
     debug!("predicates_of(def_id={:?}) = {:?}", def_id, result);
     result
@@ -2238,8 +2242,10 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                         }
                         _ => bug!(),
                     };
-                    let pred = ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(r1, r2))
-                        .to_predicate(icx.tcx);
+                    let pred = ty::Binder::dummy(ty::PredicateKind::RegionOutlives(
+                        ty::OutlivesPredicate(r1, r2),
+                    ))
+                    .to_predicate(icx.tcx);
 
                     (pred, span)
                 }))
@@ -2304,7 +2310,8 @@ fn const_evaluatable_predicates_of<'tcx>(
                 assert_eq!(uv.promoted, None);
                 let span = self.tcx.hir().span(c.hir_id);
                 self.preds.insert((
-                    ty::PredicateKind::ConstEvaluatable(uv.shrink()).to_predicate(self.tcx),
+                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(uv.shrink()))
+                        .to_predicate(self.tcx),
                     span,
                 ));
             }

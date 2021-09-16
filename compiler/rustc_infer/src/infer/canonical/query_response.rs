@@ -669,8 +669,10 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         self.obligations.push(Obligation {
             cause: self.cause.clone(),
             param_env: self.param_env,
-            predicate: ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(sup, sub))
-                .to_predicate(self.infcx.tcx),
+            predicate: ty::Binder::dummy(ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
+                sup, sub,
+            )))
+            .to_predicate(self.infcx.tcx),
             recursion_depth: 0,
         });
     }

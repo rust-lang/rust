@@ -646,7 +646,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligations.push(Obligation::new(
                 obligation.cause.clone(),
                 obligation.param_env,
-                ty::PredicateKind::ClosureKind(closure_def_id, substs, kind)
+                ty::Binder::dummy(ty::PredicateKind::ClosureKind(closure_def_id, substs, kind))
                     .to_predicate(self.tcx()),
             ));
         }
@@ -898,10 +898,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 );
 
                 // We can only make objects from sized types.
-                let tr = ty::TraitRef::new(
+                let tr = ty::Binder::dummy(ty::TraitRef::new(
                     tcx.require_lang_item(LangItem::Sized, None),
                     tcx.mk_substs_trait(source, &[]),
-                );
+                ));
                 nested.push(predicate_to_obligation(tr.without_const().to_predicate(tcx)));
 
                 // If the type is `Foo + 'a`, ensure that the type
