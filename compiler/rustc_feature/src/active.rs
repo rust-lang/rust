@@ -638,9 +638,6 @@ declare_features! (
     /// Allows specifying the as-needed link modifier
     (active, native_link_modifiers_as_needed, "1.53.0", Some(81490), None),
 
-    /// Allows unnamed fields of struct and union type
-    (incomplete, unnamed_fields, "1.53.0", Some(49804), None),
-
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
     (active, more_qualified_paths, "1.54.0", Some(86935), None),
 

@@ -32,7 +32,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use rustc_ast::ast;
-use rustc_span::{symbol, DUMMY_SP};
+use rustc_span::symbol;
 use thiserror::Error;
 
 use crate::comment::LineClasses;
@@ -96,11 +96,6 @@ mod types;
 mod vertical;
 pub(crate) mod visitor;
 
-const DEFAULT_VISIBILITY: ast::Visibility = ast::Visibility {
-    kind: ast::VisibilityKind::Inherited,
-    span: DUMMY_SP,
-    tokens: None,
-};
 /// The various errors that can occur during formatting. Note that not all of
 /// these can currently be propagated to clients.
 #[derive(Error, Debug)]

@@ -1920,9 +1920,10 @@ fn parse_extern_dep_specs(
 
 fn parse_remap_path_prefix(
     matches: &getopts::Matches,
+    debugging_opts: &DebuggingOptions,
     error_format: ErrorOutputType,
 ) -> Vec<(PathBuf, PathBuf)> {
-    matches
+    let mut mapping: Vec<(PathBuf, PathBuf)> = matches
         .opt_strs("remap-path-prefix")
         .into_iter()
         .map(|remap| match remap.rsplit_once('=') {
@@ -1932,7 +1933,15 @@ fn parse_remap_path_prefix(
             ),
             Some((from, to)) => (PathBuf::from(from), PathBuf::from(to)),
         })
-        .collect()
+        .collect();
+    match &debugging_opts.remap_cwd_prefix {
+        Some(to) => match std::env::current_dir() {
+            Ok(cwd) => mapping.push((cwd, to.clone())),
+            Err(_) => (),
+        },
+        None => (),
+    };
+    mapping
 }
 
 pub fn build_session_options(matches: &getopts::Matches) -> Options {
@@ -2077,7 +2086,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let crate_name = matches.opt_str("crate-name");
 
-    let remap_path_prefix = parse_remap_path_prefix(matches, error_format);
+    let remap_path_prefix = parse_remap_path_prefix(matches, &debugging_opts, error_format);
 
     let pretty = parse_pretty(&debugging_opts, error_format);
 

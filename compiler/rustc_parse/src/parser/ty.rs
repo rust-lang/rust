@@ -226,19 +226,6 @@ impl<'a> Parser<'a> {
             }
         } else if self.eat_keyword(kw::Impl) {
             self.parse_impl_ty(&mut impl_dyn_multi)?
-        } else if self.token.is_keyword(kw::Union)
-            && self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace))
-        {
-            self.bump();
-            let (fields, recovered) = self.parse_record_struct_body("union")?;
-            let span = lo.to(self.prev_token.span);
-            self.sess.gated_spans.gate(sym::unnamed_fields, span);
-            TyKind::AnonymousUnion(fields, recovered)
-        } else if self.eat_keyword(kw::Struct) {
-            let (fields, recovered) = self.parse_record_struct_body("struct")?;
-            let span = lo.to(self.prev_token.span);
-            self.sess.gated_spans.gate(sym::unnamed_fields, span);
-            TyKind::AnonymousStruct(fields, recovered)
         } else if self.is_explicit_dyn_type() {
             self.parse_dyn_ty(&mut impl_dyn_multi)?
         } else if self.eat_lt() {

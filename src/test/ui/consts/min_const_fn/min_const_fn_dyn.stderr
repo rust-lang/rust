@@ -1,6 +1,8 @@
 error[E0658]: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn_dyn.rs:9:5
    |
+LL | const fn no_inner_dyn_trait2(x: Hide) {
+   | ------------------------------------- function declared as const here
 LL |     x.0.field;
    |     ^^^^^^^^^
    |
@@ -11,7 +13,9 @@ error[E0658]: trait bounds other than `Sized` on const fn parameters are unstabl
   --> $DIR/min_const_fn_dyn.rs:12:66
    |
 LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasDyn { field: &0 }) }
-   |                                                                  ^^
+   | -----------------------------------------                        ^^
+   | |
+   | function declared as const here
    |
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn_trait_bound)]` to the crate attributes to enable
