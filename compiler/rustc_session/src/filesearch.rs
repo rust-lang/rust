@@ -1,3 +1,5 @@
+//! A module for searching for libraries
+
 pub use self::FileMatch::*;
 
 use std::env;
@@ -13,8 +15,6 @@ pub enum FileMatch {
     FileMatches,
     FileDoesntMatch,
 }
-
-// A module for searching for libraries
 
 #[derive(Clone)]
 pub struct FileSearch<'a> {
@@ -83,21 +83,9 @@ impl<'a> FileSearch<'a> {
         FileSearch { sysroot, triple, search_paths, tlib_path, kind }
     }
 
-    // Returns just the directories within the search paths.
+    /// Returns just the directories within the search paths.
     pub fn search_path_dirs(&self) -> Vec<PathBuf> {
         self.search_paths().map(|sp| sp.dir.to_path_buf()).collect()
-    }
-
-    // Returns a list of directories where target-specific tool binaries are located.
-    pub fn get_tools_search_paths(&self, self_contained: bool) -> Vec<PathBuf> {
-        let rustlib_path = rustc_target::target_rustlib_path(self.sysroot, &self.triple);
-        let p = std::array::IntoIter::new([
-            Path::new(&self.sysroot),
-            Path::new(&rustlib_path),
-            Path::new("bin"),
-        ])
-        .collect::<PathBuf>();
-        if self_contained { vec![p.clone(), p.join("self-contained")] } else { vec![p] }
     }
 }
 
@@ -107,8 +95,8 @@ pub fn make_target_lib_path(sysroot: &Path, target_triple: &str) -> PathBuf {
         .collect::<PathBuf>()
 }
 
-// This function checks if sysroot is found using env::args().next(), and if it
-// is not found, uses env::current_exe() to imply sysroot.
+/// This function checks if sysroot is found using env::args().next(), and if it
+/// is not found, uses env::current_exe() to imply sysroot.
 pub fn get_or_default_sysroot() -> PathBuf {
     // Follow symlinks.  If the resolved path is relative, make it absolute.
     fn canonicalize(path: PathBuf) -> PathBuf {
