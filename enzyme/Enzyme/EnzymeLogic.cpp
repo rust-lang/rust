@@ -2883,21 +2883,27 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     if (augmenteddata->tapeType &&
         augmenteddata->tapeType != additionalValue->getType()) {
       IRBuilder<> BuilderZ(gutils->inversionAllocs);
-      // assert(PointerType::getUnqual(augmenteddata->tapeType) ==
-      // additionalValue->getType()); auto tapep = additionalValue;
-      auto tapep = BuilderZ.CreatePointerCast(
-          additionalValue, PointerType::getUnqual(augmenteddata->tapeType));
-      LoadInst *truetape = BuilderZ.CreateLoad(tapep, "truetape");
-      truetape->setMetadata("enzyme_mustcache",
-                            MDNode::get(truetape->getContext(), {}));
+      if (!augmenteddata->tapeType->isEmptyTy()) {
+        auto tapep = BuilderZ.CreatePointerCast(
+            additionalValue, PointerType::getUnqual(augmenteddata->tapeType));
+        LoadInst *truetape = BuilderZ.CreateLoad(tapep, "truetape");
+        truetape->setMetadata("enzyme_mustcache",
+                              MDNode::get(truetape->getContext(), {}));
 
-      if (!omp) {
-        CallInst *ci = cast<CallInst>(CallInst::CreateFree(
-            additionalValue, truetape)); //&*BuilderZ.GetInsertPoint()));
-        ci->moveAfter(truetape);
+        if (!omp) {
+          CallInst *ci = cast<CallInst>(CallInst::CreateFree(
+              additionalValue, truetape)); //&*BuilderZ.GetInsertPoint()));
+          ci->moveAfter(truetape);
+          ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+        }
+        additionalValue = truetape;
+      } else {
+        CallInst *ci = cast<CallInst>(
+            CallInst::CreateFree(additionalValue, gutils->inversionAllocs));
         ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+        BuilderZ.Insert(ci);
+        additionalValue = UndefValue::get(augmenteddata->tapeType);
       }
-      additionalValue = truetape;
     }
 
     // TODO here finish up making recursive structs simply pass in i8*
