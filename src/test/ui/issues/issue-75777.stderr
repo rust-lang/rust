@@ -17,7 +17,7 @@ LL |     Box::new(move |_| fut)
    = note: expected `(Pin<Box<dyn Future<Output = A> + Send>>,)`
               found `(Pin<Box<(dyn Future<Output = A> + Send + 'a)>>,)`
    = note: but, the lifetime must be valid for the static lifetime...
-note: ...so that the expression is assignable
+note: ...so that the types are compatible
   --> $DIR/issue-75777.rs:13:5
    |
 LL |     Box::new(move |_| fut)

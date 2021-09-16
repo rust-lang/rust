@@ -214,7 +214,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
     } else {
         fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
-        fcx.check_return_expr(&body.value);
+        fcx.check_return_expr(&body.value, false);
     }
     fcx.in_tail_expr = false;
 

@@ -19,7 +19,7 @@ note: but, the lifetime must be valid for the lifetime `'b` as defined on the fu
    |
 LL | fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {
    |             ^^
-note: ...so that the expression is assignable
+note: ...so that the types are compatible
   --> $DIR/object-lifetime-default-elision.rs:71:5
    |
 LL |     ss
@@ -48,7 +48,7 @@ note: but, the lifetime must be valid for the lifetime `'b` as defined on the fu
    |
 LL | fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {
    |             ^^
-note: ...so that the expression is assignable
+note: ...so that the types are compatible
   --> $DIR/object-lifetime-default-elision.rs:71:5
    |
 LL |     ss
