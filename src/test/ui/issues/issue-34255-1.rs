@@ -6,5 +6,5 @@ enum Test {
 
 fn main() {
     Test::Drill(field: 42);
-    //~^ ERROR expected type, found
+    //~^ ERROR invalid `struct` delimiters or `fn` call arguments
 }
