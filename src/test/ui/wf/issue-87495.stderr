@@ -4,7 +4,6 @@ error[E0038]: the trait `T` cannot be made into an object
 LL |     const CONST: (bool, dyn T);
    |                         ^^^^^ `T` cannot be made into an object
    |
-   = help: consider moving `CONST` to another trait
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/issue-87495.rs:4:11
    |
@@ -12,6 +11,7 @@ LL | trait T {
    |       - this trait cannot be made into an object...
 LL |     const CONST: (bool, dyn T);
    |           ^^^^^ ...because it contains this associated `const`
+   = help: consider moving `CONST` to another trait
 
 error: aborting due to previous error
 
