@@ -40,7 +40,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, AdtKind, Const, DefIdTree, ToPolyTraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind, Const, DefIdTree, Ty, TyCtxt};
 use rustc_middle::ty::{ReprOptions, ToPredicate, WithConstness};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
@@ -607,8 +607,7 @@ fn type_param_predicates(
                 ItemKind::Trait(_, _, ref generics, ..) => {
                     // Implied `Self: Trait` and supertrait bounds.
                     if param_id == item_hir_id {
-                        let identity_trait_ref =
-                            ty::Binder::dummy(ty::TraitRef::identity(tcx, item_def_id));
+                        let identity_trait_ref = ty::TraitRef::identity(tcx, item_def_id);
                         extend =
                             Some((identity_trait_ref.without_const().to_predicate(tcx), item.span));
                     }
@@ -2003,14 +2002,11 @@ fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
             // *current* state of an external file.
             span = tcx.sess.source_map().guess_head_span(span);
         }
-        result.predicates = tcx.arena.alloc_from_iter(
-            result.predicates.iter().copied().chain(std::iter::once((
-                ty::Binder::dummy(ty::TraitRef::identity(tcx, def_id))
-                    .without_const()
-                    .to_predicate(tcx),
+        result.predicates =
+            tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(std::iter::once((
+                ty::TraitRef::identity(tcx, def_id).without_const().to_predicate(tcx),
                 span,
-            ))),
-        );
+            ))));
     }
     debug!("predicates_of(def_id={:?}) = {:?}", def_id, result);
     result
@@ -2046,7 +2042,9 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
             match item.kind {
                 ItemKind::Impl(ref impl_) => {
                     if impl_.defaultness.is_default() {
-                        is_default_impl_trait = tcx.impl_trait_ref(def_id);
+                        is_default_impl_trait = tcx
+                            .impl_trait_ref(def_id)
+                            .map(|trait_ref| ty::Binder::dummy(trait_ref));
                     }
                     &impl_.generics
                 }
@@ -2126,10 +2124,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     // (see below). Recall that a default impl is not itself an impl, but rather a
     // set of defaults that can be incorporated into another impl.
     if let Some(trait_ref) = is_default_impl_trait {
-        predicates.insert((
-            trait_ref.to_poly_trait_ref().without_const().to_predicate(tcx),
-            tcx.def_span(def_id),
-        ));
+        predicates.insert((trait_ref.without_const().to_predicate(tcx), tcx.def_span(def_id)));
     }
 
     // Collect the region predicates that were declared inline as

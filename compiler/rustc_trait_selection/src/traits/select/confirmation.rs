@@ -141,6 +141,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let placeholder_trait_predicate =
                 self.infcx().replace_bound_vars_with_placeholders(trait_predicate);
             let placeholder_self_ty = placeholder_trait_predicate.self_ty();
+            let placeholder_trait_predicate = ty::Binder::dummy(placeholder_trait_predicate);
             let (def_id, substs) = match *placeholder_self_ty.kind() {
                 ty::Projection(proj) => (proj.item_def_id, proj.substs),
                 ty::Opaque(def_id, substs) => (def_id, substs),
@@ -164,7 +165,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligations.extend(self.infcx.commit_if_ok(|_| {
                 self.infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .sup(placeholder_trait_predicate.trait_ref.to_poly_trait_ref(), candidate.value)
+                    .sup(placeholder_trait_predicate.to_poly_trait_ref(), candidate.value)
                     .map(|InferOk { obligations, .. }| obligations)
                     .map_err(|_| Unimplemented)
             })?);
