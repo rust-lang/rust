@@ -2172,8 +2172,9 @@ pub trait Iterator {
     /// If the iterator is empty, returns [`None`]; otherwise, returns the
     /// result of the reduction.
     ///
+    /// The reducing function is a closure with two arguments: an 'accumulator', and an element.
     /// For iterators with at least one element, this is the same as [`fold()`]
-    /// with the first element of the iterator as the initial value, folding
+    /// with the first element of the iterator as the initial accumulator value, folding
     /// every subsequent element into it.
     ///
     /// [`fold()`]: Iterator::fold
@@ -2187,8 +2188,8 @@ pub trait Iterator {
     ///     where I: Iterator,
     ///           I::Item: Ord,
     /// {
-    ///     iter.reduce(|a, b| {
-    ///         if a >= b { a } else { b }
+    ///     iter.reduce(|accum, item| {
+    ///         if accum >= item { accum } else { item }
     ///     })
     /// }
     /// let a = [10, 20, 5, -23, 0];
