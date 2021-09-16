@@ -71,12 +71,13 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let path_expr: ast::PathExpr = ctx.find_node_at_offset()?;
     let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
     let path = path_expr.path()?;
-    let fn_name = fn_name(&path)?;
+    let name_ref = path.segment()?.name_ref()?;
     if ctx.sema.resolve_path(&path).is_some() {
         // The function call already resolves, no need to add a function
         return None;
     }
 
+    let fn_name = &*name_ref.text();
     let target_module;
     let mut adt_name = None;
 
@@ -93,7 +94,7 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                 if current_module.krate() != module.krate() {
                     return None;
                 }
-                let (impl_, file) = get_adt_source(ctx, &adt, fn_name.text().as_str())?;
+                let (impl_, file) = get_adt_source(ctx, &adt, fn_name)?;
                 let (target, insert_offset) = get_method_target(ctx, &module, &impl_)?;
                 adt_name = if impl_.is_none() { Some(adt.name(ctx.sema.db)) } else { None };
                 (target, file, insert_offset)
@@ -107,7 +108,7 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             get_fn_target(ctx, &target_module, call.clone())?
         }
     };
-    let function_builder = FunctionBuilder::from_call(ctx, &call, &path, target_module, target)?;
+    let function_builder = FunctionBuilder::from_call(ctx, &call, fn_name, target_module, target)?;
     let text_range = call.syntax().text_range();
     let label = format!("Generate {} function", function_builder.fn_name);
     add_func_to_accumulator(
@@ -241,13 +242,13 @@ impl FunctionBuilder {
     fn from_call(
         ctx: &AssistContext,
         call: &ast::CallExpr,
-        path: &ast::Path,
+        fn_name: &str,
         target_module: Option<hir::Module>,
         target: GeneratedFunctionTarget,
     ) -> Option<Self> {
         let needs_pub = target_module.is_some();
         let target_module = target_module.or_else(|| current_module(target.syntax(), ctx))?;
-        let fn_name = fn_name(path)?;
+        let fn_name = make::name(fn_name);
         let (type_params, params) = fn_args(ctx, target_module, FuncExpr::Func(call.clone()))?;
 
         let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
@@ -426,11 +427,6 @@ impl GeneratedFunctionTarget {
             GeneratedFunctionTarget::InEmptyItemList(it) => it,
         }
     }
-}
-
-fn fn_name(call: &ast::Path) -> Option<ast::Name> {
-    let name = call.segment()?.syntax().to_string();
-    Some(make::name(&name))
 }
 
 /// Computes the type variables and arguments required for the generated function
@@ -1644,6 +1640,27 @@ fn bar() ${0:-> _} {
 }
 }
 ",
+        )
+    }
+
+    #[test]
+    fn no_panic_on_invalid_global_path() {
+        check_assist(
+            generate_function,
+            r#"
+fn main() {
+    ::foo$0();
+}
+"#,
+            r#"
+fn main() {
+    ::foo();
+}
+
+fn foo() ${0:-> _} {
+    todo!()
+}
+"#,
         )
     }
 }

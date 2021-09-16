@@ -21,9 +21,9 @@ impl<'a> TokenText<'a> {
     }
 
     pub fn as_str(&self) -> &str {
-        match self.0 {
-            Repr::Borrowed(it) => it,
-            Repr::Owned(ref green) => green.text(),
+        match &self.0 {
+            &Repr::Borrowed(it) => it,
+            Repr::Owned(green) => green.text(),
         }
     }
 }
