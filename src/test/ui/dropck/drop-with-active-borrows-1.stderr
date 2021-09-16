@@ -2,7 +2,7 @@ error[E0505]: cannot move out of `a` because it is borrowed
   --> $DIR/drop-with-active-borrows-1.rs:4:10
    |
 LL |     let b: Vec<&str> = a.lines().collect();
-   |                        - borrow of `a` occurs here
+   |                        --------- borrow of `a` occurs here
 LL |     drop(a);
    |          ^ move out of `a` occurs here
 LL |     for s in &b {

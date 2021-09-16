@@ -12,7 +12,7 @@ error[E0596]: cannot borrow `s` as mutable, as it is not declared as mutable
 LL |     let s = std::io::stdin();
    |         - help: consider changing this to be mutable: `mut s`
 LL |     to_fn_once(move|| { s.read_to_end(&mut Vec::new()); });
-   |                         ^ cannot borrow as mutable
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot borrow as mutable
 
 error: aborting due to 2 previous errors
 

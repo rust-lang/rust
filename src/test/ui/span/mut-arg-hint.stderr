@@ -4,7 +4,7 @@ error[E0596]: cannot borrow `*a` as mutable, as it is behind a `&` reference
 LL |     fn foo(mut a: &String) {
    |                   ------- help: consider changing this to be a mutable reference: `&mut String`
 LL |         a.push_str("bar");
-   |         ^ `a` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |         ^^^^^^^^^^^^^^^^^ `a` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0596]: cannot borrow `*a` as mutable, as it is behind a `&` reference
   --> $DIR/mut-arg-hint.rs:8:5
@@ -12,7 +12,7 @@ error[E0596]: cannot borrow `*a` as mutable, as it is behind a `&` reference
 LL | pub fn foo<'a>(mut a: &'a String) {
    |                       ---------- help: consider changing this to be a mutable reference: `&'a mut String`
 LL |     a.push_str("foo");
-   |     ^ `a` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |     ^^^^^^^^^^^^^^^^^ `a` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0596]: cannot borrow `*a` as mutable, as it is behind a `&` reference
   --> $DIR/mut-arg-hint.rs:15:9
@@ -20,7 +20,7 @@ error[E0596]: cannot borrow `*a` as mutable, as it is behind a `&` reference
 LL |     pub fn foo(mut a: &String) {
    |                       ------- help: consider changing this to be a mutable reference: `&mut String`
 LL |         a.push_str("foo");
-   |         ^ `a` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |         ^^^^^^^^^^^^^^^^^ `a` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error: aborting due to 3 previous errors
 

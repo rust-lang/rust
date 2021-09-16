@@ -11,7 +11,7 @@ error[E0658]: mutable references are not allowed in constants
   --> $DIR/const_let_assign3.rs:14:5
    |
 LL |     s.foo(3);
-   |     ^
+   |     ^^^^^^^^
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable

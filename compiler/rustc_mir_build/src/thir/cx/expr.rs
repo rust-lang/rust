@@ -39,10 +39,17 @@ impl<'tcx> Cx<'tcx> {
 
         let mut expr = self.make_mirror_unadjusted(hir_expr);
 
+        let adjustment_span = match self.adjustment_span {
+            Some((hir_id, span)) if hir_id == hir_expr.hir_id => Some(span),
+            _ => None,
+        };
+
         // Now apply adjustments, if any.
         for adjustment in self.typeck_results.expr_adjustments(hir_expr) {
             debug!("make_mirror: expr={:?} applying adjustment={:?}", expr, adjustment);
-            expr = self.apply_adjustment(hir_expr, expr, adjustment);
+            let span = expr.span;
+            expr =
+                self.apply_adjustment(hir_expr, expr, adjustment, adjustment_span.unwrap_or(span));
         }
 
         // Next, wrap this up in the expr's scope.
@@ -82,8 +89,9 @@ impl<'tcx> Cx<'tcx> {
         hir_expr: &'tcx hir::Expr<'tcx>,
         mut expr: Expr<'tcx>,
         adjustment: &Adjustment<'tcx>,
+        mut span: Span,
     ) -> Expr<'tcx> {
-        let Expr { temp_lifetime, mut span, .. } = expr;
+        let Expr { temp_lifetime, .. } = expr;
 
         // Adjust the span from the block, to the last expression of the
         // block. This is a better span when returning a mutable reference
@@ -150,6 +158,7 @@ impl<'tcx> Cx<'tcx> {
 
     fn make_mirror_unadjusted(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Expr<'tcx> {
         let expr_ty = self.typeck_results().expr_ty(expr);
+        let expr_span = expr.span;
         let temp_lifetime = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
         let kind = match expr.kind {
@@ -157,7 +166,13 @@ impl<'tcx> Cx<'tcx> {
             hir::ExprKind::MethodCall(_, method_span, ref args, fn_span) => {
                 // Rewrite a.b(c) into UFCS form like Trait::b(a, c)
                 let expr = self.method_callee(expr, method_span, None);
+                // When we apply adjustments to the receiver, use the span of
+                // the overall method call for better diagnostics. args[0]
+                // is guaranteed to exist, since a method call always has a receiver.
+                let old_adjustment_span = self.adjustment_span.replace((args[0].hir_id, expr_span));
+                tracing::info!("Using method span: {:?}", expr.span);
                 let args = self.mirror_exprs(args);
+                self.adjustment_span = old_adjustment_span;
                 ExprKind::Call {
                     ty: expr.ty,
                     fun: self.thir.exprs.push(expr),

@@ -30,7 +30,7 @@ LL |     x
    |     - value moved here
 LL |     +
 LL |     x.clone();
-   |     ^ value borrowed here after move
+   |     ^^^^^^^^^ value borrowed here after move
    |
 help: consider further restricting this bound
    |

@@ -10,7 +10,7 @@ LL |     for l in bad_letters {
    |              help: consider borrowing to avoid moving into the for loop: `&bad_letters`
 ...
 LL |     bad_letters.push('s');
-   |     ^^^^^^^^^^^ value borrowed here after move
+   |     ^^^^^^^^^^^^^^^^^^^^^ value borrowed here after move
    |
 note: this function takes ownership of the receiver `self`, which moves `bad_letters`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL

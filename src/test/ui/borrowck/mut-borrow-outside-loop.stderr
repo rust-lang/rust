@@ -6,7 +6,7 @@ LL |     let first = &mut void;
 LL |     let second = &mut void;
    |                  ^^^^^^^^^ second mutable borrow occurs here
 LL |     first.use_mut();
-   |     ----- first borrow later used here
+   |     --------------- first borrow later used here
 
 error[E0499]: cannot borrow `inner_void` as mutable more than once at a time
   --> $DIR/mut-borrow-outside-loop.rs:15:28
@@ -17,7 +17,7 @@ LL |         let inner_second = &mut inner_void;
    |                            ^^^^^^^^^^^^^^^ second mutable borrow occurs here
 LL |         inner_second.use_mut();
 LL |         inner_first.use_mut();
-   |         ----------- first borrow later used here
+   |         --------------------- first borrow later used here
 
 error: aborting due to 2 previous errors
 

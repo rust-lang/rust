@@ -5,7 +5,7 @@ LL | fn ok(map: &mut Map) -> &String {
    |            - let's call the lifetime of this reference `'1`
 LL |     loop {
 LL |         match map.get() {
-   |               --- immutable borrow occurs here
+   |               --------- immutable borrow occurs here
 LL |             Some(v) => {
 LL |                 return v;
    |                        - returning this value requires that `*map` is borrowed for `'1`
@@ -20,7 +20,7 @@ LL | fn err(map: &mut Map) -> &String {
    |             - let's call the lifetime of this reference `'1`
 LL |     loop {
 LL |         match map.get() {
-   |               --- immutable borrow occurs here
+   |               --------- immutable borrow occurs here
 LL |             Some(v) => {
 LL |                 map.set(String::new()); // Both AST and MIR error here
    |                 ^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
@@ -35,7 +35,7 @@ LL | fn err(map: &mut Map) -> &String {
    |             - let's call the lifetime of this reference `'1`
 LL |     loop {
 LL |         match map.get() {
-   |               --- immutable borrow occurs here
+   |               --------- immutable borrow occurs here
 ...
 LL |                 return v;
    |                        - returning this value requires that `*map` is borrowed for `'1`

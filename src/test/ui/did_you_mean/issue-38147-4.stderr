@@ -4,7 +4,7 @@ error[E0596]: cannot borrow `*f.s` as mutable, as it is behind a `&` reference
 LL | fn f(x: usize, f: &Foo) {
    |                   ---- help: consider changing this to be a mutable reference: `&mut Foo<'_>`
 LL |     f.s.push('x');
-   |     ^^^ `f` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |     ^^^^^^^^^^^^^ `f` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error: aborting due to previous error
 

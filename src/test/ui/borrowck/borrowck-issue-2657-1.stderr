@@ -6,7 +6,7 @@ LL |       Some(ref _y) => {
 LL |         let _a = x;
    |                  ^ move out of `x` occurs here
 LL |         _y.use_ref();
-   |         -- borrow later used here
+   |         ------------ borrow later used here
 
 error: aborting due to previous error
 

@@ -7,7 +7,7 @@ LL |     v[0].push_str({
    |     first mutable borrow occurs here
 LL | 
 LL |         v.push(format!("foo"));
-   |         ^ second mutable borrow occurs here
+   |         ^^^^^^^^^^^^^^^^^^^^^^ second mutable borrow occurs here
 
 error: aborting due to previous error
 

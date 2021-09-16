@@ -2,8 +2,9 @@ error[E0499]: cannot borrow `v` as mutable more than once at a time
   --> $DIR/one_line.rs:3:12
    |
 LL |     v.push(v.pop().unwrap());
-   |     - ---- ^ second mutable borrow occurs here
-   |     | |
+   |     -------^^^^^^^----------
+   |     | |    |
+   |     | |    second mutable borrow occurs here
    |     | first borrow later used by call
    |     first mutable borrow occurs here
 

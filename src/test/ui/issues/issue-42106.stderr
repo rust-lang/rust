@@ -4,9 +4,9 @@ error[E0502]: cannot borrow `*collection` as mutable because it is also borrowed
 LL |     let _a = &collection;
    |              ----------- immutable borrow occurs here
 LL |     collection.swap(1, 2);
-   |     ^^^^^^^^^^ mutable borrow occurs here
+   |     ^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
 LL |     _a.use_ref();
-   |     -- immutable borrow later used here
+   |     ------------ immutable borrow later used here
 
 error: aborting due to previous error
 

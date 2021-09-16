@@ -8,7 +8,7 @@ LL |     let z = &x;
    |             ^^ immutable borrow occurs here
 ...
 LL |     y.use_mut();
-   |     - mutable borrow later used here
+   |     ----------- mutable borrow later used here
 
 error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-report-with-custom-diagnostic.rs:21:21
@@ -20,7 +20,7 @@ LL |             let z = &mut x;
    |                     ^^^^^^ mutable borrow occurs here
 ...
 LL |             y.use_ref();
-   |             - immutable borrow later used here
+   |             ----------- immutable borrow later used here
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
   --> $DIR/borrowck-report-with-custom-diagnostic.rs:36:17
@@ -32,7 +32,7 @@ LL |         let z = &mut x;
    |                 ^^^^^^ second mutable borrow occurs here
 ...
 LL |         y.use_mut();
-   |         - first borrow later used here
+   |         ----------- first borrow later used here
 
 error: aborting due to 3 previous errors
 

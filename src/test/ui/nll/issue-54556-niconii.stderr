@@ -2,7 +2,7 @@ error[E0597]: `counter` does not live long enough
   --> $DIR/issue-54556-niconii.rs:22:20
    |
 LL |     if let Ok(_) = counter.lock() { }
-   |                    ^^^^^^^-------
+   |                    ^^^^^^^^^^^^^^
    |                    |
    |                    borrowed value does not live long enough
    |                    a temporary with access to the borrow is created here ...

@@ -1,11 +1,3 @@
-error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
-  --> $DIR/ex3-both-anon-regions-using-fn-items.rs:2:3
-   |
-LL | fn foo(x:fn(&u8, &u8), y: Vec<&u8>, z: &u8) {
-   |                        - help: consider changing this to be mutable: `mut y`
-LL |   y.push(z);
-   |   ^ cannot borrow as mutable
-
 error: lifetime may not live long enough
   --> $DIR/ex3-both-anon-regions-using-fn-items.rs:2:3
    |
@@ -15,6 +7,14 @@ LL | fn foo(x:fn(&u8, &u8), y: Vec<&u8>, z: &u8) {
    |                               let's call the lifetime of this reference `'2`
 LL |   y.push(z);
    |   ^^^^^^^^^ argument requires that `'1` must outlive `'2`
+
+error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
+  --> $DIR/ex3-both-anon-regions-using-fn-items.rs:2:3
+   |
+LL | fn foo(x:fn(&u8, &u8), y: Vec<&u8>, z: &u8) {
+   |                        - help: consider changing this to be mutable: `mut y`
+LL |   y.push(z);
+   |   ^^^^^^^^^ cannot borrow as mutable
 
 error: aborting due to 2 previous errors
 

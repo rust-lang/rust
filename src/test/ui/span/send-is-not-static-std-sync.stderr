@@ -7,7 +7,7 @@ LL |     drop(y);
    |          ^ move out of `y` occurs here
 ...
 LL |         *lock.lock().unwrap() = &z;
-   |          ---- borrow later used here
+   |          ----------- borrow later used here
 
 error[E0597]: `z` does not live long enough
   --> $DIR/send-is-not-static-std-sync.rs:16:33
@@ -18,7 +18,7 @@ LL |     }
    |     - `z` dropped here while still borrowed
 LL |
 LL |     lock.use_ref(); // (Mutex is #[may_dangle] so its dtor does not use `z` => needs explicit use)
-   |     ---- borrow later used here
+   |     -------------- borrow later used here
 
 error[E0505]: cannot move out of `y` because it is borrowed
   --> $DIR/send-is-not-static-std-sync.rs:27:10
@@ -29,7 +29,7 @@ LL |     drop(y);
    |          ^ move out of `y` occurs here
 ...
 LL |         *lock.write().unwrap() = &z;
-   |          ---- borrow later used here
+   |          ------------ borrow later used here
 
 error[E0597]: `z` does not live long enough
   --> $DIR/send-is-not-static-std-sync.rs:30:34
@@ -40,7 +40,7 @@ LL |     }
    |     - `z` dropped here while still borrowed
 LL |
 LL |     lock.use_ref(); // (RwLock is #[may_dangle] so its dtor does not use `z` => needs explicit use)
-   |     ---- borrow later used here
+   |     -------------- borrow later used here
 
 error[E0505]: cannot move out of `y` because it is borrowed
   --> $DIR/send-is-not-static-std-sync.rs:43:10
@@ -51,7 +51,7 @@ LL |     drop(y);
    |          ^ move out of `y` occurs here
 ...
 LL |         tx.send(&z).unwrap();
-   |         -- borrow later used here
+   |         ----------- borrow later used here
 
 error[E0597]: `z` does not live long enough
   --> $DIR/send-is-not-static-std-sync.rs:46:17

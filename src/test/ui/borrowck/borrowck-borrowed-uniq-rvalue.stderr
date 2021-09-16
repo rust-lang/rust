@@ -7,7 +7,7 @@ LL |     buggy_map.insert(42, &*Box::new(1));
    |                            creates a temporary which is freed while still in use
 ...
 LL |     buggy_map.insert(43, &*tmp);
-   |     --------- borrow later used here
+   |     --------------------------- borrow later used here
    |
    = note: consider using a `let` binding to create a longer lived value
 

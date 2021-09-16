@@ -7,7 +7,7 @@ LL |         p = &a;
 LL |     }
    |     - `a` dropped here while still borrowed
 LL |     p.use_ref();
-   |     - borrow later used here
+   |     ----------- borrow later used here
 
 error: aborting due to previous error
 

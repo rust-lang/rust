@@ -2,7 +2,7 @@ error[E0597]: `*cell` does not live long enough
   --> $DIR/dropck.rs:10:40
    |
 LL |     let ref_ = Box::leak(Box::new(Some(cell.borrow_mut())));
-   |                                        ^^^^ borrowed value does not live long enough
+   |                                        ^^^^^^^^^^^^^^^^^ borrowed value does not live long enough
 ...
 LL | }
    | -

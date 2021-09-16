@@ -5,7 +5,7 @@
       debug s => _1;                       // in scope 0 at $DIR/deduplicate_blocks.rs:2:36: 2:37
       let mut _0: bool;                    // return place in scope 0 at $DIR/deduplicate_blocks.rs:2:48: 2:52
       let mut _2: &[u8];                   // in scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:23
-      let mut _3: &str;                    // in scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:12
+      let mut _3: &str;                    // in scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:23
       let mut _4: usize;                   // in scope 0 at $DIR/deduplicate_blocks.rs:5:9: 5:31
       let mut _5: bool;                    // in scope 0 at $DIR/deduplicate_blocks.rs:5:9: 5:31
       let mut _6: usize;                   // in scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
@@ -19,8 +19,8 @@
   
       bb0: {
           StorageLive(_2);                 // scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:23
-          StorageLive(_3);                 // scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:12
-          _3 = _1;                         // scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:12
+          StorageLive(_3);                 // scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:23
+          _3 = _1;                         // scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:23
           StorageLive(_8);                 // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
           _8 = _3;                         // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
 -         _2 = transmute::<&str, &[u8]>(move _8) -> bb14; // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23

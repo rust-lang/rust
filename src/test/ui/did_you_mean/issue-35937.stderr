@@ -4,7 +4,7 @@ error[E0596]: cannot borrow `f.v` as mutable, as `f` is not declared as mutable
 LL |     let f = Foo { v: Vec::new() };
    |         - help: consider changing this to be mutable: `mut f`
 LL |     f.v.push("cat".to_string());
-   |     ^^^ cannot borrow as mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to `s.x`, as `s` is not declared as mutable
   --> $DIR/issue-35937.rs:16:5

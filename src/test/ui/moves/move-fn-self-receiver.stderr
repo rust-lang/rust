@@ -75,7 +75,7 @@ error[E0505]: cannot move out of `mut_foo` because it is borrowed
   --> $DIR/move-fn-self-receiver.rs:50:5
    |
 LL |     let ret = mut_foo.use_mut_self();
-   |               ------- borrow of `mut_foo` occurs here
+   |               ---------------------- borrow of `mut_foo` occurs here
 LL |     mut_foo;
    |     ^^^^^^^ move out of `mut_foo` occurs here
 LL |     ret;

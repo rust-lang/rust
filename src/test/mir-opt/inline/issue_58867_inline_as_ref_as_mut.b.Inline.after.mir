@@ -5,7 +5,7 @@ fn b(_1: &mut Box<T>) -> &mut T {
     let mut _0: &mut T;                  // return place in scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:7:32: 7:38
     let mut _2: &mut T;                  // in scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
     let mut _3: &mut T;                  // in scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
-    let mut _4: &mut std::boxed::Box<T>; // in scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:6
+    let mut _4: &mut std::boxed::Box<T>; // in scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
     scope 1 (inlined <Box<T> as AsMut<T>>::as_mut) { // at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
         debug self => _4;                // in scope 1 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
         let mut _5: &mut T;              // in scope 1 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
@@ -15,8 +15,8 @@ fn b(_1: &mut Box<T>) -> &mut T {
     bb0: {
         StorageLive(_2);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
         StorageLive(_3);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
-        StorageLive(_4);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:6
-        _4 = &mut (*_1);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:6
+        StorageLive(_4);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
+        _4 = &mut (*_1);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
         StorageLive(_5);                 // scope 1 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
         StorageLive(_6);                 // scope 1 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
         _6 = &mut (*(*_4));              // scope 1 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15

@@ -8,7 +8,7 @@
       let mut _3: bool;                    // in scope 0 at $DIR/lower_slice_len.rs:5:8: 5:27
       let mut _4: usize;                   // in scope 0 at $DIR/lower_slice_len.rs:5:8: 5:13
       let mut _5: usize;                   // in scope 0 at $DIR/lower_slice_len.rs:5:16: 5:27
-      let mut _6: &[u8];                   // in scope 0 at $DIR/lower_slice_len.rs:5:16: 5:21
+      let mut _6: &[u8];                   // in scope 0 at $DIR/lower_slice_len.rs:5:16: 5:27
       let _7: usize;                       // in scope 0 at $DIR/lower_slice_len.rs:6:15: 6:20
       let mut _8: usize;                   // in scope 0 at $DIR/lower_slice_len.rs:6:9: 6:21
       let mut _9: bool;                    // in scope 0 at $DIR/lower_slice_len.rs:6:9: 6:21
@@ -18,8 +18,8 @@
           StorageLive(_4);                 // scope 0 at $DIR/lower_slice_len.rs:5:8: 5:13
           _4 = _1;                         // scope 0 at $DIR/lower_slice_len.rs:5:8: 5:13
           StorageLive(_5);                 // scope 0 at $DIR/lower_slice_len.rs:5:16: 5:27
-          StorageLive(_6);                 // scope 0 at $DIR/lower_slice_len.rs:5:16: 5:21
-          _6 = &(*_2);                     // scope 0 at $DIR/lower_slice_len.rs:5:16: 5:21
+          StorageLive(_6);                 // scope 0 at $DIR/lower_slice_len.rs:5:16: 5:27
+          _6 = &(*_2);                     // scope 0 at $DIR/lower_slice_len.rs:5:16: 5:27
 -         _5 = core::slice::<impl [u8]>::len(move _6) -> bb1; // scope 0 at $DIR/lower_slice_len.rs:5:16: 5:27
 -                                          // mir::Constant
 -                                          // + span: $DIR/lower_slice_len.rs:5:22: 5:25

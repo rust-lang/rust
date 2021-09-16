@@ -27,8 +27,9 @@ LL |     let shared = &v;
    |                  -- immutable borrow occurs here
 LL | 
 LL |     v.push(shared.len());
-   |     ^      ------ immutable borrow later used here
-   |     |
+   |     ^^^^^^^------------^
+   |     |      |
+   |     |      immutable borrow later used here
    |     mutable borrow occurs here
    |
    = note: `#[warn(mutable_borrow_reservation_conflict)]` on by default

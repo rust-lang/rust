@@ -5,10 +5,10 @@ LL |     let value = &mut my_struct.field;
    |                 -------------------- first mutable borrow occurs here
 LL |     loop {
 LL |         my_struct.field.push_str("Hello, world!");
-   |         ^^^^^^^^^^^^^^^ second mutable borrow occurs here
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ second mutable borrow occurs here
 LL |
 LL |         value.len();
-   |         ----- first borrow later used here
+   |         ----------- first borrow later used here
 
 error: aborting due to previous error
 

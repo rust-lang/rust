@@ -1,7 +1,7 @@
 // MIR for `BAR::promoted[0]` after SimplifyCfg-elaborate-drops
 
 promoted[0] in BAR: &[&i32; 1] = {
-    let mut _0: &[&i32; 1];              // return place in scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
+    let mut _0: &[&i32; 1];              // return place in scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:44
     let mut _1: [&i32; 1];               // in scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
     let mut _2: &i32;                    // in scope 0 at $DIR/const-promotion-extern-static.rs:9:32: 9:34
     let mut _3: &i32;                    // in scope 0 at $DIR/const-promotion-extern-static.rs:9:33: 9:34
@@ -16,8 +16,8 @@ promoted[0] in BAR: &[&i32; 1] = {
                                          // + literal: Const { ty: &i32, val: Value(Scalar(alloc1)) }
         _2 = &(*_3);                     // scope 0 at $DIR/const-promotion-extern-static.rs:9:32: 9:34
         _1 = [move _2];                  // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
-        _0 = &_1;                        // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
-        return;                          // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
+        _0 = &_1;                        // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:44
+        return;                          // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:44
     }
 }
 
