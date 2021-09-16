@@ -189,7 +189,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
         if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = &sub_origin {
             let code = match &cause.code {
-                ObligationCauseCode::MatchImpl(parent, ..) => &**parent,
+                ObligationCauseCode::MatchImpl(parent, ..) => &parent.code,
                 _ => &cause.code,
             };
             if let ObligationCauseCode::ItemObligation(item_def_id) = *code {
