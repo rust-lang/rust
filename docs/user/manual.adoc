@@ -585,10 +585,10 @@ interface Crate {
     target?: string;
     /// Environment variables, used for
     /// the `env!` macro
-    env: : { [key: string]: string; },
+    env: { [key: string]: string; },
 
     /// Whether the crate is a proc-macro crate.
-    is_proc_macro: bool;
+    is_proc_macro: boolean;
     /// For proc-macro crates, path to compiled
     /// proc-macro (.so file).
     proc_macro_dylib_path?: string;
