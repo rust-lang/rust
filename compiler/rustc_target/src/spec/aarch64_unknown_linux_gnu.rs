@@ -9,6 +9,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             mcount: "\u{1}_mcount".to_string(),
             max_atomic_width: Some(128),
+            features: "+outline-atomics".to_string(),
             supported_sanitizers: SanitizerSet::ADDRESS
                 | SanitizerSet::LEAK
                 | SanitizerSet::MEMORY

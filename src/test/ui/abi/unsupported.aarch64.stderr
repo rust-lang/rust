@@ -1,3 +1,4 @@
+'+outline-atomics' is not a recognized feature for this target (ignoring feature)
 error[E0570]: `"ptx-kernel"` is not a supported ABI for the current target
   --> $DIR/unsupported.rs:26:1
    |
