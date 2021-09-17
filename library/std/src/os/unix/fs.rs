@@ -1,4 +1,6 @@
-//! Unix-specific extensions to primitives in the `std::fs` module.
+//! Unix-specific extensions to primitives in the [`std::fs`] module.
+//!
+//! [`std::fs`]: crate::fs
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

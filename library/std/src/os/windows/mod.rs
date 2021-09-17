@@ -5,6 +5,22 @@
 //! the core `std` library. These extensions allow developers to use
 //! `std` types and idioms with Windows in a way that the normal
 //! platform-agnostic idioms would not normally support.
+//!
+//! # Examples
+//!
+//! ```no_run
+//! use std::fs::File;
+//! use std::os::windows::prelude::*;
+//!
+//! fn main() -> std::io::Result<()> {
+//!     let f = File::create("foo.txt")?;
+//!     let handle = f.as_raw_handle();
+//!
+//!     // use handle with native windows bindings
+//!
+//!     Ok(())
+//! }
+//! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(cfg(windows))]

@@ -1,4 +1,6 @@
-//! Extensions to `std::thread` for Windows.
+//! Windows-specific extensions to primitives in the [`std::thread`] module.
+//!
+//! [`std::thread`]: crate::thread
 
 #![stable(feature = "thread_extensions", since = "1.9.0")]
 
