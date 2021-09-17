@@ -1,4 +1,4 @@
-SOURCE_FILE@0..98
+SOURCE_FILE@0..122
   FN@0..9
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
@@ -28,81 +28,101 @@ SOURCE_FILE@0..98
       L_CURLY@21..22 "{"
       R_CURLY@22..23 "}"
   WHITESPACE@23..24 "\n"
-  FN@24..44
-    VISIBILITY@24..34
+  MACRO_DEF@24..47
+    VISIBILITY@24..27
       PUB_KW@24..27 "pub"
-      L_PAREN@27..28 "("
-      PATH@28..33
-        PATH_SEGMENT@28..33
-          NAME_REF@28..33
-            CRATE_KW@28..33 "crate"
-      R_PAREN@33..34 ")"
-    WHITESPACE@34..35 " "
-    FN_KW@35..37 "fn"
-    WHITESPACE@37..38 " "
-    NAME@38..39
-      IDENT@38..39 "c"
-    PARAM_LIST@39..41
-      L_PAREN@39..40 "("
-      R_PAREN@40..41 ")"
-    WHITESPACE@41..42 " "
-    BLOCK_EXPR@42..44
-      L_CURLY@42..43 "{"
-      R_CURLY@43..44 "}"
-  WHITESPACE@44..45 "\n"
-  FN@45..65
-    VISIBILITY@45..55
-      PUB_KW@45..48 "pub"
-      L_PAREN@48..49 "("
-      PATH@49..54
-        PATH_SEGMENT@49..54
-          NAME_REF@49..54
-            SUPER_KW@49..54 "super"
-      R_PAREN@54..55 ")"
-    WHITESPACE@55..56 " "
-    FN_KW@56..58 "fn"
+    WHITESPACE@27..28 " "
+    MACRO_KW@28..33 "macro"
+    WHITESPACE@33..34 " "
+    NAME@34..35
+      IDENT@34..35 "m"
+    TOKEN_TREE@35..47
+      TOKEN_TREE@35..44
+        L_PAREN@35..36 "("
+        DOLLAR@36..37 "$"
+        COLON@37..38 ":"
+        IDENT@38..43 "ident"
+        R_PAREN@43..44 ")"
+      WHITESPACE@44..45 " "
+      TOKEN_TREE@45..47
+        L_CURLY@45..46 "{"
+        R_CURLY@46..47 "}"
+  WHITESPACE@47..48 "\n"
+  FN@48..68
+    VISIBILITY@48..58
+      PUB_KW@48..51 "pub"
+      L_PAREN@51..52 "("
+      PATH@52..57
+        PATH_SEGMENT@52..57
+          NAME_REF@52..57
+            CRATE_KW@52..57 "crate"
+      R_PAREN@57..58 ")"
     WHITESPACE@58..59 " "
-    NAME@59..60
-      IDENT@59..60 "d"
-    PARAM_LIST@60..62
-      L_PAREN@60..61 "("
-      R_PAREN@61..62 ")"
-    WHITESPACE@62..63 " "
-    BLOCK_EXPR@63..65
-      L_CURLY@63..64 "{"
-      R_CURLY@64..65 "}"
-  WHITESPACE@65..66 "\n"
-  FN@66..97
-    VISIBILITY@66..87
-      PUB_KW@66..69 "pub"
-      L_PAREN@69..70 "("
-      IN_KW@70..72 "in"
-      WHITESPACE@72..73 " "
-      PATH@73..86
-        PATH@73..81
-          PATH@73..76
-            PATH_SEGMENT@73..76
-              NAME_REF@73..76
-                IDENT@73..76 "foo"
-          COLON2@76..78 "::"
-          PATH_SEGMENT@78..81
-            NAME_REF@78..81
-              IDENT@78..81 "bar"
-        COLON2@81..83 "::"
-        PATH_SEGMENT@83..86
-          NAME_REF@83..86
-            IDENT@83..86 "baz"
-      R_PAREN@86..87 ")"
-    WHITESPACE@87..88 " "
-    FN_KW@88..90 "fn"
-    WHITESPACE@90..91 " "
-    NAME@91..92
-      IDENT@91..92 "e"
-    PARAM_LIST@92..94
-      L_PAREN@92..93 "("
-      R_PAREN@93..94 ")"
-    WHITESPACE@94..95 " "
-    BLOCK_EXPR@95..97
-      L_CURLY@95..96 "{"
-      R_CURLY@96..97 "}"
-  WHITESPACE@97..98 "\n"
+    FN_KW@59..61 "fn"
+    WHITESPACE@61..62 " "
+    NAME@62..63
+      IDENT@62..63 "c"
+    PARAM_LIST@63..65
+      L_PAREN@63..64 "("
+      R_PAREN@64..65 ")"
+    WHITESPACE@65..66 " "
+    BLOCK_EXPR@66..68
+      L_CURLY@66..67 "{"
+      R_CURLY@67..68 "}"
+  WHITESPACE@68..69 "\n"
+  FN@69..89
+    VISIBILITY@69..79
+      PUB_KW@69..72 "pub"
+      L_PAREN@72..73 "("
+      PATH@73..78
+        PATH_SEGMENT@73..78
+          NAME_REF@73..78
+            SUPER_KW@73..78 "super"
+      R_PAREN@78..79 ")"
+    WHITESPACE@79..80 " "
+    FN_KW@80..82 "fn"
+    WHITESPACE@82..83 " "
+    NAME@83..84
+      IDENT@83..84 "d"
+    PARAM_LIST@84..86
+      L_PAREN@84..85 "("
+      R_PAREN@85..86 ")"
+    WHITESPACE@86..87 " "
+    BLOCK_EXPR@87..89
+      L_CURLY@87..88 "{"
+      R_CURLY@88..89 "}"
+  WHITESPACE@89..90 "\n"
+  FN@90..121
+    VISIBILITY@90..111
+      PUB_KW@90..93 "pub"
+      L_PAREN@93..94 "("
+      IN_KW@94..96 "in"
+      WHITESPACE@96..97 " "
+      PATH@97..110
+        PATH@97..105
+          PATH@97..100
+            PATH_SEGMENT@97..100
+              NAME_REF@97..100
+                IDENT@97..100 "foo"
+          COLON2@100..102 "::"
+          PATH_SEGMENT@102..105
+            NAME_REF@102..105
+              IDENT@102..105 "bar"
+        COLON2@105..107 "::"
+        PATH_SEGMENT@107..110
+          NAME_REF@107..110
+            IDENT@107..110 "baz"
+      R_PAREN@110..111 ")"
+    WHITESPACE@111..112 " "
+    FN_KW@112..114 "fn"
+    WHITESPACE@114..115 " "
+    NAME@115..116
+      IDENT@115..116 "e"
+    PARAM_LIST@116..118
+      L_PAREN@116..117 "("
+      R_PAREN@117..118 ")"
+    WHITESPACE@118..119 " "
+    BLOCK_EXPR@119..121
+      L_CURLY@119..120 "{"
+      R_CURLY@120..121 "}"
+  WHITESPACE@121..122 "\n"

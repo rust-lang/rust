@@ -1,0 +1,27 @@
+SOURCE_FILE@0..29
+  MACRO_DEF@0..28
+    MACRO_KW@0..5 "macro"
+    WHITESPACE@5..6 " "
+    NAME@6..7
+      IDENT@6..7 "m"
+    WHITESPACE@7..8 " "
+    TOKEN_TREE@8..28
+      L_CURLY@8..9 "{"
+      WHITESPACE@9..10 " "
+      TOKEN_TREE@10..20
+        L_PAREN@10..11 "("
+        DOLLAR@11..12 "$"
+        IDENT@12..13 "i"
+        COLON@13..14 ":"
+        IDENT@14..19 "ident"
+        R_PAREN@19..20 ")"
+      WHITESPACE@20..21 " "
+      EQ@21..22 "="
+      R_ANGLE@22..23 ">"
+      WHITESPACE@23..24 " "
+      TOKEN_TREE@24..26
+        L_CURLY@24..25 "{"
+        R_CURLY@25..26 "}"
+      WHITESPACE@26..27 " "
+      R_CURLY@27..28 "}"
+  WHITESPACE@28..29 "\n"

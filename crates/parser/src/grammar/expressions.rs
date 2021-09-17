@@ -71,7 +71,7 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi, prefer_expr: bool) {
 
     // test block_items
     // fn a() { fn b() {} }
-    let m = match items::maybe_item(p, m) {
+    let m = match items::opt_item(p, m) {
         Ok(()) => return,
         Err(m) => m,
     };

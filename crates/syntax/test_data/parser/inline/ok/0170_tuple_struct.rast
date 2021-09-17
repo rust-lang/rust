@@ -1,0 +1,25 @@
+SOURCE_FILE@0..25
+  STRUCT@0..24
+    STRUCT_KW@0..6 "struct"
+    WHITESPACE@6..7 " "
+    NAME@7..8
+      IDENT@7..8 "S"
+    TUPLE_FIELD_LIST@8..23
+      L_PAREN@8..9 "("
+      TUPLE_FIELD@9..15
+        PATH_TYPE@9..15
+          PATH@9..15
+            PATH_SEGMENT@9..15
+              NAME_REF@9..15
+                IDENT@9..15 "String"
+      COMMA@15..16 ","
+      WHITESPACE@16..17 " "
+      TUPLE_FIELD@17..22
+        PATH_TYPE@17..22
+          PATH@17..22
+            PATH_SEGMENT@17..22
+              NAME_REF@17..22
+                IDENT@17..22 "usize"
+      R_PAREN@22..23 ")"
+    SEMICOLON@23..24 ";"
+  WHITESPACE@24..25 "\n"

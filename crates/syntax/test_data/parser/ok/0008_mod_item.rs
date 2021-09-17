@@ -1,8 +1,3 @@
-mod a;
-
-mod b {
-}
-
 mod c {
     fn foo() {
     }

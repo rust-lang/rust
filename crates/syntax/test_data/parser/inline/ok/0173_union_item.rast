@@ -1,0 +1,35 @@
+SOURCE_FILE@0..28
+  STRUCT@0..27
+    STRUCT_KW@0..6 "struct"
+    WHITESPACE@6..7 " "
+    NAME@7..8
+      IDENT@7..8 "U"
+    WHITESPACE@8..9 " "
+    RECORD_FIELD_LIST@9..27
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..11 " "
+      RECORD_FIELD@11..17
+        NAME@11..12
+          IDENT@11..12 "i"
+        COLON@12..13 ":"
+        WHITESPACE@13..14 " "
+        PATH_TYPE@14..17
+          PATH@14..17
+            PATH_SEGMENT@14..17
+              NAME_REF@14..17
+                IDENT@14..17 "i32"
+      COMMA@17..18 ","
+      WHITESPACE@18..19 " "
+      RECORD_FIELD@19..25
+        NAME@19..20
+          IDENT@19..20 "f"
+        COLON@20..21 ":"
+        WHITESPACE@21..22 " "
+        PATH_TYPE@22..25
+          PATH@22..25
+            PATH_SEGMENT@22..25
+              NAME_REF@22..25
+                IDENT@22..25 "f32"
+      WHITESPACE@25..26 " "
+      R_CURLY@26..27 "}"
+  WHITESPACE@27..28 "\n"

@@ -44,7 +44,8 @@ pub(super) const ITEM_RECOVERY_SET: TokenSet = TokenSet::new(&[
 pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool) {
     let m = p.start();
     attributes::outer_attrs(p);
-    let m = match maybe_item(p, m) {
+
+    let m = match opt_item(p, m) {
         Ok(()) => {
             if p.at(T![;]) {
                 p.err_and_bump(
@@ -56,6 +57,7 @@ pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool) {
         }
         Err(m) => m,
     };
+
     if paths::is_use_path_start(p) {
         match macro_call(p) {
             BlockLike::Block => (),
@@ -64,30 +66,30 @@ pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool) {
             }
         }
         m.complete(p, MACRO_CALL);
-    } else {
-        m.abandon(p);
-        if p.at(T!['{']) {
-            error_block(p, "expected an item");
-        } else if p.at(T!['}']) && !stop_on_r_curly {
+        return;
+    }
+
+    m.abandon(p);
+    match p.current() {
+        T!['{'] => error_block(p, "expected an item"),
+        T!['}'] if !stop_on_r_curly => {
             let e = p.start();
             p.error("unmatched `}`");
             p.bump(T!['}']);
             e.complete(p, ERROR);
-        } else if !p.at(EOF) && !p.at(T!['}']) {
-            p.err_and_bump("expected an item");
-        } else {
-            p.error("expected an item");
         }
+        EOF | T!['}'] => p.error("expected an item"),
+        _ => p.err_and_bump("expected an item"),
     }
 }
 
 /// Try to parse an item, completing `m` in case of success.
-pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
+pub(super) fn opt_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     // test_err pub_expr
     // fn foo() { pub 92; }
     let has_visibility = opt_visibility(p);
 
-    let m = match items_without_modifiers(p, m) {
+    let m = match opt_item_without_modifiers(p, m) {
         Ok(()) => return Ok(()),
         Err(m) => m,
     };
@@ -235,48 +237,20 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     Ok(())
 }
 
-fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
+fn opt_item_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     let la = p.nth(1);
     match p.current() {
-        // test extern_crate
-        // extern crate foo;
         T![extern] if la == T![crate] => extern_crate(p, m),
         T![use] => use_item::use_(p, m),
         T![mod] => mod_item(p, m),
 
         T![type] => type_alias(p, m),
-
-        T![struct] => {
-            // test struct_items
-            // struct Foo;
-            // struct Foo {}
-            // struct Foo();
-            // struct Foo(String, usize);
-            // struct Foo {
-            //     a: i32,
-            //     b: f32,
-            // }
-            adt::strukt(p, m);
-        }
+        T![struct] => adt::strukt(p, m),
         T![enum] => adt::enum_(p, m),
-        IDENT if p.at_contextual_kw("union") && p.nth(1) == IDENT => {
-            // test union_items
-            // union Foo {}
-            // union Foo {
-            //     a: i32,
-            //     b: f32,
-            // }
-            adt::union(p, m);
-        }
+        IDENT if p.at_contextual_kw("union") && p.nth(1) == IDENT => adt::union(p, m),
 
-        // test pub_macro_def
-        // pub macro m($:ident) {}
-        T![macro] => {
-            macro_def(p, m);
-        }
-        IDENT if p.at_contextual_kw("macro_rules") && p.nth(1) == BANG => {
-            macro_rules(p, m);
-        }
+        T![macro] => macro_def(p, m),
+        IDENT if p.at_contextual_kw("macro_rules") && p.nth(1) == BANG => macro_rules(p, m),
 
         T![const] if (la == IDENT || la == T![_] || la == T![mut]) => consts::konst(p, m),
         T![static] => consts::static_(p, m),
@@ -286,14 +260,15 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     Ok(())
 }
 
+// test extern_crate
+// extern crate foo;
 fn extern_crate(p: &mut Parser, m: Marker) {
-    assert!(p.at(T![extern]));
     p.bump(T![extern]);
-
-    assert!(p.at(T![crate]));
     p.bump(T![crate]);
 
     if p.at(T![self]) {
+        // test extern_crate_self
+        // extern crate self;
         let m = p.start();
         p.bump(T![self]);
         m.complete(p, NAME_REF);
@@ -301,9 +276,60 @@ fn extern_crate(p: &mut Parser, m: Marker) {
         name_ref(p);
     }
 
+    // test extern_crate_rename
+    // extern crate foo as bar;
     opt_rename(p);
     p.expect(T![;]);
     m.complete(p, EXTERN_CRATE);
+}
+
+// test mod_item
+// mod a;
+pub(crate) fn mod_item(p: &mut Parser, m: Marker) {
+    p.bump(T![mod]);
+    name(p);
+    if p.at(T!['{']) {
+        // test mod_item_curly
+        // mod b { }
+        item_list(p);
+    } else if !p.eat(T![;]) {
+        p.error("expected `;` or `{`");
+    }
+    m.complete(p, MODULE);
+}
+
+// test type_alias
+// type Foo = Bar;
+fn type_alias(p: &mut Parser, m: Marker) {
+    p.bump(T![type]);
+
+    name(p);
+
+    // test type_item_type_params
+    // type Result<T> = ();
+    type_params::opt_generic_param_list(p);
+
+    if p.at(T![:]) {
+        type_params::bounds(p);
+    }
+
+    // test type_item_where_clause
+    // type Foo where Foo: Copy = ();
+    type_params::opt_where_clause(p);
+    if p.eat(T![=]) {
+        types::type_(p);
+    }
+    p.expect(T![;]);
+    m.complete(p, TYPE_ALIAS);
+}
+
+pub(crate) fn item_list(p: &mut Parser) {
+    assert!(p.at(T!['{']));
+    let m = p.start();
+    p.bump(T!['{']);
+    mod_contents(p, true);
+    p.expect(T!['}']);
+    m.complete(p, ITEM_LIST);
 }
 
 pub(crate) fn extern_item_list(p: &mut Parser) {
@@ -347,54 +373,6 @@ fn fn_(p: &mut Parser) {
     }
 }
 
-// test type_item
-// type Foo = Bar;
-fn type_alias(p: &mut Parser, m: Marker) {
-    assert!(p.at(T![type]));
-    p.bump(T![type]);
-
-    name(p);
-
-    // test type_item_type_params
-    // type Result<T> = ();
-    type_params::opt_generic_param_list(p);
-
-    if p.at(T![:]) {
-        type_params::bounds(p);
-    }
-
-    // test type_item_where_clause
-    // type Foo where Foo: Copy = ();
-    type_params::opt_where_clause(p);
-    if p.eat(T![=]) {
-        types::type_(p);
-    }
-    p.expect(T![;]);
-    m.complete(p, TYPE_ALIAS);
-}
-
-pub(crate) fn mod_item(p: &mut Parser, m: Marker) {
-    assert!(p.at(T![mod]));
-    p.bump(T![mod]);
-
-    name(p);
-    if p.at(T!['{']) {
-        item_list(p);
-    } else if !p.eat(T![;]) {
-        p.error("expected `;` or `{`");
-    }
-    m.complete(p, MODULE);
-}
-
-pub(crate) fn item_list(p: &mut Parser) {
-    assert!(p.at(T!['{']));
-    let m = p.start();
-    p.bump(T!['{']);
-    mod_contents(p, true);
-    p.expect(T!['}']);
-    m.complete(p, ITEM_LIST);
-}
-
 fn macro_rules(p: &mut Parser, m: Marker) {
     assert!(p.at_contextual_kw("macro_rules"));
     p.bump_remap(T![macro_rules]);
@@ -429,16 +407,15 @@ fn macro_rules(p: &mut Parser, m: Marker) {
 }
 
 // test macro_def
-// macro m { ($i:ident) => {} }
 // macro m($i:ident) {}
 fn macro_def(p: &mut Parser, m: Marker) {
     p.expect(T![macro]);
     name_r(p, ITEM_RECOVERY_SET);
     if p.at(T!['{']) {
+        // test macro_def_curly
+        // macro m { ($i:ident) => {} }
         token_tree(p);
-    } else if !p.at(T!['(']) {
-        p.error("unmatched `(`");
-    } else {
+    } else if p.at(T!['(']) {
         let m = p.start();
         token_tree(p);
         match p.current() {
@@ -446,6 +423,8 @@ fn macro_def(p: &mut Parser, m: Marker) {
             _ => p.error("expected `{`, `[`, `(`"),
         }
         m.complete(p, TOKEN_TREE);
+    } else {
+        p.error("unmatched `(`");
     }
 
     m.complete(p, MACRO_DEF);

@@ -1,0 +1,10 @@
+SOURCE_FILE@0..19
+  EXTERN_CRATE@0..18
+    EXTERN_KW@0..6 "extern"
+    WHITESPACE@6..7 " "
+    CRATE_KW@7..12 "crate"
+    WHITESPACE@12..13 " "
+    NAME_REF@13..17
+      SELF_KW@13..17 "self"
+    SEMICOLON@17..18 ";"
+  WHITESPACE@18..19 "\n"
