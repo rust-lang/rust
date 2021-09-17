@@ -10,6 +10,7 @@ use rustc_errors::registry::Registry;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
 #[cfg(parallel_compiler)]
 use rustc_middle::ty::tls;
+use rustc_parse::validate_attr;
 #[cfg(parallel_compiler)]
 use rustc_query_impl::QueryCtxt;
 use rustc_resolve::{self, Resolver};
@@ -475,7 +476,7 @@ pub fn get_codegen_sysroot(
 }
 
 pub(crate) fn check_attr_crate_type(
-    _sess: &Session,
+    sess: &Session,
     attrs: &[ast::Attribute],
     lint_buffer: &mut LintBuffer,
 ) {
@@ -515,6 +516,19 @@ pub(crate) fn check_attr_crate_type(
                         );
                     }
                 }
+            } else {
+                // This is here mainly to check for using a macro, such as
+                // #![crate_type = foo!()]. That is not supported since the
+                // crate type needs to be known very early in compilation long
+                // before expansion. Otherwise, validation would normally be
+                // caught in AstValidator (via `check_builtin_attribute`), but
+                // by the time that runs the macro is expanded, and it doesn't
+                // give an error.
+                validate_attr::emit_fatal_malformed_builtin_attribute(
+                    &sess.parse_sess,
+                    a,
+                    sym::crate_type,
+                );
             }
         }
     }

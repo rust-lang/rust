@@ -1,0 +1,8 @@
+error: malformed `recursion_limit` attribute input
+  --> $DIR/invalid_macro.rs:1:1
+   |
+LL | #![recursion_limit = foo!()]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#![recursion_limit = "N"]`
+
+error: aborting due to previous error
+

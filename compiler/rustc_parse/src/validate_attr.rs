@@ -4,7 +4,7 @@ use crate::parse_in;
 
 use rustc_ast::tokenstream::{DelimSpan, TokenTree};
 use rustc_ast::{self as ast, Attribute, MacArgs, MacDelimiter, MetaItem, MetaItemKind};
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::ParseSess;
@@ -161,4 +161,16 @@ fn emit_malformed_attribute(
             )
             .emit();
     }
+}
+
+pub fn emit_fatal_malformed_builtin_attribute(
+    sess: &ParseSess,
+    attr: &Attribute,
+    name: Symbol,
+) -> ! {
+    let template = BUILTIN_ATTRIBUTE_MAP.get(&name).expect("builtin attr defined").2;
+    emit_malformed_attribute(sess, attr, name, template);
+    // This is fatal, otherwise it will likely cause a cascade of other errors
+    // (and an error here is expected to be very rare).
+    FatalError.raise()
 }
