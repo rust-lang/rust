@@ -865,6 +865,7 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```rust
+    /// #![feature(result_check)]
     /// struct Zero;
     ///
     /// fn check_non_zero(&v: &i32) -> Result<(), Zero> {
