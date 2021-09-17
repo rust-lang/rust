@@ -1,11 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_note;
-use clippy_utils::{is_uninit_ty_valid, match_def_path, path_to_local_id, paths, peel_hir_expr_while, SpanlessEq};
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{
+    match_def_path, path_to_local_id, paths, peel_hir_expr_while, ty::is_uninit_value_valid_for_ty, SpanlessEq,
+};
 use rustc_hir::def::Res;
 use rustc_hir::{Block, Expr, ExprKind, HirId, PatKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -44,32 +47,36 @@ impl<'tcx> LateLintPass<'tcx> for UninitVec {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {
         for w in block.stmts.windows(2) {
             if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = w[1].kind {
-                handle_pair(cx, &w[0], expr);
+                handle_uninit_vec_pair(cx, &w[0], expr);
             }
         }
 
         if let (Some(stmt), Some(expr)) = (block.stmts.last(), block.expr) {
-            handle_pair(cx, stmt, expr);
+            handle_uninit_vec_pair(cx, stmt, expr);
         }
     }
 }
 
-fn handle_pair(cx: &LateContext<'tcx>, first: &'tcx Stmt<'tcx>, second: &'tcx Expr<'tcx>) {
+fn handle_uninit_vec_pair(
+    cx: &LateContext<'tcx>,
+    maybe_with_capacity_or_reserve: &'tcx Stmt<'tcx>,
+    maybe_set_len: &'tcx Expr<'tcx>,
+) {
     if_chain! {
-        if let Some(vec) = extract_with_capacity_or_reserve_target(cx, first);
-        if let Some((set_len_self, call_span)) = extract_set_len_self(cx, second);
+        if let Some(vec) = extract_with_capacity_or_reserve_target(cx, maybe_with_capacity_or_reserve);
+        if let Some((set_len_self, call_span)) = extract_set_len_self(cx, maybe_set_len);
         if vec.eq_expr(cx, set_len_self);
         if let ty::Ref(_, vec_ty, _) = cx.typeck_results().expr_ty_adjusted(set_len_self).kind();
         if let ty::Adt(_, substs) = vec_ty.kind();
         // Check T of Vec<T>
-        if !is_uninit_ty_valid(cx, substs.type_at(0));
+        if !is_uninit_value_valid_for_ty(cx, substs.type_at(0));
         then {
             span_lint_and_note(
                 cx,
                 UNINIT_VEC,
                 call_span,
                 "calling `set_len()` immediately after reserving a buffer creates uninitialized values",
-                Some(first.span),
+                Some(maybe_with_capacity_or_reserve.span),
                 "the buffer is reserved here"
             );
         }
@@ -113,16 +120,14 @@ fn extract_with_capacity_or_reserve_target(cx: &LateContext<'_>, stmt: &'tcx Stm
                     // self.vec = Vec::with_capacity()
                     Some(LocalOrExpr::Expr(lhs))
                 },
-                ExprKind::MethodCall(_, _, [vec_expr, _], _) => {
+                ExprKind::MethodCall(path, _, [self_expr, _], _) => {
                     // self.vec.reserve()
-                    if_chain! {
-                        if let Some(id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
-                        if match_def_path(cx, id, &paths::VEC_RESERVE);
-                        then {
-                            Some(LocalOrExpr::Expr(vec_expr))
-                        } else {
-                            None
-                        }
+                    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr).peel_refs(), sym::vec_type)
+                        && path.ident.name.as_str() == "reserve"
+                    {
+                        Some(LocalOrExpr::Expr(self_expr))
+                    } else {
+                        None
                     }
                 },
                 _ => None,

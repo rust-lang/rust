@@ -1470,16 +1470,6 @@ pub fn is_self_ty(slf: &hir::Ty<'_>) -> bool {
     false
 }
 
-/// Checks if a given type looks safe to be uninitialized.
-pub fn is_uninit_ty_valid(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    match ty.kind() {
-        rustc_ty::Array(component, _) => is_uninit_ty_valid(cx, component),
-        rustc_ty::Tuple(types) => types.types().all(|ty| is_uninit_ty_valid(cx, ty)),
-        rustc_ty::Adt(adt, _) => match_def_path(cx, adt.did, &paths::MEM_MAYBEUNINIT),
-        _ => false,
-    }
-}
-
 pub fn iter_input_pats<'tcx>(decl: &FnDecl<'_>, body: &'tcx Body<'_>) -> impl Iterator<Item = &'tcx Param<'tcx>> {
     (0..decl.inputs.len()).map(move |i| &body.params[i])
 }

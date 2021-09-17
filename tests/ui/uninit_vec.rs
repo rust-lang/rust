@@ -25,8 +25,14 @@ fn main() {
     }
 
     // MaybeUninit-wrapped types should not be detected
-    let mut vec: Vec<MaybeUninit<u8>> = Vec::with_capacity(1000);
     unsafe {
+        let mut vec: Vec<MaybeUninit<u8>> = Vec::with_capacity(1000);
+        vec.set_len(200);
+
+        let mut vec: Vec<(MaybeUninit<u8>, MaybeUninit<bool>)> = Vec::with_capacity(1000);
+        vec.set_len(200);
+
+        let mut vec: Vec<(MaybeUninit<u8>, [MaybeUninit<bool>; 2])> = Vec::with_capacity(1000);
         vec.set_len(200);
     }
 }
