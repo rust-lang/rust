@@ -184,34 +184,14 @@ pub(super) fn opt_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
 
     // items
     match p.current() {
-        // test fn
-        // fn foo() {}
-        T![fn] => {
-            fn_(p);
-            m.complete(p, FN);
-        }
+        T![fn] => fn_(p, m),
 
-        // test trait
-        // trait T {}
-        T![trait] => {
-            traits::trait_(p);
-            m.complete(p, TRAIT);
-        }
+        T![const] if p.nth(1) != T!['{'] => consts::konst(p, m),
 
-        T![const] if p.nth(1) != T!['{'] => {
-            consts::konst(p, m);
-        }
+        T![trait] => traits::trait_(p, m),
+        T![impl] => traits::impl_(p, m),
 
-        // test impl
-        // impl T for S {}
-        T![impl] => {
-            traits::impl_(p);
-            m.complete(p, IMPL);
-        }
-
-        T![type] => {
-            type_alias(p, m);
-        }
+        T![type] => type_alias(p, m),
 
         // test extern_block
         // unsafe extern "C" {}
@@ -339,38 +319,6 @@ pub(crate) fn extern_item_list(p: &mut Parser) {
     m.complete(p, EXTERN_ITEM_LIST);
 }
 
-fn fn_(p: &mut Parser) {
-    assert!(p.at(T![fn]));
-    p.bump(T![fn]);
-
-    name_r(p, ITEM_RECOVERY_SET);
-    // test function_type_params
-    // fn foo<T: Clone + Copy>(){}
-    type_params::opt_generic_param_list(p);
-
-    if p.at(T!['(']) {
-        params::param_list_fn_def(p);
-    } else {
-        p.error("expected function arguments");
-    }
-    // test function_ret_type
-    // fn foo() {}
-    // fn bar() -> () {}
-    opt_ret_type(p);
-
-    // test function_where_clause
-    // fn foo<T>() where T: Copy {}
-    type_params::opt_where_clause(p);
-
-    // test fn_decl
-    // trait T { fn foo(); }
-    if p.at(T![;]) {
-        p.bump(T![;]);
-    } else {
-        expressions::block_expr(p)
-    }
-}
-
 fn macro_rules(p: &mut Parser, m: Marker) {
     assert!(p.at_contextual_kw("macro_rules"));
     p.bump_remap(T![macro_rules]);
@@ -426,6 +374,40 @@ fn macro_def(p: &mut Parser, m: Marker) {
     }
 
     m.complete(p, MACRO_DEF);
+}
+
+// test fn
+// fn foo() {}
+fn fn_(p: &mut Parser, m: Marker) {
+    p.bump(T![fn]);
+
+    name_r(p, ITEM_RECOVERY_SET);
+    // test function_type_params
+    // fn foo<T: Clone + Copy>(){}
+    type_params::opt_generic_param_list(p);
+
+    if p.at(T!['(']) {
+        params::param_list_fn_def(p);
+    } else {
+        p.error("expected function arguments");
+    }
+    // test function_ret_type
+    // fn foo() {}
+    // fn bar() -> () {}
+    opt_ret_type(p);
+
+    // test function_where_clause
+    // fn foo<T>() where T: Copy {}
+    type_params::opt_where_clause(p);
+
+    // test fn_decl
+    // trait T { fn foo(); }
+    if p.at(T![;]) {
+        p.bump(T![;]);
+    } else {
+        expressions::block_expr(p)
+    }
+    m.complete(p, FN);
 }
 
 fn macro_call(p: &mut Parser) -> BlockLike {
