@@ -1334,31 +1334,25 @@ impl<'a> Parser<'a> {
     pub(super) fn recover_parens_around_for_head(
         &mut self,
         pat: P<Pat>,
-        expr: &Expr,
         begin_paren: Option<Span>,
     ) -> P<Pat> {
         match (&self.token.kind, begin_paren) {
             (token::CloseDelim(token::Paren), Some(begin_par_sp)) => {
                 self.bump();
 
-                let pat_str = self
-                    // Remove the `(` from the span of the pattern:
-                    .span_to_snippet(pat.span.trim_start(begin_par_sp).unwrap())
-                    .unwrap_or_else(|_| pprust::pat_to_string(&pat));
-
-                let sp = MultiSpan::from_spans(vec![begin_par_sp, self.prev_token.span]);
-
-                self.struct_span_err(sp, "unexpected parenthesis surrounding `for` loop head")
-                    .span_suggestion(
-                        begin_par_sp.to(self.prev_token.span),
-                        "remove parenthesis in `for` loop",
-                        format!("{} in {}", pat_str, pprust::expr_to_string(&expr)),
-                        // With e.g. `for (x) in y)` this would replace `(x) in y)`
-                        // with `x) in y)` which is syntactically invalid.
-                        // However, this is prevented before we get here.
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
+                self.struct_span_err(
+                    MultiSpan::from_spans(vec![begin_par_sp, self.prev_token.span]),
+                    "unexpected parenthesis surrounding `for` loop head",
+                )
+                .multipart_suggestion(
+                    "remove parenthesis in `for` loop",
+                    vec![(begin_par_sp, String::new()), (self.prev_token.span, String::new())],
+                    // With e.g. `for (x) in y)` this would replace `(x) in y)`
+                    // with `x) in y)` which is syntactically invalid.
+                    // However, this is prevented before we get here.
+                    Applicability::MachineApplicable,
+                )
+                .emit();
 
                 // Unwrap `(pat)` into `pat` to avoid the `unused_parens` lint.
                 pat.and_then(|pat| match pat.kind {
