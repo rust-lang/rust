@@ -135,27 +135,25 @@ pub(super) fn opt_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
                 p.bump_remap(T![default]);
                 has_mods = true;
             }
-            T![unsafe] => {
-                // test default_unsafe_item
-                // default unsafe impl T for Foo {
-                //     default unsafe fn foo() {}
-                // }
-                if matches!(p.nth(2), T![impl] | T![fn]) {
-                    p.bump_remap(T![default]);
-                    p.bump(T![unsafe]);
-                    has_mods = true;
-                }
+            // test default_unsafe_item
+            // default unsafe impl T for Foo {
+            //     default unsafe fn foo() {}
+            // }
+            T![unsafe] if matches!(p.nth(2), T![impl] | T![fn]) => {
+                p.bump_remap(T![default]);
+                p.bump(T![unsafe]);
+                has_mods = true;
             }
-            T![async] => {
-                // test default_async_fn
-                // impl T for Foo {
-                //     default async fn foo() {}
-                // }
+            // test default_async_fn
+            // impl T for Foo {
+            //     default async fn foo() {}
+            // }
 
-                // test default_async_unsafe_fn
-                // impl T for Foo {
-                //     default async unsafe fn foo() {}
-                // }
+            // test default_async_unsafe_fn
+            // impl T for Foo {
+            //     default async unsafe fn foo() {}
+            // }
+            T![async] => {
                 let mut maybe_fn = p.nth(2);
                 let is_unsafe = if matches!(maybe_fn, T![unsafe]) {
                     maybe_fn = p.nth(3);
