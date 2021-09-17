@@ -1708,9 +1708,10 @@ impl EncodeContext<'a, 'tcx> {
 
     fn encode_crate_deps(&mut self) -> Lazy<[CrateDep]> {
         empty_proc_macro!(self);
-        let crates = self.tcx.crates(());
 
-        let mut deps = crates
+        let deps = self
+            .tcx
+            .crates(())
             .iter()
             .map(|&cnum| {
                 let dep = CrateDep {
@@ -1723,8 +1724,6 @@ impl EncodeContext<'a, 'tcx> {
                 (cnum, dep)
             })
             .collect::<Vec<_>>();
-
-        deps.sort_by_key(|&(cnum, _)| cnum);
 
         {
             // Sanity-check the crate numbers

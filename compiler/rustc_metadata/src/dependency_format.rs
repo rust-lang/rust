@@ -277,7 +277,7 @@ fn attempt_static(tcx: TyCtxt<'_>) -> Option<DependencyList> {
     let all_crates_available_as_rlib = tcx
         .crates(())
         .iter()
-        .cloned()
+        .copied()
         .filter_map(|cnum| {
             if tcx.dep_kind(cnum).macros_only() {
                 return None;
@@ -291,10 +291,11 @@ fn attempt_static(tcx: TyCtxt<'_>) -> Option<DependencyList> {
 
     // All crates are available in an rlib format, so we're just going to link
     // everything in explicitly so long as it's actually required.
-    let last_crate = tcx.crates(()).len();
-    let mut ret = (1..last_crate + 1)
-        .map(|cnum| {
-            if tcx.dep_kind(CrateNum::new(cnum)) == CrateDepKind::Explicit {
+    let mut ret = tcx
+        .crates(())
+        .iter()
+        .map(|&cnum| {
+            if tcx.dep_kind(cnum) == CrateDepKind::Explicit {
                 Linkage::Static
             } else {
                 Linkage::NotLinked
