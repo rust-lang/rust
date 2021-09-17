@@ -15,7 +15,6 @@ use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::{json, Encoder};
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
-use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor};
@@ -101,7 +100,7 @@ pub fn get_linker<'a>(
 
     // The compiler's sysroot often has some bundled tools, so add it to the
     // PATH for the child.
-    let mut new_path = sess.host_filesearch(PathKind::All).get_tools_search_paths(self_contained);
+    let mut new_path = sess.get_tools_search_paths(self_contained);
     let mut msvc_changed_path = false;
     if sess.target.is_like_msvc {
         if let Some(ref tool) = msvc_tool {
