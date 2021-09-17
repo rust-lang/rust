@@ -31,7 +31,9 @@ crate struct ContextInfo<'a, 'b, 'c> {
     crate root_path: &'c str,
 }
 
-crate type DecorationInfo = FxHashMap<&'static str, Vec<(u32, u32)>>;
+/// Decorations are represented as a map from CSS class to vector of character ranges.
+/// Each range will be wrapped in a span with that class.
+crate struct DecorationInfo(crate FxHashMap<&'static str, Vec<(u32, u32)>>);
 
 /// Highlights `src`, returning the HTML output.
 crate fn render_with_highlighting(
@@ -273,6 +275,7 @@ struct Decorations {
 impl Decorations {
     fn new(info: DecorationInfo) -> Self {
         let (starts, ends) = info
+            .0
             .into_iter()
             .map(|(kind, ranges)| ranges.into_iter().map(move |(lo, hi)| ((lo, kind), hi)))
             .flatten()
@@ -305,6 +308,7 @@ impl<'a> Classifier<'a> {
         decoration_info: Option<DecorationInfo>,
     ) -> Classifier<'_> {
         let tokens = PeekIter::new(TokenIter { src });
+        let decorations = decoration_info.map(Decorations::new);
         Classifier {
             tokens,
             in_attribute: false,

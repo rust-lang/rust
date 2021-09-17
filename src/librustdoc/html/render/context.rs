@@ -35,6 +35,7 @@ use crate::html::format::Buffer;
 use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
 use crate::html::static_files::PAGE;
 use crate::html::{layout, sources};
+use crate::scrape_examples::AllCallLocations;
 
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls
@@ -124,6 +125,8 @@ crate struct SharedContext<'tcx> {
     crate span_correspondance_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
     /// The [`Cache`] used during rendering.
     crate cache: Cache,
+
+    crate call_locations: AllCallLocations,
 }
 
 impl SharedContext<'_> {
@@ -389,6 +392,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             generate_redirect_map,
             show_type_layout,
             generate_link_to_definition,
+            call_locations,
             ..
         } = options;
 
@@ -480,6 +484,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             templates,
             span_correspondance_map: matches,
             cache,
+            call_locations,
         };
 
         // Add the default themes to the `Vec` of stylepaths

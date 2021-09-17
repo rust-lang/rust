@@ -47,11 +47,13 @@ extern crate rustc_interface;
 extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_lint_defs;
+extern crate rustc_macros;
 extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_parse;
 extern crate rustc_passes;
 extern crate rustc_resolve;
+extern crate rustc_serialize;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
@@ -619,8 +621,22 @@ fn opts() -> Vec<RustcOptGroup> {
                 "Make the identifiers in the HTML source code pages navigable",
             )
         }),
-        unstable("scrape-examples", |o| o.optopt("", "scrape-examples", "", "")),
-        unstable("with-examples", |o| o.optmulti("", "with-examples", "", "")),
+        unstable("scrape-examples", |o| {
+            o.optopt(
+                "",
+                "scrape-examples",
+                "",
+                "collect function call information (for use with `--with-examples`)",
+            )
+        }),
+        unstable("with-examples", |o| {
+            o.optmulti(
+                "",
+                "with-examples",
+                "",
+                "path to function call information (for displaying examples in the documentation)",
+            )
+        }),
     ]
 }
 

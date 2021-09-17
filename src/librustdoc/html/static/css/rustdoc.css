@@ -1978,10 +1978,6 @@ details.undocumented[open] > summary::before {
 	font-family: 'Fira Sans';
 }
 
-.scraped-example-title a {
-	margin-left: 5px;
-}
-
 .scraped-example:not(.expanded) .code-wrapper pre.line-numbers,
 .scraped-example:not(.expanded) .code-wrapper .example-wrap pre.rust {
 	overflow: hidden;

@@ -207,6 +207,7 @@ impl fmt::Debug for Options {
             .field("run_check", &self.run_check)
             .field("no_run", &self.no_run)
             .field("nocapture", &self.nocapture)
+            .field("scrape_examples", &self.scrape_examples)
             .finish()
     }
 }
@@ -285,7 +286,7 @@ crate struct RenderOptions {
     crate emit: Vec<EmitType>,
     /// If `true`, HTML source pages will generate links for items to their definition.
     crate generate_link_to_definition: bool,
-    crate call_locations: Option<AllCallLocations>,
+    crate call_locations: AllCallLocations,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

@@ -73,8 +73,9 @@ use crate::html::format::{
     print_generic_bounds, print_where_clause, Buffer, HrefError, PrintWithSpace,
 };
 use crate::html::markdown::{HeadingOffset, Markdown, MarkdownHtml, MarkdownSummaryLine};
+use crate::html::highlight;
 use crate::html::sources;
-use crate::scrape_examples::{CallData, FnCallLocations};
+use crate::scrape_examples::CallData;
 
 /// A pair of name and its optional document.
 crate type NameDoc = (String, Option<String>);
@@ -592,9 +593,13 @@ fn document_full_inner(
         }
     }
 
-    match &*item.kind {
+    let kind = match &*item.kind {
+        clean::ItemKind::StrippedItem(box kind) | kind => kind,
+    };
+
+    match kind {
         clean::ItemKind::FunctionItem(f) | clean::ItemKind::MethodItem(f, _) => {
-            render_call_locations(w, cx, &f.call_locations, item);
+            render_call_locations(w, cx, f.def_id, item);
         }
         _ => {}
     }
@@ -2458,14 +2463,11 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
 const MAX_FULL_EXAMPLES: usize = 5;
 
 /// Generates the HTML for example call locations generated via the --scrape-examples flag.
-fn render_call_locations(
-    w: &mut Buffer,
-    cx: &Context<'_>,
-    call_locations: &Option<FnCallLocations>,
-    item: &clean::Item,
-) {
-    let call_locations = match call_locations.as_ref() {
-        Some(call_locations) if call_locations.len() > 0 => call_locations,
+fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, def_id: DefId, item: &clean::Item) {
+    let tcx = cx.tcx();
+    let key = crate::scrape_examples::def_id_call_key(tcx, def_id);
+    let call_locations = match cx.shared.call_locations.get(&key) {
+        Some(call_locations) => call_locations,
         _ => {
             return;
         }
@@ -2483,7 +2485,6 @@ fn render_call_locations(
     );
 
     // Generate the HTML for a single example, being the title and code block
-    let tcx = cx.tcx();
     let write_example = |w: &mut Buffer, (path, call_data): (&PathBuf, &CallData)| -> bool {
         let contents = match fs::read_to_string(&path) {
             Ok(contents) => contents,
@@ -2497,40 +2498,51 @@ fn render_call_locations(
 
         // To reduce file sizes, we only want to embed the source code needed to understand the example, not
         // the entire file. So we find the smallest byte range that covers all items enclosing examples.
-        assert!(call_data.locations.len() > 0);
+        assert!(!call_data.locations.is_empty());
         let min_loc =
             call_data.locations.iter().min_by_key(|loc| loc.enclosing_item.byte_span.0).unwrap();
-        let min_byte = min_loc.enclosing_item.byte_span.0;
-        let min_line = min_loc.enclosing_item.line_span.0;
-        let max_byte =
+        let (byte_offset, _) = min_loc.enclosing_item.byte_span;
+        let (line_offset, _) = min_loc.enclosing_item.line_span;
+        let byte_ceiling =
             call_data.locations.iter().map(|loc| loc.enclosing_item.byte_span.1).max().unwrap();
 
         // The output code is limited to that byte range.
-        let contents_subset = &contents[(min_byte as usize)..(max_byte as usize)];
+        let contents_subset = &contents[(byte_offset as usize)..(byte_ceiling as usize)];
 
         // The call locations need to be updated to reflect that the size of the program has changed.
-        // Specifically, the ranges are all subtracted by `min_byte` since that's the new zero point.
+        // Specifically, the ranges are all subtracted by `byte_offset` since that's the new zero point.
         let (byte_ranges, line_ranges): (Vec<_>, Vec<_>) = call_data
             .locations
             .iter()
             .map(|loc| {
                 let (byte_lo, byte_hi) = loc.call_expr.byte_span;
                 let (line_lo, line_hi) = loc.call_expr.line_span;
-                ((byte_lo - min_byte, byte_hi - min_byte), (line_lo - min_line, line_hi - min_line))
+                (
+                    (byte_lo - byte_offset, byte_hi - byte_offset),
+                    (line_lo - line_offset, line_hi - line_offset),
+                )
             })
             .unzip();
 
-        let edition = cx.shared.edition();
+        let (init_min, init_max) = line_ranges[0];
+        let line_range = if init_min == init_max {
+            format!("line {}", init_min + line_offset + 1)
+        } else {
+            format!("lines {}-{}", init_min + line_offset + 1, init_max + line_offset + 1)
+        };
+
         write!(
             w,
-            r#"<div class="scraped-example" data-locs="{locations}">
+            r#"<div class="scraped-example" data-locs="{locations}" data-offset="{offset}">
                 <div class="scraped-example-title">
-                   {name} <a href="{root}{url}" target="_blank">[src]</a>
+                   {name} (<a href="{root}{url}" target="_blank">{line_range}</a>)
                 </div>
                 <div class="code-wrapper">"#,
             root = cx.root_path(),
             url = call_data.url,
             name = call_data.display_name,
+            line_range = line_range,
+            offset = line_offset,
             // The locations are encoded as a data attribute, so they can be read
             // later by the JS for interactions.
             locations = serde_json::to_string(&line_ranges).unwrap(),
@@ -2551,8 +2563,8 @@ fn render_call_locations(
                 _ => false,
             })?;
             Some(rustc_span::Span::with_root_ctxt(
-                file.start_pos + BytePos(min_byte),
-                file.start_pos + BytePos(max_byte),
+                file.start_pos + BytePos(byte_offset),
+                file.start_pos + BytePos(byte_ceiling),
             ))
         })()
         .unwrap_or(rustc_span::DUMMY_SP);
@@ -2566,12 +2578,12 @@ fn render_call_locations(
         sources::print_src(
             w,
             contents_subset,
-            edition,
+            call_data.edition,
             file_span,
             cx,
             &root_path,
-            Some(min_line),
-            Some(decoration_info),
+            Some(line_offset),
+            Some(highlight::DecorationInfo(decoration_info)),
         );
         write!(w, "</div></div>");
 
@@ -2590,12 +2602,14 @@ fn render_call_locations(
         };
 
         let mut locs = call_locations.into_iter().collect::<Vec<_>>();
-        locs.sort_by_key(|x| sort_criterion(x));
+        locs.sort_by_key(sort_criterion);
         locs
     };
 
-    // Write just one example that's visible by default in the method's description.
     let mut it = ordered_locations.into_iter().peekable();
+
+    // An example may fail to write if its source can't be read for some reason, so this method
+    // continues iterating until a write suceeds
     let write_and_skip_failure = |w: &mut Buffer, it: &mut Peekable<_>| {
         while let Some(example) = it.next() {
             if write_example(&mut *w, example) {
@@ -2604,6 +2618,7 @@ fn render_call_locations(
         }
     };
 
+    // Write just one example that's visible by default in the method's description.
     write_and_skip_failure(w, &mut it);
 
     // Then add the remaining examples in a hidden section.
@@ -2626,7 +2641,7 @@ fn render_call_locations(
             write_and_skip_failure(w, &mut it);
         }
 
-        // For the remaining examples, generate a <ul /> containing links to the source files.
+        // For the remaining examples, generate a <ul> containing links to the source files.
         if it.peek().is_some() {
             write!(
                 w,
@@ -2635,7 +2650,7 @@ fn render_call_locations(
             it.for_each(|(_, call_data)| {
                 write!(
                     w,
-                    r#"<li><a href="{}{}" target="_blank">{}</a></li>"#,
+                    r#"<li><a href="{root}{url}" target="_blank">{name}</a></li>"#,
                     root = cx.root_path(),
                     url = call_data.url,
                     name = call_data.display_name

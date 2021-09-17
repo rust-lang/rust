@@ -996,9 +996,11 @@ function hideThemeButtonState() {
 
     function updateScrapedExample(example) {
         var locs = JSON.parse(example.attributes.getNamedItem("data-locs").textContent);
+        var offset = parseInt(example.attributes.getNamedItem("data-offset").textContent);
 
         var locIndex = 0;
         var highlights = example.querySelectorAll('.highlight');
+        var link = example.querySelector('.scraped-example-title a');
         addClass(highlights[0], 'focus');
         if (locs.length > 1) {
             // Toggle through list of examples in a given file
@@ -1007,13 +1009,36 @@ function hideThemeButtonState() {
                 f();
                 scrollToLoc(example, locs[locIndex]);
                 addClass(highlights[locIndex], 'focus');
+
+                var curLoc = locs[locIndex];
+                var minLine = curLoc[0] + offset + 1;
+                var maxLine = curLoc[1] + offset + 1;
+
+                var text;
+                var anchor;
+                if (minLine == maxLine) {
+                    text = 'line ' + minLine.toString();
+                    anchor = minLine.toString();
+                } else {
+                    var range = minLine.toString() + '-' + maxLine.toString();
+                    text = 'lines ' + range;
+                    anchor = range;
+                }
+
+                var url = new URL(link.href);
+                url.hash = anchor;
+
+                link.href = url.toString();
+                link.innerHTML = text;
             };
+
             example.querySelector('.prev')
                 .addEventListener('click', function() {
                     onChangeLoc(function() {
                         locIndex = (locIndex - 1 + locs.length) % locs.length;
                     });
                 });
+
             example.querySelector('.next')
                 .addEventListener('click', function() {
                     onChangeLoc(function() { locIndex = (locIndex + 1) % locs.length; });

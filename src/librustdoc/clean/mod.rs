@@ -801,10 +801,8 @@ impl<'a> Clean<Function> for (&'a hir::FnSig<'a>, &'a hir::Generics<'a>, hir::Bo
     fn clean(&self, cx: &mut DocContext<'_>) -> Function {
         let (generics, decl) =
             enter_impl_trait(cx, |cx| (self.1.clean(cx), (&*self.0.decl, self.2).clean(cx)));
-        let mut function = Function { decl, generics, header: self.0.header, call_locations: None };
         let def_id = self.2.hir_id.owner.to_def_id();
-        function.load_call_locations(def_id, cx);
-        function
+        Function { decl, generics, header: self.0.header, def_id }
     }
 }
 
@@ -936,14 +934,13 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     let (generics, decl) = enter_impl_trait(cx, |cx| {
                         (self.generics.clean(cx), (&*sig.decl, &names[..]).clean(cx))
                     });
-                    let mut t =
-                        Function { header: sig.header, decl, generics, call_locations: None };
+                    let def_id = self.def_id.to_def_id();
+                    let mut t = Function { header: sig.header, decl, generics, def_id };
                     if t.header.constness == hir::Constness::Const
                         && is_unstable_const_fn(cx.tcx, local_did).is_some()
                     {
                         t.header.constness = hir::Constness::NotConst;
                     }
-                    t.load_call_locations(self.def_id.to_def_id(), cx);
                     TyMethodItem(t)
                 }
                 hir::TraitItemKind::Type(ref bounds, ref default) => {
@@ -1062,7 +1059,7 @@ impl Clean<Item> for ty::AssocItem {
                         ty::ImplContainer(_) => Some(self.defaultness),
                         ty::TraitContainer(_) => None,
                     };
-                    let mut function = Function {
+                    let function = Function {
                         generics,
                         decl,
                         header: hir::FnHeader {
@@ -1071,12 +1068,11 @@ impl Clean<Item> for ty::AssocItem {
                             constness,
                             asyncness,
                         },
-                        call_locations: None,
+                        def_id: self.def_id,
                     };
-                    function.load_call_locations(self.def_id, cx);
                     MethodItem(function, defaultness)
                 } else {
-                    let mut function = Function {
+                    let function = Function {
                         generics,
                         decl,
                         header: hir::FnHeader {
@@ -1085,9 +1081,8 @@ impl Clean<Item> for ty::AssocItem {
                             constness: hir::Constness::NotConst,
                             asyncness: hir::IsAsync::NotAsync,
                         },
-                        call_locations: None,
+                        def_id: self.def_id,
                     };
-                    function.load_call_locations(self.def_id, cx);
                     TyMethodItem(function)
                 }
             }
@@ -2086,7 +2081,8 @@ fn clean_use_statement(
 impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
         let (item, renamed) = self;
-        cx.with_param_env(item.def_id.to_def_id(), |cx| {
+        let def_id = item.def_id.to_def_id();
+        cx.with_param_env(def_id, |cx| {
             let kind = match item.kind {
                 hir::ForeignItemKind::Fn(ref decl, ref names, ref generics) => {
                     let abi = cx.tcx.hir().get_foreign_abi(item.hir_id());
@@ -2106,7 +2102,7 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
                             constness: hir::Constness::NotConst,
                             asyncness: hir::IsAsync::NotAsync,
                         },
-                        call_locations: None,
+                        def_id,
                     })
                 }
                 hir::ForeignItemKind::Static(ref ty, mutability) => {
