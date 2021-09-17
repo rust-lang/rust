@@ -19,7 +19,7 @@ You can also use my [fork of gcc](https://github.com/antoyo/gcc) which already i
 **Put the path to your custom build of libgccjit in the file `gcc_path`.**
 
 ```bash
-$ git clone https://github.com/antoyo/rustc_codegen_gcc.git
+$ git clone https://github.com/rust-lang/rustc_codegen_gcc.git
 $ cd rustc_codegen_gcc
 $ ./prepare_build.sh # download and patch sysroot src
 $ ./build.sh --release
