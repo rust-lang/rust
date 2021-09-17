@@ -242,8 +242,8 @@ details.undocumented > summary::before {
 	border-color: #bfbfbf;
 }
 
-#help > div > span {
-	border-bottom-color: #bfbfbf;
+#help span.bottom, #help span.top {
+	border-color: #bfbfbf;
 }
 
 #help dt {
