@@ -107,26 +107,10 @@ enum ConstraintOrRegister {
 
 
 impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
-    fn codegen_llvm_inline_asm(&mut self, ia: &LlvmInlineAsmInner, outputs: Vec<PlaceRef<'tcx, RValue<'gcc>>>, inputs: Vec<RValue<'gcc>>, span: Span) -> bool {
-        if ia.asm.as_str().is_empty() && outputs.is_empty() {
-            // TODO(@Commeownist): there's one use of `llvm_asm` in rustc sysroot we can't get rid of just yet.
-            // Fortunately, it's used as a simple black box to make sure that inputs are not optimized away.
-            // Let's just emulate it.
-            let block = self.llbb();
-            let extended_asm = block.add_extended_asm(None, "");
-            for input in inputs {
-                extended_asm.add_input_operand(None, "r", input);
-            }
-            extended_asm.add_clobber("memory");
-            extended_asm.set_volatile_flag(true);
-        } 
-        else {
-            // TODO(@Commeownist): switch to `struct_span_err_with_code` 
-            // once we get this merged into rustc
-            self.sess().struct_span_err(span, "GCC backend does not support `llvm_asm!`")
-                .help("consider using the `asm!` macro instead")
-                .emit();
-        }
+    fn codegen_llvm_inline_asm(&mut self, _ia: &LlvmInlineAsmInner, _outputs: Vec<PlaceRef<'tcx, RValue<'gcc>>>, _inputs: Vec<RValue<'gcc>>, span: Span) -> bool {
+        self.sess().struct_span_err(span, "GCC backend does not support `llvm_asm!`")
+            .help("consider using the `asm!` macro instead")
+            .emit();
 
         // We return `true` even if we've failed to generate the asm
         // because we want to suppress the "malformed inline assembly" error
@@ -579,6 +563,10 @@ fn reg_to_gcc(reg: InlineAsmRegOrRegClass) -> ConstraintOrRegister {
             InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg) => unimplemented!(),
             InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) => unimplemented!(),
             InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::freg) => unimplemented!(),
+            InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::cr)
+            | InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::xer) => {
+                unreachable!("clobber-only")
+            },
             InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg) => unimplemented!(),
             InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => unimplemented!(),
             InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::vreg) => unimplemented!(),
@@ -596,6 +584,8 @@ fn reg_to_gcc(reg: InlineAsmRegOrRegClass) -> ConstraintOrRegister {
             InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
                 bug!("GCC backend does not support SPIR-V")
             }
+            InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) => unimplemented!(),
+            InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => unimplemented!(),
             InlineAsmRegClass::Err => unreachable!(),
         }
     };
@@ -635,6 +625,10 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) => cx.type_i32(),
         InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::freg) => cx.type_f64(),
+        InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::cr)
+        | InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::xer) => {
+            unreachable!("clobber-only")
+        },
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => cx.type_f32(),
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::vreg) => cx.type_f32(),
@@ -651,6 +645,8 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         },
+        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) => cx.type_i32(),
+        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => cx.type_f64(),
         InlineAsmRegClass::Err => unreachable!(),
     }
 }
@@ -765,6 +761,8 @@ fn modifier_to_gcc(arch: InlineAsmArch, reg: InlineAsmRegClass, modifier: Option
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         },
+        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) => unimplemented!(),
+        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => unimplemented!(),
         InlineAsmRegClass::Err => unreachable!(),
     }
 }

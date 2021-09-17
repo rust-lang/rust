@@ -10,8 +10,9 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{ArgAbiMethods, BaseTypeMethods, BuilderMethods, ConstMethods, IntrinsicCallMethods};
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Instance, Ty};
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_span::{Span, Symbol, symbol::kw, sym};
-use rustc_target::abi::{HasDataLayout, LayoutOf};
+use rustc_target::abi::HasDataLayout;
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
 use rustc_target::spec::PanicStrategy;
 
@@ -176,7 +177,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                     let result = func.new_local(None, arg.get_type(), "zeros");
                                     let zero = self.cx.context.new_rvalue_zero(arg.get_type());
                                     let cond = self.cx.context.new_comparison(None, ComparisonOp::Equals, arg, zero);
-                                    self.block.expect("block").end_with_conditional(None, cond, then_block, else_block);
+                                    self.llbb().end_with_conditional(None, cond, then_block, else_block);
 
                                     let zero_result = self.cx.context.new_rvalue_from_long(arg.get_type(), width as i64);
                                     then_block.add_assignment(None, result, zero_result);
@@ -305,6 +306,19 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         let cmp = self.context.new_call(None, builtin, &[a_ptr, b_ptr, n]);
                         self.icmp(IntPredicate::IntEQ, cmp, self.const_i32(0))
                     }
+                }
+
+                sym::black_box => {
+                    args[0].val.store(self, result);
+
+                    let block = self.llbb();
+                    let extended_asm = block.add_extended_asm(None, "");
+                    extended_asm.add_input_operand(None, "r", result.llval);
+                    extended_asm.add_clobber("memory");
+                    extended_asm.set_volatile_flag(true);
+                    
+                    // We have copied the value to `result` already.
+                    return;
                 }
 
                 _ if name_str.starts_with("simd_") => {
@@ -935,7 +949,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             then_block.add_assignment(None, res, self.context.new_cast(None, shifted + int_max, result_type));
             then_block.end_with_jump(None, after_block);
 
-            self.block.expect("block").end_with_conditional(None, overflow, then_block, after_block);
+            self.llbb().end_with_conditional(None, overflow, then_block, after_block);
 
             // NOTE: since jumps were added in a place rustc does not
             // expect, the current blocks in the state need to be updated.
@@ -985,7 +999,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             then_block.add_assignment(None, res, self.context.new_cast(None, shifted + int_max, result_type));
             then_block.end_with_jump(None, after_block);
 
-            self.block.expect("block").end_with_conditional(None, overflow, then_block, after_block);
+            self.llbb().end_with_conditional(None, overflow, then_block, after_block);
 
             // NOTE: since jumps were added in a place rustc does not
             // expect, the current blocks in the state need to be updated.

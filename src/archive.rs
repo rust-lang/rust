@@ -2,16 +2,15 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use rustc_session::Session;
-use rustc_codegen_ssa::back::archive::{find_library, ArchiveBuilder};
-use rustc_codegen_ssa::METADATA_FILENAME;
+use rustc_codegen_ssa::back::archive::ArchiveBuilder;
+
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_middle::middle::cstore::DllImport;
-use rustc_span::symbol::Symbol;
+
 
 struct ArchiveConfig<'a> {
     sess: &'a Session,
     dst: PathBuf,
-    lib_search_paths: Vec<PathBuf>,
     use_native_ar: bool,
     use_gnu_style_archive: bool,
 }
@@ -35,11 +34,9 @@ pub struct ArArchiveBuilder<'a> {
 
 impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     fn new(sess: &'a Session, output: &Path, input: Option<&Path>) -> Self {
-        use rustc_codegen_ssa::back::link::archive_search_paths;
         let config = ArchiveConfig {
             sess,
             dst: output.to_path_buf(),
-            lib_search_paths: archive_search_paths(sess),
             use_native_ar: false,
             // FIXME test for linux and System V derivatives instead
             use_gnu_style_archive: sess.target.options.archive_format == "gnu",
@@ -94,47 +91,27 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         ));
     }
 
-    fn add_native_library(&mut self, name: Symbol, verbatim: bool) {
-        let location = find_library(name, verbatim, &self.config.lib_search_paths, self.config.sess);
-        self.add_archive(location.clone(), |_| false)
-            .unwrap_or_else(|e| {
-                panic!(
-                    "failed to add native library {}: {}",
-                    location.to_string_lossy(),
-                    e
-                );
-            });
-    }
+    fn add_archive<F>(&mut self, archive_path: &Path, mut skip: F) -> std::io::Result<()>
+    where
+        F: FnMut(&str) -> bool + 'static,
+    {
+        let mut archive = ar::Archive::new(std::fs::File::open(&archive_path)?);
+        let archive_index = self.src_archives.len();
 
-    fn add_rlib(
-        &mut self,
-        rlib: &Path,
-        name: &str,
-        lto: bool,
-        skip_objects: bool,
-    ) -> std::io::Result<()> {
-        let obj_start = name.to_owned();
-
-        self.add_archive(rlib.to_owned(), move |fname: &str| {
-            // Ignore metadata files, no matter the name.
-            if fname == METADATA_FILENAME {
-                return true;
+        let mut i = 0;
+        while let Some(entry) = archive.next_entry() {
+            let entry = entry?;
+            let file_name = String::from_utf8(entry.header().identifier().to_vec())
+                .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
+            if !skip(&file_name) {
+                self.entries
+                    .push((file_name, ArchiveEntry::FromArchive { archive_index, entry_index: i }));
             }
+            i += 1;
+        }
 
-            // Don't include Rust objects if LTO is enabled
-            if lto && fname.starts_with(&obj_start) && fname.ends_with(".o") {
-                return true;
-            }
-
-            // Otherwise if this is *not* a rust object and we're skipping
-            // objects then skip this file
-            if skip_objects && (!fname.starts_with(&obj_start) || !fname.ends_with(".o")) {
-                return true;
-            }
-
-            // ok, don't skip this
-            return false;
-        })
+        self.src_archives.push((archive_path.to_owned(), archive));
+        Ok(())
     }
 
     fn update_symbols(&mut self) {
@@ -237,34 +214,5 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
 
     fn inject_dll_import_lib(&mut self, _lib_name: &str, _dll_imports: &[DllImport], _tmpdir: &MaybeTempDir) {
         unimplemented!();
-    }
-}
-
-impl<'a> ArArchiveBuilder<'a> {
-    fn add_archive<F>(&mut self, archive_path: PathBuf, mut skip: F) -> std::io::Result<()>
-    where
-        F: FnMut(&str) -> bool + 'static,
-    {
-        let mut archive = ar::Archive::new(std::fs::File::open(&archive_path)?);
-        let archive_index = self.src_archives.len();
-
-        let mut i = 0;
-        while let Some(entry) = archive.next_entry() {
-            let entry = entry.unwrap();
-            let file_name = String::from_utf8(entry.header().identifier().to_vec()).unwrap();
-            if !skip(&file_name) {
-                self.entries.push((
-                    file_name,
-                    ArchiveEntry::FromArchive {
-                        archive_index,
-                        entry_index: i,
-                    },
-                ));
-            }
-            i += 1;
-        }
-
-        self.src_archives.push((archive_path, archive));
-        Ok(())
     }
 }

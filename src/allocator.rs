@@ -6,7 +6,7 @@ use rustc_span::symbol::sym;
 
 use crate::GccContext;
 
-pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, kind: AllocatorKind, has_alloc_error_handler: bool) {
+pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_name: &str, kind: AllocatorKind, has_alloc_error_handler: bool) {
     let context = &mods.context;
     let usize =
         match tcx.sess.target.pointer_width {
@@ -77,6 +77,9 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, kind: Alloc
         else {
             block.end_with_void_return(None);
         }
+
+        // TODO(@Commeownist): Check if we need to emit some extra debugging info in certain circumstances
+        // as described in https://github.com/rust-lang/rust/commit/77a96ed5646f7c3ee8897693decc4626fe380643
     }
 
     let types = [usize, usize];

@@ -146,6 +146,7 @@ rm config.toml || true
 cat > config.toml <<EOF
 [rust]
 codegen-backends = []
+deny-warnings = false
 
 [build]
 cargo = "$(which cargo)"
