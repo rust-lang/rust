@@ -37,20 +37,15 @@ pub mod inner {
         // This could be a problem for programs that call instants at intervals greater
         // than 68 years. Interstellar probes may want to ensure that actually_monotonic() is true.
         let packed = (secs << 32) | nanos;
-        let mut old = mono.load(Relaxed);
-        loop {
-            if old == UNINITIALIZED || packed.wrapping_sub(old) < u64::MAX / 2 {
-                match mono.compare_exchange_weak(old, packed, Relaxed, Relaxed) {
-                    Ok(_) => return raw,
-                    Err(x) => {
-                        old = x;
-                        continue;
-                    }
-                }
-            } else {
+        let updated = mono.fetch_update(Relaxed, Relaxed, |old| {
+            (old == UNINITIALIZED || packed.wrapping_sub(old) < u64::MAX / 2).then_some(packed)
+        });
+        match updated {
+            Ok(_) => raw,
+            Err(newer) => {
                 // Backslide occurred. We reconstruct monotonized time from the upper 32 bit of the
                 // passed in value and the 64bits loaded from the atomic
-                let seconds_lower = old >> 32;
+                let seconds_lower = newer >> 32;
                 let mut seconds_upper = secs & 0xffff_ffff_0000_0000;
                 if secs & 0xffff_ffff > seconds_lower {
                     // Backslide caused the lower 32bit of the seconds part to wrap.
@@ -69,8 +64,8 @@ pub mod inner {
                     seconds_upper = seconds_upper.wrapping_add(0x1_0000_0000);
                 }
                 let secs = seconds_upper | seconds_lower;
-                let nanos = old as u32;
-                return ZERO.checked_add_duration(&Duration::new(secs, nanos)).unwrap();
+                let nanos = newer as u32;
+                ZERO.checked_add_duration(&Duration::new(secs, nanos)).unwrap()
             }
         }
     }
