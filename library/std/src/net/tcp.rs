@@ -96,6 +96,18 @@ pub struct Incoming<'a> {
     listener: &'a TcpListener,
 }
 
+/// An iterator that infinitely [`accept`]s connections on a [`TcpListener`].
+///
+/// This `struct` is created by the [`TcpListener::into_incoming`] method.
+/// See its documentation for more.
+///
+/// [`accept`]: TcpListener::accept
+#[derive(Debug)]
+#[unstable(feature = "tcplistener_into_incoming", issue = "88339")]
+pub struct IntoIncoming {
+    listener: TcpListener,
+}
+
 impl TcpStream {
     /// Opens a TCP connection to a remote host.
     ///
@@ -845,6 +857,37 @@ impl TcpListener {
         Incoming { listener: self }
     }
 
+    /// Turn this into an iterator over the connections being received on this
+    /// listener.
+    ///
+    /// The returned iterator will never return [`None`] and will also not yield
+    /// the peer's [`SocketAddr`] structure. Iterating over it is equivalent to
+    /// calling [`TcpListener::accept`] in a loop.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(tcplistener_into_incoming)]
+    /// use std::net::{TcpListener, TcpStream};
+    ///
+    /// fn listen_on(port: u16) -> impl Iterator<Item = TcpStream> {
+    ///     let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+    ///     listener.into_incoming()
+    ///         .filter_map(Result::ok) /* Ignore failed connections */
+    /// }
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     for stream in listen_on(80) {
+    ///         /* handle the connection here */
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "tcplistener_into_incoming", issue = "88339")]
+    pub fn into_incoming(self) -> IntoIncoming {
+        IntoIncoming { listener: self }
+    }
+
     /// Sets the value for the `IP_TTL` option on this socket.
     ///
     /// This value sets the time-to-live field that is used in every packet sent
@@ -976,6 +1019,14 @@ impl TcpListener {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Incoming<'a> {
+    type Item = io::Result<TcpStream>;
+    fn next(&mut self) -> Option<io::Result<TcpStream>> {
+        Some(self.listener.accept().map(|p| p.0))
+    }
+}
+
+#[unstable(feature = "tcplistener_into_incoming", issue = "88339")]
+impl Iterator for IntoIncoming {
     type Item = io::Result<TcpStream>;
     fn next(&mut self) -> Option<io::Result<TcpStream>> {
         Some(self.listener.accept().map(|p| p.0))
