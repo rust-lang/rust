@@ -166,14 +166,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Returns whether the expected type is `bool` and the expression is `x = y`.
-    pub fn is_assign_to_bool(&self, expr: &hir::Expr<'_>, expected: Ty<'tcx>) -> bool {
-        if let hir::ExprKind::Assign(..) = expr.kind {
-            return expected == self.tcx.types.bool;
-        }
-        false
-    }
-
     /// If the expected type is an enum (Issue #55250) with any variants whose
     /// sole field is of the found type, suggest such variants. (Issue #42764)
     fn suggest_compatible_variants(

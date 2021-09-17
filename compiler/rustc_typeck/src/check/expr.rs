@@ -92,8 +92,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let expr = expr.peel_drop_temps();
             self.suggest_deref_ref_or_into(&mut err, expr, expected_ty, ty, None);
             extend_err(&mut err);
-            // Error possibly reported in `check_assign` so avoid emitting error again.
-            err.emit_unless(self.is_assign_to_bool(expr, expected_ty));
+            err.emit();
         }
         ty
     }
