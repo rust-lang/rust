@@ -1256,33 +1256,40 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             trait_ref: ty::PolyTraitRef<'tcx>,
         ) -> String {
             let inputs = trait_ref.skip_binder().substs.type_at(1);
-            let sig = if let ty::Tuple(inputs) = inputs.kind() {
-                tcx.mk_fn_sig(
-                    inputs.iter().map(|k| k.expect_ty()),
-                    tcx.mk_ty_infer(ty::TyVar(ty::TyVid::from_u32(0))),
-                    false,
-                    hir::Unsafety::Normal,
-                    abi::Abi::Rust,
-                )
-            } else {
-                tcx.mk_fn_sig(
+            let sig = match inputs.kind() {
+                ty::Tuple(inputs)
+                    if tcx.fn_trait_kind_from_lang_item(trait_ref.def_id()).is_some() =>
+                {
+                    tcx.mk_fn_sig(
+                        inputs.iter().map(|k| k.expect_ty()),
+                        tcx.mk_ty_infer(ty::TyVar(ty::TyVid::from_u32(0))),
+                        false,
+                        hir::Unsafety::Normal,
+                        abi::Abi::Rust,
+                    )
+                }
+                _ => tcx.mk_fn_sig(
                     std::iter::once(inputs),
                     tcx.mk_ty_infer(ty::TyVar(ty::TyVid::from_u32(0))),
                     false,
                     hir::Unsafety::Normal,
                     abi::Abi::Rust,
-                )
+                ),
             };
             trait_ref.rebind(sig).to_string()
         }
 
-        let argument_is_closure = expected_ref.skip_binder().substs.type_at(0).is_closure();
+        let argument_kind = match expected_ref.skip_binder().substs.type_at(0) {
+            t if t.is_closure() => "closure",
+            t if t.is_generator() => "generator",
+            _ => "function",
+        };
         let mut err = struct_span_err!(
             self.tcx.sess,
             span,
             E0631,
             "type mismatch in {} arguments",
-            if argument_is_closure { "closure" } else { "function" }
+            argument_kind
         );
 
         let found_str = format!("expected signature of `{}`", build_fn_sig_string(self.tcx, found));

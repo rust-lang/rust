@@ -722,7 +722,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 };
 
                 let found_did = match *found_trait_ty.kind() {
-                    ty::Closure(did, _) | ty::Foreign(did) | ty::FnDef(did, _) => Some(did),
+                    ty::Closure(did, _)
+                    | ty::Foreign(did)
+                    | ty::FnDef(did, _)
+                    | ty::Generator(did, ..) => Some(did),
                     ty::Adt(def, _) => Some(def.did),
                     _ => None,
                 };

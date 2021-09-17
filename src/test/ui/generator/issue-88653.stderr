@@ -1,0 +1,12 @@
+error[E0631]: type mismatch in generator arguments
+  --> $DIR/issue-88653.rs:8:22
+   |
+LL | fn foo(bar: bool) -> impl Generator<(bool,)> {
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^ expected signature of `fn((bool,)) -> _`
+...
+LL |     |bar| {
+   |     ----- found signature of `fn(bool) -> _`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0631`.
