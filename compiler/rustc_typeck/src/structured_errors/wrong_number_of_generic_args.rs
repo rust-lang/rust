@@ -136,10 +136,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             AngleBrackets::Missing => 0,
             // Only lifetime arguments can be implied
             AngleBrackets::Implied => self.gen_args.args.len(),
-            AngleBrackets::Available => self.gen_args.args.iter().fold(0, |acc, arg| match arg {
-                hir::GenericArg::Lifetime(_) => acc + 1,
-                _ => acc,
-            }),
+            AngleBrackets::Available => self.gen_args.num_lifetime_params(),
         }
     }
 
@@ -148,10 +145,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             AngleBrackets::Missing => 0,
             // Only lifetime arguments can be implied
             AngleBrackets::Implied => 0,
-            AngleBrackets::Available => self.gen_args.args.iter().fold(0, |acc, arg| match arg {
-                hir::GenericArg::Type(_) | hir::GenericArg::Const(_) => acc + 1,
-                _ => acc,
-            }),
+            AngleBrackets::Available => self.gen_args.num_generic_params(),
         }
     }
 
@@ -651,7 +645,9 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             let mut found_redundant = false;
             for arg in self.gen_args.args {
                 match arg {
-                    hir::GenericArg::Type(_) | hir::GenericArg::Const(_) => {
+                    hir::GenericArg::Type(_)
+                    | hir::GenericArg::Const(_)
+                    | hir::GenericArg::Infer(_) => {
                         gen_arg_spans.push(arg.span());
                         if gen_arg_spans.len() > self.num_expected_type_or_const_args() {
                             found_redundant = true;
