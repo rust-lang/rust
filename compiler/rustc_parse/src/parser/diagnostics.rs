@@ -1959,11 +1959,11 @@ impl<'a> Parser<'a> {
                 if token::EqEq == snapshot.token.kind {
                     err.span_suggestion(
                         snapshot.token.span,
-                        "replace `==` with `=`",
+                        "if you meant to use an associated type binding, replace `==` with `=`",
                         "=".to_string(),
                         Applicability::MaybeIncorrect,
                     );
-                    let value = self.mk_expr_err(expr.span);
+                    let value = self.mk_expr_err(start.to(expr.span));
                     err.emit();
                     return Ok(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }));
                 } else if token::Comma == self.token.kind || self.token.kind.should_end_const_arg()
