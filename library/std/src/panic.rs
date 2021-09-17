@@ -10,7 +10,7 @@ use crate::thread::Result;
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
-#[allow_internal_unstable(libstd_sys_internals, const_format_args)]
+#[allow_internal_unstable(libstd_sys_internals, const_format_args, core_panic)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "std_panic_2015_macro")]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro panic_2015 {
@@ -19,6 +19,10 @@ pub macro panic_2015 {
     }),
     ($msg:expr $(,)?) => ({
         $crate::rt::begin_panic($msg)
+    }),
+    // Special-case the single-argument case for const_panic.
+    ("{}", $arg:expr $(,)?) => ({
+        $crate::rt::panic_display(&$arg)
     }),
     ($fmt:expr, $($arg:tt)+) => ({
         $crate::rt::begin_panic_fmt(&$crate::const_format_args!($fmt, $($arg)+))

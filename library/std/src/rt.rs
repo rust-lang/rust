@@ -16,6 +16,7 @@
 
 // Re-export some of our utilities which are expected by other crates.
 pub use crate::panicking::{begin_panic, begin_panic_fmt, panic_count};
+pub use core::panicking::panic_display;
 
 // To reduce the generated code of the new `lang_start`, this function is doing
 // the real work.

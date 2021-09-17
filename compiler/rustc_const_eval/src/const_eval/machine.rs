@@ -36,12 +36,17 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
         let def_id = instance.def_id();
         if Some(def_id) == self.tcx.lang_items().panic_fn()
             || Some(def_id) == self.tcx.lang_items().panic_str()
+            || Some(def_id) == self.tcx.lang_items().panic_display()
             || Some(def_id) == self.tcx.lang_items().begin_panic_fn()
         {
-            // &str
+            // &str or &&str
             assert!(args.len() == 1);
 
-            let msg_place = self.deref_operand(&args[0])?;
+            let mut msg_place = self.deref_operand(&args[0])?;
+            while msg_place.layout.ty.is_ref() {
+                msg_place = self.deref_operand(&msg_place.into())?;
+            }
+
             let msg = Symbol::intern(self.read_str(&msg_place)?);
             let span = self.find_closest_untracked_caller_location();
             let (file, line, col) = self.location_triple_for_span(span);

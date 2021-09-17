@@ -258,6 +258,7 @@
 #![feature(const_trait_impl)]
 #![feature(container_error_extra)]
 #![feature(core_intrinsics)]
+#![feature(core_panic)]
 #![feature(custom_test_frameworks)]
 #![feature(decl_macro)]
 #![feature(doc_cfg)]
