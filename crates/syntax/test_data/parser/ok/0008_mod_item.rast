@@ -1,93 +1,76 @@
-SOURCE_FILE@0..118
-  MODULE@0..6
+SOURCE_FILE@0..100
+  MODULE@0..46
     MOD_KW@0..3 "mod"
     WHITESPACE@3..4 " "
     NAME@4..5
-      IDENT@4..5 "a"
-    SEMICOLON@5..6 ";"
-  WHITESPACE@6..8 "\n\n"
-  MODULE@8..17
-    MOD_KW@8..11 "mod"
-    WHITESPACE@11..12 " "
-    NAME@12..13
-      IDENT@12..13 "b"
-    WHITESPACE@13..14 " "
-    ITEM_LIST@14..17
-      L_CURLY@14..15 "{"
-      WHITESPACE@15..16 "\n"
-      R_CURLY@16..17 "}"
-  WHITESPACE@17..19 "\n\n"
-  MODULE@19..65
-    MOD_KW@19..22 "mod"
-    WHITESPACE@22..23 " "
-    NAME@23..24
-      IDENT@23..24 "c"
-    WHITESPACE@24..25 " "
-    ITEM_LIST@25..65
-      L_CURLY@25..26 "{"
-      WHITESPACE@26..31 "\n    "
-      FN@31..47
-        FN_KW@31..33 "fn"
-        WHITESPACE@33..34 " "
-        NAME@34..37
-          IDENT@34..37 "foo"
-        PARAM_LIST@37..39
-          L_PAREN@37..38 "("
-          R_PAREN@38..39 ")"
+      IDENT@4..5 "c"
+    WHITESPACE@5..6 " "
+    ITEM_LIST@6..46
+      L_CURLY@6..7 "{"
+      WHITESPACE@7..12 "\n    "
+      FN@12..28
+        FN_KW@12..14 "fn"
+        WHITESPACE@14..15 " "
+        NAME@15..18
+          IDENT@15..18 "foo"
+        PARAM_LIST@18..20
+          L_PAREN@18..19 "("
+          R_PAREN@19..20 ")"
+        WHITESPACE@20..21 " "
+        BLOCK_EXPR@21..28
+          L_CURLY@21..22 "{"
+          WHITESPACE@22..27 "\n    "
+          R_CURLY@27..28 "}"
+      WHITESPACE@28..33 "\n    "
+      STRUCT@33..44
+        STRUCT_KW@33..39 "struct"
         WHITESPACE@39..40 " "
-        BLOCK_EXPR@40..47
-          L_CURLY@40..41 "{"
-          WHITESPACE@41..46 "\n    "
-          R_CURLY@46..47 "}"
-      WHITESPACE@47..52 "\n    "
-      STRUCT@52..63
-        STRUCT_KW@52..58 "struct"
-        WHITESPACE@58..59 " "
-        NAME@59..60
-          IDENT@59..60 "S"
-        WHITESPACE@60..61 " "
-        RECORD_FIELD_LIST@61..63
-          L_CURLY@61..62 "{"
-          R_CURLY@62..63 "}"
-      WHITESPACE@63..64 "\n"
-      R_CURLY@64..65 "}"
-  WHITESPACE@65..67 "\n\n"
-  MODULE@67..118
-    MOD_KW@67..70 "mod"
-    WHITESPACE@70..71 " "
-    NAME@71..72
-      IDENT@71..72 "d"
-    WHITESPACE@72..73 " "
-    ITEM_LIST@73..118
-      L_CURLY@73..74 "{"
-      WHITESPACE@74..79 "\n    "
-      ATTR@79..87
-        POUND@79..80 "#"
-        BANG@80..81 "!"
-        L_BRACK@81..82 "["
-        META@82..86
-          PATH@82..86
-            PATH_SEGMENT@82..86
-              NAME_REF@82..86
-                IDENT@82..86 "attr"
-        R_BRACK@86..87 "]"
-      WHITESPACE@87..92 "\n    "
-      MODULE@92..98
-        MOD_KW@92..95 "mod"
-        WHITESPACE@95..96 " "
-        NAME@96..97
-          IDENT@96..97 "e"
-        SEMICOLON@97..98 ";"
-      WHITESPACE@98..103 "\n    "
-      MODULE@103..116
-        MOD_KW@103..106 "mod"
-        WHITESPACE@106..107 " "
-        NAME@107..108
-          IDENT@107..108 "f"
-        WHITESPACE@108..109 " "
-        ITEM_LIST@109..116
-          L_CURLY@109..110 "{"
-          WHITESPACE@110..115 "\n    "
-          R_CURLY@115..116 "}"
-      WHITESPACE@116..117 "\n"
-      R_CURLY@117..118 "}"
+        NAME@40..41
+          IDENT@40..41 "S"
+        WHITESPACE@41..42 " "
+        RECORD_FIELD_LIST@42..44
+          L_CURLY@42..43 "{"
+          R_CURLY@43..44 "}"
+      WHITESPACE@44..45 "\n"
+      R_CURLY@45..46 "}"
+  WHITESPACE@46..48 "\n\n"
+  MODULE@48..99
+    MOD_KW@48..51 "mod"
+    WHITESPACE@51..52 " "
+    NAME@52..53
+      IDENT@52..53 "d"
+    WHITESPACE@53..54 " "
+    ITEM_LIST@54..99
+      L_CURLY@54..55 "{"
+      WHITESPACE@55..60 "\n    "
+      ATTR@60..68
+        POUND@60..61 "#"
+        BANG@61..62 "!"
+        L_BRACK@62..63 "["
+        META@63..67
+          PATH@63..67
+            PATH_SEGMENT@63..67
+              NAME_REF@63..67
+                IDENT@63..67 "attr"
+        R_BRACK@67..68 "]"
+      WHITESPACE@68..73 "\n    "
+      MODULE@73..79
+        MOD_KW@73..76 "mod"
+        WHITESPACE@76..77 " "
+        NAME@77..78
+          IDENT@77..78 "e"
+        SEMICOLON@78..79 ";"
+      WHITESPACE@79..84 "\n    "
+      MODULE@84..97
+        MOD_KW@84..87 "mod"
+        WHITESPACE@87..88 " "
+        NAME@88..89
+          IDENT@88..89 "f"
+        WHITESPACE@89..90 " "
+        ITEM_LIST@90..97
+          L_CURLY@90..91 "{"
+          WHITESPACE@91..96 "\n    "
+          R_CURLY@96..97 "}"
+      WHITESPACE@97..98 "\n"
+      R_CURLY@98..99 "}"
+  WHITESPACE@99..100 "\n"

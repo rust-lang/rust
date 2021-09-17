@@ -1,0 +1,8 @@
+SOURCE_FILE@0..7
+  MODULE@0..6
+    MOD_KW@0..3 "mod"
+    WHITESPACE@3..4 " "
+    NAME@4..5
+      IDENT@4..5 "a"
+    SEMICOLON@5..6 ";"
+  WHITESPACE@6..7 "\n"

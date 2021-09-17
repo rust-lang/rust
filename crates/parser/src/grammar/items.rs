@@ -309,6 +309,30 @@ fn extern_crate(p: &mut Parser, m: Marker) {
     m.complete(p, EXTERN_CRATE);
 }
 
+// test mod_item
+// mod a;
+pub(crate) fn mod_item(p: &mut Parser, m: Marker) {
+    p.bump(T![mod]);
+    name(p);
+    if p.at(T!['{']) {
+        // test mod_item_curly
+        // mod b { }
+        item_list(p);
+    } else if !p.eat(T![;]) {
+        p.error("expected `;` or `{`");
+    }
+    m.complete(p, MODULE);
+}
+
+pub(crate) fn item_list(p: &mut Parser) {
+    assert!(p.at(T!['{']));
+    let m = p.start();
+    p.bump(T!['{']);
+    mod_contents(p, true);
+    p.expect(T!['}']);
+    m.complete(p, ITEM_LIST);
+}
+
 pub(crate) fn extern_item_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
@@ -374,28 +398,6 @@ fn type_alias(p: &mut Parser, m: Marker) {
     }
     p.expect(T![;]);
     m.complete(p, TYPE_ALIAS);
-}
-
-pub(crate) fn mod_item(p: &mut Parser, m: Marker) {
-    assert!(p.at(T![mod]));
-    p.bump(T![mod]);
-
-    name(p);
-    if p.at(T!['{']) {
-        item_list(p);
-    } else if !p.eat(T![;]) {
-        p.error("expected `;` or `{`");
-    }
-    m.complete(p, MODULE);
-}
-
-pub(crate) fn item_list(p: &mut Parser) {
-    assert!(p.at(T!['{']));
-    let m = p.start();
-    p.bump(T!['{']);
-    mod_contents(p, true);
-    p.expect(T!['}']);
-    m.complete(p, ITEM_LIST);
 }
 
 fn macro_rules(p: &mut Parser, m: Marker) {
