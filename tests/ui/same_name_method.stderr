@@ -1,0 +1,64 @@
+error: method's name is same to an existing method in a trait
+  --> $DIR/same_name_method.rs:20:13
+   |
+LL |             fn foo() {}
+   |             ^^^^^^^^^^^
+   |
+   = note: `-D clippy::same-name-method` implied by `-D warnings`
+note: existing `foo` defined here
+  --> $DIR/same_name_method.rs:24:13
+   |
+LL |             fn foo() {}
+   |             ^^^^^^^^^^^
+
+error: method's name is same to an existing method in a trait
+  --> $DIR/same_name_method.rs:44:13
+   |
+LL |             fn foo() {}
+   |             ^^^^^^^^^^^
+   |
+note: existing `foo` defined here
+  --> $DIR/same_name_method.rs:48:13
+   |
+LL |             fn foo() {}
+   |             ^^^^^^^^^^^
+
+error: method's name is same to an existing method in a trait
+  --> $DIR/same_name_method.rs:58:13
+   |
+LL |             fn foo() {}
+   |             ^^^^^^^^^^^
+   |
+note: existing `foo` defined here
+  --> $DIR/same_name_method.rs:61:9
+   |
+LL |         impl T1 for S {}
+   |         ^^^^^^^^^^^^^^^^
+
+error: method's name is same to an existing method in a trait
+  --> $DIR/same_name_method.rs:70:13
+   |
+LL |             fn foo() {}
+   |             ^^^^^^^^^^^
+   |
+note: existing `foo` defined here
+  --> $DIR/same_name_method.rs:73:9
+   |
+LL |         impl T1 for S {}
+   |         ^^^^^^^^^^^^^^^^
+
+error: method's name is same to an existing method in a trait
+  --> $DIR/same_name_method.rs:34:13
+   |
+LL |             fn clone() {}
+   |             ^^^^^^^^^^^^^
+   |
+note: existing `clone` defined here
+  --> $DIR/same_name_method.rs:30:18
+   |
+LL |         #[derive(Clone)]
+   |                  ^^^^^
+   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 5 previous errors
+
