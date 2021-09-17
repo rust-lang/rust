@@ -74,12 +74,24 @@ impl DiagnosticStyledString {
     pub fn highlighted<S: Into<String>>(t: S) -> DiagnosticStyledString {
         DiagnosticStyledString(vec![StringPart::Highlighted(t.into())])
     }
+
+    pub fn content(&self) -> String {
+        self.0.iter().map(|x| x.content()).collect::<String>()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum StringPart {
     Normal(String),
     Highlighted(String),
+}
+
+impl StringPart {
+    pub fn content(&self) -> &str {
+        match self {
+            &StringPart::Normal(ref s) | &StringPart::Highlighted(ref s) => s,
+        }
+    }
 }
 
 impl Diagnostic {
