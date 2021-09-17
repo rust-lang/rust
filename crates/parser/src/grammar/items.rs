@@ -148,14 +148,13 @@ pub(super) fn opt_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
             // impl T for Foo {
             //     default async fn foo() {}
             // }
-
-            // test default_async_unsafe_fn
-            // impl T for Foo {
-            //     default async unsafe fn foo() {}
-            // }
             T![async] => {
                 let mut maybe_fn = p.nth(2);
                 let is_unsafe = if matches!(maybe_fn, T![unsafe]) {
+                    // test default_async_unsafe_fn
+                    // impl T for Foo {
+                    //     default async unsafe fn foo() {}
+                    // }
                     maybe_fn = p.nth(3);
                     true
                 } else {
@@ -400,9 +399,9 @@ fn fn_(p: &mut Parser, m: Marker) {
     // fn foo<T>() where T: Copy {}
     type_params::opt_where_clause(p);
 
-    // test fn_decl
-    // trait T { fn foo(); }
     if p.at(T![;]) {
+        // test fn_decl
+        // trait T { fn foo(); }
         p.bump(T![;]);
     } else {
         expressions::block_expr(p)
