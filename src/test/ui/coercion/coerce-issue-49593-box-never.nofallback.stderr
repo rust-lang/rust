@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `(): std::error::Error` is not satisfied
+  --> $DIR/coerce-issue-49593-box-never.rs:17:53
+   |
+LL |     /* *mut $0 is coerced to Box<dyn Error> here */ Box::<_ /* ! */>::new(x)
+   |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::error::Error` is not implemented for `()`
+   |
+   = note: required for the cast to the object type `dyn std::error::Error`
+
+error[E0277]: the trait bound `(): std::error::Error` is not satisfied
+  --> $DIR/coerce-issue-49593-box-never.rs:22:49
+   |
+LL |     /* *mut $0 is coerced to *mut Error here */ raw_ptr_box::<_ /* ! */>(x)
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::error::Error` is not implemented for `()`
+   |
+   = note: required for the cast to the object type `(dyn std::error::Error + 'static)`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

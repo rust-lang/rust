@@ -6,7 +6,10 @@
 //
 // check-pass
 
-#![feature(never_type_fallback)]
+// revisions: nofallback fallback
+
+#![cfg_attr(fallback, feature(never_type, never_type_fallback))]
+
 
 fn make_unit() {}
 
