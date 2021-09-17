@@ -1,0 +1,28 @@
+error: expected one of `,` or `>`, found `==`
+  --> $DIR/issue-87493.rs:8:22
+   |
+LL |     T: MyTrait<Assoc == S::Assoc>,
+   |                      ^^ expected one of `,` or `>`
+   |
+help: if you meant to use an associated type binding, replace `==` with `=`
+   |
+LL |     T: MyTrait<Assoc = S::Assoc>,
+   |                      ~
+
+error[E0107]: this trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/issue-87493.rs:8:8
+   |
+LL |     T: MyTrait<Assoc == S::Assoc>,
+   |        ^^^^^^^------------------- help: remove these generics
+   |        |
+   |        expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/issue-87493.rs:1:11
+   |
+LL | pub trait MyTrait {
+   |           ^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

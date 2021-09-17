@@ -1950,7 +1950,19 @@ impl<'a> Parser<'a> {
         }
         match self.parse_expr_res(Restrictions::CONST_EXPR, None) {
             Ok(expr) => {
-                if token::Comma == self.token.kind || self.token.kind.should_end_const_arg() {
+                // Find a mistake like `MyTrait<Assoc == S::Assoc>`.
+                if token::EqEq == snapshot.token.kind {
+                    err.span_suggestion(
+                        snapshot.token.span,
+                        "if you meant to use an associated type binding, replace `==` with `=`",
+                        "=".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                    let value = self.mk_expr_err(start.to(expr.span));
+                    err.emit();
+                    return Ok(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }));
+                } else if token::Comma == self.token.kind || self.token.kind.should_end_const_arg()
+                {
                     // Avoid the following output by checking that we consumed a full const arg:
                     // help: expressions must be enclosed in braces to be used as const generic
                     //       arguments
