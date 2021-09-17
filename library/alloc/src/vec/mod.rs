@@ -2841,6 +2841,7 @@ impl<T: Clone> From<&mut [T]> for Vec<T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_from_array", since = "1.44.0")]
 impl<T, const N: usize> From<[T; N]> for Vec<T> {
     #[cfg(not(test))]

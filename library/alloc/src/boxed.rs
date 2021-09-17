@@ -1086,6 +1086,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Box<T, A> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default> Default for Box<T> {
     /// Creates a `Box<T>`, with the `Default` value for T.
@@ -1394,6 +1395,7 @@ impl<A: Allocator> From<Box<str, A>> for Box<[u8], A> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_from_array", since = "1.45.0")]
 impl<T, const N: usize> From<[T; N]> for Box<[T]> {
     /// Converts a `[T; N]` into a `Box<[T]>`
