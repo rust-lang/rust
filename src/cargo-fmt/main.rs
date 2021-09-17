@@ -109,9 +109,9 @@ fn execute() -> i32 {
     let strategy = CargoFmtStrategy::from_opts(&opts);
     let mut rustfmt_args = opts.rustfmt_options;
     if opts.check {
-        let check_flag = String::from("--check");
-        if !rustfmt_args.contains(&check_flag) {
-            rustfmt_args.push(check_flag);
+        let check_flag = "--check";
+        if !rustfmt_args.iter().any(|o| o == check_flag) {
+            rustfmt_args.push(check_flag.to_owned());
         }
     }
     if let Some(message_format) = opts.message_format {
