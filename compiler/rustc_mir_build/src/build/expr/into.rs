@@ -68,7 +68,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     let then_blk = unpack!(this.then_else_break(
                                         block,
                                         &this.thir[cond],
-                                        condition_scope,
+                                        Some(condition_scope),
                                         condition_scope,
                                         then_expr.span,
                                     ));
