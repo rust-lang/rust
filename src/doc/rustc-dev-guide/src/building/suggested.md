@@ -32,8 +32,8 @@ you can write: <!-- date: 2021-09 --><!-- the date comment is for the edition be
         "--json-output"
     ],
     "rust-analyzer.rustfmt.overrideCommand": [
-      "./build/TARGET_TRIPLE/stage0/bin/rustfmt",
-      "--edition=2018"
+        "./build/TARGET_TRIPLE/stage0/bin/rustfmt",
+        "--edition=2018"
     ],
     "editor.formatOnSave": true,
     "rust-analyzer.cargo.runBuildScripts": false,
