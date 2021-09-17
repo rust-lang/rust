@@ -44,7 +44,8 @@ pub(super) const ITEM_RECOVERY_SET: TokenSet = TokenSet::new(&[
 pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool) {
     let m = p.start();
     attributes::outer_attrs(p);
-    let m = match maybe_item(p, m) {
+
+    let m = match opt_item(p, m) {
         Ok(()) => {
             if p.at(T![;]) {
                 p.err_and_bump(
@@ -56,6 +57,7 @@ pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool) {
         }
         Err(m) => m,
     };
+
     if paths::is_use_path_start(p) {
         match macro_call(p) {
             BlockLike::Block => (),
@@ -64,30 +66,30 @@ pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool) {
             }
         }
         m.complete(p, MACRO_CALL);
-    } else {
-        m.abandon(p);
-        if p.at(T!['{']) {
-            error_block(p, "expected an item");
-        } else if p.at(T!['}']) && !stop_on_r_curly {
+        return;
+    }
+
+    m.abandon(p);
+    match p.current() {
+        T!['{'] => error_block(p, "expected an item"),
+        T!['}'] if !stop_on_r_curly => {
             let e = p.start();
             p.error("unmatched `}`");
             p.bump(T!['}']);
             e.complete(p, ERROR);
-        } else if !p.at(EOF) && !p.at(T!['}']) {
-            p.err_and_bump("expected an item");
-        } else {
-            p.error("expected an item");
         }
+        EOF | T!['}'] => p.error("expected an item"),
+        _ => p.err_and_bump("expected an item"),
     }
 }
 
 /// Try to parse an item, completing `m` in case of success.
-pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
+pub(super) fn opt_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     // test_err pub_expr
     // fn foo() { pub 92; }
     let has_visibility = opt_visibility(p);
 
-    let m = match items_without_modifiers(p, m) {
+    let m = match opt_item_without_modifiers(p, m) {
         Ok(()) => return Ok(()),
         Err(m) => m,
     };
@@ -235,7 +237,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     Ok(())
 }
 
-fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
+fn opt_item_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     let la = p.nth(1);
     match p.current() {
         // test extern_crate
@@ -287,10 +289,7 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
 }
 
 fn extern_crate(p: &mut Parser, m: Marker) {
-    assert!(p.at(T![extern]));
     p.bump(T![extern]);
-
-    assert!(p.at(T![crate]));
     p.bump(T![crate]);
 
     if p.at(T![self]) {

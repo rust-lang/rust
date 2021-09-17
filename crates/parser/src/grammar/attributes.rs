@@ -12,6 +12,28 @@ pub(super) fn outer_attrs(p: &mut Parser) {
     }
 }
 
+fn attr(p: &mut Parser, inner: bool) {
+    assert!(p.at(T![#]));
+
+    let attr = p.start();
+    p.bump(T![#]);
+
+    if inner {
+        p.bump(T![!]);
+    }
+
+    if p.eat(T!['[']) {
+        meta(p);
+
+        if !p.eat(T![']']) {
+            p.error("expected `]`");
+        }
+    } else {
+        p.error("expected `[`");
+    }
+    attr.complete(p, ATTR);
+}
+
 pub(super) fn meta(p: &mut Parser) {
     let meta = p.start();
     paths::use_path(p);
@@ -28,26 +50,4 @@ pub(super) fn meta(p: &mut Parser) {
     }
 
     meta.complete(p, META);
-}
-
-fn attr(p: &mut Parser, inner: bool) {
-    let attr = p.start();
-    assert!(p.at(T![#]));
-    p.bump(T![#]);
-
-    if inner {
-        assert!(p.at(T![!]));
-        p.bump(T![!]);
-    }
-
-    if p.eat(T!['[']) {
-        meta(p);
-
-        if !p.eat(T![']']) {
-            p.error("expected `]`");
-        }
-    } else {
-        p.error("expected `[`");
-    }
-    attr.complete(p, ATTR);
 }
