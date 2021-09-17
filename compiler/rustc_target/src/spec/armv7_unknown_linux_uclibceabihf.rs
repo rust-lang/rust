@@ -17,6 +17,7 @@ pub fn target() -> Target {
             cpu: "generic".to_string(),
             max_atomic_width: Some(64),
             mcount: "_mcount".to_string(),
+            abi: "eabihf".to_string(),
             ..base
         },
     }
