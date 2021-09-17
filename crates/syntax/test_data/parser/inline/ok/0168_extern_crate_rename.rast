@@ -1,0 +1,16 @@
+SOURCE_FILE@0..25
+  EXTERN_CRATE@0..24
+    EXTERN_KW@0..6 "extern"
+    WHITESPACE@6..7 " "
+    CRATE_KW@7..12 "crate"
+    WHITESPACE@12..13 " "
+    NAME_REF@13..16
+      IDENT@13..16 "foo"
+    WHITESPACE@16..17 " "
+    RENAME@17..23
+      AS_KW@17..19 "as"
+      WHITESPACE@19..20 " "
+      NAME@20..23
+        IDENT@20..23 "bar"
+    SEMICOLON@23..24 ";"
+  WHITESPACE@24..25 "\n"

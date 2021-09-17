@@ -240,8 +240,6 @@ pub(super) fn opt_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
 fn opt_item_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     let la = p.nth(1);
     match p.current() {
-        // test extern_crate
-        // extern crate foo;
         T![extern] if la == T![crate] => extern_crate(p, m),
         T![use] => use_item::use_(p, m),
         T![mod] => mod_item(p, m),
@@ -288,11 +286,15 @@ fn opt_item_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     Ok(())
 }
 
+// test extern_crate
+// extern crate foo;
 fn extern_crate(p: &mut Parser, m: Marker) {
     p.bump(T![extern]);
     p.bump(T![crate]);
 
     if p.at(T![self]) {
+        // test extern_crate_self
+        // extern crate self;
         let m = p.start();
         p.bump(T![self]);
         m.complete(p, NAME_REF);
@@ -300,6 +302,8 @@ fn extern_crate(p: &mut Parser, m: Marker) {
         name_ref(p);
     }
 
+    // test extern_crate_rename
+    // extern crate foo as bar;
     opt_rename(p);
     p.expect(T![;]);
     m.complete(p, EXTERN_CRATE);
