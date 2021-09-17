@@ -22,7 +22,7 @@ You can also install the hook as a step of running `x.py setup`!
 a file. By default, `rust-analyzer` runs the `cargo check` and `rustfmt`
 commands, but you can override these commands to use more adapted versions
 of these tools when hacking on `rustc`. For example, for Visual Studio Code,
-you can write:
+you can write: <!-- date: 2021-09 --><!-- the date comment is for the edition below -->
 
 ```JSON
 {
@@ -32,7 +32,8 @@ you can write:
         "--json-output"
     ],
     "rust-analyzer.rustfmt.overrideCommand": [
-      "./build/TARGET_TRIPLE/stage0/bin/rustfmt"
+      "./build/TARGET_TRIPLE/stage0/bin/rustfmt",
+      "--edition=2018"
     ],
     "editor.formatOnSave": true,
     "rust-analyzer.cargo.runBuildScripts": false,

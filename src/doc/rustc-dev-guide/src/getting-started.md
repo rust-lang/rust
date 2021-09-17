@@ -293,6 +293,8 @@ format-on-save turned on. It's a good habit to run `./x.py fmt` before every
 commit, as this reduces conflicts later. The pinned version is built under
 `build/<target>/stage0/bin/rustfmt`, so if you want, you can use it for a
 single file or for format-on-save in your editor, which can be faster than `./x.py fmt`.
+You'll have to pass the <!-- date: 2021-09 --> `--edition=2018` argument
+yourself when calling `rustfmt` directly.
 
 One last thing: you can use `RUSTC_LOG=XXX` to get debug logging. [Read more
 here][logging]. Notice the `C` in `RUSTC_LOG`. Other than that, it uses normal
