@@ -537,7 +537,7 @@ impl Step for Rustc {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.krate("rustc-main").default_condition(builder.config.docs)
+        run.krate("rustc-main").path("compiler").default_condition(builder.config.docs)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -553,9 +553,24 @@ impl Step for Rustc {
     fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let target = self.target;
+        let mut is_explicit_request = false;
         builder.info(&format!("Documenting stage{} compiler ({})", stage, target));
 
-        if !builder.config.compiler_docs {
+        let paths = builder
+            .paths
+            .iter()
+            .map(components_simplified)
+            .filter_map(|path| {
+                if path.get(0) == Some(&"compiler") {
+                    is_explicit_request = true;
+                    path.get(1).map(|p| p.to_owned())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        if !builder.config.compiler_docs && !is_explicit_request {
             builder.info("\tskipping - compiler/librustdoc docs disabled");
             return;
         }
@@ -604,26 +619,54 @@ impl Step for Rustc {
         cargo.rustdocflag("--extern-html-root-url");
         cargo.rustdocflag("ena=https://docs.rs/ena/latest/");
 
-        // Find dependencies for top level crates.
         let mut compiler_crates = HashSet::new();
-        for root_crate in &["rustc_driver", "rustc_codegen_llvm", "rustc_codegen_ssa"] {
-            compiler_crates.extend(
-                builder
-                    .in_tree_crates(root_crate, Some(target))
-                    .into_iter()
-                    .map(|krate| krate.name),
-            );
+
+        if paths.is_empty() {
+            // Find dependencies for top level crates.
+            for root_crate in &["rustc_driver", "rustc_codegen_llvm", "rustc_codegen_ssa"] {
+                compiler_crates.extend(
+                    builder
+                        .in_tree_crates(root_crate, Some(target))
+                        .into_iter()
+                        .map(|krate| krate.name),
+                );
+            }
+        } else {
+            for root_crate in paths {
+                if !builder.src.join("compiler").join(&root_crate).exists() {
+                    builder.info(&format!(
+                        "\tskipping - compiler/{} (unknown compiler crate)",
+                        root_crate
+                    ));
+                } else {
+                    compiler_crates.extend(
+                        builder
+                            .in_tree_crates(root_crate, Some(target))
+                            .into_iter()
+                            .map(|krate| krate.name),
+                    );
+                }
+            }
         }
 
+        let mut to_open = None;
         for krate in &compiler_crates {
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.
             // FIXME: Cargo should probably do this itself.
             t!(fs::create_dir_all(out_dir.join(krate)));
             cargo.arg("-p").arg(krate);
+            if to_open.is_none() {
+                to_open = Some(krate);
+            }
         }
 
         builder.run(&mut cargo.into());
+        // Let's open the first crate documentation page:
+        if let Some(krate) = to_open {
+            let index = out.join(krate).join("index.html");
+            open(builder, &index);
+        }
     }
 }
 
