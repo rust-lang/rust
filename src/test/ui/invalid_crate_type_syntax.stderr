@@ -2,7 +2,7 @@ error: malformed `crate_type` attribute input
   --> $DIR/invalid_crate_type_syntax.rs:2:1
    |
 LL | #![crate_type(lib)]
-   | ^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[crate_type = "bin|lib|..."]`
+   | ^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#![crate_type = "bin|lib|..."]`
 
 error: aborting due to previous error
 
