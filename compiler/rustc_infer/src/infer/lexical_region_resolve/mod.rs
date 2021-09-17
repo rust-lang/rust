@@ -266,6 +266,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     ///
     /// From that list, we look for a *minimal* option `'c_min`. If we
     /// find one, then we can enforce that `'r: 'c_min`.
+    ///
+    /// Alternatively, if we find that there are *NO* upper bounds of `'r`
+    /// apart from `'static`, and `'static` is one of choices, then
+    /// we set `'r` to `'static` (c.f. #63033).
     fn enforce_member_constraint(
         &self,
         graph: &RegionGraph<'tcx>,
@@ -287,16 +291,31 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             VarValue::ErrorValue => return false,
             VarValue::Value(r) => r,
         };
+        debug!("enforce_member_constraint: lower_bound={:#?}", member_lower_bound);
+        if member_constraint.choice_regions.contains(&member_lower_bound) {
+            debug!("enforce_member_constraint: lower bound is already a valid choice");
+            return false;
+        }
 
         // Find all the "upper bounds" -- that is, each region `b` such that
         // `r0 <= b` must hold.
         let (member_upper_bounds, ..) =
             self.collect_bounding_regions(graph, member_vid, OUTGOING, None);
+        debug!("enforce_member_constraint: upper_bounds={:#?}", member_upper_bounds);
+
+        // If there are no upper bounds, and static is a choice (in practice, it always is),
+        // then we should just pick static.
+        if member_upper_bounds.is_empty()
+            && member_constraint.choice_regions.contains(&&ty::RegionKind::ReStatic)
+        {
+            debug!("enforce_member_constraint: selecting 'static since there are no upper bounds",);
+            *var_values.value_mut(member_vid) = VarValue::Value(self.tcx().lifetimes.re_static);
+            return true;
+        }
 
         // Get an iterator over the *available choice* -- that is,
         // each choice region `c` where `lb <= c` and `c <= ub` for all the
         // upper bounds `ub`.
-        debug!("enforce_member_constraint: upper_bounds={:#?}", member_upper_bounds);
         let mut options = member_constraint.choice_regions.iter().filter(|option| {
             self.sub_concrete_regions(member_lower_bound, option)
                 && member_upper_bounds

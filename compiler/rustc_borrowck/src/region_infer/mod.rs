@@ -717,11 +717,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // free region that must outlive the member region `R0` (`UB:
         // R0`). Therefore, we need only keep an option `O` if `UB: O`
         // for all UB.
+        let fr_static = self.universal_regions.fr_static;
         let rev_scc_graph = self.reverse_scc_graph();
         let universal_region_relations = &self.universal_region_relations;
-        for ub in rev_scc_graph.upper_bounds(scc) {
+        let mut any_upper_bounds = false;
+        for ub in rev_scc_graph.upper_bounds(scc).filter(|ub| *ub != fr_static) {
             debug!("apply_member_constraint: ub={:?}", ub);
             choice_regions.retain(|&o_r| universal_region_relations.outlives(ub, o_r));
+            any_upper_bounds = true;
         }
         debug!("apply_member_constraint: after ub, choice_regions={:?}", choice_regions);
 
@@ -730,46 +733,50 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return false;
         }
 
-        // Otherwise, we need to find the minimum remaining choice, if
-        // any, and take that.
-        debug!("apply_member_constraint: choice_regions remaining are {:#?}", choice_regions);
-        let min = |r1: ty::RegionVid, r2: ty::RegionVid| -> Option<ty::RegionVid> {
-            let r1_outlives_r2 = self.universal_region_relations.outlives(r1, r2);
-            let r2_outlives_r1 = self.universal_region_relations.outlives(r2, r1);
-            match (r1_outlives_r2, r2_outlives_r1) {
-                (true, true) => Some(r1.min(r2)),
-                (true, false) => Some(r2),
-                (false, true) => Some(r1),
-                (false, false) => None,
-            }
-        };
-        let mut min_choice = choice_regions[0];
-        for &other_option in &choice_regions[1..] {
-            debug!(
-                "apply_member_constraint: min_choice={:?} other_option={:?}",
-                min_choice, other_option,
-            );
-            match min(min_choice, other_option) {
-                Some(m) => min_choice = m,
-                None => {
-                    debug!(
-                        "apply_member_constraint: {:?} and {:?} are incomparable; no min choice",
-                        min_choice, other_option,
-                    );
-                    return false;
+        // If there WERE no upper bounds (apart from static), and static is one of the options,
+        // then we can just pick that (c.f. #63033).
+        let choice = if !any_upper_bounds && choice_regions.contains(&fr_static) {
+            fr_static
+        } else {
+            // Otherwise, we need to find the minimum remaining choice, if
+            // any, and take that.
+            debug!("apply_member_constraint: choice_regions remaining are {:#?}", choice_regions);
+            let min = |r1: ty::RegionVid, r2: ty::RegionVid| -> Option<ty::RegionVid> {
+                let r1_outlives_r2 = self.universal_region_relations.outlives(r1, r2);
+                let r2_outlives_r1 = self.universal_region_relations.outlives(r2, r1);
+                match (r1_outlives_r2, r2_outlives_r1) {
+                    (true, true) => Some(r1.min(r2)),
+                    (true, false) => Some(r2),
+                    (false, true) => Some(r1),
+                    (false, false) => None,
+                }
+            };
+            let mut min_choice = choice_regions[0];
+            for &other_option in &choice_regions[1..] {
+                debug!(
+                    "apply_member_constraint: min_choice={:?} other_option={:?}",
+                    min_choice, other_option,
+                );
+                match min(min_choice, other_option) {
+                    Some(m) => min_choice = m,
+                    None => {
+                        debug!(
+                            "apply_member_constraint: {:?} and {:?} are incomparable; no min choice",
+                            min_choice, other_option,
+                        );
+                        return false;
+                    }
                 }
             }
-        }
+            min_choice
+        };
 
-        let min_choice_scc = self.constraint_sccs.scc(min_choice);
-        debug!(
-            "apply_member_constraint: min_choice={:?} best_choice_scc={:?}",
-            min_choice, min_choice_scc,
-        );
-        if self.scc_values.add_region(scc, min_choice_scc) {
+        let choice_scc = self.constraint_sccs.scc(choice);
+        debug!("apply_member_constraint: min_choice={:?} best_choice_scc={:?}", choice, choice_scc,);
+        if self.scc_values.add_region(scc, choice_scc) {
             self.member_constraints_applied.push(AppliedMemberConstraint {
                 member_region_scc: scc,
-                min_choice,
+                min_choice: choice,
                 member_constraint_index,
             });
 
