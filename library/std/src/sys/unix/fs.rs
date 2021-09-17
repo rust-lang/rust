@@ -1103,7 +1103,9 @@ impl File {
                             openat64(
                                 dirfd.as_raw_fd(),
                                 path.as_ptr(),
-                                flags
+                                flags,
+                                // see previous comment why this cast is necessary
+                                opts.mode as c_int
                             )
                         })?
                     } else {
