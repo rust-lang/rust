@@ -166,22 +166,16 @@ fn opt_visibility(p: &mut Parser) -> bool {
                     // struct B(pub (super::A));
                     // struct B(pub (crate::A,));
                     T![crate] | T![self] | T![super] | T![ident] if p.nth(2) != T![:] => {
-                        p.bump_any();
-                        let path_m = p.start();
-                        let path_segment_m = p.start();
-                        let name_ref_m = p.start();
-                        p.bump_any();
-                        name_ref_m.complete(p, NAME_REF);
-                        path_segment_m.complete(p, PATH_SEGMENT);
-                        path_m.complete(p, PATH);
+                        p.bump(T!['(']);
+                        paths::use_path(p);
                         p.expect(T![')']);
                     }
                     // test crate_visibility_in
                     // pub(in super::A) struct S;
                     // pub(in crate) struct S;
                     T![in] => {
-                        p.bump_any();
-                        p.bump_any();
+                        p.bump(T!['(']);
+                        p.bump(T![in]);
                         paths::use_path(p);
                         p.expect(T![')']);
                     }
