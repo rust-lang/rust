@@ -1,6 +1,6 @@
 use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelroLevel, Target, TargetOptions};
 
-const LINKER_SCRIPT: &str = include_str!("./aarch64_nintendo_switch_linker_script.ld");
+const LINKER_SCRIPT: &str = include_str!("./aarch64_nintendo_switch_freestanding_linker_script.ld");
 
 /// A base target for Nintendo Switch devices using a pure LLVM toolchain.
 pub fn target() -> Target {
