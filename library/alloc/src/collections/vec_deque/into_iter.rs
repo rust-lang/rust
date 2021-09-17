@@ -17,7 +17,13 @@ pub struct IntoIter<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
-    pub(crate) inner: VecDeque<T, A>,
+    inner: VecDeque<T, A>,
+}
+
+impl<T, A: Allocator> IntoIter<T, A> {
+    pub(super) fn new(inner: VecDeque<T, A>) -> Self {
+        IntoIter { inner }
+    }
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]

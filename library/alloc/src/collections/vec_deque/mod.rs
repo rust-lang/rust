@@ -2827,7 +2827,7 @@ impl<T, A: Allocator> IntoIterator for VecDeque<T, A> {
     /// Consumes the `VecDeque` into a front-to-back iterator yielding elements by
     /// value.
     fn into_iter(self) -> IntoIter<T, A> {
-        IntoIter { inner: self }
+        IntoIter::new(self)
     }
 }
 
