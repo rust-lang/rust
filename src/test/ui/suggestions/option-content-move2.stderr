@@ -1,17 +1,22 @@
 error[E0507]: cannot move out of `var`, a captured variable in an `FnMut` closure
   --> $DIR/option-content-move2.rs:9:9
    |
-LL |     let mut var = None;
-   |         ------- captured outer variable
-...
-LL |         move || {
-   |         ^^^^^^^ move out of `var` occurs here
-LL |
-LL |             var = Some(NotCopyable);
-   |             ---
-   |             |
-   |             move occurs because `var` has type `Option<NotCopyable>`, which does not implement the `Copy` trait
-   |             move occurs due to use in closure
+LL |       let mut var = None;
+   |           ------- captured outer variable
+LL |       func(|| {
+   |  __________-
+LL | |         // Shouldn't suggest `move ||.as_ref()` here
+LL | |         move || {
+   | |         ^^^^^^^ move out of `var` occurs here
+LL | |
+LL | |             var = Some(NotCopyable);
+   | |             ---
+   | |             |
+   | |             move occurs because `var` has type `Option<NotCopyable>`, which does not implement the `Copy` trait
+   | |             move occurs due to use in closure
+LL | |         }
+LL | |     });
+   | |_____- captured by this `FnMut` closure
 
 error: aborting due to previous error
 

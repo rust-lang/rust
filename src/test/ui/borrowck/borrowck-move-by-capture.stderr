@@ -1,15 +1,18 @@
 error[E0507]: cannot move out of `bar`, a captured variable in an `FnMut` closure
   --> $DIR/borrowck-move-by-capture.rs:9:29
    |
-LL |     let bar: Box<_> = box 3;
-   |         --- captured outer variable
-LL |     let _g = to_fn_mut(|| {
-LL |         let _h = to_fn_once(move || -> isize { *bar });
-   |                             ^^^^^^^^^^^^^^^^   ----
-   |                             |                  |
-   |                             |                  move occurs because `bar` has type `Box<isize>`, which does not implement the `Copy` trait
-   |                             |                  move occurs due to use in closure
-   |                             move out of `bar` occurs here
+LL |       let bar: Box<_> = box 3;
+   |           --- captured outer variable
+LL |       let _g = to_fn_mut(|| {
+   |  ________________________-
+LL | |         let _h = to_fn_once(move || -> isize { *bar });
+   | |                             ^^^^^^^^^^^^^^^^   ----
+   | |                             |                  |
+   | |                             |                  move occurs because `bar` has type `Box<isize>`, which does not implement the `Copy` trait
+   | |                             |                  move occurs due to use in closure
+   | |                             move out of `bar` occurs here
+LL | |     });
+   | |_____- captured by this `FnMut` closure
 
 error: aborting due to previous error
 

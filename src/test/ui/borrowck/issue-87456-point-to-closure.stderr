@@ -1,0 +1,22 @@
+error[E0507]: cannot move out of `val`, a captured variable in an `FnMut` closure
+  --> $DIR/issue-87456-point-to-closure.rs:10:28
+   |
+LL |       let val = String::new();
+   |           --- captured outer variable
+LL |
+LL |       take_mut(|| {
+   |  ______________-
+LL | |
+LL | |         let _foo: String = val;
+   | |                            ^^^
+   | |                            |
+   | |                            move occurs because `val` has type `String`, which does not implement the `Copy` trait
+   | |                            help: consider borrowing here: `&val`
+LL | |
+LL | |
+LL | |     })
+   | |_____- captured by this `FnMut` closure
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.
