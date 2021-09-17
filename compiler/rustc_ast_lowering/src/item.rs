@@ -974,7 +974,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let body = hir::Body { generator_kind: self.generator_kind, params, value };
         let id = body.id();
         debug_assert_eq!(id.hir_id.owner, self.current_hir_id_owner);
-        self.bodies.insert(id.hir_id.local_id, body);
+        self.bodies.ensure_contains_elem(id.hir_id.local_id, || None);
+        self.bodies[id.hir_id.local_id] = Some(self.arena.alloc(body));
         id
     }
 

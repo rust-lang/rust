@@ -381,7 +381,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body(&self, id: BodyId) -> &'hir Body<'hir> {
-        self.tcx.hir_owner_nodes(id.hir_id.owner).unwrap().bodies.get(&id.hir_id.local_id).unwrap()
+        self.tcx.hir_owner_nodes(id.hir_id.owner).unwrap().bodies[id.hir_id.local_id].unwrap()
     }
 
     pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnDecl<'hir>> {
@@ -500,10 +500,13 @@ impl<'hir> Map<'hir> {
             .iter_enumerated()
             .flat_map(move |(owner, owner_info)| {
                 let bodies = &owner_info.as_ref()?.bodies;
-                Some(bodies.keys().map(move |&local_id| {
+                Some(bodies.iter_enumerated().filter_map(move |(local_id, body)| {
+                    if body.is_none() {
+                        return None;
+                    }
                     let hir_id = HirId { owner, local_id };
                     let body_id = BodyId { hir_id };
-                    self.body_owner_def_id(body_id)
+                    Some(self.body_owner_def_id(body_id))
                 }))
             })
             .flatten()
@@ -517,10 +520,13 @@ impl<'hir> Map<'hir> {
         par_iter(&self.krate().owners.raw).enumerate().for_each(|(owner, owner_info)| {
             let owner = LocalDefId::new(owner);
             if let Some(owner_info) = owner_info {
-                par_iter(&owner_info.bodies).for_each(|(&local_id, _)| {
-                    let hir_id = HirId { owner, local_id };
-                    let body_id = BodyId { hir_id };
-                    f(self.body_owner_def_id(body_id))
+                par_iter(&owner_info.bodies.raw).enumerate().for_each(|(local_id, body)| {
+                    if body.is_some() {
+                        let local_id = ItemLocalId::new(local_id);
+                        let hir_id = HirId { owner, local_id };
+                        let body_id = BodyId { hir_id };
+                        f(self.body_owner_def_id(body_id))
+                    }
                 })
             }
         });

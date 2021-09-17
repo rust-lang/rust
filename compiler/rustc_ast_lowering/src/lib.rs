@@ -97,7 +97,7 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     /// The items being lowered are collected here.
     owners: IndexVec<LocalDefId, Option<hir::OwnerInfo<'hir>>>,
-    bodies: BTreeMap<hir::ItemLocalId, hir::Body<'hir>>,
+    bodies: IndexVec<hir::ItemLocalId, Option<&'hir hir::Body<'hir>>>,
     attrs: BTreeMap<hir::ItemLocalId, &'hir [Attribute]>,
 
     generator_kind: Option<hir::GeneratorKind>,
@@ -322,7 +322,7 @@ pub fn lower_crate<'a, 'hir>(
         nt_to_tokenstream,
         arena,
         owners,
-        bodies: BTreeMap::new(),
+        bodies: IndexVec::new(),
         attrs: BTreeMap::default(),
         catch_scope: None,
         loop_scope: None,

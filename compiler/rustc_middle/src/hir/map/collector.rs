@@ -96,11 +96,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         let mut nodes = IndexVec::new();
         nodes.push(Some(ParentedNode { parent: ItemLocalId::new(0), node: node.into() }));
 
-        let mut bodies = FxHashMap::default();
-        for (id, body) in self.krate.owners[owner].as_ref().unwrap().bodies.iter() {
-            let _old = bodies.insert(*id, body);
-            debug_assert!(_old.is_none());
-        }
+        let bodies = &self.krate.owners[owner].as_ref().unwrap().bodies;
 
         debug_assert!(self.map[owner].is_none());
         self.map[owner] = Some(self.arena.alloc(OwnerNodes { hash, nodes, bodies }));

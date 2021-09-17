@@ -65,7 +65,7 @@ pub struct OwnerNodes<'tcx> {
     // The zeroth node's parent is trash, but is never accessed.
     nodes: IndexVec<ItemLocalId, Option<ParentedNode<'tcx>>>,
     /// Content of local bodies.
-    bodies: FxHashMap<ItemLocalId, &'tcx Body<'tcx>>,
+    bodies: &'tcx IndexVec<ItemLocalId, Option<&'tcx Body<'tcx>>>,
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for OwnerNodes<'tcx> {
