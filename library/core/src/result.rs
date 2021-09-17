@@ -853,7 +853,7 @@ impl<T, E> Result<T, E> {
             Err(e) => Err(op(e)),
         }
     }
-    
+
     /// Returns `Err(e)` if the result is `Err(e)` (where `e` is the wrapped error),
     /// otherwise calls `predicate` with the wrapped value and returns:
     ///
