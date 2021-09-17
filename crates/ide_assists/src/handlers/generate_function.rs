@@ -71,12 +71,13 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let path_expr: ast::PathExpr = ctx.find_node_at_offset()?;
     let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
     let path = path_expr.path()?;
-    let fn_name = fn_name(&path)?;
+    let name_ref = path.segment()?.name_ref()?;
     if ctx.sema.resolve_path(&path).is_some() {
         // The function call already resolves, no need to add a function
         return None;
     }
 
+    let fn_name = &*name_ref.text();
     let target_module;
     let mut adt_name = None;
 
@@ -93,7 +94,7 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                 if current_module.krate() != module.krate() {
                     return None;
                 }
-                let (impl_, file) = get_adt_source(ctx, &adt, fn_name.text().as_str())?;
+                let (impl_, file) = get_adt_source(ctx, &adt, fn_name)?;
                 let (target, insert_offset) = get_method_target(ctx, &module, &impl_)?;
                 adt_name = if impl_.is_none() { Some(adt.name(ctx.sema.db)) } else { None };
                 (target, file, insert_offset)
@@ -107,7 +108,7 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             get_fn_target(ctx, &target_module, call.clone())?
         }
     };
-    let function_builder = FunctionBuilder::from_call(ctx, &call, &path, target_module, target)?;
+    let function_builder = FunctionBuilder::from_call(ctx, &call, fn_name, target_module, target)?;
     let text_range = call.syntax().text_range();
     let label = format!("Generate {} function", function_builder.fn_name);
     add_func_to_accumulator(
@@ -241,13 +242,13 @@ impl FunctionBuilder {
     fn from_call(
         ctx: &AssistContext,
         call: &ast::CallExpr,
-        path: &ast::Path,
+        fn_name: &str,
         target_module: Option<hir::Module>,
         target: GeneratedFunctionTarget,
     ) -> Option<Self> {
         let needs_pub = target_module.is_some();
         let target_module = target_module.or_else(|| current_module(target.syntax(), ctx))?;
-        let fn_name = fn_name(path)?;
+        let fn_name = make::name(fn_name);
         let (type_params, params) = fn_args(ctx, target_module, FuncExpr::Func(call.clone()))?;
 
         let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
@@ -428,11 +429,6 @@ impl GeneratedFunctionTarget {
     }
 }
 
-fn fn_name(call: &ast::Path) -> Option<ast::Name> {
-    let name = call.segment()?.syntax().to_string();
-    Some(make::name(&name))
-}
-
 /// Computes the type variables and arguments required for the generated function
 fn fn_args(
     ctx: &AssistContext,
@@ -442,10 +438,7 @@ fn fn_args(
     let mut arg_names = Vec::new();
     let mut arg_types = Vec::new();
     for arg in call.arg_list()?.args() {
-        arg_names.push(match fn_arg_name(&arg) {
-            Some(name) => name,
-            None => String::from("arg"),
-        });
+        arg_names.push(fn_arg_name(&arg));
         arg_types.push(match fn_arg_type(ctx, target_module, &arg) {
             Some(ty) => {
                 if !ty.is_empty() && ty.starts_with('&') {
@@ -510,18 +503,21 @@ fn deduplicate_arg_names(arg_names: &mut Vec<String>) {
     }
 }
 
-fn fn_arg_name(fn_arg: &ast::Expr) -> Option<String> {
-    match fn_arg {
-        ast::Expr::CastExpr(cast_expr) => fn_arg_name(&cast_expr.expr()?),
-        _ => {
-            let s = fn_arg
-                .syntax()
-                .descendants()
-                .filter(|d| ast::NameRef::can_cast(d.kind()))
-                .last()?
-                .to_string();
+fn fn_arg_name(arg_expr: &ast::Expr) -> String {
+    let name = (|| match arg_expr {
+        ast::Expr::CastExpr(cast_expr) => Some(fn_arg_name(&cast_expr.expr()?)),
+        expr => {
+            let s = expr.syntax().descendants().filter_map(ast::NameRef::cast).last()?.to_string();
             Some(to_lower_snake_case(&s))
         }
+    })();
+    match name {
+        Some(mut name) if name.starts_with(|c: char| c.is_ascii_digit()) => {
+            name.insert_str(0, "arg");
+            name
+        }
+        Some(name) => name,
+        None => "arg".to_string(),
     }
 }
 
@@ -1642,6 +1638,50 @@ impl S {
 fn bar() ${0:-> _} {
     todo!()
 }
+}
+",
+        )
+    }
+
+    #[test]
+    fn no_panic_on_invalid_global_path() {
+        check_assist(
+            generate_function,
+            r"
+fn main() {
+    ::foo$0();
+}
+",
+            r"
+fn main() {
+    ::foo();
+}
+
+fn foo() ${0:-> _} {
+    todo!()
+}
+",
+        )
+    }
+
+    #[test]
+    fn handle_tuple_indexing() {
+        check_assist(
+            generate_function,
+            r"
+fn main() {
+    let a = ((),);
+    foo$0(a.0);
+}
+",
+            r"
+fn main() {
+    let a = ((),);
+    foo(a.0);
+}
+
+fn foo(arg0: ()) ${0:-> _} {
+    todo!()
 }
 ",
         )
