@@ -4,14 +4,17 @@ error: expected one of `)`, `,`, `@`, or `|`, found keyword `in`
 LL |     for ( elem in vec ) {
    |                ^^ expected one of `)`, `,`, `@`, or `|`
 
-error: unexpected closing `)`
-  --> $DIR/recover-for-loop-parens-around-head.rs:10:23
+error: unexpected parenthesis surrounding `for` loop head
+  --> $DIR/recover-for-loop-parens-around-head.rs:10:9
    |
 LL |     for ( elem in vec ) {
-   |         --------------^
-   |         |
-   |         opening `(`
-   |         help: remove parenthesis in `for` loop: `elem in vec`
+   |         ^             ^
+   |
+help: remove parenthesis in `for` loop
+   |
+LL -     for ( elem in vec ) {
+LL +     for  elem in vec  {
+   | 
 
 error[E0308]: mismatched types
   --> $DIR/recover-for-loop-parens-around-head.rs:13:38
