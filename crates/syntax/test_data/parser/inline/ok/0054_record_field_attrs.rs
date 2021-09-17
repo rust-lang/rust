@@ -1,4 +1,1 @@
-struct S {
-    #[serde(with = "url_serde")]
-    pub uri: Uri,
-}
+struct S { #[attr] f: f32 }
