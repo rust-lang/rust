@@ -1334,30 +1334,25 @@ impl<'a> Parser<'a> {
     pub(super) fn recover_parens_around_for_head(
         &mut self,
         pat: P<Pat>,
-        expr: &Expr,
         begin_paren: Option<Span>,
     ) -> P<Pat> {
         match (&self.token.kind, begin_paren) {
             (token::CloseDelim(token::Paren), Some(begin_par_sp)) => {
                 self.bump();
 
-                let pat_str = self
-                    // Remove the `(` from the span of the pattern:
-                    .span_to_snippet(pat.span.trim_start(begin_par_sp).unwrap())
-                    .unwrap_or_else(|_| pprust::pat_to_string(&pat));
-
-                self.struct_span_err(self.prev_token.span, "unexpected closing `)`")
-                    .span_label(begin_par_sp, "opening `(`")
-                    .span_suggestion(
-                        begin_par_sp.to(self.prev_token.span),
-                        "remove parenthesis in `for` loop",
-                        format!("{} in {}", pat_str, pprust::expr_to_string(&expr)),
-                        // With e.g. `for (x) in y)` this would replace `(x) in y)`
-                        // with `x) in y)` which is syntactically invalid.
-                        // However, this is prevented before we get here.
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
+                self.struct_span_err(
+                    MultiSpan::from_spans(vec![begin_par_sp, self.prev_token.span]),
+                    "unexpected parenthesis surrounding `for` loop head",
+                )
+                .multipart_suggestion(
+                    "remove parenthesis in `for` loop",
+                    vec![(begin_par_sp, String::new()), (self.prev_token.span, String::new())],
+                    // With e.g. `for (x) in y)` this would replace `(x) in y)`
+                    // with `x) in y)` which is syntactically invalid.
+                    // However, this is prevented before we get here.
+                    Applicability::MachineApplicable,
+                )
+                .emit();
 
                 // Unwrap `(pat)` into `pat` to avoid the `unused_parens` lint.
                 pat.and_then(|pat| match pat.kind {
@@ -1955,7 +1950,19 @@ impl<'a> Parser<'a> {
         }
         match self.parse_expr_res(Restrictions::CONST_EXPR, None) {
             Ok(expr) => {
-                if token::Comma == self.token.kind || self.token.kind.should_end_const_arg() {
+                // Find a mistake like `MyTrait<Assoc == S::Assoc>`.
+                if token::EqEq == snapshot.token.kind {
+                    err.span_suggestion(
+                        snapshot.token.span,
+                        "if you meant to use an associated type binding, replace `==` with `=`",
+                        "=".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                    let value = self.mk_expr_err(start.to(expr.span));
+                    err.emit();
+                    return Ok(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }));
+                } else if token::Comma == self.token.kind || self.token.kind.should_end_const_arg()
+                {
                     // Avoid the following output by checking that we consumed a full const arg:
                     // help: expressions must be enclosed in braces to be used as const generic
                     //       arguments

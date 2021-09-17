@@ -4,7 +4,10 @@ error[E0507]: cannot move out of `i`, a captured variable in an `Fn` closure
 LL |     let i = box 3;
    |         - captured outer variable
 LL |     let _f = to_fn(|| test(i));
-   |                            ^ move occurs because `i` has type `Box<usize>`, which does not implement the `Copy` trait
+   |                    --------^-
+   |                    |       |
+   |                    |       move occurs because `i` has type `Box<usize>`, which does not implement the `Copy` trait
+   |                    captured by this `Fn` closure
 
 error: aborting due to previous error
 

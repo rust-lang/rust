@@ -268,10 +268,18 @@ pub(super) fn write_shared(
     // Maybe we can change the representation to move this out of main.js?
     write_minify(
         "main.js",
-        static_files::MAIN_JS.replace(
-            "/* INSERT THEMES HERE */",
-            &format!(" = {}", serde_json::to_string(&themes).unwrap()),
-        ),
+        static_files::MAIN_JS
+            .replace(
+                "/* INSERT THEMES HERE */",
+                &format!(" = {}", serde_json::to_string(&themes).unwrap()),
+            )
+            .replace(
+                "/* INSERT RUSTDOC_VERSION HERE */",
+                &format!(
+                    "rustdoc {}",
+                    rustc_interface::util::version_str().unwrap_or("unknown version")
+                ),
+            ),
         cx,
         options,
     )?;

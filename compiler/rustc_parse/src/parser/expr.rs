@@ -2042,7 +2042,7 @@ impl<'a> Parser<'a> {
         self.check_for_for_in_in_typo(self.prev_token.span);
         let expr = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
 
-        let pat = self.recover_parens_around_for_head(pat, &expr, begin_paren);
+        let pat = self.recover_parens_around_for_head(pat, begin_paren);
 
         let (iattrs, loop_block) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);

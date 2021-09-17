@@ -532,15 +532,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             Some((variant, ty))
         } else {
-            struct_span_err!(
-                self.tcx.sess,
-                path_span,
-                E0071,
-                "expected struct, variant or union type, found {}",
-                ty.sort_string(self.tcx)
-            )
-            .span_label(path_span, "not a struct")
-            .emit();
+            match ty.kind() {
+                ty::Error(_) => {
+                    // E0071 might be caused by a spelling error, which will have
+                    // already caused an error message and probably a suggestion
+                    // elsewhere. Refrain from emitting more unhelpful errors here
+                    // (issue #88844).
+                }
+                _ => {
+                    struct_span_err!(
+                        self.tcx.sess,
+                        path_span,
+                        E0071,
+                        "expected struct, variant or union type, found {}",
+                        ty.sort_string(self.tcx)
+                    )
+                    .span_label(path_span, "not a struct")
+                    .emit();
+                }
+            }
             None
         }
     }

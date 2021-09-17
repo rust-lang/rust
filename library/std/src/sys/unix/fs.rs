@@ -1416,6 +1416,23 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     Ok(bytes_copied as u64)
 }
 
+pub fn chown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
+    let path = cstr(path)?;
+    cvt(unsafe { libc::chown(path.as_ptr(), uid as libc::uid_t, gid as libc::gid_t) })?;
+    Ok(())
+}
+
+pub fn fchown(fd: c_int, uid: u32, gid: u32) -> io::Result<()> {
+    cvt(unsafe { libc::fchown(fd, uid as libc::uid_t, gid as libc::gid_t) })?;
+    Ok(())
+}
+
+pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
+    let path = cstr(path)?;
+    cvt(unsafe { libc::lchown(path.as_ptr(), uid as libc::uid_t, gid as libc::gid_t) })?;
+    Ok(())
+}
+
 #[cfg(not(any(target_os = "fuchsia", target_os = "vxworks")))]
 pub fn chroot(dir: &Path) -> io::Result<()> {
     let dir = cstr(dir)?;

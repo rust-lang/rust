@@ -702,10 +702,16 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
 }
 
 fn maybe_stage_features(sess: &Session, krate: &ast::Crate) {
+    // checks if `#![feature]` has been used to enable any lang feature
+    // does not check the same for lib features unless there's at least one
+    // declared lang feature
     use rustc_errors::Applicability;
 
     if !sess.opts.unstable_features.is_nightly_build() {
         let lang_features = &sess.features_untracked().declared_lang_features;
+        if lang_features.len() == 0 {
+            return;
+        }
         for attr in krate.attrs.iter().filter(|attr| attr.has_name(sym::feature)) {
             let mut err = struct_span_err!(
                 sess.parse_sess.span_diagnostic,

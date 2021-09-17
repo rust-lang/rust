@@ -928,14 +928,23 @@ body.blur > :not(#help) {
 	display: block;
 	margin-right: 0.5rem;
 }
-#help > div > span {
+#help span.top, #help span.bottom {
+	text-align: center;
+	display: block;
+	font-size: 18px;
+
+}
+#help span.top {
 	text-align: center;
 	display: block;
 	margin: 10px 0;
-	font-size: 18px;
-	border-bottom: 1px solid #ccc;
+	border-bottom: 1px solid;
 	padding-bottom: 4px;
 	margin-bottom: 6px;
+}
+#help span.bottom {
+	clear: both;
+	border-top: 1px solid;
 }
 #help dd { margin: 5px 35px; }
 #help .infos { padding-left: 0; }

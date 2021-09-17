@@ -1,281 +1,487 @@
 error[E0507]: cannot move out of `x.0`, as `x` is a captured variable in an `Fn` closure
   --> $DIR/move-into-closure.rs:28:21
    |
-LL |     let x = X(Y);
-   |         - captured outer variable
+LL |       let x = X(Y);
+   |           - captured outer variable
 ...
-LL |         let X(_t) = x;
-   |               --    ^ help: consider borrowing here: `&x`
-   |               |
-   |               data moved here
-   |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+LL |       consume_fn(|| {
+   |  ________________-
+LL | |         let X(_t) = x;
+   | |               --    ^ help: consider borrowing here: `&x`
+   | |               |
+   | |               data moved here
+   | |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+LL | |
+LL | |
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `Fn` closure
 
 error[E0507]: cannot move out of `e.0`, as `e` is a captured variable in an `Fn` closure
   --> $DIR/move-into-closure.rs:32:34
    |
-LL |     let e = Either::One(X(Y));
-   |         - captured outer variable
+LL |       let e = Either::One(X(Y));
+   |           - captured outer variable
 ...
-LL |         if let Either::One(_t) = e { }
-   |                            --    ^ help: consider borrowing here: `&e`
-   |                            |
-   |                            data moved here
-   |                            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+LL |       consume_fn(|| {
+   |  ________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+LL | |
+LL | |         if let Either::One(_t) = e { }
+   | |                            --    ^ help: consider borrowing here: `&e`
+   | |                            |
+   | |                            data moved here
+   | |                            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `Fn` closure
 
 error[E0507]: cannot move out of `e.0`, as `e` is a captured variable in an `Fn` closure
   --> $DIR/move-into-closure.rs:36:37
    |
-LL |     let e = Either::One(X(Y));
-   |         - captured outer variable
+LL |       let e = Either::One(X(Y));
+   |           - captured outer variable
 ...
-LL |         while let Either::One(_t) = e { }
-   |                               --    ^ help: consider borrowing here: `&e`
-   |                               |
-   |                               data moved here
-   |                               move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+LL |       consume_fn(|| {
+   |  ________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+...  |
+LL | |         while let Either::One(_t) = e { }
+   | |                               --    ^ help: consider borrowing here: `&e`
+   | |                               |
+   | |                               data moved here
+   | |                               move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `Fn` closure
 
 error[E0507]: cannot move out of `e.0`, as `e` is a captured variable in an `Fn` closure
   --> $DIR/move-into-closure.rs:40:15
    |
-LL |     let e = Either::One(X(Y));
-   |         - captured outer variable
+LL |       let e = Either::One(X(Y));
+   |           - captured outer variable
 ...
-LL |         match e {
-   |               ^ help: consider borrowing here: `&e`
-...
-LL |             Either::One(_t)
-   |                         --
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+LL |       consume_fn(|| {
+   |  ________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+...  |
+LL | |         match e {
+   | |               ^ help: consider borrowing here: `&e`
+...  |
+LL | |             Either::One(_t)
+   | |                         --
+   | |                         |
+   | |                         data moved here
+   | |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `Fn` closure
 
 error[E0507]: cannot move out of `e.0`, as `e` is a captured variable in an `Fn` closure
   --> $DIR/move-into-closure.rs:47:15
    |
-LL |     let e = Either::One(X(Y));
-   |         - captured outer variable
+LL |       let e = Either::One(X(Y));
+   |           - captured outer variable
 ...
-LL |         match e {
-   |               ^ help: consider borrowing here: `&e`
-...
-LL |             Either::One(_t) => (),
-   |                         --
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+LL |       consume_fn(|| {
+   |  ________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+...  |
+LL | |         match e {
+   | |               ^ help: consider borrowing here: `&e`
+...  |
+LL | |             Either::One(_t) => (),
+   | |                         --
+   | |                         |
+   | |                         data moved here
+   | |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `Fn` closure
 
 error[E0507]: cannot move out of `x.0`, as `x` is a captured variable in an `Fn` closure
   --> $DIR/move-into-closure.rs:56:25
    |
-LL |     let x = X(Y);
-   |         - captured outer variable
+LL |       let x = X(Y);
+   |           - captured outer variable
 ...
-LL |         let X(mut _t) = x;
-   |               ------    ^ help: consider borrowing here: `&x`
-   |               |
-   |               data moved here
-   |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+LL |       consume_fn(|| {
+   |  ________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+...  |
+LL | |         let X(mut _t) = x;
+   | |               ------    ^ help: consider borrowing here: `&x`
+   | |               |
+   | |               data moved here
+   | |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `Fn` closure
 
 error[E0507]: cannot move out of `em.0`, as `em` is a captured variable in an `Fn` closure
   --> $DIR/move-into-closure.rs:60:38
    |
-LL |     let mut em = Either::One(X(Y));
-   |         ------ captured outer variable
+LL |       let mut em = Either::One(X(Y));
+   |           ------ captured outer variable
 ...
-LL |         if let Either::One(mut _t) = em { }
-   |                            ------    ^^ help: consider borrowing here: `&em`
-   |                            |
-   |                            data moved here
-   |                            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+LL |       consume_fn(|| {
+   |  ________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+...  |
+LL | |         if let Either::One(mut _t) = em { }
+   | |                            ------    ^^ help: consider borrowing here: `&em`
+   | |                            |
+   | |                            data moved here
+   | |                            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `Fn` closure
 
 error[E0507]: cannot move out of `em.0`, as `em` is a captured variable in an `Fn` closure
   --> $DIR/move-into-closure.rs:64:41
    |
-LL |     let mut em = Either::One(X(Y));
-   |         ------ captured outer variable
+LL |       let mut em = Either::One(X(Y));
+   |           ------ captured outer variable
 ...
-LL |         while let Either::One(mut _t) = em { }
-   |                               ------    ^^ help: consider borrowing here: `&em`
-   |                               |
-   |                               data moved here
-   |                               move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+LL |       consume_fn(|| {
+   |  ________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+...  |
+LL | |         while let Either::One(mut _t) = em { }
+   | |                               ------    ^^ help: consider borrowing here: `&em`
+   | |                               |
+   | |                               data moved here
+   | |                               move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `Fn` closure
 
 error[E0507]: cannot move out of `em.0`, as `em` is a captured variable in an `Fn` closure
   --> $DIR/move-into-closure.rs:68:15
    |
-LL |     let mut em = Either::One(X(Y));
-   |         ------ captured outer variable
+LL |       let mut em = Either::One(X(Y));
+   |           ------ captured outer variable
 ...
-LL |         match em {
-   |               ^^ help: consider borrowing here: `&em`
-...
-LL |             Either::One(mut _t)
-   |                         ------
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+LL |       consume_fn(|| {
+   |  ________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+...  |
+LL | |         match em {
+   | |               ^^ help: consider borrowing here: `&em`
+...  |
+LL | |             Either::One(mut _t)
+   | |                         ------
+   | |                         |
+   | |                         data moved here
+   | |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `Fn` closure
 
 error[E0507]: cannot move out of `em.0`, as `em` is a captured variable in an `Fn` closure
   --> $DIR/move-into-closure.rs:75:15
    |
-LL |     let mut em = Either::One(X(Y));
-   |         ------ captured outer variable
+LL |       let mut em = Either::One(X(Y));
+   |           ------ captured outer variable
 ...
-LL |         match em {
-   |               ^^ help: consider borrowing here: `&em`
-...
-LL |             Either::One(mut _t) => (),
-   |                         ------
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+LL |       consume_fn(|| {
+   |  ________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+...  |
+LL | |         match em {
+   | |               ^^ help: consider borrowing here: `&em`
+...  |
+LL | |             Either::One(mut _t) => (),
+   | |                         ------
+   | |                         |
+   | |                         data moved here
+   | |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `Fn` closure
 
 error[E0507]: cannot move out of `x.0`, as `x` is a captured variable in an `FnMut` closure
   --> $DIR/move-into-closure.rs:95:21
    |
-LL |     let x = X(Y);
-   |         - captured outer variable
+LL |       let x = X(Y);
+   |           - captured outer variable
 ...
-LL |         let X(_t) = x;
-   |               --    ^ help: consider borrowing here: `&x`
-   |               |
-   |               data moved here
-   |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+LL |       consume_fnmut(|| {
+   |  ___________________-
+LL | |         let X(_t) = x;
+   | |               --    ^ help: consider borrowing here: `&x`
+   | |               |
+   | |               data moved here
+   | |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+LL | |
+LL | |
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `FnMut` closure
 
 error[E0507]: cannot move out of `e.0`, as `e` is a captured variable in an `FnMut` closure
   --> $DIR/move-into-closure.rs:99:34
    |
-LL |     let e = Either::One(X(Y));
-   |         - captured outer variable
+LL |       let e = Either::One(X(Y));
+   |           - captured outer variable
 ...
-LL |         if let Either::One(_t) = e { }
-   |                            --    ^ help: consider borrowing here: `&e`
-   |                            |
-   |                            data moved here
-   |                            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+LL |       consume_fnmut(|| {
+   |  ___________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+LL | |
+LL | |         if let Either::One(_t) = e { }
+   | |                            --    ^ help: consider borrowing here: `&e`
+   | |                            |
+   | |                            data moved here
+   | |                            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `FnMut` closure
 
 error[E0507]: cannot move out of `e.0`, as `e` is a captured variable in an `FnMut` closure
   --> $DIR/move-into-closure.rs:103:37
    |
-LL |     let e = Either::One(X(Y));
-   |         - captured outer variable
+LL |       let e = Either::One(X(Y));
+   |           - captured outer variable
 ...
-LL |         while let Either::One(_t) = e { }
-   |                               --    ^ help: consider borrowing here: `&e`
-   |                               |
-   |                               data moved here
-   |                               move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+LL |       consume_fnmut(|| {
+   |  ___________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+...  |
+LL | |         while let Either::One(_t) = e { }
+   | |                               --    ^ help: consider borrowing here: `&e`
+   | |                               |
+   | |                               data moved here
+   | |                               move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `FnMut` closure
 
 error[E0507]: cannot move out of `e.0`, as `e` is a captured variable in an `FnMut` closure
   --> $DIR/move-into-closure.rs:107:15
    |
-LL |     let e = Either::One(X(Y));
-   |         - captured outer variable
+LL |       let e = Either::One(X(Y));
+   |           - captured outer variable
 ...
-LL |         match e {
-   |               ^ help: consider borrowing here: `&e`
-...
-LL |             Either::One(_t)
-   |                         --
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+LL |       consume_fnmut(|| {
+   |  ___________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+...  |
+LL | |         match e {
+   | |               ^ help: consider borrowing here: `&e`
+...  |
+LL | |             Either::One(_t)
+   | |                         --
+   | |                         |
+   | |                         data moved here
+   | |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `FnMut` closure
 
 error[E0507]: cannot move out of `e.0`, as `e` is a captured variable in an `FnMut` closure
   --> $DIR/move-into-closure.rs:114:15
    |
-LL |     let e = Either::One(X(Y));
-   |         - captured outer variable
+LL |       let e = Either::One(X(Y));
+   |           - captured outer variable
 ...
-LL |         match e {
-   |               ^ help: consider borrowing here: `&e`
-...
-LL |             Either::One(_t) => (),
-   |                         --
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+LL |       consume_fnmut(|| {
+   |  ___________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+...  |
+LL | |         match e {
+   | |               ^ help: consider borrowing here: `&e`
+...  |
+LL | |             Either::One(_t) => (),
+   | |                         --
+   | |                         |
+   | |                         data moved here
+   | |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `FnMut` closure
 
 error[E0507]: cannot move out of `x.0`, as `x` is a captured variable in an `FnMut` closure
   --> $DIR/move-into-closure.rs:123:25
    |
-LL |     let x = X(Y);
-   |         - captured outer variable
+LL |       let x = X(Y);
+   |           - captured outer variable
 ...
-LL |         let X(mut _t) = x;
-   |               ------    ^ help: consider borrowing here: `&x`
-   |               |
-   |               data moved here
-   |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+LL |       consume_fnmut(|| {
+   |  ___________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+...  |
+LL | |         let X(mut _t) = x;
+   | |               ------    ^ help: consider borrowing here: `&x`
+   | |               |
+   | |               data moved here
+   | |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `FnMut` closure
 
 error[E0507]: cannot move out of `em.0`, as `em` is a captured variable in an `FnMut` closure
   --> $DIR/move-into-closure.rs:127:38
    |
-LL |     let mut em = Either::One(X(Y));
-   |         ------ captured outer variable
+LL |       let mut em = Either::One(X(Y));
+   |           ------ captured outer variable
 ...
-LL |         if let Either::One(mut _t) = em { }
-   |                            ------    ^^ help: consider borrowing here: `&em`
-   |                            |
-   |                            data moved here
-   |                            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+LL |       consume_fnmut(|| {
+   |  ___________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+...  |
+LL | |         if let Either::One(mut _t) = em { }
+   | |                            ------    ^^ help: consider borrowing here: `&em`
+   | |                            |
+   | |                            data moved here
+   | |                            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `FnMut` closure
 
 error[E0507]: cannot move out of `em.0`, as `em` is a captured variable in an `FnMut` closure
   --> $DIR/move-into-closure.rs:131:41
    |
-LL |     let mut em = Either::One(X(Y));
-   |         ------ captured outer variable
+LL |       let mut em = Either::One(X(Y));
+   |           ------ captured outer variable
 ...
-LL |         while let Either::One(mut _t) = em { }
-   |                               ------    ^^ help: consider borrowing here: `&em`
-   |                               |
-   |                               data moved here
-   |                               move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+LL |       consume_fnmut(|| {
+   |  ___________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+...  |
+LL | |         while let Either::One(mut _t) = em { }
+   | |                               ------    ^^ help: consider borrowing here: `&em`
+   | |                               |
+   | |                               data moved here
+   | |                               move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `FnMut` closure
 
 error[E0507]: cannot move out of `em.0`, as `em` is a captured variable in an `FnMut` closure
   --> $DIR/move-into-closure.rs:135:15
    |
-LL |     let mut em = Either::One(X(Y));
-   |         ------ captured outer variable
+LL |       let mut em = Either::One(X(Y));
+   |           ------ captured outer variable
 ...
-LL |         match em {
-   |               ^^ help: consider borrowing here: `&em`
-...
-LL |             Either::One(mut _t)
-   |                         ------
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+LL |       consume_fnmut(|| {
+   |  ___________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+...  |
+LL | |         match em {
+   | |               ^^ help: consider borrowing here: `&em`
+...  |
+LL | |             Either::One(mut _t)
+   | |                         ------
+   | |                         |
+   | |                         data moved here
+   | |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `FnMut` closure
 
 error[E0507]: cannot move out of `em.0`, as `em` is a captured variable in an `FnMut` closure
   --> $DIR/move-into-closure.rs:142:15
    |
-LL |     let mut em = Either::One(X(Y));
-   |         ------ captured outer variable
+LL |       let mut em = Either::One(X(Y));
+   |           ------ captured outer variable
 ...
-LL |         match em {
-   |               ^^ help: consider borrowing here: `&em`
-...
-LL |             Either::One(mut _t) => (),
-   |                         ------
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+LL |       consume_fnmut(|| {
+   |  ___________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+...  |
+LL | |         match em {
+   | |               ^^ help: consider borrowing here: `&em`
+...  |
+LL | |             Either::One(mut _t) => (),
+   | |                         ------
+   | |                         |
+   | |                         data moved here
+   | |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `FnMut` closure
 
 error[E0507]: cannot move out of `em.0`, as `em` is a captured variable in an `FnMut` closure
   --> $DIR/move-into-closure.rs:150:15
    |
-LL |     let mut em = Either::One(X(Y));
-   |         ------ captured outer variable
+LL |       let mut em = Either::One(X(Y));
+   |           ------ captured outer variable
 ...
-LL |         match em {
-   |               ^^ help: consider borrowing here: `&em`
-...
-LL |             Either::One(mut _t) => (),
-   |                         ------
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+LL |       consume_fnmut(|| {
+   |  ___________________-
+LL | |         let X(_t) = x;
+LL | |
+LL | |
+...  |
+LL | |         match em {
+   | |               ^^ help: consider borrowing here: `&em`
+...  |
+LL | |             Either::One(mut _t) => (),
+   | |                         ------
+   | |                         |
+   | |                         data moved here
+   | |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+...  |
+LL | |         }
+LL | |     });
+   | |_____- captured by this `FnMut` closure
 
 error: aborting due to 21 previous errors
 
