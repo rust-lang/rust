@@ -183,6 +183,7 @@ fn opt_visibility(p: &mut Parser) -> bool {
                 }
             }
             m.complete(p, VISIBILITY);
+            true
         }
         // test crate_keyword_vis
         // crate fn main() { }
@@ -197,10 +198,10 @@ fn opt_visibility(p: &mut Parser) -> bool {
             let m = p.start();
             p.bump(T![crate]);
             m.complete(p, VISIBILITY);
+            true
         }
-        _ => return false,
+        _ => false,
     }
-    true
 }
 
 fn opt_rename(p: &mut Parser) {

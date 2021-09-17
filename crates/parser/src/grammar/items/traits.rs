@@ -3,7 +3,7 @@ use super::*;
 // test trait_item
 // trait T<U>: Hash + Clone where U: Copy {}
 // trait X<U: Debug + Display>: Hash + Clone where U: Copy {}
-pub(super) fn trait_(p: &mut Parser) {
+pub(super) fn trait_(p: &mut Parser, m: Marker) {
     assert!(p.at(T![trait]));
     p.bump(T![trait]);
     name_r(p, ITEM_RECOVERY_SET);
@@ -16,6 +16,7 @@ pub(super) fn trait_(p: &mut Parser) {
         type_params::bounds_without_colon(p);
         type_params::opt_where_clause(p);
         p.expect(T![;]);
+        m.complete(p, TRAIT);
         return;
     }
     if p.at(T![:]) {
@@ -27,11 +28,12 @@ pub(super) fn trait_(p: &mut Parser) {
     } else {
         p.error("expected `{`");
     }
+    m.complete(p, TRAIT);
 }
 
 // test impl_def
 // impl Foo {}
-pub(super) fn impl_(p: &mut Parser) {
+pub(super) fn impl_(p: &mut Parser, m: Marker) {
     assert!(p.at(T![impl]));
     p.bump(T![impl]);
     if choose_type_params_over_qpath(p) {
@@ -58,6 +60,7 @@ pub(super) fn impl_(p: &mut Parser) {
     } else {
         p.error("expected `{`");
     }
+    m.complete(p, IMPL);
 }
 
 // test impl_item_list
