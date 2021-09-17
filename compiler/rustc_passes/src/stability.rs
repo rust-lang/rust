@@ -929,6 +929,16 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     let declared_lib_features = &tcx.features().declared_lib_features;
     let mut remaining_lib_features = FxHashMap::default();
     for (feature, span) in declared_lib_features {
+        if !tcx.sess.opts.unstable_features.is_nightly_build() {
+            struct_span_err!(
+                tcx.sess,
+                *span,
+                E0554,
+                "`#![feature]` may not be used on the {} release channel",
+                env!("CFG_RELEASE_CHANNEL")
+            )
+            .emit();
+        }
         if remaining_lib_features.contains_key(&feature) {
             // Warn if the user enables a lib feature multiple times.
             duplicate_feature_err(tcx.sess, *span, *feature);
