@@ -853,6 +853,35 @@ impl<T, E> Result<T, E> {
             Err(e) => Err(op(e)),
         }
     }
+    
+    /// Returns `Err(e)` if the result is `Err(e)` (where `e` is the wrapped error),
+    /// otherwise calls `predicate` with the wrapped value and returns:
+    ///
+    /// - `Ok(t)` if `predicate` returns `Ok(())` (where `t` is the wrapped value), and
+    /// - `Err(e)` if `predicate` returns `Err(e)`.
+    ///
+    /// This function is analogous to [`Option::filter`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// struct Zero;
+    ///
+    /// fn check_non_zero(&v: &i32) -> Result<(), Zero> {
+    ///     (v != 0).then(|| ()).ok_or(Zero)
+    /// }
+    ///
+    /// let value = Ok(0);
+    /// assert!(value.check(check_non_zero).is_err());
+    /// ```
+    #[inline]
+    #[unstable(feature = "result_check", issue = "none")]
+    pub fn check<P: FnOnce(&T) -> Result<(), E>>(self, predicate: P) -> Self {
+        match self {
+            Ok(t) => predicate(&t).and(Ok(t)),
+            Err(e) => Err(e),
+        }
+    }
 
     /////////////////////////////////////////////////////////////////////////
     // Iterator constructors
