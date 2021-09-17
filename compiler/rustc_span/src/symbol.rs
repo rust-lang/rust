@@ -1417,6 +1417,7 @@ symbols! {
         wrapping_sub,
         wreg,
         write_bytes,
+        write_str,
         x87_reg,
         xer,
         xmm_reg,
