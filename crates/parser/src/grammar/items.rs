@@ -415,9 +415,7 @@ fn macro_def(p: &mut Parser, m: Marker) {
         // test macro_def_curly
         // macro m { ($i:ident) => {} }
         token_tree(p);
-    } else if !p.at(T!['(']) {
-        p.error("unmatched `(`");
-    } else {
+    } else if p.at(T!['(']) {
         let m = p.start();
         token_tree(p);
         match p.current() {
@@ -425,6 +423,8 @@ fn macro_def(p: &mut Parser, m: Marker) {
             _ => p.error("expected `{`, `[`, `(`"),
         }
         m.complete(p, TOKEN_TREE);
+    } else {
+        p.error("unmatched `(`");
     }
 
     m.complete(p, MACRO_DEF);
