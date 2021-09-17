@@ -249,14 +249,8 @@ fn opt_item_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
         T![enum] => adt::enum_(p, m),
         IDENT if p.at_contextual_kw("union") && p.nth(1) == IDENT => adt::union(p, m),
 
-        // test pub_macro_def
-        // pub macro m($:ident) {}
-        T![macro] => {
-            macro_def(p, m);
-        }
-        IDENT if p.at_contextual_kw("macro_rules") && p.nth(1) == BANG => {
-            macro_rules(p, m);
-        }
+        T![macro] => macro_def(p, m),
+        IDENT if p.at_contextual_kw("macro_rules") && p.nth(1) == BANG => macro_rules(p, m),
 
         T![const] if (la == IDENT || la == T![_] || la == T![mut]) => consts::konst(p, m),
         T![static] => consts::static_(p, m),
@@ -413,12 +407,13 @@ fn macro_rules(p: &mut Parser, m: Marker) {
 }
 
 // test macro_def
-// macro m { ($i:ident) => {} }
 // macro m($i:ident) {}
 fn macro_def(p: &mut Parser, m: Marker) {
     p.expect(T![macro]);
     name_r(p, ITEM_RECOVERY_SET);
     if p.at(T!['{']) {
+        // test macro_def_curly
+        // macro m { ($i:ident) => {} }
         token_tree(p);
     } else if !p.at(T!['(']) {
         p.error("unmatched `(`");
