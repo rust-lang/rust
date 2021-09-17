@@ -18,7 +18,6 @@
 #![feature(extend_one)]
 #![feature(hash_raw_entry)]
 #![feature(in_band_lifetimes)]
-#![feature(iter_map_while)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(min_specialization)]
 #![feature(never_type)]

@@ -45,7 +45,7 @@ pub use self::copied::Copied;
 #[stable(feature = "iter_intersperse", since = "1.56.0")]
 pub use self::intersperse::{Intersperse, IntersperseWith};
 
-#[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
+#[stable(feature = "iter_map_while", since = "1.57.0")]
 pub use self::map_while::MapWhile;
 
 #[unstable(feature = "trusted_random_access", issue = "none")]
