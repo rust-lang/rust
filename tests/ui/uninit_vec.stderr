@@ -1,0 +1,51 @@
+error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
+  --> $DIR/uninit_vec.rs:9:9
+   |
+LL |         vec.set_len(200);
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::uninit-vec` implied by `-D warnings`
+note: the buffer is reserved here
+  --> $DIR/uninit_vec.rs:7:5
+   |
+LL |     let mut vec: Vec<u8> = Vec::with_capacity(1000);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
+  --> $DIR/uninit_vec.rs:15:9
+   |
+LL |         vec.set_len(200);
+   |         ^^^^^^^^^^^^^^^^
+   |
+note: the buffer is reserved here
+  --> $DIR/uninit_vec.rs:13:5
+   |
+LL |     vec.reserve(1000);
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
+  --> $DIR/uninit_vec.rs:21:9
+   |
+LL |         vec.set_len(200);
+   |         ^^^^^^^^^^^^^^^^
+   |
+note: the buffer is reserved here
+  --> $DIR/uninit_vec.rs:20:9
+   |
+LL |         let mut vec: Vec<u8> = Vec::with_capacity(1000);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
+  --> $DIR/uninit_vec.rs:24:9
+   |
+LL |         vec.set_len(200);
+   |         ^^^^^^^^^^^^^^^^
+   |
+note: the buffer is reserved here
+  --> $DIR/uninit_vec.rs:23:9
+   |
+LL |         vec.reserve(1000);
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

@@ -278,6 +278,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(types::VEC_BOX),
     LintId::of(undropped_manually_drops::UNDROPPED_MANUALLY_DROPS),
     LintId::of(unicode::INVISIBLE_CHARACTERS),
+    LintId::of(uninit_vec::UNINIT_VEC),
     LintId::of(unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD),
     LintId::of(unit_types::UNIT_ARG),
     LintId::of(unit_types::UNIT_CMP),
