@@ -8,7 +8,7 @@ use syntax::{
         edit::{AstNodeEdit, IndentLevel},
         make, NameOwner,
     },
-    AstNode,
+    AstNode, TextRange,
 };
 
 use crate::{
@@ -44,6 +44,14 @@ use crate::{
 // ```
 pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
+    let available_range = TextRange::new(
+        if_expr.syntax().text_range().start(),
+        if_expr.then_branch()?.syntax().text_range().start(),
+    );
+    let cursor_in_range = available_range.contains_range(ctx.frange.range);
+    if !cursor_in_range {
+        return None;
+    }
     let mut else_block = None;
     let if_exprs = successors(Some(if_expr.clone()), |expr| match expr.else_branch()? {
         ast::ElseBranch::IfExpr(expr) => Some(expr),
@@ -79,11 +87,10 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
         return None;
     }
 
-    let target = if_expr.syntax().text_range();
     acc.add(
         AssistId("replace_if_let_with_match", AssistKind::RefactorRewrite),
         "Replace if let with match",
-        target,
+        available_range,
         move |edit| {
             let match_expr = {
                 let else_arm = make_else_arm(ctx, else_block, &cond_bodies);
@@ -323,6 +330,38 @@ impl VariantData {
                 self.foo();
             }
             _ => (),
+        }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn test_if_let_with_match_available_range_left() {
+        check_assist_not_applicable(
+            replace_if_let_with_match,
+            r#"
+impl VariantData {
+    pub fn foo(&self) {
+        $0 if let VariantData::Struct(..) = *self {
+            self.foo();
+        }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn test_if_let_with_match_available_range_right() {
+        check_assist_not_applicable(
+            replace_if_let_with_match,
+            r#"
+impl VariantData {
+    pub fn foo(&self) {
+        if let VariantData::Struct(..) = *self {$0
+            self.foo();
         }
     }
 }
