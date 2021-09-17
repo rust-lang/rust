@@ -91,7 +91,7 @@ impl<'tcx> LocalOrExpr<'tcx> {
     }
 }
 
-/// Returns the target vec of Vec::with_capacity() or Vec::reserve()
+/// Returns the target vec of `Vec::with_capacity()` or `Vec::reserve()`
 fn extract_with_capacity_or_reserve_target(cx: &LateContext<'_>, stmt: &'tcx Stmt<'_>) -> Option<LocalOrExpr<'tcx>> {
     match stmt.kind {
         StmtKind::Local(local) => {
@@ -128,7 +128,7 @@ fn extract_with_capacity_or_reserve_target(cx: &LateContext<'_>, stmt: &'tcx Stm
                 _ => None,
             }
         },
-        _ => None,
+        StmtKind::Item(_) => None,
     }
 }
 
@@ -145,7 +145,7 @@ fn is_with_capacity(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> bool {
     }
 }
 
-/// Returns self if the expression is Vec::set_len()
+/// Returns self if the expression is `Vec::set_len()`
 fn extract_set_len_self(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Option<(&'tcx Expr<'tcx>, Span)> {
     // peel unsafe blocks in `unsafe { vec.set_len() }`
     let expr = peel_hir_expr_while(expr, |e| {
