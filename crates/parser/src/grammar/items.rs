@@ -245,29 +245,9 @@ fn opt_item_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
         T![mod] => mod_item(p, m),
 
         T![type] => type_alias(p, m),
-
-        T![struct] => {
-            // test struct_items
-            // struct Foo;
-            // struct Foo {}
-            // struct Foo();
-            // struct Foo(String, usize);
-            // struct Foo {
-            //     a: i32,
-            //     b: f32,
-            // }
-            adt::strukt(p, m);
-        }
+        T![struct] => adt::strukt(p, m),
         T![enum] => adt::enum_(p, m),
-        IDENT if p.at_contextual_kw("union") && p.nth(1) == IDENT => {
-            // test union_items
-            // union Foo {}
-            // union Foo {
-            //     a: i32,
-            //     b: f32,
-            // }
-            adt::union(p, m);
-        }
+        IDENT if p.at_contextual_kw("union") && p.nth(1) == IDENT => adt::union(p, m),
 
         // test pub_macro_def
         // pub macro m($:ident) {}
@@ -324,6 +304,31 @@ pub(crate) fn mod_item(p: &mut Parser, m: Marker) {
     m.complete(p, MODULE);
 }
 
+// test type_alias
+// type Foo = Bar;
+fn type_alias(p: &mut Parser, m: Marker) {
+    p.bump(T![type]);
+
+    name(p);
+
+    // test type_item_type_params
+    // type Result<T> = ();
+    type_params::opt_generic_param_list(p);
+
+    if p.at(T![:]) {
+        type_params::bounds(p);
+    }
+
+    // test type_item_where_clause
+    // type Foo where Foo: Copy = ();
+    type_params::opt_where_clause(p);
+    if p.eat(T![=]) {
+        types::type_(p);
+    }
+    p.expect(T![;]);
+    m.complete(p, TYPE_ALIAS);
+}
+
 pub(crate) fn item_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
@@ -372,32 +377,6 @@ fn fn_(p: &mut Parser) {
     } else {
         expressions::block_expr(p)
     }
-}
-
-// test type_item
-// type Foo = Bar;
-fn type_alias(p: &mut Parser, m: Marker) {
-    assert!(p.at(T![type]));
-    p.bump(T![type]);
-
-    name(p);
-
-    // test type_item_type_params
-    // type Result<T> = ();
-    type_params::opt_generic_param_list(p);
-
-    if p.at(T![:]) {
-        type_params::bounds(p);
-    }
-
-    // test type_item_where_clause
-    // type Foo where Foo: Copy = ();
-    type_params::opt_where_clause(p);
-    if p.eat(T![=]) {
-        types::type_(p);
-    }
-    p.expect(T![;]);
-    m.complete(p, TYPE_ALIAS);
 }
 
 fn macro_rules(p: &mut Parser, m: Marker) {

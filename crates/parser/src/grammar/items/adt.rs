@@ -1,18 +1,21 @@
 use super::*;
 
+// test struct_item
+// struct S {}
 pub(super) fn strukt(p: &mut Parser, m: Marker) {
-    assert!(p.at(T![struct]));
     p.bump(T![struct]);
-    struct_or_union(p, m, T![struct], STRUCT);
+    struct_or_union(p, m, true);
 }
 
+// test union_item
+// struct U { i: i32, f: f32 }
 pub(super) fn union(p: &mut Parser, m: Marker) {
     assert!(p.at_contextual_kw("union"));
     p.bump_remap(T![union]);
-    struct_or_union(p, m, T![union], UNION);
+    struct_or_union(p, m, false);
 }
 
-fn struct_or_union(p: &mut Parser, m: Marker, kw: SyntaxKind, def: SyntaxKind) {
+fn struct_or_union(p: &mut Parser, m: Marker, is_struct: bool) {
     name_r(p, ITEM_RECOVERY_SET);
     type_params::opt_generic_param_list(p);
     match p.current() {
@@ -29,26 +32,24 @@ fn struct_or_union(p: &mut Parser, m: Marker, kw: SyntaxKind, def: SyntaxKind) {
                 }
             }
         }
-        T![;] if kw == T![struct] => {
+        T!['{'] => record_field_list(p),
+        // test unit_struct
+        // struct S;
+        T![;] if is_struct => {
             p.bump(T![;]);
         }
-        T!['{'] => record_field_list(p),
-        T!['('] if kw == T![struct] => {
+        // test tuple_struct
+        // struct S(String, usize);
+        T!['('] if is_struct => {
             tuple_field_list(p);
             // test tuple_struct_where
-            // struct Test<T>(T) where T: Clone;
-            // struct Test<T>(T);
+            // struct S<T>(T) where T: Clone;
             type_params::opt_where_clause(p);
             p.expect(T![;]);
         }
-        _ if kw == T![struct] => {
-            p.error("expected `;`, `{`, or `(`");
-        }
-        _ => {
-            p.error("expected `{`");
-        }
+        _ => p.error(if is_struct { "expected `;`, `{`, or `(`" } else { "expected `{`" }),
     }
-    m.complete(p, def);
+    m.complete(p, if is_struct { STRUCT } else { UNION });
 }
 
 pub(super) fn enum_(p: &mut Parser, m: Marker) {
@@ -102,6 +103,8 @@ pub(crate) fn variant_list(p: &mut Parser) {
     m.complete(p, VARIANT_LIST);
 }
 
+// test record_field_list
+// struct S { a: i32, b: f32 }
 pub(crate) fn record_field_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();

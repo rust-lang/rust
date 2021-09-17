@@ -1,0 +1,11 @@
+SOURCE_FILE@0..12
+  STRUCT@0..11
+    STRUCT_KW@0..6 "struct"
+    WHITESPACE@6..7 " "
+    NAME@7..8
+      IDENT@7..8 "S"
+    WHITESPACE@8..9 " "
+    RECORD_FIELD_LIST@9..11
+      L_CURLY@9..10 "{"
+      R_CURLY@10..11 "}"
+  WHITESPACE@11..12 "\n"

@@ -1,2 +1,1 @@
-struct Test<T>(T) where T: Clone;
-struct Test<T>(T);
+struct S<T>(T) where T: Clone;

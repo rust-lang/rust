@@ -1,0 +1,8 @@
+SOURCE_FILE@0..10
+  STRUCT@0..9
+    STRUCT_KW@0..6 "struct"
+    WHITESPACE@6..7 " "
+    NAME@7..8
+      IDENT@7..8 "S"
+    SEMICOLON@8..9 ";"
+  WHITESPACE@9..10 "\n"
