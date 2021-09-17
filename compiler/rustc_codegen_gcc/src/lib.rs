@@ -18,7 +18,6 @@ extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_metadata;
 extern crate rustc_middle;
-extern crate rustc_mir;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_symbol_mangling;
@@ -144,8 +143,8 @@ impl ExtraBackendMethods for GccCodegenBackend {
         base::write_compressed_metadata(tcx, metadata, gcc_module)
     }
 
-    fn codegen_allocator<'tcx>(&self, tcx: TyCtxt<'tcx>, mods: &mut Self::Module, kind: AllocatorKind, has_alloc_error_handler: bool) {
-        unsafe { allocator::codegen(tcx, mods, kind, has_alloc_error_handler) }
+    fn codegen_allocator<'tcx>(&self, tcx: TyCtxt<'tcx>, mods: &mut Self::Module, module_name: &str, kind: AllocatorKind, has_alloc_error_handler: bool) {
+        unsafe { allocator::codegen(tcx, mods, module_name, kind, has_alloc_error_handler) }
     }
 
     fn compile_codegen_unit<'tcx>(&self, tcx: TyCtxt<'tcx>, cgu_name: Symbol) -> (ModuleCodegen<Self::Module>, u64) {

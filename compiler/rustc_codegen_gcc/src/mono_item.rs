@@ -2,9 +2,8 @@ use rustc_codegen_ssa::traits::PreDefineMethods;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::mono::{Linkage, Visibility};
 use rustc_middle::ty::{self, Instance, TypeFoldable};
-use rustc_middle::ty::layout::FnAbiExt;
+use rustc_middle::ty::layout::{FnAbiExt, LayoutOf};
 use rustc_span::def_id::DefId;
-use rustc_target::abi::LayoutOf;
 use rustc_target::abi::call::FnAbi;
 
 use crate::base;
@@ -31,7 +30,7 @@ impl<'gcc, 'tcx> PreDefineMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn predefine_fn(&self, instance: Instance<'tcx>, linkage: Linkage, _visibility: Visibility, symbol_name: &str) {
-        assert!(!instance.substs.needs_infer() && !instance.substs.has_param_types_or_consts());
+        assert!(!instance.substs.needs_infer());
 
         let fn_abi = FnAbi::of_instance(self, instance, &[]);
         self.linkage.set(base::linkage_to_gcc(linkage));

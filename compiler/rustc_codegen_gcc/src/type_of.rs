@@ -4,9 +4,9 @@ use gccjit::{Struct, Type};
 use crate::rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods};
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty, TypeFoldable};
-use rustc_middle::ty::layout::{FnAbiExt, TyAndLayout};
+use rustc_middle::ty::layout::{FnAbiExt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_target::abi::{self, Abi, F32, F64, FieldsShape, Int, Integer, LayoutOf, Pointer, PointeeInfo, Size, TyAndLayoutMethods, Variants};
+use rustc_target::abi::{self, Abi, F32, F64, FieldsShape, Int, Integer, Pointer, PointeeInfo, Size, TyAbiInterface, Variants};
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
 
 use crate::abi::{FnAbiGccExt, GccType};
@@ -308,7 +308,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             return pointee;
         }
 
-        let result = Ty::pointee_info_at(*self, cx, offset);
+        let result = Ty::ty_and_layout_pointee_info_at(*self, cx, offset);
 
         cx.pointee_infos.borrow_mut().insert((self.ty, offset), result);
         result

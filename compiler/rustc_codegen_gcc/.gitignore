@@ -7,11 +7,14 @@ perf.data.old
 *.events
 *.string*
 /build_sysroot/sysroot
+/build_sysroot/sysroot_src
 /build_sysroot/Cargo.lock
 /build_sysroot/test_target/Cargo.lock
 /rust
+/simple-raytracer
 /regex
 gimple*
 *asm
 res
 test-backend
+gcc_path

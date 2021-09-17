@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::convert::TryFrom;
-use std::ops::{Deref, Range};
+use std::ops::Deref;
 
 use gccjit::FunctionType;
 use gccjit::{
@@ -31,16 +31,16 @@ use rustc_codegen_ssa::traits::{
     StaticBuilderMethods,
 };
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
-use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, TyAndLayout};
+use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{
     self,
     Align,
     HasDataLayout,
-    LayoutOf,
     Size,
     TargetDataLayout,
+    WrappingRange,
 };
 use rustc_target::spec::{HasTargetSpec, Target};
 
@@ -338,12 +338,12 @@ impl HasDataLayout for Builder<'_, '_, '_> {
     }
 }
 
-impl<'tcx> LayoutOf for Builder<'_, '_, 'tcx> {
-    type Ty = Ty<'tcx>;
-    type TyAndLayout = TyAndLayout<'tcx>;
+impl<'tcx> LayoutOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
+    type LayoutOfResult = TyAndLayout<'tcx>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
-        self.cx.layout_of(ty)
+    #[inline]
+    fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
+        self.cx.handle_layout_err(err, span, ty)
     }
 }
 
@@ -818,12 +818,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             let vr = scalar.valid_range.clone();
             match scalar.value {
                 abi::Int(..) => {
-                    let range = scalar.valid_range_exclusive(bx);
-                    if range.start != range.end {
-                        bx.range_metadata(load, range);
+                    if !scalar.is_always_valid(bx) {
+                        bx.range_metadata(load, scalar.valid_range);
                     }
                 }
-                abi::Pointer if vr.start() < vr.end() && !vr.contains(&0) => {
+                abi::Pointer if vr.start < vr.end && !vr.contains(0) => {
                     bx.nonnull_metadata(load);
                 }
                 _ => {}
@@ -894,7 +893,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         next_bx
     }
 
-    fn range_metadata(&mut self, _load: RValue<'gcc>, _range: Range<u128>) {
+    fn range_metadata(&mut self, _load: RValue<'gcc>, _range: WrappingRange) {
         // TODO(antoyo)
     }
 
@@ -1378,7 +1377,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         }
     }
 
-    fn to_immediate_scalar(&mut self, val: Self::Value, scalar: &abi::Scalar) -> Self::Value {
+    fn to_immediate_scalar(&mut self, val: Self::Value, scalar: abi::Scalar) -> Self::Value {
         if scalar.is_bool() {
             return self.trunc(val, self.cx().type_i1());
         }

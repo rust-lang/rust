@@ -6,10 +6,11 @@ use rustc_middle::{bug, span_bug};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, Ty};
-use rustc_mir::interpret::{self, Allocation, ErrorHandled, Scalar as InterpScalar, read_target_uint};
+use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::mir::interpret::{self, Allocation, ErrorHandled, Scalar as InterpScalar, read_target_uint};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
-use rustc_target::abi::{self, Align, HasDataLayout, LayoutOf, Primitive, Size};
+use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size, WrappingRange};
 
 use crate::base;
 use crate::context::CodegenCx;
@@ -182,6 +183,10 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
     fn add_used_global(&self, _global: RValue<'gcc>) {
         // TODO(antoyo)
     }
+
+    fn add_compiler_used_global(&self, _global: RValue<'gcc>) {
+        // TODO(antoyo)
+    }
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -350,7 +355,7 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: &Alloca
                 interpret::Pointer::new(alloc_id, Size::from_bytes(ptr_offset)),
                 &cx.tcx,
             ),
-            &abi::Scalar { value: Primitive::Pointer, valid_range: 0..=!0 },
+            abi::Scalar { value: Primitive::Pointer, valid_range: WrappingRange { start: 0, end: !0 } },
             cx.type_i8p(),
         ));
         next_offset = offset + pointer_size;

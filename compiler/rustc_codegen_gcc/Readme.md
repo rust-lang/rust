@@ -19,7 +19,7 @@ You can also use my [fork of gcc](https://github.com/antoyo/gcc) which already i
 **Put the path to your custom build of libgccjit in the file `gcc_path`.**
 
 ```bash
-$ git clone https://github.com/antoyo/rustc_codegen_gcc.git
+$ git clone https://github.com/rust-lang/rustc_codegen_gcc.git
 $ cd rustc_codegen_gcc
 $ ./prepare_build.sh # download and patch sysroot src
 $ ./build.sh --release
@@ -113,6 +113,5 @@ p loc->m_line
 
 ### How to use a custom-build rustc
 
- * Build the stage1 compiler (`rustup toolchain link debug-current stage2 build/x86_64-unknown-linux-gnu/stage1`).
+ * Build the stage2 compiler (`rustup toolchain link debug-current build/x86_64-unknown-linux-gnu/stage2`).
  * Clean and rebuild the codegen with `debug-current` in the file `rust-toolchain`.
- * Add `~/.rustup/toolchains/debug-current/lib/rustlib/x86_64-unknown-linux-gnu/lib` to `LD_LIBRARY_PATH`.
