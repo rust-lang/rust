@@ -2966,7 +2966,15 @@ impl<'a> Resolver<'a> {
                 (None, false)
             };
             if !candidates.is_empty() {
-                diagnostics::show_candidates(&mut err, span, &candidates, instead, found_use);
+                diagnostics::show_candidates(
+                    &self.definitions,
+                    self.session,
+                    &mut err,
+                    span,
+                    &candidates,
+                    instead,
+                    found_use,
+                );
             } else if let Some((span, msg, sugg, appl)) = suggestion {
                 err.span_suggestion(span, msg, sugg, appl);
             }

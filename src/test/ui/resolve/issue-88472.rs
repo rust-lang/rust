@@ -6,6 +6,8 @@
 
 mod a {
     struct Foo;
+    //~^ NOTE: struct `a::Foo` exists but is inaccessible
+    //~| NOTE: not accessible
 }
 
 mod b {
@@ -14,14 +16,16 @@ mod b {
     type Bar = Foo;
     //~^ ERROR: cannot find type `Foo` in this scope [E0412]
     //~| NOTE: not found in this scope
-    //~| NOTE: this struct exists but is inaccessible
 }
 
 mod c {
     enum Eee {}
+    //~^ NOTE: these enums exist but are inaccessible
+    //~| NOTE: `c::Eee`: not accessible
 
     mod d {
         enum Eee {}
+        //~^ NOTE: `c::d::Eee`: not accessible
     }
 }
 
@@ -29,7 +33,6 @@ mod e {
     type Baz = Eee;
     //~^ ERROR: cannot find type `Eee` in this scope [E0412]
     //~| NOTE: not found in this scope
-    //~| NOTE: these items exist but are inaccessible
 }
 
 fn main() {}

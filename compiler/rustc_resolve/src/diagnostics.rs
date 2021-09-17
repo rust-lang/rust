@@ -949,7 +949,15 @@ impl<'a> Resolver<'a> {
 
         let import_suggestions =
             self.lookup_import_candidates(ident, Namespace::MacroNS, parent_scope, is_expected);
-        show_candidates(err, None, &import_suggestions, false, true);
+        show_candidates(
+            &self.definitions,
+            self.session,
+            err,
+            None,
+            &import_suggestions,
+            false,
+            true,
+        );
 
         if macro_kind == MacroKind::Derive && (ident.name == sym::Send || ident.name == sym::Sync) {
             let msg = format!("unsafe traits like `{}` should be implemented explicitly", ident);
@@ -1689,6 +1697,8 @@ fn find_span_immediately_after_crate_name(
 /// entities with that name in all crates. This method allows outputting the
 /// results of this search in a programmer-friendly way
 crate fn show_candidates(
+    definitions: &rustc_hir::definitions::Definitions,
+    session: &Session,
     err: &mut DiagnosticBuilder<'_>,
     // This is `None` if all placement locations are inside expansions
     use_placement_span: Option<Span>,
@@ -1700,22 +1710,22 @@ crate fn show_candidates(
         return;
     }
 
-    let mut accessible_path_strings: Vec<(String, &str)> = Vec::new();
-    let mut inaccessible_path_strings: Vec<(String, &str)> = Vec::new();
+    let mut accessible_path_strings: Vec<(String, &str, Option<DefId>)> = Vec::new();
+    let mut inaccessible_path_strings: Vec<(String, &str, Option<DefId>)> = Vec::new();
 
     candidates.iter().for_each(|c| {
         (if c.accessible { &mut accessible_path_strings } else { &mut inaccessible_path_strings })
-            .push((path_names_to_string(&c.path), c.descr))
+            .push((path_names_to_string(&c.path), c.descr, c.did))
     });
 
     // we want consistent results across executions, but candidates are produced
     // by iterating through a hash map, so make sure they are ordered:
     for path_strings in [&mut accessible_path_strings, &mut inaccessible_path_strings] {
-        path_strings.sort();
+        path_strings.sort_by(|a, b| a.0.cmp(&b.0));
         let core_path_strings =
-            path_strings.drain_filter(|p| p.starts_with("core::")).collect::<Vec<String>>();
+            path_strings.drain_filter(|p| p.0.starts_with("core::")).collect::<Vec<_>>();
         path_strings.extend(core_path_strings);
-        path_strings.dedup();
+        path_strings.dedup_by(|a, b| a.0 == b.0);
     }
 
     if !accessible_path_strings.is_empty() {
@@ -1755,19 +1765,56 @@ crate fn show_candidates(
     } else {
         assert!(!inaccessible_path_strings.is_empty());
 
-        let (determiner, kind, verb1, verb2) = if inaccessible_path_strings.len() == 1 {
-            ("this", inaccessible_path_strings[0].1, "exists", "is")
+        if inaccessible_path_strings.len() == 1 {
+            let (name, descr, def_id) = &inaccessible_path_strings[0];
+            let msg = format!("{} `{}` exists but is inaccessible", descr, name);
+
+            if let Some(local_def_id) = def_id.and_then(|did| did.as_local()) {
+                let span = definitions.def_span(local_def_id);
+                let span = session.source_map().guess_head_span(span);
+                let mut multi_span = MultiSpan::from_span(span);
+                multi_span.push_span_label(span, "not accessible".to_string());
+                err.span_note(multi_span, &msg);
+            } else {
+                err.note(&msg);
+            }
         } else {
-            ("these", "items", "exist", "are")
-        };
+            let (_, descr_first, _) = &inaccessible_path_strings[0];
+            let descr = if inaccessible_path_strings
+                .iter()
+                .skip(1)
+                .all(|(_, descr, _)| descr == descr_first)
+            {
+                format!("{}", descr_first)
+            } else {
+                "item".to_string()
+            };
 
-        let mut msg = format!("{} {} {} but {} inaccessible:", determiner, kind, verb1, verb2);
+            let mut msg = format!("these {}s exist but are inaccessible", descr);
+            let mut has_colon = false;
 
-        for candidate in inaccessible_path_strings {
-            msg.push('\n');
-            msg.push_str(&candidate.0);
+            let mut spans = Vec::new();
+            for (name, _, def_id) in &inaccessible_path_strings {
+                if let Some(local_def_id) = def_id.and_then(|did| did.as_local()) {
+                    let span = definitions.def_span(local_def_id);
+                    let span = session.source_map().guess_head_span(span);
+                    spans.push((name, span));
+                } else {
+                    if !has_colon {
+                        msg.push(':');
+                        has_colon = true;
+                    }
+                    msg.push('\n');
+                    msg.push_str(name);
+                }
+            }
+
+            let mut multi_span = MultiSpan::from_spans(spans.iter().map(|(_, sp)| *sp).collect());
+            for (name, span) in spans {
+                multi_span.push_span_label(span, format!("`{}`: not accessible", name));
+            }
+
+            err.span_note(multi_span, &msg);
         }
-
-        err.note(&msg);
     }
 }

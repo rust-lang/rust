@@ -1,24 +1,32 @@
 error[E0412]: cannot find type `Foo` in this scope
-  --> $DIR/issue-88472.rs:14:16
+  --> $DIR/issue-88472.rs:16:16
    |
 LL |     type Bar = Foo;
    |                ^^^ not found in this scope
    |
-   = note: this struct exists but is inaccessible:
-           a::Foo
+note: struct `a::Foo` exists but is inaccessible
+  --> $DIR/issue-88472.rs:8:5
+   |
+LL |     struct Foo;
+   |     ^^^^^^^^^^^ not accessible
 
 error[E0412]: cannot find type `Eee` in this scope
-  --> $DIR/issue-88472.rs:29:16
+  --> $DIR/issue-88472.rs:33:16
    |
 LL |     type Baz = Eee;
    |                ^^^ not found in this scope
    |
-   = note: these items exist but are inaccessible:
-           c::Eee
-           c::d::Eee
+note: these enums exist but are inaccessible
+  --> $DIR/issue-88472.rs:22:5
+   |
+LL |     enum Eee {}
+   |     ^^^^^^^^ `c::Eee`: not accessible
+...
+LL |         enum Eee {}
+   |         ^^^^^^^^ `c::d::Eee`: not accessible
 
 warning: unused import: `crate::a::*`
-  --> $DIR/issue-88472.rs:12:9
+  --> $DIR/issue-88472.rs:14:9
    |
 LL |     use crate::a::*;
    |         ^^^^^^^^^^^

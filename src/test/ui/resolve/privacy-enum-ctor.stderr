@@ -171,8 +171,11 @@ LL |     pub enum E {
 LL |     let _: Z = m::n::Z;
    |            ^ help: an enum with a similar name exists: `E`
    |
-   = note: this enum exists but is inaccessible:
-           m::Z
+note: enum `m::Z` exists but is inaccessible
+  --> $DIR/privacy-enum-ctor.rs:11:9
+   |
+LL |         pub(in m) enum Z {
+   |         ^^^^^^^^^^^^^^^^ not accessible
 
 error[E0423]: expected value, found enum `m::n::Z`
   --> $DIR/privacy-enum-ctor.rs:57:16
@@ -211,8 +214,11 @@ LL |     pub enum E {
 LL |     let _: Z = m::n::Z::Fn;
    |            ^ help: an enum with a similar name exists: `E`
    |
-   = note: this enum exists but is inaccessible:
-           m::Z
+note: enum `m::Z` exists but is inaccessible
+  --> $DIR/privacy-enum-ctor.rs:11:9
+   |
+LL |         pub(in m) enum Z {
+   |         ^^^^^^^^^^^^^^^^ not accessible
 
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:64:12
@@ -223,8 +229,11 @@ LL |     pub enum E {
 LL |     let _: Z = m::n::Z::Struct;
    |            ^ help: an enum with a similar name exists: `E`
    |
-   = note: this enum exists but is inaccessible:
-           m::Z
+note: enum `m::Z` exists but is inaccessible
+  --> $DIR/privacy-enum-ctor.rs:11:9
+   |
+LL |         pub(in m) enum Z {
+   |         ^^^^^^^^^^^^^^^^ not accessible
 
 error[E0423]: expected value, found struct variant `m::n::Z::Struct`
   --> $DIR/privacy-enum-ctor.rs:64:16
@@ -246,8 +255,11 @@ LL |     pub enum E {
 LL |     let _: Z = m::n::Z::Unit {};
    |            ^ help: an enum with a similar name exists: `E`
    |
-   = note: this enum exists but is inaccessible:
-           m::Z
+note: enum `m::Z` exists but is inaccessible
+  --> $DIR/privacy-enum-ctor.rs:11:9
+   |
+LL |         pub(in m) enum Z {
+   |         ^^^^^^^^^^^^^^^^ not accessible
 
 error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:57:22
