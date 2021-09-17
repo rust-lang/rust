@@ -27,7 +27,7 @@ use lsp_types::{
 use project_model::TargetKind;
 use serde_json::json;
 use stdx::{format_to, never};
-use syntax::{algo, ast, AstNode, TextRange, TextSize};
+use syntax::{algo, ast, AstNode, TextRange, TextSize, T};
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
@@ -727,16 +727,13 @@ pub(crate) fn handle_completion(
     let completion_triggered_after_single_colon = {
         let mut res = false;
         if let Some(ctx) = params.context {
-            if ctx.trigger_character.unwrap_or_default() == ":" {
+            if ctx.trigger_character.as_deref() == Some(":") {
                 let source_file = snap.analysis.parse(position.file_id)?;
-                let syntax = source_file.syntax();
-                let text = syntax.text();
-                if let Some(next_char) = text.char_at(position.offset) {
-                    let diff = TextSize::of(next_char) + TextSize::of(':');
-                    let prev_char = position.offset - diff;
-                    if text.char_at(prev_char) != Some(':') {
-                        res = true;
-                    }
+                let left_token =
+                    source_file.syntax().token_at_offset(position.offset).left_biased();
+                match left_token {
+                    Some(left_token) => res = left_token.kind() == T![:],
+                    None => res = true,
                 }
             }
         }
