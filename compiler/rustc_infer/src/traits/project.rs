@@ -153,47 +153,6 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
         assert!(!fresh_key, "never started projecting `{:?}`", key);
     }
 
-    /// Mark the relevant projection cache key as having its derived obligations
-    /// complete, so they won't have to be re-computed (this is OK to do in a
-    /// snapshot - if the snapshot is rolled back, the obligations will be
-    /// marked as incomplete again).
-    pub fn complete(&mut self, key: ProjectionCacheKey<'tcx>) {
-        let mut map = self.map();
-        let ty = match map.get(&key) {
-            Some(&ProjectionCacheEntry::NormalizedTy(ref ty)) => {
-                debug!("ProjectionCacheEntry::complete({:?}) - completing {:?}", key, ty);
-                ty.value
-            }
-            ref value => {
-                // Type inference could "strand behind" old cache entries. Leave
-                // them alone for now.
-                debug!("ProjectionCacheEntry::complete({:?}) - ignoring {:?}", key, value);
-                return;
-            }
-        };
-
-        map.insert(
-            key,
-            ProjectionCacheEntry::NormalizedTy(Normalized { value: ty, obligations: vec![] }),
-        );
-    }
-
-    /// A specialized version of `complete` for when the key's value is known
-    /// to be a NormalizedTy.
-    pub fn complete_normalized(&mut self, key: ProjectionCacheKey<'tcx>, ty: &NormalizedTy<'tcx>) {
-        // We want to insert `ty` with no obligations. If the existing value
-        // already has no obligations (as is common) we don't insert anything.
-        if !ty.obligations.is_empty() {
-            self.map().insert(
-                key,
-                ProjectionCacheEntry::NormalizedTy(Normalized {
-                    value: ty.value,
-                    obligations: vec![],
-                }),
-            );
-        }
-    }
-
     /// Indicates that trying to normalize `key` resulted in
     /// ambiguity. No point in trying it again then until we gain more
     /// type information (in which case, the "fully resolved" key will

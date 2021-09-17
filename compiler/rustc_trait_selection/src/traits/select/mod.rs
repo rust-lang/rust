@@ -14,18 +14,17 @@ use super::util;
 use super::util::{closure_trait_ref_and_return_type, predicate_for_trait_def};
 use super::wf;
 use super::DerivedObligationCause;
+use super::Normalized;
 use super::Obligation;
 use super::ObligationCauseCode;
 use super::Selection;
 use super::SelectionResult;
 use super::TraitQueryMode;
-use super::{Normalized, ProjectionCacheKey};
 use super::{ObligationCause, PredicateObligation, TraitObligation};
 use super::{Overflow, SelectionError, Unimplemented};
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
 use crate::traits::error_reporting::InferCtxtExt;
-use crate::traits::project::ProjectionCacheKeyExt;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
@@ -574,14 +573,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     match project::poly_project_and_unify_type(self, &project_obligation) {
                         Ok(Ok(Some(mut subobligations))) => {
                             self.add_depth(subobligations.iter_mut(), obligation.recursion_depth);
-                            let result = self
-                                .evaluate_predicates_recursively(previous_stack, subobligations);
-                            if let Some(key) =
-                                ProjectionCacheKey::from_poly_projection_predicate(self, data)
-                            {
-                                self.infcx.inner.borrow_mut().projection_cache().complete(key);
-                            }
-                            result
+                            self.evaluate_predicates_recursively(previous_stack, subobligations)
                         }
                         Ok(Ok(None)) => Ok(EvaluatedToAmbig),
                         Ok(Err(project::InProgress)) => Ok(EvaluatedToRecur),
