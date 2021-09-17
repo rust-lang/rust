@@ -17,6 +17,17 @@ def convert_to_string(s):
     return s
 
 
+def set_ld_lib_path():
+    var = os.environ.get("LD_LIB_PATH_ENVVAR")
+    rpath = os.environ.get("HOST_RPATH_DIR")
+    if var and rpath:
+        path = os.environ.get(var)
+        if path:
+            os.environ[var] = rpath + os.pathsep + path
+        else:
+            os.environ[var] = rpath
+
+
 def exec_command(command, to_input=None):
     child = None
     if to_input is None:
@@ -50,7 +61,9 @@ def get_all_libs(dir_path):
             if isfile(join(dir_path, f)) and f.endswith('.rlib') and f not in STABLE_CRATES]
 
 
+set_ld_lib_path()
 sysroot = exec_command([os.environ['RUSTC'], '--print', 'sysroot'])[0].replace('\n', '')
+assert sysroot, "Could not read the rustc sysroot!"
 libs = get_all_libs(join(sysroot, 'lib/rustlib/{}/lib'.format(os.environ['TARGET'])))
 
 ret = 0
