@@ -22,9 +22,7 @@ fn struct_or_union(p: &mut Parser, m: Marker, is_struct: bool) {
         T![where] => {
             type_params::opt_where_clause(p);
             match p.current() {
-                T![;] => {
-                    p.bump(T![;]);
-                }
+                T![;] => p.bump(T![;]),
                 T!['{'] => record_field_list(p),
                 _ => {
                     //FIXME: special case `(` error message
@@ -53,7 +51,6 @@ fn struct_or_union(p: &mut Parser, m: Marker, is_struct: bool) {
 }
 
 pub(super) fn enum_(p: &mut Parser, m: Marker) {
-    assert!(p.at(T![enum]));
     p.bump(T![enum]);
     name_r(p, ITEM_RECOVERY_SET);
     type_params::opt_generic_param_list(p);
@@ -75,7 +72,16 @@ pub(crate) fn variant_list(p: &mut Parser) {
             error_block(p, "expected enum variant");
             continue;
         }
-        let var = p.start();
+        variant(p);
+        if !p.at(T!['}']) {
+            p.expect(T![,]);
+        }
+    }
+    p.expect(T!['}']);
+    m.complete(p, VARIANT_LIST);
+
+    fn variant(p: &mut Parser) {
+        let m = p.start();
         attributes::outer_attrs(p);
         if p.at(IDENT) {
             name(p);
@@ -90,17 +96,12 @@ pub(crate) fn variant_list(p: &mut Parser) {
             if p.eat(T![=]) {
                 expressions::expr(p);
             }
-            var.complete(p, VARIANT);
+            m.complete(p, VARIANT);
         } else {
-            var.abandon(p);
+            m.abandon(p);
             p.err_and_bump("expected enum variant");
         }
-        if !p.at(T!['}']) {
-            p.expect(T![,]);
-        }
     }
-    p.expect(T!['}']);
-    m.complete(p, VARIANT_LIST);
 }
 
 // test record_field_list
@@ -114,7 +115,7 @@ pub(crate) fn record_field_list(p: &mut Parser) {
             error_block(p, "expected field");
             continue;
         }
-        record_field_def(p);
+        record_field(p);
         if !p.at(T!['}']) {
             p.expect(T![,]);
         }
@@ -122,13 +123,10 @@ pub(crate) fn record_field_list(p: &mut Parser) {
     p.expect(T!['}']);
     m.complete(p, RECORD_FIELD_LIST);
 
-    fn record_field_def(p: &mut Parser) {
+    fn record_field(p: &mut Parser) {
         let m = p.start();
         // test record_field_attrs
-        // struct S {
-        //     #[serde(with = "url_serde")]
-        //     pub uri: Uri,
-        // }
+        // struct S { #[attr] f: f32 }
         attributes::outer_attrs(p);
         opt_visibility(p);
         if p.at(IDENT) {
@@ -146,20 +144,11 @@ pub(crate) fn record_field_list(p: &mut Parser) {
 fn tuple_field_list(p: &mut Parser) {
     assert!(p.at(T!['(']));
     let m = p.start();
-    if !p.expect(T!['(']) {
-        return;
-    }
+    p.bump(T!['(']);
     while !p.at(T![')']) && !p.at(EOF) {
         let m = p.start();
         // test tuple_field_attrs
-        // struct S (
-        //     #[serde(with = "url_serde")]
-        //     pub Uri,
-        // );
-        //
-        // enum S {
-        //     Uri(#[serde(with = "url_serde")] Uri),
-        // }
+        // struct S (#[attr] f32);
         attributes::outer_attrs(p);
         opt_visibility(p);
         if !p.at_ts(types::TYPE_FIRST) {

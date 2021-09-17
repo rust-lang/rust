@@ -1,85 +1,28 @@
-SOURCE_FILE@0..115
-  STRUCT@0..59
+SOURCE_FILE@0..24
+  STRUCT@0..23
     STRUCT_KW@0..6 "struct"
     WHITESPACE@6..7 " "
     NAME@7..8
       IDENT@7..8 "S"
     WHITESPACE@8..9 " "
-    TUPLE_FIELD_LIST@9..58
+    TUPLE_FIELD_LIST@9..22
       L_PAREN@9..10 "("
-      WHITESPACE@10..15 "\n    "
-      TUPLE_FIELD@15..55
-        ATTR@15..43
-          POUND@15..16 "#"
-          L_BRACK@16..17 "["
-          META@17..42
-            PATH@17..22
-              PATH_SEGMENT@17..22
-                NAME_REF@17..22
-                  IDENT@17..22 "serde"
-            TOKEN_TREE@22..42
-              L_PAREN@22..23 "("
-              IDENT@23..27 "with"
-              WHITESPACE@27..28 " "
-              EQ@28..29 "="
-              WHITESPACE@29..30 " "
-              STRING@30..41 "\"url_serde\""
-              R_PAREN@41..42 ")"
-          R_BRACK@42..43 "]"
-        WHITESPACE@43..48 "\n    "
-        VISIBILITY@48..51
-          PUB_KW@48..51 "pub"
-        WHITESPACE@51..52 " "
-        PATH_TYPE@52..55
-          PATH@52..55
-            PATH_SEGMENT@52..55
-              NAME_REF@52..55
-                IDENT@52..55 "Uri"
-      COMMA@55..56 ","
-      WHITESPACE@56..57 "\n"
-      R_PAREN@57..58 ")"
-    SEMICOLON@58..59 ";"
-  WHITESPACE@59..61 "\n\n"
-  ENUM@61..114
-    ENUM_KW@61..65 "enum"
-    WHITESPACE@65..66 " "
-    NAME@66..67
-      IDENT@66..67 "S"
-    WHITESPACE@67..68 " "
-    VARIANT_LIST@68..114
-      L_CURLY@68..69 "{"
-      WHITESPACE@69..74 "\n    "
-      VARIANT@74..111
-        NAME@74..77
-          IDENT@74..77 "Uri"
-        TUPLE_FIELD_LIST@77..111
-          L_PAREN@77..78 "("
-          TUPLE_FIELD@78..110
-            ATTR@78..106
-              POUND@78..79 "#"
-              L_BRACK@79..80 "["
-              META@80..105
-                PATH@80..85
-                  PATH_SEGMENT@80..85
-                    NAME_REF@80..85
-                      IDENT@80..85 "serde"
-                TOKEN_TREE@85..105
-                  L_PAREN@85..86 "("
-                  IDENT@86..90 "with"
-                  WHITESPACE@90..91 " "
-                  EQ@91..92 "="
-                  WHITESPACE@92..93 " "
-                  STRING@93..104 "\"url_serde\""
-                  R_PAREN@104..105 ")"
-              R_BRACK@105..106 "]"
-            WHITESPACE@106..107 " "
-            PATH_TYPE@107..110
-              PATH@107..110
-                PATH_SEGMENT@107..110
-                  NAME_REF@107..110
-                    IDENT@107..110 "Uri"
-          R_PAREN@110..111 ")"
-      COMMA@111..112 ","
-      WHITESPACE@112..113 "\n"
-      R_CURLY@113..114 "}"
-  WHITESPACE@114..115 "\n"
+      TUPLE_FIELD@10..21
+        ATTR@10..17
+          POUND@10..11 "#"
+          L_BRACK@11..12 "["
+          META@12..16
+            PATH@12..16
+              PATH_SEGMENT@12..16
+                NAME_REF@12..16
+                  IDENT@12..16 "attr"
+          R_BRACK@16..17 "]"
+        WHITESPACE@17..18 " "
+        PATH_TYPE@18..21
+          PATH@18..21
+            PATH_SEGMENT@18..21
+              NAME_REF@18..21
+                IDENT@18..21 "f32"
+      R_PAREN@21..22 ")"
+    SEMICOLON@22..23 ";"
+  WHITESPACE@23..24 "\n"
