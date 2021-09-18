@@ -1,0 +1,14 @@
+SOURCE_FILE@0..10
+  IMPL@0..9
+    IMPL_KW@0..4 "impl"
+    WHITESPACE@4..5 " "
+    PATH_TYPE@5..6
+      PATH@5..6
+        PATH_SEGMENT@5..6
+          NAME_REF@5..6
+            IDENT@5..6 "S"
+    WHITESPACE@6..7 " "
+    ASSOC_ITEM_LIST@7..9
+      L_CURLY@7..8 "{"
+      R_CURLY@8..9 "}"
+  WHITESPACE@9..10 "\n"

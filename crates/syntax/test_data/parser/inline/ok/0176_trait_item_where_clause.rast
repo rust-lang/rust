@@ -1,0 +1,30 @@
+SOURCE_FILE@0..28
+  TRAIT@0..27
+    TRAIT_KW@0..5 "trait"
+    WHITESPACE@5..6 " "
+    NAME@6..7
+      IDENT@6..7 "T"
+    WHITESPACE@7..8 " "
+    WHERE_CLAUSE@8..24
+      WHERE_KW@8..13 "where"
+      WHITESPACE@13..14 " "
+      WHERE_PRED@14..24
+        PATH_TYPE@14..18
+          PATH@14..18
+            PATH_SEGMENT@14..18
+              NAME_REF@14..18
+                IDENT@14..18 "Self"
+        COLON@18..19 ":"
+        WHITESPACE@19..20 " "
+        TYPE_BOUND_LIST@20..24
+          TYPE_BOUND@20..24
+            PATH_TYPE@20..24
+              PATH@20..24
+                PATH_SEGMENT@20..24
+                  NAME_REF@20..24
+                    IDENT@20..24 "Copy"
+    WHITESPACE@24..25 " "
+    ASSOC_ITEM_LIST@25..27
+      L_CURLY@25..26 "{"
+      R_CURLY@26..27 "}"
+  WHITESPACE@27..28 "\n"

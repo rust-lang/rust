@@ -15,7 +15,7 @@ SOURCE_FILE@0..20
       PATH@15..16
         PATH_SEGMENT@15..16
           NAME_REF@15..16
-            IDENT@15..16 "X"
+            IDENT@15..16 "S"
     WHITESPACE@16..17 " "
     ASSOC_ITEM_LIST@17..19
       L_CURLY@17..18 "{"

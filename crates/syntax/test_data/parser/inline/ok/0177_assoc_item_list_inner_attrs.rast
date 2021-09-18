@@ -1,0 +1,26 @@
+SOURCE_FILE@0..20
+  IMPL@0..19
+    IMPL_KW@0..4 "impl"
+    WHITESPACE@4..5 " "
+    PATH_TYPE@5..6
+      PATH@5..6
+        PATH_SEGMENT@5..6
+          NAME_REF@5..6
+            IDENT@5..6 "S"
+    WHITESPACE@6..7 " "
+    ASSOC_ITEM_LIST@7..19
+      L_CURLY@7..8 "{"
+      WHITESPACE@8..9 " "
+      ATTR@9..17
+        POUND@9..10 "#"
+        BANG@10..11 "!"
+        L_BRACK@11..12 "["
+        META@12..16
+          PATH@12..16
+            PATH_SEGMENT@12..16
+              NAME_REF@12..16
+                IDENT@12..16 "attr"
+        R_BRACK@16..17 "]"
+      WHITESPACE@17..18 " "
+      R_CURLY@18..19 "}"
+  WHITESPACE@19..20 "\n"

@@ -1,0 +1,29 @@
+SOURCE_FILE@0..25
+  TRAIT@0..24
+    TRAIT_KW@0..5 "trait"
+    WHITESPACE@5..6 " "
+    NAME@6..7
+      IDENT@6..7 "T"
+    COLON@7..8 ":"
+    WHITESPACE@8..9 " "
+    TYPE_BOUND_LIST@9..21
+      TYPE_BOUND@9..13
+        PATH_TYPE@9..13
+          PATH@9..13
+            PATH_SEGMENT@9..13
+              NAME_REF@9..13
+                IDENT@9..13 "Hash"
+      WHITESPACE@13..14 " "
+      PLUS@14..15 "+"
+      WHITESPACE@15..16 " "
+      TYPE_BOUND@16..21
+        PATH_TYPE@16..21
+          PATH@16..21
+            PATH_SEGMENT@16..21
+              NAME_REF@16..21
+                IDENT@16..21 "Clone"
+    WHITESPACE@21..22 " "
+    ASSOC_ITEM_LIST@22..24
+      L_CURLY@22..23 "{"
+      R_CURLY@23..24 "}"
+  WHITESPACE@24..25 "\n"
