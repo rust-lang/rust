@@ -974,6 +974,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         trait_ref: ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>,
     ) -> Option<EvaluationResult> {
+        // Neither the global nor local cache is aware of intercrate
+        // mode, so don't do any caching. In particular, we might
+        // re-use the same `InferCtxt` with both an intercrate
+        // and non-intercrate `SelectionContext`
+        if self.intercrate {
+            return None;
+        }
+
         let tcx = self.tcx();
         if self.can_use_global_caches(param_env) {
             if let Some(res) = tcx.evaluation_cache.get(&param_env.and(trait_ref), tcx) {
@@ -993,6 +1001,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Avoid caching results that depend on more than just the trait-ref
         // - the stack can create recursion.
         if result.is_stack_dependent() {
+            return;
+        }
+
+        // Neither the global nor local cache is aware of intercrate
+        // mode, so don't do any caching. In particular, we might
+        // re-use the same `InferCtxt` with both an intercrate
+        // and non-intercrate `SelectionContext`
+        if self.intercrate {
             return;
         }
 
