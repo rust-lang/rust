@@ -1,7 +1,7 @@
 [package]
 name = "rustdoc-tool"
 version = "0.0.0"
-edition = "2018"
+edition = "2021"
 
 # Cargo adds a number of paths to the dylib search path on windows, which results in
 # the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
