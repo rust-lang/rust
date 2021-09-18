@@ -37,11 +37,6 @@ pub fn compute_debuginfo_type_name<'tcx>(
 ) -> String {
     let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
 
-    // Check if we have seen this type and qualifier before.
-    if let Some(type_name) = type_name_cache.get(&(&t, qualified)) {
-        return type_name.clone();
-    }
-
     let mut result = String::with_capacity(64);
     let mut visited = FxHashSet::default();
     push_debuginfo_type_name(tcx, t, qualified, &mut result, &mut visited, type_name_cache);
@@ -58,6 +53,12 @@ fn push_debuginfo_type_name<'tcx>(
     visited: &mut FxHashSet<Ty<'tcx>>,
     type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), String>,
 ) {
+    // Check if we have seen this type and qualifier before.
+    if let Some(type_name) = type_name_cache.get(&(&t, qualified)) {
+        output.push_str(&type_name.clone());
+        return;
+    }
+
     // When targeting MSVC, emit C++ style type names for compatibility with
     // .natvis visualizers (and perhaps other existing native debuggers?)
     let cpp_like_names = cpp_like_names(tcx);
