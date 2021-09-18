@@ -964,6 +964,7 @@ impl Tester for Collector {
                 test_type: test::TestType::DocTest,
             },
             testfn: test::DynTestFn(Box::new(move || {
+                let _ = &config;
                 let report_unused_externs = |uext| {
                     unused_externs.lock().unwrap().push(uext);
                 };

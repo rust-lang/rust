@@ -40,7 +40,10 @@ where
             info!("fully_perform({:?})", self);
         }
 
-        scrape_region_constraints(infcx, || (self.closure)(infcx))
+        scrape_region_constraints(infcx, || {
+            let _ = &self;
+            (self.closure)(infcx)
+        })
     }
 }
 

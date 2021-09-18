@@ -125,6 +125,7 @@ pub fn scoped_thread<F: FnOnce() -> R + Send, R: Send>(cfg: thread::Builder, f: 
     let result_ptr = Ptr(&mut result as *mut _ as *mut ());
 
     let thread = cfg.spawn(move || {
+        let _ = (&run, &result_ptr);
         let run = unsafe { (*(run.0 as *mut Option<F>)).take().unwrap() };
         let result = unsafe { &mut *(result_ptr.0 as *mut Option<R>) };
         *result = Some(run());

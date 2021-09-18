@@ -394,6 +394,7 @@ fn report_conflicting_impls(
     // now because the struct_lint methods don't return back the DiagnosticBuilder
     // that's passed in.
     let decorate = |err: LintDiagnosticBuilder<'_>| {
+        let _ = &overlap;
         let msg = format!(
             "conflicting implementations of trait `{}`{}{}",
             overlap.trait_desc,
