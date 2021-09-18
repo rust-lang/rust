@@ -526,170 +526,176 @@ declare_deprecated_lint! {
     assert_eq!(expected, result);
 }
 
-#[test]
-fn test_replace_region() {
-    let text = "\nabc\n123\n789\ndef\nghi";
-    let expected = FileChange {
-        changed: true,
-        new_lines: "\nabc\nhello world\ndef\nghi".to_string(),
-    };
-    let result = replace_region_in_text(text, r#"^\s*abc$"#, r#"^\s*def"#, false, || {
-        vec!["hello world".to_string()]
-    });
-    assert_eq!(expected, result);
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-#[test]
-fn test_replace_region_with_start() {
-    let text = "\nabc\n123\n789\ndef\nghi";
-    let expected = FileChange {
-        changed: true,
-        new_lines: "\nhello world\ndef\nghi".to_string(),
-    };
-    let result = replace_region_in_text(text, r#"^\s*abc$"#, r#"^\s*def"#, true, || {
-        vec!["hello world".to_string()]
-    });
-    assert_eq!(expected, result);
-}
+    #[test]
+    fn test_replace_region() {
+        let text = "\nabc\n123\n789\ndef\nghi";
+        let expected = FileChange {
+            changed: true,
+            new_lines: "\nabc\nhello world\ndef\nghi".to_string(),
+        };
+        let result = replace_region_in_text(text, r#"^\s*abc$"#, r#"^\s*def"#, false, || {
+            vec!["hello world".to_string()]
+        });
+        assert_eq!(expected, result);
+    }
 
-#[test]
-fn test_replace_region_no_changes() {
-    let text = "123\n456\n789";
-    let expected = FileChange {
-        changed: false,
-        new_lines: "123\n456\n789".to_string(),
-    };
-    let result = replace_region_in_text(text, r#"^\s*123$"#, r#"^\s*456"#, false, Vec::new);
-    assert_eq!(expected, result);
-}
+    #[test]
+    fn test_replace_region_with_start() {
+        let text = "\nabc\n123\n789\ndef\nghi";
+        let expected = FileChange {
+            changed: true,
+            new_lines: "\nhello world\ndef\nghi".to_string(),
+        };
+        let result = replace_region_in_text(text, r#"^\s*abc$"#, r#"^\s*def"#, true, || {
+            vec!["hello world".to_string()]
+        });
+        assert_eq!(expected, result);
+    }
 
-#[test]
-fn test_usable_lints() {
-    let lints = vec![
-        Lint::new("should_assert_eq", "Deprecated", "abc", Some("Reason"), "module_name"),
-        Lint::new("should_assert_eq2", "Not Deprecated", "abc", None, "module_name"),
-        Lint::new("should_assert_eq2", "internal", "abc", None, "module_name"),
-        Lint::new("should_assert_eq2", "internal_style", "abc", None, "module_name"),
-    ];
-    let expected = vec![Lint::new(
-        "should_assert_eq2",
-        "Not Deprecated",
-        "abc",
-        None,
-        "module_name",
-    )];
-    assert_eq!(expected, Lint::usable_lints(&lints));
-}
+    #[test]
+    fn test_replace_region_no_changes() {
+        let text = "123\n456\n789";
+        let expected = FileChange {
+            changed: false,
+            new_lines: "123\n456\n789".to_string(),
+        };
+        let result = replace_region_in_text(text, r#"^\s*123$"#, r#"^\s*456"#, false, Vec::new);
+        assert_eq!(expected, result);
+    }
 
-#[test]
-fn test_by_lint_group() {
-    let lints = vec![
-        Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
-        Lint::new("should_assert_eq2", "group2", "abc", None, "module_name"),
-        Lint::new("incorrect_match", "group1", "abc", None, "module_name"),
-    ];
-    let mut expected: HashMap<String, Vec<Lint>> = HashMap::new();
-    expected.insert(
-        "group1".to_string(),
-        vec![
+    #[test]
+    fn test_usable_lints() {
+        let lints = vec![
+            Lint::new("should_assert_eq", "Deprecated", "abc", Some("Reason"), "module_name"),
+            Lint::new("should_assert_eq2", "Not Deprecated", "abc", None, "module_name"),
+            Lint::new("should_assert_eq2", "internal", "abc", None, "module_name"),
+            Lint::new("should_assert_eq2", "internal_style", "abc", None, "module_name"),
+        ];
+        let expected = vec![Lint::new(
+            "should_assert_eq2",
+            "Not Deprecated",
+            "abc",
+            None,
+            "module_name",
+        )];
+        assert_eq!(expected, Lint::usable_lints(&lints));
+    }
+
+    #[test]
+    fn test_by_lint_group() {
+        let lints = vec![
             Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
+            Lint::new("should_assert_eq2", "group2", "abc", None, "module_name"),
             Lint::new("incorrect_match", "group1", "abc", None, "module_name"),
-        ],
-    );
-    expected.insert(
-        "group2".to_string(),
-        vec![Lint::new("should_assert_eq2", "group2", "abc", None, "module_name")],
-    );
-    assert_eq!(expected, Lint::by_lint_group(lints.into_iter()));
-}
+        ];
+        let mut expected: HashMap<String, Vec<Lint>> = HashMap::new();
+        expected.insert(
+            "group1".to_string(),
+            vec![
+                Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
+                Lint::new("incorrect_match", "group1", "abc", None, "module_name"),
+            ],
+        );
+        expected.insert(
+            "group2".to_string(),
+            vec![Lint::new("should_assert_eq2", "group2", "abc", None, "module_name")],
+        );
+        assert_eq!(expected, Lint::by_lint_group(lints.into_iter()));
+    }
 
-#[test]
-fn test_gen_changelog_lint_list() {
-    let lints = vec![
-        Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
-        Lint::new("should_assert_eq2", "group2", "abc", None, "module_name"),
-    ];
-    let expected = vec![
-        format!("[`should_assert_eq`]: {}#should_assert_eq", DOCS_LINK.to_string()),
-        format!("[`should_assert_eq2`]: {}#should_assert_eq2", DOCS_LINK.to_string()),
-    ];
-    assert_eq!(expected, gen_changelog_lint_list(lints.iter()));
-}
+    #[test]
+    fn test_gen_changelog_lint_list() {
+        let lints = vec![
+            Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
+            Lint::new("should_assert_eq2", "group2", "abc", None, "module_name"),
+        ];
+        let expected = vec![
+            format!("[`should_assert_eq`]: {}#should_assert_eq", DOCS_LINK.to_string()),
+            format!("[`should_assert_eq2`]: {}#should_assert_eq2", DOCS_LINK.to_string()),
+        ];
+        assert_eq!(expected, gen_changelog_lint_list(lints.iter()));
+    }
 
-#[test]
-fn test_gen_deprecated() {
-    let lints = vec![
-        Lint::new(
-            "should_assert_eq",
-            "group1",
-            "abc",
-            Some("has been superseded by should_assert_eq2"),
-            "module_name",
-        ),
-        Lint::new(
-            "another_deprecated",
-            "group2",
-            "abc",
-            Some("will be removed"),
-            "module_name",
-        ),
-    ];
+    #[test]
+    fn test_gen_deprecated() {
+        let lints = vec![
+            Lint::new(
+                "should_assert_eq",
+                "group1",
+                "abc",
+                Some("has been superseded by should_assert_eq2"),
+                "module_name",
+            ),
+            Lint::new(
+                "another_deprecated",
+                "group2",
+                "abc",
+                Some("will be removed"),
+                "module_name",
+            ),
+        ];
 
-    let expected = GENERATED_FILE_COMMENT.to_string()
-        + &[
-            "{",
-            "    store.register_removed(",
-            "        \"clippy::should_assert_eq\",",
-            "        \"has been superseded by should_assert_eq2\",",
-            "    );",
-            "    store.register_removed(",
-            "        \"clippy::another_deprecated\",",
-            "        \"will be removed\",",
-            "    );",
-            "}",
-        ]
-        .join("\n")
-        + "\n";
+        let expected = GENERATED_FILE_COMMENT.to_string()
+            + &[
+                "{",
+                "    store.register_removed(",
+                "        \"clippy::should_assert_eq\",",
+                "        \"has been superseded by should_assert_eq2\",",
+                "    );",
+                "    store.register_removed(",
+                "        \"clippy::another_deprecated\",",
+                "        \"will be removed\",",
+                "    );",
+                "}",
+            ]
+            .join("\n")
+            + "\n";
 
-    assert_eq!(expected, gen_deprecated(lints.iter()));
-}
+        assert_eq!(expected, gen_deprecated(lints.iter()));
+    }
 
-#[test]
-#[should_panic]
-fn test_gen_deprecated_fail() {
-    let lints = vec![Lint::new("should_assert_eq2", "group2", "abc", None, "module_name")];
-    let _deprecated_lints = gen_deprecated(lints.iter());
-}
+    #[test]
+    #[should_panic]
+    fn test_gen_deprecated_fail() {
+        let lints = vec![Lint::new("should_assert_eq2", "group2", "abc", None, "module_name")];
+        let _deprecated_lints = gen_deprecated(lints.iter());
+    }
 
-#[test]
-fn test_gen_modules_list() {
-    let lints = vec![
-        Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
-        Lint::new("incorrect_stuff", "group3", "abc", None, "another_module"),
-    ];
-    let expected = GENERATED_FILE_COMMENT.to_string() + &["mod another_module;", "mod module_name;"].join("\n") + "\n";
-    assert_eq!(expected, gen_modules_list(lints.iter()));
-}
+    #[test]
+    fn test_gen_modules_list() {
+        let lints = vec![
+            Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
+            Lint::new("incorrect_stuff", "group3", "abc", None, "another_module"),
+        ];
+        let expected =
+            GENERATED_FILE_COMMENT.to_string() + &["mod another_module;", "mod module_name;"].join("\n") + "\n";
+        assert_eq!(expected, gen_modules_list(lints.iter()));
+    }
 
-#[test]
-fn test_gen_lint_group_list() {
-    let lints = vec![
-        Lint::new("abc", "group1", "abc", None, "module_name"),
-        Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
-        Lint::new("internal", "internal_style", "abc", None, "module_name"),
-    ];
-    let expected = GENERATED_FILE_COMMENT.to_string()
-        + &[
-            "store.register_group(true, \"clippy::group1\", Some(\"clippy_group1\"), vec![",
-            "    LintId::of(module_name::ABC),",
-            "    LintId::of(module_name::INTERNAL),",
-            "    LintId::of(module_name::SHOULD_ASSERT_EQ),",
-            "])",
-        ]
-        .join("\n")
-        + "\n";
+    #[test]
+    fn test_gen_lint_group_list() {
+        let lints = vec![
+            Lint::new("abc", "group1", "abc", None, "module_name"),
+            Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
+            Lint::new("internal", "internal_style", "abc", None, "module_name"),
+        ];
+        let expected = GENERATED_FILE_COMMENT.to_string()
+            + &[
+                "store.register_group(true, \"clippy::group1\", Some(\"clippy_group1\"), vec![",
+                "    LintId::of(module_name::ABC),",
+                "    LintId::of(module_name::INTERNAL),",
+                "    LintId::of(module_name::SHOULD_ASSERT_EQ),",
+                "])",
+            ]
+            .join("\n")
+            + "\n";
 
-    let result = gen_lint_group_list("group1", lints.iter());
+        let result = gen_lint_group_list("group1", lints.iter());
 
-    assert_eq!(expected, result);
+        assert_eq!(expected, result);
+    }
 }
