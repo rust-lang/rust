@@ -990,7 +990,10 @@ pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) ->
         captures: HirIdMap::default(),
     };
     v.visit_expr(expr);
-    v.allow_closure.then(|| v.captures)
+    v.allow_closure.then(|| {
+        let _ = &v;
+        v.captures
+    })
 }
 
 /// Returns the method names and argument list of nested method call expressions that make up
