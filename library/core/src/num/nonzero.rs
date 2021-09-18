@@ -897,7 +897,7 @@ macro_rules! nonzero_unsigned_is_power_of_two {
 nonzero_unsigned_is_power_of_two! { NonZeroU8 NonZeroU16 NonZeroU32 NonZeroU64 NonZeroU128 NonZeroUsize }
 
 macro_rules! nonzero_min_max {
-    ( $( $min:expr , $Ty: ident($Int: ty); )+ ) => {
+    ( $( $MinVal:expr , $Ty: ident($Int: ty); )+ ) => {
         $(
             impl $Ty {
                 #[unstable(feature = "nonzero_max", issue = "89065")]
