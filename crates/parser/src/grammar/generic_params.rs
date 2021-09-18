@@ -14,27 +14,29 @@ fn generic_param_list(p: &mut Parser) {
     p.bump(T![<]);
 
     while !p.at(EOF) && !p.at(T![>]) {
-        let m = p.start();
-
-        // test generic_param_list_param_attribute
-        // fn foo<#[lt_attr] 'a, #[t_attr] T>() {}
-        attributes::outer_attrs(p);
-
-        match p.current() {
-            LIFETIME_IDENT => lifetime_param(p, m),
-            IDENT => type_param(p, m),
-            T![const] => const_param(p, m),
-            _ => {
-                m.abandon(p);
-                p.err_and_bump("expected type parameter")
-            }
-        }
+        generic_param(p);
         if !p.at(T![>]) && !p.expect(T![,]) {
             break;
         }
     }
     p.expect(T![>]);
     m.complete(p, GENERIC_PARAM_LIST);
+}
+
+fn generic_param(p: &mut Parser) {
+    let m = p.start();
+    // test generic_param_attribute
+    // fn foo<#[lt_attr] 'a, #[t_attr] T>() {}
+    attributes::outer_attrs(p);
+    match p.current() {
+        LIFETIME_IDENT => lifetime_param(p, m),
+        IDENT => type_param(p, m),
+        T![const] => const_param(p, m),
+        _ => {
+            m.abandon(p);
+            p.err_and_bump("expected type parameter")
+        }
+    }
 }
 
 // test lifetime_param
