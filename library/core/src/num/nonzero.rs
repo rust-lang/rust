@@ -896,22 +896,41 @@ macro_rules! nonzero_unsigned_is_power_of_two {
 
 nonzero_unsigned_is_power_of_two! { NonZeroU8 NonZeroU16 NonZeroU32 NonZeroU64 NonZeroU128 NonZeroUsize }
 
-macro_rules! nonzero_max {
-    ( $( $Ty: ident($Int: ty) )+ ) => {
+macro_rules! nonzero_min_max {
+    ( $( $min:expr , $Ty: ident($Int: ty); )+ ) => {
         $(
 
             impl $Ty {
 	        #[unstable(feature = "nonzero_max", issue = "89065")]
                 #[doc = concat!("The maximum value for a`", stringify!($Ty), "` is the same as `", stringify!($Int), "`")]
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX, ", stringify!($Int), ">::MAX);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX, ", stringify!($Int), "::MAX);")]
                 //SAFETY: Since the MAX value, for any supported integer type, is greater than 0,
                 // the MAX will always be non-zero.
                 pub const MAX : $Ty = unsafe { $Ty::new_unchecked(<$Int>::MAX) };
-            }
+                #[unstable(feature = "nonzero_min", issue = "89065")]
+                #[doc = concat!("The minimum value for a`", stringify!($Ty), "`.")]
+		/// # Examples
+		///
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN, ", stringify!($min), ";")]
+		//SAFETY: In the signed case, the minimum integer is negative, and therefore non-zero.
+		//        In the unsignedd case, we use one, which is non-zero.
+                pub const MIN : $Ty = unsafe { $Ty::new_unchecked($min)};
+                 }
         )+
     }
 }
 
-nonzero_max! { NonZeroU8(u8) NonZeroI8(i8) NonZeroU16(u16) NonZeroI16(i16) NonZeroU32(u32) NonZeroI32(i32)
-     NonZeroU64(u64) NonZeroI64(i64) NonZeroUsize(usize) NonZeroIsize(isize)
+nonzero_min_max! {
+    1 , NonZeroU8(u8);
+    1 , NonZeroU16(u16);
+    1 , NonZeroU32(u32);
+    1 , NonZeroU64(u64);
+    1 , NonZeroU128(u128);
+    1 , NonZeroUsize(usize);
+    i8::MIN , NonZeroI8(i8);
+    i16::MIN , NonZeroI16(i16);
+    i32::MIN  , NonZeroI32(i32);
+    i64::MIN , NonZeroI64(i64);
+    i128::MIN  , NonZeroI128(i128);
+    isize::MIN  , NonZeroIsize(isize);
 }
