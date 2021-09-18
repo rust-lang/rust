@@ -1,0 +1,35 @@
+SOURCE_FILE@0..31
+  TRAIT@0..30
+    TRAIT_KW@0..5 "trait"
+    WHITESPACE@5..6 " "
+    NAME@6..7
+      IDENT@6..7 "X"
+    GENERIC_PARAM_LIST@7..27
+      L_ANGLE@7..8 "<"
+      TYPE_PARAM@8..26
+        NAME@8..9
+          IDENT@8..9 "U"
+        COLON@9..10 ":"
+        WHITESPACE@10..11 " "
+        TYPE_BOUND_LIST@11..26
+          TYPE_BOUND@11..16
+            PATH_TYPE@11..16
+              PATH@11..16
+                PATH_SEGMENT@11..16
+                  NAME_REF@11..16
+                    IDENT@11..16 "Debug"
+          WHITESPACE@16..17 " "
+          PLUS@17..18 "+"
+          WHITESPACE@18..19 " "
+          TYPE_BOUND@19..26
+            PATH_TYPE@19..26
+              PATH@19..26
+                PATH_SEGMENT@19..26
+                  NAME_REF@19..26
+                    IDENT@19..26 "Display"
+      R_ANGLE@26..27 ">"
+    WHITESPACE@27..28 " "
+    ASSOC_ITEM_LIST@28..30
+      L_CURLY@28..29 "{"
+      R_CURLY@29..30 "}"
+  WHITESPACE@30..31 "\n"

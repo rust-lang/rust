@@ -1,0 +1,96 @@
+SOURCE_FILE@0..64
+  TRAIT@0..32
+    TRAIT_KW@0..5 "trait"
+    WHITESPACE@5..6 " "
+    NAME@6..7
+      IDENT@6..7 "Z"
+    GENERIC_PARAM_LIST@7..10
+      L_ANGLE@7..8 "<"
+      TYPE_PARAM@8..9
+        NAME@8..9
+          IDENT@8..9 "U"
+      R_ANGLE@9..10 ">"
+    WHITESPACE@10..11 " "
+    EQ@11..12 "="
+    WHITESPACE@12..13 " "
+    TYPE_BOUND_LIST@13..17
+      TYPE_BOUND@13..17
+        PATH_TYPE@13..17
+          PATH@13..17
+            PATH_SEGMENT@13..17
+              NAME_REF@13..14
+                IDENT@13..14 "T"
+              GENERIC_ARG_LIST@14..17
+                L_ANGLE@14..15 "<"
+                TYPE_ARG@15..16
+                  PATH_TYPE@15..16
+                    PATH@15..16
+                      PATH_SEGMENT@15..16
+                        NAME_REF@15..16
+                          IDENT@15..16 "U"
+                R_ANGLE@16..17 ">"
+    WHITESPACE@17..18 " "
+    WHERE_CLAUSE@18..31
+      WHERE_KW@18..23 "where"
+      WHITESPACE@23..24 " "
+      WHERE_PRED@24..31
+        PATH_TYPE@24..25
+          PATH@24..25
+            PATH_SEGMENT@24..25
+              NAME_REF@24..25
+                IDENT@24..25 "U"
+        COLON@25..26 ":"
+        WHITESPACE@26..27 " "
+        TYPE_BOUND_LIST@27..31
+          TYPE_BOUND@27..31
+            PATH_TYPE@27..31
+              PATH@27..31
+                PATH_SEGMENT@27..31
+                  NAME_REF@27..31
+                    IDENT@27..31 "Copy"
+    SEMICOLON@31..32 ";"
+  WHITESPACE@32..33 "\n"
+  TRAIT@33..63
+    TRAIT_KW@33..38 "trait"
+    WHITESPACE@38..39 " "
+    NAME@39..40
+      IDENT@39..40 "Z"
+    GENERIC_PARAM_LIST@40..43
+      L_ANGLE@40..41 "<"
+      TYPE_PARAM@41..42
+        NAME@41..42
+          IDENT@41..42 "U"
+      R_ANGLE@42..43 ">"
+    WHITESPACE@43..44 " "
+    EQ@44..45 "="
+    WHITESPACE@45..46 " "
+    TYPE_BOUND_LIST@46..46
+    WHERE_CLAUSE@46..62
+      WHERE_KW@46..51 "where"
+      WHITESPACE@51..52 " "
+      WHERE_PRED@52..62
+        PATH_TYPE@52..56
+          PATH@52..56
+            PATH_SEGMENT@52..56
+              NAME_REF@52..56
+                IDENT@52..56 "Self"
+        COLON@56..57 ":"
+        WHITESPACE@57..58 " "
+        TYPE_BOUND_LIST@58..62
+          TYPE_BOUND@58..62
+            PATH_TYPE@58..62
+              PATH@58..62
+                PATH_SEGMENT@58..62
+                  NAME_REF@58..59
+                    IDENT@58..59 "T"
+                  GENERIC_ARG_LIST@59..62
+                    L_ANGLE@59..60 "<"
+                    TYPE_ARG@60..61
+                      PATH_TYPE@60..61
+                        PATH@60..61
+                          PATH_SEGMENT@60..61
+                            NAME_REF@60..61
+                              IDENT@60..61 "U"
+                    R_ANGLE@61..62 ">"
+    SEMICOLON@62..63 ";"
+  WHITESPACE@63..64 "\n"

@@ -1,28 +1,39 @@
 use super::*;
 
 // test trait_item
-// trait T<U>: Hash + Clone where U: Copy {}
-// trait X<U: Debug + Display>: Hash + Clone where U: Copy {}
+// trait T { fn new() -> Self; }
 pub(super) fn trait_(p: &mut Parser, m: Marker) {
-    assert!(p.at(T![trait]));
     p.bump(T![trait]);
     name_r(p, ITEM_RECOVERY_SET);
+
+    // test trait_item_generic_params
+    // trait X<U: Debug + Display> {}
     type_params::opt_generic_param_list(p);
-    // test trait_alias
-    // trait Z<U> = T<U>;
-    // trait Z<U> = T<U> where U: Copy;
-    // trait Z<U> = where Self: T<U>;
+
     if p.eat(T![=]) {
+        // test trait_alias
+        // trait Z<U> = T<U>;
         type_params::bounds_without_colon(p);
+
+        // test trait_alias_where_clause
+        // trait Z<U> = T<U> where U: Copy;
+        // trait Z<U> = where Self: T<U>;
         type_params::opt_where_clause(p);
         p.expect(T![;]);
         m.complete(p, TRAIT);
         return;
     }
+
     if p.at(T![:]) {
+        // test trait_item_bounds
+        // trait T: Hash + Clone {}
         type_params::bounds(p);
     }
+
+    // test trait_item_where_clause
+    // trait T where Self: Copy {}
     type_params::opt_where_clause(p);
+
     if p.at(T!['{']) {
         assoc_item_list(p);
     } else {
