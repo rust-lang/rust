@@ -816,7 +816,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         };
 
-        self.get_item_attrs(id, sess, |attrs| {
+        self.get_item_attrs_cache_fill(id, sess, |attrs| {
             SyntaxExtension::new(
                 sess,
                 kind,
@@ -977,15 +977,29 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .unwrap_or_default()
     }
 
-    fn get_generics<R>(
+    fn get_generics_cache_steal(&self, item_id: DefIndex, sess: &Session) -> ty::Generics {
+        self.generics
+            .borrow_mut()
+            .remove(&item_id)
+            .unwrap_or_else(|| self.get_generics_uncached(item_id, sess))
+    }
+
+    fn get_generics_cache_fill<R>(
         &self,
         item_id: DefIndex,
         sess: &Session,
         callback: impl FnOnce(&ty::Generics) -> R,
     ) -> R {
-        callback(self.generics.borrow_mut().entry(item_id).or_insert_with(|| {
-            self.root.tables.generics.get(self, item_id).unwrap().decode((self, sess))
-        }))
+        callback(
+            self.generics
+                .borrow_mut()
+                .entry(item_id)
+                .or_insert_with(|| self.get_generics_uncached(item_id, sess)),
+        )
+    }
+
+    fn get_generics_uncached(&self, item_id: DefIndex, sess: &Session) -> ty::Generics {
+        self.root.tables.generics.get(self, item_id).unwrap().decode((self, sess))
     }
 
     fn get_type(&self, id: DefIndex, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
@@ -1096,7 +1110,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn item_children<R>(
+    fn get_item_children_cache_steal(&self, id: DefIndex, sess: &Session) -> Vec<Export> {
+        self.item_children
+            .borrow_mut()
+            .remove(&id)
+            .unwrap_or_else(|| self.get_item_children_uncached(id, sess))
+    }
+
+    fn get_item_children_cache_fill<R>(
         &self,
         id: DefIndex,
         sess: &Session,
@@ -1106,12 +1127,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             self.item_children
                 .borrow_mut()
                 .entry(id)
-                .or_insert_with(|| self.item_children_uncached(id, sess)),
+                .or_insert_with(|| self.get_item_children_uncached(id, sess)),
         )
     }
 
     /// Collects all children of the given item.
-    fn item_children_uncached(&self, id: DefIndex, sess: &Session) -> Vec<Export> {
+    fn get_item_children_uncached(&self, id: DefIndex, sess: &Session) -> Vec<Export> {
         if let Some(data) = &self.root.proc_macro_data {
             /* If we are loading as a proc macro, we want to return the view of this crate
              * as a proc macro crate.
@@ -1229,7 +1250,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                 // within the crate. We only need this for fictive constructors,
                                 // for other constructors correct visibilities
                                 // were already encoded in metadata.
-                                if self.get_item_attrs(def_id.index, sess, |attrs| {
+                                if self.get_item_attrs_cache_fill(def_id.index, sess, |attrs| {
                                     attrs.iter().any(|item| item.has_name(sym::non_exhaustive))
                                 }) {
                                     let crate_def_id = self.local_def_id(CRATE_DEF_INDEX);
@@ -1389,31 +1410,55 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         })
     }
 
-    fn get_item_attrs<R>(
+    fn get_item_attrs_cache_steal(
+        &'a self,
+        node_id: DefIndex,
+        sess: &'a Session,
+    ) -> Vec<ast::Attribute> {
+        self.item_attrs
+            .borrow_mut()
+            .remove(&node_id)
+            .unwrap_or_else(|| self.get_item_attrs_uncached(node_id, sess))
+    }
+
+    fn get_item_attrs_cache_fill<R>(
         &'a self,
         node_id: DefIndex,
         sess: &'a Session,
         callback: impl FnOnce(&Vec<ast::Attribute>) -> R,
     ) -> R {
-        callback(self.item_attrs.borrow_mut().entry(node_id).or_insert_with(|| {
-            // The attributes for a tuple struct/variant are attached to the definition,
-            // not the ctor; we assume that someone passing in a tuple struct ctor is actually
-            // wanting to look at the definition.
-            let def_key = self.def_key(node_id);
-            let item_id = if def_key.disambiguated_data.data == DefPathData::Ctor {
-                def_key.parent.unwrap()
-            } else {
-                node_id
-            };
+        callback(
+            self.item_attrs
+                .borrow_mut()
+                .entry(node_id)
+                .or_insert_with(|| self.get_item_attrs_uncached(node_id, sess)),
+        )
+    }
 
-            self.root
-                .tables
-                .attributes
-                .get(self, item_id)
-                .unwrap_or_else(Lazy::empty)
-                .decode((self, sess))
-                .collect()
-        }))
+    fn get_item_attrs_uncached(
+        &'a self,
+        node_id: DefIndex,
+        sess: &'a Session,
+    ) -> Vec<ast::Attribute> {
+        // impl ExactSizeIterator<Item = T> + Captures<'a> + Captures<'tcx> + 'x
+
+        // The attributes for a tuple struct/variant are attached to the definition,
+        // not the ctor; we assume that someone passing in a tuple struct ctor is actually
+        // wanting to look at the definition.
+        let def_key = self.def_key(node_id);
+        let item_id = if def_key.disambiguated_data.data == DefPathData::Ctor {
+            def_key.parent.unwrap()
+        } else {
+            node_id
+        };
+
+        self.root
+            .tables
+            .attributes
+            .get(self, item_id)
+            .unwrap_or_else(Lazy::empty)
+            .decode((self, sess))
+            .collect()
     }
 
     fn get_struct_field_names<R>(

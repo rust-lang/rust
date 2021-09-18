@@ -86,7 +86,7 @@ impl IntoArgs for (CrateNum, DefId) {
 
 provide! { <'tcx> tcx, def_id, other, cdata,
     type_of => { cdata.get_type(def_id.index, tcx) }
-    generics_of => { cdata.get_generics(def_id.index, tcx.sess, |generics| generics.clone()) }
+    generics_of => { cdata.get_generics_cache_steal(def_id.index, tcx.sess) }
     explicit_predicates_of => { cdata.get_explicit_predicates(def_id.index, tcx) }
     inferred_outlives_of => { cdata.get_inferred_outlives(def_id.index, tcx) }
     super_predicates_of => { cdata.get_super_predicates(def_id.index, tcx) }
@@ -99,9 +99,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     variances_of => { tcx.arena.alloc_from_iter(cdata.get_item_variances(def_id.index)) }
     associated_item_def_ids => {
-        cdata.item_children(def_id.index, tcx.sess, |exports| {
-            tcx.arena.alloc_from_iter(exports.iter().map(|export| export.res.def_id()))
-        })
+        tcx.arena.alloc_from_iter(cdata.get_item_children_cache_steal(def_id.index, tcx.sess)
+                                       .iter().map(|export| export.res.def_id()))
     }
     associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
     impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
@@ -140,9 +139,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         cdata.get_deprecation(def_id.index).map(DeprecationEntry::external)
     }
     item_attrs => {
-        cdata.get_item_attrs(def_id.index, tcx.sess, |attrs| {
-            tcx.arena.alloc_from_iter(attrs.iter().cloned())
-        })
+        tcx.arena.alloc_from_iter(
+            cdata.get_item_attrs_cache_steal(def_id.index, tcx.sess).into_iter()
+        )
     }
     fn_arg_names => { cdata.get_fn_param_names(tcx, def_id.index) }
     rendered_const => { cdata.get_rendered_const(def_id.index) }
@@ -205,7 +204,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         r
     }
     item_children => {
-        cdata.item_children(def_id.index, tcx.sess, |exports| tcx.arena.alloc_slice(&exports))
+        tcx.arena.alloc_slice(&cdata.get_item_children_cache_steal(def_id.index, tcx.sess))
     }
     defined_lib_features => { cdata.get_lib_features(tcx) }
     defined_lang_items => { cdata.get_lang_items(tcx) }
@@ -403,7 +402,7 @@ impl CStore {
         sess: &Session,
         callback: impl FnOnce(&Vec<Export>) -> R,
     ) -> R {
-        self.get_crate_data(def_id.krate).item_children(def_id.index, sess, callback)
+        self.get_crate_data(def_id.krate).get_item_children_cache_fill(def_id.index, sess, callback)
     }
 
     pub fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
@@ -421,7 +420,7 @@ impl CStore {
                 ident: data.item_ident(id.index, sess),
                 id: ast::DUMMY_NODE_ID,
                 span,
-                attrs: data.get_item_attrs(id.index, sess, |attrs| attrs.clone()),
+                attrs: data.get_item_attrs_cache_fill(id.index, sess, |attrs| attrs.clone()),
                 kind: ast::ItemKind::MacroDef(data.get_macro(id.index, sess)),
                 vis: ast::Visibility {
                     span: span.shrink_to_lo(),
@@ -458,7 +457,7 @@ impl CStore {
 
     pub fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {
         self.get_crate_data(def_id.krate)
-            .get_generics(def_id.index, sess, |generics| generics.own_counts().lifetimes)
+            .get_generics_cache_fill(def_id.index, sess, |generics| generics.own_counts().lifetimes)
     }
 
     pub fn module_expansion_untracked(&self, def_id: DefId, sess: &Session) -> ExpnId {
@@ -478,7 +477,7 @@ impl CStore {
         sess: &Session,
         callback: impl FnOnce(&Vec<ast::Attribute>) -> R,
     ) -> R {
-        self.get_crate_data(def_id.krate).get_item_attrs(def_id.index, sess, callback)
+        self.get_crate_data(def_id.krate).get_item_attrs_cache_fill(def_id.index, sess, callback)
     }
 
     pub fn get_proc_macro_quoted_span_untracked(
