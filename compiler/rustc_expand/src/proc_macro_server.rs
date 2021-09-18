@@ -577,7 +577,7 @@ impl server::Literal for Rustc<'_> {
             }
 
             // Synthesize a new symbol that includes the minus sign.
-            let symbol = Symbol::intern(&s[..1 + lit.symbol.len()]);
+            let symbol = Symbol::intern(&s[..1 + lit.symbol.as_str().len()]);
             lit = token::Lit::new(lit.kind, symbol, lit.suffix);
         }
 

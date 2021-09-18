@@ -1642,10 +1642,6 @@ impl Symbol {
         self.0.as_u32()
     }
 
-    pub fn len(self) -> usize {
-        with_session_globals(|session_globals| session_globals.symbol_interner.get(self).len())
-    }
-
     pub fn is_empty(self) -> bool {
         self == kw::Empty
     }
