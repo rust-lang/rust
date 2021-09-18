@@ -1,7 +1,7 @@
 use either::Either;
 use hir::{known, Callable, HasVisibility, HirDisplay, Semantics, TypeInfo};
-use ide_db::helpers::FamousDefs;
 use ide_db::RootDatabase;
+use ide_db::{base_db::FileRange, helpers::FamousDefs};
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, ArgListOwner, AstNode, NameOwner},
@@ -79,7 +79,7 @@ pub(crate) fn inlay_hints(
                 _ => (),
             }
         } else if let Some(it) = ast::IdentPat::cast(node.clone()) {
-            get_bind_pat_hints(&mut res, &sema, config, it);
+            get_bind_pat_hints(&mut res, &sema, config, &it);
         }
     }
     res
@@ -99,7 +99,9 @@ fn get_chaining_hints(
         return None;
     }
 
-    let krate = sema.scope(expr.syntax()).module().map(|it| it.krate());
+    let descended = sema.descend_node_into_attributes(expr.clone()).pop();
+    let desc_expr = descended.as_ref().unwrap_or(expr);
+    let krate = sema.scope(desc_expr.syntax()).module().map(|it| it.krate());
     let famous_defs = FamousDefs(sema, krate);
 
     let mut tokens = expr
@@ -121,7 +123,7 @@ fn get_chaining_hints(
             next_next = tokens.next()?.kind();
         }
         if next_next == T![.] {
-            let ty = sema.type_of_expr(expr)?.original;
+            let ty = sema.type_of_expr(desc_expr)?.original;
             if ty.is_unknown() {
                 return None;
             }
@@ -133,7 +135,7 @@ fn get_chaining_hints(
                 }
             }
             acc.push(InlayHint {
-                range: sema.original_range(expr.syntax()).range,
+                range: expr.syntax().text_range(),
                 kind: InlayKind::ChainingHint,
                 label: hint_iterator(sema, &famous_defs, config, &ty).unwrap_or_else(|| {
                     ty.display_truncated(sema.db, config.max_length).to_string().into()
@@ -160,6 +162,8 @@ fn get_param_name_hints(
         .into_iter()
         .zip(arg_list.args())
         .filter_map(|((param, _ty), arg)| {
+            // Only annotate hints for expressions that exist in the original file
+            let range = sema.original_range_opt(arg.syntax())?;
             let param_name = match param? {
                 Either::Left(_) => "self".to_string(),
                 Either::Right(pat) => match pat {
@@ -167,11 +171,13 @@ fn get_param_name_hints(
                     _ => return None,
                 },
             };
-            Some((param_name, arg))
+            Some((param_name, arg, range))
         })
-        .filter(|(param_name, arg)| !should_hide_param_name_hint(sema, &callable, param_name, arg))
-        .map(|(param_name, arg)| InlayHint {
-            range: sema.original_range(arg.syntax()).range,
+        .filter(|(param_name, arg, _)| {
+            !should_hide_param_name_hint(sema, &callable, param_name, arg)
+        })
+        .map(|(param_name, _, FileRange { range, .. })| InlayHint {
+            range,
             kind: InlayKind::ParameterHint,
             label: param_name.into(),
         });
@@ -184,16 +190,18 @@ fn get_bind_pat_hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<RootDatabase>,
     config: &InlayHintsConfig,
-    pat: ast::IdentPat,
+    pat: &ast::IdentPat,
 ) -> Option<()> {
     if !config.type_hints {
         return None;
     }
 
-    let krate = sema.scope(pat.syntax()).module().map(|it| it.krate());
+    let descended = sema.descend_node_into_attributes(pat.clone()).pop();
+    let desc_pat = descended.as_ref().unwrap_or(pat);
+    let krate = sema.scope(desc_pat.syntax()).module().map(|it| it.krate());
     let famous_defs = FamousDefs(sema, krate);
 
-    let ty = sema.type_of_pat(&pat.clone().into())?.original;
+    let ty = sema.type_of_pat(&desc_pat.clone().into())?.original;
 
     if should_not_display_type_hint(sema, &pat, &ty) {
         return None;
@@ -201,8 +209,8 @@ fn get_bind_pat_hints(
 
     acc.push(InlayHint {
         range: match pat.name() {
-            Some(name) => sema.original_range(name.syntax()).range,
-            None => sema.original_range(pat.syntax()).range,
+            Some(name) => name.syntax().text_range(),
+            None => pat.syntax().text_range(),
         },
         kind: InlayKind::TypeHint,
         label: hint_iterator(sema, &famous_defs, config, &ty)
@@ -435,9 +443,13 @@ fn get_callable(
 ) -> Option<(hir::Callable, ast::ArgList)> {
     match expr {
         ast::Expr::CallExpr(expr) => {
+            let descended = sema.descend_node_into_attributes(expr.clone()).pop();
+            let expr = descended.as_ref().unwrap_or(expr);
             sema.type_of_expr(&expr.expr()?)?.original.as_callable(sema.db).zip(expr.arg_list())
         }
         ast::Expr::MethodCallExpr(expr) => {
+            let descended = sema.descend_node_into_attributes(expr.clone()).pop();
+            let expr = descended.as_ref().unwrap_or(expr);
             sema.resolve_method_call_as_callable(expr).zip(expr.arg_list())
         }
         _ => None,
@@ -1466,6 +1478,55 @@ fn main() {
                         range: 174..189,
                         kind: ChainingHint,
                         label: "&mut MyIter",
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hints_in_attr_call() {
+        check_expect(
+            TEST_CONFIG,
+            r#"
+//- proc_macros: identity, input_replace
+struct Struct;
+impl Struct {
+    fn chain(self) -> Self {
+        self
+    }
+}
+#[proc_macros::identity]
+fn main() {
+    let strukt = Struct;
+    strukt
+        .chain()
+        .chain()
+        .chain();
+    Struct::chain(strukt);
+}
+"#,
+            expect![[r#"
+                [
+                    InlayHint {
+                        range: 124..130,
+                        kind: TypeHint,
+                        label: "Struct",
+                    },
+                    InlayHint {
+                        range: 145..185,
+                        kind: ChainingHint,
+                        label: "Struct",
+                    },
+                    InlayHint {
+                        range: 145..168,
+                        kind: ChainingHint,
+                        label: "Struct",
+                    },
+                    InlayHint {
+                        range: 222..228,
+                        kind: ParameterHint,
+                        label: "self",
                     },
                 ]
             "#]],
