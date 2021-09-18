@@ -48,6 +48,7 @@ use self::SliceKind::*;
 use super::compare_const_vals;
 use super::usefulness::{MatchCheckCtxt, PatCtxt};
 
+use rustc_attr::{Stability, StabilityLevel};
 use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 
@@ -941,8 +942,24 @@ impl<'tcx> SplitWildcard<'tcx> {
                     smallvec![NonExhaustive]
                 } else if is_declared_nonexhaustive {
                     def.variants
-                        .indices()
-                        .map(|idx| Variant(idx))
+                        .iter_enumerated()
+                        .filter_map(|(idx, def)| {
+                            let x = cx.tcx.lookup_stability(def.def_id);
+                            if let Some(Stability {
+                                feature,
+                                level: StabilityLevel::Unstable { .. },
+                            }) = x
+                            {
+                                // The unstable feature is not activated so ignore this variant
+                                if !cx.tcx.stability().active_features.contains(&feature) {
+                                    None
+                                } else {
+                                    Some(Variant(idx))
+                                }
+                            } else {
+                                Some(Variant(idx))
+                            }
+                        })
                         .chain(Some(NonExhaustive))
                         .collect()
                 } else if cx.tcx.features().exhaustive_patterns {
