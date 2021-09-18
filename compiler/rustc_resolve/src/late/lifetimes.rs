@@ -522,8 +522,7 @@ fn item_for(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> LocalDefId {
         _ => {}
     }
     let item = {
-        let hir = tcx.hir();
-        let mut parent_iter = hir.parent_iter(hir_id);
+        let mut parent_iter = tcx.hir().parent_iter(hir_id);
         loop {
             let node = parent_iter.next().map(|n| n.1);
             match node {
