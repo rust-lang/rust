@@ -1,16 +1,16 @@
 //! Lsif generator
 
 use std::env;
+use std::time::Instant;
 
 use ide::{StaticIndex, StaticIndexedFile, TokenStaticData};
 use ide_db::LineIndexDatabase;
 
 use ide_db::base_db::salsa::{self, ParallelDatabase};
-use lsp_types::{Hover, HoverContents, NumberOrString};
+use lsp_types::{lsif::*, Hover, HoverContents, NumberOrString};
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace};
 use vfs::AbsPathBuf;
 
-use crate::cli::lsif::lsif_types::{Document, Vertex};
 use crate::cli::{
     flags,
     load_cargo::{load_workspace, LoadCargoConfig},
@@ -26,9 +26,6 @@ impl<DB: ParallelDatabase> Clone for Snap<salsa::Snapshot<DB>> {
         Snap(self.0.snapshot())
     }
 }
-
-mod lsif_types;
-use lsif_types::*;
 
 #[derive(Default)]
 struct LsifManager {
@@ -57,17 +54,14 @@ impl LsifManager {
         println!("{}", data);
     }
 
-    fn add_tokens(
-        &mut self,
-        line_index: &LineIndex,
-        doc_id: Id,
-        tokens: Vec<TokenStaticData>,
-    ) {
+    fn add_tokens(&mut self, line_index: &LineIndex, doc_id: Id, tokens: Vec<TokenStaticData>) {
         let tokens_id = tokens
             .into_iter()
             .map(|token| {
-                let token_id = self
-                    .add(Element::Vertex(Vertex::Range(to_proto::range(line_index, token.range))));
+                let token_id = self.add(Element::Vertex(Vertex::Range {
+                    range: to_proto::range(line_index, token.range),
+                    tag: None,
+                }));
                 if let Some(hover) = token.hover {
                     let hover_id = self.add(Element::Vertex(Vertex::HoverResult {
                         result: Hover {
@@ -92,6 +86,8 @@ impl LsifManager {
 
 impl flags::Lsif {
     pub fn run(self) -> Result<()> {
+        eprintln!("Generating LSIF started...");
+        let now = Instant::now();
         let cargo_config = CargoConfig::default();
         let no_progress = &|_| ();
         let load_cargo_config = LoadCargoConfig {
@@ -111,17 +107,17 @@ impl flags::Lsif {
         let si = StaticIndex::compute(db, &analysis)?;
 
         let mut lsif = LsifManager::default();
-        lsif.add(Element::Vertex(Vertex::MetaData {
+        lsif.add(Element::Vertex(Vertex::MetaData(MetaData {
             version: String::from("0.5.0"),
             project_root: lsp_types::Url::from_file_path(path).unwrap(),
             position_encoding: Encoding::Utf16,
             tool_info: None,
-        }));
+        })));
         for StaticIndexedFile { file_id, folds, tokens } in si.files {
             let path = vfs.file_path(file_id);
             let path = path.as_path().unwrap();
             let doc_id = lsif.add(Element::Vertex(Vertex::Document(Document {
-                language_id: Language::Rust,
+                language_id: "rust".to_string(),
                 uri: lsp_types::Url::from_file_path(path).unwrap(),
             })));
             let text = analysis.file_text(file_id)?;
@@ -142,6 +138,7 @@ impl flags::Lsif {
             })));
             lsif.add_tokens(&line_index, doc_id, tokens);
         }
+        eprintln!("Generating LSIF finished in {:?}", now.elapsed());
         Ok(())
     }
 }
