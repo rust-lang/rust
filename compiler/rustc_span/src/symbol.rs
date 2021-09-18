@@ -5,6 +5,7 @@
 use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::sync::Lock;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
@@ -1623,14 +1624,15 @@ impl Symbol {
 
     /// Maps a string to its interned representation.
     pub fn intern(string: &str) -> Self {
-        with_interner(|interner| interner.intern(string))
+        with_session_globals(|session_globals| session_globals.symbol_interner.intern(string))
     }
 
     /// Convert to a `SymbolStr`. This is a slowish operation because it
     /// requires locking the symbol interner.
     pub fn as_str(self) -> SymbolStr {
-        with_interner(|interner| unsafe {
-            SymbolStr { string: std::mem::transmute::<&str, &str>(interner.get(self)) }
+        with_session_globals(|session_globals| {
+            let symbol_str = session_globals.symbol_interner.get(self);
+            unsafe { SymbolStr { string: std::mem::transmute::<&str, &str>(symbol_str) } }
         })
     }
 
@@ -1639,7 +1641,7 @@ impl Symbol {
     }
 
     pub fn len(self) -> usize {
-        with_interner(|interner| interner.get(self).len())
+        with_session_globals(|session_globals| session_globals.symbol_interner.get(self).len())
     }
 
     pub fn is_empty(self) -> bool {
@@ -1696,6 +1698,9 @@ impl<CTX> ToStableHashKey<CTX> for Symbol {
     }
 }
 
+#[derive(Default)]
+pub(crate) struct Interner(Lock<InternerInner>);
+
 // The `&'static str`s in this type actually point into the arena.
 //
 // The `FxHashMap`+`Vec` pair could be replaced by `FxIndexSet`, but #75278
@@ -1705,7 +1710,7 @@ impl<CTX> ToStableHashKey<CTX> for Symbol {
 // This type is private to prevent accidentally constructing more than one `Interner` on the same
 // thread, which makes it easy to mixup `Symbol`s between `Interner`s.
 #[derive(Default)]
-pub(crate) struct Interner {
+struct InternerInner {
     arena: DroplessArena,
     names: FxHashMap<&'static str, Symbol>,
     strings: Vec<&'static str>,
@@ -1713,37 +1718,38 @@ pub(crate) struct Interner {
 
 impl Interner {
     fn prefill(init: &[&'static str]) -> Self {
-        Interner {
+        Interner(Lock::new(InternerInner {
             strings: init.into(),
             names: init.iter().copied().zip((0..).map(Symbol::new)).collect(),
             ..Default::default()
-        }
+        }))
     }
 
     #[inline]
-    pub fn intern(&mut self, string: &str) -> Symbol {
-        if let Some(&name) = self.names.get(string) {
+    fn intern(&self, string: &str) -> Symbol {
+        let mut inner = self.0.lock();
+        if let Some(&name) = inner.names.get(string) {
             return name;
         }
 
-        let name = Symbol::new(self.strings.len() as u32);
+        let name = Symbol::new(inner.strings.len() as u32);
 
         // `from_utf8_unchecked` is safe since we just allocated a `&str` which is known to be
         // UTF-8.
         let string: &str =
-            unsafe { str::from_utf8_unchecked(self.arena.alloc_slice(string.as_bytes())) };
+            unsafe { str::from_utf8_unchecked(inner.arena.alloc_slice(string.as_bytes())) };
         // It is safe to extend the arena allocation to `'static` because we only access
         // these while the arena is still alive.
         let string: &'static str = unsafe { &*(string as *const str) };
-        self.strings.push(string);
-        self.names.insert(string, name);
+        inner.strings.push(string);
+        inner.names.insert(string, name);
         name
     }
 
     // Get the symbol as a string. `Symbol::as_str()` should be used in
     // preference to this function.
-    pub fn get(&self, symbol: Symbol) -> &str {
-        self.strings[symbol.0.as_usize()]
+    fn get(&self, symbol: Symbol) -> &str {
+        self.0.lock().strings[symbol.0.as_usize()]
     }
 }
 
@@ -1872,11 +1878,6 @@ impl Ident {
     pub fn is_raw_guess(self) -> bool {
         self.name.can_be_raw() && self.is_reserved()
     }
-}
-
-#[inline]
-fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
-    with_session_globals(|session_globals| f(&mut *session_globals.symbol_interner.lock()))
 }
 
 /// An alternative to [`Symbol`], useful when the chars within the symbol need to

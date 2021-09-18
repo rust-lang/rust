@@ -4,7 +4,7 @@ use crate::create_default_session_globals_then;
 
 #[test]
 fn interner_tests() {
-    let mut i: Interner = Interner::default();
+    let i = Interner::default();
     // first one is zero:
     assert_eq!(i.intern("dog"), Symbol::new(0));
     // re-use gets the same entry:

@@ -78,7 +78,7 @@ mod tests;
 // threads within the compilation session, but is not accessible outside the
 // session.
 pub struct SessionGlobals {
-    symbol_interner: Lock<symbol::Interner>,
+    symbol_interner: symbol::Interner,
     span_interner: Lock<span_encoding::SpanInterner>,
     hygiene_data: Lock<hygiene::HygieneData>,
     source_map: Lock<Option<Lrc<SourceMap>>>,
@@ -87,7 +87,7 @@ pub struct SessionGlobals {
 impl SessionGlobals {
     pub fn new(edition: Edition) -> SessionGlobals {
         SessionGlobals {
-            symbol_interner: Lock::new(symbol::Interner::fresh()),
+            symbol_interner: symbol::Interner::fresh(),
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
             hygiene_data: Lock::new(hygiene::HygieneData::new(edition)),
             source_map: Lock::new(None),
