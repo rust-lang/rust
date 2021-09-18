@@ -99,7 +99,7 @@ impl<K: DepKind> SerializedDepGraph<K> {
 impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<'a>>
     for SerializedDepGraph<K>
 {
-    #[instrument(skip(d))]
+    #[instrument(level = "debug", skip(d))]
     fn decode(d: &mut opaque::Decoder<'a>) -> Result<SerializedDepGraph<K>, String> {
         let start_position = d.position();
 
@@ -187,7 +187,7 @@ impl<K: DepKind> EncoderState<K> {
         }
     }
 
-    #[instrument(skip(self, record_graph))]
+    #[instrument(level = "debug", skip(self, record_graph))]
     fn encode_node(
         &mut self,
         node: &NodeInfo<K>,

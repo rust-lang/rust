@@ -499,7 +499,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// - `substs`, the substs  used to instantiate this opaque type
     /// - `instantiated_ty`, the inferred type C1 -- fully resolved, lifted version of
     ///   `opaque_defn.concrete_ty`
-    #[instrument(skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn infer_opaque_definition_from_instantiation(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
@@ -863,7 +863,7 @@ struct Instantiator<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Instantiator<'a, 'tcx> {
-    #[instrument(skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn instantiate_opaque_types_in_map<T: TypeFoldable<'tcx>>(&mut self, value: T) -> T {
         let tcx = self.infcx.tcx;
         value.fold_with(&mut BottomUpFolder {
