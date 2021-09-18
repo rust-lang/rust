@@ -23,8 +23,9 @@
 //! ```
 
 use proc_macro2::{Span, TokenStream};
-use quote::quote;
+use quote::{quote, ToTokens};
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{braced, punctuated::Punctuated, Ident, LitStr, Token};
 
@@ -100,6 +101,46 @@ impl Errors {
     }
 }
 
+struct PrefillStream {
+    prefill: [Vec<String>; 256],
+}
+
+impl PrefillStream {
+    fn new() -> Self {
+        const EMPTY_VEC: Vec<String> = Vec::new();
+        PrefillStream { prefill: [EMPTY_VEC; 256] }
+    }
+
+    fn add_symbol(&mut self, symbol: String) -> u32 {
+        // Warning: hasher has to be kept in sync with rustc_span::symbols to ensure that all
+        // pre-filled symbols are assigned the correct shard.
+        let mut state = rustc_hash::FxHasher::default();
+        symbol.hash(&mut state);
+        let hash = state.finish();
+
+        let shard = (hash & 0xff) as usize;
+        let index = self.prefill[shard].len();
+
+        self.prefill[shard].push(symbol);
+
+        (index << 8) as u32 | shard as u32
+    }
+}
+
+impl ToTokens for PrefillStream {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        for shard in &self.prefill {
+            let mut shard_stream = quote! {};
+            for symbol in shard {
+                shard_stream.extend(quote! { #symbol, });
+            }
+            tokens.extend(quote! {
+                &[#shard_stream],
+            });
+        }
+    }
+}
+
 pub fn symbols(input: TokenStream) -> TokenStream {
     let (mut output, errors) = symbols_with_errors(input);
 
@@ -126,8 +167,8 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
 
     let mut keyword_stream = quote! {};
     let mut symbols_stream = quote! {};
-    let mut prefill_stream = quote! {};
-    let mut counter = 0u32;
+    let mut digit_stream = quote! {};
+    let mut prefill_stream = PrefillStream::new();
     let mut keys =
         HashMap::<String, Span>::with_capacity(input.keywords.len() + input.symbols.len() + 10);
     let mut prev_key: Option<(Span, String)> = None;
@@ -157,13 +198,10 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
         let value = &keyword.value;
         let value_string = value.value();
         check_dup(keyword.name.span(), &value_string, &mut errors);
-        prefill_stream.extend(quote! {
-            #value,
-        });
+        let sym = prefill_stream.add_symbol(value_string);
         keyword_stream.extend(quote! {
-            pub const #name: Symbol = Symbol::new(#counter);
+            pub const #name: Symbol = Symbol::new(#sym);
         });
-        counter += 1;
     }
 
     // Generate the listed symbols.
@@ -176,30 +214,21 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
         check_dup(symbol.name.span(), &value, &mut errors);
         check_order(symbol.name.span(), &name.to_string(), &mut errors);
 
-        prefill_stream.extend(quote! {
-            #value,
-        });
+        let sym = prefill_stream.add_symbol(value);
         symbols_stream.extend(quote! {
-            pub const #name: Symbol = Symbol::new(#counter);
+            pub const #name: Symbol = Symbol::new(#sym);
         });
-        counter += 1;
     }
 
     // Generate symbols for the strings "0", "1", ..., "9".
-    let digits_base = counter;
-    counter += 10;
     for n in 0..10 {
         let n = n.to_string();
         check_dup(Span::call_site(), &n, &mut errors);
-        prefill_stream.extend(quote! {
-            #n,
-        });
+        let sym = prefill_stream.add_symbol(n);
+        digit_stream.extend(quote! { Symbol::new(#sym), });
     }
-    let _ = counter; // for future use
 
     let output = quote! {
-        const SYMBOL_DIGITS_BASE: u32 = #digits_base;
-
         #[doc(hidden)]
         #[allow(non_upper_case_globals)]
         mod kw_generated {
@@ -213,6 +242,8 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
             use super::Symbol;
             #symbols_stream
         }
+
+        const SYMBOL_DIGITS: [Symbol; 10] = [#digit_stream];
 
         impl Interner {
             pub(crate) fn fresh() -> Self {

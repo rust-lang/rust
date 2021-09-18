@@ -10,4 +10,5 @@ proc-macro = true
 synstructure = "0.12.1"
 syn = { version = "1", features = ["full"] }
 proc-macro2 = "1"
+rustc-hash = "1.1.0"
 quote = "1"

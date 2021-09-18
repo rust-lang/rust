@@ -3,13 +3,14 @@
 //! type, and vice versa.
 
 use rustc_arena::DroplessArena;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHasher};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::sync::Lock;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use std::cmp::{Ord, PartialEq, PartialOrd};
+use std::collections::hash_map::RawEntryMut;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::str;
@@ -1698,8 +1699,7 @@ impl<CTX> ToStableHashKey<CTX> for Symbol {
     }
 }
 
-#[derive(Default)]
-pub(crate) struct Interner(Lock<InternerInner>);
+pub(crate) struct Interner([Lock<InternerShard>; 256]);
 
 // The `&'static str`s in this type actually point into the arena.
 //
@@ -1710,46 +1710,68 @@ pub(crate) struct Interner(Lock<InternerInner>);
 // This type is private to prevent accidentally constructing more than one `Interner` on the same
 // thread, which makes it easy to mixup `Symbol`s between `Interner`s.
 #[derive(Default)]
-struct InternerInner {
+struct InternerShard {
     arena: DroplessArena,
     names: FxHashMap<&'static str, Symbol>,
     strings: Vec<&'static str>,
 }
 
 impl Interner {
-    fn prefill(init: &[&'static str]) -> Self {
-        Interner(Lock::new(InternerInner {
-            strings: init.into(),
-            names: init.iter().copied().zip((0..).map(Symbol::new)).collect(),
-            ..Default::default()
+    #[cfg(test)]
+    fn empty_for_test() -> Self {
+        Self([(); 256].map(|()| Lock::new(InternerShard::default())))
+    }
+
+    fn prefill(init: &[&[&'static str]; 256]) -> Self {
+        let mut i = 0;
+        Interner(init.map(|init| {
+            let shard = Lock::new(InternerShard {
+                strings: init.into(),
+                names: init
+                    .iter()
+                    .copied()
+                    .zip((0..).map(|idx| Symbol::new(idx << 8 | i)))
+                    .collect(),
+                ..Default::default()
+            });
+            i += 1;
+            shard
         }))
     }
 
     #[inline]
     fn intern(&self, string: &str) -> Symbol {
-        let mut inner = self.0.lock();
-        if let Some(&name) = inner.names.get(string) {
-            return name;
-        }
+        // Warning: hasher has to be kept in sync with rustc_macros::symbols to ensure that all
+        // pre-filled symbols are assigned the correct shard.
+        let mut state = FxHasher::default();
+        string.hash(&mut state);
+        let hash = state.finish();
 
-        let name = Symbol::new(inner.strings.len() as u32);
+        let mut shard = self.0[(hash & 0xff) as usize].lock();
+        let shard = &mut *shard;
+        let vac = match shard.names.raw_entry_mut().from_key_hashed_nocheck(hash, string) {
+            RawEntryMut::Occupied(occ) => return *occ.get(),
+            RawEntryMut::Vacant(vac) => vac,
+        };
+
+        let name = Symbol::new(((shard.strings.len() as u32) << 8) | (hash as u32 & 0xff));
 
         // `from_utf8_unchecked` is safe since we just allocated a `&str` which is known to be
         // UTF-8.
         let string: &str =
-            unsafe { str::from_utf8_unchecked(inner.arena.alloc_slice(string.as_bytes())) };
+            unsafe { str::from_utf8_unchecked(shard.arena.alloc_slice(string.as_bytes())) };
         // It is safe to extend the arena allocation to `'static` because we only access
         // these while the arena is still alive.
         let string: &'static str = unsafe { &*(string as *const str) };
-        inner.strings.push(string);
-        inner.names.insert(string, name);
+        shard.strings.push(string);
+        vac.insert(string, name);
         name
     }
 
     // Get the symbol as a string. `Symbol::as_str()` should be used in
     // preference to this function.
     fn get(&self, symbol: Symbol) -> &str {
-        self.0.lock().strings[symbol.0.as_usize()]
+        self.0[symbol.0.as_usize() & 0xff].lock().strings[symbol.0.as_usize() >> 8]
     }
 }
 
@@ -1784,7 +1806,7 @@ pub mod sym {
     pub fn integer<N: TryInto<usize> + Copy + ToString>(n: N) -> Symbol {
         if let Result::Ok(idx) = n.try_into() {
             if idx < 10 {
-                return Symbol::new(super::SYMBOL_DIGITS_BASE + idx as u32);
+                return super::SYMBOL_DIGITS[idx];
             }
         }
         Symbol::intern(&n.to_string())
