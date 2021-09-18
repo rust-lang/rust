@@ -816,15 +816,17 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         };
 
-        SyntaxExtension::new(
-            sess,
-            kind,
-            self.get_span(id, sess),
-            helper_attrs,
-            self.root.edition,
-            Symbol::intern(name),
-            &self.get_item_attrs(id, sess),
-        )
+        self.get_item_attrs(id, sess, |attrs| {
+            SyntaxExtension::new(
+                sess,
+                kind,
+                self.get_span(id, sess),
+                helper_attrs,
+                self.root.edition,
+                Symbol::intern(name),
+                attrs,
+            )
+        })
     }
 
     fn get_trait_def(&self, item_id: DefIndex, sess: &Session) -> ty::TraitDef {
@@ -975,14 +977,15 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .unwrap_or_default()
     }
 
-    fn get_generics(&self, item_id: DefIndex, sess: &Session) -> ty::Generics {
-        self.generics
-            .borrow_mut()
-            .entry(item_id)
-            .or_insert_with(|| {
-                self.root.tables.generics.get(self, item_id).unwrap().decode((self, sess))
-            })
-            .clone()
+    fn get_generics<R>(
+        &self,
+        item_id: DefIndex,
+        sess: &Session,
+        callback: impl FnOnce(&ty::Generics) -> R,
+    ) -> R {
+        callback(self.generics.borrow_mut().entry(item_id).or_insert_with(|| {
+            self.root.tables.generics.get(self, item_id).unwrap().decode((self, sess))
+        }))
     }
 
     fn get_type(&self, id: DefIndex, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
@@ -1093,12 +1096,18 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn item_children(&self, id: DefIndex, sess: &Session) -> Vec<Export> {
-        self.item_children
-            .borrow_mut()
-            .entry(id)
-            .or_insert_with(|| self.item_children_uncached(id, sess))
-            .clone()
+    fn item_children<R>(
+        &self,
+        id: DefIndex,
+        sess: &Session,
+        callback: impl FnOnce(&Vec<Export>) -> R,
+    ) -> R {
+        callback(
+            self.item_children
+                .borrow_mut()
+                .entry(id)
+                .or_insert_with(|| self.item_children_uncached(id, sess)),
+        )
     }
 
     /// Collects all children of the given item.
@@ -1220,11 +1229,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                 // within the crate. We only need this for fictive constructors,
                                 // for other constructors correct visibilities
                                 // were already encoded in metadata.
-                                if self
-                                    .get_item_attrs(def_id.index, sess)
-                                    .iter()
-                                    .any(|item| item.has_name(sym::non_exhaustive))
-                                {
+                                if self.get_item_attrs(def_id.index, sess, |attrs| {
+                                    attrs.iter().any(|item| item.has_name(sym::non_exhaustive))
+                                }) {
                                     let crate_def_id = self.local_def_id(CRATE_DEF_INDEX);
                                     vis = ty::Visibility::Restricted(crate_def_id);
                                 }
@@ -1382,66 +1389,66 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         })
     }
 
-    fn get_item_attrs(&'a self, node_id: DefIndex, sess: &'a Session) -> Vec<ast::Attribute> {
-        self.item_attrs
-            .borrow_mut()
-            .entry(node_id)
-            .or_insert_with(|| {
-                // The attributes for a tuple struct/variant are attached to the definition,
-                // not the ctor; we assume that someone passing in a tuple struct ctor is actually
-                // wanting to look at the definition.
-                let def_key = self.def_key(node_id);
-                let item_id = if def_key.disambiguated_data.data == DefPathData::Ctor {
-                    def_key.parent.unwrap()
-                } else {
-                    node_id
-                };
+    fn get_item_attrs<R>(
+        &'a self,
+        node_id: DefIndex,
+        sess: &'a Session,
+        callback: impl FnOnce(&Vec<ast::Attribute>) -> R,
+    ) -> R {
+        callback(self.item_attrs.borrow_mut().entry(node_id).or_insert_with(|| {
+            // The attributes for a tuple struct/variant are attached to the definition,
+            // not the ctor; we assume that someone passing in a tuple struct ctor is actually
+            // wanting to look at the definition.
+            let def_key = self.def_key(node_id);
+            let item_id = if def_key.disambiguated_data.data == DefPathData::Ctor {
+                def_key.parent.unwrap()
+            } else {
+                node_id
+            };
 
-                self.root
-                    .tables
-                    .attributes
-                    .get(self, item_id)
-                    .unwrap_or_else(Lazy::empty)
-                    .decode((self, sess))
-                    .collect()
-            })
-            .clone()
+            self.root
+                .tables
+                .attributes
+                .get(self, item_id)
+                .unwrap_or_else(Lazy::empty)
+                .decode((self, sess))
+                .collect()
+        }))
     }
 
-    fn get_struct_field_names(&self, id: DefIndex, sess: &Session) -> Vec<Spanned<Symbol>> {
-        self.struct_field_names
-            .borrow_mut()
-            .entry(id)
-            .or_insert_with(|| {
-                self.root
-                    .tables
-                    .children
-                    .get(self, id)
-                    .unwrap_or_else(Lazy::empty)
-                    .decode(self)
-                    .map(|index| {
-                        respan(self.get_span(index, sess), self.item_ident(index, sess).name)
-                    })
-                    .collect()
-            })
-            .clone()
+    fn get_struct_field_names<R>(
+        &self,
+        id: DefIndex,
+        sess: &Session,
+        callback: impl FnOnce(&Vec<Spanned<Symbol>>) -> R,
+    ) -> R {
+        callback(self.struct_field_names.borrow_mut().entry(id).or_insert_with(|| {
+            self.root
+                .tables
+                .children
+                .get(self, id)
+                .unwrap_or_else(Lazy::empty)
+                .decode(self)
+                .map(|index| respan(self.get_span(index, sess), self.item_ident(index, sess).name))
+                .collect()
+        }))
     }
 
-    fn get_struct_field_visibilities(&self, id: DefIndex) -> Vec<Visibility> {
-        self.struct_field_visibilities
-            .borrow_mut()
-            .entry(id)
-            .or_insert_with(|| {
-                self.root
-                    .tables
-                    .children
-                    .get(self, id)
-                    .unwrap_or_else(Lazy::empty)
-                    .decode(self)
-                    .map(|field_index| self.get_visibility(field_index))
-                    .collect()
-            })
-            .clone()
+    fn get_struct_field_visibilities<R>(
+        &self,
+        id: DefIndex,
+        callback: impl FnOnce(&Vec<Visibility>) -> R,
+    ) -> R {
+        callback(self.struct_field_visibilities.borrow_mut().entry(id).or_insert_with(|| {
+            self.root
+                .tables
+                .children
+                .get(self, id)
+                .unwrap_or_else(Lazy::empty)
+                .decode(self)
+                .map(|field_index| self.get_visibility(field_index))
+                .collect()
+        }))
     }
 
     fn get_inherent_implementations_for_type(

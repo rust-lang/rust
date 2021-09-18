@@ -3391,12 +3391,12 @@ impl<'a> Resolver<'a> {
                     return None;
                 }
 
+                // The lookup is cached to avoid parsing attributes for an item multiple times.
                 if let Some(v) = self.legacy_const_generic_args.get(&def_id) {
                     return v.clone();
                 }
 
-                let parse_attrs = || {
-                    let attrs = self.cstore().item_attrs_untracked(def_id, self.session);
+                let ret = self.cstore().item_attrs_untracked(def_id, self.session, |attrs| {
                     let attr =
                         attrs.iter().find(|a| a.has_name(sym::rustc_legacy_const_generics))?;
                     let mut ret = vec![];
@@ -3409,11 +3409,7 @@ impl<'a> Resolver<'a> {
                         }
                     }
                     Some(ret)
-                };
-
-                // Cache the lookup to avoid parsing attributes for an iterm
-                // multiple times.
-                let ret = parse_attrs();
+                });
                 self.legacy_const_generic_args.insert(def_id, ret.clone());
                 return ret;
             }

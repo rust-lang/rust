@@ -86,7 +86,7 @@ impl IntoArgs for (CrateNum, DefId) {
 
 provide! { <'tcx> tcx, def_id, other, cdata,
     type_of => { cdata.get_type(def_id.index, tcx) }
-    generics_of => { cdata.get_generics(def_id.index, tcx.sess) }
+    generics_of => { cdata.get_generics(def_id.index, tcx.sess, |generics| generics.clone()) }
     explicit_predicates_of => { cdata.get_explicit_predicates(def_id.index, tcx) }
     inferred_outlives_of => { cdata.get_inferred_outlives(def_id.index, tcx) }
     super_predicates_of => { cdata.get_super_predicates(def_id.index, tcx) }
@@ -99,9 +99,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     variances_of => { tcx.arena.alloc_from_iter(cdata.get_item_variances(def_id.index)) }
     associated_item_def_ids => {
-        tcx.arena.alloc_from_iter(
-            cdata.item_children(def_id.index, tcx.sess).into_iter().map(|child| child.res.def_id()),
-        )
+        cdata.item_children(def_id.index, tcx.sess, |exports| {
+            tcx.arena.alloc_from_iter(exports.iter().map(|export| export.res.def_id()))
+        })
     }
     associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
     impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
@@ -140,7 +140,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         cdata.get_deprecation(def_id.index).map(DeprecationEntry::external)
     }
     item_attrs => {
-        tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess).into_iter())
+        cdata.get_item_attrs(def_id.index, tcx.sess, |attrs| {
+            tcx.arena.alloc_from_iter(attrs.iter().cloned())
+        })
     }
     fn_arg_names => { cdata.get_fn_param_names(tcx, def_id.index) }
     rendered_const => { cdata.get_rendered_const(def_id.index) }
@@ -203,7 +205,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         r
     }
     item_children => {
-        tcx.arena.alloc_slice(&cdata.item_children(def_id.index, tcx.sess))
+        cdata.item_children(def_id.index, tcx.sess, |exports| tcx.arena.alloc_slice(&exports))
     }
     defined_lib_features => { cdata.get_lib_features(tcx) }
     defined_lang_items => { cdata.get_lang_items(tcx) }
@@ -370,12 +372,21 @@ pub fn provide(providers: &mut Providers) {
 }
 
 impl CStore {
-    pub fn struct_field_names_untracked(&self, def: DefId, sess: &Session) -> Vec<Spanned<Symbol>> {
-        self.get_crate_data(def.krate).get_struct_field_names(def.index, sess)
+    pub fn struct_field_names_untracked<R>(
+        &self,
+        def: DefId,
+        sess: &Session,
+        callback: impl FnOnce(&Vec<Spanned<Symbol>>) -> R,
+    ) -> R {
+        self.get_crate_data(def.krate).get_struct_field_names(def.index, sess, callback)
     }
 
-    pub fn struct_field_visibilities_untracked(&self, def: DefId) -> Vec<Visibility> {
-        self.get_crate_data(def.krate).get_struct_field_visibilities(def.index)
+    pub fn struct_field_visibilities_untracked<R>(
+        &self,
+        def: DefId,
+        callback: impl FnOnce(&Vec<Visibility>) -> R,
+    ) -> R {
+        self.get_crate_data(def.krate).get_struct_field_visibilities(def.index, callback)
     }
 
     pub fn ctor_def_id_and_kind_untracked(&self, def: DefId) -> Option<(DefId, CtorKind)> {
@@ -386,8 +397,13 @@ impl CStore {
         self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
-    pub fn item_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<Export> {
-        self.get_crate_data(def_id.krate).item_children(def_id.index, sess)
+    pub fn item_children_untracked<R>(
+        &self,
+        def_id: DefId,
+        sess: &Session,
+        callback: impl FnOnce(&Vec<Export>) -> R,
+    ) -> R {
+        self.get_crate_data(def_id.krate).item_children(def_id.index, sess, callback)
     }
 
     pub fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
@@ -405,7 +421,7 @@ impl CStore {
                 ident: data.item_ident(id.index, sess),
                 id: ast::DUMMY_NODE_ID,
                 span,
-                attrs: data.get_item_attrs(id.index, sess),
+                attrs: data.get_item_attrs(id.index, sess, |attrs| attrs.clone()),
                 kind: ast::ItemKind::MacroDef(data.get_macro(id.index, sess)),
                 vis: ast::Visibility {
                     span: span.shrink_to_lo(),
@@ -418,8 +434,8 @@ impl CStore {
         )
     }
 
-    pub fn associated_item_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::AssocItem {
-        self.get_crate_data(def.krate).get_associated_item(def.index, sess)
+    pub fn fn_has_self_parameter_untracked(&self, def: DefId, sess: &Session) -> bool {
+        self.get_crate_data(def.krate).get_associated_item(def.index, sess).fn_has_self_parameter
     }
 
     pub fn crate_source_untracked(&self, cnum: CrateNum) -> CrateSource {
@@ -441,7 +457,8 @@ impl CStore {
     }
 
     pub fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {
-        self.get_crate_data(def_id.krate).get_generics(def_id.index, sess).own_counts().lifetimes
+        self.get_crate_data(def_id.krate)
+            .get_generics(def_id.index, sess, |generics| generics.own_counts().lifetimes)
     }
 
     pub fn module_expansion_untracked(&self, def_id: DefId, sess: &Session) -> ExpnId {
@@ -455,8 +472,13 @@ impl CStore {
         self.get_crate_data(cnum).num_def_ids()
     }
 
-    pub fn item_attrs_untracked(&self, def_id: DefId, sess: &Session) -> Vec<ast::Attribute> {
-        self.get_crate_data(def_id.krate).get_item_attrs(def_id.index, sess)
+    pub fn item_attrs_untracked<R>(
+        &self,
+        def_id: DefId,
+        sess: &Session,
+        callback: impl FnOnce(&Vec<ast::Attribute>) -> R,
+    ) -> R {
+        self.get_crate_data(def_id.krate).get_item_attrs(def_id.index, sess, callback)
     }
 
     pub fn get_proc_macro_quoted_span_untracked(
