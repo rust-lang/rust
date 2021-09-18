@@ -16,8 +16,9 @@ use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
 use syntax::{
+    algo::skip_trivia_token,
     ast::{self, GenericParamsOwner, LoopBodyOwner},
-    match_ast, AstNode, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize,
+    match_ast, AstNode, Direction, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize,
 };
 
 use crate::{
@@ -184,12 +185,21 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.descend_into_macros(token)
     }
 
+    /// Maps a node down by mapping its first and last token down.
+    pub fn descend_node_into_attributes<N: AstNode>(&self, node: N) -> SmallVec<[N; 1]> {
+        self.imp.descend_node_into_attributes(node)
+    }
+
     pub fn hir_file_for(&self, syntax_node: &SyntaxNode) -> HirFileId {
         self.imp.find_file(syntax_node.clone()).file_id
     }
 
     pub fn original_range(&self, node: &SyntaxNode) -> FileRange {
         self.imp.original_range(node)
+    }
+
+    pub fn original_range_opt(&self, node: &SyntaxNode) -> Option<FileRange> {
+        self.imp.original_range_opt(node)
     }
 
     pub fn diagnostics_display_range(&self, diagnostics: InFile<SyntaxNodePtr>) -> FileRange {
@@ -471,16 +481,69 @@ impl<'db> SemanticsImpl<'db> {
         )
     }
 
+    // This might not be the correct way to due this, but it works for now
+    fn descend_node_into_attributes<N: AstNode>(&self, node: N) -> SmallVec<[N; 1]> {
+        let mut res = smallvec![];
+        let tokens = (|| {
+            let first = skip_trivia_token(node.syntax().first_token()?, Direction::Next)?;
+            let last = skip_trivia_token(node.syntax().last_token()?, Direction::Prev)?;
+            Some((first, last))
+        })();
+        let (first, last) = match tokens {
+            Some(it) => it,
+            None => return res,
+        };
+
+        if first == last {
+            self.descend_into_macros_impl(first, |InFile { value, .. }| {
+                if let Some(node) = value.ancestors().find_map(N::cast) {
+                    res.push(node)
+                }
+            });
+        } else {
+            // Descend first and last token, then zip them to look for the node they belong to
+            let mut scratch: SmallVec<[_; 1]> = smallvec![];
+            self.descend_into_macros_impl(first, |token| {
+                scratch.push(token);
+            });
+
+            let mut scratch = scratch.into_iter();
+            self.descend_into_macros_impl(last, |InFile { value: last, file_id: last_fid }| {
+                if let Some(InFile { value: first, file_id: first_fid }) = scratch.next() {
+                    if first_fid == last_fid {
+                        if let Some(p) = first.parent() {
+                            let range = first.text_range().cover(last.text_range());
+                            let node = find_root(&p)
+                                .covering_element(range)
+                                .ancestors()
+                                .take_while(|it| it.text_range() == range)
+                                .find_map(N::cast);
+                            if let Some(node) = node {
+                                res.push(node);
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        res
+    }
+
     fn descend_into_macros(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
+        let mut res = smallvec![];
+        self.descend_into_macros_impl(token, |InFile { value, .. }| res.push(value));
+        res
+    }
+
+    fn descend_into_macros_impl(&self, token: SyntaxToken, mut f: impl FnMut(InFile<SyntaxToken>)) {
         let _p = profile::span("descend_into_macros");
         let parent = match token.parent() {
             Some(it) => it,
-            None => return smallvec![token],
+            None => return,
         };
         let sa = self.analyze(&parent);
         let mut queue = vec![InFile::new(sa.file_id, token)];
         let mut cache = self.expansion_info_cache.borrow_mut();
-        let mut res = smallvec![];
         // Remap the next token in the queue into a macro call its in, if it is not being remapped
         // either due to not being in a macro-call or because its unused push it into the result vec,
         // otherwise push the remapped tokens back into the queue as they can potentially be remapped again.
@@ -546,10 +609,9 @@ impl<'db> SemanticsImpl<'db> {
             .is_none();
 
             if was_not_remapped {
-                res.push(token.value)
+                f(token)
             }
         }
-        res
     }
 
     // Note this return type is deliberate as [`find_nodes_at_offset_with_descend`] wants to stop
@@ -578,6 +640,11 @@ impl<'db> SemanticsImpl<'db> {
     fn original_range(&self, node: &SyntaxNode) -> FileRange {
         let node = self.find_file(node.clone());
         node.as_ref().original_file_range(self.db.upcast())
+    }
+
+    fn original_range_opt(&self, node: &SyntaxNode) -> Option<FileRange> {
+        let node = self.find_file(node.clone());
+        node.as_ref().original_file_range_opt(self.db.upcast())
     }
 
     fn diagnostics_display_range(&self, src: InFile<SyntaxNodePtr>) -> FileRange {
