@@ -5,8 +5,8 @@ set -eux
 
 arch=$1
 binutils_version=2.25.1
-freebsd_version=11.4
-triple=$arch-unknown-freebsd11
+freebsd_version=12.2
+triple=$arch-unknown-freebsd12
 sysroot=/usr/local/$triple
 
 hide_output() {
@@ -68,7 +68,7 @@ curl "$URL" | tar xJf - -C "$sysroot" --wildcards "${files_to_extract[@]}"
 # there might be other problems.)
 #
 # The --target option is last because the cross-build of LLVM uses
-# --target without an OS version ("-freebsd" vs. "-freebsd11").  This
+# --target without an OS version ("-freebsd" vs. "-freebsd12").  This
 # makes Clang default to libstdc++ (which no longer exists), and also
 # controls other features, like GNU-style symbol table hashing and
 # anything predicated on the version number in the __FreeBSD__
