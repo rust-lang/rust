@@ -284,15 +284,15 @@ fn type_alias(p: &mut Parser, m: Marker) {
 
     // test type_item_type_params
     // type Result<T> = ();
-    type_params::opt_generic_param_list(p);
+    generic_params::opt_generic_param_list(p);
 
     if p.at(T![:]) {
-        type_params::bounds(p);
+        generic_params::bounds(p);
     }
 
     // test type_item_where_clause
     // type Foo where Foo: Copy = ();
-    type_params::opt_where_clause(p);
+    generic_params::opt_where_clause(p);
     if p.eat(T![=]) {
         types::type_(p);
     }
@@ -383,7 +383,7 @@ fn fn_(p: &mut Parser, m: Marker) {
     name_r(p, ITEM_RECOVERY_SET);
     // test function_type_params
     // fn foo<T: Clone + Copy>(){}
-    type_params::opt_generic_param_list(p);
+    generic_params::opt_generic_param_list(p);
 
     if p.at(T!['(']) {
         params::param_list_fn_def(p);
@@ -397,7 +397,7 @@ fn fn_(p: &mut Parser, m: Marker) {
 
     // test function_where_clause
     // fn foo<T>() where T: Copy {}
-    type_params::opt_where_clause(p);
+    generic_params::opt_where_clause(p);
 
     if p.at(T![;]) {
         // test fn_decl

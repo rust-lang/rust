@@ -117,9 +117,9 @@ fn opt_path_type_args(p: &mut Parser, mode: Mode) {
                 params::param_list_fn_trait(p);
                 opt_ret_type(p);
             } else {
-                type_args::opt_generic_arg_list(p, false)
+                generic_args::opt_generic_arg_list(p, false)
             }
         }
-        Mode::Expr => type_args::opt_generic_arg_list(p, true),
+        Mode::Expr => generic_args::opt_generic_arg_list(p, true),
     }
 }

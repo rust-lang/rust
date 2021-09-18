@@ -82,7 +82,7 @@ fn const_param(p: &mut Parser, m: Marker) {
         // struct B<const N: i32 = {}>;
         // struct C<const N: i32 = some::CONST>;
         p.bump(T![=]);
-        type_args::const_arg(p);
+        generic_args::const_arg(p);
     }
 
     m.complete(p, CONST_PARAM);
