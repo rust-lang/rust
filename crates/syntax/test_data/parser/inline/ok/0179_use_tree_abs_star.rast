@@ -1,0 +1,26 @@
+SOURCE_FILE@0..25
+  USE@0..8
+    USE_KW@0..3 "use"
+    WHITESPACE@3..4 " "
+    USE_TREE@4..7
+      COLON2@4..6 "::"
+      STAR@6..7 "*"
+    SEMICOLON@7..8 ";"
+  WHITESPACE@8..9 "\n"
+  USE@9..24
+    USE_KW@9..12 "use"
+    WHITESPACE@12..13 " "
+    USE_TREE@13..23
+      PATH@13..16
+        PATH_SEGMENT@13..16
+          NAME_REF@13..16
+            IDENT@13..16 "std"
+      COLON2@16..18 "::"
+      USE_TREE_LIST@18..23
+        L_CURLY@18..19 "{"
+        USE_TREE@19..22
+          COLON2@19..21 "::"
+          STAR@21..22 "*"
+        R_CURLY@22..23 "}"
+    SEMICOLON@23..24 ";"
+  WHITESPACE@24..25 "\n"
