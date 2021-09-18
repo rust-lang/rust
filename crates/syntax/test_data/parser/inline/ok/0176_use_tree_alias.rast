@@ -1,0 +1,32 @@
+SOURCE_FILE@0..35
+  USE@0..18
+    USE_KW@0..3 "use"
+    WHITESPACE@3..4 " "
+    USE_TREE@4..17
+      PATH@4..7
+        PATH_SEGMENT@4..7
+          NAME_REF@4..7
+            IDENT@4..7 "std"
+      WHITESPACE@7..8 " "
+      RENAME@8..17
+        AS_KW@8..10 "as"
+        WHITESPACE@10..11 " "
+        NAME@11..17
+          IDENT@11..17 "stdlib"
+    SEMICOLON@17..18 ";"
+  WHITESPACE@18..19 "\n"
+  USE@19..34
+    USE_KW@19..22 "use"
+    WHITESPACE@22..23 " "
+    USE_TREE@23..33
+      PATH@23..28
+        PATH_SEGMENT@23..28
+          NAME_REF@23..28
+            IDENT@23..28 "Trait"
+      WHITESPACE@28..29 " "
+      RENAME@29..33
+        AS_KW@29..31 "as"
+        WHITESPACE@31..32 " "
+        UNDERSCORE@32..33 "_"
+    SEMICOLON@33..34 ";"
+  WHITESPACE@34..35 "\n"

@@ -1,0 +1,20 @@
+SOURCE_FILE@0..24
+  USE@0..23
+    USE_KW@0..3 "use"
+    WHITESPACE@3..4 " "
+    USE_TREE@4..22
+      PATH@4..7
+        PATH_SEGMENT@4..7
+          NAME_REF@4..7
+            IDENT@4..7 "std"
+      COLON2@7..9 "::"
+      USE_TREE_LIST@9..22
+        L_CURLY@9..10 "{"
+        USE_TREE@10..21
+          PATH@10..21
+            PATH_SEGMENT@10..21
+              NAME_REF@10..21
+                IDENT@10..21 "collections"
+        R_CURLY@21..22 "}"
+    SEMICOLON@22..23 ";"
+  WHITESPACE@23..24 "\n"

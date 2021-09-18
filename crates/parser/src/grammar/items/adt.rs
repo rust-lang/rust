@@ -17,10 +17,10 @@ pub(super) fn union(p: &mut Parser, m: Marker) {
 
 fn struct_or_union(p: &mut Parser, m: Marker, is_struct: bool) {
     name_r(p, ITEM_RECOVERY_SET);
-    type_params::opt_generic_param_list(p);
+    generic_params::opt_generic_param_list(p);
     match p.current() {
         T![where] => {
-            type_params::opt_where_clause(p);
+            generic_params::opt_where_clause(p);
             match p.current() {
                 T![;] => p.bump(T![;]),
                 T!['{'] => record_field_list(p),
@@ -42,7 +42,7 @@ fn struct_or_union(p: &mut Parser, m: Marker, is_struct: bool) {
             tuple_field_list(p);
             // test tuple_struct_where
             // struct S<T>(T) where T: Clone;
-            type_params::opt_where_clause(p);
+            generic_params::opt_where_clause(p);
             p.expect(T![;]);
         }
         _ => p.error(if is_struct { "expected `;`, `{`, or `(`" } else { "expected `{`" }),
@@ -53,8 +53,8 @@ fn struct_or_union(p: &mut Parser, m: Marker, is_struct: bool) {
 pub(super) fn enum_(p: &mut Parser, m: Marker) {
     p.bump(T![enum]);
     name_r(p, ITEM_RECOVERY_SET);
-    type_params::opt_generic_param_list(p);
-    type_params::opt_where_clause(p);
+    generic_params::opt_generic_param_list(p);
+    generic_params::opt_where_clause(p);
     if p.at(T!['{']) {
         variant_list(p);
     } else {

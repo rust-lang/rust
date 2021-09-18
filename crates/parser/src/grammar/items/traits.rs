@@ -8,17 +8,17 @@ pub(super) fn trait_(p: &mut Parser, m: Marker) {
 
     // test trait_item_generic_params
     // trait X<U: Debug + Display> {}
-    type_params::opt_generic_param_list(p);
+    generic_params::opt_generic_param_list(p);
 
     if p.eat(T![=]) {
         // test trait_alias
         // trait Z<U> = T<U>;
-        type_params::bounds_without_colon(p);
+        generic_params::bounds_without_colon(p);
 
         // test trait_alias_where_clause
         // trait Z<U> = T<U> where U: Copy;
         // trait Z<U> = where Self: T<U>;
-        type_params::opt_where_clause(p);
+        generic_params::opt_where_clause(p);
         p.expect(T![;]);
         m.complete(p, TRAIT);
         return;
@@ -27,12 +27,12 @@ pub(super) fn trait_(p: &mut Parser, m: Marker) {
     if p.at(T![:]) {
         // test trait_item_bounds
         // trait T: Hash + Clone {}
-        type_params::bounds(p);
+        generic_params::bounds(p);
     }
 
     // test trait_item_where_clause
     // trait T where Self: Copy {}
-    type_params::opt_where_clause(p);
+    generic_params::opt_where_clause(p);
 
     if p.at(T!['{']) {
         assoc_item_list(p);
@@ -47,7 +47,7 @@ pub(super) fn trait_(p: &mut Parser, m: Marker) {
 pub(super) fn impl_(p: &mut Parser, m: Marker) {
     p.bump(T![impl]);
     if p.at(T![<]) && not_a_qualified_path(p) {
-        type_params::opt_generic_param_list(p);
+        generic_params::opt_generic_param_list(p);
     }
 
     // test impl_item_const
@@ -64,7 +64,7 @@ pub(super) fn impl_(p: &mut Parser, m: Marker) {
     if p.eat(T![for]) {
         impl_type(p);
     }
-    type_params::opt_where_clause(p);
+    generic_params::opt_where_clause(p);
     if p.at(T!['{']) {
         assoc_item_list(p);
     } else {

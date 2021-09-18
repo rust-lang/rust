@@ -1,0 +1,13 @@
+SOURCE_FILE@0..12
+  USE@0..11
+    USE_KW@0..3 "use"
+    WHITESPACE@3..4 " "
+    USE_TREE@4..10
+      PATH@4..7
+        PATH_SEGMENT@4..7
+          NAME_REF@4..7
+            IDENT@4..7 "std"
+      COLON2@7..9 "::"
+      STAR@9..10 "*"
+    SEMICOLON@10..11 ";"
+  WHITESPACE@11..12 "\n"

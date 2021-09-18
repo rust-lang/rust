@@ -486,7 +486,7 @@ fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     let m = lhs.precede(p);
     p.bump_any();
     name_ref(p);
-    type_args::opt_generic_arg_list(p, true);
+    generic_args::opt_generic_arg_list(p, true);
     if p.at(T!['(']) {
         arg_list(p);
     }

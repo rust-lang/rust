@@ -1,34 +1,20 @@
 use super::*;
 
 pub(super) fn opt_generic_param_list(p: &mut Parser) {
-    if !p.at(T![<]) {
-        return;
+    if p.at(T![<]) {
+        generic_param_list(p);
     }
-    generic_param_list(p);
 }
 
+// test generic_param_list
+// fn f<T: Clone>() {}
 fn generic_param_list(p: &mut Parser) {
     assert!(p.at(T![<]));
     let m = p.start();
     p.bump(T![<]);
 
     while !p.at(EOF) && !p.at(T![>]) {
-        let m = p.start();
-
-        // test generic_lifetime_type_attribute
-        // fn foo<#[derive(Lifetime)] 'a, #[derive(Type)] T>(_: &'a T) {
-        // }
-        attributes::outer_attrs(p);
-
-        match p.current() {
-            LIFETIME_IDENT => lifetime_param(p, m),
-            IDENT => type_param(p, m),
-            T![const] => const_param(p, m),
-            _ => {
-                m.abandon(p);
-                p.err_and_bump("expected type parameter")
-            }
-        }
+        generic_param(p);
         if !p.at(T![>]) && !p.expect(T![,]) {
             break;
         }
@@ -37,6 +23,24 @@ fn generic_param_list(p: &mut Parser) {
     m.complete(p, GENERIC_PARAM_LIST);
 }
 
+fn generic_param(p: &mut Parser) {
+    let m = p.start();
+    // test generic_param_attribute
+    // fn foo<#[lt_attr] 'a, #[t_attr] T>() {}
+    attributes::outer_attrs(p);
+    match p.current() {
+        LIFETIME_IDENT => lifetime_param(p, m),
+        IDENT => type_param(p, m),
+        T![const] => const_param(p, m),
+        _ => {
+            m.abandon(p);
+            p.err_and_bump("expected type parameter")
+        }
+    }
+}
+
+// test lifetime_param
+// fn f<'a: 'b>() {}
 fn lifetime_param(p: &mut Parser, m: Marker) {
     assert!(p.at(LIFETIME_IDENT));
     lifetime(p);
@@ -46,15 +50,17 @@ fn lifetime_param(p: &mut Parser, m: Marker) {
     m.complete(p, LIFETIME_PARAM);
 }
 
+// test type_param
+// fn f<T: Clone>() {}
 fn type_param(p: &mut Parser, m: Marker) {
     assert!(p.at(IDENT));
     name(p);
     if p.at(T![:]) {
         bounds(p);
     }
-    // test type_param_default
-    // struct S<T = i32>;
     if p.at(T![=]) {
+        // test type_param_default
+        // struct S<T = i32>;
         p.bump(T![=]);
         types::type_(p)
     }
@@ -64,7 +70,6 @@ fn type_param(p: &mut Parser, m: Marker) {
 // test const_param
 // struct S<const N: u32>;
 fn const_param(p: &mut Parser, m: Marker) {
-    assert!(p.at(T![const]));
     p.bump(T![const]);
     name(p);
     if p.at(T![:]) {
@@ -73,24 +78,16 @@ fn const_param(p: &mut Parser, m: Marker) {
         p.error("missing type for const parameter");
     }
 
-    // test const_param_defaults
-    // struct A<const N: i32 = -1>;
-    // struct B<const N: i32 = {}>;
-    // struct C<const N: i32 = some::CONST>;
     if p.at(T![=]) {
+        // test const_param_defaults
+        // struct A<const N: i32 = -1>;
+        // struct B<const N: i32 = {}>;
+        // struct C<const N: i32 = some::CONST>;
         p.bump(T![=]);
-        type_args::const_arg(p);
+        generic_args::const_arg(p);
     }
 
     m.complete(p, CONST_PARAM);
-}
-
-// test type_param_bounds
-// struct S<T: 'a + ?Sized + (Copy)>;
-pub(super) fn bounds(p: &mut Parser) {
-    assert!(p.at(T![:]));
-    p.bump(T![:]);
-    bounds_without_colon(p);
 }
 
 fn lifetime_bounds(p: &mut Parser) {
@@ -104,19 +101,26 @@ fn lifetime_bounds(p: &mut Parser) {
     }
 }
 
+// test type_param_bounds
+// struct S<T: 'a + ?Sized + (Copy)>;
+pub(super) fn bounds(p: &mut Parser) {
+    assert!(p.at(T![:]));
+    p.bump(T![:]);
+    bounds_without_colon(p);
+}
+
+pub(super) fn bounds_without_colon(p: &mut Parser) {
+    let m = p.start();
+    bounds_without_colon_m(p, m);
+}
+
 pub(super) fn bounds_without_colon_m(p: &mut Parser, marker: Marker) -> CompletedMarker {
     while type_bound(p) {
         if !p.eat(T![+]) {
             break;
         }
     }
-
     marker.complete(p, TYPE_BOUND_LIST)
-}
-
-pub(super) fn bounds_without_colon(p: &mut Parser) {
-    let m = p.start();
-    bounds_without_colon_m(p, m);
 }
 
 fn type_bound(p: &mut Parser) -> bool {
@@ -160,8 +164,9 @@ pub(super) fn opt_where_clause(p: &mut Parser) {
 
         let comma = p.eat(T![,]);
 
-        if is_where_clause_end(p) {
-            break;
+        match p.current() {
+            T!['{'] | T![;] | T![=] => break,
+            _ => (),
         }
 
         if !comma {
@@ -170,18 +175,14 @@ pub(super) fn opt_where_clause(p: &mut Parser) {
     }
 
     m.complete(p, WHERE_CLAUSE);
-}
 
-fn is_where_predicate(p: &mut Parser) -> bool {
-    match p.current() {
-        LIFETIME_IDENT => true,
-        T![impl] => false,
-        token => types::TYPE_FIRST.contains(token),
+    fn is_where_predicate(p: &mut Parser) -> bool {
+        match p.current() {
+            LIFETIME_IDENT => true,
+            T![impl] => false,
+            token => types::TYPE_FIRST.contains(token),
+        }
     }
-}
-
-fn is_where_clause_end(p: &mut Parser) -> bool {
-    matches!(p.current(), T!['{'] | T![;] | T![=])
 }
 
 fn where_predicate(p: &mut Parser) {
@@ -199,12 +200,12 @@ fn where_predicate(p: &mut Parser) {
             p.error("expected lifetime or type");
         }
         _ => {
-            // test where_pred_for
-            // fn for_trait<F>()
-            // where
-            //    for<'a> F: Fn(&'a str)
-            // { }
             if p.at(T![for]) {
+                // test where_pred_for
+                // fn for_trait<F>()
+                // where
+                //    for<'a> F: Fn(&'a str)
+                // { }
                 types::for_binder(p);
             }
 
