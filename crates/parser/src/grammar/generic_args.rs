@@ -51,7 +51,7 @@ fn generic_arg(p: &mut Parser) {
                     path_ty.abandon(p);
                     m.complete(p, ASSOC_TYPE_ARG);
                 }
-                T![:] if p.nth(1) == T![:] => {
+                T![:] if p.at(T![::]) => {
                     // NameRef::, this is a path type
                     path_seg.complete(p, PATH_SEGMENT);
                     let qual = path.complete(p, PATH);
