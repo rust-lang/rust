@@ -8,6 +8,7 @@ use ide_db::{
     helpers::{pick_best_token, try_resolve_derive_input_at},
     RootDatabase,
 };
+use itertools::Itertools;
 use syntax::{ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TextRange, T};
 
 use crate::{
@@ -52,8 +53,8 @@ pub(crate) fn goto_definition(
         let nav = resolve_doc_path_for_def(db, def, &link, ns)?.try_to_nav(db)?;
         return Some(RangeInfo::new(original_token.text_range(), vec![nav]));
     }
-
-    let navs = sema.descend_into_macros_many(original_token.clone())
+    let navs = sema
+        .descend_into_macros_many(original_token.clone())
         .into_iter()
         .filter_map(|token| {
             let parent = token.parent()?;
@@ -65,28 +66,34 @@ pub(crate) fn goto_definition(
                     ast::Name(name) => {
                         match NameClass::classify(&sema, &name)? {
                             NameClass::Definition(def) | NameClass::ConstReference(def) => {
-                                try_find_trait_item_definition(sema.db, &def).unwrap_or_else(|| def_to_nav(sema.db, def))
+                                try_find_trait_item_definition(sema.db, &def)
+                                    .unwrap_or_else(|| def_to_nav(sema.db, def))
                             }
                             NameClass::PatFieldShorthand { local_def, field_ref } => {
                                 local_and_field_to_nav(sema.db, local_def, field_ref)
                             },
                         }
                     },
-                    ast::Lifetime(lt) => if let Some(name_class) = NameClass::classify_lifetime(&sema, &lt) {
-                        match name_class {
-                            NameClass::Definition(def) => def_to_nav(sema.db, def),
-                            _ => return None,
+                    ast::Lifetime(lt) => {
+                        match NameClass::classify_lifetime(&sema, &lt) {
+                            Some(name_class) => {
+                                match name_class {
+                                    NameClass::Definition(def) => def_to_nav(sema.db, def),
+                                    _ => return None,
+                                }
+                            }
+                            None => reference_definition(&sema, Either::Left(&lt)),
                         }
-                    } else {
-                        reference_definition(&sema, Either::Left(&lt))
                     },
-                    ast::TokenTree(tt) => try_lookup_include_path_or_derive(&sema, tt, token, position.file_id)?,
+                    ast::TokenTree(tt) =>
+                        try_lookup_include_path_or_derive(&sema, tt, token, position.file_id)?,
                     _ => return None,
                 }
             };
             Some(navs)
         })
         .flatten()
+        .unique()
         .collect::<Vec<NavigationTarget>>();
 
     Some(RangeInfo::new(original_token.text_range(), navs))
@@ -199,6 +206,7 @@ mod tests {
 
     use crate::fixture;
 
+    #[track_caller]
     fn check(ra_fixture: &str) {
         let (analysis, position, expected) = fixture::annotations(ra_fixture);
         let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
@@ -1445,6 +1453,43 @@ mod foo {
 #[derive(foo::Copy$0)]
 struct Foo;
             "#,
+        );
+    }
+
+    #[test]
+    fn goto_def_in_macro_multi() {
+        check(
+            r#"
+struct Foo {
+    foo: ()
+  //^^^
+}
+macro_rules! foo {
+    ($ident:ident) => {
+        fn $ident(Foo { $ident }: Foo) {}
+    }
+}
+foo!(foo$0);
+   //^^^
+   //^^^
+"#,
+        );
+        check(
+            r#"
+fn bar() {}
+ //^^^
+struct bar;
+     //^^^
+macro_rules! foo {
+    ($ident:ident) => {
+        fn foo() {
+            let _: $ident = $ident;
+        }
+    }
+}
+
+foo!(bar$0);
+"#,
         );
     }
 }
