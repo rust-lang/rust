@@ -39,31 +39,21 @@ pub(crate) fn goto_definition(
             kind if kind.is_trivia() => 0,
             _ => 1,
         })?;
-    let tokens = sema.descend_into_macros_many(original_token.clone());
-    let navs = tokens
-        .clone()
-        .into_iter()
-        .filter_map(|token| {
-            let parent = token.parent()?;
-            if let Some(_) = ast::Comment::cast(token.clone()) {
-                let (attributes, def) = doc_attributes(&sema, &parent)?;
-                let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
-                let (_, link, ns) =
-                    extract_definitions_from_docs(&docs).into_iter().find(|&(range, ..)| {
-                        doc_mapping.map(range).map_or(false, |InFile { file_id, value: range }| {
-                            file_id == position.file_id.into() && range.contains(position.offset)
-                        })
-                    })?;
-                let nav = resolve_doc_path_for_def(db, def, &link, ns)?.try_to_nav(db)?;
-                return Some(nav);
-            }
-            None
-        })
-        .collect::<Vec<NavigationTarget>>();
-    if navs.len() > 0 {
-        return Some(RangeInfo::new(original_token.text_range(), navs));
+    if let Some(_) = ast::Comment::cast(original_token.clone()) {
+        let parent = original_token.parent()?;
+        let (attributes, def) = doc_attributes(&sema, &parent)?;
+        let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
+        let (_, link, ns) =
+            extract_definitions_from_docs(&docs).into_iter().find(|&(range, ..)| {
+                doc_mapping.map(range).map_or(false, |InFile { file_id, value: range }| {
+                    file_id == position.file_id.into() && range.contains(position.offset)
+                })
+            })?;
+        let nav = resolve_doc_path_for_def(db, def, &link, ns)?.try_to_nav(db)?;
+        return Some(RangeInfo::new(original_token.text_range(), vec![nav]));
     }
-    let navs = tokens
+
+    let navs = sema.descend_into_macros_many(original_token.clone())
         .into_iter()
         .filter_map(|token| {
             let parent = token.parent()?;
