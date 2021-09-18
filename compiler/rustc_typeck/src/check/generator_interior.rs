@@ -33,6 +33,7 @@ struct InteriorVisitor<'a, 'tcx> {
     /// that they may succeed the said yield point in the post-order.
     guard_bindings: SmallVec<[SmallVec<[HirId; 4]>; 1]>,
     guard_bindings_set: HirIdSet,
+    linted_values: HirIdSet,
 }
 
 impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
@@ -122,18 +123,21 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                 // Insert the type into the ordered set.
                 let scope_span = scope.map(|s| s.span(self.fcx.tcx, self.region_scope_tree));
 
-                check_must_not_suspend_ty(
-                    self.fcx,
-                    ty,
-                    hir_id,
-                    SuspendCheckData {
-                        expr,
-                        source_span,
-                        yield_span: yield_data.span,
-                        plural_len: 1,
-                        ..Default::default()
-                    },
-                );
+                if !self.linted_values.contains(&hir_id) {
+                    check_must_not_suspend_ty(
+                        self.fcx,
+                        ty,
+                        hir_id,
+                        SuspendCheckData {
+                            expr,
+                            source_span,
+                            yield_span: yield_data.span,
+                            plural_len: 1,
+                            ..Default::default()
+                        },
+                    );
+                    self.linted_values.insert(hir_id);
+                }
 
                 self.types.insert(ty::GeneratorInteriorTypeCause {
                     span: source_span,
@@ -181,6 +185,7 @@ pub fn resolve_interior<'a, 'tcx>(
         prev_unresolved_span: None,
         guard_bindings: <_>::default(),
         guard_bindings_set: <_>::default(),
+        linted_values: <_>::default(),
     };
     intravisit::walk_body(&mut visitor, body);
 

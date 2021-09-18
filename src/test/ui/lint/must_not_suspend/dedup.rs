@@ -1,7 +1,4 @@
 // edition:2018
-// run-pass
-//
-// this test shows a case where the lint doesn't fire in generic code
 #![feature(must_not_suspend)]
 #![deny(must_not_suspend)]
 
@@ -15,6 +12,9 @@ async fn wheeee<T>(t: T) {
     drop(t);
 }
 
+async fn yes() {
+    wheeee(No {}).await; //~ ERROR `No` held across
+}
+
 fn main() {
-    let _fut = wheeee(No {});
 }

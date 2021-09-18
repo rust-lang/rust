@@ -16,7 +16,6 @@ async fn other() {}
 impl Bar {
     async fn uhoh(&mut self) {
         let guard = &mut self.u; //~ ERROR `Umm` held across
-        //~^ ERROR `Umm` held across
 
         other().await;
 

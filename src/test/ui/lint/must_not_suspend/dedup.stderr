@@ -1,0 +1,19 @@
+error: `No` held across a suspend point, but should not be
+  --> $DIR/dedup.rs:16:12
+   |
+LL |     wheeee(No {}).await;
+   |     -------^^^^^------- the value is held across this suspend point
+   |
+note: the lint level is defined here
+  --> $DIR/dedup.rs:3:9
+   |
+LL | #![deny(must_not_suspend)]
+   |         ^^^^^^^^^^^^^^^^
+help: consider using a block (`{ ... }`) to shrink the value's scope, ending before the suspend point
+  --> $DIR/dedup.rs:16:12
+   |
+LL |     wheeee(No {}).await;
+   |            ^^^^^
+
+error: aborting due to previous error
+
