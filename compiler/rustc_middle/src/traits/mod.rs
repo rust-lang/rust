@@ -500,11 +500,6 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 ///     // Case A: ImplSource points at a specific impl. Only possible when
 ///     // type is concretely known. If the impl itself has bounded
 ///     // type parameters, ImplSource will carry resolutions for those as well:
-///     concrete.clone(); // ImpleSource(Impl_1, [ImplSource(Impl_2, [ImplSource(Impl_3)])])
-///
-///     // Case A: ImplSource points at a specific impl. Only possible when
-///     // type is concretely known. If the impl itself has bounded
-///     // type parameters, ImplSource will carry resolutions for those as well:
 ///     concrete.clone(); // ImplSource(Impl_1, [ImplSource(Impl_2, [ImplSource(Impl_3)])])
 ///
 ///     // Case B: ImplSource must be provided by caller. This applies when
