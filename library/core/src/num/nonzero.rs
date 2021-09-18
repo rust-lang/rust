@@ -908,10 +908,10 @@ macro_rules! nonzero_min_max {
                 #[unstable(feature = "nonzero_min", issue = "89065")]
                 #[doc = concat!("The minimum value for a`", stringify!($Ty), "`.")]
                 /// # Examples
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN, ", stringify!($min), ";")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN, ", stringify!($Min), ";")]
                 // SAFETY: In the signed case, the minimum integer is negative, and therefore non-zero.
                 // SAFETY:  In the unsignedd case, we use one, which is non-zero.
-                pub const MIN : $Ty = unsafe { $Ty::new_unchecked($min)};
+                pub const MIN : $Ty = unsafe { $Ty::new_unchecked($Min)};
                 }
         )+
     }
