@@ -15,6 +15,7 @@ use crate::llvm::debuginfo::{
     DIArray, DIBuilder, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope, DIType,
     DIVariable,
 };
+use crate::debuginfo::utils::debug_context;
 use crate::value::Value;
 
 use rustc_codegen_ssa::debuginfo::type_names;
@@ -62,6 +63,7 @@ pub struct CrateDebugContext<'a, 'tcx> {
     builder: &'a mut DIBuilder<'a>,
     created_files: RefCell<FxHashMap<(Option<String>, Option<String>), &'a DIFile>>,
     created_enum_disr_types: RefCell<FxHashMap<(DefId, Primitive), &'a DIType>>,
+    type_name_cache: RefCell<FxHashMap<(Ty<'tcx>, bool), String>>,
 
     type_map: RefCell<TypeMap<'a, 'tcx>>,
     namespace_map: RefCell<DefIdMap<&'a DIScope>>,
@@ -91,6 +93,7 @@ impl<'a, 'tcx> CrateDebugContext<'a, 'tcx> {
             builder,
             created_files: Default::default(),
             created_enum_disr_types: Default::default(),
+            type_name_cache: Default::default(),
             type_map: Default::default(),
             namespace_map: RefCell::new(Default::default()),
             composite_types_completed: Default::default(),
@@ -435,10 +438,12 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             substs: SubstsRef<'tcx>,
             name_to_append_suffix_to: &mut String,
         ) -> &'ll DIArray {
+            let type_name_cache = &mut *debug_context(cx).type_name_cache.borrow_mut();
             type_names::push_generic_params(
                 cx.tcx,
                 cx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substs),
                 name_to_append_suffix_to,
+                type_name_cache,
             );
 
             if substs.types().next().is_none() {
