@@ -92,12 +92,7 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
     type DepKind = DepKind;
     type StableHashingContext = StableHashingContext<'tcx>;
 
-    fn register_reused_dep_node(&self, dep_node: &DepNode) {
-        if let Some(cache) = self.on_disk_cache.as_ref() {
-            cache.register_reused_dep_node(*self, dep_node)
-        }
-    }
-
+    #[inline]
     fn create_stable_hashing_context(&self) -> Self::StableHashingContext {
         TyCtxt::create_stable_hashing_context(*self)
     }

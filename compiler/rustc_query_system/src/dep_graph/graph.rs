@@ -760,20 +760,6 @@ impl<K: DepKind> DepGraph<K> {
         }
     }
 
-    // Register reused dep nodes (i.e. nodes we've marked red or green) with the context.
-    pub fn register_reused_dep_nodes<Ctxt: DepContext<DepKind = K>>(&self, tcx: Ctxt) {
-        let data = self.data.as_ref().unwrap();
-        for prev_index in data.colors.values.indices() {
-            match data.colors.get(prev_index) {
-                Some(DepNodeColor::Red) | Some(DepNodeColor::Green(_)) => {
-                    let dep_node = data.previous.index_to_node(prev_index);
-                    tcx.register_reused_dep_node(&dep_node);
-                }
-                None => {}
-            }
-        }
-    }
-
     pub fn print_incremental_info(&self) {
         if let Some(data) = &self.data {
             data.current.encoder.borrow().print_incremental_info(

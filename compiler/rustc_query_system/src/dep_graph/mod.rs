@@ -27,8 +27,6 @@ pub trait DepContext: Copy {
     /// Access the DepGraph.
     fn dep_graph(&self) -> &DepGraph<Self::DepKind>;
 
-    fn register_reused_dep_node(&self, dep_node: &DepNode<Self::DepKind>);
-
     /// Access the profiler.
     fn profiler(&self) -> &SelfProfilerRef;
 

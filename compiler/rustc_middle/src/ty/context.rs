@@ -1,7 +1,7 @@
 //! Type context book-keeping.
 
 use crate::arena::Arena;
-use crate::dep_graph::{DepGraph, DepNode};
+use crate::dep_graph::DepGraph;
 use crate::hir::place::Place as HirPlace;
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
@@ -83,23 +83,7 @@ pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     /// Converts a `DefPathHash` to its corresponding `DefId` in the current compilation
     /// session, if it still exists. This is used during incremental compilation to
     /// turn a deserialized `DefPathHash` into its current `DefId`.
-    fn def_path_hash_to_def_id(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        def_path_hash: DefPathHash,
-    ) -> Option<DefId>;
-
-    /// If the given `dep_node`'s hash still exists in the current compilation,
-    /// and its current `DefId` is foreign, calls `store_foreign_def_id` with it.
-    ///
-    /// Normally, `store_foreign_def_id_hash` can be called directly by
-    /// the dependency graph when we construct a `DepNode`. However,
-    /// when we re-use a deserialized `DepNode` from the previous compilation
-    /// session, we only have the `DefPathHash` available. This method is used
-    /// to that any `DepNode` that we re-use has a `DefPathHash` -> `RawId` written
-    /// out for usage in the next compilation session.
-    fn register_reused_dep_node(&self, tcx: TyCtxt<'tcx>, dep_node: &DepNode);
-    fn store_foreign_def_id_hash(&self, def_id: DefId, hash: DefPathHash);
+    fn def_path_hash_to_def_id(&self, tcx: TyCtxt<'tcx>, def_path_hash: DefPathHash) -> DefId;
 
     fn drop_serialized_data(&self, tcx: TyCtxt<'tcx>);
 
@@ -1313,6 +1297,17 @@ impl<'tcx> TyCtxt<'tcx> {
             self.sess.local_stable_crate_id()
         } else {
             self.untracked_resolutions.cstore.stable_crate_id(crate_num)
+        }
+    }
+
+    /// Maps a StableCrateId to the corresponding CrateNum. This method assumes
+    /// that the crate in question has already been loaded by the CrateStore.
+    #[inline]
+    pub fn stable_crate_id_to_crate_num(self, stable_crate_id: StableCrateId) -> CrateNum {
+        if stable_crate_id == self.sess.local_stable_crate_id() {
+            LOCAL_CRATE
+        } else {
+            self.untracked_resolutions.cstore.stable_crate_id_to_crate_num(stable_crate_id)
         }
     }
 

@@ -498,6 +498,10 @@ impl CrateStore for CStore {
         self.get_crate_data(cnum).root.stable_crate_id
     }
 
+    fn stable_crate_id_to_crate_num(&self, stable_crate_id: StableCrateId) -> CrateNum {
+        self.stable_crate_ids[&stable_crate_id]
+    }
+
     /// Returns the `DefKey` for a given `DefId`. This indicates the
     /// parent `DefId` as well as some idea of what kind of data the
     /// `DefId` refers to.
@@ -513,14 +517,9 @@ impl CrateStore for CStore {
         self.get_crate_data(def.krate).def_path_hash(def.index)
     }
 
-    // See `CrateMetadataRef::def_path_hash_to_def_id` for more details
-    fn def_path_hash_to_def_id(
-        &self,
-        cnum: CrateNum,
-        index_guess: u32,
-        hash: DefPathHash,
-    ) -> Option<DefId> {
-        self.get_crate_data(cnum).def_path_hash_to_def_id(cnum, index_guess, hash)
+    fn def_path_hash_to_def_id(&self, cnum: CrateNum, hash: DefPathHash) -> DefId {
+        let def_index = self.get_crate_data(cnum).def_path_hash_to_def_index(hash);
+        DefId { krate: cnum, index: def_index }
     }
 
     fn expn_hash_to_expn_id(&self, cnum: CrateNum, index_guess: u32, hash: ExpnHash) -> ExpnId {

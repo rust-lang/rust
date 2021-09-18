@@ -1,4 +1,5 @@
 use decoder::Metadata;
+use def_path_hash_map::DefPathHashMapRef;
 use table::{Table, TableBuilder};
 
 use rustc_ast::{self as ast, MacroDef};
@@ -35,6 +36,7 @@ use encoder::EncodeContext;
 use rustc_span::hygiene::SyntaxContextData;
 
 mod decoder;
+mod def_path_hash_map;
 mod encoder;
 mod table;
 
@@ -230,6 +232,8 @@ crate struct CrateRoot<'tcx> {
     syntax_contexts: SyntaxContextTable,
     expn_data: ExpnDataTable,
     expn_hashes: ExpnHashTable,
+
+    def_path_hash_map: Lazy<DefPathHashMapRef<'tcx>>,
 
     source_map: Lazy<[rustc_span::SourceFile]>,
 
