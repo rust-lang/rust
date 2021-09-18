@@ -1,6 +1,5 @@
 use crate::fx::{FxHashMap, FxHasher};
 use crate::sync::{Lock, LockGuard};
-use smallvec::SmallVec;
 use std::borrow::Borrow;
 use std::collections::hash_map::RawEntryMut;
 use std::hash::{Hash, Hasher};
@@ -37,24 +36,7 @@ impl<T: Default> Default for Sharded<T> {
 impl<T> Sharded<T> {
     #[inline]
     pub fn new(mut value: impl FnMut() -> T) -> Self {
-        // Create a vector of the values we want
-        let mut values: SmallVec<[_; SHARDS]> =
-            (0..SHARDS).map(|_| CacheAligned(Lock::new(value()))).collect();
-
-        // Create an uninitialized array
-        let mut shards: mem::MaybeUninit<[CacheAligned<Lock<T>>; SHARDS]> =
-            mem::MaybeUninit::uninit();
-
-        unsafe {
-            // Copy the values into our array
-            let first = shards.as_mut_ptr() as *mut CacheAligned<Lock<T>>;
-            values.as_ptr().copy_to_nonoverlapping(first, SHARDS);
-
-            // Ignore the content of the vector
-            values.set_len(0);
-
-            Sharded { shards: shards.assume_init() }
-        }
+        Sharded { shards: [(); SHARDS].map(|()| CacheAligned(Lock::new(value()))) }
     }
 
     /// The shard is selected by hashing `val` with `FxHasher`.
