@@ -15,7 +15,14 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
 
 #[proc_macro]
 pub fn arm_functions(input: TokenStream) -> TokenStream {
-    functions(input, &["core_arch/src/arm", "core_arch/src/aarch64"])
+    functions(
+        input,
+        &[
+            "core_arch/src/arm",
+            "core_arch/src/aarch64",
+            "core_arch/src/arm_shared/neon",
+        ],
+    )
 }
 
 #[proc_macro]
@@ -219,12 +226,12 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "int16x2_t" => quote! { &I16X2 },
             "int16x4_t" => quote! { &I16X4 },
             "int16x4x2_t" => quote! { &I16X4X2 },
-            "int16x4x3_t" => quote! { &I16x4x3 },
-            "int16x4x4_t" => quote! { &I16x4x4 },
+            "int16x4x3_t" => quote! { &I16X4X3 },
+            "int16x4x4_t" => quote! { &I16X4X4 },
             "int16x8_t" => quote! { &I16X8 },
             "int16x8x2_t" => quote! { &I16X8X2 },
-            "int16x8x3_t" => quote! { &I16x8x3 },
-            "int16x8x4_t" => quote! { &I16x8x4 },
+            "int16x8x3_t" => quote! { &I16X8X3 },
+            "int16x8x4_t" => quote! { &I16X8X4 },
             "int32x2_t" => quote! { &I32X2 },
             "int32x2x2_t" => quote! { &I32X2X2 },
             "int32x2x3_t" => quote! { &I32X2X3 },
@@ -252,12 +259,12 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "uint8x16_t" => quote! { &U8X16 },
             "uint16x4_t" => quote! { &U16X4 },
             "uint16x4x2_t" => quote! { &U16X4X2 },
-            "uint16x4x3_t" => quote! { &U16x4x3 },
-            "uint16x4x4_t" => quote! { &U16x4x4 },
+            "uint16x4x3_t" => quote! { &U16X4X3 },
+            "uint16x4x4_t" => quote! { &U16X4X4 },
             "uint16x8_t" => quote! { &U16X8 },
             "uint16x8x2_t" => quote! { &U16X8X2 },
-            "uint16x8x3_t" => quote! { &U16x8x3 },
-            "uint16x8x4_t" => quote! { &U16x8x4 },
+            "uint16x8x3_t" => quote! { &U16X8X3 },
+            "uint16x8x4_t" => quote! { &U16X8X4 },
             "uint32x2_t" => quote! { &U32X2 },
             "uint32x2x2_t" => quote! { &U32X2X2 },
             "uint32x2x3_t" => quote! { &U32X2X3 },
@@ -302,13 +309,19 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "poly64x2_t" => quote! { &POLY64X2 },
             "poly8x16_t" => quote! { &POLY8X16 },
             "poly16x4_t" => quote! { &POLY16X4 },
-            "poly16x4x2_t" => quote! { &POLY16X4X2 },
-            "poly16x4x3_t" => quote! { &POLY16X4X3 },
-            "poly16x4x4_t" => quote! { &POLY16X4X4 },
+            "poly16x4x2_t" => quote! { &P16X4X2 },
+            "poly16x4x3_t" => quote! { &P16X4X3 },
+            "poly16x4x4_t" => quote! { &P16X4X4 },
             "poly16x8_t" => quote! { &POLY16X8 },
-            "poly16x8x2_t" => quote! { &POLY16X8X2 },
-            "poly16x8x3_t" => quote! { &POLY16X8X3 },
-            "poly16x8x4_t" => quote! { &POLY16X8X4 },
+            "poly16x8x2_t" => quote! { &P16X8X2 },
+            "poly16x8x3_t" => quote! { &P16X8X3 },
+            "poly16x8x4_t" => quote! { &P16X8X4 },
+            "poly64x1x2_t" => quote! { &P64X1X2 },
+            "poly64x1x3_t" => quote! { &P64X1X3 },
+            "poly64x1x4_t" => quote! { &P64X1X4 },
+            "poly64x2x2_t" => quote! { &P64X2X2 },
+            "poly64x2x3_t" => quote! { &P64X2X3 },
+            "poly64x2x4_t" => quote! { &P64X2X4 },
             "p128" => quote! { &P128 },
 
             "v16i8" => quote! { &v16i8 },

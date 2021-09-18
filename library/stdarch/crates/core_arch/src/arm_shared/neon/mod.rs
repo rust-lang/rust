@@ -362,6 +362,36 @@ pub struct uint64x2x4_t(
     pub uint64x2_t,
 );
 
+/// ARM-specific type containing four `poly64x1_t` vectors.
+#[derive(Copy, Clone)]
+pub struct poly64x1x2_t(pub poly64x1_t, pub poly64x1_t);
+/// ARM-specific type containing four `poly64x1_t` vectors.
+#[derive(Copy, Clone)]
+pub struct poly64x1x3_t(pub poly64x1_t, pub poly64x1_t, pub poly64x1_t);
+/// ARM-specific type containing four `poly64x1_t` vectors.
+#[derive(Copy, Clone)]
+pub struct poly64x1x4_t(
+    pub poly64x1_t,
+    pub poly64x1_t,
+    pub poly64x1_t,
+    pub poly64x1_t,
+);
+
+/// ARM-specific type containing four `poly64x2_t` vectors.
+#[derive(Copy, Clone)]
+pub struct poly64x2x2_t(pub poly64x2_t, pub poly64x2_t);
+/// ARM-specific type containing four `poly64x2_t` vectors.
+#[derive(Copy, Clone)]
+pub struct poly64x2x3_t(pub poly64x2_t, pub poly64x2_t, pub poly64x2_t);
+/// ARM-specific type containing four `poly64x2_t` vectors.
+#[derive(Copy, Clone)]
+pub struct poly64x2x4_t(
+    pub poly64x2_t,
+    pub poly64x2_t,
+    pub poly64x2_t,
+    pub poly64x2_t,
+);
+
 #[allow(improper_ctypes)]
 extern "unadjusted" {
     // absolute value (64-bit)
@@ -795,6 +825,30 @@ pub unsafe fn vld1q_lane_p16<const LANE: i32>(ptr: *const p16, src: poly16x8_t) 
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr", LANE = 0))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr, LANE = 0))]
+pub unsafe fn vld1_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x1_t) -> poly64x1_t {
+    static_assert!(LANE : i32 where LANE == 0);
+    simd_insert(src, LANE as u32, *ptr)
+}
+
+/// Load one single-element structure to one lane of one register.
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr", LANE = 1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 1))]
+pub unsafe fn vld1q_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x2_t) -> poly64x2_t {
+    static_assert_imm1!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
+}
+
+/// Load one single-element structure to one lane of one register.
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
@@ -1057,6 +1111,34 @@ pub unsafe fn vld1q_dup_p16(ptr: *const p16) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_f32(ptr: *const f32) -> float32x2_t {
     let x = vld1_lane_f32::<0>(ptr, transmute(f32x2::splat(0.)));
+    simd_shuffle2!(x, x, [0, 0])
+}
+
+/// Load one single-element structure and Replicate to all lanes (of one register).
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr))]
+pub unsafe fn vld1_dup_p64(ptr: *const p64) -> poly64x1_t {
+    #[cfg(target_arch = "aarch64")]
+    {
+        crate::core_arch::aarch64::vld1_p64(ptr)
+    }
+    #[cfg(target_arch = "arm")]
+    {
+        crate::core_arch::arm::vld1_p64(ptr)
+    }
+}
+
+/// Load one single-element structure and Replicate to all lanes (of one register).
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+pub unsafe fn vld1q_dup_p64(ptr: *const p64) -> poly64x2_t {
+    let x = vld1q_lane_p64::<0>(ptr, transmute(u64x2::splat(0)));
     simd_shuffle2!(x, x, [0, 0])
 }
 
@@ -4873,6 +4955,24 @@ mod tests {
         assert_eq!(r, e)
     }
 
+    #[simd_test(enable = "neon,aes")]
+    unsafe fn test_vld1_lane_p64() {
+        let a = u64x1::new(0);
+        let elem: u64 = 42;
+        let e = u64x1::new(42);
+        let r: u64x1 = transmute(vld1_lane_p64::<0>(&elem, transmute(a)));
+        assert_eq!(r, e)
+    }
+
+    #[simd_test(enable = "neon,aes")]
+    unsafe fn test_vld1q_lane_p64() {
+        let a = u64x2::new(0, 1);
+        let elem: u64 = 42;
+        let e = u64x2::new(0, 42);
+        let r: u64x2 = transmute(vld1q_lane_p64::<1>(&elem, transmute(a)));
+        assert_eq!(r, e)
+    }
+
     #[simd_test(enable = "neon")]
     unsafe fn test_vld1_lane_f32() {
         let a = f32x2::new(0., 1.);
@@ -5054,6 +5154,22 @@ mod tests {
         let elem: p16 = 42;
         let e = u16x8::new(42, 42, 42, 42, 42, 42, 42, 42);
         let r: u16x8 = transmute(vld1q_dup_p16(&elem));
+        assert_eq!(r, e)
+    }
+
+    #[simd_test(enable = "neon,aes")]
+    unsafe fn test_vld1_dup_p64() {
+        let elem: u64 = 42;
+        let e = u64x1::new(42);
+        let r: u64x1 = transmute(vld1_dup_p64(&elem));
+        assert_eq!(r, e)
+    }
+
+    #[simd_test(enable = "neon,aes")]
+    unsafe fn test_vld1q_dup_p64() {
+        let elem: u64 = 42;
+        let e = u64x2::new(42, 42);
+        let r: u64x2 = transmute(vld1q_dup_p64(&elem));
         assert_eq!(r, e)
     }
 

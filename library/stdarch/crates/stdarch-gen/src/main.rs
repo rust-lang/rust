@@ -97,35 +97,14 @@ fn type_bits(t: &str) -> usize {
 }
 
 fn type_exp_len(t: &str) -> usize {
-    match t {
-        "int8x8_t" => 3,
-        "int8x16_t" => 4,
-        "int16x4_t" => 2,
-        "int16x8_t" => 3,
-        "int32x2_t" => 1,
-        "int32x4_t" => 2,
-        "int64x1_t" => 0,
-        "int64x2_t" => 1,
-        "uint8x8_t" => 3,
-        "uint8x16_t" => 4,
-        "uint16x4_t" => 2,
-        "uint16x8_t" => 3,
-        "uint32x2_t" => 1,
-        "uint32x4_t" => 2,
-        "uint64x1_t" => 0,
-        "uint64x2_t" => 1,
-        "float16x4_t" => 2,
-        "float16x8_t" => 3,
-        "float32x2_t" => 1,
-        "float32x4_t" => 2,
-        "float64x1_t" => 0,
-        "float64x2_t" => 1,
-        "poly8x8_t" => 3,
-        "poly8x16_t" => 4,
-        "poly16x4_t" => 2,
-        "poly16x8_t" => 3,
-        "poly64x1_t" => 0,
-        "poly64x2_t" => 1,
+    let t = type_to_sub_type(t);
+    let len = type_len(&t);
+    match len {
+        1 => 0,
+        2 => 1,
+        4 => 2,
+        8 => 3,
+        16 => 4,
         _ => panic!("unknown type: {}", t),
     }
 }
@@ -265,6 +244,18 @@ fn type_to_suffix(t: &str) -> &str {
         "p16" => "h_p16",
         _ => panic!("unknown type: {}", t),
     }
+}
+
+fn type_to_dup_suffix(t: &str) -> String {
+    let s: Vec<_> = type_to_suffix(t).split('_').collect();
+    assert_eq!(s.len(), 2);
+    format!("{}_dup_{}", s[0], s[1])
+}
+
+fn type_to_lane_suffix(t: &str) -> String {
+    let s: Vec<_> = type_to_suffix(t).split('_').collect();
+    assert_eq!(s.len(), 2);
+    format!("{}_lane_{}", s[0], s[1])
 }
 
 fn type_to_n_suffix(t: &str) -> &str {
@@ -435,6 +426,9 @@ enum Suffix {
     NoQNSuffix,
     OutSuffix,
     OutNSuffix,
+    OutNox,
+    OutDupNox,
+    OutLaneNox,
     Lane,
     In2,
     In2Lane,
@@ -563,28 +557,6 @@ fn native_type_to_long_type(t: &str) -> &str {
         "f64" => "float64x2_t",
         _ => panic!("unknown type: {}", t),
     }
-}
-
-fn type_to_ext(t: &str) -> String {
-    if !t.contains('x') {
-        return t.replace("u", "i");
-    }
-    let native = type_to_native_type(t);
-    let sub_ext = match type_sub_len(t) {
-        1 => String::new(),
-        _ => format!(".p0{}", native),
-    };
-    let sub_type = match &native[0..1] {
-        "i" | "f" => native,
-        "u" => native.replace("u", "i"),
-        _ => panic!("unknown type: {}", t),
-    };
-    format!(
-        "v{}{}{}",
-        &type_len(&type_to_sub_type(t)).to_string(),
-        sub_type,
-        sub_ext
-    )
 }
 
 fn type_to_half(t: &str) -> &str {
@@ -892,6 +864,53 @@ fn map_val<'v>(t: &str, v: &'v str) -> &'v str {
     }
 }
 
+fn type_to_ext(t: &str, v: bool, r: bool, pi8: bool) -> String {
+    if !t.contains('x') {
+        return t.replace("u", "i");
+    }
+    let native = type_to_native_type(t);
+    let sub_ext = match type_sub_len(t) {
+        1 => String::new(),
+        _ if v => format!(
+            ".p0v{}{}",
+            &type_len(&type_to_sub_type(t)).to_string(),
+            native
+        ),
+        _ if pi8 => format!(".p0i8"),
+        _ => format!(".p0{}", native),
+    };
+    let sub_type = match &native[0..1] {
+        "i" | "f" => native,
+        "u" => native.replace("u", "i"),
+        _ => panic!("unknown type: {}", t),
+    };
+    let ext = format!(
+        "v{}{}{}",
+        &type_len(&type_to_sub_type(t)).to_string(),
+        sub_type,
+        sub_ext
+    );
+    if r {
+        let ss: Vec<_> = ext.split('.').collect();
+        if ss.len() != 2 {
+            ext
+        } else {
+            format!("{}.{}", ss[1], ss[0])
+        }
+    } else {
+        ext
+    }
+}
+
+fn ext(s: &str, in_t: &[&str; 3], out_t: &str) -> String {
+    s.replace("_EXT_", &type_to_ext(in_t[0], false, false, false))
+        .replace("_EXT2_", &type_to_ext(out_t, false, false, false))
+        .replace("_EXT3_", &type_to_ext(in_t[1], false, false, false))
+        .replace("_EXTr3_", &type_to_ext(in_t[1], false, true, false))
+        .replace("_EXTv2_", &type_to_ext(out_t, true, false, false))
+        .replace("_EXTpi82_", &type_to_ext(out_t, false, false, true))
+}
+
 #[allow(clippy::too_many_arguments)]
 fn gen_aarch64(
     current_comment: &str,
@@ -939,6 +958,21 @@ fn gen_aarch64(
         NoQNSuffix => format!("{}{}", current_name, type_to_noq_n_suffix(in_t[1])),
         OutSuffix => format!("{}{}", current_name, type_to_suffix(out_t)),
         OutNSuffix => format!("{}{}", current_name, type_to_n_suffix(out_t)),
+        OutNox => format!(
+            "{}{}",
+            current_name,
+            type_to_suffix(&type_to_sub_type(out_t))
+        ),
+        OutDupNox => format!(
+            "{}{}",
+            current_name,
+            type_to_dup_suffix(&type_to_sub_type(out_t))
+        ),
+        OutLaneNox => format!(
+            "{}{}",
+            current_name,
+            type_to_lane_suffix(&type_to_sub_type(out_t))
+        ),
         Lane => format!("{}{}", current_name, type_to_lane_suffixes(out_t, in_t[1])),
         In2 => format!("{}{}", current_name, type_to_suffix(in_t[2])),
         In2Lane => format!("{}{}", current_name, type_to_lane_suffixes(out_t, in_t[2])),
@@ -966,15 +1000,13 @@ fn gen_aarch64(
         String::new()
     };
     let current_aarch64 = current_aarch64.clone().unwrap();
-    let mut ext_c = String::new();
-    let mut ext_c_const = String::new();
-    let mut ext_c_store = String::new();
     let mut link_t: Vec<String> = vec![
         in_t[0].to_string(),
         in_t[1].to_string(),
         in_t[2].to_string(),
         out_t.to_string(),
     ];
+    let mut ext_c = String::new();
     if let Some(mut link_aarch64) = link_aarch64.clone() {
         if link_aarch64.contains(":") {
             let links: Vec<_> = link_aarch64.split(':').map(|v| v.to_string()).collect();
@@ -987,101 +1019,81 @@ fn gen_aarch64(
                 links[4].clone(),
             ];
         }
-        let ext = type_to_ext(in_t[0]);
-        let ext2 = type_to_ext(out_t);
-        let ext3 = type_to_ext(in_t[1]);
         let link_aarch64 = if link_aarch64.starts_with("llvm") {
-            link_aarch64
-                .replace("_EXT_", &ext)
-                .replace("_EXT2_", &ext2)
-                .replace("_EXT3_", &ext3)
+            ext(&link_aarch64, in_t, out_t)
         } else {
             let mut link = String::from("llvm.aarch64.neon.");
             link.push_str(&link_aarch64);
-            link.replace("_EXT_", &ext)
-                .replace("_EXT2_", &ext2)
-                .replace("_EXT3_", &ext3)
+            ext(&link, in_t, out_t)
+        };
+        let (ext_inputs, ext_output) = {
+            if const_aarch64.is_some() {
+                if matches!(fn_type, Fntype::Load) {
+                    let sub = type_to_sub_type(in_t[1]);
+                    (
+                        match type_sub_len(in_t[1]) {
+                            1 => format!("a: {}, n: i64, ptr: *const i8", sub),
+                            2 => format!("a: {}, b: {}, n: i64, ptr: *const i8", sub, sub),
+                            3 => format!(
+                                "a: {}, b: {}, c: {}, n: i64, ptr: *const i8",
+                                sub, sub, sub
+                            ),
+                            4 => format!(
+                                "a: {}, b: {}, c: {}, d: {}, n: i64, ptr: *const i8",
+                                sub, sub, sub, sub
+                            ),
+                            _ => panic!("unsupported type: {}", in_t[1]),
+                        },
+                        format!(" -> {}", out_t),
+                    )
+                } else {
+                    (
+                        match para_num {
+                            1 => format!("a: {}, n: i32", in_t[0]),
+                            2 => format!("a: {}, b: {}, n: i32", in_t[0], in_t[1]),
+                            3 => format!("a: {}, b: {}, c: {}, n: i32", in_t[0], in_t[1], in_t[2]),
+                            _ => unimplemented!("unknown para_num"),
+                        },
+                        format!(" -> {}", out_t),
+                    )
+                }
+            } else if matches!(fn_type, Fntype::Store) {
+                let sub = type_to_sub_type(in_t[1]);
+                let native = type_to_native_type(in_t[1]);
+                (
+                    match type_sub_len(in_t[1]) {
+                        1 => format!("a: {}, ptr: *mut {}", sub, native),
+                        2 => format!("a: {}, b: {}, ptr: *mut {}", sub, sub, native),
+                        3 => format!("a: {}, b: {}, c: {}, ptr: *mut {}", sub, sub, sub, native),
+                        4 => format!(
+                            "a: {}, b: {}, c: {}, d: {}, ptr: *mut {}",
+                            sub, sub, sub, sub, native
+                        ),
+                        _ => panic!("unsupported type: {}", in_t[1]),
+                    },
+                    String::new(),
+                )
+            } else {
+                (
+                    match para_num {
+                        1 => format!("a: {}", link_t[0]),
+                        2 => format!("a: {}, b: {}", link_t[0], link_t[1]),
+                        3 => format!("a: {}, b: {}, c: {}", link_t[0], link_t[1], link_t[2]),
+                        _ => unimplemented!("unknown para_num"),
+                    },
+                    format!(" -> {}", link_t[3]),
+                )
+            }
         };
         ext_c = format!(
             r#"#[allow(improper_ctypes)]
     extern "unadjusted" {{
         #[cfg_attr(target_arch = "aarch64", link_name = "{}")]
-        fn {}({}) -> {};
+        fn {}({}){};
     }}
     "#,
-            link_aarch64,
-            current_fn,
-            match para_num {
-                1 => {
-                    format!("a: {}", link_t[0])
-                }
-                2 => {
-                    format!("a: {}, b: {}", link_t[0], link_t[1])
-                }
-                3 => {
-                    format!("a: {}, b: {}, c: {}", link_t[0], link_t[1], link_t[2])
-                }
-                _ => unimplemented!("unknown para_num"),
-            },
-            link_t[3]
+            link_aarch64, current_fn, ext_inputs, ext_output,
         );
-        if const_aarch64.is_some() {
-            ext_c_const = format!(
-                r#"#[allow(improper_ctypes)]
-    extern "unadjusted" {{
-        #[cfg_attr(target_arch = "aarch64", link_name = "{}")]
-        fn {}({}) -> {};
-    }}
-    "#,
-                link_aarch64,
-                current_fn,
-                match para_num {
-                    1 => {
-                        format!("a: {}, n: i32", in_t[0])
-                    }
-                    2 => {
-                        format!("a: {}, b: {}, n: i32", in_t[0], in_t[1])
-                    }
-                    3 => {
-                        format!("a: {}, b: {}, c: {}, n: i32", in_t[0], in_t[1], in_t[2])
-                    }
-                    _ => unimplemented!("unknown para_num"),
-                },
-                out_t
-            );
-        }
-        if matches!(fn_type, Fntype::Store) {
-            let sub = type_to_sub_type(in_t[1]);
-            let native = type_to_native_type(in_t[1]);
-            ext_c_store = format!(
-                r#"#[allow(improper_ctypes)]
-    extern "unadjusted" {{
-        #[cfg_attr(target_arch = "aarch64", link_name = "{}")]
-        fn {}({});
-    }}
-    "#,
-                link_aarch64,
-                current_fn,
-                match type_sub_len(in_t[1]) {
-                    1 => {
-                        format!("a: {}, ptr: *mut {}", sub, native,)
-                    }
-                    2 => {
-                        format!("a: {}, b: {}, ptr: *mut {}", sub, sub, native,)
-                    }
-                    3 => {
-                        format!("a: {}, b: {}, c: {}, ptr: *mut {}", sub, sub, sub, native,)
-                    }
-                    4 => {
-                        format!(
-                            "a: {}, b: {}, c: {}, d: {}, ptr: *mut {}",
-                            sub, sub, sub, sub, native,
-                        )
-                    }
-                    _ => panic!("unsupported type: {}", in_t[1]),
-                },
-            );
-        }
     };
     let const_declare = if let Some(constn) = constn {
         if constn.contains(":") {
@@ -1168,124 +1180,76 @@ fn gen_aarch64(
             name, const_declare, fn_inputs, fn_output
         )
     };
-    let call = if let Some(const_aarch64) = const_aarch64 {
-        match para_num {
-            1 => format!(
-                r#"pub unsafe fn {}{}(a: {}) -> {} {{
-    {}
-    {}{}(a, {})
-}}"#,
-                name,
-                const_declare,
-                in_t[0],
-                out_t,
-                multi_calls,
-                ext_c_const,
-                current_fn,
-                const_aarch64
-            ),
-            2 => format!(
-                r#"pub unsafe fn {}{}(a: {}) -> {} {{
-    {}{}{}(a, b, {})
-}}"#,
-                name,
-                const_declare,
-                in_t[0],
-                out_t,
-                multi_calls,
-                ext_c_const,
-                current_fn,
-                const_aarch64
-            ),
-            _ => String::new(),
-        }
-    } else if matches!(fn_type, Fntype::Store) {
-        match type_sub_len(in_t[1]) {
-            1 => format!(
-                r#"{}{{
-    {}{}(b, a)
-}}"#,
-                fn_decl, ext_c_store, current_fn,
-            ),
-            2 => format!(
-                r#"{}{{
-    {}{}(b.0, b.1, a)
-}}"#,
-                fn_decl, ext_c_store, current_fn,
-            ),
-            3 => format!(
-                r#"{}{{
-    {}{}(b.0, b.1, b.2, a)
-}}"#,
-                fn_decl, ext_c_store, current_fn,
-            ),
-            4 => format!(
-                r#"{}{{
-    {}{}(b.0, b.1, b.2, b.3, a)
-}}"#,
-                fn_decl, ext_c_store, current_fn,
-            ),
-            _ => panic!("unsupported type: {}", in_t[1]),
-        }
-    } else {
-        let trans: [&str; 2] = if link_t[3] != out_t {
-            ["transmute(", ")"]
-        } else {
-            ["", ""]
-        };
-        match (multi_calls.len(), para_num, fixed.len()) {
-            (0, 1, 0) => format!(
-                r#"{}{{
-    {}{}{}(a){}
-}}"#,
-                fn_decl, ext_c, trans[0], current_fn, trans[1]
-            ),
-            (0, 1, _) => {
-                let fixed: Vec<String> = fixed.iter().take(type_len(in_t[0])).cloned().collect();
+    let call_params = {
+        if let (Some(const_aarch64), Some(_)) = (const_aarch64, link_aarch64) {
+            if matches!(fn_type, Fntype::Load) {
+                let subs = match type_sub_len(in_t[1]) {
+                    1 => "b",
+                    2 => "b.0, b.1",
+                    3 => "b.0, b.1, b.2",
+                    4 => "b.0, b.1, b.2, b.3",
+                    _ => panic!("unsupported type: {}", in_t[1]),
+                };
                 format!(
-                    r#"{}{{
-    let b{};
-    {}{}{}(a, transmute(b)){}
-}}"#,
-                    fn_decl,
-                    values(in_t[0], &fixed),
+                    r#"{}
+    {}{}({}, {} as i64, a as *const i8)"#,
+                    multi_calls,
                     ext_c,
-                    trans[0],
                     current_fn,
-                    trans[1],
+                    subs,
+                    constn.as_deref().unwrap()
                 )
+            } else {
+                match para_num {
+                    1 => format!(
+                        r#"{}
+    {}{}(a, {})"#,
+                        multi_calls, ext_c, current_fn, const_aarch64
+                    ),
+                    2 => format!(
+                        r#"{}
+    {}{}(a, b, {})"#,
+                        multi_calls, ext_c, current_fn, const_aarch64
+                    ),
+                    _ => String::new(),
+                }
             }
-            (0, 2, _) => format!(
-                r#"{}{{
-    {}{}{}(a, b){}
-}}"#,
-                fn_decl, ext_c, trans[0], current_fn, trans[1],
-            ),
-            (0, 3, _) => format!(
-                r#"{}{{
-    {}{}(a, b, c)
-}}"#,
-                fn_decl, ext_c, current_fn,
-            ),
-            (_, 1, _) => format!(
-                r#"{}{{
-    {}{}
-}}"#,
-                fn_decl, ext_c, multi_calls,
-            ),
-            (_, 2, _) => format!(
-                r#"{}{{
-    {}{}
-}}"#,
-                fn_decl, ext_c, multi_calls,
-            ),
-            (_, 3, _) => format!(
-                r#"{}{{
-    {}{}
-}}"#,
-                fn_decl, ext_c, multi_calls,
-            ),
-            (_, _, _) => String::new(),
+        } else if matches!(fn_type, Fntype::Store) {
+            match type_sub_len(in_t[1]) {
+                1 => format!(r#"{}{}(b, a)"#, ext_c, current_fn),
+                2 => format!(r#"{}{}(b.0, b.1, a)"#, ext_c, current_fn),
+                3 => format!(r#"{}{}(b.0, b.1, b.2, a)"#, ext_c, current_fn),
+                4 => format!(r#"{}{}(b.0, b.1, b.2, b.3, a)"#, ext_c, current_fn),
+                _ => panic!("unsupported type: {}", in_t[1]),
+            }
+        } else {
+            let trans: [&str; 2] = if link_t[3] != out_t {
+                ["transmute(", ")"]
+            } else {
+                ["", ""]
+            };
+            match (multi_calls.len(), para_num, fixed.len()) {
+                (0, 1, 0) => format!(r#"{}{}{}(a){}"#, ext_c, trans[0], current_fn, trans[1]),
+                (0, 1, _) => {
+                    let fixed: Vec<String> =
+                        fixed.iter().take(type_len(in_t[0])).cloned().collect();
+                    format!(
+                        r#"let b{};
+    {}{}{}(a, transmute(b)){}"#,
+                        values(in_t[0], &fixed),
+                        ext_c,
+                        trans[0],
+                        current_fn,
+                        trans[1],
+                    )
+                }
+                (0, 2, _) => format!(r#"{}{}{}(a, b){}"#, ext_c, trans[0], current_fn, trans[1],),
+                (0, 3, _) => format!(r#"{}{}(a, b, c)"#, ext_c, current_fn,),
+                (_, 1, _) => format!(r#"{}{}"#, ext_c, multi_calls,),
+                (_, 2, _) => format!(r#"{}{}"#, ext_c, multi_calls,),
+                (_, 3, _) => format!(r#"{}{}"#, ext_c, multi_calls,),
+                (_, _, _) => String::new(),
+            }
         }
     };
     let function = format!(
@@ -1294,9 +1258,17 @@ fn gen_aarch64(
 #[inline]
 #[target_feature(enable = "{}")]
 #[cfg_attr(test, assert_instr({}{}))]{}
-{}
+{}{{
+    {}
+}}
 "#,
-        current_comment, current_target, current_aarch64, const_assert, const_legacy, call
+        current_comment,
+        current_target,
+        current_aarch64,
+        const_assert,
+        const_legacy,
+        fn_decl,
+        call_params
     );
     let test = match fn_type {
         Fntype::Normal => gen_test(
@@ -1316,7 +1288,7 @@ fn gen_aarch64(
 
 fn gen_load_test(
     name: &str,
-    _in_t: &[&str; 3],
+    in_t: &[&str; 3],
     out_t: &str,
     current_tests: &[(
         Vec<String>,
@@ -1333,9 +1305,11 @@ fn gen_load_test(
     unsafe fn test_{}() {{"#,
         name,
     );
-    for (a, _, _, _, e) in current_tests {
+    for (a, b, _, n, e) in current_tests {
         let a: Vec<String> = a.iter().take(type_len + 1).cloned().collect();
         let e: Vec<String> = e.iter().take(type_len).cloned().collect();
+        let has_b = b.len() > 0;
+        let has_n = n.is_some();
         let mut input = String::from("[");
         for i in 0..type_len + 1 {
             if i != 0 {
@@ -1344,43 +1318,65 @@ fn gen_load_test(
             input.push_str(&a[i])
         }
         input.push_str("]");
-        let mut output = String::from("[");
-        for i in 0..type_sub_len(out_t) {
-            if i != 0 {
-                output.push_str(", ");
-            }
-            let sub_len = type_len / type_sub_len(out_t);
-            if type_to_global_type(out_t) != "f64" {
-                let mut sub_output = format!("{}::new(", type_to_global_type(out_t));
-                for j in 0..sub_len {
-                    if j != 0 {
-                        sub_output.push_str(", ");
-                    }
-                    sub_output.push_str(&e[i * sub_len + j]);
+        let output = |v: &Vec<String>| {
+            let mut output = String::from("[");
+            for i in 0..type_sub_len(out_t) {
+                if i != 0 {
+                    output.push_str(", ");
                 }
-                sub_output.push_str(")");
-                output.push_str(&sub_output);
-            } else {
-                output.push_str(&e[i]);
+                let sub_len = type_len / type_sub_len(out_t);
+                if type_to_global_type(out_t) != "f64" {
+                    let mut sub_output = format!("{}::new(", type_to_global_type(out_t));
+                    for j in 0..sub_len {
+                        if j != 0 {
+                            sub_output.push_str(", ");
+                        }
+                        sub_output.push_str(&v[i * sub_len + j]);
+                    }
+                    sub_output.push_str(")");
+                    output.push_str(&sub_output);
+                } else {
+                    output.push_str(&v[i]);
+                }
             }
-        }
-        output.push_str("]");
+            output.push_str("]");
+            output
+        };
+        let input_b = if has_b {
+            let b: Vec<String> = b.iter().take(type_len).cloned().collect();
+            format!(
+                r#"
+        let b: [{}; {}] = {};"#,
+                type_to_global_type(in_t[1]),
+                type_sub_len(in_t[1]),
+                output(&b),
+            )
+        } else {
+            String::new()
+        };
         let t = format!(
             r#"
-        let a: [{}; {}] = {};
+        let a: [{}; {}] = {};{}
         let e: [{}; {}] = {};
-        let r: [{}; {}] = transmute({}(a[1..].as_ptr()));
+        let r: [{}; {}] = transmute({}{}(a[1..].as_ptr(){}));
         assert_eq!(r, e);
 "#,
             type_to_native_type(out_t),
             type_len + 1,
             input,
+            input_b,
             type_to_global_type(out_t),
             type_sub_len(out_t),
-            output,
+            output(&e),
             type_to_global_type(out_t),
             type_sub_len(out_t),
             name,
+            if has_n {
+                format!("::<{}>", n.as_deref().unwrap())
+            } else {
+                String::new()
+            },
+            if has_b { ", transmute(b)" } else { "" },
         );
         test.push_str(&t);
     }
@@ -1609,6 +1605,21 @@ fn gen_arm(
         NoQNSuffix => format!("{}{}", current_name, type_to_noq_n_suffix(in_t[1])),
         OutSuffix => format!("{}{}", current_name, type_to_suffix(out_t)),
         OutNSuffix => format!("{}{}", current_name, type_to_n_suffix(out_t)),
+        OutNox => format!(
+            "{}{}",
+            current_name,
+            type_to_suffix(&type_to_sub_type(out_t))
+        ),
+        OutDupNox => format!(
+            "{}{}",
+            current_name,
+            type_to_dup_suffix(&type_to_sub_type(out_t))
+        ),
+        OutLaneNox => format!(
+            "{}{}",
+            current_name,
+            type_to_lane_suffix(&type_to_sub_type(out_t))
+        ),
         Lane => format!("{}{}", current_name, type_to_lane_suffixes(out_t, in_t[1])),
         In2 => format!("{}{}", current_name, type_to_suffix(in_t[2])),
         In2Lane => format!("{}{}", current_name, type_to_lane_suffixes(out_t, in_t[2])),
@@ -1626,9 +1637,8 @@ fn gen_arm(
         Default => "v7",
         ArmV7 => "v7",
         FPArmV8 => "fp-armv8,v8",
-        AES => "crypto,v8", // TODO: Replace with AES when the minimum LLVM version has b8baa2a9132498ea286dbb0d03f005760ecc6fdb
+        AES => "aes,v8",
     };
-
     let current_fn = if let Some(current_fn) = current_fn.clone() {
         if link_aarch64.is_some() || link_arm.is_some() {
             panic!(
@@ -1649,7 +1659,7 @@ fn gen_arm(
         String::new()
     };
     let mut ext_c = String::new();
-    let mut ext_c_arm = if multi_fn.is_empty() {
+    let mut ext_c_arm = if multi_fn.is_empty() || link_arm.is_none() {
         String::new()
     } else {
         String::from(
@@ -1657,7 +1667,7 @@ fn gen_arm(
     "#,
         )
     };
-    let mut ext_c_aarch64 = if multi_fn.is_empty() {
+    let mut ext_c_aarch64 = if multi_fn.is_empty() || link_aarch64.is_none() {
         String::new()
     } else {
         String::from(
@@ -1700,39 +1710,19 @@ fn gen_arm(
                 links[4].clone(),
             ];
         }
-        let ext = type_to_ext(in_t[0]);
-        let ext2 = type_to_ext(out_t);
-        let ext3 = type_to_ext(in_t[1]);
-        let ext3_arm = if matches!(fn_type, Fntype::Store) {
-            let s: Vec<_> = ext3.split('.').collect();
-            assert_eq!(s.len(), 2);
-            format!("{}.{}", s[1], s[0])
-        } else {
-            ext3.clone()
-        };
         let link_arm = if link_arm.starts_with("llvm") {
-            link_arm
-                .replace("_EXT_", &ext)
-                .replace("_EXT2_", &ext2)
-                .replace("_EXT3_", &ext3_arm)
+            ext(&link_arm, in_t, out_t)
         } else {
             let mut link = String::from("llvm.arm.neon.");
             link.push_str(&link_arm);
-            link.replace("_EXT_", &ext)
-                .replace("_EXT2_", &ext2)
-                .replace("_EXT3_", &ext3_arm)
+            ext(&link, in_t, out_t)
         };
         let link_aarch64 = if link_aarch64.starts_with("llvm") {
-            link_aarch64
-                .replace("_EXT_", &ext)
-                .replace("_EXT2_", &ext2)
-                .replace("_EXT3_", &ext3)
+            ext(&link_aarch64, in_t, out_t)
         } else {
             let mut link = String::from("llvm.aarch64.neon.");
             link.push_str(&link_aarch64);
-            link.replace("_EXT_", &ext)
-                .replace("_EXT2_", &ext2)
-                .replace("_EXT3_", &ext3)
+            ext(&link, in_t, out_t)
         };
         if out_t == link_arm_t[3] && out_t == link_aarch64_t[3] {
             ext_c = format!(
@@ -1747,175 +1737,142 @@ fn gen_arm(
                 link_aarch64,
                 current_fn,
                 match para_num {
-                    1 => {
-                        format!("a: {}", in_t[0])
-                    }
-                    2 => {
-                        format!("a: {}, b: {}", in_t[0], in_t[1])
-                    }
-                    3 => {
-                        format!("a: {}, b: {}, c: {}", in_t[0], in_t[1], in_t[2])
-                    }
+                    1 => format!("a: {}", in_t[0]),
+                    2 => format!("a: {}, b: {}", in_t[0], in_t[1]),
+                    3 => format!("a: {}, b: {}, c: {}", in_t[0], in_t[1], in_t[2]),
                     _ => unimplemented!("unknown para_num"),
                 },
                 out_t
             );
         };
-        if let Some(const_arm) = const_arm {
-            let (_, const_type) = if const_arm.contains(":") {
-                let consts: Vec<_> = const_arm.split(':').map(|v| v.trim().to_string()).collect();
-                (consts[0].clone(), consts[1].clone())
-            } else {
-                (
-                    const_arm.to_string(),
-                    in_t[para_num as usize - 1].to_string(),
-                )
-            };
-            ext_c_arm.push_str(&format!(
-                r#"#[allow(improper_ctypes)]
-    extern "unadjusted" {{
-        #[cfg_attr(target_arch = "arm", link_name = "{}")]
-        fn {}({}) -> {};
-    }}
-"#,
-                link_arm,
-                current_fn,
-                match para_num {
-                    1 => {
-                        format!("a: {}, n: {}", in_t[0], const_type)
-                    }
-                    2 => {
-                        format!("a: {}, b: {}, n: {}", in_t[0], in_t[1], const_type)
-                    }
-                    3 => {
-                        format!(
-                            "a: {}, b: {}, c: {}, n: {}",
-                            in_t[0], in_t[1], in_t[2], const_type
+        let (arm_ext_inputs, arm_ext_output) = {
+            if let Some(const_arm) = const_arm {
+                if matches!(fn_type, Fntype::Load) {
+                    let sub_type = type_to_sub_type(in_t[1]);
+                    let inputs = match type_sub_len(in_t[1]) {
+                        1 => format!("a: {}", sub_type),
+                        2 => format!("a: {}, b: {}", sub_type, sub_type,),
+                        3 => format!("a: {}, b: {}, c: {}", sub_type, sub_type, sub_type,),
+                        4 => format!(
+                            "a: {}, b: {}, c: {}, d: {}",
+                            sub_type, sub_type, sub_type, sub_type,
+                        ),
+                        _ => panic!("unknown type: {}", in_t[1]),
+                    };
+                    (
+                        format!("ptr: *const i8, {}, n: i32, size: i32", inputs),
+                        String::new(),
+                    )
+                } else {
+                    let (_, const_type) = if const_arm.contains(":") {
+                        let consts: Vec<_> =
+                            const_arm.split(':').map(|v| v.trim().to_string()).collect();
+                        (consts[0].clone(), consts[1].clone())
+                    } else {
+                        (
+                            const_arm.to_string(),
+                            in_t[para_num as usize - 1].to_string(),
                         )
-                    }
-                    _ => unimplemented!("unknown para_num"),
-                },
-                out_t
-            ));
-        };
-        if out_t != link_arm_t[3] {
-            ext_c_arm.push_str(&format!(
-                r#"#[allow(improper_ctypes)]
-    extern "unadjusted" {{
-        #[cfg_attr(target_arch = "arm", link_name = "{}")]
-        fn {}({}) -> {};
-    }}
-"#,
-                link_arm,
-                current_fn,
-                match para_num {
-                    1 => {
-                        format!("a: {}", link_arm_t[0])
-                    }
-                    2 => {
-                        format!("a: {}, b: {}", link_arm_t[0], link_arm_t[1])
-                    }
-                    3 => {
-                        format!(
+                    };
+                    (
+                        match para_num {
+                            1 => format!("a: {}, n: {}", in_t[0], const_type),
+                            2 => format!("a: {}, b: {}, n: {}", in_t[0], in_t[1], const_type),
+                            3 => format!(
+                                "a: {}, b: {}, c: {}, n: {}",
+                                in_t[0], in_t[1], in_t[2], const_type
+                            ),
+                            _ => unimplemented!("unknown para_num"),
+                        },
+                        format!(" -> {}", out_t),
+                    )
+                }
+            } else if out_t != link_arm_t[3] {
+                (
+                    match para_num {
+                        1 => format!("a: {}", link_arm_t[0]),
+                        2 => format!("a: {}, b: {}", link_arm_t[0], link_arm_t[1]),
+                        3 => format!(
                             "a: {}, b: {}, c: {}",
                             link_arm_t[0], link_arm_t[1], link_arm_t[2]
-                        )
-                    }
-                    _ => unimplemented!("unknown para_num"),
-                },
-                link_arm_t[3]
-            ));
-        }
-        if matches!(fn_type, Fntype::Store) {
-            let sub_type = type_to_sub_type(in_t[1]);
-            ext_c_arm.push_str(&format!(
-                r#"#[allow(improper_ctypes)]
+                        ),
+                        _ => unimplemented!("unknown para_num"),
+                    },
+                    format!(" -> {}", link_arm_t[3]),
+                )
+            } else if matches!(fn_type, Fntype::Store) {
+                let sub_type = type_to_sub_type(in_t[1]);
+                let inputs = match type_sub_len(in_t[1]) {
+                    1 => format!("a: {}", sub_type),
+                    2 => format!("a: {}, b: {}", sub_type, sub_type,),
+                    3 => format!("a: {}, b: {}, c: {}", sub_type, sub_type, sub_type,),
+                    4 => format!(
+                        "a: {}, b: {}, c: {}, d: {}",
+                        sub_type, sub_type, sub_type, sub_type,
+                    ),
+                    _ => panic!("unknown type: {}", in_t[1]),
+                };
+                (
+                    format!("ptr: *mut {}, {}", type_to_native_type(in_t[1]), inputs),
+                    String::new(),
+                )
+            } else {
+                (String::new(), String::new())
+            }
+        };
+        ext_c_arm.push_str(&format!(
+            r#"#[allow(improper_ctypes)]
     extern "unadjusted" {{
         #[cfg_attr(target_arch = "arm", link_name = "{}")]
-        fn {}(ptr: *mut {}, {});
+        fn {}({}){};
     }}
 "#,
-                link_arm,
-                current_fn,
-                type_to_native_type(in_t[0]),
-                match type_sub_len(in_t[1]) {
-                    1 => format!("a: {}", sub_type),
-                    2 => format!("a: {}, b: {}", sub_type, sub_type,),
-                    3 => format!("a: {}, b: {}, c: {}", sub_type, sub_type, sub_type,),
-                    4 => format!(
-                        "a: {}, b: {}, c: {}, d: {}",
-                        sub_type, sub_type, sub_type, sub_type,
-                    ),
-                    _ => panic!("unknown type: {}", in_t[1]),
-                },
-            ));
-        }
-        if const_aarch64.is_some() {
-            ext_c_aarch64.push_str(&format!(
-                r#"#[allow(improper_ctypes)]
-    extern "unadjusted" {{
-        #[cfg_attr(target_arch = "aarch64", link_name = "{}")]
-        fn {}({}) -> {};
-    }}
-"#,
-                link_aarch64,
-                current_fn,
-                match para_num {
-                    1 => {
-                        format!("a: {}, n: i32", in_t[0])
-                    }
-                    2 => {
-                        format!("a: {}, b: {}, n: i32", in_t[0], in_t[1])
-                    }
-                    3 => {
-                        format!("a: {}, b: {}, c: {}, n: i32", in_t[0], in_t[1], in_t[2])
-                    }
-                    _ => unimplemented!("unknown para_num"),
-                },
-                out_t
-            ));
-        }
-        if out_t != link_aarch64_t[3] {
-            ext_c_aarch64.push_str(&format!(
-                r#"#[allow(improper_ctypes)]
-    extern "unadjusted" {{
-        #[cfg_attr(target_arch = "aarch64", link_name = "{}")]
-        fn {}({}) -> {};
-    }}
-"#,
-                link_aarch64,
-                current_fn,
-                match para_num {
-                    1 => {
-                        format!("a: {}", link_aarch64_t[0])
-                    }
-                    2 => {
-                        format!("a: {}, b: {}", link_aarch64_t[0], link_aarch64_t[1])
-                    }
-                    3 => {
-                        format!(
+            link_arm, current_fn, arm_ext_inputs, arm_ext_output,
+        ));
+        let (aarch64_ext_inputs, aarch64_ext_output) = {
+            if const_aarch64.is_some() {
+                if matches!(fn_type, Fntype::Load) {
+                    let sub_type = type_to_sub_type(in_t[1]);
+                    let mut inputs = match type_sub_len(in_t[1]) {
+                        1 => format!("a: {}", sub_type,),
+                        2 => format!("a: {}, b: {}", sub_type, sub_type,),
+                        3 => format!("a: {}, b: {}, c: {}", sub_type, sub_type, sub_type,),
+                        4 => format!(
+                            "a: {}, b: {}, c: {}, d: {}",
+                            sub_type, sub_type, sub_type, sub_type,
+                        ),
+                        _ => panic!("unknown type: {}", in_t[1]),
+                    };
+                    inputs.push_str(&format!(", n: i64, ptr: *const i8"));
+                    (inputs, format!(" -> {}", out_t))
+                } else {
+                    (
+                        match para_num {
+                            1 => format!("a: {}, n: i32", in_t[0]),
+                            2 => format!("a: {}, b: {}, n: i32", in_t[0], in_t[1]),
+                            3 => format!("a: {}, b: {}, c: {}, n: i32", in_t[0], in_t[1], in_t[2]),
+                            _ => unimplemented!("unknown para_num"),
+                        },
+                        format!(" -> {}", out_t),
+                    )
+                }
+            } else if out_t != link_aarch64_t[3] {
+                (
+                    match para_num {
+                        1 => format!("a: {}", link_aarch64_t[0]),
+                        2 => format!("a: {}, b: {}", link_aarch64_t[0], link_aarch64_t[1]),
+                        3 => format!(
                             "a: {}, b: {}, c: {}",
                             link_aarch64_t[0], link_aarch64_t[1], link_aarch64_t[2]
-                        )
-                    }
-                    _ => unimplemented!("unknown para_num"),
-                },
-                link_aarch64_t[3]
-            ));
-        }
-        if matches!(fn_type, Fntype::Store) {
-            let sub_type = type_to_sub_type(in_t[1]);
-            ext_c_aarch64.push_str(&format!(
-                r#"#[allow(improper_ctypes)]
-    extern "unadjusted" {{
-        #[cfg_attr(target_arch = "aarch64", link_name = "{}")]
-        fn {}({}, ptr: *mut {});
-    }}
-"#,
-                link_aarch64,
-                current_fn,
-                match type_sub_len(in_t[1]) {
-                    1 => format!("a: {}", sub_type),
+                        ),
+                        _ => unimplemented!("unknown para_num"),
+                    },
+                    format!(" -> {}", link_aarch64_t[3]),
+                )
+            } else if matches!(fn_type, Fntype::Store) {
+                let sub_type = type_to_sub_type(in_t[1]);
+                let mut inputs = match type_sub_len(in_t[1]) {
+                    1 => format!("a: {}", sub_type,),
                     2 => format!("a: {}, b: {}", sub_type, sub_type,),
                     3 => format!("a: {}, b: {}, c: {}", sub_type, sub_type, sub_type,),
                     4 => format!(
@@ -1923,10 +1880,22 @@ fn gen_arm(
                         sub_type, sub_type, sub_type, sub_type,
                     ),
                     _ => panic!("unknown type: {}", in_t[1]),
-                },
-                type_to_native_type(in_t[0]),
-            ));
-        }
+                };
+                inputs.push_str(&format!(", ptr: *mut {}", type_to_native_type(in_t[0])));
+                (inputs, String::new())
+            } else {
+                (String::new(), String::new())
+            }
+        };
+        ext_c_aarch64.push_str(&format!(
+            r#"#[allow(improper_ctypes)]
+    extern "unadjusted" {{
+        #[cfg_attr(target_arch = "aarch64", link_name = "{}")]
+        fn {}({}){};
+    }}
+"#,
+            link_aarch64, current_fn, aarch64_ext_inputs, aarch64_ext_output,
+        ));
     };
     let const_declare = if let Some(constn) = constn {
         format!(r#"<const {}: i32>"#, constn)
@@ -1984,202 +1953,120 @@ fn gen_arm(
             name, const_declare, fn_inputs, fn_output
         )
     };
-    let call = match (multi_calls.len(), para_num, fixed.len()) {
-        (0, 1, 0) => format!(
-            r#"{}{{
-    {}{}(a)
-}}"#,
-            fn_decl, ext_c, current_fn,
-        ),
-        (0, 1, _) => {
-            let fixed: Vec<String> = fixed.iter().take(type_len(in_t[0])).cloned().collect();
+    let function = if separate {
+        let call_arm = {
+            let arm_params = if let (Some(const_arm), Some(_)) = (const_arm, link_arm) {
+                if matches!(fn_type, Fntype::Load) {
+                    let subs = match type_sub_len(in_t[1]) {
+                        1 => "b",
+                        2 => "b.0, b.1",
+                        3 => "b.0, b.1, b.2",
+                        4 => "b.0, b.1, b.2, b.3",
+                        _ => "",
+                    };
+                    format!(
+                        "{}(a as *const i8, {}, {}, {})",
+                        current_fn,
+                        subs,
+                        constn.as_deref().unwrap(),
+                        type_bits(&type_to_sub_type(in_t[1])) / 8,
+                    )
+                } else {
+                    let cnt = if const_arm.contains(':') {
+                        let consts: Vec<_> =
+                            const_arm.split(':').map(|v| v.trim().to_string()).collect();
+                        consts[0].clone()
+                    } else {
+                        let const_arm = const_arm.replace("ttn", &type_to_native_type(in_t[1]));
+                        let mut cnt = String::from(in_t[1]);
+                        cnt.push_str("(");
+                        for i in 0..type_len(in_t[1]) {
+                            if i != 0 {
+                                cnt.push_str(", ");
+                            }
+                            cnt.push_str(&const_arm);
+                        }
+                        cnt.push_str(")");
+                        cnt
+                    };
+                    match para_num {
+                        1 => format!("{}(a, {})", current_fn, cnt),
+                        2 => format!("{}(a, b, {})", current_fn, cnt),
+                        _ => String::new(),
+                    }
+                }
+            } else if out_t != link_arm_t[3] {
+                match para_num {
+                    1 => format!("transmute({}(a))", current_fn,),
+                    2 => format!("transmute({}(transmute(a), transmute(b)))", current_fn,),
+                    _ => String::new(),
+                }
+            } else if matches!(fn_type, Fntype::Store) {
+                match type_sub_len(in_t[1]) {
+                    1 => format!("{}(a, b)", current_fn),
+                    2 => format!("{}(a, b.0, b.1)", current_fn),
+                    3 => format!("{}(a, b.0, b.1, b.2)", current_fn),
+                    4 => format!("{}(a, b.0, b.1, b.2, b.3)", current_fn),
+                    _ => String::new(),
+                }
+            } else {
+                String::new()
+            };
             format!(
                 r#"{}{{
-    let b{};
-    {}{}(a, transmute(b))
+    {}{}{}
 }}"#,
-                fn_decl,
-                values(in_t[0], &fixed),
-                ext_c,
-                current_fn,
+                fn_decl, multi_calls, ext_c_arm, arm_params
             )
-        }
-        (0, 2, _) => format!(
-            r#"{}{{
-    {}{}(a, b)
-}}"#,
-            fn_decl, ext_c, current_fn,
-        ),
-        (0, 3, _) => format!(
-            r#"{}{{
-    {}{}(a, b, c)
-}}"#,
-            fn_decl, ext_c, current_fn,
-        ),
-        (_, 1, _) => format!(
-            r#"{}{{
-    {}{}
-}}"#,
-            fn_decl, ext_c, multi_calls,
-        ),
-        (_, 2, _) => format!(
-            r#"{}{{
-    {}{}
-}}"#,
-            fn_decl, ext_c, multi_calls,
-        ),
-        (_, 3, _) => format!(
-            r#"{}{{
-    {}{}
-}}"#,
-            fn_decl, ext_c, multi_calls,
-        ),
-        (_, _, _) => String::new(),
-    };
-
-    let call_arm = if let Some(const_arm) = const_arm {
-        let cnt = if const_arm.contains(':') {
-            let consts: Vec<_> = const_arm.split(':').map(|v| v.trim().to_string()).collect();
-            consts[0].clone()
-        } else {
-            let const_arm = const_arm.replace("ttn", &type_to_native_type(in_t[1]));
-            let mut cnt = String::from(in_t[1]);
-            cnt.push_str("(");
-            for i in 0..type_len(in_t[1]) {
-                if i != 0 {
-                    cnt.push_str(", ");
-                }
-                cnt.push_str(&const_arm);
-            }
-            cnt.push_str(")");
-            cnt
         };
-        match para_num {
-            1 => format!(
+        let call_aarch64 = {
+            let aarch64_params =
+                if let (Some(const_aarch64), Some(_)) = (const_aarch64, link_aarch64) {
+                    if matches!(fn_type, Fntype::Load) {
+                        let subs = match type_sub_len(in_t[1]) {
+                            1 => "b",
+                            2 => "b.0, b.1",
+                            3 => "b.0, b.1, b.2",
+                            4 => "b.0, b.1, b.2, b.3",
+                            _ => "",
+                        };
+                        format!(
+                            "{}({}, {} as i64, a as *const i8)",
+                            current_fn,
+                            subs,
+                            constn.as_deref().unwrap()
+                        )
+                    } else {
+                        match para_num {
+                            1 => format!("{}(a, {})", current_fn, const_aarch64),
+                            2 => format!("{}(a, b, {})", current_fn, const_aarch64),
+                            _ => String::new(),
+                        }
+                    }
+                } else if out_t != link_aarch64_t[3] {
+                    match para_num {
+                        1 => format!("transmute({}(a))", current_fn,),
+                        2 => format!("transmute({}(a, b))", current_fn,),
+                        _ => String::new(),
+                    }
+                } else if matches!(fn_type, Fntype::Store) {
+                    match type_sub_len(in_t[1]) {
+                        1 => format!("{}(b, a)", current_fn),
+                        2 => format!("{}(b.0, b.1, a)", current_fn),
+                        3 => format!("{}(b.0, b.1, b.2, a)", current_fn),
+                        4 => format!("{}(b.0, b.1, b.2, b.3, a)", current_fn),
+                        _ => String::new(),
+                    }
+                } else {
+                    String::new()
+                };
+            format!(
                 r#"{}{{
-    {}{}{}(a, {})
+    {}{}{}
 }}"#,
-                fn_decl, multi_calls, ext_c_arm, current_fn, cnt
-            ),
-            2 => format!(
-                r#"{}{{
-    {}{}{}(a, b, {})
-}}"#,
-                fn_decl, multi_calls, ext_c_arm, current_fn, cnt
-            ),
-            _ => String::new(),
-        }
-    } else if out_t != link_arm_t[3] {
-        match para_num {
-            1 => format!(
-                r#"{}{{
-    {}{}transmute({}(a))
-}}"#,
-                fn_decl, multi_calls, ext_c_arm, current_fn,
-            ),
-            2 => format!(
-                r#"{}{{
-    {}{}transmute({}(transmute(a), transmute(b)))
-}}"#,
-                fn_decl, multi_calls, ext_c_arm, current_fn,
-            ),
-            _ => String::new(),
-        }
-    } else if matches!(fn_type, Fntype::Store) {
-        match type_sub_len(in_t[1]) {
-            1 => format!(
-                r#"{}{{
-    {}{}{}(a, b)
-}}"#,
-                fn_decl, multi_calls, ext_c_arm, current_fn,
-            ),
-            2 => format!(
-                r#"{}{{
-    {}{}{}(a, b.0, b.1)
-}}"#,
-                fn_decl, multi_calls, ext_c_arm, current_fn,
-            ),
-            3 => format!(
-                r#"{}{{
-    {}{}{}(a, b.0, b.1, b.2)
-}}"#,
-                fn_decl, multi_calls, ext_c_arm, current_fn,
-            ),
-            4 => format!(
-                r#"{}{{
-    {}{}{}(a, b.0, b.1, b.2, b.3)
-}}"#,
-                fn_decl, multi_calls, ext_c_arm, current_fn,
-            ),
-            _ => String::new(),
-        }
-    } else {
-        String::new()
-    };
-    let call_aarch64 = if let Some(const_aarch64) = const_aarch64 {
-        match para_num {
-            1 => format!(
-                r#"{}{{
-    {}{}{}(a, {})
-}}"#,
-                fn_decl, multi_calls, ext_c_aarch64, current_fn, const_aarch64
-            ),
-            2 => format!(
-                r#"{}{{
-    {}{}{}(a, b, {})
-}}"#,
-                fn_decl, multi_calls, ext_c_aarch64, current_fn, const_aarch64
-            ),
-            _ => String::new(),
-        }
-    } else if out_t != link_aarch64_t[3] {
-        match para_num {
-            1 => format!(
-                r#"{}{{
-    {}{}transmute({}(a))
-}}"#,
-                fn_decl, multi_calls, ext_c_aarch64, current_fn,
-            ),
-            2 => format!(
-                r#"{}{{
-    {}{}transmute({}(a, b))
-}}"#,
-                fn_decl, multi_calls, ext_c_aarch64, current_fn,
-            ),
-            _ => String::new(),
-        }
-    } else if matches!(fn_type, Fntype::Store) {
-        match type_sub_len(in_t[1]) {
-            1 => format!(
-                r#"{}{{
-    {}{}{}(b, a)
-}}"#,
-                fn_decl, multi_calls, ext_c_aarch64, current_fn,
-            ),
-            2 => format!(
-                r#"{}{{
-    {}{}{}(b.0, b.1, a)
-}}"#,
-                fn_decl, multi_calls, ext_c_aarch64, current_fn,
-            ),
-            3 => format!(
-                r#"{}{{
-    {}{}{}(b.0, b.1, b.2, a)
-}}"#,
-                fn_decl, multi_calls, ext_c_aarch64, current_fn,
-            ),
-            4 => format!(
-                r#"{}{{
-    {}{}{}(b.0, b.1, b.2, b.3, a)
-}}"#,
-                fn_decl, multi_calls, ext_c_aarch64, current_fn,
-            ),
-            _ => String::new(),
-        }
-    } else {
-        String::new()
-    };
-    let function = if separate {
+                fn_decl, multi_calls, ext_c_aarch64, aarch64_params
+            )
+        };
         format!(
             r#"
 {}
@@ -2210,6 +2097,38 @@ fn gen_arm(
             call_aarch64,
         )
     } else {
+        let call = {
+            let stmts = match (multi_calls.len(), para_num, fixed.len()) {
+                (0, 1, 0) => format!(r#"{}{}(a)"#, ext_c, current_fn,),
+                (0, 1, _) => {
+                    let fixed: Vec<String> =
+                        fixed.iter().take(type_len(in_t[0])).cloned().collect();
+                    format!(
+                        r#"let b{};
+    {}{}(a, transmute(b))"#,
+                        values(in_t[0], &fixed),
+                        ext_c,
+                        current_fn,
+                    )
+                }
+                (0, 2, _) => format!(r#"{}{}(a, b)"#, ext_c, current_fn,),
+                (0, 3, _) => format!(r#"{}{}(a, b, c)"#, ext_c, current_fn,),
+                (_, 1, _) => format!(r#"{}{}"#, ext_c, multi_calls,),
+                (_, 2, _) => format!(r#"{}{}"#, ext_c, multi_calls,),
+                (_, 3, _) => format!(r#"{}{}"#, ext_c, multi_calls,),
+                (_, _, _) => String::new(),
+            };
+            if stmts != String::new() {
+                format!(
+                    r#"{}{{
+    {}
+}}"#,
+                    fn_decl, stmts
+                )
+            } else {
+                String::new()
+            }
+        };
         format!(
             r#"
 {}
@@ -2662,6 +2581,18 @@ fn get_call(
             fn_name.push_str(type_to_suffix(&type_to_signed(&String::from(in_t[1]))));
         } else if fn_format[1] == "outsigned" {
             fn_name.push_str(type_to_suffix(&type_to_signed(&String::from(out_t))));
+        } else if fn_format[1] == "outsignednox" {
+            fn_name.push_str(&type_to_suffix(&type_to_sub_type(&type_to_signed(
+                &String::from(out_t),
+            ))));
+        } else if fn_format[1] == "outsigneddupnox" {
+            fn_name.push_str(&type_to_dup_suffix(&type_to_sub_type(&type_to_signed(
+                &String::from(out_t),
+            ))));
+        } else if fn_format[1] == "outsignedlanenox" {
+            fn_name.push_str(&type_to_lane_suffix(&type_to_sub_type(&type_to_signed(
+                &String::from(out_t),
+            ))));
         } else if fn_format[1] == "unsigned" {
             fn_name.push_str(type_to_suffix(type_to_unsigned(in_t[1])));
         } else if fn_format[1] == "doubleself" {
@@ -2880,6 +2811,12 @@ mod test {
             suffix = NoQNSuffix;
         } else if line.starts_with("out-suffix") {
             suffix = OutSuffix;
+        } else if line.starts_with("out-nox") {
+            suffix = OutNox;
+        } else if line.starts_with("out-dup-nox") {
+            suffix = OutDupNox;
+        } else if line.starts_with("out-lane-nox") {
+            suffix = OutLaneNox;
         } else if line.starts_with("lane-suffixes") {
             suffix = Lane;
         } else if line.starts_with("in2-suffix") {

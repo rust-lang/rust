@@ -2080,6 +2080,11 @@ generate *const p8:poly8x8x2_t, *const p8:poly8x8x3_t, *const p8:poly8x8x4_t
 generate *const p8:poly8x16x2_t, *const p8:poly8x16x3_t, *const p8:poly8x16x4_t
 generate *const p16:poly16x4x2_t, *const p16:poly16x4x3_t, *const p16:poly16x4x4_t
 generate *const p16:poly16x8x2_t, *const p16:poly16x8x3_t, *const p16:poly16x8x4_t
+target = aes
+generate *const p64:poly64x1x2_t
+arm = ldr
+generate *const p64:poly64x1x3_t, *const p64:poly64x1x4_t
+generate *const p64:poly64x2x2_t, *const p64:poly64x2x3_t, *const p64:poly64x2x4_t
 
 /// Load multiple single-element structures to one, two, three, or four registers
 name = vld1
@@ -2111,6 +2116,166 @@ link-aarch64 = ld1x4._EXT2_
 link-arm = vld1x4._EXT2_
 generate *const f32:float32x2x4_t, *const f32:float32x4x4_t
 
+/// Load multiple 2-element structures to two registers
+name = vld2
+out-nox
+a = 0, 1, 2, 2, 3, 2, 4, 3, 5, 2, 6, 3, 7, 4, 8, 5, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15, 8, 16, 9, 17
+validate 1, 2, 2, 3, 2, 3, 4, 5, 2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
+load_fn
+
+aarch64 = ld2
+link-aarch64 = ld2._EXTv2_
+arm = vld2
+link-arm = vld2._EXTpi82_
+//generate *const i8:int8x8x2_t, *const i16:int16x4x2_t, *const i32:int32x2x2_t, *const i64:int64x1x2_t
+//generate *const i8:int8x16x2_t, *const i16:int16x8x2_t, *const i32:int32x4x2_t, *const i64:int64x2x2_t
+
+/// Load multiple 2-element structures to two registers
+name = vld2
+out-nox
+multi_fn = transmute, {vld2-outsignednox-noext, transmute(a)}
+a = 0, 1, 2, 2, 3, 2, 4, 3, 5, 2, 6, 3, 7, 4, 8, 5, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15, 8, 16, 9, 17
+validate 1, 2, 2, 3, 2, 3, 4, 5, 2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
+load_fn
+
+aarch64 = ld2
+arm = vld2
+//generate *const u8:uint8x8x2_t, *const u16:uint16x4x2_t, *const u32:uint32x2x2_t, *const u64:uint64x1x2_t
+//generate *const u8:uint8x16x2_t, *const u16:uint16x8x2_t, *const u32:uint32x4x2_t, *const u64:uint64x2x2_t
+//generate *const p8:poly8x8x2_t, *const p16:poly16x4x2_t, *const p8:poly8x16x2_t, *const p16:poly16x8x2_t
+
+/// Load multiple 2-element structures to two registers
+name = vld2
+out-nox
+a = 0., 1., 2., 2., 3., 2., 4., 3., 5., 2., 6., 3., 7., 4., 8., 5., 9.
+validate 1., 2., 2., 3., 2., 3., 4., 5., 2., 3., 4., 5., 6., 7., 8., 9.
+load_fn
+
+aarch64 = ld2
+link-aarch64 = ld2._EXTv2_
+//generate *const f64:float64x1x2_t, *const f64:float64x2x2_t
+
+arm = vld2
+link-arm = vld2._EXTpi82_
+//generate *const f32:float32x2x2_t, *const f32:float32x4x2_t
+
+/// Load single 2-element structure and replicate to all lanes of two registers
+name = vld2
+out-dup-nox
+a = 0, 1, 1, 2, 3, 1, 4, 3, 5, 1, 6, 3, 7, 4, 8, 5, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15, 8, 16, 9, 17
+validate 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+load_fn
+
+arm = vld2dup
+link-arm = vld2dup._EXTpi82_
+aarch64 = ld2r
+link-aarch64 = ld2r._EXT2_
+//generate *const i8:int8x8x2_t, *const i16:int16x4x2_t, *const i32:int32x2x2_t, *const i64:int64x1x2_t
+//generate *const i8:int8x16x2_t, *const i16:int16x8x2_t, *const i32:int32x4x2_t, *const i64:int64x2x2_t
+
+/// Load single 2-element structure and replicate to all lanes of two registers
+name = vld2
+out-dup-nox
+multi_fn = transmute, {vld2-outsigneddupnox-noext, transmute(a)}
+a = 0, 1, 1, 2, 3, 1, 4, 3, 5, 1, 6, 3, 7, 4, 8, 5, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15, 8, 16, 9, 17
+validate 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+load_fn
+
+arm = vld2dup
+aarch64 = ld2r
+//generate *const u8:uint8x8x2_t, *const u16:uint16x4x2_t, *const u32:uint32x2x2_t, *const u64:uint64x1x2_t
+//generate *const u8:uint8x16x2_t, *const u16:uint16x8x2_t, *const u32:uint32x4x2_t, *const u64:uint64x2x2_t
+//generate *const p8:poly8x8x2_t, *const p16:poly16x4x2_t, *const p8:poly8x16x2_t, *const p16:poly16x8x2_t
+
+/// Load single 2-element structure and replicate to all lanes of two registers
+name = vld2
+out-dup-nox
+a = 0., 1., 1., 2., 3., 1., 4., 3., 5.
+validate 1., 1., 1., 1., 1., 1., 1., 1.
+load_fn
+
+aarch64 = ld2r
+link-aarch64 = ld2r._EXT2_
+//generate *const f64:float64x1x2_t, *const f64:float64x2x2_t
+
+arm = vld2dup
+link-arm = vld2dup._EXTpi82_
+//generate *const f32:float32x2x2_t, *const f32:float32x4x2_t
+
+/// Load multiple 2-element structures to two registers
+name = vld2
+out-lane-nox
+multi_fn = static_assert_imm-in_exp_len-LANE
+constn = LANE
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8
+b = 0, 2, 2, 14, 2, 16, 17, 18, 2, 20, 21, 22, 23, 24, 25, 26, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26
+n = 0
+validate 1, 2, 2, 14, 2, 16, 17, 18, 2, 20, 21, 22, 23, 24, 25, 26, 2, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26
+load_fn
+arm-aarch64-separate
+
+aarch64 = ld2lane
+const-aarch64 = LANE
+link-aarch64 = ld2lane._EXTpi82_
+//generate *const i64:int64x1x2_t:int64x1x2_t, *const i64:int64x2x2_t:int64x2x2_t
+
+arm = vld2lane
+const-arm = LANE
+link-arm = vld2lane._EXTpi82_
+//generate *const i8:int8x8x2_t:int8x8x2_t, *const i16:int16x4x2_t:int16x4x2_t, *const i32:int32x2x2_t:int32x2x2_t
+//generate *const i8:int8x16x2_t:int8x16x2_t, *const i16:int16x8x2_t:int16x8x2_t, *const i32:int32x4x2_t:int32x4x2_t
+
+/// Load multiple 2-element structures to two registers
+name = vld2
+out-lane-nox
+multi_fn = static_assert_imm-in_exp_len-LANE
+multi_fn = transmute, {vld2-outsignedlanenox-::<LANE>, transmute(a), transmute(b)}
+constn = LANE
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8
+b = 0, 2, 2, 14, 2, 16, 17, 18, 2, 20, 21, 22, 23, 24, 25, 26, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26
+n = 0
+validate 1, 2, 2, 14, 2, 16, 17, 18, 2, 20, 21, 22, 23, 24, 25, 26, 2, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26
+load_fn
+arm-aarch64-separate
+
+aarch64 = ld2lane
+const-aarch64 = LANE
+
+target = aes
+//generate *const p64:poly64x1x2_t:poly64x1x2_t, *const p64:poly64x2x2_t:poly64x2x2_t
+
+target = default
+//generate *const u64:uint64x1x2_t:uint64x1x2_t, *const u64:uint64x2x2_t:uint64x2x2_t
+
+arm = vld2lane
+const-arm = LANE
+//generate *const u8:uint8x8x2_t:uint8x8x2_t, *const u16:uint16x4x2_t:uint16x4x2_t, *const u32:uint32x2x2_t:uint32x2x2_t
+//generate *const u8:uint8x16x2_t:uint8x16x2_t, *const u16:uint16x8x2_t:uint16x8x2_t, *const u32:uint32x4x2_t:uint32x4x2_t
+//generate *const p8:poly8x8x2_t:poly8x8x2_t, *const p16:poly16x4x2_t:poly16x4x2_t
+//generate *const p8:poly8x16x2_t:poly8x16x2_t, *const p16:poly16x8x2_t:poly16x8x2_t
+
+/// Load multiple 2-element structures to two registers
+name = vld2
+out-lane-nox
+multi_fn = static_assert_imm-in_exp_len-LANE
+constn = LANE
+a = 0., 1., 2., 3., 4., 5., 6., 7., 8.
+b = 0., 2., 2., 14., 2., 16., 17., 18.
+n = 0
+validate 1., 2., 2., 14., 2., 16., 17., 18.
+load_fn
+arm-aarch64-separate
+
+aarch64 = ld2lane
+const-aarch64 = LANE
+link-aarch64 = ld2lane._EXTpi82_
+//generate *const f64:float64x1x2_t:float64x1x2_t, *const f64:float64x2x2_t:float64x2x2_t
+
+arm = vld2lane
+const-arm = LANE
+link-arm = vld2lane._EXTpi82_
+//generate *const f32:float32x2x2_t:float32x2x2_t, *const f32:float32x4x2_t:float32x4x2_t
+
 /// Store multiple single-element structures from one, two, three, or four registers
 name = vst1
 a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
@@ -2121,17 +2286,17 @@ arm-aarch64-separate
 aarch64 = st1
 link-aarch64 = st1x2._EXT3_
 arm = vst1
-link-arm = vst1x2._EXT3_
+link-arm = vst1x2._EXTr3_
 generate *mut i8:int8x8x2_t:void, *mut i16:int16x4x2_t:void, *mut i32:int32x2x2_t:void, *mut i64:int64x1x2_t:void
 generate *mut i8:int8x16x2_t:void, *mut i16:int16x8x2_t:void, *mut i32:int32x4x2_t:void, *mut i64:int64x2x2_t:void
 
 link-aarch64 = st1x3._EXT3_
-link-arm = vst1x3._EXT3_
+link-arm = vst1x3._EXTr3_
 generate *mut i8:int8x8x3_t:void, *mut i16:int16x4x3_t:void, *mut i32:int32x2x3_t:void, *mut i64:int64x1x3_t:void
 generate *mut i8:int8x16x3_t:void, *mut i16:int16x8x3_t:void, *mut i32:int32x4x3_t:void, *mut i64:int64x2x3_t:void
 
 link-aarch64 = st1x4._EXT3_
-link-arm = vst1x4._EXT3_
+link-arm = vst1x4._EXTr3_
 generate *mut i8:int8x8x4_t:void, *mut i16:int16x4x4_t:void, *mut i32:int32x2x4_t:void, *mut i64:int64x1x4_t:void
 generate *mut i8:int8x16x4_t:void, *mut i16:int16x8x4_t:void, *mut i32:int32x4x4_t:void, *mut i64:int64x2x4_t:void
 
@@ -2174,15 +2339,15 @@ generate *mut f64:float64x1x4_t:void, *mut f64:float64x2x4_t:void
 
 arm = vst1
 link-aarch64 = st1x2._EXT3_
-link-arm = vst1x2._EXT3_
+link-arm = vst1x2._EXTr3_
 generate *mut f32:float32x2x2_t:void, *mut f32:float32x4x2_t:void
 
 link-aarch64 = st1x3._EXT3_
-link-arm = vst1x3._EXT3_
+link-arm = vst1x3._EXTr3_
 generate *mut f32:float32x2x3_t:void, *mut f32:float32x4x3_t:void
 
 link-aarch64 = st1x4._EXT3_
-link-arm = vst1x4._EXT3_
+link-arm = vst1x4._EXTr3_
 generate *mut f32:float32x2x4_t:void, *mut f32:float32x4x4_t:void
 
 /// Multiply
@@ -2429,8 +2594,8 @@ aarch64 = pmull
 generate poly64x2_t:poly64x2_t:p128
 
 /// Vector long multiply with scalar
-name = vmull
-n-suffix
+name = vmull_n
+no-q
 multi_fn = vmull-in0-noext, a, {vdup-nin0-noext, b}
 a = 1, 2, 3, 4, 5, 6, 7, 8
 b = 2
@@ -3568,7 +3733,7 @@ generate int16x4_t:i16:int16x4_t, int32x2_t:i32:int32x2_t
 
 /// Vector saturating doubling multiply high with scalar
 name = vqdmulhq_n
-out-suffix
+no-q
 multi_fn = vdupq_n-in_ntt-noext, b:out_t, b
 multi_fn = vqdmulh-out-noext, a, b
 a = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX

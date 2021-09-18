@@ -2087,7 +2087,7 @@ pub unsafe fn vcreate_p16(a: u64) -> poly16x4_t {
 /// Insert vector element from another vector element
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 pub unsafe fn vcreate_p64(a: u64) -> poly64x1_t {
@@ -6604,6 +6604,66 @@ pub unsafe fn vld1q_p16_x4(a: *const p16) -> poly16x8x4_t {
 
 /// Load multiple single-element structures to one, two, three, or four registers
 #[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_p64_x2(a: *const p64) -> poly64x1x2_t {
+    transmute(vld1_s64_x2(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(ldr))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_p64_x3(a: *const p64) -> poly64x1x3_t {
+    transmute(vld1_s64_x3(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(ldr))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1_p64_x4(a: *const p64) -> poly64x1x4_t {
+    transmute(vld1_s64_x4(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(ldr))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_p64_x2(a: *const p64) -> poly64x2x2_t {
+    transmute(vld1q_s64_x2(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(ldr))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_p64_x3(a: *const p64) -> poly64x2x3_t {
+    transmute(vld1q_s64_x3(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(ldr))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
+pub unsafe fn vld1q_p64_x4(a: *const p64) -> poly64x2x4_t {
+    transmute(vld1q_s64_x4(transmute(a)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
@@ -8528,7 +8588,7 @@ vmull_p8_(a, b)
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmull))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smull))]
-pub unsafe fn vmullh_n_s16(a: int16x4_t, b: i16) -> int32x4_t {
+pub unsafe fn vmull_n_s16(a: int16x4_t, b: i16) -> int32x4_t {
     vmull_s16(a, vdup_n_s16(b))
 }
 
@@ -8538,7 +8598,7 @@ pub unsafe fn vmullh_n_s16(a: int16x4_t, b: i16) -> int32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmull))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smull))]
-pub unsafe fn vmulls_n_s32(a: int32x2_t, b: i32) -> int64x2_t {
+pub unsafe fn vmull_n_s32(a: int32x2_t, b: i32) -> int64x2_t {
     vmull_s32(a, vdup_n_s32(b))
 }
 
@@ -8548,7 +8608,7 @@ pub unsafe fn vmulls_n_s32(a: int32x2_t, b: i32) -> int64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmull))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umull))]
-pub unsafe fn vmullh_n_u16(a: uint16x4_t, b: u16) -> uint32x4_t {
+pub unsafe fn vmull_n_u16(a: uint16x4_t, b: u16) -> uint32x4_t {
     vmull_u16(a, vdup_n_u16(b))
 }
 
@@ -8558,7 +8618,7 @@ pub unsafe fn vmullh_n_u16(a: uint16x4_t, b: u16) -> uint32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmull))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umull))]
-pub unsafe fn vmulls_n_u32(a: uint32x2_t, b: u32) -> uint64x2_t {
+pub unsafe fn vmull_n_u32(a: uint32x2_t, b: u32) -> uint64x2_t {
     vmull_u32(a, vdup_n_u32(b))
 }
 
@@ -10198,7 +10258,7 @@ pub unsafe fn vqdmulh_n_s32(a: int32x2_t, b: i32) -> int32x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmulh))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmulh))]
-pub unsafe fn vqdmulhq_nq_s16(a: int16x8_t, b: i16) -> int16x8_t {
+pub unsafe fn vqdmulhq_n_s16(a: int16x8_t, b: i16) -> int16x8_t {
     let b: int16x8_t = vdupq_n_s16(b);
     vqdmulhq_s16(a, b)
 }
@@ -10209,7 +10269,7 @@ pub unsafe fn vqdmulhq_nq_s16(a: int16x8_t, b: i16) -> int16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmulh))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmulh))]
-pub unsafe fn vqdmulhq_nq_s32(a: int32x4_t, b: i32) -> int32x4_t {
+pub unsafe fn vqdmulhq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
     let b: int32x4_t = vdupq_n_s32(b);
     vqdmulhq_s32(a, b)
 }
@@ -15277,7 +15337,7 @@ pub unsafe fn vset_lane_p16<const LANE: i32>(a: p16, b: poly16x4_t) -> poly16x4_
 /// Insert vector element from another vector element
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
@@ -15409,7 +15469,7 @@ pub unsafe fn vsetq_lane_p16<const LANE: i32>(a: p16, b: poly16x8_t) -> poly16x8
 /// Insert vector element from another vector element
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
@@ -21482,6 +21542,54 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_p64_x2() {
+        let a: [u64; 3] = [0, 1, 2];
+        let e: [i64x1; 2] = [i64x1::new(1), i64x1::new(2)];
+        let r: [i64x1; 2] = transmute(vld1_p64_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_p64_x3() {
+        let a: [u64; 4] = [0, 1, 2, 3];
+        let e: [i64x1; 3] = [i64x1::new(1), i64x1::new(2), i64x1::new(3)];
+        let r: [i64x1; 3] = transmute(vld1_p64_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_p64_x4() {
+        let a: [u64; 5] = [0, 1, 2, 3, 4];
+        let e: [i64x1; 4] = [i64x1::new(1), i64x1::new(2), i64x1::new(3), i64x1::new(4)];
+        let r: [i64x1; 4] = transmute(vld1_p64_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_p64_x2() {
+        let a: [u64; 5] = [0, 1, 2, 3, 4];
+        let e: [i64x2; 2] = [i64x2::new(1, 2), i64x2::new(3, 4)];
+        let r: [i64x2; 2] = transmute(vld1q_p64_x2(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_p64_x3() {
+        let a: [u64; 7] = [0, 1, 2, 3, 4, 5, 6];
+        let e: [i64x2; 3] = [i64x2::new(1, 2), i64x2::new(3, 4), i64x2::new(5, 6)];
+        let r: [i64x2; 3] = transmute(vld1q_p64_x3(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_p64_x4() {
+        let a: [u64; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+        let e: [i64x2; 4] = [i64x2::new(1, 2), i64x2::new(3, 4), i64x2::new(5, 6), i64x2::new(7, 8)];
+        let r: [i64x2; 4] = transmute(vld1q_p64_x4(a[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vld1_f32_x2() {
         let a: [f32; 5] = [0., 1., 2., 3., 4.];
         let e: [f32x2; 2] = [f32x2::new(1., 2.), f32x2::new(3., 4.)];
@@ -22601,38 +22709,38 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
-    unsafe fn test_vmullh_n_s16() {
+    unsafe fn test_vmull_n_s16() {
         let a: i16x4 = i16x4::new(1, 2, 3, 4);
         let b: i16 = 2;
         let e: i32x4 = i32x4::new(2, 4, 6, 8);
-        let r: i32x4 = transmute(vmullh_n_s16(transmute(a), transmute(b)));
+        let r: i32x4 = transmute(vmull_n_s16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
-    unsafe fn test_vmulls_n_s32() {
+    unsafe fn test_vmull_n_s32() {
         let a: i32x2 = i32x2::new(1, 2);
         let b: i32 = 2;
         let e: i64x2 = i64x2::new(2, 4);
-        let r: i64x2 = transmute(vmulls_n_s32(transmute(a), transmute(b)));
+        let r: i64x2 = transmute(vmull_n_s32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
-    unsafe fn test_vmullh_n_u16() {
+    unsafe fn test_vmull_n_u16() {
         let a: u16x4 = u16x4::new(1, 2, 3, 4);
         let b: u16 = 2;
         let e: u32x4 = u32x4::new(2, 4, 6, 8);
-        let r: u32x4 = transmute(vmullh_n_u16(transmute(a), transmute(b)));
+        let r: u32x4 = transmute(vmull_n_u16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
-    unsafe fn test_vmulls_n_u32() {
+    unsafe fn test_vmull_n_u32() {
         let a: u32x2 = u32x2::new(1, 2);
         let b: u32 = 2;
         let e: u64x2 = u64x2::new(2, 4);
-        let r: u64x2 = transmute(vmulls_n_u32(transmute(a), transmute(b)));
+        let r: u64x2 = transmute(vmull_n_u32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -23797,20 +23905,20 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
-    unsafe fn test_vqdmulhq_nq_s16() {
+    unsafe fn test_vqdmulhq_n_s16() {
         let a: i16x8 = i16x8::new(0x7F_FF, 0x7F_FF, 0x7F_FF, 0x7F_FF, 0x7F_FF, 0x7F_FF, 0x7F_FF, 0x7F_FF);
         let b: i16 = 2;
         let e: i16x8 = i16x8::new(1, 1, 1, 1, 1, 1, 1, 1);
-        let r: i16x8 = transmute(vqdmulhq_nq_s16(transmute(a), transmute(b)));
+        let r: i16x8 = transmute(vqdmulhq_n_s16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
-    unsafe fn test_vqdmulhq_nq_s32() {
+    unsafe fn test_vqdmulhq_n_s32() {
         let a: i32x4 = i32x4::new(0x7F_FF_FF_FF, 0x7F_FF_FF_FF, 0x7F_FF_FF_FF, 0x7F_FF_FF_FF);
         let b: i32 = 2;
         let e: i32x4 = i32x4::new(1, 1, 1, 1);
-        let r: i32x4 = transmute(vqdmulhq_nq_s32(transmute(a), transmute(b)));
+        let r: i32x4 = transmute(vqdmulhq_n_s32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 

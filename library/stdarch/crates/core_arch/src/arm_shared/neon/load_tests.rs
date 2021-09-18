@@ -173,6 +173,22 @@ unsafe fn test_vld1q_p16() {
     assert_eq!(r, e)
 }
 
+#[simd_test(enable = "neon,aes")]
+unsafe fn test_vld1_p64() {
+    let a: [p64; 2] = [0, 1];
+    let e = u64x1::new(1);
+    let r: u64x1 = transmute(vld1_p64(a[1..].as_ptr()));
+    assert_eq!(r, e)
+}
+
+#[simd_test(enable = "neon,aes")]
+unsafe fn test_vld1q_p64() {
+    let a: [p64; 3] = [0, 1, 2];
+    let e = u64x2::new(1, 2);
+    let r: u64x2 = transmute(vld1q_p64(a[1..].as_ptr()));
+    assert_eq!(r, e)
+}
+
 #[simd_test(enable = "neon")]
 unsafe fn test_vld1_f32() {
     let a: [f32; 3] = [0., 1., 2.];
@@ -186,23 +202,5 @@ unsafe fn test_vld1q_f32() {
     let a: [f32; 5] = [0., 1., 2., 3., 4.];
     let e = f32x4::new(1., 2., 3., 4.);
     let r: f32x4 = transmute(vld1q_f32(a[1..].as_ptr()));
-    assert_eq!(r, e)
-}
-
-#[cfg(target_arch = "aarch64")]
-#[simd_test(enable = "neon")]
-unsafe fn test_vld1_f64() {
-    let a: [f64; 2] = [0., 1.];
-    let e = f64x1::new(1.);
-    let r: f64x1 = transmute(vld1_f64(a[1..].as_ptr()));
-    assert_eq!(r, e)
-}
-
-#[cfg(target_arch = "aarch64")]
-#[simd_test(enable = "neon")]
-unsafe fn test_vld1q_f64() {
-    let a: [f64; 3] = [0., 1., 2.];
-    let e = f64x2::new(1., 2.);
-    let r: f64x2 = transmute(vld1q_f64(a[1..].as_ptr()));
     assert_eq!(r, e)
 }

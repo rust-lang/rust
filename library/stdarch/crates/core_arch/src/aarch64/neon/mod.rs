@@ -621,6 +621,22 @@ pub unsafe fn vld1q_p16(ptr: *const p16) -> poly16x8_t {
 
 /// Load multiple single-element structures to one, two, three, or four registers.
 #[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1_p64(ptr: *const p64) -> poly64x1_t {
+    read_unaligned(ptr.cast())
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1q_p64(ptr: *const p64) -> poly64x2_t {
+    read_unaligned(ptr.cast())
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
 pub unsafe fn vld1_f32(ptr: *const f32) -> float32x2_t {
@@ -649,6 +665,43 @@ pub unsafe fn vld1_f64(ptr: *const f64) -> float64x1_t {
 #[cfg_attr(test, assert_instr(ldr))]
 pub unsafe fn vld1q_f64(ptr: *const f64) -> float64x2_t {
     read_unaligned(ptr.cast())
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1_dup_f64(ptr: *const f64) -> float64x1_t {
+    vld1_f64(ptr)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1q_dup_f64(ptr: *const f64) -> float64x2_t {
+    let x = vld1q_lane_f64::<0>(ptr, transmute(f64x2::splat(0.)));
+    simd_shuffle2!(x, x, [0, 0])
+}
+
+/// Load one single-element structure to one lane of one register.
+#[inline]
+#[target_feature(enable = "neon")]
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(test, assert_instr(ldr, LANE = 0))]
+pub unsafe fn vld1_lane_f64<const LANE: i32>(ptr: *const f64, src: float64x1_t) -> float64x1_t {
+    static_assert!(LANE : i32 where LANE == 0);
+    simd_insert(src, LANE as u32, *ptr)
+}
+
+/// Load one single-element structure to one lane of one register.
+#[inline]
+#[target_feature(enable = "neon")]
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(test, assert_instr(ldr, LANE = 1))]
+pub unsafe fn vld1q_lane_f64<const LANE: i32>(ptr: *const f64, src: float64x2_t) -> float64x2_t {
+    static_assert_imm1!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers.
@@ -4698,6 +4751,56 @@ mod tests {
         let r: u16 = vaddlvq_u8(transmute(a));
         let e = 136_u16;
         assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_f64() {
+        let a: [f64; 2] = [0., 1.];
+        let e = f64x1::new(1.);
+        let r: f64x1 = transmute(vld1_f64(a[1..].as_ptr()));
+        assert_eq!(r, e)
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_f64() {
+        let a: [f64; 3] = [0., 1., 2.];
+        let e = f64x2::new(1., 2.);
+        let r: f64x2 = transmute(vld1q_f64(a[1..].as_ptr()));
+        assert_eq!(r, e)
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_dup_f64() {
+        let a: [f64; 2] = [1., 42.];
+        let e = f64x1::new(42.);
+        let r: f64x1 = transmute(vld1_dup_f64(a[1..].as_ptr()));
+        assert_eq!(r, e)
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_dup_f64() {
+        let elem: f64 = 42.;
+        let e = f64x2::new(42., 42.);
+        let r: f64x2 = transmute(vld1q_dup_f64(&elem));
+        assert_eq!(r, e)
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1_lane_f64() {
+        let a = f64x1::new(0.);
+        let elem: f64 = 42.;
+        let e = f64x1::new(42.);
+        let r: f64x1 = transmute(vld1_lane_f64::<0>(&elem, transmute(a)));
+        assert_eq!(r, e)
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_lane_f64() {
+        let a = f64x2::new(0., 1.);
+        let elem: f64 = 42.;
+        let e = f64x2::new(0., 42.);
+        let r: f64x2 = transmute(vld1q_lane_f64::<1>(&elem, transmute(a)));
+        assert_eq!(r, e)
     }
 
     #[simd_test(enable = "neon")]
