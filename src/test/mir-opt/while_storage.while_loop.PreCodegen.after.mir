@@ -9,51 +9,55 @@ fn while_loop(_1: bool) -> () {
     let mut _5: bool;                    // in scope 0 at $DIR/while-storage.rs:11:21: 11:22
 
     bb0: {
+        goto -> bb1;                     // scope 0 at $DIR/while-storage.rs:10:5: 14:6
+    }
+
+    bb1: {
         StorageLive(_2);                 // scope 0 at $DIR/while-storage.rs:10:11: 10:22
         StorageLive(_3);                 // scope 0 at $DIR/while-storage.rs:10:20: 10:21
         _3 = _1;                         // scope 0 at $DIR/while-storage.rs:10:20: 10:21
-        _2 = get_bool(move _3) -> bb1;   // scope 0 at $DIR/while-storage.rs:10:11: 10:22
+        _2 = get_bool(move _3) -> bb2;   // scope 0 at $DIR/while-storage.rs:10:11: 10:22
                                          // mir::Constant
                                          // + span: $DIR/while-storage.rs:10:11: 10:19
                                          // + literal: Const { ty: fn(bool) -> bool {get_bool}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb1: {
+    bb2: {
         StorageDead(_3);                 // scope 0 at $DIR/while-storage.rs:10:21: 10:22
-        switchInt(move _2) -> [false: bb6, otherwise: bb2]; // scope 0 at $DIR/while-storage.rs:10:11: 10:22
+        switchInt(move _2) -> [false: bb7, otherwise: bb3]; // scope 0 at $DIR/while-storage.rs:10:11: 10:22
     }
 
-    bb2: {
+    bb3: {
         StorageLive(_4);                 // scope 0 at $DIR/while-storage.rs:11:12: 11:23
         StorageLive(_5);                 // scope 0 at $DIR/while-storage.rs:11:21: 11:22
         _5 = _1;                         // scope 0 at $DIR/while-storage.rs:11:21: 11:22
-        _4 = get_bool(move _5) -> bb3;   // scope 0 at $DIR/while-storage.rs:11:12: 11:23
+        _4 = get_bool(move _5) -> bb4;   // scope 0 at $DIR/while-storage.rs:11:12: 11:23
                                          // mir::Constant
                                          // + span: $DIR/while-storage.rs:11:12: 11:20
                                          // + literal: Const { ty: fn(bool) -> bool {get_bool}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb3: {
-        StorageDead(_5);                 // scope 0 at $DIR/while-storage.rs:11:22: 11:23
-        switchInt(move _4) -> [false: bb5, otherwise: bb4]; // scope 0 at $DIR/while-storage.rs:11:12: 11:23
-    }
-
     bb4: {
-        StorageDead(_4);                 // scope 0 at $DIR/while-storage.rs:13:9: 13:10
-        goto -> bb7;                     // scope 0 at no-location
+        StorageDead(_5);                 // scope 0 at $DIR/while-storage.rs:11:22: 11:23
+        switchInt(move _4) -> [false: bb6, otherwise: bb5]; // scope 0 at $DIR/while-storage.rs:11:12: 11:23
     }
 
     bb5: {
         StorageDead(_4);                 // scope 0 at $DIR/while-storage.rs:13:9: 13:10
-        StorageDead(_2);                 // scope 0 at $DIR/while-storage.rs:14:5: 14:6
-        goto -> bb0;                     // scope 0 at $DIR/while-storage.rs:10:5: 14:6
+        goto -> bb8;                     // scope 0 at no-location
     }
 
     bb6: {
-        goto -> bb7;                     // scope 0 at no-location
+        StorageDead(_4);                 // scope 0 at $DIR/while-storage.rs:13:9: 13:10
+        StorageDead(_2);                 // scope 0 at $DIR/while-storage.rs:14:5: 14:6
+        goto -> bb1;                     // scope 0 at $DIR/while-storage.rs:10:5: 14:6
     }
 
     bb7: {
+        goto -> bb8;                     // scope 0 at no-location
+    }
+
+    bb8: {
         StorageDead(_2);                 // scope 0 at $DIR/while-storage.rs:14:5: 14:6
         return;                          // scope 0 at $DIR/while-storage.rs:15:2: 15:2
     }
