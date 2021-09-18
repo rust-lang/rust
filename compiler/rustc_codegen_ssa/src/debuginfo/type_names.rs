@@ -11,7 +11,7 @@
 //   within the brackets).
 // * `"` is treated as the start of a string.
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -33,12 +33,18 @@ pub fn compute_debuginfo_type_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     t: Ty<'tcx>,
     qualified: bool,
+    type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), String>,
 ) -> String {
     let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
 
+    // Check if we have seen this type and qualifier before.
+    if let Some(type_name) = type_name_cache.get(&(&t, qualified)) {
+        return type_name.clone();
+    }
+
     let mut result = String::with_capacity(64);
     let mut visited = FxHashSet::default();
-    push_debuginfo_type_name(tcx, t, qualified, &mut result, &mut visited);
+    push_debuginfo_type_name(tcx, t, qualified, &mut result, &mut visited, type_name_cache);
     result
 }
 
@@ -50,6 +56,7 @@ fn push_debuginfo_type_name<'tcx>(
     qualified: bool,
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
+    type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), String>,
 ) {
     // When targeting MSVC, emit C++ style type names for compatibility with
     // .natvis visualizers (and perhaps other existing native debuggers?)
@@ -72,10 +79,10 @@ fn push_debuginfo_type_name<'tcx>(
         ty::Foreign(def_id) => push_item_name(tcx, def_id, qualified, output),
         ty::Adt(def, substs) => {
             if def.is_enum() && cpp_like_names {
-                msvc_enum_fallback(tcx, t, def, substs, output, visited);
+                msvc_enum_fallback(tcx, t, def, substs, output, visited, type_name_cache);
             } else {
                 push_item_name(tcx, def.did, qualified, output);
-                push_generic_params_internal(tcx, substs, output, visited);
+                push_generic_params_internal(tcx, substs, output, visited, type_name_cache);
             }
         }
         ty::Tuple(component_types) => {
@@ -86,7 +93,14 @@ fn push_debuginfo_type_name<'tcx>(
             }
 
             for component_type in component_types {
-                push_debuginfo_type_name(tcx, component_type.expect_ty(), true, output, visited);
+                push_debuginfo_type_name(
+                    tcx,
+                    component_type.expect_ty(),
+                    true,
+                    output,
+                    visited,
+                    type_name_cache,
+                );
                 push_arg_separator(cpp_like_names, output);
             }
             if !component_types.is_empty() {
@@ -113,7 +127,7 @@ fn push_debuginfo_type_name<'tcx>(
                 }
             }
 
-            push_debuginfo_type_name(tcx, inner_type, qualified, output, visited);
+            push_debuginfo_type_name(tcx, inner_type, qualified, output, visited, type_name_cache);
 
             if cpp_like_names {
                 push_close_angle_bracket(cpp_like_names, output);
@@ -139,7 +153,7 @@ fn push_debuginfo_type_name<'tcx>(
                 }
             }
 
-            push_debuginfo_type_name(tcx, inner_type, qualified, output, visited);
+            push_debuginfo_type_name(tcx, inner_type, qualified, output, visited, type_name_cache);
 
             if cpp_like_names && !is_slice_or_str {
                 push_close_angle_bracket(cpp_like_names, output);
@@ -148,7 +162,7 @@ fn push_debuginfo_type_name<'tcx>(
         ty::Array(inner_type, len) => {
             if cpp_like_names {
                 output.push_str("array$<");
-                push_debuginfo_type_name(tcx, inner_type, true, output, visited);
+                push_debuginfo_type_name(tcx, inner_type, true, output, visited, type_name_cache);
                 match len.val {
                     ty::ConstKind::Param(param) => write!(output, ",{}>", param.name).unwrap(),
                     _ => write!(output, ",{}>", len.eval_usize(tcx, ty::ParamEnv::reveal_all()))
@@ -156,7 +170,7 @@ fn push_debuginfo_type_name<'tcx>(
                 }
             } else {
                 output.push('[');
-                push_debuginfo_type_name(tcx, inner_type, true, output, visited);
+                push_debuginfo_type_name(tcx, inner_type, true, output, visited, type_name_cache);
                 match len.val {
                     ty::ConstKind::Param(param) => write!(output, "; {}]", param.name).unwrap(),
                     _ => write!(output, "; {}]", len.eval_usize(tcx, ty::ParamEnv::reveal_all()))
@@ -171,7 +185,7 @@ fn push_debuginfo_type_name<'tcx>(
                 output.push('[');
             }
 
-            push_debuginfo_type_name(tcx, inner_type, true, output, visited);
+            push_debuginfo_type_name(tcx, inner_type, true, output, visited, type_name_cache);
 
             if cpp_like_names {
                 push_close_angle_bracket(cpp_like_names, output);
@@ -200,8 +214,13 @@ fn push_debuginfo_type_name<'tcx>(
                 let principal =
                     tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), principal);
                 push_item_name(tcx, principal.def_id, qualified, output);
-                let principal_has_generic_params =
-                    push_generic_params_internal(tcx, principal.substs, output, visited);
+                let principal_has_generic_params = push_generic_params_internal(
+                    tcx,
+                    principal.substs,
+                    output,
+                    visited,
+                    type_name_cache,
+                );
 
                 let projection_bounds: SmallVec<[_; 4]> = trait_data
                     .projection_bounds()
@@ -225,12 +244,26 @@ fn push_debuginfo_type_name<'tcx>(
                             output.push_str("assoc$<");
                             push_item_name(tcx, item_def_id, false, output);
                             push_arg_separator(cpp_like_names, output);
-                            push_debuginfo_type_name(tcx, ty, true, output, visited);
+                            push_debuginfo_type_name(
+                                tcx,
+                                ty,
+                                true,
+                                output,
+                                visited,
+                                type_name_cache,
+                            );
                             push_close_angle_bracket(cpp_like_names, output);
                         } else {
                             push_item_name(tcx, item_def_id, false, output);
                             output.push('=');
-                            push_debuginfo_type_name(tcx, ty, true, output, visited);
+                            push_debuginfo_type_name(
+                                tcx,
+                                ty,
+                                true,
+                                output,
+                                visited,
+                                type_name_cache,
+                            );
                         }
                     }
 
@@ -298,7 +331,14 @@ fn push_debuginfo_type_name<'tcx>(
                 if sig.output().is_unit() {
                     output.push_str("void");
                 } else {
-                    push_debuginfo_type_name(tcx, sig.output(), true, output, visited);
+                    push_debuginfo_type_name(
+                        tcx,
+                        sig.output(),
+                        true,
+                        output,
+                        visited,
+                        type_name_cache,
+                    );
                 }
                 output.push_str(" (*)(");
             } else {
@@ -315,7 +355,14 @@ fn push_debuginfo_type_name<'tcx>(
 
             if !sig.inputs().is_empty() {
                 for &parameter_type in sig.inputs() {
-                    push_debuginfo_type_name(tcx, parameter_type, true, output, visited);
+                    push_debuginfo_type_name(
+                        tcx,
+                        parameter_type,
+                        true,
+                        output,
+                        visited,
+                        type_name_cache,
+                    );
                     push_arg_separator(cpp_like_names, output);
                 }
                 pop_arg_separator(output);
@@ -333,7 +380,7 @@ fn push_debuginfo_type_name<'tcx>(
 
             if !cpp_like_names && !sig.output().is_unit() {
                 output.push_str(" -> ");
-                push_debuginfo_type_name(tcx, sig.output(), true, output, visited);
+                push_debuginfo_type_name(tcx, sig.output(), true, output, visited, type_name_cache);
             }
 
             // We only keep the type in 'visited'
@@ -375,6 +422,10 @@ fn push_debuginfo_type_name<'tcx>(
         }
     }
 
+    if type_name_cache.insert((&t, qualified), output.clone()).is_some() {
+        bug!("type name is already in the type name cache!");
+    }
+
     /// MSVC names enums differently than other platforms so that the debugging visualization
     // format (natvis) is able to understand enums and render the active variant correctly in the
     // debugger. For more information, look in `src/etc/natvis/intrinsic.natvis` and
@@ -386,12 +437,13 @@ fn push_debuginfo_type_name<'tcx>(
         substs: SubstsRef<'tcx>,
         output: &mut String,
         visited: &mut FxHashSet<Ty<'tcx>>,
+        type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), String>,
     ) {
         let layout = tcx.layout_of(tcx.param_env(def.did).and(ty)).expect("layout error");
 
         output.push_str("enum$<");
         push_item_name(tcx, def.did, true, output);
-        push_generic_params_internal(tcx, substs, output, visited);
+        push_generic_params_internal(tcx, substs, output, visited, type_name_cache);
 
         if let Variants::Multiple {
             tag_encoding: TagEncoding::Niche { dataful_variant, .. },
@@ -503,6 +555,7 @@ fn push_generic_params_internal<'tcx>(
     substs: SubstsRef<'tcx>,
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
+    type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), String>,
 ) -> bool {
     if substs.non_erasable_generics().next().is_none() {
         return false;
@@ -517,7 +570,14 @@ fn push_generic_params_internal<'tcx>(
     for type_parameter in substs.non_erasable_generics() {
         match type_parameter {
             GenericArgKind::Type(type_parameter) => {
-                push_debuginfo_type_name(tcx, type_parameter, true, output, visited);
+                push_debuginfo_type_name(
+                    tcx,
+                    type_parameter,
+                    true,
+                    output,
+                    visited,
+                    type_name_cache,
+                );
             }
             GenericArgKind::Const(ct) => {
                 push_const_param(tcx, ct, output);
@@ -578,10 +638,15 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: &'tcx ty::Const<'tcx>, output: 
     .unwrap();
 }
 
-pub fn push_generic_params<'tcx>(tcx: TyCtxt<'tcx>, substs: SubstsRef<'tcx>, output: &mut String) {
+pub fn push_generic_params<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    substs: SubstsRef<'tcx>,
+    output: &mut String,
+    type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), String>,
+) {
     let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
     let mut visited = FxHashSet::default();
-    push_generic_params_internal(tcx, substs, output, &mut visited);
+    push_generic_params_internal(tcx, substs, output, &mut visited, type_name_cache);
 }
 
 fn push_close_angle_bracket(cpp_like_names: bool, output: &mut String) {

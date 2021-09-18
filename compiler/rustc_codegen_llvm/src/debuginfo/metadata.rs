@@ -152,8 +152,6 @@ pub struct TypeMap<'ll, 'tcx> {
     type_to_metadata: FxHashMap<Ty<'tcx>, &'ll DIType>,
     /// A map from types to `UniqueTypeId`. This is an N:1 mapping.
     type_to_unique_id: FxHashMap<Ty<'tcx>, UniqueTypeId>,
-    /// A map from `UniqueTypeId` to it's type-name string.
-    unique_id_to_type_name: FxHashMap<UniqueTypeId, String>,
 }
 
 impl TypeMap<'ll, 'tcx> {
@@ -203,31 +201,12 @@ impl TypeMap<'ll, 'tcx> {
         }
     }
 
-    /// Adds a `UniqueTypeId` to type-name mapping to the `TypeMap`. The
-    /// method will fail if the mapping already exists.
-    fn register_unique_id_with_type_name(
-        &mut self,
-        unique_type_id: UniqueTypeId,
-        type_name: String,
-    ) {
-        if self.unique_id_to_type_name.insert(unique_type_id, type_name).is_some() {
-            bug!(
-                "type name for unique ID '{}' is already in the `TypeMap`!",
-                self.get_unique_type_id_as_string(unique_type_id)
-            );
-        }
-    }
-
     fn find_metadata_for_type(&self, type_: Ty<'tcx>) -> Option<&'ll DIType> {
         self.type_to_metadata.get(&type_).cloned()
     }
 
     fn find_metadata_for_unique_id(&self, unique_type_id: UniqueTypeId) -> Option<&'ll DIType> {
         self.unique_id_to_metadata.get(&unique_type_id).cloned()
-    }
-
-    fn find_type_name_for_unique_id(&self, unique_type_id: UniqueTypeId) -> Option<String> {
-        self.unique_id_to_type_name.get(&unique_type_id).cloned()
     }
 
     /// Gets the string representation of a `UniqueTypeId`. This method will fail if
@@ -396,16 +375,8 @@ macro_rules! return_if_metadata_created_in_meantime {
 }
 
 fn check_type_name_cache(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, qualified: bool) -> String {
-    let mut type_map = debug_context(cx).type_map.borrow_mut();
-    let unique_type_id = type_map.get_unique_type_id_of_type(cx, ty);
-    match type_map.find_type_name_for_unique_id(unique_type_id) {
-        Some(type_name) => type_name,
-        None => {
-            let type_name = compute_debuginfo_type_name(cx.tcx, ty, qualified);
-            type_map.register_unique_id_with_type_name(unique_type_id, type_name.clone());
-            type_name
-        }
-    }
+    let type_name_cache = &mut *debug_context(cx).type_name_cache.borrow_mut();
+    compute_debuginfo_type_name(cx.tcx, ty, qualified, type_name_cache)
 }
 
 fn fixed_vec_metadata(
