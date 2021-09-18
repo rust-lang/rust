@@ -462,6 +462,9 @@ pub struct SuspendCheckData<'a, 'tcx> {
 // Returns whether it emitted a diagnostic or not
 // Note that this fn and the proceding one are based on the code
 // for creating must_use diagnostics
+//
+// Note that this technique was chosen over things like a `Suspend` marker trait
+// as it is simpler and has precendent in the compiler
 pub fn check_must_not_suspend_ty<'tcx>(
     fcx: &FnCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
