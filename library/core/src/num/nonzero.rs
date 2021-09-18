@@ -895,3 +895,23 @@ macro_rules! nonzero_unsigned_is_power_of_two {
 }
 
 nonzero_unsigned_is_power_of_two! { NonZeroU8 NonZeroU16 NonZeroU32 NonZeroU64 NonZeroU128 NonZeroUsize }
+
+macro_rules! nonzero_max {
+    ( $( $Ty: ident($Int: ty) )+ ) => {
+        $(
+
+            impl $Ty {
+	        #[unstable(feature = "nonzero_max", issue = "89065")]
+                #[doc = concat!("The maximum value for a`", stringify!($Ty), "` is the same as `", stringify!($Int), "`")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX, ", stringify!($Int), ">::MAX);")]
+                //SAFETY: Since the MAX value, for any supported integer type, is greater than 0,
+                // the MAX will always be non-zero.
+                pub const MAX : $Ty = unsafe { $Ty::new_unchecked(<$Int>::MAX) };
+            }
+        )+
+    }
+}
+
+nonzero_max! { NonZeroU8(u8) NonZeroI8(i8) NonZeroU16(u16) NonZeroI16(i16) NonZeroU32(u32) NonZeroI32(i32)
+     NonZeroU64(u64) NonZeroI64(i64) NonZeroUsize(usize) NonZeroIsize(isize)
+}
