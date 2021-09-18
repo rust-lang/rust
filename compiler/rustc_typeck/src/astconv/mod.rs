@@ -2417,13 +2417,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let substs = InternalSubsts::for_item(tcx, def_id, |param, _| {
             if let Some(i) = (param.index as usize).checked_sub(generics.parent_count) {
                 // Our own parameters are the resolved lifetimes.
-                match param.kind {
-                    GenericParamDefKind::Lifetime
-                        if let hir::GenericArg::Lifetime(lifetime) = &lifetimes[i] =>
-                    {
+                if let GenericParamDefKind::Lifetime = param.kind {
+                    if let hir::GenericArg::Lifetime(lifetime) = &lifetimes[i] {
                         self.ast_region_to_region(lifetime, None).into()
+                    } else {
+                        bug!()
                     }
-                    _ => bug!(),
+                } else {
+                    bug!()
                 }
             } else {
                 match param.kind {
