@@ -1297,12 +1297,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        // Expand trait aliases recursively and check that only one regular (non-auto) trait
+        // Expand trait aliases recursively and check that only one regular (non-auto or marker) trait
         // is used and no 'maybe' bounds are used.
         let expanded_traits =
             traits::expand_trait_aliases(tcx, bounds.trait_bounds.iter().map(|&(a, b, _)| (a, b)));
-        let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) =
-            expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
+        let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) = expanded_traits.partition(|i| {
+            let trait_def = tcx.trait_def(i.trait_ref().def_id());
+
+            trait_def.has_auto_impl || trait_def.is_marker
+        });
         if regular_traits.len() > 1 {
             let first_trait = &regular_traits[0];
             let additional_trait = &regular_traits[1];
@@ -1310,14 +1313,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.sess,
                 additional_trait.bottom().1,
                 E0225,
-                "only auto traits can be used as additional traits in a trait object"
+                "only auto and marker traits can be used as additional traits in a trait object"
             );
             additional_trait.label_with_exp_info(
                 &mut err,
-                "additional non-auto trait",
+                "additional non-auto or marker trait",
                 "additional use",
             );
-            first_trait.label_with_exp_info(&mut err, "first non-auto trait", "first use");
+            first_trait.label_with_exp_info(
+                &mut err,
+                "first non-auto or marker trait",
+                "first use",
+            );
             err.help(&format!(
                 "consider creating a new trait with all of these as supertraits and using that \
                  trait here instead: `trait NewTrait: {} {{}}`",

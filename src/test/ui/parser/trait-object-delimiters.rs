@@ -1,7 +1,7 @@
 // edition:2018
 
 fn foo1(_: &dyn Drop + AsRef<str>) {} //~ ERROR ambiguous `+` in a type
-//~^ ERROR only auto traits can be used as additional traits in a trait object
+//~^ ERROR only auto and marker traits can be used as additional traits in a trait object
 
 fn foo2(_: &dyn (Drop + AsRef<str>)) {} //~ ERROR incorrect braces around trait bounds
 
@@ -12,6 +12,6 @@ fn foo3(_: &dyn {Drop + AsRef<str>}) {} //~ ERROR expected parameter name, found
 fn foo4(_: &dyn <Drop + AsRef<str>>) {} //~ ERROR expected identifier, found `<`
 
 fn foo5(_: &(dyn Drop + dyn AsRef<str>)) {} //~ ERROR invalid `dyn` keyword
-//~^ ERROR only auto traits can be used as additional traits in a trait object
+//~^ ERROR only auto and marker traits can be used as additional traits in a trait object
 
 fn main() {}
