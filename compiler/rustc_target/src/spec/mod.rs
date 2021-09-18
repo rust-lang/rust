@@ -954,6 +954,8 @@ supported_targets! {
     ("armv6k-nintendo-3ds", armv6k_nintendo_3ds),
 
     ("armv7-unknown-linux-uclibceabihf", armv7_unknown_linux_uclibceabihf),
+
+    ("x86_64-unknown-none-elf", x86_64_unknown_none_elf),
 }
 
 /// Warnings encountered when parsing the target `json`.
