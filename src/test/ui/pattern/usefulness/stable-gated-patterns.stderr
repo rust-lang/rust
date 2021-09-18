@@ -1,0 +1,26 @@
+error[E0004]: non-exhaustive patterns: `Stable2` and `_` not covered
+  --> $DIR/stable-gated-patterns.rs:8:11
+   |
+LL |     match Foo::Stable {
+   |           ^^^^^^^^^^^ patterns `Stable2` and `_` not covered
+   |
+  ::: $DIR/auxiliary/unstable.rs:9:5
+   |
+LL |     Stable2,
+   |     ------- not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `Foo`
+
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/stable-gated-patterns.rs:13:11
+   |
+LL |     match Foo::Stable {
+   |           ^^^^^^^^^^^ pattern `_` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `Foo`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

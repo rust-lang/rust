@@ -1,11 +1,11 @@
 warning: some fields are not explicitly listed
-  --> $DIR/reachable-patterns.rs:129:9
+  --> $DIR/omitted-patterns.rs:102:9
    |
 LL |         VariantNonExhaustive::Bar { x, .. } => {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ field `y` not listed
    |
 note: the lint level is defined here
-  --> $DIR/reachable-patterns.rs:126:12
+  --> $DIR/omitted-patterns.rs:99:12
    |
 LL |     #[warn(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,13 +13,13 @@ LL |     #[warn(non_exhaustive_omitted_patterns)]
    = note: the pattern is of type `VariantNonExhaustive` and the `non_exhaustive_omitted_patterns` attribute was found
 
 warning: some fields are not explicitly listed
-  --> $DIR/reachable-patterns.rs:134:9
+  --> $DIR/omitted-patterns.rs:107:9
    |
 LL |     let FunctionalRecord { first_field, second_field, .. } = FunctionalRecord::default();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ field `third_field` not listed
    |
 note: the lint level is defined here
-  --> $DIR/reachable-patterns.rs:133:12
+  --> $DIR/omitted-patterns.rs:106:12
    |
 LL |     #[warn(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -27,13 +27,13 @@ LL |     #[warn(non_exhaustive_omitted_patterns)]
    = note: the pattern is of type `FunctionalRecord` and the `non_exhaustive_omitted_patterns` attribute was found
 
 warning: some fields are not explicitly listed
-  --> $DIR/reachable-patterns.rs:142:29
+  --> $DIR/omitted-patterns.rs:115:29
    |
 LL |     let NestedStruct { bar: NormalStruct { first_field, .. }, .. } = NestedStruct::default();
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ field `second_field` not listed
    |
 note: the lint level is defined here
-  --> $DIR/reachable-patterns.rs:141:12
+  --> $DIR/omitted-patterns.rs:114:12
    |
 LL |     #[warn(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -41,7 +41,7 @@ LL |     #[warn(non_exhaustive_omitted_patterns)]
    = note: the pattern is of type `NormalStruct` and the `non_exhaustive_omitted_patterns` attribute was found
 
 warning: some fields are not explicitly listed
-  --> $DIR/reachable-patterns.rs:142:9
+  --> $DIR/omitted-patterns.rs:115:9
    |
 LL |     let NestedStruct { bar: NormalStruct { first_field, .. }, .. } = NestedStruct::default();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ field `foo` not listed
@@ -50,13 +50,13 @@ LL |     let NestedStruct { bar: NormalStruct { first_field, .. }, .. } = Nested
    = note: the pattern is of type `NestedStruct` and the `non_exhaustive_omitted_patterns` attribute was found
 
 error: some variants are not matched explicitly
-  --> $DIR/reachable-patterns.rs:56:9
+  --> $DIR/omitted-patterns.rs:58:9
    |
 LL |         _ => {}
    |         ^ pattern `Struct { .. }` not covered
    |
 note: the lint level is defined here
-  --> $DIR/reachable-patterns.rs:55:16
+  --> $DIR/omitted-patterns.rs:57:16
    |
 LL |         #[deny(non_exhaustive_omitted_patterns)]
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -64,13 +64,13 @@ LL |         #[deny(non_exhaustive_omitted_patterns)]
    = note: the matched value is of type `NonExhaustiveEnum` and the `non_exhaustive_omitted_patterns` attribute was found
 
 error: some variants are not matched explicitly
-  --> $DIR/reachable-patterns.rs:63:9
+  --> $DIR/omitted-patterns.rs:65:9
    |
 LL |         _ => {}
    |         ^ pattern `Tuple(_)` not covered
    |
 note: the lint level is defined here
-  --> $DIR/reachable-patterns.rs:62:16
+  --> $DIR/omitted-patterns.rs:64:16
    |
 LL |         #[deny(non_exhaustive_omitted_patterns)]
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -78,13 +78,13 @@ LL |         #[deny(non_exhaustive_omitted_patterns)]
    = note: the matched value is of type `NonExhaustiveEnum` and the `non_exhaustive_omitted_patterns` attribute was found
 
 error: some variants are not matched explicitly
-  --> $DIR/reachable-patterns.rs:73:9
+  --> $DIR/omitted-patterns.rs:75:9
    |
 LL |         _ => {}
    |         ^ pattern `Unit` not covered
    |
 note: the lint level is defined here
-  --> $DIR/reachable-patterns.rs:72:16
+  --> $DIR/omitted-patterns.rs:74:16
    |
 LL |         #[deny(non_exhaustive_omitted_patterns)]
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -92,13 +92,13 @@ LL |         #[deny(non_exhaustive_omitted_patterns)]
    = note: the matched value is of type `NonExhaustiveEnum` and the `non_exhaustive_omitted_patterns` attribute was found
 
 error: some variants are not matched explicitly
-  --> $DIR/reachable-patterns.rs:90:32
+  --> $DIR/omitted-patterns.rs:92:32
    |
 LL |         NestedNonExhaustive::A(_) => {}
    |                                ^ patterns `Tuple(_)` and `Struct { .. }` not covered
    |
 note: the lint level is defined here
-  --> $DIR/reachable-patterns.rs:87:12
+  --> $DIR/omitted-patterns.rs:89:12
    |
 LL |     #[deny(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -106,7 +106,7 @@ LL |     #[deny(non_exhaustive_omitted_patterns)]
    = note: the matched value is of type `NonExhaustiveEnum` and the `non_exhaustive_omitted_patterns` attribute was found
 
 error: some variants are not matched explicitly
-  --> $DIR/reachable-patterns.rs:92:9
+  --> $DIR/omitted-patterns.rs:94:9
    |
 LL |         _ => {}
    |         ^ pattern `C` not covered
@@ -115,32 +115,46 @@ LL |         _ => {}
    = note: the matched value is of type `NestedNonExhaustive` and the `non_exhaustive_omitted_patterns` attribute was found
 
 error: some variants are not matched explicitly
-  --> $DIR/reachable-patterns.rs:122:9
-   |
-LL |         _ => {}
-   |         ^ patterns `HostUnreachable`, `NetworkUnreachable`, `NetworkDown` and 18 more not covered
-   |
-note: the lint level is defined here
-  --> $DIR/reachable-patterns.rs:99:12
-   |
-LL |     #[deny(non_exhaustive_omitted_patterns)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: ensure that all variants are matched explicitly by adding the suggested match arms
-   = note: the matched value is of type `ErrorKind` and the `non_exhaustive_omitted_patterns` attribute was found
-
-error: some variants are not matched explicitly
-  --> $DIR/reachable-patterns.rs:159:9
+  --> $DIR/omitted-patterns.rs:132:9
    |
 LL |         _ => {}
    |         ^ pattern `A(_)` not covered
    |
 note: the lint level is defined here
-  --> $DIR/reachable-patterns.rs:157:12
+  --> $DIR/omitted-patterns.rs:130:12
    |
 LL |     #[deny(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: ensure that all variants are matched explicitly by adding the suggested match arms
    = note: the matched value is of type `NonExhaustiveSingleVariant` and the `non_exhaustive_omitted_patterns` attribute was found
 
-error: aborting due to 7 previous errors; 4 warnings emitted
+error: some variants are not matched explicitly
+  --> $DIR/omitted-patterns.rs:144:9
+   |
+LL |         _ => {}
+   |         ^ pattern `Unstable` not covered
+   |
+note: the lint level is defined here
+  --> $DIR/omitted-patterns.rs:143:16
+   |
+LL |         #[deny(non_exhaustive_omitted_patterns)]
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: ensure that all variants are matched explicitly by adding the suggested match arms
+   = note: the matched value is of type `UnstableEnum` and the `non_exhaustive_omitted_patterns` attribute was found
+
+error: some variants are not matched explicitly
+  --> $DIR/omitted-patterns.rs:167:9
+   |
+LL |         _ => {}
+   |         ^ pattern `Unstable2` not covered
+   |
+note: the lint level is defined here
+  --> $DIR/omitted-patterns.rs:164:12
+   |
+LL |     #[deny(non_exhaustive_omitted_patterns)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: ensure that all variants are matched explicitly by adding the suggested match arms
+   = note: the matched value is of type `OnlyUnstableEnum` and the `non_exhaustive_omitted_patterns` attribute was found
+
+error: aborting due to 8 previous errors; 4 warnings emitted
 

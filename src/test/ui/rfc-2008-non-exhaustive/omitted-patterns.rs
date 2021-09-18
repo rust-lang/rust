@@ -1,10 +1,11 @@
 // Test that the `non_exhaustive_omitted_patterns` lint is triggered correctly.
 
-#![feature(non_exhaustive_omitted_patterns_lint)]
+#![feature(non_exhaustive_omitted_patterns_lint, unstable_test_feature)]
 
 // aux-build:enums.rs
 extern crate enums;
-
+// aux-build:unstable.rs
+extern crate unstable;
 // aux-build:structs.rs
 extern crate structs;
 
@@ -12,6 +13,7 @@ use enums::{
     EmptyNonExhaustiveEnum, NestedNonExhaustive, NonExhaustiveEnum, NonExhaustiveSingleVariant,
     VariantNonExhaustive,
 };
+use unstable::{UnstableEnum, OnlyUnstableEnum};
 use structs::{FunctionalRecord, MixedVisFields, NestedStruct, NormalStruct};
 
 #[non_exhaustive]
@@ -94,35 +96,6 @@ fn main() {
     //~^^ some variants are not matched explicitly
     //~^^^^^ some variants are not matched explicitly
 
-    // The io::ErrorKind has many `unstable` fields how do they interact with this
-    // lint
-    #[deny(non_exhaustive_omitted_patterns)]
-    match std::io::ErrorKind::Other {
-        std::io::ErrorKind::NotFound => {}
-        std::io::ErrorKind::PermissionDenied => {}
-        std::io::ErrorKind::ConnectionRefused => {}
-        std::io::ErrorKind::ConnectionReset => {}
-        std::io::ErrorKind::ConnectionAborted => {}
-        std::io::ErrorKind::NotConnected => {}
-        std::io::ErrorKind::AddrInUse => {}
-        std::io::ErrorKind::AddrNotAvailable => {}
-        std::io::ErrorKind::BrokenPipe => {}
-        std::io::ErrorKind::AlreadyExists => {}
-        std::io::ErrorKind::WouldBlock => {}
-        std::io::ErrorKind::InvalidInput => {}
-        std::io::ErrorKind::InvalidData => {}
-        std::io::ErrorKind::TimedOut => {}
-        std::io::ErrorKind::WriteZero => {}
-        std::io::ErrorKind::Interrupted => {}
-        std::io::ErrorKind::Other => {}
-        std::io::ErrorKind::UnexpectedEof => {}
-        std::io::ErrorKind::Unsupported => {}
-        std::io::ErrorKind::OutOfMemory => {}
-        // All stable variants are above and unstable in `_`
-        _ => {}
-    }
-    //~^^ some variants are not matched explicitly
-
     #[warn(non_exhaustive_omitted_patterns)]
     match VariantNonExhaustive::Baz(1, 2) {
         VariantNonExhaustive::Baz(_, _) => {}
@@ -163,4 +136,35 @@ fn main() {
     // Ok: we don't lint on `if let` expressions
     #[deny(non_exhaustive_omitted_patterns)]
     if let NonExhaustiveEnum::Tuple(_) = non_enum {}
+
+    match UnstableEnum::Stable {
+        UnstableEnum::Stable => {}
+        UnstableEnum::Stable2 => {}
+        #[deny(non_exhaustive_omitted_patterns)]
+        _ => {}
+    }
+    //~^^ some variants are not matched explicitly
+
+    #[deny(non_exhaustive_omitted_patterns)]
+    match UnstableEnum::Stable {
+        UnstableEnum::Stable => {}
+        UnstableEnum::Stable2 => {}
+        UnstableEnum::Unstable => {}
+        _ => {}
+    }
+
+    // Ok: the feature is on and both variants are matched
+    #[deny(non_exhaustive_omitted_patterns)]
+    match OnlyUnstableEnum::Unstable {
+        OnlyUnstableEnum::Unstable => {}
+        OnlyUnstableEnum::Unstable2 => {}
+        _ => {}
+    }
+
+    #[deny(non_exhaustive_omitted_patterns)]
+    match OnlyUnstableEnum::Unstable {
+        OnlyUnstableEnum::Unstable => {}
+        _ => {}
+    }
+    //~^^ some variants are not matched explicitly
 }

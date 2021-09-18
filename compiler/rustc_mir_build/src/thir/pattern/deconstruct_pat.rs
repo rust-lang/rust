@@ -52,11 +52,11 @@ use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 
 use rustc_hir::{HirId, RangeEnd};
-use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::Field;
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, VariantDef};
+use rustc_middle::{middle::stability::EvalResult, mir::interpret::ConstValue};
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, VariantIdx};
@@ -675,6 +675,36 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
+    /// Checks if the `Constructor` is a variant and `TyCtxt::eval_stability` returns
+    /// `EvalResult::Deny { .. }`.
+    ///
+    /// This means that the variant has a stdlib unstable feature marking it.
+    pub(super) fn is_unstable_variant(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> bool {
+        if let Constructor::Variant(idx) = self {
+            if let ty::Adt(adt, _) = pcx.ty.kind() {
+                let variant_def_id = adt.variants[*idx].def_id;
+                // Filter variants that depend on a disabled unstable feature.
+                return matches!(
+                    pcx.cx.tcx.eval_stability(variant_def_id, None, DUMMY_SP, None),
+                    EvalResult::Deny { .. }
+                );
+            }
+        }
+        false
+    }
+
+    /// Checks if the `Constructor` is a `Constructor::Variant` with a `#[doc(hidden)]`
+    /// attribute.
+    pub(super) fn is_doc_hidden_variant(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> bool {
+        if let Constructor::Variant(idx) = self {
+            if let ty::Adt(adt, _) = pcx.ty.kind() {
+                let variant_def_id = adt.variants[*idx].def_id;
+                return pcx.cx.tcx.is_doc_hidden(variant_def_id);
+            }
+        }
+        false
+    }
+
     fn variant_index_for_adt(&self, adt: &'tcx ty::AdtDef) -> VariantIdx {
         match *self {
             Variant(idx) => idx,
@@ -929,36 +959,33 @@ impl<'tcx> SplitWildcard<'tcx> {
                 // witness.
                 let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
 
+                let is_exhaustive_pat_feature = cx.tcx.features().exhaustive_patterns;
+
                 // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
                 // as though it had an "unknown" constructor to avoid exposing its emptiness. The
                 // exception is if the pattern is at the top level, because we want empty matches to be
                 // considered exhaustive.
-                let is_secretly_empty = def.variants.is_empty()
-                    && !cx.tcx.features().exhaustive_patterns
-                    && !pcx.is_top_level;
+                let is_secretly_empty =
+                    def.variants.is_empty() && !is_exhaustive_pat_feature && !pcx.is_top_level;
 
-                if is_secretly_empty {
-                    smallvec![NonExhaustive]
-                } else if is_declared_nonexhaustive {
-                    def.variants
-                        .indices()
-                        .map(|idx| Variant(idx))
-                        .chain(Some(NonExhaustive))
-                        .collect()
-                } else if cx.tcx.features().exhaustive_patterns {
-                    // If `exhaustive_patterns` is enabled, we exclude variants known to be
-                    // uninhabited.
-                    def.variants
-                        .iter_enumerated()
-                        .filter(|(_, v)| {
-                            !v.uninhabited_from(cx.tcx, substs, def.adt_kind(), cx.param_env)
-                                .contains(cx.tcx, cx.module)
-                        })
-                        .map(|(idx, _)| Variant(idx))
-                        .collect()
-                } else {
-                    def.variants.indices().map(|idx| Variant(idx)).collect()
+                let mut ctors: SmallVec<[_; 1]> = def
+                    .variants
+                    .iter_enumerated()
+                    .filter(|(_, v)| {
+                        // If `exhaustive_patterns` is enabled, we exclude variants known to be
+                        // uninhabited.
+                        let is_uninhabited = is_exhaustive_pat_feature
+                            && v.uninhabited_from(cx.tcx, substs, def.adt_kind(), cx.param_env)
+                                .contains(cx.tcx, cx.module);
+                        !is_uninhabited
+                    })
+                    .map(|(idx, _)| Variant(idx))
+                    .collect();
+
+                if is_secretly_empty || is_declared_nonexhaustive {
+                    ctors.push(NonExhaustive);
                 }
+                ctors
             }
             ty::Char => {
                 smallvec![
@@ -1068,7 +1095,7 @@ impl<'tcx> SplitWildcard<'tcx> {
                     Missing {
                         nonexhaustive_enum_missing_real_variants: self
                             .iter_missing(pcx)
-                            .any(|c| !c.is_non_exhaustive()),
+                            .any(|c| !(c.is_non_exhaustive() || c.is_unstable_variant(pcx))),
                     }
                 } else {
                     Missing { nonexhaustive_enum_missing_real_variants: false }
@@ -1222,9 +1249,9 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
 
 /// Values and patterns can be represented as a constructor applied to some fields. This represents
 /// a pattern in this form.
-/// This also keeps track of whether the pattern has been foundreachable during analysis. For this
+/// This also keeps track of whether the pattern has been found reachable during analysis. For this
 /// reason we should be careful not to clone patterns for which we care about that. Use
-/// `clone_and_forget_reachability` is you're sure.
+/// `clone_and_forget_reachability` if you're sure.
 pub(crate) struct DeconstructedPat<'p, 'tcx> {
     ctor: Constructor<'tcx>,
     fields: Fields<'p, 'tcx>,
