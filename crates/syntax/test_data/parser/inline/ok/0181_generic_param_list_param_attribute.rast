@@ -1,0 +1,45 @@
+SOURCE_FILE@0..40
+  FN@0..39
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    GENERIC_PARAM_LIST@6..34
+      L_ANGLE@6..7 "<"
+      LIFETIME_PARAM@7..20
+        ATTR@7..17
+          POUND@7..8 "#"
+          L_BRACK@8..9 "["
+          META@9..16
+            PATH@9..16
+              PATH_SEGMENT@9..16
+                NAME_REF@9..16
+                  IDENT@9..16 "lt_attr"
+          R_BRACK@16..17 "]"
+        WHITESPACE@17..18 " "
+        LIFETIME@18..20
+          LIFETIME_IDENT@18..20 "'a"
+      COMMA@20..21 ","
+      WHITESPACE@21..22 " "
+      TYPE_PARAM@22..33
+        ATTR@22..31
+          POUND@22..23 "#"
+          L_BRACK@23..24 "["
+          META@24..30
+            PATH@24..30
+              PATH_SEGMENT@24..30
+                NAME_REF@24..30
+                  IDENT@24..30 "t_attr"
+          R_BRACK@30..31 "]"
+        WHITESPACE@31..32 " "
+        NAME@32..33
+          IDENT@32..33 "T"
+      R_ANGLE@33..34 ">"
+    PARAM_LIST@34..36
+      L_PAREN@34..35 "("
+      R_PAREN@35..36 ")"
+    WHITESPACE@36..37 " "
+    BLOCK_EXPR@37..39
+      L_CURLY@37..38 "{"
+      R_CURLY@38..39 "}"
+  WHITESPACE@39..40 "\n"

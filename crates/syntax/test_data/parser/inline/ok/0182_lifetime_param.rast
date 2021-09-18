@@ -1,0 +1,24 @@
+SOURCE_FILE@0..18
+  FN@0..17
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..4
+      IDENT@3..4 "f"
+    GENERIC_PARAM_LIST@4..12
+      L_ANGLE@4..5 "<"
+      LIFETIME_PARAM@5..11
+        LIFETIME@5..7
+          LIFETIME_IDENT@5..7 "'a"
+        COLON@7..8 ":"
+        WHITESPACE@8..9 " "
+        LIFETIME@9..11
+          LIFETIME_IDENT@9..11 "'b"
+      R_ANGLE@11..12 ">"
+    PARAM_LIST@12..14
+      L_PAREN@12..13 "("
+      R_PAREN@13..14 ")"
+    WHITESPACE@14..15 " "
+    BLOCK_EXPR@15..17
+      L_CURLY@15..16 "{"
+      R_CURLY@16..17 "}"
+  WHITESPACE@17..18 "\n"
