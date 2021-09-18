@@ -76,19 +76,16 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
         instrs = &instrs[..instrs.len() - 1];
     }
 
+    // Look for `expected` as the first part of any instruction in this
+    // function, e.g., tzcntl in tzcntl %rax,%rax.
+    //
     // There are two cases when the expected instruction is nop:
     // 1. The expected intrinsic is compiled away so we can't
     // check for it - aka the intrinsic is not generating any code.
     // 2. It is a mark, indicating that the instruction will be
     // compiled into other instructions - mainly because of llvm
     // optimization.
-    if expected == "nop" {
-        return;
-    }
-
-    // Look for `expected` as the first part of any instruction in this
-    // function, e.g., tzcntl in tzcntl %rax,%rax.
-    let found = instrs.iter().any(|s| s.starts_with(expected));
+    let found = expected == "nop" || instrs.iter().any(|s| s.starts_with(expected));
 
     // Look for subroutine call instructions in the disassembly to detect whether
     // inlining failed: all intrinsics are `#[inline(always)]`, so calling one
