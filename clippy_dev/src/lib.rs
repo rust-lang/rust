@@ -100,11 +100,24 @@ impl Lint {
 
 /// Generates the Vec items for `register_lint_group` calls in `clippy_lints/src/lib.rs`.
 #[must_use]
-pub fn gen_lint_group_list<'a>(lints: impl Iterator<Item = &'a Lint>) -> Vec<String> {
-    lints
-        .map(|l| format!("        LintId::of({}::{}),", l.module, l.name.to_uppercase()))
-        .sorted()
-        .collect::<Vec<String>>()
+pub fn gen_lint_group_list<'a>(group_name: &str, lints: impl Iterator<Item = &'a Lint>) -> Vec<String> {
+    let header = format!(
+        r#"store.register_group(true, "clippy::{0}", Some("clippy_{0}"), vec!["#,
+        group_name
+    );
+    let footer = "])".to_string();
+
+    let mut result = vec![header];
+
+    result.extend(
+        lints
+            .map(|l| format!("LintId::of({}::{}),", l.module, l.name.to_uppercase()))
+            .sorted(),
+    );
+
+    result.push(footer);
+
+    result
 }
 
 /// Generates the `pub mod module_name` list in `clippy_lints/src/lib.rs`.
@@ -130,21 +143,22 @@ pub fn gen_changelog_lint_list<'a>(lints: impl Iterator<Item = &'a Lint>) -> Vec
 /// Generates the `register_removed` code in `./clippy_lints/src/lib.rs`.
 #[must_use]
 pub fn gen_deprecated<'a>(lints: impl Iterator<Item = &'a Lint>) -> Vec<String> {
-    lints
-        .flat_map(|l| {
-            l.deprecation
-                .clone()
-                .map(|depr_text| {
-                    vec![
-                        "    store.register_removed(".to_string(),
-                        format!("        \"clippy::{}\",", l.name),
-                        format!("        \"{}\",", depr_text),
-                        "    );".to_string(),
-                    ]
-                })
-                .expect("only deprecated lints should be passed")
-        })
-        .collect::<Vec<String>>()
+    let mut result = vec!["{".to_string()];
+    result.extend(lints.flat_map(|l| {
+        l.deprecation
+            .clone()
+            .map(|depr_text| {
+                vec![
+                    "    store.register_removed(".to_string(),
+                    format!("        \"clippy::{}\",", l.name),
+                    format!("        \"{}\",", depr_text),
+                    "    );".to_string(),
+                ]
+            })
+            .expect("only deprecated lints should be passed")
+    }));
+    result.push("}".to_string());
+    result
 }
 
 #[must_use]
@@ -153,7 +167,7 @@ pub fn gen_register_lint_list<'a>(
     usable_lints: impl Iterator<Item = &'a Lint>,
 ) -> Vec<String> {
     let header = "    store.register_lints(&[".to_string();
-    let footer = "    ]);".to_string();
+    let footer = "    ])".to_string();
     let internal_lints = internal_lints
         .sorted_by_key(|l| format!("        {}::{},", l.module, l.name.to_uppercase()))
         .map(|l| {
@@ -511,6 +525,7 @@ fn test_gen_deprecated() {
         ),
     ];
     let expected: Vec<String> = vec![
+        "{",
         "    store.register_removed(",
         "        \"clippy::should_assert_eq\",",
         "        \"has been superseded by should_assert_eq2\",",
@@ -519,6 +534,7 @@ fn test_gen_deprecated() {
         "        \"clippy::another_deprecated\",",
         "        \"will be removed\",",
         "    );",
+        "}",
     ]
     .into_iter()
     .map(String::from)
@@ -551,9 +567,11 @@ fn test_gen_lint_group_list() {
         Lint::new("internal", "internal_style", "abc", None, "module_name"),
     ];
     let expected = vec![
-        "        LintId::of(module_name::ABC),".to_string(),
-        "        LintId::of(module_name::INTERNAL),".to_string(),
-        "        LintId::of(module_name::SHOULD_ASSERT_EQ),".to_string(),
+        "store.register_group(true, \"clippy::group1\", Some(\"clippy_group1\"), vec![",
+        "LintId::of(module_name::ABC),",
+        "LintId::of(module_name::INTERNAL),",
+        "LintId::of(module_name::SHOULD_ASSERT_EQ),",
+        "])",
     ];
-    assert_eq!(expected, gen_lint_group_list(lints.iter()));
+    assert_eq!(expected, gen_lint_group_list("group1", lints.iter()));
 }
