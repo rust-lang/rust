@@ -42,24 +42,23 @@ pub(super) fn trait_(p: &mut Parser, m: Marker) {
     m.complete(p, TRAIT);
 }
 
-// test impl_def
-// impl Foo {}
+// test impl_item
+// impl S {}
 pub(super) fn impl_(p: &mut Parser, m: Marker) {
-    assert!(p.at(T![impl]));
     p.bump(T![impl]);
-    if choose_type_params_over_qpath(p) {
+    if p.at(T![<]) && not_a_qualified_path(p) {
         type_params::opt_generic_param_list(p);
     }
 
-    // test impl_def_const
-    // impl const Send for X {}
+    // test impl_item_const
+    // impl const Send for S {}
     p.eat(T![const]);
 
     // FIXME: never type
     // impl ! {}
 
-    // test impl_def_neg
-    // impl !Send for X {}
+    // test impl_item_neg
+    // impl !Send for S {}
     p.eat(T![!]);
     impl_type(p);
     if p.eat(T![for]) {
@@ -74,7 +73,7 @@ pub(super) fn impl_(p: &mut Parser, m: Marker) {
     m.complete(p, IMPL);
 }
 
-// test impl_item_list
+// test assoc_item_list
 // impl F {
 //     type A = i32;
 //     const B: i32 = 92;
@@ -83,14 +82,11 @@ pub(super) fn impl_(p: &mut Parser, m: Marker) {
 // }
 pub(crate) fn assoc_item_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
+
     let m = p.start();
     p.bump(T!['{']);
-    // test impl_inner_attributes
-    // enum F{}
-    // impl F {
-    //      //! This is a doc comment
-    //      #![doc("This is also a doc comment")]
-    // }
+    // test assoc_item_list_inner_attrs
+    // impl S { #![attr] }
     attributes::inner_attrs(p);
 
     while !p.at(EOF) && !p.at(T!['}']) {
@@ -106,7 +102,7 @@ pub(crate) fn assoc_item_list(p: &mut Parser) {
 
 // test impl_type_params
 // impl<const N: u32> Bar<N> {}
-fn choose_type_params_over_qpath(p: &Parser) -> bool {
+fn not_a_qualified_path(p: &Parser) -> bool {
     // There's an ambiguity between generic parameters and qualified paths in impls.
     // If we see `<` it may start both, so we have to inspect some following tokens.
     // The following combinations can only start generics,
@@ -123,9 +119,6 @@ fn choose_type_params_over_qpath(p: &Parser) -> bool {
     // we disambiguate it in favor of generics (`impl<T> ::absolute::Path<T> { ... }`)
     // because this is what almost always expected in practice, qualified paths in impls
     // (`impl <Type>::AssocTy { ... }`) aren't even allowed by type checker at the moment.
-    if !p.at(T![<]) {
-        return false;
-    }
     if p.nth(1) == T![#] || p.nth(1) == T![>] || p.nth(1) == T![const] {
         return true;
     }
