@@ -39,7 +39,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             ObligationCauseCode::MatchImpl(parent, impl_def_id) => (parent, impl_def_id),
             _ => return None,
         };
-        let binding_span = match **parent {
+        let binding_span = match parent.code {
             ObligationCauseCode::BindingObligation(_def_id, binding_span) => binding_span,
             _ => return None,
         };

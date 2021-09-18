@@ -2034,7 +2034,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let cause = ObligationCause::new(
             obligation.cause.span,
             obligation.cause.body_id,
-            ObligationCauseCode::MatchImpl(Lrc::new(obligation.cause.code.clone()), impl_def_id),
+            ObligationCauseCode::MatchImpl(obligation.cause.clone(), impl_def_id),
         );
 
         let InferOk { obligations, .. } = self

@@ -349,7 +349,7 @@ pub enum ObligationCauseCode<'tcx> {
     WellFormed(Option<WellFormedLoc>),
 
     /// From `match_impl`. The cause for us having to match an impl, and the DefId we are matching against.
-    MatchImpl(Lrc<ObligationCauseCode<'tcx>>, DefId),
+    MatchImpl(ObligationCause<'tcx>, DefId),
 }
 
 /// The 'location' at which we try to perform HIR-based wf checking.
