@@ -208,9 +208,10 @@ source.
   `profiler = true` in rustc's `config.toml`.
 * `needs-sanitizer-support` - a sanitizer runtime is required, i.e.,
   `sanitizers = true` in rustc's `config.toml`.
-* `needs-sanitizer-{address,leak,memory,thread}` - indicates that test
-  requires a target with a support for AddressSanitizer, LeakSanitizer,
-  MemorySanitizer or ThreadSanitizer respectively.
+* `needs-sanitizer-{address,hwaddress,leak,memory,thread}` - indicates that
+  test requires a target with a support for AddressSanitizer, hardware-assisted
+  AddressSanitizer, LeakSanitizer, MemorySanitizer or ThreadSanitizer
+  respectively.
 * `error-pattern` checks the diagnostics just like the `ERROR` annotation
   without specifying error line. This is useful when the error doesn't give
   any span.
