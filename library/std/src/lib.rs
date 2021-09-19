@@ -234,6 +234,7 @@
 #![feature(atomic_mut_ptr)]
 #![feature(auto_traits)]
 #![feature(bench_black_box)]
+#![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(c_unwind)]
 #![feature(c_variadic)]
