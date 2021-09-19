@@ -1,0 +1,27 @@
+SOURCE_FILE@0..33
+  TYPE_ALIAS@0..32
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    NAME@5..6
+      IDENT@5..6 "T"
+    WHITESPACE@6..7 " "
+    EQ@7..8 "="
+    WHITESPACE@8..9 " "
+    PATH_TYPE@9..31
+      PATH@9..31
+        PATH_SEGMENT@9..31
+          NAME_REF@9..10
+            IDENT@9..10 "S"
+          GENERIC_ARG_LIST@10..31
+            L_ANGLE@10..11 "<"
+            CONST_ARG@11..18
+              LITERAL@11..18
+                STRING@11..18 "\"hello\""
+            COMMA@18..19 ","
+            WHITESPACE@19..20 " "
+            CONST_ARG@20..30
+              LITERAL@20..30
+                INT_NUMBER@20..30 "0xdeadbeef"
+            R_ANGLE@30..31 ">"
+    SEMICOLON@31..32 ";"
+  WHITESPACE@32..33 "\n"

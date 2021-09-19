@@ -1,0 +1,41 @@
+SOURCE_FILE@0..46
+  TYPE_ALIAS@0..45
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    NAME@5..6
+      IDENT@5..6 "T"
+    WHITESPACE@6..7 " "
+    EQ@7..8 "="
+    WHITESPACE@8..9 " "
+    PATH_TYPE@9..44
+      PATH@9..44
+        PATH_SEGMENT@9..44
+          NAME_REF@9..26
+            IDENT@9..26 "StreamingIterator"
+          GENERIC_ARG_LIST@26..44
+            L_ANGLE@26..27 "<"
+            ASSOC_TYPE_ARG@27..43
+              NAME_REF@27..31
+                IDENT@27..31 "Item"
+              GENERIC_ARG_LIST@31..35
+                L_ANGLE@31..32 "<"
+                LIFETIME_ARG@32..34
+                  LIFETIME@32..34
+                    LIFETIME_IDENT@32..34 "'a"
+                R_ANGLE@34..35 ">"
+              WHITESPACE@35..36 " "
+              EQ@36..37 "="
+              WHITESPACE@37..38 " "
+              REF_TYPE@38..43
+                AMP@38..39 "&"
+                LIFETIME@39..41
+                  LIFETIME_IDENT@39..41 "'a"
+                WHITESPACE@41..42 " "
+                PATH_TYPE@42..43
+                  PATH@42..43
+                    PATH_SEGMENT@42..43
+                      NAME_REF@42..43
+                        IDENT@42..43 "T"
+            R_ANGLE@43..44 ">"
+    SEMICOLON@44..45 ";"
+  WHITESPACE@45..46 "\n"

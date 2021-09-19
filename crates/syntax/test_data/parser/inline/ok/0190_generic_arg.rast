@@ -1,0 +1,25 @@
+SOURCE_FILE@0..17
+  TYPE_ALIAS@0..16
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    NAME@5..6
+      IDENT@5..6 "T"
+    WHITESPACE@6..7 " "
+    EQ@7..8 "="
+    WHITESPACE@8..9 " "
+    PATH_TYPE@9..15
+      PATH@9..15
+        PATH_SEGMENT@9..15
+          NAME_REF@9..10
+            IDENT@9..10 "S"
+          GENERIC_ARG_LIST@10..15
+            L_ANGLE@10..11 "<"
+            TYPE_ARG@11..14
+              PATH_TYPE@11..14
+                PATH@11..14
+                  PATH_SEGMENT@11..14
+                    NAME_REF@11..14
+                      IDENT@11..14 "i32"
+            R_ANGLE@14..15 ">"
+    SEMICOLON@15..16 ";"
+  WHITESPACE@16..17 "\n"
