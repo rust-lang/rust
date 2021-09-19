@@ -2,6 +2,7 @@ use std::mem;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
+use rustc_hir::definitions::DefPathDataName;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
@@ -338,26 +339,28 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             | clean::ProcMacroItem(..)
             | clean::VariantItem(..) => {
                 if !self.cache.stripped_mod {
+                    let def_id = item.def_id.expect_def_id();
                     // Re-exported items mean that the same id can show up twice
                     // in the rustdoc ast that we're looking at. We know,
                     // however, that a re-exported item doesn't show up in the
                     // `public_items` map, so we can skip inserting into the
                     // paths map if there was already an entry present and we're
                     // not a public item.
-                    if !self.cache.paths.contains_key(&item.def_id.expect_def_id())
-                        || self.cache.access_levels.is_public(item.def_id.expect_def_id())
+                    if !self.cache.paths.contains_key(&def_id)
+                        || self.cache.access_levels.is_public(def_id)
                     {
                         self.cache.paths.insert(
-                            item.def_id.expect_def_id(),
-                            (self.cache.stack.clone(), item.type_()),
+                            def_id,
+                            (simple_def_path_segments(self.tcx, def_id), item.type_()),
                         );
                     }
                 }
             }
             clean::PrimitiveItem(..) => {
+                let def_id = item.def_id.expect_def_id();
                 self.cache
                     .paths
-                    .insert(item.def_id.expect_def_id(), (self.cache.stack.clone(), item.type_()));
+                    .insert(def_id, (simple_def_path_segments(self.tcx, def_id), item.type_()));
             }
 
             clean::ExternCrateItem { .. }
@@ -485,4 +488,21 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         self.cache.parent_is_trait_impl = orig_parent_is_trait_impl;
         ret
     }
+}
+
+fn simple_def_path_segments(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<String> {
+    let def_path = tcx.def_path(def_id);
+    let segments = def_path
+        .data
+        .into_iter()
+        .map(|segment| segment.data)
+        .map(|segment| segment.name())
+        .filter_map(|segment| match segment {
+            DefPathDataName::Named(name) => Some(name),
+            DefPathDataName::Anon { namespace: _ } => None,
+        })
+        .filter(|sym| !sym.is_empty());
+    let crate_name = tcx.crate_name(def_id.krate);
+    let segments = std::iter::once(crate_name).chain(segments);
+    segments.map(|name| /* FIXME: use Symbol instead of String */ name.to_string()).collect()
 }
