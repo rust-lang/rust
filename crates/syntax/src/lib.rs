@@ -52,8 +52,8 @@ pub use crate::{
     ptr::{AstPtr, SyntaxNodePtr},
     syntax_error::SyntaxError,
     syntax_node::{
-        SyntaxElement, SyntaxElementChildren, SyntaxNode, SyntaxNodeChildren, SyntaxToken,
-        SyntaxTreeBuilder,
+        PreorderWithTokens, SyntaxElement, SyntaxElementChildren, SyntaxNode, SyntaxNodeChildren,
+        SyntaxToken, SyntaxTreeBuilder,
     },
     token_text::TokenText,
 };

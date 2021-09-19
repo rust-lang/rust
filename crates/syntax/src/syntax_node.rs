@@ -31,6 +31,7 @@ pub type SyntaxToken = rowan::SyntaxToken<RustLanguage>;
 pub type SyntaxElement = rowan::SyntaxElement<RustLanguage>;
 pub type SyntaxNodeChildren = rowan::SyntaxNodeChildren<RustLanguage>;
 pub type SyntaxElementChildren = rowan::SyntaxElementChildren<RustLanguage>;
+pub type PreorderWithTokens = rowan::api::PreorderWithTokens<RustLanguage>;
 
 #[derive(Default)]
 pub struct SyntaxTreeBuilder {

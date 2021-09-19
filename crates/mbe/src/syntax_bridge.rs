@@ -1,14 +1,13 @@
 //! Conversions between [`SyntaxNode`] and [`tt::TokenTree`].
 
-use std::iter;
-
 use parser::{ParseError, TreeSink};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     ast::{self, make::tokens::doc_comment},
-    tokenize, AstToken, Parse, SmolStr, SyntaxKind,
+    tokenize, AstToken, Parse, PreorderWithTokens, SmolStr, SyntaxElement, SyntaxKind,
     SyntaxKind::*,
-    SyntaxNode, SyntaxToken, SyntaxTreeBuilder, TextRange, TextSize, Token as RawToken, T,
+    SyntaxNode, SyntaxToken, SyntaxTreeBuilder, TextRange, TextSize, Token as RawToken, WalkEvent,
+    T,
 };
 use tt::buffer::{Cursor, TokenBuffer};
 
@@ -19,14 +18,14 @@ use crate::{
 /// Convert the syntax node to a `TokenTree` (what macro
 /// will consume).
 pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> (tt::Subtree, TokenMap) {
-    syntax_node_to_token_tree_censored(node, None)
+    syntax_node_to_token_tree_censored(node, &Default::default())
 }
 
 /// Convert the syntax node to a `TokenTree` (what macro will consume)
 /// with the censored range excluded.
 pub fn syntax_node_to_token_tree_censored(
     node: &SyntaxNode,
-    censor: Option<TextRange>,
+    censor: &FxHashSet<SyntaxNode>,
 ) -> (tt::Subtree, TokenMap) {
     let global_offset = node.text_range().start();
     let mut c = Convertor::new(node, global_offset, censor);
@@ -424,8 +423,6 @@ impl<'a> SrcToken for (&'a RawToken, &'a str) {
     }
 }
 
-impl RawConvertor<'_> {}
-
 impl<'a> TokenConvertor for RawConvertor<'a> {
     type Token = (&'a RawToken, &'a str);
 
@@ -455,29 +452,50 @@ impl<'a> TokenConvertor for RawConvertor<'a> {
     }
 }
 
-struct Convertor {
+struct Convertor<'c> {
     id_alloc: TokenIdAlloc,
     current: Option<SyntaxToken>,
-    censor: Option<TextRange>,
+    preorder: PreorderWithTokens,
+    censor: &'c FxHashSet<SyntaxNode>,
     range: TextRange,
     punct_offset: Option<(SyntaxToken, TextSize)>,
 }
 
-impl Convertor {
-    fn new(node: &SyntaxNode, global_offset: TextSize, censor: Option<TextRange>) -> Convertor {
-        let first = node.first_token();
-        let current = match censor {
-            Some(censor) => iter::successors(first, |token| token.next_token())
-                .find(|token| !censor.contains_range(token.text_range())),
-            None => first,
-        };
+impl<'c> Convertor<'c> {
+    fn new(
+        node: &SyntaxNode,
+        global_offset: TextSize,
+        censor: &'c FxHashSet<SyntaxNode>,
+    ) -> Convertor<'c> {
+        let range = node.text_range();
+        let mut preorder = node.preorder_with_tokens();
+        let first = Self::next_token(&mut preorder, censor);
         Convertor {
             id_alloc: { TokenIdAlloc { map: TokenMap::default(), global_offset, next_id: 0 } },
-            current,
-            range: node.text_range(),
+            current: first,
+            preorder,
+            range,
             censor,
             punct_offset: None,
         }
+    }
+
+    fn next_token(
+        preorder: &mut PreorderWithTokens,
+        censor: &FxHashSet<SyntaxNode>,
+    ) -> Option<SyntaxToken> {
+        while let Some(ev) = preorder.next() {
+            let ele = match ev {
+                WalkEvent::Enter(ele) => ele,
+                _ => continue,
+            };
+            match ele {
+                SyntaxElement::Token(t) => return Some(t),
+                SyntaxElement::Node(node) if censor.contains(&node) => preorder.skip_subtree(),
+                SyntaxElement::Node(_) => (),
+            }
+        }
+        None
     }
 }
 
@@ -511,7 +529,7 @@ impl SrcToken for SynToken {
     }
 }
 
-impl TokenConvertor for Convertor {
+impl TokenConvertor for Convertor<'_> {
     type Token = SynToken;
     fn convert_doc_comment(&self, token: &Self::Token) -> Option<Vec<tt::TokenTree>> {
         convert_doc_comment(token.token())
@@ -532,11 +550,7 @@ impl TokenConvertor for Convertor {
         if !&self.range.contains_range(curr.text_range()) {
             return None;
         }
-        self.current = match self.censor {
-            Some(censor) => iter::successors(curr.next_token(), |token| token.next_token())
-                .find(|token| !censor.contains_range(token.text_range())),
-            None => curr.next_token(),
-        };
+        self.current = Self::next_token(&mut self.preorder, self.censor);
         let token = if curr.kind().is_punct() {
             let range = curr.text_range();
             let range = TextRange::at(range.start(), TextSize::of('.'));
