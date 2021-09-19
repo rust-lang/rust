@@ -16,7 +16,10 @@ error[E0026]: struct `S` does not have a field named `0x1`
   --> $DIR/numeric-fields.rs:7:17
    |
 LL |         S{0: a, 0x1: b, ..} => {}
-   |                 ^^^ struct `S` does not have this field
+   |                 ^^^
+   |                 |
+   |                 struct `S` does not have this field
+   |                 help: `S` has a field named `1`
 
 error: aborting due to 2 previous errors
 

@@ -1452,7 +1452,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     plural
                 ),
             );
-            if plural == "" {
+
+            if unmentioned_fields.len() == 1 {
                 let input =
                     unmentioned_fields.iter().map(|(_, field)| field.name).collect::<Vec<_>>();
                 let suggested_name = find_best_match_for_name(&input, ident.name, None);
@@ -1473,6 +1474,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // We don't want to throw `E0027` in case we have thrown `E0026` for them.
                         unmentioned_fields.retain(|&(_, x)| x.name != suggested_name);
                     }
+                } else if inexistent_fields.len() == 1 {
+                    let unmentioned_field = unmentioned_fields[0].1.name;
+                    err.span_suggestion_short(
+                        ident.span,
+                        &format!(
+                            "`{}` has a field named `{}`",
+                            tcx.def_path_str(variant.def_id),
+                            unmentioned_field
+                        ),
+                        unmentioned_field.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
                 }
             }
         }
