@@ -214,7 +214,16 @@ impl<T> OnceCell<T> {
         if let Some(val) = self.get() {
             return Ok(val);
         }
-        let val = f()?;
+        /// Avoid inlining the initialization closure into the common path that fetches
+        /// the already initialized value
+        #[cold]
+        fn outlined_call<F, T, E>(f: F) -> Result<T, E>
+        where
+            F: FnOnce() -> Result<T, E>,
+        {
+            f()
+        }
+        let val = outlined_call(f)?;
         // Note that *some* forms of reentrant initialization might lead to
         // UB (see `reentrant_init` test). I believe that just removing this
         // `assert`, while keeping `set/get` would be sound, but it seems
