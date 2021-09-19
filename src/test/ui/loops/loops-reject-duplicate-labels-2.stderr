@@ -62,5 +62,13 @@ LL |     { 'lt: loop { break; } }
 LL |     { 'lt: while let Some(_) = None::<i32> { break; } }
    |       ^^^ label `'lt` already in scope
 
-warning: 8 warnings emitted
+warning: label name `'bl` shadows a label name that is already in scope
+  --> $DIR/loops-reject-duplicate-labels-2.rs:30:7
+   |
+LL |     { 'bl: {} }
+   |       --- first declared here
+LL |     { 'bl: {} }
+   |       ^^^ label `'bl` already in scope
+
+warning: 9 warnings emitted
 

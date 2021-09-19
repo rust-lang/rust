@@ -1,8 +1,7 @@
 // check-pass
+#![feature(label_break_value)]
 
-
-// Issue #21633: reject duplicate loop labels in function bodies.
-// This is testing the exact cases that are in the issue description.
+// Issue #21633: reject duplicate loop labels and block labels in function bodies.
 
 #[allow(unused_labels)]
 fn foo() {
@@ -24,6 +23,8 @@ fn foo() {
     'lt: loop { break; }
     'lt: while let Some(_) = None::<i32> { break; }
                                    //~^ WARN label name `'lt` shadows a label name that is already in scope
+    'bl: {}
+    'bl: {} //~ WARN label name `'bl` shadows a label name that is already in scope
 }
 
 // Note however that it is okay for the same label to be reused in
@@ -33,6 +34,8 @@ struct S;
 impl S {
     fn m1(&self) { 'okay: loop { break 'okay; } }
     fn m2(&self) { 'okay: loop { break 'okay; } }
+    fn m3(&self) { 'okay: { break 'okay; } }
+    fn m4(&self) { 'okay: { break 'okay; } }
 }
 
 
@@ -40,5 +43,7 @@ pub fn main() {
     let s = S;
     s.m1();
     s.m2();
+    s.m3();
+    s.m4();
     foo();
 }
