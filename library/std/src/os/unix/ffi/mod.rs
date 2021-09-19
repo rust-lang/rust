@@ -1,4 +1,4 @@
-//! Unix-specific extension to the primitives in the `std::ffi` module.
+//! Unix-specific extensions to primitives in the [`std::ffi`] module.
 //!
 //! # Examples
 //!
@@ -31,6 +31,8 @@
 //! let bytes = os_str.as_bytes();
 //! assert_eq!(bytes, b"foo");
 //! ```
+//!
+//! [`std::ffi`]: crate::ffi
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

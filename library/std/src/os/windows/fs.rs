@@ -1,4 +1,6 @@
-//! Windows-specific extensions for the primitives in the `std::fs` module.
+//! Windows-specific extensions to primitives in the [`std::fs`] module.
+//!
+//! [`std::fs`]: crate::fs
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

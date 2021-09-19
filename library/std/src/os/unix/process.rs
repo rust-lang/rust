@@ -1,4 +1,6 @@
-//! Unix-specific extensions to primitives in the `std::process` module.
+//! Unix-specific extensions to primitives in the [`std::process`] module.
+//!
+//! [`std::process`]: crate::process
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

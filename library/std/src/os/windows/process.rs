@@ -1,4 +1,6 @@
-//! Extensions to `std::process` for Windows.
+//! Windows-specific extensions to primitives in the [`std::process`] module.
+//!
+//! [`std::process`]: crate::process
 
 #![stable(feature = "process_extensions", since = "1.2.0")]
 

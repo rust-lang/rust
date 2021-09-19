@@ -1,4 +1,6 @@
-//! Linux-specific extensions to primitives in the `std::process` module.
+//! Linux-specific extensions to primitives in the [`std::process`] module.
+//!
+//! [`std::process`]: crate::process
 
 #![unstable(feature = "linux_pidfd", issue = "82971")]
 
