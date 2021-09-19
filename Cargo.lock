@@ -39,7 +39,7 @@ version = "0.0.0"
 dependencies = [
  "compiler_builtins",
  "core",
- "rand 0.7.3",
+ "rand 0.8.3",
  "rand_xorshift",
 ]
 
@@ -714,7 +714,7 @@ dependencies = [
 name = "core"
 version = "0.0.0"
 dependencies = [
- "rand 0.7.3",
+ "rand 0.8.3",
 ]
 
 [[package]]
@@ -2920,11 +2920,11 @@ dependencies = [
 
 [[package]]
 name = "rand_xorshift"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77d416b86801d23dde1aa643023b775c3a462efc0ed96443add11546cdf1dca8"
+checksum = "d25bf25ec5ae4a3f1b92f929810509a2f53d7dca2f50b794ff57e3face536c8f"
 dependencies = [
- "rand_core 0.5.1",
+ "rand_core 0.6.2",
 ]
 
 [[package]]
@@ -3886,7 +3886,7 @@ dependencies = [
 name = "rustc_incremental"
 version = "0.0.0"
 dependencies = [
- "rand 0.7.3",
+ "rand 0.8.3",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",

@@ -221,7 +221,7 @@ fn gen_strings(len: usize) -> Vec<String> {
     let mut v = vec![];
     for _ in 0..len {
         let n = rng.gen::<usize>() % 20 + 1;
-        v.push((&mut rng).sample_iter(&Alphanumeric).take(n).collect());
+        v.push((&mut rng).sample_iter(&Alphanumeric).map(char::from).take(n).collect());
     }
     v
 }

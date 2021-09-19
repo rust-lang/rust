@@ -391,7 +391,7 @@ fn test_reverse() {
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn test_sort() {
-    let mut rng = thread_rng();
+    let mut rng = &mut thread_rng();
 
     for len in (2..25).chain(500..510) {
         for &modulus in &[5, 10, 100, 1000] {
