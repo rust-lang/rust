@@ -301,6 +301,7 @@ define_tables! {
     inherent_impls: Table<DefIndex, Lazy<[DefIndex]>>,
     variances: Table<DefIndex, Lazy<[ty::Variance]>>,
     generics: Table<DefIndex, Lazy<ty::Generics>>,
+    // Empty entry indicates default predicates -- quite common in practice.
     explicit_predicates: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
     expn_that_defined: Table<DefIndex, Lazy<ExpnId>>,
     // As an optimization, a missing entry indicates an empty `&[]`.

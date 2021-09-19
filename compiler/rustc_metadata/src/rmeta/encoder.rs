@@ -992,7 +992,12 @@ impl EncodeContext<'a, 'tcx> {
             if should_encode_generics(def_kind) {
                 let g = tcx.generics_of(def_id);
                 record!(self.tables.generics[def_id] <- g);
-                record!(self.tables.explicit_predicates[def_id] <- self.tcx.explicit_predicates_of(def_id));
+                let predicates = self.tcx.explicit_predicates_of(def_id);
+                if let ty::GenericPredicates { parent: None, predicates: &[] } = predicates {
+                    // do nothing -- missing entry indicates empty predicates
+                } else {
+                    record!(self.tables.explicit_predicates[def_id] <- predicates);
+                }
                 let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
                 if !inferred_outlives.is_empty() {
                     record!(self.tables.inferred_outlives[def_id] <- inferred_outlives);

@@ -919,7 +919,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         item_id: DefIndex,
         tcx: TyCtxt<'tcx>,
     ) -> ty::GenericPredicates<'tcx> {
-        self.root.tables.explicit_predicates.get(self, item_id).unwrap().decode((self, tcx))
+        self.root
+            .tables
+            .explicit_predicates
+            .get(self, item_id)
+            .map(|e| e.decode((self, tcx)))
+            .unwrap_or_default()
     }
 
     fn get_inferred_outlives(
