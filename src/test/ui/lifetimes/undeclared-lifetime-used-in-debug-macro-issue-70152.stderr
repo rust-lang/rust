@@ -9,6 +9,17 @@ LL |     a: &'b str,
    = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/undeclared-lifetime-used-in-debug-macro-issue-70152.rs:3:9
+   |
+LL | #[derive(Eq, PartialEq)]
+   |          -- lifetime `'b` is missing in item created through this procedural macro
+LL | struct Test {
+LL |     a: &'b str,
+   |         ^^ undeclared lifetime
+   |
+   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
+
+error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/undeclared-lifetime-used-in-debug-macro-issue-70152.rs:13:13
    |
 LL |     fn foo(&'b self) {}
@@ -23,17 +34,6 @@ help: consider introducing lifetime `'b` here
    |
 LL |     fn foo<'b>(&'b self) {}
    |           ++++
-
-error[E0261]: use of undeclared lifetime name `'b`
-  --> $DIR/undeclared-lifetime-used-in-debug-macro-issue-70152.rs:3:9
-   |
-LL | #[derive(Eq, PartialEq)]
-   |          -- lifetime `'b` is missing in item created through this procedural macro
-LL | struct Test {
-LL |     a: &'b str,
-   |         ^^ undeclared lifetime
-   |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error: aborting due to 3 previous errors
 

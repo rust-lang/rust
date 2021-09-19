@@ -33,6 +33,7 @@
 #![feature(discriminant_kind)]
 #![feature(exhaustive_patterns)]
 #![feature(if_let_guard)]
+#![feature(map_first_last)]
 #![feature(never_type)]
 #![feature(extern_types)]
 #![feature(new_uninit)]

@@ -51,12 +51,6 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         self.lctx.with_parent_item_lifetime_defs(hir_id, |this| {
             let this = &mut ItemLowerer { lctx: this };
             match item.kind {
-                ItemKind::Mod(..) => {
-                    let def_id = this.lctx.lower_node_id(item.id).expect_owner();
-                    let old_current_module = mem::replace(&mut this.lctx.current_module, def_id);
-                    visit::walk_item(this, item);
-                    this.lctx.current_module = old_current_module;
-                }
                 ItemKind::Impl(box ImplKind { ref of_trait, .. }) => {
                     this.with_trait_impl_ref(of_trait, |this| visit::walk_item(this, item));
                 }

@@ -121,6 +121,17 @@ impl<'tcx> AttributeMap<'tcx> {
     }
 }
 
+/// Gather the LocalDefId for each item-like within a module, including items contained within
+/// bodies.  The Ids are in visitor order.  This is used to partition a pass between modules.
+#[derive(Debug, HashStable)]
+pub struct ModuleItems {
+    submodules: Box<[LocalDefId]>,
+    items: Box<[ItemId]>,
+    trait_items: Box<[TraitItemId]>,
+    impl_items: Box<[ImplItemId]>,
+    foreign_items: Box<[ForeignItemId]>,
+}
+
 impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     pub fn hir(self) -> map::Map<'tcx> {
@@ -140,7 +151,7 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_crate = |tcx, ()| tcx.untracked_crate;
     providers.index_hir = map::index_hir;
     providers.crate_hash = map::crate_hash;
-    providers.hir_module_items = |tcx, id| &tcx.untracked_crate.modules[&id];
+    providers.hir_module_items = map::hir_module_items;
     providers.hir_owner = |tcx, id| {
         let owner = tcx.index_hir(()).map[id].as_ref()?;
         let node = owner.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;

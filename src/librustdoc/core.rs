@@ -329,18 +329,14 @@ crate fn run_global_ctxt(
 
     // NOTE: This is copy/pasted from typeck/lib.rs and should be kept in sync with those changes.
     tcx.sess.time("item_types_checking", || {
-        for &module in tcx.hir().krate().modules.keys() {
-            tcx.ensure().check_mod_item_types(module);
-        }
+        tcx.hir().for_each_module(|module| tcx.ensure().check_mod_item_types(module))
     });
     tcx.sess.abort_if_errors();
     tcx.sess.time("missing_docs", || {
         rustc_lint::check_crate(tcx, rustc_lint::builtin::MissingDoc::new);
     });
     tcx.sess.time("check_mod_attrs", || {
-        for &module in tcx.hir().krate().modules.keys() {
-            tcx.ensure().check_mod_attrs(module);
-        }
+        tcx.hir().for_each_module(|module| tcx.ensure().check_mod_attrs(module))
     });
     rustc_passes::stability::check_unused_or_stable_features(tcx);
 

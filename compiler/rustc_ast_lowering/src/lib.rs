@@ -102,8 +102,6 @@ struct LoweringContext<'a, 'hir: 'a> {
     owners: IndexVec<LocalDefId, Option<hir::OwnerNode<'hir>>>,
     bodies: BTreeMap<hir::BodyId, hir::Body<'hir>>,
 
-    modules: BTreeMap<LocalDefId, hir::ModuleItems>,
-
     generator_kind: Option<hir::GeneratorKind>,
 
     attrs: BTreeMap<hir::HirId, &'hir [Attribute]>,
@@ -151,8 +149,6 @@ struct LoweringContext<'a, 'hir: 'a> {
     /// We always store a `normalize_to_macros_2_0()` version of the param-name in this
     /// vector.
     in_scope_lifetimes: Vec<ParamName>,
-
-    current_module: LocalDefId,
 
     current_hir_id_owner: (LocalDefId, u32),
     item_local_id_counters: NodeMap<u32>,
@@ -327,7 +323,6 @@ pub fn lower_crate<'a, 'hir>(
         arena,
         owners: IndexVec::default(),
         bodies: BTreeMap::new(),
-        modules: BTreeMap::new(),
         attrs: BTreeMap::default(),
         catch_scope: None,
         loop_scope: None,
@@ -335,7 +330,6 @@ pub fn lower_crate<'a, 'hir>(
         is_in_trait_impl: false,
         is_in_dyn_type: false,
         anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
-        current_module: CRATE_DEF_ID,
         current_hir_id_owner: (CRATE_DEF_ID, 0),
         item_local_id_counters: Default::default(),
         node_id_to_hir_id: IndexVec::new(),
@@ -457,13 +451,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        let krate = hir::Crate {
-            owners: self.owners,
-            bodies: self.bodies,
-            modules: self.modules,
-            trait_map,
-            attrs: self.attrs,
-        };
+        let krate =
+            hir::Crate { owners: self.owners, bodies: self.bodies, trait_map, attrs: self.attrs };
         self.arena.alloc(krate)
     }
 
@@ -472,7 +461,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let item = self.arena.alloc(item);
         self.owners.ensure_contains_elem(id.def_id, || None);
         self.owners[id.def_id] = Some(hir::OwnerNode::Item(item));
-        self.modules.entry(self.current_module).or_default().items.insert(id);
         id
     }
 
@@ -481,7 +469,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let item = self.arena.alloc(item);
         self.owners.ensure_contains_elem(id.def_id, || None);
         self.owners[id.def_id] = Some(hir::OwnerNode::ForeignItem(item));
-        self.modules.entry(self.current_module).or_default().foreign_items.insert(id);
         id
     }
 
@@ -490,7 +477,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let item = self.arena.alloc(item);
         self.owners.ensure_contains_elem(id.def_id, || None);
         self.owners[id.def_id] = Some(hir::OwnerNode::ImplItem(item));
-        self.modules.entry(self.current_module).or_default().impl_items.insert(id);
         id
     }
 
@@ -499,7 +485,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let item = self.arena.alloc(item);
         self.owners.ensure_contains_elem(id.def_id, || None);
         self.owners[id.def_id] = Some(hir::OwnerNode::TraitItem(item));
-        self.modules.entry(self.current_module).or_default().trait_items.insert(id);
         id
     }
 

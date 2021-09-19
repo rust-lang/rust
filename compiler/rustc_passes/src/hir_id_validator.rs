@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
+use rustc_data_structures::sync::Lock;
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::intravisit;
@@ -18,9 +18,9 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     let errors = Lock::new(Vec::new());
     let hir_map = tcx.hir();
 
-    par_iter(&hir_map.krate().modules).for_each(|(&module_id, _)| {
+    hir_map.par_for_each_module(|module_id| {
         hir_map
-            .visit_item_likes_in_module(module_id, &mut OuterVisitor { hir_map, errors: &errors });
+            .visit_item_likes_in_module(module_id, &mut OuterVisitor { hir_map, errors: &errors })
     });
 
     let errors = errors.into_inner();

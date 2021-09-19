@@ -52,8 +52,8 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by `tcx.hir().visit_item_likes_in_module`.
     /// Avoid calling this query directly.
-    query hir_module_items(key: LocalDefId) -> &'tcx hir::ModuleItems {
-        eval_always
+    query hir_module_items(key: LocalDefId) -> rustc_middle::hir::ModuleItems {
+        storage(ArenaCacheSelector<'tcx>)
         desc { |tcx| "HIR module items in `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
