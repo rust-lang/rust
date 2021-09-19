@@ -1,10 +1,10 @@
 // check-pass
-
+#![feature(label_break_value)]
 #![allow(dead_code, unused_variables)]
 
-// Issue #21633:  reject duplicate loop labels in function bodies.
+// Issue #21633:  reject duplicate loop labels and block labels in function bodies.
 //
-// Test rejection of lifetimes in *expressions* that shadow loop labels.
+// Test rejection of lifetimes in *expressions* that shadow labels.
 
 fn foo() {
     // Reusing lifetime `'a` in function item is okay.
@@ -23,8 +23,13 @@ fn foo() {
         assert_eq!((*b)(&z), z);
         break 'a;
     }
-}
 
+    'b: {
+        let b = Box::new(|x: &()| ()) as Box<dyn for <'b> Fn(&'b ())>;
+        //~^ WARN lifetime name `'b` shadows a label name that is already in scope
+        break 'b;
+    }
+}
 
 pub fn main() {
     foo();

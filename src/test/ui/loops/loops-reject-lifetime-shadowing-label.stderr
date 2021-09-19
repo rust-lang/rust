@@ -6,5 +6,13 @@ LL |     'a: loop {
 LL |         let b = Box::new(|x: &i8| *x) as Box<dyn for <'a> Fn(&'a i8) -> i8>;
    |                                                       ^^ label `'a` already in scope
 
-warning: 1 warning emitted
+warning: lifetime name `'b` shadows a label name that is already in scope
+  --> $DIR/loops-reject-lifetime-shadowing-label.rs:28:55
+   |
+LL |     'b: {
+   |     -- first declared here
+LL |         let b = Box::new(|x: &()| ()) as Box<dyn for <'b> Fn(&'b ())>;
+   |                                                       ^^ label `'b` already in scope
+
+warning: 2 warnings emitted
 
