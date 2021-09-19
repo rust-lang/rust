@@ -2,10 +2,12 @@ digraph Cov_0_3 {
     graph [fontname="Courier, monospace"];
     node [fontname="Courier, monospace"];
     edge [fontname="Courier, monospace"];
-    bcb2__Cov_0_3 [shape="none", label=<<table border="0" cellborder="1" cellspacing="0"><tr><td bgcolor="gray" align="center" colspan="1">bcb2</td></tr><tr><td align="left" balign="left">Expression(bcb0 - bcb1) at 13:10-13:10<br/>    13:10-13:10: @4[0]: Coverage::Expression(4294967295) = 1 - 2 for $DIR/coverage_graphviz.rs:13:10 - 13:11</td></tr><tr><td align="left" balign="left">bb4: Goto</td></tr></table>>];
-    bcb1__Cov_0_3 [shape="none", label=<<table border="0" cellborder="1" cellspacing="0"><tr><td bgcolor="gray" align="center" colspan="1">bcb1</td></tr><tr><td align="left" balign="left">Counter(bcb1) at 12:13-12:18<br/>    12:13-12:18: @3[0]: Coverage::Expression(4294967294) = 2 + 0 for $DIR/coverage_graphviz.rs:15:1 - 15:2<br/>Expression(bcb1 + 0) at 15:2-15:2<br/>    15:2-15:2: @3.Return: return</td></tr><tr><td align="left" balign="left">bb3: Return</td></tr></table>>];
-    bcb0__Cov_0_3 [shape="none", label=<<table border="0" cellborder="1" cellspacing="0"><tr><td bgcolor="gray" align="center" colspan="1">bcb0</td></tr><tr><td align="left" balign="left"></td></tr><tr><td align="left" balign="left">Counter(bcb0) at 9:1-11:17<br/>    11:12-11:17: @1.Call: _2 = bar() -&gt; [return: bb2, unwind: bb5]</td></tr><tr><td align="left" balign="left">bb0: FalseUnwind<br/>bb1: Call</td></tr><tr><td align="left" balign="left">bb2: SwitchInt</td></tr></table>>];
-    bcb2__Cov_0_3 -> bcb0__Cov_0_3 [label=<>];
-    bcb0__Cov_0_3 -> bcb2__Cov_0_3 [label=<false>];
-    bcb0__Cov_0_3 -> bcb1__Cov_0_3 [label=<otherwise>];
+    bcb3__Cov_0_3 [shape="none", label=<<table border="0" cellborder="1" cellspacing="0"><tr><td bgcolor="gray" align="center" colspan="1">bcb3</td></tr><tr><td align="left" balign="left">Counter(bcb3) at 13:10-13:10<br/>    13:10-13:10: @5[0]: Coverage::Counter(2) for $DIR/coverage_graphviz.rs:13:10 - 13:11</td></tr><tr><td align="left" balign="left">bb5: Goto</td></tr></table>>];
+    bcb2__Cov_0_3 [shape="none", label=<<table border="0" cellborder="1" cellspacing="0"><tr><td bgcolor="gray" align="center" colspan="1">bcb2</td></tr><tr><td align="left" balign="left">Expression(bcb1:(bcb0 + bcb3) - bcb3) at 12:13-12:18<br/>    12:13-12:18: @4[0]: Coverage::Expression(4294967293) = 4294967294 + 0 for $DIR/coverage_graphviz.rs:15:1 - 15:2<br/>Expression(bcb2:(bcb1:(bcb0 + bcb3) - bcb3) + 0) at 15:2-15:2<br/>    15:2-15:2: @4.Return: return</td></tr><tr><td align="left" balign="left">bb4: Return</td></tr></table>>];
+    bcb1__Cov_0_3 [shape="none", label=<<table border="0" cellborder="1" cellspacing="0"><tr><td bgcolor="gray" align="center" colspan="1">bcb1</td></tr><tr><td align="left" balign="left">Expression(bcb0 + bcb3) at 10:5-11:17<br/>    11:12-11:17: @2.Call: _2 = bar() -&gt; [return: bb3, unwind: bb6]</td></tr><tr><td align="left" balign="left">bb1: FalseUnwind<br/>bb2: Call</td></tr><tr><td align="left" balign="left">bb3: SwitchInt</td></tr></table>>];
+    bcb0__Cov_0_3 [shape="none", label=<<table border="0" cellborder="1" cellspacing="0"><tr><td bgcolor="gray" align="center" colspan="1">bcb0</td></tr><tr><td align="left" balign="left"></td></tr><tr><td align="left" balign="left">Counter(bcb0) at 9:1-9:11<br/>    </td></tr><tr><td align="left" balign="left">bb0: Goto</td></tr></table>>];
+    bcb3__Cov_0_3 -> bcb1__Cov_0_3 [label=<>];
+    bcb1__Cov_0_3 -> bcb3__Cov_0_3 [label=<false>];
+    bcb1__Cov_0_3 -> bcb2__Cov_0_3 [label=<otherwise>];
+    bcb0__Cov_0_3 -> bcb1__Cov_0_3 [label=<>];
 }

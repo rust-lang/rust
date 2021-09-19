@@ -9,7 +9,7 @@ use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
     AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPhase, Operand, PlaceElem,
     PlaceRef, ProjectionElem, Rvalue, SourceScope, Statement, StatementKind, Terminator,
-    TerminatorKind,
+    TerminatorKind, START_BLOCK,
 };
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeFoldable};
@@ -130,6 +130,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 
     fn check_edge(&self, location: Location, bb: BasicBlock, edge_kind: EdgeKind) {
+        if bb == START_BLOCK {
+            self.fail(location, "start block must not have predecessors")
+        }
         if let Some(bb) = self.body.basic_blocks().get(bb) {
             let src = self.body.basic_blocks().get(location.block).unwrap();
             match (src.is_cleanup, bb.is_cleanup, edge_kind) {
