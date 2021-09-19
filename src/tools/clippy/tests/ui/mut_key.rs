@@ -38,9 +38,7 @@ trait Trait {
     fn trait_fn(&self, set: std::collections::HashSet<Self::AssociatedType>);
 }
 
-fn generics_are_ok_too<K>(_m: &mut HashSet<K>) {
-    // nothing to see here, move along
-}
+fn generics_are_ok_too<K>(_m: &mut HashSet<K>) {}
 
 fn tuples<U>(_m: &mut HashMap<((), U), ()>) {}
 
