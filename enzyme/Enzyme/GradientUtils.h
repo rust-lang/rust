@@ -934,7 +934,13 @@ public:
     if (auto arg = dyn_cast<Argument>(ptr)) {
       assert(arg->getParent() == oldFunc);
     }
-    ptr = invertPointerM(ptr, BuilderM);
+
+    if (isOriginalBlock(*BuilderM.GetInsertBlock())) {
+      ptr = invertPointerM(ptr, BuilderM);
+    } else {
+      ptr = lookupM(invertPointerM(ptr, BuilderM), BuilderM);
+    }
+
     return BuilderM.CreateStore(newval, ptr);
   }
 
@@ -1150,7 +1156,7 @@ public:
   /// if full unwrap, don't just unwrap this instruction, but also its operands,
   /// etc
   Value *unwrapM(Value *const val, IRBuilder<> &BuilderM,
-                 const ValueToValueMapTy &available, UnwrapMode mode,
+                 const ValueToValueMapTy &available, UnwrapMode unwrapMode,
                  BasicBlock *scope = nullptr,
                  bool permitCache = true) override final;
 
@@ -1459,6 +1465,9 @@ public:
   std::vector<SelectInst *> addToDiffe(Value *val, Value *dif,
                                        IRBuilder<> &BuilderM, Type *addingType,
                                        ArrayRef<Value *> idxs = {}) {
+    assert(mode == DerivativeMode::ReverseModeGradient ||
+           mode == DerivativeMode::ReverseModeCombined);
+
     if (auto arg = dyn_cast<Argument>(val))
       assert(arg->getParent() == oldFunc);
     if (auto inst = dyn_cast<Instruction>(val))
@@ -1738,7 +1747,21 @@ public:
     // if (SE.getCouldNotCompute() == S)
     //  continue;
 
-    Value *ptr = invertPointerM(origptr, BuilderM);
+    Value *ptr;
+
+    switch (mode) {
+    case DerivativeMode::ForwardMode:
+      ptr = invertPointerM(origptr, BuilderM);
+      break;
+    case DerivativeMode::ReverseModePrimal:
+      assert(false && "Invalid derivative mode (ReverseModePrimal)");
+      break;
+    case DerivativeMode::ReverseModeGradient:
+    case DerivativeMode::ReverseModeCombined:
+      ptr = lookupM(invertPointerM(origptr, BuilderM), BuilderM);
+      break;
+    }
+
     assert(ptr);
     if (OrigOffset) {
       ptr = BuilderM.CreateGEP(

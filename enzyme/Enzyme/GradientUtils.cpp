@@ -110,7 +110,7 @@ bool isPotentialLastLoopValue(Value *val, const BasicBlock *loc,
 
 Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                               const ValueToValueMapTy &available,
-                              UnwrapMode mode, BasicBlock *scope,
+                              UnwrapMode unwrapMode, BasicBlock *scope,
                               bool permitCache) {
   assert(val);
   assert(val->getName() != "<badref>");
@@ -194,7 +194,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 
   if (this->mode == DerivativeMode::ReverseModeGradient)
     if (auto inst = dyn_cast<Instruction>(val)) {
-      if (mode == UnwrapMode::LegalFullUnwrap) {
+      if (unwrapMode == UnwrapMode::LegalFullUnwrap) {
         // TODO this isOriginal is a bottleneck, the new mapping of
         // knownRecompute should be precomputed and maintained to lookup instead
         Instruction *orig = isOriginal(inst);
@@ -216,7 +216,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                                [idx.second] = placeholder;
           }
         }
-      } else if (mode == UnwrapMode::AttemptFullUnwrapWithLookup) {
+      } else if (unwrapMode == UnwrapMode::AttemptFullUnwrapWithLookup) {
         // TODO this isOriginal is a bottleneck, the new mapping of
         // knownRecompute should be precomputed and maintained to lookup instead
         Instruction *orig = isOriginal(inst);
@@ -248,7 +248,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
             }
           }
         }
-      } else if (mode != UnwrapMode::LegalFullUnwrapNoTapeReplace) {
+      } else if (unwrapMode != UnwrapMode::LegalFullUnwrapNoTapeReplace) {
         // TODO this isOriginal is a bottleneck, the new mapping of
         // knownRecompute should be precomputed and maintained to lookup instead
 
@@ -275,16 +275,16 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     Value *v = vtmp;                                                           \
     BasicBlock *origParent = frominst;                                         \
     Value *___res;                                                             \
-    if (mode == UnwrapMode::LegalFullUnwrap ||                                 \
-        mode == UnwrapMode::LegalFullUnwrapNoTapeReplace ||                    \
-        mode == UnwrapMode::AttemptFullUnwrap ||                               \
-        mode == UnwrapMode::AttemptFullUnwrapWithLookup) {                     \
+    if (unwrapMode == UnwrapMode::LegalFullUnwrap ||                           \
+        unwrapMode == UnwrapMode::LegalFullUnwrapNoTapeReplace ||              \
+        unwrapMode == UnwrapMode::AttemptFullUnwrap ||                         \
+        unwrapMode == UnwrapMode::AttemptFullUnwrapWithLookup) {               \
       if (v == val)                                                            \
         ___res = nullptr;                                                      \
       else                                                                     \
-        ___res =                                                               \
-            unwrapM(v, Builder, available, mode, origParent, permitCache);     \
-      if (!___res && mode == UnwrapMode::AttemptFullUnwrapWithLookup) {        \
+        ___res = unwrapM(v, Builder, available, unwrapMode, origParent,        \
+                         permitCache);                                         \
+      if (!___res && unwrapMode == UnwrapMode::AttemptFullUnwrapWithLookup) {  \
         bool noLookup = false;                                                 \
         if (auto opinst = dyn_cast<Instruction>(v))                            \
           if (isOriginalBlock(*Builder.GetInsertBlock())) {                    \
@@ -307,7 +307,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
           v = fixLCSSA(opinst, origParent, /*mergeIfTrue*/ false,              \
                        /*guaranteedVisible*/ false);                           \
         }                                                                      \
-      assert(mode == UnwrapMode::AttemptSingleUnwrap);                         \
+      assert(unwrapMode == UnwrapMode::AttemptSingleUnwrap);                   \
       ___res = lookupM(v, Builder, available, v != val);                       \
       if (___res && ___res->getType() != v->getType()) {                       \
         llvm::errs() << *newFunc << "\n";                                      \
@@ -604,8 +604,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (load->getMetadata("enzyme_noneedunwrap"))
       return load;
 
-    bool legalMove = mode == UnwrapMode::LegalFullUnwrap ||
-                     mode == UnwrapMode::LegalFullUnwrapNoTapeReplace;
+    bool legalMove = unwrapMode == UnwrapMode::LegalFullUnwrap ||
+                     unwrapMode == UnwrapMode::LegalFullUnwrapNoTapeReplace;
     if (!legalMove) {
       BasicBlock *parent = nullptr;
       if (isOriginalBlock(*BuilderM.GetInsertBlock()))
@@ -628,7 +628,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                     "Load cannot be unwrapped ", *load, " in ",
                     BuilderM.GetInsertBlock()->getName(), " - ",
                     BuilderM.GetInsertBlock()->getParent()->getName(), " mode ",
-                    mode);
+                    unwrapMode);
         warnMap.insert(BuilderM.GetInsertBlock());
       }
       goto endCheck;
@@ -644,7 +644,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       llvm::errs() << "load: " << *load << "\n";
       llvm::errs() << "load->getOperand(0): " << *load->getOperand(0) << "\n";
       llvm::errs() << "idx: " << *pidx << " unwrapping: " << *val
-                   << " mode=" << mode << "\n";
+                   << " mode=" << unwrapMode << "\n";
     }
     assert(pidx->getType() == load->getOperand(0)->getType());
 
@@ -678,8 +678,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     return toreturn;
   } else if (auto op = dyn_cast<CallInst>(val)) {
 
-    bool legalMove = mode == UnwrapMode::LegalFullUnwrap ||
-                     mode == UnwrapMode::LegalFullUnwrapNoTapeReplace;
+    bool legalMove = unwrapMode == UnwrapMode::LegalFullUnwrap ||
+                     unwrapMode == UnwrapMode::LegalFullUnwrapNoTapeReplace;
     if (!legalMove) {
       legalMove = legalRecompute(op, available, &BuilderM);
     }
@@ -726,8 +726,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         if (dli->getMetadata("enzyme_noneedunwrap"))
           return dli;
 
-        bool legalMove = mode == UnwrapMode::LegalFullUnwrap ||
-                         mode == UnwrapMode::LegalFullUnwrapNoTapeReplace;
+        bool legalMove = unwrapMode == UnwrapMode::LegalFullUnwrap ||
+                         unwrapMode == UnwrapMode::LegalFullUnwrapNoTapeReplace;
         if (!legalMove) {
           // TODO actually consider whether this is legal to move to the new
           // location, rather than recomputable anywhere
@@ -739,13 +739,22 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
             EmitWarning("UncacheableUnwrap", dli->getDebugLoc(),
                         dli->getParent()->getParent(), dli->getParent(),
                         "Differential Load cannot be unwrapped ", *dli, " in ",
-                        BuilderM.GetInsertBlock()->getName(), " mode ", mode);
+                        BuilderM.GetInsertBlock()->getName(), " mode ",
+                        unwrapMode);
             warnMap.insert(BuilderM.GetInsertBlock());
           }
           return nullptr;
         }
 
-        Value *pidx = invertPointerM(dli->getOperand(0), BuilderM);
+        Value *pidx = nullptr;
+
+        if (isOriginalBlock(*BuilderM.GetInsertBlock())) {
+          pidx = invertPointerM(dli->getOperand(0), BuilderM);
+        } else {
+          pidx =
+              lookupM(invertPointerM(dli->getOperand(0), BuilderM), BuilderM);
+        }
+
         if (pidx == nullptr)
           goto endCheck;
 
@@ -830,7 +839,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                 lim;
             return lim;
           }
-        } else if (mode == UnwrapMode::AttemptFullUnwrapWithLookup &&
+        } else if (unwrapMode == UnwrapMode::AttemptFullUnwrapWithLookup &&
                    reverseBlocks.size() > 0) {
           // Must be in a reverse pass fashion for a lookup to index bound to be
           // legal
@@ -853,12 +862,12 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     // circumstances
     auto &LLI = Logic.PPC.FAM.getResult<LoopAnalysis>(*parent->getParent());
     if (LLI.isLoopHeader(parent)) {
-      assert(mode != UnwrapMode::LegalFullUnwrap);
+      assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
       goto endCheck;
     }
     for (auto &val : phi->incoming_values()) {
       if (isPotentialLastLoopValue(val, parent, LLI)) {
-        assert(mode != UnwrapMode::LegalFullUnwrap);
+        assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
         goto endCheck;
       }
     }
@@ -867,7 +876,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       assert(phi->getIncomingValue(0) != phi);
       auto toreturn = getOpUnchecked(phi->getIncomingValue(0));
       if (toreturn == nullptr || toreturn == phi) {
-        assert(mode != UnwrapMode::LegalFullUnwrap);
+        assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
         goto endCheck;
       }
       assert(val->getType() == toreturn->getType());
@@ -992,25 +1001,25 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 
             auto cond1 = getOp(bi1->getCondition());
             if (cond1 == nullptr) {
-              assert(mode != UnwrapMode::LegalFullUnwrap);
+              assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
               goto endCheck;
             }
             auto bi2 = cast<BranchInst>(subblock->getTerminator());
             auto cond2 = getOp(bi2->getCondition());
             if (cond2 == nullptr) {
-              assert(mode != UnwrapMode::LegalFullUnwrap);
+              assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
               goto endCheck;
             }
 
             BasicBlock *oldB = BuilderM.GetInsertBlock();
             if (BuilderM.GetInsertPoint() != oldB->end()) {
-              assert(mode != UnwrapMode::LegalFullUnwrap);
+              assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
               goto endCheck;
             }
 
             auto found = reverseBlockToPrimal.find(oldB);
             if (found == reverseBlockToPrimal.end()) {
-              assert(mode != UnwrapMode::LegalFullUnwrap);
+              assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
               goto endCheck;
             }
             BasicBlock *fwd = found->second;
@@ -1094,7 +1103,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                 for (size_t j = 0; j <= i; j++) {
                   blocks[j]->eraseFromParent();
                 };
-                assert(mode != UnwrapMode::LegalFullUnwrap);
+                assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
                 goto endCheck;
               }
               assert(val->getType() == vals[i]->getType());
@@ -1177,7 +1186,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       if (!isOriginalBlock(*fwd)) {
         auto found = reverseBlockToPrimal.find(oldB);
         if (found == reverseBlockToPrimal.end()) {
-          assert(mode != UnwrapMode::LegalFullUnwrap);
+          assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
           goto endCheck;
         }
         fwd = found->second;
@@ -1199,7 +1208,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       }
 
       if (cond == nullptr) {
-        assert(mode != UnwrapMode::LegalFullUnwrap);
+        assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
         goto endCheck;
       }
 
@@ -1277,7 +1286,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
           for (size_t j = 0; j <= i; j++) {
             blocks[j]->eraseFromParent();
           };
-          assert(mode != UnwrapMode::LegalFullUnwrap);
+          assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
           goto endCheck;
         }
         assert(val->getType() == vals[i]->getType());
@@ -1343,7 +1352,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         for (size_t j = 0; j < blocks.size(); j++) {
           blocks[j]->eraseFromParent();
         };
-        assert(mode != UnwrapMode::LegalFullUnwrap);
+        assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
         goto endCheck;
       }
 
@@ -1374,21 +1383,21 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       unwrappedLoads[toret] = val;
       return toret;
     }
-    assert(mode != UnwrapMode::LegalFullUnwrap);
+    assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
     goto endCheck;
   }
 
 endCheck:
   assert(val);
-  if (mode == UnwrapMode::LegalFullUnwrap ||
-      mode == UnwrapMode::LegalFullUnwrapNoTapeReplace ||
-      mode == UnwrapMode::AttemptFullUnwrapWithLookup) {
+  if (unwrapMode == UnwrapMode::LegalFullUnwrap ||
+      unwrapMode == UnwrapMode::LegalFullUnwrapNoTapeReplace ||
+      unwrapMode == UnwrapMode::AttemptFullUnwrapWithLookup) {
     assert(val->getName() != "<badref>");
     Value *nval = val;
     if (auto opinst = dyn_cast<Instruction>(nval))
       if (isOriginalBlock(*BuilderM.GetInsertBlock())) {
         if (!DT.dominates(opinst, &*BuilderM.GetInsertPoint())) {
-          assert(mode == UnwrapMode::AttemptFullUnwrapWithLookup);
+          assert(unwrapMode == UnwrapMode::AttemptFullUnwrapWithLookup);
           return nullptr;
         }
       }
@@ -2726,7 +2735,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
   if (isConstantValue(oval)) {
     // NOTE, this is legal and the correct resolution, however, our activity
     // analysis honeypot no longer exists
-    return lookupM(getNewFromOriginal(oval), BuilderM);
+    return getNewFromOriginal(oval);
   }
   assert(!isConstantValue(oval));
 
@@ -2736,7 +2745,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
   {
     auto ifound = invertedPointers.find(oval);
     if (ifound != invertedPointers.end()) {
-      return lookupM(&*ifound->second, BuilderM);
+      return &*ifound->second;
     }
   }
 
@@ -2862,7 +2871,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
 #endif
             memset->addParamAttr(0, Attribute::NonNull);
             assert(antialloca->getType() == arg->getType());
-            return lookupM(antialloca, BuilderM);
+            return antialloca;
           }
         }
       }
@@ -2964,7 +2973,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
                                   arg->getName() + "'ipc");
     invertedPointers.insert(
         std::make_pair((const Value *)oval, InvertedPointerVH(this, shadow)));
-    return lookupM(shadow, BuilderM);
+    return shadow;
   } else if (auto arg = dyn_cast<ConstantExpr>(oval)) {
     IRBuilder<> bb(inversionAllocs);
     auto ip = invertPointerM(arg->getOperand(0), bb);
@@ -2983,7 +2992,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
                           arg->getType(), arg->getName() + "'ipc");
         invertedPointers.insert(std::make_pair(
             (const Value *)oval, InvertedPointerVH(this, shadow)));
-        return lookupM(shadow, BuilderM);
+        return shadow;
       }
     } else if (arg->getOpcode() == Instruction::GetElementPtr) {
       if (auto C = dyn_cast<Constant>(ip))
@@ -2998,7 +3007,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         Value *shadow = bb.CreateGEP(ip, invertargs, arg->getName() + "'ipg");
         invertedPointers.insert(std::make_pair(
             (const Value *)oval, InvertedPointerVH(this, shadow)));
-        return lookupM(shadow, BuilderM);
+        return shadow;
       }
     } else {
       llvm::errs() << *arg << "\n";
@@ -3012,7 +3021,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
                               arg->getIndices(), arg->getName() + "'ipev");
     invertedPointers.insert(
         std::make_pair((const Value *)oval, InvertedPointerVH(this, shadow)));
-    return lookupM(shadow, BuilderM);
+    return shadow;
   } else if (auto arg = dyn_cast<InsertValueInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
     Value *shadow =
@@ -3021,7 +3030,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
                              arg->getIndices(), arg->getName() + "'ipiv");
     invertedPointers.insert(
         std::make_pair((const Value *)oval, InvertedPointerVH(this, shadow)));
-    return lookupM(shadow, BuilderM);
+    return shadow;
   } else if (auto arg = dyn_cast<ExtractElementInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
     Value *shadow = bb.CreateExtractElement(
@@ -3029,7 +3038,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         getNewFromOriginal(arg->getIndexOperand()), arg->getName() + "'ipee");
     invertedPointers.insert(
         std::make_pair((const Value *)oval, InvertedPointerVH(this, shadow)));
-    return lookupM(shadow, BuilderM);
+    return shadow;
   } else if (auto arg = dyn_cast<InsertElementInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
     Value *op0 = arg->getOperand(0);
@@ -3040,7 +3049,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         getNewFromOriginal(op2), arg->getName() + "'ipie");
     invertedPointers.insert(
         std::make_pair((const Value *)oval, InvertedPointerVH(this, shadow)));
-    return lookupM(shadow, BuilderM);
+    return shadow;
   } else if (auto arg = dyn_cast<ShuffleVectorInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
     Value *op0 = arg->getOperand(0);
@@ -3056,7 +3065,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
 #endif
     invertedPointers.insert(
         std::make_pair((const Value *)oval, InvertedPointerVH(this, shadow)));
-    return lookupM(shadow, BuilderM);
+    return shadow;
   } else if (auto arg = dyn_cast<SelectInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
     Value *shadow = bb.CreateSelect(getNewFromOriginal(arg->getCondition()),
@@ -3065,7 +3074,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
                                     arg->getName() + "'ipse");
     invertedPointers.insert(
         std::make_pair((const Value *)oval, InvertedPointerVH(this, shadow)));
-    return lookupM(shadow, BuilderM);
+    return shadow;
   } else if (auto arg = dyn_cast<LoadInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
     Value *op0 = arg->getOperand(0);
@@ -3082,10 +3091,10 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     li->setSyncScopeID(arg->getSyncScopeID());
     invertedPointers.insert(
         std::make_pair((const Value *)oval, InvertedPointerVH(this, li)));
-    return lookupM(li, BuilderM);
+    return li;
   } else if (auto arg = dyn_cast<BinaryOperator>(oval)) {
     if (arg->getOpcode() == Instruction::FAdd)
-      return lookupM(getNewFromOriginal(arg), BuilderM);
+      return getNewFromOriginal(arg);
 
     if (!arg->getType()->isIntOrIntVectorTy()) {
       llvm::errs() << *oval << "\n";
@@ -3103,7 +3112,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
       BI->copyIRFlags(arg);
     invertedPointers.insert(
         std::make_pair((const Value *)oval, InvertedPointerVH(this, li)));
-    return lookupM(li, BuilderM);
+    return li;
   } else if (auto arg = dyn_cast<GetElementPtrInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
     SmallVector<Value *, 4> invertargs;
@@ -3117,7 +3126,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
       gep->setIsInBounds(arg->isInBounds());
     invertedPointers.insert(
         std::make_pair((const Value *)oval, InvertedPointerVH(this, shadow)));
-    return lookupM(shadow, BuilderM);
+    return shadow;
   } else if (auto inst = dyn_cast<AllocaInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(inst));
     Value *asize = getNewFromOriginal(inst->getArraySize());
@@ -3145,7 +3154,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
           st->setAlignment(inst->getAlignment());
 #endif
         }
-        return lookupM(antialloca, BuilderM);
+        return antialloca;
       } else {
         // TODO handle alloca of size > 1
       }
@@ -3186,7 +3195,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     }
 #endif
     memset->addParamAttr(0, Attribute::NonNull);
-    return lookupM(antialloca, BuilderM);
+    return antialloca;
   } else if (auto phi = dyn_cast<PHINode>(oval)) {
 
     if (phi->getNumIncomingValues() == 0) {
@@ -3217,9 +3226,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
             }
             ++cnt;
          }
-
-         auto which2 = lookupM(which, BuilderM);
-         auto result = BuilderM.CreateSelect(which2, invertPointerM(vals[1], BuilderM), invertPointerM(vals[0], BuilderM));
+         auto result = BuilderM.CreateSelect(which, invertPointerM(vals[1], BuilderM), invertPointerM(vals[0], BuilderM));
          return result;
      }
 #endif
@@ -3248,7 +3255,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         which->addIncoming(val, cast<BasicBlock>(getNewFromOriginal(
                                     phi->getIncomingBlock(i))));
       }
-      return lookupM(which, BuilderM);
+      return which;
     }
   }
 
@@ -3271,6 +3278,11 @@ end:;
 Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                               const ValueToValueMapTy &incoming_available,
                               bool tryLegalRecomputeCheck) {
+
+  assert(mode == DerivativeMode::ReverseModePrimal ||
+         mode == DerivativeMode::ReverseModeGradient ||
+         mode == DerivativeMode::ReverseModeCombined);
+
   assert(val->getName() != "<badref>");
   if (isa<Constant>(val)) {
     return val;
