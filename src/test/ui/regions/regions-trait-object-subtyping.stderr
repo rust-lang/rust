@@ -36,7 +36,7 @@ note: but, the lifetime must be valid for the lifetime `'b` as defined on the fu
    |
 LL | fn foo3<'a,'b>(x: &'a mut dyn Dummy) -> &'b mut dyn Dummy {
    |            ^^
-note: ...so that the expression is assignable
+note: ...so that the types are compatible
   --> $DIR/regions-trait-object-subtyping.rs:15:5
    |
 LL |     x

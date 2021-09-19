@@ -19,7 +19,7 @@ note: but, the lifetime must be valid for the lifetime `'c` as defined on the fu
    |
 LL | fn make_object_bad<'a,'b,'c,A:SomeTrait+'a+'b>(v: A) -> Box<dyn SomeTrait + 'c> {
    |                          ^^
-note: ...so that the expression is assignable
+note: ...so that the types are compatible
   --> $DIR/regions-close-over-type-parameter-multiple.rs:20:5
    |
 LL |     box v as Box<dyn SomeTrait + 'a>

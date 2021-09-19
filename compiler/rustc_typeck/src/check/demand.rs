@@ -134,7 +134,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx>>) {
         let expected = self.resolve_vars_with_obligations(expected);
 
-        let e = match self.try_coerce(expr, checked_ty, expected, allow_two_phase) {
+        let e = match self.try_coerce(expr, checked_ty, expected, allow_two_phase, None) {
             Ok(ty) => return (ty, None),
             Err(e) => e,
         };

@@ -19,7 +19,7 @@ note: but, the lifetime must be valid for the lifetime `'_` as defined on the im
    |
 LL | impl Foo<'_> {
    |          ^^
-note: ...so that the expression is assignable
+note: ...so that the types are compatible
   --> $DIR/issue-55394.rs:9:9
    |
 LL |         Foo { bar }

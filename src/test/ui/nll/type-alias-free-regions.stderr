@@ -21,7 +21,7 @@ note: but, the lifetime must be valid for the lifetime `'a` as defined on the im
    |
 LL | impl<'a> FromBox<'a> for C<'a> {
    |      ^^
-note: ...so that the expression is assignable
+note: ...so that the types are compatible
   --> $DIR/type-alias-free-regions.rs:17:9
    |
 LL |         C { f: b }
@@ -52,7 +52,7 @@ note: but, the lifetime must be valid for the lifetime `'a` as defined on the im
    |
 LL | impl<'a> FromTuple<'a> for C<'a> {
    |      ^^
-note: ...so that the expression is assignable
+note: ...so that the types are compatible
   --> $DIR/type-alias-free-regions.rs:27:9
    |
 LL |         C { f: Box::new(b.0) }

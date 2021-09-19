@@ -69,7 +69,7 @@ note: but, the lifetime must be valid for the lifetime `'b` as defined on the fu
    |
 LL | fn d<'a,'b>(v: &'a [u8]) -> Box<dyn Foo+'b> {
    |         ^^
-note: ...so that the expression is assignable
+note: ...so that the types are compatible
   --> $DIR/region-object-lifetime-in-coercion.rs:23:5
    |
 LL |     Box::new(v)

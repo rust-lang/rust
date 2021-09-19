@@ -21,7 +21,7 @@ note: but, the lifetime must be valid for the lifetime `'b` as defined on the fu
    |
 LL | fn mk_add_bad2<'a,'b>(x: &'a Ast<'a>, y: &'a Ast<'a>, z: &Ast) -> Ast<'b> {
    |                   ^^
-note: ...so that the expression is assignable
+note: ...so that the types are compatible
   --> $DIR/regions-creating-enums4.rs:7:5
    |
 LL |     Ast::Add(x, y)

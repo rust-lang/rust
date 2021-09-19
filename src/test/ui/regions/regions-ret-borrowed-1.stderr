@@ -9,7 +9,7 @@ note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on th
    |
 LL |     with(|o| o)
    |          ^^^^^
-note: ...so that the expression is assignable
+note: ...so that the types are compatible
   --> $DIR/regions-ret-borrowed-1.rs:10:14
    |
 LL |     with(|o| o)

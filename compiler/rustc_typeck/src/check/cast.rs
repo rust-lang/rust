@@ -362,6 +362,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                                 ),
                                 self.cast_ty,
                                 AllowTwoPhase::No,
+                                None,
                             )
                             .is_ok()
                         {
@@ -379,6 +380,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                                     ),
                                     self.cast_ty,
                                     AllowTwoPhase::No,
+                                    None,
                                 )
                                 .is_ok()
                         {
@@ -394,6 +396,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                                 fcx.tcx.mk_ref(reg, TypeAndMut { ty: self.expr_ty, mutbl }),
                                 self.cast_ty,
                                 AllowTwoPhase::No,
+                                None,
                             )
                             .is_ok()
                     {
@@ -409,6 +412,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             ),
                             self.cast_ty,
                             AllowTwoPhase::No,
+                            None,
                         )
                         .is_ok()
                     {
@@ -666,6 +670,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             self.expr_ty,
                             fcx.tcx.mk_fn_ptr(f),
                             AllowTwoPhase::No,
+                            None,
                         );
                         if let Err(TypeError::IntrinsicCast) = res {
                             return Err(CastError::IllegalCast);
@@ -829,7 +834,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
                 // Coerce to a raw pointer so that we generate AddressOf in MIR.
                 let array_ptr_type = fcx.tcx.mk_ptr(m_expr);
-                fcx.try_coerce(self.expr, self.expr_ty, array_ptr_type, AllowTwoPhase::No)
+                fcx.try_coerce(self.expr, self.expr_ty, array_ptr_type, AllowTwoPhase::No, None)
                     .unwrap_or_else(|_| {
                         bug!(
                         "could not cast from reference to array to pointer to array ({:?} to {:?})",
@@ -861,7 +866,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn try_coercion_cast(&self, fcx: &FnCtxt<'a, 'tcx>) -> Result<(), ty::error::TypeError<'_>> {
-        match fcx.try_coerce(self.expr, self.expr_ty, self.cast_ty, AllowTwoPhase::No) {
+        match fcx.try_coerce(self.expr, self.expr_ty, self.cast_ty, AllowTwoPhase::No, None) {
             Ok(_) => Ok(()),
             Err(err) => Err(err),
         }
