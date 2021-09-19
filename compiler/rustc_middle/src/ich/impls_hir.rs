@@ -2,7 +2,6 @@
 //! types in no particular order.
 
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
-use rustc_attr as attr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_hir as hir;
@@ -114,15 +113,6 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
     }
 }
 
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::ItemLocalId {
-    type KeyType = hir::ItemLocalId;
-
-    #[inline]
-    fn to_stable_hash_key(&self, _: &StableHashingContext<'a>) -> hir::ItemLocalId {
-        *self
-    }
-}
-
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Body<'_> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let hir::Body { params, value, generator_kind } = self;
@@ -132,19 +122,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Body<'_> {
             value.hash_stable(hcx, hasher);
             generator_kind.hash_stable(hcx, hasher);
         });
-    }
-}
-
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::BodyId {
-    type KeyType = (DefPathHash, hir::ItemLocalId);
-
-    #[inline]
-    fn to_stable_hash_key(
-        &self,
-        hcx: &StableHashingContext<'a>,
-    ) -> (DefPathHash, hir::ItemLocalId) {
-        let hir::BodyId { hir_id } = *self;
-        hir_id.to_stable_hash_key(hcx)
     }
 }
 
@@ -169,23 +146,5 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::TraitCandidate {
             hcx.def_path_hash(*def_id),
             import_ids.iter().map(|def_id| hcx.local_def_path_hash(*def_id)).collect(),
         )
-    }
-}
-
-impl<'hir> HashStable<StableHashingContext<'hir>> for attr::InlineAttr {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'hir>, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-    }
-}
-
-impl<'hir> HashStable<StableHashingContext<'hir>> for attr::InstructionSetAttr {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'hir>, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-    }
-}
-
-impl<'hir> HashStable<StableHashingContext<'hir>> for attr::OptimizeAttr {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'hir>, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
     }
 }
