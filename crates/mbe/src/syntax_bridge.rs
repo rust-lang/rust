@@ -89,7 +89,7 @@ pub fn parse_to_token_tree(text: &str) -> Option<(tt::Subtree, TokenMap)> {
     Some((subtree, conv.id_alloc.map))
 }
 
-/// Split token tree with seperate expr: $($e:expr)SEP*
+/// Split token tree with separate expr: $($e:expr)SEP*
 pub fn parse_exprs_with_sep(tt: &tt::Subtree, sep: char) -> Vec<tt::Subtree> {
     if tt.token_trees.is_empty() {
         return Vec::new();
@@ -100,9 +100,6 @@ pub fn parse_exprs_with_sep(tt: &tt::Subtree, sep: char) -> Vec<tt::Subtree> {
 
     while iter.peek_n(0).is_some() {
         let expanded = iter.expect_fragment(ParserEntryPoint::Expr);
-        if expanded.err.is_some() {
-            break;
-        }
 
         res.push(match expanded.value {
             None => break,
