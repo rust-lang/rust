@@ -8,6 +8,14 @@ use super::{CodeModel, LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOpt
 
 pub fn target() -> Target {
     let opts = TargetOptions {
+        cpu: "x86-64".to_string(),
+        max_atomic_width: Some(64),
+        // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
+        stack_probes: StackProbeType::Call,
+        position_independent_executables: true,
+        static_position_independent_executables: true,
+        relro_level: RelroLevel::Full,
+        relocation_model: RelocModel::Static,
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         linker: Some("rust-lld".to_owned()),
         features:
