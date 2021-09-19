@@ -3,13 +3,13 @@
 use std::sync::Arc;
 
 use base_db::{salsa, SourceDatabase};
-use itertools::Itertools;
 use limit::Limit;
 use mbe::{syntax_node_to_token_tree, ExpandError, ExpandResult};
+use rustc_hash::FxHashSet;
 use syntax::{
     algo::diff,
     ast::{self, AttrsOwner, NameOwner},
-    AstNode, GreenNode, Parse, SyntaxNode, SyntaxToken, TextRange, T,
+    AstNode, GreenNode, Parse, SyntaxNode, SyntaxToken, T,
 };
 
 use crate::{
@@ -151,7 +151,7 @@ pub fn expand_speculative(
     // Build the subtree and token mapping for the speculative args
     let censor = censor_for_macro_input(&loc, &speculative_args);
     let (mut tt, spec_args_tmap) =
-        mbe::syntax_node_to_token_tree_censored(&speculative_args, censor);
+        mbe::syntax_node_to_token_tree_censored(&speculative_args, &censor);
 
     let (attr_arg, token_id) = match loc.kind {
         MacroCallKind::Attr { invoc_attr_index, .. } => {
@@ -305,7 +305,7 @@ fn macro_arg(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(tt::Subtree, 
 
     let node = SyntaxNode::new_root(arg);
     let censor = censor_for_macro_input(&loc, &node);
-    let (mut tt, tmap) = mbe::syntax_node_to_token_tree_censored(&node, censor);
+    let (mut tt, tmap) = mbe::syntax_node_to_token_tree_censored(&node, &censor);
 
     if loc.def.is_proc_macro() {
         // proc macros expect their inputs without parentheses, MBEs expect it with them included
@@ -315,24 +315,26 @@ fn macro_arg(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(tt::Subtree, 
     Some(Arc::new((tt, tmap)))
 }
 
-fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> Option<TextRange> {
-    match loc.kind {
-        MacroCallKind::FnLike { .. } => None,
-        MacroCallKind::Derive { derive_attr_index, .. } => match ast::Item::cast(node.clone()) {
-            Some(item) => item
+fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<SyntaxNode> {
+    (|| {
+        let censor = match loc.kind {
+            MacroCallKind::FnLike { .. } => return None,
+            MacroCallKind::Derive { derive_attr_index, .. } => ast::Item::cast(node.clone())?
                 .attrs()
-                .map(|attr| attr.syntax().text_range())
                 .take(derive_attr_index as usize + 1)
-                .fold1(TextRange::cover),
-            None => None,
-        },
-        MacroCallKind::Attr { invoc_attr_index, .. } => match ast::Item::cast(node.clone()) {
-            Some(item) => {
-                item.attrs().nth(invoc_attr_index as usize).map(|attr| attr.syntax().text_range())
-            }
-            None => None,
-        },
-    }
+                .filter(|attr| attr.simple_name().as_deref() == Some("derive"))
+                .map(|it| it.syntax().clone())
+                .collect(),
+            MacroCallKind::Attr { invoc_attr_index, .. } => ast::Item::cast(node.clone())?
+                .attrs()
+                .nth(invoc_attr_index as usize)
+                .map(|attr| attr.syntax().clone())
+                .into_iter()
+                .collect(),
+        };
+        Some(censor)
+    })()
+    .unwrap_or_default()
 }
 
 fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {

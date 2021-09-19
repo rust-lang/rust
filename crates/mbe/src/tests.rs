@@ -1,7 +1,7 @@
 mod expand;
 mod rule;
 
-use std::fmt::Write;
+use std::{fmt::Write, iter};
 
 use syntax::{ast, AstNode, NodeOrToken, SyntaxNode, WalkEvent};
 use test_utils::assert_eq_text;
@@ -252,27 +252,36 @@ struct Struct {
     let item = source_file.items().next().unwrap();
     let attr = item.attrs().nth(1).unwrap();
 
-    let (tt, _) =
-        syntax_node_to_token_tree_censored(item.syntax(), Some(attr.syntax().text_range()));
+    let (tt, _) = syntax_node_to_token_tree_censored(
+        item.syntax(),
+        &iter::once(attr.syntax().clone()).collect(),
+    );
     expect_test::expect![[r##"# [attr0] # [attr2] struct Struct {field : ()}"##]]
         .assert_eq(&tt.to_string());
 
     let source = r##"
+#[attr0]
 #[derive(Derive0)]
+#[attr1]
 #[derive(Derive1)]
+#[attr2]
 #[derive(Derive2)]
+#[attr3]
 struct Struct {
     field: ()
 }
 "##;
     let source_file = ast::SourceFile::parse(source).ok().unwrap();
     let item = source_file.items().next().unwrap();
-    let attr = item.attrs().nth(1).unwrap();
+    let derive_attr_index = 3;
+    let censor = item
+        .attrs()
+        .take(derive_attr_index as usize + 1)
+        .filter(|attr| attr.simple_name().as_deref() == Some("derive"))
+        .map(|it| it.syntax().clone())
+        .collect();
 
-    let (tt, _) = syntax_node_to_token_tree_censored(
-        item.syntax(),
-        Some(attr.syntax().text_range().cover_offset(0.into())),
-    );
-    expect_test::expect![[r##"# [derive (Derive2)] struct Struct {field : ()}"##]]
+    let (tt, _) = syntax_node_to_token_tree_censored(item.syntax(), &censor);
+    expect_test::expect![[r##"# [attr0] # [attr1] # [attr2] # [derive (Derive2)] # [attr3] struct Struct {field : ()}"##]]
         .assert_eq(&tt.to_string());
 }
