@@ -215,13 +215,13 @@ impl<'sm> CachingSourceMapView<'sm> {
 
         // Span lo and hi may equal line end when last line doesn't
         // end in newline, hence the inclusive upper bounds below.
-        debug_assert!(span_data.lo >= lo.line.start);
-        debug_assert!(span_data.lo <= lo.line.end);
-        debug_assert!(span_data.hi >= hi.line.start);
-        debug_assert!(span_data.hi <= hi.line.end);
-        debug_assert!(lo.file.contains(span_data.lo));
-        debug_assert!(lo.file.contains(span_data.hi));
-        debug_assert_eq!(lo.file_index, hi.file_index);
+        assert!(span_data.lo >= lo.line.start);
+        assert!(span_data.lo <= lo.line.end);
+        assert!(span_data.hi >= hi.line.start);
+        assert!(span_data.hi <= hi.line.end);
+        assert!(lo.file.contains(span_data.lo));
+        assert!(lo.file.contains(span_data.hi));
+        assert_eq!(lo.file_index, hi.file_index);
 
         Some((
             lo.file.clone(),
