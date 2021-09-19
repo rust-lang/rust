@@ -1,5 +1,5 @@
 error: OK
-  --> $DIR/dep-graph-assoc-type-codegen.rs:28:5
+  --> $DIR/dep-graph-assoc-type-codegen.rs:29:5
    |
 LL |     #[rustc_then_this_would_need(typeck)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -459,3 +459,9 @@ pub fn output_base_dir(config: &Config, testpaths: &TestPaths, revision: Option<
 pub fn output_base_name(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
     output_base_dir(config, testpaths, revision).join(testpaths.file.file_stem().unwrap())
 }
+
+/// Absolute path to the directory to use for incremental compilation. Example:
+///   /path/to/build/host-triple/test/ui/relative/testname.mode/testname.inc
+pub fn incremental_dir(config: &Config, testpaths: &TestPaths) -> PathBuf {
+    output_base_name(config, testpaths, None).with_extension("inc")
+}

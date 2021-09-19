@@ -1,5 +1,5 @@
 // edition:2018
-// compile-flags:-Cincremental=tmp/issue-72442
+// incremental
 
 use std::fs::File;
 use std::future::Future;

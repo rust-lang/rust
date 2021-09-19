@@ -113,6 +113,21 @@ pub struct TestProps {
     // testing harness and used when generating compilation
     // arguments. (In particular, it propagates to the aux-builds.)
     pub incremental_dir: Option<PathBuf>,
+    // If `true`, this test will use incremental compilation.
+    //
+    // This can be set manually with the `incremental` header, or implicitly
+    // by being a part of an incremental mode test. Using the `incremental`
+    // header should be avoided if possible; using an incremental mode test is
+    // preferred. Incremental mode tests support multiple passes, which can
+    // verify that the incremental cache can be loaded properly after being
+    // created. Just setting the header will only verify the behavior with
+    // creating an incremental cache, but doesn't check that it is created
+    // correctly.
+    //
+    // Compiletest will create the incremental directory, and ensure it is
+    // empty before the test starts. Incremental mode tests will reuse the
+    // incremental directory between passes in the same test.
+    pub incremental: bool,
     // How far should the test proceed while still passing.
     pass_mode: Option<PassMode>,
     // Ignore `--pass` overrides from the command line for this test.
@@ -163,6 +178,7 @@ impl TestProps {
             pretty_compare_only: false,
             forbid_output: vec![],
             incremental_dir: None,
+            incremental: false,
             pass_mode: None,
             fail_mode: None,
             ignore_pass: false,
@@ -350,6 +366,10 @@ impl TestProps {
                 if !self.stderr_per_bitwidth {
                     self.stderr_per_bitwidth = config.parse_stderr_per_bitwidth(ln);
                 }
+
+                if !self.incremental {
+                    self.incremental = config.parse_incremental(ln);
+                }
             });
         }
 
@@ -358,6 +378,10 @@ impl TestProps {
         }
         if self.should_ice {
             self.failure_status = 101;
+        }
+
+        if config.mode == Mode::Incremental {
+            self.incremental = true;
         }
 
         for key in &["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
@@ -730,6 +754,10 @@ impl Config {
 
     fn parse_edition(&self, line: &str) -> Option<String> {
         self.parse_name_value_directive(line, "edition")
+    }
+
+    fn parse_incremental(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "incremental")
     }
 }
 

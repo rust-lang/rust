@@ -1,7 +1,8 @@
 // Test that changing what a `type` points to does not go unnoticed
 // by the variance analysis.
 
-// compile-flags: -Z query-dep-graph -C incremental=tmp/dep-graph-variance-alias
+// incremental
+// compile-flags: -Z query-dep-graph
 
 #![feature(rustc_attrs)]
 #![allow(dead_code)]

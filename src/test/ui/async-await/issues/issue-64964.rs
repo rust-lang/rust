@@ -1,5 +1,6 @@
 // check-pass
-// compile-flags: -Z query-dep-graph -C incremental=tmp/issue-64964
+// incremental
+// compile-flags: -Z query-dep-graph
 // edition:2018
 
 // Regression test for ICE related to `await`ing in a method + incr. comp. (#64964)

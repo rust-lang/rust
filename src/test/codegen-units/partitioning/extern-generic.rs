@@ -1,7 +1,8 @@
 //
-// We specify -C incremental here because we want to test the partitioning for
+// We specify incremental here because we want to test the partitioning for
 // incremental compilation
-// compile-flags:-Zprint-mono-items=eager -Cincremental=tmp/partitioning-tests/extern-generic -Zshare-generics=y
+// incremental
+// compile-flags:-Zprint-mono-items=eager -Zshare-generics=y
 
 #![allow(dead_code)]
 #![crate_type="lib"]

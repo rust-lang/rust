@@ -1,8 +1,9 @@
 //
 
-// We specify -C incremental here because we want to test the partitioning for
+// We specify incremental here because we want to test the partitioning for
 // incremental compilation
-// compile-flags:-Zprint-mono-items=lazy -Cincremental=tmp/partitioning-tests/vtable-through-const
+// incremental
+// compile-flags:-Zprint-mono-items=lazy
 // compile-flags:-Zinline-in-all-cgus
 
 // This test case makes sure, that references made through constants are
