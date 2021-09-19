@@ -38,7 +38,7 @@
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream, TokenTree};
-use rustc_ast::visit::{self, AssocCtxt, Visitor};
+use rustc_ast::visit;
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
@@ -418,60 +418,9 @@ enum AnonymousLifetimeMode {
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_crate(mut self, c: &Crate) -> &'hir hir::Crate<'hir> {
-        /// Full-crate AST visitor that inserts into a fresh
-        /// `LoweringContext` any information that may be
-        /// needed from arbitrary locations in the crate,
-        /// e.g., the number of lifetime generic parameters
-        /// declared for every type and trait definition.
-        struct MiscCollector<'tcx, 'lowering, 'hir> {
-            lctx: &'tcx mut LoweringContext<'lowering, 'hir>,
-        }
-
-        impl MiscCollector<'_, '_, '_> {
-            fn allocate_use_tree_hir_id_counters(&mut self, tree: &UseTree) {
-                match tree.kind {
-                    UseTreeKind::Simple(_, id1, id2) => {
-                        for id in [id1, id2] {
-                            self.lctx.allocate_hir_id_counter(id);
-                        }
-                    }
-                    UseTreeKind::Glob => (),
-                    UseTreeKind::Nested(ref trees) => {
-                        for &(ref use_tree, id) in trees {
-                            self.lctx.allocate_hir_id_counter(id);
-                            self.allocate_use_tree_hir_id_counters(use_tree);
-                        }
-                    }
-                }
-            }
-        }
-
-        impl<'tcx> Visitor<'tcx> for MiscCollector<'tcx, '_, '_> {
-            fn visit_item(&mut self, item: &'tcx Item) {
-                self.lctx.allocate_hir_id_counter(item.id);
-
-                if let ItemKind::Use(ref use_tree) = item.kind {
-                    self.allocate_use_tree_hir_id_counters(use_tree);
-                }
-
-                visit::walk_item(self, item);
-            }
-
-            fn visit_assoc_item(&mut self, item: &'tcx AssocItem, ctxt: AssocCtxt) {
-                self.lctx.allocate_hir_id_counter(item.id);
-                visit::walk_assoc_item(self, item, ctxt);
-            }
-
-            fn visit_foreign_item(&mut self, item: &'tcx ForeignItem) {
-                self.lctx.allocate_hir_id_counter(item.id);
-                visit::walk_foreign_item(self, item);
-            }
-        }
-
         self.lower_node_id(CRATE_NODE_ID);
         debug_assert!(self.node_id_to_hir_id[CRATE_NODE_ID] == Some(hir::CRATE_HIR_ID));
 
-        visit::walk_crate(&mut MiscCollector { lctx: &mut self }, c);
         visit::walk_crate(&mut item::ItemLowerer { lctx: &mut self }, c);
 
         let module = self.arena.alloc(self.lower_mod(&c.items, c.span));
@@ -554,13 +503,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         id
     }
 
-    fn allocate_hir_id_counter(&mut self, owner: NodeId) -> hir::HirId {
+    fn allocate_hir_id_counter(&mut self, owner: NodeId) -> LocalDefId {
         // Set up the counter if needed.
         self.item_local_id_counters.entry(owner).or_insert(0);
         // Always allocate the first `HirId` for the owner itself.
         let lowered = self.lower_node_id_with_owner(owner, owner);
         debug_assert_eq!(lowered.local_id.as_u32(), 0);
-        lowered
+        lowered.owner
     }
 
     fn create_stable_hashing_context(&self) -> LoweringHasher<'_> {
@@ -1494,9 +1443,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // frequently opened issues show.
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
-        let opaque_ty_def_id = self.resolver.local_def_id(opaque_ty_node_id);
-
-        self.allocate_hir_id_counter(opaque_ty_node_id);
+        let opaque_ty_def_id = self.allocate_hir_id_counter(opaque_ty_node_id);
 
         let collected_lifetimes = self.with_hir_id_owner(opaque_ty_node_id, move |lctx| {
             let hir_bounds = lower_bounds(lctx);
@@ -1753,9 +1700,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::Async, span, None);
 
-        let opaque_ty_def_id = self.resolver.local_def_id(opaque_ty_node_id);
-
-        self.allocate_hir_id_counter(opaque_ty_node_id);
+        let opaque_ty_def_id = self.allocate_hir_id_counter(opaque_ty_node_id);
 
         // When we create the opaque type for this async fn, it is going to have
         // to capture all the lifetimes involved in the signature (including in the

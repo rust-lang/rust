@@ -40,6 +40,7 @@ impl ItemLowerer<'_, '_, '_> {
 
 impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
     fn visit_item(&mut self, item: &'a Item) {
+        self.lctx.allocate_hir_id_counter(item.id);
         let hir_id = self.lctx.with_hir_id_owner(item.id, |lctx| {
             lctx.without_in_scope_lifetime_defs(|lctx| {
                 let hir_item = lctx.lower_item(item);
@@ -77,6 +78,7 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
     }
 
     fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
+        self.lctx.allocate_hir_id_counter(item.id);
         self.lctx.with_hir_id_owner(item.id, |lctx| match ctxt {
             AssocCtxt::Trait => {
                 let hir_item = lctx.lower_trait_item(item);
@@ -154,41 +156,28 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_mod(&mut self, items: &[P<Item>], inner: Span) -> hir::Mod<'hir> {
         hir::Mod {
             inner: self.lower_span(inner),
-            item_ids: self.arena.alloc_from_iter(items.iter().flat_map(|x| self.lower_item_id(x))),
+            item_ids: self.arena.alloc_from_iter(items.iter().flat_map(|x| self.lower_item_ref(x))),
         }
     }
 
-    pub(super) fn lower_item_id(&mut self, i: &Item) -> SmallVec<[hir::ItemId; 1]> {
-        let node_ids = match i.kind {
-            ItemKind::Use(ref use_tree) => {
-                let mut vec = smallvec![i.id];
-                self.lower_item_id_use_tree(use_tree, i.id, &mut vec);
-                vec
-            }
-            ItemKind::Fn(..) | ItemKind::Impl(box ImplKind { of_trait: None, .. }) => {
-                smallvec![i.id]
-            }
-            _ => smallvec![i.id],
-        };
-
+    pub(super) fn lower_item_ref(&mut self, i: &Item) -> SmallVec<[hir::ItemId; 1]> {
+        let mut node_ids = smallvec![hir::ItemId { def_id: self.resolver.local_def_id(i.id) }];
+        if let ItemKind::Use(ref use_tree) = &i.kind {
+            self.lower_item_id_use_tree(use_tree, i.id, &mut node_ids);
+        }
         node_ids
-            .into_iter()
-            .map(|node_id| hir::ItemId {
-                def_id: self.allocate_hir_id_counter(node_id).expect_owner(),
-            })
-            .collect()
     }
 
     fn lower_item_id_use_tree(
         &mut self,
         tree: &UseTree,
         base_id: NodeId,
-        vec: &mut SmallVec<[NodeId; 1]>,
+        vec: &mut SmallVec<[hir::ItemId; 1]>,
     ) {
         match tree.kind {
             UseTreeKind::Nested(ref nested_vec) => {
                 for &(ref nested, id) in nested_vec {
-                    vec.push(id);
+                    vec.push(hir::ItemId { def_id: self.resolver.local_def_id(id) });
                     self.lower_item_id_use_tree(nested, id, vec);
                 }
             }
@@ -197,7 +186,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 for (_, &id) in
                     iter::zip(self.expect_full_res_from_use(base_id).skip(1), &[id1, id2])
                 {
-                    vec.push(id);
+                    vec.push(hir::ItemId { def_id: self.resolver.local_def_id(id) });
                 }
             }
         }
@@ -486,7 +475,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                 }
 
-                let mut resolutions = self.expect_full_res_from_use(id);
+                let mut resolutions = self.expect_full_res_from_use(id).fuse();
                 // We want to return *something* from this function, so hold onto the first item
                 // for later.
                 let ret_res = self.lower_res(resolutions.next().unwrap_or(Res::Err));
@@ -496,7 +485,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // won't be dealing with macros in the rest of the compiler.
                 // Essentially a single `use` which imports two names is desugared into
                 // two imports.
-                for (res, &new_node_id) in iter::zip(resolutions, &[id1, id2]) {
+                for new_node_id in [id1, id2] {
+                    // Associate an HirId to both ids even if there is no resolution.
+                    let new_id = self.allocate_hir_id_counter(new_node_id);
+
+                    let res = if let Some(res) = resolutions.next() { res } else { continue };
                     let ident = *ident;
                     let mut path = path.clone();
                     for seg in &mut path.segments {
@@ -505,17 +498,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let span = path.span;
 
                     self.with_hir_id_owner(new_node_id, |this| {
-                        let new_id = this.lower_node_id(new_node_id);
                         let res = this.lower_res(res);
                         let path = this.lower_path_extra(res, &path, ParamMode::Explicit, None);
                         let kind = hir::ItemKind::Use(path, hir::UseKind::Single);
                         let vis = this.rebuild_vis(&vis);
                         if let Some(attrs) = attrs {
-                            this.attrs.insert(new_id, attrs);
+                            this.attrs.insert(hir::HirId::make_owner(new_id), attrs);
                         }
 
                         this.insert_item(hir::Item {
-                            def_id: new_id.expect_owner(),
+                            def_id: new_id,
                             ident: this.lower_ident(ident),
                             kind,
                             vis,
@@ -564,7 +556,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 // Add all the nested `PathListItem`s to the HIR.
                 for &(ref use_tree, id) in trees {
-                    let new_hir_id = self.lower_node_id(id);
+                    let new_hir_id = self.allocate_hir_id_counter(id);
 
                     let mut prefix = prefix.clone();
 
@@ -585,11 +577,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let kind =
                             this.lower_use_tree(use_tree, &prefix, id, &mut vis, &mut ident, attrs);
                         if let Some(attrs) = attrs {
-                            this.attrs.insert(new_hir_id, attrs);
+                            this.attrs.insert(hir::HirId::make_owner(new_hir_id), attrs);
                         }
 
                         this.insert_item(hir::Item {
-                            def_id: new_hir_id.expect_owner(),
+                            def_id: new_hir_id,
                             ident: this.lower_ident(ident),
                             kind,
                             vis,
@@ -700,7 +692,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_foreign_item_ref(&mut self, i: &ForeignItem) -> hir::ForeignItemRef<'hir> {
         hir::ForeignItemRef {
-            id: hir::ForeignItemId { def_id: self.lower_node_id(i.id).expect_owner() },
+            id: hir::ForeignItemId { def_id: self.allocate_hir_id_counter(i.id) },
             ident: self.lower_ident(i.ident),
             span: self.lower_span(i.span),
             vis: self.lower_visibility(&i.vis, Some(i.id)),
@@ -839,7 +831,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             AssocItemKind::MacCall(..) => unimplemented!(),
         };
-        let id = hir::TraitItemId { def_id: self.lower_node_id(i.id).expect_owner() };
+        let id = hir::TraitItemId { def_id: self.resolver.local_def_id(i.id) };
         let defaultness = hir::Defaultness::Default { has_value: has_default };
         hir::TraitItemRef {
             id,
@@ -925,7 +917,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
         hir::ImplItemRef {
-            id: hir::ImplItemId { def_id: self.lower_node_id(i.id).expect_owner() },
+            id: hir::ImplItemId { def_id: self.allocate_hir_id_counter(i.id) },
             ident: self.lower_ident(i.ident),
             span: self.lower_span(i.span),
             vis: self.lower_visibility(&i.vis, Some(i.id)),

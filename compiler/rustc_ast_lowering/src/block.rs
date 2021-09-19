@@ -55,7 +55,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                 }
                 StmtKind::Item(ref it) => {
-                    stmts.extend(self.lower_item_id(it).into_iter().enumerate().map(
+                    stmts.extend(self.lower_item_ref(it).into_iter().enumerate().map(
                         |(i, item_id)| {
                             let hir_id = match i {
                                 0 => self.lower_node_id(s.id),
