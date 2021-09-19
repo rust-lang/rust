@@ -3595,7 +3595,6 @@ dependencies = [
  "rustc_symbol_mangling",
  "rustc_target",
  "smallvec",
- "snap",
  "tempfile",
  "thorin-dwp",
  "tracing",
@@ -3967,7 +3966,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec",
- "snap",
  "tracing",
 ]
 
@@ -4794,12 +4792,6 @@ name = "smallvec"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ecab6c735a6bb4139c0caafd0cc3635748bbb3acf4550e8138122099251f309"
-
-[[package]]
-name = "snap"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da73c8f77aebc0e40c300b93f0a5f1bece7a248a36eee287d4e095f35c7b7d6e"
 
 [[package]]
 name = "socket2"

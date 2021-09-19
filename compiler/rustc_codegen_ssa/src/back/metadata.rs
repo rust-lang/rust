@@ -1,7 +1,6 @@
 //! Reading of the rustc metadata for rlibs and dylibs
 
 use std::fs::File;
-use std::io::Write;
 use std::path::Path;
 
 use object::write::{self, StandardSegment, Symbol, SymbolSection};
@@ -9,8 +8,6 @@ use object::{
     elf, pe, Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection,
     SectionFlags, SectionKind, SymbolFlags, SymbolKind, SymbolScope,
 };
-
-use snap::write::FrameEncoder;
 
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owning_ref::OwningRef;
@@ -260,12 +257,10 @@ pub fn create_compressed_metadata_file(
     metadata: &EncodedMetadata,
     symbol_name: &str,
 ) -> Vec<u8> {
-    let mut compressed = rustc_metadata::METADATA_HEADER.to_vec();
-    FrameEncoder::new(&mut compressed).write_all(metadata.raw_data()).unwrap();
     let mut file = if let Some(file) = create_object_file(sess) {
         file
     } else {
-        return compressed.to_vec();
+        return metadata.raw_data().to_vec();
     };
     let section = file.add_section(
         file.segment_name(StandardSegment::Data).to_vec(),
@@ -279,14 +274,14 @@ pub fn create_compressed_metadata_file(
         }
         _ => {}
     };
-    let offset = file.append_section_data(section, &compressed, 1);
+    let offset = file.append_section_data(section, metadata.raw_data(), 1);
 
     // For MachO and probably PE this is necessary to prevent the linker from throwing away the
     // .rustc section. For ELF this isn't necessary, but it also doesn't harm.
     file.add_symbol(Symbol {
         name: symbol_name.as_bytes().to_vec(),
         value: offset,
-        size: compressed.len() as u64,
+        size: metadata.raw_data().len() as u64,
         kind: SymbolKind::Data,
         scope: SymbolScope::Dynamic,
         weak: false,

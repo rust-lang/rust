@@ -213,7 +213,7 @@
 //! metadata::locator or metadata::creader for all the juicy details!
 
 use crate::creader::Library;
-use crate::rmeta::{rustc_version, MetadataBlob, METADATA_HEADER};
+use crate::rmeta::{rustc_version, MetadataBlob};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::memmap::Mmap;
@@ -231,11 +231,10 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::{Target, TargetTriple};
 
-use snap::read::FrameDecoder;
 use std::fmt::Write as _;
-use std::io::{Read, Result as IoResult, Write};
+use std::io::{Result as IoResult, Write};
 use std::path::{Path, PathBuf};
-use std::{cmp, fmt, fs};
+use std::{fmt, fs};
 use tracing::{debug, info};
 
 #[derive(Clone)]
@@ -757,34 +756,7 @@ fn get_metadata_section<'p>(
             loader.get_rlib_metadata(target, filename).map_err(MetadataError::LoadFailure)?
         }
         CrateFlavor::Dylib => {
-            let buf =
-                loader.get_dylib_metadata(target, filename).map_err(MetadataError::LoadFailure)?;
-            // The header is uncompressed
-            let header_len = METADATA_HEADER.len();
-            debug!("checking {} bytes of metadata-version stamp", header_len);
-            let header = &buf[..cmp::min(header_len, buf.len())];
-            if header != METADATA_HEADER {
-                return Err(MetadataError::LoadFailure(format!(
-                    "invalid metadata version found: {}",
-                    filename.display()
-                )));
-            }
-
-            // Header is okay -> inflate the actual metadata
-            let compressed_bytes = &buf[header_len..];
-            debug!("inflating {} bytes of compressed metadata", compressed_bytes.len());
-            // Assume the decompressed data will be at least the size of the compressed data, so we
-            // don't have to grow the buffer as much.
-            let mut inflated = Vec::with_capacity(compressed_bytes.len());
-            match FrameDecoder::new(compressed_bytes).read_to_end(&mut inflated) {
-                Ok(_) => rustc_erase_owner!(OwningRef::new(inflated).map_owner_box()),
-                Err(_) => {
-                    return Err(MetadataError::LoadFailure(format!(
-                        "failed to decompress metadata: {}",
-                        filename.display()
-                    )));
-                }
-            }
+            loader.get_dylib_metadata(target, filename).map_err(MetadataError::LoadFailure)?
         }
         CrateFlavor::Rmeta => {
             // mmap the file, because only a small fraction of it is read.

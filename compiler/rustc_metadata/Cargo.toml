@@ -9,7 +9,6 @@ doctest = false
 [dependencies]
 libloading = "0.7.1"
 odht = { version = "0.3.1", features = ["nightly"] }
-snap = "1"
 tracing = "0.1"
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 rustc_middle = { path = "../rustc_middle" }
