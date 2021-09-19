@@ -1498,7 +1498,8 @@ Couldn't find required command: ninja (or ninja-build)
 
 You should install ninja as described at
 <https://github.com/ninja-build/ninja/wiki/Pre-built-Ninja-packages>,
-or set `download-ci-llvm = true` in the `[llvm]` section of `config.toml`
+or set `ninja = false` in the `[llvm]` section of `config.toml`.
+Alternatively, set `download-ci-llvm = true` in that `[llvm]` section
 to download LLVM rather than building it.
 "
                 );
