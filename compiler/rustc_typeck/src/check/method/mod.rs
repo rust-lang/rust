@@ -141,6 +141,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         method_name: Ident,
         self_ty: Ty<'tcx>,
         call_expr: &hir::Expr<'_>,
+        span: Option<Span>,
     ) {
         let params = self
             .probe_for_name(
@@ -159,7 +160,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .unwrap_or(0);
 
         // Account for `foo.bar<T>`;
-        let sugg_span = call_expr.span.shrink_to_hi();
+        let sugg_span = span.unwrap_or_else(|| call_expr.span).shrink_to_hi();
         let (suggestion, applicability) = (
             format!("({})", (0..params).map(|_| "_").collect::<Vec<_>>().join(", ")),
             if params > 0 { Applicability::HasPlaceholders } else { Applicability::MaybeIncorrect },
