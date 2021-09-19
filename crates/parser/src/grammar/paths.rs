@@ -27,7 +27,7 @@ pub(super) fn expr_path(p: &mut Parser) {
     path(p, Mode::Expr)
 }
 
-pub(crate) fn type_path_for_qualifier(p: &mut Parser, qual: CompletedMarker) {
+pub(crate) fn type_path_for_qualifier(p: &mut Parser, qual: CompletedMarker) -> CompletedMarker {
     path_for_qualifier(p, Mode::Type, qual)
 }
 
@@ -42,10 +42,10 @@ fn path(p: &mut Parser, mode: Mode) {
     let path = p.start();
     path_segment(p, mode, true);
     let qual = path.complete(p, PATH);
-    path_for_qualifier(p, mode, qual)
+    path_for_qualifier(p, mode, qual);
 }
 
-fn path_for_qualifier(p: &mut Parser, mode: Mode, mut qual: CompletedMarker) {
+fn path_for_qualifier(p: &mut Parser, mode: Mode, mut qual: CompletedMarker) -> CompletedMarker {
     loop {
         let use_tree = matches!(p.nth(2), T![*] | T!['{']);
         if p.at(T![::]) && !use_tree {
@@ -55,7 +55,7 @@ fn path_for_qualifier(p: &mut Parser, mode: Mode, mut qual: CompletedMarker) {
             let path = path.complete(p, PATH);
             qual = path;
         } else {
-            break;
+            return qual;
         }
     }
 }

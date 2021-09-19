@@ -32,9 +32,6 @@ fn generic_arg(p: &mut Parser) {
         // fn print_all<T: Iterator<Item, Item::Item, Item::<true>, Item: Display, Item<'a> = Item>>(printables: T) {}
         IDENT if [T![<], T![=], T![:]].contains(&p.nth(1)) => {
             let m = p.start();
-            let path_ty = p.start();
-            let path = p.start();
-            let path_seg = p.start();
             name_ref(p);
             opt_generic_arg_list(p, false);
             match p.current() {
@@ -42,27 +39,17 @@ fn generic_arg(p: &mut Parser) {
                 T![=] => {
                     p.bump_any();
                     types::type_(p);
-
-                    path_seg.abandon(p);
-                    path.abandon(p);
-                    path_ty.abandon(p);
                     m.complete(p, ASSOC_TYPE_ARG);
                 }
                 // NameRef<...>:
                 T![:] if !p.at(T![::]) => {
                     generic_params::bounds(p);
-
-                    path_seg.abandon(p);
-                    path.abandon(p);
-                    path_ty.abandon(p);
                     m.complete(p, ASSOC_TYPE_ARG);
                 }
                 _ => {
-                    path_seg.complete(p, PATH_SEGMENT);
-                    let qual = path.complete(p, PATH);
-                    paths::type_path_for_qualifier(p, qual);
-                    path_ty.complete(p, PATH_TYPE);
-                    m.complete(p, TYPE_ARG);
+                    let m = m.complete(p, PATH_SEGMENT).precede(p).complete(p, PATH);
+                    let m = paths::type_path_for_qualifier(p, m);
+                    m.precede(p).complete(p, PATH_TYPE).precede(p).complete(p, TYPE_ARG);
                 }
             }
         }
