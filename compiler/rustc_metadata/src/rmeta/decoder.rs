@@ -37,10 +37,10 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
-use std::io;
-use std::mem;
+use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::path::Path;
+use std::{io, mem};
 use tracing::debug;
 
 pub use cstore_impl::{provide, provide_extern};
@@ -137,19 +137,23 @@ crate struct CrateMetadata {
     extern_crate: Lock<Option<ExternCrate>>,
 
     // cache
-    struct_field_names: Lock<FxHashMap<DefIndex, Vec<Spanned<Symbol>>>>,
-    struct_field_visibilities: Lock<FxHashMap<DefIndex, Vec<Visibility>>>,
-    ctor_def_ids_and_kinds: Lock<FxHashMap<DefIndex, Option<(DefId, CtorKind)>>>,
-    visibilities: Lock<FxHashMap<DefIndex, Visibility>>,
-    item_children: Lock<FxHashMap<DefIndex, Vec<Export>>>,
-    associated_items: Lock<FxHashMap<DefIndex, ty::AssocItem>>,
-    spans: Lock<FxHashMap<DefIndex, Span>>,
-    def_kinds: Lock<FxHashMap<DefIndex, DefKind>>,
-    generics: Lock<FxHashMap<DefIndex, ty::Generics>>,
-    module_expansions: Lock<FxHashMap<DefIndex, ExpnId>>,
-    proc_macro_quoted_spans: Lock<FxHashMap<usize, Span>>,
-    item_attrs: Lock<FxHashMap<DefIndex, Vec<ast::Attribute>>>,
+    struct_field_names: Cache<DefIndex, Vec<Spanned<Symbol>>>,
+    struct_field_visibilities: Cache<DefIndex, Vec<Visibility>>,
+    ctor_def_ids_and_kinds: Cache<DefIndex, Option<(DefId, CtorKind)>>,
+    visibilities: Cache<DefIndex, Visibility>,
+    item_children: Cache<DefIndex, Vec<Export>>,
+    associated_items: Cache<DefIndex, ty::AssocItem>,
+    spans: Cache<DefIndex, Span>,
+    def_kinds: Cache<DefIndex, DefKind>,
+    generics: Cache<DefIndex, ty::Generics>,
+    module_expansions: Cache<DefIndex, ExpnId>,
+    proc_macro_quoted_spans: Cache<usize, Span>,
+    item_attrs: Cache<DefIndex, Vec<ast::Attribute>>,
 }
+
+#[allow(dead_code)]
+type CacheOld<K, V> = Lock<FxHashMap<K, V>>;
+type Cache<K, V> = Lock<IndexVec<K, Option<V>>>;
 
 /// Holds information about a rustc_span::SourceFile imported from another crate.
 /// See `imported_source_files()` for more information.
@@ -176,6 +180,50 @@ pub(super) struct DecodeContext<'a, 'tcx> {
 
     // Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     alloc_decoding_session: Option<AllocDecodingSession<'a>>,
+}
+
+#[allow(dead_code)]
+fn get_or_insert_with_old<K: Eq + Hash, V>(
+    cache: &mut FxHashMap<K, V>,
+    k: K,
+    v: impl FnOnce() -> V,
+) -> &V {
+    cache.entry(k).or_insert_with(v)
+}
+
+#[allow(dead_code)]
+fn steal_or_create_with_old<K: Eq + Hash, V>(
+    cache: &mut FxHashMap<K, V>,
+    k: K,
+    v: impl FnOnce() -> V,
+) -> V {
+    cache.remove(&k).unwrap_or_else(v)
+}
+
+fn get_or_insert_with<K: Idx, V>(
+    cache: &mut IndexVec<K, Option<V>>,
+    k: K,
+    v: impl FnOnce() -> V,
+) -> &V {
+    // cache.ensure_contains_elem(k, || None);
+    match &mut cache[k] {
+        entry @ None => {
+            *entry = Some(v());
+            entry.as_ref().unwrap()
+        }
+        Some(v) => v,
+    }
+}
+
+fn steal_or_create_with<K: Idx, V>(
+    cache: &mut IndexVec<K, Option<V>>,
+    k: K,
+    v: impl FnOnce() -> V,
+) -> V {
+    match cache.get_mut(k) {
+        Some(entry @ Some(..)) => entry.take().unwrap(),
+        _ => v(),
+    }
 }
 
 /// Abstract over the various ways one can create metadata decoders.
@@ -772,7 +820,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn def_kind(&self, item_id: DefIndex) -> DefKind {
-        *self.def_kinds.borrow_mut().entry(item_id).or_insert_with(|| {
+        *get_or_insert_with(&mut self.def_kinds.lock(), item_id, || {
             self.root.tables.def_kind.get(self, item_id).map(|k| k.decode(self)).unwrap_or_else(
                 || {
                     bug!(
@@ -787,7 +835,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_span(&self, index: DefIndex, sess: &Session) -> Span {
-        *self.spans.borrow_mut().entry(index).or_insert_with(|| {
+        *get_or_insert_with(&mut self.spans.lock(), index, || {
             self.root
                 .tables
                 .span
@@ -978,10 +1026,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_generics_cache_steal(&self, item_id: DefIndex, sess: &Session) -> ty::Generics {
-        self.generics
-            .borrow_mut()
-            .remove(&item_id)
-            .unwrap_or_else(|| self.get_generics_uncached(item_id, sess))
+        steal_or_create_with(&mut self.generics.lock(), item_id, || {
+            self.get_generics_uncached(item_id, sess)
+        })
     }
 
     fn get_generics_cache_fill<R>(
@@ -990,12 +1037,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         sess: &Session,
         callback: impl FnOnce(&ty::Generics) -> R,
     ) -> R {
-        callback(
-            self.generics
-                .borrow_mut()
-                .entry(item_id)
-                .or_insert_with(|| self.get_generics_uncached(item_id, sess)),
-        )
+        callback(get_or_insert_with(&mut self.generics.lock(), item_id, || {
+            self.get_generics_uncached(item_id, sess)
+        }))
     }
 
     fn get_generics_uncached(&self, item_id: DefIndex, sess: &Session) -> ty::Generics {
@@ -1024,11 +1068,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_visibility(&self, id: DefIndex) -> ty::Visibility {
-        *self
-            .visibilities
-            .borrow_mut()
-            .entry(id)
-            .or_insert_with(|| self.root.tables.visibility.get(self, id).unwrap().decode(self))
+        *get_or_insert_with(&mut self.visibilities.lock(), id, || {
+            self.root.tables.visibility.get(self, id).unwrap().decode(self)
+        })
     }
 
     fn get_impl_data(&self, id: DefIndex) -> ImplData {
@@ -1111,10 +1153,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_item_children_cache_steal(&self, id: DefIndex, sess: &Session) -> Vec<Export> {
-        self.item_children
-            .borrow_mut()
-            .remove(&id)
-            .unwrap_or_else(|| self.get_item_children_uncached(id, sess))
+        steal_or_create_with(&mut self.item_children.lock(), id, || {
+            self.get_item_children_uncached(id, sess)
+        })
     }
 
     fn get_item_children_cache_fill<R>(
@@ -1123,12 +1164,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         sess: &Session,
         callback: impl FnOnce(&Vec<Export>) -> R,
     ) -> R {
-        callback(
-            self.item_children
-                .borrow_mut()
-                .entry(id)
-                .or_insert_with(|| self.get_item_children_uncached(id, sess)),
-        )
+        callback(get_or_insert_with(&mut self.item_children.lock(), id, || {
+            self.get_item_children_uncached(id, sess)
+        }))
     }
 
     /// Collects all children of the given item.
@@ -1288,7 +1326,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn module_expansion(&self, id: DefIndex, sess: &Session) -> ExpnId {
-        *self.module_expansions.borrow_mut().entry(id).or_insert_with(|| {
+        *get_or_insert_with(&mut self.module_expansions.lock(), id, || {
             if let EntryKind::Mod(m) = self.kind(id) {
                 m.decode((self, sess)).expansion
             } else {
@@ -1367,7 +1405,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_associated_item(&self, id: DefIndex, sess: &Session) -> ty::AssocItem {
-        *self.associated_items.borrow_mut().entry(id).or_insert_with(|| {
+        *get_or_insert_with(&mut self.associated_items.lock(), id, || {
             let def_key = self.def_key(id);
             let parent = self.local_def_id(def_key.parent.unwrap());
             let ident = self.item_ident(id, sess);
@@ -1399,7 +1437,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_ctor_def_id_and_kind(&self, node_id: DefIndex) -> Option<(DefId, CtorKind)> {
-        *self.ctor_def_ids_and_kinds.borrow_mut().entry(node_id).or_insert_with(|| {
+        *get_or_insert_with(&mut self.ctor_def_ids_and_kinds.lock(), node_id, || {
             match self.kind(node_id) {
                 EntryKind::Struct(data, _) | EntryKind::Variant(data) => {
                     let vdata = data.decode(self);
@@ -1415,10 +1453,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         node_id: DefIndex,
         sess: &'a Session,
     ) -> Vec<ast::Attribute> {
-        self.item_attrs
-            .borrow_mut()
-            .remove(&node_id)
-            .unwrap_or_else(|| self.get_item_attrs_uncached(node_id, sess))
+        steal_or_create_with(&mut self.item_attrs.lock(), node_id, || {
+            self.get_item_attrs_uncached(node_id, sess)
+        })
     }
 
     fn get_item_attrs_cache_fill<R>(
@@ -1427,12 +1464,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         sess: &'a Session,
         callback: impl FnOnce(&Vec<ast::Attribute>) -> R,
     ) -> R {
-        callback(
-            self.item_attrs
-                .borrow_mut()
-                .entry(node_id)
-                .or_insert_with(|| self.get_item_attrs_uncached(node_id, sess)),
-        )
+        callback(get_or_insert_with(&mut self.item_attrs.lock(), node_id, || {
+            self.get_item_attrs_uncached(node_id, sess)
+        }))
     }
 
     fn get_item_attrs_uncached(
@@ -1467,16 +1501,24 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         sess: &Session,
         callback: impl FnOnce(&Vec<Spanned<Symbol>>) -> R,
     ) -> R {
-        callback(self.struct_field_names.borrow_mut().entry(id).or_insert_with(|| {
-            self.root
-                .tables
-                .children
-                .get(self, id)
-                .unwrap_or_else(Lazy::empty)
-                .decode(self)
-                .map(|index| respan(self.get_span(index, sess), self.item_ident(index, sess).name))
-                .collect()
+        callback(get_or_insert_with(&mut self.struct_field_names.lock(), id, || {
+            self.get_struct_field_names_uncached(id, sess)
         }))
+    }
+
+    fn get_struct_field_names_uncached(
+        &self,
+        id: DefIndex,
+        sess: &Session,
+    ) -> Vec<Spanned<Symbol>> {
+        self.root
+            .tables
+            .children
+            .get(self, id)
+            .unwrap_or_else(Lazy::empty)
+            .decode(self)
+            .map(|index| respan(self.get_span(index, sess), self.item_ident(index, sess).name))
+            .collect()
     }
 
     fn get_struct_field_visibilities<R>(
@@ -1484,7 +1526,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         id: DefIndex,
         callback: impl FnOnce(&Vec<Visibility>) -> R,
     ) -> R {
-        callback(self.struct_field_visibilities.borrow_mut().entry(id).or_insert_with(|| {
+        callback(get_or_insert_with(&mut self.struct_field_visibilities.lock(), id, || {
             self.root
                 .tables
                 .children
@@ -1571,7 +1613,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_proc_macro_quoted_span(&self, index: usize, sess: &Session) -> Span {
-        *self.proc_macro_quoted_spans.borrow_mut().entry(index).or_insert_with(|| {
+        *get_or_insert_with(&mut self.proc_macro_quoted_spans.lock(), index, || {
             self.root
                 .tables
                 .proc_macro_quoted_spans
@@ -2007,6 +2049,8 @@ impl CrateMetadata {
         // Pre-decode the DefPathHash->DefIndex table. This is a cheap operation
         // that does not copy any data. It just does some data verification.
         let def_path_hash_map = root.def_path_hash_map.decode(&blob);
+        let num_def_ids = root.tables.def_keys.size();
+        let num_quoted_spans = root.tables.proc_macro_quoted_spans.size();
 
         CrateMetadata {
             blob,
@@ -2028,18 +2072,30 @@ impl CrateMetadata {
             hygiene_context: Default::default(),
             def_key_cache: Default::default(),
             def_path_hash_cache: Default::default(),
-            struct_field_names: Default::default(),
-            struct_field_visibilities: Default::default(),
-            ctor_def_ids_and_kinds: Default::default(),
-            visibilities: Default::default(),
-            item_children: Default::default(),
-            associated_items: Default::default(),
-            spans: Default::default(),
-            def_kinds: Default::default(),
-            generics: Default::default(),
-            module_expansions: Default::default(),
-            proc_macro_quoted_spans: Default::default(),
-            item_attrs: Default::default(),
+            // struct_field_names: Default::default(),
+            // struct_field_visibilities: Default::default(),
+            // ctor_def_ids_and_kinds: Default::default(),
+            // visibilities: Default::default(),
+            // item_children: Default::default(),
+            // associated_items: Default::default(),
+            // spans: Default::default(),
+            // def_kinds: Default::default(),
+            // generics: Default::default(),
+            // module_expansions: Default::default(),
+            // proc_macro_quoted_spans: Default::default(),
+            // item_attrs: Default::default(),
+            struct_field_names: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            struct_field_visibilities: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            ctor_def_ids_and_kinds: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            visibilities: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            item_children: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            associated_items: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            spans: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            def_kinds: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            generics: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            module_expansions: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            proc_macro_quoted_spans: Lock::new(IndexVec::from_elem_n(None, num_quoted_spans)),
+            item_attrs: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
         }
     }
 
