@@ -105,7 +105,6 @@ impl ChildrenExt for Children {
 
                 // FIXME: should postpone string formatting until we decide to actually emit.
                 with_no_trimmed_paths(|| {
-                    let _ = &overlap;
                     OverlapError {
                         with_impl: possible_sibling,
                         trait_desc: trait_ref.print_only_trait_path().to_string(),

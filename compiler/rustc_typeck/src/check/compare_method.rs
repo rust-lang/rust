@@ -1192,7 +1192,6 @@ fn compare_type_predicate_entailment<'tcx>(
         normalize_cause.clone(),
     );
     tcx.infer_ctxt().enter(|infcx| {
-        let _ = &impl_ty_own_bounds;
         let inh = Inherited::new(infcx, impl_ty.def_id.expect_local());
         let infcx = &inh.infcx;
 

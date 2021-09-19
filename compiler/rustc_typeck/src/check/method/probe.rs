@@ -441,7 +441,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // this creates one big transaction so that all type variables etc
         // that we create during the probe process are removed later
         self.probe(|_| {
-            let _ = &steps;
             let mut probe_cx = ProbeContext::new(
                 self,
                 span,
