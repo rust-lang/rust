@@ -390,7 +390,7 @@ impl Step for Rustfmt {
             host,
             "test",
             "src/tools/rustfmt",
-            SourceType::Submodule,
+            SourceType::InTree,
             &[],
         );
 
