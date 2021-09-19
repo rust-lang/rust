@@ -27,11 +27,7 @@ pub(super) fn opt_generic_arg_list(p: &mut Parser, colon_colon_required: bool) {
 // type A = B<'static, i32, 1, { 2 }, Item=u64, true, false>;
 fn generic_arg(p: &mut Parser) {
     match p.current() {
-        LIFETIME_IDENT => {
-            let m = p.start();
-            lifetime(p);
-            m.complete(p, LIFETIME_ARG);
-        }
+        LIFETIME_IDENT => lifetime_arg(p),
         // test associated_type_bounds
         // fn print_all<T: Iterator<Item, Item::Item, Item::<true>, Item: Display, Item<'a> = Item>>(printables: T) {}
         IDENT if [T![<], T![=], T![:]].contains(&p.nth(1)) => {
@@ -83,12 +79,14 @@ fn generic_arg(p: &mut Parser) {
         // fn f() { S::<-1> }
         T!['{'] | T![true] | T![false] | T![-] => const_arg(p),
         k if k.is_literal() => const_arg(p),
-        _ => {
-            let m = p.start();
-            types::type_(p);
-            m.complete(p, TYPE_ARG);
-        }
+        _ => type_arg(p),
     }
+}
+
+fn lifetime_arg(p: &mut Parser) {
+    let m = p.start();
+    lifetime(p);
+    m.complete(p, LIFETIME_ARG);
 }
 
 pub(super) fn const_arg(p: &mut Parser) {
@@ -120,4 +118,10 @@ pub(super) fn const_arg(p: &mut Parser) {
             m.complete(p, CONST_ARG);
         }
     }
+}
+
+fn type_arg(p: &mut Parser) {
+    let m = p.start();
+    types::type_(p);
+    m.complete(p, TYPE_ARG);
 }
