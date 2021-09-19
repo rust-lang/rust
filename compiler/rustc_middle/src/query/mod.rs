@@ -1128,6 +1128,27 @@ rustc_queries! {
         desc { "computing layout of `{}`", key.value }
     }
 
+    /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
+    ///
+    /// NB: this doesn't handle virtual calls - those should use `fn_abi_of_instance`
+    /// instead, where the instance is an `InstanceDef::Virtual`.
+    query fn_abi_of_fn_ptr(
+        key: ty::ParamEnvAnd<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
+    ) -> Result<&'tcx abi::call::FnAbi<'tcx, Ty<'tcx>>, ty::layout::FnAbiError<'tcx>> {
+        desc { "computing call ABI of `{}` function pointers", key.value.0 }
+    }
+
+    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for
+    /// direct calls to an `fn`.
+    ///
+    /// NB: that includes virtual calls, which are represented by "direct calls"
+    /// to an `InstanceDef::Virtual` instance (of `<dyn Trait as Trait>::fn`).
+    query fn_abi_of_instance(
+        key: ty::ParamEnvAnd<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
+    ) -> Result<&'tcx abi::call::FnAbi<'tcx, Ty<'tcx>>, ty::layout::FnAbiError<'tcx>> {
+        desc { "computing call ABI of `{}`", key.value.0 }
+    }
+
     query dylib_dependency_formats(_: CrateNum)
                                     -> &'tcx [(CrateNum, LinkagePreference)] {
         desc { "dylib dependency formats of crate" }

@@ -1,4 +1,3 @@
-use crate::abi::FnAbi;
 use crate::attributes;
 use crate::base;
 use crate::context::CodegenCx;
@@ -8,7 +7,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 pub use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{Linkage, Visibility};
-use rustc_middle::ty::layout::{FnAbiExt, LayoutOf};
+use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeFoldable};
 use rustc_session::config::CrateType;
 use rustc_target::spec::RelocModel;
@@ -53,7 +52,7 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     ) {
         assert!(!instance.substs.needs_infer());
 
-        let fn_abi = FnAbi::of_instance(self, instance, &[]);
+        let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
         let lldecl = self.declare_fn(symbol_name, &fn_abi);
         unsafe { llvm::LLVMRustSetLinkage(lldecl, base::linkage_to_llvm(linkage)) };
         let attrs = self.tcx.codegen_fn_attrs(instance.def_id());

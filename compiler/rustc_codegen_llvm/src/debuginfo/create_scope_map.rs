@@ -3,12 +3,11 @@ use super::utils::DIB;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext};
 use rustc_codegen_ssa::traits::*;
 
-use crate::abi::FnAbi;
 use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::{DILocation, DIScope};
 use rustc_middle::mir::{Body, SourceScope};
-use rustc_middle::ty::layout::FnAbiExt;
+use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::{self, Instance};
 use rustc_session::config::DebugInfo;
 
@@ -94,7 +93,7 @@ fn make_mir_scope(
                 ty::ParamEnv::reveal_all(),
                 callee,
             );
-            let callee_fn_abi = FnAbi::of_instance(cx, callee, &[]);
+            let callee_fn_abi = cx.fn_abi_of_instance(callee, ty::List::empty());
             cx.dbg_scope_fn(callee, &callee_fn_abi, None)
         }
         None => unsafe {

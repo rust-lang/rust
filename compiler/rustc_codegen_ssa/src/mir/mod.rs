@@ -2,7 +2,7 @@ use crate::traits::*;
 use rustc_errors::ErrorReported;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt, TyAndLayout};
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_target::abi::call::{FnAbi, PassMode};
 
@@ -29,7 +29,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
     cx: &'a Bx::CodegenCx,
 
-    fn_abi: FnAbi<'tcx, Ty<'tcx>>,
+    fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
 
     /// When unwinding is initiated, we have to store this personality
     /// value somewhere so that we can load it and re-use it in the
@@ -139,7 +139,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let mir = cx.tcx().instance_mir(instance.def);
 
-    let fn_abi = FnAbi::of_instance(cx, instance, &[]);
+    let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
 
     let debug_context = cx.create_function_debug_context(instance, &fn_abi, llfn, &mir);

@@ -4,7 +4,7 @@
 //! and methods are represented as just a fn ptr and not a full
 //! closure.
 
-use crate::abi::{FnAbi, FnAbiLlvmExt};
+use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
 use crate::context::CodegenCx;
 use crate::llvm;
@@ -12,7 +12,7 @@ use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
 use tracing::debug;
 
-use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
 use rustc_middle::ty::{self, Instance, TypeFoldable};
 
 /// Codegens a reference to a fn/method item, monomorphizing and
@@ -42,7 +42,7 @@ pub fn get_fn(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value
         sym
     );
 
-    let fn_abi = FnAbi::of_instance(cx, instance, &[]);
+    let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
 
     let llfn = if let Some(llfn) = cx.get_declared_value(&sym) {
         // Create a fn pointer with the new signature.

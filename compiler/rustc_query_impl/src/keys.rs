@@ -449,3 +449,25 @@ impl<'tcx> Key for (ty::Predicate<'tcx>, traits::WellFormedLoc) {
         DUMMY_SP
     }
 }
+
+impl<'tcx> Key for (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>) {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
+impl<'tcx> Key for (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>) {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.0.default_span(tcx)
+    }
+}

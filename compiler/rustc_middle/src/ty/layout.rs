@@ -1,4 +1,3 @@
-use crate::ich::StableHashingContext;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::subst::Subst;
@@ -6,7 +5,6 @@ use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
 
 use rustc_ast as ast;
 use rustc_attr as attr;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::BitSet;
@@ -18,14 +16,18 @@ use rustc_target::abi::call::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
 };
 use rustc_target::abi::*;
-use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy};
+use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Target};
 
 use std::cmp;
 use std::fmt;
 use std::iter;
-use std::mem;
 use std::num::NonZeroUsize;
 use std::ops::Bound;
+
+pub fn provide(providers: &mut ty::query::Providers) {
+    *providers =
+        ty::query::Providers { layout_of, fn_abi_of_fn_ptr, fn_abi_of_instance, ..*providers };
+}
 
 pub trait IntegerExt {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>, signed: bool) -> Ty<'tcx>;
@@ -191,7 +193,7 @@ pub const FAT_PTR_EXTRA: usize = 1;
 /// * Cranelift stores the base-2 log of the lane count in a 4 bit integer.
 pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
 
-#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, HashStable, TyEncodable, TyDecodable)]
 pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
     SizeOverflow(Ty<'tcx>),
@@ -246,10 +248,6 @@ fn layout_of<'tcx>(
             Ok(layout)
         })
     })
-}
-
-pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { layout_of, ..*providers };
 }
 
 pub struct LayoutCx<'tcx, C> {
@@ -2015,6 +2013,12 @@ impl<'tcx> HasDataLayout for TyCtxt<'tcx> {
     }
 }
 
+impl<'tcx> HasTargetSpec for TyCtxt<'tcx> {
+    fn target_spec(&self) -> &Target {
+        &self.sess.target
+    }
+}
+
 impl<'tcx> HasTyCtxt<'tcx> for TyCtxt<'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -2026,6 +2030,12 @@ impl<'tcx> HasDataLayout for ty::query::TyCtxtAt<'tcx> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.data_layout
+    }
+}
+
+impl<'tcx> HasTargetSpec for ty::query::TyCtxtAt<'tcx> {
+    fn target_spec(&self) -> &Target {
+        &self.sess.target
     }
 }
 
@@ -2045,6 +2055,12 @@ impl<'tcx, C> HasParamEnv<'tcx> for LayoutCx<'tcx, C> {
 impl<'tcx, T: HasDataLayout> HasDataLayout for LayoutCx<'tcx, T> {
     fn data_layout(&self) -> &TargetDataLayout {
         self.tcx.data_layout()
+    }
+}
+
+impl<'tcx, T: HasTargetSpec> HasTargetSpec for LayoutCx<'tcx, T> {
+    fn target_spec(&self) -> &Target {
+        self.tcx.target_spec()
     }
 }
 
@@ -2130,10 +2146,10 @@ pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
     #[inline]
     fn spanned_layout_of(&self, ty: Ty<'tcx>, span: Span) -> Self::LayoutOfResult {
         let span = if !span.is_dummy() { span } else { self.layout_tcx_at_span() };
+        let tcx = self.tcx().at(span);
+
         MaybeResult::from(
-            self.tcx()
-                .at(span)
-                .layout_of(self.param_env().and(ty))
+            tcx.layout_of(self.param_env().and(ty))
                 .map_err(|err| self.handle_layout_err(err, span, ty)),
         )
     }
@@ -2519,24 +2535,12 @@ where
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for LayoutError<'tcx> {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        use crate::ty::layout::LayoutError::*;
-        mem::discriminant(self).hash_stable(hcx, hasher);
-
-        match *self {
-            Unknown(t) | SizeOverflow(t) => t.hash_stable(hcx, hasher),
-        }
-    }
-}
-
 impl<'tcx> ty::Instance<'tcx> {
     // NOTE(eddyb) this is private to avoid using it from outside of
-    // `FnAbi::of_instance` - any other uses are either too high-level
+    // `fn_abi_of_instance` - any other uses are either too high-level
     // for `Instance` (e.g. typeck would use `Ty::fn_sig` instead),
     // or should go through `FnAbi` instead, to avoid losing any
-    // adjustments `FnAbi::of_instance` might be performing.
+    // adjustments `fn_abi_of_instance` might be performing.
     fn fn_sig_for_fn_abi(&self, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
         // FIXME(davidtwco,eddyb): A `ParamEnv` should be passed through to this function.
         let ty = self.ty(tcx, ty::ParamEnv::reveal_all());
@@ -2631,34 +2635,6 @@ impl<'tcx> ty::Instance<'tcx> {
             _ => bug!("unexpected type {:?} in Instance::fn_sig", ty),
         }
     }
-}
-
-pub trait FnAbiExt<'tcx, C>
-where
-    C: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>> + HasTargetSpec,
-{
-    /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
-    ///
-    /// NB: this doesn't handle virtual calls - those should use `FnAbi::of_instance`
-    /// instead, where the instance is an `InstanceDef::Virtual`.
-    fn of_fn_ptr(cx: &C, sig: ty::PolyFnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
-
-    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for
-    /// direct calls to an `fn`.
-    ///
-    /// NB: that includes virtual calls, which are represented by "direct calls"
-    /// to an `InstanceDef::Virtual` instance (of `<dyn Trait as Trait>::fn`).
-    fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
-
-    fn new_internal(
-        cx: &C,
-        sig: ty::PolyFnSig<'tcx>,
-        extra_args: &[Ty<'tcx>],
-        caller_location: Option<Ty<'tcx>>,
-        codegen_fn_attr_flags: CodegenFnAttrFlags,
-        make_self_ptr_thin: bool,
-    ) -> Self;
-    fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi);
 }
 
 /// Calculates whether a function's ABI can unwind or not.
@@ -2816,48 +2792,175 @@ pub fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
     }
 }
 
-impl<'tcx, C> FnAbiExt<'tcx, C> for call::FnAbi<'tcx, Ty<'tcx>>
-where
-    C: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>> + HasTargetSpec,
-{
-    fn of_fn_ptr(cx: &C, sig: ty::PolyFnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
-        call::FnAbi::new_internal(cx, sig, extra_args, None, CodegenFnAttrFlags::empty(), false)
+/// Error produced by attempting to compute or adjust a `FnAbi`.
+#[derive(Clone, Debug, HashStable)]
+pub enum FnAbiError<'tcx> {
+    /// Error produced by a `layout_of` call, while computing `FnAbi` initially.
+    Layout(LayoutError<'tcx>),
+
+    /// Error produced by attempting to adjust a `FnAbi`, for a "foreign" ABI.
+    AdjustForForeignAbi(call::AdjustForForeignAbiError),
+}
+
+impl From<LayoutError<'tcx>> for FnAbiError<'tcx> {
+    fn from(err: LayoutError<'tcx>) -> Self {
+        Self::Layout(err)
+    }
+}
+
+impl From<call::AdjustForForeignAbiError> for FnAbiError<'_> {
+    fn from(err: call::AdjustForForeignAbiError) -> Self {
+        Self::AdjustForForeignAbi(err)
+    }
+}
+
+impl<'tcx> fmt::Display for FnAbiError<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Layout(err) => err.fmt(f),
+            Self::AdjustForForeignAbi(err) => err.fmt(f),
+        }
+    }
+}
+
+// FIXME(eddyb) maybe use something like this for an unified `fn_abi_of`, not
+// just for error handling.
+#[derive(Debug)]
+pub enum FnAbiRequest<'tcx> {
+    OfFnPtr { sig: ty::PolyFnSig<'tcx>, extra_args: &'tcx ty::List<Ty<'tcx>> },
+    OfInstance { instance: ty::Instance<'tcx>, extra_args: &'tcx ty::List<Ty<'tcx>> },
+}
+
+/// Trait for contexts that want to be able to compute `FnAbi`s.
+/// This automatically gives access to `FnAbiOf`, through a blanket `impl`.
+pub trait FnAbiOfHelpers<'tcx>: LayoutOfHelpers<'tcx> {
+    /// The `&FnAbi`-wrapping type (or `&FnAbi` itself), which will be
+    /// returned from `fn_abi_of_*` (see also `handle_fn_abi_err`).
+    type FnAbiOfResult: MaybeResult<&'tcx FnAbi<'tcx, Ty<'tcx>>>;
+
+    /// Helper used for `fn_abi_of_*`, to adapt `tcx.fn_abi_of_*(...)` into a
+    /// `Self::FnAbiOfResult` (which does not need to be a `Result<...>`).
+    ///
+    /// Most `impl`s, which propagate `FnAbiError`s, should simply return `err`,
+    /// but this hook allows e.g. codegen to return only `&FnAbi` from its
+    /// `cx.fn_abi_of_*(...)`, without any `Result<...>` around it to deal with
+    /// (and any `FnAbiError`s are turned into fatal errors or ICEs).
+    fn handle_fn_abi_err(
+        &self,
+        err: FnAbiError<'tcx>,
+        span: Span,
+        fn_abi_request: FnAbiRequest<'tcx>,
+    ) -> <Self::FnAbiOfResult as MaybeResult<&'tcx FnAbi<'tcx, Ty<'tcx>>>>::Error;
+}
+
+/// Blanket extension trait for contexts that can compute `FnAbi`s.
+pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
+    /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
+    ///
+    /// NB: this doesn't handle virtual calls - those should use `fn_abi_of_instance`
+    /// instead, where the instance is an `InstanceDef::Virtual`.
+    #[inline]
+    fn fn_abi_of_fn_ptr(
+        &self,
+        sig: ty::PolyFnSig<'tcx>,
+        extra_args: &'tcx ty::List<Ty<'tcx>>,
+    ) -> Self::FnAbiOfResult {
+        // FIXME(eddyb) get a better `span` here.
+        let span = self.layout_tcx_at_span();
+        let tcx = self.tcx().at(span);
+
+        MaybeResult::from(tcx.fn_abi_of_fn_ptr(self.param_env().and((sig, extra_args))).map_err(
+            |err| self.handle_fn_abi_err(err, span, FnAbiRequest::OfFnPtr { sig, extra_args }),
+        ))
     }
 
-    fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
-        let sig = instance.fn_sig_for_fn_abi(cx.tcx());
+    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for
+    /// direct calls to an `fn`.
+    ///
+    /// NB: that includes virtual calls, which are represented by "direct calls"
+    /// to an `InstanceDef::Virtual` instance (of `<dyn Trait as Trait>::fn`).
+    #[inline]
+    fn fn_abi_of_instance(
+        &self,
+        instance: ty::Instance<'tcx>,
+        extra_args: &'tcx ty::List<Ty<'tcx>>,
+    ) -> Self::FnAbiOfResult {
+        // FIXME(eddyb) get a better `span` here.
+        let span = self.layout_tcx_at_span();
+        let tcx = self.tcx().at(span);
 
-        let caller_location = if instance.def.requires_caller_location(cx.tcx()) {
-            Some(cx.tcx().caller_location_ty())
-        } else {
-            None
-        };
-
-        let attrs = cx.tcx().codegen_fn_attrs(instance.def_id()).flags;
-
-        call::FnAbi::new_internal(
-            cx,
-            sig,
-            extra_args,
-            caller_location,
-            attrs,
-            matches!(instance.def, ty::InstanceDef::Virtual(..)),
+        MaybeResult::from(
+            tcx.fn_abi_of_instance(self.param_env().and((instance, extra_args))).map_err(|err| {
+                // HACK(eddyb) at least for definitions of/calls to `Instance`s,
+                // we can get some kind of span even if one wasn't provided.
+                // However, we don't do this early in order to avoid calling
+                // `def_span` unconditionally (which may have a perf penalty).
+                let span = if !span.is_dummy() { span } else { tcx.def_span(instance.def_id()) };
+                self.handle_fn_abi_err(err, span, FnAbiRequest::OfInstance { instance, extra_args })
+            }),
         )
     }
+}
 
-    fn new_internal(
-        cx: &C,
+impl<C: FnAbiOfHelpers<'tcx>> FnAbiOf<'tcx> for C {}
+
+fn fn_abi_of_fn_ptr<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    query: ty::ParamEnvAnd<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
+) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
+    let (param_env, (sig, extra_args)) = query.into_parts();
+
+    LayoutCx { tcx, param_env }.fn_abi_new_uncached(
+        sig,
+        extra_args,
+        None,
+        CodegenFnAttrFlags::empty(),
+        false,
+    )
+}
+
+fn fn_abi_of_instance<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    query: ty::ParamEnvAnd<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
+) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
+    let (param_env, (instance, extra_args)) = query.into_parts();
+
+    let sig = instance.fn_sig_for_fn_abi(tcx);
+
+    let caller_location = if instance.def.requires_caller_location(tcx) {
+        Some(tcx.caller_location_ty())
+    } else {
+        None
+    };
+
+    let attrs = tcx.codegen_fn_attrs(instance.def_id()).flags;
+
+    LayoutCx { tcx, param_env }.fn_abi_new_uncached(
+        sig,
+        extra_args,
+        caller_location,
+        attrs,
+        matches!(instance.def, ty::InstanceDef::Virtual(..)),
+    )
+}
+
+impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
+    // FIXME(eddyb) perhaps group the signature/type-containing (or all of them?)
+    // arguments of this method, into a separate `struct`.
+    fn fn_abi_new_uncached(
+        &self,
         sig: ty::PolyFnSig<'tcx>,
         extra_args: &[Ty<'tcx>],
         caller_location: Option<Ty<'tcx>>,
         codegen_fn_attr_flags: CodegenFnAttrFlags,
+        // FIXME(eddyb) replace this with something typed, like an `enum`.
         force_thin_self_ptr: bool,
-    ) -> Self {
-        debug!("FnAbi::new_internal({:?}, {:?})", sig, extra_args);
+    ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
+        debug!("fn_abi_new_uncached({:?}, {:?})", sig, extra_args);
 
-        let sig = cx.tcx().normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig);
+        let sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, sig);
 
-        let conv = conv_from_spec_abi(cx.tcx(), sig.abi);
+        let conv = conv_from_spec_abi(self.tcx(), sig.abi);
 
         let mut inputs = sig.inputs();
         let extra_args = if sig.abi == RustCall {
@@ -2884,7 +2987,7 @@ where
             extra_args.to_vec()
         };
 
-        let target = &cx.tcx().sess.target;
+        let target = &self.tcx.sess.target;
         let target_env_gnu_like = matches!(&target.env[..], "gnu" | "musl");
         let win_x64_gnu = target.os == "windows" && target.arch == "x86_64" && target.env == "gnu";
         let linux_s390x_gnu_like =
@@ -2917,7 +3020,7 @@ where
                 attrs.set(ArgAttribute::NonNull);
             }
 
-            if let Some(pointee) = layout.pointee_info_at(cx, offset) {
+            if let Some(pointee) = layout.pointee_info_at(self, offset) {
                 if let Some(kind) = pointee.safe {
                     attrs.pointee_align = Some(pointee.align);
 
@@ -2961,20 +3064,20 @@ where
             }
         };
 
-        let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| {
+        let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, FnAbiError<'tcx>> {
             let is_return = arg_idx.is_none();
 
-            let layout = cx.layout_of(ty);
+            let layout = self.layout_of(ty)?;
             let layout = if force_thin_self_ptr && arg_idx == Some(0) {
                 // Don't pass the vtable, it's not an argument of the virtual fn.
                 // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`
                 // or `&/&mut dyn Trait` because this is special-cased elsewhere in codegen
-                make_thin_self_ptr(cx, layout)
+                make_thin_self_ptr(self, layout)
             } else {
                 layout
             };
 
-            let mut arg = ArgAbi::new(cx, layout, |layout, scalar, offset| {
+            let mut arg = ArgAbi::new(self, layout, |layout, scalar, offset| {
                 let mut attrs = ArgAttributes::new();
                 adjust_for_rust_scalar(&mut attrs, scalar, *layout, offset, is_return);
                 attrs
@@ -2995,11 +3098,11 @@ where
                 }
             }
 
-            arg
+            Ok(arg)
         };
 
         let mut fn_abi = FnAbi {
-            ret: arg_of(sig.output(), None),
+            ret: arg_of(sig.output(), None)?,
             args: inputs
                 .iter()
                 .cloned()
@@ -3007,20 +3110,24 @@ where
                 .chain(caller_location)
                 .enumerate()
                 .map(|(i, ty)| arg_of(ty, Some(i)))
-                .collect(),
+                .collect::<Result<_, _>>()?,
             c_variadic: sig.c_variadic,
             fixed_count: inputs.len(),
             conv,
-            can_unwind: fn_can_unwind(cx.tcx(), codegen_fn_attr_flags, sig.abi),
+            can_unwind: fn_can_unwind(self.tcx(), codegen_fn_attr_flags, sig.abi),
         };
-        fn_abi.adjust_for_abi(cx, sig.abi);
-        debug!("FnAbi::new_internal = {:?}", fn_abi);
-        fn_abi
+        self.fn_abi_adjust_for_abi(&mut fn_abi, sig.abi)?;
+        debug!("fn_abi_new_uncached = {:?}", fn_abi);
+        Ok(self.tcx.arena.alloc(fn_abi))
     }
 
-    fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi) {
+    fn fn_abi_adjust_for_abi(
+        &self,
+        fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,
+        abi: SpecAbi,
+    ) -> Result<(), FnAbiError<'tcx>> {
         if abi == SpecAbi::Unadjusted {
-            return;
+            return Ok(());
         }
 
         if abi == SpecAbi::Rust
@@ -3057,7 +3164,7 @@ where
                     // anyway, we control all calls to it in libstd.
                     Abi::Vector { .. }
                         if abi != SpecAbi::PlatformIntrinsic
-                            && cx.tcx().sess.target.simd_types_indirect =>
+                            && self.tcx.sess.target.simd_types_indirect =>
                     {
                         arg.make_indirect();
                         return;
@@ -3068,7 +3175,7 @@ where
 
                 // Pass and return structures up to 2 pointers in size by value, matching `ScalarPair`.
                 // LLVM will usually pass these in 2 registers, which is more efficient than by-ref.
-                let max_by_val_size = Pointer.size(cx) * 2;
+                let max_by_val_size = Pointer.size(self) * 2;
                 let size = arg.layout.size;
 
                 if arg.layout.is_unsized() || size > max_by_val_size {
@@ -3080,16 +3187,15 @@ where
                     arg.cast_to(Reg { kind: RegKind::Integer, size });
                 }
             };
-            fixup(&mut self.ret);
-            for arg in &mut self.args {
+            fixup(&mut fn_abi.ret);
+            for arg in &mut fn_abi.args {
                 fixup(arg);
             }
-            return;
+        } else {
+            fn_abi.adjust_for_foreign_abi(self, abi)?;
         }
 
-        if let Err(msg) = self.adjust_for_cabi(cx, abi) {
-            cx.tcx().sess.fatal(&msg);
-        }
+        Ok(())
     }
 }
 

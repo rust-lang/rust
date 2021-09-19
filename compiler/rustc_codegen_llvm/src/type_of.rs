@@ -1,10 +1,9 @@
-use crate::abi::FnAbi;
 use crate::common::*;
 use crate::context::TypeLowering;
 use crate::type_::Type;
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
-use rustc_middle::ty::layout::{FnAbiExt, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_target::abi::{Abi, AddressSpace, Align, FieldsShape};
@@ -231,7 +230,9 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
                 ty::Adt(def, _) if def.is_box() => {
                     cx.type_ptr_to(cx.layout_of(self.ty.boxed_ty()).llvm_type(cx))
                 }
-                ty::FnPtr(sig) => cx.fn_ptr_backend_type(&FnAbi::of_fn_ptr(cx, sig, &[])),
+                ty::FnPtr(sig) => {
+                    cx.fn_ptr_backend_type(&cx.fn_abi_of_fn_ptr(sig, ty::List::empty()))
+                }
                 _ => self.scalar_llvm_type_at(cx, scalar, Size::ZERO),
             };
             cx.scalar_lltypes.borrow_mut().insert(self.ty, llty);

@@ -1,6 +1,6 @@
 use crate::llvm;
 
-use crate::abi::{Abi, FnAbi};
+use crate::abi::Abi;
 use crate::builder::Builder;
 use crate::common::CodegenCx;
 
@@ -20,7 +20,7 @@ use rustc_middle::mir::coverage::{
     CodeRegion, CounterValueReference, ExpressionOperandId, InjectedExpressionId, Op,
 };
 use rustc_middle::ty;
-use rustc_middle::ty::layout::FnAbiExt;
+use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::Instance;
 
@@ -200,8 +200,7 @@ fn declare_unused_fn(cx: &CodegenCx<'ll, 'tcx>, def_id: &DefId) -> Instance<'tcx
 
     let llfn = cx.declare_fn(
         &tcx.symbol_name(instance).name,
-        &FnAbi::of_fn_ptr(
-            cx,
+        &cx.fn_abi_of_fn_ptr(
             ty::Binder::dummy(tcx.mk_fn_sig(
                 iter::once(tcx.mk_unit()),
                 tcx.mk_unit(),
@@ -209,7 +208,7 @@ fn declare_unused_fn(cx: &CodegenCx<'ll, 'tcx>, def_id: &DefId) -> Instance<'tcx
                 hir::Unsafety::Unsafe,
                 Abi::Rust,
             )),
-            &[],
+            ty::List::empty(),
         ),
     );
 

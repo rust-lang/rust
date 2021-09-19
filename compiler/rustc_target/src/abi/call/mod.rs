@@ -1,6 +1,7 @@
 use crate::abi::{self, Abi, Align, FieldsShape, Size};
 use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
 use crate::spec::{self, HasTargetSpec};
+use std::fmt;
 
 mod aarch64;
 mod amdgpu;
@@ -24,7 +25,7 @@ mod x86;
 mod x86_64;
 mod x86_win64;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum PassMode {
     /// Ignore the argument.
     ///
@@ -59,7 +60,7 @@ pub use attr_impl::ArgAttribute;
 mod attr_impl {
     // The subset of llvm::Attribute needed for arguments, packed into a bitfield.
     bitflags::bitflags! {
-        #[derive(Default)]
+        #[derive(Default, HashStable_Generic)]
         pub struct ArgAttribute: u16 {
             const NoAlias   = 1 << 1;
             const NoCapture = 1 << 2;
@@ -76,7 +77,7 @@ mod attr_impl {
 /// Sometimes an ABI requires small integers to be extended to a full or partial register. This enum
 /// defines if this extension should be zero-extension or sign-extension when necessary. When it is
 /// not necessary to extend the argument, this enum is ignored.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum ArgExtension {
     None,
     Zext,
@@ -85,7 +86,7 @@ pub enum ArgExtension {
 
 /// A compact representation of LLVM attributes (at least those relevant for this module)
 /// that can be manipulated without interacting with LLVM's Attribute machinery.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct ArgAttributes {
     pub regular: ArgAttribute,
     pub arg_ext: ArgExtension,
@@ -126,14 +127,14 @@ impl ArgAttributes {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum RegKind {
     Integer,
     Float,
     Vector,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct Reg {
     pub kind: RegKind,
     pub size: Size,
@@ -183,7 +184,7 @@ impl Reg {
 
 /// An argument passed entirely registers with the
 /// same kind (e.g., HFA / HVA on PPC64 and AArch64).
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct Uniform {
     pub unit: Reg,
 
@@ -208,7 +209,7 @@ impl Uniform {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct CastTarget {
     pub prefix: [Option<RegKind>; 8],
     pub prefix_chunk_size: Size,
@@ -436,7 +437,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 
 /// Information about how to pass an argument to,
 /// or return a value from, a function, under some ABI.
-#[derive(Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct ArgAbi<'a, Ty> {
     pub layout: TyAndLayout<'a, Ty>,
 
@@ -544,7 +545,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum Conv {
     // General language calling conventions, for which every target
     // should have its own backend (e.g. LLVM) support.
@@ -578,7 +579,7 @@ pub enum Conv {
 ///
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
-#[derive(Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct FnAbi<'a, Ty> {
     /// The LLVM types of each argument.
     pub args: Vec<ArgAbi<'a, Ty>>,
@@ -599,8 +600,29 @@ pub struct FnAbi<'a, Ty> {
     pub can_unwind: bool,
 }
 
+/// Error produced by attempting to adjust a `FnAbi`, for a "foreign" ABI.
+#[derive(Clone, Debug, HashStable_Generic)]
+pub enum AdjustForForeignAbiError {
+    /// Target architecture doesn't support "foreign" (i.e. non-Rust) ABIs.
+    Unsupported { arch: String, abi: spec::abi::Abi },
+}
+
+impl fmt::Display for AdjustForForeignAbiError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Unsupported { arch, abi } => {
+                write!(f, "target architecture {:?} does not support `extern {}` ABI", arch, abi)
+            }
+        }
+    }
+}
+
 impl<'a, Ty> FnAbi<'a, Ty> {
-    pub fn adjust_for_cabi<C>(&mut self, cx: &C, abi: spec::abi::Abi) -> Result<(), String>
+    pub fn adjust_for_foreign_abi<C>(
+        &mut self,
+        cx: &C,
+        abi: spec::abi::Abi,
+    ) -> Result<(), AdjustForForeignAbiError>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
         C: HasDataLayout + HasTargetSpec,
@@ -655,7 +677,9 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             }
             "asmjs" => wasm::compute_c_abi_info(cx, self),
             "bpf" => bpf::compute_abi_info(self),
-            a => return Err(format!("unrecognized arch \"{}\" in target specification", a)),
+            arch => {
+                return Err(AdjustForForeignAbiError::Unsupported { arch: arch.to_string(), abi });
+            }
         }
 
         Ok(())

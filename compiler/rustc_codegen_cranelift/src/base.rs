@@ -3,8 +3,7 @@
 use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::adjustment::PointerCast;
-use rustc_middle::ty::layout::FnAbiExt;
-use rustc_target::abi::call::FnAbi;
+use rustc_middle::ty::layout::FnAbiOf;
 
 use crate::constant::ConstantCx;
 use crate::prelude::*;
@@ -62,7 +61,7 @@ pub(crate) fn codegen_fn<'tcx>(
         instance,
         symbol_name,
         mir,
-        fn_abi: Some(FnAbi::of_instance(&RevealAllLayoutCx(tcx), instance, &[])),
+        fn_abi: Some(RevealAllLayoutCx(tcx).fn_abi_of_instance(instance, ty::List::empty())),
 
         bcx,
         block_map,
