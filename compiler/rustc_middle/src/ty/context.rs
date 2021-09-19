@@ -1342,20 +1342,15 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline(always)]
     pub fn create_stable_hashing_context(self) -> StableHashingContext<'tcx> {
-        let krate = self.gcx.untracked_crate;
         let resolutions = &self.gcx.untracked_resolutions;
-
-        StableHashingContext::new(self.sess, krate, &resolutions.definitions, &*resolutions.cstore)
+        StableHashingContext::new(self.sess, &resolutions.definitions, &*resolutions.cstore)
     }
 
     #[inline(always)]
     pub fn create_no_span_stable_hashing_context(self) -> StableHashingContext<'tcx> {
-        let krate = self.gcx.untracked_crate;
         let resolutions = &self.gcx.untracked_resolutions;
-
         StableHashingContext::ignore_spans(
             self.sess,
-            krate,
             &resolutions.definitions,
             &*resolutions.cstore,
         )

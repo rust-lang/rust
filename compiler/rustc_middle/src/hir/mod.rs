@@ -39,12 +39,14 @@ pub struct IndexedHir<'hir> {
 #[derive(Copy, Clone, Debug)]
 pub struct Owner<'tcx> {
     node: OwnerNode<'tcx>,
+    node_hash: Fingerprint,
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Owner<'tcx> {
+    #[inline]
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let Owner { node } = self;
-        hcx.while_hashing_hir_bodies(false, |hcx| node.hash_stable(hcx, hasher));
+        let Owner { node: _, node_hash } = self;
+        node_hash.hash_stable(hcx, hasher)
     }
 }
 
@@ -61,6 +63,8 @@ pub struct ParentedNode<'tcx> {
 pub struct OwnerNodes<'tcx> {
     /// Pre-computed hash of the full HIR.
     hash: Fingerprint,
+    /// Pre-computed hash of the top node.
+    node_hash: Fingerprint,
     /// Full HIR for the current owner.
     // The zeroth node's parent is trash, but is never accessed.
     nodes: IndexVec<ItemLocalId, Option<ParentedNode<'tcx>>>,
@@ -69,10 +73,11 @@ pub struct OwnerNodes<'tcx> {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for OwnerNodes<'tcx> {
+    #[inline]
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         // We ignore the `nodes` and `bodies` fields since these refer to information included in
         // `hash` which is hashed in the collector and used for the crate hash.
-        let OwnerNodes { hash, nodes: _, bodies: _ } = *self;
+        let OwnerNodes { hash, node_hash: _, nodes: _, bodies: _ } = *self;
         hash.hash_stable(hcx, hasher);
     }
 }
@@ -130,7 +135,7 @@ pub fn provide(providers: &mut Providers) {
         let owner = tcx.index_hir(()).map[id].as_ref()?;
         let node = owner.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;
         let node = node.as_owner().unwrap(); // Indexing must ensure it is an OwnerNode.
-        Some(Owner { node })
+        Some(Owner { node, node_hash: owner.node_hash })
     };
     providers.hir_owner_nodes = |tcx, id| tcx.index_hir(()).map[id].as_deref();
     providers.hir_owner_parent = |tcx, id| {

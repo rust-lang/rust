@@ -51,18 +51,21 @@ fn insert_vec_map<K: Idx, V: Clone>(map: &mut IndexVec<K, Option<V>>, k: K, v: V
     map[k] = Some(v);
 }
 
-fn hash_body(
-    hcx: &mut StableHashingContext<'_>,
+fn hash_body<'s, 'hir: 's>(
+    hcx: &mut StableHashingContext<'s>,
     item_like: impl for<'a> HashStable<StableHashingContext<'a>>,
+    hash_bodies: bool,
+    owner: LocalDefId,
+    bodies: &'hir IndexVec<ItemLocalId, Option<&'hir Body<'hir>>>,
 ) -> Fingerprint {
     let mut stable_hasher = StableHasher::new();
-    hcx.while_hashing_hir_bodies(true, |hcx| {
-        item_like.hash_stable(hcx, &mut stable_hasher);
+    hcx.with_hir_bodies(hash_bodies, owner, bodies, |hcx| {
+        item_like.hash_stable(hcx, &mut stable_hasher)
     });
     stable_hasher.finish()
 }
 
-impl<'a, 'hir> NodeCollector<'a, 'hir> {
+impl<'a, 'hir: 'a> NodeCollector<'a, 'hir> {
     pub(super) fn root(
         sess: &'a Session,
         arena: &'hir Arena<'hir>,
@@ -91,15 +94,16 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     }
 
     fn insert_owner(&mut self, owner: LocalDefId, node: OwnerNode<'hir>) {
-        let hash = hash_body(&mut self.hcx, node);
-
         let mut nodes = IndexVec::new();
         nodes.push(Some(ParentedNode { parent: ItemLocalId::new(0), node: node.into() }));
 
         let bodies = &self.krate.owners[owner].as_ref().unwrap().bodies;
 
+        let hash = hash_body(&mut self.hcx, node, true, owner, bodies);
+        let node_hash = hash_body(&mut self.hcx, node, false, owner, bodies);
+
         debug_assert!(self.map[owner].is_none());
-        self.map[owner] = Some(self.arena.alloc(OwnerNodes { hash, nodes, bodies }));
+        self.map[owner] = Some(self.arena.alloc(OwnerNodes { hash, node_hash, nodes, bodies }));
     }
 
     fn insert(&mut self, span: Span, hir_id: HirId, node: Node<'hir>) {
@@ -176,7 +180,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     }
 }
 
-impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
+impl<'a, 'hir: 'a> Visitor<'hir> for NodeCollector<'a, 'hir> {
     type Map = Map<'hir>;
 
     /// Because we want to track parent items and so forth, enable

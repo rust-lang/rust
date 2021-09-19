@@ -1,6 +1,7 @@
 //! This module contains `HashStable` implementations for various HIR data
 //! types in no particular order.
 
+use crate::ich::hcx::BodyResolver;
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
@@ -29,8 +30,13 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
     #[inline]
     fn hash_body_id(&mut self, id: hir::BodyId, hasher: &mut StableHasher) {
         let hcx = self;
-        if hcx.hash_bodies() {
-            hcx.body_resolver.body(id).hash_stable(hcx, hasher);
+        match hcx.body_resolver {
+            BodyResolver::Forbidden => panic!("Hashing HIR bodies is forbidden."),
+            BodyResolver::Traverse { hash_bodies: false, .. } => {}
+            BodyResolver::Traverse { hash_bodies: true, owner, bodies } => {
+                assert_eq!(id.hir_id.owner, owner);
+                bodies[id.hir_id.local_id].unwrap().hash_stable(hcx, hasher);
+            }
         }
     }
 

@@ -874,21 +874,21 @@ impl<'hir> Map<'hir> {
 
     pub fn expect_item(&self, id: HirId) -> &'hir Item<'hir> {
         match self.tcx.hir_owner(id.expect_owner()) {
-            Some(Owner { node: OwnerNode::Item(item) }) => item,
+            Some(Owner { node: OwnerNode::Item(item), .. }) => item,
             _ => bug!("expected item, found {}", self.node_to_string(id)),
         }
     }
 
     pub fn expect_impl_item(&self, id: HirId) -> &'hir ImplItem<'hir> {
         match self.tcx.hir_owner(id.expect_owner()) {
-            Some(Owner { node: OwnerNode::ImplItem(item) }) => item,
+            Some(Owner { node: OwnerNode::ImplItem(item), .. }) => item,
             _ => bug!("expected impl item, found {}", self.node_to_string(id)),
         }
     }
 
     pub fn expect_trait_item(&self, id: HirId) -> &'hir TraitItem<'hir> {
         match self.tcx.hir_owner(id.expect_owner()) {
-            Some(Owner { node: OwnerNode::TraitItem(item) }) => item,
+            Some(Owner { node: OwnerNode::TraitItem(item), .. }) => item,
             _ => bug!("expected trait item, found {}", self.node_to_string(id)),
         }
     }
@@ -902,7 +902,7 @@ impl<'hir> Map<'hir> {
 
     pub fn expect_foreign_item(&self, id: HirId) -> &'hir ForeignItem<'hir> {
         match self.tcx.hir_owner(id.expect_owner()) {
-            Some(Owner { node: OwnerNode::ForeignItem(item) }) => item,
+            Some(Owner { node: OwnerNode::ForeignItem(item), .. }) => item,
             _ => bug!("expected foreign item, found {}", self.node_to_string(id)),
         }
     }

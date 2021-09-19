@@ -51,13 +51,14 @@ use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
 use rustc_hir::{ConstArg, GenericArg, InferKind, ParamName};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::builtin::BARE_TRAIT_OBJECTS;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::utils::{FlattenNonterminals, NtToTokenstream};
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
-use rustc_span::source_map::{respan, CachingSourceMapView, DesugaringKind};
+use rustc_span::source_map::{respan, DesugaringKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -179,6 +180,8 @@ pub trait ResolverAstLowering {
     /// This should only return `None` during testing.
     fn definitions(&mut self) -> &mut Definitions;
 
+    fn create_stable_hashing_context(&self) -> StableHashingContext<'_>;
+
     fn lint_buffer(&mut self) -> &mut LintBuffer;
 
     fn next_node_id(&mut self) -> NodeId;
@@ -199,37 +202,6 @@ pub trait ResolverAstLowering {
         expn_id: ExpnId,
         span: Span,
     ) -> LocalDefId;
-}
-
-struct LoweringHasher<'a> {
-    source_map: CachingSourceMapView<'a>,
-    resolver: &'a dyn ResolverAstLowering,
-}
-
-impl<'a> rustc_span::HashStableContext for LoweringHasher<'a> {
-    #[inline]
-    fn hash_spans(&self) -> bool {
-        true
-    }
-
-    #[inline]
-    fn def_span(&self, id: LocalDefId) -> Span {
-        self.resolver.def_span(id)
-    }
-
-    #[inline]
-    fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
-        self.resolver.def_path_hash(def_id)
-    }
-
-    #[inline]
-    fn span_data_to_lines_and_cols(
-        &mut self,
-        span: &rustc_span::SpanData,
-    ) -> Option<(Lrc<rustc_span::SourceFile>, usize, rustc_span::BytePos, usize, rustc_span::BytePos)>
-    {
-        self.source_map.span_data_to_lines_and_cols(span)
-    }
 }
 
 /// Context of `impl Trait` in code, which determines whether it is allowed in an HIR subtree,
@@ -440,13 +412,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(krate)
     }
 
-    fn create_stable_hashing_context(&self) -> LoweringHasher<'_> {
-        LoweringHasher {
-            source_map: CachingSourceMapView::new(self.sess.source_map()),
-            resolver: self.resolver,
-        }
-    }
-
     fn with_hir_id_owner(
         &mut self,
         owner: NodeId,
@@ -566,7 +531,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             allow_internal_unstable,
             reason,
             self.sess.edition(),
-            self.create_stable_hashing_context(),
+            self.resolver.create_stable_hashing_context(),
         )
     }
 
