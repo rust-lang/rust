@@ -567,11 +567,7 @@ pub fn exact_filter_match() {
     assert_eq!(exact.len(), 2);
 }
 
-#[test]
-pub fn sort_tests() {
-    let mut opts = TestOpts::new();
-    opts.run_tests = true;
-
+fn sample_tests() -> Vec<TestDescAndFn> {
     let names = vec![
         "sha1::test".to_string(),
         "isize::test_to_str".to_string(),
@@ -585,26 +581,32 @@ pub fn sort_tests() {
         "test::run_include_ignored_option".to_string(),
         "test::sort_tests".to_string(),
     ];
-    let tests = {
-        fn testfn() {}
-        let mut tests = Vec::new();
-        for name in &names {
-            let test = TestDescAndFn {
-                desc: TestDesc {
-                    name: DynTestName((*name).clone()),
-                    ignore: false,
-                    should_panic: ShouldPanic::No,
-                    allow_fail: false,
-                    compile_fail: false,
-                    no_run: false,
-                    test_type: TestType::Unknown,
-                },
-                testfn: DynTestFn(Box::new(testfn)),
-            };
-            tests.push(test);
-        }
-        tests
-    };
+    fn testfn() {}
+    let mut tests = Vec::new();
+    for name in &names {
+        let test = TestDescAndFn {
+            desc: TestDesc {
+                name: DynTestName((*name).clone()),
+                ignore: false,
+                should_panic: ShouldPanic::No,
+                allow_fail: false,
+                compile_fail: false,
+                no_run: false,
+                test_type: TestType::Unknown,
+            },
+            testfn: DynTestFn(Box::new(testfn)),
+        };
+        tests.push(test);
+    }
+    tests
+}
+
+#[test]
+pub fn sort_tests() {
+    let mut opts = TestOpts::new();
+    opts.run_tests = true;
+
+    let tests = sample_tests();
     let filtered = filter_tests(&opts, tests);
 
     let expected = vec![
@@ -624,6 +626,71 @@ pub fn sort_tests() {
     for (a, b) in expected.iter().zip(filtered) {
         assert_eq!(*a, b.desc.name.to_string());
     }
+}
+
+#[test]
+pub fn shuffle_tests() {
+    let mut opts = TestOpts::new();
+    opts.shuffle = true;
+
+    let shuffle_seed = get_shuffle_seed(&opts).unwrap();
+
+    let left =
+        sample_tests().into_iter().enumerate().map(|(i, e)| (TestId(i), e)).collect::<Vec<_>>();
+    let mut right =
+        sample_tests().into_iter().enumerate().map(|(i, e)| (TestId(i), e)).collect::<Vec<_>>();
+
+    assert!(left.iter().zip(&right).all(|(a, b)| a.1.desc.name == b.1.desc.name));
+
+    helpers::shuffle::shuffle_tests(shuffle_seed, right.as_mut_slice());
+
+    assert!(left.iter().zip(right).any(|(a, b)| a.1.desc.name != b.1.desc.name));
+}
+
+#[test]
+pub fn shuffle_tests_with_seed() {
+    let mut opts = TestOpts::new();
+    opts.shuffle = true;
+
+    let shuffle_seed = get_shuffle_seed(&opts).unwrap();
+
+    let mut left =
+        sample_tests().into_iter().enumerate().map(|(i, e)| (TestId(i), e)).collect::<Vec<_>>();
+    let mut right =
+        sample_tests().into_iter().enumerate().map(|(i, e)| (TestId(i), e)).collect::<Vec<_>>();
+
+    helpers::shuffle::shuffle_tests(shuffle_seed, left.as_mut_slice());
+    helpers::shuffle::shuffle_tests(shuffle_seed, right.as_mut_slice());
+
+    assert!(left.iter().zip(right).all(|(a, b)| a.1.desc.name == b.1.desc.name));
+}
+
+#[test]
+pub fn order_depends_on_more_than_seed() {
+    let mut opts = TestOpts::new();
+    opts.shuffle = true;
+
+    let shuffle_seed = get_shuffle_seed(&opts).unwrap();
+
+    let mut left_tests = sample_tests();
+    let mut right_tests = sample_tests();
+
+    left_tests.pop();
+    right_tests.remove(0);
+
+    let mut left =
+        left_tests.into_iter().enumerate().map(|(i, e)| (TestId(i), e)).collect::<Vec<_>>();
+    let mut right =
+        right_tests.into_iter().enumerate().map(|(i, e)| (TestId(i), e)).collect::<Vec<_>>();
+
+    assert_eq!(left.len(), right.len());
+
+    assert!(left.iter().zip(&right).all(|(a, b)| a.0 == b.0));
+
+    helpers::shuffle::shuffle_tests(shuffle_seed, left.as_mut_slice());
+    helpers::shuffle::shuffle_tests(shuffle_seed, right.as_mut_slice());
+
+    assert!(left.iter().zip(right).any(|(a, b)| a.0 != b.0));
 }
 
 #[test]
