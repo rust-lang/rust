@@ -80,7 +80,7 @@ impl<'db> MatchFinder<'db> {
         if let Some(path) =
             self.sema.find_node_at_offset_with_descend::<ast::Path>(file.syntax(), offset)
         {
-            self.sema.ancestors_with_macros(path.syntax().clone()).skip(depth).next()
+            self.sema.ancestors_with_macros(path.syntax().clone()).nth(depth)
         } else if let Some(path) =
             self.sema.find_node_at_offset_with_descend::<ast::MethodCallExpr>(file.syntax(), offset)
         {
@@ -96,8 +96,7 @@ impl<'db> MatchFinder<'db> {
             }
             self.sema
                 .ancestors_with_macros(path.syntax().clone())
-                .skip(depth - PATH_DEPTH_IN_CALL_EXPR)
-                .next()
+                .nth(depth - PATH_DEPTH_IN_CALL_EXPR)
         } else {
             None
         }

@@ -211,13 +211,10 @@ fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<Syntax
 }
 
 fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
-    if vis.in_token().is_none() {
-        if vis.path().and_then(|p| p.as_single_name_ref()).and_then(|n| n.ident_token()).is_some() {
-            errors.push(SyntaxError::new(
-                "incorrect visibility restriction",
-                vis.syntax.text_range(),
-            ));
-        }
+    let path_without_in_token = vis.in_token().is_none()
+        && vis.path().and_then(|p| p.as_single_name_ref()).and_then(|n| n.ident_token()).is_some();
+    if path_without_in_token {
+        errors.push(SyntaxError::new("incorrect visibility restriction", vis.syntax.text_range()));
     }
     let parent = match vis.syntax().parent() {
         Some(it) => it,

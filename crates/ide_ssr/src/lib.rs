@@ -172,7 +172,7 @@ impl<'db> MatchFinder<'db> {
         for m in self.matches().matches {
             matches_by_file
                 .entry(m.range.file_id)
-                .or_insert_with(|| SsrMatches::default())
+                .or_insert_with(SsrMatches::default)
                 .matches
                 .push(m);
         }
@@ -331,7 +331,7 @@ impl SsrMatches {
     fn flatten_into(self, out: &mut SsrMatches) {
         for mut m in self.matches {
             for p in m.placeholder_values.values_mut() {
-                std::mem::replace(&mut p.inner_matches, SsrMatches::default()).flatten_into(out);
+                std::mem::take(&mut p.inner_matches).flatten_into(out);
             }
             out.matches.push(m);
         }

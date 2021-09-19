@@ -243,10 +243,10 @@ impl<'db> ResolutionScope<'db> {
         use syntax::ast::AstNode;
         if let Some(path) = ast::Path::cast(path.clone()) {
             if let Some(qualifier) = path.qualifier() {
-                if let Some(resolved_qualifier) = self.resolve_path(&qualifier) {
-                    if let hir::PathResolution::Def(hir::ModuleDef::Adt(adt)) = resolved_qualifier {
-                        return Some(adt.ty(self.scope.db));
-                    }
+                if let Some(hir::PathResolution::Def(hir::ModuleDef::Adt(adt))) =
+                    self.resolve_path(&qualifier)
+                {
+                    return Some(adt.ty(self.scope.db));
                 }
             }
         }
