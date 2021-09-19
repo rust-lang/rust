@@ -1,4 +1,6 @@
-//! WASI-specific extensions to primitives in the `std::fs` module.
+//! WASI-specific extensions to primitives in the [`std::fs`] module.
+//!
+//! [`std::fs`]: crate::fs
 
 #![deny(unsafe_op_in_unsafe_fn)]
 #![unstable(feature = "wasi_ext", issue = "71213")]

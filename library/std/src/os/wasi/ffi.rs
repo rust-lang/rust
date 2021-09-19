@@ -1,4 +1,6 @@
-//! WASI-specific extension to the primitives in the `std::ffi` module
+//! WASI-specific extensions to primitives in the [`std::ffi`] module
+//!
+//! [`std::ffi`]: crate::ffi
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

@@ -1,4 +1,6 @@
-//! Linux-specific extensions to primitives in the `std::fs` module.
+//! Linux-specific extensions to primitives in the [`std::fs`] module.
+//!
+//! [`std::fs`]: crate::fs
 
 #![stable(feature = "metadata_ext", since = "1.1.0")]
 
