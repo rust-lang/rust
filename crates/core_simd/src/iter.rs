@@ -1,4 +1,4 @@
-use crate::{LaneCount, Simd, SupportedLaneCount};
+use crate::simd::{LaneCount, Simd, SupportedLaneCount};
 use core::{
     iter::{Product, Sum},
     ops::{Add, Mul},
@@ -15,7 +15,7 @@ macro_rules! impl_traits {
             }
         }
 
-        impl<const LANES: usize> core::iter::Product<Self> for Simd<$type, LANES>
+        impl<const LANES: usize> Product<Self> for Simd<$type, LANES>
         where
             LaneCount<LANES>: SupportedLaneCount,
         {

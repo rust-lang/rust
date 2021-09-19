@@ -1,4 +1,5 @@
-use crate::{LaneCount, Mask, MaskElement, Simd, SimdElement, SupportedLaneCount};
+use crate::simd::intrinsics;
+use crate::simd::{LaneCount, Mask, MaskElement, Simd, SimdElement, SupportedLaneCount};
 
 mod sealed {
     pub trait Sealed {}
@@ -25,7 +26,7 @@ where
 {
     #[inline]
     fn select(mask: Mask<T::Mask, LANES>, true_values: Self, false_values: Self) -> Self {
-        unsafe { crate::intrinsics::simd_select(mask.to_int(), true_values, false_values) }
+        unsafe { intrinsics::simd_select(mask.to_int(), true_values, false_values) }
     }
 }
 

@@ -1,4 +1,5 @@
-use crate::{LaneCount, MaskElement, Simd, SupportedLaneCount};
+use crate::simd::intrinsics;
+use crate::simd::{LaneCount, Simd, SupportedLaneCount};
 use core::marker::PhantomData;
 
 /// A mask where each lane is represented by a single bit.
@@ -99,11 +100,7 @@ where
         unsafe {
             let mask: <LaneCount<LANES> as SupportedLaneCount>::IntBitMask =
                 core::mem::transmute_copy(&self);
-            crate::intrinsics::simd_select_bitmask(
-                mask,
-                Simd::splat(T::TRUE),
-                Simd::splat(T::FALSE),
-            )
+            intrinsics::simd_select_bitmask(mask, Simd::splat(T::TRUE), Simd::splat(T::FALSE))
         }
     }
 
@@ -115,7 +112,7 @@ where
             core::mem::size_of::<<LaneCount::<LANES> as SupportedLaneCount>::IntBitMask>(),
         );
         let mask: <LaneCount<LANES> as SupportedLaneCount>::IntBitMask =
-            crate::intrinsics::simd_bitmask(value);
+            intrinsics::simd_bitmask(value);
         Self(core::mem::transmute_copy(&mask), PhantomData)
     }
 

@@ -1,8 +1,11 @@
+use crate::simd::intrinsics;
+use crate::simd::{Simd, SimdElement};
+
 macro_rules! impl_shuffle_lane {
     { $fn:ident, $n:literal } => {
-        impl<T> crate::Simd<T, $n>
+        impl<T> Simd<T, $n>
         where
-            T: crate::SimdElement,
+            T: SimdElement,
         {
             /// A const SIMD shuffle that takes 2 SIMD vectors and produces another vector, using
             /// the indices in the const parameter. The first or "self" vector will have its lanes
@@ -24,7 +27,7 @@ macro_rules! impl_shuffle_lane {
             /// ```
             #[inline]
             pub fn shuffle<const IDX: [u32; $n]>(self, second: Self) -> Self {
-                unsafe { crate::intrinsics::$fn(self, second, IDX) }
+                unsafe { intrinsics::$fn(self, second, IDX) }
             }
 
             /// Reverse the order of the lanes in the vector.

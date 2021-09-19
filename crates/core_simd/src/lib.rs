@@ -14,31 +14,6 @@
 #![unstable(feature = "portable_simd", issue = "86656")]
 //! Portable SIMD module.
 
-#[macro_use]
-mod permute;
-#[macro_use]
-mod reduction;
-
-mod select;
-pub use select::Select;
-
-#[cfg(feature = "generic_const_exprs")]
-mod to_bytes;
-
-mod comparisons;
-mod fmt;
-mod intrinsics;
-mod iter;
-mod math;
-mod ops;
-mod round;
-mod vendor;
-
-mod lane_count;
-pub use lane_count::*;
-
-mod masks;
-pub use masks::*;
-
-mod vector;
-pub use vector::*;
+#[path = "mod.rs"]
+mod core_simd;
+pub use self::core_simd::simd::*;

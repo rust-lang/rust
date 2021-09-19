@@ -91,9 +91,9 @@ extern "platform-intrinsic" {
     pub(crate) fn simd_bitmask<T, U>(x: T) -> U;
 
     // select
-    pub(crate) fn simd_select<T, U>(m: T, a: U, b: U) -> U;
+    pub(crate) fn simd_select<M, T>(m: M, a: T, b: T) -> T;
     #[allow(unused)]
-    pub(crate) fn simd_select_bitmask<T, U>(m: T, a: U, b: U) -> U;
+    pub(crate) fn simd_select_bitmask<M, T>(m: M, a: T, b: T) -> T;
 }
 
 #[cfg(feature = "std")]
@@ -114,4 +114,4 @@ mod std {
 }
 
 #[cfg(feature = "std")]
-pub(crate) use crate::intrinsics::std::*;
+pub(crate) use crate::simd::intrinsics::std::*;

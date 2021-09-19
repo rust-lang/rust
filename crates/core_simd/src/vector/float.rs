@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types)]
 
-use crate::{LaneCount, Mask, Simd, SupportedLaneCount};
+use crate::simd::intrinsics;
+use crate::simd::{LaneCount, Mask, Simd, SupportedLaneCount};
 
 /// Implements inherent methods for a float vector containing multiple
 /// `$lanes` of float `$type`, which uses `$bits_ty` as its binary
@@ -31,7 +32,7 @@ macro_rules! impl_float_vector {
             /// equivalently-indexed lane in `self`.
             #[inline]
             pub fn abs(self) -> Self {
-                unsafe { crate::intrinsics::simd_fabs(self) }
+                unsafe { intrinsics::simd_fabs(self) }
             }
 
             /// Fused multiply-add.  Computes `(self * a) + b` with only one rounding error,
@@ -43,7 +44,7 @@ macro_rules! impl_float_vector {
             /// hardware in mind.
             #[inline]
             pub fn mul_add(self, a: Self, b: Self) -> Self {
-                unsafe { crate::intrinsics::simd_fma(self, a, b) }
+                unsafe { intrinsics::simd_fma(self, a, b) }
             }
 
             /// Produces a vector where every lane has the square root value
@@ -51,7 +52,7 @@ macro_rules! impl_float_vector {
             #[inline]
             #[cfg(feature = "std")]
             pub fn sqrt(self) -> Self {
-                unsafe { crate::intrinsics::simd_fsqrt(self) }
+                unsafe { intrinsics::simd_fsqrt(self) }
             }
 
             /// Takes the reciprocal (inverse) of each lane, `1/x`.

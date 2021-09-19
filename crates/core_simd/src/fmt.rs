@@ -1,17 +1,20 @@
+use crate::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
+use core::fmt;
+
 macro_rules! impl_fmt_trait {
     { $($trait:ident,)* } => {
         $(
-            impl<T, const LANES: usize> core::fmt::$trait for crate::Simd<T, LANES>
+            impl<T, const LANES: usize> fmt::$trait for Simd<T, LANES>
             where
-                crate::LaneCount<LANES>: crate::SupportedLaneCount,
-                T: crate::SimdElement + core::fmt::$trait,
+                LaneCount<LANES>: SupportedLaneCount,
+                T: SimdElement + fmt::$trait,
             {
-                fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     #[repr(transparent)]
-                    struct Wrapper<'a, T: core::fmt::$trait>(&'a T);
+                    struct Wrapper<'a, T: fmt::$trait>(&'a T);
 
-                    impl<T: core::fmt::$trait> core::fmt::Debug for Wrapper<'_, T> {
-                        fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+                    impl<T: fmt::$trait> fmt::Debug for Wrapper<'_, T> {
+                        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                             self.0.fmt(f)
                         }
                     }

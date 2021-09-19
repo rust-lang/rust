@@ -9,7 +9,8 @@ pub use uint::*;
 // Vectors of pointers are not for public use at the current time.
 pub(crate) mod ptr;
 
-use crate::{LaneCount, Mask, MaskElement, SupportedLaneCount};
+use crate::simd::intrinsics;
+use crate::simd::{LaneCount, Mask, MaskElement, SupportedLaneCount};
 
 /// A SIMD vector of `LANES` elements of type `T`.
 #[repr(simd)]
@@ -108,11 +109,11 @@ where
         or: Self,
     ) -> Self {
         let mask = (mask & idxs.lanes_lt(Simd::splat(slice.len()))).to_int();
-        let base_ptr = crate::vector::ptr::SimdConstPtr::splat(slice.as_ptr());
+        let base_ptr = crate::simd::ptr::SimdConstPtr::splat(slice.as_ptr());
         // Ferris forgive me, I have done pointer arithmetic here.
         let ptrs = base_ptr.wrapping_add(idxs);
         // SAFETY: The ptrs have been bounds-masked to prevent memory-unsafe reads insha'allah
-        unsafe { crate::intrinsics::simd_gather(or, ptrs, mask) }
+        unsafe { intrinsics::simd_gather(or, ptrs, mask) }
     }
 
     /// SIMD scatter: write a SIMD vector's values into a slice, using potentially discontiguous indices.
@@ -168,11 +169,11 @@ where
         // 3. &mut [T] which will become our base ptr.
         unsafe {
             // Now Entering ☢️ *mut T Zone
-            let base_ptr = crate::vector::ptr::SimdMutPtr::splat(slice.as_mut_ptr());
+            let base_ptr = crate::simd::ptr::SimdMutPtr::splat(slice.as_mut_ptr());
             // Ferris forgive me, I have done pointer arithmetic here.
             let ptrs = base_ptr.wrapping_add(idxs);
             // The ptrs have been bounds-masked to prevent memory-unsafe writes insha'allah
-            crate::intrinsics::simd_scatter(self, ptrs, mask)
+            intrinsics::simd_scatter(self, ptrs, mask)
             // Cleared ☢️ *mut T Zone
         }
     }

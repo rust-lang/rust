@@ -1,4 +1,5 @@
-use crate::{LaneCount, Simd, SimdElement, SupportedLaneCount};
+use crate::simd::intrinsics;
+use crate::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
 
 impl<I, T, const LANES: usize> core::ops::Index<I> for Simd<T, LANES>
 where
@@ -208,7 +209,7 @@ macro_rules! impl_op {
             {
                 type Output = Self;
                 fn neg(self) -> Self::Output {
-                    unsafe { crate::intrinsics::simd_neg(self) }
+                    unsafe { intrinsics::simd_neg(self) }
                 }
             }
         }
@@ -226,7 +227,7 @@ macro_rules! impl_op {
                 #[inline]
                 fn $trait_fn(self, rhs: Self) -> Self::Output {
                     unsafe {
-                        crate::intrinsics::$intrinsic(self, rhs)
+                        intrinsics::$intrinsic(self, rhs)
                     }
                 }
             }
@@ -268,7 +269,7 @@ macro_rules! impl_op {
                 #[inline]
                 fn $assign_trait_fn(&mut self, rhs: Self) {
                     unsafe {
-                        *self = crate::intrinsics::$intrinsic(*self, rhs);
+                        *self = intrinsics::$intrinsic(*self, rhs);
                     }
                 }
             }
@@ -338,7 +339,7 @@ macro_rules! impl_unsigned_int_ops {
                                 .any(|(x,y)| *x == <$scalar>::MIN && *y == -1 as _) {
                             panic!("attempt to divide with overflow");
                         }
-                        unsafe { crate::intrinsics::simd_div(self, rhs) }
+                        unsafe { intrinsics::simd_div(self, rhs) }
                     }
                 }
             }
@@ -361,7 +362,7 @@ macro_rules! impl_unsigned_int_ops {
                                 panic!("attempt to divide with overflow");
                         }
                         let rhs = Self::splat(rhs);
-                        unsafe { crate::intrinsics::simd_div(self, rhs) }
+                        unsafe { intrinsics::simd_div(self, rhs) }
                     }
                 }
             }
@@ -428,7 +429,7 @@ macro_rules! impl_unsigned_int_ops {
                                 .any(|(x,y)| *x == <$scalar>::MIN && *y == -1 as _) {
                             panic!("attempt to calculate the remainder with overflow");
                         }
-                        unsafe { crate::intrinsics::simd_rem(self, rhs) }
+                        unsafe { intrinsics::simd_rem(self, rhs) }
                     }
                 }
             }
@@ -451,7 +452,7 @@ macro_rules! impl_unsigned_int_ops {
                                 panic!("attempt to calculate the remainder with overflow");
                         }
                         let rhs = Self::splat(rhs);
-                        unsafe { crate::intrinsics::simd_rem(self, rhs) }
+                        unsafe { intrinsics::simd_rem(self, rhs) }
                     }
                 }
             }
@@ -512,7 +513,7 @@ macro_rules! impl_unsigned_int_ops {
                         {
                             panic!("attempt to shift left with overflow");
                         }
-                        unsafe { crate::intrinsics::simd_shl(self, rhs) }
+                        unsafe { intrinsics::simd_shl(self, rhs) }
                     }
                 }
             }
@@ -530,7 +531,7 @@ macro_rules! impl_unsigned_int_ops {
                             panic!("attempt to shift left with overflow");
                         }
                         let rhs = Self::splat(rhs);
-                        unsafe { crate::intrinsics::simd_shl(self, rhs) }
+                        unsafe { intrinsics::simd_shl(self, rhs) }
                     }
                 }
             }
@@ -577,7 +578,7 @@ macro_rules! impl_unsigned_int_ops {
                         {
                             panic!("attempt to shift with overflow");
                         }
-                        unsafe { crate::intrinsics::simd_shr(self, rhs) }
+                        unsafe { intrinsics::simd_shr(self, rhs) }
                     }
                 }
             }
@@ -595,7 +596,7 @@ macro_rules! impl_unsigned_int_ops {
                             panic!("attempt to shift with overflow");
                         }
                         let rhs = Self::splat(rhs);
-                        unsafe { crate::intrinsics::simd_shr(self, rhs) }
+                        unsafe { intrinsics::simd_shr(self, rhs) }
                     }
                 }
             }

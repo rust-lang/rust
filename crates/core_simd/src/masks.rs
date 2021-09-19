@@ -12,7 +12,9 @@
 )]
 mod mask_impl;
 
-use crate::{LaneCount, Simd, SimdElement, SupportedLaneCount};
+use crate::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
+use core::cmp::Ordering;
+use core::fmt;
 
 /// Marker trait for types that may be used as SIMD mask elements.
 pub unsafe trait MaskElement: SimdElement {
@@ -251,17 +253,17 @@ where
     LaneCount<LANES>: SupportedLaneCount,
 {
     #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.0.partial_cmp(&other.0)
     }
 }
 
-impl<T, const LANES: usize> core::fmt::Debug for Mask<T, LANES>
+impl<T, const LANES: usize> fmt::Debug for Mask<T, LANES>
 where
-    T: MaskElement + core::fmt::Debug,
+    T: MaskElement + fmt::Debug,
     LaneCount<LANES>: SupportedLaneCount,
 {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list()
             .entries((0..LANES).map(|lane| self.test(lane)))
             .finish()

@@ -1,19 +1,19 @@
 macro_rules! impl_to_bytes {
     { $ty:ty, $size:literal } => {
-        impl<const LANES: usize> crate::Simd<$ty, LANES>
+        impl<const LANES: usize> crate::simd::Simd<$ty, LANES>
         where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-            crate::LaneCount<{{ $size * LANES }}>: crate::SupportedLaneCount,
+            crate::simd::LaneCount<LANES>: crate::simd::SupportedLaneCount,
+            crate::simd::LaneCount<{{ $size * LANES }}>: crate::simd::SupportedLaneCount,
         {
             /// Return the memory representation of this integer as a byte array in native byte
             /// order.
-            pub fn to_ne_bytes(self) -> crate::Simd<u8, {{ $size * LANES }}> {
+            pub fn to_ne_bytes(self) -> crate::simd::Simd<u8, {{ $size * LANES }}> {
                 unsafe { core::mem::transmute_copy(&self) }
             }
 
             /// Create a native endian integer value from its memory representation as a byte array
             /// in native endianness.
-            pub fn from_ne_bytes(bytes: crate::Simd<u8, {{ $size * LANES }}>) -> Self {
+            pub fn from_ne_bytes(bytes: crate::simd::Simd<u8, {{ $size * LANES }}>) -> Self {
                 unsafe { core::mem::transmute_copy(&bytes) }
             }
         }

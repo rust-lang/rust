@@ -1,4 +1,5 @@
-use crate::{LaneCount, Simd, SupportedLaneCount};
+use crate::simd::intrinsics;
+use crate::simd::{LaneCount, Simd, SupportedLaneCount};
 
 macro_rules! implement {
     {
@@ -13,28 +14,28 @@ macro_rules! implement {
             #[must_use = "method returns a new vector and does not mutate the original value"]
             #[inline]
             pub fn ceil(self) -> Self {
-                unsafe { crate::intrinsics::simd_ceil(self) }
+                unsafe { intrinsics::simd_ceil(self) }
             }
 
             /// Returns the largest integer value less than or equal to each lane.
             #[must_use = "method returns a new vector and does not mutate the original value"]
             #[inline]
             pub fn floor(self) -> Self {
-                unsafe { crate::intrinsics::simd_floor(self) }
+                unsafe { intrinsics::simd_floor(self) }
             }
 
             /// Rounds to the nearest integer value. Ties round toward zero.
             #[must_use = "method returns a new vector and does not mutate the original value"]
             #[inline]
             pub fn round(self) -> Self {
-                unsafe { crate::intrinsics::simd_round(self) }
+                unsafe { intrinsics::simd_round(self) }
             }
 
             /// Returns the floating point's integer value, with its fractional part removed.
             #[must_use = "method returns a new vector and does not mutate the original value"]
             #[inline]
             pub fn trunc(self) -> Self {
-                unsafe { crate::intrinsics::simd_trunc(self) }
+                unsafe { intrinsics::simd_trunc(self) }
             }
 
             /// Returns the floating point's fractional value, with its integer part removed.
@@ -60,14 +61,14 @@ macro_rules! implement {
             /// * Be representable in the return type, after truncating off its fractional part
             #[inline]
             pub unsafe fn to_int_unchecked(self) -> Simd<$int_type, LANES> {
-                crate::intrinsics::simd_cast(self)
+                intrinsics::simd_cast(self)
             }
 
             /// Creates a floating-point vector from an integer vector.  Rounds values that are
             /// not exactly representable.
             #[inline]
             pub fn round_from_int(value: Simd<$int_type, LANES>) -> Self {
-                unsafe { crate::intrinsics::simd_cast(value) }
+                unsafe { intrinsics::simd_cast(value) }
             }
         }
     }

@@ -1,4 +1,4 @@
-use crate::*;
+use crate::simd::*;
 
 #[cfg(target_arch = "powerpc")]
 use core::arch::powerpc::*;

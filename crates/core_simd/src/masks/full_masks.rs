@@ -1,7 +1,8 @@
 //! Masks that take up full SIMD vector registers.
 
 use super::MaskElement;
-use crate::{LaneCount, Simd, SupportedLaneCount};
+use crate::simd::intrinsics;
+use crate::simd::{LaneCount, Simd, SupportedLaneCount};
 
 #[repr(transparent)]
 pub struct Mask<T, const LANES: usize>(Simd<T, LANES>)
@@ -98,7 +99,7 @@ where
     where
         U: MaskElement,
     {
-        unsafe { Mask(crate::intrinsics::simd_cast(self.0)) }
+        unsafe { Mask(intrinsics::simd_cast(self.0)) }
     }
 
     #[cfg(feature = "generic_const_exprs")]
@@ -111,7 +112,7 @@ where
                 LaneCount::<LANES>::BITMASK_LEN,
             );
             let bitmask: <LaneCount<LANES> as SupportedLaneCount>::IntBitMask =
-                crate::intrinsics::simd_bitmask(self.0);
+                intrinsics::simd_bitmask(self.0);
             let mut bitmask: [u8; LaneCount::<LANES>::BITMASK_LEN] =
                 core::mem::transmute_copy(&bitmask);
 
@@ -149,7 +150,7 @@ where
             let bitmask: <LaneCount<LANES> as SupportedLaneCount>::IntBitMask =
                 core::mem::transmute_copy(&bitmask);
 
-            Self::from_int_unchecked(crate::intrinsics::simd_select_bitmask(
+            Self::from_int_unchecked(intrinsics::simd_select_bitmask(
                 bitmask,
                 Self::splat(true).to_int(),
                 Self::splat(false).to_int(),
@@ -159,12 +160,12 @@ where
 
     #[inline]
     pub fn any(self) -> bool {
-        unsafe { crate::intrinsics::simd_reduce_any(self.to_int()) }
+        unsafe { intrinsics::simd_reduce_any(self.to_int()) }
     }
 
     #[inline]
     pub fn all(self) -> bool {
-        unsafe { crate::intrinsics::simd_reduce_all(self.to_int()) }
+        unsafe { intrinsics::simd_reduce_all(self.to_int()) }
     }
 }
 
@@ -186,7 +187,7 @@ where
     type Output = Self;
     #[inline]
     fn bitand(self, rhs: Self) -> Self {
-        unsafe { Self(crate::intrinsics::simd_and(self.0, rhs.0)) }
+        unsafe { Self(intrinsics::simd_and(self.0, rhs.0)) }
     }
 }
 
@@ -198,7 +199,7 @@ where
     type Output = Self;
     #[inline]
     fn bitor(self, rhs: Self) -> Self {
-        unsafe { Self(crate::intrinsics::simd_or(self.0, rhs.0)) }
+        unsafe { Self(intrinsics::simd_or(self.0, rhs.0)) }
     }
 }
 
@@ -210,7 +211,7 @@ where
     type Output = Self;
     #[inline]
     fn bitxor(self, rhs: Self) -> Self {
-        unsafe { Self(crate::intrinsics::simd_xor(self.0, rhs.0)) }
+        unsafe { Self(intrinsics::simd_xor(self.0, rhs.0)) }
     }
 }
 

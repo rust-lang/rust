@@ -1,4 +1,4 @@
-use crate::*;
+use crate::simd::*;
 
 #[cfg(any(target_arch = "x86"))]
 use core::arch::x86::*;

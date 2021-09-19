@@ -1,4 +1,5 @@
-use crate::{LaneCount, Simd, SupportedLaneCount};
+use crate::simd::intrinsics::{simd_saturating_add, simd_saturating_sub};
+use crate::simd::{LaneCount, Simd, SupportedLaneCount};
 
 macro_rules! impl_uint_arith {
     ($($ty:ty),+) => {
@@ -20,7 +21,7 @@ macro_rules! impl_uint_arith {
             /// ```
             #[inline]
             pub fn saturating_add(self, second: Self) -> Self {
-                unsafe { crate::intrinsics::simd_saturating_add(self, second) }
+                unsafe { simd_saturating_add(self, second) }
             }
 
             /// Lanewise saturating subtract.
@@ -38,7 +39,7 @@ macro_rules! impl_uint_arith {
             /// assert_eq!(sat, Simd::splat(0));
             #[inline]
             pub fn saturating_sub(self, second: Self) -> Self {
-                unsafe { crate::intrinsics::simd_saturating_sub(self, second) }
+                unsafe { simd_saturating_sub(self, second) }
             }
         })+
     }
@@ -64,7 +65,7 @@ macro_rules! impl_int_arith {
             /// ```
             #[inline]
             pub fn saturating_add(self, second: Self) -> Self {
-                unsafe { crate::intrinsics::simd_saturating_add(self, second) }
+                unsafe { simd_saturating_add(self, second) }
             }
 
             /// Lanewise saturating subtract.
@@ -82,7 +83,7 @@ macro_rules! impl_int_arith {
             /// assert_eq!(sat, Simd::from_array([MIN, MIN, MIN, 0]));
             #[inline]
             pub fn saturating_sub(self, second: Self) -> Self {
-                unsafe { crate::intrinsics::simd_saturating_sub(self, second) }
+                unsafe { simd_saturating_sub(self, second) }
             }
 
             /// Lanewise absolute value, implemented in Rust.

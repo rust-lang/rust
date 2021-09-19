@@ -1,5 +1,5 @@
 //! Private implementation details of public gather/scatter APIs.
-use crate::{LaneCount, Simd, SupportedLaneCount};
+use crate::simd::{LaneCount, Simd, SupportedLaneCount};
 use core::mem;
 
 /// A vector of *const T.

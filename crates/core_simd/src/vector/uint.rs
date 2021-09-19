@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use crate::Simd;
+use crate::simd::Simd;
 
 /// Vector of two `usize` values
 pub type usizex2 = Simd<usize, 2>;

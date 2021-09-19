@@ -1,4 +1,4 @@
-use crate::*;
+use crate::simd::*;
 
 #[cfg(target_arch = "arm")]
 use core::arch::arm::*;
