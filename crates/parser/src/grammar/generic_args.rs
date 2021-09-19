@@ -48,16 +48,8 @@ fn generic_arg(p: &mut Parser) {
                     path_ty.abandon(p);
                     m.complete(p, ASSOC_TYPE_ARG);
                 }
-                T![:] if p.at(T![::]) => {
-                    // NameRef::, this is a path type
-                    path_seg.complete(p, PATH_SEGMENT);
-                    let qual = path.complete(p, PATH);
-                    paths::type_path_for_qualifier(p, qual);
-                    path_ty.complete(p, PATH_TYPE);
-                    m.complete(p, TYPE_ARG);
-                }
                 // NameRef<...>:
-                T![:] => {
+                T![:] if !p.at(T![::]) => {
                     generic_params::bounds(p);
 
                     path_seg.abandon(p);
@@ -65,10 +57,10 @@ fn generic_arg(p: &mut Parser) {
                     path_ty.abandon(p);
                     m.complete(p, ASSOC_TYPE_ARG);
                 }
-                // NameRef, this is a single segment path type
                 _ => {
                     path_seg.complete(p, PATH_SEGMENT);
-                    path.complete(p, PATH);
+                    let qual = path.complete(p, PATH);
+                    paths::type_path_for_qualifier(p, qual);
                     path_ty.complete(p, PATH_TYPE);
                     m.complete(p, TYPE_ARG);
                 }
