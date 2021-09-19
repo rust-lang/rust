@@ -4,10 +4,11 @@ use crate::prelude::*;
 
 use cranelift_codegen::isa::{unwind::UnwindInfo, TargetIsa};
 
+use cranelift_object::ObjectProduct;
 use gimli::write::{Address, CieId, EhFrame, FrameTable, Section};
 use gimli::RunTimeEndian;
 
-use crate::backend::WriteDebugInfo;
+use super::object::WriteDebugInfo;
 
 pub(crate) struct UnwindContext {
     endian: RunTimeEndian,
@@ -55,7 +56,7 @@ impl UnwindContext {
         }
     }
 
-    pub(crate) fn emit<P: WriteDebugInfo>(self, product: &mut P) {
+    pub(crate) fn emit(self, product: &mut ObjectProduct) {
         let mut eh_frame = EhFrame::from(super::emit::WriterRelocate::new(self.endian));
         self.frame_table.write_eh_frame(&mut eh_frame).unwrap();
 
