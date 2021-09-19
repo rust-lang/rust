@@ -1386,14 +1386,17 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         // `SEMICOLON_IN_EXPRESSIONS_FROM_MACROS` lint if needed.
         // See #78991 for an investigation of treating macros in this position
         // as statements, rather than expressions, during parsing.
-        if let StmtKind::Expr(expr) = &stmt.kind {
-            if matches!(**expr, ast::Expr { kind: ast::ExprKind::MacCall(..), .. }) {
+        let res = match &stmt.kind {
+            StmtKind::Expr(expr)
+                if matches!(**expr, ast::Expr { kind: ast::ExprKind::MacCall(..), .. }) =>
+            {
                 self.cx.current_expansion.is_trailing_mac = true;
+                // Don't use `assign_id` for this statement - it may get removed
+                // entirely due to a `#[cfg]` on the contained expression
+                noop_flat_map_stmt(stmt, self)
             }
-        }
-
-        let res = assign_id!(self, &mut stmt.id, || noop_flat_map_stmt(stmt, self));
-
+            _ => assign_id!(self, &mut stmt.id, || noop_flat_map_stmt(stmt, self)),
+        };
         self.cx.current_expansion.is_trailing_mac = false;
         res
     }
