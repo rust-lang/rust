@@ -122,14 +122,6 @@ pub struct AssocTypeBindingNotAllowed {
 }
 
 #[derive(SessionDiagnostic)]
-#[error = "E0439"]
-pub struct SimdShuffleMissingLength {
-    #[message = "invalid `simd_shuffle`, needs length: `{name}`"]
-    pub span: Span,
-    pub name: Symbol,
-}
-
-#[derive(SessionDiagnostic)]
 #[error = "E0436"]
 pub struct FunctionalRecordUpdateOnNonStruct {
     #[message = "functional record update syntax requires a struct"]
