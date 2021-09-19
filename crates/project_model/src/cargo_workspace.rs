@@ -106,7 +106,7 @@ impl CargoConfig {
             UnsetTestCrates::Only(unset_test_crates) => CfgOverrides::Selective(
                 unset_test_crates
                     .iter()
-                    .map(|name| name.clone())
+                    .cloned()
                     .zip(iter::repeat_with(|| {
                         cfg::CfgDiff::new(Vec::new(), vec![cfg::CfgAtom::Flag("test".into())])
                             .unwrap()

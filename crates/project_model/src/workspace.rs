@@ -189,7 +189,7 @@ impl ProjectWorkspace {
                     Some(rustc_dir) => Some({
                         let meta = CargoWorkspace::fetch_metadata(&rustc_dir, config, progress)
                             .with_context(|| {
-                                format!("Failed to read Cargo metadata for Rust sources")
+                                "Failed to read Cargo metadata for Rust sources".to_string()
                             })?;
                         CargoWorkspace::new(meta)
                     }),
@@ -328,12 +328,12 @@ impl ProjectWorkspace {
                         }
                         PackageRoot { is_local, include, exclude }
                     })
-                    .chain(sysroot.into_iter().map(|sysroot| PackageRoot {
+                    .chain(sysroot.iter().map(|sysroot| PackageRoot {
                         is_local: false,
                         include: vec![sysroot.root().to_path_buf()],
                         exclude: Vec::new(),
                     }))
-                    .chain(rustc.into_iter().flat_map(|rustc| {
+                    .chain(rustc.iter().flat_map(|rustc| {
                         rustc.packages().map(move |krate| PackageRoot {
                             is_local: false,
                             include: vec![rustc[krate].manifest.parent().to_path_buf()],
@@ -343,7 +343,7 @@ impl ProjectWorkspace {
                     .collect()
             }
             ProjectWorkspace::DetachedFiles { files, sysroot, .. } => files
-                .into_iter()
+                .iter()
                 .map(|detached_file| PackageRoot {
                     is_local: true,
                     include: vec![detached_file.clone()],
@@ -553,7 +553,7 @@ fn cargo_to_crate_graph(
                     &mut crate_graph,
                     &cargo[pkg],
                     build_scripts.outputs.get(pkg),
-                    &cfg_options,
+                    cfg_options,
                     load_proc_macro,
                     file_id,
                     &cargo[tgt].name,
@@ -815,7 +815,7 @@ fn add_target_crate_root(
             .map(|feat| CfgFlag::KeyValue { key: "feature".into(), value: feat.0.into() }),
     );
 
-    let crate_id = crate_graph.add_crate_root(
+    crate_graph.add_crate_root(
         file_id,
         edition,
         Some(display_name),
@@ -823,9 +823,7 @@ fn add_target_crate_root(
         potential_cfg_options,
         env,
         proc_macro,
-    );
-
-    crate_id
+    )
 }
 
 fn sysroot_to_crate_graph(
@@ -893,27 +891,27 @@ fn inject_cargo_env(package: &PackageData, env: &mut Env) {
     // CARGO_BIN_NAME, CARGO_BIN_EXE_<name>
 
     let manifest_dir = package.manifest.parent();
-    env.set("CARGO_MANIFEST_DIR".into(), manifest_dir.as_os_str().to_string_lossy().into_owned());
+    env.set("CARGO_MANIFEST_DIR", manifest_dir.as_os_str().to_string_lossy().into_owned());
 
     // Not always right, but works for common cases.
-    env.set("CARGO".into(), "cargo".into());
+    env.set("CARGO", "cargo".into());
 
-    env.set("CARGO_PKG_VERSION".into(), package.version.to_string());
-    env.set("CARGO_PKG_VERSION_MAJOR".into(), package.version.major.to_string());
-    env.set("CARGO_PKG_VERSION_MINOR".into(), package.version.minor.to_string());
-    env.set("CARGO_PKG_VERSION_PATCH".into(), package.version.patch.to_string());
-    env.set("CARGO_PKG_VERSION_PRE".into(), package.version.pre.to_string());
+    env.set("CARGO_PKG_VERSION", package.version.to_string());
+    env.set("CARGO_PKG_VERSION_MAJOR", package.version.major.to_string());
+    env.set("CARGO_PKG_VERSION_MINOR", package.version.minor.to_string());
+    env.set("CARGO_PKG_VERSION_PATCH", package.version.patch.to_string());
+    env.set("CARGO_PKG_VERSION_PRE", package.version.pre.to_string());
 
-    env.set("CARGO_PKG_AUTHORS".into(), String::new());
+    env.set("CARGO_PKG_AUTHORS", String::new());
 
-    env.set("CARGO_PKG_NAME".into(), package.name.clone());
+    env.set("CARGO_PKG_NAME", package.name.clone());
     // FIXME: This isn't really correct (a package can have many crates with different names), but
     // it's better than leaving the variable unset.
-    env.set("CARGO_CRATE_NAME".into(), CrateName::normalize_dashes(&package.name).to_string());
-    env.set("CARGO_PKG_DESCRIPTION".into(), String::new());
-    env.set("CARGO_PKG_HOMEPAGE".into(), String::new());
-    env.set("CARGO_PKG_REPOSITORY".into(), String::new());
-    env.set("CARGO_PKG_LICENSE".into(), String::new());
+    env.set("CARGO_CRATE_NAME", CrateName::normalize_dashes(&package.name).to_string());
+    env.set("CARGO_PKG_DESCRIPTION", String::new());
+    env.set("CARGO_PKG_HOMEPAGE", String::new());
+    env.set("CARGO_PKG_REPOSITORY", String::new());
+    env.set("CARGO_PKG_LICENSE", String::new());
 
-    env.set("CARGO_PKG_LICENSE_FILE".into(), String::new());
+    env.set("CARGO_PKG_LICENSE_FILE", String::new());
 }

@@ -556,7 +556,7 @@ pub fn param(pat: ast::Pat, ty: ast::Type) -> ast::Param {
 }
 
 pub fn self_param() -> ast::SelfParam {
-    ast_from_text(&format!("fn f(&self) {{ }}"))
+    ast_from_text("fn f(&self) { }")
 }
 
 pub fn ret_type(ty: ast::Type) -> ast::RetType {
