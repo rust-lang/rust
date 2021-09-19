@@ -793,6 +793,23 @@ mod tests {
     }
 
     #[test]
+    fn test_format_args_expand_with_broken_member_access() {
+        check_expansion(
+            r#"
+            #[rustc_builtin_macro]
+            macro_rules! format_args {
+                ($fmt:expr) => ({ /* compiler built-in */ });
+                ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
+            }
+            format_args!("{} {:?}", a.);
+            "#,
+            expect![[
+                r#"unsafe{std::fmt::Arguments::new_v1(&[], &[std::fmt::ArgumentV1::new(&(a.),std::fmt::Display::fmt),])}"#
+            ]],
+        );
+    }
+
+    #[test]
     fn test_include_bytes_expand() {
         check_expansion(
             r#"
