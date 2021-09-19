@@ -438,12 +438,11 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             substs: SubstsRef<'tcx>,
             name_to_append_suffix_to: &mut String,
         ) -> &'ll DIArray {
-            let type_name_cache = &mut *debug_context(cx).type_name_cache.borrow_mut();
             type_names::push_generic_params(
                 cx.tcx,
                 cx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substs),
                 name_to_append_suffix_to,
-                type_name_cache,
+                &debug_context(cx).type_name_cache,
             );
 
             if substs.types().next().is_none() {
