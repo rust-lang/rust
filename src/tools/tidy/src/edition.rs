@@ -1,10 +1,13 @@
-//! Tidy check to ensure that crate `edition` is '2018'
+//! Tidy check to ensure that crate `edition` is '2018' or '2021'.
 
 use std::path::Path;
 
-fn is_edition_2018(mut line: &str) -> bool {
+fn is_edition_2018_or_2021(mut line: &str) -> bool {
     line = line.trim();
-    line == "edition = \"2018\"" || line == "edition = \'2018\'"
+    line == "edition = \"2018\""
+        || line == "edition = \'2018\'"
+        || line == "edition = \"2021\""
+        || line == "edition = \'2021\'"
 }
 
 pub fn check(path: &Path, bad: &mut bool) {
@@ -17,11 +20,11 @@ pub fn check(path: &Path, bad: &mut bool) {
             if filename != "Cargo.toml" {
                 return;
             }
-            let has_edition = contents.lines().any(is_edition_2018);
+            let has_edition = contents.lines().any(is_edition_2018_or_2021);
             if !has_edition {
                 tidy_error!(
                     bad,
-                    "{} doesn't have `edition = \"2018\"` on a separate line",
+                    "{} doesn't have `edition = \"2018\"` or `edition = \"2021\"` on a separate line",
                     file.display()
                 );
             }
