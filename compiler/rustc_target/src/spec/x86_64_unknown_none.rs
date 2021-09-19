@@ -10,7 +10,9 @@ pub fn target() -> Target {
     let opts = TargetOptions {
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         linker: Some("rust-lld".to_owned()),
-        features: "-mmx,-sse,+soft-float".to_string(),
+        features:
+            "-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2,+soft-float"
+                .to_string(),
         executables: true,
         disable_redzone: true,
         panic_strategy: PanicStrategy::Abort,
