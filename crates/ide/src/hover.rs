@@ -117,6 +117,26 @@ pub(crate) fn hover(
     let mut seen = HashSet::default();
 
     let mut fallback = None;
+    // attributes, require special machinery as they are mere ident tokens
+    if token.kind() != COMMENT {
+        if let Some(attr) = token.ancestors().find_map(ast::Attr::cast) {
+            // lints
+            if let Some(res) = try_hover_for_lint(&attr, &token) {
+                return Some(res);
+            // derives
+            } else {
+                let def = try_resolve_derive_input_at(&sema, &attr, &token).map(Definition::Macro);
+                if let Some(def) = def {
+                    if let Some(hover) =
+                        hover_for_definition(&sema, file_id, def, &token.parent().unwrap(), config)
+                    {
+                        return Some(RangeInfo::new(token.text_range(), hover));
+                    }
+                }
+            }
+        }
+    }
+
     sema.descend_into_macros_many(token.clone())
         .iter()
         .filter_map(|token| match token.parent() {
@@ -169,71 +189,39 @@ fn find_hover_result(
     // so don't add them to the `seen` duplicate check
     let mut add_to_seen_definitions = true;
 
-    let definition = match_ast! {
-        match node {
-            ast::Name(name) => NameClass::classify(sema, &name).map(|class| match class {
-                NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-                NameClass::PatFieldShorthand { local_def, field_ref: _ } => Definition::Local(local_def),
-            }),
-            ast::NameRef(name_ref) => NameRefClass::classify(sema, &name_ref).map(|class| match class {
-                NameRefClass::Definition(def) => def,
-                NameRefClass::FieldShorthand { local_ref: _, field_ref } => {
-                    Definition::Field(field_ref)
-                }
-            }),
-            ast::Lifetime(lifetime) => NameClass::classify_lifetime(&sema, &lifetime).map_or_else(
-                || {
-                    NameRefClass::classify_lifetime(&sema, &lifetime).and_then(|class| match class {
-                        NameRefClass::Definition(it) => Some(it),
-                        _ => None,
-                    })
+    let definition = find_definition(sema, node).or_else(|| {
+        // intra-doc links
+        // FIXME: move comment + attribute special cases somewhere else to simplify control flow,
+        // hopefully simplifying the return type of this function in the process
+        // (the `Break`/`Continue` distinction is needed to decide whether to use fallback hovers)
+        //
+        // FIXME: hovering the intra doc link to `Foo` not working:
+        //
+        // #[identity]
+        // trait Foo {
+        //    /// [`Foo`]
+        // fn foo() {}
+        if token.kind() == COMMENT {
+            add_to_seen_definitions = false;
+            cov_mark::hit!(no_highlight_on_comment_hover);
+            let (attributes, def) = doc_attributes(sema, node)?;
+            let (docs, doc_mapping) = attributes.docs_with_rangemap(sema.db)?;
+            let (idl_range, link, ns) = extract_definitions_from_docs(&docs).into_iter().find_map(
+                |(range, link, ns)| {
+                    let mapped = doc_mapping.map(range)?;
+                    (mapped.file_id == file_id.into() && mapped.value.contains(offset))
+                        .then(|| (mapped.value, link, ns))
                 },
-                NameClass::defined,
-            ),
-            _ => {
-                // intra-doc links
-                // FIXME: move comment + attribute special cases somewhere else to simplify control flow,
-                // hopefully simplifying the return type of this function in the process
-                // (the `Break`/`Continue` distinction is needed to decide whether to use fallback hovers)
-                //
-                // FIXME: hovering the intra doc link to `Foo` not working:
-                //
-                // #[identity]
-                // trait Foo {
-                //    /// [`Foo`]
-                // fn foo() {}
-                if token.kind() == COMMENT {
-                    add_to_seen_definitions = false;
-                    cov_mark::hit!(no_highlight_on_comment_hover);
-                    let (attributes, def) = doc_attributes(sema, node)?;
-                    let (docs, doc_mapping) = attributes.docs_with_rangemap(sema.db)?;
-                    let (idl_range, link, ns) =
-                        extract_definitions_from_docs(&docs).into_iter().find_map(|(range, link, ns)| {
-                            let mapped = doc_mapping.map(range)?;
-                            (mapped.file_id == file_id.into() && mapped.value.contains(offset)).then(||(mapped.value, link, ns))
-                        })?;
-                    range_override = Some(idl_range);
-                    Some(match resolve_doc_path_for_def(sema.db,def, &link,ns)? {
-                        Either::Left(it) => Definition::ModuleDef(it),
-                        Either::Right(it) => Definition::Macro(it),
-                    })
-                // attributes, require special machinery as they are mere ident tokens
-                } else if let Some(attr) = token.ancestors().find_map(ast::Attr::cast) {
-                    add_to_seen_definitions = false;
-                    // lints
-                    if let Some(res) = try_hover_for_lint(&attr, &token) {
-                        return Some(ControlFlow::Break(res));
-                    // derives
-                    } else {
-                        range_override = Some(token.text_range());
-                        try_resolve_derive_input_at(&sema, &attr, &token).map(Definition::Macro)
-                    }
-                } else {
-                    None
-                }
-            },
+            )?;
+            range_override = Some(idl_range);
+            Some(match resolve_doc_path_for_def(sema.db, def, &link, ns)? {
+                Either::Left(it) => Definition::ModuleDef(it),
+                Either::Right(it) => Definition::Macro(it),
+            })
+        } else {
+            None
         }
-    };
+    });
 
     if let Some(definition) = definition {
         // skip duplicates
@@ -243,33 +231,7 @@ fn find_hover_result(
         if add_to_seen_definitions {
             seen.insert(definition);
         }
-        let famous_defs = match &definition {
-            Definition::ModuleDef(hir::ModuleDef::BuiltinType(_)) => {
-                Some(FamousDefs(&sema, sema.scope(&node).krate()))
-            }
-            _ => None,
-        };
-        if let Some(markup) =
-            hover_for_definition(sema.db, definition, famous_defs.as_ref(), config)
-        {
-            let mut res = HoverResult::default();
-            res.markup = process_markup(sema.db, definition, &markup, config);
-            if let Some(action) = show_implementations_action(sema.db, definition) {
-                res.actions.push(action);
-            }
-
-            if let Some(action) = show_fn_references_action(sema.db, definition) {
-                res.actions.push(action);
-            }
-
-            if let Some(action) = runnable_action(&sema, definition, file_id) {
-                res.actions.push(action);
-            }
-
-            if let Some(action) = goto_type_action_for_def(sema.db, definition) {
-                res.actions.push(action);
-            }
-
+        if let Some(res) = hover_for_definition(sema, file_id, definition, &node, config) {
             let range = range_override.unwrap_or_else(|| sema.original_range(&node).range);
             return Some(ControlFlow::Break(RangeInfo::new(range, res)));
         }
@@ -283,6 +245,9 @@ fn type_hover(
     config: &HoverConfig,
     token: &SyntaxToken,
 ) -> Option<RangeInfo<HoverResult>> {
+    if token.kind() == COMMENT {
+        return None;
+    }
     let node = token
         .ancestors()
         .take_while(|it| !ast::Item::can_cast(it.kind()))
@@ -749,7 +714,73 @@ fn definition_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
     def.module(db).map(|module| render_path(db, module, definition_owner_name(db, def)))
 }
 
-fn hover_for_definition(
+pub(crate) fn find_definition(
+    sema: &Semantics<RootDatabase>,
+    node: &SyntaxNode,
+) -> Option<Definition> {
+    match_ast! {
+        match node {
+            ast::Name(name) => NameClass::classify(sema, &name).map(|class| match class {
+                NameClass::Definition(it) | NameClass::ConstReference(it) => it,
+                NameClass::PatFieldShorthand { local_def, field_ref: _ } => Definition::Local(local_def),
+            }),
+            ast::NameRef(name_ref) => NameRefClass::classify(sema, &name_ref).map(|class| match class {
+                NameRefClass::Definition(def) => def,
+                NameRefClass::FieldShorthand { local_ref: _, field_ref } => {
+                    Definition::Field(field_ref)
+                }
+            }),
+            ast::Lifetime(lifetime) => NameClass::classify_lifetime(&sema, &lifetime).map_or_else(
+                || {
+                    NameRefClass::classify_lifetime(&sema, &lifetime).and_then(|class| match class {
+                        NameRefClass::Definition(it) => Some(it),
+                        _ => None,
+                    })
+                },
+                NameClass::defined,
+            ),
+            _ => None,
+        }
+    }
+}
+
+pub(crate) fn hover_for_definition(
+    sema: &Semantics<RootDatabase>,
+    file_id: FileId,
+    definition: Definition,
+    node: &SyntaxNode,
+    config: &HoverConfig,
+) -> Option<HoverResult> {
+    let famous_defs = match &definition {
+        Definition::ModuleDef(hir::ModuleDef::BuiltinType(_)) => {
+            Some(FamousDefs(&sema, sema.scope(&node).krate()))
+        }
+        _ => None,
+    };
+    if let Some(markup) = markup_for_definition(sema.db, definition, famous_defs.as_ref(), config) {
+        let mut res = HoverResult::default();
+        res.markup = process_markup(sema.db, definition, &markup, config);
+        if let Some(action) = show_implementations_action(sema.db, definition) {
+            res.actions.push(action);
+        }
+
+        if let Some(action) = show_fn_references_action(sema.db, definition) {
+            res.actions.push(action);
+        }
+
+        if let Some(action) = runnable_action(&sema, definition, file_id) {
+            res.actions.push(action);
+        }
+
+        if let Some(action) = goto_type_action_for_def(sema.db, definition) {
+            res.actions.push(action);
+        }
+        return Some(res);
+    }
+    None
+}
+
+fn markup_for_definition(
     db: &RootDatabase,
     def: Definition,
     famous_defs: Option<&FamousDefs>,
@@ -885,7 +916,7 @@ mod tests {
                 FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
             )
             .unwrap();
-        assert!(hover.is_none());
+        assert!(hover.is_none(), "hover not expected but found: {:?}", hover.unwrap());
     }
 
     fn check(ra_fixture: &str, expect: Expect) {
