@@ -105,10 +105,17 @@ mod issue7392 {
         *x == 9
     }
 
+    fn simple_fn(x: u32) -> bool {
+        x == 78
+    }
+
     fn more_projections() {
         let x = 19;
         let ppx: &u32 = &x;
         let _ = [ppx].iter().find(|ppp_x: &&&u32| please(**ppp_x)).is_some();
         let _ = [String::from("Hey hey")].iter().find(|s| s.len() == 2).is_some();
+
+        let v = vec![3, 2, 1, 0];
+        let _ = v.iter().find(|x| simple_fn(**x)).is_some();
     }
 }

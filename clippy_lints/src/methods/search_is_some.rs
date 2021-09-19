@@ -248,7 +248,6 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                         let expr = self.cx.tcx.hir().expect_expr(cmt.hir_id);
                         let arg_ty_kind = self.cx.typeck_results().expr_ty(expr).kind();
 
-                        // Note: this should always be true, as `find` only gives us a reference which are not mutable
                         if matches!(arg_ty_kind, ty::Ref(_, _, Mutability::Not)) {
                             let start_span = Span::new(self.next_pos, span.lo(), span.ctxt());
                             let start_snip =
@@ -261,10 +260,10 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                             };
                             self.suggestion_start.push_str(&ident_sugg);
                             self.next_pos = span.hi();
+                            return;
                         } else {
                             self.applicability = Applicability::Unspecified;
                         }
-                        return;
                     }
                 }
 

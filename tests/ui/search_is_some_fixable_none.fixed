@@ -102,10 +102,17 @@ mod issue7392 {
         *x == 9
     }
 
+    fn simple_fn(x: u32) -> bool {
+        x == 78
+    }
+
     fn more_projections() {
         let x = 19;
         let ppx: &u32 = &x;
         let _ = ![ppx].iter().any(|ppp_x: &&u32| please(ppp_x));
         let _ = ![String::from("Hey hey")].iter().any(|s| s.len() == 2);
+
+        let v = vec![3, 2, 1, 0];
+        let _ = !v.iter().any(|x| simple_fn(*x));
     }
 }
