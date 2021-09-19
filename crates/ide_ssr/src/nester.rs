@@ -65,7 +65,7 @@ fn try_add_sub_match(m: Match, existing: &mut Match, sema: &hir::Semantics<ide_d
             // will have 0 and a few will have 1. More than that should hopefully be
             // exceptional.
             let mut collector = MatchCollector::default();
-            for m in std::mem::replace(&mut p.inner_matches.matches, Vec::new()) {
+            for m in std::mem::take(&mut p.inner_matches.matches) {
                 collector.matches_by_node.insert(m.matched_node.clone(), m);
             }
             collector.add_match(m, sema);

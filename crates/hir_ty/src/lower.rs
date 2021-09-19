@@ -307,17 +307,12 @@ impl<'a> TyLoweringContext<'a> {
                     let mut expander = self.expander.borrow_mut();
                     if expander.is_some() {
                         (Some(expander), false)
+                    } else if let Some(module_id) = self.resolver.module() {
+                        *expander =
+                            Some(Expander::new(self.db.upcast(), macro_call.file_id, module_id));
+                        (Some(expander), true)
                     } else {
-                        if let Some(module_id) = self.resolver.module() {
-                            *expander = Some(Expander::new(
-                                self.db.upcast(),
-                                macro_call.file_id,
-                                module_id,
-                            ));
-                            (Some(expander), true)
-                        } else {
-                            (None, false)
-                        }
+                        (None, false)
                     }
                 };
                 let ty = if let Some(mut expander) = expander {

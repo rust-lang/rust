@@ -218,7 +218,7 @@ impl ChangeFixture {
             );
             roots.push(SourceRoot::new_library(fs));
 
-            change.change_file(proc_lib_file, Some(Arc::new(String::from(source))));
+            change.change_file(proc_lib_file, Some(Arc::new(source)));
 
             let all_crates = crate_graph.crates_in_topological_order();
 
@@ -275,7 +275,7 @@ pub fn input_replace(attr: TokenStream, _item: TokenStream) -> TokenStream {
             expander: Arc::new(AttributeInputReplaceProcMacroExpander),
         },
     ])
-    .filter(|pm| proc_macros.iter().any(|name| name == &pm.name))
+    .filter(|pm| proc_macros.iter().any(|name| name == pm.name))
     .collect();
     (proc_macros, source.into())
 }
