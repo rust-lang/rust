@@ -8,9 +8,9 @@
 const fn test1<T: std::ops::Add>() {}
 //[stock]~^ trait bounds
 const fn test2(_x: &dyn Send) {}
-//[stock]~^ trait bounds
+//[stock]~^ trait objects in const fn are unstable
 const fn test3() -> &'static dyn Send { loop {} }
-//[stock]~^ trait bounds
+//[stock]~^ trait objects in const fn are unstable
 
 
 #[rustc_error]
