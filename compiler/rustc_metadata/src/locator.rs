@@ -503,9 +503,8 @@ impl<'a> CrateLocator<'a> {
     // the errors and notes are emitted about the set of libraries.
     //
     // With only one library in the set, this function will extract it, and then
-    // read the metadata from it if `*slot` is `None`. If the metadata couldn't
-    // be read, it is assumed that the file isn't a valid rust library (no
-    // errors are emitted).
+    // read the metadata from it. If the metadata couldn't be read, it is assumed
+    // that the file isn't a valid rust library (no errors are emitted).
     fn extract_one(
         &mut self,
         m: FxHashMap<PathBuf, PathKind>,
@@ -521,17 +520,8 @@ impl<'a> CrateLocator<'a> {
         //
         // See also #68149 which provides more detail on why emitting the
         // dependency on the rlib is a bad thing.
-        //
-        // We currently do not verify that these other sources are even in sync,
-        // and this is arguably a bug (see #10786), but because reading metadata
-        // is quite slow (especially from dylibs) we currently do not read it
-        // from the other crate sources.
-        if slot.is_some() {
-            if m.is_empty() || !self.needs_crate_flavor(flavor) {
-                return Ok(None);
-            } else if m.len() == 1 {
-                return Ok(Some(m.into_iter().next().unwrap()));
-            }
+        if slot.is_some() && !self.needs_crate_flavor(flavor) {
+            return Ok(None);
         }
 
         let mut ret: Option<(PathBuf, PathKind)> = None;
