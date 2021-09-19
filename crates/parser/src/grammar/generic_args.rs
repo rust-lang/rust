@@ -52,7 +52,6 @@ fn generic_arg(p: &mut Parser) {
                     // NameRef::, this is a path type
                     path_seg.complete(p, PATH_SEGMENT);
                     let qual = path.complete(p, PATH);
-                    opt_generic_arg_list(p, false);
                     paths::type_path_for_qualifier(p, qual);
                     path_ty.complete(p, PATH_TYPE);
                     m.complete(p, TYPE_ARG);
