@@ -1,10 +1,8 @@
-// Generic AArch64 target for bare-metal code - Floating point disabled
+// Generic x86-64 target for bare-metal code - Floating point disabled
 //
 // Can be used in conjunction with the `target-feature` and
 // `target-cpu` compiler flags to opt-in more hardware-specific
 // features.
-//
-// For example, `-C target-cpu=cortex-a53`.
 
 use super::{CodeModel, LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions};
 
