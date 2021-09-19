@@ -6,7 +6,7 @@
 //
 // For example, `-C target-cpu=cortex-a53`.
 
-use super::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions};
+use super::{CodeModel, LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions};
 
 pub fn target() -> Target {
     let opts = TargetOptions {
@@ -17,6 +17,7 @@ pub fn target() -> Target {
         executables: true,
         disable_redzone: true,
         panic_strategy: PanicStrategy::Abort,
+        code_model: Some(CodeModel::Kernel),
         ..Default::default()
     };
     Target {
