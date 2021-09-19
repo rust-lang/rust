@@ -726,15 +726,20 @@ fn codegen_stmt<'tcx>(
                     let ptr = fx.bcx.inst_results(call)[0];
                     lval.write_cvalue(fx, CValue::by_val(ptr, box_layout));
                 }
-                Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
+                Rvalue::NullaryOp(null_op, ty) => {
                     assert!(
                         lval.layout()
                             .ty
                             .is_sized(fx.tcx.at(stmt.source_info.span), ParamEnv::reveal_all())
                     );
-                    let ty_size = fx.layout_of(fx.monomorphize(ty)).size.bytes();
+                    let layout = fx.layout_of(fx.monomorphize(ty));
+                    let val = match null_op {
+                        NullOp::SizeOf => layout.size.bytes(),
+                        NullOp::AlignOf => layout.align.abi.bytes(),
+                        NullOp::Box => unreachable!(),
+                    };
                     let val =
-                        CValue::const_val(fx, fx.layout_of(fx.tcx.types.usize), ty_size.into());
+                        CValue::const_val(fx, fx.layout_of(fx.tcx.types.usize), val.into());
                     lval.write_cvalue(fx, val);
                 }
                 Rvalue::Aggregate(ref kind, ref operands) => match kind.as_ref() {
