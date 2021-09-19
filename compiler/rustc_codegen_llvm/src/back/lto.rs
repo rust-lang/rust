@@ -906,11 +906,8 @@ impl ThinLTOKeysMap {
     ) -> Self {
         let keys = iter::zip(modules, names)
             .map(|(module, name)| {
-                let key = build_string(|rust_str| {
-                    let _ = &data;
-                    unsafe {
-                        llvm::LLVMRustComputeLTOCacheKey(rust_str, module.identifier, data.0);
-                    }
+                let key = build_string(|rust_str| unsafe {
+                    llvm::LLVMRustComputeLTOCacheKey(rust_str, module.identifier, data.0);
                 })
                 .expect("Invalid ThinLTO module key");
                 (name.clone().into_string().unwrap(), key)
