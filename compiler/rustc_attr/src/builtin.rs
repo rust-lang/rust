@@ -66,7 +66,7 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum InlineAttr {
     None,
     Hint,
@@ -74,13 +74,13 @@ pub enum InlineAttr {
     Never,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq)]
+#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq, HashStable_Generic)]
 pub enum InstructionSetAttr {
     ArmA32,
     ArmT32,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum OptimizeAttr {
     None,
     Speed,
