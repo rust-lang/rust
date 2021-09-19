@@ -212,7 +212,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
                     look_ahead_scratch.push(rhs_ele.clone());
                     let mut rhs_children_clone = rhs_children.clone();
                     let mut insert = false;
-                    while let Some(rhs_child) = rhs_children_clone.next() {
+                    for rhs_child in &mut rhs_children_clone {
                         if syntax_element_eq(&lhs_ele, &rhs_child) {
                             cov_mark::hit!(diff_insertions);
                             insert = true;

@@ -346,7 +346,6 @@ impl MiniCore {
                 panic!("unused minicore flag: {:?}", flag);
             }
         }
-        format!("{}", buf);
         buf
     }
 }
