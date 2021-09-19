@@ -59,23 +59,23 @@ where
 }
 fn call_with_pp_support_hir<A, F>(ppmode: &PpHirMode, tcx: TyCtxt<'_>, f: F) -> A
 where
-    F: FnOnce(&dyn HirPrinterSupport<'_>, &hir::Crate<'_>) -> A,
+    F: FnOnce(&dyn HirPrinterSupport<'_>, hir_map::Map<'_>) -> A,
 {
     match *ppmode {
         PpHirMode::Normal => {
             let annotation = NoAnn { sess: tcx.sess, tcx: Some(tcx) };
-            f(&annotation, tcx.hir().krate())
+            f(&annotation, tcx.hir())
         }
 
         PpHirMode::Identified => {
             let annotation = IdentifiedAnnotation { sess: tcx.sess, tcx: Some(tcx) };
-            f(&annotation, tcx.hir().krate())
+            f(&annotation, tcx.hir())
         }
         PpHirMode::Typed => {
             abort_on_err(tcx.analysis(()), tcx.sess);
 
             let annotation = TypedAnnotation { tcx, maybe_typeck_results: Cell::new(None) };
-            tcx.dep_graph.with_ignore(|| f(&annotation, tcx.hir().krate()))
+            tcx.dep_graph.with_ignore(|| f(&annotation, tcx.hir()))
         }
     }
 }
@@ -443,17 +443,27 @@ pub fn print_after_hir_lowering<'tcx>(
             format!("{:#?}", krate)
         }
 
-        Hir(s) => call_with_pp_support_hir(&s, tcx, move |annotation, krate| {
+        Hir(s) => call_with_pp_support_hir(&s, tcx, move |annotation, hir_map| {
             debug!("pretty printing HIR {:?}", s);
             let sess = annotation.sess();
             let sm = sess.source_map();
-            pprust_hir::print_crate(sm, krate, src_name, src, annotation.pp_ann())
+            let attrs = |id| hir_map.attrs(id);
+            pprust_hir::print_crate(
+                sm,
+                hir_map.root_module(),
+                src_name,
+                src,
+                &attrs,
+                annotation.pp_ann(),
+            )
         }),
 
-        HirTree => call_with_pp_support_hir(&PpHirMode::Normal, tcx, move |_annotation, krate| {
-            debug!("pretty printing HIR tree");
-            format!("{:#?}", krate)
-        }),
+        HirTree => {
+            call_with_pp_support_hir(&PpHirMode::Normal, tcx, move |_annotation, hir_map| {
+                debug!("pretty printing HIR tree");
+                format!("{:#?}", hir_map.krate())
+            })
+        }
 
         _ => unreachable!(),
     };
