@@ -1,0 +1,22 @@
+SOURCE_FILE@0..21
+  TYPE_ALIAS@0..20
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    NAME@5..6
+      IDENT@5..6 "T"
+    WHITESPACE@6..7 " "
+    EQ@7..8 "="
+    WHITESPACE@8..9 " "
+    PATH_TYPE@9..19
+      PATH@9..19
+        PATH_SEGMENT@9..19
+          NAME_REF@9..10
+            IDENT@9..10 "S"
+          GENERIC_ARG_LIST@10..19
+            L_ANGLE@10..11 "<"
+            LIFETIME_ARG@11..18
+              LIFETIME@11..18
+                LIFETIME_IDENT@11..18 "'static"
+            R_ANGLE@18..19 ">"
+    SEMICOLON@19..20 ";"
+  WHITESPACE@20..21 "\n"

@@ -1,0 +1,31 @@
+SOURCE_FILE@0..22
+  TYPE_ALIAS@0..21
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    NAME@5..6
+      IDENT@5..6 "T"
+    WHITESPACE@6..7 " "
+    EQ@7..8 "="
+    WHITESPACE@8..9 " "
+    PATH_TYPE@9..20
+      PATH@9..20
+        PATH_SEGMENT@9..20
+          NAME_REF@9..10
+            IDENT@9..10 "S"
+          GENERIC_ARG_LIST@10..20
+            L_ANGLE@10..11 "<"
+            CONST_ARG@11..19
+              BLOCK_EXPR@11..19
+                L_CURLY@11..12 "{"
+                BIN_EXPR@12..18
+                  LITERAL@12..14
+                    INT_NUMBER@12..14 "90"
+                  WHITESPACE@14..15 " "
+                  PLUS@15..16 "+"
+                  WHITESPACE@16..17 " "
+                  LITERAL@17..18
+                    INT_NUMBER@17..18 "2"
+                R_CURLY@18..19 "}"
+            R_ANGLE@19..20 ">"
+    SEMICOLON@20..21 ";"
+  WHITESPACE@21..22 "\n"

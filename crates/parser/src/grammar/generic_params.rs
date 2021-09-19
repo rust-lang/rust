@@ -81,8 +81,6 @@ fn const_param(p: &mut Parser, m: Marker) {
     if p.at(T![=]) {
         // test const_param_defaults
         // struct A<const N: i32 = -1>;
-        // struct B<const N: i32 = {}>;
-        // struct C<const N: i32 = some::CONST>;
         p.bump(T![=]);
         generic_args::const_arg(p);
     }
