@@ -4,7 +4,10 @@
 // `target-cpu` compiler flags to opt-in more hardware-specific
 // features.
 
-use super::{CodeModel, LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions};
+use super::{
+    CodeModel, LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, RelroLevel, StackProbeType,
+    Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     let opts = TargetOptions {
