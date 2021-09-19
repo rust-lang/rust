@@ -11,7 +11,7 @@ pushd rust
 cargo install ripgrep
 
 rm -r src/test/ui/{extern/,panics/,unsized-locals/,thinlto/,simd*,*lto*.rs,linkage*,unwind-*.rs} || true
-for test in $(rg --files-with-matches "asm!|catch_unwind|should_panic|lto" src/test/ui); do
+for test in $(rg --files-with-matches "asm!|catch_unwind|should_panic|lto|// needs-asm-support" src/test/ui); do
   rm $test
 done
 

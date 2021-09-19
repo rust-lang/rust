@@ -4,21 +4,20 @@ Date: Sun, 25 Jul 2021 18:39:31 +0200
 Subject: [PATCH] Disable unsupported tests
 
 ---
- crates/core_simd/src/array.rs        |  2 ++
- crates/core_simd/src/lib.rs          |  2 +-
+ crates/core_simd/src/vector.rs        |  2 ++
  crates/core_simd/src/math.rs         |  4 ++++
  crates/core_simd/tests/masks.rs      | 12 ------------
  crates/core_simd/tests/ops_macros.rs |  6 ++++++
  crates/core_simd/tests/round.rs      |  2 ++
  6 files changed, 15 insertions(+), 13 deletions(-)
 
-diff --git a/crates/core_simd/src/array.rs b/crates/core_simd/src/array.rs
+diff --git a/crates/core_simd/src/vector.rs b/crates/core_simd/src/vector.rs
 index 25c5309..2b3d819 100644
---- a/crates/core_simd/src/array.rs
-+++ b/crates/core_simd/src/array.rs
+--- a/crates/core_simd/src/vector.rs
++++ b/crates/core_simd/src/vector.rs
 @@ -22,6 +22,7 @@ where
-     #[must_use]
-     fn splat(val: Self::Scalar) -> Self;
+         self.0
+     }
  
 +    /*
      /// SIMD gather: construct a SIMD vector by reading from a slice, using potentially discontiguous indices.
@@ -31,27 +30,14 @@ index 25c5309..2b3d819 100644
 +    */
  }
  
- macro_rules! impl_simdarray_for {
-diff --git a/crates/core_simd/src/lib.rs b/crates/core_simd/src/lib.rs
-index a64904d..299eb11 100644
---- a/crates/core_simd/src/lib.rs
-+++ b/crates/core_simd/src/lib.rs
-@@ -1,7 +1,7 @@
- #![no_std]
- #![allow(incomplete_features)]
- #![feature(
--    const_generics, 
-+    const_generics,
-     platform_intrinsics,
-     repr_simd,
-     simd_ffi,
+ impl<T, const LANES: usize> Copy for Simd<T, LANES>
 diff --git a/crates/core_simd/src/math.rs b/crates/core_simd/src/math.rs
 index 7290a28..e394730 100644
 --- a/crates/core_simd/src/math.rs
 +++ b/crates/core_simd/src/math.rs
 @@ -2,6 +2,7 @@ macro_rules! impl_uint_arith {
-     ($(($name:ident, $n:ident)),+) => {
-         $( impl<const LANES: usize> $name<LANES> where Self: crate::LanesAtMost32 {
+     ($($ty:ty),+) => {
+         $( impl<const LANES: usize> Simd<$ty, LANES> where LaneCount<LANES>: SupportedLaneCount {
  
 +            /*
              /// Lanewise saturating add.
@@ -66,8 +52,8 @@ index 7290a28..e394730 100644
      }
  }
 @@ -46,6 +48,7 @@ macro_rules! impl_int_arith {
-     ($(($name:ident, $n:ident)),+) => {
-         $( impl<const LANES: usize> $name<LANES> where Self: crate::LanesAtMost32 {
+     ($($ty:ty),+) => {
+         $( impl<const LANES: usize> Simd<$ty, LANES> where LaneCount<LANES>: SupportedLaneCount {
  
 +            /*
              /// Lanewise saturating add.
@@ -85,21 +71,22 @@ diff --git a/crates/core_simd/tests/masks.rs b/crates/core_simd/tests/masks.rs
 index 61d8e44..2bccae2 100644
 --- a/crates/core_simd/tests/masks.rs
 +++ b/crates/core_simd/tests/masks.rs
-@@ -67,18 +67,6 @@ macro_rules! test_mask_api {
+@@ -67,19 +67,6 @@ macro_rules! test_mask_api {
                  assert_eq!(int.to_array(), [-1, 0, 0, -1, 0, 0, -1, 0]);
-                 assert_eq!(core_simd::$name::<8>::from_int(int), mask);
+                 assert_eq!(core_simd::Mask::<$type, 8>::from_int(int), mask);
              }
 -
+-            #[cfg(feature = "generic_const_exprs")]
 -            #[test]
 -            fn roundtrip_bitmask_conversion() {
 -                let values = [
 -                    true, false, false, true, false, false, true, false,
 -                    true, true, false, false, false, false, false, true,
 -                ];
--                let mask = core_simd::$name::<16>::from_array(values);
+-                let mask = core_simd::Mask::<$type, 16>::from_array(values);
 -                let bitmask = mask.to_bitmask();
 -                assert_eq!(bitmask, [0b01001001, 0b10000011]);
--                assert_eq!(core_simd::$name::<16>::from_bitmask(bitmask), mask);
+-                assert_eq!(core_simd::Mask::<$type, 16>::from_bitmask(bitmask), mask);
 -            }
          }
      }
@@ -122,7 +109,7 @@ index cb39e73..fc0ebe1 100644
                  }
 +                */
  
-                 fn sqrt<const LANES: usize>() {
+                 fn recip<const LANES: usize>() {
                      test_helpers::test_unary_elementwise(
 @@ -581,6 +585,7 @@ macro_rules! impl_float_tests {
                      });
@@ -138,8 +125,8 @@ index cb39e73..fc0ebe1 100644
                  }
 +                */
              }
-         }
-     }
+ 
+             #[cfg(feature = "std")]
 diff --git a/crates/core_simd/tests/round.rs b/crates/core_simd/tests/round.rs
 index 37044a7..4cdc6b7 100644
 --- a/crates/core_simd/tests/round.rs
