@@ -702,7 +702,7 @@ pub struct OwnerNodes<'tcx> {
     pub bodies: IndexVec<ItemLocalId, Option<&'tcx Body<'tcx>>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, HashStable_Generic)]
 pub struct OwnerInfo<'hir> {
     /// Contents of the HIR.
     pub nodes: OwnerNodes<'hir>,
@@ -734,6 +734,7 @@ impl<'tcx> OwnerInfo<'tcx> {
 #[derive(Debug)]
 pub struct Crate<'hir> {
     pub owners: IndexVec<LocalDefId, Option<OwnerInfo<'hir>>>,
+    pub hir_hash: Fingerprint,
 }
 
 /// A block of statements `{ .. }`, which may have a label (in this case the

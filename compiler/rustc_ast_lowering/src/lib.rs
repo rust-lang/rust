@@ -399,6 +399,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir::OwnerNode::Crate(lctx.arena.alloc(module))
         });
 
+        let hir_hash = self.compute_hir_hash();
+
         let mut def_id_to_hir_id = IndexVec::default();
 
         for (node_id, hir_id) in self.node_id_to_hir_id.into_iter_enumerated() {
@@ -412,8 +414,27 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         self.resolver.definitions().init_def_id_to_hir_id_mapping(def_id_to_hir_id);
 
-        let krate = hir::Crate { owners: self.owners };
+        let krate = hir::Crate { owners: self.owners, hir_hash };
         self.arena.alloc(krate)
+    }
+
+    fn compute_hir_hash(&mut self) -> Fingerprint {
+        let definitions = self.resolver.definitions();
+        let mut hir_body_nodes: Vec<_> = self
+            .owners
+            .iter_enumerated()
+            .filter_map(|(def_id, info)| {
+                let info = info.as_ref()?;
+                let def_path_hash = definitions.def_path_hash(def_id);
+                Some((def_path_hash, info))
+            })
+            .collect();
+        hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
+
+        let mut stable_hasher = StableHasher::new();
+        let mut hcx = self.resolver.create_stable_hashing_context();
+        hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
+        stable_hasher.finish()
     }
 
     fn with_hir_id_owner(

@@ -36,7 +36,6 @@ rustc_queries! {
     /// prefer wrappers like `tcx.visit_all_items_in_krate()`.
     query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
         eval_always
-        no_hash
         desc { "get the crate HIR" }
     }
 
