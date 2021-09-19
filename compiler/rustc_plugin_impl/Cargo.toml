@@ -2,7 +2,7 @@
 name = "rustc_plugin_impl"
 version = "0.0.0"
 build = false
-edition = "2018"
+edition = "2021"
 
 [lib]
 doctest = false
