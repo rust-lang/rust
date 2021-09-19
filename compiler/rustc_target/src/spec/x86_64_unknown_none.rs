@@ -8,7 +8,6 @@ use super::{CodeModel, LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOpt
 
 pub fn target() -> Target {
     let opts = TargetOptions {
-        abi: "softfloat".to_string(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         linker: Some("rust-lld".to_owned()),
         features: "-mmx,-sse,+soft-float".to_string(),
