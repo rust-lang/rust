@@ -1,4 +1,4 @@
-//! Unix-specific networking functionality
+//! Unix-specific networking functionality.
 
 #![stable(feature = "unix_socket", since = "1.10.0")]
 

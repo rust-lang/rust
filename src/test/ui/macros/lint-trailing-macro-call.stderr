@@ -1,0 +1,18 @@
+warning: trailing semicolon in macro used in expression position
+  --> $DIR/lint-trailing-macro-call.rs:9:25
+   |
+LL |         #[cfg(FALSE)] 25;
+   |                         ^
+...
+LL |     expand_it!()
+   |     ------------ in this macro invocation
+   |
+   = note: `#[warn(semicolon_in_expressions_from_macros)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+   = note: macro invocations at the end of a block are treated as expressions
+   = note: to ignore the value produced by the macro, add a semicolon after the invocation of `expand_it`
+   = note: this warning originates in the macro `expand_it` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: 1 warning emitted
+

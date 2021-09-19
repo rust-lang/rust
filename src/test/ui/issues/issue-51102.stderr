@@ -2,7 +2,10 @@ error[E0026]: struct `SimpleStruct` does not have a field named `state`
   --> $DIR/issue-51102.rs:13:17
    |
 LL |                 state: 0,
-   |                 ^^^^^ struct `SimpleStruct` does not have this field
+   |                 ^^^^^
+   |                 |
+   |                 struct `SimpleStruct` does not have this field
+   |                 help: `SimpleStruct` has a field named `no_state_here`
 
 error[E0025]: field `no_state_here` bound multiple times in the pattern
   --> $DIR/issue-51102.rs:24:17
