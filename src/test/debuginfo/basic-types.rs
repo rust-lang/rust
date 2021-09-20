@@ -9,10 +9,6 @@
 // This fails on lldb 6.0.1 on x86-64 Fedora 28; so ignore Linux for now.
 // ignore-linux
 
-// This started failing in windows too. See https://github.com/rust-lang/rust/issues/88796
-// FIXME: fix and unignore this on windows
-// ignore-windows
-
 // compile-flags:-g
 
 // === GDB TESTS ===================================================================================
@@ -132,8 +128,9 @@
 // cdb-command:dx f64
 // cdb-check:f64              : 3.500000 [Type: double]
 // cdb-command:.enable_unicode 1
+// FIXME(#88840): The latest version of the Windows SDK broke the visualizer for str.
 // cdb-command:dx  s
-// cdb-check:s                : "Hello, World!" [Type: str]
+// cdb-check:s                : [...] [Type: str]
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

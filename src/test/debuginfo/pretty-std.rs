@@ -6,10 +6,6 @@
 // min-lldb-version: 310
 // min-cdb-version: 10.0.18317.1001
 
-// This started failing recently. See https://github.com/rust-lang/rust/issues/88796
-// FIXME: fix and unignore this
-// ignore-windows
-
 // === GDB TESTS ===================================================================================
 
 // gdb-command: run
@@ -115,9 +111,11 @@
 // cdb-check:    [11]             : 33 '!' [Type: char]
 
 // cdb-command: dx os_string
-// cdb-check:os_string        : "IAMA OS string 😃" [Type: std::ffi::os_str::OsString]
+// NOTE: OSString is WTF-8 encoded which Windows debuggers don't understand. Verify the UTF-8
+//       portion displays correctly.
+// cdb-check:os_string        : "IAMA OS string [...]" [Type: std::ffi::os_str::OsString]
 // cdb-check:    [<Raw View>]     [Type: std::ffi::os_str::OsString]
-// cdb-check:    [chars]          : "IAMA OS string 😃"
+// cdb-check:    [chars]          : "IAMA OS string [...]"
 
 // cdb-command: dx some
 // cdb-check:some             : Some [Type: enum$<core::option::Option<i16> >]
@@ -131,8 +129,10 @@
 // cdb-check:    [variant]        : None
 
 // cdb-command: dx some_string
-// NOTE: cdb fails to interpret debug info of Option enums on i686.
-// cdb-check:some_string      [Type: enum$<core::option::Option<alloc::string::String>, 1, [...], Some>]
+// cdb-check:some_string      :  Some({...}) [Type: enum$<core::option::Option<alloc::string::String>, 1, [...], Some>]
+// cdb-check:    [<Raw View>]     [Type: enum$<core::option::Option<alloc::string::String>, 1, [...], Some>]
+// cdb-check:    [variant]        :  Some
+// cdb-check:    [+0x000] __0              : "IAMA optional string!" [Type: alloc::string::String]
 
 // cdb-command: dx linkedlist
 // cdb-check:linkedlist       : { len=0x2 } [Type: alloc::collections::linked_list::LinkedList<i32>]
