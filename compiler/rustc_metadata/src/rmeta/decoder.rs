@@ -151,9 +151,9 @@ crate struct CrateMetadata {
     item_attrs: Cache<DefIndex, Vec<ast::Attribute>>,
 }
 
+type Cache<K, V> = Lock<FxHashMap<K, V>>;
 #[allow(dead_code)]
-type CacheOld<K, V> = Lock<FxHashMap<K, V>>;
-type Cache<K, V> = Lock<IndexVec<K, Option<V>>>;
+type CacheIndexVec<K, V> = Lock<IndexVec<K, Option<V>>>;
 
 /// Holds information about a rustc_span::SourceFile imported from another crate.
 /// See `imported_source_files()` for more information.
@@ -182,8 +182,7 @@ pub(super) struct DecodeContext<'a, 'tcx> {
     alloc_decoding_session: Option<AllocDecodingSession<'a>>,
 }
 
-#[allow(dead_code)]
-fn get_or_insert_with_old<K: Eq + Hash, V>(
+fn get_or_insert_with<K: Eq + Hash, V>(
     cache: &mut FxHashMap<K, V>,
     k: K,
     v: impl FnOnce() -> V,
@@ -191,8 +190,7 @@ fn get_or_insert_with_old<K: Eq + Hash, V>(
     cache.entry(k).or_insert_with(v)
 }
 
-#[allow(dead_code)]
-fn steal_or_create_with_old<K: Eq + Hash, V>(
+fn steal_or_create_with<K: Eq + Hash, V>(
     cache: &mut FxHashMap<K, V>,
     k: K,
     v: impl FnOnce() -> V,
@@ -200,7 +198,8 @@ fn steal_or_create_with_old<K: Eq + Hash, V>(
     cache.remove(&k).unwrap_or_else(v)
 }
 
-fn get_or_insert_with<K: Idx, V>(
+#[allow(dead_code)]
+fn get_or_insert_with_index_vec<K: Idx, V>(
     cache: &mut IndexVec<K, Option<V>>,
     k: K,
     v: impl FnOnce() -> V,
@@ -215,7 +214,8 @@ fn get_or_insert_with<K: Idx, V>(
     }
 }
 
-fn steal_or_create_with<K: Idx, V>(
+#[allow(dead_code)]
+fn steal_or_create_with_index_vec<K: Idx, V>(
     cache: &mut IndexVec<K, Option<V>>,
     k: K,
     v: impl FnOnce() -> V,
