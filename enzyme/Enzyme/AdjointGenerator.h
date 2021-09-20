@@ -5972,10 +5972,10 @@ public:
       }
       return;
     }
-    if (called && (called->getName() == "__enzyme_float" ||
-                   called->getName() == "__enzyme_double" ||
-                   called->getName() == "__enzyme_integer" ||
-                   called->getName() == "__enzyme_pointer")) {
+    if (called && (called->getName().contains("__enzyme_float") ||
+                   called->getName().contains("__enzyme_double") ||
+                   called->getName().contains("__enzyme_integer") ||
+                   called->getName().contains("__enzyme_pointer"))) {
       eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
       return;
     }

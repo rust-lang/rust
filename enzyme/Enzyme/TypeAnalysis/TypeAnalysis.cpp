@@ -684,7 +684,7 @@ void TypeAnalyzer::considerTBAA() {
               F = fn;
             }
         }
-        if (F && F->getName() == "__enzyme_float") {
+        if (F && F->getName().contains("__enzyme_float")) {
           assert(call->getNumArgOperands() == 1 || call->getNumOperands() == 2);
           assert(call->getArgOperand(0)->getType()->isPointerTy());
           TypeTree TT;
@@ -698,7 +698,7 @@ void TypeAnalyzer::considerTBAA() {
           TT.insert({}, BaseType::Pointer);
           updateAnalysis(call->getOperand(0), TT.Only(-1), call);
         }
-        if (F && F->getName() == "__enzyme_double") {
+        if (F && F->getName().contains("__enzyme_double")) {
           assert(call->getNumArgOperands() == 1 || call->getNumOperands() == 2);
           assert(call->getArgOperand(0)->getType()->isPointerTy());
           TypeTree TT;
@@ -712,7 +712,7 @@ void TypeAnalyzer::considerTBAA() {
           TT.insert({}, BaseType::Pointer);
           updateAnalysis(call->getOperand(0), TT.Only(-1), call);
         }
-        if (F && F->getName() == "__enzyme_integer") {
+        if (F && F->getName().contains("__enzyme_integer")) {
           assert(call->getNumArgOperands() == 1 ||
                  call->getNumArgOperands() == 2);
           assert(call->getArgOperand(0)->getType()->isPointerTy());
@@ -727,7 +727,7 @@ void TypeAnalyzer::considerTBAA() {
           TT.insert({}, BaseType::Pointer);
           updateAnalysis(call->getOperand(0), TT.Only(-1), call);
         }
-        if (F && F->getName() == "__enzyme_pointer") {
+        if (F && F->getName().contains("__enzyme_pointer")) {
           assert(call->getNumArgOperands() == 1 ||
                  call->getNumArgOperands() == 2);
           assert(call->getArgOperand(0)->getType()->isPointerTy());

@@ -43,6 +43,7 @@ static void loadPass(const PassManagerBuilder &Builder,
   PM.add(createGVNPass());
   PM.add(createSROAPass());
   PM.add(createLoopDeletionPass());
+  PM.add(createGlobalOptimizerPass());
   // PM.add(SimplifyCFGPass());
 }
 

@@ -726,10 +726,10 @@ public:
         if (!Fn)
           continue;
 
-        if (!(Fn->getName() == "__enzyme_float" ||
-              Fn->getName() == "__enzyme_double" ||
-              Fn->getName() == "__enzyme_integer" ||
-              Fn->getName() == "__enzyme_pointer" ||
+        if (!(Fn->getName().contains("__enzyme_float") ||
+              Fn->getName().contains("__enzyme_double") ||
+              Fn->getName().contains("__enzyme_integer") ||
+              Fn->getName().contains("__enzyme_pointer") ||
               Fn->getName().contains("__enzyme_virtualreverse") ||
               Fn->getName().contains("__enzyme_call_inactive") ||
               Fn->getName().contains("__enzyme_autodiff") ||
@@ -795,7 +795,7 @@ public:
         if (!Fn)
           continue;
 
-        if (Fn->getName() == "__enzyme_float") {
+        if (Fn->getName().contains("__enzyme_float")) {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
@@ -804,7 +804,7 @@ public:
             }
           }
         }
-        if (Fn->getName() == "__enzyme_integer") {
+        if (Fn->getName().contains("__enzyme_integer")) {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
@@ -813,7 +813,7 @@ public:
             }
           }
         }
-        if (Fn->getName() == "__enzyme_double") {
+        if (Fn->getName().contains("__enzyme_double")) {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
@@ -822,7 +822,7 @@ public:
             }
           }
         }
-        if (Fn->getName() == "__enzyme_pointer") {
+        if (Fn->getName().contains("__enzyme_pointer")) {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
@@ -831,11 +831,11 @@ public:
             }
           }
         }
-        if (Fn->getName() == "__enzyme_virtualreverse") {
+        if (Fn->getName().contains("__enzyme_virtualreverse")) {
           Fn->addFnAttr(Attribute::ReadNone);
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
         }
-        if (Fn->getName() == "__enzyme_iter") {
+        if (Fn->getName().contains("__enzyme_iter")) {
           Fn->addFnAttr(Attribute::ReadNone);
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
         }
@@ -1245,9 +1245,10 @@ public:
       g->eraseFromParent();
     }
     for (Function &F : M) {
-      if (F.getName() == "__enzyme_float" || F.getName() == "__enzyme_double" ||
-          F.getName() == "__enzyme_integer" ||
-          F.getName() == "__enzyme_pointer" ||
+      if (F.getName().contains("__enzyme_float") ||
+          F.getName().contains("__enzyme_double") ||
+          F.getName().contains("__enzyme_integer") ||
+          F.getName().contains("__enzyme_pointer") ||
           F.getName().contains("__enzyme_virtualreverse")) {
         F.addFnAttr(Attribute::ReadNone);
         for (auto &arg : F.args()) {
@@ -1430,10 +1431,10 @@ public:
                 }
             }
             if (F) {
-              if (F->getName() == "__enzyme_float" ||
-                  F->getName() == "__enzyme_double" ||
-                  F->getName() == "__enzyme_integer" ||
-                  F->getName() == "__enzyme_pointer") {
+              if (F->getName().contains("__enzyme_float") ||
+                  F->getName().contains("__enzyme_double") ||
+                  F->getName().contains("__enzyme_integer") ||
+                  F->getName().contains("__enzyme_pointer")) {
                 toErase.push_back(CI);
               }
               if (F->getName() == "__enzyme_iter") {

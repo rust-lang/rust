@@ -1054,16 +1054,16 @@ Function *PreProcessCache::preprocessForClone(Function *F,
                     F->getName() == "__fd_sincos_1")) {
             continue;
           }
-          if (F && F->getName() == "__enzyme_integer") {
+          if (F && F->getName().contains("__enzyme_integer")) {
             continue;
           }
-          if (F && F->getName() == "__enzyme_pointer") {
+          if (F && F->getName().contains("__enzyme_pointer")) {
             continue;
           }
-          if (F && F->getName() == "__enzyme_float") {
+          if (F && F->getName().contains("__enzyme_float")) {
             continue;
           }
-          if (F && F->getName() == "__enzyme_double") {
+          if (F && F->getName().contains("__enzyme_double")) {
             continue;
           }
           if (F && (F->getName().startswith("f90io") ||
@@ -1114,16 +1114,16 @@ Function *PreProcessCache::preprocessForClone(Function *F,
                           F->getName() == "__fd_sincos_1")) {
                   continue;
                 }
-                if (F && F->getName() == "__enzyme_integer") {
+                if (F && F->getName().contains("__enzyme_integer")) {
                   continue;
                 }
-                if (F && F->getName() == "__enzyme_pointer") {
+                if (F && F->getName().contains("__enzyme_pointer")) {
                   continue;
                 }
-                if (F && F->getName() == "__enzyme_float") {
+                if (F && F->getName().contains("__enzyme_float")) {
                   continue;
                 }
-                if (F && F->getName() == "__enzyme_double") {
+                if (F && F->getName().contains("__enzyme_double")) {
                   continue;
                 }
                 if (F && (F->getName().startswith("f90io") ||
