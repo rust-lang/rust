@@ -7,20 +7,20 @@ with the two *additional* variants being `ConstKind::Value` and `ConstKind::Unev
 
 ## Unevaluated constants
 
-*This section talks about what's happening with `feature(const_generics)` enabled.
+*This section talks about what's happening with `feature(generic_const_exprs)` enabled.
 On stable we do not yet supply any generic parameters to anonymous constants,
 avoiding most of the issues mentioned here.*
 
 Unless a constant is either a simple literal, e.g. `[u8; 3]` or `foo::<{ 'c' }>()`,
 or a generic parameter, e.g. `[u8; N]`, converting a constant to its [`ty::Const`] representation
-returns an unevaluated constant. Even fully concrete constants which do not depend on a
-generic parameter are not evaluated right away.
+returns an unevaluated constant. Even fully concrete constants which do not depend on
+generic parameters are not evaluated right away.
 
 We do not eagerly evaluate constant as they can be used in the `where`-clauses of their
 parent item, for example:
 
 ```rust
-#[feature(const_generics, const_evaluatable_checked)]
+#[feature(generic_const_exprs)]
 fn foo<T: Trait>()
 where
     [u8; <T as  Trait>::ASSOC + 1]: SomeOtherTrait,

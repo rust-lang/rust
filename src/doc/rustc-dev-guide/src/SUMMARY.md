@@ -98,6 +98,7 @@
     - [Generics and substitutions](./generics.md)
     - [`TypeFolder` and `TypeFoldable`](./ty-fold.md)
     - [Generic arguments](./generic_arguments.md)
+    - [Constants in the type system](./constants.md)
 - [Type inference](./type-inference.md)
 - [Trait solving](./traits/resolution.md)
     - [Early and Late Bound Parameters](./early-late-bound.md)
