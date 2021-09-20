@@ -1,20 +1,22 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-76547.rs:19:14
+  --> $DIR/issue-76547.rs:20:13
    |
 LL | async fn fut(bufs: &mut [&mut [u8]]) {
-   |              ^^^^  -     - let's call the lifetime of this reference `'2`
-   |              |     |
-   |              |     let's call the lifetime of this reference `'1`
-   |              assignment requires that `'1` must outlive `'2`
+   |                    -     - let's call the lifetime of this reference `'2`
+   |                    |
+   |                    let's call the lifetime of this reference `'1`
+LL |     ListFut(bufs).await
+   |             ^^^^ this usage requires that `'1` must outlive `'2`
 
 error: lifetime may not live long enough
-  --> $DIR/issue-76547.rs:33:15
+  --> $DIR/issue-76547.rs:34:14
    |
 LL | async fn fut2(bufs: &mut [&mut [u8]]) -> i32 {
-   |               ^^^^  -     - let's call the lifetime of this reference `'2`
-   |               |     |
-   |               |     let's call the lifetime of this reference `'1`
-   |               assignment requires that `'1` must outlive `'2`
+   |                     -     - let's call the lifetime of this reference `'2`
+   |                     |
+   |                     let's call the lifetime of this reference `'1`
+LL |     ListFut2(bufs).await
+   |              ^^^^ this usage requires that `'1` must outlive `'2`
 
 error: aborting due to 2 previous errors
 

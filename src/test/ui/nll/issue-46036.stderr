@@ -5,7 +5,7 @@ LL |     let foo = Foo { x: &a };
    |                        ^^
    |                        |
    |                        borrowed value does not live long enough
-   |                        requires that `a` is borrowed for `'static`
+   |                        this usage requires that `a` is borrowed for `'static`
 LL |     loop { }
 LL | }
    | - `a` dropped here while still borrowed
