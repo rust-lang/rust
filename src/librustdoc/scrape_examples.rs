@@ -20,10 +20,42 @@ use rustc_serialize::{
     opaque::{Decoder, FileEncoder},
     Decodable, Encodable,
 };
-use rustc_span::{def_id::DefId, edition::Edition, BytePos, FileName, SourceFile};
+use rustc_session::getopts;
+use rustc_span::{
+    def_id::{CrateNum, DefId},
+    edition::Edition,
+    BytePos, FileName, SourceFile,
+};
 
 use std::fs;
 use std::path::PathBuf;
+
+#[derive(Debug, Clone)]
+crate struct ScrapeExamplesOptions {
+    output_path: PathBuf,
+    target_crates: Vec<String>,
+}
+
+impl ScrapeExamplesOptions {
+    crate fn new(
+        matches: &getopts::Matches,
+        diag: &rustc_errors::Handler,
+    ) -> Result<Option<Self>, i32> {
+        let output_path = matches.opt_str("scrape-examples-output-path");
+        let target_crates = matches.opt_strs("scrape-examples-target-crate");
+        match (output_path, !target_crates.is_empty()) {
+            (Some(output_path), true) => Ok(Some(ScrapeExamplesOptions {
+                output_path: PathBuf::from(output_path),
+                target_crates,
+            })),
+            (Some(_), false) | (None, true) => {
+                diag.err(&format!("must use --scrape-examples-output-path and --scrape-examples-target-crate together"));
+                Err(1)
+            }
+            (None, false) => Ok(None),
+        }
+    }
+}
 
 #[derive(Encodable, Decodable, Debug, Clone)]
 crate struct SyntaxRange {
@@ -83,6 +115,7 @@ struct FindCalls<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     map: Map<'tcx>,
     cx: Context<'tcx>,
+    target_crates: Vec<CrateNum>,
     calls: &'a mut AllCallLocations,
 }
 
@@ -130,6 +163,11 @@ where
 
         // Save call site if the function resolves to a concrete definition
         if let ty::FnDef(def_id, _) = ty.kind() {
+            // Ignore functions not from the crate being documented
+            if self.target_crates.iter().all(|krate| *krate != def_id.krate) {
+                return;
+            }
+
             let file = tcx.sess.source_map().lookup_char_pos(span.lo()).file;
             let file_path = match file.name.clone() {
                 FileName::Real(real_filename) => real_filename.into_local_path(),
@@ -143,7 +181,7 @@ where
                     let clean_span = crate::clean::types::Span::new(span);
                     let url = cx.href_from_span(clean_span).unwrap();
                     let display_name = file_path.display().to_string();
-                    let edition = tcx.sess.edition();
+                    let edition = span.edition();
                     CallData { locations: Vec::new(), url, display_name, edition }
                 };
 
@@ -162,19 +200,34 @@ crate fn run(
     renderopts: config::RenderOptions,
     cache: formats::cache::Cache,
     tcx: TyCtxt<'_>,
-    example_path: PathBuf,
+    options: ScrapeExamplesOptions,
 ) -> interface::Result<()> {
     let inner = move || -> Result<(), String> {
         // Generates source files for examples
         let (cx, _) = Context::init(krate, renderopts, cache, tcx).map_err(|e| e.to_string())?;
 
+        // Collect CrateIds corresponding to provided target crates
+        // If two different versions of the crate in the dependency tree, then examples will be collcted from both.
+        let find_crates_with_name = |target_crate: String| {
+            tcx.crates(())
+                .iter()
+                .filter(move |crate_num| tcx.crate_name(**crate_num).as_str() == target_crate)
+                .copied()
+        };
+        let target_crates = options
+            .target_crates
+            .into_iter()
+            .map(find_crates_with_name)
+            .flatten()
+            .collect::<Vec<_>>();
+
         // Run call-finder on all items
         let mut calls = FxHashMap::default();
-        let mut finder = FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx };
+        let mut finder = FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx, target_crates };
         tcx.hir().krate().visit_all_item_likes(&mut finder.as_deep_visitor());
 
         // Save output to provided path
-        let mut encoder = FileEncoder::new(example_path).map_err(|e| e.to_string())?;
+        let mut encoder = FileEncoder::new(options.output_path).map_err(|e| e.to_string())?;
         calls.encode(&mut encoder).map_err(|e| e.to_string())?;
         encoder.flush().map_err(|e| e.to_string())?;
 

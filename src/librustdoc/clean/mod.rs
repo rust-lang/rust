@@ -1059,20 +1059,22 @@ impl Clean<Item> for ty::AssocItem {
                         ty::ImplContainer(_) => Some(self.defaultness),
                         ty::TraitContainer(_) => None,
                     };
-                    let function = Function {
-                        generics,
-                        decl,
-                        header: hir::FnHeader {
-                            unsafety: sig.unsafety(),
-                            abi: sig.abi(),
-                            constness,
-                            asyncness,
+                    MethodItem(
+                        Function {
+                            generics,
+                            decl,
+                            header: hir::FnHeader {
+                                unsafety: sig.unsafety(),
+                                abi: sig.abi(),
+                                constness,
+                                asyncness,
+                            },
+                            def_id: self.def_id,
                         },
-                        def_id: self.def_id,
-                    };
-                    MethodItem(function, defaultness)
+                        defaultness,
+                    )
                 } else {
-                    let function = Function {
+                    TyMethodItem(Function {
                         generics,
                         decl,
                         header: hir::FnHeader {
@@ -1082,8 +1084,7 @@ impl Clean<Item> for ty::AssocItem {
                             asyncness: hir::IsAsync::NotAsync,
                         },
                         def_id: self.def_id,
-                    };
-                    TyMethodItem(function)
+                    })
                 }
             }
             ty::AssocKind::Type => {

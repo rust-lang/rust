@@ -621,12 +621,20 @@ fn opts() -> Vec<RustcOptGroup> {
                 "Make the identifiers in the HTML source code pages navigable",
             )
         }),
-        unstable("scrape-examples", |o| {
+        unstable("scrape-examples-output-path", |o| {
             o.optopt(
                 "",
-                "scrape-examples",
+                "scrape-examples-output-path",
                 "",
-                "collect function call information (for use with `--with-examples`)",
+                "collect function call information and output at the given path",
+            )
+        }),
+        unstable("scrape-examples-target-crate", |o| {
+            o.optmulti(
+                "",
+                "scrape-examples-target-crate",
+                "",
+                "collect function call information for functions from the target crate",
             )
         }),
         unstable("with-examples", |o| {
@@ -750,7 +758,7 @@ fn main_options(options: config::Options) -> MainResult {
     // FIXME: fix this clone (especially render_options)
     let manual_passes = options.manual_passes.clone();
     let render_options = options.render_options.clone();
-    let scrape_examples = options.scrape_examples.clone();
+    let scrape_examples_options = options.scrape_examples_options.clone();
     let config = core::create_config(options);
 
     interface::create_compiler_and_run(config, |compiler| {
@@ -787,8 +795,8 @@ fn main_options(options: config::Options) -> MainResult {
                 });
                 info!("finished with rustc");
 
-                if let Some(example_path) = scrape_examples {
-                    return scrape_examples::run(krate, render_opts, cache, tcx, example_path);
+                if let Some(options) = scrape_examples_options {
+                    return scrape_examples::run(krate, render_opts, cache, tcx, options);
                 }
 
                 cache.crate_version = crate_version;
