@@ -3,8 +3,6 @@
 // cdb-only
 // min-cdb-version: 10.0.21287.1005
 // compile-flags:-g
-// FIXME: Failed on update to 10.0.22000.1
-// ignore-windows
 
 // === CDB TESTS ==================================================================================
 //
@@ -14,17 +12,17 @@
 // cdb-check:m,d              [Type: std::sync::mutex::Mutex<i32>]
 // cdb-check:    [...] inner            [Type: std::sys_common::mutex::MovableMutex]
 // cdb-check:    [...] poison           [Type: std::sync::poison::Flag]
-// cdb-check:    [...] data             [Type: core::cell::UnsafeCell<i32>]
+// cdb-check:    [...] data             : 0 [Type: core::cell::UnsafeCell<i32>]
 
 //
 // cdb-command:dx m.data,d
-// cdb-check:m.data,d         [Type: core::cell::UnsafeCell<i32>]
-// cdb-check:    [...] value            : 0 [Type: int]
+// cdb-check:m.data,d         : 0 [Type: core::cell::UnsafeCell<i32>]
+// cdb-check:    [<Raw View>]     [Type: core::cell::UnsafeCell<i32>]
 
 //
 // cdb-command:dx lock,d
-// cdb-check:lock,d           : Ok [Type: enum$<core::result::Result<std::sync::mutex::MutexGuard<i32>, enum$<std::sync::poison::TryLockError<std::sync::mutex::MutexGuard<i32> >, 0, 1, Poisoned> > >]
-// cdb-check:    [...] variant$         : Ok (0) [Type: core::result::Result]
+// cdb-check:lock,d           : Ok [Type: enum$<core::result::Result<std::sync::mutex::MutexGuard<i32>,enum$<std::sync::poison::TryLockError<std::sync::mutex::MutexGuard<i32> >, 0, 1, Poisoned> > >]
+// cdb-check:    [variant]        : Ok
 // cdb-check:    [...] __0              [Type: std::sync::mutex::MutexGuard<i32>]
 
 use std::sync::Mutex;
