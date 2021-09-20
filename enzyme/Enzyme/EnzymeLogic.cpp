@@ -2689,8 +2689,91 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     }
   }
 
-  if (!hasconstant && mode != DerivativeMode::ReverseModeCombined &&
-      !returnValue && hasMetadata(todiff, "enzyme_gradient")) {
+  if (!hasconstant && !returnValue && hasMetadata(todiff, "enzyme_gradient")) {
+
+    DIFFE_TYPE subretType = todiff->getReturnType()->isFPOrFPVectorTy()
+                                ? DIFFE_TYPE::OUT_DIFF
+                                : DIFFE_TYPE::DUP_ARG;
+    if (todiff->getReturnType()->isVoidTy() ||
+        todiff->getReturnType()->isEmptyTy())
+      subretType = DIFFE_TYPE::CONSTANT;
+    assert(subretType == retType);
+
+    auto res = getDefaultFunctionTypeForGradient(todiff->getFunctionType(),
+                                                 /*retType*/ retType);
+
+    if (mode == DerivativeMode::ReverseModeCombined) {
+
+      FunctionType *FTy =
+          FunctionType::get(StructType::get(todiff->getContext(), {res.second}),
+                            res.first, todiff->getFunctionType()->isVarArg());
+      Function *NewF = Function::Create(
+          FTy, Function::LinkageTypes::InternalLinkage,
+          "fixgradient_" + todiff->getName(), todiff->getParent());
+
+      BasicBlock *BB = BasicBlock::Create(NewF->getContext(), "entry", NewF);
+      IRBuilder<> bb(BB);
+
+      auto &aug = CreateAugmentedPrimal(
+          todiff, retType, constant_args, TLI, TA, returnUsed, oldTypeInfo_,
+          _uncacheable_args, /*forceAnonymousTape*/ false, AtomicAdd, PostOpt,
+          omp);
+
+      SmallVector<Value *, 4> fwdargs;
+      for (auto &a : NewF->args())
+        fwdargs.push_back(&a);
+      if (retType == DIFFE_TYPE::OUT_DIFF)
+        fwdargs.pop_back();
+      auto cal = bb.CreateCall(aug.fn, fwdargs);
+      cal->setCallingConv(aug.fn->getCallingConv());
+
+      llvm::Value *tape = nullptr;
+
+      if (aug.returns.find(AugmentedStruct::Tape) != aug.returns.end()) {
+        auto tapeIdx = aug.returns.find(AugmentedStruct::Tape)->second;
+        tape = (tapeIdx == -1) ? cal : bb.CreateExtractValue(cal, tapeIdx);
+      }
+
+      if (aug.tapeType) {
+        assert(tape);
+        auto tapep =
+            bb.CreatePointerCast(tape, PointerType::getUnqual(aug.tapeType));
+        auto truetape = bb.CreateLoad(tapep, "tapeld");
+        truetape->setMetadata("enzyme_mustcache",
+                              MDNode::get(truetape->getContext(), {}));
+
+        CallInst *ci = cast<CallInst>(CallInst::CreateFree(tape, BB));
+        bb.Insert(ci);
+        ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+        tape = truetape;
+      }
+
+      auto revfn = CreatePrimalAndGradient(
+          todiff, retType, constant_args, TLI, TA,
+          /*returnUsed*/ false, /*dretPtr*/ false,
+          /*mode*/ DerivativeMode::ReverseModeGradient,
+          /*additionalArg*/ tape ? tape->getType() : nullptr, oldTypeInfo_,
+          _uncacheable_args, &aug, AtomicAdd, PostOpt, omp);
+
+      SmallVector<Value *, 4> revargs;
+      for (auto &a : NewF->args()) {
+        revargs.push_back(&a);
+      }
+      if (tape) {
+        revargs.push_back(tape);
+      }
+      auto revcal = bb.CreateCall(revfn, revargs);
+      revcal->setCallingConv(revfn->getCallingConv());
+      if (NewF->getReturnType()->isEmptyTy())
+        bb.CreateRet(UndefValue::get(NewF->getReturnType()));
+      else
+        bb.CreateRet(revcal);
+      assert(!returnUsed);
+
+      return insert_or_assign2<ReverseCacheKey, Function *>(
+                 ReverseCachedFunctions, tup, NewF)
+          ->second;
+    }
 
     auto md = todiff->getMetadata("enzyme_gradient");
     if (!isa<MDTuple>(md)) {
@@ -2704,14 +2787,6 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     auto gvemd = cast<ConstantAsMetadata>(md2->getOperand(0));
     auto foundcalled = cast<Function>(gvemd->getValue());
 
-    DIFFE_TYPE subretType = todiff->getReturnType()->isFPOrFPVectorTy()
-                                ? DIFFE_TYPE::OUT_DIFF
-                                : DIFFE_TYPE::DUP_ARG;
-    if (todiff->getReturnType()->isVoidTy() ||
-        todiff->getReturnType()->isEmptyTy())
-      subretType = DIFFE_TYPE::CONSTANT;
-    auto res = getDefaultFunctionTypeForGradient(todiff->getFunctionType(),
-                                                 /*retType*/ subretType);
     assert(augmenteddata);
     if (foundcalled->arg_size() == res.first.size() + 1 /*tape*/) {
       auto lastarg = foundcalled->arg_end();
