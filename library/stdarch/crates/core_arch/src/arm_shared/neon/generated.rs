@@ -8721,7 +8721,7 @@ pub unsafe fn vmull_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x4_t) -> 
 /// Floating-point fused Multiply-Add to accumulator(vector)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "vfp4"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfma))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmla))]
 pub unsafe fn vfma_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
@@ -8737,7 +8737,7 @@ vfma_f32_(b, c, a)
 /// Floating-point fused Multiply-Add to accumulator(vector)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "vfp4"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfma))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmla))]
 pub unsafe fn vfmaq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
@@ -8753,27 +8753,27 @@ vfmaq_f32_(b, c, a)
 /// Floating-point fused Multiply-Add to accumulator(vector)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "vfp4"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfma))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmla))]
 pub unsafe fn vfma_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t {
-    vfma_f32(a, b, vdup_n_f32(c))
+    vfma_f32(a, b, vdup_n_f32_vfp4(c))
 }
 
 /// Floating-point fused Multiply-Add to accumulator(vector)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "vfp4"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfma))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmla))]
 pub unsafe fn vfmaq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t {
-    vfmaq_f32(a, b, vdupq_n_f32(c))
+    vfmaq_f32(a, b, vdupq_n_f32_vfp4(c))
 }
 
 /// Floating-point fused multiply-subtract from accumulator
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "vfp4"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfms))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmls))]
 pub unsafe fn vfms_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
@@ -8784,7 +8784,7 @@ pub unsafe fn vfms_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float3
 /// Floating-point fused multiply-subtract from accumulator
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "vfp4"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfms))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmls))]
 pub unsafe fn vfmsq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
@@ -8795,21 +8795,21 @@ pub unsafe fn vfmsq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float
 /// Floating-point fused Multiply-subtract to accumulator(vector)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "vfp4"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfms))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmls))]
 pub unsafe fn vfms_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t {
-    vfms_f32(a, b, vdup_n_f32(c))
+    vfms_f32(a, b, vdup_n_f32_vfp4(c))
 }
 
 /// Floating-point fused Multiply-subtract to accumulator(vector)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "vfp4"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfms))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmls))]
 pub unsafe fn vfmsq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t {
-    vfmsq_f32(a, b, vdupq_n_f32(c))
+    vfmsq_f32(a, b, vdupq_n_f32_vfp4(c))
 }
 
 /// Subtract

@@ -438,6 +438,7 @@ enum Suffix {
 enum TargetFeature {
     Default,
     ArmV7,
+    Vfp4,
     FPArmV8,
     AES,
 }
@@ -980,6 +981,7 @@ fn gen_aarch64(
     let current_target = match target {
         Default => "neon",
         ArmV7 => "v7",
+        Vfp4 => "vfp4",
         FPArmV8 => "fp-armv8,v8",
         AES => "neon,aes",
     };
@@ -1120,6 +1122,7 @@ fn gen_aarch64(
                 out_t,
                 fixed,
                 None,
+                true,
             ));
         }
         calls
@@ -1630,12 +1633,14 @@ fn gen_arm(
     let current_target_aarch64 = match target {
         Default => "neon",
         ArmV7 => "neon",
+        Vfp4 => "neon",
         FPArmV8 => "neon",
         AES => "neon,aes",
     };
     let current_target_arm = match target {
         Default => "v7",
         ArmV7 => "v7",
+        Vfp4 => "vfp4",
         FPArmV8 => "fp-armv8,v8",
         AES => "aes,v8",
     };
@@ -1916,6 +1921,7 @@ fn gen_arm(
                 out_t,
                 fixed,
                 None,
+                false,
             ));
         }
         calls
@@ -2283,6 +2289,7 @@ fn get_call(
     out_t: &str,
     fixed: &Vec<String>,
     n: Option<i32>,
+    aarch64: bool,
 ) -> String {
     let params: Vec<_> = in_str.split(',').map(|v| v.trim().to_string()).collect();
     assert!(params.len() > 0);
@@ -2450,7 +2457,8 @@ fn get_call(
                     in_t,
                     out_t,
                     fixed,
-                    Some(i as i32)
+                    Some(i as i32),
+                    aarch64
                 )
             );
             call.push_str(&sub_match);
@@ -2499,6 +2507,7 @@ fn get_call(
                 out_t,
                 fixed,
                 n.clone(),
+                aarch64,
             );
             if !param_str.is_empty() {
                 param_str.push_str(", ");
@@ -2569,6 +2578,11 @@ fn get_call(
             fn_name.push_str(type_to_suffix(in_t[1]));
         } else if fn_format[1] == "nself" {
             fn_name.push_str(type_to_n_suffix(in_t[1]));
+        } else if fn_format[1] == "nselfvfp4" {
+            fn_name.push_str(type_to_n_suffix(in_t[1]));
+            if !aarch64 {
+                fn_name.push_str("_vfp4");
+            }
         } else if fn_format[1] == "out" {
             fn_name.push_str(type_to_suffix(out_t));
         } else if fn_format[1] == "in0" {
@@ -2854,6 +2868,7 @@ mod test {
             target = match Some(String::from(&line[9..])) {
                 Some(input) => match input.as_str() {
                     "v7" => ArmV7,
+                    "vfp4" => Vfp4,
                     "fp-armv8" => FPArmV8,
                     "aes" => AES,
                     _ => Default,
