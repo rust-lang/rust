@@ -91,6 +91,14 @@ pub fn initialize_available_targets() {
         LLVMInitializeAVRAsmParser
     );
     init_target!(
+        llvm_component = "m68k",
+        LLVMInitializeM68kTargetInfo,
+        LLVMInitializeM68kTarget,
+        LLVMInitializeM68kTargetMC,
+        LLVMInitializeM68kAsmPrinter,
+        LLVMInitializeM68kAsmParser
+    );
+    init_target!(
         llvm_component = "mips",
         LLVMInitializeMipsTargetInfo,
         LLVMInitializeMipsTarget,

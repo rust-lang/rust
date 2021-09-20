@@ -54,6 +54,7 @@ const ARCH_TABLE: &[(&str, &str)] = &[
     ("i386", "x86"),
     ("i586", "x86"),
     ("i686", "x86"),
+    ("m68k", "m68k"),
     ("mips", "mips"),
     ("mips64", "mips64"),
     ("mips64el", "mips64"),

@@ -491,6 +491,7 @@ impl<'a> fmt::Display for Display<'a> {
                         "aarch64" => "AArch64",
                         "arm" => "ARM",
                         "asmjs" => "JavaScript",
+                        "m68k" => "M68k",
                         "mips" => "MIPS",
                         "mips64" => "MIPS-64",
                         "msp430" => "MSP430",
