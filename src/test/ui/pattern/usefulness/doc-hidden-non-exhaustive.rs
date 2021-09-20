@@ -20,11 +20,11 @@ fn main() {
     match Foo::A {
         Foo::A => {}
     }
-    //~^^^ non-exhaustive patterns: `_` not covered
+    //~^^^ non-exhaustive patterns: `B` and `_` not covered
 
     match None {
         None => {}
         Some(Foo::A) => {}
     }
-    //~^^^^ non-exhaustive patterns: `Some(_)` not covered
+    //~^^^^ non-exhaustive patterns: `Some(B)` and `Some(_)` not covered
 }
