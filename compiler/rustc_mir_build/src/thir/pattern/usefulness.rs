@@ -585,41 +585,52 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
                     } else {
                         let mut split_wildcard = SplitWildcard::new(pcx);
                         split_wildcard.split(pcx, matrix.heads().map(DeconstructedPat::ctor));
+
+                        // This lets us know if we skipped any variants because they are marked
+                        // `doc(hidden)`.
+                        let mut doc_hidden_variant = false;
                         // Construct for each missing constructor a "wild" version of this
                         // constructor, that matches everything that can be built with
                         // it. For example, if `ctor` is a `Constructor::Variant` for
                         // `Option::Some`, we get the pattern `Some(_)`.
-                        let mut new = vec![];
-                        for missing_ctor in split_wildcard.iter_missing(pcx) {
-                            if let Constructor::Variant(idx) = missing_ctor {
-                                if let ty::Adt(adt, _) = pcx.ty.kind() {
-                                    if pcx
-                                        .cx
-                                        .tcx
-                                        .get_attrs(adt.variants[*idx].def_id)
-                                        .iter()
-                                        .find_map(|attr| {
-                                            if attr.has_name(sym::doc) {
-                                                attr.meta_item_list()
-                                            } else {
-                                                None
-                                            }
-                                        })
-                                        .map(|items| {
-                                            items
-                                                .iter()
-                                                .find(|item| item.has_name(sym::hidden))
-                                                .is_some()
-                                        })
-                                        .unwrap_or_default()
-                                    {
-                                        new = vec![DeconstructedPat::wildcard(pcx.ty)];
-                                        break;
+                        let mut new: Vec<DeconstructedPat<'_, '_>> = split_wildcard
+                            .iter_missing(pcx)
+                            .filter_map(|missing_ctor| {
+                                if let Constructor::Variant(idx) = missing_ctor {
+                                    if let ty::Adt(adt, _) = pcx.ty.kind() {
+                                        if pcx
+                                            .cx
+                                            .tcx
+                                            .get_attrs(adt.variants[*idx].def_id)
+                                            .iter()
+                                            .find_map(|attr| {
+                                                if attr.has_name(sym::doc) {
+                                                    attr.meta_item_list()
+                                                } else {
+                                                    None
+                                                }
+                                            })
+                                            .map(|items| {
+                                                items
+                                                    .iter()
+                                                    .find(|item| item.has_name(sym::hidden))
+                                                    .is_some()
+                                            })
+                                            .unwrap_or_default()
+                                        {
+                                            doc_hidden_variant = true;
+                                            return None;
+                                        }
                                     }
                                 }
-                            }
-                            new.push(DeconstructedPat::wild_from_ctor(pcx, missing_ctor))
+                                Some(DeconstructedPat::wild_from_ctor(pcx, missing_ctor.clone()))
+                            })
+                            .collect();
+
+                        if doc_hidden_variant {
+                            new.push(DeconstructedPat::wildcard(pcx.ty));
                         }
+
                         new
                     };
 
