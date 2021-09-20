@@ -900,12 +900,12 @@ macro_rules! nonzero_min_max {
     ( $( $MinVal:expr , $Ty: ident($Int: ty); )+ ) => {
         $(
             impl $Ty {
-                #[unstable(feature = "nonzero_max", issue = "89065")]
+                #[unstable(feature = "nonzero_min_max", issue = "89065")]
                 #[doc = concat!("The maximum value for a`", stringify!($Ty), "` is the same as `", stringify!($Int), "`")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX, ", stringify!($Int), "::MAX);")]
                 // SAFETY: Since the MAX value, for any supported integer type, is greater than 0, the MAX will always be non-zero.
                 pub const MAX : $Ty = unsafe { $Ty::new_unchecked(<$Int>::MAX) };
-                #[unstable(feature = "nonzero_min", issue = "89065")]
+                #[unstable(feature = "nonzero_min_max", issue = "89065")]
                 #[doc = concat!("The minimum value for a`", stringify!($Ty), "`.")]
                 /// # Examples
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN, ", stringify!($MinVal), ";")]
