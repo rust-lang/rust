@@ -8013,7 +8013,7 @@ pub unsafe fn _mm_maskz_dbsad_epu8<const IMM8: i32>(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_movepi16_mask&expand=3873)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(test, assert_instr(mov))] // should be vpmovw2m but msvc does not generate it
+#[cfg_attr(test, assert_instr(vpmovw2m))]
 pub unsafe fn _mm512_movepi16_mask(a: __m512i) -> __mmask32 {
     let filter = _mm512_set1_epi16(1 << 15);
     let a = _mm512_and_si512(a, filter);
@@ -8025,7 +8025,7 @@ pub unsafe fn _mm512_movepi16_mask(a: __m512i) -> __mmask32 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_movepi16_mask&expand=3872)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
-#[cfg_attr(test, assert_instr(mov))] // should be vpmovw2m but msvc does not generate it
+#[cfg_attr(test, assert_instr(vpmovw2m))]
 pub unsafe fn _mm256_movepi16_mask(a: __m256i) -> __mmask16 {
     let filter = _mm256_set1_epi16(1 << 15);
     let a = _mm256_and_si256(a, filter);
@@ -8037,7 +8037,7 @@ pub unsafe fn _mm256_movepi16_mask(a: __m256i) -> __mmask16 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_movepi16_mask&expand=3871)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
-#[cfg_attr(test, assert_instr(mov))] // should be vpmovw2m but msvc does not generate it
+#[cfg_attr(test, assert_instr(vpmovw2m))]
 pub unsafe fn _mm_movepi16_mask(a: __m128i) -> __mmask8 {
     let filter = _mm_set1_epi16(1 << 15);
     let a = _mm_and_si128(a, filter);
@@ -8049,7 +8049,7 @@ pub unsafe fn _mm_movepi16_mask(a: __m128i) -> __mmask8 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_movepi8_mask&expand=3883)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(test, assert_instr(mov))] // should be vpmovb2m but msvc does not generate it
+#[cfg_attr(test, assert_instr(vpmovb2m))]
 pub unsafe fn _mm512_movepi8_mask(a: __m512i) -> __mmask64 {
     let filter = _mm512_set1_epi8(1 << 7);
     let a = _mm512_and_si512(a, filter);
@@ -8061,7 +8061,8 @@ pub unsafe fn _mm512_movepi8_mask(a: __m512i) -> __mmask64 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_movepi8_mask&expand=3882)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
-#[cfg_attr(test, assert_instr(mov))] // should be vpmovb2m but msvc does not generate it
+#[cfg_attr(test, assert_instr(vpmovmskb))] // should be vpmovb2m but compiled to vpmovmskb in the test shim because that takes less cycles than
+                                           // using vpmovb2m plus converting the mask register to a standard register.
 pub unsafe fn _mm256_movepi8_mask(a: __m256i) -> __mmask32 {
     let filter = _mm256_set1_epi8(1 << 7);
     let a = _mm256_and_si256(a, filter);
@@ -8073,7 +8074,8 @@ pub unsafe fn _mm256_movepi8_mask(a: __m256i) -> __mmask32 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_movepi8_mask&expand=3881)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
-#[cfg_attr(test, assert_instr(mov))] // should be vpmovb2m but msvc does not generate it
+#[cfg_attr(test, assert_instr(vpmovmskb))] // should be vpmovb2m but compiled to vpmovmskb in the test shim because that takes less cycles than
+                                           // using vpmovb2m plus converting the mask register to a standard register.
 pub unsafe fn _mm_movepi8_mask(a: __m128i) -> __mmask16 {
     let filter = _mm_set1_epi8(1 << 7);
     let a = _mm_and_si128(a, filter);
@@ -8216,8 +8218,9 @@ pub unsafe fn _mm_movm_epi8(k: __mmask16) -> __m128i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kadd_mask32&expand=3207)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(test, assert_instr(mov))] // generate normal and code instead of kaddd
-                                     //llvm.x86.avx512.kadd.d
+#[cfg_attr(all(test, target_arch = "x86"), assert_instr(add))]
+#[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(lea))] // generate normal lea/add code instead of kaddd
+                                                                  //llvm.x86.avx512.kadd.d
 pub unsafe fn _kadd_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
     transmute(a + b)
 }
@@ -8227,7 +8230,9 @@ pub unsafe fn _kadd_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kadd_mask64&expand=3208)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(test, assert_instr(mov))] // generate normal and code instead of kaddq
+#[cfg_attr(all(test, target_arch = "x86"), assert_instr(add))]
+#[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(lea))] // generate normal lea/add code instead of kaddd
+                                                                  //llvm.x86.avx512.kadd.d
 pub unsafe fn _kadd_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
     transmute(a + b)
 }

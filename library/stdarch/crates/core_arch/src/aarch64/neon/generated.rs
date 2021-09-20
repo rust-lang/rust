@@ -7448,7 +7448,7 @@ pub unsafe fn vrecpeq_f64(a: float64x2_t) -> float64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_s64_p64(a: poly64x1_t) -> int64x1_t {
     transmute(a)
 }
@@ -7456,7 +7456,7 @@ pub unsafe fn vreinterpret_s64_p64(a: poly64x1_t) -> int64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_u64_p64(a: poly64x1_t) -> uint64x1_t {
     transmute(a)
 }
@@ -7464,7 +7464,7 @@ pub unsafe fn vreinterpret_u64_p64(a: poly64x1_t) -> uint64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_p64_s64(a: int64x1_t) -> poly64x1_t {
     transmute(a)
 }
@@ -7472,7 +7472,7 @@ pub unsafe fn vreinterpret_p64_s64(a: int64x1_t) -> poly64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_p64_u64(a: uint64x1_t) -> poly64x1_t {
     transmute(a)
 }
@@ -7480,7 +7480,7 @@ pub unsafe fn vreinterpret_p64_u64(a: uint64x1_t) -> poly64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_s64_p64(a: poly64x2_t) -> int64x2_t {
     transmute(a)
 }
@@ -7488,7 +7488,7 @@ pub unsafe fn vreinterpretq_s64_p64(a: poly64x2_t) -> int64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_u64_p64(a: poly64x2_t) -> uint64x2_t {
     transmute(a)
 }
@@ -7496,7 +7496,7 @@ pub unsafe fn vreinterpretq_u64_p64(a: poly64x2_t) -> uint64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_p64_s64(a: int64x2_t) -> poly64x2_t {
     transmute(a)
 }
@@ -7504,7 +7504,7 @@ pub unsafe fn vreinterpretq_p64_s64(a: int64x2_t) -> poly64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_p64_u64(a: uint64x2_t) -> poly64x2_t {
     transmute(a)
 }
@@ -7512,7 +7512,7 @@ pub unsafe fn vreinterpretq_p64_u64(a: uint64x2_t) -> poly64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_s32_p64(a: poly64x1_t) -> int32x2_t {
     transmute(a)
 }
@@ -7520,7 +7520,7 @@ pub unsafe fn vreinterpret_s32_p64(a: poly64x1_t) -> int32x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_u32_p64(a: poly64x1_t) -> uint32x2_t {
     transmute(a)
 }
@@ -7528,7 +7528,7 @@ pub unsafe fn vreinterpret_u32_p64(a: poly64x1_t) -> uint32x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_s32_p64(a: poly64x2_t) -> int32x4_t {
     transmute(a)
 }
@@ -7536,7 +7536,7 @@ pub unsafe fn vreinterpretq_s32_p64(a: poly64x2_t) -> int32x4_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_u32_p64(a: poly64x2_t) -> uint32x4_t {
     transmute(a)
 }
@@ -7544,7 +7544,7 @@ pub unsafe fn vreinterpretq_u32_p64(a: poly64x2_t) -> uint32x4_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_p64_s32(a: int32x2_t) -> poly64x1_t {
     transmute(a)
 }
@@ -7552,7 +7552,7 @@ pub unsafe fn vreinterpret_p64_s32(a: int32x2_t) -> poly64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_p64_u32(a: uint32x2_t) -> poly64x1_t {
     transmute(a)
 }
@@ -7560,7 +7560,7 @@ pub unsafe fn vreinterpret_p64_u32(a: uint32x2_t) -> poly64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_p64_s32(a: int32x4_t) -> poly64x2_t {
     transmute(a)
 }
@@ -7568,7 +7568,7 @@ pub unsafe fn vreinterpretq_p64_s32(a: int32x4_t) -> poly64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_p64_u32(a: uint32x4_t) -> poly64x2_t {
     transmute(a)
 }
@@ -7576,7 +7576,7 @@ pub unsafe fn vreinterpretq_p64_u32(a: uint32x4_t) -> poly64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_s16_p64(a: poly64x1_t) -> int16x4_t {
     transmute(a)
 }
@@ -7584,7 +7584,7 @@ pub unsafe fn vreinterpret_s16_p64(a: poly64x1_t) -> int16x4_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_u16_p64(a: poly64x1_t) -> uint16x4_t {
     transmute(a)
 }
@@ -7592,7 +7592,7 @@ pub unsafe fn vreinterpret_u16_p64(a: poly64x1_t) -> uint16x4_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_p16_p64(a: poly64x1_t) -> poly16x4_t {
     transmute(a)
 }
@@ -7600,7 +7600,7 @@ pub unsafe fn vreinterpret_p16_p64(a: poly64x1_t) -> poly16x4_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_s16_p64(a: poly64x2_t) -> int16x8_t {
     transmute(a)
 }
@@ -7608,7 +7608,7 @@ pub unsafe fn vreinterpretq_s16_p64(a: poly64x2_t) -> int16x8_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_u16_p64(a: poly64x2_t) -> uint16x8_t {
     transmute(a)
 }
@@ -7616,7 +7616,7 @@ pub unsafe fn vreinterpretq_u16_p64(a: poly64x2_t) -> uint16x8_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_p16_p64(a: poly64x2_t) -> poly16x8_t {
     transmute(a)
 }
@@ -7624,7 +7624,7 @@ pub unsafe fn vreinterpretq_p16_p64(a: poly64x2_t) -> poly16x8_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_p64_p16(a: poly16x4_t) -> poly64x1_t {
     transmute(a)
 }
@@ -7632,7 +7632,7 @@ pub unsafe fn vreinterpret_p64_p16(a: poly16x4_t) -> poly64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_p64_s16(a: int16x4_t) -> poly64x1_t {
     transmute(a)
 }
@@ -7640,7 +7640,7 @@ pub unsafe fn vreinterpret_p64_s16(a: int16x4_t) -> poly64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_p64_u16(a: uint16x4_t) -> poly64x1_t {
     transmute(a)
 }
@@ -7648,7 +7648,7 @@ pub unsafe fn vreinterpret_p64_u16(a: uint16x4_t) -> poly64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_p64_p16(a: poly16x8_t) -> poly64x2_t {
     transmute(a)
 }
@@ -7656,7 +7656,7 @@ pub unsafe fn vreinterpretq_p64_p16(a: poly16x8_t) -> poly64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_p64_s16(a: int16x8_t) -> poly64x2_t {
     transmute(a)
 }
@@ -7664,7 +7664,7 @@ pub unsafe fn vreinterpretq_p64_s16(a: int16x8_t) -> poly64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_p64_u16(a: uint16x8_t) -> poly64x2_t {
     transmute(a)
 }
@@ -7672,7 +7672,7 @@ pub unsafe fn vreinterpretq_p64_u16(a: uint16x8_t) -> poly64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_s8_p64(a: poly64x1_t) -> int8x8_t {
     transmute(a)
 }
@@ -7680,7 +7680,7 @@ pub unsafe fn vreinterpret_s8_p64(a: poly64x1_t) -> int8x8_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_u8_p64(a: poly64x1_t) -> uint8x8_t {
     transmute(a)
 }
@@ -7688,7 +7688,7 @@ pub unsafe fn vreinterpret_u8_p64(a: poly64x1_t) -> uint8x8_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_p8_p64(a: poly64x1_t) -> poly8x8_t {
     transmute(a)
 }
@@ -7696,7 +7696,7 @@ pub unsafe fn vreinterpret_p8_p64(a: poly64x1_t) -> poly8x8_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_s8_p64(a: poly64x2_t) -> int8x16_t {
     transmute(a)
 }
@@ -7704,7 +7704,7 @@ pub unsafe fn vreinterpretq_s8_p64(a: poly64x2_t) -> int8x16_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_u8_p64(a: poly64x2_t) -> uint8x16_t {
     transmute(a)
 }
@@ -7712,7 +7712,7 @@ pub unsafe fn vreinterpretq_u8_p64(a: poly64x2_t) -> uint8x16_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_p8_p64(a: poly64x2_t) -> poly8x16_t {
     transmute(a)
 }
@@ -7720,7 +7720,7 @@ pub unsafe fn vreinterpretq_p8_p64(a: poly64x2_t) -> poly8x16_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_p64_p8(a: poly8x8_t) -> poly64x1_t {
     transmute(a)
 }
@@ -7728,7 +7728,7 @@ pub unsafe fn vreinterpret_p64_p8(a: poly8x8_t) -> poly64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_p64_s8(a: int8x8_t) -> poly64x1_t {
     transmute(a)
 }
@@ -7736,7 +7736,7 @@ pub unsafe fn vreinterpret_p64_s8(a: int8x8_t) -> poly64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_p64_u8(a: uint8x8_t) -> poly64x1_t {
     transmute(a)
 }
@@ -7744,7 +7744,7 @@ pub unsafe fn vreinterpret_p64_u8(a: uint8x8_t) -> poly64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_p64_p8(a: poly8x16_t) -> poly64x2_t {
     transmute(a)
 }
@@ -7752,7 +7752,7 @@ pub unsafe fn vreinterpretq_p64_p8(a: poly8x16_t) -> poly64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_p64_s8(a: int8x16_t) -> poly64x2_t {
     transmute(a)
 }
@@ -7760,7 +7760,7 @@ pub unsafe fn vreinterpretq_p64_s8(a: int8x16_t) -> poly64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_p64_u8(a: uint8x16_t) -> poly64x2_t {
     transmute(a)
 }
@@ -7768,7 +7768,7 @@ pub unsafe fn vreinterpretq_p64_u8(a: uint8x16_t) -> poly64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_s8_f64(a: float64x1_t) -> int8x8_t {
     transmute(a)
 }
@@ -7776,7 +7776,7 @@ pub unsafe fn vreinterpret_s8_f64(a: float64x1_t) -> int8x8_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_s16_f64(a: float64x1_t) -> int16x4_t {
     transmute(a)
 }
@@ -7784,7 +7784,7 @@ pub unsafe fn vreinterpret_s16_f64(a: float64x1_t) -> int16x4_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_s32_f64(a: float64x1_t) -> int32x2_t {
     transmute(a)
 }
@@ -7792,7 +7792,7 @@ pub unsafe fn vreinterpret_s32_f64(a: float64x1_t) -> int32x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_s64_f64(a: float64x1_t) -> int64x1_t {
     transmute(a)
 }
@@ -7800,7 +7800,7 @@ pub unsafe fn vreinterpret_s64_f64(a: float64x1_t) -> int64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_s8_f64(a: float64x2_t) -> int8x16_t {
     transmute(a)
 }
@@ -7808,7 +7808,7 @@ pub unsafe fn vreinterpretq_s8_f64(a: float64x2_t) -> int8x16_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_s16_f64(a: float64x2_t) -> int16x8_t {
     transmute(a)
 }
@@ -7816,7 +7816,7 @@ pub unsafe fn vreinterpretq_s16_f64(a: float64x2_t) -> int16x8_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_s32_f64(a: float64x2_t) -> int32x4_t {
     transmute(a)
 }
@@ -7824,7 +7824,7 @@ pub unsafe fn vreinterpretq_s32_f64(a: float64x2_t) -> int32x4_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_s64_f64(a: float64x2_t) -> int64x2_t {
     transmute(a)
 }
@@ -7832,7 +7832,7 @@ pub unsafe fn vreinterpretq_s64_f64(a: float64x2_t) -> int64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_u8_f64(a: float64x1_t) -> uint8x8_t {
     transmute(a)
 }
@@ -7840,7 +7840,7 @@ pub unsafe fn vreinterpret_u8_f64(a: float64x1_t) -> uint8x8_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_u16_f64(a: float64x1_t) -> uint16x4_t {
     transmute(a)
 }
@@ -7848,7 +7848,7 @@ pub unsafe fn vreinterpret_u16_f64(a: float64x1_t) -> uint16x4_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_u32_f64(a: float64x1_t) -> uint32x2_t {
     transmute(a)
 }
@@ -7856,7 +7856,7 @@ pub unsafe fn vreinterpret_u32_f64(a: float64x1_t) -> uint32x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_u64_f64(a: float64x1_t) -> uint64x1_t {
     transmute(a)
 }
@@ -7864,7 +7864,7 @@ pub unsafe fn vreinterpret_u64_f64(a: float64x1_t) -> uint64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_u8_f64(a: float64x2_t) -> uint8x16_t {
     transmute(a)
 }
@@ -7872,7 +7872,7 @@ pub unsafe fn vreinterpretq_u8_f64(a: float64x2_t) -> uint8x16_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_u16_f64(a: float64x2_t) -> uint16x8_t {
     transmute(a)
 }
@@ -7880,7 +7880,7 @@ pub unsafe fn vreinterpretq_u16_f64(a: float64x2_t) -> uint16x8_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_u32_f64(a: float64x2_t) -> uint32x4_t {
     transmute(a)
 }
@@ -7888,7 +7888,7 @@ pub unsafe fn vreinterpretq_u32_f64(a: float64x2_t) -> uint32x4_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_u64_f64(a: float64x2_t) -> uint64x2_t {
     transmute(a)
 }
@@ -7896,7 +7896,7 @@ pub unsafe fn vreinterpretq_u64_f64(a: float64x2_t) -> uint64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_p8_f64(a: float64x1_t) -> poly8x8_t {
     transmute(a)
 }
@@ -7904,7 +7904,7 @@ pub unsafe fn vreinterpret_p8_f64(a: float64x1_t) -> poly8x8_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_p16_f64(a: float64x1_t) -> poly16x4_t {
     transmute(a)
 }
@@ -7912,7 +7912,7 @@ pub unsafe fn vreinterpret_p16_f64(a: float64x1_t) -> poly16x4_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_p64_f32(a: float32x2_t) -> poly64x1_t {
     transmute(a)
 }
@@ -7920,7 +7920,7 @@ pub unsafe fn vreinterpret_p64_f32(a: float32x2_t) -> poly64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_p64_f64(a: float64x1_t) -> poly64x1_t {
     transmute(a)
 }
@@ -7928,7 +7928,7 @@ pub unsafe fn vreinterpret_p64_f64(a: float64x1_t) -> poly64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_p8_f64(a: float64x2_t) -> poly8x16_t {
     transmute(a)
 }
@@ -7936,7 +7936,7 @@ pub unsafe fn vreinterpretq_p8_f64(a: float64x2_t) -> poly8x16_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_p16_f64(a: float64x2_t) -> poly16x8_t {
     transmute(a)
 }
@@ -7944,7 +7944,7 @@ pub unsafe fn vreinterpretq_p16_f64(a: float64x2_t) -> poly16x8_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_p64_f32(a: float32x4_t) -> poly64x2_t {
     transmute(a)
 }
@@ -7952,7 +7952,7 @@ pub unsafe fn vreinterpretq_p64_f32(a: float32x4_t) -> poly64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_p64_f64(a: float64x2_t) -> poly64x2_t {
     transmute(a)
 }
@@ -7960,7 +7960,7 @@ pub unsafe fn vreinterpretq_p64_f64(a: float64x2_t) -> poly64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_f64_s8(a: int8x8_t) -> float64x1_t {
     transmute(a)
 }
@@ -7968,7 +7968,7 @@ pub unsafe fn vreinterpret_f64_s8(a: int8x8_t) -> float64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_f64_s16(a: int16x4_t) -> float64x1_t {
     transmute(a)
 }
@@ -7976,7 +7976,7 @@ pub unsafe fn vreinterpret_f64_s16(a: int16x4_t) -> float64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_f64_s32(a: int32x2_t) -> float64x1_t {
     transmute(a)
 }
@@ -7984,7 +7984,7 @@ pub unsafe fn vreinterpret_f64_s32(a: int32x2_t) -> float64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_f64_s64(a: int64x1_t) -> float64x1_t {
     transmute(a)
 }
@@ -7992,7 +7992,7 @@ pub unsafe fn vreinterpret_f64_s64(a: int64x1_t) -> float64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_f64_s8(a: int8x16_t) -> float64x2_t {
     transmute(a)
 }
@@ -8000,7 +8000,7 @@ pub unsafe fn vreinterpretq_f64_s8(a: int8x16_t) -> float64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_f64_s16(a: int16x8_t) -> float64x2_t {
     transmute(a)
 }
@@ -8008,7 +8008,7 @@ pub unsafe fn vreinterpretq_f64_s16(a: int16x8_t) -> float64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_f64_s32(a: int32x4_t) -> float64x2_t {
     transmute(a)
 }
@@ -8016,7 +8016,7 @@ pub unsafe fn vreinterpretq_f64_s32(a: int32x4_t) -> float64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_f64_s64(a: int64x2_t) -> float64x2_t {
     transmute(a)
 }
@@ -8024,7 +8024,7 @@ pub unsafe fn vreinterpretq_f64_s64(a: int64x2_t) -> float64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_f64_p8(a: poly8x8_t) -> float64x1_t {
     transmute(a)
 }
@@ -8032,7 +8032,7 @@ pub unsafe fn vreinterpret_f64_p8(a: poly8x8_t) -> float64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_f64_u16(a: uint16x4_t) -> float64x1_t {
     transmute(a)
 }
@@ -8040,7 +8040,7 @@ pub unsafe fn vreinterpret_f64_u16(a: uint16x4_t) -> float64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_f64_u32(a: uint32x2_t) -> float64x1_t {
     transmute(a)
 }
@@ -8048,7 +8048,7 @@ pub unsafe fn vreinterpret_f64_u32(a: uint32x2_t) -> float64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_f64_u64(a: uint64x1_t) -> float64x1_t {
     transmute(a)
 }
@@ -8056,7 +8056,7 @@ pub unsafe fn vreinterpret_f64_u64(a: uint64x1_t) -> float64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_f64_p8(a: poly8x16_t) -> float64x2_t {
     transmute(a)
 }
@@ -8064,7 +8064,7 @@ pub unsafe fn vreinterpretq_f64_p8(a: poly8x16_t) -> float64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_f64_u16(a: uint16x8_t) -> float64x2_t {
     transmute(a)
 }
@@ -8072,7 +8072,7 @@ pub unsafe fn vreinterpretq_f64_u16(a: uint16x8_t) -> float64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_f64_u32(a: uint32x4_t) -> float64x2_t {
     transmute(a)
 }
@@ -8080,7 +8080,7 @@ pub unsafe fn vreinterpretq_f64_u32(a: uint32x4_t) -> float64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_f64_u64(a: uint64x2_t) -> float64x2_t {
     transmute(a)
 }
@@ -8088,7 +8088,7 @@ pub unsafe fn vreinterpretq_f64_u64(a: uint64x2_t) -> float64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_f64_u8(a: uint8x8_t) -> float64x1_t {
     transmute(a)
 }
@@ -8096,7 +8096,7 @@ pub unsafe fn vreinterpret_f64_u8(a: uint8x8_t) -> float64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_f64_p16(a: poly16x4_t) -> float64x1_t {
     transmute(a)
 }
@@ -8104,7 +8104,7 @@ pub unsafe fn vreinterpret_f64_p16(a: poly16x4_t) -> float64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_f64_p64(a: poly64x1_t) -> float64x1_t {
     transmute(a)
 }
@@ -8112,7 +8112,7 @@ pub unsafe fn vreinterpret_f64_p64(a: poly64x1_t) -> float64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_f32_p64(a: poly64x1_t) -> float32x2_t {
     transmute(a)
 }
@@ -8120,7 +8120,7 @@ pub unsafe fn vreinterpret_f32_p64(a: poly64x1_t) -> float32x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_f64_u8(a: uint8x16_t) -> float64x2_t {
     transmute(a)
 }
@@ -8128,7 +8128,7 @@ pub unsafe fn vreinterpretq_f64_u8(a: uint8x16_t) -> float64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_f64_p16(a: poly16x8_t) -> float64x2_t {
     transmute(a)
 }
@@ -8136,7 +8136,7 @@ pub unsafe fn vreinterpretq_f64_p16(a: poly16x8_t) -> float64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_f64_p64(a: poly64x2_t) -> float64x2_t {
     transmute(a)
 }
@@ -8144,7 +8144,7 @@ pub unsafe fn vreinterpretq_f64_p64(a: poly64x2_t) -> float64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_f32_p64(a: poly64x2_t) -> float32x4_t {
     transmute(a)
 }
@@ -8152,7 +8152,7 @@ pub unsafe fn vreinterpretq_f32_p64(a: poly64x2_t) -> float32x4_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_f64_f32(a: float32x2_t) -> float64x1_t {
     transmute(a)
 }
@@ -8160,7 +8160,7 @@ pub unsafe fn vreinterpret_f64_f32(a: float32x2_t) -> float64x1_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_f32_f64(a: float64x1_t) -> float32x2_t {
     transmute(a)
 }
@@ -8168,7 +8168,7 @@ pub unsafe fn vreinterpret_f32_f64(a: float64x1_t) -> float32x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_f64_f32(a: float32x4_t) -> float64x2_t {
     transmute(a)
 }
@@ -8176,7 +8176,7 @@ pub unsafe fn vreinterpretq_f64_f32(a: float32x4_t) -> float64x2_t {
 /// Vector reinterpret cast operation
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_f32_f64(a: float64x2_t) -> float32x4_t {
     transmute(a)
 }

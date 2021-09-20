@@ -323,7 +323,7 @@ pub unsafe fn vld1q_f32(ptr: *const f32) -> float32x4_t {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.8"))]
 pub unsafe fn vst1_s8(ptr: *mut i8, a: int8x8_t) {
     vst1_v8i8(ptr as *const i8, a, align_of::<i8>() as i32)
 }
@@ -331,7 +331,7 @@ pub unsafe fn vst1_s8(ptr: *mut i8, a: int8x8_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.8"))]
 pub unsafe fn vst1q_s8(ptr: *mut i8, a: int8x16_t) {
     vst1q_v16i8(ptr as *const i8, a, align_of::<i8>() as i32)
 }
@@ -339,7 +339,7 @@ pub unsafe fn vst1q_s8(ptr: *mut i8, a: int8x16_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.16"))]
 pub unsafe fn vst1_s16(ptr: *mut i16, a: int16x4_t) {
     vst1_v4i16(ptr as *const i8, a, align_of::<i16>() as i32)
 }
@@ -347,7 +347,7 @@ pub unsafe fn vst1_s16(ptr: *mut i16, a: int16x4_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.16"))]
 pub unsafe fn vst1q_s16(ptr: *mut i16, a: int16x8_t) {
     vst1q_v8i16(ptr as *const i8, a, align_of::<i16>() as i32)
 }
@@ -355,7 +355,7 @@ pub unsafe fn vst1q_s16(ptr: *mut i16, a: int16x8_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.32"))]
 pub unsafe fn vst1_s32(ptr: *mut i32, a: int32x2_t) {
     vst1_v2i32(ptr as *const i8, a, align_of::<i32>() as i32)
 }
@@ -363,7 +363,7 @@ pub unsafe fn vst1_s32(ptr: *mut i32, a: int32x2_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.32"))]
 pub unsafe fn vst1q_s32(ptr: *mut i32, a: int32x4_t) {
     vst1q_v4i32(ptr as *const i8, a, align_of::<i32>() as i32)
 }
@@ -371,7 +371,7 @@ pub unsafe fn vst1q_s32(ptr: *mut i32, a: int32x4_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.64"))]
 pub unsafe fn vst1_s64(ptr: *mut i64, a: int64x1_t) {
     vst1_v1i64(ptr as *const i8, a, align_of::<i64>() as i32)
 }
@@ -379,7 +379,7 @@ pub unsafe fn vst1_s64(ptr: *mut i64, a: int64x1_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.64"))]
 pub unsafe fn vst1q_s64(ptr: *mut i64, a: int64x2_t) {
     vst1q_v2i64(ptr as *const i8, a, align_of::<i64>() as i32)
 }
@@ -387,7 +387,7 @@ pub unsafe fn vst1q_s64(ptr: *mut i64, a: int64x2_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.8"))]
 pub unsafe fn vst1_u8(ptr: *mut u8, a: uint8x8_t) {
     vst1_v8i8(ptr as *const i8, transmute(a), align_of::<u8>() as i32)
 }
@@ -395,7 +395,7 @@ pub unsafe fn vst1_u8(ptr: *mut u8, a: uint8x8_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.8"))]
 pub unsafe fn vst1q_u8(ptr: *mut u8, a: uint8x16_t) {
     vst1q_v16i8(ptr as *const i8, transmute(a), align_of::<u8>() as i32)
 }
@@ -403,7 +403,7 @@ pub unsafe fn vst1q_u8(ptr: *mut u8, a: uint8x16_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.16"))]
 pub unsafe fn vst1_u16(ptr: *mut u16, a: uint16x4_t) {
     vst1_v4i16(ptr as *const i8, transmute(a), align_of::<u16>() as i32)
 }
@@ -411,7 +411,7 @@ pub unsafe fn vst1_u16(ptr: *mut u16, a: uint16x4_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.16"))]
 pub unsafe fn vst1q_u16(ptr: *mut u16, a: uint16x8_t) {
     vst1q_v8i16(ptr as *const i8, transmute(a), align_of::<u16>() as i32)
 }
@@ -419,7 +419,7 @@ pub unsafe fn vst1q_u16(ptr: *mut u16, a: uint16x8_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.32"))]
 pub unsafe fn vst1_u32(ptr: *mut u32, a: uint32x2_t) {
     vst1_v2i32(ptr as *const i8, transmute(a), align_of::<u32>() as i32)
 }
@@ -427,7 +427,7 @@ pub unsafe fn vst1_u32(ptr: *mut u32, a: uint32x2_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.32"))]
 pub unsafe fn vst1q_u32(ptr: *mut u32, a: uint32x4_t) {
     vst1q_v4i32(ptr as *const i8, transmute(a), align_of::<u32>() as i32)
 }
@@ -435,7 +435,7 @@ pub unsafe fn vst1q_u32(ptr: *mut u32, a: uint32x4_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.64"))]
 pub unsafe fn vst1_u64(ptr: *mut u64, a: uint64x1_t) {
     vst1_v1i64(ptr as *const i8, transmute(a), align_of::<u64>() as i32)
 }
@@ -443,7 +443,7 @@ pub unsafe fn vst1_u64(ptr: *mut u64, a: uint64x1_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.64"))]
 pub unsafe fn vst1q_u64(ptr: *mut u64, a: uint64x2_t) {
     vst1q_v2i64(ptr as *const i8, transmute(a), align_of::<u64>() as i32)
 }
@@ -451,7 +451,7 @@ pub unsafe fn vst1q_u64(ptr: *mut u64, a: uint64x2_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.8"))]
 pub unsafe fn vst1_p8(ptr: *mut p8, a: poly8x8_t) {
     vst1_v8i8(ptr as *const i8, transmute(a), align_of::<p8>() as i32)
 }
@@ -459,7 +459,7 @@ pub unsafe fn vst1_p8(ptr: *mut p8, a: poly8x8_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.8"))]
 pub unsafe fn vst1q_p8(ptr: *mut p8, a: poly8x16_t) {
     vst1q_v16i8(ptr as *const i8, transmute(a), align_of::<p8>() as i32)
 }
@@ -467,7 +467,7 @@ pub unsafe fn vst1q_p8(ptr: *mut p8, a: poly8x16_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.16"))]
 pub unsafe fn vst1_p16(ptr: *mut p16, a: poly16x4_t) {
     vst1_v4i16(ptr as *const i8, transmute(a), align_of::<p16>() as i32)
 }
@@ -475,7 +475,7 @@ pub unsafe fn vst1_p16(ptr: *mut p16, a: poly16x4_t) {
 /// Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.16"))]
 pub unsafe fn vst1q_p16(ptr: *mut p16, a: poly16x8_t) {
     vst1q_v8i16(ptr as *const i8, transmute(a), align_of::<p8>() as i32)
 }
@@ -483,7 +483,7 @@ pub unsafe fn vst1q_p16(ptr: *mut p16, a: poly16x8_t) {
 // Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.32"))]
 pub unsafe fn vst1_f32(ptr: *mut f32, a: float32x2_t) {
     vst1_v2f32(ptr as *const i8, a, align_of::<f32>() as i32)
 }
@@ -491,7 +491,7 @@ pub unsafe fn vst1_f32(ptr: *mut f32, a: float32x2_t) {
 // Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr(str))]
+#[cfg_attr(test, assert_instr("vst1.32"))]
 pub unsafe fn vst1q_f32(ptr: *mut f32, a: float32x4_t) {
     vst1q_v4f32(ptr as *const i8, a, align_of::<f32>() as i32)
 }

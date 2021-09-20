@@ -75,7 +75,7 @@ pub unsafe fn _mm_cvti64_sd(a: __m128d, b: i64) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtu64_ss&expand=2035)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(mov))] // should be vcvtusi2ss
+#[cfg_attr(test, assert_instr(vcvtusi2ss))]
 pub unsafe fn _mm_cvtu64_ss(a: __m128, b: u64) -> __m128 {
     let b = b as f32;
     let r = simd_insert(a, 0, b);
@@ -87,7 +87,7 @@ pub unsafe fn _mm_cvtu64_ss(a: __m128, b: u64) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtu64_sd&expand=2034)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(mov))] // should be vcvtusi2sd
+#[cfg_attr(test, assert_instr(vcvtusi2sd))]
 pub unsafe fn _mm_cvtu64_sd(a: __m128d, b: u64) -> __m128d {
     let b = b as f64;
     let r = simd_insert(a, 0, b);

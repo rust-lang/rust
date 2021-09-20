@@ -1709,7 +1709,7 @@ pub unsafe fn vpmaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 /// Extract vector from pair of vectors
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str, N = 0))]
+#[cfg_attr(test, assert_instr(nop, N = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vext_p64<const N: i32>(a: poly64x1_t, _b: poly64x1_t) -> poly64x1_t {
     if N != 0 {
@@ -1721,7 +1721,7 @@ pub unsafe fn vext_p64<const N: i32>(a: poly64x1_t, _b: poly64x1_t) -> poly64x1_
 /// Extract vector from pair of vectors
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(str, N = 0))]
+#[cfg_attr(test, assert_instr(nop, N = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vext_f64<const N: i32>(a: float64x1_t, _b: float64x1_t) -> float64x1_t {
     if N != 0 {
@@ -1820,7 +1820,7 @@ pub unsafe fn vdup_n_p64(value: p64) -> poly64x1_t {
 /// Duplicate vector element to vector or scalar
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(ldr))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vdup_n_f64(value: f64) -> float64x1_t {
     float64x1_t(value)
 }
@@ -1852,7 +1852,7 @@ pub unsafe fn vmov_n_p64(value: p64) -> poly64x1_t {
 /// Duplicate vector element to vector or scalar
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(ldr))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vmov_n_f64(value: f64) -> float64x1_t {
     vdup_n_f64(value)
 }
@@ -1884,7 +1884,7 @@ pub unsafe fn vget_high_f64(a: float64x2_t) -> float64x1_t {
 /// Duplicate vector element to vector or scalar
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(ldr))]
+#[cfg_attr(test, assert_instr(ext))]
 pub unsafe fn vget_high_p64(a: poly64x2_t) -> poly64x1_t {
     transmute(u64x1::new(simd_extract(a, 1)))
 }
@@ -1892,7 +1892,7 @@ pub unsafe fn vget_high_p64(a: poly64x2_t) -> poly64x1_t {
 /// Duplicate vector element to vector or scalar
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(ldr))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vget_low_f64(a: float64x2_t) -> float64x1_t {
     float64x1_t(simd_extract(a, 0))
 }
@@ -1900,7 +1900,7 @@ pub unsafe fn vget_low_f64(a: float64x2_t) -> float64x1_t {
 /// Duplicate vector element to vector or scalar
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(ldr))]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vget_low_p64(a: poly64x2_t) -> poly64x1_t {
     transmute(u64x1::new(simd_extract(a, 0)))
 }

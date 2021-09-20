@@ -41,6 +41,10 @@ pub fn assert_instr(
     // testing for.
     let disable_assert_instr = std::env::var("STDARCH_DISABLE_ASSERT_INSTR").is_ok();
 
+    // Disable dedup guard. Only works if the LLVM MergeFunctions pass is disabled, e.g.
+    // with `-Z merge-functions=disabled` in RUSTFLAGS.
+    let disable_dedup_guard = std::env::var("STDARCH_DISABLE_DEDUP_GUARD").is_ok();
+
     // If instruction tests are disabled avoid emitting this shim at all, just
     // return the original item without our attribute.
     if !cfg!(optimized) || disable_assert_instr {
@@ -128,27 +132,38 @@ pub fn assert_instr(
         syn::LitStr::new("C", proc_macro2::Span::call_site())
     };
     let shim_name_str = format!("{}{}", shim_name, assert_name);
-    let to_test = quote! {
+    let to_test = if disable_dedup_guard {
+        quote! {
+            #attrs
+            #[no_mangle]
+            #[inline(never)]
+            pub unsafe extern #abi fn #shim_name(#(#inputs),*) #ret {
+                #name::<#(#const_vals),*>(#(#input_vals),*)
+            }
+        }
+    } else {
+        quote! {
 
-        const #shim_name_ptr : *const u8 = #shim_name_str.as_ptr();
+            const #shim_name_ptr : *const u8 = #shim_name_str.as_ptr();
 
-        #attrs
-        #[no_mangle]
-        #[inline(never)]
-        pub unsafe extern #abi fn #shim_name(#(#inputs),*) #ret {
-            // The compiler in optimized mode by default runs a pass called
-            // "mergefunc" where it'll merge functions that look identical.
-            // Turns out some intrinsics produce identical code and they're
-            // folded together, meaning that one just jumps to another. This
-            // messes up our inspection of the disassembly of this function and
-            // we're not a huge fan of that.
-            //
-            // To thwart this pass and prevent functions from being merged we
-            // generate some code that's hopefully very tight in terms of
-            // codegen but is otherwise unique to prevent code from being
-            // folded.
-            ::stdarch_test::_DONT_DEDUP = #shim_name_ptr;
-            #name::<#(#const_vals),*>(#(#input_vals),*)
+            #attrs
+            #[no_mangle]
+            #[inline(never)]
+            pub unsafe extern #abi fn #shim_name(#(#inputs),*) #ret {
+                // The compiler in optimized mode by default runs a pass called
+                // "mergefunc" where it'll merge functions that look identical.
+                // Turns out some intrinsics produce identical code and they're
+                // folded together, meaning that one just jumps to another. This
+                // messes up our inspection of the disassembly of this function and
+                // we're not a huge fan of that.
+                //
+                // To thwart this pass and prevent functions from being merged we
+                // generate some code that's hopefully very tight in terms of
+                // codegen but is otherwise unique to prevent code from being
+                // folded.
+                ::stdarch_test::_DONT_DEDUP = #shim_name_ptr;
+                #name::<#(#const_vals),*>(#(#input_vals),*)
+            }
         }
     };
 
