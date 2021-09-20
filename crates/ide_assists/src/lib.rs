@@ -125,7 +125,7 @@ mod handlers {
     mod extract_struct_from_enum_variant;
     mod extract_type_alias;
     mod extract_variable;
-    mod fill_match_arms;
+    mod add_missing_match_arms;
     mod fix_visibility;
     mod flip_binexpr;
     mod flip_comma;
@@ -143,7 +143,7 @@ mod handlers {
     mod generate_is_empty_from_len;
     mod generate_new;
     mod generate_setter;
-    mod infer_function_return_type;
+    mod add_return_type;
     mod inline_call;
     mod inline_local_variable;
     mod introduce_named_lifetime;
@@ -164,7 +164,7 @@ mod handlers {
     mod replace_derive_with_manual_impl;
     mod replace_for_loop_with_for_each;
     mod replace_if_let_with_match;
-    mod replace_impl_trait_with_generic;
+    mod introduce_named_generic;
     mod replace_let_with_if_let;
     mod replace_qualified_name_with_use;
     mod replace_string_with_char;
@@ -179,7 +179,9 @@ mod handlers {
         &[
             // These are alphabetic for the foolish consistency
             add_explicit_type::add_explicit_type,
+            add_missing_match_arms::add_missing_match_arms,
             add_lifetime_to_type::add_lifetime_to_type,
+            add_return_type::add_return_type,
             add_turbo_fish::add_turbo_fish,
             apply_demorgan::apply_demorgan,
             auto_import::auto_import,
@@ -197,7 +199,6 @@ mod handlers {
             expand_glob_import::expand_glob_import,
             extract_struct_from_enum_variant::extract_struct_from_enum_variant,
             extract_type_alias::extract_type_alias,
-            fill_match_arms::fill_match_arms,
             fix_visibility::fix_visibility,
             flip_binexpr::flip_binexpr,
             flip_comma::flip_comma,
@@ -214,9 +215,9 @@ mod handlers {
             generate_impl::generate_impl,
             generate_is_empty_from_len::generate_is_empty_from_len,
             generate_new::generate_new,
-            infer_function_return_type::infer_function_return_type,
             inline_call::inline_call,
             inline_local_variable::inline_local_variable,
+            introduce_named_generic::introduce_named_generic,
             introduce_named_lifetime::introduce_named_lifetime,
             invert_if::invert_if,
             merge_imports::merge_imports,
@@ -239,7 +240,6 @@ mod handlers {
             replace_for_loop_with_for_each::replace_for_loop_with_for_each,
             replace_if_let_with_match::replace_if_let_with_match,
             replace_if_let_with_match::replace_match_with_if_let,
-            replace_impl_trait_with_generic::replace_impl_trait_with_generic,
             replace_let_with_if_let::replace_let_with_if_let,
             replace_qualified_name_with_use::replace_qualified_name_with_use,
             sort_items::sort_items,

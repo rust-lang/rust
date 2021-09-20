@@ -5,7 +5,7 @@ use syntax::{
 
 use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
 
-// Assist: replace_impl_trait_with_generic
+// Assist: introduce_named_generic
 //
 // Replaces `impl Trait` function argument with the named generic.
 //
@@ -16,10 +16,7 @@ use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
 // ```
 // fn foo<B: Bar>(bar: B) {}
 // ```
-pub(crate) fn replace_impl_trait_with_generic(
-    acc: &mut Assists,
-    ctx: &AssistContext,
-) -> Option<()> {
+pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let impl_trait_type = ctx.find_node_at_offset::<ast::ImplTraitType>()?;
     let param = impl_trait_type.syntax().parent().and_then(ast::Param::cast)?;
     let fn_ = param.syntax().ancestors().find_map(ast::Fn::cast)?;
@@ -28,7 +25,7 @@ pub(crate) fn replace_impl_trait_with_generic(
 
     let target = fn_.syntax().text_range();
     acc.add(
-        AssistId("replace_impl_trait_with_generic", AssistKind::RefactorRewrite),
+        AssistId("introduce_named_generic", AssistKind::RefactorRewrite),
         "Replace impl trait with generic",
         target,
         |edit| {
@@ -54,9 +51,9 @@ mod tests {
     use crate::tests::check_assist;
 
     #[test]
-    fn replace_impl_trait_with_generic_params() {
+    fn introduce_named_generic_params() {
         check_assist(
-            replace_impl_trait_with_generic,
+            introduce_named_generic,
             r#"fn foo<G>(bar: $0impl Bar) {}"#,
             r#"fn foo<G, B: Bar>(bar: B) {}"#,
         );
@@ -65,7 +62,7 @@ mod tests {
     #[test]
     fn replace_impl_trait_without_generic_params() {
         check_assist(
-            replace_impl_trait_with_generic,
+            introduce_named_generic,
             r#"fn foo(bar: $0impl Bar) {}"#,
             r#"fn foo<B: Bar>(bar: B) {}"#,
         );
@@ -74,7 +71,7 @@ mod tests {
     #[test]
     fn replace_two_impl_trait_with_generic_params() {
         check_assist(
-            replace_impl_trait_with_generic,
+            introduce_named_generic,
             r#"fn foo<G>(foo: impl Foo, bar: $0impl Bar) {}"#,
             r#"fn foo<G, B: Bar>(foo: impl Foo, bar: B) {}"#,
         );
@@ -83,7 +80,7 @@ mod tests {
     #[test]
     fn replace_impl_trait_with_empty_generic_params() {
         check_assist(
-            replace_impl_trait_with_generic,
+            introduce_named_generic,
             r#"fn foo<>(bar: $0impl Bar) {}"#,
             r#"fn foo<B: Bar>(bar: B) {}"#,
         );
@@ -92,7 +89,7 @@ mod tests {
     #[test]
     fn replace_impl_trait_with_empty_multiline_generic_params() {
         check_assist(
-            replace_impl_trait_with_generic,
+            introduce_named_generic,
             r#"
 fn foo<
 >(bar: $0impl Bar) {}
@@ -109,7 +106,7 @@ fn foo<B: Bar
         // FIXME: This is wrong, we should pick a different name if the one we
         // want is already bound.
         check_assist(
-            replace_impl_trait_with_generic,
+            introduce_named_generic,
             r#"fn foo<B>(bar: $0impl Bar) {}"#,
             r#"fn foo<B, B: Bar>(bar: B) {}"#,
         );
@@ -118,7 +115,7 @@ fn foo<B: Bar
     #[test]
     fn replace_impl_trait_with_multiline_generic_params() {
         check_assist(
-            replace_impl_trait_with_generic,
+            introduce_named_generic,
             r#"
 fn foo<
     G: Foo,
@@ -139,7 +136,7 @@ fn foo<
     #[test]
     fn replace_impl_trait_multiple() {
         check_assist(
-            replace_impl_trait_with_generic,
+            introduce_named_generic,
             r#"fn foo(bar: $0impl Foo + Bar) {}"#,
             r#"fn foo<F: Foo + Bar>(bar: F) {}"#,
         );

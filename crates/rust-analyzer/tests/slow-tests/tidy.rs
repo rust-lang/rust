@@ -273,7 +273,7 @@ fn check_todo(path: &Path, text: &str) {
         // Some of our assists generate `todo!()`.
         "handlers/add_turbo_fish.rs",
         "handlers/generate_function.rs",
-        "handlers/fill_match_arms.rs",
+        "handlers/add_missing_match_arms.rs",
         "handlers/replace_derive_with_manual_impl.rs",
         // To support generating `todo!()` in assists, we have `expr_todo()` in
         // `ast::make`.

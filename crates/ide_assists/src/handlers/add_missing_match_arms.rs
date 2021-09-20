@@ -12,7 +12,7 @@ use crate::{
     AssistContext, AssistId, AssistKind, Assists,
 };
 
-// Assist: fill_match_arms
+// Assist: add_missing_match_arms
 //
 // Adds missing clauses to a `match` expression.
 //
@@ -36,7 +36,7 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let match_expr = ctx.find_node_at_offset_with_descend::<ast::MatchExpr>()?;
     let match_arm_list = match_expr.match_arm_list()?;
 
@@ -105,7 +105,7 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
         let missing_pats = variants_of_enums
             .into_iter()
             .multi_cartesian_product()
-            .inspect(|_| cov_mark::hit!(fill_match_arms_lazy_computation))
+            .inspect(|_| cov_mark::hit!(add_missing_match_arms_lazy_computation))
             .map(|variants| {
                 let patterns =
                     variants.into_iter().filter_map(|variant| build_pat(ctx.db(), module, variant));
@@ -123,7 +123,7 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
 
     let target = ctx.sema.original_range(match_expr.syntax()).range;
     acc.add(
-        AssistId("fill_match_arms", AssistKind::QuickFix),
+        AssistId("add_missing_match_arms", AssistKind::QuickFix),
         "Fill match arms",
         target,
         |builder| {
@@ -146,7 +146,7 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
                 if is_empty_expr {
                     arm.remove();
                 } else {
-                    cov_mark::hit!(fill_match_arms_empty_expr);
+                    cov_mark::hit!(add_missing_match_arms_empty_expr);
                 }
             }
             let mut first_new_arm = None;
@@ -283,12 +283,12 @@ mod tests {
         check_assist, check_assist_not_applicable, check_assist_target, check_assist_unresolved,
     };
 
-    use super::fill_match_arms;
+    use super::add_missing_match_arms;
 
     #[test]
     fn all_match_arms_provided() {
         check_assist_not_applicable(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum A {
     As,
@@ -309,7 +309,7 @@ fn main() {
     #[test]
     fn all_boolean_match_arms_provided() {
         check_assist_not_applicable(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 fn foo(a: bool) {
     match a$0 {
@@ -326,7 +326,7 @@ fn foo(a: bool) {
         // for now this case is not handled, although it potentially could be
         // in the future
         check_assist_not_applicable(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 fn main() {
     match (0, false)$0 {
@@ -337,9 +337,9 @@ fn main() {
     }
 
     #[test]
-    fn fill_match_arms_boolean() {
+    fn add_missing_match_arms_boolean() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 fn foo(a: bool) {
     match a$0 {
@@ -360,7 +360,7 @@ fn foo(a: bool) {
     #[test]
     fn partial_fill_boolean() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 fn foo(a: bool) {
     match a$0 {
@@ -382,7 +382,7 @@ fn foo(a: bool) {
     #[test]
     fn all_boolean_tuple_arms_provided() {
         check_assist_not_applicable(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 fn foo(a: bool) {
     match (a, a)$0 {
@@ -399,7 +399,7 @@ fn foo(a: bool) {
     #[test]
     fn fill_boolean_tuple() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 fn foo(a: bool) {
     match (a, a)$0 {
@@ -422,7 +422,7 @@ fn foo(a: bool) {
     #[test]
     fn partial_fill_boolean_tuple() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 fn foo(a: bool) {
     match (a, a)$0 {
@@ -446,7 +446,7 @@ fn foo(a: bool) {
     #[test]
     fn partial_fill_record_tuple() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum A {
     As,
@@ -480,7 +480,7 @@ fn main() {
     #[test]
     fn partial_fill_option() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 //- minicore: option
 fn main() {
@@ -503,7 +503,7 @@ fn main() {
     #[test]
     fn partial_fill_or_pat() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum A { As, Bs, Cs(Option<i32>) }
 fn main() {
@@ -527,7 +527,7 @@ fn main() {
     #[test]
     fn partial_fill() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum A { As, Bs, Cs, Ds(String), Es(B) }
 enum B { Xs, Ys }
@@ -558,7 +558,7 @@ fn main() {
     #[test]
     fn partial_fill_bind_pat() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum A { As, Bs, Cs(Option<i32>) }
 fn main() {
@@ -582,9 +582,9 @@ fn main() {
     }
 
     #[test]
-    fn fill_match_arms_empty_body() {
+    fn add_missing_match_arms_empty_body() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum A { As, Bs, Cs(String), Ds(String, String), Es { x: usize, y: usize } }
 
@@ -611,9 +611,9 @@ fn main() {
     }
 
     #[test]
-    fn fill_match_arms_tuple_of_enum() {
+    fn add_missing_match_arms_tuple_of_enum() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum A { One, Two }
 enum B { One, Two }
@@ -643,9 +643,9 @@ fn main() {
     }
 
     #[test]
-    fn fill_match_arms_tuple_of_enum_ref() {
+    fn add_missing_match_arms_tuple_of_enum_ref() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum A { One, Two }
 enum B { One, Two }
@@ -675,9 +675,9 @@ fn main() {
     }
 
     #[test]
-    fn fill_match_arms_tuple_of_enum_partial() {
+    fn add_missing_match_arms_tuple_of_enum_partial() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum A { One, Two }
 enum B { One, Two }
@@ -709,9 +709,9 @@ fn main() {
     }
 
     #[test]
-    fn fill_match_arms_tuple_of_enum_partial_with_wildcards() {
+    fn add_missing_match_arms_tuple_of_enum_partial_with_wildcards() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 //- minicore: option
 fn main() {
@@ -738,10 +738,10 @@ fn main() {
     }
 
     #[test]
-    fn fill_match_arms_partial_with_deep_pattern() {
+    fn add_missing_match_arms_partial_with_deep_pattern() {
         // Fixme: cannot handle deep patterns
         check_assist_not_applicable(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 //- minicore: option
 fn main() {
@@ -755,9 +755,9 @@ fn main() {
     }
 
     #[test]
-    fn fill_match_arms_tuple_of_enum_not_applicable() {
+    fn add_missing_match_arms_tuple_of_enum_not_applicable() {
         check_assist_not_applicable(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum A { One, Two }
 enum B { One, Two }
@@ -777,9 +777,9 @@ fn main() {
     }
 
     #[test]
-    fn fill_match_arms_single_element_tuple_of_enum() {
+    fn add_missing_match_arms_single_element_tuple_of_enum() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum A { One, Two }
 
@@ -806,7 +806,7 @@ fn main() {
     #[test]
     fn test_fill_match_arm_refs() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum A { As }
 
@@ -827,7 +827,7 @@ fn foo(a: &A) {
         );
 
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum A {
     Es { x: usize, y: usize }
@@ -853,9 +853,9 @@ fn foo(a: &mut A) {
     }
 
     #[test]
-    fn fill_match_arms_target() {
+    fn add_missing_match_arms_target() {
         check_assist_target(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum E { X, Y }
 
@@ -868,9 +868,9 @@ fn main() {
     }
 
     #[test]
-    fn fill_match_arms_trivial_arm() {
+    fn add_missing_match_arms_trivial_arm() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum E { X, Y }
 
@@ -894,9 +894,9 @@ fn main() {
     }
 
     #[test]
-    fn fill_match_arms_qualifies_path() {
+    fn add_missing_match_arms_qualifies_path() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 mod foo { pub enum E { X, Y } }
 use foo::E::X;
@@ -922,9 +922,9 @@ fn main() {
     }
 
     #[test]
-    fn fill_match_arms_preserves_comments() {
+    fn add_missing_match_arms_preserves_comments() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum A { One, Two }
 fn foo(a: A) {
@@ -950,9 +950,9 @@ fn foo(a: A) {
     }
 
     #[test]
-    fn fill_match_arms_preserves_comments_empty() {
+    fn add_missing_match_arms_preserves_comments_empty() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum A { One, Two }
 fn foo(a: A) {
@@ -975,9 +975,9 @@ fn foo(a: A) {
     }
 
     #[test]
-    fn fill_match_arms_placeholder() {
+    fn add_missing_match_arms_placeholder() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum A { One, Two, }
 fn foo(a: A) {
@@ -1002,7 +1002,7 @@ fn foo(a: A) {
     fn option_order() {
         cov_mark::check!(option_order);
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 //- minicore: option
 fn foo(opt: Option<i32>) {
@@ -1024,7 +1024,7 @@ fn foo(opt: Option<i32>) {
     #[test]
     fn works_inside_macro_call() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 macro_rules! m { ($expr:expr) => {$expr}}
 enum Test {
@@ -1057,9 +1057,9 @@ fn foo(t: Test) {
     #[test]
     fn lazy_computation() {
         // Computing a single missing arm is enough to determine applicability of the assist.
-        cov_mark::check_count!(fill_match_arms_lazy_computation, 1);
+        cov_mark::check_count!(add_missing_match_arms_lazy_computation, 1);
         check_assist_unresolved(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 enum A { One, Two, }
 fn foo(tuple: (A, A)) {
@@ -1072,7 +1072,7 @@ fn foo(tuple: (A, A)) {
     #[test]
     fn adds_comma_before_new_arms() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 fn foo(t: bool) {
     match $0t {
@@ -1092,7 +1092,7 @@ fn foo(t: bool) {
     #[test]
     fn does_not_add_extra_comma() {
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 fn foo(t: bool) {
     match $0t {
@@ -1111,9 +1111,9 @@ fn foo(t: bool) {
 
     #[test]
     fn does_not_remove_catch_all_with_non_empty_expr() {
-        cov_mark::check!(fill_match_arms_empty_expr);
+        cov_mark::check!(add_missing_match_arms_empty_expr);
         check_assist(
-            fill_match_arms,
+            add_missing_match_arms,
             r#"
 fn foo(t: bool) {
     match $0t {
