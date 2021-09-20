@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_note;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{
     match_def_path, path_to_local_id, paths, peel_hir_expr_while, ty::is_uninit_value_valid_for_ty, SpanlessEq,
@@ -71,13 +71,14 @@ fn handle_uninit_vec_pair(
         // Check T of Vec<T>
         if !is_uninit_value_valid_for_ty(cx, substs.type_at(0));
         then {
-            span_lint_and_note(
+            span_lint_and_then(
                 cx,
                 UNINIT_VEC,
-                call_span,
+                vec![call_span, maybe_with_capacity_or_reserve.span],
                 "calling `set_len()` immediately after reserving a buffer creates uninitialized values",
-                Some(maybe_with_capacity_or_reserve.span),
-                "the buffer is reserved here"
+                |diag| {
+                    diag.help("initialize the buffer or wrap the content in `MaybeUninit`");
+                },
             );
         }
     }
@@ -155,9 +156,10 @@ fn extract_set_len_self(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Option<(&
     // peel unsafe blocks in `unsafe { vec.set_len() }`
     let expr = peel_hir_expr_while(expr, |e| {
         if let ExprKind::Block(block, _) = e.kind {
+            // Extract the first statement/expression
             match (block.stmts.get(0).map(|stmt| &stmt.kind), block.expr) {
                 (None, Some(expr)) => Some(expr),
-                (Some(StmtKind::Expr(expr) | StmtKind::Semi(expr)), None) => Some(expr),
+                (Some(StmtKind::Expr(expr) | StmtKind::Semi(expr)), _) => Some(expr),
                 _ => None,
             }
         } else {
