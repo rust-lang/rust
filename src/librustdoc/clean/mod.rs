@@ -392,8 +392,8 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
         Type::QPath {
             name: cx.tcx.associated_item(self.item_def_id).ident.name,
             self_def_id: self_type.def_id(),
-            self_type: Box::new(self_type),
-            trait_: Box::new(trait_),
+            self_type: box self_type,
+            trait_: box trait_,
         }
     }
 }
@@ -1284,8 +1284,8 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
             Type::QPath {
                 name: p.segments.last().expect("segments were empty").ident.name,
                 self_def_id: Some(DefId::local(qself.hir_id.owner.local_def_index)),
-                self_type: Box::new(qself.clean(cx)),
-                trait_: Box::new(resolve_type(cx, trait_path)),
+                self_type: box qself.clean(cx),
+                trait_: box resolve_type(cx, trait_path),
             }
         }
         hir::QPath::TypeRelative(ref qself, ref segment) => {
@@ -1300,8 +1300,8 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
             Type::QPath {
                 name: segment.ident.name,
                 self_def_id: res.opt_def_id(),
-                self_type: Box::new(qself.clean(cx)),
-                trait_: Box::new(resolve_type(cx, trait_path)),
+                self_type: box qself.clean(cx),
+                trait_: box resolve_type(cx, trait_path),
             }
         }
         hir::QPath::LangItem(..) => bug!("clean: requiring documentation of lang item"),
@@ -1314,7 +1314,7 @@ impl Clean<Type> for hir::Ty<'_> {
 
         match self.kind {
             TyKind::Never => Never,
-            TyKind::Ptr(ref m) => RawPointer(m.mutbl, Box::new(m.ty.clean(cx))),
+            TyKind::Ptr(ref m) => RawPointer(m.mutbl, box m.ty.clean(cx)),
             TyKind::Rptr(ref l, ref m) => {
                 // There are two times a `Fresh` lifetime can be created:
                 // 1. For `&'_ x`, written by the user. This corresponds to `lower_lifetime` in `rustc_ast_lowering`.
@@ -1326,9 +1326,9 @@ impl Clean<Type> for hir::Ty<'_> {
                 let elided =
                     l.is_elided() || matches!(l.name, LifetimeName::Param(ParamName::Fresh(_)));
                 let lifetime = if elided { None } else { Some(l.clean(cx)) };
-                BorrowedRef { lifetime, mutability: m.mutbl, type_: Box::new(m.ty.clean(cx)) }
+                BorrowedRef { lifetime, mutability: m.mutbl, type_: box m.ty.clean(cx) }
             }
-            TyKind::Slice(ref ty) => Slice(Box::new(ty.clean(cx))),
+            TyKind::Slice(ref ty) => Slice(box ty.clean(cx)),
             TyKind::Array(ref ty, ref length) => {
                 let def_id = cx.tcx.hir().local_def_id(length.hir_id);
                 // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
@@ -1341,7 +1341,7 @@ impl Clean<Type> for hir::Ty<'_> {
                 let ct = ty::Const::from_anon_const(cx.tcx, def_id);
                 let param_env = cx.tcx.param_env(def_id);
                 let length = print_const(cx, ct.eval(cx.tcx, param_env));
-                Array(Box::new(ty.clean(cx)), length)
+                Array(box ty.clean(cx), length)
             }
             TyKind::Tup(ref tys) => Tuple(tys.clean(cx)),
             TyKind::OpaqueDef(item_id, _) => {
@@ -1358,7 +1358,7 @@ impl Clean<Type> for hir::Ty<'_> {
                 let lifetime = if !lifetime.is_elided() { Some(lifetime.clean(cx)) } else { None };
                 DynTrait(bounds, lifetime)
             }
-            TyKind::BareFn(ref barefn) => BareFunction(Box::new(barefn.clean(cx))),
+            TyKind::BareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
             TyKind::Infer | TyKind::Err => Infer,
             TyKind::Typeof(..) => panic!("unimplemented type {:?}", self.kind),
@@ -1409,29 +1409,27 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::Uint(uint_ty) => Primitive(uint_ty.into()),
             ty::Float(float_ty) => Primitive(float_ty.into()),
             ty::Str => Primitive(PrimitiveType::Str),
-            ty::Slice(ty) => Slice(Box::new(ty.clean(cx))),
+            ty::Slice(ty) => Slice(box ty.clean(cx)),
             ty::Array(ty, n) => {
                 let mut n = cx.tcx.lift(n).expect("array lift failed");
                 n = n.eval(cx.tcx, ty::ParamEnv::reveal_all());
                 let n = print_const(cx, n);
-                Array(Box::new(ty.clean(cx)), n)
+                Array(box ty.clean(cx), n)
             }
-            ty::RawPtr(mt) => RawPointer(mt.mutbl, Box::new(mt.ty.clean(cx))),
-            ty::Ref(r, ty, mutbl) => BorrowedRef {
-                lifetime: r.clean(cx),
-                mutability: mutbl,
-                type_: Box::new(ty.clean(cx)),
-            },
+            ty::RawPtr(mt) => RawPointer(mt.mutbl, box mt.ty.clean(cx)),
+            ty::Ref(r, ty, mutbl) => {
+                BorrowedRef { lifetime: r.clean(cx), mutability: mutbl, type_: box ty.clean(cx) }
+            }
             ty::FnDef(..) | ty::FnPtr(_) => {
                 let ty = cx.tcx.lift(*self).expect("FnPtr lift failed");
                 let sig = ty.fn_sig(cx.tcx);
                 let def_id = DefId::local(CRATE_DEF_INDEX);
-                BareFunction(Box::new(BareFunctionDecl {
+                BareFunction(box BareFunctionDecl {
                     unsafety: sig.unsafety(),
                     generic_params: Vec::new(),
                     decl: (def_id, sig).clean(cx),
                     abi: sig.abi(),
-                }))
+                })
             }
             ty::Adt(def, substs) => {
                 let did = def.did;
@@ -1974,10 +1972,10 @@ fn clean_extern_crate(
     // FIXME: using `from_def_id_and_kind` breaks `rustdoc/masked` for some reason
     vec![Item {
         name: Some(name),
-        attrs: Box::new(attrs.clean(cx)),
+        attrs: box attrs.clean(cx),
         def_id: crate_def_id.into(),
         visibility: krate.vis.clean(cx),
-        kind: Box::new(ExternCrateItem { src: orig_name }),
+        kind: box ExternCrateItem { src: orig_name },
         cfg: attrs.cfg(cx.sess()),
     }]
 }
