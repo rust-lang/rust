@@ -3,11 +3,37 @@ use ide_db::{
     base_db::AnchoredPathBuf,
 };
 use syntax::{
-    ast::{self},
-    AstNode, TextRange,
+    ast::{self, Whitespace},
+    AstNode, AstToken, SourceFile, TextRange, TextSize,
 };
 
 use crate::assist_context::{AssistContext, Assists};
+
+/// Trim(remove leading and trailing whitespace) `initial_range` in `source_file`, return the trimmed range.
+fn trimmed_text_range(source_file: &SourceFile, initial_range: TextRange) -> TextRange {
+    let mut trimmed_range = initial_range;
+    while source_file
+        .syntax()
+        .token_at_offset(trimmed_range.start())
+        .find_map(Whitespace::cast)
+        .is_some()
+        && trimmed_range.start() < trimmed_range.end()
+    {
+        let start = trimmed_range.start() + TextSize::from(1);
+        trimmed_range = TextRange::new(start, trimmed_range.end());
+    }
+    while source_file
+        .syntax()
+        .token_at_offset(trimmed_range.end())
+        .find_map(Whitespace::cast)
+        .is_some()
+        && trimmed_range.start() < trimmed_range.end()
+    {
+        let end = trimmed_range.end() - TextSize::from(1);
+        trimmed_range = TextRange::new(trimmed_range.start(), end);
+    }
+    trimmed_range
+}
 
 // Assist: promote_mod_file
 //
@@ -17,7 +43,7 @@ use crate::assist_context::{AssistContext, Assists};
 // //- /main.rs
 // mod a;
 // //- /a.rs
-// $0fn t() {}
+// $0fn t() {}$0
 // ```
 // ->
 // ```
@@ -26,18 +52,23 @@ use crate::assist_context::{AssistContext, Assists};
 pub(crate) fn promote_mod_file(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let source_file = ctx.find_node_at_offset::<ast::SourceFile>()?;
     let module = ctx.sema.to_module_def(ctx.frange.file_id)?;
-    if module.is_mod_rs(ctx.db()) {
+    // Enable this assist if the user select all "meaningful" content in the source file
+    let trimmed_selected_range = trimmed_text_range(&source_file, ctx.frange.range);
+    let trimmed_file_range = trimmed_text_range(&source_file, source_file.syntax().text_range());
+    if module.is_mod_rs(ctx.db()) || trimmed_selected_range != trimmed_file_range {
         return None;
     }
+
     let target = TextRange::new(
         source_file.syntax().text_range().start(),
         source_file.syntax().text_range().end(),
     );
-    let path = format!("./{}/mod.rs", module.name(ctx.db())?.to_string());
+    let module_name = module.name(ctx.db())?.to_string();
+    let path = format!("./{}/mod.rs", module_name);
     let dst = AnchoredPathBuf { anchor: ctx.frange.file_id, path };
     acc.add(
         AssistId("promote_mod_file", AssistKind::Refactor),
-        "Promote Module to directory",
+        format!("Turn {}.rs to {}/mod.rs", module_name, module_name),
         target,
         |builder| {
             builder.move_file(ctx.frange.file_id, dst);
@@ -60,7 +91,7 @@ mod tests {
 mod a;
 //- /a.rs
 $0fn t() {}
-"#,
+$0"#,
             r#"
 //- /a/mod.rs
 fn t() {}
@@ -69,8 +100,8 @@ fn t() {}
     }
 
     #[test]
-    fn cursor_can_be_putted_anywhere() {
-        check_assist(
+    fn must_select_all_file() {
+        check_assist_not_applicable(
             promote_mod_file,
             r#"
 //- /main.rs
@@ -78,35 +109,14 @@ mod a;
 //- /a.rs
 fn t() {}$0
 "#,
-            r#"
-//- /a/mod.rs
-fn t() {}
-"#,
         );
-        check_assist(
+        check_assist_not_applicable(
             promote_mod_file,
             r#"
 //- /main.rs
 mod a;
 //- /a.rs
-fn t()$0 {}
-"#,
-            r#"
-//- /a/mod.rs
-fn t() {}
-"#,
-        );
-        check_assist(
-            promote_mod_file,
-            r#"
-//- /main.rs
-mod a;
-//- /a.rs
-fn t($0) {}
-"#,
-            r#"
-//- /a/mod.rs
-fn t() {}
+$0fn$0 t() {}
 "#,
         );
     }
@@ -147,8 +157,8 @@ $0fn t() {}
             r#"//- /main.rs
 mod a;
 //- /a.rs
-mod b;
-$0fn t() {}
+$0mod b;
+fn t() {}$0
 //- /a/b.rs
 fn t1() {}
 "#,

@@ -1234,7 +1234,7 @@ fn doctest_promote_mod_file() {
 //- /main.rs
 mod a;
 //- /a.rs
-$0fn t() {}
+$0fn t() {}$0
 "#####,
         r#####"
 fn t() {}
