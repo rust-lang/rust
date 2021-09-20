@@ -3,7 +3,7 @@ use syntax::{ast, AstNode, TextRange, TextSize};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
-// Assist: infer_function_return_type
+// Assist: add_return_type
 //
 // Adds the return type to a function or closure inferred from its tail expression if it doesn't have a return
 // type specified. This assists is useable in a functions or closures tail expression or return type position.
@@ -15,7 +15,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 // fn foo() -> i32 { 42i32 }
 // ```
-pub(crate) fn infer_function_return_type(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn add_return_type(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let (fn_type, tail_expr, builder_edit_pos) = extract_tail(ctx)?;
     let module = ctx.sema.scope(tail_expr.syntax()).module()?;
     let ty = ctx.sema.type_of_expr(&tail_expr)?.adjusted();
@@ -25,7 +25,7 @@ pub(crate) fn infer_function_return_type(acc: &mut Assists, ctx: &AssistContext)
     let ty = ty.display_source_code(ctx.db(), module.into()).ok()?;
 
     acc.add(
-        AssistId("infer_function_return_type", AssistKind::RefactorRewrite),
+        AssistId("add_return_type", AssistKind::RefactorRewrite),
         match fn_type {
             FnType::Function => "Add this function's return type",
             FnType::Closure { .. } => "Add this closure's return type",
@@ -129,7 +129,7 @@ mod tests {
     fn infer_return_type_specified_inferred() {
         cov_mark::check!(existing_infer_ret_type);
         check_assist(
-            infer_function_return_type,
+            add_return_type,
             r#"fn foo() -> $0_ {
     45
 }"#,
@@ -143,7 +143,7 @@ mod tests {
     fn infer_return_type_specified_inferred_closure() {
         cov_mark::check!(existing_infer_ret_type_closure);
         check_assist(
-            infer_function_return_type,
+            add_return_type,
             r#"fn foo() {
     || -> _ {$045};
 }"#,
@@ -157,7 +157,7 @@ mod tests {
     fn infer_return_type_cursor_at_return_type_pos() {
         cov_mark::check!(cursor_in_ret_position);
         check_assist(
-            infer_function_return_type,
+            add_return_type,
             r#"fn foo() $0{
     45
 }"#,
@@ -171,7 +171,7 @@ mod tests {
     fn infer_return_type_cursor_at_return_type_pos_closure() {
         cov_mark::check!(cursor_in_ret_position_closure);
         check_assist(
-            infer_function_return_type,
+            add_return_type,
             r#"fn foo() {
     || $045
 }"#,
@@ -185,7 +185,7 @@ mod tests {
     fn infer_return_type() {
         cov_mark::check!(cursor_on_tail);
         check_assist(
-            infer_function_return_type,
+            add_return_type,
             r#"fn foo() {
     45$0
 }"#,
@@ -198,7 +198,7 @@ mod tests {
     #[test]
     fn infer_return_type_nested() {
         check_assist(
-            infer_function_return_type,
+            add_return_type,
             r#"fn foo() {
     if true {
         3$0
@@ -220,7 +220,7 @@ mod tests {
     fn not_applicable_ret_type_specified() {
         cov_mark::check!(existing_ret_type);
         check_assist_not_applicable(
-            infer_function_return_type,
+            add_return_type,
             r#"fn foo() -> i32 {
     ( 45$0 + 32 ) * 123
 }"#,
@@ -230,7 +230,7 @@ mod tests {
     #[test]
     fn not_applicable_non_tail_expr() {
         check_assist_not_applicable(
-            infer_function_return_type,
+            add_return_type,
             r#"fn foo() {
     let x = $03;
     ( 45 + 32 ) * 123
@@ -241,7 +241,7 @@ mod tests {
     #[test]
     fn not_applicable_unit_return_type() {
         check_assist_not_applicable(
-            infer_function_return_type,
+            add_return_type,
             r#"fn foo() {
     ($0)
 }"#,
@@ -252,7 +252,7 @@ mod tests {
     fn infer_return_type_closure_block() {
         cov_mark::check!(cursor_on_tail_closure);
         check_assist(
-            infer_function_return_type,
+            add_return_type,
             r#"fn foo() {
     |x: i32| {
         x$0
@@ -269,7 +269,7 @@ mod tests {
     #[test]
     fn infer_return_type_closure() {
         check_assist(
-            infer_function_return_type,
+            add_return_type,
             r#"fn foo() {
     |x: i32| { x$0 };
 }"#,
@@ -283,7 +283,7 @@ mod tests {
     fn infer_return_type_closure_wrap() {
         cov_mark::check!(wrap_closure_non_block_expr);
         check_assist(
-            infer_function_return_type,
+            add_return_type,
             r#"fn foo() {
     |x: i32| x$0;
 }"#,
@@ -296,7 +296,7 @@ mod tests {
     #[test]
     fn infer_return_type_nested_closure() {
         check_assist(
-            infer_function_return_type,
+            add_return_type,
             r#"fn foo() {
     || {
         if true {
@@ -322,7 +322,7 @@ mod tests {
     fn not_applicable_ret_type_specified_closure() {
         cov_mark::check!(existing_ret_type_closure);
         check_assist_not_applicable(
-            infer_function_return_type,
+            add_return_type,
             r#"fn foo() {
     || -> i32 { 3$0 }
 }"#,
@@ -332,7 +332,7 @@ mod tests {
     #[test]
     fn not_applicable_non_tail_expr_closure() {
         check_assist_not_applicable(
-            infer_function_return_type,
+            add_return_type,
             r#"fn foo() {
     || -> i32 {
         let x = 3$0;

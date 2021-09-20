@@ -122,6 +122,45 @@ struct Point<'a> {
 }
 
 #[test]
+fn doctest_add_missing_match_arms() {
+    check_doc_test(
+        "add_missing_match_arms",
+        r#####"
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        $0
+    }
+}
+"#####,
+        r#####"
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        $0Action::Move { distance } => todo!(),
+        Action::Stop => todo!(),
+    }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_add_return_type() {
+    check_doc_test(
+        "add_return_type",
+        r#####"
+fn foo() { 4$02i32 }
+"#####,
+        r#####"
+fn foo() -> i32 { 42i32 }
+"#####,
+    )
+}
+
+#[test]
 fn doctest_add_turbo_fish() {
     check_doc_test(
         "add_turbo_fish",
@@ -511,32 +550,6 @@ fn main() {
 fn main() {
     let $0var_name = (1 + 2);
     var_name * 4;
-}
-"#####,
-    )
-}
-
-#[test]
-fn doctest_fill_match_arms() {
-    check_doc_test(
-        "fill_match_arms",
-        r#####"
-enum Action { Move { distance: u32 }, Stop }
-
-fn handle(action: Action) {
-    match action {
-        $0
-    }
-}
-"#####,
-        r#####"
-enum Action { Move { distance: u32 }, Stop }
-
-fn handle(action: Action) {
-    match action {
-        $0Action::Move { distance } => todo!(),
-        Action::Stop => todo!(),
-    }
 }
 "#####,
     )
@@ -995,19 +1008,6 @@ impl Person {
 }
 
 #[test]
-fn doctest_infer_function_return_type() {
-    check_doc_test(
-        "infer_function_return_type",
-        r#####"
-fn foo() { 4$02i32 }
-"#####,
-        r#####"
-fn foo() -> i32 { 42i32 }
-"#####,
-    )
-}
-
-#[test]
 fn doctest_inline_call() {
     check_doc_test(
         "inline_call",
@@ -1042,6 +1042,19 @@ fn main() {
 fn main() {
     (1 + 2) * 4;
 }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_introduce_named_generic() {
+    check_doc_test(
+        "introduce_named_generic",
+        r#####"
+fn foo(bar: $0impl Bar) {}
+"#####,
+        r#####"
+fn foo<B: Bar>(bar: B) {}
 "#####,
     )
 }
@@ -1524,19 +1537,6 @@ fn handle(action: Action) {
         _ => bar(),
     }
 }
-"#####,
-    )
-}
-
-#[test]
-fn doctest_replace_impl_trait_with_generic() {
-    check_doc_test(
-        "replace_impl_trait_with_generic",
-        r#####"
-fn foo(bar: $0impl Bar) {}
-"#####,
-        r#####"
-fn foo<B: Bar>(bar: B) {}
 "#####,
     )
 }
