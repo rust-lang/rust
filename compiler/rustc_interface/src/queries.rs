@@ -179,6 +179,7 @@ impl<'tcx> Queries<'tcx> {
                 self.codegen_backend().metadata_loader(),
                 &krate,
                 &crate_name,
+                &self.arena as *const _ as usize,
             );
             let krate = resolver.access(|resolver| {
                 passes::configure_and_expand(&sess, &lint_store, krate, &crate_name, resolver)

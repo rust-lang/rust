@@ -14,7 +14,7 @@ use rustc_middle::middle::cstore::{CrateSource, CrateStore, EncodedMetadata};
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, TyCtxt, Visibility};
+use rustc_middle::ty::{self, TcxArena, TyCtxt, Visibility};
 use rustc_session::utils::NativeLibKind;
 use rustc_session::{Session, StableCrateId};
 use rustc_span::hygiene::{ExpnHash, ExpnId};
@@ -99,7 +99,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     variances_of => { tcx.arena.alloc_from_iter(cdata.get_item_variances(def_id.index)) }
     associated_item_def_ids => {
-        tcx.arena.alloc_from_iter(cdata.get_item_children_cache_steal(def_id.index, tcx.sess)
+        tcx.arena.alloc_from_iter(cdata.get_item_children_cache_nofill(def_id.index, tcx.sess, tcx.arena)
                                        .iter().map(|export| export.res.def_id()))
     }
     associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
@@ -138,11 +138,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     lookup_deprecation_entry => {
         cdata.get_deprecation(def_id.index).map(DeprecationEntry::external)
     }
-    item_attrs => {
-        tcx.arena.alloc_from_iter(
-            cdata.get_item_attrs_cache_steal(def_id.index, tcx.sess).into_iter()
-        )
-    }
+    item_attrs => { cdata.get_item_attrs_cache_nofill(def_id.index, tcx.sess, tcx.arena) }
     fn_arg_names => { cdata.get_fn_param_names(tcx, def_id.index) }
     rendered_const => { cdata.get_rendered_const(def_id.index) }
     impl_parent => { cdata.get_parent_impl(def_id.index) }
@@ -204,7 +200,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         r
     }
     item_children => {
-        tcx.arena.alloc_slice(&cdata.get_item_children_cache_steal(def_id.index, tcx.sess))
+        cdata.get_item_children_cache_nofill(def_id.index, tcx.sess, tcx.arena)
     }
     defined_lib_features => { cdata.get_lib_features(tcx) }
     defined_lang_items => { cdata.get_lang_items(tcx) }
@@ -371,21 +367,21 @@ pub fn provide(providers: &mut Providers) {
 }
 
 impl CStore {
-    pub fn struct_field_names_untracked<R>(
+    pub fn struct_field_names_untracked(
         &self,
         def: DefId,
         sess: &Session,
-        callback: impl FnOnce(&Vec<Spanned<Symbol>>) -> R,
-    ) -> R {
-        self.get_crate_data(def.krate).get_struct_field_names(def.index, sess, callback)
+        tcx_arena: TcxArena<'tcx>,
+    ) -> &'tcx [Spanned<Symbol>] {
+        self.get_crate_data(def.krate).get_struct_field_names(def.index, sess, tcx_arena)
     }
 
-    pub fn struct_field_visibilities_untracked<R>(
+    pub fn struct_field_visibilities_untracked<'tcx>(
         &self,
         def: DefId,
-        callback: impl FnOnce(&Vec<Visibility>) -> R,
-    ) -> R {
-        self.get_crate_data(def.krate).get_struct_field_visibilities(def.index, callback)
+        tcx_arena: TcxArena<'tcx>,
+    ) -> &'tcx [Visibility] {
+        self.get_crate_data(def.krate).get_struct_field_visibilities(def.index, tcx_arena)
     }
 
     pub fn ctor_def_id_and_kind_untracked(&self, def: DefId) -> Option<(DefId, CtorKind)> {
@@ -396,21 +392,30 @@ impl CStore {
         self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
-    pub fn item_children_untracked<R>(
+    pub fn item_children_untracked<'tcx>(
         &self,
         def_id: DefId,
         sess: &Session,
-        callback: impl FnOnce(&Vec<Export>) -> R,
-    ) -> R {
-        self.get_crate_data(def_id.krate).get_item_children_cache_fill(def_id.index, sess, callback)
+        tcx_arena: TcxArena<'tcx>,
+    ) -> &'tcx [Export] {
+        self.get_crate_data(def_id.krate).get_item_children_cache_fill(
+            def_id.index,
+            sess,
+            tcx_arena,
+        )
     }
 
-    pub fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
+    pub fn load_macro_untracked(
+        &self,
+        id: DefId,
+        sess: &Session,
+        tcx_arena: TcxArena<'_>,
+    ) -> LoadedMacro {
         let _prof_timer = sess.prof.generic_activity("metadata_load_macro");
 
         let data = self.get_crate_data(id.krate);
         if data.root.is_proc_macro_crate() {
-            return LoadedMacro::ProcMacro(data.load_proc_macro(id.index, sess));
+            return LoadedMacro::ProcMacro(data.load_proc_macro(id.index, sess, tcx_arena));
         }
 
         let span = data.get_span(id.index, sess);
@@ -420,7 +425,7 @@ impl CStore {
                 ident: data.item_ident(id.index, sess),
                 id: ast::DUMMY_NODE_ID,
                 span,
-                attrs: data.get_item_attrs_cache_fill(id.index, sess, |attrs| attrs.clone()),
+                attrs: data.get_item_attrs_cache_fill(id.index, sess, tcx_arena).to_vec(),
                 kind: ast::ItemKind::MacroDef(data.get_macro(id.index, sess)),
                 vis: ast::Visibility {
                     span: span.shrink_to_lo(),
@@ -471,13 +476,13 @@ impl CStore {
         self.get_crate_data(cnum).num_def_ids()
     }
 
-    pub fn item_attrs_untracked<R>(
+    pub fn item_attrs_untracked<'tcx>(
         &self,
         def_id: DefId,
         sess: &Session,
-        callback: impl FnOnce(&Vec<ast::Attribute>) -> R,
-    ) -> R {
-        self.get_crate_data(def_id.krate).get_item_attrs_cache_fill(def_id.index, sess, callback)
+        tcx_arena: TcxArena<'tcx>,
+    ) -> &'tcx [ast::Attribute] {
+        self.get_crate_data(def_id.krate).get_item_attrs_cache_fill(def_id.index, sess, tcx_arena)
     }
 
     pub fn get_proc_macro_quoted_span_untracked(

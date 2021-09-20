@@ -978,6 +978,8 @@ impl<'tcx> Deref for TyCtxt<'tcx> {
     }
 }
 
+pub type TcxArena<'tcx> = &'tcx WorkerLocal<Arena<'tcx>>;
+
 pub struct GlobalCtxt<'tcx> {
     pub arena: &'tcx WorkerLocal<Arena<'tcx>>,
 

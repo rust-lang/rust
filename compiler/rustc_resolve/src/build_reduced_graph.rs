@@ -205,10 +205,12 @@ impl<'a> Resolver<'a> {
             return ext.clone();
         }
 
-        let ext = Lrc::new(match self.cstore().load_macro_untracked(def_id, &self.session) {
-            LoadedMacro::MacroDef(item, edition) => self.compile_macro(&item, edition),
-            LoadedMacro::ProcMacro(ext) => ext,
-        });
+        let ext = Lrc::new(
+            match self.cstore().load_macro_untracked(def_id, &self.session, self.tcx_arena) {
+                LoadedMacro::MacroDef(item, edition) => self.compile_macro(&item, edition),
+                LoadedMacro::ProcMacro(ext) => ext,
+            },
+        );
 
         self.macro_map.insert(def_id, ext.clone());
         ext
@@ -227,12 +229,10 @@ impl<'a> Resolver<'a> {
 
     crate fn build_reduced_graph_external(&mut self, module: Module<'a>) {
         let def_id = module.def_id().expect("unpopulated module without a def-id");
-        for child in
-            self.cstore().item_children_untracked(def_id, self.session, |exports| exports.clone())
-        {
+        for child in self.cstore().item_children_untracked(def_id, self.session, self.tcx_arena) {
             let parent_scope = ParentScope::module(module, self);
             BuildReducedGraphVisitor { r: self, parent_scope }
-                .build_reduced_graph_for_external_crate_res(child);
+                .build_reduced_graph_for_external_crate_res(*child);
         }
     }
 }
@@ -1013,18 +1013,16 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let cstore = self.r.cstore();
         match res {
             Res::Def(DefKind::Struct, def_id) => {
-                let field_names =
-                    cstore.struct_field_names_untracked(def_id, self.r.session, |field_names| {
-                        field_names.clone()
-                    });
+                let field_names = cstore
+                    .struct_field_names_untracked(def_id, self.r.session, self.r.tcx_arena)
+                    .to_vec();
                 let ctor = cstore.ctor_def_id_and_kind_untracked(def_id);
                 if let Some((ctor_def_id, ctor_kind)) = ctor {
                     let ctor_res = Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
                     let ctor_vis = cstore.visibility_untracked(ctor_def_id);
                     let field_visibilities = cstore
-                        .struct_field_visibilities_untracked(def_id, |visibilities| {
-                            visibilities.clone()
-                        });
+                        .struct_field_visibilities_untracked(def_id, self.r.tcx_arena)
+                        .to_vec();
                     self.r
                         .struct_constructors
                         .insert(def_id, (ctor_res, ctor_vis, field_visibilities));
@@ -1032,10 +1030,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.insert_field_names(def_id, field_names);
             }
             Res::Def(DefKind::Union, def_id) => {
-                let field_names =
-                    cstore.struct_field_names_untracked(def_id, self.r.session, |field_names| {
-                        field_names.clone()
-                    });
+                let field_names = cstore
+                    .struct_field_names_untracked(def_id, self.r.session, self.r.tcx_arena)
+                    .to_vec();
                 self.insert_field_names(def_id, field_names);
             }
             Res::Def(DefKind::AssocFn, def_id) => {

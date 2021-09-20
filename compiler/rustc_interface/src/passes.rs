@@ -16,12 +16,11 @@ use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_hir::Crate;
 use rustc_lint::LintStore;
 use rustc_metadata::creader::CStore;
-use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::middle;
 use rustc_middle::middle::cstore::{MetadataLoader, MetadataLoaderDyn};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
+use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TcxArena, TyCtxt};
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, hir_stats, layout_test};
@@ -96,6 +95,7 @@ mod boxed_resolver {
         session: Lrc<Session>,
         resolver_arenas: Option<ResolverArenas<'static>>,
         resolver: Option<Resolver<'static>>,
+        tcx_arena: TcxArena<'static>,
         _pin: PhantomPinned,
     }
 
@@ -111,12 +111,18 @@ mod boxed_resolver {
     impl BoxedResolver {
         pub(super) fn new(
             session: Lrc<Session>,
-            make_resolver: impl for<'a> FnOnce(&'a Session, &'a ResolverArenas<'a>) -> Resolver<'a>,
+            tcx_arena: TcxArena<'static>,
+            make_resolver: impl for<'a> FnOnce(
+                &'a Session,
+                &'a ResolverArenas<'a>,
+                TcxArena<'a>,
+            ) -> Resolver<'a>,
         ) -> BoxedResolver {
             let mut boxed_resolver = Box::new(BoxedResolverInner {
                 session,
                 resolver_arenas: Some(Resolver::arenas()),
                 resolver: None,
+                tcx_arena,
                 _pin: PhantomPinned,
             });
             // SAFETY: `make_resolver` takes a resolver arena with an arbitrary lifetime and
@@ -128,6 +134,7 @@ mod boxed_resolver {
                     std::mem::transmute::<&ResolverArenas<'_>, &ResolverArenas<'_>>(
                         boxed_resolver.resolver_arenas.as_ref().unwrap(),
                     ),
+                    std::mem::transmute::<TcxArena<'_>, TcxArena<'_>>(boxed_resolver.tcx_arena),
                 );
                 boxed_resolver.resolver = Some(resolver);
                 BoxedResolver(Pin::new_unchecked(boxed_resolver))
@@ -166,10 +173,13 @@ pub fn create_resolver(
     metadata_loader: Box<MetadataLoaderDyn>,
     krate: &ast::Crate,
     crate_name: &str,
+    tcx_arena: usize,
 ) -> BoxedResolver {
+    // FIXME: Solve the problem of tcx_arena vs sess lifetimes somehow.
+    let tcx_arena = unsafe { std::mem::transmute(tcx_arena) };
     tracing::trace!("create_resolver");
-    BoxedResolver::new(sess, move |sess, resolver_arenas| {
-        Resolver::new(sess, &krate, &crate_name, metadata_loader, &resolver_arenas)
+    BoxedResolver::new(sess, tcx_arena, move |sess, resolver_arenas, tcx_arena| {
+        Resolver::new(sess, &krate, &crate_name, metadata_loader, &resolver_arenas, tcx_arena)
     })
 }
 
@@ -789,7 +799,7 @@ pub fn create_global_ctxt<'tcx>(
     crate_name: &str,
     queries: &'tcx OnceCell<TcxQueries<'tcx>>,
     global_ctxt: &'tcx OnceCell<GlobalCtxt<'tcx>>,
-    arena: &'tcx WorkerLocal<Arena<'tcx>>,
+    arena: TcxArena<'tcx>,
     hir_arena: &'tcx WorkerLocal<rustc_ast_lowering::Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
     // We're constructing the HIR here; we don't care what we will

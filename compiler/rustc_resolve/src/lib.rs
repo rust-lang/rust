@@ -49,7 +49,7 @@ use rustc_middle::hir::exports::ExportMap;
 use rustc_middle::middle::cstore::{CrateStore, MetadataLoaderDyn};
 use rustc_middle::span_bug;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, DefIdTree, MainDefinition, ResolverOutputs};
+use rustc_middle::ty::{self, DefIdTree, MainDefinition, ResolverOutputs, TcxArena};
 use rustc_session::lint;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
@@ -871,6 +871,7 @@ struct DeriveData {
 /// This is the visitor that walks the whole crate.
 pub struct Resolver<'a> {
     session: &'a Session,
+    tcx_arena: TcxArena<'a>,
 
     definitions: Definitions,
 
@@ -1254,6 +1255,7 @@ impl<'a> Resolver<'a> {
         crate_name: &str,
         metadata_loader: Box<MetadataLoaderDyn>,
         arenas: &'a ResolverArenas<'a>,
+        tcx_arena: TcxArena<'a>,
     ) -> Resolver<'a> {
         let root_local_def_id = LocalDefId { local_def_index: CRATE_DEF_INDEX };
         let root_def_id = root_local_def_id.to_def_id();
@@ -1312,6 +1314,7 @@ impl<'a> Resolver<'a> {
 
         let mut resolver = Resolver {
             session,
+            tcx_arena,
 
             definitions,
 
@@ -3396,20 +3399,21 @@ impl<'a> Resolver<'a> {
                     return v.clone();
                 }
 
-                let ret = self.cstore().item_attrs_untracked(def_id, self.session, |attrs| {
-                    let attr =
-                        attrs.iter().find(|a| a.has_name(sym::rustc_legacy_const_generics))?;
-                    let mut ret = vec![];
-                    for meta in attr.meta_item_list()? {
-                        match meta.literal()?.kind {
-                            LitKind::Int(a, _) => {
-                                ret.push(a as usize);
-                            }
-                            _ => panic!("invalid arg index"),
+                let attr = self
+                    .cstore()
+                    .item_attrs_untracked(def_id, self.session, self.tcx_arena)
+                    .iter()
+                    .find(|a| a.has_name(sym::rustc_legacy_const_generics))?;
+                let mut ret = vec![];
+                for meta in attr.meta_item_list()? {
+                    match meta.literal()?.kind {
+                        LitKind::Int(a, _) => {
+                            ret.push(a as usize);
                         }
+                        _ => panic!("invalid arg index"),
                     }
-                    Some(ret)
-                });
+                }
+                let ret = Some(ret);
                 self.legacy_const_generic_args.insert(def_id, ret.clone());
                 return ret;
             }

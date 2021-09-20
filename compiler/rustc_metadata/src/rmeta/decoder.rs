@@ -28,7 +28,7 @@ use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, Body, Promoted};
 use rustc_middle::thir;
 use rustc_middle::ty::codec::TyDecoder;
-use rustc_middle::ty::{self, Ty, TyCtxt, Visibility};
+use rustc_middle::ty::{self, TcxArena, Ty, TyCtxt, Visibility};
 use rustc_serialize::{opaque, Decodable, Decoder};
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnIndex, MacroKind};
@@ -137,18 +137,19 @@ crate struct CrateMetadata {
     extern_crate: Lock<Option<ExternCrate>>,
 
     // cache
-    struct_field_names: Cache<DefIndex, Vec<Spanned<Symbol>>>,
-    struct_field_visibilities: Cache<DefIndex, Vec<Visibility>>,
+    // FIXME: Replace static lifetimes with a lifetime parameter.
+    struct_field_names: Cache<DefIndex, &'static [Spanned<Symbol>]>,
+    struct_field_visibilities: Cache<DefIndex, &'static [Visibility]>,
     ctor_def_ids_and_kinds: Cache<DefIndex, Option<(DefId, CtorKind)>>,
     visibilities: Cache<DefIndex, Visibility>,
-    item_children: Cache<DefIndex, Vec<Export>>,
+    item_children: Cache<DefIndex, &'static [Export]>,
     associated_items: Cache<DefIndex, ty::AssocItem>,
     spans: Cache<DefIndex, Span>,
     def_kinds: Cache<DefIndex, DefKind>,
     generics: Cache<DefIndex, ty::Generics>,
     module_expansions: Cache<DefIndex, ExpnId>,
     proc_macro_quoted_spans: Cache<usize, Span>,
-    item_attrs: Cache<DefIndex, Vec<ast::Attribute>>,
+    item_attrs: Cache<DefIndex, &'static [ast::Attribute]>,
 }
 
 type Cache<K, V> = Lock<FxHashMap<K, V>>;
@@ -196,6 +197,14 @@ fn steal_or_create_with<K: Eq + Hash, V>(
     v: impl FnOnce() -> V,
 ) -> V {
     cache.remove(&k).unwrap_or_else(v)
+}
+
+fn get_or_create_with<K: Eq + Hash, V: Copy>(
+    cache: &mut FxHashMap<K, V>,
+    k: K,
+    v: impl FnOnce() -> V,
+) -> V {
+    cache.get(&k).copied().unwrap_or_else(v)
 }
 
 #[allow(dead_code)]
@@ -845,7 +854,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         })
     }
 
-    fn load_proc_macro(&self, id: DefIndex, sess: &Session) -> SyntaxExtension {
+    fn load_proc_macro(
+        &self,
+        id: DefIndex,
+        sess: &Session,
+        tcx_arena: TcxArena<'tcx>,
+    ) -> SyntaxExtension {
         let (name, kind, helper_attrs) = match *self.raw_proc_macro(id) {
             ProcMacro::CustomDerive { trait_name, attributes, client } => {
                 let helper_attrs =
@@ -864,17 +878,15 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         };
 
-        self.get_item_attrs_cache_fill(id, sess, |attrs| {
-            SyntaxExtension::new(
-                sess,
-                kind,
-                self.get_span(id, sess),
-                helper_attrs,
-                self.root.edition,
-                Symbol::intern(name),
-                attrs,
-            )
-        })
+        SyntaxExtension::new(
+            sess,
+            kind,
+            self.get_span(id, sess),
+            helper_attrs,
+            self.root.edition,
+            Symbol::intern(name),
+            self.get_item_attrs_cache_fill(id, sess, tcx_arena),
+        )
     }
 
     fn get_trait_def(&self, item_id: DefIndex, sess: &Session) -> ty::TraitDef {
@@ -1152,50 +1164,58 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_item_children_cache_steal(&self, id: DefIndex, sess: &Session) -> Vec<Export> {
-        steal_or_create_with(&mut self.item_children.lock(), id, || {
-            self.get_item_children_uncached(id, sess)
-        })
-    }
-
-    fn get_item_children_cache_fill<R>(
+    fn get_item_children_cache_nofill(
         &self,
         id: DefIndex,
         sess: &Session,
-        callback: impl FnOnce(&Vec<Export>) -> R,
-    ) -> R {
-        callback(get_or_insert_with(&mut self.item_children.lock(), id, || {
-            self.get_item_children_uncached(id, sess)
-        }))
+        tcx_arena: TcxArena<'tcx>,
+    ) -> &'tcx [Export] {
+        get_or_create_with(&mut self.item_children.lock(), id, || {
+            self.get_item_children_uncached(id, sess, tcx_arena)
+        })
+    }
+
+    fn get_item_children_cache_fill(
+        &self,
+        id: DefIndex,
+        sess: &Session,
+        tcx_arena: TcxArena<'tcx>,
+    ) -> &'tcx [Export] {
+        *get_or_insert_with(&mut self.item_children.lock(), id, || {
+            self.get_item_children_uncached(id, sess, tcx_arena)
+        })
     }
 
     /// Collects all children of the given item.
-    fn get_item_children_uncached(&self, id: DefIndex, sess: &Session) -> Vec<Export> {
+    fn get_item_children_uncached(
+        &self,
+        id: DefIndex,
+        sess: &Session,
+        tcx_arena: TcxArena<'tcx>,
+    ) -> &'static [Export] {
         if let Some(data) = &self.root.proc_macro_data {
             /* If we are loading as a proc macro, we want to return the view of this crate
              * as a proc macro crate.
              */
             return if id == CRATE_DEF_INDEX {
-                data.macros
-                    .decode(self)
-                    .map(|def_index| {
-                        let raw_macro = self.raw_proc_macro(def_index);
-                        let res = Res::Def(
-                            DefKind::Macro(macro_kind(raw_macro)),
-                            self.local_def_id(def_index),
-                        );
-                        let ident = self.item_ident(def_index, sess);
-                        Export { ident, res, vis: ty::Visibility::Public, span: ident.span }
-                    })
-                    .collect()
+                let res = tcx_arena.alloc_from_iter(data.macros.decode(self).map(|def_index| {
+                    let raw_macro = self.raw_proc_macro(def_index);
+                    let res = Res::Def(
+                        DefKind::Macro(macro_kind(raw_macro)),
+                        self.local_def_id(def_index),
+                    );
+                    let ident = self.item_ident(def_index, sess);
+                    Export { ident, res, vis: ty::Visibility::Public, span: ident.span }
+                }));
+                unsafe { mem::transmute(res) }
             } else {
-                Vec::new()
+                &[]
             };
         }
 
         // Find the item.
         let kind = match self.maybe_kind(id) {
-            None => return Vec::new(),
+            None => return &[],
             Some(kind) => kind,
         };
 
@@ -1288,9 +1308,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                 // within the crate. We only need this for fictive constructors,
                                 // for other constructors correct visibilities
                                 // were already encoded in metadata.
-                                if self.get_item_attrs_cache_fill(def_id.index, sess, |attrs| {
-                                    attrs.iter().any(|item| item.has_name(sym::non_exhaustive))
-                                }) {
+                                if self
+                                    .get_item_attrs_cache_fill(def_id.index, sess, tcx_arena)
+                                    .iter()
+                                    .any(|item| item.has_name(sym::non_exhaustive))
+                                {
                                     let crate_def_id = self.local_def_id(CRATE_DEF_INDEX);
                                     vis = ty::Visibility::Restricted(crate_def_id);
                                 }
@@ -1314,7 +1336,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         }
 
-        result
+        let res = tcx_arena.alloc_slice(&result);
+        unsafe { mem::transmute(res) }
     }
 
     fn is_ctfe_mir_available(&self, id: DefIndex) -> bool {
@@ -1448,34 +1471,34 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         })
     }
 
-    fn get_item_attrs_cache_steal(
-        &'a self,
+    fn get_item_attrs_cache_nofill(
+        &self,
         node_id: DefIndex,
-        sess: &'a Session,
-    ) -> Vec<ast::Attribute> {
-        steal_or_create_with(&mut self.item_attrs.lock(), node_id, || {
-            self.get_item_attrs_uncached(node_id, sess)
+        sess: &Session,
+        tcx_arena: TcxArena<'tcx>,
+    ) -> &'tcx [ast::Attribute] {
+        get_or_create_with(&mut self.item_attrs.lock(), node_id, || {
+            self.get_item_attrs_uncached(node_id, sess, tcx_arena)
         })
     }
 
-    fn get_item_attrs_cache_fill<R>(
-        &'a self,
+    fn get_item_attrs_cache_fill(
+        &self,
         node_id: DefIndex,
-        sess: &'a Session,
-        callback: impl FnOnce(&Vec<ast::Attribute>) -> R,
-    ) -> R {
-        callback(get_or_insert_with(&mut self.item_attrs.lock(), node_id, || {
-            self.get_item_attrs_uncached(node_id, sess)
-        }))
+        sess: &Session,
+        tcx_arena: TcxArena<'tcx>,
+    ) -> &'tcx [ast::Attribute] {
+        *get_or_insert_with(&mut self.item_attrs.lock(), node_id, || {
+            self.get_item_attrs_uncached(node_id, sess, tcx_arena)
+        })
     }
 
     fn get_item_attrs_uncached(
-        &'a self,
+        &self,
         node_id: DefIndex,
-        sess: &'a Session,
-    ) -> Vec<ast::Attribute> {
-        // impl ExactSizeIterator<Item = T> + Captures<'a> + Captures<'tcx> + 'x
-
+        sess: &Session,
+        tcx_arena: TcxArena<'tcx>,
+    ) -> &'static [ast::Attribute] {
         // The attributes for a tuple struct/variant are attached to the definition,
         // not the ctor; we assume that someone passing in a tuple struct ctor is actually
         // wanting to look at the definition.
@@ -1486,56 +1509,71 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             node_id
         };
 
-        self.root
-            .tables
-            .attributes
-            .get(self, item_id)
-            .unwrap_or_else(Lazy::empty)
-            .decode((self, sess))
-            .collect()
+        let res = tcx_arena.alloc_from_iter(
+            self.root
+                .tables
+                .attributes
+                .get(self, item_id)
+                .unwrap_or_else(Lazy::empty)
+                .decode((self, sess)),
+        );
+        unsafe { mem::transmute(res) }
     }
 
-    fn get_struct_field_names<R>(
+    fn get_struct_field_names(
         &self,
         id: DefIndex,
         sess: &Session,
-        callback: impl FnOnce(&Vec<Spanned<Symbol>>) -> R,
-    ) -> R {
-        callback(get_or_insert_with(&mut self.struct_field_names.lock(), id, || {
-            self.get_struct_field_names_uncached(id, sess)
-        }))
+        tcx_arena: TcxArena<'tcx>,
+    ) -> &'tcx [Spanned<Symbol>] {
+        *get_or_insert_with(&mut self.struct_field_names.lock(), id, || {
+            self.get_struct_field_names_uncached(id, sess, tcx_arena)
+        })
     }
 
     fn get_struct_field_names_uncached(
         &self,
         id: DefIndex,
         sess: &Session,
-    ) -> Vec<Spanned<Symbol>> {
-        self.root
-            .tables
-            .children
-            .get(self, id)
-            .unwrap_or_else(Lazy::empty)
-            .decode(self)
-            .map(|index| respan(self.get_span(index, sess), self.item_ident(index, sess).name))
-            .collect()
-    }
-
-    fn get_struct_field_visibilities<R>(
-        &self,
-        id: DefIndex,
-        callback: impl FnOnce(&Vec<Visibility>) -> R,
-    ) -> R {
-        callback(get_or_insert_with(&mut self.struct_field_visibilities.lock(), id, || {
+        tcx_arena: TcxArena<'tcx>,
+    ) -> &'static [Spanned<Symbol>] {
+        let res = tcx_arena.alloc_from_iter(
             self.root
                 .tables
                 .children
                 .get(self, id)
                 .unwrap_or_else(Lazy::empty)
                 .decode(self)
-                .map(|field_index| self.get_visibility(field_index))
-                .collect()
-        }))
+                .map(|index| respan(self.get_span(index, sess), self.item_ident(index, sess).name)),
+        );
+        unsafe { mem::transmute(res) }
+    }
+
+    fn get_struct_field_visibilities(
+        &self,
+        id: DefIndex,
+        tcx_arena: TcxArena<'tcx>,
+    ) -> &'tcx [Visibility] {
+        *get_or_insert_with(&mut self.struct_field_visibilities.lock(), id, || {
+            self.get_struct_field_visibilities_uncached(id, tcx_arena)
+        })
+    }
+
+    fn get_struct_field_visibilities_uncached(
+        &self,
+        id: DefIndex,
+        tcx_arena: TcxArena<'tcx>,
+    ) -> &'static [Visibility] {
+        let res = tcx_arena.alloc_from_iter(
+            self.root
+                .tables
+                .children
+                .get(self, id)
+                .unwrap_or_else(Lazy::empty)
+                .decode(self)
+                .map(|field_index| self.get_visibility(field_index)),
+        );
+        unsafe { mem::transmute(res) }
     }
 
     fn get_inherent_implementations_for_type(
