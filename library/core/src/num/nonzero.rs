@@ -903,15 +903,12 @@ macro_rules! nonzero_min_max {
                 #[unstable(feature = "nonzero_min_max", issue = "89065")]
                 #[doc = concat!("The maximum value for a`", stringify!($Ty), "` is the same as `", stringify!($Int), "`")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX, ", stringify!($Int), "::MAX);")]
-                // SAFETY: Since the MAX value, for any supported integer type, is greater than 0, the MAX will always be non-zero.
-                pub const MAX : $Ty = unsafe { $Ty::new_unchecked(<$Int>::MAX) };
+                pub const MAX : $Ty = $Ty::new(<$Int>::MAX).unwrap() ;
                 #[unstable(feature = "nonzero_min_max", issue = "89065")]
                 #[doc = concat!("The minimum value for a`", stringify!($Ty), "`.")]
                 /// # Examples
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN, ", stringify!($MinVal), ";")]
-                // SAFETY: In the signed case, the minimum integer is negative, and therefore non-zero.
-                // SAFETY:  In the unsignedd case, we use one, which is non-zero.
-                pub const MIN : $Ty = unsafe { $Ty::new_unchecked($MinVal)};
+                pub const MIN : $Ty = $Ty::new($MinVal).unwrap();
                 }
         )+
     }
