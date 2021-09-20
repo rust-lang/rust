@@ -17,4 +17,4 @@ rustc_serialize = { path = "../rustc_serialize" }
 rustc_ast = { path = "../rustc_ast" }
 tracing = "0.1"
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
-odht = { version = "0.2.1", features = ["nightly"] }
+odht = { version = "0.3.0", features = ["nightly"] }

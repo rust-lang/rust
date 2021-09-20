@@ -2323,9 +2323,9 @@ dependencies = [
 
 [[package]]
 name = "odht"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b18a8d1c919d3e7b5c49708d08ef7d60bc2150a7c3a8244257c54ca3f625010"
+checksum = "d2504d29fda40b3f2f9ef525392435ab660e407c188196cb664b116ebcca0142"
 dependencies = [
  "cfg-if 1.0.0",
 ]
