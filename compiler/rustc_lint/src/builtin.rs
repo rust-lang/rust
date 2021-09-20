@@ -1686,7 +1686,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,edition2018
     /// let x = 123;
     /// match x {
     ///     0...100 => {}

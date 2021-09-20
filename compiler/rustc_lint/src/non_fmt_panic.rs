@@ -18,7 +18,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,no_run
+    /// ```rust,no_run,edition2018
     /// panic!("{}");
     /// panic!(123);
     /// ```

@@ -13,7 +13,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,edition2018
     /// # #![allow(unused)]
     /// [1, 2, 3].into_iter().for_each(|n| { *n; });
     /// ```
