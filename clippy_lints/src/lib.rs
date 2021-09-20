@@ -2193,6 +2193,7 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::cyclomatic_complexity", "clippy::cognitive_complexity");
     ls.register_renamed("clippy::const_static_lifetime", "clippy::redundant_static_lifetimes");
     ls.register_renamed("clippy::option_and_then_some", "clippy::bind_instead_of_map");
+    ls.register_renamed("clippy::box_vec", "clippy::box_collection");
     ls.register_renamed("clippy::block_in_if_condition_expr", "clippy::blocks_in_if_conditions");
     ls.register_renamed("clippy::block_in_if_condition_stmt", "clippy::blocks_in_if_conditions");
     ls.register_renamed("clippy::option_map_unwrap_or", "clippy::map_unwrap_or");
