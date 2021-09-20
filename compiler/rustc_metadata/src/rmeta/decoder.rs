@@ -205,7 +205,7 @@ fn get_or_insert_with<K: Idx, V>(
     k: K,
     v: impl FnOnce() -> V,
 ) -> &V {
-    // cache.ensure_contains_elem(k, || None);
+    cache.ensure_contains_elem(k, || None);
     match &mut cache[k] {
         entry @ None => {
             *entry = Some(v());
@@ -2049,8 +2049,8 @@ impl CrateMetadata {
         // Pre-decode the DefPathHash->DefIndex table. This is a cheap operation
         // that does not copy any data. It just does some data verification.
         let def_path_hash_map = root.def_path_hash_map.decode(&blob);
-        let num_def_ids = root.tables.def_keys.size();
-        let num_quoted_spans = root.tables.proc_macro_quoted_spans.size();
+        // let num_def_ids = root.tables.def_keys.size();
+        // let num_quoted_spans = root.tables.proc_macro_quoted_spans.size();
 
         CrateMetadata {
             blob,
@@ -2072,30 +2072,30 @@ impl CrateMetadata {
             hygiene_context: Default::default(),
             def_key_cache: Default::default(),
             def_path_hash_cache: Default::default(),
-            // struct_field_names: Default::default(),
-            // struct_field_visibilities: Default::default(),
-            // ctor_def_ids_and_kinds: Default::default(),
-            // visibilities: Default::default(),
-            // item_children: Default::default(),
-            // associated_items: Default::default(),
-            // spans: Default::default(),
-            // def_kinds: Default::default(),
-            // generics: Default::default(),
-            // module_expansions: Default::default(),
-            // proc_macro_quoted_spans: Default::default(),
-            // item_attrs: Default::default(),
-            struct_field_names: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
-            struct_field_visibilities: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
-            ctor_def_ids_and_kinds: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
-            visibilities: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
-            item_children: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
-            associated_items: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
-            spans: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
-            def_kinds: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
-            generics: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
-            module_expansions: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
-            proc_macro_quoted_spans: Lock::new(IndexVec::from_elem_n(None, num_quoted_spans)),
-            item_attrs: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            struct_field_names: Default::default(),
+            struct_field_visibilities: Default::default(),
+            ctor_def_ids_and_kinds: Default::default(),
+            visibilities: Default::default(),
+            item_children: Default::default(),
+            associated_items: Default::default(),
+            spans: Default::default(),
+            def_kinds: Default::default(),
+            generics: Default::default(),
+            module_expansions: Default::default(),
+            proc_macro_quoted_spans: Default::default(),
+            item_attrs: Default::default(),
+            // struct_field_names: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            // struct_field_visibilities: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            // ctor_def_ids_and_kinds: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            // visibilities: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            // item_children: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            // associated_items: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            // spans: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            // def_kinds: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            // generics: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            // module_expansions: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
+            // proc_macro_quoted_spans: Lock::new(IndexVec::from_elem_n(None, num_quoted_spans)),
+            // item_attrs: Lock::new(IndexVec::from_elem_n(None, num_def_ids)),
         }
     }
 
