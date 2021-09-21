@@ -481,7 +481,7 @@ impl<'db> SemanticsImpl<'db> {
         )
     }
 
-    // This might not be the correct way to due this, but it works for now
+    // This might not be the correct way to do this, but it works for now
     fn descend_node_into_attributes<N: AstNode>(&self, node: N) -> SmallVec<[N; 1]> {
         let mut res = smallvec![];
         let tokens = (|| {

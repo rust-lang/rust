@@ -21,8 +21,8 @@ pub use self::{
     expr_ext::{ArrayExprKind, Effect, ElseBranch, LiteralKind},
     generated::{nodes::*, tokens::*},
     node_ext::{
-        AttrKind, AttrsOwnerNode, FieldKind, Macro, NameLike, NameOrNameRef, PathSegmentKind,
-        SelfParamKind, SlicePatComponents, StructKind, TypeBoundKind, VisibilityKind,
+        AttrKind, FieldKind, Macro, NameLike, NameOrNameRef, PathSegmentKind, SelfParamKind,
+        SlicePatComponents, StructKind, TypeBoundKind, VisibilityKind,
     },
     operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
     token_ext::{

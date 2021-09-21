@@ -8,6 +8,7 @@ use std::{
     fmt::Write,
 };
 
+use itertools::Itertools;
 use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
 use ungrammar::{rust_grammar, Grammar, Rule};
@@ -208,6 +209,64 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
         })
         .unzip();
 
+    let (dyn_node_defs, dyn_node_boilerplate_impls): (Vec<_>, Vec<_>) = grammar
+        .nodes
+        .iter()
+        .flat_map(|node| node.traits.iter().map(move |t| (t, node)))
+        .into_group_map()
+        .into_iter()
+        .sorted_by_key(|(k, _)| k.clone())
+        .map(|(trait_name, nodes)| {
+            let name = format_ident!("Dyn{}", trait_name);
+            let trait_name = format_ident!("{}", trait_name);
+            let kinds: Vec<_> = nodes
+                .iter()
+                .map(|name| format_ident!("{}", to_upper_snake_case(&name.name.to_string())))
+                .collect();
+
+            (
+                quote! {
+                    #[pretty_doc_comment_placeholder_workaround]
+                    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+                    pub struct #name {
+                        pub(crate) syntax: SyntaxNode,
+                    }
+                    impl ast::#trait_name for #name {}
+                },
+                quote! {
+                    impl #name {
+                        #[inline]
+                        pub fn new<T: ast::#trait_name>(node: T) -> #name {
+                            #name {
+                                syntax: node.syntax().clone()
+                            }
+                        }
+                    }
+                    impl AstNode for #name {
+                        fn can_cast(kind: SyntaxKind) -> bool {
+                            match kind {
+                                #(#kinds)|* => true,
+                                _ => false,
+                            }
+                        }
+                        fn cast(syntax: SyntaxNode) -> Option<Self> {
+                            let res = match syntax.kind() {
+                                #(
+                                #kinds => #name { syntax },
+                                )*
+                                _ => return None,
+                            };
+                            Some(res)
+                        }
+                        fn syntax(&self) -> &SyntaxNode {
+                            &self.syntax
+                        }
+                    }
+                },
+            )
+        })
+        .unzip();
+
     let enum_names = grammar.enums.iter().map(|it| &it.name);
     let node_names = grammar.nodes.iter().map(|it| &it.name);
 
@@ -244,8 +303,10 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
 
         #(#node_defs)*
         #(#enum_defs)*
+        #(#dyn_node_defs)*
         #(#node_boilerplate_impls)*
         #(#enum_boilerplate_impls)*
+        #(#dyn_node_boilerplate_impls)*
         #(#display_impls)*
     };
 
