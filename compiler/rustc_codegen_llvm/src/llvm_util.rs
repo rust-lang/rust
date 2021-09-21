@@ -166,25 +166,32 @@ pub fn time_trace_profiler_finish(file_name: &str) {
 // Though note that Rust can also be build with an external precompiled version of LLVM
 // which might lead to failures if the oldest tested / supported LLVM version
 // doesn't yet support the relevant intrinsics
-pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
+pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> Vec<&'a str> {
     let arch = if sess.target.arch == "x86_64" { "x86" } else { &*sess.target.arch };
     match (arch, s) {
-        ("x86", "pclmulqdq") => "pclmul",
-        ("x86", "rdrand") => "rdrnd",
-        ("x86", "bmi1") => "bmi",
-        ("x86", "cmpxchg16b") => "cx16",
-        ("x86", "avx512vaes") => "vaes",
-        ("x86", "avx512gfni") => "gfni",
-        ("x86", "avx512vpclmulqdq") => "vpclmulqdq",
-        ("aarch64", "fp") => "fp-armv8",
-        ("aarch64", "fp16") => "fullfp16",
-        ("aarch64", "fhm") => "fp16fml",
-        ("aarch64", "rcpc2") => "rcpc-immo",
-        ("aarch64", "dpb") => "ccpp",
-        ("aarch64", "dpb2") => "ccdp",
-        ("aarch64", "frintts") => "fptoint",
-        ("aarch64", "fcma") => "complxnum",
-        (_, s) => s,
+        ("x86", "sse4.2") => {
+            if get_version() >= (14, 0, 0) {
+                vec!["sse4.2", "crc32"]
+            } else {
+                vec!["sse4.2"]
+            }
+        }
+        ("x86", "pclmulqdq") => vec!["pclmul"],
+        ("x86", "rdrand") => vec!["rdrnd"],
+        ("x86", "bmi1") => vec!["bmi"],
+        ("x86", "cmpxchg16b") => vec!["cx16"],
+        ("x86", "avx512vaes") => vec!["vaes"],
+        ("x86", "avx512gfni") => vec!["gfni"],
+        ("x86", "avx512vpclmulqdq") => vec!["vpclmulqdq"],
+        ("aarch64", "fp") => vec!["fp-armv8"],
+        ("aarch64", "fp16") => vec!["fullfp16"],
+        ("aarch64", "fhm") => vec!["fp16fml"],
+        ("aarch64", "rcpc2") => vec!["rcpc-immo"],
+        ("aarch64", "dpb") => vec!["ccpp"],
+        ("aarch64", "dpb2") => vec!["ccdp"],
+        ("aarch64", "frintts") => vec!["fptoint"],
+        ("aarch64", "fcma") => vec!["complxnum"],
+        (_, s) => vec![s],
     }
 }
 
@@ -198,9 +205,13 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
             },
         )
         .filter(|feature| {
-            let llvm_feature = to_llvm_feature(sess, feature);
-            let cstr = CString::new(llvm_feature).unwrap();
-            unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) }
+            for llvm_feature in to_llvm_feature(sess, feature) {
+                let cstr = CString::new(llvm_feature).unwrap();
+                if unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) } {
+                    return true;
+                }
+            }
+            false
         })
         .map(|feature| Symbol::intern(feature))
         .collect()
@@ -253,12 +264,19 @@ fn print_target_features(sess: &Session, tm: &llvm::TargetMachine) {
     let mut rustc_target_features = supported_target_features(sess)
         .iter()
         .filter_map(|(feature, _gate)| {
-            let llvm_feature = to_llvm_feature(sess, *feature);
-            // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these strings.
-            target_features.binary_search_by_key(&llvm_feature, |(f, _d)| *f).ok().map(|index| {
-                let (_f, desc) = target_features.remove(index);
-                (*feature, desc)
-            })
+            for llvm_feature in to_llvm_feature(sess, *feature) {
+                // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these strings.
+                match target_features.binary_search_by_key(&llvm_feature, |(f, _d)| (*f)).ok().map(
+                    |index| {
+                        let (_f, desc) = target_features.remove(index);
+                        (*feature, desc)
+                    },
+                ) {
+                    Some(v) => return Some(v),
+                    None => {}
+                }
+            }
+            None
         })
         .collect::<Vec<_>>();
     rustc_target_features.extend_from_slice(&[(
@@ -373,30 +391,30 @@ pub fn llvm_global_features(sess: &Session) -> Vec<String> {
 
     let filter = |s: &str| {
         if s.is_empty() {
-            return None;
+            return vec![];
         }
         let feature = if s.starts_with('+') || s.starts_with('-') {
             &s[1..]
         } else {
-            return Some(s.to_string());
+            return vec![s.to_string()];
         };
         // Rustc-specific feature requests like `+crt-static` or `-crt-static`
         // are not passed down to LLVM.
         if RUSTC_SPECIFIC_FEATURES.contains(&feature) {
-            return None;
+            return vec![];
         }
         // ... otherwise though we run through `to_llvm_feature` feature when
         // passing requests down to LLVM. This means that all in-language
         // features also work on the command line instead of having two
         // different names when the LLVM name and the Rust name differ.
-        Some(format!("{}{}", &s[..1], to_llvm_feature(sess, feature)))
+        to_llvm_feature(sess, feature).iter().map(|f| format!("{}{}", &s[..1], f)).collect()
     };
 
     // Features implied by an implicit or explicit `--target`.
-    features.extend(sess.target.features.split(',').filter_map(&filter));
+    features.extend(sess.target.features.split(',').flat_map(&filter));
 
     // -Ctarget-features
-    features.extend(sess.opts.cg.target_feature.split(',').filter_map(&filter));
+    features.extend(sess.opts.cg.target_feature.split(',').flat_map(&filter));
 
     features
 }
