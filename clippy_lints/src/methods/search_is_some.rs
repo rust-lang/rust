@@ -1,3 +1,5 @@
+use std::iter;
+
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -223,6 +225,26 @@ impl DerefDelegate<'_, 'tcx> {
         let end_snip = snippet_with_applicability(self.cx, end_span, "..", &mut self.applicability);
         format!("{}{}", self.suggestion_start, end_snip)
     }
+
+    fn func_takes_arg_by_ref(&self, parent_expr: &'tcx hir::Expr<'_>, cmt_hir_id: HirId) -> bool {
+        if_chain! {
+            if let ExprKind::Call(func, call_args) = parent_expr.kind;
+            let typ = self.cx.typeck_results().expr_ty(func);
+            if let ty::FnDef(..) = typ.kind();
+
+            then {
+                let mut takes_by_ref = false;
+                for (arg, ty) in iter::zip(call_args, typ.fn_sig(self.cx.tcx).skip_binder().inputs()) {
+                    if arg.hir_id == cmt_hir_id {
+                        takes_by_ref = matches!(ty.kind(), ty::Ref(_, inner, _) if inner.is_ref());
+                    }
+                }
+                takes_by_ref
+            } else {
+                false
+            }
+        }
+    }
 }
 
 impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
@@ -252,18 +274,23 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                             let start_span = Span::new(self.next_pos, span.lo(), span.ctxt());
                             let start_snip =
                                 snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
+
+                            // suggest ampersand if call function is taking args by ref
+                            let takes_arg_by_ref = self.func_takes_arg_by_ref(parent_expr, cmt.hir_id);
+
                             // do not suggest ampersand if the ident is the method caller
-                            let ident_sugg = if !call_args.is_empty() && call_args[0].hir_id == cmt.hir_id {
-                                format!("{}{}", start_snip, ident_str)
-                            } else {
-                                format!("{}&{}", start_snip, ident_str)
-                            };
+                            let ident_sugg =
+                                if !call_args.is_empty() && call_args[0].hir_id == cmt.hir_id && !takes_arg_by_ref {
+                                    format!("{}{}", start_snip, ident_str)
+                                } else {
+                                    format!("{}&{}", start_snip, ident_str)
+                                };
                             self.suggestion_start.push_str(&ident_sugg);
                             self.next_pos = span.hi();
                             return;
-                        } else {
-                            self.applicability = Applicability::Unspecified;
                         }
+
+                        self.applicability = Applicability::Unspecified;
                     }
                 }
 
@@ -271,23 +298,8 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                 // i.e.: suggest `*x` instead of `**x`
                 let mut replacement_str = ident_str;
 
-                // handle index projection first
-                let index_handled = cmt.place.projections.iter().any(|proj| match proj.kind {
-                    // Index projection like `|x| foo[x]`
-                    // the index is dropped so we can't get it to build the suggestion,
-                    // so the span is set-up again to get more code, using `span.hi()` (i.e.: `foo[x]`)
-                    // instead of `span.lo()` (i.e.: `foo`)
-                    ProjectionKind::Index => {
-                        let start_span = Span::new(self.next_pos, span.hi(), span.ctxt());
-                        start_snip = snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
-                        replacement_str.clear();
-                        true
-                    },
-                    _ => false,
-                });
-
-                // looking for projections other that need to be handled differently
-                let other_projections_handled = cmt.place.projections.iter().enumerate().any(|(i, proj)| {
+                let mut projections_handled = false;
+                cmt.place.projections.iter().enumerate().for_each(|(i, proj)| {
                     match proj.kind {
                         // Field projection like `|v| v.foo`
                         ProjectionKind::Field(idx, variant) => match cmt.place.ty_before_projection(i).kind() {
@@ -297,34 +309,41 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                                     replacement_str,
                                     def.variants[variant].fields[idx as usize].ident.name.as_str()
                                 );
-                                true
+                                projections_handled = true;
                             },
                             ty::Tuple(_) => {
                                 replacement_str = format!("{}.{}", replacement_str, idx);
-                                true
+                                projections_handled = true;
                             },
-                            _ => false,
+                            _ => (),
                         },
-                        // handled previously
-                        ProjectionKind::Index |
-                            // note: unable to trigger `Subslice` kind in tests
-                            ProjectionKind::Subslice => false,
+                        // Index projection like `|x| foo[x]`
+                        // the index is dropped so we can't get it to build the suggestion,
+                        // so the span is set-up again to get more code, using `span.hi()` (i.e.: `foo[x]`)
+                        // instead of `span.lo()` (i.e.: `foo`)
+                        ProjectionKind::Index => {
+                            let start_span = Span::new(self.next_pos, span.hi(), span.ctxt());
+                            start_snip = snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
+                            replacement_str.clear();
+                            projections_handled = true;
+                        },
+                        // note: unable to trigger `Subslice` kind in tests
+                        ProjectionKind::Subslice => (),
                         ProjectionKind::Deref => {
                             // explicit deref for arrays should be avoided in the suggestion
                             // i.e.: `|sub| *sub[1..4].len() == 3` is not expected
-                            match cmt.place.ty_before_projection(i).kind() {
+                            if let ty::Ref(_, inner, _) = cmt.place.ty_before_projection(i).kind() {
                                 // dereferencing an array (i.e.: `|sub| sub[1..4].len() == 3`)
-                                ty::Ref(_, inner, _) => {
-                                    matches!(inner.kind(), ty::Ref(_, innermost, _) if innermost.is_array())
-                                },
-                                _ => false,
+                                if matches!(inner.kind(), ty::Ref(_, innermost, _) if innermost.is_array()) {
+                                    projections_handled = true;
+                                }
                             }
                         },
                     }
                 });
 
                 // handle `ProjectionKind::Deref` if no special case detected
-                if !index_handled && !other_projections_handled {
+                if !projections_handled {
                     let last_deref = cmt
                         .place
                         .projections

@@ -105,8 +105,12 @@ mod issue7392 {
         *x == 9
     }
 
-    fn simple_fn(x: u32) -> bool {
+    fn deref_enough(x: u32) -> bool {
         x == 78
+    }
+
+    fn arg_no_deref(x: &&u32) -> bool {
+        **x == 78
     }
 
     fn more_projections() {
@@ -116,6 +120,50 @@ mod issue7392 {
         let _ = [String::from("Hey hey")].iter().find(|s| s.len() == 2).is_some();
 
         let v = vec![3, 2, 1, 0];
-        let _ = v.iter().find(|x| simple_fn(**x)).is_some();
+        let _ = v.iter().find(|x| deref_enough(**x)).is_some();
+
+        #[allow(clippy::redundant_closure)]
+        let _ = v.iter().find(|x| arg_no_deref(x)).is_some();
+    }
+
+    fn field_index_projection() {
+        struct FooDouble {
+            bar: Vec<Vec<i32>>,
+        }
+        struct Foo {
+            bar: Vec<i32>,
+        }
+        struct FooOuter {
+            inner: Foo,
+            inner_double: FooDouble,
+        }
+        let vfoo = vec![FooOuter {
+            inner: Foo { bar: vec![0, 1, 2, 3] },
+            inner_double: FooDouble {
+                bar: vec![vec![0, 1, 2, 3]],
+            },
+        }];
+        let _ = vfoo
+            .iter()
+            .find(|v| v.inner_double.bar[0][0] == 2 && v.inner.bar[0] == 2)
+            .is_some();
+    }
+
+    fn index_field_projection() {
+        struct Foo {
+            bar: i32,
+        }
+        struct FooOuter {
+            inner: Vec<Foo>,
+        }
+        let vfoo = vec![FooOuter {
+            inner: vec![Foo { bar: 0 }],
+        }];
+        let _ = vfoo.iter().find(|v| v.inner[0].bar == 2).is_some();
+    }
+
+    fn double_deref_index_projection() {
+        let vfoo = vec![&&[0, 1, 2, 3]];
+        let _ = vfoo.iter().find(|x| (**x)[0] == 9).is_some();
     }
 }
