@@ -2295,13 +2295,13 @@ public:
       return;
     }
 
-    eraseIfUnused(II);
     SmallVector<Value *, 2> orig_ops(II.getNumOperands());
 
     for (unsigned i = 0; i < II.getNumOperands(); ++i) {
       orig_ops[i] = II.getOperand(i);
     }
     handleAdjointForIntrinsic(II.getIntrinsicID(), II, orig_ops);
+    eraseIfUnused(II);
   }
 
   void handleAdjointForIntrinsic(Intrinsic::ID ID, llvm::Instruction &I,
