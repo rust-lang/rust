@@ -401,7 +401,7 @@ impl<'a> Ctx<'a> {
         let mut res = Function {
             name,
             visibility,
-            generic_params: Interned::new(GenericParams::default()),
+            explicit_generic_params: Interned::new(GenericParams::default()),
             abi,
             params,
             ret_type: Interned::new(ret_type),
@@ -409,7 +409,8 @@ impl<'a> Ctx<'a> {
             ast_id,
             flags,
         };
-        res.generic_params = self.lower_generic_params(GenericsOwner::Function(&res), func);
+        res.explicit_generic_params =
+            self.lower_generic_params(GenericsOwner::Function(&res), func);
 
         Some(id(self.data().functions.alloc(res)))
     }
@@ -664,16 +665,8 @@ impl<'a> Ctx<'a> {
     ) -> Interned<GenericParams> {
         let mut generics = GenericParams::default();
         match owner {
-            GenericsOwner::Function(func) => {
-                generics.fill(&self.body_ctx, node);
-                // lower `impl Trait` in arguments
-                for id in func.params.clone() {
-                    if let Param::Normal(ty) = &self.data().params[id] {
-                        generics.fill_implicit_impl_trait_args(ty);
-                    }
-                }
-            }
-            GenericsOwner::Struct
+            GenericsOwner::Function(_)
+            | GenericsOwner::Struct
             | GenericsOwner::Enum
             | GenericsOwner::Union
             | GenericsOwner::TypeAlias => {
