@@ -3618,10 +3618,7 @@ impl AstNode for DynArgListOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        match syntax.kind() {
-            CALL_EXPR | METHOD_CALL_EXPR => Some(DynArgListOwner { syntax }),
-            _ => None,
-        }
+        Self::can_cast(syntax.kind()).then(|| DynArgListOwner { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
@@ -3703,74 +3700,7 @@ impl AstNode for DynAttrsOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        match syntax.kind() {
-            MACRO_CALL
-            | SOURCE_FILE
-            | CONST
-            | ENUM
-            | EXTERN_BLOCK
-            | EXTERN_CRATE
-            | FN
-            | IMPL
-            | MACRO_RULES
-            | MACRO_DEF
-            | MODULE
-            | STATIC
-            | STRUCT
-            | TRAIT
-            | TYPE_ALIAS
-            | UNION
-            | USE
-            | ITEM_LIST
-            | BLOCK_EXPR
-            | SELF_PARAM
-            | PARAM
-            | RECORD_FIELD
-            | TUPLE_FIELD
-            | VARIANT
-            | ASSOC_ITEM_LIST
-            | EXTERN_ITEM_LIST
-            | CONST_PARAM
-            | LIFETIME_PARAM
-            | TYPE_PARAM
-            | EXPR_STMT
-            | LET_STMT
-            | ARRAY_EXPR
-            | AWAIT_EXPR
-            | BIN_EXPR
-            | BOX_EXPR
-            | BREAK_EXPR
-            | CALL_EXPR
-            | CAST_EXPR
-            | CLOSURE_EXPR
-            | CONTINUE_EXPR
-            | EFFECT_EXPR
-            | FIELD_EXPR
-            | FOR_EXPR
-            | IF_EXPR
-            | INDEX_EXPR
-            | LITERAL
-            | LOOP_EXPR
-            | MATCH_EXPR
-            | METHOD_CALL_EXPR
-            | PAREN_EXPR
-            | PATH_EXPR
-            | PREFIX_EXPR
-            | RANGE_EXPR
-            | REF_EXPR
-            | RETURN_EXPR
-            | TRY_EXPR
-            | TUPLE_EXPR
-            | WHILE_EXPR
-            | YIELD_EXPR
-            | RECORD_EXPR_FIELD_LIST
-            | RECORD_EXPR_FIELD
-            | MATCH_ARM_LIST
-            | MATCH_ARM
-            | IDENT_PAT
-            | RECORD_PAT_FIELD => Some(DynAttrsOwner { syntax }),
-            _ => None,
-        }
+        Self::can_cast(syntax.kind()).then(|| DynAttrsOwner { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
@@ -3788,12 +3718,7 @@ impl AstNode for DynGenericParamsOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        match syntax.kind() {
-            ENUM | FN | IMPL | STRUCT | TRAIT | TYPE_ALIAS | UNION => {
-                Some(DynGenericParamsOwner { syntax })
-            }
-            _ => None,
-        }
+        Self::can_cast(syntax.kind()).then(|| DynGenericParamsOwner { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
@@ -3811,10 +3736,7 @@ impl AstNode for DynLoopBodyOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        match syntax.kind() {
-            FOR_EXPR | LOOP_EXPR | WHILE_EXPR => Some(DynLoopBodyOwner { syntax }),
-            _ => None,
-        }
+        Self::can_cast(syntax.kind()).then(|| DynLoopBodyOwner { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
@@ -3832,10 +3754,7 @@ impl AstNode for DynModuleItemOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        match syntax.kind() {
-            MACRO_ITEMS | SOURCE_FILE | ITEM_LIST => Some(DynModuleItemOwner { syntax }),
-            _ => None,
-        }
+        Self::can_cast(syntax.kind()).then(|| DynModuleItemOwner { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
@@ -3855,12 +3774,7 @@ impl AstNode for DynNameOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        match syntax.kind() {
-            CONST | ENUM | FN | MACRO_RULES | MACRO_DEF | MODULE | STATIC | STRUCT | TRAIT
-            | TYPE_ALIAS | UNION | RENAME | SELF_PARAM | RECORD_FIELD | VARIANT | CONST_PARAM
-            | TYPE_PARAM | IDENT_PAT => Some(DynNameOwner { syntax }),
-            _ => None,
-        }
+        Self::can_cast(syntax.kind()).then(|| DynNameOwner { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
@@ -3878,12 +3792,7 @@ impl AstNode for DynTypeBoundsOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        match syntax.kind() {
-            ASSOC_TYPE_ARG | TRAIT | TYPE_ALIAS | LIFETIME_PARAM | TYPE_PARAM | WHERE_PRED => {
-                Some(DynTypeBoundsOwner { syntax })
-            }
-            _ => None,
-        }
+        Self::can_cast(syntax.kind()).then(|| DynTypeBoundsOwner { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
@@ -3904,13 +3813,7 @@ impl AstNode for DynVisibilityOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        match syntax.kind() {
-            CONST | ENUM | EXTERN_CRATE | FN | IMPL | MACRO_RULES | MACRO_DEF | MODULE | STATIC
-            | STRUCT | TRAIT | TYPE_ALIAS | UNION | USE | RECORD_FIELD | TUPLE_FIELD | VARIANT => {
-                Some(DynVisibilityOwner { syntax })
-            }
-            _ => None,
-        }
+        Self::can_cast(syntax.kind()).then(|| DynVisibilityOwner { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
