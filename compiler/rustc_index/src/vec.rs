@@ -720,6 +720,21 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 }
 
+/// `IndexVec` is often used as a map, so it provides some map-like APIs.
+impl<I: Idx, T> IndexVec<I, Option<T>> {
+    #[inline]
+    pub fn insert(&mut self, index: I, value: T) -> Option<T> {
+        self.ensure_contains_elem(index, || None);
+        self[index].replace(value)
+    }
+
+    #[inline]
+    pub fn get_or_insert_with(&mut self, index: I, value: impl FnOnce() -> T) -> &mut T {
+        self.ensure_contains_elem(index, || None);
+        self[index].get_or_insert_with(value)
+    }
+}
+
 impl<I: Idx, T: Clone> IndexVec<I, T> {
     #[inline]
     pub fn resize(&mut self, new_len: usize, value: T) {

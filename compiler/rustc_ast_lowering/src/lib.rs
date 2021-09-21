@@ -469,11 +469,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let def_id = self.resolver.local_def_id(owner);
 
         // Always allocate the first `HirId` for the owner itself.
-        self.node_id_to_hir_id.ensure_contains_elem(owner, || None);
-        if let Some(_lowered) = self.node_id_to_hir_id[owner] {
-            panic!("with_hir_id_owner must not be called multiple times on owner {:?}", def_id);
-        }
-        self.node_id_to_hir_id[owner] = Some(hir::HirId::make_owner(def_id));
+        let _old = self.node_id_to_hir_id.insert(owner, hir::HirId::make_owner(def_id));
+        debug_assert_eq!(_old, None);
 
         let current_owner = std::mem::replace(&mut self.current_hir_id_owner, def_id);
         let current_local_counter =
@@ -484,8 +481,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.current_hir_id_owner = current_owner;
         self.item_local_id_counter = current_local_counter;
 
-        self.owners.ensure_contains_elem(def_id, || None);
-        self.owners[def_id] = Some(item);
+        let _old = self.owners.insert(def_id, item);
+        debug_assert!(_old.is_none());
 
         def_id
     }
@@ -499,18 +496,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_node_id(&mut self, ast_node_id: NodeId) -> hir::HirId {
         assert_ne!(ast_node_id, DUMMY_NODE_ID);
 
-        self.node_id_to_hir_id.ensure_contains_elem(ast_node_id, || None);
-        if let Some(existing_hir_id) = self.node_id_to_hir_id[ast_node_id] {
-            existing_hir_id
-        } else {
+        *self.node_id_to_hir_id.get_or_insert_with(ast_node_id, || {
             // Generate a new `HirId`.
             let owner = self.current_hir_id_owner;
             let local_id = self.item_local_id_counter;
             self.item_local_id_counter.increment_by(1);
-            let hir_id = hir::HirId { owner, local_id };
-            self.node_id_to_hir_id[ast_node_id] = Some(hir_id);
-            hir_id
-        }
+            hir::HirId { owner, local_id }
+        })
     }
 
     fn next_id(&mut self) -> hir::HirId {
