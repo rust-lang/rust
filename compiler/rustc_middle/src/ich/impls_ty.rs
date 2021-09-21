@@ -90,7 +90,10 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionKind {
             ty::ReFree(ref free_region) => {
                 free_region.hash_stable(hcx, hasher);
             }
-            ty::ReVar(..) | ty::RePlaceholder(..) => {
+            ty::RePlaceholder(p) => {
+                p.hash_stable(hcx, hasher);
+            }
+            ty::ReVar(..) => {
                 bug!("StableHasher: unexpected region {:?}", *self)
             }
         }
