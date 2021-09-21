@@ -810,17 +810,7 @@ pub fn normalize_projection_type<'a, 'b, 'tcx>(
         // and a deferred predicate to resolve this when more type
         // information is available.
 
-        let tcx = selcx.infcx().tcx;
-        let def_id = projection_ty.item_def_id;
-        let ty_var = selcx.infcx().next_ty_var(TypeVariableOrigin {
-            kind: TypeVariableOriginKind::NormalizeProjectionType,
-            span: tcx.def_span(def_id),
-        });
-        let projection = ty::Binder::dummy(ty::ProjectionPredicate { projection_ty, ty: ty_var });
-        let obligation =
-            Obligation::with_depth(cause, depth + 1, param_env, projection.to_predicate(tcx));
-        obligations.push(obligation);
-        ty_var
+        selcx.infcx().infer_projection(param_env, projection_ty, cause, depth + 1, obligations)
     })
 }
 

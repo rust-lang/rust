@@ -16,13 +16,6 @@ help: add missing generic argument
 LL | async fn copy() -> Result<(), E>
    |                             +++
 
-error[E0282]: type annotations needed
-  --> $DIR/issue-65159.rs:8:5
-   |
-LL |     Ok(())
-   |     ^^ cannot infer type for type parameter `E` declared on the enum `Result`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0107, E0282.
-For more information about an error, try `rustc --explain E0107`.
+For more information about this error, try `rustc --explain E0107`.
