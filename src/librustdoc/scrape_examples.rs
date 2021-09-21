@@ -22,7 +22,7 @@ use rustc_serialize::{
 };
 use rustc_session::getopts;
 use rustc_span::{
-    def_id::{CrateNum, DefId},
+    def_id::{CrateNum, DefPathHash},
     edition::Edition,
     BytePos, FileName, SourceFile,
 };
@@ -108,7 +108,7 @@ crate struct CallData {
 }
 
 crate type FnCallLocations = FxHashMap<PathBuf, CallData>;
-crate type AllCallLocations = FxHashMap<String, FnCallLocations>;
+crate type AllCallLocations = FxHashMap<DefPathHash, FnCallLocations>;
 
 /// Visitor for traversing a crate and finding instances of function calls.
 struct FindCalls<'a, 'tcx> {
@@ -117,14 +117,6 @@ struct FindCalls<'a, 'tcx> {
     cx: Context<'tcx>,
     target_crates: Vec<CrateNum>,
     calls: &'a mut AllCallLocations,
-}
-
-crate fn def_id_call_key(tcx: TyCtxt<'_>, def_id: DefId) -> String {
-    format!(
-        "{}{}",
-        tcx.crate_name(def_id.krate).to_ident_string(),
-        tcx.def_path(def_id).to_string_no_crate_verbose()
-    )
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for FindCalls<'a, 'tcx>
@@ -185,7 +177,7 @@ where
                     CallData { locations: Vec::new(), url, display_name, edition }
                 };
 
-                let fn_key = def_id_call_key(tcx, *def_id);
+                let fn_key = tcx.def_path_hash(*def_id);
                 let fn_entries = self.calls.entry(fn_key).or_default();
 
                 let location = CallLocation::new(tcx, span, ex.hir_id, &file);

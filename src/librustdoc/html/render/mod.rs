@@ -2465,7 +2465,7 @@ const MAX_FULL_EXAMPLES: usize = 5;
 /// Generates the HTML for example call locations generated via the --scrape-examples flag.
 fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, def_id: DefId, item: &clean::Item) {
     let tcx = cx.tcx();
-    let key = crate::scrape_examples::def_id_call_key(tcx, def_id);
+    let key = tcx.def_path_hash(def_id);
     let call_locations = match cx.shared.call_locations.get(&key) {
         Some(call_locations) => call_locations,
         _ => {
@@ -2474,13 +2474,14 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, def_id: DefId, item: 
     };
 
     // Generate a unique ID so users can link to this section for a given method
+    // FIXME: this should use init_id_map instead of derive
     let id = cx.id_map.borrow_mut().derive("scraped-examples");
     write!(
         w,
-        r##"<div class="docblock scraped-example-list">
-          <h1 id="scraped-examples" class="small-section-header">
-             <a href="#{}">Examples found in repository</a>
-          </h1>"##,
+        "<div class=\"docblock scraped-example-list\">\
+          <h1 id=\"scraped-examples\" class=\"small-section-header\">\
+             <a href=\"#{}\">Examples found in repository</a>\
+          </h1>",
         id
     );
 
@@ -2533,11 +2534,11 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, def_id: DefId, item: 
 
         write!(
             w,
-            r#"<div class="scraped-example" data-locs="{locations}" data-offset="{offset}">
-                <div class="scraped-example-title">
-                   {name} (<a href="{root}{url}" target="_blank">{line_range}</a>)
-                </div>
-                <div class="code-wrapper">"#,
+            "<div class=\"scraped-example\" data-locs=\"{locations}\" data-offset=\"{offset}\">\
+                <div class=\"scraped-example-title\">\
+                   {name} (<a href=\"{root}{url}\" target=\"_blank\">{line_range}</a>)\
+                </div>\
+                <div class=\"code-wrapper\">",
             root = cx.root_path(),
             url = call_data.url,
             name = call_data.display_name,
@@ -2625,14 +2626,13 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, def_id: DefId, item: 
     if it.peek().is_some() {
         write!(
             w,
-            r#"<details class="rustdoc-toggle more-examples-toggle">
-                  <summary class="hideme">
-                     <span>More examples</span>
-                  </summary>
-                  <div class="more-scraped-examples">
-                    <div class="toggle-line"><div class="toggle-line-inner"></div></div>
-                    <div class="more-scraped-examples-inner">
-"#
+            "<details class=\"rustdoc-toggle more-examples-toggle\">\
+                  <summary class=\"hideme\">\
+                     <span>More examples</span>\
+                  </summary>\
+                  <div class=\"more-scraped-examples\">\
+                    <div class=\"toggle-line\"><div class=\"toggle-line-inner\"></div></div>\
+                    <div class=\"more-scraped-examples-inner\">"
         );
 
         // Only generate inline code for MAX_FULL_EXAMPLES number of examples. Otherwise we could
@@ -2643,10 +2643,7 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, def_id: DefId, item: 
 
         // For the remaining examples, generate a <ul> containing links to the source files.
         if it.peek().is_some() {
-            write!(
-                w,
-                r#"<div class="example-links">Additional examples can be found in:<br /><ul>"#
-            );
+            write!(w, r#"<div class="example-links">Additional examples can be found in:<br><ul>"#);
             it.for_each(|(_, call_data)| {
                 write!(
                     w,

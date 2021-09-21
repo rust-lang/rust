@@ -7,7 +7,7 @@ all:
 	$(RUSTC) src/lib.rs --crate-name foobar --crate-type lib --emit=metadata
 
 # 2. scrape examples from the reverse-dependency into an ex.calls file
-	$(RUSTDOC) examples/ex.rs --crate-name ex --crate-type bin \
+	$(RUSTDOC) examples/ex.rs --crate-name ex --crate-type bin --output $(OUTPUT_DIR) \
 	  --extern foobar=$(TMPDIR)/libfoobar.rmeta \
 		-Z unstable-options \
 		--scrape-examples-output-path $(TMPDIR)/ex.calls \

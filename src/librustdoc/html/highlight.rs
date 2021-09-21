@@ -258,11 +258,7 @@ impl Iterator for PeekIter<'a> {
     type Item = (TokenKind, &'a str);
     fn next(&mut self) -> Option<Self::Item> {
         self.peek_pos = 0;
-        if let Some(first) = self.stored.pop_front() {
-            Some(first)
-        } else {
-            self.iter.next()
-        }
+        if let Some(first) = self.stored.pop_front() { Some(first) } else { self.iter.next() }
     }
 }
 

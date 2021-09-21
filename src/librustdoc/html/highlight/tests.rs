@@ -60,7 +60,7 @@ fn test_union_highlighting() {
     create_default_session_globals_then(|| {
         let src = include_str!("fixtures/union.rs");
         let mut html = Buffer::new();
-        write_code(&mut html, src, Edition::Edition2018, None);
+        write_code(&mut html, src, Edition::Edition2018, None, None);
         expect_file!["fixtures/union.html"].assert_eq(&html.into_inner());
     });
 }
