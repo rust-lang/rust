@@ -846,26 +846,28 @@ impl<'a, 'b> Context<'a, 'b> {
 
         let args_slice = self.ecx.expr_addr_of(self.macsp, args_match);
 
-        // Now create the fmt::Arguments struct with all our locals we created.
-        let (fn_name, fn_args) = if self.all_pieces_simple {
-            ("new_v1", vec![pieces, args_slice])
-        } else {
-            // Build up the static array which will store our precompiled
-            // nonstandard placeholders, if there are any.
-            let fmt = self.ecx.expr_vec_slice(self.macsp, self.pieces);
-
+        let unsafe_arg = {
             let path = self.ecx.std_path(&[sym::fmt, sym::UnsafeArg, sym::new]);
             let unsafe_arg = self.ecx.expr_call_global(self.macsp, path, Vec::new());
-            let unsafe_expr = self.ecx.expr_block(P(ast::Block {
+            self.ecx.expr_block(P(ast::Block {
                 stmts: vec![self.ecx.stmt_expr(unsafe_arg)],
                 id: ast::DUMMY_NODE_ID,
                 rules: BlockCheckMode::Unsafe(UnsafeSource::CompilerGenerated),
                 span: self.macsp,
                 tokens: None,
                 could_be_bare_literal: false,
-            }));
+            }))
+        };
 
-            ("new_v1_formatted", vec![pieces, args_slice, fmt, unsafe_expr])
+        // Now create the fmt::Arguments struct with all our locals we created.
+        let (fn_name, fn_args) = if self.all_pieces_simple {
+            ("new_v1", vec![pieces, args_slice, unsafe_arg])
+        } else {
+            // Build up the static array which will store our precompiled
+            // nonstandard placeholders, if there are any.
+            let fmt = self.ecx.expr_vec_slice(self.macsp, self.pieces);
+
+            ("new_v1_formatted", vec![pieces, args_slice, fmt, unsafe_arg])
         };
 
         let path = self.ecx.std_path(&[sym::fmt, sym::Arguments, Symbol::intern(fn_name)]);

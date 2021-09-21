@@ -280,7 +280,7 @@ impl UnsafeArg {
     #[doc(hidden)]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     #[inline(always)]
-    pub unsafe fn new() -> Self {
+    pub const unsafe fn new() -> Self {
         Self
     }
 }
@@ -353,6 +353,22 @@ enum FlagV1 {
 impl<'a> Arguments<'a> {
     /// When using the format_args!() macro, this function is used to generate the
     /// Arguments structure.
+    ///
+    /// An `UnsafeArg` is required because this function is unsafe unless
+    /// `pieces` is at least as long as `args`.
+    #[cfg(not(bootstrap))]
+    #[doc(hidden)]
+    #[inline]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
+    pub const fn new_v1(
+        pieces: &'a [&'static str],
+        args: &'a [ArgumentV1<'a>],
+        _unsafe_arg: UnsafeArg,
+    ) -> Arguments<'a> {
+        Arguments { pieces, fmt: None, args }
+    }
+    #[cfg(bootstrap)]
     #[doc(hidden)]
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]

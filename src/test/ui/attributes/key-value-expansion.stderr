@@ -22,7 +22,10 @@ error: unexpected token: `{
                                                                  (arg0,) =>
                                                                  [::core::fmt::ArgumentV1::new(arg0,
                                                                                                ::core::fmt::Display::fmt)],
-                                                             }));
+                                                             },
+                                                            unsafe {
+                                                                ::core::fmt::UnsafeArg::new()
+                                                            }));
     res
 }.as_str()`
   --> $DIR/key-value-expansion.rs:48:23

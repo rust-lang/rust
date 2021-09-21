@@ -34,27 +34,37 @@ pub fn bar() ({
                            ((::alloc::fmt::format as
                                 for<'r> fn(Arguments<'r>) -> String {format})(((::core::fmt::Arguments::new_v1
                                                                                    as
-                                                                                   fn(&[&'static str], &[ArgumentV1]) -> Arguments {Arguments::new_v1})((&([("test"
-                                                                                                                                                                as
-                                                                                                                                                                &str)]
-                                                                                                                                                              as
-                                                                                                                                                              [&str; 1])
-                                                                                                                                                            as
-                                                                                                                                                            &[&str; 1]),
-                                                                                                                                                        (&(match (()
-                                                                                                                                                                     as
-                                                                                                                                                                     ())
-                                                                                                                                                               {
-                                                                                                                                                               ()
-                                                                                                                                                               =>
-                                                                                                                                                               ([]
-                                                                                                                                                                   as
-                                                                                                                                                                   [ArgumentV1; 0]),
-                                                                                                                                                           }
-                                                                                                                                                              as
-                                                                                                                                                              [ArgumentV1; 0])
-                                                                                                                                                            as
-                                                                                                                                                            &[ArgumentV1; 0]))
+                                                                                   fn(&[&'static str], &[ArgumentV1], core::fmt::UnsafeArg) -> Arguments {Arguments::new_v1})((&([("test"
+                                                                                                                                                                                      as
+                                                                                                                                                                                      &str)]
+                                                                                                                                                                                    as
+                                                                                                                                                                                    [&str; 1])
+                                                                                                                                                                                  as
+                                                                                                                                                                                  &[&str; 1]),
+                                                                                                                                                                              (&(match (()
+                                                                                                                                                                                           as
+                                                                                                                                                                                           ())
+                                                                                                                                                                                     {
+                                                                                                                                                                                     ()
+                                                                                                                                                                                     =>
+                                                                                                                                                                                     ([]
+                                                                                                                                                                                         as
+                                                                                                                                                                                         [ArgumentV1; 0]),
+                                                                                                                                                                                 }
+                                                                                                                                                                                    as
+                                                                                                                                                                                    [ArgumentV1; 0])
+                                                                                                                                                                                  as
+                                                                                                                                                                                  &[ArgumentV1; 0]),
+                                                                                                                                                                              (unsafe
+                                                                                                                                                                               {
+                                                                                                                                                                                   ((::core::fmt::UnsafeArg::new
+                                                                                                                                                                                        as
+                                                                                                                                                                                        unsafe fn() -> core::fmt::UnsafeArg {core::fmt::UnsafeArg::new})()
+                                                                                                                                                                                       as
+                                                                                                                                                                                       core::fmt::UnsafeArg)
+                                                                                                                                                                               }
+                                                                                                                                                                                  as
+                                                                                                                                                                                  core::fmt::UnsafeArg))
                                                                                   as
                                                                                   Arguments))
                                as String);

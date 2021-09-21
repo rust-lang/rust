@@ -526,7 +526,7 @@ impl FormatArgsExpn<'tcx> {
             if let ExprKind::Call(_, args) = expr.kind;
             if let Some((strs_ref, args, fmt_expr)) = match args {
                 // Arguments::new_v1
-                [strs_ref, args] => Some((strs_ref, args, None)),
+                [strs_ref, args, _unsafe_arg] => Some((strs_ref, args, None)),
                 // Arguments::new_v1_formatted
                 [strs_ref, args, fmt_expr, _unsafe_arg] => Some((strs_ref, args, Some(fmt_expr))),
                 _ => None,
