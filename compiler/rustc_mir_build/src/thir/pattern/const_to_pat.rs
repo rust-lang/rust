@@ -322,16 +322,18 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     && !self.saw_const_match_lint.get()
                 {
                     self.saw_const_match_lint.set(true);
-                    let msg = format!(
-                        "to use a constant of type `{}` in a pattern, \
-                        `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                        cv.ty, cv.ty,
-                    );
                     tcx.struct_span_lint_hir(
                         lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                         id,
                         span,
-                        |lint| lint.build(&msg).emit(),
+                        |lint| {
+                            let msg = format!(
+                                "to use a constant of type `{}` in a pattern, \
+                                 `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
+                                cv.ty, cv.ty,
+                            );
+                            lint.build(&msg).emit()
+                        },
                     );
                 }
                 // Since we are behind a reference, we can just bubble the error up so we get a
