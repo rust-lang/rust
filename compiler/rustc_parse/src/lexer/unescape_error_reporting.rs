@@ -3,7 +3,7 @@
 use std::iter::once;
 use std::ops::Range;
 
-use rustc_errors::{Applicability, Handler};
+use rustc_errors::{pluralize, Applicability, Handler};
 use rustc_lexer::unescape::{EscapeError, Mode};
 use rustc_span::{BytePos, Span};
 
@@ -49,24 +49,57 @@ pub(crate) fn emit_unescape_error(
                 .emit();
         }
         EscapeError::MoreThanOneChar => {
-            let (prefix, msg) = if mode.is_bytes() {
-                ("b", "if you meant to write a byte string literal, use double quotes")
-            } else {
-                ("", "if you meant to write a `str` literal, use double quotes")
-            };
+            use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
 
-            handler
-                .struct_span_err(
-                    span_with_quotes,
-                    "character literal may only contain one codepoint",
-                )
-                .span_suggestion(
+            let mut has_help = false;
+            let mut handler = handler.struct_span_err(
+                span_with_quotes,
+                "character literal may only contain one codepoint",
+            );
+
+            if lit.chars().skip(1).all(|c| is_combining_mark(c)) {
+                let escaped_marks =
+                    lit.chars().skip(1).map(|c| c.escape_default().to_string()).collect::<Vec<_>>();
+                handler.span_note(
+                    span,
+                    &format!(
+                        "this `{}` is followed by the combining mark{} `{}`",
+                        lit.chars().next().unwrap(),
+                        pluralize!(escaped_marks.len()),
+                        escaped_marks.join(""),
+                    ),
+                );
+                let normalized = lit.nfc().to_string();
+                if normalized.chars().count() == 1 {
+                    has_help = true;
+                    handler.span_suggestion(
+                        span,
+                        &format!(
+                            "consider using the normalized form `{}` of this character",
+                            normalized.chars().next().unwrap().escape_default()
+                        ),
+                        normalized,
+                        Applicability::MachineApplicable,
+                    );
+                }
+            }
+
+            if !has_help {
+                let (prefix, msg) = if mode.is_bytes() {
+                    ("b", "if you meant to write a byte string literal, use double quotes")
+                } else {
+                    ("", "if you meant to write a `str` literal, use double quotes")
+                };
+
+                handler.span_suggestion(
                     span_with_quotes,
                     msg,
                     format!("{}\"{}\"", prefix, lit),
                     Applicability::MachineApplicable,
-                )
-                .emit();
+                );
+            }
+
+            handler.emit();
         }
         EscapeError::EscapeOnlyChar => {
             let (c, char_span) = last_char();
