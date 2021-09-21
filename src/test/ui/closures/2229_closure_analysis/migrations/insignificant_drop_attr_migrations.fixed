@@ -5,9 +5,11 @@
 #![feature(rustc_attrs)]
 #![allow(unused)]
 
+    use std::sync::Mutex;
+
 struct InsignificantDropPoint {
     x: i32,
-    y: i32,
+    y: Mutex<T>,
 }
 
 impl Drop for InsignificantDropPoint {
@@ -15,7 +17,7 @@ impl Drop for InsignificantDropPoint {
     fn drop(&mut self) {}
 }
 
-struct SigDrop;
+struct SigDrop { x: () }
 
 impl Drop for SigDrop {
     fn drop(&mut self) {}
@@ -30,12 +32,22 @@ impl<T> Drop for GenericStruct<T> {
     fn drop(&mut self) {}
 }
 
+// Test no migration because InsignificantDropPoint is marked as insignificant
+fn insign_dtor() {
+    let t = (
+        InsignificantDropPoint { x: 0, y: Mutex::new(0) },
+        InsignificantDropPoint { x: 0, y: Mutex::new(0) }
+    );
+
+    let c = || t.0;
+
+}
+
 // `SigDrop` implements drop and therefore needs to be migrated.
 fn significant_drop_needs_migration() {
-    let t = (SigDrop {}, SigDrop {});
+    let t = (SigDrop { x: () }, SigDrop { x: () });
 
     let c = || {
-        let _ = &t;
         //~^ ERROR: drop order
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
@@ -52,11 +64,10 @@ fn significant_drop_needs_migration() {
 // consdered to have an significant drop. Since the elements
 // of `GenericStruct` implement drop, migration is required.
 fn generic_struct_with_significant_drop_needs_migration() {
-    let t = Wrapper(GenericStruct(SigDrop {}, SigDrop {}), 5);
+    let t = Wrapper(GenericStruct(SigDrop { x: () }, SigDrop { x: () }), 5);
 
     // move is used to force i32 to be copied instead of being a ref
     let c = move || {
-        let _ = &t;
         //~^ ERROR: drop order
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured

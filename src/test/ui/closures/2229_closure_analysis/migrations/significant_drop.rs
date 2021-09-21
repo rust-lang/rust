@@ -158,7 +158,7 @@ fn test7_move_closures_non_copy_types_might_need_migration() {
 fn test8_drop_order_and_blocks() {
     {
         let tuple =
-          (String::from("foo"), String::from("bar"));
+          (Foo(0), Foo(1));
         {
             let c = || {
                 //~^ ERROR: drop order
@@ -176,7 +176,7 @@ fn test8_drop_order_and_blocks() {
 
 fn test9_drop_order_and_nested_closures() {
     let tuple =
-        (String::from("foo"), String::from("bar"));
+        (Foo(0), Foo(1));
     let b = || {
         let c = || {
             //~^ ERROR: drop order
