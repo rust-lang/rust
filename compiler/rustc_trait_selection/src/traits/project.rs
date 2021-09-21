@@ -834,6 +834,10 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
     obligations: &mut Vec<PredicateObligation<'tcx>>,
 ) -> Result<Option<Ty<'tcx>>, InProgress> {
     let infcx = selcx.infcx();
+    // Don't use the projection cache in intercrate mode -
+    // the `infcx` may be re-used between intercrate in non-intercrate
+    // mode, which could lead to using incorrect cache results.
+    let use_cache = !selcx.is_intercrate();
 
     let projection_ty = infcx.resolve_vars_if_possible(projection_ty);
     let cache_key = ProjectionCacheKey::new(projection_ty);
@@ -846,7 +850,11 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
     // bounds. It might be the case that we want two distinct caches,
     // or else another kind of cache entry.
 
-    let cache_result = infcx.inner.borrow_mut().projection_cache().try_start(cache_key);
+    let cache_result = if use_cache {
+        infcx.inner.borrow_mut().projection_cache().try_start(cache_key)
+    } else {
+        Ok(())
+    };
     match cache_result {
         Ok(()) => debug!("no cache"),
         Err(ProjectionCacheEntry::Ambiguous) => {
@@ -871,7 +879,9 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             // should ensure that, unless this happens within a snapshot that's
             // rolled back, fulfillment or evaluation will notice the cycle.
 
-            infcx.inner.borrow_mut().projection_cache().recur(cache_key);
+            if use_cache {
+                infcx.inner.borrow_mut().projection_cache().recur(cache_key);
+            }
             return Err(InProgress);
         }
         Err(ProjectionCacheEntry::Recur) => {
@@ -953,20 +963,26 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
                         .map_or(false, |res| res.must_apply_considering_regions())
             });
 
-            infcx.inner.borrow_mut().projection_cache().insert_ty(cache_key, result.clone());
+            if use_cache {
+                infcx.inner.borrow_mut().projection_cache().insert_ty(cache_key, result.clone());
+            }
             obligations.extend(result.obligations);
             Ok(Some(result.value))
         }
         Ok(ProjectedTy::NoProgress(projected_ty)) => {
             debug!(?projected_ty, "opt_normalize_projection_type: no progress");
             let result = Normalized { value: projected_ty, obligations: vec![] };
-            infcx.inner.borrow_mut().projection_cache().insert_ty(cache_key, result.clone());
+            if use_cache {
+                infcx.inner.borrow_mut().projection_cache().insert_ty(cache_key, result.clone());
+            }
             // No need to extend `obligations`.
             Ok(Some(result.value))
         }
         Err(ProjectionTyError::TooManyCandidates) => {
             debug!("opt_normalize_projection_type: too many candidates");
-            infcx.inner.borrow_mut().projection_cache().ambiguous(cache_key);
+            if use_cache {
+                infcx.inner.borrow_mut().projection_cache().ambiguous(cache_key);
+            }
             Ok(None)
         }
         Err(ProjectionTyError::TraitSelectionError(_)) => {
@@ -976,7 +992,9 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             // Trait`, which when processed will cause the error to be
             // reported later
 
-            infcx.inner.borrow_mut().projection_cache().error(cache_key);
+            if use_cache {
+                infcx.inner.borrow_mut().projection_cache().error(cache_key);
+            }
             let result = normalize_to_error(selcx, param_env, projection_ty, cause, depth);
             obligations.extend(result.obligations);
             Ok(Some(result.value))

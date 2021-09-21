@@ -314,6 +314,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx.tcx
     }
 
+    pub fn is_intercrate(&self) -> bool {
+        self.intercrate
+    }
+
     /// Returns `true` if the trait predicate is considerd `const` to this selection context.
     pub fn is_trait_predicate_const(&self, pred: ty::TraitPredicate<'_>) -> bool {
         match pred.constness {
@@ -1197,6 +1201,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> Option<SelectionResult<'tcx, SelectionCandidate<'tcx>>> {
+        // Neither the global nor local cache is aware of intercrate
+        // mode, so don't do any caching. In particular, we might
+        // re-use the same `InferCtxt` with both an intercrate
+        // and non-intercrate `SelectionContext`
+        if self.intercrate {
+            return None;
+        }
         let tcx = self.tcx();
         let pred = &cache_fresh_trait_pred.skip_binder();
         let trait_ref = pred.trait_ref;
@@ -1233,6 +1244,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &self,
         result: &SelectionResult<'tcx, SelectionCandidate<'tcx>>,
     ) -> bool {
+        // Neither the global nor local cache is aware of intercrate
+        // mode, so don't do any caching. In particular, we might
+        // re-use the same `InferCtxt` with both an intercrate
+        // and non-intercrate `SelectionContext`
+        if self.intercrate {
+            return false;
+        }
         match result {
             Ok(Some(SelectionCandidate::ParamCandidate(trait_ref))) => !trait_ref.needs_infer(),
             _ => true,
