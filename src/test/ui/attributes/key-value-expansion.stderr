@@ -17,16 +17,12 @@ LL | bug!();
 
 error: unexpected token: `{
     let res =
-        ::alloc::fmt::format(match match (&"u8",) {
-                                       (arg0,) =>
-                                       [::core::fmt::ArgumentV1::new(arg0,
-                                                                     ::core::fmt::Display::fmt)],
-                                   } {
-                                 ref args => unsafe {
-                                     ::core::fmt::Arguments::new_v1(&[""],
-                                                                    args)
-                                 }
-                             });
+        ::alloc::fmt::format(::core::fmt::Arguments::new_v1(&[""],
+                                                            &match (&"u8",) {
+                                                                 (arg0,) =>
+                                                                 [::core::fmt::ArgumentV1::new(arg0,
+                                                                                               ::core::fmt::Display::fmt)],
+                                                             }));
     res
 }.as_str()`
   --> $DIR/key-value-expansion.rs:48:23

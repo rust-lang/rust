@@ -845,8 +845,7 @@ impl<'a, 'b> Context<'a, 'b> {
             self.ecx.expr_match(self.macsp, head, vec![arm])
         };
 
-        let ident = Ident::from_str_and_span("args", self.macsp);
-        let args_slice = self.ecx.expr_ident(self.macsp, ident);
+        let args_slice = self.ecx.expr_addr_of(self.macsp, args_match);
 
         // Now create the fmt::Arguments struct with all our locals we created.
         let (fn_name, fn_args) = if self.all_pieces_simple {
@@ -856,25 +855,22 @@ impl<'a, 'b> Context<'a, 'b> {
             // nonstandard placeholders, if there are any.
             let fmt = self.ecx.expr_vec_slice(self.macsp, self.pieces);
 
-            ("new_v1_formatted", vec![pieces, args_slice, fmt])
+            let path = self.ecx.std_path(&[sym::fmt, sym::UnsafeArg, sym::new]);
+            let unsafe_arg = self.ecx.expr_call_global(self.macsp, path, Vec::new());
+            let unsafe_expr = self.ecx.expr_block(P(ast::Block {
+                stmts: vec![self.ecx.stmt_expr(unsafe_arg)],
+                id: ast::DUMMY_NODE_ID,
+                rules: BlockCheckMode::Unsafe(UnsafeSource::CompilerGenerated),
+                span: self.macsp,
+                tokens: None,
+                could_be_bare_literal: false,
+            }));
+
+            ("new_v1_formatted", vec![pieces, args_slice, fmt, unsafe_expr])
         };
 
         let path = self.ecx.std_path(&[sym::fmt, sym::Arguments, Symbol::intern(fn_name)]);
-        let arguments = self.ecx.expr_call_global(self.macsp, path, fn_args);
-        let body = self.ecx.expr_block(P(ast::Block {
-            stmts: vec![self.ecx.stmt_expr(arguments)],
-            id: ast::DUMMY_NODE_ID,
-            rules: BlockCheckMode::Unsafe(UnsafeSource::CompilerGenerated),
-            span: self.macsp,
-            tokens: None,
-            could_be_bare_literal: false,
-        }));
-
-        let ident = Ident::from_str_and_span("args", self.macsp);
-        let binding_mode = ast::BindingMode::ByRef(ast::Mutability::Not);
-        let pat = self.ecx.pat_ident_binding_mode(self.macsp, ident, binding_mode);
-        let arm = self.ecx.arm(self.macsp, pat, body);
-        self.ecx.expr_match(self.macsp, args_match, vec![arm])
+        self.ecx.expr_call_global(self.macsp, path, fn_args)
     }
 
     fn format_arg(
