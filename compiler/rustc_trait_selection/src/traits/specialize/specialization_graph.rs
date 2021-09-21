@@ -104,19 +104,21 @@ impl ChildrenExt for Children {
                 let self_ty = trait_ref.self_ty();
 
                 // FIXME: should postpone string formatting until we decide to actually emit.
-                with_no_trimmed_paths(|| OverlapError {
-                    with_impl: possible_sibling,
-                    trait_desc: trait_ref.print_only_trait_path().to_string(),
-                    // Only report the `Self` type if it has at least
-                    // some outer concrete shell; otherwise, it's
-                    // not adding much information.
-                    self_desc: if self_ty.has_concrete_skeleton() {
-                        Some(self_ty.to_string())
-                    } else {
-                        None
-                    },
-                    intercrate_ambiguity_causes: overlap.intercrate_ambiguity_causes,
-                    involves_placeholder: overlap.involves_placeholder,
+                with_no_trimmed_paths(|| {
+                    OverlapError {
+                        with_impl: possible_sibling,
+                        trait_desc: trait_ref.print_only_trait_path().to_string(),
+                        // Only report the `Self` type if it has at least
+                        // some outer concrete shell; otherwise, it's
+                        // not adding much information.
+                        self_desc: if self_ty.has_concrete_skeleton() {
+                            Some(self_ty.to_string())
+                        } else {
+                            None
+                        },
+                        intercrate_ambiguity_causes: overlap.intercrate_ambiguity_causes,
+                        involves_placeholder: overlap.involves_placeholder,
+                    }
                 })
             };
 

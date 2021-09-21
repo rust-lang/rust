@@ -1,7 +1,7 @@
 [package]
 name = "lint-docs"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 description = "A script to extract the lint documentation for the rustc book."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

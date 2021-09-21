@@ -262,7 +262,7 @@ impl Step for CodegenBackend {
         let mut cargo = builder.cargo(
             compiler,
             Mode::Codegen,
-            SourceType::Submodule,
+            SourceType::InTree,
             target,
             cargo_subcommand(builder.kind),
         );

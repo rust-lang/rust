@@ -1,7 +1,7 @@
 [package]
 name = "rustc_save_analysis"
 version = "0.0.0"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 tracing = "0.1"

@@ -1,4 +1,4 @@
 [package]
 name = "rustc_graphviz"
 version = "0.0.0"
-edition = "2018"
+edition = "2021"

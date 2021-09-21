@@ -1,7 +1,7 @@
 [package]
 name = "rustc_lint_defs"
 version = "0.0.0"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 rustc_ast = { path = "../rustc_ast" }

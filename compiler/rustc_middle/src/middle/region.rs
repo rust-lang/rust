@@ -257,7 +257,8 @@ pub struct ScopeTree {
     /// ```
     ///
     /// With the HIR tree (calls numbered for expository purposes)
-    /// ```
+    ///
+    /// ```text
     ///     Call#0(foo, [Call#1(f), Yield(y), Call#2(bar, Call#3(g))])
     /// ```
     ///

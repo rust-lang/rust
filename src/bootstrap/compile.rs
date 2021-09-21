@@ -817,8 +817,7 @@ impl Step for CodegenBackend {
 
         let out_dir = builder.cargo_out(compiler, Mode::Codegen, target);
 
-        let mut cargo =
-            builder.cargo(compiler, Mode::Codegen, SourceType::Submodule, target, "build");
+        let mut cargo = builder.cargo(compiler, Mode::Codegen, SourceType::InTree, target, "build");
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join(format!("compiler/rustc_codegen_{}/Cargo.toml", backend)));

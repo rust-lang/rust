@@ -1584,7 +1584,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,edition2018
     /// trait Trait { }
     ///
     /// fn takes_trait_object(_: Box<Trait>) {
@@ -3313,7 +3313,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    /// ```rust,edition2018,compile_fail
     /// #![deny(rust_2021_prefixes_incompatible_syntax)]
     ///
     /// macro_rules! m {
@@ -3333,6 +3333,8 @@ declare_lint! {
     ///
     /// This lint suggests to add whitespace between the `z` and `"hey"` tokens
     /// to keep them separated in Rust 2021.
+    // Allow this lint -- rustdoc doesn't yet support threading edition into this lint's parser.
+    #[allow(rustdoc::invalid_rust_codeblocks)]
     pub RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
     Allow,
     "identifiers that will be parsed as a prefix in Rust 2021",

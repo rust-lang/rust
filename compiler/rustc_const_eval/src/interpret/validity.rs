@@ -77,7 +77,7 @@ macro_rules! throw_validation_failure {
 ///
 macro_rules! try_validation {
     ($e:expr, $where:expr,
-    $( $( $p:pat )|+ => { $( $what_fmt:expr ),+ } $( expected { $( $expected_fmt:expr ),+ } )? ),+ $(,)?
+    $( $( $p:pat_param )|+ => { $( $what_fmt:expr ),+ } $( expected { $( $expected_fmt:expr ),+ } )? ),+ $(,)?
     ) => {{
         match $e {
             Ok(x) => x,

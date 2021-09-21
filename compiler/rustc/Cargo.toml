@@ -1,7 +1,7 @@
 [package]
 name = "rustc-main"
 version = "0.0.0"
-edition = '2018'
+edition = "2021"
 
 [dependencies]
 rustc_driver = { path = "../rustc_driver" }

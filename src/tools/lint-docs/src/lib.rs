@@ -149,6 +149,10 @@ impl<'a> LintExtractor<'a> {
                         } else if line.starts_with("// ") {
                             // Ignore comments.
                             continue;
+                        } else if line.starts_with("#[allow") {
+                            // Ignore allow of lints (useful for
+                            // invalid_rust_codeblocks).
+                            continue;
                         } else {
                             let name = lint_name(line).map_err(|e| {
                                 format!(

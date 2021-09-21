@@ -8,7 +8,7 @@ readme = "README.md"
 license = "Apache-2.0/MIT"
 build = "build.rs"
 categories = ["development-tools"]
-edition = "2018"
+edition = "2021"
 
 [[bin]]
 name = "rustfmt"

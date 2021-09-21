@@ -11,10 +11,10 @@
 //! should be used when linking each output type requested in this session. This
 //! generally follows this set of rules:
 //!
-//!     1. Each library must appear exactly once in the output.
-//!     2. Each rlib contains only one library (it's just an object file)
-//!     3. Each dylib can contain more than one library (due to static linking),
-//!        and can also bring in many dynamic dependencies.
+//! 1. Each library must appear exactly once in the output.
+//! 2. Each rlib contains only one library (it's just an object file)
+//! 3. Each dylib can contain more than one library (due to static linking),
+//!    and can also bring in many dynamic dependencies.
 //!
 //! With these constraints in mind, it's generally a very difficult problem to
 //! find a solution that's not "all rlibs" or "all dylibs". I have suspicions
@@ -22,24 +22,24 @@
 //!
 //! The current selection algorithm below looks mostly similar to:
 //!
-//!     1. If static linking is required, then require all upstream dependencies
-//!        to be available as rlibs. If not, generate an error.
-//!     2. If static linking is requested (generating an executable), then
-//!        attempt to use all upstream dependencies as rlibs. If any are not
-//!        found, bail out and continue to step 3.
-//!     3. Static linking has failed, at least one library must be dynamically
-//!        linked. Apply a heuristic by greedily maximizing the number of
-//!        dynamically linked libraries.
-//!     4. Each upstream dependency available as a dynamic library is
-//!        registered. The dependencies all propagate, adding to a map. It is
-//!        possible for a dylib to add a static library as a dependency, but it
-//!        is illegal for two dylibs to add the same static library as a
-//!        dependency. The same dylib can be added twice. Additionally, it is
-//!        illegal to add a static dependency when it was previously found as a
-//!        dylib (and vice versa)
-//!     5. After all dynamic dependencies have been traversed, re-traverse the
-//!        remaining dependencies and add them statically (if they haven't been
-//!        added already).
+//! 1. If static linking is required, then require all upstream dependencies
+//!    to be available as rlibs. If not, generate an error.
+//! 2. If static linking is requested (generating an executable), then
+//!    attempt to use all upstream dependencies as rlibs. If any are not
+//!    found, bail out and continue to step 3.
+//! 3. Static linking has failed, at least one library must be dynamically
+//!    linked. Apply a heuristic by greedily maximizing the number of
+//!    dynamically linked libraries.
+//! 4. Each upstream dependency available as a dynamic library is
+//!    registered. The dependencies all propagate, adding to a map. It is
+//!    possible for a dylib to add a static library as a dependency, but it
+//!    is illegal for two dylibs to add the same static library as a
+//!    dependency. The same dylib can be added twice. Additionally, it is
+//!    illegal to add a static dependency when it was previously found as a
+//!    dylib (and vice versa)
+//! 5. After all dynamic dependencies have been traversed, re-traverse the
+//!    remaining dependencies and add them statically (if they haven't been
+//!    added already).
 //!
 //! While not perfect, this algorithm should help support use-cases such as leaf
 //! dependencies being static while the larger tree of inner dependencies are
