@@ -250,13 +250,11 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                             }
                         }
                         fn cast(syntax: SyntaxNode) -> Option<Self> {
-                            let res = match syntax.kind() {
-                                #(
-                                #kinds => #name { syntax },
-                                )*
-                                _ => return None,
-                            };
-                            Some(res)
+                            match syntax.kind() {
+                                #(#kinds)|* => Some(#name { syntax }),
+                                _ => None,
+                            }
+
                         }
                         fn syntax(&self) -> &SyntaxNode {
                             &self.syntax

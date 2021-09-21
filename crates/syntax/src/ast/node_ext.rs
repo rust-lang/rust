@@ -572,16 +572,7 @@ impl ast::Variant {
 
 impl ast::Item {
     pub fn generic_param_list(&self) -> Option<ast::GenericParamList> {
-        match self {
-            ast::Item::Enum(it) => it.generic_param_list(),
-            ast::Item::Fn(it) => it.generic_param_list(),
-            ast::Item::Impl(it) => it.generic_param_list(),
-            ast::Item::Struct(it) => it.generic_param_list(),
-            ast::Item::Trait(it) => it.generic_param_list(),
-            ast::Item::TypeAlias(it) => it.generic_param_list(),
-            ast::Item::Union(it) => it.generic_param_list(),
-            _ => None,
-        }
+        ast::DynGenericParamsOwner::cast(self.syntax().clone())?.generic_param_list()
     }
 }
 
