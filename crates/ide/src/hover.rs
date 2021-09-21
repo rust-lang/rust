@@ -118,26 +118,36 @@ pub(crate) fn hover(
 
     let mut fallback = None;
     // attributes, require special machinery as they are mere ident tokens
-    if token.kind() != COMMENT {
-        if let Some(attr) = token.ancestors().find_map(ast::Attr::cast) {
-            // lints
-            if let Some(res) = try_hover_for_lint(&attr, &token) {
-                return Some(res);
-            // derives
-            } else {
-                let def = try_resolve_derive_input_at(&sema, &attr, &token).map(Definition::Macro);
-                if let Some(def) = def {
-                    if let Some(hover) =
-                        hover_for_definition(&sema, file_id, def, &token.parent().unwrap(), config)
-                    {
-                        return Some(RangeInfo::new(token.text_range(), hover));
+
+    let descend_macros = sema.descend_into_macros_many(token.clone());
+
+    for token in &descend_macros {
+        if token.kind() != COMMENT {
+            if let Some(attr) = token.ancestors().find_map(ast::Attr::cast) {
+                // lints
+                if let Some(res) = try_hover_for_lint(&attr, &token) {
+                    return Some(res);
+                // derives
+                } else {
+                    let def =
+                        try_resolve_derive_input_at(&sema, &attr, &token).map(Definition::Macro);
+                    if let Some(def) = def {
+                        if let Some(hover) = hover_for_definition(
+                            &sema,
+                            file_id,
+                            def,
+                            &token.parent().unwrap(),
+                            config,
+                        ) {
+                            return Some(RangeInfo::new(token.text_range(), hover));
+                        }
                     }
                 }
             }
         }
     }
 
-    sema.descend_into_macros_many(token.clone())
+    descend_macros
         .iter()
         .filter_map(|token| match token.parent() {
             Some(node) => {
@@ -4555,6 +4565,37 @@ use crate as foo$0;
 
                 ```rust
                 extern crate test
+                ```
+            "#]],
+        );
+    }
+
+    // FIXME: wrong range in macros. `es! ` should be `Copy`
+    #[test]
+    fn hover_attribute_in_macro() {
+        check(
+            r#"
+macro_rules! identity {
+    ($struct:item) => {
+        $struct
+    };
+}
+#[rustc_builtin_macro]
+pub macro Copy {}
+identity!{
+    #[derive(Copy$0)]
+    struct Foo;
+}
+"#,
+            expect![[r#"
+                *es! *
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub macro Copy
                 ```
             "#]],
         );
