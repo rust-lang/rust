@@ -31,6 +31,7 @@ use crate::num;
 use crate::str;
 use crate::string;
 use crate::sync::Arc;
+use crate::time;
 
 /// `Error` is a trait representing the basic expectations for error values,
 /// i.e., values of type `E` in [`Result<T, E>`].
@@ -598,7 +599,7 @@ impl Error for char::ParseCharError {
 impl Error for alloc::collections::TryReserveError {}
 
 #[unstable(feature = "duration_checked_float", issue = "83400")]
-impl Error for core::time::FromSecsError {}
+impl Error for time::FromSecsError {}
 
 // Copied from `any.rs`.
 impl dyn Error + 'static {
