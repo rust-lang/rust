@@ -83,12 +83,12 @@ pub struct Map<'hir> {
 
 /// An iterator that walks up the ancestor tree of a given `HirId`.
 /// Constructed using `tcx.hir().parent_iter(hir_id)`.
-pub struct ParentHirIterator<'map, 'hir> {
+pub struct ParentHirIterator<'hir> {
     current_id: HirId,
-    map: &'map Map<'hir>,
+    map: Map<'hir>,
 }
 
-impl<'hir> Iterator for ParentHirIterator<'_, 'hir> {
+impl<'hir> Iterator for ParentHirIterator<'hir> {
     type Item = (HirId, Node<'hir>);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -115,12 +115,12 @@ impl<'hir> Iterator for ParentHirIterator<'_, 'hir> {
 
 /// An iterator that walks up the ancestor tree of a given `HirId`.
 /// Constructed using `tcx.hir().parent_owner_iter(hir_id)`.
-pub struct ParentOwnerIterator<'map, 'hir> {
+pub struct ParentOwnerIterator<'hir> {
     current_id: HirId,
-    map: &'map Map<'hir>,
+    map: Map<'hir>,
 }
 
-impl<'hir> Iterator for ParentOwnerIterator<'_, 'hir> {
+impl<'hir> Iterator for ParentOwnerIterator<'hir> {
     type Item = (HirId, OwnerNode<'hir>);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -588,13 +588,13 @@ impl<'hir> Map<'hir> {
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
     /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
-    pub fn parent_iter(&self, current_id: HirId) -> ParentHirIterator<'_, 'hir> {
+    pub fn parent_iter(self, current_id: HirId) -> ParentHirIterator<'hir> {
         ParentHirIterator { current_id, map: self }
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
     /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
-    pub fn parent_owner_iter(&self, current_id: HirId) -> ParentOwnerIterator<'_, 'hir> {
+    pub fn parent_owner_iter(self, current_id: HirId) -> ParentOwnerIterator<'hir> {
         ParentOwnerIterator { current_id, map: self }
     }
 
