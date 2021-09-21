@@ -1,0 +1,49 @@
+error: this code is interpreted as a block expression, not an array
+  --> $DIR/issue-87830-try-brackets-for-arrays.rs:3:22
+   |
+LL |   const FOO: [u8; 3] = {
+   |  ______________________^
+LL | |     1, 2, 3
+LL | | };
+   | |_^
+   |
+   = note: to define an array, one would use square brackets instead of curly braces
+help: try using [] instead of {}
+   |
+LL ~ const FOO: [u8; 3] = [
+LL |     1, 2, 3
+LL ~ ];
+   |
+
+error: this code is interpreted as a block expression, not an array
+  --> $DIR/issue-87830-try-brackets-for-arrays.rs:7:24
+   |
+LL | const BAR: [&str; 3] = {"one", "two", "three"};
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: to define an array, one would use square brackets instead of curly braces
+help: try using [] instead of {}
+   |
+LL | const BAR: [&str; 3] = ["one", "two", "three"];
+   |                        ~                     ~
+
+error: this code is interpreted as a block expression, not an array
+  --> $DIR/issue-87830-try-brackets-for-arrays.rs:11:5
+   |
+LL |     {1, 2, 3};
+   |     ^^^^^^^^^
+   |
+   = note: to define an array, one would use square brackets instead of curly braces
+help: try using [] instead of {}
+   |
+LL |     [1, 2, 3];
+   |     ~       ~
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
+  --> $DIR/issue-87830-try-brackets-for-arrays.rs:16:6
+   |
+LL |     1, 2, 3
+   |      ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: aborting due to 4 previous errors
+
