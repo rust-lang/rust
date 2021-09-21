@@ -44,6 +44,9 @@ use crate::sys_common::FromInner;
 #[stable(feature = "time", since = "1.3.0")]
 pub use core::time::Duration;
 
+#[unstable(feature = "duration_checked_float", issue = "83400")]
+pub use core::time::FromSecsError;
+
 /// A measurement of a monotonically nondecreasing clock.
 /// Opaque and useful only with [`Duration`].
 ///
