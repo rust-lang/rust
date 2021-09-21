@@ -262,6 +262,10 @@ pub fn identity(_attr: TokenStream, item: TokenStream) -> TokenStream {
 pub fn input_replace(attr: TokenStream, _item: TokenStream) -> TokenStream {
     attr
 }
+#[proc_macro]
+pub fn mirror(input: TokenStream) -> TokenStream {
+    input
+}
 "#;
     let proc_macros = std::array::IntoIter::new([
         ProcMacro {
@@ -273,6 +277,11 @@ pub fn input_replace(attr: TokenStream, _item: TokenStream) -> TokenStream {
             name: "input_replace".into(),
             kind: crate::ProcMacroKind::Attr,
             expander: Arc::new(AttributeInputReplaceProcMacroExpander),
+        },
+        ProcMacro {
+            name: "mirror".into(),
+            kind: crate::ProcMacroKind::FuncLike,
+            expander: Arc::new(MirrorProcMacroExpander),
         },
     ])
     .filter(|pm| proc_macros.iter().any(|name| name == pm.name))
@@ -346,5 +355,30 @@ impl ProcMacroExpander for AttributeInputReplaceProcMacroExpander {
         attrs
             .cloned()
             .ok_or_else(|| ProcMacroExpansionError::Panic("Expected attribute input".into()))
+    }
+}
+
+#[derive(Debug)]
+struct MirrorProcMacroExpander;
+impl ProcMacroExpander for MirrorProcMacroExpander {
+    fn expand(
+        &self,
+        input: &Subtree,
+        _: Option<&Subtree>,
+        _: &Env,
+    ) -> Result<Subtree, ProcMacroExpansionError> {
+        fn traverse(input: &Subtree) -> Subtree {
+            let mut res = Subtree::default();
+            res.delimiter = input.delimiter;
+            for tt in input.token_trees.iter().rev() {
+                let tt = match tt {
+                    tt::TokenTree::Leaf(leaf) => tt::TokenTree::Leaf(leaf.clone()),
+                    tt::TokenTree::Subtree(sub) => tt::TokenTree::Subtree(traverse(sub)),
+                };
+                res.token_trees.push(tt);
+            }
+            res
+        }
+        Ok(traverse(input))
     }
 }
