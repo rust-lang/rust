@@ -1,0 +1,11 @@
+warning: the feature `adt_const_params` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/refs_check_const_eq-issue-88384.rs:4:12
+   |
+LL | #![feature(adt_const_params)]
+   |            ^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
+
+warning: 1 warning emitted
+

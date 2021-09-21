@@ -10,7 +10,7 @@ use crate::ops::{ControlFlow, Try};
 /// [`map_while`]: Iterator::map_while
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-#[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
+#[stable(feature = "iter_map_while", since = "1.57.0")]
 #[derive(Clone)]
 pub struct MapWhile<I, P> {
     iter: I,
@@ -23,14 +23,14 @@ impl<I, P> MapWhile<I, P> {
     }
 }
 
-#[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
+#[stable(feature = "iter_map_while", since = "1.57.0")]
 impl<I: fmt::Debug, P> fmt::Debug for MapWhile<I, P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("MapWhile").field("iter", &self.iter).finish()
     }
 }
 
-#[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
+#[stable(feature = "iter_map_while", since = "1.57.0")]
 impl<B, I: Iterator, P> Iterator for MapWhile<I, P>
 where
     P: FnMut(I::Item) -> Option<B>,

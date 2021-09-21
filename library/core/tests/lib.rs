@@ -50,7 +50,6 @@
 #![feature(iter_partition_in_place)]
 #![feature(iter_is_partitioned)]
 #![feature(iter_order_by)]
-#![feature(iter_map_while)]
 #![feature(const_mut_refs)]
 #![feature(const_pin)]
 #![feature(const_slice_from_raw_parts)]

@@ -44,15 +44,18 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
     let body_owner_kind = tcx.hir().body_owner_kind(id);
     let typeck_results = tcx.typeck_opt_const_arg(def);
 
-    // Ensure unsafeck is ran before we steal the THIR.
+    // Ensure unsafeck and abstract const building is ran before we steal the THIR.
+    // We can't use `ensure()` for `thir_abstract_const` as it doesn't compute the query
+    // if inputs are green. This can cause ICEs when calling `thir_abstract_const` after
+    // THIR has been stolen if we haven't computed this query yet.
     match def {
         ty::WithOptConstParam { did, const_param_did: Some(const_param_did) } => {
             tcx.ensure().thir_check_unsafety_for_const_arg((did, const_param_did));
-            tcx.ensure().thir_abstract_const_of_const_arg((did, const_param_did));
+            drop(tcx.thir_abstract_const_of_const_arg((did, const_param_did)));
         }
         ty::WithOptConstParam { did, const_param_did: None } => {
             tcx.ensure().thir_check_unsafety(did);
-            tcx.ensure().thir_abstract_const(did);
+            drop(tcx.thir_abstract_const(did));
         }
     }
 

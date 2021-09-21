@@ -1494,8 +1494,13 @@ impl Build {
             {
                 eprintln!(
                     "
-Couldn't find required command: ninja
-You should install ninja, or set `ninja=false` in config.toml in the `[llvm]` section.
+Couldn't find required command: ninja (or ninja-build)
+
+You should install ninja as described at
+<https://github.com/ninja-build/ninja/wiki/Pre-built-Ninja-packages>,
+or set `ninja = false` in the `[llvm]` section of `config.toml`.
+Alternatively, set `download-ci-llvm = true` in that `[llvm]` section
+to download LLVM rather than building it.
 "
                 );
                 std::process::exit(1);
