@@ -411,47 +411,47 @@ impl AttrsWithOwner {
                 let file_id = id.parent.file_id(db);
                 let root = db.parse_or_expand(file_id).unwrap();
                 let owner = match &map[id.local_id] {
-                    Either::Left(it) => ast::AttrsOwnerNode::new(it.to_node(&root)),
-                    Either::Right(it) => ast::AttrsOwnerNode::new(it.to_node(&root)),
+                    Either::Left(it) => ast::DynAttrsOwner::new(it.to_node(&root)),
+                    Either::Right(it) => ast::DynAttrsOwner::new(it.to_node(&root)),
                 };
                 InFile::new(file_id, owner)
             }
             AttrDefId::AdtId(adt) => match adt {
-                AdtId::StructId(id) => id.lookup(db).source(db).map(ast::AttrsOwnerNode::new),
-                AdtId::UnionId(id) => id.lookup(db).source(db).map(ast::AttrsOwnerNode::new),
-                AdtId::EnumId(id) => id.lookup(db).source(db).map(ast::AttrsOwnerNode::new),
+                AdtId::StructId(id) => id.lookup(db).source(db).map(ast::DynAttrsOwner::new),
+                AdtId::UnionId(id) => id.lookup(db).source(db).map(ast::DynAttrsOwner::new),
+                AdtId::EnumId(id) => id.lookup(db).source(db).map(ast::DynAttrsOwner::new),
             },
-            AttrDefId::FunctionId(id) => id.lookup(db).source(db).map(ast::AttrsOwnerNode::new),
+            AttrDefId::FunctionId(id) => id.lookup(db).source(db).map(ast::DynAttrsOwner::new),
             AttrDefId::EnumVariantId(id) => {
                 let map = db.variants_attrs_source_map(id.parent);
                 let file_id = id.parent.lookup(db).id.file_id();
                 let root = db.parse_or_expand(file_id).unwrap();
-                InFile::new(file_id, ast::AttrsOwnerNode::new(map[id.local_id].to_node(&root)))
+                InFile::new(file_id, ast::DynAttrsOwner::new(map[id.local_id].to_node(&root)))
             }
-            AttrDefId::StaticId(id) => id.lookup(db).source(db).map(ast::AttrsOwnerNode::new),
-            AttrDefId::ConstId(id) => id.lookup(db).source(db).map(ast::AttrsOwnerNode::new),
-            AttrDefId::TraitId(id) => id.lookup(db).source(db).map(ast::AttrsOwnerNode::new),
-            AttrDefId::TypeAliasId(id) => id.lookup(db).source(db).map(ast::AttrsOwnerNode::new),
+            AttrDefId::StaticId(id) => id.lookup(db).source(db).map(ast::DynAttrsOwner::new),
+            AttrDefId::ConstId(id) => id.lookup(db).source(db).map(ast::DynAttrsOwner::new),
+            AttrDefId::TraitId(id) => id.lookup(db).source(db).map(ast::DynAttrsOwner::new),
+            AttrDefId::TypeAliasId(id) => id.lookup(db).source(db).map(ast::DynAttrsOwner::new),
             AttrDefId::MacroDefId(id) => id.ast_id().either(
-                |it| it.with_value(ast::AttrsOwnerNode::new(it.to_node(db.upcast()))),
-                |it| it.with_value(ast::AttrsOwnerNode::new(it.to_node(db.upcast()))),
+                |it| it.with_value(ast::DynAttrsOwner::new(it.to_node(db.upcast()))),
+                |it| it.with_value(ast::DynAttrsOwner::new(it.to_node(db.upcast()))),
             ),
-            AttrDefId::ImplId(id) => id.lookup(db).source(db).map(ast::AttrsOwnerNode::new),
+            AttrDefId::ImplId(id) => id.lookup(db).source(db).map(ast::DynAttrsOwner::new),
             AttrDefId::GenericParamId(id) => match id {
                 GenericParamId::TypeParamId(id) => {
                     id.parent.child_source(db).map(|source| match &source[id.local_id] {
-                        Either::Left(id) => ast::AttrsOwnerNode::new(id.clone()),
-                        Either::Right(id) => ast::AttrsOwnerNode::new(id.clone()),
+                        Either::Left(id) => ast::DynAttrsOwner::new(id.clone()),
+                        Either::Right(id) => ast::DynAttrsOwner::new(id.clone()),
                     })
                 }
                 GenericParamId::LifetimeParamId(id) => id
                     .parent
                     .child_source(db)
-                    .map(|source| ast::AttrsOwnerNode::new(source[id.local_id].clone())),
+                    .map(|source| ast::DynAttrsOwner::new(source[id.local_id].clone())),
                 GenericParamId::ConstParamId(id) => id
                     .parent
                     .child_source(db)
-                    .map(|source| ast::AttrsOwnerNode::new(source[id.local_id].clone())),
+                    .map(|source| ast::DynAttrsOwner::new(source[id.local_id].clone())),
             },
         };
 

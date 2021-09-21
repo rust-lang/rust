@@ -481,7 +481,7 @@ impl<'db> SemanticsImpl<'db> {
         )
     }
 
-    // This might not be the correct way to due this, but it works for now
+    // This might not be the correct way to do this, but it works for now
     fn descend_node_into_attributes<N: AstNode>(&self, node: N) -> SmallVec<[N; 1]> {
         let mut res = smallvec![];
         let tokens = (|| {
@@ -682,20 +682,7 @@ impl<'db> SemanticsImpl<'db> {
     fn resolve_lifetime_param(&self, lifetime: &ast::Lifetime) -> Option<LifetimeParam> {
         let text = lifetime.text();
         let lifetime_param = lifetime.syntax().ancestors().find_map(|syn| {
-            let gpl = match_ast! {
-                match syn {
-                    ast::Fn(it) => it.generic_param_list()?,
-                    ast::TypeAlias(it) => it.generic_param_list()?,
-                    ast::Struct(it) => it.generic_param_list()?,
-                    ast::Enum(it) => it.generic_param_list()?,
-                    ast::Union(it) => it.generic_param_list()?,
-                    ast::Trait(it) => it.generic_param_list()?,
-                    ast::Impl(it) => it.generic_param_list()?,
-                    ast::WherePred(it) => it.generic_param_list()?,
-                    ast::ForType(it) => it.generic_param_list()?,
-                    _ => return None,
-                }
-            };
+            let gpl = ast::DynGenericParamsOwner::cast(syn)?.generic_param_list()?;
             gpl.lifetime_params()
                 .find(|tp| tp.lifetime().as_ref().map(|lt| lt.text()).as_ref() == Some(&text))
         })?;

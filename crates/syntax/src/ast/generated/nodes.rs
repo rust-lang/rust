@@ -1445,6 +1445,46 @@ pub enum GenericParam {
     TypeParam(TypeParam),
 }
 impl ast::AttrsOwner for GenericParam {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DynArgListOwner {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::ArgListOwner for DynArgListOwner {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DynAttrsOwner {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for DynAttrsOwner {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DynGenericParamsOwner {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::GenericParamsOwner for DynGenericParamsOwner {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DynLoopBodyOwner {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::LoopBodyOwner for DynLoopBodyOwner {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DynModuleItemOwner {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::ModuleItemOwner for DynModuleItemOwner {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DynNameOwner {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::NameOwner for DynNameOwner {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DynTypeBoundsOwner {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::TypeBoundsOwner for DynTypeBoundsOwner {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DynVisibilityOwner {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::VisibilityOwner for DynVisibilityOwner {}
 impl AstNode for Name {
     fn can_cast(kind: SyntaxKind) -> bool { kind == NAME }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -3563,6 +3603,219 @@ impl AstNode for GenericParam {
             GenericParam::TypeParam(it) => &it.syntax,
         }
     }
+}
+impl DynArgListOwner {
+    #[inline]
+    pub fn new<T: ast::ArgListOwner>(node: T) -> DynArgListOwner {
+        DynArgListOwner { syntax: node.syntax().clone() }
+    }
+}
+impl AstNode for DynArgListOwner {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            CALL_EXPR | METHOD_CALL_EXPR => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then(|| DynArgListOwner { syntax })
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl DynAttrsOwner {
+    #[inline]
+    pub fn new<T: ast::AttrsOwner>(node: T) -> DynAttrsOwner {
+        DynAttrsOwner { syntax: node.syntax().clone() }
+    }
+}
+impl AstNode for DynAttrsOwner {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            MACRO_CALL
+            | SOURCE_FILE
+            | CONST
+            | ENUM
+            | EXTERN_BLOCK
+            | EXTERN_CRATE
+            | FN
+            | IMPL
+            | MACRO_RULES
+            | MACRO_DEF
+            | MODULE
+            | STATIC
+            | STRUCT
+            | TRAIT
+            | TYPE_ALIAS
+            | UNION
+            | USE
+            | ITEM_LIST
+            | BLOCK_EXPR
+            | SELF_PARAM
+            | PARAM
+            | RECORD_FIELD
+            | TUPLE_FIELD
+            | VARIANT
+            | ASSOC_ITEM_LIST
+            | EXTERN_ITEM_LIST
+            | CONST_PARAM
+            | LIFETIME_PARAM
+            | TYPE_PARAM
+            | EXPR_STMT
+            | LET_STMT
+            | ARRAY_EXPR
+            | AWAIT_EXPR
+            | BIN_EXPR
+            | BOX_EXPR
+            | BREAK_EXPR
+            | CALL_EXPR
+            | CAST_EXPR
+            | CLOSURE_EXPR
+            | CONTINUE_EXPR
+            | EFFECT_EXPR
+            | FIELD_EXPR
+            | FOR_EXPR
+            | IF_EXPR
+            | INDEX_EXPR
+            | LITERAL
+            | LOOP_EXPR
+            | MATCH_EXPR
+            | METHOD_CALL_EXPR
+            | PAREN_EXPR
+            | PATH_EXPR
+            | PREFIX_EXPR
+            | RANGE_EXPR
+            | REF_EXPR
+            | RETURN_EXPR
+            | TRY_EXPR
+            | TUPLE_EXPR
+            | WHILE_EXPR
+            | YIELD_EXPR
+            | RECORD_EXPR_FIELD_LIST
+            | RECORD_EXPR_FIELD
+            | MATCH_ARM_LIST
+            | MATCH_ARM
+            | IDENT_PAT
+            | RECORD_PAT_FIELD => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then(|| DynAttrsOwner { syntax })
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl DynGenericParamsOwner {
+    #[inline]
+    pub fn new<T: ast::GenericParamsOwner>(node: T) -> DynGenericParamsOwner {
+        DynGenericParamsOwner { syntax: node.syntax().clone() }
+    }
+}
+impl AstNode for DynGenericParamsOwner {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            ENUM | FN | IMPL | STRUCT | TRAIT | TYPE_ALIAS | UNION => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then(|| DynGenericParamsOwner { syntax })
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl DynLoopBodyOwner {
+    #[inline]
+    pub fn new<T: ast::LoopBodyOwner>(node: T) -> DynLoopBodyOwner {
+        DynLoopBodyOwner { syntax: node.syntax().clone() }
+    }
+}
+impl AstNode for DynLoopBodyOwner {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            FOR_EXPR | LOOP_EXPR | WHILE_EXPR => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then(|| DynLoopBodyOwner { syntax })
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl DynModuleItemOwner {
+    #[inline]
+    pub fn new<T: ast::ModuleItemOwner>(node: T) -> DynModuleItemOwner {
+        DynModuleItemOwner { syntax: node.syntax().clone() }
+    }
+}
+impl AstNode for DynModuleItemOwner {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            MACRO_ITEMS | SOURCE_FILE | ITEM_LIST => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then(|| DynModuleItemOwner { syntax })
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl DynNameOwner {
+    #[inline]
+    pub fn new<T: ast::NameOwner>(node: T) -> DynNameOwner {
+        DynNameOwner { syntax: node.syntax().clone() }
+    }
+}
+impl AstNode for DynNameOwner {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            CONST | ENUM | FN | MACRO_RULES | MACRO_DEF | MODULE | STATIC | STRUCT | TRAIT
+            | TYPE_ALIAS | UNION | RENAME | SELF_PARAM | RECORD_FIELD | VARIANT | CONST_PARAM
+            | TYPE_PARAM | IDENT_PAT => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then(|| DynNameOwner { syntax })
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl DynTypeBoundsOwner {
+    #[inline]
+    pub fn new<T: ast::TypeBoundsOwner>(node: T) -> DynTypeBoundsOwner {
+        DynTypeBoundsOwner { syntax: node.syntax().clone() }
+    }
+}
+impl AstNode for DynTypeBoundsOwner {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            ASSOC_TYPE_ARG | TRAIT | TYPE_ALIAS | LIFETIME_PARAM | TYPE_PARAM | WHERE_PRED => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then(|| DynTypeBoundsOwner { syntax })
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl DynVisibilityOwner {
+    #[inline]
+    pub fn new<T: ast::VisibilityOwner>(node: T) -> DynVisibilityOwner {
+        DynVisibilityOwner { syntax: node.syntax().clone() }
+    }
+}
+impl AstNode for DynVisibilityOwner {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            CONST | ENUM | EXTERN_CRATE | FN | IMPL | MACRO_RULES | MACRO_DEF | MODULE | STATIC
+            | STRUCT | TRAIT | TYPE_ALIAS | UNION | USE | RECORD_FIELD | TUPLE_FIELD | VARIANT => {
+                true
+            }
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then(|| DynVisibilityOwner { syntax })
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl std::fmt::Display for GenericArg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
