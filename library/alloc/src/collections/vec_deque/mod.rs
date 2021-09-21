@@ -130,6 +130,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for VecDeque<T, A> {
+    #[rustc_insignificant_dtor]
     fn drop(&mut self) {
         /// Runs the destructor for all items in the slice when it gets dropped (normally or
         /// during unwinding).

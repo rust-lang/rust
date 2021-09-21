@@ -975,6 +975,7 @@ impl<T> LinkedList<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T> Drop for LinkedList<T> {
+    #[rustc_insignificant_dtor]
     fn drop(&mut self) {
         struct DropGuard<'a, T>(&'a mut LinkedList<T>);
 

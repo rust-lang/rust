@@ -180,6 +180,7 @@ impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T, const N: usize> Drop for IntoIter<T, N> {
+    #[rustc_insignificant_dtor]
     fn drop(&mut self) {
         // SAFETY: This is safe: `as_mut_slice` returns exactly the sub-slice
         // of elements that have not been moved out yet and that remain

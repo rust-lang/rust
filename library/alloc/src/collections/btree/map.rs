@@ -162,6 +162,7 @@ pub struct BTreeMap<K, V> {
 
 #[stable(feature = "btree_drop", since = "1.7.0")]
 unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for BTreeMap<K, V> {
+    #[rustc_insignificant_dtor]
     fn drop(&mut self) {
         drop(unsafe { ptr::read(self) }.into_iter())
     }
@@ -1459,6 +1460,7 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
 
 #[stable(feature = "btree_drop", since = "1.7.0")]
 impl<K, V> Drop for IntoIter<K, V> {
+    #[rustc_insignificant_dtor]
     fn drop(&mut self) {
         struct DropGuard<'a, K, V>(&'a mut IntoIter<K, V>);
 

@@ -1441,6 +1441,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
     /// drop(foo);    // Doesn't print anything
     /// drop(foo2);   // Prints "dropped!"
     /// ```
+    #[rustc_insignificant_dtor]
     fn drop(&mut self) {
         unsafe {
             self.inner().dec_strong();

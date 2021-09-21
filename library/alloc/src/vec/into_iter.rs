@@ -246,6 +246,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for IntoIter<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
+    #[rustc_insignificant_dtor]
     fn drop(&mut self) {
         struct DropGuard<'a, T, A: Allocator>(&'a mut IntoIter<T, A>);
 

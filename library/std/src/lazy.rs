@@ -492,6 +492,7 @@ impl<T> SyncOnceCell<T> {
 }
 
 unsafe impl<#[may_dangle] T> Drop for SyncOnceCell<T> {
+    #[rustc_insignificant_dtor]
     fn drop(&mut self) {
         if self.is_initialized() {
             // SAFETY: The cell is initialized and being dropped, so it can't
