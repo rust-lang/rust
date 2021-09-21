@@ -171,6 +171,16 @@ where
     }
 }
 
+enum DtorType {
+    /// Type has a `Drop` but it is considered insignificant.
+    /// Check the query `adt_significant_drop_tys` for understanding
+    /// "significant" / "insignificant".
+    Insignificant,
+
+    /// Type has a `Drop` implentation.
+    Significant,
+}
+
 // This is a helper function for `adt_drop_tys` and `adt_significant_drop_tys`.
 // Depending on the implentation of `adt_has_dtor`, it is used to check if the
 // ADT has a destructor or if the ADT only has a significant destructor. For
@@ -178,15 +188,23 @@ where
 fn adt_drop_tys_helper(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-    adt_has_dtor: impl Fn(&ty::AdtDef) -> bool,
+    adt_has_dtor: impl Fn(&ty::AdtDef) -> Option<DtorType>,
 ) -> Result<&ty::List<Ty<'_>>, AlwaysRequiresDrop> {
     let adt_components = move |adt_def: &ty::AdtDef| {
         if adt_def.is_manually_drop() {
             debug!("adt_drop_tys: `{:?}` is manually drop", adt_def);
             return Ok(Vec::new().into_iter());
-        } else if adt_has_dtor(adt_def) {
-            debug!("adt_drop_tys: `{:?}` implements `Drop`", adt_def);
-            return Err(AlwaysRequiresDrop);
+        } else if let Some(dtor_info) = adt_has_dtor(adt_def) {
+            match dtor_info {
+                DtorType::Significant => {
+                    debug!("adt_drop_tys: `{:?}` implements `Drop`", adt_def);
+                    return Err(AlwaysRequiresDrop);
+                }
+                DtorType::Insignificant => {
+                    debug!("adt_drop_tys: `{:?}` drop is insignificant", adt_def);
+                    return Ok(Vec::new().into_iter());
+                }
+            }
         } else if adt_def.is_union() {
             debug!("adt_drop_tys: `{:?}` is a union", adt_def);
             return Ok(Vec::new().into_iter());
@@ -204,7 +222,10 @@ fn adt_drop_tys_helper(
 }
 
 fn adt_drop_tys(tcx: TyCtxt<'_>, def_id: DefId) -> Result<&ty::List<Ty<'_>>, AlwaysRequiresDrop> {
-    let adt_has_dtor = |adt_def: &ty::AdtDef| adt_def.destructor(tcx).is_some();
+    // This is for the "needs_drop" query, that considers all `Drop` impls, therefore all dtors are
+    // significant.
+    let adt_has_dtor =
+        |adt_def: &ty::AdtDef| adt_def.destructor(tcx).map(|_| DtorType::Significant);
     adt_drop_tys_helper(tcx, def_id, adt_has_dtor)
 }
 
@@ -213,10 +234,13 @@ fn adt_significant_drop_tys(
     def_id: DefId,
 ) -> Result<&ty::List<Ty<'_>>, AlwaysRequiresDrop> {
     let adt_has_dtor = |adt_def: &ty::AdtDef| {
-        adt_def
-            .destructor(tcx)
-            .map(|dtor| !tcx.has_attr(dtor.did, sym::rustc_insignificant_dtor))
-            .unwrap_or(false)
+        adt_def.destructor(tcx).map(|dtor| {
+            if tcx.has_attr(dtor.did, sym::rustc_insignificant_dtor) {
+                DtorType::Insignificant
+            } else {
+                DtorType::Significant
+            }
+        })
     };
     adt_drop_tys_helper(tcx, def_id, adt_has_dtor)
 }
