@@ -38,12 +38,16 @@ To get involved or if you have questions, please join our [mailing list](https:/
 
 If using this code in an academic setting, please cite the following:
 ```
-@incollection{enzymeNeurips,
-title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
-author = {Moses, William S. and Churavy, Valentin},
-booktitle = {Advances in Neural Information Processing Systems 33},
-year = {2020},
-note = {To appear in},
+@inproceedings{NEURIPS2020_9332c513,
+ author = {Moses, William and Churavy, Valentin},
+ booktitle = {Advances in Neural Information Processing Systems},
+ editor = {H. Larochelle and M. Ranzato and R. Hadsell and M. F. Balcan and H. Lin},
+ pages = {12472--12485},
+ publisher = {Curran Associates, Inc.},
+ title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+ url = {https://proceedings.neurips.cc/paper/2020/file/9332c513ef44b682e9347822c2e457ac-Paper.pdf},
+ volume = {33},
+ year = {2020}
 }
 ```
 
