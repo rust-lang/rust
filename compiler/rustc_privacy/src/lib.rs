@@ -743,7 +743,9 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             }
             hir::ItemKind::Impl(ref impl_) => {
                 for impl_item_ref in impl_.items {
-                    if impl_.of_trait.is_some() || impl_item_ref.vis.node.is_pub() {
+                    if impl_.of_trait.is_some()
+                        || self.tcx.visibility(impl_item_ref.id.def_id) == ty::Visibility::Public
+                    {
                         self.update(impl_item_ref.id.def_id, item_level);
                     }
                 }
@@ -768,7 +770,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             }
             hir::ItemKind::ForeignMod { items, .. } => {
                 for foreign_item in items {
-                    if foreign_item.vis.node.is_pub() {
+                    if self.tcx.visibility(foreign_item.id.def_id) == ty::Visibility::Public {
                         self.update(foreign_item.id.def_id, item_level);
                     }
                 }
@@ -1678,7 +1680,10 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                     // methods will be visible as `Public::foo`.
                     let mut found_pub_static = false;
                     for impl_item_ref in impl_.items {
-                        if self.item_is_public(impl_item_ref.id.def_id, &impl_item_ref.vis) {
+                        if self.access_levels.is_reachable(impl_item_ref.id.def_id)
+                            || self.tcx.visibility(impl_item_ref.id.def_id)
+                                == ty::Visibility::Public
+                        {
                             let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                             match impl_item_ref.kind {
                                 AssocItemKind::Const => {

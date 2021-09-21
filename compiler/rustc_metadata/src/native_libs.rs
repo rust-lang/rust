@@ -382,7 +382,7 @@ impl Collector<'tcx> {
         }
     }
 
-    fn i686_arg_list_size(&self, item: &hir::ForeignItemRef<'_>) -> usize {
+    fn i686_arg_list_size(&self, item: &hir::ForeignItemRef) -> usize {
         let argument_types: &List<Ty<'_>> = self.tcx.erase_late_bound_regions(
             self.tcx
                 .type_of(item.id.def_id)
@@ -406,7 +406,7 @@ impl Collector<'tcx> {
             .sum()
     }
 
-    fn build_dll_import(&self, abi: Abi, item: &hir::ForeignItemRef<'_>) -> DllImport {
+    fn build_dll_import(&self, abi: Abi, item: &hir::ForeignItemRef) -> DllImport {
         let calling_convention = if self.tcx.sess.target.arch == "x86" {
             match abi {
                 Abi::C { .. } | Abi::Cdecl => DllCallingConvention::C,

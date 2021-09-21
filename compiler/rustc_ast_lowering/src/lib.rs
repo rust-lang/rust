@@ -80,8 +80,6 @@ mod item;
 mod pat;
 mod path;
 
-const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
-
 rustc_hir::arena_types!(rustc_arena::declare_arena, 'tcx);
 
 struct LoweringContext<'a, 'hir: 'a> {
@@ -150,8 +148,8 @@ struct LoweringContext<'a, 'hir: 'a> {
     /// vector.
     in_scope_lifetimes: Vec<ParamName>,
 
-    current_hir_id_owner: (LocalDefId, u32),
-    item_local_id_counters: NodeMap<u32>,
+    current_hir_id_owner: LocalDefId,
+    item_local_id_counter: hir::ItemLocalId,
     node_id_to_hir_id: IndexVec<NodeId, Option<hir::HirId>>,
 
     allow_try_trait: Option<Lrc<[Symbol]>>,
@@ -330,8 +328,8 @@ pub fn lower_crate<'a, 'hir>(
         is_in_trait_impl: false,
         is_in_dyn_type: false,
         anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
-        current_hir_id_owner: (CRATE_DEF_ID, 0),
-        item_local_id_counters: Default::default(),
+        current_hir_id_owner: CRATE_DEF_ID,
+        item_local_id_counter: hir::ItemLocalId::new(0),
         node_id_to_hir_id: IndexVec::new(),
         generator_kind: None,
         task_context: None,
@@ -412,15 +410,15 @@ enum AnonymousLifetimeMode {
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_crate(mut self, c: &Crate) -> &'hir hir::Crate<'hir> {
-        self.lower_node_id(CRATE_NODE_ID);
-        debug_assert!(self.node_id_to_hir_id[CRATE_NODE_ID] == Some(hir::CRATE_HIR_ID));
+        debug_assert_eq!(self.resolver.local_def_id(CRATE_NODE_ID), CRATE_DEF_ID);
 
         visit::walk_crate(&mut item::ItemLowerer { lctx: &mut self }, c);
 
-        let module = self.arena.alloc(self.lower_mod(&c.items, c.span));
-        self.lower_attrs(hir::CRATE_HIR_ID, &c.attrs);
-        self.owners.ensure_contains_elem(CRATE_DEF_ID, || None);
-        self.owners[CRATE_DEF_ID] = Some(hir::OwnerNode::Crate(module));
+        self.with_hir_id_owner(CRATE_NODE_ID, |lctx| {
+            let module = lctx.lower_mod(&c.items, c.span);
+            lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs);
+            hir::OwnerNode::Crate(lctx.arena.alloc(module))
+        });
 
         let mut trait_map: FxHashMap<_, FxHashMap<_, _>> = FxHashMap::default();
         for (k, v) in self.resolver.take_trait_map().into_iter() {
@@ -456,47 +454,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(krate)
     }
 
-    fn insert_item(&mut self, item: hir::Item<'hir>) -> hir::ItemId {
-        let id = item.item_id();
-        let item = self.arena.alloc(item);
-        self.owners.ensure_contains_elem(id.def_id, || None);
-        self.owners[id.def_id] = Some(hir::OwnerNode::Item(item));
-        id
-    }
-
-    fn insert_foreign_item(&mut self, item: hir::ForeignItem<'hir>) -> hir::ForeignItemId {
-        let id = item.foreign_item_id();
-        let item = self.arena.alloc(item);
-        self.owners.ensure_contains_elem(id.def_id, || None);
-        self.owners[id.def_id] = Some(hir::OwnerNode::ForeignItem(item));
-        id
-    }
-
-    fn insert_impl_item(&mut self, item: hir::ImplItem<'hir>) -> hir::ImplItemId {
-        let id = item.impl_item_id();
-        let item = self.arena.alloc(item);
-        self.owners.ensure_contains_elem(id.def_id, || None);
-        self.owners[id.def_id] = Some(hir::OwnerNode::ImplItem(item));
-        id
-    }
-
-    fn insert_trait_item(&mut self, item: hir::TraitItem<'hir>) -> hir::TraitItemId {
-        let id = item.trait_item_id();
-        let item = self.arena.alloc(item);
-        self.owners.ensure_contains_elem(id.def_id, || None);
-        self.owners[id.def_id] = Some(hir::OwnerNode::TraitItem(item));
-        id
-    }
-
-    fn allocate_hir_id_counter(&mut self, owner: NodeId) -> LocalDefId {
-        // Set up the counter if needed.
-        self.item_local_id_counters.entry(owner).or_insert(0);
-        // Always allocate the first `HirId` for the owner itself.
-        let lowered = self.lower_node_id_with_owner(owner, owner);
-        debug_assert_eq!(lowered.local_id.as_u32(), 0);
-        lowered.owner
-    }
-
     fn create_stable_hashing_context(&self) -> LoweringHasher<'_> {
         LoweringHasher {
             source_map: CachingSourceMapView::new(self.sess.source_map()),
@@ -504,47 +461,33 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_node_id_generic(
+    fn with_hir_id_owner(
         &mut self,
-        ast_node_id: NodeId,
-        alloc_hir_id: impl FnOnce(&mut Self) -> hir::HirId,
-    ) -> hir::HirId {
-        assert_ne!(ast_node_id, DUMMY_NODE_ID);
-
-        let min_size = ast_node_id.as_usize() + 1;
-
-        if min_size > self.node_id_to_hir_id.len() {
-            self.node_id_to_hir_id.resize(min_size, None);
-        }
-
-        if let Some(existing_hir_id) = self.node_id_to_hir_id[ast_node_id] {
-            existing_hir_id
-        } else {
-            // Generate a new `HirId`.
-            let hir_id = alloc_hir_id(self);
-            self.node_id_to_hir_id[ast_node_id] = Some(hir_id);
-
-            hir_id
-        }
-    }
-
-    fn with_hir_id_owner<T>(&mut self, owner: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
-        let counter = self
-            .item_local_id_counters
-            .insert(owner, HIR_ID_COUNTER_LOCKED)
-            .unwrap_or_else(|| panic!("no `item_local_id_counters` entry for {:?}", owner));
+        owner: NodeId,
+        f: impl FnOnce(&mut Self) -> hir::OwnerNode<'hir>,
+    ) -> LocalDefId {
         let def_id = self.resolver.local_def_id(owner);
-        let old_owner = std::mem::replace(&mut self.current_hir_id_owner, (def_id, counter));
-        let ret = f(self);
-        let (new_def_id, new_counter) =
-            std::mem::replace(&mut self.current_hir_id_owner, old_owner);
 
-        debug_assert!(def_id == new_def_id);
-        debug_assert!(new_counter >= counter);
+        // Always allocate the first `HirId` for the owner itself.
+        self.node_id_to_hir_id.ensure_contains_elem(owner, || None);
+        if let Some(_lowered) = self.node_id_to_hir_id[owner] {
+            panic!("with_hir_id_owner must not be called multiple times on owner {:?}", def_id);
+        }
+        self.node_id_to_hir_id[owner] = Some(hir::HirId::make_owner(def_id));
 
-        let prev = self.item_local_id_counters.insert(owner, new_counter).unwrap();
-        debug_assert!(prev == HIR_ID_COUNTER_LOCKED);
-        ret
+        let current_owner = std::mem::replace(&mut self.current_hir_id_owner, def_id);
+        let current_local_counter =
+            std::mem::replace(&mut self.item_local_id_counter, hir::ItemLocalId::new(1));
+
+        let item = f(self);
+
+        self.current_hir_id_owner = current_owner;
+        self.item_local_id_counter = current_local_counter;
+
+        self.owners.ensure_contains_elem(def_id, || None);
+        self.owners[def_id] = Some(item);
+
+        def_id
     }
 
     /// This method allocates a new `HirId` for the given `NodeId` and stores it in
@@ -554,35 +497,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// `HirIdValidator` later on, which makes sure that all `NodeId`s got mapped
     /// properly. Calling the method twice with the same `NodeId` is fine though.
     fn lower_node_id(&mut self, ast_node_id: NodeId) -> hir::HirId {
-        self.lower_node_id_generic(ast_node_id, |this| {
-            let &mut (owner, ref mut local_id_counter) = &mut this.current_hir_id_owner;
-            let local_id = *local_id_counter;
-            *local_id_counter += 1;
-            hir::HirId { owner, local_id: hir::ItemLocalId::from_u32(local_id) }
-        })
-    }
+        assert_ne!(ast_node_id, DUMMY_NODE_ID);
 
-    fn lower_node_id_with_owner(&mut self, ast_node_id: NodeId, owner: NodeId) -> hir::HirId {
-        self.lower_node_id_generic(ast_node_id, |this| {
-            let local_id_counter = this
-                .item_local_id_counters
-                .get_mut(&owner)
-                .expect("called `lower_node_id_with_owner` before `allocate_hir_id_counter`");
-            let local_id = *local_id_counter;
-
-            // We want to be sure not to modify the counter in the map while it
-            // is also on the stack. Otherwise we'll get lost updates when writing
-            // back from the stack to the map.
-            debug_assert!(local_id != HIR_ID_COUNTER_LOCKED);
-
-            *local_id_counter += 1;
-            let owner = this.resolver.opt_local_def_id(owner).expect(
-                "you forgot to call `create_def` or are lowering node-IDs \
-                 that do not belong to the current owner",
-            );
-
-            hir::HirId { owner, local_id: hir::ItemLocalId::from_u32(local_id) }
-        })
+        self.node_id_to_hir_id.ensure_contains_elem(ast_node_id, || None);
+        if let Some(existing_hir_id) = self.node_id_to_hir_id[ast_node_id] {
+            existing_hir_id
+        } else {
+            // Generate a new `HirId`.
+            let owner = self.current_hir_id_owner;
+            let local_id = self.item_local_id_counter;
+            self.item_local_id_counter.increment_by(1);
+            let hir_id = hir::HirId { owner, local_id };
+            self.node_id_to_hir_id[ast_node_id] = Some(hir_id);
+            hir_id
+        }
     }
 
     fn next_id(&mut self) -> hir::HirId {
@@ -592,7 +520,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_res(&mut self, res: Res<NodeId>) -> Res {
         res.map_id(|id| {
-            self.lower_node_id_generic(id, |_| {
+            self.node_id_to_hir_id.get(id).copied().flatten().unwrap_or_else(|| {
                 panic!("expected `NodeId` to be lowered already for res {:#?}", res);
             })
         })
@@ -655,7 +583,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Mark a span as relative to the current owning item.
     fn lower_span(&self, span: Span) -> Span {
         if self.sess.opts.debugging_opts.incremental_relative_spans {
-            span.with_parent(Some(self.current_hir_id_owner.0))
+            span.with_parent(Some(self.current_hir_id_owner))
         } else {
             // Do not make spans relative when not using incremental compilation.
             span
@@ -828,7 +756,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // wouldn't have been added yet.
                     let generics = this.lower_generics_mut(
                         generics,
-                        ImplTraitContext::Universal(&mut params, this.current_hir_id_owner.0),
+                        ImplTraitContext::Universal(&mut params, this.current_hir_id_owner),
                     );
                     let res = f(this, &mut params);
                     (params, (generics, res))
@@ -1034,7 +962,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             AssocTyConstraintKind::Bound { ref bounds } => {
                 let mut capturable_lifetimes;
-                let mut parent_def_id = self.current_hir_id_owner.0;
+                let mut parent_def_id = self.current_hir_id_owner;
                 // Piggy-back on the `impl Trait` context to figure out the correct behavior.
                 let (desugar_to_impl_trait, itctx) = match itctx {
                     // We are in the return position:
@@ -1162,7 +1090,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                                 // Construct an AnonConst where the expr is the "ty"'s path.
 
-                                let parent_def_id = self.current_hir_id_owner.0;
+                                let parent_def_id = self.current_hir_id_owner;
                                 let node_id = self.resolver.next_node_id();
 
                                 // Add a definition for the in-band const def.
@@ -1428,12 +1356,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // frequently opened issues show.
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
-        let opaque_ty_def_id = self.allocate_hir_id_counter(opaque_ty_node_id);
+        let opaque_ty_def_id = self.resolver.local_def_id(opaque_ty_node_id);
 
-        let collected_lifetimes = self.with_hir_id_owner(opaque_ty_node_id, move |lctx| {
+        let mut collected_lifetimes = Vec::new();
+        self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
             let hir_bounds = lower_bounds(lctx);
 
-            let collected_lifetimes = lifetimes_from_impl_trait_bounds(
+            collected_lifetimes = lifetimes_from_impl_trait_bounds(
                 opaque_ty_node_id,
                 &hir_bounds,
                 capturable_lifetimes,
@@ -1486,9 +1415,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             };
 
             trace!("lower_opaque_impl_trait: {:#?}", opaque_ty_def_id);
-            lctx.generate_opaque_type(opaque_ty_def_id, opaque_ty_item, span, opaque_ty_span);
-
-            collected_lifetimes
+            lctx.generate_opaque_type(opaque_ty_def_id, opaque_ty_item, span, opaque_ty_span)
         });
 
         let lifetimes =
@@ -1510,7 +1437,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         opaque_ty_item: hir::OpaqueTy<'hir>,
         span: Span,
         opaque_ty_span: Span,
-    ) {
+    ) -> hir::OwnerNode<'hir> {
         let opaque_ty_item_kind = hir::ItemKind::OpaqueTy(opaque_ty_item);
         // Generate an `type Foo = impl Trait;` declaration.
         trace!("registering opaque type with id {:#?}", opaque_ty_id);
@@ -1521,11 +1448,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             vis: respan(self.lower_span(span.shrink_to_lo()), hir::VisibilityKind::Inherited),
             span: self.lower_span(opaque_ty_span),
         };
-
-        // Insert the item into the global item list. This usually happens
-        // automatically for all AST items. But this opaque type item
-        // does not actually exist in the AST.
-        self.insert_item(opaque_ty_item);
+        hir::OwnerNode::Item(self.arena.alloc(opaque_ty_item))
     }
 
     fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> &'hir [Ident] {
@@ -1594,7 +1517,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 if let Some((_, ibty)) = &mut in_band_ty_params {
                     this.lower_ty_direct(
                         &param.ty,
-                        ImplTraitContext::Universal(ibty, this.current_hir_id_owner.0),
+                        ImplTraitContext::Universal(ibty, this.current_hir_id_owner),
                     )
                 } else {
                     this.lower_ty_direct(&param.ty, ImplTraitContext::disallowed())
@@ -1685,7 +1608,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::Async, span, None);
 
-        let opaque_ty_def_id = self.allocate_hir_id_counter(opaque_ty_node_id);
+        let opaque_ty_def_id = self.resolver.local_def_id(opaque_ty_node_id);
 
         // When we create the opaque type for this async fn, it is going to have
         // to capture all the lifetimes involved in the signature (including in the
@@ -1735,7 +1658,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // grow.
         let input_lifetimes_count = self.in_scope_lifetimes.len() + self.lifetimes_to_define.len();
 
-        let lifetime_params = self.with_hir_id_owner(opaque_ty_node_id, |this| {
+        let mut lifetime_params = Vec::new();
+        self.with_hir_id_owner(opaque_ty_node_id, |this| {
             // We have to be careful to get elision right here. The
             // idea is that we create a lifetime parameter for each
             // lifetime in the return type.  So, given a return type
@@ -1757,7 +1681,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             //
             // Note: this must be done after lowering the output type,
             // as the output type may introduce new in-band lifetimes.
-            let lifetime_params: Vec<(Span, ParamName)> = this
+            lifetime_params = this
                 .in_scope_lifetimes
                 .iter()
                 .cloned()
@@ -1786,9 +1710,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             };
 
             trace!("exist ty from async fn def id: {:#?}", opaque_ty_def_id);
-            this.generate_opaque_type(opaque_ty_def_id, opaque_ty_item, span, opaque_ty_span);
-
-            lifetime_params
+            this.generate_opaque_type(opaque_ty_def_id, opaque_ty_item, span, opaque_ty_span)
         });
 
         // As documented above on the variable
