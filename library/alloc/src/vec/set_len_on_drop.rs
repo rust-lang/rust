@@ -15,8 +15,8 @@ impl<'a> SetLenOnDrop<'a> {
     }
 
     #[inline]
-    pub(super) fn increment_len(&mut self, increment: usize) {
-        self.local_len += increment;
+    pub(super) unsafe fn increment_len(&mut self, increment: usize) {
+        self.local_len = unsafe { self.local_len.unchecked_add(increment) };
     }
 }
 

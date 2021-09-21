@@ -133,6 +133,7 @@
 #![feature(str_internals)]
 #![feature(trusted_len)]
 #![feature(unboxed_closures)]
+#![feature(unchecked_math)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(unsized_fn_params)]

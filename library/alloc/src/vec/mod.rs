@@ -1304,7 +1304,7 @@ impl<T, A: Allocator> Vec<T, A> {
             // can be self[index] itself).
             let last = ptr::read(self.as_ptr().add(len - 1));
             let hole = self.as_mut_ptr().add(index);
-            self.set_len(len - 1);
+            self.len = len.unchecked_sub(1);
             ptr::replace(hole, last)
         }
     }
@@ -1356,7 +1356,7 @@ impl<T, A: Allocator> Vec<T, A> {
                 // element.
                 ptr::write(p, element);
             }
-            self.set_len(len + 1);
+            self.len = len.unchecked_add(1);
         }
     }
 
@@ -1407,7 +1407,7 @@ impl<T, A: Allocator> Vec<T, A> {
                 // Shift everything down to fill in that spot.
                 ptr::copy(ptr.offset(1), ptr, len - index - 1);
             }
-            self.set_len(len - 1);
+            self.len = len.unchecked_sub(1);
             ret
         }
     }
@@ -1675,7 +1675,7 @@ impl<T, A: Allocator> Vec<T, A> {
         unsafe {
             let end = self.as_mut_ptr().add(self.len);
             ptr::write(end, value);
-            self.len += 1;
+            self.len = self.len.unchecked_add(1);
         }
     }
 
@@ -1696,7 +1696,7 @@ impl<T, A: Allocator> Vec<T, A> {
             None
         } else {
             unsafe {
-                self.len -= 1;
+                self.len = self.len.unchecked_sub(1);
                 Some(ptr::read(self.as_ptr().add(self.len())))
             }
         }
@@ -1735,7 +1735,8 @@ impl<T, A: Allocator> Vec<T, A> {
         self.reserve(count);
         let len = self.len();
         unsafe { ptr::copy_nonoverlapping(other as *const T, self.as_mut_ptr().add(len), count) };
-        self.len += count;
+        // SAFETY: reserve would have failed if count overflowed
+        self.len = unsafe { self.len.unchecked_add(count) };
     }
 
     /// Creates a draining iterator that removes the specified range in the vector
@@ -2326,7 +2327,7 @@ impl<T: Clone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
             // Note:
             // - Element was just initialized with `MaybeUninit::write`, so it's ok to increase len
             // - len is increased after each element to prevent leaks (see issue #82533)
-            .for_each(|_| *len += 1);
+            .for_each(|_| *len = unsafe { len.unchecked_add(1) });
     }
 }
 
@@ -2580,7 +2581,7 @@ impl<T, A: Allocator> Vec<T, A> {
         //          self.push(item);
         //      }
         while let Some(element) = iterator.next() {
-            let len = self.len();
+            let len = self.len;
             if len == self.capacity() {
                 let (lower, _) = iterator.size_hint();
                 self.reserve(lower.saturating_add(1));
@@ -2590,7 +2591,7 @@ impl<T, A: Allocator> Vec<T, A> {
                 // Since next() executes user code which can panic we have to bump the length
                 // after each step.
                 // NB can't overflow since we would have had to alloc the address space
-                self.set_len(len + 1);
+                self.len = len.unchecked_add(1);
             }
         }
     }
