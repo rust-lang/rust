@@ -162,7 +162,6 @@ mod handlers {
     mod reorder_fields;
     mod reorder_impl;
     mod replace_derive_with_manual_impl;
-    mod replace_for_loop_with_for_each;
     mod replace_if_let_with_match;
     mod introduce_named_generic;
     mod replace_let_with_if_let;
@@ -192,6 +191,7 @@ mod handlers {
             convert_integer_literal::convert_integer_literal,
             convert_into_to_from::convert_into_to_from,
             convert_iter_for_each_to_for::convert_iter_for_each_to_for,
+            convert_iter_for_each_to_for::convert_for_loop_with_for_each,
             convert_to_guarded_return::convert_to_guarded_return,
             convert_tuple_struct_to_named_struct::convert_tuple_struct_to_named_struct,
             convert_while_to_loop::convert_while_to_loop,
@@ -237,7 +237,6 @@ mod handlers {
             reorder_fields::reorder_fields,
             reorder_impl::reorder_impl,
             replace_derive_with_manual_impl::replace_derive_with_manual_impl,
-            replace_for_loop_with_for_each::replace_for_loop_with_for_each,
             replace_if_let_with_match::replace_if_let_with_match,
             replace_if_let_with_match::replace_match_with_if_let,
             replace_let_with_if_let::replace_let_with_if_let,
