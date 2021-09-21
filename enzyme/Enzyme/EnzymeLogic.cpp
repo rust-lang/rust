@@ -1500,15 +1500,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   }
 
   // TODO make default typing (not just constant)
-  bool hasconstant = false;
-  for (auto v : constant_args) {
-    if (v == DIFFE_TYPE::CONSTANT) {
-      hasconstant = true;
-      break;
-    }
-  }
 
-  if (!hasconstant && hasMetadata(todiff, "enzyme_augment")) {
+  if (hasMetadata(todiff, "enzyme_augment")) {
     auto md = todiff->getMetadata("enzyme_augment");
     if (!isa<MDTuple>(md)) {
       llvm::errs() << *todiff << "\n";
@@ -1516,11 +1509,99 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       report_fatal_error(
           "unknown augment for noninvertible function -- metadata incorrect");
     }
-
     auto md2 = cast<MDTuple>(md);
     assert(md2->getNumOperands() == 1);
     auto gvemd = cast<ConstantAsMetadata>(md2->getOperand(0));
     auto foundcalled = cast<Function>(gvemd->getValue());
+
+    bool hasconstant = false;
+    for (auto v : constant_args) {
+      if (v == DIFFE_TYPE::CONSTANT) {
+        hasconstant = true;
+        break;
+      }
+    }
+
+    if (hasconstant) {
+      EmitWarning("NoCustom", todiff->getEntryBlock().begin()->getDebugLoc(),
+                  todiff, &todiff->getEntryBlock(),
+                  "Massaging provided custom augmented forward pass to handle "
+                  "constant argumented");
+      SmallVector<Type *, 3> dupargs;
+      std::vector<DIFFE_TYPE> next_constant_args(constant_args);
+      {
+        auto OFT = todiff->getFunctionType();
+        for (size_t act_idx = 0; act_idx < constant_args.size(); act_idx++) {
+          dupargs.push_back(OFT->getParamType(act_idx));
+          switch (constant_args[act_idx]) {
+          case DIFFE_TYPE::OUT_DIFF:
+            break;
+          case DIFFE_TYPE::DUP_ARG:
+          case DIFFE_TYPE::DUP_NONEED:
+            dupargs.push_back(OFT->getParamType(act_idx));
+            break;
+          case DIFFE_TYPE::CONSTANT:
+            if (!OFT->getParamType(act_idx)->isFPOrFPVectorTy()) {
+              next_constant_args[act_idx] = DIFFE_TYPE::DUP_ARG;
+            } else {
+              next_constant_args[act_idx] = DIFFE_TYPE::OUT_DIFF;
+            }
+            break;
+          }
+        }
+      }
+      FunctionType *FTy =
+          FunctionType::get(foundcalled->getReturnType(), dupargs,
+                            todiff->getFunctionType()->isVarArg());
+      Function *NewF = Function::Create(
+          FTy, Function::LinkageTypes::InternalLinkage,
+          "fixaugment_" + todiff->getName(), todiff->getParent());
+
+      BasicBlock *BB = BasicBlock::Create(NewF->getContext(), "entry", NewF);
+      IRBuilder<> bb(BB);
+      auto arg = NewF->arg_begin();
+      SmallVector<Value *, 3> fwdargs;
+      int act_idx = 0;
+      while (arg != NewF->arg_end()) {
+        fwdargs.push_back(arg);
+        switch (constant_args[act_idx]) {
+        case DIFFE_TYPE::OUT_DIFF:
+          break;
+        case DIFFE_TYPE::DUP_ARG:
+        case DIFFE_TYPE::DUP_NONEED:
+          arg++;
+          fwdargs.push_back(arg);
+          break;
+        case DIFFE_TYPE::CONSTANT:
+          if (next_constant_args[act_idx] != DIFFE_TYPE::OUT_DIFF) {
+            fwdargs.push_back(arg);
+          }
+          break;
+        }
+        arg++;
+        act_idx++;
+      }
+      auto &aug =
+          CreateAugmentedPrimal(todiff, retType, next_constant_args, TLI, TA,
+                                returnUsed, oldTypeInfo_, _uncacheable_args,
+                                forceAnonymousTape, AtomicAdd, PostOpt, omp);
+      auto cal = bb.CreateCall(aug.fn, fwdargs);
+      cal->setCallingConv(aug.fn->getCallingConv());
+
+      if (NewF->getReturnType()->isEmptyTy())
+        bb.CreateRet(UndefValue::get(NewF->getReturnType()));
+      else if (NewF->getReturnType()->isVoidTy())
+        bb.CreateRetVoid();
+      else
+        bb.CreateRet(cal);
+
+      return insert_or_assign<AugmentedCacheKey, AugmentedReturn>(
+                 AugmentedCachedFunctions, tup,
+                 AugmentedReturn(NewF, aug.tapeType, aug.tapeIndices,
+                                 aug.returns, aug.uncacheable_args_map,
+                                 aug.can_modref_map))
+          ->second;
+    }
 
     if (foundcalled->getReturnType() == todiff->getReturnType()) {
       std::map<AugmentedStruct, int> returnMapping;
@@ -2685,7 +2766,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     }
   }
 
-  if (!hasconstant && !returnValue && hasMetadata(todiff, "enzyme_gradient")) {
+  if (hasMetadata(todiff, "enzyme_gradient")) {
 
     DIFFE_TYPE subretType = todiff->getReturnType()->isFPOrFPVectorTy()
                                 ? DIFFE_TYPE::OUT_DIFF
@@ -2783,77 +2864,185 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     auto gvemd = cast<ConstantAsMetadata>(md2->getOperand(0));
     auto foundcalled = cast<Function>(gvemd->getValue());
 
-    assert(augmenteddata);
-    if (foundcalled->arg_size() == res.first.size() + 1 /*tape*/) {
-      auto lastarg = foundcalled->arg_end();
-      lastarg--;
-      res.first.push_back(lastarg->getType());
-    } else if (foundcalled->arg_size() == res.first.size()) {
-      // res.first.push_back(StructType::get(todiff->getContext(), {}));
-    } else {
-      llvm::errs() << "expected args: [";
-      for (auto a : res.first) {
-        llvm::errs() << *a << " ";
+    if (hasconstant) {
+      EmitWarning("NoCustom", todiff->getEntryBlock().begin()->getDebugLoc(),
+                  todiff, &todiff->getEntryBlock(),
+                  "Massaging provided custom reverse pass");
+      SmallVector<Type *, 3> dupargs;
+      std::vector<DIFFE_TYPE> next_constant_args(constant_args);
+      {
+        auto OFT = todiff->getFunctionType();
+        for (size_t act_idx = 0; act_idx < constant_args.size(); act_idx++) {
+          dupargs.push_back(OFT->getParamType(act_idx));
+          switch (constant_args[act_idx]) {
+          case DIFFE_TYPE::OUT_DIFF:
+            break;
+          case DIFFE_TYPE::DUP_ARG:
+          case DIFFE_TYPE::DUP_NONEED:
+            dupargs.push_back(OFT->getParamType(act_idx));
+            break;
+          case DIFFE_TYPE::CONSTANT:
+            if (!OFT->getParamType(act_idx)->isFPOrFPVectorTy()) {
+              next_constant_args[act_idx] = DIFFE_TYPE::DUP_ARG;
+            } else {
+              next_constant_args[act_idx] = DIFFE_TYPE::OUT_DIFF;
+            }
+            break;
+          }
+        }
       }
-      llvm::errs() << "]\n";
-      llvm::errs() << *foundcalled << "\n";
-      assert(0 && "bad type for custom gradient");
-      llvm_unreachable("bad type for custom gradient");
-    }
 
-    auto st = dyn_cast<StructType>(foundcalled->getReturnType());
-    bool wrongRet = st == nullptr && !foundcalled->getReturnType()->isVoidTy();
-    if (wrongRet) {
-      // if (wrongRet || !hasTape) {
+      auto revfn = CreatePrimalAndGradient(
+          todiff, retType, next_constant_args, TLI, TA,
+          /*returnUsed*/ returnUsed, /*dretPtr*/ false,
+          /*mode*/ DerivativeMode::ReverseModeGradient,
+          /*additionalArg (not used, TODO)*/ nullptr, oldTypeInfo_,
+          _uncacheable_args, augmenteddata, AtomicAdd, PostOpt, omp);
+
+      {
+        auto arg = revfn->arg_begin();
+        for (auto cidx : next_constant_args) {
+          arg++;
+          if (cidx == DIFFE_TYPE::DUP_ARG || cidx == DIFFE_TYPE::DUP_NONEED)
+            arg++;
+        }
+        while (arg != revfn->arg_end()) {
+          dupargs.push_back(arg->getType());
+          arg++;
+        }
+      }
+
       FunctionType *FTy =
-          FunctionType::get(StructType::get(todiff->getContext(), {res.second}),
-                            res.first, todiff->getFunctionType()->isVarArg());
+          FunctionType::get(revfn->getReturnType(), dupargs,
+                            revfn->getFunctionType()->isVarArg());
       Function *NewF = Function::Create(
           FTy, Function::LinkageTypes::InternalLinkage,
           "fixgradient_" + todiff->getName(), todiff->getParent());
-      NewF->setAttributes(foundcalled->getAttributes());
-      if (NewF->hasFnAttribute(Attribute::NoInline)) {
-        NewF->removeFnAttr(Attribute::NoInline);
-      }
-      size_t argnum = 0;
-      for (Argument &Arg : NewF->args()) {
-        if (Arg.hasAttribute(Attribute::Returned))
-          Arg.removeAttr(Attribute::Returned);
-        if (Arg.hasAttribute(Attribute::StructRet))
-          Arg.removeAttr(Attribute::StructRet);
-        Arg.setName("arg" + std::to_string(argnum));
-        ++argnum;
-      }
 
       BasicBlock *BB = BasicBlock::Create(NewF->getContext(), "entry", NewF);
       IRBuilder<> bb(BB);
-      SmallVector<Value *, 4> args;
-      for (auto &a : NewF->args())
-        args.push_back(&a);
-      // if (!hasTape) {
-      //  args.pop_back();
-      //}
-      auto cal = bb.CreateCall(foundcalled, args);
-      cal->setCallingConv(foundcalled->getCallingConv());
-      Value *val = cal;
-      if (wrongRet) {
-        auto ut = UndefValue::get(NewF->getReturnType());
-        if (val->getType()->isEmptyTy() && res.second.size() == 0) {
-          val = ut;
-        } else if (res.second.size() == 1 && res.second[0] == val->getType()) {
-          val = bb.CreateInsertValue(ut, cal, {0u});
-        } else {
-          llvm::errs() << *foundcalled << "\n";
-          assert(0 && "illegal type for reverse");
-          llvm_unreachable("illegal type for reverse");
+      auto arg = NewF->arg_begin();
+      SmallVector<Value *, 3> revargs;
+      size_t act_idx = 0;
+      while (act_idx != constant_args.size()) {
+        revargs.push_back(arg);
+        switch (constant_args[act_idx]) {
+        case DIFFE_TYPE::OUT_DIFF:
+          break;
+        case DIFFE_TYPE::DUP_ARG:
+        case DIFFE_TYPE::DUP_NONEED:
+          arg++;
+          revargs.push_back(arg);
+          break;
+        case DIFFE_TYPE::CONSTANT:
+          if (next_constant_args[act_idx] != DIFFE_TYPE::OUT_DIFF) {
+            revargs.push_back(arg);
+          }
+          break;
         }
+        arg++;
+        act_idx++;
       }
-      bb.CreateRet(val);
-      foundcalled = NewF;
+      while (arg != NewF->arg_end()) {
+        revargs.push_back(arg);
+        arg++;
+      }
+      auto cal = bb.CreateCall(revfn, revargs);
+      cal->setCallingConv(revfn->getCallingConv());
+
+      if (NewF->getReturnType()->isEmptyTy())
+        bb.CreateRet(UndefValue::get(NewF->getReturnType()));
+      else if (NewF->getReturnType()->isVoidTy())
+        bb.CreateRetVoid();
+      else
+        bb.CreateRet(cal);
+
+      return insert_or_assign2<ReverseCacheKey, Function *>(
+                 ReverseCachedFunctions, tup, NewF)
+          ->second;
     }
-    return insert_or_assign2<ReverseCacheKey, Function *>(
-               ReverseCachedFunctions, tup, foundcalled)
-        ->second;
+
+    if (!returnValue) {
+
+      assert(augmenteddata);
+      if (foundcalled->arg_size() == res.first.size() + 1 /*tape*/) {
+        auto lastarg = foundcalled->arg_end();
+        lastarg--;
+        res.first.push_back(lastarg->getType());
+      } else if (foundcalled->arg_size() == res.first.size()) {
+        // res.first.push_back(StructType::get(todiff->getContext(), {}));
+      } else {
+        llvm::errs() << "expected args: [";
+        for (auto a : res.first) {
+          llvm::errs() << *a << " ";
+        }
+        llvm::errs() << "]\n";
+        llvm::errs() << *foundcalled << "\n";
+        assert(0 && "bad type for custom gradient");
+        llvm_unreachable("bad type for custom gradient");
+      }
+
+      auto st = dyn_cast<StructType>(foundcalled->getReturnType());
+      bool wrongRet =
+          st == nullptr && !foundcalled->getReturnType()->isVoidTy();
+      if (wrongRet) {
+        // if (wrongRet || !hasTape) {
+        FunctionType *FTy = FunctionType::get(
+            StructType::get(todiff->getContext(), {res.second}), res.first,
+            todiff->getFunctionType()->isVarArg());
+        Function *NewF = Function::Create(
+            FTy, Function::LinkageTypes::InternalLinkage,
+            "fixgradient_" + todiff->getName(), todiff->getParent());
+        NewF->setAttributes(foundcalled->getAttributes());
+        if (NewF->hasFnAttribute(Attribute::NoInline)) {
+          NewF->removeFnAttr(Attribute::NoInline);
+        }
+        size_t argnum = 0;
+        for (Argument &Arg : NewF->args()) {
+          if (Arg.hasAttribute(Attribute::Returned))
+            Arg.removeAttr(Attribute::Returned);
+          if (Arg.hasAttribute(Attribute::StructRet))
+            Arg.removeAttr(Attribute::StructRet);
+          Arg.setName("arg" + std::to_string(argnum));
+          ++argnum;
+        }
+
+        BasicBlock *BB = BasicBlock::Create(NewF->getContext(), "entry", NewF);
+        IRBuilder<> bb(BB);
+        SmallVector<Value *, 4> args;
+        for (auto &a : NewF->args())
+          args.push_back(&a);
+        // if (!hasTape) {
+        //  args.pop_back();
+        //}
+        auto cal = bb.CreateCall(foundcalled, args);
+        cal->setCallingConv(foundcalled->getCallingConv());
+        Value *val = cal;
+        if (wrongRet) {
+          auto ut = UndefValue::get(NewF->getReturnType());
+          if (val->getType()->isEmptyTy() && res.second.size() == 0) {
+            val = ut;
+          } else if (res.second.size() == 1 &&
+                     res.second[0] == val->getType()) {
+            val = bb.CreateInsertValue(ut, cal, {0u});
+          } else {
+            llvm::errs() << *foundcalled << "\n";
+            assert(0 && "illegal type for reverse");
+            llvm_unreachable("illegal type for reverse");
+          }
+        }
+        bb.CreateRet(val);
+        foundcalled = NewF;
+      }
+      return insert_or_assign2<ReverseCacheKey, Function *>(
+                 ReverseCachedFunctions, tup, foundcalled)
+          ->second;
+    }
+
+    EmitWarning("NoCustom", todiff->getEntryBlock().begin()->getDebugLoc(),
+                todiff, &todiff->getEntryBlock(),
+                "Not using provided custom reverse pass as require either "
+                "return or non-constant");
   }
 
   assert(!todiff->empty());

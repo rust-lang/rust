@@ -83,9 +83,7 @@ const char *KnownInactiveFunctionsStartingWith[] = {
     "_ZNSt7__cxx1112basic_string"};
 
 const char *KnownInactiveFunctionsContains[] = {
-    "__enzyme_float",
-    "__enzyme_double",
-    "__enzyme_integer",
+    "__enzyme_float", "__enzyme_double", "__enzyme_integer",
     "__enzyme_pointer"};
 
 const std::set<std::string> InactiveGlobals = {

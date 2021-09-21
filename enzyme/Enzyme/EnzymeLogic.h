@@ -115,7 +115,7 @@ public:
   std::set<ssize_t> tapeIndiciesToFree;
 
   AugmentedReturn(
-      llvm::Function *fn, llvm::StructType *tapeType,
+      llvm::Function *fn, llvm::Type *tapeType,
       std::map<std::pair<llvm::Instruction *, CacheType>, int> tapeIndices,
       std::map<AugmentedStruct, int> returns,
       std::map<llvm::CallInst *, const std::map<llvm::Argument *, bool>>
