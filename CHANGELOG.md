@@ -1495,7 +1495,7 @@ Released 2020-03-12
 * `unknown_clippy_lints` [#4963](https://github.com/rust-lang/rust-clippy/pull/4963)
 * [`explicit_into_iter_loop`] [#4978](https://github.com/rust-lang/rust-clippy/pull/4978)
 * [`useless_attribute`] [#5022](https://github.com/rust-lang/rust-clippy/pull/5022)
-* [`if_let_some_result`] [#5032](https://github.com/rust-lang/rust-clippy/pull/5032)
+* `if_let_some_result` [#5032](https://github.com/rust-lang/rust-clippy/pull/5032)
 
 ### ICE fixes
 
