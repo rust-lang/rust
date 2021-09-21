@@ -3,6 +3,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::util::{needs_drop_components, AlwaysRequiresDrop};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::Limit;
@@ -12,7 +13,7 @@ type NeedsDropResult<T> = Result<T, AlwaysRequiresDrop>;
 
 fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
     let adt_components =
-        move |adt_def: &ty::AdtDef| tcx.adt_drop_tys(adt_def.did).map(|tys| tys.iter());
+        move |adt_def: &ty::AdtDef, _| tcx.adt_drop_tys(adt_def.did).map(|tys| tys.iter());
 
     // If we don't know a type doesn't need drop, for example if it's a type
     // parameter without a `Copy` bound, then we conservatively return that it
@@ -28,8 +29,9 @@ fn has_significant_drop_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> bool {
-    let significant_drop_fields =
-        move |adt_def: &ty::AdtDef| tcx.adt_significant_drop_tys(adt_def.did).map(|tys| tys.iter());
+    let significant_drop_fields = move |adt_def: &ty::AdtDef, _| {
+        tcx.adt_significant_drop_tys(adt_def.did).map(|tys| tys.iter())
+    };
     let res = NeedsDropTypes::new(tcx, query.param_env, query.value, significant_drop_fields)
         .next()
         .is_some();
@@ -74,7 +76,7 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
 
 impl<'tcx, F, I> Iterator for NeedsDropTypes<'tcx, F>
 where
-    F: Fn(&ty::AdtDef) -> NeedsDropResult<I>,
+    F: Fn(&ty::AdtDef, SubstsRef<'tcx>) -> NeedsDropResult<I>,
     I: Iterator<Item = Ty<'tcx>>,
 {
     type Item = NeedsDropResult<Ty<'tcx>>;
@@ -138,7 +140,7 @@ where
                     // `ManuallyDrop`. If it's a struct or enum without a `Drop`
                     // impl then check whether the field types need `Drop`.
                     ty::Adt(adt_def, substs) => {
-                        let tys = match (self.adt_components)(adt_def) {
+                        let tys = match (self.adt_components)(adt_def, substs) {
                             Err(e) => return Some(Err(e)),
                             Ok(tys) => tys,
                         };
@@ -185,12 +187,12 @@ enum DtorType {
 // Depending on the implentation of `adt_has_dtor`, it is used to check if the
 // ADT has a destructor or if the ADT only has a significant destructor. For
 // understanding significant destructor look at `adt_significant_drop_tys`.
-fn adt_drop_tys_helper(
-    tcx: TyCtxt<'_>,
+fn adt_drop_tys_helper<'tcx>(
+    tcx: TyCtxt<'tcx>,
     def_id: DefId,
     adt_has_dtor: impl Fn(&ty::AdtDef) -> Option<DtorType>,
-) -> Result<&ty::List<Ty<'_>>, AlwaysRequiresDrop> {
-    let adt_components = move |adt_def: &ty::AdtDef| {
+) -> Result<&ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
+    let adt_components = move |adt_def: &ty::AdtDef, substs: SubstsRef<'tcx>| {
         if adt_def.is_manually_drop() {
             debug!("adt_drop_tys: `{:?}` is manually drop", adt_def);
             return Ok(Vec::new().into_iter());
@@ -202,7 +204,11 @@ fn adt_drop_tys_helper(
                 }
                 DtorType::Insignificant => {
                     debug!("adt_drop_tys: `{:?}` drop is insignificant", adt_def);
-                    return Ok(Vec::new().into_iter());
+
+                    // Since the destructor is insignificant, we just want to make sure all of
+                    // the passed in type parameters are also insignificant.
+                    // Eg: Vec<T> dtor is insignificant when T=i32 but significant when T=Mutex.
+                    return Ok(substs.types().collect::<Vec<Ty<'_>>>().into_iter());
                 }
             }
         } else if adt_def.is_union() {

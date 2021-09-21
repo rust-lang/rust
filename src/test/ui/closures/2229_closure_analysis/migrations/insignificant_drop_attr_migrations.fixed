@@ -9,7 +9,7 @@
 
 struct InsignificantDropPoint {
     x: i32,
-    y: Mutex<T>,
+    y: Mutex<i32>,
 }
 
 impl Drop for InsignificantDropPoint {
@@ -17,7 +17,7 @@ impl Drop for InsignificantDropPoint {
     fn drop(&mut self) {}
 }
 
-struct SigDrop { x: () }
+struct SigDrop;
 
 impl Drop for SigDrop {
     fn drop(&mut self) {}
@@ -45,9 +45,10 @@ fn insign_dtor() {
 
 // `SigDrop` implements drop and therefore needs to be migrated.
 fn significant_drop_needs_migration() {
-    let t = (SigDrop { x: () }, SigDrop { x: () });
+    let t = (SigDrop {}, SigDrop {});
 
     let c = || {
+        let _ = &t;
         //~^ ERROR: drop order
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
@@ -64,10 +65,11 @@ fn significant_drop_needs_migration() {
 // consdered to have an significant drop. Since the elements
 // of `GenericStruct` implement drop, migration is required.
 fn generic_struct_with_significant_drop_needs_migration() {
-    let t = Wrapper(GenericStruct(SigDrop { x: () }, SigDrop { x: () }), 5);
+    let t = Wrapper(GenericStruct(SigDrop {}, SigDrop {}), 5);
 
     // move is used to force i32 to be copied instead of being a ref
     let c = move || {
+        let _ = &t;
         //~^ ERROR: drop order
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
