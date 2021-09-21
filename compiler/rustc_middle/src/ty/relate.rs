@@ -639,6 +639,15 @@ fn check_const_value_eq<R: TypeRelation<'tcx>>(
             get_slice_bytes(&tcx, a_val) == get_slice_bytes(&tcx, b_val)
         }
 
+        (ConstValue::ByRef { alloc: alloc_a, .. }, ConstValue::ByRef { alloc: alloc_b, .. })
+            if a.ty.is_ref() || b.ty.is_ref() =>
+        {
+            if a.ty.is_ref() && b.ty.is_ref() {
+                alloc_a == alloc_b
+            } else {
+                false
+            }
+        }
         (ConstValue::ByRef { .. }, ConstValue::ByRef { .. }) => {
             let a_destructured = tcx.destructure_const(relation.param_env().and(a));
             let b_destructured = tcx.destructure_const(relation.param_env().and(b));
