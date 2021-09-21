@@ -10,7 +10,7 @@ use crate::{fixture, FileRange, HlTag, TextRange};
 fn test_highlighting() {
     check_highlighting(
         r#"
-//- proc_macros: identity
+//- proc_macros: identity, mirror
 //- /main.rs crate:main deps:foo
 use inner::{self as inner_mod};
 mod inner {}
@@ -36,10 +36,11 @@ pub mod ops {
     pub trait Fn<Args>: FnMut<Args> {}
 }
 
-
-struct Foo {
-    pub x: i32,
-    pub y: i32,
+proc_macros::mirror! {
+    {
+        ,i32 :x pub
+        ,i32 :y pub
+    } Foo struct
 }
 
 trait Bar where Self: {

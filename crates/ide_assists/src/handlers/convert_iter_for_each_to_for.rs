@@ -32,7 +32,6 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //     }
 // }
 // ```
-
 pub(crate) fn convert_iter_for_each_to_for(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let method = ctx.find_node_at_offset::<ast::MethodCallExpr>()?;
 
