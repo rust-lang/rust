@@ -1,8 +1,9 @@
-use hir::{HasSource, HirDisplay, Module, ModuleDef, TypeInfo};
+use hir::{HasSource, HirDisplay, Module, ModuleDef, Semantics, TypeInfo};
 use ide_db::{
     base_db::FileId,
     defs::{Definition, NameRefClass},
     helpers::SnippetCap,
+    RootDatabase,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::to_lower_snake_case;
@@ -442,7 +443,7 @@ fn fn_args(
     let mut arg_names = Vec::new();
     let mut arg_types = Vec::new();
     for arg in call.arg_list()?.args() {
-        arg_names.push(fn_arg_name(ctx, &arg));
+        arg_names.push(fn_arg_name(&ctx.sema, &arg));
         arg_types.push(match fn_arg_type(ctx, target_module, &arg) {
             Some(ty) => {
                 if !ty.is_empty() && ty.starts_with('&') {
@@ -507,23 +508,16 @@ fn deduplicate_arg_names(arg_names: &mut Vec<String>) {
     }
 }
 
-fn fn_arg_name(ctx: &AssistContext, arg_expr: &ast::Expr) -> String {
+fn fn_arg_name(sema: &Semantics<RootDatabase>, arg_expr: &ast::Expr) -> String {
     let name = (|| match arg_expr {
-        ast::Expr::CastExpr(cast_expr) => Some(fn_arg_name(ctx, &cast_expr.expr()?)),
+        ast::Expr::CastExpr(cast_expr) => Some(fn_arg_name(sema, &cast_expr.expr()?)),
         expr => {
             let name_ref = expr.syntax().descendants().filter_map(ast::NameRef::cast).last()?;
-            if let Some(NameRefClass::Definition(def)) =
-                NameRefClass::classify(&ctx.sema, &name_ref)
+            if let Some(NameRefClass::Definition(Definition::ModuleDef(
+                ModuleDef::Const(_) | ModuleDef::Static(_),
+            ))) = NameRefClass::classify(sema, &name_ref)
             {
-                match def {
-                    Definition::ModuleDef(ModuleDef::Const(_)) => {
-                        return Some(name_ref.to_string().to_lowercase());
-                    }
-                    Definition::ModuleDef(ModuleDef::Static(_)) => {
-                        return Some(name_ref.to_string().to_lowercase());
-                    }
-                    _ => {}
-                }
+                return Some(name_ref.to_string().to_lowercase());
             };
             Some(to_lower_snake_case(&name_ref.to_string()))
         }
