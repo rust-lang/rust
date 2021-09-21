@@ -7581,11 +7581,11 @@ public:
         }
       }
 
-      auto newcalled = gutils->Logic.CreatePrimalAndGradient(
+      auto newcalled = gutils->Logic.CreateForwardDiff(
           cast<Function>(called), subretType, argsInverted, gutils->TLI,
           TR.analyzer.interprocedural, /*returnValue*/ retUsed,
           /*subdretptr*/ false, DerivativeMode::ForwardMode, nullptr,
-          nextTypeInfo, uncacheable_args, nullptr,
+          nextTypeInfo, uncacheable_args,
           /*AtomicAdd*/ gutils->AtomicAdd);
 
       assert(newcalled);

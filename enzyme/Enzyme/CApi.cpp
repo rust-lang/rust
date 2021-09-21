@@ -323,6 +323,29 @@ LLVMBasicBlockRef EnzymeGradientUtilsAllocationBlock(GradientUtils *gutils) {
   return wrap(gutils->inversionAllocs);
 }
 
+LLVMValueRef EnzymeCreateForwardDiff(
+    EnzymeLogicRef Logic, LLVMValueRef todiff, CDIFFE_TYPE retType,
+    CDIFFE_TYPE *constant_args, size_t constant_args_size,
+    EnzymeTypeAnalysisRef TA, uint8_t returnValue, uint8_t dretUsed,
+    CDerivativeMode mode, LLVMTypeRef additionalArg, CFnTypeInfo typeInfo,
+    uint8_t *_uncacheable_args, size_t uncacheable_args_size, uint8_t AtomicAdd,
+    uint8_t PostOpt) {
+  std::vector<DIFFE_TYPE> nconstant_args((DIFFE_TYPE *)constant_args,
+                                         (DIFFE_TYPE *)constant_args +
+                                             constant_args_size);
+  std::map<llvm::Argument *, bool> uncacheable_args;
+  size_t argnum = 0;
+  for (auto &arg : cast<Function>(unwrap(todiff))->args()) {
+    assert(argnum < uncacheable_args_size);
+    uncacheable_args[&arg] = _uncacheable_args[argnum];
+    argnum++;
+  }
+  return wrap(eunwrap(Logic).CreateForwardDiff(
+      cast<Function>(unwrap(todiff)), (DIFFE_TYPE)retType, nconstant_args,
+      eunwrap(TA).TLI, eunwrap(TA), returnValue, dretUsed, (DerivativeMode)mode,
+      unwrap(additionalArg), eunwrap(typeInfo, cast<Function>(unwrap(todiff))),
+      uncacheable_args, AtomicAdd, PostOpt));
+}
 LLVMValueRef EnzymeCreatePrimalAndGradient(
     EnzymeLogicRef Logic, LLVMValueRef todiff, CDIFFE_TYPE retType,
     CDIFFE_TYPE *constant_args, size_t constant_args_size,
