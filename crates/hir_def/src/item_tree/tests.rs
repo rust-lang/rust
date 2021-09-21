@@ -340,12 +340,11 @@ trait Tr<'a, T: 'a>: Super where Self: for<'a> Tr<'a, T> {}
                 T: 'b
             {
                 // flags = 0x2
-                pub(self) fn f<G, _anon_1>(
+                pub(self) fn f<G>(
                     _: impl Copy,
                 ) -> impl Copy
                 where
-                    G: 'a,
-                    _anon_1: Copy;
+                    G: 'a;
             }
 
             pub(self) enum Enum<'a, T, const U: u8> {
