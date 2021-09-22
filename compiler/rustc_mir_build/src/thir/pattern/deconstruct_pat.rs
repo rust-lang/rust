@@ -660,9 +660,10 @@ impl<'tcx> Constructor<'tcx> {
                 } else {
                     match pat.ty.kind() {
                         ty::Float(_) => FloatRange(value, value, RangeEnd::Included),
-                        // In `expand_pattern`, we convert string literals to `&CONST` patterns with
-                        // `CONST` a pattern of type `str`. In truth this contains a constant of type
-                        // `&str`.
+                        // We make `&str` constants behave like `Deref` patterns, to be compatible
+                        // with other `Deref` patterns. See also `Fields::extract_pattern_arguments`.
+                        ty::Ref(_, t, _) if t.is_str() => Single,
+                        // In truth this carries a constant of type `&str`.
                         ty::Str => Str(value),
                         // All constants that can be structurally matched have already been expanded
                         // into the corresponding `Pat`s by `const_to_pat`. Constants that remain are
@@ -1393,6 +1394,19 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                     self.fields[i] = pat
                 }
             }
+            PatKind::Constant { .. } => match pat.ty.kind() {
+                ty::Ref(_, t, _) if t.is_str() => {
+                    assert_eq!(self.len(), 1);
+                    // We want a `&str` constant to behave like a `Deref` pattern, to be compatible
+                    // with other `Deref` patterns. This could have been done in `const_to_pat`,
+                    // but that causes issues with the rest of the matching code.
+                    // The outer constructor is `&`, and the inner one carries the str value.
+                    let mut new_pat = pat.clone();
+                    new_pat.ty = t; // `t` is `str`, not `&str`
+                    self.fields[0] = &*cx.pattern_arena.alloc(new_pat);
+                }
+                _ => {}
+            },
             _ => {}
         };
         self

@@ -365,23 +365,9 @@ struct LiteralExpander;
 impl<'tcx> PatternFolder<'tcx> for LiteralExpander {
     fn fold_pattern(&mut self, pat: &Pat<'tcx>) -> Pat<'tcx> {
         debug!("fold_pattern {:?} {:?} {:?}", pat, pat.ty.kind(), pat.kind);
-        match (pat.ty.kind(), pat.kind.as_ref()) {
-            (_, PatKind::Binding { subpattern: Some(s), .. }) => s.fold_with(self),
-            (_, PatKind::AscribeUserType { subpattern: s, .. }) => s.fold_with(self),
-            (ty::Ref(_, t, _), PatKind::Constant { .. }) if t.is_str() => {
-                // Treat string literal patterns as deref patterns to a `str` constant, i.e.
-                // `&CONST`. This expands them like other const patterns. This could have been done
-                // in `const_to_pat`, but that causes issues with the rest of the matching code.
-                let mut new_pat = pat.super_fold_with(self);
-                // Make a fake const pattern of type `str` (instead of `&str`). That the carried
-                // constant value still knows it is of type `&str`.
-                new_pat.ty = t;
-                Pat {
-                    kind: Box::new(PatKind::Deref { subpattern: new_pat }),
-                    span: pat.span,
-                    ty: pat.ty,
-                }
-            }
+        match pat.kind.as_ref() {
+            PatKind::Binding { subpattern: Some(s), .. } => s.fold_with(self),
+            PatKind::AscribeUserType { subpattern: s, .. } => s.fold_with(self),
             _ => pat.super_fold_with(self),
         }
     }
@@ -1183,7 +1169,7 @@ fn is_useful<'p, 'tcx>(
             let ctor_wild_subpatterns = Fields::wildcards(pcx.cx, pcx.ty, &ctor);
             let spec_matrix =
                 start_matrix.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns);
-            let v = v.pop_head_constructor(pcx.cx, &ctor_wild_subpatterns);
+            let v = v.pop_head_constructor(cx, &ctor_wild_subpatterns);
             let usefulness =
                 is_useful(cx, &spec_matrix, &v, witness_preference, hir_id, is_under_guard, false);
             let usefulness =
