@@ -1,16 +1,15 @@
-use std::{convert::TryInto, iter};
+use std::convert::TryInto;
 
 use crate::hover::find_definition;
 use crate::{
-    display::{ToNav, TryToNav},
+    display::TryToNav,
     doc_links::{doc_attributes, extract_definitions_from_docs, resolve_doc_path_for_def},
     FilePosition, NavigationTarget, RangeInfo,
 };
-use either::Either;
 use hir::{AsAssocItem, InFile, ModuleDef, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileId, FileLoader},
-    defs::{Definition, NameClass, NameRefClass},
+    defs::Definition,
     helpers::{pick_best_token, try_resolve_derive_input_at},
     RootDatabase,
 };
@@ -151,35 +150,8 @@ fn try_find_trait_item_definition(
         .map(|it| vec![it])
 }
 
-pub(crate) fn reference_definition(
-    sema: &Semantics<RootDatabase>,
-    name_ref: Either<&ast::Lifetime, &ast::NameRef>,
-) -> Vec<NavigationTarget> {
-    let name_kind = match name_ref.either(
-        |lifetime| NameRefClass::classify_lifetime(sema, lifetime),
-        |name_ref| NameRefClass::classify(sema, name_ref),
-    ) {
-        Some(class) => class,
-        None => return Vec::new(),
-    };
-    match name_kind {
-        NameRefClass::Definition(def) => def_to_nav(sema.db, def),
-        NameRefClass::FieldShorthand { local_ref, field_ref } => {
-            local_and_field_to_nav(sema.db, local_ref, field_ref)
-        }
-    }
-}
-
 fn def_to_nav(db: &RootDatabase, def: Definition) -> Vec<NavigationTarget> {
     def.try_to_nav(db).map(|it| vec![it]).unwrap_or_default()
-}
-
-fn local_and_field_to_nav(
-    db: &RootDatabase,
-    local: hir::Local,
-    field: hir::Field,
-) -> Vec<NavigationTarget> {
-    iter::once(local.to_nav(db)).chain(field.try_to_nav(db)).collect()
 }
 
 #[cfg(test)]
