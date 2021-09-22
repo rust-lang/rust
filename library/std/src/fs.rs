@@ -200,10 +200,9 @@ pub struct DirBuilder {
 
 /// Indicates how large a buffer to pre-allocate before reading the entire file.
 fn initial_buffer_size(file: &File) -> usize {
-    // Allocate one extra byte so the buffer doesn't need to grow before the
-    // final `read` call at the end of the file.  Don't worry about `usize`
-    // overflow because reading will fail regardless in that case.
-    file.metadata().map(|m| m.len() as usize + 1).unwrap_or(0)
+    // Don't worry about `usize` overflow because reading will fail regardless
+    // in that case.
+    file.metadata().map(|m| m.len() as usize).unwrap_or(0)
 }
 
 /// Read the entire contents of a file into a bytes vector.

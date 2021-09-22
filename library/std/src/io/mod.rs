@@ -362,22 +362,18 @@ where
 // Because we're extending the buffer with uninitialized data for trusted
 // readers, we need to make sure to truncate that if any of this panics.
 fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
-    read_to_end_with_reservation(r, buf, |_| 32)
-}
-
-fn read_to_end_with_reservation<R, F>(
-    r: &mut R,
-    buf: &mut Vec<u8>,
-    mut reservation_size: F,
-) -> Result<usize>
-where
-    R: Read + ?Sized,
-    F: FnMut(&R) -> usize,
-{
     let start_len = buf.len();
+    let start_cap = buf.capacity();
     let mut g = Guard { len: buf.len(), buf };
     loop {
-        if g.len == g.buf.len() {
+        // If we've read all the way up to the capacity, reserve more space.
+        if g.len == g.buf.capacity() {
+            g.buf.reserve(32);
+        }
+
+        // Initialize any excess capacity and adjust the length so we can write
+        // to it.
+        if g.buf.len() < g.buf.capacity() {
             unsafe {
                 // FIXME(danielhenrymantilla): #42788
                 //
@@ -387,7 +383,6 @@ where
                 //   - Only the standard library gets to soundly "ignore" this,
                 //     based on its privileged knowledge of unstable rustc
                 //     internals;
-                g.buf.reserve(reservation_size(r));
                 let capacity = g.buf.capacity();
                 g.buf.set_len(capacity);
                 r.initializer().initialize(&mut g.buf[g.len..]);
@@ -404,8 +399,29 @@ where
                 assert!(n <= buf.len());
                 g.len += n;
             }
-            Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+            Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
             Err(e) => return Err(e),
+        }
+
+        if g.len == g.buf.capacity() && g.buf.capacity() == start_cap {
+            // The buffer might be an exact fit. Let's read into a probe buffer
+            // and see if it returns `Ok(0)`. If so, we've avoided an
+            // unnecessary doubling of the capacity. But if not, append the
+            // probe buffer to the primary buffer and let its capacity grow.
+            let mut probe = [0u8; 32];
+
+            loop {
+                match r.read(&mut probe) {
+                    Ok(0) => return Ok(g.len - start_len),
+                    Ok(n) => {
+                        g.buf.extend_from_slice(&probe[..n]);
+                        g.len += n;
+                        break;
+                    }
+                    Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+                    Err(e) => return Err(e),
+                }
+            }
         }
     }
 }
@@ -2582,13 +2598,6 @@ impl<T: Read> Read for Take<T> {
 
     unsafe fn initializer(&self) -> Initializer {
         self.inner.initializer()
-    }
-
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
-        // Pass in a reservation_size closure that respects the current value
-        // of limit for each read. If we hit the read limit, this prevents the
-        // final zero-byte read from allocating again.
-        read_to_end_with_reservation(self, buf, |self_| cmp::min(self_.limit, 32) as usize)
     }
 }
 
