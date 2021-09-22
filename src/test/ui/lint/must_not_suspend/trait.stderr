@@ -1,0 +1,37 @@
+error: implementer of `Wow` held across a suspend point, but should not be
+  --> $DIR/trait.rs:21:9
+   |
+LL |     let _guard1 = r#impl();
+   |         ^^^^^^^
+...
+LL |     other().await;
+   |     ------------- the value is held across this suspend point
+   |
+note: the lint level is defined here
+  --> $DIR/trait.rs:3:9
+   |
+LL | #![deny(must_not_suspend)]
+   |         ^^^^^^^^^^^^^^^^
+help: consider using a block (`{ ... }`) to shrink the value's scope, ending before the suspend point
+  --> $DIR/trait.rs:21:9
+   |
+LL |     let _guard1 = r#impl();
+   |         ^^^^^^^
+
+error: boxed `Wow` trait object held across a suspend point, but should not be
+  --> $DIR/trait.rs:22:9
+   |
+LL |     let _guard2 = r#dyn();
+   |         ^^^^^^^
+LL | 
+LL |     other().await;
+   |     ------------- the value is held across this suspend point
+   |
+help: consider using a block (`{ ... }`) to shrink the value's scope, ending before the suspend point
+  --> $DIR/trait.rs:22:9
+   |
+LL |     let _guard2 = r#dyn();
+   |         ^^^^^^^
+
+error: aborting due to 2 previous errors
+

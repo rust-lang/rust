@@ -104,6 +104,7 @@ impl CheckAttrVisitor<'tcx> {
                 sym::default_method_body_is_const => {
                     self.check_default_method_body_is_const(attr, span, target)
                 }
+                sym::must_not_suspend => self.check_must_not_suspend(&attr, span, target),
                 sym::rustc_const_unstable
                 | sym::rustc_const_stable
                 | sym::unstable
@@ -1012,6 +1013,21 @@ impl CheckAttrVisitor<'tcx> {
         }
 
         is_valid
+    }
+
+    /// Checks if `#[must_not_suspend]` is applied to a function. Returns `true` if valid.
+    fn check_must_not_suspend(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
+        match target {
+            Target::Struct | Target::Enum | Target::Union | Target::Trait => true,
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(attr.span, "`must_not_suspend` attribute should be applied to a struct, enum, or trait")
+                        .span_label(*span, "is not a struct, enum, or trait")
+                        .emit();
+                false
+            }
+        }
     }
 
     /// Checks if `#[cold]` is applied to a non-function. Returns `true` if valid.

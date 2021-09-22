@@ -1,0 +1,27 @@
+error: `Umm` held across a suspend point, but should not be
+  --> $DIR/ref.rs:18:26
+   |
+LL |         let guard = &mut self.u;
+   |                          ^^^^^^
+LL | 
+LL |         other().await;
+   |         ------------- the value is held across this suspend point
+   |
+note: the lint level is defined here
+  --> $DIR/ref.rs:3:9
+   |
+LL | #![deny(must_not_suspend)]
+   |         ^^^^^^^^^^^^^^^^
+note: You gotta use Umm's, ya know?
+  --> $DIR/ref.rs:18:26
+   |
+LL |         let guard = &mut self.u;
+   |                          ^^^^^^
+help: consider using a block (`{ ... }`) to shrink the value's scope, ending before the suspend point
+  --> $DIR/ref.rs:18:26
+   |
+LL |         let guard = &mut self.u;
+   |                          ^^^^^^
+
+error: aborting due to previous error
+

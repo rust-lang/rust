@@ -1,0 +1,12 @@
+error: `must_not_suspend` attribute should be applied to a struct, enum, or trait
+  --> $DIR/return.rs:5:1
+   |
+LL |   #[must_not_suspend]
+   |   ^^^^^^^^^^^^^^^^^^^
+LL | / fn foo() -> i32 {
+LL | |     0
+LL | | }
+   | |_- is not a struct, enum, or trait
+
+error: aborting due to previous error
+

@@ -675,6 +675,10 @@ declare_features! (
     /// Allows `let...else` statements.
     (active, let_else, "1.56.0", Some(87335), None),
 
+    /// Allows the `#[must_not_suspend]` attribute.
+    (active, must_not_suspend, "1.57.0", Some(83310), None),
+
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
