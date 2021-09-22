@@ -21,40 +21,38 @@ for.body:                                         ; preds = %entry, %for.body
 }
 
 ; Function Attrs: nounwind uwtable
-define dso_local void @dsumsquare(double* %x, double* %xp, i64 %n) local_unnamed_addr #1 {
+define dso_local double @dsumsquare(double* %x, double* %xp, i64 %n) local_unnamed_addr #1 {
 entry:
-  %0 = tail call double (double (double*, i64)*, ...) @__enzyme_autodiff(double (double*, i64)* nonnull @sumsquare, double* %x, double* %xp, i64 %n)
-  ret void
+  %0 = tail call double (double (double*, i64)*, ...) @__enzyme_fwddiff(double (double*, i64)* nonnull @sumsquare, double* %x, double* %xp, i64 %n)
+  ret double %0
 }
 
 ; Function Attrs: nounwind
-declare double @__enzyme_autodiff(double (double*, i64)*, ...) #2
+declare double @__enzyme_fwddiff(double (double*, i64)*, ...) #2
 
 attributes #0 = { norecurse nounwind readonly uwtable }
 attributes #1 = { nounwind uwtable }
 attributes #2 = { nounwind }
 
 
-; CHECK: define dso_local void @dsumsquare(double* %x, double* %xp, i64 %n)
+; CHECK: define {{(dso_local )?}}double @dsumsquare(double* %x, double* %xp, i64 %n)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   br label %invertfor.body.i
+; CHECK-NEXT:   br label %for.body.i
 
-; CHECK: invertfor.body.i:
-; CHECK-NEXT:   %[[antiiv:.+]] = phi i64 [ %n, %entry ], [ %[[antiivnext:.+]], %incinvertfor.body.i ]
-; CHECK-NEXT:   %[[ptr:.+]] = getelementptr inbounds double, double* %x, i64 %[[antiiv]]
-; CHECK-NEXT:   %[[prev:.+]] = load double, double* %[[ptr]]
-; CHECK-NEXT:   %[[times2:.+]] = fadd fast double %[[prev]], %[[prev]]
-; CHECK-NEXT:   %[[arrayidxipgi:.+]] = getelementptr inbounds double, double* %xp, i64 %[[antiiv]]
-; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %[[arrayidxipgi]]
-; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[loaded:.+]], %[[times2]]
-; CHECK-NEXT:   store double %[[tostore]], double* %[[arrayidxipgi]]
-; CHECK-NEXT:   %[[cmp:.+]] = icmp eq i64 %[[antiiv]], 0
-; CHECK-NEXT:   br i1 %[[cmp]], label %diffesumsquare.exit, label %incinvertfor.body.i
+; CHECK: for.body.i:                                       ; preds = %for.body.i, %entry
+; CHECK-NEXT:   %iv.i = phi i64 [ %iv.next.i, %for.body.i ], [ 0, %entry ]
+; CHECK-NEXT:   %"total.011'.i" = phi{{( fast)?}} double [ 0.000000e+00, %entry ], [ %4, %for.body.i ]
+; CHECK-NEXT:   %iv.next.i = add nuw nsw i64 %iv.i, 1
+; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr inbounds double, double* %xp, i64 %iv.i
+; CHECK-NEXT:   %arrayidx.i = getelementptr inbounds double, double* %x, i64 %iv.i
+; CHECK-NEXT:   %0 = load double, double* %arrayidx.i, align 8
+; CHECK-NEXT:   %1 = load double, double* %"arrayidx'ipg.i"
+; CHECK-NEXT:   %2 = fmul fast double %1, %0
+; CHECK-NEXT:   %3 = fadd fast double %2, %2
+; CHECK-NEXT:   %4 = fadd fast double %3, %"total.011'.i"
+; CHECK-NEXT:   %exitcond.i = icmp eq i64 %iv.i, %n
+; CHECK-NEXT:   br i1 %exitcond.i, label %diffesumsquare.exit, label %for.body.i
 
-; CHECK: incinvertfor.body.i:
-; CHECK-NEXT:   %[[antiivnext]] = add nsw i64 %[[antiiv]], -1
-; CHECK-NEXT:   br label %invertfor.body.i
-
-; CHECK: diffesumsquare.exit:                                    ; preds = %invertfor.body.i
-; CHECK-NEXT:   ret void
+; CHECK: diffesumsquare.exit:                              ; preds = %for.body.i
+; CHECK-NEXT:   ret double %4
 ; CHECK-NEXT: }

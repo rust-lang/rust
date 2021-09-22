@@ -11,7 +11,7 @@
 ; 
 ; __attribute__((noinline))
 ; double derivative(double x) {
-;     return __builtin_autodiff(mulglobal, x);
+;     return __builtin_fwddiff(mulglobal, x, 1.0);
 ; }
 ; 
 ; void main(int argc, char** argv) {
@@ -38,12 +38,12 @@ entry:
 ; Function Attrs: noinline nounwind uwtable
 define dso_local double @derivative(double %x) local_unnamed_addr #1 {
 entry:
-  %0 = tail call double (double (double)*, ...) @__enzyme_autodiff(double (double)* nonnull @mulglobal, double %x)
+  %0 = tail call double (double (double)*, ...) @__enzyme_fwddiff(double (double)* nonnull @mulglobal, double %x, double 1.0)
   ret double %0
 }
 
 ; Function Attrs: nounwind
-declare double @__enzyme_autodiff(double (double)*, ...) #2
+declare double @__enzyme_fwddiff(double (double)*, ...) #2
 
 ; Function Attrs: nounwind uwtable
 define dso_local void @main(i32 %argc, i8** nocapture readonly %argv) local_unnamed_addr #3 {
@@ -82,14 +82,13 @@ attributes #4 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disa
 !7 = !{!"any pointer", !4, i64 0}
 !8 = !{double* @dglobal}
 
-; CHECK: define internal {{(dso_local )?}}{ double } @diffemulglobal(double %x, double %[[differet:.+]])
+; CHECK: define internal {{(dso_local )?}}{ double } @diffemulglobal(double %x, double %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load double, double* @global, align 8, !tbaa !3
-; CHECK-NEXT:   %m0diffe = fmul fast double %differeturn, %x
-; CHECK-NEXT:   %m1diffex = fmul fast double %differeturn, %0
 ; CHECK-NEXT:   %1 = load double, double* @dglobal
-; CHECK-NEXT:   %2 = fadd fast double %1, %m0diffe
-; CHECK-NEXT:   store double %2, double* @dglobal
-; CHECK-NEXT:   %3 = insertvalue { double } undef, double %m1diffex, 0
-; CHECK-NEXT:   ret { double } %3
+; CHECK-NEXT:   %2 = fmul fast double %1, %x
+; CHECK-NEXT:   %3 = fmul fast double %"x'", %0
+; CHECK-NEXT:   %4 = fadd fast double %2, %3
+; CHECK-NEXT:   %5 = insertvalue { double } undef, double %4, 0
+; CHECK-NEXT:   ret { double } %5
 ; CHECK-NEXT: }
