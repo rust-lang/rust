@@ -114,7 +114,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             attrs: Default::default(),
             visibility: Inherited,
             def_id: ItemId::Auto { trait_: trait_def_id, for_: item_def_id },
-            kind: Box::new(ImplItem(Impl {
+            kind: box ImplItem(Impl {
                 span: Span::dummy(),
                 unsafety: hir::Unsafety::Normal,
                 generics: new_generics,
@@ -124,7 +124,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 negative_polarity,
                 synthetic: true,
                 blanket_impl: None,
-            })),
+            }),
             cfg: None,
         })
     }

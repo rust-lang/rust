@@ -7,6 +7,7 @@
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
+#![feature(box_syntax)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(test)]

@@ -2,7 +2,7 @@ use crate::clean::*;
 
 crate fn strip_item(mut item: Item) -> Item {
     if !matches!(*item.kind, StrippedItem(..)) {
-        item.kind = Box::new(StrippedItem(item.kind));
+        item.kind = box StrippedItem(item.kind);
     }
     item
 }
@@ -69,10 +69,10 @@ crate trait DocFolder: Sized {
 
     /// don't override!
     fn fold_item_recur(&mut self, mut item: Item) -> Item {
-        item.kind = Box::new(match *item.kind {
-            StrippedItem(box i) => StrippedItem(Box::new(self.fold_inner_recur(i))),
+        item.kind = box match *item.kind {
+            StrippedItem(box i) => StrippedItem(box self.fold_inner_recur(i)),
             _ => self.fold_inner_recur(*item.kind),
-        });
+        };
         item
     }
 
