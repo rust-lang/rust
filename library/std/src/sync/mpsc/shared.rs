@@ -251,7 +251,7 @@ impl<T> Packet<T> {
             assert_eq!(
                 self.to_wake.load(Ordering::SeqCst),
                 0,
-                "This is a known bug in rust. See https://github.com/rust-lang/rust/issues/39364"
+                "This is a known bug in the Rust standard library. See https://github.com/rust-lang/rust/issues/39364"
             );
             let ptr = token.cast_to_usize();
             self.to_wake.store(ptr, Ordering::SeqCst);
