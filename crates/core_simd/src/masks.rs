@@ -16,26 +16,36 @@ use crate::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
 use core::cmp::Ordering;
 use core::fmt;
 
-/// Marker trait for types that may be used as SIMD mask elements.
-pub unsafe trait MaskElement: SimdElement {
-    #[doc(hidden)]
-    fn valid<const LANES: usize>(values: Simd<Self, LANES>) -> bool
-    where
-        LaneCount<LANES>: SupportedLaneCount;
+mod sealed {
+    use super::*;
 
-    #[doc(hidden)]
-    fn eq(self, other: Self) -> bool;
+    /// Not only does this seal the `MaskElement` trait, but these functions prevent other traits
+    /// from bleeding into the parent bounds.
+    ///
+    /// For example, `eq` could be provided by requiring `MaskElement: PartialEq`, but that would
+    /// prevent us from ever removing that bound, or from implementing `MaskElement` on
+    /// non-`PartialEq` types in the future.
+    pub trait Sealed {
+        fn valid<const LANES: usize>(values: Simd<Self, LANES>) -> bool
+        where
+            LaneCount<LANES>: SupportedLaneCount,
+            Self: SimdElement;
 
-    #[doc(hidden)]
-    const TRUE: Self;
+        fn eq(self, other: Self) -> bool;
 
-    #[doc(hidden)]
-    const FALSE: Self;
+        const TRUE: Self;
+
+        const FALSE: Self;
+    }
 }
+use sealed::Sealed;
+
+/// Marker trait for types that may be used as SIMD mask elements.
+pub unsafe trait MaskElement: SimdElement + Sealed {}
 
 macro_rules! impl_element {
     { $ty:ty } => {
-        unsafe impl MaskElement for $ty {
+        impl Sealed for $ty {
             fn valid<const LANES: usize>(value: Simd<Self, LANES>) -> bool
             where
                 LaneCount<LANES>: SupportedLaneCount,
@@ -48,6 +58,8 @@ macro_rules! impl_element {
             const TRUE: Self = -1;
             const FALSE: Self = 0;
         }
+
+        unsafe impl MaskElement for $ty {}
     }
 }
 
