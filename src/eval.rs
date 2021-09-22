@@ -352,17 +352,24 @@ pub fn eval_entry<'tcx>(
 ///
 /// Panics if the zeroth argument contains the `"` character because doublequotes
 /// in argv[0] cannot be encoded using the standard command line parsing rules.
+///
+/// Further reading:
+/// * [Parsing C++ command-line arguments](https://docs.microsoft.com/en-us/cpp/cpp/main-function-command-line-args?view=msvc-160#parsing-c-command-line-arguments)
+/// * [The C/C++ Parameter Parsing Rules](https://daviddeley.com/autohotkey/parameters/parameters.htm#WINCRULES)
 fn args_to_utf16_command_string<I, T>(mut args: I) -> Vec<u16>
 where
     I: Iterator<Item = T>,
     T: AsRef<str>,
 {
     // Parse argv[0]. Slashes aren't escaped. Literal double quotes are not allowed.
-    let mut cmd = if let Some(arg0) = args.next() {
+    let mut cmd = {
+        let arg0 = if let Some(arg0) = args.next() {
+            arg0
+        } else {
+            return vec![0];
+        };
         let arg0 = arg0.as_ref();
-        if arg0.is_empty() {
-            "\"\"".into()
-        } else if arg0.contains('"') {
+        if arg0.contains('"') {
             panic!("argv[0] cannot contain a doublequote (\") character");
         } else {
             // Always surround argv[0] with quotes.
@@ -372,8 +379,6 @@ where
             s.push('"');
             s
         }
-    } else {
-        return vec![0];
     };
 
     // Build the other arguments.
@@ -383,8 +388,15 @@ where
         if arg.is_empty() {
             cmd.push_str("\"\"");
         } else if !arg.bytes().any(|c| matches!(c, b'"' | b'\t' | b' ')) {
+            // No quote, tab, or space -- no escaping required.
             cmd.push_str(arg);
         } else {
+            // Spaces and tabs are escaped by surrounding them in quotes.
+            // Quotes are themselves escaped by using backslashes when in a
+            // quoted block.
+            // Backslashes only need to be escaped when one or more are directly
+            // followed by a quote. Otherwise they are taken literally.
+
             cmd.push('"');
             let mut chars = arg.chars().peekable();
             loop {
@@ -417,4 +429,22 @@ where
         panic!("interior null in command line arguments");
     }
     cmd.encode_utf16().chain(iter::once(0)).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    #[should_panic(expected = "argv[0] cannot contain a doublequote (\") character")]
+    fn windows_argv0_panic_on_quote() {
+        args_to_utf16_command_string(["\""].iter());
+    }
+    #[test]
+    fn windows_argv0_no_escape() {
+        // Ensure that a trailing backslash in argv[0] is not escaped.
+        let cmd = String::from_utf16_lossy(&args_to_utf16_command_string(
+            [r"C:\Program Files\", "arg1"].iter(),
+        ));
+        assert_eq!(cmd.trim_end_matches("\0"), r#""C:\Program Files\" arg1"#);
+    }
 }
