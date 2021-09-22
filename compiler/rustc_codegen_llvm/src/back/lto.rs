@@ -325,6 +325,20 @@ fn fat_lto(
         drop(linker);
         save_temp_bitcode(&cgcx, &module, "lto.input");
 
+        // Fat LTO also suffers from the invalid DWARF issue similar to Thin LTO.
+        // Here we rewrite all `DICompileUnit` pointers if there is only one `DICompileUnit`.
+        // This only works around the problem when codegen-units = 1.
+        // Refer to the comments in the `optimize_thin_module` function for more details.
+        let mut cu1 = ptr::null_mut();
+        let mut cu2 = ptr::null_mut();
+        unsafe { llvm::LLVMRustLTOGetDICompileUnit(llmod, &mut cu1, &mut cu2) };
+        if !cu2.is_null() {
+            let _timer =
+                cgcx.prof.generic_activity_with_arg("LLVM_fat_lto_patch_debuginfo", &*module.name);
+            unsafe { llvm::LLVMRustLTOPatchDICompileUnit(llmod, cu1) };
+            save_temp_bitcode(cgcx, &module, "fat-lto-after-patch");
+        }
+
         // Internalize everything below threshold to help strip out more modules and such.
         unsafe {
             let ptr = symbols_below_threshold.as_ptr();
@@ -748,7 +762,7 @@ pub unsafe fn optimize_thin_module(
         // an error.
         let mut cu1 = ptr::null_mut();
         let mut cu2 = ptr::null_mut();
-        llvm::LLVMRustThinLTOGetDICompileUnit(llmod, &mut cu1, &mut cu2);
+        llvm::LLVMRustLTOGetDICompileUnit(llmod, &mut cu1, &mut cu2);
         if !cu2.is_null() {
             let msg = "multiple source DICompileUnits found";
             return Err(write::llvm_err(&diag_handler, msg));
@@ -847,7 +861,7 @@ pub unsafe fn optimize_thin_module(
             let _timer = cgcx
                 .prof
                 .generic_activity_with_arg("LLVM_thin_lto_patch_debuginfo", thin_module.name());
-            llvm::LLVMRustThinLTOPatchDICompileUnit(llmod, cu1);
+            llvm::LLVMRustLTOPatchDICompileUnit(llmod, cu1);
             save_temp_bitcode(cgcx, &module, "thin-lto-after-patch");
         }
 
