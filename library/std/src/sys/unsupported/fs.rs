@@ -206,7 +206,7 @@ impl File {
         self.0
     }
 
-    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, _buf: &mut ReadBuf<'_>) -> io::Result<()> {
         self.0
     }
 
