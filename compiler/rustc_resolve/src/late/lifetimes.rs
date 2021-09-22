@@ -1019,15 +1019,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
                     // Ensure that the parent of the def is an item, not HRTB
                     let parent_id = self.tcx.hir().get_parent_node(hir_id);
-                    // FIXME(cjgillot) Can this check be replaced by
-                    // `let parent_is_item = parent_id.is_owner();`?
-                    let parent_is_item = if let Some(parent_def_id) = parent_id.as_owner() {
-                        matches!(self.tcx.hir().krate().owners.get(parent_def_id), Some(Some(_)),)
-                    } else {
-                        false
-                    };
-
-                    if !parent_is_item {
+                    if !parent_id.is_owner() {
                         if !self.trait_definition_only {
                             struct_span_err!(
                                 self.tcx.sess,

@@ -711,6 +711,15 @@ pub struct OwnerNodes<'tcx> {
     pub local_id_to_def_id: SortedMap<ItemLocalId, LocalDefId>,
 }
 
+impl<'tcx> OwnerNodes<'tcx> {
+    pub fn node(&self) -> OwnerNode<'tcx> {
+        use rustc_index::vec::Idx;
+        let node = self.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;
+        let node = node.as_owner().unwrap(); // Indexing must ensure it is an OwnerNode.
+        node
+    }
+}
+
 /// Full information resulting from lowering an AST node.
 #[derive(Debug, HashStable_Generic)]
 pub struct OwnerInfo<'hir> {
@@ -728,10 +737,39 @@ pub struct OwnerInfo<'hir> {
 impl<'tcx> OwnerInfo<'tcx> {
     #[inline]
     pub fn node(&self) -> OwnerNode<'tcx> {
-        use rustc_index::vec::Idx;
-        let node = self.nodes.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;
-        let node = node.as_owner().unwrap(); // Indexing must ensure it is an OwnerNode.
-        node
+        self.nodes.node()
+    }
+}
+
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
+pub enum MaybeOwner<T> {
+    Owner(T),
+    NonOwner(HirId),
+    /// Used as a placeholder for unused LocalDefId.
+    Phantom,
+}
+
+impl<T> MaybeOwner<T> {
+    pub fn as_owner(self) -> Option<T> {
+        match self {
+            MaybeOwner::Owner(i) => Some(i),
+            MaybeOwner::NonOwner(_) | MaybeOwner::Phantom => None,
+        }
+    }
+
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> MaybeOwner<U> {
+        match self {
+            MaybeOwner::Owner(i) => MaybeOwner::Owner(f(i)),
+            MaybeOwner::NonOwner(hir_id) => MaybeOwner::NonOwner(hir_id),
+            MaybeOwner::Phantom => MaybeOwner::Phantom,
+        }
+    }
+
+    pub fn unwrap(self) -> T {
+        match self {
+            MaybeOwner::Owner(i) => i,
+            MaybeOwner::NonOwner(_) | MaybeOwner::Phantom => panic!("Not a HIR owner"),
+        }
     }
 }
 
@@ -743,7 +781,7 @@ impl<'tcx> OwnerInfo<'tcx> {
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 #[derive(Debug)]
 pub struct Crate<'hir> {
-    pub owners: IndexVec<LocalDefId, Option<OwnerInfo<'hir>>>,
+    pub owners: IndexVec<LocalDefId, MaybeOwner<&'hir OwnerInfo<'hir>>>,
     pub hir_hash: Fingerprint,
 }
 

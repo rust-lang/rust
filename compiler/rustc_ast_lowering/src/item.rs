@@ -105,12 +105,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> T {
         let old_len = self.in_scope_lifetimes.len();
 
-        let parent_generics =
-            match self.owners[parent_hir_id].as_ref().unwrap().node().expect_item().kind {
-                hir::ItemKind::Impl(hir::Impl { ref generics, .. })
-                | hir::ItemKind::Trait(_, _, ref generics, ..) => generics.params,
-                _ => &[],
-            };
+        let parent_generics = match self.owners[parent_hir_id].unwrap().node().expect_item().kind {
+            hir::ItemKind::Impl(hir::Impl { ref generics, .. })
+            | hir::ItemKind::Trait(_, _, ref generics, ..) => generics.params,
+            _ => &[],
+        };
         let lt_def_names = parent_generics.iter().filter_map(|param| match param.kind {
             hir::GenericParamKind::Lifetime { .. } => Some(param.name.normalize_to_macros_2_0()),
             _ => None,
@@ -480,6 +479,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             .node_id_to_hir_id
                             .insert(new_node_id, hir::HirId::make_owner(new_id));
                         debug_assert!(_old.is_none());
+                        self.owners.ensure_contains_elem(new_id, || hir::MaybeOwner::Phantom);
+                        let _old = std::mem::replace(
+                            &mut self.owners[new_id],
+                            hir::MaybeOwner::NonOwner(hir::HirId::make_owner(new_id)),
+                        );
+                        debug_assert!(matches!(_old, hir::MaybeOwner::Phantom));
                         continue;
                     };
                     let ident = *ident;
