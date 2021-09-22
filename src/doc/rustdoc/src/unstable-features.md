@@ -209,6 +209,22 @@ some consideration for their stability, and names that end in a number). Giving 
 `rustdoc` will disable this sorting and instead make it print the items in the order they appear in
 the source.
 
+### `--show-type-layout`: add a section to each type's docs describing its memory layout
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --show-type-layout
+```
+
+When this flag is passed, rustdoc will add a "Layout" section at the bottom of
+each type's docs page that includes a summary of the type's memory layout as
+computed by rustc. For example, rustdoc will show the size in bytes that a value
+of that type will take in memory.
+
+Note that most layout information is **completely unstable** and may even differ
+between compilations.
+
 ### `--resource-suffix`: modifying the name of CSS/JavaScript in crate docs
 
 Using this flag looks like this:
@@ -333,7 +349,7 @@ Some methodology notes about what rustdoc counts in this metric:
 Public items that are not documented can be seen with the built-in `missing_docs` lint. Private
 items that are not documented can be seen with Clippy's `missing_docs_in_private_items` lint.
 
-## `-w`/`--output-format`: output format
+### `-w`/`--output-format`: output format
 
 When using
 [`--show-coverage`](https://doc.rust-lang.org/nightly/rustdoc/unstable-features.html#--show-coverage-get-statistics-about-code-documentation-coverage),
