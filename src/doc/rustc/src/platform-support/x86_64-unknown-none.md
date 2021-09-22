@@ -6,7 +6,7 @@ Freestanding/bare-metal x86-64 binaries in ELF format: firmware, kernels, etc.
 
 ## Target maintainers
 
-- Harald Hoyer <harald@profian.com>, https://github.com/haraldh
+- Harald Hoyer `harald@profian.com`, https://github.com/haraldh
 - Mike Leany, https://github.com/mikeleany
 
 ## Requirements
