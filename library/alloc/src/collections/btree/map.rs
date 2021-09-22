@@ -155,6 +155,7 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "BTreeMap")]
+#[rustc_insignificant_dtor]
 pub struct BTreeMap<K, V> {
     root: Option<Root<K, V>>,
     length: usize,
@@ -162,7 +163,6 @@ pub struct BTreeMap<K, V> {
 
 #[stable(feature = "btree_drop", since = "1.7.0")]
 unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for BTreeMap<K, V> {
-    #[rustc_insignificant_dtor]
     fn drop(&mut self) {
         drop(unsafe { ptr::read(self) }.into_iter())
     }
@@ -331,6 +331,7 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IterMut<'_, K, V> {
 ///
 /// [`into_iter`]: IntoIterator::into_iter
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_insignificant_dtor]
 pub struct IntoIter<K, V> {
     range: LazyLeafRange<marker::Dying, K, V>,
     length: usize,
@@ -1460,7 +1461,6 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
 
 #[stable(feature = "btree_drop", since = "1.7.0")]
 impl<K, V> Drop for IntoIter<K, V> {
-    #[rustc_insignificant_dtor]
     fn drop(&mut self) {
         struct DropGuard<'a, K, V>(&'a mut IntoIter<K, V>);
 

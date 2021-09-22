@@ -394,6 +394,7 @@ mod spec_extend;
 /// [owned slice]: Box
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "vec_type")]
+#[rustc_insignificant_dtor]
 pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
     buf: RawVec<T, A>,
     len: usize,
@@ -2746,7 +2747,6 @@ impl<T: Ord, A: Allocator> Ord for Vec<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for Vec<T, A> {
-    #[rustc_insignificant_dtor]
     fn drop(&mut self) {
         unsafe {
             // use drop for [T]

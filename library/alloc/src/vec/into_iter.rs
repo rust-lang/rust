@@ -22,6 +22,7 @@ use core::slice::{self};
 /// let iter: std::vec::IntoIter<_> = v.into_iter();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_insignificant_dtor]
 pub struct IntoIter<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
@@ -246,7 +247,6 @@ impl<T: Clone, A: Allocator + Clone> Clone for IntoIter<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
-    #[rustc_insignificant_dtor]
     fn drop(&mut self) {
         struct DropGuard<'a, T, A: Allocator>(&'a mut IntoIter<T, A>);
 
