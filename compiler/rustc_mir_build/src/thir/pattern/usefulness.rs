@@ -467,11 +467,18 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     /// fields filled with wild patterns.
     ///
     /// This is roughly the inverse of `Constructor::apply`.
-    fn pop_head_constructor(&self, ctor_wild_subpatterns: &Fields<'p, 'tcx>) -> PatStack<'p, 'tcx> {
+    fn pop_head_constructor(
+        &self,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        ctor_wild_subpatterns: &Fields<'p, 'tcx>,
+    ) -> PatStack<'p, 'tcx> {
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
-        let mut new_fields =
-            ctor_wild_subpatterns.replace_with_pattern_arguments(self.head()).into_patterns();
+        let mut new_fields: SmallVec<[_; 2]> = ctor_wild_subpatterns
+            .clone()
+            .extract_pattern_arguments(cx, self.head())
+            .iter_patterns()
+            .collect();
         new_fields.extend_from_slice(&self.pats[1..]);
         PatStack::from_vec(new_fields)
     }
@@ -559,7 +566,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         let mut matrix = Matrix::empty();
         for row in &self.patterns {
             if ctor.is_covered_by(pcx, row.head_ctor(pcx.cx)) {
-                let new_row = row.pop_head_constructor(ctor_wild_subpatterns);
+                let new_row = row.pop_head_constructor(pcx.cx, ctor_wild_subpatterns);
                 matrix.push(new_row);
             }
         }
@@ -923,7 +930,7 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
                         // Here we don't want the user to try to list all variants, we want them to add
                         // a wildcard, so we only suggest that.
                         vec![
-                            Fields::wildcards(pcx, &Constructor::NonExhaustive)
+                            Fields::wildcards(pcx.cx, pcx.ty, &Constructor::NonExhaustive)
                                 .apply(pcx, &Constructor::NonExhaustive),
                         ]
                     } else {
@@ -936,7 +943,8 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
                         split_wildcard
                             .iter_missing(pcx)
                             .map(|missing_ctor| {
-                                Fields::wildcards(pcx, missing_ctor).apply(pcx, missing_ctor)
+                                Fields::wildcards(pcx.cx, pcx.ty, missing_ctor)
+                                    .apply(pcx, missing_ctor)
                             })
                             .collect()
                     };
@@ -1036,7 +1044,7 @@ impl<'tcx> Witness<'tcx> {
             let len = self.0.len();
             let arity = ctor_wild_subpatterns.len();
             let pats = self.0.drain((len - arity)..).rev();
-            ctor_wild_subpatterns.replace_fields(pcx.cx, pats).apply(pcx, ctor)
+            ctor_wild_subpatterns.clone().replace_fields(pcx.cx, pats).apply(pcx, ctor)
         };
 
         self.0.push(pat);
@@ -1172,10 +1180,10 @@ fn is_useful<'p, 'tcx>(
         for ctor in split_ctors {
             debug!("specialize({:?})", ctor);
             // We cache the result of `Fields::wildcards` because it is used a lot.
-            let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
+            let ctor_wild_subpatterns = Fields::wildcards(pcx.cx, pcx.ty, &ctor);
             let spec_matrix =
                 start_matrix.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns);
-            let v = v.pop_head_constructor(&ctor_wild_subpatterns);
+            let v = v.pop_head_constructor(pcx.cx, &ctor_wild_subpatterns);
             let usefulness =
                 is_useful(cx, &spec_matrix, &v, witness_preference, hir_id, is_under_guard, false);
             let usefulness =
@@ -1207,7 +1215,7 @@ fn is_useful<'p, 'tcx>(
                         // to our lint
                         .filter(|c| !c.is_non_exhaustive())
                         .map(|missing_ctor| {
-                            Fields::wildcards(pcx, missing_ctor).apply(pcx, missing_ctor)
+                            Fields::wildcards(pcx.cx, pcx.ty, missing_ctor).apply(pcx, missing_ctor)
                         })
                         .collect::<Vec<_>>()
                 };

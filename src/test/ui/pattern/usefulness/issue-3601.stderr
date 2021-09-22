@@ -1,8 +1,8 @@
-error[E0004]: non-exhaustive patterns: `Box(_, _)` not covered
+error[E0004]: non-exhaustive patterns: `box _` not covered
   --> $DIR/issue-3601.rs:30:44
    |
 LL |         box NodeKind::Element(ed) => match ed.kind {
-   |                                            ^^^^^^^ pattern `Box(_, _)` not covered
+   |                                            ^^^^^^^ pattern `box _` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `Box<ElementKind>`
