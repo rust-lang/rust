@@ -301,7 +301,7 @@ use rustc_span::Span;
 
 use smallvec::{smallvec, SmallVec};
 use std::fmt;
-use std::iter::{FromIterator, IntoIterator};
+use std::iter::IntoIterator;
 use std::lazy::OnceCell;
 
 crate struct MatchCheckCtxt<'a, 'tcx> {
@@ -489,15 +489,6 @@ impl<'p, 'tcx> PartialEq for PatStack<'p, 'tcx> {
     }
 }
 
-impl<'p, 'tcx> FromIterator<&'p Pat<'tcx>> for PatStack<'p, 'tcx> {
-    fn from_iter<T>(iter: T) -> Self
-    where
-        T: IntoIterator<Item = &'p Pat<'tcx>>,
-    {
-        Self::from_vec(iter.into_iter().collect())
-    }
-}
-
 /// Pretty-printing for matrix row.
 impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -565,11 +556,14 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         ctor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) -> Matrix<'p, 'tcx> {
-        self.patterns
-            .iter()
-            .filter(|r| ctor.is_covered_by(pcx, r.head_ctor(pcx.cx)))
-            .map(|r| r.pop_head_constructor(ctor_wild_subpatterns))
-            .collect()
+        let mut matrix = Matrix::empty();
+        for row in &self.patterns {
+            if ctor.is_covered_by(pcx, row.head_ctor(pcx.cx)) {
+                let new_row = row.pop_head_constructor(ctor_wild_subpatterns);
+                matrix.push(new_row);
+            }
+        }
+        matrix
     }
 }
 
@@ -606,20 +600,6 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
             write!(f, "\n")?;
         }
         Ok(())
-    }
-}
-
-impl<'p, 'tcx> FromIterator<PatStack<'p, 'tcx>> for Matrix<'p, 'tcx> {
-    fn from_iter<T>(iter: T) -> Self
-    where
-        T: IntoIterator<Item = PatStack<'p, 'tcx>>,
-    {
-        let mut matrix = Matrix::empty();
-        for x in iter {
-            // Using `push` ensures we correctly expand or-patterns.
-            matrix.push(x);
-        }
-        matrix
     }
 }
 
