@@ -36,8 +36,7 @@ macro_rules! simd_shuffle {
         $vector:expr, $index:expr $(,)?
     } => {
         {
-            // FIXME this won't work when we are in `core`!
-            use $crate::Swizzle;
+            use $crate::simd::Swizzle;
             struct Shuffle;
             impl Swizzle<{$index.len()}, {$index.len()}> for Shuffle {
                 const INDEX: [usize; {$index.len()}] = $index;
@@ -49,8 +48,7 @@ macro_rules! simd_shuffle {
         $first:expr, $second:expr, $index:expr $(,)?
     } => {
         {
-            // FIXME this won't work when we are in `core`!
-            use $crate::{Which, Swizzle2};
+            use $crate::simd::{Which, Swizzle2};
             struct Shuffle;
             impl Swizzle2<{$index.len()}, {$index.len()}> for Shuffle {
                 const INDEX: [Which; {$index.len()}] = $index;
