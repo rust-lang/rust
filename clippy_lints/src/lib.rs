@@ -956,7 +956,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         transmuting_null::TRANSMUTING_NULL,
         try_err::TRY_ERR,
         types::BORROWED_BOX,
-        types::BOX_VEC,
+        types::BOX_COLLECTION,
         types::LINKEDLIST,
         types::OPTION_OPTION,
         types::RC_BUFFER,
@@ -1454,7 +1454,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(transmuting_null::TRANSMUTING_NULL),
         LintId::of(try_err::TRY_ERR),
         LintId::of(types::BORROWED_BOX),
-        LintId::of(types::BOX_VEC),
+        LintId::of(types::BOX_COLLECTION),
         LintId::of(types::REDUNDANT_ALLOCATION),
         LintId::of(types::TYPE_COMPLEXITY),
         LintId::of(types::VEC_BOX),
@@ -1792,7 +1792,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(redundant_clone::REDUNDANT_CLONE),
         LintId::of(slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
         LintId::of(stable_sort_primitive::STABLE_SORT_PRIMITIVE),
-        LintId::of(types::BOX_VEC),
+        LintId::of(types::BOX_COLLECTION),
         LintId::of(types::REDUNDANT_ALLOCATION),
         LintId::of(vec::USELESS_VEC),
         LintId::of(vec_init_then_push::VEC_INIT_THEN_PUSH),
@@ -2193,6 +2193,7 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::cyclomatic_complexity", "clippy::cognitive_complexity");
     ls.register_renamed("clippy::const_static_lifetime", "clippy::redundant_static_lifetimes");
     ls.register_renamed("clippy::option_and_then_some", "clippy::bind_instead_of_map");
+    ls.register_renamed("clippy::box_vec", "clippy::box_collection");
     ls.register_renamed("clippy::block_in_if_condition_expr", "clippy::blocks_in_if_conditions");
     ls.register_renamed("clippy::block_in_if_condition_stmt", "clippy::blocks_in_if_conditions");
     ls.register_renamed("clippy::option_map_unwrap_or", "clippy::map_unwrap_or");

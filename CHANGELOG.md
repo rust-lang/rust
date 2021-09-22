@@ -1050,7 +1050,7 @@ Released 2020-11-19
   [#5913](https://github.com/rust-lang/rust-clippy/pull/5913)
 * Add example of false positive to [`ptr_arg`] docs.
   [#5885](https://github.com/rust-lang/rust-clippy/pull/5885)
-* [`box_vec`], [`vec_box`] and [`borrowed_box`]: add link to the documentation of `Box`
+* [`box_vec`](https://rust-lang.github.io/rust-clippy/master/index.html#box_collection), [`vec_box`] and [`borrowed_box`]: add link to the documentation of `Box`
   [#6023](https://github.com/rust-lang/rust-clippy/pull/6023)
 
 ## Rust 1.47
@@ -2570,7 +2570,7 @@ Released 2018-09-13
 [`bool_comparison`]: https://rust-lang.github.io/rust-clippy/master/index.html#bool_comparison
 [`borrow_interior_mutable_const`]: https://rust-lang.github.io/rust-clippy/master/index.html#borrow_interior_mutable_const
 [`borrowed_box`]: https://rust-lang.github.io/rust-clippy/master/index.html#borrowed_box
-[`box_vec`]: https://rust-lang.github.io/rust-clippy/master/index.html#box_vec
+[`box_collection`]: https://rust-lang.github.io/rust-clippy/master/index.html#box_collection
 [`boxed_local`]: https://rust-lang.github.io/rust-clippy/master/index.html#boxed_local
 [`branches_sharing_code`]: https://rust-lang.github.io/rust-clippy/master/index.html#branches_sharing_code
 [`builtin_type_shadow`]: https://rust-lang.github.io/rust-clippy/master/index.html#builtin_type_shadow
