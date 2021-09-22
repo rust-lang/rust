@@ -800,6 +800,52 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     pub fn clear(&mut self) {
         self.table.clear();
     }
+
+    /// Creates a consuming iterator visiting all the keys in arbitrary order.
+    /// The map cannot be used after calling this.
+    /// The iterator element type is `K`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// let vec: Vec<&str> = map.into_keys().collect();
+    /// ```
+    #[inline]
+    pub fn into_keys(self) -> IntoKeys<K, V, A> {
+        IntoKeys {
+            inner: self.into_iter(),
+        }
+    }
+
+    /// Creates a consuming iterator visiting all the values in arbitrary order.
+    /// The map cannot be used after calling this.
+    /// The iterator element type is `V`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// let vec: Vec<i32> = map.into_values().collect();
+    /// ```
+    #[inline]
+    pub fn into_values(self) -> IntoValues<K, V, A> {
+        IntoValues {
+            inner: self.into_iter(),
+        }
+    }
 }
 
 impl<K, V, S, A> HashMap<K, V, S, A>
@@ -1611,6 +1657,88 @@ impl<K, V, A: Allocator + Clone> IntoIter<K, V, A> {
             inner: self.inner.iter(),
             marker: PhantomData,
         }
+    }
+}
+
+/// An owning iterator over the keys of a `HashMap`.
+///
+/// This `struct` is created by the [`into_keys`] method on [`HashMap`].
+/// See its documentation for more.
+///
+/// [`into_keys`]: struct.HashMap.html#method.into_keys
+/// [`HashMap`]: struct.HashMap.html
+pub struct IntoKeys<K, V, A: Allocator + Clone = Global> {
+    inner: IntoIter<K, V, A>,
+}
+
+impl<K, V, A: Allocator + Clone> Iterator for IntoKeys<K, V, A> {
+    type Item = K;
+
+    #[inline]
+    fn next(&mut self) -> Option<K> {
+        self.inner.next().map(|(k, _)| k)
+    }
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+impl<K, V, A: Allocator + Clone> ExactSizeIterator for IntoKeys<K, V, A> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
+impl<K, V, A: Allocator + Clone> FusedIterator for IntoKeys<K, V, A> {}
+
+impl<K: Debug, V: Debug, A: Allocator + Clone> fmt::Debug for IntoKeys<K, V, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list()
+            .entries(self.inner.iter().map(|(k, _)| k))
+            .finish()
+    }
+}
+
+/// An owning iterator over the values of a `HashMap`.
+///
+/// This `struct` is created by the [`into_values`] method on [`HashMap`].
+/// See its documentation for more.
+///
+/// [`into_values`]: struct.HashMap.html#method.into_values
+/// [`HashMap`]: struct.HashMap.html
+pub struct IntoValues<K, V, A: Allocator + Clone = Global> {
+    inner: IntoIter<K, V, A>,
+}
+
+impl<K, V, A: Allocator + Clone> Iterator for IntoValues<K, V, A> {
+    type Item = V;
+
+    #[inline]
+    fn next(&mut self) -> Option<V> {
+        self.inner.next().map(|(_, v)| v)
+    }
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+impl<K, V, A: Allocator + Clone> ExactSizeIterator for IntoValues<K, V, A> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
+impl<K, V, A: Allocator + Clone> FusedIterator for IntoValues<K, V, A> {}
+
+impl<K: Debug, V: Debug, A: Allocator + Clone> fmt::Debug for IntoValues<K, V, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list()
+            .entries(self.inner.iter().map(|(k, _)| k))
+            .finish()
     }
 }
 
@@ -4016,6 +4144,30 @@ mod test_map {
         assert!(values.contains(&2));
         assert!(values.contains(&4));
         assert!(values.contains(&6));
+    }
+
+    #[test]
+    fn test_into_keys() {
+        let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
+        let map: HashMap<_, _> = vec.into_iter().collect();
+        let keys: Vec<_> = map.into_keys().collect();
+
+        assert_eq!(keys.len(), 3);
+        assert!(keys.contains(&1));
+        assert!(keys.contains(&2));
+        assert!(keys.contains(&3));
+    }
+
+    #[test]
+    fn test_into_values() {
+        let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
+        let map: HashMap<_, _> = vec.into_iter().collect();
+        let values: Vec<_> = map.into_values().collect();
+
+        assert_eq!(values.len(), 3);
+        assert!(values.contains(&'a'));
+        assert!(values.contains(&'b'));
+        assert!(values.contains(&'c'));
     }
 
     #[test]
