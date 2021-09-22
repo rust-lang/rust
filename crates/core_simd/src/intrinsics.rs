@@ -46,13 +46,6 @@ extern "platform-intrinsic" {
     /// fabs
     pub(crate) fn simd_fabs<T>(x: T) -> T;
 
-    /// fsqrt
-    #[cfg(feature = "std")]
-    pub(crate) fn simd_fsqrt<T>(x: T) -> T;
-
-    /// fma
-    pub(crate) fn simd_fma<T>(x: T, y: T, z: T) -> T;
-
     pub(crate) fn simd_eq<T, U>(x: T, y: T) -> U;
     pub(crate) fn simd_ne<T, U>(x: T, y: T) -> U;
     pub(crate) fn simd_lt<T, U>(x: T, y: T) -> U;
@@ -110,6 +103,12 @@ mod std {
 
         // trunc
         pub(crate) fn simd_trunc<T>(x: T) -> T;
+
+        // fsqrt
+        pub(crate) fn simd_fsqrt<T>(x: T) -> T;
+
+        // fma
+        pub(crate) fn simd_fma<T>(x: T, y: T, z: T) -> T;
     }
 }
 

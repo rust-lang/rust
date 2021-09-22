@@ -437,14 +437,6 @@ macro_rules! impl_float_tests {
                     )
                 }
 
-                fn mul_add<const LANES: usize>() {
-                    test_helpers::test_ternary_elementwise(
-                        &Vector::<LANES>::mul_add,
-                        &Scalar::mul_add,
-                        &|_, _, _| true,
-                    )
-                }
-
                 fn recip<const LANES: usize>() {
                     test_helpers::test_unary_elementwise(
                         &Vector::<LANES>::recip,
@@ -601,13 +593,24 @@ macro_rules! impl_float_tests {
             }
 
             #[cfg(feature = "std")]
-            test_helpers::test_lanes! {
-                fn sqrt<const LANES: usize>() {
-                    test_helpers::test_unary_elementwise(
-                        &Vector::<LANES>::sqrt,
-                        &Scalar::sqrt,
-                        &|_| true,
-                    )
+            mod std {
+                use super::*;
+                test_helpers::test_lanes! {
+                    fn sqrt<const LANES: usize>() {
+                        test_helpers::test_unary_elementwise(
+                            &Vector::<LANES>::sqrt,
+                            &Scalar::sqrt,
+                            &|_| true,
+                        )
+                    }
+
+                    fn mul_add<const LANES: usize>() {
+                        test_helpers::test_ternary_elementwise(
+                            &Vector::<LANES>::mul_add,
+                            &Scalar::mul_add,
+                            &|_, _, _| true,
+                        )
+                    }
                 }
             }
         }

@@ -42,6 +42,7 @@ macro_rules! impl_float_vector {
             /// architecture has a dedicated `fma` CPU instruction.  However, this is not always
             /// true, and will be heavily dependent on designing algorithms with specific target
             /// hardware in mind.
+            #[cfg(feature = "std")]
             #[inline]
             pub fn mul_add(self, a: Self, b: Self) -> Self {
                 unsafe { intrinsics::simd_fma(self, a, b) }
