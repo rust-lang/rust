@@ -1050,7 +1050,7 @@ Released 2020-11-19
   [#5913](https://github.com/rust-lang/rust-clippy/pull/5913)
 * Add example of false positive to [`ptr_arg`] docs.
   [#5885](https://github.com/rust-lang/rust-clippy/pull/5885)
-* [`box_vec`], [`vec_box`] and [`borrowed_box`]: add link to the documentation of `Box`
+* [`box_vec`](https://rust-lang.github.io/rust-clippy/master/index.html#box_collection), [`vec_box`] and [`borrowed_box`]: add link to the documentation of `Box`
   [#6023](https://github.com/rust-lang/rust-clippy/pull/6023)
 
 ## Rust 1.47
