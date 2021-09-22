@@ -323,6 +323,7 @@ store.register_lints(&[
     misc_early::DUPLICATE_UNDERSCORE_ARGUMENT,
     misc_early::MIXED_CASE_HEX_LITERALS,
     misc_early::REDUNDANT_PATTERN,
+    misc_early::SEPARATED_LITERAL_SUFFIX,
     misc_early::UNNEEDED_FIELD_PATTERN,
     misc_early::UNNEEDED_WILDCARD_PATTERN,
     misc_early::UNSEPARATED_LITERAL_SUFFIX,

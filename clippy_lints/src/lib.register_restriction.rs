@@ -34,6 +34,7 @@ store.register_group(true, "clippy::restriction", Some("clippy_restriction"), ve
     LintId::of(methods::GET_UNWRAP),
     LintId::of(methods::UNWRAP_USED),
     LintId::of(misc::FLOAT_CMP_CONST),
+    LintId::of(misc_early::SEPARATED_LITERAL_SUFFIX),
     LintId::of(misc_early::UNNEEDED_FIELD_PATTERN),
     LintId::of(misc_early::UNSEPARATED_LITERAL_SUFFIX),
     LintId::of(missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS),
