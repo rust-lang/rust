@@ -1084,6 +1084,7 @@ impl<'a> Parser<'a> {
 
     /// If we encounter a parser state that looks like the user has written a `struct` literal with
     /// parentheses instead of braces, recover the parser state and provide suggestions.
+    #[instrument(skip(self, seq, snapshot), level = "trace")]
     fn maybe_recover_struct_lit_bad_delims(
         &mut self,
         lo: Span,
