@@ -263,7 +263,7 @@ crate fn create_config(
         stderr: None,
         lint_caps,
         parse_sess_created: None,
-        register_lints: Some(Box::new(crate::lint::register_lints)),
+        register_lints: Some(box crate::lint::register_lints),
         override_queries: Some(|_sess, providers, _external_providers| {
             // Most lints will require typechecking, so just don't run them.
             providers.lint_mod = |_, _| {};
