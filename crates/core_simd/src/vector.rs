@@ -53,7 +53,8 @@ where
     /// If an index is out of bounds, that lane instead selects the value from the "or" vector.
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core_simd::*;
+    /// # #[cfg(feature = "std")] use core_simd::Simd;
+    /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 5]);
     /// let alt = Simd::from_array([-5, -4, -3, -2]);
@@ -71,7 +72,8 @@ where
     /// Out-of-bounds indices instead use the default value for that lane (0).
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core_simd::*;
+    /// # #[cfg(feature = "std")] use core_simd::Simd;
+    /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 5]);
     ///
@@ -91,7 +93,8 @@ where
     /// Out-of-bounds or masked indices instead select the value from the "or" vector.
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core_simd::*;
+    /// # #[cfg(feature = "std")] use core_simd::{Simd, Mask};
+    /// # #[cfg(not(feature = "std"))] use core::simd::{Simd, Mask};
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 5]);
     /// let alt = Simd::from_array([-5, -4, -3, -2]);
@@ -121,7 +124,8 @@ where
     /// `scatter` writes "in order", so if an index receives two writes, only the last is guaranteed.
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core_simd::*;
+    /// # #[cfg(feature = "std")] use core_simd::Simd;
+    /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 0]);
     /// let vals = Simd::from_array([-27, 82, -41, 124]);
@@ -139,7 +143,8 @@ where
     /// `scatter_select` writes "in order", so if an index receives two writes, only the last is guaranteed.
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core_simd::*;
+    /// # #[cfg(feature = "std")] use core_simd::{Simd, Mask};
+    /// # #[cfg(not(feature = "std"))] use core::simd::{Simd, Mask};
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 0]);
     /// let vals = Simd::from_array([-27, 82, -41, 124]);

@@ -18,7 +18,8 @@ macro_rules! impl_shuffle_lane {
             ///
             /// ```
             /// #![feature(portable_simd)]
-            /// # use core_simd::Simd;
+            /// # #[cfg(feature = "std")] use core_simd::Simd;
+            /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
             /// let a = Simd::from_array([1.0, 2.0, 3.0, 4.0]);
             /// let b = Simd::from_array([5.0, 6.0, 7.0, 8.0]);
             /// const IDXS: [u32; 4] = [4,0,3,7];
@@ -59,7 +60,8 @@ macro_rules! impl_shuffle_lane {
             ///
             /// ```
             /// #![feature(portable_simd)]
-            /// # use core_simd::Simd;
+            /// # #[cfg(feature = "std")] use core_simd::Simd;
+            /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
             /// let a = Simd::from_array([0, 1, 2, 3]);
             /// let b = Simd::from_array([4, 5, 6, 7]);
             /// let (x, y) = a.interleave(b);
@@ -111,7 +113,8 @@ macro_rules! impl_shuffle_lane {
             ///
             /// ```
             /// #![feature(portable_simd)]
-            /// # use core_simd::Simd;
+            /// # #[cfg(feature = "std")] use core_simd::Simd;
+            /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
             /// let a = Simd::from_array([0, 4, 1, 5]);
             /// let b = Simd::from_array([2, 6, 3, 7]);
             /// let (x, y) = a.deinterleave(b);

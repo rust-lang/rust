@@ -61,7 +61,8 @@ where
     ///
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core_simd::{Mask, Simd};
+    /// # #[cfg(feature = "std")] use core_simd::{Simd, Mask};
+    /// # #[cfg(not(feature = "std"))] use core::simd::{Simd, Mask};
     /// let a = Simd::from_array([0, 1, 2, 3]);
     /// let b = Simd::from_array([4, 5, 6, 7]);
     /// let mask = Mask::from_array([true, false, false, true]);
@@ -72,7 +73,8 @@ where
     /// `select` can also be used on masks:
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core_simd::Mask;
+    /// # #[cfg(feature = "std")] use core_simd::Mask;
+    /// # #[cfg(not(feature = "std"))] use core::simd::Mask;
     /// let a = Mask::<i32, 4>::from_array([true, true, false, false]);
     /// let b = Mask::<i32, 4>::from_array([false, false, true, true]);
     /// let mask = Mask::<i32, 4>::from_array([true, false, false, true]);

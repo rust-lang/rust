@@ -10,7 +10,8 @@ macro_rules! impl_uint_arith {
             /// # Examples
             /// ```
             /// # #![feature(portable_simd)]
-            /// # use core_simd::*;
+            /// # #[cfg(feature = "std")] use core_simd::Simd;
+            /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
             #[doc = concat!("# use core::", stringify!($ty), "::MAX;")]
             /// let x = Simd::from_array([2, 1, 0, MAX]);
             /// let max = Simd::splat(MAX);
@@ -29,7 +30,8 @@ macro_rules! impl_uint_arith {
             /// # Examples
             /// ```
             /// # #![feature(portable_simd)]
-            /// # use core_simd::*;
+            /// # #[cfg(feature = "std")] use core_simd::Simd;
+            /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
             #[doc = concat!("# use core::", stringify!($ty), "::MAX;")]
             /// let x = Simd::from_array([2, 1, 0, MAX]);
             /// let max = Simd::splat(MAX);
@@ -54,7 +56,8 @@ macro_rules! impl_int_arith {
             /// # Examples
             /// ```
             /// # #![feature(portable_simd)]
-            /// # use core_simd::*;
+            /// # #[cfg(feature = "std")] use core_simd::Simd;
+            /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
             #[doc = concat!("# use core::", stringify!($ty), "::{MIN, MAX};")]
             /// let x = Simd::from_array([MIN, 0, 1, MAX]);
             /// let max = Simd::splat(MAX);
@@ -73,7 +76,8 @@ macro_rules! impl_int_arith {
             /// # Examples
             /// ```
             /// # #![feature(portable_simd)]
-            /// # use core_simd::*;
+            /// # #[cfg(feature = "std")] use core_simd::Simd;
+            /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
             #[doc = concat!("# use core::", stringify!($ty), "::{MIN, MAX};")]
             /// let x = Simd::from_array([MIN, -2, -1, MAX]);
             /// let max = Simd::splat(MAX);
@@ -92,7 +96,8 @@ macro_rules! impl_int_arith {
             /// # Examples
             /// ```
             /// # #![feature(portable_simd)]
-            /// # use core_simd::*;
+            /// # #[cfg(feature = "std")] use core_simd::Simd;
+            /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
             #[doc = concat!("# use core::", stringify!($ty), "::{MIN, MAX};")]
             /// let xs = Simd::from_array([MIN, MIN +1, -5, 0]);
             /// assert_eq!(xs.abs(), Simd::from_array([MIN, MAX, 5, 0]));
@@ -110,7 +115,8 @@ macro_rules! impl_int_arith {
             /// # Examples
             /// ```
             /// # #![feature(portable_simd)]
-            /// # use core_simd::*;
+            /// # #[cfg(feature = "std")] use core_simd::Simd;
+            /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
             #[doc = concat!("# use core::", stringify!($ty), "::{MIN, MAX};")]
             /// let xs = Simd::from_array([MIN, -2, 0, 3]);
             /// let unsat = xs.abs();
@@ -132,7 +138,8 @@ macro_rules! impl_int_arith {
             /// # Examples
             /// ```
             /// # #![feature(portable_simd)]
-            /// # use core_simd::*;
+            /// # #[cfg(feature = "std")] use core_simd::Simd;
+            /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
             #[doc = concat!("# use core::", stringify!($ty), "::{MIN, MAX};")]
             /// let x = Simd::from_array([MIN, -2, 3, MAX]);
             /// let unsat = -x;
