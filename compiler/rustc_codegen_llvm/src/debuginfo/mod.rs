@@ -10,12 +10,12 @@ use self::utils::{create_DIArray, is_node_local_to_unit, DIB};
 use crate::abi::FnAbi;
 use crate::builder::Builder;
 use crate::common::CodegenCx;
+use crate::debuginfo::utils::debug_context;
 use crate::llvm;
 use crate::llvm::debuginfo::{
     DIArray, DIBuilder, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope, DIType,
     DIVariable,
 };
-use crate::debuginfo::utils::debug_context;
 use crate::value::Value;
 
 use rustc_codegen_ssa::debuginfo::type_names;

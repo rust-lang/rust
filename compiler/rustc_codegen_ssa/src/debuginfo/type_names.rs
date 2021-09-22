@@ -23,8 +23,8 @@ use rustc_middle::ty::{self, AdtDef, ExistentialProjection, Ty, TyCtxt};
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use smallvec::SmallVec;
 
-use std::fmt::Write;
 use std::cell::RefCell;
+use std::fmt::Write;
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
 // any caching, i.e., calling the function twice with the same type will also do
@@ -52,7 +52,7 @@ fn push_debuginfo_type_name<'tcx>(
     qualified: bool,
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
-    type_name_cache:  &RefCell<FxHashMap<(Ty<'tcx>, bool), String>>,
+    type_name_cache: &RefCell<FxHashMap<(Ty<'tcx>, bool), String>>,
 ) {
     // Check if we have seen this type and qualifier before.
     if let Some(type_name) = type_name_cache.borrow().get(&(&t, qualified)) {
@@ -439,7 +439,7 @@ fn push_debuginfo_type_name<'tcx>(
         substs: SubstsRef<'tcx>,
         output: &mut String,
         visited: &mut FxHashSet<Ty<'tcx>>,
-        type_name_cache:  &RefCell<FxHashMap<(Ty<'tcx>, bool), String>>,
+        type_name_cache: &RefCell<FxHashMap<(Ty<'tcx>, bool), String>>,
     ) {
         let layout = tcx.layout_of(tcx.param_env(def.did).and(ty)).expect("layout error");
 
