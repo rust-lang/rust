@@ -1,4 +1,4 @@
-use std::{collections::HashSet, ops::ControlFlow};
+use std::{collections::HashSet, iter, ops::ControlFlow};
 
 use either::Either;
 use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo};
@@ -199,7 +199,7 @@ fn find_hover_result(
     // so don't add them to the `seen` duplicate check
     let mut add_to_seen_definitions = true;
 
-    let definition = find_definition(sema, node).or_else(|| {
+    let definition = find_definition(sema, node).next().or_else(|| {
         // intra-doc links
         // FIXME: move comment + attribute special cases somewhere else to simplify control flow,
         // hopefully simplifying the return type of this function in the process
@@ -724,34 +724,51 @@ fn definition_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
     def.module(db).map(|module| render_path(db, module, definition_owner_name(db, def)))
 }
 
-pub(crate) fn find_definition(
-    sema: &Semantics<RootDatabase>,
+pub(crate) fn find_definition<'a>(
+    sema: &'a Semantics<RootDatabase>,
     node: &SyntaxNode,
-) -> Option<Definition> {
-    match_ast! {
-        match node {
-            ast::Name(name) => NameClass::classify(sema, &name).map(|class| match class {
-                NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-                NameClass::PatFieldShorthand { local_def, field_ref: _ } => Definition::Local(local_def),
-            }),
-            ast::NameRef(name_ref) => NameRefClass::classify(sema, &name_ref).map(|class| match class {
-                NameRefClass::Definition(def) => def,
-                NameRefClass::FieldShorthand { local_ref: _, field_ref } => {
-                    Definition::Field(field_ref)
-                }
-            }),
-            ast::Lifetime(lifetime) => NameClass::classify_lifetime(&sema, &lifetime).map_or_else(
-                || {
-                    NameRefClass::classify_lifetime(&sema, &lifetime).and_then(|class| match class {
-                        NameRefClass::Definition(it) => Some(it),
-                        _ => None,
-                    })
+) -> impl Iterator<Item = Definition> + 'a {
+    iter::once(node.clone()).flat_map(move |node| {
+        match_ast! {
+            match node {
+                ast::Name(name) => {
+                    let class = if let Some(x) = NameClass::classify(&sema, &name) {
+                        x
+                    } else {
+                        return vec![];
+                    };
+                    match class {
+                        NameClass::Definition(it) | NameClass::ConstReference(it) => vec![it],
+                        NameClass::PatFieldShorthand { local_def, field_ref } => vec![Definition::Local(local_def), Definition::Field(field_ref)],
+                    }
                 },
-                NameClass::defined,
-            ),
-            _ => None,
+                ast::NameRef(name_ref) => {
+                    let class = if let Some(x) = NameRefClass::classify(sema, &name_ref) {
+                        x
+                    } else {
+                        return vec![];
+                    };
+                    match class {
+                        NameRefClass::Definition(def) => vec![def],
+                        NameRefClass::FieldShorthand { local_ref, field_ref } => {
+                            vec![Definition::Field(field_ref), Definition::Local(local_ref)]
+                        }
+                    }
+                },
+                ast::Lifetime(lifetime) => {
+                    (if let Some(x) = NameClass::classify_lifetime(&sema, &lifetime) {
+                        NameClass::defined(x)
+                    } else {
+                        NameRefClass::classify_lifetime(&sema, &lifetime).and_then(|class| match class {
+                            NameRefClass::Definition(it) => Some(it),
+                            _ => None,
+                        })
+                    }).into_iter().collect()
+                },
+                _ => vec![],
+            }
         }
-    }
+    })
 }
 
 pub(crate) fn hover_for_definition(

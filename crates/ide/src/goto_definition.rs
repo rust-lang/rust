@@ -1,5 +1,11 @@
 use std::{convert::TryInto, iter};
 
+use crate::hover::find_definition;
+use crate::{
+    display::{ToNav, TryToNav},
+    doc_links::{doc_attributes, extract_definitions_from_docs, resolve_doc_path_for_def},
+    FilePosition, NavigationTarget, RangeInfo,
+};
 use either::Either;
 use hir::{AsAssocItem, InFile, ModuleDef, Semantics};
 use ide_db::{
@@ -10,12 +16,6 @@ use ide_db::{
 };
 use itertools::Itertools;
 use syntax::{ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TextRange, T};
-
-use crate::{
-    display::{ToNav, TryToNav},
-    doc_links::{doc_attributes, extract_definitions_from_docs, resolve_doc_path_for_def},
-    FilePosition, NavigationTarget, RangeInfo,
-};
 
 // Feature: Go to Definition
 //
@@ -58,39 +58,22 @@ pub(crate) fn goto_definition(
         .into_iter()
         .filter_map(|token| {
             let parent = token.parent()?;
-            let navs = match_ast! {
+            let result = find_definition(&sema, &parent)
+                .flat_map(|def| {
+                    try_find_trait_item_definition(sema.db, &def)
+                        .unwrap_or_else(|| def_to_nav(sema.db, def))
+                })
+                .collect::<Vec<_>>();
+            if !result.is_empty() {
+                return Some(result);
+            }
+            match_ast! {
                 match parent {
-                    ast::NameRef(name_ref) => {
-                        reference_definition(&sema, Either::Right(&name_ref))
-                    },
-                    ast::Name(name) => {
-                        match NameClass::classify(&sema, &name)? {
-                            NameClass::Definition(def) | NameClass::ConstReference(def) => {
-                                try_find_trait_item_definition(sema.db, &def)
-                                    .unwrap_or_else(|| def_to_nav(sema.db, def))
-                            }
-                            NameClass::PatFieldShorthand { local_def, field_ref } => {
-                                local_and_field_to_nav(sema.db, local_def, field_ref)
-                            },
-                        }
-                    },
-                    ast::Lifetime(lt) => {
-                        match NameClass::classify_lifetime(&sema, &lt) {
-                            Some(name_class) => {
-                                match name_class {
-                                    NameClass::Definition(def) => def_to_nav(sema.db, def),
-                                    _ => return None,
-                                }
-                            }
-                            None => reference_definition(&sema, Either::Left(&lt)),
-                        }
-                    },
                     ast::TokenTree(tt) =>
-                        try_lookup_include_path_or_derive(&sema, tt, token, position.file_id)?,
-                    _ => return None,
+                        try_lookup_include_path_or_derive(&sema, tt, token, position.file_id),
+                    _ => None
                 }
-            };
-            Some(navs)
+            }
         })
         .flatten()
         .unique()
