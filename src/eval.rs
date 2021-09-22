@@ -2,6 +2,7 @@
 
 use std::convert::TryFrom;
 use std::ffi::OsStr;
+use std::iter;
 
 use log::info;
 
@@ -202,17 +203,8 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         // Store command line as UTF-16 for Windows `GetCommandLineW`.
         {
             // Construct a command string with all the aguments.
-            let mut cmd = String::new();
-            for arg in config.args.iter() {
-                if !cmd.is_empty() {
-                    cmd.push(' ');
-                }
-                cmd.push_str(&*shell_escape::windows::escape(arg.as_str().into()));
-            }
-            // Don't forget `0` terminator.
-            cmd.push(std::char::from_u32(0).unwrap());
+            let cmd_utf16: Vec<u16> = args_to_utf16_command_string(config.args.iter());
 
-            let cmd_utf16: Vec<u16> = cmd.encode_utf16().collect();
             let cmd_type = tcx.mk_array(tcx.types.u16, u64::try_from(cmd_utf16.len()).unwrap());
             let cmd_place =
                 ecx.allocate(ecx.layout_of(cmd_type)?, MiriMemoryKind::Machine.into())?;
@@ -351,5 +343,108 @@ pub fn eval_entry<'tcx>(
             Some(return_code)
         }
         Err(e) => report_error(&ecx, e),
+    }
+}
+
+/// Turns an array of arguments into a Windows command line string.
+///
+/// The string will be UTF-16 encoded and NUL terminated.
+///
+/// Panics if the zeroth argument contains the `"` character because doublequotes
+/// in argv[0] cannot be encoded using the standard command line parsing rules.
+///
+/// Further reading:
+/// * [Parsing C++ command-line arguments](https://docs.microsoft.com/en-us/cpp/cpp/main-function-command-line-args?view=msvc-160#parsing-c-command-line-arguments)
+/// * [The C/C++ Parameter Parsing Rules](https://daviddeley.com/autohotkey/parameters/parameters.htm#WINCRULES)
+fn args_to_utf16_command_string<I, T>(mut args: I) -> Vec<u16>
+where
+    I: Iterator<Item = T>,
+    T: AsRef<str>,
+{
+    // Parse argv[0]. Slashes aren't escaped. Literal double quotes are not allowed.
+    let mut cmd = {
+        let arg0 = if let Some(arg0) = args.next() {
+            arg0
+        } else {
+            return vec![0];
+        };
+        let arg0 = arg0.as_ref();
+        if arg0.contains('"') {
+            panic!("argv[0] cannot contain a doublequote (\") character");
+        } else {
+            // Always surround argv[0] with quotes.
+            let mut s = String::new();
+            s.push('"');
+            s.push_str(arg0);
+            s.push('"');
+            s
+        }
+    };
+
+    // Build the other arguments.
+    for arg in args {
+        let arg = arg.as_ref();
+        cmd.push(' ');
+        if arg.is_empty() {
+            cmd.push_str("\"\"");
+        } else if !arg.bytes().any(|c| matches!(c, b'"' | b'\t' | b' ')) {
+            // No quote, tab, or space -- no escaping required.
+            cmd.push_str(arg);
+        } else {
+            // Spaces and tabs are escaped by surrounding them in quotes.
+            // Quotes are themselves escaped by using backslashes when in a
+            // quoted block.
+            // Backslashes only need to be escaped when one or more are directly
+            // followed by a quote. Otherwise they are taken literally.
+
+            cmd.push('"');
+            let mut chars = arg.chars().peekable();
+            loop {
+                let mut nslashes = 0;
+                while let Some(&'\\') = chars.peek() {
+                    chars.next();
+                    nslashes += 1;
+                }
+
+                match chars.next() {
+                    Some('"') => {
+                        cmd.extend(iter::repeat('\\').take(nslashes * 2 + 1));
+                        cmd.push('"');
+                    }
+                    Some(c) => {
+                        cmd.extend(iter::repeat('\\').take(nslashes));
+                        cmd.push(c);
+                    }
+                    None => {
+                        cmd.extend(iter::repeat('\\').take(nslashes * 2));
+                        break;
+                    }
+                }
+            }
+            cmd.push('"');
+        }
+    }
+
+    if cmd.contains('\0') {
+        panic!("interior null in command line arguments");
+    }
+    cmd.encode_utf16().chain(iter::once(0)).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    #[should_panic(expected = "argv[0] cannot contain a doublequote (\") character")]
+    fn windows_argv0_panic_on_quote() {
+        args_to_utf16_command_string(["\""].iter());
+    }
+    #[test]
+    fn windows_argv0_no_escape() {
+        // Ensure that a trailing backslash in argv[0] is not escaped.
+        let cmd = String::from_utf16_lossy(&args_to_utf16_command_string(
+            [r"C:\Program Files\", "arg1"].iter(),
+        ));
+        assert_eq!(cmd.trim_end_matches("\0"), r#""C:\Program Files\" arg1"#);
     }
 }
