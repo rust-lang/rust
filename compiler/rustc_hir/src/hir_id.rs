@@ -31,6 +31,11 @@ impl HirId {
     }
 
     #[inline]
+    pub fn is_owner(self) -> bool {
+        self.local_id.index() == 0
+    }
+
+    #[inline]
     pub fn make_owner(owner: LocalDefId) -> Self {
         Self { owner, local_id: ItemLocalId::from_u32(0) }
     }

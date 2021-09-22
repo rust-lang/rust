@@ -98,7 +98,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     arena: &'hir Arena<'hir>,
 
     /// The items being lowered are collected here.
-    owners: IndexVec<LocalDefId, Option<hir::OwnerInfo<'hir>>>,
+    owners: IndexVec<LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>>,
     /// Bodies inside the owner being lowered.
     bodies: Vec<(hir::ItemLocalId, &'hir hir::Body<'hir>)>,
     /// Attributes inside the owner being lowered.
@@ -291,7 +291,8 @@ pub fn lower_crate<'a, 'hir>(
 ) -> &'hir hir::Crate<'hir> {
     let _prof_timer = sess.prof.verbose_generic_activity("hir_lowering");
 
-    let owners = IndexVec::from_fn_n(|_| None, resolver.definitions().def_index_count());
+    let owners =
+        IndexVec::from_fn_n(|_| hir::MaybeOwner::Phantom, resolver.definitions().def_index_count());
     LoweringContext {
         sess,
         resolver,
@@ -402,19 +403,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let hir_hash = self.compute_hir_hash();
 
-        let mut def_id_to_hir_id = IndexVec::default();
-
-        for (node_id, hir_id) in self.node_id_to_hir_id.into_iter_enumerated() {
-            if let Some(def_id) = self.resolver.opt_local_def_id(node_id) {
-                if def_id_to_hir_id.len() <= def_id.index() {
-                    def_id_to_hir_id.resize(def_id.index() + 1, None);
-                }
-                def_id_to_hir_id[def_id] = hir_id;
-            }
-        }
-
-        self.resolver.definitions().init_def_id_to_hir_id_mapping(def_id_to_hir_id);
-
         let krate = hir::Crate { owners: self.owners, hir_hash };
         self.arena.alloc(krate)
     }
@@ -427,7 +415,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .owners
             .iter_enumerated()
             .filter_map(|(def_id, info)| {
-                let info = info.as_ref()?;
+                let info = info.as_owner()?;
                 let def_path_hash = definitions.def_path_hash(def_id);
                 Some((def_path_hash, info))
             })
@@ -469,8 +457,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.current_hir_id_owner = current_owner;
         self.item_local_id_counter = current_local_counter;
 
-        let _old = self.owners.insert(def_id, info);
-        debug_assert!(_old.is_none());
+        self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
+        self.owners[def_id] = hir::MaybeOwner::Owner(self.arena.alloc(info));
 
         def_id
     }
@@ -483,11 +471,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let local_id_to_def_id = local_node_ids
             .iter()
             .filter_map(|&node_id| {
+                let def_id = self.resolver.opt_local_def_id(node_id)?;
                 let hir_id = self.node_id_to_hir_id[node_id]?;
+
+                self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
+                if let o @ hir::MaybeOwner::Phantom = &mut self.owners[def_id] {
+                    // Do not override a `MaybeOwner::Owner` that may already here.
+                    *o = hir::MaybeOwner::NonOwner(hir_id);
+                }
+
                 if hir_id.local_id == hir::ItemLocalId::new(0) {
                     None
                 } else {
-                    let def_id = self.resolver.opt_local_def_id(node_id)?;
                     Some((hir_id.local_id, def_id))
                 }
             })
