@@ -624,7 +624,7 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
 /// `self.is_empty()` we ensure that `self` is `Empty`, and same with `Full`. This is not important
 /// for correctness currently.
 #[derive(Debug, Clone)]
-enum SubPatSet<'p, 'tcx> {
+enum SubPatSet {
     /// The empty set. This means the pattern is unreachable.
     Empty,
     /// The set containing the full pattern.
@@ -632,19 +632,17 @@ enum SubPatSet<'p, 'tcx> {
     /// If the pattern is a pattern with a constructor or a pattern-stack, we store a set for each
     /// of its subpatterns. Missing entries in the map are implicitly full, because that's the
     /// common case.
-    Seq { subpats: FxHashMap<usize, SubPatSet<'p, 'tcx>> },
+    Seq { subpats: FxHashMap<usize, SubPatSet> },
     /// If the pattern is an or-pattern, we store a set for each of its alternatives. Missing
     /// entries in the map are implicitly empty. Note: we always flatten nested or-patterns.
     Alt {
-        subpats: FxHashMap<usize, SubPatSet<'p, 'tcx>>,
-        /// Counts the total number of alternatives in the pattern
-        alt_count: usize,
-        /// We keep the pattern around to retrieve spans.
-        pat: &'p Pat<'tcx>,
+        subpats: FxHashMap<usize, SubPatSet>,
+        /// Span of each alternative in the pattern
+        spans: Vec<Span>,
     },
 }
 
-impl<'p, 'tcx> SubPatSet<'p, 'tcx> {
+impl SubPatSet {
     fn full() -> Self {
         SubPatSet::Full
     }
@@ -670,8 +668,8 @@ impl<'p, 'tcx> SubPatSet<'p, 'tcx> {
             // The whole pattern is reachable only when all its alternatives are.
             SubPatSet::Seq { subpats } => subpats.values().all(|sub_set| sub_set.is_full()),
             // The whole or-pattern is reachable only when all its alternatives are.
-            SubPatSet::Alt { subpats, alt_count, .. } => {
-                subpats.len() == *alt_count && subpats.values().all(|set| set.is_full())
+            SubPatSet::Alt { subpats, spans, .. } => {
+                subpats.len() == spans.len() && subpats.values().all(|set| set.is_full())
             }
         }
     }
@@ -726,7 +724,7 @@ impl<'p, 'tcx> SubPatSet<'p, 'tcx> {
     /// whole pattern is unreachable) we return `None`.
     fn list_unreachable_spans(&self) -> Option<Vec<Span>> {
         /// Panics if `set.is_empty()`.
-        fn fill_spans(set: &SubPatSet<'_, '_>, spans: &mut Vec<Span>) {
+        fn fill_spans(set: &SubPatSet, spans: &mut Vec<Span>) {
             match set {
                 SubPatSet::Empty => bug!(),
                 SubPatSet::Full => {}
@@ -735,13 +733,12 @@ impl<'p, 'tcx> SubPatSet<'p, 'tcx> {
                         fill_spans(sub_set, spans);
                     }
                 }
-                SubPatSet::Alt { subpats, pat, alt_count, .. } => {
-                    let expanded = expand_or_pat(pat);
-                    for i in 0..*alt_count {
+                SubPatSet::Alt { subpats, spans: alt_spans, .. } => {
+                    for (i, span) in alt_spans.iter().enumerate() {
                         let sub_set = subpats.get(&i).unwrap_or(&SubPatSet::Empty);
                         if sub_set.is_empty() {
                             // Found an unreachable subpattern.
-                            spans.push(expanded[i].span);
+                            spans.push(*span);
                         } else {
                             fill_spans(sub_set, spans);
                         }
@@ -806,7 +803,7 @@ impl<'p, 'tcx> SubPatSet<'p, 'tcx> {
     /// Here `None` would return the full set and `Some(true | false)` would return the set
     /// containing `false`. After `unsplit_or_pat`, we want the set to contain `None` and `false`.
     /// This is what this function does.
-    fn unsplit_or_pat(mut self, alt_id: usize, alt_count: usize, pat: &'p Pat<'tcx>) -> Self {
+    fn unsplit_or_pat(mut self, alt_id: usize, spans: Vec<Span>) -> Self {
         use SubPatSet::*;
         if self.is_empty() {
             return Empty;
@@ -822,7 +819,7 @@ impl<'p, 'tcx> SubPatSet<'p, 'tcx> {
         };
         let mut subpats_first_col = FxHashMap::default();
         subpats_first_col.insert(alt_id, set_first_col);
-        let set_first_col = Alt { subpats: subpats_first_col, pat, alt_count };
+        let set_first_col = Alt { subpats: subpats_first_col, spans };
 
         let mut subpats = match self {
             Full => FxHashMap::default(),
@@ -842,19 +839,19 @@ impl<'p, 'tcx> SubPatSet<'p, 'tcx> {
 /// witnesses of non-exhaustiveness when there are any.
 /// Which variant to use is dictated by `ArmType`.
 #[derive(Clone, Debug)]
-enum Usefulness<'p, 'tcx> {
+enum Usefulness<'tcx> {
     /// Carries a set of subpatterns that have been found to be reachable. If empty, this indicates
     /// the whole pattern is unreachable. If not, this indicates that the pattern is reachable but
     /// that some sub-patterns may be unreachable (due to or-patterns). In the absence of
     /// or-patterns this will always be either `Empty` (the whole pattern is unreachable) or `Full`
     /// (the whole pattern is reachable).
-    NoWitnesses(SubPatSet<'p, 'tcx>),
+    NoWitnesses(SubPatSet),
     /// Carries a list of witnesses of non-exhaustiveness. If empty, indicates that the whole
     /// pattern is unreachable.
     WithWitnesses(Vec<Witness<'tcx>>),
 }
 
-impl<'p, 'tcx> Usefulness<'p, 'tcx> {
+impl<'tcx> Usefulness<'tcx> {
     fn new_useful(preference: ArmType) -> Self {
         match preference {
             FakeExtraWildcard => WithWitnesses(vec![Witness(vec![])]),
@@ -889,9 +886,9 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
 
     /// After calculating the usefulness for a branch of an or-pattern, call this to make this
     /// usefulness mergeable with those from the other branches.
-    fn unsplit_or_pat(self, alt_id: usize, alt_count: usize, pat: &'p Pat<'tcx>) -> Self {
+    fn unsplit_or_pat(self, alt_id: usize, spans: Vec<Span>) -> Self {
         match self {
-            NoWitnesses(subpats) => NoWitnesses(subpats.unsplit_or_pat(alt_id, alt_count, pat)),
+            NoWitnesses(subpats) => NoWitnesses(subpats.unsplit_or_pat(alt_id, spans)),
             WithWitnesses(_) => bug!(),
         }
     }
@@ -899,7 +896,7 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
     /// After calculating usefulness after a specialization, call this to reconstruct a usefulness
     /// that makes sense for the matrix pre-specialization. This new usefulness can then be merged
     /// with the results of specializing with the other constructors.
-    fn apply_constructor(
+    fn apply_constructor<'p>(
         self,
         pcx: PatCtxt<'_, 'p, 'tcx>,
         matrix: &Matrix<'p, 'tcx>, // used to compute missing ctors
@@ -1099,7 +1096,7 @@ fn is_useful<'p, 'tcx>(
     hir_id: HirId,
     is_under_guard: bool,
     is_top_level: bool,
-) -> Usefulness<'p, 'tcx> {
+) -> Usefulness<'tcx> {
     debug!("matrix,v={:?}{:?}", matrix, v);
     let Matrix { patterns: rows, .. } = matrix;
 
@@ -1129,15 +1126,14 @@ fn is_useful<'p, 'tcx>(
     let mut ret = Usefulness::new_not_useful(witness_preference);
     if is_or_pat(v.head()) {
         debug!("expanding or-pattern");
-        let v_head = v.head();
         let vs: Vec<_> = v.expand_or_pat().collect();
-        let alt_count = vs.len();
+        let spans: Vec<_> = vs.iter().map(|pat| pat.head().span).collect();
         // We try each or-pattern branch in turn.
         let mut matrix = matrix.clone();
         for (i, v) in vs.into_iter().enumerate() {
             let usefulness =
                 is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
-            let usefulness = usefulness.unsplit_or_pat(i, alt_count, v_head);
+            let usefulness = usefulness.unsplit_or_pat(i, spans.clone());
             ret.extend(usefulness);
             // If pattern has a guard don't add it to the matrix.
             if !is_under_guard {
