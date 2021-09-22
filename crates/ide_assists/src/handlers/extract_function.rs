@@ -1185,13 +1185,12 @@ impl FlowHandler {
                 let stmt = make::expr_stmt(action);
                 let block = make::block_expr(iter::once(stmt.into()), None);
                 let controlflow_break_path = make::path_from_text("ControlFlow::Break");
-                let tuple_pat = make::tuple_pat(iter::empty());
                 let condition = make::condition(
                     call_expr,
                     Some(
                         make::tuple_struct_pat(
                             controlflow_break_path,
-                            iter::once(tuple_pat.into()),
+                            iter::once(make::wildcard_pat().into()),
                         )
                         .into(),
                     ),
@@ -3301,7 +3300,7 @@ fn foo() {
 fn foo() {
     loop {
         let mut n = 1;
-        if let ControlFlow::Break(()) = fun_name(&mut n) {
+        if let ControlFlow::Break(_) = fun_name(&mut n) {
             break;
         }
         let h = 1 + n;
@@ -3338,7 +3337,7 @@ fn foo() {
 fn foo() {
     loop {
         let mut n = 1;
-        if let ControlFlow::Break(()) = fun_name(n) {
+        if let ControlFlow::Break(_) = fun_name(n) {
             break;
         }
         let h = 1;
