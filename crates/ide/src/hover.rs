@@ -1,13 +1,13 @@
-use std::{collections::HashSet, iter, ops::ControlFlow};
+use std::{collections::HashSet, ops::ControlFlow};
 
 use either::Either;
 use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo};
 use ide_db::{
     base_db::{FileRange, SourceDatabase},
-    defs::{Definition, NameClass, NameRefClass},
+    defs::Definition,
     helpers::{
         generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES},
-        pick_best_token, try_resolve_derive_input_at, FamousDefs,
+        pick_best_token, FamousDefs,
     },
     RootDatabase,
 };
@@ -107,7 +107,7 @@ pub(crate) fn hover(
     }
     let offset = range.start();
 
-    let token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
+    let original_token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
         IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] => 3,
         T!['('] | T![')'] => 2,
         kind if kind.is_trivia() => 0,
@@ -119,7 +119,7 @@ pub(crate) fn hover(
     let mut fallback = None;
     // attributes, require special machinery as they are mere ident tokens
 
-    let descend_macros = sema.descend_into_macros_many(token.clone());
+    let descend_macros = sema.descend_into_macros_many(original_token.clone());
 
     for token in &descend_macros {
         if token.kind() != COMMENT {
@@ -127,21 +127,6 @@ pub(crate) fn hover(
                 // lints
                 if let Some(res) = try_hover_for_lint(&attr, &token) {
                     return Some(res);
-                // derives
-                } else {
-                    let def =
-                        try_resolve_derive_input_at(&sema, &attr, &token).map(Definition::Macro);
-                    if let Some(def) = def {
-                        if let Some(hover) = hover_for_definition(
-                            &sema,
-                            file_id,
-                            def,
-                            &token.parent().unwrap(),
-                            config,
-                        ) {
-                            return Some(RangeInfo::new(token.text_range(), hover));
-                        }
-                    }
                 }
             }
         }
@@ -151,7 +136,16 @@ pub(crate) fn hover(
         .iter()
         .filter_map(|token| match token.parent() {
             Some(node) => {
-                match find_hover_result(&sema, file_id, offset, config, token, &node, &mut seen) {
+                match find_hover_result(
+                    &sema,
+                    file_id,
+                    offset,
+                    config,
+                    &original_token,
+                    token,
+                    &node,
+                    &mut seen,
+                ) {
                     Some(res) => match res {
                         ControlFlow::Break(inner) => Some(inner),
                         ControlFlow::Continue(_) => {
@@ -189,6 +183,7 @@ fn find_hover_result(
     file_id: FileId,
     offset: TextSize,
     config: &HoverConfig,
+    original_token: &SyntaxToken,
     token: &SyntaxToken,
     node: &SyntaxNode,
     seen: &mut HashSet<Definition>,
@@ -199,7 +194,7 @@ fn find_hover_result(
     // so don't add them to the `seen` duplicate check
     let mut add_to_seen_definitions = true;
 
-    let definition = find_definition(sema, node).next().or_else(|| {
+    let definition = Definition::from_node(sema, token).into_iter().next().or_else(|| {
         // intra-doc links
         // FIXME: move comment + attribute special cases somewhere else to simplify control flow,
         // hopefully simplifying the return type of this function in the process
@@ -242,7 +237,7 @@ fn find_hover_result(
             seen.insert(definition);
         }
         if let Some(res) = hover_for_definition(sema, file_id, definition, &node, config) {
-            let range = range_override.unwrap_or_else(|| sema.original_range(&node).range);
+            let range = range_override.unwrap_or_else(|| original_token.text_range());
             return Some(ControlFlow::Break(RangeInfo::new(range, res)));
         }
     }
@@ -722,53 +717,6 @@ fn definition_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
         return None;
     }
     def.module(db).map(|module| render_path(db, module, definition_owner_name(db, def)))
-}
-
-pub(crate) fn find_definition<'a>(
-    sema: &'a Semantics<RootDatabase>,
-    node: &SyntaxNode,
-) -> impl Iterator<Item = Definition> + 'a {
-    iter::once(node.clone()).flat_map(move |node| {
-        match_ast! {
-            match node {
-                ast::Name(name) => {
-                    let class = if let Some(x) = NameClass::classify(&sema, &name) {
-                        x
-                    } else {
-                        return vec![];
-                    };
-                    match class {
-                        NameClass::Definition(it) | NameClass::ConstReference(it) => vec![it],
-                        NameClass::PatFieldShorthand { local_def, field_ref } => vec![Definition::Local(local_def), Definition::Field(field_ref)],
-                    }
-                },
-                ast::NameRef(name_ref) => {
-                    let class = if let Some(x) = NameRefClass::classify(sema, &name_ref) {
-                        x
-                    } else {
-                        return vec![];
-                    };
-                    match class {
-                        NameRefClass::Definition(def) => vec![def],
-                        NameRefClass::FieldShorthand { local_ref, field_ref } => {
-                            vec![Definition::Field(field_ref), Definition::Local(local_ref)]
-                        }
-                    }
-                },
-                ast::Lifetime(lifetime) => {
-                    (if let Some(x) = NameClass::classify_lifetime(&sema, &lifetime) {
-                        NameClass::defined(x)
-                    } else {
-                        NameRefClass::classify_lifetime(&sema, &lifetime).and_then(|class| match class {
-                            NameRefClass::Definition(it) => Some(it),
-                            _ => None,
-                        })
-                    }).into_iter().collect()
-                },
-                _ => vec![],
-            }
-        }
-    })
 }
 
 pub(crate) fn hover_for_definition(
@@ -4587,7 +4535,6 @@ use crate as foo$0;
         );
     }
 
-    // FIXME: wrong range in macros. `es! ` should be `Copy`
     #[test]
     fn hover_attribute_in_macro() {
         check(
@@ -4605,7 +4552,7 @@ identity!{
 }
 "#,
             expect![[r#"
-                *es! *
+                *Copy*
 
                 ```rust
                 test

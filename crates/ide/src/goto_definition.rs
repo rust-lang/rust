@@ -1,6 +1,5 @@
 use std::convert::TryInto;
 
-use crate::hover::find_definition;
 use crate::{
     display::TryToNav,
     doc_links::{doc_attributes, extract_definitions_from_docs, resolve_doc_path_for_def},
@@ -10,11 +9,11 @@ use hir::{AsAssocItem, InFile, ModuleDef, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileId, FileLoader},
     defs::Definition,
-    helpers::{pick_best_token, try_resolve_derive_input_at},
+    helpers::pick_best_token,
     RootDatabase,
 };
 use itertools::Itertools;
-use syntax::{ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TextRange, T};
+use syntax::{ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TextRange, T};
 
 // Feature: Go to Definition
 //
@@ -57,22 +56,22 @@ pub(crate) fn goto_definition(
         .into_iter()
         .filter_map(|token| {
             let parent = token.parent()?;
-            let result = find_definition(&sema, &parent)
-                .flat_map(|def| {
-                    try_find_trait_item_definition(sema.db, &def)
-                        .unwrap_or_else(|| def_to_nav(sema.db, def))
-                })
-                .collect::<Vec<_>>();
-            if !result.is_empty() {
-                return Some(result);
-            }
-            match_ast! {
-                match parent {
-                    ast::TokenTree(tt) =>
-                        try_lookup_include_path_or_derive(&sema, tt, token, position.file_id),
-                    _ => None
+            if let Some(tt) = ast::TokenTree::cast(parent.clone()) {
+                if let x @ Some(_) =
+                    try_lookup_include_path(&sema, tt, token.clone(), position.file_id)
+                {
+                    return x;
                 }
             }
+            Some(
+                Definition::from_node(&sema, &token)
+                    .into_iter()
+                    .flat_map(|def| {
+                        try_find_trait_item_definition(sema.db, &def)
+                            .unwrap_or_else(|| def_to_nav(sema.db, def))
+                    })
+                    .collect::<Vec<_>>(),
+            )
         })
         .flatten()
         .unique()
@@ -81,41 +80,31 @@ pub(crate) fn goto_definition(
     Some(RangeInfo::new(original_token.text_range(), navs))
 }
 
-fn try_lookup_include_path_or_derive(
+fn try_lookup_include_path(
     sema: &Semantics<RootDatabase>,
     tt: ast::TokenTree,
     token: SyntaxToken,
     file_id: FileId,
 ) -> Option<Vec<NavigationTarget>> {
-    match ast::String::cast(token.clone()) {
-        Some(token) => {
-            let path = token.value()?.into_owned();
-            let macro_call = tt.syntax().parent().and_then(ast::MacroCall::cast)?;
-            let name = macro_call.path()?.segment()?.name_ref()?;
-            if !matches!(&*name.text(), "include" | "include_str" | "include_bytes") {
-                return None;
-            }
-            let file_id = sema.db.resolve_path(AnchoredPath { anchor: file_id, path: &path })?;
-            let size = sema.db.file_text(file_id).len().try_into().ok()?;
-            Some(vec![NavigationTarget {
-                file_id,
-                full_range: TextRange::new(0.into(), size),
-                name: path.into(),
-                focus_range: None,
-                kind: None,
-                container_name: None,
-                description: None,
-                docs: None,
-            }])
-        }
-        None => try_resolve_derive_input_at(
-            sema,
-            &tt.syntax().ancestors().nth(2).and_then(ast::Attr::cast)?,
-            &token,
-        )
-        .and_then(|it| it.try_to_nav(sema.db))
-        .map(|it| vec![it]),
+    let token = ast::String::cast(token.clone())?;
+    let path = token.value()?.into_owned();
+    let macro_call = tt.syntax().parent().and_then(ast::MacroCall::cast)?;
+    let name = macro_call.path()?.segment()?.name_ref()?;
+    if !matches!(&*name.text(), "include" | "include_str" | "include_bytes") {
+        return None;
     }
+    let file_id = sema.db.resolve_path(AnchoredPath { anchor: file_id, path: &path })?;
+    let size = sema.db.file_text(file_id).len().try_into().ok()?;
+    Some(vec![NavigationTarget {
+        file_id,
+        full_range: TextRange::new(0.into(), size),
+        name: path.into(),
+        focus_range: None,
+        kind: None,
+        container_name: None,
+        description: None,
+        docs: None,
+    }])
 }
 
 /// finds the trait definition of an impl'd item

@@ -35,7 +35,7 @@ mod goto_declaration;
 mod goto_definition;
 mod goto_implementation;
 mod goto_type_definition;
-pub mod hover;
+mod hover;
 mod inlay_hints;
 mod join_lines;
 mod markdown_remove;
