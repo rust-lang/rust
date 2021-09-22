@@ -25,6 +25,9 @@
 #[macro_use]
 extern crate rustc_macros;
 
+#[macro_use]
+extern crate tracing;
+
 use rustc_data_structures::AtomicRef;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -782,13 +785,30 @@ impl Span {
     ///     ^^^^^^^^^^^^^^^^^
     /// ```
     pub fn until(self, end: Span) -> Span {
-        let span = self.data();
-        let end = end.data();
+        // Most of this function's body is copied from `to`.
+        // We can't just do `self.to(end.shrink_to_lo())`,
+        // because to also does some magic where it uses min/max so
+        // it can handle overlapping spans. Some advanced mis-use of
+        // `until` with different ctxts makes this visible.
+        let span_data = self.data();
+        let end_data = end.data();
+        // FIXME(jseyfried): `self.ctxt` should always equal `end.ctxt` here (cf. issue #23480).
+        // Return the macro span on its own to avoid weird diagnostic output. It is preferable to
+        // have an incomplete span than a completely nonsensical one.
+        if span_data.ctxt != end_data.ctxt {
+            if span_data.ctxt == SyntaxContext::root() {
+                return end;
+            } else if end_data.ctxt == SyntaxContext::root() {
+                return self;
+            }
+            // Both spans fall within a macro.
+            // FIXME(estebank): check if it is the *same* macro.
+        }
         Span::new(
-            span.lo,
-            end.lo,
-            if end.ctxt == SyntaxContext::root() { end.ctxt } else { span.ctxt },
-            if span.parent == end.parent { span.parent } else { None },
+            span_data.lo,
+            end_data.lo,
+            if end_data.ctxt == SyntaxContext::root() { end_data.ctxt } else { span_data.ctxt },
+            if span_data.parent == end_data.parent { span_data.parent } else { None },
         )
     }
 

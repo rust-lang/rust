@@ -474,11 +474,12 @@ impl SourceMap {
         f.lookup_line(sp.lo()) != f.lookup_line(sp.hi())
     }
 
+    #[instrument(skip(self), level = "trace")]
     pub fn is_valid_span(&self, sp: Span) -> Result<(Loc, Loc), SpanLinesError> {
         let lo = self.lookup_char_pos(sp.lo());
-        debug!("span_to_lines: lo={:?}", lo);
+        trace!(?lo);
         let hi = self.lookup_char_pos(sp.hi());
-        debug!("span_to_lines: hi={:?}", hi);
+        trace!(?hi);
         if lo.file.start_pos != hi.file.start_pos {
             return Err(SpanLinesError::DistinctSources(DistinctSources {
                 begin: (lo.file.name.clone(), lo.file.start_pos),
