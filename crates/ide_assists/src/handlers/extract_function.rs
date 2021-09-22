@@ -1184,7 +1184,18 @@ impl FlowHandler {
                 let action = action.make_result_handler(None);
                 let stmt = make::expr_stmt(action);
                 let block = make::block_expr(iter::once(stmt.into()), None);
-                let condition = make::condition(call_expr, None);
+                let controlflow_break_path = make::path_from_text("ControlFlow::Break");
+                let tuple_pat = make::tuple_pat(iter::empty());
+                let condition = make::condition(
+                    call_expr,
+                    Some(
+                        make::tuple_struct_pat(
+                            controlflow_break_path,
+                            iter::once(tuple_pat.into()),
+                        )
+                        .into(),
+                    ),
+                );
                 make::expr_if(condition, block, None)
             }
             FlowHandler::IfOption { action } => {
@@ -1326,7 +1337,7 @@ impl Function {
                     .unwrap_or_else(make::ty_placeholder);
                 make::ext::ty_result(fun_ty.make_ty(ctx, module), handler_ty)
             }
-            FlowHandler::If { .. } => make::ext::ty_bool(),
+            FlowHandler::If { .. } => make::ty("ControlFlow<()>"),
             FlowHandler::IfOption { action } => {
                 let handler_ty = action
                     .expr_ty(ctx)
@@ -1461,8 +1472,11 @@ fn make_body(
             })
         }
         FlowHandler::If { .. } => {
-            let lit_false = make::expr_literal("false");
-            with_tail_expr(block, lit_false.into())
+            let controlflow_continue = make::expr_call(
+                make::expr_path(make::path_from_text("ControlFlow::Continue")),
+                make::arg_list(iter::once(make::expr_unit())),
+            );
+            with_tail_expr(block, controlflow_continue.into())
         }
         FlowHandler::IfOption { .. } => {
             let none = make::expr_path(make::ext::ident_path("None"));
@@ -1638,7 +1652,10 @@ fn update_external_control_flow(handler: &FlowHandler, syntax: &SyntaxNode) {
 fn make_rewritten_flow(handler: &FlowHandler, arg_expr: Option<ast::Expr>) -> Option<ast::Expr> {
     let value = match handler {
         FlowHandler::None | FlowHandler::Try { .. } => return None,
-        FlowHandler::If { .. } => make::expr_literal("true").into(),
+        FlowHandler::If { .. } => make::expr_call(
+            make::expr_path(make::path_from_text("ControlFlow::Break")),
+            make::arg_list(iter::once(make::expr_unit())),
+        ),
         FlowHandler::IfOption { .. } => {
             let expr = arg_expr.unwrap_or_else(|| make::expr_tuple(Vec::new()));
             let args = make::arg_list(iter::once(expr));
@@ -3284,18 +3301,18 @@ fn foo() {
 fn foo() {
     loop {
         let mut n = 1;
-        if fun_name(&mut n) {
+        if let ControlFlow::Break(()) = fun_name(&mut n) {
             break;
         }
         let h = 1 + n;
     }
 }
 
-fn $0fun_name(n: &mut i32) -> bool {
+fn $0fun_name(n: &mut i32) -> ControlFlow<()> {
     let m = *n + 1;
-    return true;
+    return ControlFlow::Break(());
     *n += m;
-    false
+    ControlFlow::Continue(())
 }
 "#,
         );
@@ -3321,19 +3338,19 @@ fn foo() {
 fn foo() {
     loop {
         let mut n = 1;
-        if fun_name(n) {
+        if let ControlFlow::Break(()) = fun_name(n) {
             break;
         }
         let h = 1;
     }
 }
 
-fn $0fun_name(n: i32) -> bool {
+fn $0fun_name(n: i32) -> ControlFlow<()> {
     let m = n + 1;
     if m == 42 {
-        return true;
+        return ControlFlow::Break(());
     }
-    false
+    ControlFlow::Continue(())
 }
 "#,
         );
