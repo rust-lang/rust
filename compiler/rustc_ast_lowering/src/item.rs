@@ -474,9 +474,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         res
                     } else {
                         // Associate an HirId to both ids even if there is no resolution.
-                        self.node_id_to_hir_id.ensure_contains_elem(new_node_id, || None);
-                        debug_assert!(self.node_id_to_hir_id[new_node_id].is_none());
-                        self.node_id_to_hir_id[new_node_id] = Some(hir::HirId::make_owner(new_id));
+                        let _old = self
+                            .node_id_to_hir_id
+                            .insert(new_node_id, hir::HirId::make_owner(new_id));
+                        debug_assert!(_old.is_none());
                         continue;
                     };
                     let ident = *ident;

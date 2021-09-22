@@ -902,7 +902,12 @@ impl Session {
                 let mut fuel = self.optimization_fuel.lock();
                 ret = fuel.remaining != 0;
                 if fuel.remaining == 0 && !fuel.out_of_fuel {
-                    self.warn(&format!("optimization-fuel-exhausted: {}", msg()));
+                    if self.diagnostic().can_emit_warnings() {
+                        // We only call `msg` in case we can actually emit warnings.
+                        // Otherwise, this could cause a `delay_good_path_bug` to
+                        // trigger (issue #79546).
+                        self.warn(&format!("optimization-fuel-exhausted: {}", msg()));
+                    }
                     fuel.out_of_fuel = true;
                 } else if fuel.remaining > 0 {
                     fuel.remaining -= 1;

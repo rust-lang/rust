@@ -96,7 +96,8 @@ pub const ASAN_SUPPORTED_TARGETS: &[&str] = &[
 ];
 
 pub const LSAN_SUPPORTED_TARGETS: &[&str] = &[
-    "aarch64-apple-darwin",
+    // FIXME: currently broken, see #88132
+    // "aarch64-apple-darwin",
     "aarch64-unknown-linux-gnu",
     "x86_64-apple-darwin",
     "x86_64-unknown-linux-gnu",

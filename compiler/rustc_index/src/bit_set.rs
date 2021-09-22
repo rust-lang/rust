@@ -1072,13 +1072,9 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     }
 
     fn ensure_row(&mut self, row: R) -> &mut HybridBitSet<C> {
-        // Instantiate any missing rows up to and including row `row` with an
-        // empty HybridBitSet.
-        self.rows.ensure_contains_elem(row, || None);
-
+        // Instantiate any missing rows up to and including row `row` with an empty HybridBitSet.
         // Then replace row `row` with a full HybridBitSet if necessary.
-        let num_columns = self.num_columns;
-        self.rows[row].get_or_insert_with(|| HybridBitSet::new_empty(num_columns))
+        self.rows.get_or_insert_with(row, || HybridBitSet::new_empty(self.num_columns))
     }
 
     /// Sets the cell at `(row, column)` to true. Put another way, insert

@@ -1663,7 +1663,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
             writeln!(
                 w,
                 "<div class=\"warning\"><p><strong>Note:</strong> Most layout information is \
-                 completely unstable and may be different between compiler versions and platforms. \
+                 <strong>completely unstable</strong> and may even differ between compilations. \
                  The only exception is types with certain <code>repr(...)</code> attributes. \
                  Please see the Rust Reference’s \
                  <a href=\"https://doc.rust-lang.org/reference/type-layout.html\">“Type Layout”</a> \

@@ -6,6 +6,9 @@
 #![feature(box_patterns)]
 #![recursion_limit = "256"]
 
+#[macro_use]
+extern crate tracing;
+
 use rustc_ast as ast;
 use rustc_ast::token::{self, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{self, AttributesData, CanSynthesizeMissingTokens, LazyTokenStream};
