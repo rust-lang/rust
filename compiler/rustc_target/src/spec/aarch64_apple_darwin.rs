@@ -4,7 +4,9 @@ pub fn target() -> Target {
     let mut base = super::apple_base::opts("macos");
     base.cpu = "apple-a12".to_string();
     base.max_atomic_width = Some(128);
-    base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::LEAK | SanitizerSet::THREAD;
+
+    // FIXME: The leak sanitizer currently fails the tests, see #88132.
+    base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::THREAD;
 
     base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-arch".to_string(), "arm64".to_string()]);
     base.link_env_remove.extend(super::apple_base::macos_link_env_remove());
