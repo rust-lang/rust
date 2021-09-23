@@ -20,10 +20,7 @@ use syntax::{
 
 use crate::{
     display::{macro_label, TryToNav},
-    doc_links::{
-        doc_attributes, extract_definitions_from_docs, remove_links, resolve_doc_path_for_def,
-        rewrite_links,
-    },
+    doc_links::{remove_links, rewrite_links, token_as_doc_comment},
     markdown_remove::remove_markdown,
     markup::Markup,
     runnables::{runnable_fn, runnable_mod},
@@ -114,40 +111,15 @@ pub(crate) fn hover(
         _ => 1,
     })?;
 
-    let descended = sema.descend_into_macros_many(original_token.clone());
-
-    // FIXME handle doc attributes? TokenMap currently doesn't work with comments
-    if original_token.kind() == COMMENT {
-        let relative_comment_offset = offset - original_token.text_range().start();
-        // intra-doc links
+    if let Some(doc_comment) = token_as_doc_comment(&original_token) {
         cov_mark::hit!(no_highlight_on_comment_hover);
-        return descended.iter().find_map(|t| {
-            match t.kind() {
-                COMMENT => (),
-                TOKEN_TREE => {}
-                _ => return None,
-            }
-            let node = t.parent()?;
-            let absolute_comment_offset = t.text_range().start() + relative_comment_offset;
-            let (attributes, def) = doc_attributes(sema, &node)?;
-            let (docs, doc_mapping) = attributes.docs_with_rangemap(sema.db)?;
-            let (idl_range, link, ns) = extract_definitions_from_docs(&docs).into_iter().find_map(
-                |(range, link, ns)| {
-                    let mapped = doc_mapping.map(range)?;
-                    (mapped.file_id == file_id.into()
-                        && mapped.value.contains(absolute_comment_offset))
-                    .then(|| (mapped.value, link, ns))
-                },
-            )?;
-            let def = match resolve_doc_path_for_def(sema.db, def, &link, ns)? {
-                Either::Left(it) => Definition::ModuleDef(it),
-                Either::Right(it) => Definition::Macro(it),
-            };
+        return doc_comment.get_definition_with_descend_at(sema, offset, |def, node, range| {
             let res = hover_for_definition(sema, file_id, def, &node, config)?;
-            Some(RangeInfo::new(idl_range, res))
+            Some(RangeInfo::new(range, res))
         });
     }
 
+    let descended = sema.descend_into_macros_many(original_token.clone());
     // attributes, require special machinery as they are mere ident tokens
 
     // FIXME: Definition should include known lints and the like instead of having this special case here
@@ -4938,6 +4910,65 @@ fn foo() {
                 To type:                         &&&&&i32
                 Coerced to:                          &i32
                 ```
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hover_intra_in_macro() {
+        check(
+            r#"
+macro_rules! foo_macro {
+    ($(#[$attr:meta])* $name:ident) => {
+        $(#[$attr])*
+        pub struct $name;
+    }
+}
+
+foo_macro!(
+    /// Doc comment for [`Foo$0`]
+    Foo
+);
+"#,
+            expect![[r#"
+                *[`Foo`]*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub struct Foo
+                ```
+
+                ---
+
+                Doc comment for [`Foo`](https://docs.rs/test/*/test/struct.Foo.html)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hover_intra_in_attr() {
+        check(
+            r#"
+#[doc = "Doc comment for [`Foo$0`]"]
+pub struct Foo;
+"#,
+            expect![[r#"
+                *[`Foo`]*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub struct Foo
+                ```
+
+                ---
+
+                Doc comment for [`Foo`](https://docs.rs/test/*/test/struct.Foo.html)
             "#]],
         );
     }

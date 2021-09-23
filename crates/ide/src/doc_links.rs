@@ -19,7 +19,12 @@ use ide_db::{
     helpers::pick_best_token,
     RootDatabase,
 };
-use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxNode, TextRange, T};
+use syntax::{
+    ast::{self, IsString},
+    match_ast, AstNode, AstToken,
+    SyntaxKind::*,
+    SyntaxNode, SyntaxToken, TextRange, TextSize, T,
+};
 
 use crate::{
     doc_links::intra_doc_links::{parse_intra_doc_link, strip_prefixes_suffixes},
@@ -217,6 +222,66 @@ pub(crate) fn doc_attributes(
             // ast::Use(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
             _ => None
         }
+    }
+}
+
+pub(crate) struct DocCommentToken {
+    doc_token: SyntaxToken,
+    prefix_len: TextSize,
+}
+
+pub(crate) fn token_as_doc_comment(doc_token: &SyntaxToken) -> Option<DocCommentToken> {
+    (match_ast! {
+        match doc_token {
+            ast::Comment(comment) => TextSize::try_from(comment.prefix().len()).ok(),
+            ast::String(string) => doc_token.ancestors().find_map(ast::Attr::cast)
+                .filter(|attr| attr.simple_name().as_deref() == Some("doc")).and_then(|_| string.open_quote_text_range().map(|it| it.len())),
+            _ => None,
+        }
+    }).map(|prefix_len| DocCommentToken { prefix_len, doc_token: doc_token.clone() })
+}
+
+impl DocCommentToken {
+    pub(crate) fn get_definition_with_descend_at<T>(
+        self,
+        sema: &Semantics<RootDatabase>,
+        offset: TextSize,
+        // Definition, CommentOwner, range of intra doc link in original file
+        mut cb: impl FnMut(Definition, SyntaxNode, TextRange) -> Option<T>,
+    ) -> Option<T> {
+        let DocCommentToken { prefix_len, doc_token } = self;
+        // offset relative to the comments contents
+        let original_start = doc_token.text_range().start();
+        let relative_comment_offset = offset - original_start - prefix_len;
+
+        sema.descend_into_macros_many(doc_token.clone()).into_iter().find_map(|t| {
+            let (node, descended_prefix_len) = match_ast! {
+                match t {
+                    ast::Comment(comment) => (t.parent()?, TextSize::try_from(comment.prefix().len()).ok()?),
+                    ast::String(string) => (t.ancestors().skip_while(|n| n.kind() != ATTR).nth(1)?, string.open_quote_text_range()?.len()),
+                    _ => return None,
+                }
+            };
+            let token_start = t.text_range().start();
+            let abs_in_expansion_offset = token_start + relative_comment_offset + descended_prefix_len;
+
+            let (attributes, def) = doc_attributes(sema, &node)?;
+            let (docs, doc_mapping) = attributes.docs_with_rangemap(sema.db)?;
+            let (in_expansion_range, link, ns) =
+                extract_definitions_from_docs(&docs).into_iter().find_map(|(range, link, ns)| {
+                    let mapped = doc_mapping.map(range)?;
+                    (mapped.value.contains(abs_in_expansion_offset)).then(|| (mapped.value, link, ns))
+                })?;
+            // get the relative range to the doc/attribute in the expansion
+            let in_expansion_relative_range = in_expansion_range - descended_prefix_len - token_start;
+            // Apply relative range to the original input comment
+            let absolute_range = in_expansion_relative_range + original_start + prefix_len;
+            let def = match resolve_doc_path_for_def(sema.db, def, &link, ns)? {
+                Either::Left(it) => Definition::ModuleDef(it),
+                Either::Right(it) => Definition::Macro(it),
+            };
+            cb(def, node, absolute_range)
+        })
     }
 }
 

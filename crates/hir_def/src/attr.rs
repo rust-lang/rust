@@ -17,7 +17,7 @@ use la_arena::ArenaMap;
 use mbe::{syntax_node_to_token_tree, DelimiterKind};
 use smallvec::{smallvec, SmallVec};
 use syntax::{
-    ast::{self, AstNode, AttrsOwner},
+    ast::{self, AstNode, AttrsOwner, IsString},
     match_ast, AstPtr, AstToken, SmolStr, SyntaxNode, TextRange, TextSize,
 };
 use tt::Subtree;
@@ -610,6 +610,7 @@ pub struct DocsRangeMap {
 }
 
 impl DocsRangeMap {
+    /// Maps a [`TextRange`] relative to the documentation string back to its AST range
     pub fn map(&self, range: TextRange) -> Option<InFile<TextRange>> {
         let found = self.mapping.binary_search_by(|(probe, ..)| probe.ordering(range)).ok()?;
         let (line_docs_range, idx, original_line_src_range) = self.mapping[found];
@@ -621,8 +622,15 @@ impl DocsRangeMap {
 
         let InFile { file_id, value: source } = self.source_map.source_of_id(idx);
         match source {
-            Either::Left(_) => None, // FIXME, figure out a nice way to handle doc attributes here
-            // as well as for whats done in syntax highlight doc injection
+            Either::Left(attr) => {
+                let string = get_doc_string_in_attr(&attr)?;
+                let text_range = string.open_quote_text_range()?;
+                let range = TextRange::at(
+                    text_range.end() + original_line_src_range.start() + relative_range.start(),
+                    string.syntax().text_range().len().min(range.len()),
+                );
+                Some(InFile { file_id, value: range })
+            }
             Either::Right(comment) => {
                 let text_range = comment.syntax().text_range();
                 let range = TextRange::at(
@@ -635,6 +643,22 @@ impl DocsRangeMap {
                 Some(InFile { file_id, value: range })
             }
         }
+    }
+}
+
+fn get_doc_string_in_attr(it: &ast::Attr) -> Option<ast::String> {
+    match it.expr() {
+        // #[doc = lit]
+        Some(ast::Expr::Literal(lit)) => match lit.kind() {
+            ast::LiteralKind::String(it) => Some(it),
+            _ => None,
+        },
+        // #[cfg_attr(..., doc = "", ...)]
+        None => {
+            // FIXME: See highlight injection for what to do here
+            None
+        }
+        _ => None,
     }
 }
 
