@@ -47,10 +47,7 @@ pub fn panic(expr: &'static str) -> ! {
     // truncation and padding (even though none is used here). Using
     // Arguments::new_v1 may allow the compiler to omit Formatter::pad from the
     // output binary, saving up to a few kilobytes.
-    panic_fmt(
-        // SAFETY: Arguments::new_v1 is safe with exactly one str and zero args
-        unsafe { fmt::Arguments::new_v1(&[expr], &[]) },
-    );
+    panic_fmt(fmt::Arguments::new_v1(&[expr], &[]));
 }
 
 #[inline]

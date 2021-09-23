@@ -253,6 +253,7 @@ symbols! {
         TyCtxt,
         TyKind,
         Unknown,
+        UnsafeArg,
         Vec,
         Yield,
         _DECLS,

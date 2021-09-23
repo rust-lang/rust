@@ -10,11 +10,9 @@ extern crate std;
 
 fn main() {
     {
-        ::std::io::_print(match match () { () => [], } {
-                              ref args => unsafe {
-                                  ::core::fmt::Arguments::new_v1(&["rust\n"],
-                                                                 args)
-                              }
-                          });
+        ::std::io::_print(::core::fmt::Arguments::new_v1(&["rust\n"],
+                                                         &match () {
+                                                              () => [],
+                                                          }));
     };
 }

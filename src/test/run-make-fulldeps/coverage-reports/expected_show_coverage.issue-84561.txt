@@ -31,15 +31,15 @@
    24|      1|    println!("{:?}", Foo(1));
    25|      1|
    26|      1|    assert_ne!(Foo(0), Foo(5), "{}", if is_true { "true message" } else { "false message" });
-                                             ^0       ^0        ^0                      ^0
+                                             ^0                 ^0                      ^0
    27|      1|    assert_ne!(
    28|       |        Foo(0)
    29|       |        ,
    30|       |        Foo(5)
    31|       |        ,
    32|      0|        "{}"
-   33|       |        ,
-   34|       |        if
+   33|      0|        ,
+   34|      0|        if
    35|      0|        is_true
    36|       |        {
    37|      0|            "true message"
