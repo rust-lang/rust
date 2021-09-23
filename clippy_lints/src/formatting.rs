@@ -286,34 +286,39 @@ fn check_array(cx: &EarlyContext<'_>, expr: &Expr) {
 }
 
 fn check_missing_else(cx: &EarlyContext<'_>, first: &Expr, second: &Expr) {
-    if !differing_macro_contexts(first.span, second.span)
-        && !first.span.from_expansion()
-        && is_if(first)
-        && (is_block(second) || is_if(second))
-    {
-        // where the else would be
+    if_chain! {
+        if !differing_macro_contexts(first.span, second.span);
+        if !first.span.from_expansion();
+        if let ExprKind::If(cond_expr, ..) = &first.kind;
+        if is_block(second) || is_if(second);
+
+        // Proc-macros can give weird spans. Make sure this is actually an `if`.
+        if let Some(if_snip) = snippet_opt(cx, first.span.until(cond_expr.span));
+        if if_snip.starts_with("if");
+
+        // If there is a line break between the two expressions, don't lint.
+        // If there is a non-whitespace character, this span came from a proc-macro.
         let else_span = first.span.between(second.span);
+        if let Some(else_snippet) = snippet_opt(cx, else_span);
+        if !else_snippet.chars().any(|c| c == '\n' || !c.is_whitespace());
+        then {
+            let (looks_like, next_thing) = if is_if(second) {
+                ("an `else if`", "the second `if`")
+            } else {
+                ("an `else {..}`", "the next block")
+            };
 
-        if let Some(else_snippet) = snippet_opt(cx, else_span) {
-            if !else_snippet.contains('\n') {
-                let (looks_like, next_thing) = if is_if(second) {
-                    ("an `else if`", "the second `if`")
-                } else {
-                    ("an `else {..}`", "the next block")
-                };
-
-                span_lint_and_note(
-                    cx,
-                    SUSPICIOUS_ELSE_FORMATTING,
-                    else_span,
-                    &format!("this looks like {} but the `else` is missing", looks_like),
-                    None,
-                    &format!(
-                        "to remove this lint, add the missing `else` or add a new line before {}",
-                        next_thing,
-                    ),
-                );
-            }
+            span_lint_and_note(
+                cx,
+                SUSPICIOUS_ELSE_FORMATTING,
+                else_span,
+                &format!("this looks like {} but the `else` is missing", looks_like),
+                None,
+                &format!(
+                    "to remove this lint, add the missing `else` or add a new line before {}",
+                    next_thing,
+                ),
+            );
         }
     }
 }
