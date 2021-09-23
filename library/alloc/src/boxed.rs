@@ -1333,7 +1333,7 @@ impl<T: Copy> From<&[T]> for Box<[T]> {
 impl<T: Copy> From<Cow<'_, [T]>> for Box<[T]> {
     /// Converts a `Cow<'_, [T]>` into a `Box<[T]>`
     ///
-    /// When `cow` is the `Cow::Borrowed` variant, this 
+    /// When `cow` is the `Cow::Borrowed` variant, this
     /// conversion allocates on the heap and performs a the
     /// underlying `str`. Otherwise, it re-used the owned
     /// string.
@@ -1371,7 +1371,7 @@ impl From<&str> for Box<str> {
 impl From<Cow<'_, str>> for Box<str> {
     /// Converts a `Cow<'_, str>` into a `Box<str>`
     ///
-    /// When `cow` is the `Cow::Borrowed` variant, this 
+    /// When `cow` is the `Cow::Borrowed` variant, this
     /// conversion allocates on the heap and performs a the
     /// underlying `str`. Otherwise, it re-used the owned
     /// string.
