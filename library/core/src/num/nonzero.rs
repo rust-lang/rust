@@ -947,7 +947,6 @@ macro_rules! nonzero_constants_unsigned{
     }
 }
 
-
 nonzero_constants_unsigned! {
    NonZeroU8(u8);
     NonZeroU16(u16);
