@@ -933,7 +933,7 @@ macro_rules! nonzero_constants_unsigned{
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX, ", stringify!($Int), "::MAX);")]
                 /// Note, while most integer types are defined for every whole number between MIN and
                 /// MAX, signed non-zero integers are a special case. They have a 'gap' at 0.
-                /// # Examples  
+                /// # Examples
                 pub const MAX : $Ty = $Ty::new(<$Int>::MAX).unwrap() ;
                 #[unstable(feature = "nonzero_min_max", issue = "89065")]
                 #[doc = concat!("The minimum value for a`", stringify!($Ty), "`.")]
