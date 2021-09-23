@@ -1,5 +1,9 @@
-// check-pass
-#![feature(never_type, never_type_fallback)]
+// revisions: nofallback fallback
+//[fallback] check-pass
+//[nofallback] check-fail
+
+#![feature(never_type)]
+#![cfg_attr(fallback, feature(never_type_fallback))]
 #![allow(unreachable_code)]
 
 use std::error::Error;
@@ -11,10 +15,12 @@ fn raw_ptr_box<T>(t: T) -> *mut T {
 
 fn foo(x: !) -> Box<dyn Error> {
     /* *mut $0 is coerced to Box<dyn Error> here */ Box::<_ /* ! */>::new(x)
+    //[nofallback]~^ ERROR trait bound `(): std::error::Error` is not satisfied
 }
 
 fn foo_raw_ptr(x: !) -> *mut dyn Error {
     /* *mut $0 is coerced to *mut Error here */ raw_ptr_box::<_ /* ! */>(x)
+    //[nofallback]~^ ERROR trait bound `(): std::error::Error` is not satisfied
 }
 
 fn no_coercion(d: *mut dyn Error) -> *mut dyn Error {
