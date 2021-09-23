@@ -191,7 +191,7 @@ fn deny_clippy(path: &Path, text: &str) {
         // The documentation in string literals may contain anything for its own purposes
         "ide_db/src/helpers/generated_lints.rs",
         // The tests test clippy lint hovers
-        "ide/src/hover.rs",
+        "ide/src/hover/tests.rs",
     ];
     if ignore.iter().any(|p| path.ends_with(p)) {
         return;
