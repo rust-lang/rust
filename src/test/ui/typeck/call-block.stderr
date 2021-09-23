@@ -1,4 +1,4 @@
-error[E0618]: expected function, found `_`
+error[E0618]: expected function, found `{integer}`
   --> $DIR/call-block.rs:2:13
    |
 LL |     let _ = {42}();
