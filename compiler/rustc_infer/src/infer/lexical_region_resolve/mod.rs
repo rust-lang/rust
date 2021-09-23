@@ -303,16 +303,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             self.collect_bounding_regions(graph, member_vid, OUTGOING, None);
         debug!("enforce_member_constraint: upper_bounds={:#?}", member_upper_bounds);
 
-        // If there are no upper bounds, and static is a choice (in practice, it always is),
-        // then we should just pick static.
-        if member_upper_bounds.is_empty()
-            && member_constraint.choice_regions.contains(&&ty::RegionKind::ReStatic)
-        {
-            debug!("enforce_member_constraint: selecting 'static since there are no upper bounds",);
-            *var_values.value_mut(member_vid) = VarValue::Value(self.tcx().lifetimes.re_static);
-            return true;
-        }
-
         // Get an iterator over the *available choice* -- that is,
         // each choice region `c` where `lb <= c` and `c <= ub` for all the
         // upper bounds `ub`.
@@ -326,19 +316,32 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // If there is more than one option, we only make a choice if
         // there is a single *least* choice -- i.e., some available
         // region that is `<=` all the others.
-        let mut least_choice: ty::Region<'tcx> = match options.next() {
+        let mut choice: ty::Region<'tcx> = match options.next() {
             Some(&r) => r,
             None => return false,
         };
-        debug!("enforce_member_constraint: least_choice={:?}", least_choice);
+        debug!("enforce_member_constraint: least_choice={:?}", choice);
         for &option in options {
             debug!("enforce_member_constraint: option={:?}", option);
-            if !self.sub_concrete_regions(least_choice, option) {
-                if self.sub_concrete_regions(option, least_choice) {
+            if !self.sub_concrete_regions(choice, option) {
+                if self.sub_concrete_regions(option, choice) {
                     debug!("enforce_member_constraint: new least choice");
-                    least_choice = option;
+                    choice = option;
                 } else {
                     debug!("enforce_member_constraint: no least choice");
+
+                    // Pick static if:
+                    // * There is no least choice (which we just found to be true)
+                    // * There are no upper bounds (so the region can grow to any size)
+                    // * Static is a choice (in practice, it always is)
+                    if member_upper_bounds.is_empty()
+                        && member_constraint.choice_regions.contains(&&ty::RegionKind::ReStatic)
+                    {
+                        choice = self.tcx().lifetimes.re_static;
+                        break;
+                    }
+
+                    // Otherwise give up
                     return false;
                 }
             }
@@ -353,13 +356,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // choice is needed here so that we don't end up in a cycle of
         // `expansion` changing the region one way and the code here changing
         // it back.
-        let lub = self.lub_concrete_regions(least_choice, member_lower_bound);
-        debug!(
-            "enforce_member_constraint: final least choice = {:?}\nlub = {:?}",
-            least_choice, lub
-        );
+        let lub = self.lub_concrete_regions(choice, member_lower_bound);
+        debug!("enforce_member_constraint: final choice = {:?}\nlub = {:?}", choice, lub);
         if lub != member_lower_bound {
-            *var_values.value_mut(member_vid) = VarValue::Value(least_choice);
+            *var_values.value_mut(member_vid) = VarValue::Value(choice);
             true
         } else {
             false

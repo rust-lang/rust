@@ -473,8 +473,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         }
 
         let fr_fn_body = self.infcx.next_nll_region_var(FR).to_region_vid();
-        let num_universals = self.infcx.num_region_vars();
+        debug!("build: fr_fn_Body = {:?}", fr_fn_body);
 
+        let num_universals = self.infcx.num_region_vars();
         debug!("build: global regions = {}..{}", FIRST_GLOBAL_INDEX, first_extern_index);
         debug!("build: extern regions = {}..{}", first_extern_index, first_local_index);
         debug!("build: local regions  = {}..{}", first_local_index, num_universals);
