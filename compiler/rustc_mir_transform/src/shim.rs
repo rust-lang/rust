@@ -53,7 +53,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         ty::InstanceDef::ReifyShim(def_id) => {
             build_call_shim(tcx, instance, None, CallKind::Direct(def_id))
         }
-        ty::InstanceDef::ClosureOnceShim { call_once: _ } => {
+        ty::InstanceDef::ClosureOnceShim { call_once: _, track_caller: _ } => {
             let fn_mut = tcx.require_lang_item(LangItem::FnMut, None);
             let call_mut = tcx
                 .associated_items(fn_mut)

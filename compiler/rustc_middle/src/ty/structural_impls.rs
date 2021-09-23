@@ -638,8 +638,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::InstanceDef<'a> {
                 Some(ty::InstanceDef::FnPtrShim(def_id, tcx.lift(ty)?))
             }
             ty::InstanceDef::Virtual(def_id, n) => Some(ty::InstanceDef::Virtual(def_id, n)),
-            ty::InstanceDef::ClosureOnceShim { call_once } => {
-                Some(ty::InstanceDef::ClosureOnceShim { call_once })
+            ty::InstanceDef::ClosureOnceShim { call_once, track_caller } => {
+                Some(ty::InstanceDef::ClosureOnceShim { call_once, track_caller })
             }
             ty::InstanceDef::DropGlue(def_id, ty) => {
                 Some(ty::InstanceDef::DropGlue(def_id, tcx.lift(ty)?))
@@ -824,8 +824,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
                 Intrinsic(did) => Intrinsic(did.fold_with(folder)),
                 FnPtrShim(did, ty) => FnPtrShim(did.fold_with(folder), ty.fold_with(folder)),
                 Virtual(did, i) => Virtual(did.fold_with(folder), i),
-                ClosureOnceShim { call_once } => {
-                    ClosureOnceShim { call_once: call_once.fold_with(folder) }
+                ClosureOnceShim { call_once, track_caller } => {
+                    ClosureOnceShim { call_once: call_once.fold_with(folder), track_caller }
                 }
                 DropGlue(did, ty) => DropGlue(did.fold_with(folder), ty.fold_with(folder)),
                 CloneShim(did, ty) => CloneShim(did.fold_with(folder), ty.fold_with(folder)),
@@ -849,7 +849,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
                 did.visit_with(visitor)?;
                 ty.visit_with(visitor)
             }
-            ClosureOnceShim { call_once } => call_once.visit_with(visitor),
+            ClosureOnceShim { call_once, track_caller: _ } => call_once.visit_with(visitor),
         }
     }
 }
