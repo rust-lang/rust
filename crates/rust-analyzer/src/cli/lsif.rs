@@ -4,7 +4,10 @@ use std::collections::HashMap;
 use std::env;
 use std::time::Instant;
 
-use ide::{Analysis, Cancellable, RootDatabase, StaticIndex, StaticIndexedFile, TokenId, TokenStaticData};
+use ide::{
+    Analysis, Cancellable, FileId, FileRange, RootDatabase, StaticIndex, StaticIndexedFile,
+    TokenId, TokenStaticData,
+};
 use ide_db::LineIndexDatabase;
 
 use ide_db::base_db::salsa::{self, ParallelDatabase};
@@ -31,6 +34,8 @@ impl<DB: ParallelDatabase> Clone for Snap<salsa::Snapshot<DB>> {
 struct LsifManager<'a> {
     count: i32,
     token_map: HashMap<TokenId, Id>,
+    range_map: HashMap<FileRange, Id>,
+    file_map: HashMap<FileId, Id>,
     analysis: &'a Analysis,
     db: &'a RootDatabase,
     vfs: &'a Vfs,
@@ -50,12 +55,14 @@ impl LsifManager<'_> {
         LsifManager {
             count: 0,
             token_map: HashMap::default(),
+            range_map: HashMap::default(),
+            file_map: HashMap::default(),
             analysis,
             db,
             vfs,
         }
     }
-    
+
     fn add(&mut self, data: Element) -> Id {
         let id = Id(self.count);
         self.emit(&serde_json::to_string(&Entry { id: id.into(), data }).unwrap());
@@ -68,9 +75,54 @@ impl LsifManager<'_> {
         println!("{}", data);
     }
 
-    fn add_token(&mut self, id: TokenId, token: TokenStaticData) {
+    fn get_token_id(&mut self, id: TokenId) -> Id {
+        if let Some(x) = self.token_map.get(&id) {
+            return *x;
+        }
         let result_set_id = self.add(Element::Vertex(Vertex::ResultSet(ResultSet { key: None })));
         self.token_map.insert(id, result_set_id);
+        result_set_id
+    }
+
+    fn get_range_id(&mut self, id: FileRange) -> Cancellable<Id> {
+        if let Some(x) = self.range_map.get(&id) {
+            return Ok(*x);
+        }
+        let file_id = id.file_id;
+        let doc_id = self.get_file_id(file_id);
+        let line_index = self.db.line_index(file_id);
+        let line_index = LineIndex {
+            index: line_index.clone(),
+            encoding: OffsetEncoding::Utf16,
+            endings: LineEndings::Unix,
+        };
+        let range_id = self.add(Element::Vertex(Vertex::Range {
+            range: to_proto::range(&line_index, id.range),
+            tag: None,
+        }));
+        self.add(Element::Edge(Edge::Contains(EdgeDataMultiIn {
+            in_vs: vec![range_id.into()],
+            out_v: doc_id.into(),
+        })));
+        Ok(range_id)
+    }
+
+    fn get_file_id(&mut self, id: FileId) -> Id {
+        if let Some(x) = self.file_map.get(&id) {
+            return *x;
+        }
+        let path = self.vfs.file_path(id);
+        let path = path.as_path().unwrap();
+        let doc_id = self.add(Element::Vertex(Vertex::Document(Document {
+            language_id: "rust".to_string(),
+            uri: lsp_types::Url::from_file_path(path).unwrap(),
+        })));
+        self.file_map.insert(id, doc_id);
+        doc_id
+    }
+
+    fn add_token(&mut self, id: TokenId, token: TokenStaticData) -> Cancellable<()> {
+        let result_set_id = self.get_token_id(id);
         if let Some(hover) = token.hover {
             let hover_id = self.add(Element::Vertex(Vertex::HoverResult {
                 result: Hover {
@@ -83,16 +135,50 @@ impl LsifManager<'_> {
                 out_v: result_set_id.into(),
             })));
         }
+        if let Some(def) = token.definition {
+            let result_id = self.add(Element::Vertex(Vertex::DefinitionResult));
+            let def_vertex = self.get_range_id(def)?;
+            self.add(Element::Edge(Edge::Item(Item {
+                document: (*self.file_map.get(&def.file_id).unwrap()).into(),
+                property: None,
+                edge_data: EdgeDataMultiIn {
+                    in_vs: vec![def_vertex.into()],
+                    out_v: result_id.into(),
+                },
+            })));
+            self.add(Element::Edge(Edge::Definition(EdgeData {
+                in_v: result_id.into(),
+                out_v: result_set_id.into(),
+            })));
+        }
+        if !token.references.is_empty() {
+            let result_id = self.add(Element::Vertex(Vertex::ReferenceResult));
+            self.add(Element::Edge(Edge::References(EdgeData {
+                in_v: result_id.into(),
+                out_v: result_set_id.into(),
+            })));
+            for x in token.references {
+                let vertex = *self.range_map.get(&x.range).unwrap();
+                self.add(Element::Edge(Edge::Item(Item {
+                    document: (*self.file_map.get(&x.range.file_id).unwrap()).into(),
+                    property: Some(if x.is_definition {
+                        ItemKind::Definitions
+                    } else {
+                        ItemKind::References
+                    }),
+                    edge_data: EdgeDataMultiIn {
+                        in_vs: vec![vertex.into()],
+                        out_v: result_id.into(),
+                    },
+                })));
+            }
+        }
+        Ok(())
     }
 
     fn add_file(&mut self, file: StaticIndexedFile) -> Cancellable<()> {
-        let StaticIndexedFile { file_id, tokens, folds} = file;
-        let path = self.vfs.file_path(file_id);
-        let path = path.as_path().unwrap();
-        let doc_id = self.add(Element::Vertex(Vertex::Document(Document {
-            language_id: "rust".to_string(),
-            uri: lsp_types::Url::from_file_path(path).unwrap(),
-        })));
+        let StaticIndexedFile { file_id, tokens, folds } = file;
+        let doc_id = self.get_file_id(file_id);
         let text = self.analysis.file_text(file_id)?;
         let line_index = self.db.line_index(file_id);
         let line_index = LineIndex {
@@ -116,7 +202,8 @@ impl LsifManager<'_> {
                     range: to_proto::range(&line_index, range),
                     tag: None,
                 }));
-                let result_set_id = *self.token_map.get(&id).expect("token map doesn't contain id");
+                self.range_map.insert(FileRange { file_id, range }, range_id);
+                let result_set_id = self.get_token_id(id);
                 self.add(Element::Edge(Edge::Next(EdgeData {
                     in_v: result_set_id.into(),
                     out_v: range_id.into(),
@@ -161,11 +248,11 @@ impl flags::Lsif {
             position_encoding: Encoding::Utf16,
             tool_info: None,
         })));
-        for (id, token) in si.tokens.iter() {
-            lsif.add_token(id, token);
-        }
         for file in si.files {
             lsif.add_file(file)?;
+        }
+        for (id, token) in si.tokens.iter() {
+            lsif.add_token(id, token)?;
         }
         eprintln!("Generating LSIF finished in {:?}", now.elapsed());
         Ok(())

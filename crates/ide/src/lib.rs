@@ -87,7 +87,7 @@ pub use crate::{
     references::ReferenceSearchResult,
     rename::RenameError,
     runnables::{Runnable, RunnableKind, TestId},
-    static_index::{StaticIndex, StaticIndexedFile, TokenStaticData, TokenId},
+    static_index::{StaticIndex, StaticIndexedFile, TokenId, TokenStaticData},
     syntax_highlighting::{
         tags::{Highlight, HlMod, HlMods, HlOperator, HlPunct, HlTag},
         HlRange,

@@ -3,15 +3,17 @@
 
 use std::collections::HashMap;
 
+use hir::Semantics;
 use hir::{db::HirDatabase, Crate, Module};
-use ide_db::base_db::{FileId, SourceDatabaseExt};
-use ide_db::RootDatabase;
+use ide_db::base_db::{FileId, FileRange, SourceDatabaseExt};
 use ide_db::defs::Definition;
+use ide_db::RootDatabase;
 use rustc_hash::FxHashSet;
-use syntax::TextRange;
 use syntax::{AstNode, SyntaxKind::*, T};
+use syntax::{SyntaxToken, TextRange};
 
-use crate::hover::{get_definition_of_token, hover_for_definition};
+use crate::display::TryToNav;
+use crate::hover::hover_for_definition;
 use crate::{Analysis, Cancellable, Fold, HoverConfig, HoverDocFormat, HoverResult};
 
 /// A static representation of fully analyzed source code.
@@ -25,8 +27,15 @@ pub struct StaticIndex<'a> {
     def_map: HashMap<Definition, TokenId>,
 }
 
+pub struct ReferenceData {
+    pub range: FileRange,
+    pub is_definition: bool,
+}
+
 pub struct TokenStaticData {
     pub hover: Option<HoverResult>,
+    pub definition: Option<FileRange>,
+    pub references: Vec<ReferenceData>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -42,14 +51,16 @@ impl TokenStore {
         id
     }
 
+    pub fn get_mut(&mut self, id: TokenId) -> Option<&mut TokenStaticData> {
+        self.0.get_mut(id.0)
+    }
+
     pub fn get(&self, id: TokenId) -> Option<&TokenStaticData> {
         self.0.get(id.0)
     }
-    
-    pub fn iter(self) -> impl Iterator<Item=(TokenId, TokenStaticData)> {
-        self.0.into_iter().enumerate().map(|(i, x)| {
-            (TokenId(i), x)
-        })
+
+    pub fn iter(self) -> impl Iterator<Item = (TokenId, TokenStaticData)> {
+        self.0.into_iter().enumerate().map(|(i, x)| (TokenId(i), x))
     }
 }
 
@@ -84,26 +95,15 @@ impl StaticIndex<'_> {
         });
         let hover_config =
             HoverConfig { links_in_hover: true, documentation: Some(HoverDocFormat::Markdown) };
-        let tokens = tokens
-            .filter(|token| match token.kind() {
-                IDENT
-                | INT_NUMBER
-                | LIFETIME_IDENT
-                | T![self]
-                | T![super]
-                | T![crate] => true,
-                _ => false,
-            });
-        let mut result = StaticIndexedFile {
-            file_id,
-            folds,
-            tokens: vec![],
-        };
+        let tokens = tokens.filter(|token| match token.kind() {
+            IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] => true,
+            _ => false,
+        });
+        let mut result = StaticIndexedFile { file_id, folds, tokens: vec![] };
         for token in tokens {
             let range = token.text_range();
             let node = token.parent().unwrap();
-            let def = get_definition_of_token(self.db, &sema, &sema.descend_into_macros(token), file_id, range.start(), &mut None);
-            let def = if let Some(x) = def {
+            let def = if let Some(x) = get_definition(&sema, token.clone()) {
                 x
             } else {
                 continue;
@@ -112,18 +112,34 @@ impl StaticIndex<'_> {
                 *x
             } else {
                 let x = self.tokens.insert(TokenStaticData {
-                    hover: hover_for_definition(self.db, file_id, &sema, def, node, &hover_config),
+                    hover: hover_for_definition(&sema, file_id, def, &node, &hover_config),
+                    definition: def
+                        .try_to_nav(self.db)
+                        .map(|x| FileRange { file_id: x.file_id, range: x.focus_or_full_range() }),
+                    references: vec![],
                 });
                 self.def_map.insert(def, x);
                 x
             };
+            let token = self.tokens.get_mut(id).unwrap();
+            token.references.push(ReferenceData {
+                range: FileRange { range, file_id },
+                is_definition: if let Some(x) = def.try_to_nav(self.db) {
+                    x.file_id == file_id && x.focus_or_full_range() == range
+                } else {
+                    false
+                },
+            });
             result.tokens.push((range, id));
         }
         self.files.push(result);
         Ok(())
     }
-    
-    pub fn compute<'a>(db: &'a RootDatabase, analysis: &'a Analysis) -> Cancellable<StaticIndex<'a>> {
+
+    pub fn compute<'a>(
+        db: &'a RootDatabase,
+        analysis: &'a Analysis,
+    ) -> Cancellable<StaticIndex<'a>> {
         let work = all_modules(db).into_iter().filter(|module| {
             let file_id = module.definition_source(db).file_id.original_file(db);
             let source_root = db.file_source_root(file_id);
@@ -133,7 +149,8 @@ impl StaticIndex<'_> {
         let mut this = StaticIndex {
             files: vec![],
             tokens: Default::default(),
-            analysis, db,
+            analysis,
+            db,
             def_map: Default::default(),
         };
         let mut visited_files = FxHashSet::default();
@@ -149,4 +166,16 @@ impl StaticIndex<'_> {
         //eprintln!("{:#?}", token_map);
         Ok(this)
     }
+}
+
+fn get_definition(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Option<Definition> {
+    for token in sema.descend_into_macros_many(token) {
+        let def = Definition::from_token(&sema, &token);
+        if let [x] = def.as_slice() {
+            return Some(*x);
+        } else {
+            continue;
+        };
+    }
+    None
 }
