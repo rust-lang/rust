@@ -24,8 +24,7 @@ define double @dfneg(double %x) {
 declare double @__enzyme_fwddiff(double (double)*, double, double)
 
 
-; CHECK: define internal { double } @diffefneg(double %x, double %"x'") {
+; CHECK: define internal double @diffefneg(double %x, double %"x'") {
 ; CHECK-NEXT:   %1 = fneg fast double %"x'"
-; CHECK-NEXT:   %2 = insertvalue { double } undef, double %1, 0
-; CHECK-NEXT:   ret { double } %2
+; CHECK-NEXT:   ret double %1
 ; CHECK-NEXT: }

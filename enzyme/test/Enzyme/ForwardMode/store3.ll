@@ -21,9 +21,9 @@ declare dso_local double @__enzyme_fwddiff(i8*, double*, double*, double, double
 attributes #0 = { noinline norecurse nounwind uwtable }
 attributes #1 = { noinline nounwind uwtable }
 
-; CHECK: define internal { double } @diffef(double* noalias nocapture %out, double* nocapture %"out'", double %x, double %"x'")
+; CHECK: define internal double @diffef(double* noalias nocapture %out, double* nocapture %"out'", double %x, double %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   store double 0.000000e+00, double* %out, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"out'", align 8
-; CHECK-NEXT:   ret { double } zeroinitializer
+; CHECK-NEXT:   ret double 0.000000e+00
 ; CHECK-NEXT: }

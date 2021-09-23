@@ -91,39 +91,38 @@ attributes #4 = { nounwind }
 !10 = !{!4, !4, i64 0}
 
 
-; CHECK: define internal { double } @diffesum_list(%struct.n* noalias readonly %node, %struct.n* %"node'", i64 %times)
+; CHECK: define internal double @diffesum_list(%struct.n* noalias readonly %node, %struct.n* %"node'", i64 %times)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp18 = icmp eq %struct.n* %node, null
 ; CHECK-NEXT:   br i1 %cmp18, label %for.cond.cleanup, label %for.cond1.preheader
 
 ; CHECK: for.cond1.preheader:                              ; preds = %entry, %for.cond.cleanup4
 ; CHECK-NEXT:   %0 = phi %struct.n* [ %"'ipl4", %for.cond.cleanup4 ], [ %"node'", %entry ]
-; CHECK-NEXT:   %val.020 = phi %struct.n* [ %2, %for.cond.cleanup4 ], [ %node, %entry ]
-; CHECK-NEXT:   %"sum.019'" = phi {{(fast )?}}double [ %4, %for.cond.cleanup4 ], [ 0.000000e+00, %entry ]
+; CHECK-NEXT:   %val.020 = phi %struct.n* [ %1, %for.cond.cleanup4 ], [ %node, %entry ]
+; CHECK-NEXT:   %"sum.019'" = phi {{(fast )?}}double [ %3, %for.cond.cleanup4 ], [ 0.000000e+00, %entry ]
 ; CHECK-NEXT:   %"values'ipg" = getelementptr inbounds %struct.n, %struct.n* %0, i64 0, i32 0
 ; CHECK-NEXT:   %"'ipl" = load double*, double** %"values'ipg", align 8
 ; CHECK-NEXT:   br label %for.body5
 
 ; CHECK: for.cond.cleanup:                                 ; preds = %for.cond.cleanup4, %entry
-; CHECK-NEXT:   %"sum.0.lcssa'" = phi {{(fast )?}}double [ 0.000000e+00, %entry ], [ %4, %for.cond.cleanup4 ]
-; CHECK-NEXT:   %1 = insertvalue { double } undef, double %"sum.0.lcssa'", 0
-; CHECK-NEXT:   ret { double } %1
+; CHECK-NEXT:   %"sum.0.lcssa'" = phi {{(fast )?}}double [ 0.000000e+00, %entry ], [ %3, %for.cond.cleanup4 ]
+; CHECK-NEXT:   ret double %"sum.0.lcssa'
 
 ; CHECK: for.cond.cleanup4:                                ; preds = %for.body5
 ; CHECK-NEXT:   %"next'ipg" = getelementptr inbounds %struct.n, %struct.n* %0, i64 0, i32 1
 ; CHECK-NEXT:   %next = getelementptr inbounds %struct.n, %struct.n* %val.020, i64 0, i32 1
 ; CHECK-NEXT:   %"'ipl4" = load %struct.n*, %struct.n** %"next'ipg", align 8
-; CHECK-NEXT:   %2 = load %struct.n*, %struct.n** %next, align 8, !tbaa !7
-; CHECK-NEXT:   %cmp = icmp eq %struct.n* %2, null
+; CHECK-NEXT:   %1 = load %struct.n*, %struct.n** %next, align 8, !tbaa !7
+; CHECK-NEXT:   %cmp = icmp eq %struct.n* %1, null
 ; CHECK-NEXT:   br i1 %cmp, label %for.cond.cleanup, label %for.cond1.preheader
 
 ; CHECK: for.body5:                                        ; preds = %for.body5, %for.cond1.preheader
 ; CHECK-NEXT:   %iv2 = phi i64 [ %iv.next3, %for.body5 ], [ 0, %for.cond1.preheader ]
-; CHECK-NEXT:   %"sum.116'" = phi {{(fast )?}}double [ %4, %for.body5 ], [ %"sum.019'", %for.cond1.preheader ]
+; CHECK-NEXT:   %"sum.116'" = phi {{(fast )?}}double [ %3, %for.body5 ], [ %"sum.019'", %for.cond1.preheader ]
 ; CHECK-NEXT:   %iv.next3 = add nuw nsw i64 %iv2, 1
 ; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds double, double* %"'ipl", i64 %iv2
-; CHECK-NEXT:   %3 = load double, double* %"arrayidx'ipg", align 8
-; CHECK-NEXT:   %4 = fadd fast double %3, %"sum.116'"
+; CHECK-NEXT:   %2 = load double, double* %"arrayidx'ipg", align 8
+; CHECK-NEXT:   %3 = fadd fast double %2, %"sum.116'"
 ; CHECK-NEXT:   %exitcond = icmp eq i64 %iv2, %times
 ; CHECK-NEXT:   br i1 %exitcond, label %for.cond.cleanup4, label %for.body5
 ; CHECK-NEXT: }

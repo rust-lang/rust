@@ -7604,10 +7604,14 @@ public:
 #endif
 
       if (!newcalled->getReturnType()->isVoidTy()) {
-        unsigned structidx =
-            retUsed && subretType != DIFFE_TYPE::CONSTANT ? 1 : 0;
+        bool structret = retUsed && subretType != DIFFE_TYPE::CONSTANT;
         auto newcall = gutils->getNewFromOriginal(orig);
-        Value *diffe = Builder2.CreateExtractValue(diffes, {structidx});
+        Value *diffe;
+        if (structret) {
+          diffe = Builder2.CreateExtractValue(diffes, 1);
+        } else {
+          diffe = diffes;
+        }
         gutils->replaceAWithB(newcall, diffe);
         gutils->erase(newcall);
         if (!gutils->isConstantValue(&call))

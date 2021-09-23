@@ -20,9 +20,8 @@ declare double @__enzyme_fwddiff(double (double)*, ...)
 
 attributes #0 = { "enzyme_inactive" }
 
-; CHECK: define internal {{(dso_local )?}}{ double } @diffetester(double %x, double %"x'")
+; CHECK: define internal {{(dso_local )?}}double @diffetester(double %x, double %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   tail call void @myprint(double %x)
-; CHECK-NEXT:   %0 = insertvalue { double } undef, double %"x'", 0
-; CHECK-NEXT:   ret { double } %0
+; CHECK-NEXT:   ret double %"x'"
 ; CHECK-NEXT: }

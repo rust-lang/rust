@@ -43,7 +43,7 @@ declare dso_local double @__enzyme_fwddiff(i8*, double*, double*, i64)
 attributes #0 = { noinline nounwind uwtable }
 
 
-; CHECK: define internal { double } @diffef(double* nocapture readonly %x, double* nocapture %"x'", i64 %n)
+; CHECK: define internal double @diffef(double* nocapture readonly %x, double* nocapture %"x'", i64 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %for.body
 
@@ -73,6 +73,5 @@ attributes #0 = { noinline nounwind uwtable }
 
 ; CHECK: cleanup:                                          ; preds = %if.end, %if.then
 ; CHECK-NEXT:   %"data.1'" = phi {{(fast )?}}double [ %1, %if.then ], [ %4, %if.end ]
-; CHECK-NEXT:   %5 = insertvalue { double } undef, double %"data.1'", 0
-; CHECK-NEXT:   ret { double } %5
+; CHECK-NEXT:   ret double %"data.1'"
 ; CHECK-NEXT: }

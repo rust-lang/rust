@@ -116,7 +116,7 @@ attributes #9 = { noreturn nounwind }
 !9 = !{!"any pointer", !4, i64 0}
 
 
-; CHECK: define internal { double } @diffealldiv(double* noalias nocapture %a, double* nocapture %"a'", i32* noalias nocapture %N)
+; CHECK: define internal double @diffealldiv(double* noalias nocapture %a, double* nocapture %"a'", i32* noalias nocapture %N)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load i32, i32* %N, align 4, !tbaa !2
 ; CHECK-NEXT:   %cmp233 = icmp sgt i32 %0, 0
@@ -158,6 +158,5 @@ attributes #9 = { noreturn nounwind }
 
 ; CHECK: for.cond.cleanup:                                 ; preds = %for.cond.cleanup3
 ; CHECK-NEXT:   store i32 7, i32* %N, align 4, !tbaa !2
-; CHECK-NEXT:   %10 = insertvalue { double } undef, double %"sum.1.lcssa'", 0
-; CHECK-NEXT:   ret { double } %10
+; CHECK-NEXT:   ret double %"sum.1.lcssa'"
 ; CHECK-NEXT: }

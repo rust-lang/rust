@@ -48,17 +48,15 @@ attributes #1 = { nounwind readnone noinline }
 ; CHECK-NEXT:   %cmp.i = fcmp fast ogt double %x, 0.000000e+00
 ; CHECK-NEXT:   br i1 %cmp.i, label %cond.true.i, label %differelu.exit
 ; CHECK: cond.true.i:                                ; preds = %entry
-; CHECK-NEXT:   %0 = call { double } @diffef(double %x, double 1.000000e+00)
-; CHECK-NEXT:   %1 = extractvalue { double } %0, 0
+; CHECK-NEXT:   %0 = call fast double @diffef(double %x, double 1.000000e+00)
 ; CHECK-NEXT:   br label %differelu.exit
 ; CHECK: differelu.exit:                                   ; preds = %entry, %cond.true.i
-; CHECK-NEXT:   %"cond'.i" = phi{{( fast)?}} double [ %1, %cond.true.i ], [ 0.000000e+00, %entry ]
+; CHECK-NEXT:   %"cond'.i" = phi{{( fast)?}} double [ %0, %cond.true.i ], [ 0.000000e+00, %entry ]
 ; CHECK-NEXT:   ret double %"cond'.i"
 ; CHECK-NEXT: }
 
 
-; CHECK: define internal {{(dso_local )?}}{ double } @diffef(double %x, double %"x'")
+; CHECK: define internal {{(dso_local )?}}double @diffef(double %x, double %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = insertvalue { double } undef, double %"x'", 0
-; CHECK-NEXT:   ret { double } %0
+; CHECK-NEXT:   ret double %"x'"
 ; CHECK-NEXT: }

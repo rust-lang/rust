@@ -19,10 +19,9 @@ entry:
 declare double @__enzyme_fwddiff(double (double, double)*, ...)
 
 
-; CHECK: define internal { double } @diffemax(double %x, double %"x'", double %y, double %"y'")
+; CHECK: define internal double @diffemax(double %x, double %"x'", double %y, double %"y'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp = fcmp fast ogt double %x, %y
 ; CHECK-NEXT:   %0 = select {{(fast )?}}i1 %cmp, double %"x'", double %"y'"
-; CHECK-NEXT:   %1 = insertvalue { double } undef, double %0, 0
-; CHECK-NEXT:   ret { double } %1
+; CHECK-NEXT:   ret double %0
 ; CHECK-NEXT: }

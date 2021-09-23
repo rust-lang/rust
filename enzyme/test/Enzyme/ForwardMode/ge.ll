@@ -67,30 +67,29 @@ attributes #3 = { nounwind }
 !5 = !{!"Simple C/C++ TBAA"}
 
 
-; CHECK: define internal { double } @diffecache(double* nocapture %x, double* nocapture %"x'", i32 %N)
+; CHECK: define internal double @diffecache(double* nocapture %x, double* nocapture %"x'", i32 %N)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %for.body
 
 ; CHECK: for.cond.cleanup:                                 ; preds = %for.body
 ; CHECK-NEXT:   store double 0.000000e+00, double* %x, align 8, !tbaa !2
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'", align 8
-; CHECK-NEXT:   %0 = insertvalue { double } undef, double %6, 0
-; CHECK-NEXT:   ret { double } %0
+; CHECK-NEXT:   ret double %5
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %entry ]
-; CHECK-NEXT:   %"sum.012'" = phi {{(fast )?}}double [ 0.000000e+00, %entry ], [ %6, %for.body ]
+; CHECK-NEXT:   %"sum.012'" = phi {{(fast )?}}double [ 0.000000e+00, %entry ], [ %5, %for.body ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %1 = trunc i64 %iv to i32
-; CHECK-NEXT:   %idxprom = zext i32 %1 to i64
+; CHECK-NEXT:   %0 = trunc i64 %iv to i32
+; CHECK-NEXT:   %idxprom = zext i32 %0 to i64
 ; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds double, double* %"x'", i64 %idxprom
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %x, i64 %idxprom
-; CHECK-NEXT:   %2 = load double, double* %arrayidx, align 8, !tbaa !2
-; CHECK-NEXT:   %3 = load double, double* %"arrayidx'ipg"
-; CHECK-NEXT:   %4 = fmul fast double %3, %2
-; CHECK-NEXT:   %5 = fadd fast double %4, %4
-; CHECK-NEXT:   %6 = fadd fast double %"sum.012'", %5
-; CHECK-NEXT:   %inc = add i32 %1, 1
+; CHECK-NEXT:   %1 = load double, double* %arrayidx, align 8, !tbaa !2
+; CHECK-NEXT:   %2 = load double, double* %"arrayidx'ipg"
+; CHECK-NEXT:   %3 = fmul fast double %2, %1
+; CHECK-NEXT:   %4 = fadd fast double %3, %3
+; CHECK-NEXT:   %5 = fadd fast double %"sum.012'", %4
+; CHECK-NEXT:   %inc = add i32 %0, 1
 ; CHECK-NEXT:   %cmp = icmp ugt i32 %inc, %N
 ; CHECK-NEXT:   br i1 %cmp, label %for.cond.cleanup, label %for.body
 ; CHECK-NEXT: }

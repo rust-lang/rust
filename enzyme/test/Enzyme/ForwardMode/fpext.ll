@@ -14,9 +14,8 @@ entry:
 
 declare double @__enzyme_fwddiff(double (float)*, ...)
 
-; CHECK: define internal {{(dso_local )?}}{ double } @diffetester(float %x, float %"x'") {
+; CHECK: define internal {{(dso_local )?}}double @diffetester(float %x, float %"x'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = fpext float %"x'" to double
-; CHECK-NEXT:   %1 = insertvalue { double } undef, double %0, 0
-; CHECK-NEXT:   ret { double } %1
+; CHECK-NEXT:   ret double %0
 ; CHECK-NEXT: }

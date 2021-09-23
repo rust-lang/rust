@@ -18,9 +18,8 @@ declare float @llvm.experimental.vector.reduce.v2.fadd.f32.v4f32(float, <4 x flo
 declare float @__enzyme_fwddiff(float (float, <4 x float>)*, ...)
 
 
-; CHECK: define internal {{(dso_local )?}}{ float } @diffetester(float %start_value, float %"start_value'", <4 x float> %input, <4 x float> %"input'")
+; CHECK: define internal {{(dso_local )?}}float @diffetester(float %start_value, float %"start_value'", <4 x float> %input, <4 x float> %"input'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call fast float @llvm.experimental.vector.reduce.v2.fadd.f32.v4f32(float %"start_value'", <4 x float> %"input'")
-; CHECK-NEXT:   %1 = insertvalue { float } undef, float %0, 0
-; CHECK-NEXT:   ret { float } %1
+; CHECK-NEXT:   ret float %0
 ; CHECK-NEXT: }

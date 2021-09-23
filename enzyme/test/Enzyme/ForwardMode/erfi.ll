@@ -17,12 +17,11 @@ entry:
 ; Function Attrs: nounwind
 declare double @__enzyme_fwddiff(double (double)*, ...)
 
-; CHECK: define internal { double } @diffetester(double %x, double %"x'") {
+; CHECK: define internal double @diffetester(double %x, double %"x'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:    %0 = fmul fast double %x, %x
 ; CHECK-NEXT:    %1 = call fast double @llvm.exp.f64(double %0)
 ; CHECK-NEXT:    %2 = fmul fast double %1, 0x3FF20DD750429B6D
 ; CHECK-NEXT:    %3 = fmul fast double %2, %"x'"
-; CHECK-NEXT:    %4 = insertvalue { double } undef, double %3, 0
-; CHECK-NEXT:    ret { double } %4
+; CHECK-NEXT:    ret double %3
 ; CHECK-NEXT: }

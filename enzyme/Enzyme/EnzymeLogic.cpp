@@ -2214,22 +2214,24 @@ void createTerminator(DiffeGradientUtils *gutils, BasicBlock *oBB,
   if (ReturnInst *inst = dyn_cast_or_null<ReturnInst>(oBB->getTerminator())) {
     SmallVector<Value *, 2> retargs;
 
+    Value *toret = UndefValue::get(gutils->newFunc->getReturnType());
+
     switch (retVal) {
     case ReturnType::Return: {
       auto ret = inst->getOperand(0);
-      if (retType == DIFFE_TYPE::CONSTANT) {
-        retargs.push_back(gutils->getNewFromOriginal(ret));
-      } else {
-        retargs.push_back(gutils->diffe(ret, nBuilder));
-      }
+      toret = retType == DIFFE_TYPE::CONSTANT ? gutils->getNewFromOriginal(ret)
+                                              : gutils->diffe(ret, nBuilder);
       break;
     }
     case ReturnType::TwoReturns: {
       if (retType == DIFFE_TYPE::CONSTANT)
         assert(false && "Invalid return type");
       auto ret = inst->getOperand(0);
-      retargs.push_back(gutils->getNewFromOriginal(ret));
-      retargs.push_back(gutils->diffe(ret, nBuilder));
+
+      toret =
+          nBuilder.CreateInsertValue(toret, gutils->getNewFromOriginal(ret), 0);
+      toret =
+          nBuilder.CreateInsertValue(toret, gutils->diffe(ret, nBuilder), 1);
       break;
     }
     case ReturnType::Void: {
@@ -2244,12 +2246,6 @@ void createTerminator(DiffeGradientUtils *gutils, BasicBlock *oBB,
       assert(false && "Invalid return type for function");
       return;
     }
-    }
-
-    Value *toret = UndefValue::get(gutils->newFunc->getReturnType());
-    for (unsigned i = 0; i < retargs.size(); ++i) {
-      unsigned idx[] = {i};
-      toret = nBuilder.CreateInsertValue(toret, retargs[i], idx);
     }
 
     gutils->erase(gutils->getNewFromOriginal(inst));

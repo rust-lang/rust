@@ -1592,6 +1592,11 @@ Function *PreProcessCache::CloneFunctionWithReturns(
       RetTypes.push_back(F->getReturnType());
     }
     RetType = StructType::get(F->getContext(), RetTypes);
+  } else if (returnValue == ReturnType::Return) {
+    assert(RetTypes.size() == 1);
+    RetType = RetTypes[0];
+  } else if (returnValue == ReturnType::TwoReturns) {
+    assert(RetTypes.size() == 2);
   }
 
   bool noReturn = RetTypes.size() == 0;

@@ -44,7 +44,7 @@ attributes #0 = { noinline norecurse nounwind uwtable }
 attributes #1 = { noinline nounwind uwtable }
 
 
-; CHECK: define internal { double } @diffef(double* nocapture %x, double* nocapture %"x'", i64 %n)
+; CHECK: define internal double @diffef(double* nocapture %x, double* nocapture %"x'", i64 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %loop
 
@@ -71,6 +71,5 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br i1 %cmp2, label %loop, label %exit
 
 ; CHECK: exit:                                             ; preds = %end
-; CHECK-NEXT:   %2 = insertvalue { double } undef, double %1, 0
-; CHECK-NEXT:   ret { double } %2
+; CHECK-NEXT:   ret double %1
 ; CHECK-NEXT: }

@@ -40,10 +40,9 @@ attributes #4 = { nounwind }
 !0 = !{i32 1, !"wchar_size", i32 4}
 !1 = !{!"clang version 7.1.0 "}
 
-; CHECK: define internal { double } @diffefun2(double %x, double %"x'")
+; CHECK: define internal double @diffefun2(double %x, double %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp.inv = fcmp oge double %x, 0.000000e+00
 ; CHECK-NEXT:   %0 = select{{( fast)?}} i1 %cmp.inv, double %"x'", double 0.000000e+00
-; CHECK-NEXT:   %1 = insertvalue { double } undef, double %0, 0
-; CHECK-NEXT:   ret { double } %1
+; CHECK-NEXT:   ret double %0
 ; CHECK-NEXT: }

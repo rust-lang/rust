@@ -82,13 +82,12 @@ attributes #4 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disa
 !7 = !{!"any pointer", !4, i64 0}
 !8 = !{double* @dglobal}
 
-; CHECK: define internal {{(dso_local )?}}{ double } @diffemulglobal(double %x, double %"x'")
+; CHECK: define internal {{(dso_local )?}}double @diffemulglobal(double %x, double %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load double, double* @global, align 8, !tbaa !3
 ; CHECK-NEXT:   %1 = load double, double* @dglobal
 ; CHECK-NEXT:   %2 = fmul fast double %1, %x
 ; CHECK-NEXT:   %3 = fmul fast double %"x'", %0
 ; CHECK-NEXT:   %4 = fadd fast double %2, %3
-; CHECK-NEXT:   %5 = insertvalue { double } undef, double %4, 0
-; CHECK-NEXT:   ret { double } %5
+; CHECK-NEXT:   ret double %4
 ; CHECK-NEXT: }
