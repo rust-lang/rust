@@ -442,7 +442,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 cx.tcx,
                 cx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substs),
                 name_to_append_suffix_to,
-                &debug_context(cx).type_name_cache,
+                &mut debug_context(cx).type_name_cache.borrow_mut(),
             );
 
             if substs.types().next().is_none() {

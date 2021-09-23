@@ -375,7 +375,12 @@ macro_rules! return_if_metadata_created_in_meantime {
 }
 
 fn check_type_name_cache(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, qualified: bool) -> String {
-    compute_debuginfo_type_name(cx.tcx, ty, qualified, &debug_context(cx).type_name_cache)
+    compute_debuginfo_type_name(
+        cx.tcx,
+        ty,
+        qualified,
+        &mut debug_context(cx).type_name_cache.borrow_mut(),
+    )
 }
 
 fn fixed_vec_metadata(
