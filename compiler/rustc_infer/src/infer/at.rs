@@ -187,11 +187,11 @@ impl<'a, 'tcx> At<'a, 'tcx> {
 impl<'a, 'tcx> Trace<'a, 'tcx> {
     /// Makes `a <: b` where `a` may or may not be expected (if
     /// `a_is_expected` is true, then `a` is expected).
+    #[instrument(skip(self), level = "debug")]
     pub fn sub<T>(self, a: T, b: T) -> InferResult<'tcx, ()>
     where
         T: Relate<'tcx>,
     {
-        debug!("sub({:?} <: {:?})", a, b);
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
             let mut fields = at.infcx.combine_fields(trace, at.param_env);
@@ -204,11 +204,11 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
 
     /// Makes `a == b`; the expectation is set by the call to
     /// `trace()`.
+    #[instrument(skip(self), level = "debug")]
     pub fn eq<T>(self, a: T, b: T) -> InferResult<'tcx, ()>
     where
         T: Relate<'tcx>,
     {
-        debug!("eq({:?} == {:?})", a, b);
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
             let mut fields = at.infcx.combine_fields(trace, at.param_env);
@@ -219,11 +219,11 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
         })
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub fn lub<T>(self, a: T, b: T) -> InferResult<'tcx, T>
     where
         T: Relate<'tcx>,
     {
-        debug!("lub({:?} \\/ {:?})", a, b);
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
             let mut fields = at.infcx.combine_fields(trace, at.param_env);
@@ -234,11 +234,11 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
         })
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub fn glb<T>(self, a: T, b: T) -> InferResult<'tcx, T>
     where
         T: Relate<'tcx>,
     {
-        debug!("glb({:?} /\\ {:?})", a, b);
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
             let mut fields = at.infcx.combine_fields(trace, at.param_env);

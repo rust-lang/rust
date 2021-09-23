@@ -98,14 +98,14 @@ pub trait Printer<'tcx>: Sized {
 
     // Defaults (should not be overridden):
 
+    #[instrument(skip(self), level = "debug")]
     fn default_print_def_path(
         self,
         def_id: DefId,
         substs: &'tcx [GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
-        debug!("default_print_def_path: def_id={:?}, substs={:?}", def_id, substs);
         let key = self.tcx().def_key(def_id);
-        debug!("default_print_def_path: key={:?}", key);
+        debug!(?key);
 
         match key.disambiguated_data.data {
             DefPathData::CrateRoot => {

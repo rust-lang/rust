@@ -497,6 +497,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             fcx_typeck_results.generator_interior_types.clone();
     }
 
+    #[instrument(skip(self, span), level = "debug")]
     fn visit_opaque_types(&mut self, span: Span) {
         let opaque_types = self.fcx.infcx.inner.borrow().opaque_types.clone();
         for (opaque_type_key, opaque_defn) in opaque_types {
@@ -564,6 +565,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
+    #[instrument(skip(self, span), level = "debug")]
     fn visit_node_id(&mut self, span: Span, hir_id: hir::HirId) {
         // Export associated path extensions and method resolutions.
         if let Some(def) =
@@ -579,7 +581,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let n_ty = self.fcx.node_ty(hir_id);
         let n_ty = self.resolve(n_ty, &span);
         self.write_ty_to_typeck_results(hir_id, n_ty);
-        debug!("node {:?} has type {:?}", hir_id, n_ty);
+        debug!(?n_ty);
 
         // Resolve any substitutions
         if let Some(substs) = self.fcx.typeck_results.borrow().node_substs_opt(hir_id) {
@@ -590,31 +592,33 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
+    #[instrument(skip(self, span), level = "debug")]
     fn visit_adjustments(&mut self, span: Span, hir_id: hir::HirId) {
         let adjustment = self.fcx.typeck_results.borrow_mut().adjustments_mut().remove(hir_id);
         match adjustment {
             None => {
-                debug!("no adjustments for node {:?}", hir_id);
+                debug!("no adjustments for node");
             }
 
             Some(adjustment) => {
                 let resolved_adjustment = self.resolve(adjustment, &span);
-                debug!("adjustments for node {:?}: {:?}", hir_id, resolved_adjustment);
+                debug!(?resolved_adjustment);
                 self.typeck_results.adjustments_mut().insert(hir_id, resolved_adjustment);
             }
         }
     }
 
+    #[instrument(skip(self, span), level = "debug")]
     fn visit_pat_adjustments(&mut self, span: Span, hir_id: hir::HirId) {
         let adjustment = self.fcx.typeck_results.borrow_mut().pat_adjustments_mut().remove(hir_id);
         match adjustment {
             None => {
-                debug!("no pat_adjustments for node {:?}", hir_id);
+                debug!("no pat_adjustments for node");
             }
 
             Some(adjustment) => {
                 let resolved_adjustment = self.resolve(adjustment, &span);
-                debug!("pat_adjustments for node {:?}: {:?}", hir_id, resolved_adjustment);
+                debug!(?resolved_adjustment);
                 self.typeck_results.pat_adjustments_mut().insert(hir_id, resolved_adjustment);
             }
         }

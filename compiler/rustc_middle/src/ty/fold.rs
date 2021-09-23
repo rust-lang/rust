@@ -79,6 +79,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
             == Some(FoundFlags)
     }
 
+    #[instrument(level = "trace")]
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
         self.visit_with(&mut HasTypeFlagsVisitor { tcx: None, flags }).break_value()
             == Some(FoundFlags)
@@ -476,21 +477,16 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
         t
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
             ty::ReLateBound(debruijn, _) if debruijn < self.current_index => {
-                debug!(
-                    "RegionFolder.fold_region({:?}) skipped bound region (current index={:?})",
-                    r, self.current_index
-                );
+                debug!(?self.current_index, "skipped bound region");
                 *self.skipped_regions = true;
                 r
             }
             _ => {
-                debug!(
-                    "RegionFolder.fold_region({:?}) folding free region (current_index={:?})",
-                    r, self.current_index
-                );
+                debug!(?self.current_index, "folding free region");
                 (self.fold_region_fn)(r, self.current_index)
             }
         }
@@ -1125,6 +1121,12 @@ struct HasTypeFlagsVisitor<'tcx> {
     flags: ty::TypeFlags,
 }
 
+impl std::fmt::Debug for HasTypeFlagsVisitor<'tcx> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.flags.fmt(fmt)
+    }
+}
+
 impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor<'tcx> {
     type BreakTy = FoundFlags;
     fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
@@ -1132,9 +1134,10 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor<'tcx> {
     }
 
     #[inline]
+    #[instrument(level = "trace")]
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = t.flags();
-        debug!("HasTypeFlagsVisitor: t={:?} flags={:?} self.flags={:?}", t, flags, self.flags);
+        trace!(t.flags=?t.flags());
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
@@ -1146,9 +1149,10 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor<'tcx> {
     }
 
     #[inline]
+    #[instrument(skip(self), level = "trace")]
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = r.type_flags();
-        debug!("HasTypeFlagsVisitor: r={:?} r.flags={:?} self.flags={:?}", r, flags, self.flags);
+        trace!(r.flags=?flags);
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
@@ -1157,9 +1161,10 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor<'tcx> {
     }
 
     #[inline]
+    #[instrument(level = "trace")]
     fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = FlagComputation::for_const(c);
-        debug!("HasTypeFlagsVisitor: c={:?} c.flags={:?} self.flags={:?}", c, flags, self.flags);
+        trace!(r.flags=?flags);
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
@@ -1171,9 +1176,10 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor<'tcx> {
     }
 
     #[inline]
+    #[instrument(level = "trace")]
     fn visit_unevaluated_const(&mut self, uv: ty::Unevaluated<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = FlagComputation::for_unevaluated_const(uv);
-        debug!("HasTypeFlagsVisitor: uv={:?} uv.flags={:?} self.flags={:?}", uv, flags, self.flags);
+        trace!(r.flags=?flags);
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
@@ -1185,12 +1191,10 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor<'tcx> {
     }
 
     #[inline]
+    #[instrument(level = "trace")]
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = predicate.inner.flags;
-        debug!(
-            "HasTypeFlagsVisitor: predicate={:?} flags={:?} self.flags={:?}",
-            predicate, flags, self.flags
-        );
+        trace!(predicate.flags=?flags);
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {

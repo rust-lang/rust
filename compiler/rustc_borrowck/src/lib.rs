@@ -144,6 +144,7 @@ fn mir_borrowck<'tcx>(
 /// If `return_body_with_facts` is true, then return the body with non-erased
 /// region ids on which the borrow checking was performed together with Polonius
 /// facts.
+#[instrument(skip(infcx, input_body, input_promoted), level = "debug")]
 fn do_mir_borrowck<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     input_body: &Body<'tcx>,
@@ -152,7 +153,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 ) -> (BorrowCheckResult<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
     let def = input_body.source.with_opt_param().as_local().unwrap();
 
-    debug!("do_mir_borrowck(def = {:?})", def);
+    debug!(?def);
 
     let tcx = infcx.tcx;
     let param_env = tcx.param_env(def.did);

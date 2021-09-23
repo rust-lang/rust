@@ -17,6 +17,7 @@ use crate::type_check::{BorrowCheckContext, Locations};
 ///
 /// N.B., the type `a` is permitted to have unresolved inference
 /// variables, but not the type `b`.
+#[instrument(skip(infcx, param_env, borrowck_context), level = "debug")]
 pub(super) fn relate_types<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -27,7 +28,6 @@ pub(super) fn relate_types<'tcx>(
     category: ConstraintCategory,
     borrowck_context: &mut BorrowCheckContext<'_, 'tcx>,
 ) -> Fallible<()> {
-    debug!("relate_types(a={:?}, v={:?}, b={:?}, locations={:?})", a, v, b, locations);
     TypeRelating::new(
         infcx,
         NllTypeRelatingDelegate::new(

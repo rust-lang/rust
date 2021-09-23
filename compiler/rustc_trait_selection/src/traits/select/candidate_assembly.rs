@@ -220,6 +220,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.filter_impls(candidates.pop().unwrap().candidate, stack.obligation)
     }
 
+    #[instrument(skip(self, stack), level = "debug")]
     pub(super) fn assemble_candidates<'o>(
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,

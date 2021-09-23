@@ -122,6 +122,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Analysis starting point.
+    #[instrument(skip(self, body), level = "debug")]
     fn analyze_closure(
         &self,
         closure_hir_id: hir::HirId,
@@ -130,8 +131,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         body: &'tcx hir::Body<'tcx>,
         capture_clause: hir::CaptureBy,
     ) {
-        debug!("analyze_closure(id={:?}, body.id={:?})", closure_hir_id, body.id());
-
         // Extract the type of the closure.
         let ty = self.node_ty(closure_hir_id);
         let (closure_def_id, substs) = match *ty.kind() {
@@ -1612,15 +1611,12 @@ struct InferBorrowKind<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
+    #[instrument(skip(self), level = "debug")]
     fn adjust_upvar_borrow_kind_for_consume(
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,
         diag_expr_id: hir::HirId,
     ) {
-        debug!(
-            "adjust_upvar_borrow_kind_for_consume(place_with_id={:?}, diag_expr_id={:?})",
-            place_with_id, diag_expr_id
-        );
         let tcx = self.fcx.tcx;
         let upvar_id = if let PlaceBase::Upvar(upvar_id) = place_with_id.place.base {
             upvar_id
@@ -1628,7 +1624,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
             return;
         };
 
-        debug!("adjust_upvar_borrow_kind_for_consume: upvar={:?}", upvar_id);
+        debug!(?upvar_id);
 
         let usage_span = tcx.hir().span(diag_expr_id);
 
@@ -1647,16 +1643,12 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
     /// Indicates that `place_with_id` is being directly mutated (e.g., assigned
     /// to). If the place is based on a by-ref upvar, this implies that
     /// the upvar must be borrowed using an `&mut` borrow.
+    #[instrument(skip(self), level = "debug")]
     fn adjust_upvar_borrow_kind_for_mut(
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,
         diag_expr_id: hir::HirId,
     ) {
-        debug!(
-            "adjust_upvar_borrow_kind_for_mut(place_with_id={:?}, diag_expr_id={:?})",
-            place_with_id, diag_expr_id
-        );
-
         if let PlaceBase::Upvar(_) = place_with_id.place.base {
             // Raw pointers don't inherit mutability
             if place_with_id.place.deref_tys().any(ty::TyS::is_unsafe_ptr) {
@@ -1666,16 +1658,12 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         }
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn adjust_upvar_borrow_kind_for_unique(
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,
         diag_expr_id: hir::HirId,
     ) {
-        debug!(
-            "adjust_upvar_borrow_kind_for_unique(place_with_id={:?}, diag_expr_id={:?})",
-            place_with_id, diag_expr_id
-        );
-
         if let PlaceBase::Upvar(_) = place_with_id.place.base {
             if place_with_id.place.deref_tys().any(ty::TyS::is_unsafe_ptr) {
                 // Raw pointers don't inherit mutability.
@@ -1712,6 +1700,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
     /// moving from left to right as needed (but never right to left).
     /// Here the argument `mutbl` is the borrow_kind that is required by
     /// some particular use.
+    #[instrument(skip(self), level = "debug")]
     fn adjust_upvar_borrow_kind(
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,
@@ -1720,10 +1709,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
     ) {
         let curr_capture_info = self.capture_information[&place_with_id.place];
 
-        debug!(
-            "adjust_upvar_borrow_kind(place={:?}, diag_expr_id={:?}, capture_info={:?}, kind={:?})",
-            place_with_id, diag_expr_id, curr_capture_info, kind
-        );
+        debug!(?curr_capture_info);
 
         if let ty::UpvarCapture::ByValue(_) = curr_capture_info.capture_kind {
             // It's already captured by value, we don't need to do anything here
@@ -1743,6 +1729,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         };
     }
 
+    #[instrument(skip(self, diag_expr_id), level = "debug")]
     fn init_capture_info_for_place(
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,
@@ -1769,7 +1756,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 
             self.capture_information.insert(place_with_id.place.clone(), capture_info);
         } else {
-            debug!("Not upvar: {:?}", place_with_id);
+            debug!("Not upvar");
         }
     }
 }
@@ -1796,9 +1783,8 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         }
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
-        debug!("consume(place_with_id={:?}, diag_expr_id={:?})", place_with_id, diag_expr_id);
-
         if !self.capture_information.contains_key(&place_with_id.place) {
             self.init_capture_info_for_place(&place_with_id, diag_expr_id);
         }
@@ -1806,17 +1792,13 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         self.adjust_upvar_borrow_kind_for_consume(&place_with_id, diag_expr_id);
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn borrow(
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,
         diag_expr_id: hir::HirId,
         bk: ty::BorrowKind,
     ) {
-        debug!(
-            "borrow(place_with_id={:?}, diag_expr_id={:?}, bk={:?})",
-            place_with_id, diag_expr_id, bk
-        );
-
         // The region here will get discarded/ignored
         let dummy_capture_kind =
             ty::UpvarCapture::ByRef(ty::UpvarBorrow { kind: bk, region: &ty::ReErased });
@@ -1853,9 +1835,8 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         }
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
-        debug!("mutate(assignee_place={:?}, diag_expr_id={:?})", assignee_place, diag_expr_id);
-
         self.borrow(assignee_place, diag_expr_id, ty::BorrowKind::MutBorrow);
     }
 }

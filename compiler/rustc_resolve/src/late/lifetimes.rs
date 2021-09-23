@@ -2740,6 +2740,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         for input in inputs {
             gather.visit_ty(input);
         }
+        trace!(?gather.anon_count);
         let late_bound_vars = self.map.late_bound_vars.entry(hir_id).or_default();
         let named_late_bound_vars = late_bound_vars.len() as u32;
         late_bound_vars.extend(
@@ -3028,6 +3029,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 NestedVisitorMap::None
             }
 
+            #[instrument(skip(self), level = "trace")]
             fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
                 // If we enter a `BareFn`, then we enter a *new* binding scope
                 if let hir::TyKind::BareFn(_) = ty.kind {
@@ -3048,6 +3050,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 intravisit::walk_generic_args(self, path_span, generic_args)
             }
 
+            #[instrument(skip(self), level = "trace")]
             fn visit_lifetime(&mut self, lifetime_ref: &hir::Lifetime) {
                 if lifetime_ref.is_elided() {
                     self.anon_count += 1;

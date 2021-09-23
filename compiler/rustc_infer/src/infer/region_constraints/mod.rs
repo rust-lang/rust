@@ -540,6 +540,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         });
     }
 
+    #[instrument(skip(self, origin), level = "debug")]
     pub fn make_subregion(
         &mut self,
         origin: SubregionOrigin<'tcx>,
@@ -547,10 +548,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         sup: Region<'tcx>,
     ) {
         // cannot add constraints once regions are resolved
-        debug!(
-            "RegionConstraintCollector: make_subregion({:?}, {:?}) due to {:?}",
-            sub, sup, origin
-        );
+        debug!("origin = {:#?}", origin);
 
         match (sub, sup) {
             (&ReLateBound(..), _) | (_, &ReLateBound(..)) => {
