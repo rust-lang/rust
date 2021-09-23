@@ -64,7 +64,7 @@ pub(crate) fn goto_definition(
                 }
             }
             Some(
-                Definition::from_node(&sema, &token)
+                Definition::from_token(&sema, &token)
                     .into_iter()
                     .flat_map(|def| {
                         try_find_trait_item_definition(sema.db, &def)

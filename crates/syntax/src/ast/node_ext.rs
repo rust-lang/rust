@@ -796,6 +796,16 @@ impl ast::TokenTree {
             .into_token()
             .filter(|it| matches!(it.kind(), T!['}'] | T![')'] | T![']']))
     }
+
+    pub fn parent_meta(&self) -> Option<ast::Meta> {
+        self.syntax().parent().and_then(ast::Meta::cast)
+    }
+}
+
+impl ast::Meta {
+    pub fn parent_attr(&self) -> Option<ast::Attr> {
+        self.syntax().parent().and_then(ast::Attr::cast)
+    }
 }
 
 impl ast::GenericParamList {
