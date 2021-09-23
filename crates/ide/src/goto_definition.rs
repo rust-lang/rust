@@ -1,11 +1,9 @@
 use std::convert::TryInto;
 
 use crate::{
-    display::TryToNav,
-    doc_links::{doc_attributes, extract_definitions_from_docs, resolve_doc_path_for_def},
-    FilePosition, NavigationTarget, RangeInfo,
+    display::TryToNav, doc_links::token_as_doc_comment, FilePosition, NavigationTarget, RangeInfo,
 };
-use hir::{AsAssocItem, InFile, ModuleDef, Semantics};
+use hir::{AsAssocItem, ModuleDef, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileId, FileLoader},
     defs::Definition,
@@ -30,7 +28,7 @@ pub(crate) fn goto_definition(
     db: &RootDatabase,
     position: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
-    let sema = Semantics::new(db);
+    let sema = &Semantics::new(db);
     let file = sema.parse(position.file_id).syntax().clone();
     let original_token =
         pick_best_token(file.token_at_offset(position.offset), |kind| match kind {
@@ -38,18 +36,11 @@ pub(crate) fn goto_definition(
             kind if kind.is_trivia() => 0,
             _ => 1,
         })?;
-    if let Some(_) = ast::Comment::cast(original_token.clone()) {
-        let parent = original_token.parent()?;
-        let (attributes, def) = doc_attributes(&sema, &parent)?;
-        let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
-        let (_, link, ns) =
-            extract_definitions_from_docs(&docs).into_iter().find(|&(range, ..)| {
-                doc_mapping.map(range).map_or(false, |InFile { file_id, value: range }| {
-                    file_id == position.file_id.into() && range.contains(position.offset)
-                })
-            })?;
-        let nav = resolve_doc_path_for_def(db, def, &link, ns)?.try_to_nav(db)?;
-        return Some(RangeInfo::new(original_token.text_range(), vec![nav]));
+    if let Some(doc_comment) = token_as_doc_comment(&original_token) {
+        return doc_comment.get_definition_with_descend_at(sema, position.offset, |def, _, _| {
+            let nav = def.try_to_nav(db)?;
+            Some(RangeInfo::new(original_token.text_range(), vec![nav]))
+        });
     }
     let navs = sema
         .descend_into_macros_many(original_token.clone())
