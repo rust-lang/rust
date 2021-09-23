@@ -116,7 +116,7 @@ attributes #9 = { noreturn nounwind }
 !9 = !{!"any pointer", !4, i64 0}
 
 
-; CHECK: define internal double @diffealldiv(double* noalias nocapture %a, double* nocapture %"a'", i32* noalias nocapture %N)
+; CHECK: define internal double @fwddiffealldiv(double* noalias nocapture %a, double* nocapture %"a'", i32* noalias nocapture %N)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load i32, i32* %N, align 4, !tbaa !2
 ; CHECK-NEXT:   %cmp233 = icmp sgt i32 %0, 0

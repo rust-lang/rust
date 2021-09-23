@@ -25,7 +25,7 @@ entry:
 ; Function Attrs: nounwind
 declare double @__enzyme_fwddiff(double (double)*, ...)
 
-; CHECK: define internal double @diffemulglobal(double %x, double %"x'")
+; CHECK: define internal double @fwddiffemulglobal(double %x, double %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %global_local.0.copyload = load double, double* @global, align 8
 ; CHECK-NEXT:   %mul = fmul fast double %global_local.0.copyload, %x

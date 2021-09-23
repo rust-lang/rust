@@ -51,7 +51,7 @@ attributes #3 = { nounwind }
 ; CHECK: define dso_local double @dsqrelu(double %x) local_unnamed_addr
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp.i = fcmp fast ogt double %x, 0.000000e+00
-; CHECK-NEXT:   br i1 %cmp.i, label %cond.true.i, label %diffesqrelu.exit
+; CHECK-NEXT:   br i1 %cmp.i, label %cond.true.i, label %fwddiffesqrelu.exit
 
 ; CHECK: cond.true.i:
 ; CHECK-NEXT:   %0 = call fast double @llvm.sin.f64(double %x) #3
@@ -64,9 +64,9 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   %6 = fdiv fast double %5, %4
 ; CHECK-NEXT:   %7 = fcmp fast oeq double %mul.i, 0.000000e+00
 ; CHECK-NEXT:   %8 = select  {{(fast )?}}i1 %7, double 0.000000e+00, double %6
-; CHECK-NEXT:   br label %diffesqrelu.exit
+; CHECK-NEXT:   br label %fwddiffesqrelu.exit
 
-; CHECK: diffesqrelu.exit: 
+; CHECK: fwddiffesqrelu.exit: 
 ; CHECK-NEXT:   %"cond'.i" = phi  {{(fast )?}}double [ %8, %cond.true.i ], [ 0.000000e+00, %entry ]
 ; CHECK-NEXT:   ret double %"cond'.i"
 ; CHECK-NEXT: }

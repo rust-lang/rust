@@ -99,15 +99,15 @@ attributes #4 = { nounwind }
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C/C++ TBAA"}
 
-; CHECK: define internal {{(dso_local )?}}double @diffefoo(double %x, double %"x'")
+; CHECK: define internal {{(dso_local )?}}double @fwddiffefoo(double %x, double %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call fast double @diffesub(double %x, double %"x'")
+; CHECK-NEXT:   %0 = call fast double @fwddiffesub(double %x, double %"x'")
 ; CHECK-NEXT:   %call1 = tail call fast double @read2()
 ; CHECK-NEXT:   ret double %0
 ; CHECK-NEXT: }
 
 
-; CHECK: define internal {{(dso_local )?}}double @diffesub(double %x, double %"x'")
+; CHECK: define internal {{(dso_local )?}}double @fwddiffesub(double %x, double %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call = tail call fast double @readDouble()
 ; CHECK-NEXT:   %0 = fmul fast double %"x'", %call

@@ -40,13 +40,13 @@ declare dso_local double @__enzyme_fwddiff(double (double)*, double, double)
 
 
 
-; CHECK: define internal {{(dso_local )?}}double @diffeadd4(double %x, double %"x'")
+; CHECK: define internal {{(dso_local )?}}double @fwddiffeadd4(double %x, double %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call fast double @diffeadd2(double %x, double %"x'")
+; CHECK-NEXT:   %0 = call fast double @fwddiffeadd2(double %x, double %"x'")
 ; CHECK-NEXT:   ret double %0
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}double @diffeadd2(double %x, double %"x'")
+; CHECK: define internal {{(dso_local )?}}double @fwddiffeadd2(double %x, double %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   ret double %"x'"
 ; CHECK-NEXT: }

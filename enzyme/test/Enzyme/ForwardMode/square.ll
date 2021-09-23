@@ -23,7 +23,7 @@ entry:
 
 declare double @__enzyme_fwddiff(double (double)*, ...) 
 
-; CHECK: define internal {{(dso_local )?}}double @diffesquare(double %x, double %"x'")
+; CHECK: define internal {{(dso_local )?}}double @fwddiffesquare(double %x, double %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = fmul fast double %"x'", %x
 ; CHECK-NEXT:   %1 = fadd fast double %0, %0

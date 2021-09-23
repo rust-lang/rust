@@ -32,7 +32,7 @@ entry:
 declare double @__enzyme_fwddiff(void (float*, float*)*, ...) #2
 
 
-; CHECK: define internal void @diffesum(float* %array, float* %"array'", float* %ret, float* %"ret'")
+; CHECK: define internal void @fwddiffesum(float* %array, float* %"array'", float* %ret, float* %"ret'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %do.body
 

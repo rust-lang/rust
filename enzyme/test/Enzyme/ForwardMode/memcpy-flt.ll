@@ -27,7 +27,7 @@ attributes #1 = { argmemonly nounwind }
 attributes #2 = { noinline nounwind uwtable }
 
 
-; CHECK: define internal void @diffememcpy_float(double* nocapture %dst, double* nocapture %"dst'", double* nocapture readonly %src, double* nocapture %"src'", i64 %num)
+; CHECK: define internal void @fwddiffememcpy_float(double* nocapture %dst, double* nocapture %"dst'", double* nocapture readonly %src, double* nocapture %"src'", i64 %num)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"'ipc" = bitcast double* %"dst'" to i8*
 ; CHECK-NEXT:   %0 = bitcast double* %dst to i8*

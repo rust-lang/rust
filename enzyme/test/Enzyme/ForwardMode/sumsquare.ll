@@ -51,8 +51,8 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %3 = fadd fast double %2, %2
 ; CHECK-NEXT:   %4 = fadd fast double %3, %"total.011'.i"
 ; CHECK-NEXT:   %exitcond.i = icmp eq i64 %iv.i, %n
-; CHECK-NEXT:   br i1 %exitcond.i, label %diffesumsquare.exit, label %for.body.i
+; CHECK-NEXT:   br i1 %exitcond.i, label %fwddiffesumsquare.exit, label %for.body.i
 
-; CHECK: diffesumsquare.exit:                              ; preds = %for.body.i
+; CHECK: fwddiffesumsquare.exit:                              ; preds = %for.body.i
 ; CHECK-NEXT:   ret double %4
 ; CHECK-NEXT: }

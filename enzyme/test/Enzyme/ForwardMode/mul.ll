@@ -16,7 +16,7 @@ entry:
 ; Function Attrs: nounwind
 declare double @__enzyme_fwddiff(double (double, double)*, ...)
 
-; CHECK: define internal {{(dso_local )?}}double @diffetester(double %x, double %"x'", double %y, double %"y'")
+; CHECK: define internal {{(dso_local )?}}double @fwddiffetester(double %x, double %"x'", double %y, double %"y'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = fmul fast double %"x'", %y
 ; CHECK-NEXT:   %1 = fmul fast double %"y'", %x

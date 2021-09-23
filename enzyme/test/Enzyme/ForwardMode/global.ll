@@ -82,7 +82,7 @@ attributes #4 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disa
 !7 = !{!"any pointer", !4, i64 0}
 !8 = !{double* @dglobal}
 
-; CHECK: define internal {{(dso_local )?}}double @diffemulglobal(double %x, double %"x'")
+; CHECK: define internal {{(dso_local )?}}double @fwddiffemulglobal(double %x, double %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load double, double* @global, align 8, !tbaa !3
 ; CHECK-NEXT:   %1 = load double, double* @dglobal

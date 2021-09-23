@@ -19,7 +19,7 @@ declare double @cosh(double)
 ; Function Attrs: nounwind
 declare double @__enzyme_fwddiff(double (double)*, ...)
 
-; CHECK: define internal double @diffetester(double %x, double %"x'")
+; CHECK: define internal double @fwddiffetester(double %x, double %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call fast double @sinh(double %x)
 ; CHECK-NEXT:   %1 = fmul fast double %"x'", %0

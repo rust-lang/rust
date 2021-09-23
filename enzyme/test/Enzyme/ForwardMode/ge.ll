@@ -67,7 +67,7 @@ attributes #3 = { nounwind }
 !5 = !{!"Simple C/C++ TBAA"}
 
 
-; CHECK: define internal double @diffecache(double* nocapture %x, double* nocapture %"x'", i32 %N)
+; CHECK: define internal double @fwddiffecache(double* nocapture %x, double* nocapture %"x'", i32 %N)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %for.body
 

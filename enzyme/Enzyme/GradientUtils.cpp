@@ -2485,9 +2485,23 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
   SmallPtrSet<Value *, 4> constant_values;
   SmallPtrSet<Value *, 4> nonconstant_values;
 
+  StringRef prefix;
+
+  switch (mode) {
+  case DerivativeMode::ForwardMode:
+    prefix = "fwddiffe";
+    break;
+  case DerivativeMode::ReverseModeCombined:
+  case DerivativeMode::ReverseModeGradient:
+    prefix = "diffe";
+    break;
+  case DerivativeMode::ReverseModePrimal:
+    llvm_unreachable("invalid DerivativeMode: ReverseModePrimal\n");
+  }
+
   auto newFunc = Logic.PPC.CloneFunctionWithReturns(
       mode, todiff, invertedPointers, constant_args, constant_values,
-      nonconstant_values, returnvals, returnValue, "diffe" + todiff->getName(),
+      nonconstant_values, returnvals, returnValue, prefix + todiff->getName(),
       &originalToNew,
       /*diffeReturnArg*/ diffeReturnArg, additionalArg);
   auto res = new DiffeGradientUtils(

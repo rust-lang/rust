@@ -22,7 +22,7 @@ declare float @__enzyme_fwddiff.f64(...)
 attributes #0 = { noinline }
 
 
-; CHECK: define internal float @diffeman_max(float* %a, float* %"a'", float* %b, float* %"b'")
+; CHECK: define internal float @fwddiffeman_max(float* %a, float* %"a'", float* %b, float* %"b'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load float, float* %a, align 4
 ; CHECK-NEXT:   %1 = load float, float* %b, align 4

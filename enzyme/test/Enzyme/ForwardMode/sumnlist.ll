@@ -91,7 +91,7 @@ attributes #4 = { nounwind }
 !10 = !{!4, !4, i64 0}
 
 
-; CHECK: define internal double @diffesum_list(%struct.n* noalias readonly %node, %struct.n* %"node'", i64 %times)
+; CHECK: define internal double @fwddiffesum_list(%struct.n* noalias readonly %node, %struct.n* %"node'", i64 %times)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp18 = icmp eq %struct.n* %node, null
 ; CHECK-NEXT:   br i1 %cmp18, label %for.cond.cleanup, label %for.cond1.preheader

@@ -60,7 +60,7 @@ declare double @__enzyme_fwddiff2(i8*, double*, double*, i64)
 !7 = !{!"any pointer", !4, i64 0}
 
 
-; CHECK: define internal double @diffealldiv(double* nocapture readonly %A, double* nocapture %"A'", i64 %N, double %start, double %"start'")
+; CHECK: define internal double @fwddiffealldiv(double* nocapture readonly %A, double* nocapture %"A'", i64 %N, double %start, double %"start'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %loop
 
@@ -87,7 +87,7 @@ declare double @__enzyme_fwddiff2(i8*, double*, double*, i64)
 ; CHECK-NEXT: }
 
 
-; CHECK: define internal double @diffealldiv2(double* nocapture readonly %A, double* nocapture %"A'", i64 %N)
+; CHECK: define internal double @fwddiffealldiv2(double* nocapture readonly %A, double* nocapture %"A'", i64 %N)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %loop
 

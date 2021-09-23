@@ -46,17 +46,17 @@ attributes #1 = { nounwind readnone noinline }
 ; CHECK: define dso_local double @drelu(double %x)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp.i = fcmp fast ogt double %x, 0.000000e+00
-; CHECK-NEXT:   br i1 %cmp.i, label %cond.true.i, label %differelu.exit
+; CHECK-NEXT:   br i1 %cmp.i, label %cond.true.i, label %fwddifferelu.exit
 ; CHECK: cond.true.i:                                ; preds = %entry
-; CHECK-NEXT:   %0 = call fast double @diffef(double %x, double 1.000000e+00)
-; CHECK-NEXT:   br label %differelu.exit
-; CHECK: differelu.exit:                                   ; preds = %entry, %cond.true.i
+; CHECK-NEXT:   %0 = call fast double @fwddiffef(double %x, double 1.000000e+00)
+; CHECK-NEXT:   br label %fwddifferelu.exit
+; CHECK: fwddifferelu.exit:                                   ; preds = %entry, %cond.true.i
 ; CHECK-NEXT:   %"cond'.i" = phi{{( fast)?}} double [ %0, %cond.true.i ], [ 0.000000e+00, %entry ]
 ; CHECK-NEXT:   ret double %"cond'.i"
 ; CHECK-NEXT: }
 
 
-; CHECK: define internal {{(dso_local )?}}double @diffef(double %x, double %"x'")
+; CHECK: define internal {{(dso_local )?}}double @fwddiffef(double %x, double %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   ret double %"x'"
 ; CHECK-NEXT: }
