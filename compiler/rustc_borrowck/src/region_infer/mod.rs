@@ -689,6 +689,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // them down.
         let mut choice_regions: Vec<ty::RegionVid> = choice_regions.to_vec();
 
+        // Convert to the SCC representative: sometimes we have inference
+        // variables in the member constraint that wind up equated with
+        // universal regions. The scc representative is the minimal numbered
+        // one from the corresponding scc so it will be the universal region
+        // if one exists.
+        for c_r in &mut choice_regions {
+            let scc = self.constraint_sccs.scc(*c_r);
+            *c_r = self.scc_representatives[scc];
+        }
+
         // The 'member region' in a member constraint is part of the
         // hidden type, which must be in the root universe. Therefore,
         // it cannot have any placeholders in its value.

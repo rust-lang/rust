@@ -6,7 +6,8 @@
 struct Foo<'a>(&'a [u8]);
 
 impl<'a> Foo<'a> {
-    fn make_it(&self) -> impl Iterator<Item = u8> { //~ ERROR lifetime may not live
+    fn make_it(&self) -> impl Iterator<Item = u8> {
+        //~^ ERROR: captures lifetime that does not appear in bounds
         self.0.iter().copied()
     }
 }

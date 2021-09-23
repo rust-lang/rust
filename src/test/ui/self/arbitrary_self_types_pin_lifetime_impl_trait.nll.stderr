@@ -1,15 +1,16 @@
-error: lifetime may not live long enough
+error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
   --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait.rs:6:31
    |
 LL |     fn f(self: Pin<&Self>) -> impl Clone { self }
-   |                    -          ^^^^^^^^^^ opaque type requires that `'1` must outlive `'static`
+   |                    -----      ^^^^^^^^^^
    |                    |
-   |                    let's call the lifetime of this reference `'1`
+   |                    hidden type `Pin<&Foo>` captures the anonymous lifetime defined here
    |
-help: to allow this `impl Trait` to capture borrowed data with lifetime `'1`, add `'_` as a bound
+help: to declare that the `impl Trait` captures '_, you can add an explicit `'_` lifetime bound
    |
 LL |     fn f(self: Pin<&Self>) -> impl Clone + '_ { self }
    |                                          ++++
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0700`.

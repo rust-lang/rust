@@ -6,7 +6,8 @@ struct Foo;
 
 impl Foo {
     async fn f(self: Pin<&Self>) -> impl Clone { self }
-    //~^ ERROR E0759
+    //~^ ERROR: captures lifetime that does not appear in bounds
+    //~| ERROR: captures lifetime that does not appear in bounds
 }
 
 fn main() {
