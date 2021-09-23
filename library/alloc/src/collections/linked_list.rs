@@ -631,6 +631,8 @@ impl<T> LinkedList<T> {
     /// Returns `true` if the `LinkedList` contains an element equal to the
     /// given value.
     ///
+    /// This operation should compute in *O*(*n*) time.
+    ///
     /// # Examples
     ///
     /// ```
@@ -655,6 +657,8 @@ impl<T> LinkedList<T> {
 
     /// Provides a reference to the front element, or `None` if the list is
     /// empty.
+    /// 
+    /// This operation should compute in *O*(*1*) time.
     ///
     /// # Examples
     ///
@@ -675,6 +679,8 @@ impl<T> LinkedList<T> {
 
     /// Provides a mutable reference to the front element, or `None` if the list
     /// is empty.
+    /// 
+    /// This operation should compute in *O*(*1*) time.
     ///
     /// # Examples
     ///
@@ -701,6 +707,8 @@ impl<T> LinkedList<T> {
 
     /// Provides a reference to the back element, or `None` if the list is
     /// empty.
+    /// 
+    /// This operation should compute in *O*(*1*) time.
     ///
     /// # Examples
     ///
@@ -721,6 +729,8 @@ impl<T> LinkedList<T> {
 
     /// Provides a mutable reference to the back element, or `None` if the list
     /// is empty.
+    /// 
+    /// This operation should compute in *O*(*1*) time.
     ///
     /// # Examples
     ///
