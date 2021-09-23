@@ -1,8 +1,6 @@
 //! ICH - Incremental Compilation Hash
 
-pub use self::hcx::{
-    hash_stable_trait_impls, NodeIdHashingMode, StableHashingContext, StableHashingContextProvider,
-};
+pub use self::hcx::{NodeIdHashingMode, StableHashingContext, StableHashingContextProvider};
 use rustc_span::symbol::{sym, Symbol};
 
 mod hcx;

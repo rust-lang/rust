@@ -304,17 +304,7 @@ pub fn provide(providers: &mut Providers) {
             // traversal, but not globally minimal across all crates.
             let bfs_queue = &mut VecDeque::new();
 
-            // Preferring shortest paths alone does not guarantee a
-            // deterministic result; so sort by crate num to avoid
-            // hashtable iteration non-determinism. This only makes
-            // things as deterministic as crate-nums assignment is,
-            // which is to say, its not deterministic in general. But
-            // we believe that libstd is consistently assigned crate
-            // num 1, so it should be enough to resolve #46112.
-            let mut crates: Vec<CrateNum> = (*tcx.crates(())).to_owned();
-            crates.sort();
-
-            for &cnum in crates.iter() {
+            for &cnum in tcx.crates(()) {
                 // Ignore crates without a corresponding local `extern crate` item.
                 if tcx.missing_extern_crate_item(cnum) {
                     continue;
@@ -323,35 +313,31 @@ pub fn provide(providers: &mut Providers) {
                 bfs_queue.push_back(DefId { krate: cnum, index: CRATE_DEF_INDEX });
             }
 
-            // (restrict scope of mutable-borrow of `visible_parent_map`)
-            {
-                let visible_parent_map = &mut visible_parent_map;
-                let mut add_child = |bfs_queue: &mut VecDeque<_>, child: &Export, parent: DefId| {
-                    if child.vis != ty::Visibility::Public {
-                        return;
-                    }
+            let mut add_child = |bfs_queue: &mut VecDeque<_>, child: &Export, parent: DefId| {
+                if child.vis != ty::Visibility::Public {
+                    return;
+                }
 
-                    if let Some(child) = child.res.opt_def_id() {
-                        match visible_parent_map.entry(child) {
-                            Entry::Occupied(mut entry) => {
-                                // If `child` is defined in crate `cnum`, ensure
-                                // that it is mapped to a parent in `cnum`.
-                                if child.is_local() && entry.get().is_local() {
-                                    entry.insert(parent);
-                                }
-                            }
-                            Entry::Vacant(entry) => {
+                if let Some(child) = child.res.opt_def_id() {
+                    match visible_parent_map.entry(child) {
+                        Entry::Occupied(mut entry) => {
+                            // If `child` is defined in crate `cnum`, ensure
+                            // that it is mapped to a parent in `cnum`.
+                            if child.is_local() && entry.get().is_local() {
                                 entry.insert(parent);
-                                bfs_queue.push_back(child);
                             }
                         }
+                        Entry::Vacant(entry) => {
+                            entry.insert(parent);
+                            bfs_queue.push_back(child);
+                        }
                     }
-                };
+                }
+            };
 
-                while let Some(def) = bfs_queue.pop_front() {
-                    for child in tcx.item_children(def).iter() {
-                        add_child(bfs_queue, child, def);
-                    }
+            while let Some(def) = bfs_queue.pop_front() {
+                for child in tcx.item_children(def).iter() {
+                    add_child(bfs_queue, child, def);
                 }
             }
 
