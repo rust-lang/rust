@@ -366,6 +366,7 @@ store.register_lints(&[
     non_expressive_names::MANY_SINGLE_CHAR_NAMES,
     non_expressive_names::SIMILAR_NAMES,
     non_octal_unix_permissions::NON_OCTAL_UNIX_PERMISSIONS,
+    non_send_field_in_send_ty::NON_SEND_FIELD_IN_SEND_TY,
     nonstandard_macro_braces::NONSTANDARD_MACRO_BRACES,
     open_options::NONSENSICAL_OPEN_OPTIONS,
     option_env_unwrap::OPTION_ENV_UNWRAP,
