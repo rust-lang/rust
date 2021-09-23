@@ -1371,21 +1371,10 @@ impl From<&str> for Box<str> {
 impl From<Cow<'_, str>> for Box<str> {
     /// Converts a `Cow<'_, str>` into a `Box<str>`
     ///
-<<<<<<< HEAD
-<<<<<<< HEAD
     /// When `cow` is the `Cow::Borrowed` variant, this
     /// conversion allocates on the heap and performs a copy of the
     /// underlying `str`. Otherwise, it will try to re-use the owned
     /// `String`'s allocation.
-=======
-    /// When `cow` is the `Cow::Borrowed` variant, this 
-=======
-    /// When `cow` is the `Cow::Borrowed` variant, this
->>>>>>> Fix trailing whitespace
-    /// conversion allocates on the heap and performs a the
-    /// underlying `str`. Otherwise, it re-used the owned
-    /// string.
->>>>>>> Increase precision of doc strings
     ///
     /// # Examples
     ///
@@ -1466,8 +1455,12 @@ impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
     ///
     /// # Errors
     ///
+<<<<<<< HEAD
     /// Returns the old `Box<[T]>` in the `Err` variant if 
     /// `boxed_slice.len()` does not equal `N`.
+=======
+    /// Returns the old `Box<[T]>` in the `Err` variant if `boxed_slice.len()` does not equal `N`.
+>>>>>>> Correctly document the error behavior
     fn try_from(boxed_slice: Box<[T]>) -> Result<Self, Self::Error> {
         if boxed_slice.len() == N {
             Ok(unsafe { Box::from_raw(Box::into_raw(boxed_slice) as *mut [T; N]) })
