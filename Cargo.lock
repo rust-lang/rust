@@ -645,6 +645,7 @@ dependencies = [
 name = "ide_db"
 version = "0.0.0"
 dependencies = [
+ "arrayvec",
  "base_db",
  "cov-mark",
  "either",

@@ -1,4 +1,4 @@
-use std::{collections::HashSet, ops::ControlFlow};
+use std::iter;
 
 use either::Either;
 use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo};
@@ -15,7 +15,7 @@ use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
     algo, ast, display::fn_as_proc_macro_label, match_ast, AstNode, Direction, SyntaxKind::*,
-    SyntaxNode, SyntaxToken, TextRange, TextSize, T,
+    SyntaxNode, SyntaxToken, T,
 };
 
 use crate::{
@@ -99,7 +99,7 @@ pub(crate) fn hover(
     FileRange { file_id, range }: FileRange,
     config: &HoverConfig,
 ) -> Option<RangeInfo<HoverResult>> {
-    let sema = hir::Semantics::new(db);
+    let sema = &hir::Semantics::new(db);
     let file = sema.parse(file_id).syntax().clone();
 
     if !range.is_empty() {
@@ -114,135 +114,75 @@ pub(crate) fn hover(
         _ => 1,
     })?;
 
-    let mut seen = HashSet::default();
+    let descended = sema.descend_into_macros_many(original_token.clone());
 
-    let mut fallback = None;
-    // attributes, require special machinery as they are mere ident tokens
-
-    let descend_macros = sema.descend_into_macros_many(original_token.clone());
-
-    for token in &descend_macros {
-        if token.kind() != COMMENT {
-            if let Some(attr) = token.ancestors().find_map(ast::Attr::cast) {
-                // lints
-                if let Some(res) = try_hover_for_lint(&attr, &token) {
-                    return Some(res);
-                }
-            }
-        }
-    }
-
-    descend_macros
-        .iter()
-        .filter_map(|token| match token.parent() {
-            Some(node) => {
-                match find_hover_result(
-                    &sema,
-                    file_id,
-                    offset,
-                    config,
-                    &original_token,
-                    token,
-                    &node,
-                    &mut seen,
-                ) {
-                    Some(res) => match res {
-                        ControlFlow::Break(inner) => Some(inner),
-                        ControlFlow::Continue(_) => {
-                            if fallback.is_none() {
-                                // FIXME we're only taking the first fallback into account that's not `None`
-                                fallback = hover_for_keyword(&sema, config, &token)
-                                    .or(type_hover(&sema, config, &token));
-                            }
-                            None
-                        }
-                    },
-                    None => None,
-                }
-            }
-            None => None,
-        })
-        // reduce all descends into a single `RangeInfo`
-        // that spans from the earliest start to the latest end (fishy/FIXME),
-        // concatenates all `Markup`s with `\n---\n`,
-        // and accumulates all actions into its `actions` vector.
-        .reduce(|mut acc, RangeInfo { range, mut info }| {
-            let start = acc.range.start().min(range.start());
-            let end = acc.range.end().max(range.end());
-
-            acc.range = TextRange::new(start, end);
-            acc.info.actions.append(&mut info.actions);
-            acc.info.markup = Markup::from(format!("{}\n---\n{}", acc.info.markup, info.markup));
-            acc
-        })
-        .or(fallback)
-}
-
-fn find_hover_result(
-    sema: &Semantics<RootDatabase>,
-    file_id: FileId,
-    offset: TextSize,
-    config: &HoverConfig,
-    original_token: &SyntaxToken,
-    token: &SyntaxToken,
-    node: &SyntaxNode,
-    seen: &mut HashSet<Definition>,
-) -> Option<ControlFlow<RangeInfo<HoverResult>>> {
-    let mut range_override = None;
-
-    // intra-doc links and attributes are special cased
-    // so don't add them to the `seen` duplicate check
-    let mut add_to_seen_definitions = true;
-
-    let definition = Definition::from_node(sema, token).into_iter().next().or_else(|| {
+    // FIXME handle doc attributes? TokenMap currently doesn't work with comments
+    if original_token.kind() == COMMENT {
+        let relative_comment_offset = offset - original_token.text_range().start();
         // intra-doc links
-        // FIXME: move comment + attribute special cases somewhere else to simplify control flow,
-        // hopefully simplifying the return type of this function in the process
-        // (the `Break`/`Continue` distinction is needed to decide whether to use fallback hovers)
-        //
-        // FIXME: hovering the intra doc link to `Foo` not working:
-        //
-        // #[identity]
-        // trait Foo {
-        //    /// [`Foo`]
-        // fn foo() {}
-        if token.kind() == COMMENT {
-            add_to_seen_definitions = false;
-            cov_mark::hit!(no_highlight_on_comment_hover);
-            let (attributes, def) = doc_attributes(sema, node)?;
+        cov_mark::hit!(no_highlight_on_comment_hover);
+        return descended.iter().find_map(|t| {
+            match t.kind() {
+                COMMENT => (),
+                TOKEN_TREE => {}
+                _ => return None,
+            }
+            let node = t.parent()?;
+            let absolute_comment_offset = t.text_range().start() + relative_comment_offset;
+            let (attributes, def) = doc_attributes(sema, &node)?;
             let (docs, doc_mapping) = attributes.docs_with_rangemap(sema.db)?;
             let (idl_range, link, ns) = extract_definitions_from_docs(&docs).into_iter().find_map(
                 |(range, link, ns)| {
                     let mapped = doc_mapping.map(range)?;
-                    (mapped.file_id == file_id.into() && mapped.value.contains(offset))
-                        .then(|| (mapped.value, link, ns))
+                    (mapped.file_id == file_id.into()
+                        && mapped.value.contains(absolute_comment_offset))
+                    .then(|| (mapped.value, link, ns))
                 },
             )?;
-            range_override = Some(idl_range);
-            Some(match resolve_doc_path_for_def(sema.db, def, &link, ns)? {
+            let def = match resolve_doc_path_for_def(sema.db, def, &link, ns)? {
                 Either::Left(it) => Definition::ModuleDef(it),
                 Either::Right(it) => Definition::Macro(it),
-            })
-        } else {
-            None
-        }
-    });
-
-    if let Some(definition) = definition {
-        // skip duplicates
-        if seen.contains(&definition) {
-            return None;
-        }
-        if add_to_seen_definitions {
-            seen.insert(definition);
-        }
-        if let Some(res) = hover_for_definition(sema, file_id, definition, &node, config) {
-            let range = range_override.unwrap_or_else(|| original_token.text_range());
-            return Some(ControlFlow::Break(RangeInfo::new(range, res)));
-        }
+            };
+            let res = hover_for_definition(sema, file_id, def, &node, config)?;
+            Some(RangeInfo::new(idl_range, res))
+        });
     }
 
-    Some(ControlFlow::Continue(()))
+    // attributes, require special machinery as they are mere ident tokens
+
+    // FIXME: Definition should include known lints and the like instead of having this special case here
+    if let res @ Some(_) = descended.iter().find_map(|token| {
+        let attr = token.ancestors().find_map(ast::Attr::cast)?;
+        try_hover_for_lint(&attr, &token)
+    }) {
+        return res;
+    }
+
+    let result = descended
+        .iter()
+        .filter_map(|token| {
+            let node = token.parent()?;
+            let defs = Definition::from_token(sema, token);
+            Some(defs.into_iter().zip(iter::once(node).cycle()))
+        })
+        .flatten()
+        .unique_by(|&(def, _)| def)
+        .filter_map(|(def, node)| hover_for_definition(sema, file_id, def, &node, config))
+        .reduce(|mut acc, HoverResult { markup, actions }| {
+            acc.actions.extend(actions);
+            acc.markup = Markup::from(format!("{}\n---\n{}", acc.markup, markup));
+            acc
+        });
+    if result.is_none() {
+        // fallbacks, show keywords or types
+        if let res @ Some(_) = hover_for_keyword(sema, config, &original_token) {
+            return res;
+        }
+        if let res @ Some(_) = descended.iter().find_map(|token| type_hover(sema, config, token)) {
+            return res;
+        }
+    }
+    result.map(|res| RangeInfo::new(original_token.text_range(), res))
 }
 
 fn type_hover(
@@ -250,9 +190,6 @@ fn type_hover(
     config: &HoverConfig,
     token: &SyntaxToken,
 ) -> Option<RangeInfo<HoverResult>> {
-    if token.kind() == COMMENT {
-        return None;
-    }
     let node = token
         .ancestors()
         .take_while(|it| !ast::Item::can_cast(it.kind()))
@@ -3625,6 +3562,15 @@ fn main() {
 
                 ```rust
                 f: &i32
+                ```
+                ---
+
+                ```rust
+                test::S
+                ```
+
+                ```rust
+                f: i32
                 ```
             "#]],
         );

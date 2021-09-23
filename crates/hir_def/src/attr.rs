@@ -547,6 +547,7 @@ fn inner_attributes(
     Some((attrs, docs))
 }
 
+#[derive(Debug)]
 pub struct AttrSourceMap {
     attrs: Vec<InFile<ast::Attr>>,
     doc_comments: Vec<InFile<ast::Comment>>,
@@ -599,6 +600,7 @@ impl AttrSourceMap {
 }
 
 /// A struct to map text ranges from [`Documentation`] back to TextRanges in the syntax tree.
+#[derive(Debug)]
 pub struct DocsRangeMap {
     source_map: AttrSourceMap,
     // (docstring-line-range, attr_index, attr-string-range)
