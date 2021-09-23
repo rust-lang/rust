@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// Sending the struct to another thread and drops it there will also drop
     /// the field in the new thread. This effectively changes the ownership of
     /// the field type to the new thread and creates a soundness issue by
-    /// breaking breaks the non-`Send` invariant.
+    /// breaking the non-`Send` invariant.
     ///
     /// ### Known Problems
     /// Data structures that contain raw pointers may cause false positives.
