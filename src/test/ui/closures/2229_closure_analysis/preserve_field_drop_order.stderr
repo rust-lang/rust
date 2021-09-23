@@ -136,25 +136,25 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Min Capture a[(1, 0)] -> ImmBorrow
-  --> $DIR/preserve_field_drop_order.rs:52:26
-   |
-LL |         println!("{:?}", a.1);
-   |                          ^^^
 note: Min Capture a[(0, 0)] -> ImmBorrow
   --> $DIR/preserve_field_drop_order.rs:55:26
    |
 LL |         println!("{:?}", a.0);
    |                          ^^^
-note: Min Capture b[(1, 0)] -> ImmBorrow
-  --> $DIR/preserve_field_drop_order.rs:59:26
+note: Min Capture a[(1, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:52:26
    |
-LL |         println!("{:?}", b.1);
+LL |         println!("{:?}", a.1);
    |                          ^^^
 note: Min Capture b[(0, 0)] -> ImmBorrow
   --> $DIR/preserve_field_drop_order.rs:62:26
    |
 LL |         println!("{:?}", b.0);
+   |                          ^^^
+note: Min Capture b[(1, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:59:26
+   |
+LL |         println!("{:?}", b.1);
    |                          ^^^
 
 error: First Pass analysis includes:
@@ -202,25 +202,25 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Min Capture b[(1, 0)] -> ImmBorrow
-  --> $DIR/preserve_field_drop_order.rs:78:26
-   |
-LL |         println!("{:?}", b.1);
-   |                          ^^^
 note: Min Capture b[(0, 0)] -> ImmBorrow
   --> $DIR/preserve_field_drop_order.rs:88:26
    |
 LL |         println!("{:?}", b.0);
    |                          ^^^
-note: Min Capture a[(1, 0)] -> ImmBorrow
-  --> $DIR/preserve_field_drop_order.rs:81:26
+note: Min Capture b[(1, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:78:26
    |
-LL |         println!("{:?}", a.1);
+LL |         println!("{:?}", b.1);
    |                          ^^^
 note: Min Capture a[(0, 0)] -> ImmBorrow
   --> $DIR/preserve_field_drop_order.rs:84:26
    |
 LL |         println!("{:?}", a.0);
+   |                          ^^^
+note: Min Capture a[(1, 0)] -> ImmBorrow
+  --> $DIR/preserve_field_drop_order.rs:81:26
+   |
+LL |         println!("{:?}", a.1);
    |                          ^^^
 
 error: aborting due to 9 previous errors
