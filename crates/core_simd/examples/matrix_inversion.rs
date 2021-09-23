@@ -169,16 +169,16 @@ pub fn simd_inv4x4(m: Matrix4x4) -> Option<Matrix4x4> {
     const SHUFFLE13: [Which; 4] = [First(1), First(3), Second(1), Second(3)];
     const SHUFFLE23: [Which; 4] = [First(2), First(3), Second(2), Second(3)];
 
-    let tmp = simd_shuffle!(m_0, m_1, SHUFFLE01);
-    let row1 = simd_shuffle!(m_2, m_3, SHUFFLE01);
+    let tmp = simd_swizzle!(m_0, m_1, SHUFFLE01);
+    let row1 = simd_swizzle!(m_2, m_3, SHUFFLE01);
 
-    let row0 = simd_shuffle!(tmp, row1, SHUFFLE02);
-    let row1 = simd_shuffle!(row1, tmp, SHUFFLE13);
+    let row0 = simd_swizzle!(tmp, row1, SHUFFLE02);
+    let row1 = simd_swizzle!(row1, tmp, SHUFFLE13);
 
-    let tmp = simd_shuffle!(m_0, m_1, SHUFFLE23);
-    let row3 = simd_shuffle!(m_2, m_3, SHUFFLE23);
-    let row2 = simd_shuffle!(tmp, row3, SHUFFLE02);
-    let row3 = simd_shuffle!(row3, tmp, SHUFFLE13);
+    let tmp = simd_swizzle!(m_0, m_1, SHUFFLE23);
+    let row3 = simd_swizzle!(m_2, m_3, SHUFFLE23);
+    let row2 = simd_swizzle!(tmp, row3, SHUFFLE02);
+    let row3 = simd_swizzle!(row3, tmp, SHUFFLE13);
 
     let tmp = (row2 * row3).reverse().rotate_right::<2>();
     let minor0 = row1 * tmp;

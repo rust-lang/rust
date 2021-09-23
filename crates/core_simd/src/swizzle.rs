@@ -5,43 +5,55 @@ use crate::{LaneCount, Simd, SimdElement, SupportedLaneCount};
 ///
 /// A new vector is constructed by specifying the the lanes of the source vector or vectors to use.
 ///
-/// When shuffling one vector, the indices of the result vector are indicated by a `const` array
+/// When swizzling one vector, the indices of the result vector are indicated by a `const` array
 /// of `usize`, like [`Swizzle`].
-/// When shuffling two vectors, the indices are indicated by a `const` array of [`Which`], like
+/// When swizzling two vectors, the indices are indicated by a `const` array of [`Which`], like
 /// [`Swizzle2`].
 ///
 /// # Examples
 /// ## One source vector
 /// ```
 /// # #![feature(portable_simd)]
-/// # use core_simd::{Simd, simd_shuffle};
+/// # use core_simd::{Simd, simd_swizzle};
 /// let v = Simd::<f32, 4>::from_array([0., 1., 2., 3.]);
-/// let v = simd_shuffle!(v, [3, 0, 1, 2]);
-/// assert_eq!(v.to_array(), [3., 0., 1., 2.]);
+///
+/// // Keeping the same size
+/// let r = simd_swizzle!(v, [3, 0, 1, 2]);
+/// assert_eq!(r.to_array(), [3., 0., 1., 2.]);
+///
+/// // Changing the number of lanes
+/// let r = simd_swizzle!(v, [3, 1]);
+/// assert_eq!(r.to_array(), [3., 1.]);
 /// ```
 ///
 /// ## Two source vectors
 /// ```
 /// # #![feature(portable_simd)]
-/// # use core_simd::{Simd, simd_shuffle, Which};
+/// # use core_simd::{Simd, simd_swizzle, Which};
 /// use Which::*;
 /// let a = Simd::<f32, 4>::from_array([0., 1., 2., 3.]);
 /// let b = Simd::<f32, 4>::from_array([4., 5., 6., 7.]);
-/// let v = simd_shuffle!(a, b, [First(0), First(1), Second(2), Second(3)]);
-/// assert_eq!(v.to_array(), [0., 1., 6., 7.]);
+///
+/// // Keeping the same size
+/// let r = simd_swizzle!(a, b, [First(0), First(1), Second(2), Second(3)]);
+/// assert_eq!(r.to_array(), [0., 1., 6., 7.]);
+///
+/// // Changing the number of lanes
+/// let r = simd_swizzle!(a, b, [First(0), Second(0)]);
+/// assert_eq!(r.to_array(), [0., 4.]);
 /// ```
 #[macro_export]
-macro_rules! simd_shuffle {
+macro_rules! simd_swizzle {
     {
         $vector:expr, $index:expr $(,)?
     } => {
         {
             use $crate::simd::Swizzle;
-            struct Shuffle;
-            impl Swizzle<{$index.len()}, {$index.len()}> for Shuffle {
+            struct SwizzleImpl;
+            impl<const LANES: usize> Swizzle<LANES, {$index.len()}> for SwizzleImpl {
                 const INDEX: [usize; {$index.len()}] = $index;
             }
-            Shuffle::swizzle($vector)
+            SwizzleImpl::swizzle($vector)
         }
     };
     {
@@ -49,11 +61,11 @@ macro_rules! simd_shuffle {
     } => {
         {
             use $crate::simd::{Which, Swizzle2};
-            struct Shuffle;
-            impl Swizzle2<{$index.len()}, {$index.len()}> for Shuffle {
+            struct SwizzleImpl;
+            impl<const LANES: usize> Swizzle2<LANES, {$index.len()}> for SwizzleImpl {
                 const INDEX: [Which; {$index.len()}] = $index;
             }
-            Shuffle::swizzle2($first, $second)
+            SwizzleImpl::swizzle2($first, $second)
         }
     }
 }
