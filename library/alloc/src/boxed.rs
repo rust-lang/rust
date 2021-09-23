@@ -1334,9 +1334,9 @@ impl<T: Copy> From<Cow<'_, [T]>> for Box<[T]> {
     /// Converts a `Cow<'_, [T]>` into a `Box<[T]>`
     ///
     /// When `cow` is the `Cow::Borrowed` variant, this
-    /// conversion allocates on the heap and performs a the
-    /// underlying `str`. Otherwise, it re-used the owned
-    /// string.
+    /// conversion allocates on the heap and performs a copy of the
+    /// underlying `str`. Otherwise, it will try to re-use the owned
+    /// vec's allocation.
     #[inline]
     fn from(cow: Cow<'_, [T]>) -> Box<[T]> {
         match cow {
@@ -1372,9 +1372,9 @@ impl From<Cow<'_, str>> for Box<str> {
     /// Converts a `Cow<'_, str>` into a `Box<str>`
     ///
     /// When `cow` is the `Cow::Borrowed` variant, this
-    /// conversion allocates on the heap and performs a the
-    /// underlying `str`. Otherwise, it re-used the owned
-    /// string.
+    /// conversion allocates on the heap and performs a copy of the
+    /// underlying `str`. Otherwise, it will try to re-use the owned
+    /// string's allocation.
     ///
     /// # Examples
     ///
