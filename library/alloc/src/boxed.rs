@@ -1372,12 +1372,16 @@ impl From<Cow<'_, str>> for Box<str> {
     /// Converts a `Cow<'_, str>` into a `Box<str>`
     ///
 <<<<<<< HEAD
+<<<<<<< HEAD
     /// When `cow` is the `Cow::Borrowed` variant, this
     /// conversion allocates on the heap and performs a copy of the
     /// underlying `str`. Otherwise, it will try to re-use the owned
     /// `String`'s allocation.
 =======
     /// When `cow` is the `Cow::Borrowed` variant, this 
+=======
+    /// When `cow` is the `Cow::Borrowed` variant, this
+>>>>>>> Fix trailing whitespace
     /// conversion allocates on the heap and performs a the
     /// underlying `str`. Otherwise, it re-used the owned
     /// string.
