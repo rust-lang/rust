@@ -1455,12 +1455,8 @@ impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
     ///
     /// # Errors
     ///
-<<<<<<< HEAD
     /// Returns the old `Box<[T]>` in the `Err` variant if 
     /// `boxed_slice.len()` does not equal `N`.
-=======
-    /// Returns the old `Box<[T]>` in the `Err` variant if `boxed_slice.len()` does not equal `N`.
->>>>>>> Correctly document the error behavior
     fn try_from(boxed_slice: Box<[T]>) -> Result<Self, Self::Error> {
         if boxed_slice.len() == N {
             Ok(unsafe { Box::from_raw(Box::into_raw(boxed_slice) as *mut [T; N]) })
