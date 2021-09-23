@@ -149,7 +149,18 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
         let k: SyntaxKind = token.kind();
         if k == COMMENT {
             if let Some(tokens) = conv.convert_doc_comment(&token) {
-                result.extend(tokens);
+                // FIXME: There has to be a better way to do this
+                // Add the comments token id to the converted doc string
+                let id = conv.id_alloc().alloc(range);
+                result.extend(tokens.into_iter().map(|mut tt| {
+                    if let tt::TokenTree::Subtree(sub) = &mut tt {
+                        if let tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) = &mut sub.token_trees[2]
+                        {
+                            lit.id = id
+                        }
+                    }
+                    tt
+                }));
             }
             continue;
         }

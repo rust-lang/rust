@@ -1,4 +1,4 @@
-use std::iter;
+use std::{convert::TryFrom, iter};
 
 use either::Either;
 use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo};
@@ -14,8 +14,12 @@ use ide_db::{
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
-    algo, ast, display::fn_as_proc_macro_label, match_ast, AstNode, Direction, SyntaxKind::*,
-    SyntaxNode, SyntaxToken, T,
+    algo,
+    ast::{self, IsString},
+    display::fn_as_proc_macro_label,
+    match_ast, AstNode, AstToken, Direction,
+    SyntaxKind::*,
+    SyntaxNode, SyntaxToken, TextSize, T,
 };
 
 use crate::{
@@ -115,36 +119,53 @@ pub(crate) fn hover(
     })?;
 
     let descended = sema.descend_into_macros_many(original_token.clone());
-
-    // FIXME handle doc attributes? TokenMap currently doesn't work with comments
-    if original_token.kind() == COMMENT {
-        let relative_comment_offset = offset - original_token.text_range().start();
-        // intra-doc links
+    // magic intra doc link handling
+    // FIXME: Lift this out to some other place, goto def wants this as well
+    let comment_prefix_len = match_ast! {
+        match original_token {
+            ast::Comment(comment) => TextSize::try_from(comment.prefix().len()).ok(),
+            ast::String(string) => original_token.ancestors().find_map(ast::Attr::cast)
+                .filter(|attr| attr.simple_name().as_deref() == Some("doc")).and_then(|_| string.open_quote_text_range().map(|it| it.len())),
+            _ => None,
+        }
+    };
+    if let Some(prefix_len) = comment_prefix_len {
         cov_mark::hit!(no_highlight_on_comment_hover);
+
+        // offset relative to the comments contents
+        let original_start = original_token.text_range().start();
+        let relative_comment_offset = offset - original_start - prefix_len;
+
         return descended.iter().find_map(|t| {
-            match t.kind() {
-                COMMENT => (),
-                TOKEN_TREE => {}
-                _ => return None,
-            }
-            let node = t.parent()?;
-            let absolute_comment_offset = t.text_range().start() + relative_comment_offset;
+            let (node, descended_prefix_len) = match_ast! {
+                match t {
+                    ast::Comment(comment) => (t.parent()?, TextSize::try_from(comment.prefix().len()).ok()?),
+                    ast::String(string) => (t.ancestors().skip_while(|n| n.kind() != ATTR).nth(1)?, string.open_quote_text_range()?.len()),
+                    _ => return None,
+                }
+            };
+            let token_start = t.text_range().start();
+            let abs_in_expansion_offset = token_start + relative_comment_offset + descended_prefix_len;
+
             let (attributes, def) = doc_attributes(sema, &node)?;
             let (docs, doc_mapping) = attributes.docs_with_rangemap(sema.db)?;
-            let (idl_range, link, ns) = extract_definitions_from_docs(&docs).into_iter().find_map(
+            let (in_expansion_range, link, ns) = extract_definitions_from_docs(&docs).into_iter().find_map(
                 |(range, link, ns)| {
                     let mapped = doc_mapping.map(range)?;
-                    (mapped.file_id == file_id.into()
-                        && mapped.value.contains(absolute_comment_offset))
-                    .then(|| (mapped.value, link, ns))
+                    (mapped.value.contains(abs_in_expansion_offset))
+                        .then(|| (mapped.value, link, ns))
                 },
             )?;
+            // get the relative range to the doc/attribute in the expansion
+            let in_expansion_relative_range = in_expansion_range - descended_prefix_len - token_start;
+            // Apply relative range to the original input comment
+            let absolute_range = in_expansion_relative_range + original_start + prefix_len;
             let def = match resolve_doc_path_for_def(sema.db, def, &link, ns)? {
                 Either::Left(it) => Definition::ModuleDef(it),
                 Either::Right(it) => Definition::Macro(it),
             };
             let res = hover_for_definition(sema, file_id, def, &node, config)?;
-            Some(RangeInfo::new(idl_range, res))
+            Some(RangeInfo::new(absolute_range, res))
         });
     }
 
@@ -4938,6 +4959,65 @@ fn foo() {
                 To type:                         &&&&&i32
                 Coerced to:                          &i32
                 ```
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hover_intra_in_macro() {
+        check(
+            r#"
+macro_rules! foo_macro {
+    ($(#[$attr:meta])* $name:ident) => {
+        $(#[$attr])*
+        pub struct $name;
+    }
+}
+
+foo_macro!(
+    /// Doc comment for [`Foo$0`]
+    Foo
+);
+"#,
+            expect![[r#"
+                *[`Foo`]*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub struct Foo
+                ```
+
+                ---
+
+                Doc comment for [`Foo`](https://docs.rs/test/*/test/struct.Foo.html)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hover_intra_in_attr() {
+        check(
+            r#"
+#[doc = "Doc comment for [`Foo$0`]"]
+pub struct Foo;
+"#,
+            expect![[r#"
+                *[`Foo`]*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub struct Foo
+                ```
+
+                ---
+
+                Doc comment for [`Foo`](https://docs.rs/test/*/test/struct.Foo.html)
             "#]],
         );
     }
