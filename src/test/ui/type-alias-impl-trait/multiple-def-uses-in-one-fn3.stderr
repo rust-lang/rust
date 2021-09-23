@@ -1,11 +1,10 @@
 error[E0308]: mismatched types
-  --> $DIR/multiple-def-uses-in-one-fn3.rs:15:9
+  --> $DIR/multiple-def-uses-in-one-fn3.rs:14:9
    |
 LL | fn g<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<A, B>) {
    |      -                    - found type parameter
    |      |
    |      expected type parameter
-LL |
 LL |     (a, b)
    |         ^ expected type parameter `A`, found type parameter `B`
    |
@@ -14,18 +13,6 @@ LL |     (a, b)
    = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
-error: concrete type differs from previous defining opaque type use
-  --> $DIR/multiple-def-uses-in-one-fn3.rs:13:1
-   |
-LL | fn g<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<A, B>) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `A`, got `[type error]`
-   |
-note: previous use here
-  --> $DIR/multiple-def-uses-in-one-fn3.rs:9:1
-   |
-LL | fn f<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<B, A>) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0308`.

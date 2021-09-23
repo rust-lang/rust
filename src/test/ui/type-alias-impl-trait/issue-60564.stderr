@@ -1,5 +1,5 @@
 error: non-defining opaque type use in defining scope
-  --> $DIR/issue-60564.rs:19:34
+  --> $DIR/issue-60564.rs:20:34
    |
 LL |     fn iter_bits(self, n: u8) -> Self::BitsIter {
    |                                  ^^^^^^^^^^^^^^
@@ -10,5 +10,11 @@ note: used non-generic type `u8` for generic parameter
 LL | type IterBitsIter<T, E, I> = impl std::iter::Iterator<Item = I>;
    |                         ^
 
-error: aborting due to previous error
+error: could not find defining uses
+  --> $DIR/issue-60564.rs:8:30
+   |
+LL | type IterBitsIter<T, E, I> = impl std::iter::Iterator<Item = I>;
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 

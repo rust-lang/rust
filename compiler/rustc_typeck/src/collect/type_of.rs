@@ -1,4 +1,3 @@
-use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, ErrorReported, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -7,7 +6,7 @@ use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{HirId, Node};
 use rustc_middle::hir::map::Map;
-use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, SubstsRef};
+use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable, TypeFolder};
 use rustc_span::symbol::Ident;
@@ -539,6 +538,25 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 }
 
 #[instrument(skip(tcx), level = "debug")]
+/// Checks "defining uses" of opaque `impl Trait` types to ensure that they meet the restrictions
+/// laid for "higher-order pattern unification".
+/// This ensures that inference is tractable.
+/// In particular, definitions of opaque types can only use other generics as arguments,
+/// and they cannot repeat an argument. Example:
+///
+/// ```rust
+/// type Foo<A, B> = impl Bar<A, B>;
+///
+/// // Okay -- `Foo` is applied to two distinct, generic types.
+/// fn a<T, U>() -> Foo<T, U> { .. }
+///
+/// // Not okay -- `Foo` is applied to `T` twice.
+/// fn b<T>() -> Foo<T, T> { .. }
+///
+/// // Not okay -- `Foo` is applied to a non-generic type.
+/// fn b<T>() -> Foo<T, u32> { .. }
+/// ```
+///
 fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
     use rustc_hir::{Expr, ImplItem, Item, TraitItem};
 
@@ -584,50 +602,8 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
                 // FIXME(oli-obk): trace the actual span from inference to improve errors.
                 let span = self.tcx.def_span(def_id);
 
-                // HACK(eddyb) this check shouldn't be needed, as `wfcheck`
-                // performs the same checks, in theory, but I've kept it here
-                // using `delay_span_bug`, just in case `wfcheck` slips up.
-                let opaque_generics = self.tcx.generics_of(self.def_id);
-                let mut used_params: FxHashSet<_> = FxHashSet::default();
-                for (i, arg) in opaque_type_key.substs.iter().enumerate() {
-                    let arg_is_param = match arg.unpack() {
-                        GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
-                        GenericArgKind::Lifetime(lt) => {
-                            matches!(lt, ty::ReEarlyBound(_) | ty::ReFree(_))
-                        }
-                        GenericArgKind::Const(ct) => matches!(ct.val, ty::ConstKind::Param(_)),
-                    };
-
-                    if arg_is_param {
-                        if !used_params.insert(arg) {
-                            // There was already an entry for `arg`, meaning a generic parameter
-                            // was used twice.
-                            self.tcx.sess.delay_span_bug(
-                                span,
-                                &format!(
-                                    "defining opaque type use restricts opaque \
-                                     type by using the generic parameter `{}` twice",
-                                    arg,
-                                ),
-                            );
-                        }
-                    } else {
-                        let param = opaque_generics.param_at(i, self.tcx);
-                        self.tcx.sess.delay_span_bug(
-                            span,
-                            &format!(
-                                "defining opaque type use does not fully define opaque type: \
-                                 generic parameter `{}` is specified as concrete {} `{}`",
-                                param.name,
-                                param.kind.descr(),
-                                arg,
-                            ),
-                        );
-                    }
-                }
-
                 if let Some((prev_span, prev_ty)) = self.found {
-                    if *concrete_type != prev_ty {
+                    if *concrete_type != prev_ty && !(*concrete_type, prev_ty).references_error() {
                         debug!(?span);
                         // Found different concrete types for the opaque type.
                         let mut err = self.tcx.sess.struct_span_err(

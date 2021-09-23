@@ -1062,11 +1062,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
 /// Here, `def_id` is the `LocalDefId` of the defining use of the opaque type (e.g., `f1` or `f2`),
 /// and `opaque_hir_id` is the `HirId` of the definition of the opaque type `Baz`.
 /// For the above example, this function returns `true` for `f1` and `false` for `f2`.
-pub fn may_define_opaque_type(
-    tcx: TyCtxt<'_>,
-    def_id: LocalDefId,
-    opaque_hir_id: hir::HirId,
-) -> bool {
+fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: LocalDefId, opaque_hir_id: hir::HirId) -> bool {
     let mut hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
     // Named opaque types can be defined by any siblings or children of siblings.

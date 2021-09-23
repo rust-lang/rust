@@ -1,5 +1,5 @@
 error: non-defining opaque type use in defining scope
-  --> $DIR/not_a_defining_use.rs:9:27
+  --> $DIR/not_a_defining_use.rs:10:27
    |
 LL | fn two<T: Debug>(t: T) -> Two<T, u32> {
    |                           ^^^^^^^^^^^
@@ -10,5 +10,30 @@ note: used non-generic type `u32` for generic parameter
 LL | type Two<T, U> = impl Debug;
    |             ^
 
-error: aborting due to previous error
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/not_a_defining_use.rs:29:1
+   |
+LL | fn four<T: Debug, U: Bar>(t: T) -> Two<T, U> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `(T, i8)`, got `(T, <U as Bar>::Blub)`
+   |
+note: previous use here
+  --> $DIR/not_a_defining_use.rs:15:1
+   |
+LL | fn three<T: Debug, U>(t: T) -> Two<T, U> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error[E0277]: `T` doesn't implement `Debug`
+  --> $DIR/not_a_defining_use.rs:7:18
+   |
+LL | type Two<T, U> = impl Debug;
+   |                  ^^^^^^^^^^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+   = note: required because of the requirements on the impl of `Debug` for `(T, i8)`
+help: consider restricting type parameter `T`
+   |
+LL | type Two<T: std::fmt::Debug, U> = impl Debug;
+   |           +++++++++++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

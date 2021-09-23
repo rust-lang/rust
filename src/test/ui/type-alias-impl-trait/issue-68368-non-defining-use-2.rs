@@ -11,4 +11,4 @@ fn f<'a>() -> Alias<'a, ()> {}
 
 fn main() {}
 
-impl Trait<()> for () {}
+impl<X> Trait<X> for () {}
