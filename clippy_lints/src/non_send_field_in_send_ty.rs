@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note};
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::ty::{implements_trait, is_copy};
 use rustc_ast::ImplPolarity;
 use rustc_hir::{Item, ItemKind};
@@ -39,17 +39,19 @@ declare_clippy_lint! {
     /// ```
     pub NON_SEND_FIELD_IN_SEND_TY,
     nursery,
-    "a field in a `Send` struct does not implement `Send`"
+    "there is field that does not implement `Send` in a `Send` struct"
 }
 
 declare_lint_pass!(NonSendFieldInSendTy => [NON_SEND_FIELD_IN_SEND_TY]);
 
 impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        let send_trait = cx.tcx.get_diagnostic_item(sym::send_trait).unwrap();
-
-        // Check if we are in `Send` impl item
+        // Checks if we are in `Send` impl item.
+        // We start from `Send` impl instead of `check_field_def()` because
+        // single `AdtDef` may have multiple `Send` impls due to generic
+        // parameters, and the lint is much easier to implement in this way.
         if_chain! {
+            if let Some(send_trait) = cx.tcx.get_diagnostic_item(sym::send_trait);
             if let ItemKind::Impl(hir_impl) = &item.kind;
             if let Some(trait_ref) = &hir_impl.of_trait;
             if let Some(trait_id) = trait_ref.trait_def_id();
@@ -63,8 +65,6 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                     for field in &variant.fields {
                         let field_ty = field.ty(cx.tcx, impl_trait_substs);
 
-                        // TODO: substs rebase_onto
-
                         if raw_pointer_in_ty_def(cx, field_ty)
                             || implements_trait(cx, field_ty, send_trait, &[])
                             || is_copy(cx, field_ty)
@@ -72,28 +72,31 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                             continue;
                         }
 
-                        if let Some(field_span) = cx.tcx.hir().span_if_local(field.did) {
-                            if is_ty_param(field_ty) {
-                                span_lint_and_help(
+                        if let Some(field_hir_id) = field
+                            .did
+                            .as_local()
+                            .map(|local_def_id| cx.tcx.hir().local_def_id_to_hir_id(local_def_id))
+                        {
+                            if let Some(field_span) = cx.tcx.hir().span_if_local(field.did) {
+                                span_lint_hir_and_then(
                                     cx,
                                     NON_SEND_FIELD_IN_SEND_TY,
+                                    field_hir_id,
                                     field_span,
-                                    "a field in a `Send` struct does not implement `Send`",
-                                    Some(item.span),
-                                    &format!("add `{}: Send` in `Send` impl for `{}`", field_ty, self_ty),
-                                )
-                            } else {
-                                span_lint_and_note(
-                                    cx,
-                                    NON_SEND_FIELD_IN_SEND_TY,
-                                    field_span,
-                                    "a field in a `Send` struct does not implement `Send`",
-                                    Some(item.span),
-                                    &format!(
-                                        "type `{}` doesn't implement `Send` when `{}` is `Send`",
-                                        field_ty, self_ty
-                                    ),
-                                )
+                                    "non-`Send` field found in a `Send` struct",
+                                    |diag| {
+                                        diag.span_note(
+                                            item.span,
+                                            &format!(
+                                                "type `{}` doesn't implement `Send` when `{}` is `Send`",
+                                                field_ty, self_ty
+                                            ),
+                                        );
+                                        if is_ty_param(field_ty) {
+                                            diag.help(&format!("add `{}: Send` bound", field_ty));
+                                        }
+                                    },
+                                );
                             }
                         }
                     }
@@ -121,6 +124,6 @@ fn raw_pointer_in_ty_def<'tcx>(cx: &LateContext<'tcx>, target_ty: Ty<'tcx>) -> b
 }
 
 /// Returns `true` if the type is a type parameter such as `T`.
-fn is_ty_param<'tcx>(target_ty: Ty<'tcx>) -> bool {
+fn is_ty_param(target_ty: Ty<'_>) -> bool {
     matches!(target_ty.kind(), ty::Param(_))
 }

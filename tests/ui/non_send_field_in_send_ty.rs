@@ -3,7 +3,7 @@
 
 use std::cell::UnsafeCell;
 use std::ptr::NonNull;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 // disrustor / RUSTSEC-2020-0150
 pub struct RingBuffer<T> {
@@ -46,6 +46,22 @@ pub struct DeviceHandle<T: UsbContext> {
 
 unsafe impl<T: UsbContext> Send for DeviceHandle<T> {}
 
+// Other basic tests
+pub struct MultiField<T> {
+    field1: T,
+    field2: T,
+    field3: T,
+}
+
+unsafe impl<T> Send for MultiField<T> {}
+
+pub enum MyOption<T> {
+    MySome(T),
+    MyNone,
+}
+
+unsafe impl<T> Send for MyOption<T> {}
+
 // Raw pointers are allowed
 extern "C" {
     type SomeFfiType;
@@ -57,7 +73,7 @@ pub struct FpTest {
 
 unsafe impl Send for FpTest {}
 
-// Check raw pointer false positive
+// Test attributes
 #[allow(clippy::non_send_field_in_send_ty)]
 pub struct AttrTest1<T>(T);
 
@@ -76,19 +92,15 @@ unsafe impl<T> Send for AttrTest1<T> {}
 unsafe impl<T> Send for AttrTest2<T> {}
 unsafe impl<T> Send for AttrTest3<T> {}
 
-pub struct MultiField<T> {
-    field1: T,
-    field2: T,
-    field3: T,
+// Multiple non-overlapping `Send` for a single type
+pub struct Complex<A, B> {
+    field1: A,
+    field2: B,
 }
 
-unsafe impl<T> Send for MultiField<T> {}
+unsafe impl<P> Send for Complex<P, u32> {}
 
-pub enum MyOption<T> {
-    MySome(T),
-    MyNone,
-}
-
-unsafe impl<T> Send for MyOption<T> {}
+// `MutexGuard` is non-Send
+unsafe impl<Q: Send> Send for Complex<Q, MutexGuard<'static, bool>> {}
 
 fn main() {}

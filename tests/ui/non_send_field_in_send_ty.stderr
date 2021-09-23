@@ -1,0 +1,142 @@
+error: non-`Send` field found in a `Send` struct
+  --> $DIR/non_send_field_in_send_ty.rs:10:5
+   |
+LL |     data: Vec<UnsafeCell<T>>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::non-send-field-in-send-ty` implied by `-D warnings`
+note: type `std::vec::Vec<std::cell::UnsafeCell<T>>` doesn't implement `Send` when `RingBuffer<T>` is `Send`
+  --> $DIR/non_send_field_in_send_ty.rs:15:1
+   |
+LL | unsafe impl<T> Send for RingBuffer<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: non-`Send` field found in a `Send` struct
+  --> $DIR/non_send_field_in_send_ty.rs:20:5
+   |
+LL |     lock: Mutex<Box<T>>,
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+note: type `std::sync::Mutex<std::boxed::Box<T>>` doesn't implement `Send` when `MvccRwLock<T>` is `Send`
+  --> $DIR/non_send_field_in_send_ty.rs:23:1
+   |
+LL | unsafe impl<T> Send for MvccRwLock<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: non-`Send` field found in a `Send` struct
+  --> $DIR/non_send_field_in_send_ty.rs:28:5
+   |
+LL |     head: Arc<RC>,
+   |     ^^^^^^^^^^^^^
+   |
+note: type `std::sync::Arc<RC>` doesn't implement `Send` when `ArcGuard<RC, T>` is `Send`
+  --> $DIR/non_send_field_in_send_ty.rs:31:1
+   |
+LL | unsafe impl<RC, T: Send> Send for ArcGuard<RC, T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: non-`Send` field found in a `Send` struct
+  --> $DIR/non_send_field_in_send_ty.rs:43:5
+   |
+LL |     context: T,
+   |     ^^^^^^^^^^
+   |
+note: type `T` doesn't implement `Send` when `DeviceHandle<T>` is `Send`
+  --> $DIR/non_send_field_in_send_ty.rs:47:1
+   |
+LL | unsafe impl<T: UsbContext> Send for DeviceHandle<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: add `T: Send` bound
+
+error: non-`Send` field found in a `Send` struct
+  --> $DIR/non_send_field_in_send_ty.rs:51:5
+   |
+LL |     field1: T,
+   |     ^^^^^^^^^
+   |
+note: type `T` doesn't implement `Send` when `MultiField<T>` is `Send`
+  --> $DIR/non_send_field_in_send_ty.rs:56:1
+   |
+LL | unsafe impl<T> Send for MultiField<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: add `T: Send` bound
+
+error: non-`Send` field found in a `Send` struct
+  --> $DIR/non_send_field_in_send_ty.rs:52:5
+   |
+LL |     field2: T,
+   |     ^^^^^^^^^
+   |
+note: type `T` doesn't implement `Send` when `MultiField<T>` is `Send`
+  --> $DIR/non_send_field_in_send_ty.rs:56:1
+   |
+LL | unsafe impl<T> Send for MultiField<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: add `T: Send` bound
+
+error: non-`Send` field found in a `Send` struct
+  --> $DIR/non_send_field_in_send_ty.rs:53:5
+   |
+LL |     field3: T,
+   |     ^^^^^^^^^
+   |
+note: type `T` doesn't implement `Send` when `MultiField<T>` is `Send`
+  --> $DIR/non_send_field_in_send_ty.rs:56:1
+   |
+LL | unsafe impl<T> Send for MultiField<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: add `T: Send` bound
+
+error: non-`Send` field found in a `Send` struct
+  --> $DIR/non_send_field_in_send_ty.rs:59:12
+   |
+LL |     MySome(T),
+   |            ^
+   |
+note: type `T` doesn't implement `Send` when `MyOption<T>` is `Send`
+  --> $DIR/non_send_field_in_send_ty.rs:63:1
+   |
+LL | unsafe impl<T> Send for MyOption<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: add `T: Send` bound
+
+error: non-`Send` field found in a `Send` struct
+  --> $DIR/non_send_field_in_send_ty.rs:88:11
+   |
+LL |     Enum2(T),
+   |           ^
+   |
+note: type `T` doesn't implement `Send` when `AttrTest3<T>` is `Send`
+  --> $DIR/non_send_field_in_send_ty.rs:93:1
+   |
+LL | unsafe impl<T> Send for AttrTest3<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: add `T: Send` bound
+
+error: non-`Send` field found in a `Send` struct
+  --> $DIR/non_send_field_in_send_ty.rs:97:5
+   |
+LL |     field1: A,
+   |     ^^^^^^^^^
+   |
+note: type `P` doesn't implement `Send` when `Complex<P, u32>` is `Send`
+  --> $DIR/non_send_field_in_send_ty.rs:101:1
+   |
+LL | unsafe impl<P> Send for Complex<P, u32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: add `P: Send` bound
+
+error: non-`Send` field found in a `Send` struct
+  --> $DIR/non_send_field_in_send_ty.rs:98:5
+   |
+LL |     field2: B,
+   |     ^^^^^^^^^
+   |
+note: type `std::sync::MutexGuard<'static, bool>` doesn't implement `Send` when `Complex<Q, std::sync::MutexGuard<'static, bool>>` is `Send`
+  --> $DIR/non_send_field_in_send_ty.rs:104:1
+   |
+LL | unsafe impl<Q: Send> Send for Complex<Q, MutexGuard<'static, bool>> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
+
