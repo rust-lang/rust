@@ -1333,10 +1333,15 @@ impl<T: Copy> From<&[T]> for Box<[T]> {
 impl<T: Copy> From<Cow<'_, [T]>> for Box<[T]> {
     /// Converts a `Cow<'_, [T]>` into a `Box<[T]>`
     ///
+<<<<<<< HEAD
     /// When `cow` is the `Cow::Borrowed` variant, this
     /// conversion allocates on the heap and performs a copy of the
     /// underlying slice. Otherwise, it will try to re-use the owned
     /// vec's allocation.
+=======
+    /// This conversion allocates on the heap
+    /// and performs a copy of `s`.
+>>>>>>> Add documentation to Box conversions
     #[inline]
     fn from(cow: Cow<'_, [T]>) -> Box<[T]> {
         match cow {
@@ -1455,7 +1460,8 @@ impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
     ///
     /// # Errors
     ///
-    /// Returns the old `Box<[T]>` in the `Err` variant if `boxed_slice.len()` does not equal `N`.
+    /// Returns the old `Box<[T]>` in the `Err` variant if 
+    /// `boxed_slice.len()` does not equal `N`.
     fn try_from(boxed_slice: Box<[T]>) -> Result<Self, Self::Error> {
         if boxed_slice.len() == N {
             Ok(unsafe { Box::from_raw(Box::into_raw(boxed_slice) as *mut [T; N]) })
