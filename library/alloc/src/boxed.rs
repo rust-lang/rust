@@ -1333,15 +1333,10 @@ impl<T: Copy> From<&[T]> for Box<[T]> {
 impl<T: Copy> From<Cow<'_, [T]>> for Box<[T]> {
     /// Converts a `Cow<'_, [T]>` into a `Box<[T]>`
     ///
-<<<<<<< HEAD
     /// When `cow` is the `Cow::Borrowed` variant, this
     /// conversion allocates on the heap and performs a copy of the
     /// underlying slice. Otherwise, it will try to re-use the owned
     /// vec's allocation.
-=======
-    /// This conversion allocates on the heap
-    /// and performs a copy of `s`.
->>>>>>> Add documentation to Box conversions
     #[inline]
     fn from(cow: Cow<'_, [T]>) -> Box<[T]> {
         match cow {
@@ -1376,10 +1371,17 @@ impl From<&str> for Box<str> {
 impl From<Cow<'_, str>> for Box<str> {
     /// Converts a `Cow<'_, str>` into a `Box<str>`
     ///
+<<<<<<< HEAD
     /// When `cow` is the `Cow::Borrowed` variant, this
     /// conversion allocates on the heap and performs a copy of the
     /// underlying `str`. Otherwise, it will try to re-use the owned
     /// `String`'s allocation.
+=======
+    /// When `cow` is the `Cow::Borrowed` variant, this 
+    /// conversion allocates on the heap and performs a the
+    /// underlying `str`. Otherwise, it re-used the owned
+    /// string.
+>>>>>>> Increase precision of doc strings
     ///
     /// # Examples
     ///
