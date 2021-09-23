@@ -23,7 +23,6 @@ use rustc_middle::ty::{self, AdtDef, ExistentialProjection, Ty, TyCtxt};
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use smallvec::SmallVec;
 
-use std::cell::RefCell;
 use std::fmt::Write;
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
@@ -34,13 +33,16 @@ pub fn compute_debuginfo_type_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     t: Ty<'tcx>,
     qualified: bool,
-    type_name_cache: &RefCell<FxHashMap<(Ty<'tcx>, bool), String>>,
+    type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), String>,
 ) -> String {
     let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
 
     let mut result = String::with_capacity(64);
     let mut visited = FxHashSet::default();
     push_debuginfo_type_name(tcx, t, qualified, &mut result, &mut visited, type_name_cache);
+    if type_name_cache.insert((t, qualified), result.clone()).is_some() {
+        bug!("type name is already in the type name cache!");
+    }
     result
 }
 
@@ -52,11 +54,11 @@ fn push_debuginfo_type_name<'tcx>(
     qualified: bool,
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
-    type_name_cache: &RefCell<FxHashMap<(Ty<'tcx>, bool), String>>,
+    type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), String>,
 ) {
     // Check if we have seen this type and qualifier before.
-    if let Some(type_name) = type_name_cache.borrow().get(&(&t, qualified)) {
-        output.push_str(&type_name.clone());
+    if let Some(type_name) = type_name_cache.get(&(t, qualified)) {
+        output.push_str(&type_name[..]);
         return;
     }
 
@@ -424,10 +426,6 @@ fn push_debuginfo_type_name<'tcx>(
         }
     }
 
-    if type_name_cache.borrow_mut().insert((&t, qualified), output.clone()).is_some() {
-        bug!("type name is already in the type name cache!");
-    }
-
     /// MSVC names enums differently than other platforms so that the debugging visualization
     // format (natvis) is able to understand enums and render the active variant correctly in the
     // debugger. For more information, look in `src/etc/natvis/intrinsic.natvis` and
@@ -439,7 +437,7 @@ fn push_debuginfo_type_name<'tcx>(
         substs: SubstsRef<'tcx>,
         output: &mut String,
         visited: &mut FxHashSet<Ty<'tcx>>,
-        type_name_cache: &RefCell<FxHashMap<(Ty<'tcx>, bool), String>>,
+        type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), String>,
     ) {
         let layout = tcx.layout_of(tcx.param_env(def.did).and(ty)).expect("layout error");
 
@@ -557,7 +555,7 @@ fn push_generic_params_internal<'tcx>(
     substs: SubstsRef<'tcx>,
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
-    type_name_cache: &RefCell<FxHashMap<(Ty<'tcx>, bool), String>>,
+    type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), String>,
 ) -> bool {
     if substs.non_erasable_generics().next().is_none() {
         return false;
@@ -644,7 +642,7 @@ pub fn push_generic_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     substs: SubstsRef<'tcx>,
     output: &mut String,
-    type_name_cache: &RefCell<FxHashMap<(Ty<'tcx>, bool), String>>,
+    type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), String>,
 ) {
     let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
     let mut visited = FxHashSet::default();
