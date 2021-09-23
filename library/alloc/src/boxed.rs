@@ -1375,12 +1375,15 @@ impl From<Cow<'_, str>> for Box<str> {
     /// # Examples
     ///
     /// ```rust
+    /// use std::borrow::Cow;
+    ///
     /// let unboxed = Cow::Borrowed("hello");
     /// let boxed: Box<str> = Box::from(unboxed);
     /// println!("{}", boxed);
     /// ```
     ///
     /// ```rust
+    /// # use std::borrow::Cow;
     /// let unboxed = Cow::Owned("hello".to_string());
     /// let boxed: Box<str> = Box::from(unboxed);
     /// println!("{}", boxed);
