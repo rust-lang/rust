@@ -799,9 +799,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn with_scope<T>(&mut self, id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
-        let id = self.r.local_def_id(id);
-        let module = self.r.module_map.get(&id).cloned(); // clones a reference
-        if let Some(module) = module {
+        if let Some(module) = self.r.get_module(self.r.local_def_id(id).to_def_id()) {
             // Move down in the graph.
             let orig_module = replace(&mut self.parent_scope.module, module);
             self.with_rib(ValueNS, ModuleRibKind(module), |this| {
@@ -1872,7 +1870,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             if this.should_report_errs() {
                 let (err, candidates) = this.smart_resolve_report_errors(path, span, source, res);
 
-                let def_id = this.parent_scope.module.nearest_parent_mod;
+                let def_id = this.parent_scope.module.nearest_parent_mod();
                 let instead = res.is_some();
                 let suggestion =
                     if res.is_none() { this.report_missing_type_error(path) } else { None };
@@ -1940,7 +1938,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             drop(parent_err);
 
-            let def_id = this.parent_scope.module.nearest_parent_mod;
+            let def_id = this.parent_scope.module.nearest_parent_mod();
 
             if this.should_report_errs() {
                 this.r.use_injections.push(UseError {

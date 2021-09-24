@@ -1,3 +1,5 @@
+// ignore-test (fails spuriously, see issue #89228)
+
 // FIXME: If two macros in the same module have the same name
 // (yes, that's a thing), rustdoc lists both of them on the index page,
 // but only documents the first one on the page for the macro.

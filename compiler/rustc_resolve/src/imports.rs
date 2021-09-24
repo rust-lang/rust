@@ -427,7 +427,7 @@ impl<'a> Resolver<'a> {
             match ident.span.glob_adjust(module.expansion, glob_import.span) {
                 Some(Some(def)) => {
                     tmp_parent_scope =
-                        ParentScope { module: self.macro_def_scope(def), ..*parent_scope };
+                        ParentScope { module: self.expn_def_scope(def), ..*parent_scope };
                     adjusted_parent_scope = &tmp_parent_scope;
                 }
                 Some(None) => {}
@@ -585,7 +585,7 @@ impl<'a> Resolver<'a> {
         for import in module.glob_importers.borrow_mut().iter() {
             let mut ident = key.ident;
             let scope = match ident.span.reverse_glob_adjust(module.expansion, import.span) {
-                Some(Some(def)) => self.macro_def_scope(def),
+                Some(Some(def)) => self.expn_def_scope(def),
                 Some(None) => import.parent_scope.module,
                 None => continue,
             };
@@ -1364,7 +1364,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             .collect::<Vec<_>>();
         for (mut key, binding) in bindings {
             let scope = match key.ident.span.reverse_glob_adjust(module.expansion, import.span) {
-                Some(Some(def)) => self.r.macro_def_scope(def),
+                Some(Some(def)) => self.r.expn_def_scope(def),
                 Some(None) => import.parent_scope.module,
                 None => continue,
             };
