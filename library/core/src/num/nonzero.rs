@@ -904,7 +904,7 @@ macro_rules! nonzero_constants_signed {
                 #[doc = concat!("The maximum value for a`", stringify!($Ty), "` is the same as `", stringify!($Int), "`")]
                 /// # Examples
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX, ", stringify!($Int), "::MAX);")]
-                pub const MAX : $Ty = $Ty::new(<$Int>::MAX).unwrap() ;
+                pub const MAX : $Ty = $Ty::new(<$Int>::MAX).unwrap();
                 #[unstable(feature = "nonzero_min_max", issue = "89065")]
                 #[doc = concat!("The minimum value for a`", stringify!($Ty), "`.")]
                 /// # Examples
