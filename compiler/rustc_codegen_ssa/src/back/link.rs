@@ -327,7 +327,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
             // metadata in rlib files is wrapped in a "dummy" object file for
             // the target platform so the rlib can be processed entirely by
             // normal linkers for the platform.
-            let metadata = create_metadata_file(sess, &codegen_results.metadata.raw_data);
+            let metadata = create_metadata_file(sess, codegen_results.metadata.raw_data());
             ab.add_file(&emit_metadata(sess, &metadata, tmpdir));
 
             // After adding all files to the archive, we need to update the

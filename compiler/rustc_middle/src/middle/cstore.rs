@@ -148,17 +148,6 @@ pub enum ExternCrateSource {
     Path,
 }
 
-#[derive(Encodable, Decodable)]
-pub struct EncodedMetadata {
-    pub raw_data: Vec<u8>,
-}
-
-impl EncodedMetadata {
-    pub fn new() -> EncodedMetadata {
-        EncodedMetadata { raw_data: Vec::new() }
-    }
-}
-
 /// The backend's way to give the crate store access to the metadata in a library.
 /// Note that it returns the raw metadata bytes stored in the library file, whether
 /// it is compressed, uncompressed, some weird mix, etc.
