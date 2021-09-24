@@ -658,7 +658,7 @@ impl<T> LinkedList<T> {
     /// Provides a reference to the front element, or `None` if the list is
     /// empty.
     ///
-    /// This operation should compute in *O*(*1*) time.
+    /// This operation should compute in *O*(1) time.
     ///
     /// # Examples
     ///
@@ -680,7 +680,7 @@ impl<T> LinkedList<T> {
     /// Provides a mutable reference to the front element, or `None` if the list
     /// is empty.
     ///
-    /// This operation should compute in *O*(*1*) time.
+    /// This operation should compute in *O*(1) time.
     ///
     /// # Examples
     ///
@@ -708,7 +708,7 @@ impl<T> LinkedList<T> {
     /// Provides a reference to the back element, or `None` if the list is
     /// empty.
     ///
-    /// This operation should compute in *O*(*1*) time.
+    /// This operation should compute in *O*(1) time.
     ///
     /// # Examples
     ///
@@ -730,7 +730,7 @@ impl<T> LinkedList<T> {
     /// Provides a mutable reference to the back element, or `None` if the list
     /// is empty.
     ///
-    /// This operation should compute in *O*(*1*) time.
+    /// This operation should compute in *O*(1) time.
     ///
     /// # Examples
     ///
