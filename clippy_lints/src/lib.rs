@@ -227,6 +227,7 @@ mod identity_op;
 mod if_let_mutex;
 mod if_let_some_result;
 mod if_not_else;
+mod if_then_panic;
 mod if_then_some_else_none;
 mod implicit_hasher;
 mod implicit_return;
@@ -659,6 +660,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         if_let_mutex::IF_LET_MUTEX,
         if_let_some_result::IF_LET_SOME_RESULT,
         if_not_else::IF_NOT_ELSE,
+        if_then_panic::IF_THEN_PANIC,
         if_then_some_else_none::IF_THEN_SOME_ELSE_NONE,
         implicit_hasher::IMPLICIT_HASHER,
         implicit_return::IMPLICIT_RETURN,
@@ -1257,6 +1259,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(identity_op::IDENTITY_OP),
         LintId::of(if_let_mutex::IF_LET_MUTEX),
         LintId::of(if_let_some_result::IF_LET_SOME_RESULT),
+        LintId::of(if_then_panic::IF_THEN_PANIC),
         LintId::of(indexing_slicing::OUT_OF_BOUNDS_INDEXING),
         LintId::of(infinite_iter::INFINITE_ITER),
         LintId::of(inherent_to_string::INHERENT_TO_STRING),
@@ -1511,6 +1514,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(functions::MUST_USE_UNIT),
         LintId::of(functions::RESULT_UNIT_ERR),
         LintId::of(if_let_some_result::IF_LET_SOME_RESULT),
+        LintId::of(if_then_panic::IF_THEN_PANIC),
         LintId::of(inherent_to_string::INHERENT_TO_STRING),
         LintId::of(len_zero::COMPARISON_TO_EMPTY),
         LintId::of(len_zero::LEN_WITHOUT_IS_EMPTY),
@@ -2138,6 +2142,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(self_named_constructors::SelfNamedConstructors));
     store.register_late_pass(move || Box::new(feature_name::FeatureName));
     store.register_late_pass(move || Box::new(iter_not_returning_iterator::IterNotReturningIterator));
+    store.register_late_pass(move || Box::new(if_then_panic::IfThenPanic));
 }
 
 #[rustfmt::skip]
