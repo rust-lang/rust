@@ -277,7 +277,7 @@ impl<'a> Parser<'a> {
                 self.struct_span_err(sp, &msg)
                     .span_suggestion_short(sp, "change this to `;`", ";".to_string(), appl)
                     .emit();
-                return Ok(false);
+                return Ok(true);
             } else if self.look_ahead(0, |t| {
                 t == &token::CloseDelim(token::Brace)
                     || (
@@ -295,7 +295,7 @@ impl<'a> Parser<'a> {
                     .span_label(self.token.span, "unexpected token")
                     .span_suggestion_short(sp, "add `;` here", ";".to_string(), appl)
                     .emit();
-                return Ok(false);
+                return Ok(true);
             }
         }
 
