@@ -2,6 +2,7 @@
 // ignore-wasm32-bare compiled with panic=abort by default
 // revisions: mir thir
 // [thir]compile-flags: -Zthir-unsafeck
+// ignore-tidy-linelength
 
 // This test checks panic emitted from `mem::{uninitialized,zeroed}`.
 
@@ -114,11 +115,11 @@ fn main() {
 
         test_panic_msg(
             || mem::uninitialized::<*const dyn Send>(),
-            "attempted to leave type `*const dyn std::marker::Send` uninitialized, which is invalid"
+            "attempted to leave type `*const dyn core::marker::Send` uninitialized, which is invalid"
         );
         test_panic_msg(
             || mem::zeroed::<*const dyn Send>(),
-            "attempted to zero-initialize type `*const dyn std::marker::Send`, which is invalid"
+            "attempted to zero-initialize type `*const dyn core::marker::Send`, which is invalid"
         );
 
         /* FIXME(#66151) we conservatively do not error here yet.
@@ -145,12 +146,12 @@ fn main() {
 
         test_panic_msg(
             || mem::uninitialized::<(NonNull<u32>, u32, u32)>(),
-            "attempted to leave type `(std::ptr::NonNull<u32>, u32, u32)` uninitialized, \
+            "attempted to leave type `(core::ptr::non_null::NonNull<u32>, u32, u32)` uninitialized, \
                 which is invalid"
         );
         test_panic_msg(
             || mem::zeroed::<(NonNull<u32>, u32, u32)>(),
-            "attempted to zero-initialize type `(std::ptr::NonNull<u32>, u32, u32)`, \
+            "attempted to zero-initialize type `(core::ptr::non_null::NonNull<u32>, u32, u32)`, \
                 which is invalid"
         );
 
@@ -187,7 +188,7 @@ fn main() {
         );
         test_panic_msg(
             || mem::uninitialized::<ManuallyDrop<LR>>(),
-            "attempted to leave type `std::mem::ManuallyDrop<LR>` uninitialized, which is invalid"
+            "attempted to leave type `core::mem::manually_drop::ManuallyDrop<LR>` uninitialized, which is invalid"
         );
 
         // Some things that should work.
