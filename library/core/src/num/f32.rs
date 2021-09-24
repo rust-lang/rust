@@ -54,8 +54,9 @@ pub const RADIX: u32 = f32::RADIX;
 )]
 pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
 
-/// Approximate number of significant digits in base 10.
-/// Use [`f32::DIGITS`] instead.
+/// A minimum number of significant digits in base 10.
+/// This value is likely incorrect for usage,
+/// as it is not the upper limit of significant digits `f32` can contain.
 ///
 /// # Examples
 ///
@@ -63,12 +64,18 @@ pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
 /// let d = std::f32::DIGITS;
-///
-/// // intended way
+/// // also deprecated
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let d = f32::DIGITS;
+///
+/// // the intended way may vary by application
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "TBD", reason = "replaced by the `DIGITS` associated constant on `f32`")]
+#[rustc_deprecated(
+    since = "TBD",
+    reason = "this value is incorrect or misleading as it actually encompasses a range"
+)]
+#[allow(deprecated, deprecated_in_future)]
 pub const DIGITS: u32 = f32::DIGITS;
 
 /// [Machine epsilon] value for `f32`.
@@ -381,8 +388,14 @@ impl f32 {
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MANTISSA_DIGITS: u32 = 24;
 
-    /// Approximate number of significant digits in base 10.
+    /// A minimum number of significant digits in base 10.
+    /// This value is likely incorrect for usage,
+    /// as it is not the upper limit of significant digits `f32` can contain.
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
+    #[rustc_deprecated(
+        since = "TBD",
+        reason = "this value is incorrect or misleading as it actually encompasses a range"
+    )]
     pub const DIGITS: u32 = 6;
 
     /// [Machine epsilon] value for `f32`.
