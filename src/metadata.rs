@@ -3,7 +3,7 @@
 use object::write::{Object, StandardSegment, Symbol, SymbolSection};
 use object::{SectionKind, SymbolFlags, SymbolKind, SymbolScope};
 
-use rustc_middle::middle::cstore::EncodedMetadata;
+use rustc_metadata::EncodedMetadata;
 use rustc_middle::ty::TyCtxt;
 
 // Adapted from https://github.com/rust-lang/rust/blob/da573206f87b5510de4b0ee1a9c044127e409bd3/src/librustc_codegen_llvm/base.rs#L47-L112
@@ -16,7 +16,7 @@ pub(crate) fn new_metadata_object(
     use std::io::Write;
 
     let mut compressed = rustc_metadata::METADATA_HEADER.to_vec();
-    FrameEncoder::new(&mut compressed).write_all(&metadata.raw_data).unwrap();
+    FrameEncoder::new(&mut compressed).write_all(metadata.raw_data()).unwrap();
 
     let triple = crate::target_triple(tcx.sess);
 
