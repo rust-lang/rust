@@ -301,6 +301,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         let mut options = member_constraint
             .choice_regions
             .iter()
+            // If any of the regions are inference vars, resolve them, as far
+            // as possible.
             .filter_map(|option| match option {
                 ty::ReVar(vid) => match var_values.value(*vid) {
                     VarValue::ErrorValue => None,
@@ -644,6 +646,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     && fr.sub_free_regions(self.tcx(), a, b)
             };
             if !choice_regions.clone().any(|choice_region| {
+                // This is really checking if the regions are equal. After member constraint
+                // resolution, one region must be equal, or a lifetime has been leaked into
+                // the hidden type, but does not appear in the corresponding impl trait.
                 sub(member_region, choice_region) && sub(choice_region, member_region)
             }) {
                 let span = self.tcx().def_span(member_constraint.opaque_type_def_id);
