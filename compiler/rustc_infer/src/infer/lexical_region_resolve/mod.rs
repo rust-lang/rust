@@ -297,13 +297,23 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // Get an iterator over the *available choice* -- that is,
         // each choice region `c` where `lb <= c` and `c <= ub` for all the
         // upper bounds `ub`.
-        debug!("enforce_member_constraint: upper_bounds={:#?}", member_upper_bounds);
-        let mut options = member_constraint.choice_regions.iter().filter(|option| {
-            self.sub_concrete_regions(member_lower_bound, option)
-                && member_upper_bounds
-                    .iter()
-                    .all(|upper_bound| self.sub_concrete_regions(option, upper_bound.region))
-        });
+        debug!("upper_bounds={:#?}", member_upper_bounds);
+        let mut options = member_constraint
+            .choice_regions
+            .iter()
+            .filter_map(|option| match option {
+                ty::ReVar(vid) => match var_values.value(*vid) {
+                    VarValue::ErrorValue => None,
+                    VarValue::Value(r) => Some(r),
+                },
+                r => Some(r),
+            })
+            .filter(|option| {
+                self.sub_concrete_regions(member_lower_bound, option)
+                    && member_upper_bounds
+                        .iter()
+                        .all(|upper_bound| self.sub_concrete_regions(option, upper_bound.region))
+            });
 
         // If there is more than one option, we only make a choice if
         // there is a single *least* choice -- i.e., some available
