@@ -26,8 +26,14 @@ mod tests {
 #[rustc_builtin_macro]
 macro_rules! include { () => {} }
 
+#[rustc_builtin_macro]
+macro_rules! compile_error { () => {} }
+
   include!("doesntexist");
 //^^^^^^^^^^^^^^^^^^^^^^^^ error: failed to load file `doesntexist`
+
+  compile_error!("compile_error macro works");
+//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: compile_error macro works
             "#,
         );
     }

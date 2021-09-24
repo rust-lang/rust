@@ -1939,17 +1939,22 @@ impl ModCollector<'_, '_> {
                     self.macro_depth + 1,
                 );
 
+                if let Some(err) = error {
+                    self.def_collector.def_map.diagnostics.push(DefDiagnostic::macro_error(
+                        self.module_id,
+                        MacroCallKind::FnLike { ast_id: ast_id.ast_id, expand_to: mac.expand_to },
+                        err.to_string(),
+                    ));
+                }
+
                 return;
             }
             Ok(Err(_)) => {
                 // Built-in macro failed eager expansion.
 
-                // FIXME: don't parse the file here
-                let macro_call = ast_id.ast_id.to_node(self.def_collector.db.upcast());
-                let expand_to = hir_expand::ExpandTo::from_call_site(&macro_call);
                 self.def_collector.def_map.diagnostics.push(DefDiagnostic::macro_error(
                     self.module_id,
-                    MacroCallKind::FnLike { ast_id: ast_id.ast_id, expand_to },
+                    MacroCallKind::FnLike { ast_id: ast_id.ast_id, expand_to: mac.expand_to },
                     error.unwrap().to_string(),
                 ));
                 return;
