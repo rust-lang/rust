@@ -733,7 +733,6 @@ fn macro_call_as_call_id(
             &|path: ast::Path| resolver(path::ModPath::from_src(db, path, &hygiene)?),
             error_sink,
         )
-        .map(MacroCallId::from)
     } else {
         Ok(def.as_lazy_macro(
             db.upcast(),
