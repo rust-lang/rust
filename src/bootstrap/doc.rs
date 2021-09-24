@@ -743,6 +743,7 @@ macro_rules! tool_doc {
                 cargo.rustdocflag("--document-private-items");
                 cargo.rustdocflag("--enable-index-page");
                 cargo.rustdocflag("--show-type-layout");
+                cargo.rustdocflag("--generate-link-to-definition");
                 cargo.rustdocflag("-Zunstable-options");
                 builder.run(&mut cargo.into());
             }
