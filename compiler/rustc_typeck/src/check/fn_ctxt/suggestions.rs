@@ -341,7 +341,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for (sp, label) in spans_and_labels {
                     multi_span.push_span_label(sp, label);
                 }
-                err.span_note(multi_span, "closures can only be coerced to `fn` types if they do not capture any variables");
+                err.span_note(
+                    multi_span,
+                    "closures can only be coerced to `fn` types if they do not capture any variables"
+                );
             }
         }
     }
