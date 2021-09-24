@@ -53,7 +53,7 @@ impl Hygiene {
     pub fn local_inner_macros(&self, db: &dyn AstDatabase, path: ast::Path) -> Option<CrateId> {
         let mut token = path.syntax().first_token()?.text_range();
         let frames = self.frames.as_ref()?;
-        let mut current = frames.0.clone();
+        let mut current = &frames.0;
 
         loop {
             let (mapped, origin) = current.expansion.as_ref()?.map_ident_up(db, token)?;
@@ -64,7 +64,7 @@ impl Hygiene {
                     None
                 };
             }
-            current = current.call_site.as_ref()?.clone();
+            current = current.call_site.as_ref()?;
             token = mapped.value;
         }
     }
