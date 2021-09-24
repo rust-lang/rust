@@ -33,10 +33,11 @@ impl<T> Steal<T> {
 
     #[track_caller]
     pub fn borrow(&self) -> MappedReadGuard<'_, T> {
-        ReadGuard::map(self.value.borrow(), |opt| match *opt {
-            None => panic!("attempted to read from stolen value"),
-            Some(ref v) => v,
-        })
+        let borrow = self.value.borrow();
+        if let None = &*borrow {
+            panic!("attempted to read from stolen value: {}", std::any::type_name::<T>());
+        }
+        ReadGuard::map(borrow, |opt| opt.as_ref().unwrap())
     }
 
     #[track_caller]
