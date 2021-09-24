@@ -129,19 +129,16 @@ pub enum TypeVariableOriginKind {
     SubstitutionPlaceholder,
     AutoDeref,
     AdjustmentType,
-    DivergingFn,
+
+    /// In type check, when we are type checking a function that
+    /// returns `-> dyn Foo`, we substitute a type variable for the
+    /// return type for diagnostic purposes.
+    DynReturnFn,
     LatticeVariable,
 }
 
 pub(crate) struct TypeVariableData {
     origin: TypeVariableOrigin,
-    diverging: Diverging,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum Diverging {
-    NotDiverging,
-    Diverges,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -191,14 +188,6 @@ impl<'tcx> TypeVariableStorage<'tcx> {
 }
 
 impl<'tcx> TypeVariableTable<'_, 'tcx> {
-    /// Returns the diverges flag given when `vid` was created.
-    ///
-    /// Note that this function does not return care whether
-    /// `vid` has been unified with something else or not.
-    pub fn var_diverges(&self, vid: ty::TyVid) -> Diverging {
-        self.storage.values.get(vid.index()).diverging
-    }
-
     /// Returns the origin that was given when `vid` was created.
     ///
     /// Note that this function does not return care whether
@@ -260,7 +249,6 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     pub fn new_var(
         &mut self,
         universe: ty::UniverseIndex,
-        diverging: Diverging,
         origin: TypeVariableOrigin,
     ) -> ty::TyVid {
         let eq_key = self.eq_relations().new_key(TypeVariableValue::Unknown { universe });
@@ -268,13 +256,10 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         let sub_key = self.sub_relations().new_key(());
         assert_eq!(eq_key.vid, sub_key);
 
-        let index = self.values().push(TypeVariableData { origin, diverging });
+        let index = self.values().push(TypeVariableData { origin });
         assert_eq!(eq_key.vid.as_u32(), index as u32);
 
-        debug!(
-            "new_var(index={:?}, universe={:?}, diverging={:?}, origin={:?}",
-            eq_key.vid, universe, diverging, origin,
-        );
+        debug!("new_var(index={:?}, universe={:?}, origin={:?}", eq_key.vid, universe, origin,);
 
         eq_key.vid
     }

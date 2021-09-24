@@ -59,6 +59,7 @@ thread_local! {
     static SHOULD_PREFIX_WITH_CRATE: Cell<bool> = const { Cell::new(false) };
     static NO_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
     static NO_QUERIES: Cell<bool> = const { Cell::new(false) };
+    static NO_VISIBLE_PATH: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Avoids running any queries during any prints that occur
@@ -105,6 +106,16 @@ pub fn with_crate_prefix<F: FnOnce() -> R, R>(f: F) -> R {
 /// if no other `Vec` is found.
 pub fn with_no_trimmed_paths<F: FnOnce() -> R, R>(f: F) -> R {
     NO_TRIMMED_PATH.with(|flag| {
+        let old = flag.replace(true);
+        let result = f();
+        flag.set(old);
+        result
+    })
+}
+
+/// Prevent selection of visible paths. `Display` impl of DefId will prefer visible (public) reexports of types as paths.
+pub fn with_no_visible_paths<F: FnOnce() -> R, R>(f: F) -> R {
+    NO_VISIBLE_PATH.with(|flag| {
         let old = flag.replace(true);
         let result = f();
         flag.set(old);
@@ -268,6 +279,10 @@ pub trait PrettyPrinter<'tcx>:
     /// from at least one local module, and returns `true`. If the crate defining `def_id` is
     /// declared with an `extern crate`, the path is guaranteed to use the `extern crate`.
     fn try_print_visible_def_path(self, def_id: DefId) -> Result<(Self, bool), Self::Error> {
+        if NO_VISIBLE_PATH.with(|flag| flag.get()) {
+            return Ok((self, false));
+        }
+
         let mut callers = Vec::new();
         self.try_print_visible_def_path_recur(def_id, &mut callers)
     }

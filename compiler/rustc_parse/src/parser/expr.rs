@@ -1568,6 +1568,20 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parse_lit(&mut self) -> PResult<'a, Lit> {
         self.parse_opt_lit().ok_or_else(|| {
+            if let token::Interpolated(inner) = &self.token.kind {
+                let expr = match inner.as_ref() {
+                    token::NtExpr(expr) => Some(expr),
+                    token::NtLiteral(expr) => Some(expr),
+                    _ => None,
+                };
+                if let Some(expr) = expr {
+                    if matches!(expr.kind, ExprKind::Err) {
+                        self.diagnostic()
+                            .delay_span_bug(self.token.span, &"invalid interpolated expression");
+                        return self.diagnostic().struct_dummy();
+                    }
+                }
+            }
             let msg = format!("unexpected token: {}", super::token_descr(&self.token));
             self.struct_span_err(self.token.span, &msg)
         })

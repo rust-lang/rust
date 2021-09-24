@@ -4,12 +4,13 @@
 // never) and an uninferred variable (here the argument to `From`) it
 // doesn't fallback to `()` but rather `!`.
 //
-// run-pass
+// revisions: nofallback fallback
+//[fallback] run-pass
+//[nofallback] check-fail
 
 #![feature(never_type)]
 
-// FIXME(#67225) -- this should be true even without the fallback gate.
-#![feature(never_type_fallback)]
+#![cfg_attr(fallback, feature(never_type_fallback))]
 
 struct E;
 
@@ -23,7 +24,7 @@ impl From<!> for E {
 #[allow(dead_code)]
 fn foo(never: !) {
     <E as From<!>>::from(never);  // Ok
-    <E as From<_>>::from(never);  // Inference fails here
+    <E as From<_>>::from(never);  //[nofallback]~ ERROR trait bound `E: From<()>` is not satisfied
 }
 
 fn main() { }
