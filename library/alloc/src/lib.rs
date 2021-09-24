@@ -136,6 +136,7 @@
 #![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(unsized_fn_params)]
+#![cfg_attr(not(no_global_oom_handling), feature(unwrap_rc_as_box))]
 #![feature(allocator_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(maybe_uninit_extra, maybe_uninit_slice, maybe_uninit_uninit_array)]

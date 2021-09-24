@@ -612,21 +612,10 @@ impl<T> Rc<T> {
     #[inline]
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn try_unwrap(this: Self) -> Result<T, Self> {
-        if Rc::strong_count(&this) == 1 {
-            unsafe {
-                let val = ptr::read(&*this); // copy the contained object
-
-                // Indicate to Weaks that they can't be promoted by decrementing
-                // the strong count, and then remove the implicit "strong weak"
-                // pointer while also handling drop logic by just crafting a
-                // fake Weak.
-                this.inner().dec_strong();
-                let _weak = Weak { ptr: this.ptr };
-                forget(this);
-                Ok(val)
-            }
-        } else {
-            Err(this)
+        let weak = Self::leak_as_owning_weak(this)?;
+        unsafe {
+            let val = ptr::read(weak.as_ptr()); // copy the contained object
+            Ok(val)
         }
     }
 }
@@ -995,6 +984,72 @@ impl<T: ?Sized> Rc<T> {
     #[stable(feature = "rc_mutate_strong_count", since = "1.53.0")]
     pub unsafe fn decrement_strong_count(ptr: *const T) {
         unsafe { mem::drop(Rc::from_raw(ptr)) };
+    }
+
+    /// Reduce the strong count, if the `Rc` has exactly one strong reference.
+    ///
+    /// Otherwise, an [`Err`] is returned with the same `Rc` that was passed in.
+    ///
+    /// This will succeed even if there are outstanding weak references.
+    ///
+    /// After this operation succeeds, no more strong references to the allocation can be created,
+    /// making the caller the owner of the contained value. This returns a `Weak` that manages the
+    /// allocation while the caller can (unsafely) take advantage of their ownership. In contrast
+    /// to `try_unwrap` this also works for unsized pointees.
+    fn leak_as_owning_weak(this: Self) -> Result<Weak<T>, Self> {
+        if Rc::strong_count(&this) == 1 {
+            // Indicate to Weaks that they can't be promoted by decrementing
+            // the strong count, and then produce the implicit "strong weak"
+            // pointer that is still handling dropping of the allocation.
+            this.inner().dec_strong();
+            let this = mem::ManuallyDrop::new(this);
+            let weak = Weak { ptr: this.ptr };
+            // Return the 'fake weak'.
+            Ok(weak)
+        } else {
+            Err(this)
+        }
+    }
+
+    /// Returns the boxed inner value, if the `Rc` has exactly one strong reference.
+    ///
+    /// Otherwise, an [`Err`] is returned with the same `Rc` that was
+    /// passed in.
+    ///
+    /// This will succeed even if there are outstanding weak references.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unwrap_rc_as_box)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let x: Rc<str> = Rc::from("Hello, world");
+    /// assert!(matches!(
+    ///     Rc::try_unwrap_as_box(x),
+    ///     Ok(b) if &b[..2] == ("He")
+    /// ));
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "unwrap_rc_as_box", reason = "recently added", issue = "none")]
+    pub fn try_unwrap_as_box(this: Self) -> Result<Box<T>, Self> {
+        let owning_weak = Self::leak_as_owning_weak(this)?;
+        let src_ptr = owning_weak.as_ptr();
+
+        unsafe {
+            // We 'own' this value right now so it is still initialized.
+            let size = mem::size_of_val(&*src_ptr);
+            // The raw allocation for our Box—after this we don't panic as otherwise we would leak
+            // this memory. We can't use MaybeUninit here as that is only valid for sized types.
+            let raw_box = Box::<T>::allocate_for_ptr(&Global, src_ptr);
+
+            // This is a new allocation so it can not overlap with the one which `owning_weak` is
+            // still holding onto.
+            ptr::copy_nonoverlapping(src_ptr as *const u8, raw_box as *mut u8, size);
+
+            Ok(Box::from_raw(raw_box))
+        }
     }
 
     /// Returns `true` if there are no other `Rc` or [`Weak`] pointers to

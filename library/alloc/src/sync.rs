@@ -617,19 +617,10 @@ impl<T> Arc<T> {
     #[inline]
     #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn try_unwrap(this: Self) -> Result<T, Self> {
-        if this.inner().strong.compare_exchange(1, 0, Relaxed, Relaxed).is_err() {
-            return Err(this);
-        }
-
-        acquire!(this.inner().strong);
+        let weak = Self::leak_as_owning_weak(this)?;
 
         unsafe {
-            let elem = ptr::read(&this.ptr.as_ref().data);
-
-            // Make a weak pointer to clean up the implicit strong-weak reference
-            let _weak = Weak { ptr: this.ptr };
-            mem::forget(this);
-
+            let elem = ptr::read(&weak.ptr.as_ref().data);
             Ok(elem)
         }
     }
@@ -1045,6 +1036,68 @@ impl<T: ?Sized> Arc<T> {
     #[stable(feature = "arc_mutate_strong_count", since = "1.51.0")]
     pub unsafe fn decrement_strong_count(ptr: *const T) {
         unsafe { mem::drop(Arc::from_raw(ptr)) };
+    }
+
+    /// Reduce the strong count, if this is the last strong reference.
+    ///
+    /// When this operation succeeds that no more strong references to the allocation can be
+    /// created, making this the owner of the contained value. This returns a `Weak` that manages
+    /// the allocation while the caller can (unsafely) take advantage of their ownership. In
+    /// contrast to `try_unwrap` this also works for unsized pointees.
+    fn leak_as_owning_weak(this: Self) -> Result<Weak<T>, Self> {
+        if this.inner().strong.compare_exchange(1, 0, Relaxed, Relaxed).is_err() {
+            return Err(this);
+        }
+
+        acquire!(this.inner().strong);
+
+        // At this point we own the pointee. We keep it alive by a Weak reference while having the
+        // caller handling ownership. This leaks the value but not the allocation, which is
+        // eventually deallocated via the returned `Weak`.
+        // The weak pointer also cleans up the implicit strong-weak reference
+        let this = mem::ManuallyDrop::new(this);
+        Ok(Weak { ptr: this.ptr })
+    }
+
+    /// Returns the boxed inner value, if the `Arc` has exactly one strong reference.
+    ///
+    /// Otherwise, an [`Err`] is returned with the same `Arc` that was
+    /// passed in.
+    ///
+    /// This will succeed even if there are outstanding weak references.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unwrap_rc_as_box)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let x: Arc<str> = Arc::from("Hello, world");
+    /// assert!(matches!(
+    ///     Arc::try_unwrap_as_box(x),
+    ///     Ok(b) if &b[..2] == ("He")
+    /// ));
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "unwrap_rc_as_box", reason = "recently added", issue = "none")]
+    pub fn try_unwrap_as_box(this: Self) -> Result<Box<T>, Self> {
+        let owning_weak = Self::leak_as_owning_weak(this)?;
+        let src_ptr = owning_weak.as_ptr();
+
+        unsafe {
+            // We 'own' this value right now so it is still initialized.
+            let size = mem::size_of_val(&*src_ptr);
+            // The raw allocation for our Box—after this we don't panic as otherwise we would leak
+            // this memory. We can't use MaybeUninit here as that is only valid for sized types.
+            let raw_box = Box::<T>::allocate_for_ptr(&Global, src_ptr);
+
+            // This is a new allocation so it can not overlap with the one which `owning_weak` is
+            // still holding onto.
+            ptr::copy_nonoverlapping(src_ptr as *const u8, raw_box as *mut u8, size);
+
+            Ok(Box::from_raw(raw_box))
+        }
     }
 
     #[inline]

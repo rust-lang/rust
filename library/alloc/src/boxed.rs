@@ -1077,6 +1077,36 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
         // additional requirements.
         unsafe { Pin::new_unchecked(boxed) }
     }
+
+    /// Allocates a box with the requested layout, which may be for a possibly-unsized value where
+    /// the layout has been determined from a value.
+    ///
+    /// The function `mem_to_imbued` is the called to turn the raw memory pointer into a pointer to
+    /// the type `T`. It's expected that this will add additional fat-pointer metadata.
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) unsafe fn allocate_for_layout(
+        allocator: &A,
+        layout: Layout,
+        mem_to_imbued: impl FnOnce(*mut u8) -> *mut T,
+    ) -> *mut T {
+        mem_to_imbued(
+            allocator.allocate(layout).unwrap_or_else(|_| handle_alloc_error(layout)).as_ptr()
+                as *mut u8,
+        )
+    }
+
+    /// Allocates a box with sufficient space for the pointee and copy the metadata.
+    #[unstable(feature = "unwrap_rc_as_box", issue = "none")]
+    #[cfg(not(no_global_oom_handling))]
+    #[doc(hidden)]
+    pub unsafe fn allocate_for_ptr(allocator: &A, ptr: *const T) -> *mut T {
+        // Allocate for the `ArcInner<T>` using the given value.
+        unsafe {
+            Self::allocate_for_layout(allocator, Layout::for_value(&*ptr), |mem| {
+                ptr.set_ptr_value(mem) as *mut T
+            })
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
