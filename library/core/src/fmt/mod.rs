@@ -1224,7 +1224,7 @@ unsafe fn getcount(args: &[ArgumentV1<'_>], cnt: &rt::v1::Count) -> Option<usize
 
 /// Padding after the end of something. Returned by `Formatter::padding`.
 #[must_use = "don't forget to write the post padding"]
-struct PostPadding {
+pub(crate) struct PostPadding {
     fill: char,
     padding: usize,
 }
@@ -1235,9 +1235,9 @@ impl PostPadding {
     }
 
     /// Write this post padding.
-    fn write(self, buf: &mut dyn Write) -> Result {
+    pub(crate) fn write(self, f: &mut Formatter<'_>) -> Result {
         for _ in 0..self.padding {
-            buf.write_char(self.fill)?;
+            f.buf.write_char(self.fill)?;
         }
         Ok(())
     }
@@ -1360,7 +1360,7 @@ impl<'a> Formatter<'a> {
                 write_prefix(self, sign, prefix)?;
                 let post_padding = self.padding(min - width, rt::v1::Alignment::Right)?;
                 self.buf.write_str(buf)?;
-                post_padding.write(self.buf)?;
+                post_padding.write(self)?;
                 self.fill = old_fill;
                 self.align = old_align;
                 Ok(())
@@ -1370,7 +1370,7 @@ impl<'a> Formatter<'a> {
                 let post_padding = self.padding(min - width, rt::v1::Alignment::Right)?;
                 write_prefix(self, sign, prefix)?;
                 self.buf.write_str(buf)?;
-                post_padding.write(self.buf)
+                post_padding.write(self)
             }
         }
     }
@@ -1445,7 +1445,7 @@ impl<'a> Formatter<'a> {
                     let align = rt::v1::Alignment::Left;
                     let post_padding = self.padding(width - chars_count, align)?;
                     self.buf.write_str(s)?;
-                    post_padding.write(self.buf)
+                    post_padding.write(self)
                 }
             }
         }
@@ -1454,7 +1454,7 @@ impl<'a> Formatter<'a> {
     /// Write the pre-padding and return the unwritten post-padding. Callers are
     /// responsible for ensuring post-padding is written after the thing that is
     /// being padded.
-    fn padding(
+    pub(crate) fn padding(
         &mut self,
         padding: usize,
         default: rt::v1::Alignment,
@@ -1509,7 +1509,7 @@ impl<'a> Formatter<'a> {
             } else {
                 let post_padding = self.padding(width - len, align)?;
                 self.write_formatted_parts(&formatted)?;
-                post_padding.write(self.buf)
+                post_padding.write(self)
             };
             self.fill = old_fill;
             self.align = old_align;

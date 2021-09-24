@@ -314,6 +314,34 @@ fn debug_formatting_precision_two() {
 }
 
 #[test]
+fn debug_formatting_padding() {
+    assert_eq!("0ns      ", format!("{:<9?}", Duration::new(0, 0)));
+    assert_eq!("      0ns", format!("{:>9?}", Duration::new(0, 0)));
+    assert_eq!("   0ns   ", format!("{:^9?}", Duration::new(0, 0)));
+    assert_eq!("123ns    ", format!("{:<9.0?}", Duration::new(0, 123)));
+    assert_eq!("    123ns", format!("{:>9.0?}", Duration::new(0, 123)));
+    assert_eq!("  123ns  ", format!("{:^9.0?}", Duration::new(0, 123)));
+    assert_eq!("123.0ns  ", format!("{:<9.1?}", Duration::new(0, 123)));
+    assert_eq!("  123.0ns", format!("{:>9.1?}", Duration::new(0, 123)));
+    assert_eq!(" 123.0ns ", format!("{:^9.1?}", Duration::new(0, 123)));
+    assert_eq!("7.1µs    ", format!("{:<9?}", Duration::new(0, 7_100)));
+    assert_eq!("    7.1µs", format!("{:>9?}", Duration::new(0, 7_100)));
+    assert_eq!("  7.1µs  ", format!("{:^9?}", Duration::new(0, 7_100)));
+    assert_eq!("999.123456ms", format!("{:<9?}", Duration::new(0, 999_123_456)));
+    assert_eq!("999.123456ms", format!("{:>9?}", Duration::new(0, 999_123_456)));
+    assert_eq!("999.123456ms", format!("{:^9?}", Duration::new(0, 999_123_456)));
+    assert_eq!("5s       ", format!("{:<9?}", Duration::new(5, 0)));
+    assert_eq!("       5s", format!("{:>9?}", Duration::new(5, 0)));
+    assert_eq!("   5s    ", format!("{:^9?}", Duration::new(5, 0)));
+    assert_eq!("5.000000000000s", format!("{:<9.12?}", Duration::new(5, 0)));
+    assert_eq!("5.000000000000s", format!("{:>9.12?}", Duration::new(5, 0)));
+    assert_eq!("5.000000000000s", format!("{:^9.12?}", Duration::new(5, 0)));
+
+    // default alignment is left:
+    assert_eq!("5s       ", format!("{:9?}", Duration::new(5, 0)));
+}
+
+#[test]
 fn debug_formatting_precision_high() {
     assert_eq!(format!("{:.5?}", Duration::new(0, 23_678)), "23.67800µs");
 

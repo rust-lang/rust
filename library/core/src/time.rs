@@ -1049,11 +1049,16 @@ impl fmt::Debug for Duration {
         /// `divisor` must not be above 100_000_000. It also should be a power
         /// of 10, everything else doesn't make sense. `fractional_part` has
         /// to be less than `10 * divisor`!
+        ///
+        /// A prefix and postfix may be added. The whole thing is padded
+        /// to the formatter's `width`, if specified.
         fn fmt_decimal(
             f: &mut fmt::Formatter<'_>,
             mut integer_part: u64,
             mut fractional_part: u32,
             mut divisor: u32,
+            prefix: &str,
+            postfix: &str,
         ) -> fmt::Result {
             // Encode the fractional part into a temporary buffer. The buffer
             // only need to hold 9 elements, because `fractional_part` has to
@@ -1114,48 +1119,91 @@ impl fmt::Debug for Duration {
             // set, we only use all digits up to the last non-zero one.
             let end = f.precision().map(|p| crate::cmp::min(p, 9)).unwrap_or(pos);
 
-            // If we haven't emitted a single fractional digit and the precision
-            // wasn't set to a non-zero value, we don't print the decimal point.
-            if end == 0 {
-                write!(f, "{}", integer_part)
-            } else {
-                // SAFETY: We are only writing ASCII digits into the buffer and it was
-                // initialized with '0's, so it contains valid UTF8.
-                let s = unsafe { crate::str::from_utf8_unchecked(&buf[..end]) };
+            // This closure emits the formatted duration without emitting any
+            // padding (padding is calculated below).
+            let emit_without_padding = |f: &mut fmt::Formatter<'_>| {
+                write!(f, "{}{}", prefix, integer_part)?;
 
-                // If the user request a precision > 9, we pad '0's at the end.
-                let w = f.precision().unwrap_or(pos);
-                write!(f, "{}.{:0<width$}", integer_part, s, width = w)
+                // Write the decimal point and the fractional part (if any).
+                if end > 0 {
+                    // SAFETY: We are only writing ASCII digits into the buffer and
+                    // it was initialized with '0's, so it contains valid UTF8.
+                    let s = unsafe { crate::str::from_utf8_unchecked(&buf[..end]) };
+
+                    // If the user request a precision > 9, we pad '0's at the end.
+                    let w = f.precision().unwrap_or(pos);
+                    write!(f, ".{:0<width$}", s, width = w)?;
+                }
+
+                write!(f, "{}", postfix)
+            };
+
+            match f.width() {
+                None => {
+                    // No `width` specified. There's no need to calculate the
+                    // length of the output in this case, just emit it.
+                    emit_without_padding(f)
+                }
+                Some(requested_w) => {
+                    // A `width` was specified. Calculate the actual width of
+                    // the output in order to calculate the required padding.
+                    // It consists of 4 parts:
+                    // 1. The prefix: is either "+" or "", so we can just use len().
+                    // 2. The postfix: can be "µs" so we have to count UTF8 characters.
+                    let mut actual_w = prefix.len() + postfix.chars().count();
+                    // 3. The integer part:
+                    if let Some(log) = integer_part.checked_log10() {
+                        // integer_part is > 0, so has length log10(x)+1
+                        actual_w += 1 + log as usize;
+                    } else {
+                        // integer_part is 0, so has length 1.
+                        actual_w += 1;
+                    }
+                    // 4. The fractional part (if any):
+                    if end > 0 {
+                        let frac_part_w = f.precision().unwrap_or(pos);
+                        actual_w += 1 + frac_part_w;
+                    }
+
+                    if requested_w <= actual_w {
+                        // Output is already longer than `width`, so don't pad.
+                        emit_without_padding(f)
+                    } else {
+                        // We need to add padding. Use the `Formatter::padding` helper function.
+                        let default_align = crate::fmt::rt::v1::Alignment::Left;
+                        let post_padding = f.padding(requested_w - actual_w, default_align)?;
+                        emit_without_padding(f)?;
+                        post_padding.write(f)
+                    }
+                }
             }
         }
 
         // Print leading '+' sign if requested
-        if f.sign_plus() {
-            write!(f, "+")?;
-        }
+        let prefix = if f.sign_plus() { "+" } else { "" };
 
         if self.secs > 0 {
-            fmt_decimal(f, self.secs, self.nanos, NANOS_PER_SEC / 10)?;
-            f.write_str("s")
+            fmt_decimal(f, self.secs, self.nanos, NANOS_PER_SEC / 10, prefix, "s")
         } else if self.nanos >= NANOS_PER_MILLI {
             fmt_decimal(
                 f,
                 (self.nanos / NANOS_PER_MILLI) as u64,
                 self.nanos % NANOS_PER_MILLI,
                 NANOS_PER_MILLI / 10,
-            )?;
-            f.write_str("ms")
+                prefix,
+                "ms",
+            )
         } else if self.nanos >= NANOS_PER_MICRO {
             fmt_decimal(
                 f,
                 (self.nanos / NANOS_PER_MICRO) as u64,
                 self.nanos % NANOS_PER_MICRO,
                 NANOS_PER_MICRO / 10,
-            )?;
-            f.write_str("µs")
+                prefix,
+                "µs",
+            )
         } else {
-            fmt_decimal(f, self.nanos as u64, 0, 1)?;
-            f.write_str("ns")
+            fmt_decimal(f, self.nanos as u64, 0, 1, prefix, "ns")
         }
     }
 }
