@@ -38,21 +38,35 @@ fn fixes(ctx: &DiagnosticsContext, file_id: FileId) -> Option<Vec<Assist>> {
 
     let source_root = ctx.sema.db.source_root(ctx.sema.db.file_source_root(file_id));
     let our_path = source_root.path_for_file(&file_id)?;
-    let (module_name, _) = our_path.name_and_extension()?;
+    let (mut module_name, _) = our_path.name_and_extension()?;
 
     // Candidates to look for:
-    // - `mod.rs` in the same folder
-    //   - we also check `main.rs` and `lib.rs`
+    // - `mod.rs`, `main.rs` and `lib.rs` in the same folder
     // - `$dir.rs` in the parent folder, where `$dir` is the directory containing `self.file_id`
     let parent = our_path.parent()?;
-    let mut paths = vec![parent.join("mod.rs")?, parent.join("lib.rs")?, parent.join("main.rs")?];
+    let paths = {
+        let temp;
+        let parent = if module_name == "mod" {
+            // for mod.rs we need to actually look up one higher
+            // and take the parent as our to be module name
+            let (name, _) = parent.name_and_extension()?;
+            module_name = name;
+            temp = parent.parent()?;
+            &temp
+        } else {
+            &parent
+        };
+        let mut paths =
+            vec![parent.join("mod.rs")?, parent.join("lib.rs")?, parent.join("main.rs")?];
 
-    // `submod/bla.rs` -> `submod.rs`
-    let parent_mod = (|| {
-        let (name, _) = parent.name_and_extension()?;
-        parent.parent()?.join(&format!("{}.rs", name))
-    })();
-    paths.extend(parent_mod);
+        // `submod/bla.rs` -> `submod.rs`
+        let parent_mod = (|| {
+            let (name, _) = parent.name_and_extension()?;
+            parent.parent()?.join(&format!("{}.rs", name))
+        })();
+        paths.extend(parent_mod);
+        paths
+    };
 
     for &parent_id in paths.iter().filter_map(|path| source_root.file_for_path(path)) {
         for &krate in ctx.sema.db.relevant_crates(parent_id).iter() {
@@ -156,6 +170,7 @@ fn make_fixes(
 
 #[cfg(test)]
 mod tests {
+
     use crate::tests::{check_diagnostics, check_fix, check_fixes, check_no_fix};
 
     #[test]
@@ -227,6 +242,34 @@ mod preexisting_bottom;)
 $0
 "#,
             r#"
+mod foo;
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_insert_in_empty_file_mod_file() {
+        check_fix(
+            r#"
+//- /main.rs
+//- /foo/mod.rs
+$0
+"#,
+            r#"
+mod foo;
+"#,
+        );
+        check_fix(
+            r#"
+//- /main.rs
+mod bar;
+//- /bar.rs
+// bar module
+//- /bar/foo/mod.rs
+$0
+"#,
+            r#"
+// bar module
 mod foo;
 "#,
         );
