@@ -427,8 +427,10 @@ enum Suffix {
     OutSuffix,
     OutNSuffix,
     OutNox,
+    In1Nox,
     OutDupNox,
     OutLaneNox,
+    In1LaneNox,
     Lane,
     In2,
     In2Lane,
@@ -909,7 +911,25 @@ fn ext(s: &str, in_t: &[&str; 3], out_t: &str) -> String {
         .replace("_EXT3_", &type_to_ext(in_t[1], false, false, false))
         .replace("_EXTr3_", &type_to_ext(in_t[1], false, true, false))
         .replace("_EXTv2_", &type_to_ext(out_t, true, false, false))
+        .replace("_EXTpi8_", &type_to_ext(in_t[1], false, false, true))
         .replace("_EXTpi82_", &type_to_ext(out_t, false, false, true))
+        .replace("_EXTpi8r_", &type_to_ext(in_t[1], false, true, true))
+}
+
+fn is_vldx(name: &str) -> bool {
+    let s: Vec<_> = name.split('_').collect();
+    s.len() == 2
+        && &name[0..3] == "vld"
+        && name[3..4].parse::<i32>().unwrap() > 1
+        && (s[1].starts_with("s") || s[1].starts_with("f"))
+}
+
+fn is_vstx(name: &str) -> bool {
+    let s: Vec<_> = name.split('_').collect();
+    s.len() == 2
+        && &name[0..3] == "vst"
+        && name[3..4].parse::<i32>().unwrap() > 1
+        && (s[1].starts_with("s") || s[1].starts_with("f"))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -964,6 +984,11 @@ fn gen_aarch64(
             current_name,
             type_to_suffix(&type_to_sub_type(out_t))
         ),
+        In1Nox => format!(
+            "{}{}",
+            current_name,
+            type_to_suffix(&type_to_sub_type(in_t[1]))
+        ),
         OutDupNox => format!(
             "{}{}",
             current_name,
@@ -973,6 +998,11 @@ fn gen_aarch64(
             "{}{}",
             current_name,
             type_to_lane_suffix(&type_to_sub_type(out_t))
+        ),
+        In1LaneNox => format!(
+            "{}{}",
+            current_name,
+            type_to_lane_suffix(&type_to_sub_type(in_t[1]))
         ),
         Lane => format!("{}{}", current_name, type_to_lane_suffixes(out_t, in_t[1])),
         In2 => format!("{}{}", current_name, type_to_suffix(in_t[2])),
@@ -1030,23 +1060,32 @@ fn gen_aarch64(
         };
         let (ext_inputs, ext_output) = {
             if const_aarch64.is_some() {
-                if matches!(fn_type, Fntype::Load) {
+                if !matches!(fn_type, Fntype::Normal) {
+                    let ptr_type = match fn_type {
+                        Fntype::Load => "*const i8",
+                        Fntype::Store => "*mut i8",
+                        _ => panic!("unsupported fn type"),
+                    };
                     let sub = type_to_sub_type(in_t[1]);
                     (
                         match type_sub_len(in_t[1]) {
-                            1 => format!("a: {}, n: i64, ptr: *const i8", sub),
-                            2 => format!("a: {}, b: {}, n: i64, ptr: *const i8", sub, sub),
+                            1 => format!("a: {}, n: i64, ptr: {}", sub, ptr_type),
+                            2 => format!("a: {}, b: {}, n: i64, ptr: {}", sub, sub, ptr_type),
                             3 => format!(
-                                "a: {}, b: {}, c: {}, n: i64, ptr: *const i8",
-                                sub, sub, sub
+                                "a: {}, b: {}, c: {}, n: i64, ptr: {}",
+                                sub, sub, sub, ptr_type
                             ),
                             4 => format!(
-                                "a: {}, b: {}, c: {}, d: {}, n: i64, ptr: *const i8",
-                                sub, sub, sub, sub
+                                "a: {}, b: {}, c: {}, d: {}, n: i64, ptr: {}",
+                                sub, sub, sub, sub, ptr_type
                             ),
                             _ => panic!("unsupported type: {}", in_t[1]),
                         },
-                        format!(" -> {}", out_t),
+                        if out_t != "void" {
+                            format!(" -> {}", out_t)
+                        } else {
+                            String::new()
+                        },
                     )
                 } else {
                     (
@@ -1061,19 +1100,23 @@ fn gen_aarch64(
                 }
             } else if matches!(fn_type, Fntype::Store) {
                 let sub = type_to_sub_type(in_t[1]);
-                let native = type_to_native_type(in_t[1]);
+                let ptr_type = if is_vstx(&name) {
+                    "i8".to_string()
+                } else {
+                    type_to_native_type(in_t[1])
+                };
+                let subs = match type_sub_len(in_t[1]) {
+                    1 => format!("a: {}", sub),
+                    2 => format!("a: {}, b: {}", sub, sub),
+                    3 => format!("a: {}, b: {}, c: {}", sub, sub, sub),
+                    4 => format!("a: {}, b: {}, c: {}, d: {}", sub, sub, sub, sub),
+                    _ => panic!("unsupported type: {}", in_t[1]),
+                };
+                (format!("{}, ptr: *mut {}", subs, ptr_type), String::new())
+            } else if is_vldx(&name) {
                 (
-                    match type_sub_len(in_t[1]) {
-                        1 => format!("a: {}, ptr: *mut {}", sub, native),
-                        2 => format!("a: {}, b: {}, ptr: *mut {}", sub, sub, native),
-                        3 => format!("a: {}, b: {}, c: {}, ptr: *mut {}", sub, sub, sub, native),
-                        4 => format!(
-                            "a: {}, b: {}, c: {}, d: {}, ptr: *mut {}",
-                            sub, sub, sub, sub, native
-                        ),
-                        _ => panic!("unsupported type: {}", in_t[1]),
-                    },
-                    String::new(),
+                    format!("ptr: *const {}", type_to_sub_type(out_t)),
+                    format!(" -> {}", out_t),
                 )
             } else {
                 (
@@ -1185,7 +1228,7 @@ fn gen_aarch64(
     };
     let call_params = {
         if let (Some(const_aarch64), Some(_)) = (const_aarch64, link_aarch64) {
-            if matches!(fn_type, Fntype::Load) {
+            if !matches!(fn_type, Fntype::Normal) {
                 let subs = match type_sub_len(in_t[1]) {
                     1 => "b",
                     2 => "b.0, b.1",
@@ -1195,7 +1238,7 @@ fn gen_aarch64(
                 };
                 format!(
                     r#"{}
-    {}{}({}, {} as i64, a as *const i8)"#,
+    {}{}({}, {} as i64, a.cast())"#,
                     multi_calls,
                     ext_c,
                     current_fn,
@@ -1217,14 +1260,17 @@ fn gen_aarch64(
                     _ => String::new(),
                 }
             }
-        } else if matches!(fn_type, Fntype::Store) {
+        } else if link_aarch64.is_some() && matches!(fn_type, Fntype::Store) {
+            let cast = if is_vstx(&name) { ".cast()" } else { "" };
             match type_sub_len(in_t[1]) {
-                1 => format!(r#"{}{}(b, a)"#, ext_c, current_fn),
-                2 => format!(r#"{}{}(b.0, b.1, a)"#, ext_c, current_fn),
-                3 => format!(r#"{}{}(b.0, b.1, b.2, a)"#, ext_c, current_fn),
-                4 => format!(r#"{}{}(b.0, b.1, b.2, b.3, a)"#, ext_c, current_fn),
+                1 => format!(r#"{}{}(b, a{})"#, ext_c, current_fn, cast),
+                2 => format!(r#"{}{}(b.0, b.1, a{})"#, ext_c, current_fn, cast),
+                3 => format!(r#"{}{}(b.0, b.1, b.2, a{})"#, ext_c, current_fn, cast),
+                4 => format!(r#"{}{}(b.0, b.1, b.2, b.3, a{})"#, ext_c, current_fn, cast),
                 _ => panic!("unsupported type: {}", in_t[1]),
             }
+        } else if link_aarch64.is_some() && is_vldx(&name) {
+            format!(r#"{}{}(a.cast())"#, ext_c, current_fn,)
         } else {
             let trans: [&str; 2] = if link_t[3] != out_t {
                 ["transmute(", ")"]
@@ -1406,7 +1452,7 @@ fn gen_store_test(
     unsafe fn test_{}() {{"#,
         name,
     );
-    for (a, _, _, _, e) in current_tests {
+    for (a, _, _, constn, e) in current_tests {
         let a: Vec<String> = a.iter().take(type_len + 1).cloned().collect();
         let e: Vec<String> = e.iter().take(type_len).cloned().collect();
         let mut input = String::from("[");
@@ -1425,12 +1471,15 @@ fn gen_store_test(
             output.push_str(&e[i])
         }
         output.push_str("]");
+        let const_n = constn
+            .as_deref()
+            .map_or(String::new(), |n| format!("::<{}>", n.to_string()));
         let t = format!(
             r#"
         let a: [{}; {}] = {};
         let e: [{}; {}] = {};
         let mut r: [{}; {}] = [0{}; {}];
-        {}(r.as_mut_ptr(), {}(a[1..].as_ptr()));
+        {}{}(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
         assert_eq!(r, e);
 "#,
             type_to_native_type(in_t[1]),
@@ -1444,7 +1493,7 @@ fn gen_store_test(
             type_to_native_type(in_t[1]),
             type_len,
             name,
-            name.replace("st", "ld"),
+            const_n,
         );
         test.push_str(&t);
     }
@@ -1613,6 +1662,11 @@ fn gen_arm(
             current_name,
             type_to_suffix(&type_to_sub_type(out_t))
         ),
+        In1Nox => format!(
+            "{}{}",
+            current_name,
+            type_to_suffix(&type_to_sub_type(in_t[1]))
+        ),
         OutDupNox => format!(
             "{}{}",
             current_name,
@@ -1622,6 +1676,11 @@ fn gen_arm(
             "{}{}",
             current_name,
             type_to_lane_suffix(&type_to_sub_type(out_t))
+        ),
+        In1LaneNox => format!(
+            "{}{}",
+            current_name,
+            type_to_lane_suffix(&type_to_sub_type(in_t[1]))
         ),
         Lane => format!("{}{}", current_name, type_to_lane_suffixes(out_t, in_t[1])),
         In2 => format!("{}{}", current_name, type_to_suffix(in_t[2])),
@@ -1752,7 +1811,12 @@ fn gen_arm(
         };
         let (arm_ext_inputs, arm_ext_output) = {
             if let Some(const_arm) = const_arm {
-                if matches!(fn_type, Fntype::Load) {
+                if !matches!(fn_type, Fntype::Normal) {
+                    let ptr_type = match fn_type {
+                        Fntype::Load => "*const i8",
+                        Fntype::Store => "*mut i8",
+                        _ => panic!("unsupported fn type"),
+                    };
                     let sub_type = type_to_sub_type(in_t[1]);
                     let inputs = match type_sub_len(in_t[1]) {
                         1 => format!("a: {}", sub_type),
@@ -1765,7 +1829,7 @@ fn gen_arm(
                         _ => panic!("unknown type: {}", in_t[1]),
                     };
                     (
-                        format!("ptr: *const i8, {}, n: i32, size: i32", inputs),
+                        format!("ptr: {}, {}, n: i32, size: i32", ptr_type, inputs),
                         String::new(),
                     )
                 } else {
@@ -1817,9 +1881,19 @@ fn gen_arm(
                     ),
                     _ => panic!("unknown type: {}", in_t[1]),
                 };
+                let (ptr_type, size) = if is_vstx(&name) {
+                    ("i8".to_string(), ", size: i32")
+                } else {
+                    (type_to_native_type(in_t[1]), "")
+                };
                 (
-                    format!("ptr: *mut {}, {}", type_to_native_type(in_t[1]), inputs),
+                    format!("ptr: *mut {}, {}{}", ptr_type, inputs, size),
                     String::new(),
+                )
+            } else if is_vldx(&name) {
+                (
+                    format!("ptr: *const i8, size: i32"),
+                    format!(" -> {}", out_t),
                 )
             } else {
                 (String::new(), String::new())
@@ -1836,7 +1910,12 @@ fn gen_arm(
         ));
         let (aarch64_ext_inputs, aarch64_ext_output) = {
             if const_aarch64.is_some() {
-                if matches!(fn_type, Fntype::Load) {
+                if !matches!(fn_type, Fntype::Normal) {
+                    let ptr_type = match fn_type {
+                        Fntype::Load => "*const i8",
+                        Fntype::Store => "*mut i8",
+                        _ => panic!("unsupported fn type"),
+                    };
                     let sub_type = type_to_sub_type(in_t[1]);
                     let mut inputs = match type_sub_len(in_t[1]) {
                         1 => format!("a: {}", sub_type,),
@@ -1848,8 +1927,13 @@ fn gen_arm(
                         ),
                         _ => panic!("unknown type: {}", in_t[1]),
                     };
-                    inputs.push_str(&format!(", n: i64, ptr: *const i8"));
-                    (inputs, format!(" -> {}", out_t))
+                    inputs.push_str(&format!(", n: i64, ptr: {}", ptr_type));
+                    let out = if out_t == "void" {
+                        String::new()
+                    } else {
+                        format!(" -> {}", out_t)
+                    };
+                    (inputs, out)
                 } else {
                     (
                         match para_num {
@@ -1886,8 +1970,18 @@ fn gen_arm(
                     ),
                     _ => panic!("unknown type: {}", in_t[1]),
                 };
-                inputs.push_str(&format!(", ptr: *mut {}", type_to_native_type(in_t[0])));
+                let ptr_type = if is_vstx(&name) {
+                    "i8".to_string()
+                } else {
+                    type_to_native_type(in_t[1])
+                };
+                inputs.push_str(&format!(", ptr: *mut {}", ptr_type));
                 (inputs, String::new())
+            } else if is_vldx(&name) {
+                (
+                    format!("ptr: *const {}", type_to_sub_type(out_t)),
+                    format!(" -> {}", out_t),
+                )
             } else {
                 (String::new(), String::new())
             }
@@ -1962,7 +2056,7 @@ fn gen_arm(
     let function = if separate {
         let call_arm = {
             let arm_params = if let (Some(const_arm), Some(_)) = (const_arm, link_arm) {
-                if matches!(fn_type, Fntype::Load) {
+                if !matches!(fn_type, Fntype::Normal) {
                     let subs = match type_sub_len(in_t[1]) {
                         1 => "b",
                         2 => "b.0, b.1",
@@ -1971,7 +2065,7 @@ fn gen_arm(
                         _ => "",
                     };
                     format!(
-                        "{}(a as *const i8, {}, {}, {})",
+                        "{}(a.cast(), {}, {}, {})",
                         current_fn,
                         subs,
                         constn.as_deref().unwrap(),
@@ -2008,13 +2102,27 @@ fn gen_arm(
                     _ => String::new(),
                 }
             } else if matches!(fn_type, Fntype::Store) {
+                let (cast, size) = if is_vstx(&name) {
+                    (
+                        ".cast()",
+                        format!(", {}", type_bits(&type_to_sub_type(in_t[1])) / 8),
+                    )
+                } else {
+                    ("", String::new())
+                };
                 match type_sub_len(in_t[1]) {
-                    1 => format!("{}(a, b)", current_fn),
-                    2 => format!("{}(a, b.0, b.1)", current_fn),
-                    3 => format!("{}(a, b.0, b.1, b.2)", current_fn),
-                    4 => format!("{}(a, b.0, b.1, b.2, b.3)", current_fn),
+                    1 => format!("{}(a{}, b{})", current_fn, cast, size),
+                    2 => format!("{}(a{}, b.0, b.1{})", current_fn, cast, size),
+                    3 => format!("{}(a{}, b.0, b.1, b.2{})", current_fn, cast, size),
+                    4 => format!("{}(a{}, b.0, b.1, b.2, b.3{})", current_fn, cast, size),
                     _ => String::new(),
                 }
+            } else if link_arm.is_some() && is_vldx(&name) {
+                format!(
+                    "{}(a as *const i8, {})",
+                    current_fn,
+                    type_bits(&type_to_sub_type(out_t)) / 8
+                )
             } else {
                 String::new()
             };
@@ -2028,7 +2136,7 @@ fn gen_arm(
         let call_aarch64 = {
             let aarch64_params =
                 if let (Some(const_aarch64), Some(_)) = (const_aarch64, link_aarch64) {
-                    if matches!(fn_type, Fntype::Load) {
+                    if !matches!(fn_type, Fntype::Normal) {
                         let subs = match type_sub_len(in_t[1]) {
                             1 => "b",
                             2 => "b.0, b.1",
@@ -2037,7 +2145,7 @@ fn gen_arm(
                             _ => "",
                         };
                         format!(
-                            "{}({}, {} as i64, a as *const i8)",
+                            "{}({}, {} as i64, a.cast())",
                             current_fn,
                             subs,
                             constn.as_deref().unwrap()
@@ -2056,13 +2164,16 @@ fn gen_arm(
                         _ => String::new(),
                     }
                 } else if matches!(fn_type, Fntype::Store) {
+                    let cast = if is_vstx(&name) { ".cast()" } else { "" };
                     match type_sub_len(in_t[1]) {
-                        1 => format!("{}(b, a)", current_fn),
-                        2 => format!("{}(b.0, b.1, a)", current_fn),
-                        3 => format!("{}(b.0, b.1, b.2, a)", current_fn),
-                        4 => format!("{}(b.0, b.1, b.2, b.3, a)", current_fn),
+                        1 => format!("{}(b, a{})", current_fn, cast),
+                        2 => format!("{}(b.0, b.1, a{})", current_fn, cast),
+                        3 => format!("{}(b.0, b.1, b.2, a{})", current_fn, cast),
+                        4 => format!("{}(b.0, b.1, b.2, b.3, a{})", current_fn, cast),
                         _ => String::new(),
                     }
+                } else if link_aarch64.is_some() && is_vldx(&name) {
+                    format!("{}(a.cast())", current_fn)
                 } else {
                     String::new()
                 };
@@ -2599,6 +2710,10 @@ fn get_call(
             fn_name.push_str(&type_to_suffix(&type_to_sub_type(&type_to_signed(
                 &String::from(out_t),
             ))));
+        } else if fn_format[1] == "in1signednox" {
+            fn_name.push_str(&type_to_suffix(&type_to_sub_type(&type_to_signed(
+                &String::from(in_t[1]),
+            ))));
         } else if fn_format[1] == "outsigneddupnox" {
             fn_name.push_str(&type_to_dup_suffix(&type_to_sub_type(&type_to_signed(
                 &String::from(out_t),
@@ -2606,6 +2721,10 @@ fn get_call(
         } else if fn_format[1] == "outsignedlanenox" {
             fn_name.push_str(&type_to_lane_suffix(&type_to_sub_type(&type_to_signed(
                 &String::from(out_t),
+            ))));
+        } else if fn_format[1] == "in1signedlanenox" {
+            fn_name.push_str(&type_to_lane_suffix(&type_to_sub_type(&type_to_signed(
+                &String::from(in_t[1]),
             ))));
         } else if fn_format[1] == "unsigned" {
             fn_name.push_str(type_to_suffix(type_to_unsigned(in_t[1])));
@@ -2672,6 +2791,8 @@ fn get_call(
             r#"let {}: {} = {}({});"#,
             re_name, re_type, fn_name, param_str
         )
+    } else if fn_name.starts_with("*") {
+        format!(r#"{} = {};"#, fn_name, param_str)
     } else {
         format!(r#"{}({})"#, fn_name, param_str)
     };
@@ -2827,10 +2948,14 @@ mod test {
             suffix = OutSuffix;
         } else if line.starts_with("out-nox") {
             suffix = OutNox;
+        } else if line.starts_with("in1-nox") {
+            suffix = In1Nox;
         } else if line.starts_with("out-dup-nox") {
             suffix = OutDupNox;
         } else if line.starts_with("out-lane-nox") {
             suffix = OutLaneNox;
+        } else if line.starts_with("in1-lane-nox") {
+            suffix = In1LaneNox;
         } else if line.starts_with("lane-suffixes") {
             suffix = Lane;
         } else if line.starts_with("in2-suffix") {

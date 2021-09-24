@@ -138,6 +138,10 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
                 // removed once it has been addressed in LLVM.
                 "fcvtzu" | "fcvtzs" | "vcvt" => 64,
 
+                // core_arch/src/arm_shared/simd32
+                // vst1q_p64_x4_nop : #instructions = 33 >= 22 (limit)
+                "nop" if fnname.contains("vst1q_p64") => 34,
+
                 // Original limit was 20 instructions, but ARM DSP Intrinsics
                 // are exactly 20 instructions long. So, bump the limit to 22
                 // instead of adding here a long list of exceptions.

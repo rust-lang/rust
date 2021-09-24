@@ -13066,7 +13066,7 @@ mod test {
         let a: [f64; 3] = [0., 1., 2.];
         let e: [f64; 2] = [1., 2.];
         let mut r: [f64; 2] = [0f64; 2];
-        vst1_f64_x2(r.as_mut_ptr(), vld1_f64_x2(a[1..].as_ptr()));
+        vst1_f64_x2(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
         assert_eq!(r, e);
     }
 
@@ -13075,7 +13075,7 @@ mod test {
         let a: [f64; 5] = [0., 1., 2., 3., 4.];
         let e: [f64; 4] = [1., 2., 3., 4.];
         let mut r: [f64; 4] = [0f64; 4];
-        vst1q_f64_x2(r.as_mut_ptr(), vld1q_f64_x2(a[1..].as_ptr()));
+        vst1q_f64_x2(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
         assert_eq!(r, e);
     }
 
@@ -13084,7 +13084,7 @@ mod test {
         let a: [f64; 4] = [0., 1., 2., 3.];
         let e: [f64; 3] = [1., 2., 3.];
         let mut r: [f64; 3] = [0f64; 3];
-        vst1_f64_x3(r.as_mut_ptr(), vld1_f64_x3(a[1..].as_ptr()));
+        vst1_f64_x3(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
         assert_eq!(r, e);
     }
 
@@ -13093,7 +13093,7 @@ mod test {
         let a: [f64; 7] = [0., 1., 2., 3., 4., 5., 6.];
         let e: [f64; 6] = [1., 2., 3., 4., 5., 6.];
         let mut r: [f64; 6] = [0f64; 6];
-        vst1q_f64_x3(r.as_mut_ptr(), vld1q_f64_x3(a[1..].as_ptr()));
+        vst1q_f64_x3(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
         assert_eq!(r, e);
     }
 
@@ -13102,7 +13102,7 @@ mod test {
         let a: [f64; 5] = [0., 1., 2., 3., 4.];
         let e: [f64; 4] = [1., 2., 3., 4.];
         let mut r: [f64; 4] = [0f64; 4];
-        vst1_f64_x4(r.as_mut_ptr(), vld1_f64_x4(a[1..].as_ptr()));
+        vst1_f64_x4(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
         assert_eq!(r, e);
     }
 
@@ -13111,7 +13111,7 @@ mod test {
         let a: [f64; 9] = [0., 1., 2., 3., 4., 5., 6., 7., 8.];
         let e: [f64; 8] = [1., 2., 3., 4., 5., 6., 7., 8.];
         let mut r: [f64; 8] = [0f64; 8];
-        vst1q_f64_x4(r.as_mut_ptr(), vld1q_f64_x4(a[1..].as_ptr()));
+        vst1q_f64_x4(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
         assert_eq!(r, e);
     }
 

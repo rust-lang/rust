@@ -339,6 +339,29 @@ unsafe fn test_vst1q_p16() {
     assert_eq!(vals[8], 8);
 }
 
+#[simd_test(enable = "neon,aes")]
+unsafe fn test_vst1_p64() {
+    let mut vals = [0_u64; 2];
+    let a = u64x1::new(1);
+
+    vst1_p64(vals[1..].as_mut_ptr(), transmute(a));
+
+    assert_eq!(vals[0], 0);
+    assert_eq!(vals[1], 1);
+}
+
+#[simd_test(enable = "neon,aes")]
+unsafe fn test_vst1q_p64() {
+    let mut vals = [0_u64; 3];
+    let a = u64x2::new(1, 2);
+
+    vst1q_p64(vals[1..].as_mut_ptr(), transmute(a));
+
+    assert_eq!(vals[0], 0);
+    assert_eq!(vals[1], 1);
+    assert_eq!(vals[2], 2);
+}
+
 #[simd_test(enable = "neon")]
 unsafe fn test_vst1_f32() {
     let mut vals = [0_f32; 3];

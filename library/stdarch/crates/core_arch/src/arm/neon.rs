@@ -480,6 +480,22 @@ pub unsafe fn vst1q_p16(ptr: *mut p16, a: poly16x8_t) {
     vst1q_v8i16(ptr as *const i8, transmute(a), align_of::<p8>() as i32)
 }
 
+/// Store multiple single-element structures from one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon,aes,v8")]
+#[cfg_attr(test, assert_instr("vst1.64"))]
+pub unsafe fn vst1_p64(ptr: *mut p64, a: poly64x1_t) {
+    vst1_v1i64(ptr as *const i8, transmute(a), align_of::<p64>() as i32)
+}
+
+/// Store multiple single-element structures from one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon,aes,v8")]
+#[cfg_attr(test, assert_instr("vst1.64"))]
+pub unsafe fn vst1q_p64(ptr: *mut p64, a: poly64x2_t) {
+    vst1q_v2i64(ptr as *const i8, transmute(a), align_of::<p64>() as i32)
+}
+
 // Store multiple single-element structures from one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon,v7")]
