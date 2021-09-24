@@ -120,7 +120,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
             cause: traits::ObligationCause::dummy(),
             param_env,
             recursion_depth: 0,
-            predicate: trait_ref.without_const().to_predicate(self.tcx),
+            predicate: ty::Binder::dummy(trait_ref).without_const().to_predicate(self.tcx),
         };
         self.evaluate_obligation(&obligation).unwrap_or(traits::EvaluationResult::EvaluatedToErr)
     }

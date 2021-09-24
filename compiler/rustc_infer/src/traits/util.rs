@@ -231,6 +231,7 @@ impl Elaborator<'tcx> {
                                 None
                             }
                         })
+                        .map(ty::Binder::dummy)
                         .map(|predicate_kind| predicate_kind.to_predicate(tcx))
                         .filter(|&predicate| visited.insert(predicate))
                         .map(|predicate| {

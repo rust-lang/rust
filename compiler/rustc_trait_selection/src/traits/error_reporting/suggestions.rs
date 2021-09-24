@@ -726,7 +726,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             let new_obligation = Obligation::new(
                 ObligationCause::dummy(),
                 param_env,
-                new_trait_ref.without_const().to_predicate(self.tcx),
+                ty::Binder::dummy(new_trait_ref).without_const().to_predicate(self.tcx),
             );
 
             if self.predicate_must_hold_modulo_regions(&new_obligation) {

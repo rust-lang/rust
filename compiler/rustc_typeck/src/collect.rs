@@ -40,7 +40,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, AdtKind, Const, DefIdTree, ToPolyTraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind, Const, DefIdTree, Ty, TyCtxt};
 use rustc_middle::ty::{ReprOptions, ToPredicate, WithConstness};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
@@ -2042,7 +2042,9 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
             match item.kind {
                 ItemKind::Impl(ref impl_) => {
                     if impl_.defaultness.is_default() {
-                        is_default_impl_trait = tcx.impl_trait_ref(def_id);
+                        is_default_impl_trait = tcx
+                            .impl_trait_ref(def_id)
+                            .map(|trait_ref| ty::Binder::dummy(trait_ref));
                     }
                     &impl_.generics
                 }
@@ -2122,10 +2124,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     // (see below). Recall that a default impl is not itself an impl, but rather a
     // set of defaults that can be incorporated into another impl.
     if let Some(trait_ref) = is_default_impl_trait {
-        predicates.insert((
-            trait_ref.to_poly_trait_ref().without_const().to_predicate(tcx),
-            tcx.def_span(def_id),
-        ));
+        predicates.insert((trait_ref.without_const().to_predicate(tcx), tcx.def_span(def_id)));
     }
 
     // Collect the region predicates that were declared inline as
@@ -2238,8 +2237,10 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                         }
                         _ => bug!(),
                     };
-                    let pred = ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(r1, r2))
-                        .to_predicate(icx.tcx);
+                    let pred = ty::Binder::dummy(ty::PredicateKind::RegionOutlives(
+                        ty::OutlivesPredicate(r1, r2),
+                    ))
+                    .to_predicate(icx.tcx);
 
                     (pred, span)
                 }))
@@ -2304,7 +2305,8 @@ fn const_evaluatable_predicates_of<'tcx>(
                 assert_eq!(uv.promoted, None);
                 let span = self.tcx.hir().span(c.hir_id);
                 self.preds.insert((
-                    ty::PredicateKind::ConstEvaluatable(uv.shrink()).to_predicate(self.tcx),
+                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(uv.shrink()))
+                        .to_predicate(self.tcx),
                     span,
                 ));
             }

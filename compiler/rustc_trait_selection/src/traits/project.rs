@@ -27,7 +27,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_span::symbol::sym;
 
 use std::collections::BTreeMap;
@@ -1028,7 +1028,7 @@ fn normalize_to_error<'a, 'tcx>(
     cause: ObligationCause<'tcx>,
     depth: usize,
 ) -> NormalizedTy<'tcx> {
-    let trait_ref = projection_ty.trait_ref(selcx.tcx()).to_poly_trait_ref();
+    let trait_ref = ty::Binder::dummy(projection_ty.trait_ref(selcx.tcx()));
     let trait_obligation = Obligation {
         cause,
         recursion_depth: depth,
@@ -1290,7 +1290,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
 
     // If we are resolving `<T as TraitRef<...>>::Item == Type`,
     // start out by selecting the predicate `T as TraitRef<...>`:
-    let poly_trait_ref = obligation.predicate.trait_ref(selcx.tcx()).to_poly_trait_ref();
+    let poly_trait_ref = ty::Binder::dummy(obligation.predicate.trait_ref(selcx.tcx()));
     let trait_obligation = obligation.with(poly_trait_ref.to_poly_trait_predicate());
     let _ = selcx.infcx().commit_if_ok(|_| {
         let impl_source = match selcx.select(&trait_obligation) {

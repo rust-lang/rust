@@ -97,11 +97,11 @@ impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
                 self.fields.obligations.push(Obligation::new(
                     self.fields.trace.cause.clone(),
                     self.fields.param_env,
-                    ty::PredicateKind::Subtype(ty::SubtypePredicate {
+                    ty::Binder::dummy(ty::PredicateKind::Subtype(ty::SubtypePredicate {
                         a_is_expected: self.a_is_expected,
                         a,
                         b,
-                    })
+                    }))
                     .to_predicate(self.tcx()),
                 ));
 

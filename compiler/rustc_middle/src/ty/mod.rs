@@ -769,12 +769,6 @@ pub trait ToPolyTraitRef<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx>;
 }
 
-impl<'tcx> ToPolyTraitRef<'tcx> for TraitRef<'tcx> {
-    fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx> {
-        ty::Binder::dummy(*self)
-    }
-}
-
 impl<'tcx> ToPolyTraitRef<'tcx> for PolyTraitPredicate<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx> {
         self.map_bound_ref(|trait_pred| trait_pred.trait_ref)
@@ -789,23 +783,6 @@ impl ToPredicate<'tcx> for Binder<'tcx, PredicateKind<'tcx>> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         tcx.mk_predicate(self)
-    }
-}
-
-impl ToPredicate<'tcx> for PredicateKind<'tcx> {
-    #[inline(always)]
-    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        tcx.mk_predicate(Binder::dummy(self))
-    }
-}
-
-impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
-    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        PredicateKind::Trait(ty::TraitPredicate {
-            trait_ref: self.value,
-            constness: self.constness,
-        })
-        .to_predicate(tcx)
     }
 }
 
