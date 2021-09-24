@@ -94,7 +94,7 @@ def test_cargo_miri_run():
                                          # so keep it set
     )
     test("`cargo miri run` (with arguments and target)",
-        cargo_miri("run") + ["--bin", "cargo-miri-test", "--", "hello world", '"hello world"'],
+        cargo_miri("run") + ["--bin", "cargo-miri-test", "--", "hello world", '"hello world"', r'he\\llo\"world'],
         "run.args.stdout.ref", "run.args.stderr.ref",
     )
     test("`cargo miri r` (subcrate, no isolation)",
