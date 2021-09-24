@@ -506,6 +506,10 @@ impl<T: Ord> BinaryHeap<T> {
     /// let vec = heap.into_sorted_vec();
     /// assert_eq!(vec, [1, 2, 3, 4, 5, 6, 7]);
     /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// The time complexity of `into_sorted_vec` on a heap containing `n` items is *O*(*n*log(*n*)).
     #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
     pub fn into_sorted_vec(mut self) -> Vec<T> {
         let mut end = self.len();
