@@ -132,7 +132,7 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
             hir::GenericBound::LangItemTrait(lang_item, span, _, generic_args) => {
                 let def_id = cx.tcx.require_lang_item(lang_item, Some(span));
 
-                let trait_ref = ty::TraitRef::identity(cx.tcx, def_id);
+                let trait_ref = ty::TraitRef::identity(cx.tcx, def_id).skip_binder();
 
                 let generic_args = generic_args.clean(cx);
                 let bindings = match generic_args {

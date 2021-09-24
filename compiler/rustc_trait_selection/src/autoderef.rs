@@ -135,7 +135,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         let obligation = traits::Obligation::new(
             cause.clone(),
             self.param_env,
-            trait_ref.without_const().to_predicate(tcx),
+            ty::Binder::dummy(trait_ref).without_const().to_predicate(tcx),
         );
         if !self.infcx.predicate_may_hold(&obligation) {
             debug!("overloaded_deref_ty: cannot match obligation");

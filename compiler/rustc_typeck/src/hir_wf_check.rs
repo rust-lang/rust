@@ -83,7 +83,8 @@ fn diagnostic_hir_wf_check<'tcx>(
                     traits::Obligation::new(
                         cause,
                         self.param_env,
-                        ty::PredicateKind::WellFormed(tcx_ty.into()).to_predicate(self.tcx),
+                        ty::Binder::dummy(ty::PredicateKind::WellFormed(tcx_ty.into()))
+                            .to_predicate(self.tcx),
                     ),
                 );
 

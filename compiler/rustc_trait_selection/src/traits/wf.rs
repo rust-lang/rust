@@ -349,7 +349,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         new_cause,
                         depth,
                         param_env,
-                        ty::PredicateKind::WellFormed(arg).to_predicate(tcx),
+                        ty::Binder::dummy(ty::PredicateKind::WellFormed(arg)).to_predicate(tcx),
                     )
                 }),
         );
@@ -399,7 +399,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         cause.clone(),
                         depth,
                         param_env,
-                        ty::PredicateKind::WellFormed(arg).to_predicate(tcx),
+                        ty::Binder::dummy(ty::PredicateKind::WellFormed(arg)).to_predicate(tcx),
                     )
                 }),
         );
@@ -416,7 +416,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 cause,
                 self.recursion_depth,
                 self.param_env,
-                trait_ref.without_const().to_predicate(self.infcx.tcx),
+                ty::Binder::dummy(trait_ref).without_const().to_predicate(self.infcx.tcx),
             ));
         }
     }
@@ -443,9 +443,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             let obligations = self.nominal_obligations(uv.def.did, substs);
                             self.out.extend(obligations);
 
-                            let predicate = ty::PredicateKind::ConstEvaluatable(
+                            let predicate = ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(
                                 ty::Unevaluated::new(uv.def, substs),
-                            )
+                            ))
                             .to_predicate(self.tcx());
                             let cause = self.cause(traits::MiscObligation);
                             self.out.push(traits::Obligation::with_depth(
@@ -469,8 +469,10 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                                     cause,
                                     self.recursion_depth,
                                     self.param_env,
-                                    ty::PredicateKind::WellFormed(resolved_constant.into())
-                                        .to_predicate(self.tcx()),
+                                    ty::Binder::dummy(ty::PredicateKind::WellFormed(
+                                        resolved_constant.into(),
+                                    ))
+                                    .to_predicate(self.tcx()),
                                 ));
                             }
                         }
@@ -556,8 +558,10 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             cause,
                             depth,
                             param_env,
-                            ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(rty, r))
-                                .to_predicate(self.tcx()),
+                            ty::Binder::dummy(ty::PredicateKind::TypeOutlives(
+                                ty::OutlivesPredicate(rty, r),
+                            ))
+                            .to_predicate(self.tcx()),
                         ));
                     }
                 }
@@ -646,7 +650,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                                 cause.clone(),
                                 depth,
                                 param_env,
-                                ty::PredicateKind::ObjectSafe(did).to_predicate(tcx),
+                                ty::Binder::dummy(ty::PredicateKind::ObjectSafe(did))
+                                    .to_predicate(tcx),
                             )
                         }));
                     }
@@ -673,7 +678,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             cause,
                             self.recursion_depth,
                             param_env,
-                            ty::PredicateKind::WellFormed(ty.into()).to_predicate(self.tcx()),
+                            ty::Binder::dummy(ty::PredicateKind::WellFormed(ty.into()))
+                                .to_predicate(self.tcx()),
                         ));
                     } else {
                         // Yes, resolved, proceed with the result.
