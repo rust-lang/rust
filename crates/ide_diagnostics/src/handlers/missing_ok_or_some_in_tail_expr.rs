@@ -185,7 +185,16 @@ static A: Option<()> = {($0)};
             r#"
 static A: Option<()> = {Some(())};
             "#,
-        )
+        );
+        check_fix(
+            r#"
+//- minicore: option, result
+const _: Option<()> = {($0)};
+            "#,
+            r#"
+const _: Option<()> = {Some(())};
+            "#,
+        );
     }
 
     #[test]
