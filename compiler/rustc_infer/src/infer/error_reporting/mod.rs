@@ -7,7 +7,7 @@
 //! inference graph arose so that we can explain to the user what gave
 //! rise to a particular error.
 //!
-//! The basis of the system are the "origin" types. An "origin" is the
+//! The system is based around a set of "origin" types. An "origin" is the
 //! reason that a constraint or inference variable arose. There are
 //! different "origin" enums for different kinds of constraints/variables
 //! (e.g., `TypeOrigin`, `RegionVariableOrigin`). An origin always has
