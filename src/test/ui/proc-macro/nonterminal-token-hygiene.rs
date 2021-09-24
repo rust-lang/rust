@@ -4,6 +4,7 @@
 // compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene
 // compile-flags: -Z trim-diagnostic-paths=no
 // normalize-stdout-test "\d+#" -> "0#"
+// normalize-stdout-test "expn\d{3,}" -> "expnNNN"
 // aux-build:test-macros.rs
 
 #![feature(decl_macro)]

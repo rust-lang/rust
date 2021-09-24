@@ -1,5 +1,5 @@
 Def site: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5)
-Input: TokenStream [Ident { ident: "$crate", span: $DIR/meta-macro-hygiene.rs:23:37: 23:43 (#4) }, Punct { ch: ':', spacing: Joint, span: $DIR/meta-macro-hygiene.rs:23:43: 23:45 (#4) }, Punct { ch: ':', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:23:43: 23:45 (#4) }, Ident { ident: "dummy", span: $DIR/meta-macro-hygiene.rs:23:45: 23:50 (#4) }, Punct { ch: '!', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:23:50: 23:51 (#4) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/meta-macro-hygiene.rs:23:51: 23:53 (#4) }]
+Input: TokenStream [Ident { ident: "$crate", span: $DIR/meta-macro-hygiene.rs:24:37: 24:43 (#4) }, Punct { ch: ':', spacing: Joint, span: $DIR/meta-macro-hygiene.rs:24:43: 24:45 (#4) }, Punct { ch: ':', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:24:43: 24:45 (#4) }, Ident { ident: "dummy", span: $DIR/meta-macro-hygiene.rs:24:45: 24:50 (#4) }, Punct { ch: '!', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:24:50: 24:51 (#4) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/meta-macro-hygiene.rs:24:51: 24:53 (#4) }]
 Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5) }, Punct { ch: ':', spacing: Joint, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5) }, Punct { ch: ':', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5) }, Ident { ident: "dummy", span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5) }, Punct { ch: '!', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5) }]
 #![feature /* 0#0 */(prelude_import)]
 // aux-build:make-macro.rs
@@ -8,6 +8,7 @@ Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro
 // compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene -Z trim-diagnostic-paths=no
 // check-pass
 // normalize-stdout-test "\d+#" -> "0#"
+// normalize-stdout-test "expn\d{3,}" -> "expnNNN"
 //
 // We don't care about symbol ids, so we set them all to 0
 // in the stdout
@@ -48,6 +49,7 @@ crate0::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt:
 crate0::{{expn2}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "produce_it")
 crate0::{{expn3}}: parent: crate0::{{expn2}}, call_site_ctxt: #4, def_site_ctxt: #0, kind: Macro(Bang, "meta_macro::print_def_site")
 crate0::{{expn4}}: parent: crate0::{{expn3}}, call_site_ctxt: #5, def_site_ctxt: #0, kind: Macro(Bang, "$crate::dummy")
+crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "include")
 crate2::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
 
 SyntaxContexts:

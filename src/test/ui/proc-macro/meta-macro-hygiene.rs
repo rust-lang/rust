@@ -4,6 +4,7 @@
 // compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene -Z trim-diagnostic-paths=no
 // check-pass
 // normalize-stdout-test "\d+#" -> "0#"
+// normalize-stdout-test "expn\d{3,}" -> "expnNNN"
 //
 // We don't care about symbol ids, so we set them all to 0
 // in the stdout

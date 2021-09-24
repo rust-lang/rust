@@ -1071,11 +1071,16 @@ impl<'a> ResolverArenas<'a> {
         expn_id: ExpnId,
         span: Span,
         no_implicit_prelude: bool,
+        module_map: &mut FxHashMap<DefId, Module<'a>>,
     ) -> Module<'a> {
         let module =
             self.modules.alloc(ModuleData::new(parent, kind, expn_id, span, no_implicit_prelude));
-        if module.def_id().map_or(true, |def_id| def_id.is_local()) {
+        let def_id = module.def_id();
+        if def_id.map_or(true, |def_id| def_id.is_local()) {
             self.local_modules.borrow_mut().push(module);
+        }
+        if let Some(def_id) = def_id {
+            module_map.insert(def_id, module);
         }
         module
     }
@@ -1276,12 +1281,14 @@ impl<'a> Resolver<'a> {
         arenas: &'a ResolverArenas<'a>,
     ) -> Resolver<'a> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
+        let mut module_map = FxHashMap::default();
         let graph_root = arenas.new_module(
             None,
             ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty),
             ExpnId::root(),
             krate.span,
             session.contains_name(&krate.attrs, sym::no_implicit_prelude),
+            &mut module_map,
         );
         let empty_module = arenas.new_module(
             None,
@@ -1289,9 +1296,8 @@ impl<'a> Resolver<'a> {
             ExpnId::root(),
             DUMMY_SP,
             true,
+            &mut FxHashMap::default(),
         );
-        let mut module_map = FxHashMap::default();
-        module_map.insert(root_def_id, graph_root);
 
         let definitions = Definitions::new(session.local_stable_crate_id(), krate.span);
         let root = definitions.get_root_def();
@@ -1432,6 +1438,18 @@ impl<'a> Resolver<'a> {
         resolver.invocation_parent_scopes.insert(LocalExpnId::ROOT, root_parent_scope);
 
         resolver
+    }
+
+    fn new_module(
+        &mut self,
+        parent: Option<Module<'a>>,
+        kind: ModuleKind,
+        expn_id: ExpnId,
+        span: Span,
+        no_implicit_prelude: bool,
+    ) -> Module<'a> {
+        let module_map = &mut self.module_map;
+        self.arenas.new_module(parent, kind, expn_id, span, no_implicit_prelude, module_map)
     }
 
     fn create_stable_hashing_context(&self) -> ExpandHasher<'_, 'a> {

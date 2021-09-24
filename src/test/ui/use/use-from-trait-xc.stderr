@@ -38,7 +38,7 @@ error[E0432]: unresolved import `use_from_trait_xc::Baz::new`
   --> $DIR/use-from-trait-xc.rs:23:5
    |
 LL | use use_from_trait_xc::Baz::new as baznew;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `new` in `Baz`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `new` in `sub::Baz`
 
 error[E0603]: struct `Foo` is private
   --> $DIR/use-from-trait-xc.rs:14:24
