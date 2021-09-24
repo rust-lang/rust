@@ -14,19 +14,6 @@ use rustc_span::Span;
 
 use std::ops::ControlFlow;
 
-/// Whether member constraints should be generated for all opaque types
-#[derive(Debug)]
-pub enum GenerateMemberConstraints {
-    /// The default, used by typeck
-    WhenRequired,
-    /// The borrow checker needs member constraints in any case where we don't
-    /// have a `'static` bound. This is because the borrow checker has more
-    /// flexibility in the values of regions. For example, given `f<'a, 'b>`
-    /// the borrow checker can have an inference variable outlive `'a` and `'b`,
-    /// but not be equal to `'static`.
-    IfNoStaticBound,
-}
-
 pub trait InferCtxtExt<'tcx> {
     fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
         &self,
