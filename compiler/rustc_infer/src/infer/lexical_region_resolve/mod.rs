@@ -637,7 +637,15 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 .choice_regions
                 .iter()
                 .map(|&choice_region| var_data.normalize(self.tcx(), choice_region));
-            if !choice_regions.clone().any(|choice_region| member_region == choice_region) {
+            let fr = &self.region_rels.free_regions;
+            let sub = |a, b| {
+                fr.is_free_or_static(a)
+                    && fr.is_free_or_static(b)
+                    && fr.sub_free_regions(self.tcx(), a, b)
+            };
+            if !choice_regions.clone().any(|choice_region| {
+                sub(member_region, choice_region) && sub(choice_region, member_region)
+            }) {
                 let span = self.tcx().def_span(member_constraint.opaque_type_def_id);
                 errors.push(RegionResolutionError::MemberConstraintFailure {
                     span,
