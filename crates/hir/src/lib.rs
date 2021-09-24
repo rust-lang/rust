@@ -673,7 +673,12 @@ impl Module {
 
     pub fn declarations(self, db: &dyn HirDatabase) -> Vec<ModuleDef> {
         let def_map = self.id.def_map(db.upcast());
-        def_map[self.id.local_id].scope.declarations().map(ModuleDef::from).collect()
+        let scope = &def_map[self.id.local_id].scope;
+        scope
+            .declarations()
+            .map(ModuleDef::from)
+            .chain(scope.unnamed_consts().map(|id| ModuleDef::Const(Const::from(id))))
+            .collect()
     }
 
     pub fn impl_defs(self, db: &dyn HirDatabase) -> Vec<Impl> {
