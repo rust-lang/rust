@@ -246,12 +246,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if borrow {
                     // Check for &self vs &mut self in the method signature. Since this is either
                     // the Fn or FnMut trait, it should be one of those.
-                    let (region, mutbl) =
-                        if let ty::Ref(r, _, mutbl) = method.sig.inputs()[0].kind() {
-                            (r, mutbl)
-                        } else {
-                            span_bug!(call_expr.span, "input to call/call_mut is not a ref?");
-                        };
+                    let (region, mutbl) = if let ty::Ref(r, _, mutbl) =
+                        method.sig.inputs()[0].kind()
+                    {
+                        (r, mutbl)
+                    } else {
+                        // The `fn`/`fn_mut` lang item is ill-formed, which should have
+                        // caused an error elsewhere.
+                        self.tcx
+                            .sess
+                            .delay_span_bug(call_expr.span, "input to call/call_mut is not a ref?");
+                        return None;
+                    };
 
                     let mutbl = match mutbl {
                         hir::Mutability::Not => AutoBorrowMutability::Not,

@@ -200,6 +200,59 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     };
     check_object_unsafe_self_trait_by_name(tcx, &trait_item);
     check_associated_item(tcx, trait_item.hir_id(), span, method_sig);
+
+    let encl_trait_hir_id = tcx.hir().get_parent_item(hir_id);
+    let encl_trait = tcx.hir().expect_item(encl_trait_hir_id);
+    let encl_trait_def_id = encl_trait.def_id.to_def_id();
+    let fn_lang_item_name = if Some(encl_trait_def_id) == tcx.lang_items().fn_trait() {
+        Some("fn")
+    } else if Some(encl_trait_def_id) == tcx.lang_items().fn_mut_trait() {
+        Some("fn_mut")
+    } else {
+        None
+    };
+
+    if let (Some(fn_lang_item_name), "call") =
+        (fn_lang_item_name, trait_item.ident.name.to_ident_string().as_str())
+    {
+        // We are looking at the `call` function of the `fn` or `fn_mut` lang item.
+        // Do some rudimentary sanity checking to avoid an ICE later (issue #83471).
+        if let Some(hir::FnSig { decl, span, .. }) = method_sig {
+            if let &[self_ty, _] = &decl.inputs {
+                if !matches!(self_ty.kind, hir::TyKind::Rptr(_, _)) {
+                    tcx.sess
+                        .struct_span_err(
+                            self_ty.span,
+                            &format!(
+                                "first argument of `call` in `{}` lang item must be a reference",
+                                fn_lang_item_name
+                            ),
+                        )
+                        .emit();
+                }
+            } else {
+                tcx.sess
+                    .struct_span_err(
+                        *span,
+                        &format!(
+                            "`call` function in `{}` lang item takes exactly two arguments",
+                            fn_lang_item_name
+                        ),
+                    )
+                    .emit();
+            }
+        } else {
+            tcx.sess
+                .struct_span_err(
+                    trait_item.span,
+                    &format!(
+                        "`call` trait item in `{}` lang item must be a function",
+                        fn_lang_item_name
+                    ),
+                )
+                .emit();
+        }
+    }
 }
 
 fn could_be_self(trait_def_id: LocalDefId, ty: &hir::Ty<'_>) -> bool {

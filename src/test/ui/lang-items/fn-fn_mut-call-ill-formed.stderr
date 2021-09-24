@@ -1,0 +1,14 @@
+error: `call` trait item in `fn` lang item must be a function
+  --> $DIR/fn-fn_mut-call-ill-formed.rs:10:5
+   |
+LL |     const call: i32 = 42;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: first argument of `call` in `fn_mut` lang item must be a reference
+  --> $DIR/fn-fn_mut-call-ill-formed.rs:16:16
+   |
+LL |     fn call(i: i32, j: i32) -> i32 { i + j }
+   |                ^^^
+
+error: aborting due to 2 previous errors
+
