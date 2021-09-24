@@ -94,5 +94,5 @@ fn test_three() {
 fn main() {
     test_one();
     test_two();
-    test_three(); 
+    test_three();
 }

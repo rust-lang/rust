@@ -23,6 +23,6 @@ fn main() {
     let a = A { x: Dropable(format!("x")), y: Dropable(format!("y")) };
 
     let c = move || println!("{:?} {:?}", a.y, a.x);
-    
+
     c();
 }

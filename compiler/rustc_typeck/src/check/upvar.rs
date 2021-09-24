@@ -617,6 +617,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for (_, captures) in &mut root_var_min_capture_list {
             captures.sort_by(|capture1, capture2| {
                 for (p1, p2) in capture1.place.projections.iter().zip(&capture2.place.projections) {
+                    // We do not need to look at the `Projection.ty` fields here because at each
+                    // step of the iteration, the projections will either be the same and therefore
+                    // the types must be as well or the current projection will be different and
+                    // we will return the result of comparing the field indexes.
                     match (p1.kind, p2.kind) {
                         // Paths are the same, continue to next loop.
                         (ProjectionKind::Deref, ProjectionKind::Deref) => {}
@@ -628,7 +632,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             return i1.cmp(&i2);
                         }
 
-                        (l, r) => bug!("ProjectionKinds were different: ({:?}, {:?})", l, r),
+                        // We should have either a pair of `Deref`s or a pair of `Field`s.
+                        // Anything else is a bug.
+                        (
+                            l @ (ProjectionKind::Deref | ProjectionKind::Field(..)),
+                            r @ (ProjectionKind::Deref | ProjectionKind::Field(..)),
+                        ) => bug!(
+                            "ProjectionKinds Deref and Field were mismatched: ({:?}, {:?})",
+                            l,
+                            r
+                        ),
+                        (
+                            l
+                            @
+                            (ProjectionKind::Index
+                            | ProjectionKind::Subslice
+                            | ProjectionKind::Deref
+                            | ProjectionKind::Field(..)),
+                            r
+                            @
+                            (ProjectionKind::Index
+                            | ProjectionKind::Subslice
+                            | ProjectionKind::Deref
+                            | ProjectionKind::Field(..)),
+                        ) => bug!(
+                            "ProjectionKinds Index or Subslice were unexpected: ({:?}, {:?})",
+                            l,
+                            r
+                        ),
                     }
                 }
 
