@@ -7,6 +7,7 @@ use std::{
     process::{self, Stdio},
 };
 
+use anyhow::Context;
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, FileId, FilePosition, FileRange,
     HoverAction, HoverGotoTypeData, Query, RangeInfo, Runnable, RunnableKind, SingleResolve,
@@ -1696,8 +1697,12 @@ fn run_rustfmt(
         }
     };
 
-    let mut rustfmt =
-        rustfmt.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
+    let mut rustfmt = rustfmt
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .context(format!("Failed to spawn {:?}", rustfmt))?;
 
     rustfmt.stdin.as_mut().unwrap().write_all(file.as_bytes())?;
 
