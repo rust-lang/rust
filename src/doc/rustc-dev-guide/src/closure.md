@@ -162,7 +162,7 @@ The other option is to step through the code using lldb or gdb.
 
 Let's start with [`upvar.rs`][upvar]. This file has something called
 the [`euv::ExprUseVisitor`] which walks the source of the closure and
-invokes a callbackfor each upvar that is borrowed, mutated, or moved.
+invokes a callback for each upvar that is borrowed, mutated, or moved.
 
 [`euv::ExprUseVisitor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/expr_use_visitor/struct.ExprUseVisitor.html
 
