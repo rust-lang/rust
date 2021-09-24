@@ -37,13 +37,13 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
     }
 }
 
-fn get_std_collection(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<String> {
+fn get_std_collection(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<&'static str> {
     if is_ty_param_diagnostic_item(cx, qpath, sym::vec_type).is_some() {
-        Some(String::from("Vec"))
+        Some("Vec")
     } else if is_ty_param_diagnostic_item(cx, qpath, sym::string_type).is_some() {
-        Some(String::from("String"))
+        Some("String")
     } else if is_ty_param_diagnostic_item(cx, qpath, sym::hashmap_type).is_some() {
-        Some(String::from("HashMap"))
+        Some("HashMap")
     } else {
         None
     }
