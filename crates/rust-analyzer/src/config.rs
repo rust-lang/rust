@@ -53,7 +53,7 @@ config_data! {
         assist_importEnforceGranularity: bool              = "false",
         /// The path structure for newly inserted paths to use.
         assist_importPrefix: ImportPrefixDef               = "\"plain\"",
-        /// Group inserted imports by the [following order](https://rust-analyzer.github.io/manual.html#auto-import). Groups are separated by newlines.
+        /// Group inserted imports by the https://rust-analyzer.github.io/manual.html#auto-import[following order]. Groups are separated by newlines.
         assist_importGroup: bool                           = "true",
         /// Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
         assist_allowMergingIntoGlobImports: bool           = "true",
