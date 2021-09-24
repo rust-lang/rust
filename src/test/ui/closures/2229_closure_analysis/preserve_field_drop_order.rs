@@ -3,6 +3,9 @@
 // Tests that in cases where we individually capture all the fields of a type,
 // we still drop them in the order they would have been dropped in the 2018 edition.
 
+// NOTE: It is *critical* that the order of the min capture NOTES in the stderr output
+//       does *not* change!
+
 #![feature(rustc_attrs)]
 
 #[derive(Debug)]
@@ -21,21 +24,21 @@ fn test_one() {
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     || {
-        //~^ ERROR: First Pass analysis includes:
-        //~| ERROR: Min Capture analysis includes:
+        //~^ ERROR: Min Capture analysis includes:
+        //~| ERROR
         println!("{:?}", a.0);
-        //~^ NOTE: Capturing a[(0, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture a[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture a[(0, 0)] -> ImmBorrow
+        //~| NOTE
         println!("{:?}", a.1);
-        //~^ NOTE: Capturing a[(1, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture a[(1, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture a[(1, 0)] -> ImmBorrow
+        //~| NOTE
 
         println!("{:?}", b.0);
-        //~^ NOTE: Capturing b[(0, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture b[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture b[(0, 0)] -> ImmBorrow
+        //~| NOTE
         println!("{:?}", b.1);
-        //~^ NOTE: Capturing b[(1, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture b[(1, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture b[(1, 0)] -> ImmBorrow
+        //~| NOTE
     };
 }
 
@@ -47,21 +50,21 @@ fn test_two() {
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     || {
-        //~^ ERROR: First Pass analysis includes:
-        //~| ERROR: Min Capture analysis includes:
+        //~^ ERROR: Min Capture analysis includes:
+        //~| ERROR
         println!("{:?}", a.1);
-        //~^ NOTE: Capturing a[(1, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture a[(1, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture a[(1, 0)] -> ImmBorrow
+        //~| NOTE
         println!("{:?}", a.0);
-        //~^ NOTE: Capturing a[(0, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture a[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture a[(0, 0)] -> ImmBorrow
+        //~| NOTE
 
         println!("{:?}", b.1);
-        //~^ NOTE: Capturing b[(1, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture b[(1, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture b[(1, 0)] -> ImmBorrow
+        //~| NOTE
         println!("{:?}", b.0);
-        //~^ NOTE: Capturing b[(0, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture b[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture b[(0, 0)] -> ImmBorrow
+        //~| NOTE
     };
 }
 
@@ -73,21 +76,21 @@ fn test_three() {
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     || {
-        //~^ ERROR: First Pass analysis includes:
-        //~| ERROR: Min Capture analysis includes:
+        //~^ ERROR: Min Capture analysis includes:
+        //~| ERROR
         println!("{:?}", b.1);
-        //~^ NOTE: Capturing b[(1, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture b[(1, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture b[(1, 0)] -> ImmBorrow
+        //~| NOTE
         println!("{:?}", a.1);
-        //~^ NOTE: Capturing a[(1, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture a[(1, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture a[(1, 0)] -> ImmBorrow
+        //~| NOTE
         println!("{:?}", a.0);
-        //~^ NOTE: Capturing a[(0, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture a[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture a[(0, 0)] -> ImmBorrow
+        //~| NOTE
 
         println!("{:?}", b.0);
-        //~^ NOTE: Capturing b[(0, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture b[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture b[(0, 0)] -> ImmBorrow
+        //~| NOTE
     };
 }
 
