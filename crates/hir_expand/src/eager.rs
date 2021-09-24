@@ -204,8 +204,13 @@ fn eager_macro_recur(
 
     // Collect replacement
     for child in children {
-        let def = diagnostic_sink
-            .option_with(|| macro_resolver(child.path()?), || err("failed to resolve macro"))?;
+        let def = diagnostic_sink.option_with(
+            || macro_resolver(child.path()?),
+            || {
+                let path = child.path().map(|path| format!(" `{}!`", path)).unwrap_or_default();
+                err(format!("failed to resolve macro{}", path))
+            },
+        )?;
         let insert = match def.kind {
             MacroDefKind::BuiltInEager(..) => {
                 let id = expand_eager_macro(
