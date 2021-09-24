@@ -3,20 +3,5 @@ warning: unknown feature specified for `-Ctarget-feature`: `rdrnd`
    = note: it is still passed through to the codegen backend
    = help: you might have meant: `rdrand`
 
-warning: unknown feature specified for `-Ctarget-feature`: `rdrnd`
-   |
-   = note: it is still passed through to the codegen backend
-   = help: did you mean: `rdrand`
-
-warning: unknown feature specified for `-Ctarget-feature`: `rdrnd`
-   |
-   = note: it is still passed through to the codegen backend
-   = help: did you mean: `rdrand`
-
-warning: unknown feature specified for `-Ctarget-feature`: `rdrnd`
-   |
-   = note: it is still passed through to the codegen backend
-   = help: did you mean: `rdrand`
-
-warning: 4 warnings emitted
+warning: 1 warning emitted
 
