@@ -28,13 +28,13 @@ use std::fmt;
 /// iteration to find region values which satisfy all constraints,
 /// assuming such values can be found. It returns the final values of
 /// all the variables as well as a set of errors that must be reported.
+#[instrument(level = "debug", skip(region_rels, var_infos, data))]
 pub fn resolve<'tcx>(
     region_rels: &RegionRelations<'_, 'tcx>,
     var_infos: VarInfos,
     data: RegionConstraintData<'tcx>,
     mode: RegionckMode,
 ) -> (LexicalRegionResolutions<'tcx>, Vec<RegionResolutionError<'tcx>>) {
-    debug!("RegionConstraintData: resolve_regions()");
     let mut errors = vec![];
     let mut resolver = LexicalResolver { region_rels, var_infos, data };
     match mode {
@@ -266,13 +266,14 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     ///
     /// From that list, we look for a *minimal* option `'c_min`. If we
     /// find one, then we can enforce that `'r: 'c_min`.
+    #[instrument(level = "debug", skip(self, graph, member_constraint, var_values))]
     fn enforce_member_constraint(
         &self,
         graph: &RegionGraph<'tcx>,
         member_constraint: &MemberConstraint<'tcx>,
         var_values: &mut LexicalRegionResolutions<'tcx>,
     ) -> bool {
-        debug!("enforce_member_constraint(member_constraint={:#?})", member_constraint);
+        debug!("member_constraint={:#?}", member_constraint);
 
         // The constraint is some inference variable (`vid`) which
         // must be equal to one of the options.
@@ -311,15 +312,15 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             Some(&r) => r,
             None => return false,
         };
-        debug!("enforce_member_constraint: least_choice={:?}", least_choice);
+        debug!(?least_choice);
         for &option in options {
-            debug!("enforce_member_constraint: option={:?}", option);
+            debug!(?option);
             if !self.sub_concrete_regions(least_choice, option) {
                 if self.sub_concrete_regions(option, least_choice) {
-                    debug!("enforce_member_constraint: new least choice");
+                    debug!("new least choice");
                     least_choice = option;
                 } else {
-                    debug!("enforce_member_constraint: no least choice");
+                    debug!("no least choice");
                     return false;
                 }
             }
@@ -461,6 +462,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     }
 
     /// True if `a <= b`, but not defined over inference variables.
+    #[instrument(level = "trace", skip(self))]
     fn sub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> bool {
         let tcx = self.tcx();
         let sub_free_regions = |r1, r2| self.region_rels.free_regions.sub_free_regions(tcx, r1, r2);
@@ -492,6 +494,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     ///
     /// Neither `a` nor `b` may be an inference variable (hence the
     /// term "concrete regions").
+    #[instrument(level = "trace", skip(self))]
     fn lub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> Region<'tcx> {
         let r = match (a, b) {
             (&ReLateBound(..), _) | (_, &ReLateBound(..)) | (&ReErased, _) | (_, &ReErased) => {
@@ -562,13 +565,14 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     /// After expansion is complete, go and check upper bounds (i.e.,
     /// cases where the region cannot grow larger than a fixed point)
     /// and check that they are satisfied.
+    #[instrument(skip(self, var_data, errors))]
     fn collect_errors(
         &self,
         var_data: &mut LexicalRegionResolutions<'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
     ) {
         for (constraint, origin) in &self.data.constraints {
-            debug!("collect_errors: constraint={:?} origin={:?}", constraint, origin);
+            debug!(?constraint, ?origin);
             match *constraint {
                 Constraint::RegSubVar(..) | Constraint::VarSubVar(..) => {
                     // Expansion will ensure that these constraints hold. Ignore.
@@ -580,7 +584,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     }
 
                     debug!(
-                        "collect_errors: region error at {:?}: \
+                        "region error at {:?}: \
                          cannot verify that {:?} <= {:?}",
                         origin, sub, sup
                     );
@@ -606,7 +610,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // collect them later.
                     if !self.sub_concrete_regions(a_region, b_region) {
                         debug!(
-                            "collect_errors: region error at {:?}: \
+                            "region error at {:?}: \
                             cannot verify that {:?}={:?} <= {:?}",
                             origin, a_vid, a_region, b_region
                         );
