@@ -282,6 +282,8 @@ fn check_todo(path: &Path, text: &str) {
         "ide_db/src/helpers/generated_lints.rs",
         "ide_assists/src/utils/gen_trait_fn_body.rs",
         "ide_assists/src/tests/generated.rs",
+        // The tests for missing fields
+        "ide_diagnostics/src/handlers/missing_fields.rs",
     ];
     if need_todo.iter().any(|p| path.ends_with(p)) {
         return;
