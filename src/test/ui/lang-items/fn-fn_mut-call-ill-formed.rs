@@ -8,13 +8,13 @@
 #[lang = "fn"]
 trait MyFn<T> {
     const call: i32 = 42;
-    //~^ ERROR: `call` trait item in `fn`/`fn_mut` lang item must be a function
+    //~^ ERROR: `call` trait item in `fn` lang item must be a function
 }
 
 #[lang = "fn_mut"]
 trait MyFnMut<T> {
     fn call(i: i32, j: i32) -> i32 { i + j }
-    //~^ ERROR: first argument of `call` in `fn`/`fn_mut` lang item must be a reference
+    //~^ ERROR: first argument of `call` in `fn_mut` lang item must be a reference
 }
 
 fn main() {
