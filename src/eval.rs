@@ -443,8 +443,8 @@ mod tests {
     fn windows_argv0_no_escape() {
         // Ensure that a trailing backslash in argv[0] is not escaped.
         let cmd = String::from_utf16_lossy(&args_to_utf16_command_string(
-            [r"C:\Program Files\", "arg1"].iter(),
+            [r"C:\Program Files\", "arg1", "arg 2", "arg \" 3"].iter(),
         ));
-        assert_eq!(cmd.trim_end_matches("\0"), r#""C:\Program Files\" arg1"#);
+        assert_eq!(cmd.trim_end_matches("\0"), r#""C:\Program Files\" arg1 "arg 2" "arg \" 3""#);
     }
 }
