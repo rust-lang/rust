@@ -1,0 +1,10 @@
+error: couldn't read the file
+  --> $DIR/extented-attribute-macro-error.rs:4:10
+   |
+LL | #![doc = include_str!("../not_existing_file.md")]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `include_str` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+

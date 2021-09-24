@@ -1,6 +1,6 @@
 // aux-build:primitive-doc.rs
 // compile-flags: --extern-html-root-url=primitive_doc=../ -Z unstable-options
-// ignore-windows
+// only-linux
 
 #![feature(no_core)]
 #![no_core]

@@ -1859,12 +1859,12 @@ macro_rules! uint_impl {
         ///
         /// ```
         /// #![feature(int_roundings)]
-        #[doc = concat!("assert_eq!(7_", stringify!($SelfT), ".div_floor(4), 1);")]
+        #[doc = concat!("assert_eq!(7_", stringify!($SelfT), ".unstable_div_floor(4), 1);")]
         /// ```
         #[unstable(feature = "int_roundings", issue = "88581")]
         #[inline(always)]
         #[rustc_inherit_overflow_checks]
-        pub const fn div_floor(self, rhs: Self) -> Self {
+        pub const fn unstable_div_floor(self, rhs: Self) -> Self {
             self / rhs
         }
 
@@ -1880,12 +1880,12 @@ macro_rules! uint_impl {
         ///
         /// ```
         /// #![feature(int_roundings)]
-        #[doc = concat!("assert_eq!(7_", stringify!($SelfT), ".div_ceil(4), 2);")]
+        #[doc = concat!("assert_eq!(7_", stringify!($SelfT), ".unstable_div_ceil(4), 2);")]
         /// ```
         #[unstable(feature = "int_roundings", issue = "88581")]
         #[inline]
         #[rustc_inherit_overflow_checks]
-        pub const fn div_ceil(self, rhs: Self) -> Self {
+        pub const fn unstable_div_ceil(self, rhs: Self) -> Self {
             let d = self / rhs;
             let r = self % rhs;
             if r > 0 && rhs > 0 {
@@ -1908,15 +1908,15 @@ macro_rules! uint_impl {
         ///
         /// ```
         /// #![feature(int_roundings)]
-        #[doc = concat!("assert_eq!(16_", stringify!($SelfT), ".next_multiple_of(8), 16);")]
-        #[doc = concat!("assert_eq!(23_", stringify!($SelfT), ".next_multiple_of(8), 24);")]
+        #[doc = concat!("assert_eq!(16_", stringify!($SelfT), ".unstable_next_multiple_of(8), 16);")]
+        #[doc = concat!("assert_eq!(23_", stringify!($SelfT), ".unstable_next_multiple_of(8), 24);")]
         /// ```
         #[unstable(feature = "int_roundings", issue = "88581")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
-        pub const fn next_multiple_of(self, rhs: Self) -> Self {
+        pub const fn unstable_next_multiple_of(self, rhs: Self) -> Self {
             match self % rhs {
                 0 => self,
                 r => self + (rhs - r)
