@@ -3,7 +3,7 @@
 //! Insertion and popping the largest element have *O*(log(*n*)) time complexity.
 //! Checking the largest element is *O*(1). Converting a vector to a binary heap
 //! can be done in-place, and has *O*(*n*) complexity. A binary heap can also be
-//! converted to a sorted vector in-place, allowing it to be used for an *O*(*n* \* log(*n*))
+//! converted to a sorted vector in-place, allowing it to be used for an *O*(*n* * log(*n*))
 //! in-place heapsort.
 //!
 //! # Examples
@@ -243,9 +243,9 @@ use super::SpecExtend;
 ///
 /// # Time complexity
 ///
-/// | [push] | [pop]     | [peek]/[peek\_mut] |
-/// |--------|-----------|--------------------|
-/// | O(1)~  | *O*(log(*n*)) | *O*(1)               |
+/// | [push]  | [pop]         | [peek]/[peek\_mut] |
+/// |---------|---------------|--------------------|
+/// | *O*(1)~ | *O*(log(*n*)) | *O*(1)             |
 ///
 /// The value for `push` is an expected cost; the method documentation gives a
 /// more detailed analysis.

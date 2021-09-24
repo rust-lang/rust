@@ -97,11 +97,11 @@
 //!
 //! ## Sequences
 //!
-//! |                | get(i)         | insert(i)       | remove(i)      | append | split_off(i)   |
-//! |----------------|----------------|-----------------|----------------|--------|----------------|
-//! | [`Vec`]        | O(1)           | O(n-i)*         | O(n-i)         | O(m)*  | O(n-i)         |
-//! | [`VecDeque`]   | O(1)           | O(min(i, n-i))* | O(min(i, n-i)) | O(m)*  | O(min(i, n-i)) |
-//! | [`LinkedList`] | O(min(i, n-i)) | O(min(i, n-i))  | O(min(i, n-i)) | O(1)   | O(min(i, n-i)) |
+//! |                | get(i)                 | insert(i)               | remove(i)              | append    | split_off(i)           |
+//! |----------------|------------------------|-------------------------|------------------------|-----------|------------------------|
+//! | [`Vec`]        | *O*(1)                 | *O*(*n*-*i*)*           | *O*(*n*-*i*)           | *O*(*m*)* | *O*(*n*-*i*)           |
+//! | [`VecDeque`]   | *O*(1)                 | *O*(min(*i*, *n*-*i*))* | *O*(min(*i*, *n*-*i*)) | *O*(*m*)* | *O*(min(*i*, *n*-*i*)) |
+//! | [`LinkedList`] | *O*(min(*i*, *n*-*i*)) | *O*(min(*i*, *n*-*i*))  | *O*(min(*i*, *n*-*i*)) | *O*(1)    | *O*(min(*i*, *n*-*i*)) |
 //!
 //! Note that where ties occur, [`Vec`] is generally going to be faster than [`VecDeque`], and
 //! [`VecDeque`] is generally going to be faster than [`LinkedList`].
@@ -110,10 +110,10 @@
 //!
 //! For Sets, all operations have the cost of the equivalent Map operation.
 //!
-//! |              | get       | insert    | remove    | range     | append |
-//! |--------------|-----------|-----------|-----------|-----------|--------|
-//! | [`HashMap`]  | O(1)~     | O(1)~*    | O(1)~     | N/A       | N/A    |
-//! | [`BTreeMap`] | O(log(n)) | O(log(n)) | O(log(n)) | O(log(n)) | O(n+m) |
+//! |              | get           | insert        | remove        | range         | append       |
+//! |--------------|---------------|---------------|---------------|---------------|--------------|
+//! | [`HashMap`]  | *O*(1)~       | *O*(1)~*      | *O*(1)~       | N/A           | N/A          |
+//! | [`BTreeMap`] | *O*(log(*n*)) | *O*(log(*n*)) | *O*(log(*n*)) | *O*(log(*n*)) | *O*(*n*+*m*) |
 //!
 //! # Correct and Efficient Usage of Collections
 //!

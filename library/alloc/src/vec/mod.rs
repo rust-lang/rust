@@ -1,8 +1,8 @@
 //! A contiguous growable array type with heap-allocated contents, written
 //! `Vec<T>`.
 //!
-//! Vectors have `O(1)` indexing, amortized `O(1)` push (to the end) and
-//! `O(1)` pop (from the end).
+//! Vectors have *O*(1) indexing, amortized *O*(1) push (to the end) and
+//! *O*(1) pop (from the end).
 //!
 //! Vectors ensure they never allocate more than `isize::MAX` bytes.
 //!
@@ -1268,7 +1268,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// The removed element is replaced by the last element of the vector.
     ///
-    /// This does not preserve ordering, but is O(1).
+    /// This does not preserve ordering, but is *O*(1).
     ///
     /// # Panics
     ///

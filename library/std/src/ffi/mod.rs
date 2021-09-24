@@ -43,8 +43,8 @@
 //! terminator, so the buffer length is really `len+1` characters.
 //! Rust strings don't have a nul terminator; their length is always
 //! stored and does not need to be calculated. While in Rust
-//! accessing a string's length is a `O(1)` operation (because the
-//! length is stored); in C it is an `O(length)` operation because the
+//! accessing a string's length is an *O*(1) operation (because the
+//! length is stored); in C it is an *O*(*n*) operation because the
 //! length needs to be computed by scanning the string for the nul
 //! terminator.
 //!
