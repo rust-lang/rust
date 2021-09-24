@@ -115,25 +115,11 @@ fn get_stack_size() -> Option<usize> {
 /// for `'static` bounds.
 #[cfg(not(parallel_compiler))]
 pub fn scoped_thread<F: FnOnce() -> R + Send, R: Send>(cfg: thread::Builder, f: F) -> R {
-    struct Ptr(*mut ());
-    unsafe impl Send for Ptr {}
-    unsafe impl Sync for Ptr {}
-
-    let mut f = Some(f);
-    let run = Ptr(&mut f as *mut _ as *mut ());
-    let mut result = None;
-    let result_ptr = Ptr(&mut result as *mut _ as *mut ());
-
-    let thread = cfg.spawn(move || {
-        let _ = (&run, &result_ptr);
-        let run = unsafe { (*(run.0 as *mut Option<F>)).take().unwrap() };
-        let result = unsafe { &mut *(result_ptr.0 as *mut Option<R>) };
-        *result = Some(run());
-    });
-
-    match thread.unwrap().join() {
-        Ok(()) => result.unwrap(),
-        Err(p) => panic::resume_unwind(p),
+    // SAFETY: join() is called immediately, so any closure captures are still
+    // alive.
+    match unsafe { cfg.spawn_unchecked(f) }.unwrap().join() {
+        Ok(v) => v,
+        Err(e) => panic::resume_unwind(e),
     }
 }
 
