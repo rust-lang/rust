@@ -672,7 +672,7 @@ pub struct ParentedNode<'tcx> {
     pub node: Node<'tcx>,
 }
 
-/// Attributes owner by a HIR owner.
+/// Attributes owned by a HIR owner.
 #[derive(Debug)]
 pub struct AttributeMap<'tcx> {
     pub map: BTreeMap<ItemLocalId, &'tcx [Attribute]>,
@@ -689,6 +689,9 @@ impl<'tcx> AttributeMap<'tcx> {
     }
 }
 
+/// Map of all HIR nodes inside the current owner.
+/// These nodes are mapped by `ItemLocalId` alongside the index of their parent node.
+/// The HIR tree, including bodies, is pre-hashed.
 #[derive(Debug)]
 pub struct OwnerNodes<'tcx> {
     /// Pre-computed hash of the full HIR.
@@ -704,6 +707,7 @@ pub struct OwnerNodes<'tcx> {
     pub bodies: IndexVec<ItemLocalId, Option<&'tcx Body<'tcx>>>,
 }
 
+/// Full information resulting from lowering an AST node.
 #[derive(Debug, HashStable_Generic)]
 pub struct OwnerInfo<'hir> {
     /// Contents of the HIR.
