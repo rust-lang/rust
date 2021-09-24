@@ -1,6 +1,7 @@
 use crate::structured_errors::StructuredDiagnostic;
 use rustc_errors::{pluralize, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
+use rustc_middle::hir::map::fn_sig;
 use rustc_middle::middle::resolve_lifetime::LifetimeScopeForPath;
 use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::Session;
@@ -292,12 +293,30 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         &self,
         num_params_to_take: usize,
     ) -> String {
+        let fn_sig = self.tcx.hir().get_if_local(self.def_id).and_then(|node| fn_sig(node));
+        let is_used_in_input = |def_id| {
+            fn_sig.map_or(false, |fn_sig| {
+                fn_sig.decl.inputs.iter().any(|ty| match ty.kind {
+                    hir::TyKind::Path(hir::QPath::Resolved(
+                        None,
+                        hir::Path { res: hir::def::Res::Def(_, id), .. },
+                    )) if *id == def_id => true,
+                    _ => false,
+                })
+            })
+        };
         self.gen_params
             .params
             .iter()
             .skip(self.params_offset + self.num_provided_type_or_const_args())
             .take(num_params_to_take)
-            .map(|param| param.name.to_string())
+            .map(|param| match param.kind {
+                // This is being infered from the item's inputs, no need to set it.
+                ty::GenericParamDefKind::Type { .. } if is_used_in_input(param.def_id) => {
+                    "_".to_string()
+                }
+                _ => param.name.to_string(),
+            })
             .collect::<Vec<_>>()
             .join(", ")
     }
