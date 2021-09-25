@@ -10,7 +10,7 @@ document.
 
 ### New Lints
 
-* Renamed Lint: `if_let_some_result` is now called [`match_result_ok`].
+* Renamed Lint: `if_let_some_result` is now called [`match_result_ok`]. Now also handles `while let` case.
 
 ## Rust 1.55
 
