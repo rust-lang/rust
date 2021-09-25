@@ -1,9 +1,1 @@
-fn foo() {
-    let a;
-    let b: i32;
-    let c = 92;
-    let d: i32 = 92;
-    let e: !;
-    let _: ! = {};
-    let f = #[attr]||{};
-}
+fn f() { let x: i32 = 92; }

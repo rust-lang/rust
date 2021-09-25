@@ -115,17 +115,15 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi, prefer_expr: bool) {
         // }
 
         match with_semi {
+            StmtWithSemi::No => (),
+            StmtWithSemi::Optional => {
+                p.eat(T![;]);
+            }
             StmtWithSemi::Yes => {
                 if blocklike.is_block() {
                     p.eat(T![;]);
                 } else {
                     p.expect(T![;]);
-                }
-            }
-            StmtWithSemi::No => {}
-            StmtWithSemi::Optional => {
-                if p.at(T![;]) {
-                    p.eat(T![;]);
                 }
             }
         }
@@ -134,35 +132,28 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi, prefer_expr: bool) {
     }
 
     // test let_stmt
-    // fn foo() {
-    //     let a;
-    //     let b: i32;
-    //     let c = 92;
-    //     let d: i32 = 92;
-    //     let e: !;
-    //     let _: ! = {};
-    //     let f = #[attr]||{};
-    // }
+    // fn f() { let x: i32 = 92; }
     fn let_stmt(p: &mut Parser, m: Marker, with_semi: StmtWithSemi) {
-        assert!(p.at(T![let]));
         p.bump(T![let]);
         patterns::pattern(p);
         if p.at(T![:]) {
+            // test let_stmt_ascription
+            // fn f() { let x: i32; }
             types::ascription(p);
         }
         if p.eat(T![=]) {
+            // test let_stmt_init
+            // fn f() { let x = 92; }
             expressions::expr_with_attrs(p);
         }
 
         match with_semi {
+            StmtWithSemi::No => (),
+            StmtWithSemi::Optional => {
+                p.eat(T![;]);
+            }
             StmtWithSemi::Yes => {
                 p.expect(T![;]);
-            }
-            StmtWithSemi::No => {}
-            StmtWithSemi::Optional => {
-                if p.at(T![;]) {
-                    p.eat(T![;]);
-                }
             }
         }
         m.complete(p, LET_STMT);
