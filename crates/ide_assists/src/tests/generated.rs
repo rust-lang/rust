@@ -1227,9 +1227,9 @@ mod foo;
 }
 
 #[test]
-fn doctest_promote_mod_file() {
+fn doctest_move_to_mod_rs() {
     check_doc_test(
-        "promote_mod_file",
+        "move_to_mod_rs",
         r#####"
 //- /main.rs
 mod a;

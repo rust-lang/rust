@@ -35,9 +35,9 @@ fn trimmed_text_range(source_file: &SourceFile, initial_range: TextRange) -> Tex
     trimmed_range
 }
 
-// Assist: promote_mod_file
+// Assist: move_to_mod_rs
 //
-// Moves inline module's contents to a separate file.
+// Moves xxx.rs to xxx/mod.rs.
 //
 // ```
 // //- /main.rs
@@ -49,13 +49,18 @@ fn trimmed_text_range(source_file: &SourceFile, initial_range: TextRange) -> Tex
 // ```
 // fn t() {}
 // ```
-pub(crate) fn promote_mod_file(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn move_to_mod_rs(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let source_file = ctx.find_node_at_offset::<ast::SourceFile>()?;
     let module = ctx.sema.to_module_def(ctx.frange.file_id)?;
     // Enable this assist if the user select all "meaningful" content in the source file
     let trimmed_selected_range = trimmed_text_range(&source_file, ctx.frange.range);
     let trimmed_file_range = trimmed_text_range(&source_file, source_file.syntax().text_range());
-    if module.is_mod_rs(ctx.db()) || trimmed_selected_range != trimmed_file_range {
+    if module.is_mod_rs(ctx.db()) {
+        cov_mark::hit!(already_mod_rs);
+        return None;
+    }
+    if trimmed_selected_range != trimmed_file_range {
+        cov_mark::hit!(not_all_selected);
         return None;
     }
 
@@ -67,7 +72,7 @@ pub(crate) fn promote_mod_file(acc: &mut Assists, ctx: &AssistContext) -> Option
     let path = format!("./{}/mod.rs", module_name);
     let dst = AnchoredPathBuf { anchor: ctx.frange.file_id, path };
     acc.add(
-        AssistId("promote_mod_file", AssistKind::Refactor),
+        AssistId("move_to_mod_rs", AssistKind::Refactor),
         format!("Turn {}.rs to {}/mod.rs", module_name, module_name),
         target,
         |builder| {
@@ -85,7 +90,7 @@ mod tests {
     #[test]
     fn trivial() {
         check_assist(
-            promote_mod_file,
+            move_to_mod_rs,
             r#"
 //- /main.rs
 mod a;
@@ -101,8 +106,9 @@ fn t() {}
 
     #[test]
     fn must_select_all_file() {
+        cov_mark::check!(not_all_selected);
         check_assist_not_applicable(
-            promote_mod_file,
+            move_to_mod_rs,
             r#"
 //- /main.rs
 mod a;
@@ -110,8 +116,9 @@ mod a;
 fn t() {}$0
 "#,
         );
+        cov_mark::check!(not_all_selected);
         check_assist_not_applicable(
-            promote_mod_file,
+            move_to_mod_rs,
             r#"
 //- /main.rs
 mod a;
@@ -123,12 +130,13 @@ $0fn$0 t() {}
 
     #[test]
     fn cannot_promote_mod_rs() {
+        cov_mark::check!(already_mod_rs);
         check_assist_not_applicable(
-            promote_mod_file,
+            move_to_mod_rs,
             r#"//- /main.rs
 mod a;
 //- /a/mod.rs
-$0fn t() {}
+$0fn t() {}$0
 "#,
         );
     }
@@ -136,15 +144,15 @@ $0fn t() {}
     #[test]
     fn cannot_promote_main_and_lib_rs() {
         check_assist_not_applicable(
-            promote_mod_file,
+            move_to_mod_rs,
             r#"//- /main.rs
-$0fn t() {}
+$0fn t() {}$0
 "#,
         );
         check_assist_not_applicable(
-            promote_mod_file,
+            move_to_mod_rs,
             r#"//- /lib.rs
-$0fn t() {}
+$0fn t() {}$0
 "#,
         );
     }
@@ -153,7 +161,7 @@ $0fn t() {}
     fn works_in_mod() {
         // note: /a/b.rs remains untouched
         check_assist(
-            promote_mod_file,
+            move_to_mod_rs,
             r#"//- /main.rs
 mod a;
 //- /a.rs
