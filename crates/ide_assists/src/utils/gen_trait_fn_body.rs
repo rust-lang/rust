@@ -439,10 +439,10 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             let eq_check =
                 make::expr_bin_op(lhs, BinaryOp::CmpOp(CmpOp::Eq { negated: false }), rhs);
 
-            let mut case_count = 0;
+            let mut n_cases = 0;
             let mut arms = vec![];
             for variant in enum_.variant_list()?.variants() {
-                case_count += 1;
+                n_cases += 1;
                 match variant.field_list() {
                     // => (Self::Bar { bin: l_bin }, Self::Bar { bin: r_bin }) => l_bin == r_bin,
                     Some(ast::FieldList::RecordFieldList(list)) => {
@@ -517,7 +517,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             let expr = match arms.len() {
                 0 => eq_check,
                 _ => {
-                    if case_count > arms.len() {
+                    if n_cases > arms.len() {
                         let lhs = make::wildcard_pat().into();
                         arms.push(make::match_arm(Some(lhs), None, eq_check));
                     }

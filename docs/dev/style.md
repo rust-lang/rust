@@ -849,7 +849,7 @@ Default names:
 
 * `res` -- "result of the function" local variable
 * `it` -- I don't really care about the name
-* `n_foo` -- number of foos
+* `n_foos` -- number of foos (prefer this to `foo_count`)
 * `foo_idx` -- index of `foo`
 
 Many names in rust-analyzer conflict with keywords.
@@ -968,6 +968,26 @@ Don't use the `ref` keyword.
 `ref` was required before [match ergonomics](https://github.com/rust-lang/rfcs/blob/master/text/2005-match-ergonomics.md).
 Today, it is redundant.
 Between `ref` and mach ergonomics, the latter is more ergonomic in most cases, and is simpler (does not require a keyword).
+
+## Empty Match Arms
+
+Ues `=> (),` when a match arm is intentionally empty:
+
+```rust
+// GOOD
+match result {
+    Ok(_) => (),
+    Err(err) => error!("{}", err),
+}
+
+// BAD
+match result {
+    Ok(_) => {}
+    Err(err) => error!("{}", err),
+}
+```
+
+**Rationale:** consistency.
 
 ## Functional Combinators
 
