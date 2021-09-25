@@ -102,7 +102,7 @@ declare_clippy_lint! {
     /// let w = z; // use different variable name
     /// ```
     pub SHADOW_UNRELATED,
-    pedantic,
+    restriction,
     "rebinding a name without even using the original value"
 }
 
