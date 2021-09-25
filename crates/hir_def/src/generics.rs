@@ -6,7 +6,7 @@
 use base_db::FileId;
 use either::Either;
 use hir_expand::{
-    name::{name, AsName, Name},
+    name::{AsName, Name},
     HirFileId, InFile,
 };
 use la_arena::{Arena, ArenaMap};
@@ -151,85 +151,6 @@ impl GenericParams {
                 Interned::new(GenericParams::default())
             }
         }
-    }
-
-    fn new(db: &dyn DefDatabase, def: GenericDefId) -> (GenericParams, InFile<SourceMap>) {
-        let mut generics = GenericParams::default();
-        let mut sm = SourceMap::default();
-
-        // FIXME: add `: Sized` bound for everything except for `Self` in traits
-        let file_id = match def {
-            GenericDefId::FunctionId(it) => {
-                let src = it.lookup(db).source(db);
-                let lower_ctx = LowerCtx::new(db, src.file_id);
-                generics.fill(&lower_ctx, &mut sm, &src.value);
-                // lower `impl Trait` in arguments
-                let data = db.function_data(it);
-                for param in &data.params {
-                    generics.fill_implicit_impl_trait_args(param);
-                }
-                src.file_id
-            }
-            GenericDefId::AdtId(AdtId::StructId(it)) => {
-                let src = it.lookup(db).source(db);
-                let lower_ctx = LowerCtx::new(db, src.file_id);
-                generics.fill(&lower_ctx, &mut sm, &src.value);
-                src.file_id
-            }
-            GenericDefId::AdtId(AdtId::UnionId(it)) => {
-                let src = it.lookup(db).source(db);
-                let lower_ctx = LowerCtx::new(db, src.file_id);
-                generics.fill(&lower_ctx, &mut sm, &src.value);
-                src.file_id
-            }
-            GenericDefId::AdtId(AdtId::EnumId(it)) => {
-                let src = it.lookup(db).source(db);
-                let lower_ctx = LowerCtx::new(db, src.file_id);
-                generics.fill(&lower_ctx, &mut sm, &src.value);
-                src.file_id
-            }
-            GenericDefId::TraitId(it) => {
-                let src = it.lookup(db).source(db);
-                let lower_ctx = LowerCtx::new(db, src.file_id);
-
-                // traits get the Self type as an implicit first type parameter
-                let self_param_id = generics.types.alloc(TypeParamData {
-                    name: Some(name![Self]),
-                    default: None,
-                    provenance: TypeParamProvenance::TraitSelf,
-                });
-                sm.type_params.insert(self_param_id, Either::Right(src.value.clone()));
-                // add super traits as bounds on Self
-                // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
-                let self_param = TypeRef::Path(name![Self].into());
-                generics.fill_bounds(&lower_ctx, &src.value, Either::Left(self_param));
-
-                generics.fill(&lower_ctx, &mut sm, &src.value);
-                src.file_id
-            }
-            GenericDefId::TypeAliasId(it) => {
-                let src = it.lookup(db).source(db);
-                let lower_ctx = LowerCtx::new(db, src.file_id);
-
-                generics.fill(&lower_ctx, &mut sm, &src.value);
-                src.file_id
-            }
-            // Note that we don't add `Self` here: in `impl`s, `Self` is not a
-            // type-parameter, but rather is a type-alias for impl's target
-            // type, so this is handled by the resolver.
-            GenericDefId::ImplId(it) => {
-                let src = it.lookup(db).source(db);
-                let lower_ctx = LowerCtx::new(db, src.file_id);
-
-                generics.fill(&lower_ctx, &mut sm, &src.value);
-                src.file_id
-            }
-            // We won't be using this ID anyway
-            GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => FileId(!0).into(),
-        };
-
-        generics.shrink_to_fit();
-        (generics, InFile::new(file_id, sm))
     }
 
     pub(crate) fn fill(
