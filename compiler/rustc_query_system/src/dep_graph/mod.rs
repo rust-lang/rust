@@ -9,6 +9,7 @@ pub use graph::{hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, Wor
 pub use query::DepGraphQuery;
 pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 
+use crate::ich::StableHashingContext;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
 use rustc_serialize::{opaque::FileEncoder, Encodable};
@@ -19,10 +20,9 @@ use std::hash::Hash;
 
 pub trait DepContext: Copy {
     type DepKind: self::DepKind;
-    type StableHashingContext;
 
     /// Create a hashing context for hashing new results.
-    fn create_stable_hashing_context(&self) -> Self::StableHashingContext;
+    fn create_stable_hashing_context(&self) -> StableHashingContext<'_>;
 
     /// Access the DepGraph.
     fn dep_graph(&self) -> &DepGraph<Self::DepKind>;
@@ -36,18 +36,13 @@ pub trait DepContext: Copy {
 
 pub trait HasDepContext: Copy {
     type DepKind: self::DepKind;
-    type StableHashingContext;
-    type DepContext: self::DepContext<
-        DepKind = Self::DepKind,
-        StableHashingContext = Self::StableHashingContext,
-    >;
+    type DepContext: self::DepContext<DepKind = Self::DepKind>;
 
     fn dep_context(&self) -> &Self::DepContext;
 }
 
 impl<T: DepContext> HasDepContext for T {
     type DepKind = T::DepKind;
-    type StableHashingContext = T::StableHashingContext;
     type DepContext = Self;
 
     fn dep_context(&self) -> &Self::DepContext {

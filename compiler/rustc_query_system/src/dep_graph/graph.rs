@@ -1,3 +1,4 @@
+use parking_lot::Mutex;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{EventId, QueryInvocationId, SelfProfilerRef};
@@ -7,8 +8,6 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
 use rustc_index::vec::IndexVec;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
-
-use parking_lot::Mutex;
 use smallvec::{smallvec, SmallVec};
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
@@ -19,6 +18,7 @@ use std::sync::atomic::Ordering::Relaxed;
 use super::query::DepGraphQuery;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
 use super::{DepContext, DepKind, DepNode, HasDepContext, WorkProductId};
+use crate::ich::StableHashingContext;
 use crate::query::{QueryContext, QuerySideEffects};
 
 #[cfg(debug_assertions)]
@@ -96,9 +96,9 @@ struct DepGraphData<K: DepKind> {
     dep_node_debug: Lock<FxHashMap<DepNode<K>, String>>,
 }
 
-pub fn hash_result<HashCtxt, R>(hcx: &mut HashCtxt, result: &R) -> Option<Fingerprint>
+pub fn hash_result<R>(hcx: &mut StableHashingContext<'_>, result: &R) -> Option<Fingerprint>
 where
-    R: HashStable<HashCtxt>,
+    R: for<'a> HashStable<StableHashingContext<'a>>,
 {
     let mut stable_hasher = StableHasher::new();
     result.hash_stable(hcx, &mut stable_hasher);
@@ -215,7 +215,7 @@ impl<K: DepKind> DepGraph<K> {
         cx: Ctxt,
         arg: A,
         task: fn(Ctxt, A) -> R,
-        hash_result: fn(&mut Ctxt::StableHashingContext, &R) -> Option<Fingerprint>,
+        hash_result: fn(&mut StableHashingContext<'_>, &R) -> Option<Fingerprint>,
     ) -> (R, DepNodeIndex) {
         if self.is_fully_enabled() {
             self.with_task_impl(key, cx, arg, task, hash_result)
@@ -234,7 +234,7 @@ impl<K: DepKind> DepGraph<K> {
         cx: Ctxt,
         arg: A,
         task: fn(Ctxt, A) -> R,
-        hash_result: fn(&mut Ctxt::StableHashingContext, &R) -> Option<Fingerprint>,
+        hash_result: fn(&mut StableHashingContext<'_>, &R) -> Option<Fingerprint>,
     ) -> (R, DepNodeIndex) {
         // This function is only called when the graph is enabled.
         let data = self.data.as_ref().unwrap();
