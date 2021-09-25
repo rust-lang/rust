@@ -133,8 +133,10 @@ LL |         5..15 => {},
 error: unreachable pattern
   --> $DIR/reachability.rs:83:9
    |
+LL |         _ => {},
+   |         - matches any value
 LL |         '\u{D7FF}'..='\u{E000}' => {},
-   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/reachability.rs:104:9
