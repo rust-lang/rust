@@ -51,8 +51,13 @@ use super::MAX;
 #[must_use]
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn from_u32(i: u32) -> Option<char> {
-    char::try_from(i).ok()
+#[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
+pub const fn from_u32(i: u32) -> Option<char> {
+    // FIXME: once Result::ok is const fn, use it here
+    match char_try_from_u32(i) {
+        Ok(c) => Some(c),
+        Err(_) => None,
+    }
 }
 
 /// Converts a `u32` to a `char`, ignoring validity.
@@ -91,7 +96,8 @@ pub fn from_u32(i: u32) -> Option<char> {
 #[inline]
 #[must_use]
 #[stable(feature = "char_from_unchecked", since = "1.5.0")]
-pub unsafe fn from_u32_unchecked(i: u32) -> char {
+#[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
+pub const unsafe fn from_u32_unchecked(i: u32) -> char {
     // SAFETY: the caller must guarantee that `i` is a valid char value.
     if cfg!(debug_assertions) { char::from_u32(i).unwrap() } else { unsafe { transmute(i) } }
 }
@@ -244,18 +250,23 @@ impl FromStr for char {
     }
 }
 
+#[inline]
+const fn char_try_from_u32(i: u32) -> Result<char, CharTryFromError> {
+    if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
+        Err(CharTryFromError(()))
+    } else {
+        // SAFETY: checked that it's a legal unicode value
+        Ok(unsafe { transmute(i) })
+    }
+}
+
 #[stable(feature = "try_from", since = "1.34.0")]
 impl TryFrom<u32> for char {
     type Error = CharTryFromError;
 
     #[inline]
     fn try_from(i: u32) -> Result<Self, Self::Error> {
-        if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
-            Err(CharTryFromError(()))
-        } else {
-            // SAFETY: checked that it's a legal unicode value
-            Ok(unsafe { transmute(i) })
-        }
+        char_try_from_u32(i)
     }
 }
 
@@ -323,7 +334,8 @@ impl fmt::Display for CharTryFromError {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn from_digit(num: u32, radix: u32) -> Option<char> {
+#[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
+pub const fn from_digit(num: u32, radix: u32) -> Option<char> {
     if radix > 36 {
         panic!("from_digit: radix is too high (maximum 36)");
     }
