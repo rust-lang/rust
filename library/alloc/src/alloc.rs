@@ -307,7 +307,6 @@ unsafe impl Allocator for Global {
 }
 
 /// The allocator for unique pointers.
-// This function must not unwind. If it does, MIR codegen will fail.
 #[cfg(all(not(no_global_oom_handling), not(test)))]
 #[lang = "exchange_malloc"]
 #[inline]

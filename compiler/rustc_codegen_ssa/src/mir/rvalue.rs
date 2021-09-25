@@ -550,6 +550,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     OperandRef::new_zst(&mut bx, self.cx.layout_of(self.monomorphize(ty)));
                 (bx, operand)
             }
+            mir::Rvalue::ShallowInitBox(ref operand, content_ty) => {
+                let operand = self.codegen_operand(&mut bx, operand);
+                let lloperand = operand.immediate();
+
+                let content_ty = self.monomorphize(content_ty);
+                let box_layout = bx.cx().layout_of(bx.tcx().mk_box(content_ty));
+                let llty_ptr = bx.cx().backend_type(box_layout);
+
+                let val = bx.pointercast(lloperand, llty_ptr);
+                let operand = OperandRef { val: OperandValue::Immediate(val), layout: box_layout };
+                (bx, operand)
+            }
         }
     }
 
@@ -763,6 +775,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::AddressOf(..) |
             mir::Rvalue::Len(..) |
             mir::Rvalue::Cast(..) | // (*)
+            mir::Rvalue::ShallowInitBox(..) | // (*)
             mir::Rvalue::BinaryOp(..) |
             mir::Rvalue::CheckedBinaryOp(..) |
             mir::Rvalue::UnaryOp(..) |

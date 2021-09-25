@@ -2024,13 +2024,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
 
-            Rvalue::NullaryOp(_, ty) => {
-                // Even with unsized locals cannot box an unsized value.
-                if self.unsized_feature_enabled() {
-                    let span = body.source_info(location).span;
-                    self.ensure_place_sized(ty, span);
-                }
-
+            Rvalue::NullaryOp(_, ty) | Rvalue::ShallowInitBox(_, ty) => {
                 let trait_ref = ty::TraitRef {
                     def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
                     substs: tcx.mk_substs_trait(ty, &[]),
@@ -2363,6 +2357,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::AddressOf(..)
             | Rvalue::Len(..)
             | Rvalue::Cast(..)
+            | Rvalue::ShallowInitBox(..)
             | Rvalue::BinaryOp(..)
             | Rvalue::CheckedBinaryOp(..)
             | Rvalue::NullaryOp(..)

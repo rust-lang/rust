@@ -701,6 +701,13 @@ fn codegen_stmt<'tcx>(
                     let len = codegen_array_len(fx, place);
                     lval.write_cvalue(fx, CValue::by_val(len, usize_layout));
                 }
+                Rvalue::ShallowInitBox(ref operand, content_ty) => {
+                    let content_ty = fx.monomorphize(content_ty);
+                    let box_layout = fx.layout_of(fx.tcx.mk_box(content_ty));
+                    let operand = codegen_operand(fx, operand);
+                    let operand = operand.load_scalar(fx);
+                    lval.write_cvalue(fx, CValue::by_val(operand, box_layout));
+                }
                 Rvalue::NullaryOp(NullOp::Box, content_ty) => {
                     let usize_type = fx.clif_type(fx.tcx.types.usize).unwrap();
                     let content_ty = fx.monomorphize(content_ty);

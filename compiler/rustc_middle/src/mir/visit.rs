@@ -753,6 +753,11 @@ macro_rules! make_mir_visitor {
                             self.visit_operand(operand, location);
                         }
                     }
+
+                    Rvalue::ShallowInitBox(operand, ty) => {
+                        self.visit_operand(operand, location);
+                        self.visit_ty(ty, TyContext::Location(location));
+                    }
                 }
             }
 

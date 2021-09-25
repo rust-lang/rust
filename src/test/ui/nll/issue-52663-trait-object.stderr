@@ -4,7 +4,7 @@ error[E0597]: `tmp0` does not live long enough
 LL |         let tmp1 = &tmp0;
    |                    ^^^^^ borrowed value does not live long enough
 LL |         box tmp1 as Box<dyn Foo + '_>
-   |         ----------------------------- borrow later captured here by trait object
+   |         ----------------------------- borrow later used here
 LL |     };
    |     - `tmp0` dropped here while still borrowed
 

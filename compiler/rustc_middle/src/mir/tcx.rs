@@ -206,6 +206,7 @@ impl<'tcx> Rvalue<'tcx> {
                     tcx.mk_generator(did, substs, movability)
                 }
             },
+            Rvalue::ShallowInitBox(_, ty) => tcx.mk_box(ty),
         }
     }
 
@@ -214,7 +215,9 @@ impl<'tcx> Rvalue<'tcx> {
     /// whether its only shallowly initialized (`Rvalue::Box`).
     pub fn initialization_state(&self) -> RvalueInitializationState {
         match *self {
-            Rvalue::NullaryOp(NullOp::Box, _) => RvalueInitializationState::Shallow,
+            Rvalue::NullaryOp(NullOp::Box, _) | Rvalue::ShallowInitBox(_, _) => {
+                RvalueInitializationState::Shallow
+            }
             _ => RvalueInitializationState::Deep,
         }
     }
