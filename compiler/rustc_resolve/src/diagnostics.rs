@@ -1708,10 +1708,7 @@ crate fn show_candidates(
 
     path_strings.sort();
     let core_path_strings =
-        path_strings.iter().filter(|p| p.starts_with("core::")).cloned().collect::<Vec<String>>();
-    if !core_path_strings.is_empty() {
-        path_strings.retain(|p| !p.starts_with("core::"));
-    }
+        path_strings.drain_filter(|p| p.starts_with("core::")).collect::<Vec<String>>();
     path_strings.extend(core_path_strings);
     path_strings.dedup();
 
