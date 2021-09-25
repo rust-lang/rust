@@ -1,3 +1,1 @@
-fn foo() {
-    let _ = &1 as *const i32;
-}
+fn f() { let _ = &1 as *const i32; }
