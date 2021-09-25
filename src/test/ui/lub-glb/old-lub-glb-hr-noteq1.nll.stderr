@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |         _ => y,
    |              ^ one type is more general than the other
    |
-   = note: expected fn pointer `for<'r, 's> fn(&'r u8, &'s u8) -> &'r u8`
-              found fn pointer `for<'r> fn(&'r u8, &'r u8) -> &'r u8`
+   = note: expected fn pointer `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8`
+              found fn pointer `for<'a> fn(&'a u8, &'a u8) -> &'a u8`
 
 error: aborting due to previous error
 

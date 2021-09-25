@@ -31,7 +31,7 @@ LL | |
 LL | | };
    | |_^ one type is more general than the other
    |
-   = note: expected type `for<'r, 's> Fn<(&'r Foo<'s>,)>`
+   = note: expected type `for<'a, 'b> Fn<(&'a Foo<'b>,)>`
               found type `Fn<(&Foo<'_>,)>`
 
 error[E0308]: mismatched types
@@ -46,7 +46,7 @@ LL | |
 LL | | };
    | |_^ one type is more general than the other
    |
-   = note: expected type `for<'r, 's> Fn<(&'r Foo<'s>,)>`
+   = note: expected type `for<'a, 'b> Fn<(&'a Foo<'b>,)>`
               found type `Fn<(&Foo<'_>,)>`
 
 error: implementation of `FnOnce` is not general enough
@@ -61,7 +61,7 @@ LL | |
 LL | | };
    | |_^ implementation of `FnOnce` is not general enough
    |
-   = note: `fn(&'2 Foo<'_>) -> &'2 Foo<'_> {id::<&'2 Foo<'_>>}` must implement `FnOnce<(&'1 Foo<'_>,)>`, for any lifetime `'1`...
+   = note: `fn(&'2 Foo<'_>) -> &'2 Foo<'_> {id::<&'2 Foo<'_>>}` must implement `FnOnce<(&'1 Foo<'b>,)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&'2 Foo<'_>,)>`, for some specific lifetime `'2`
 
 error: implementation of `FnOnce` is not general enough
@@ -76,7 +76,7 @@ LL | |
 LL | | };
    | |_^ implementation of `FnOnce` is not general enough
    |
-   = note: `fn(&Foo<'2>) -> &Foo<'2> {id::<&Foo<'2>>}` must implement `FnOnce<(&Foo<'1>,)>`, for any lifetime `'1`...
+   = note: `fn(&Foo<'2>) -> &Foo<'2> {id::<&Foo<'2>>}` must implement `FnOnce<(&'a Foo<'1>,)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&Foo<'2>,)>`, for some specific lifetime `'2`
 
 error: aborting due to 5 previous errors

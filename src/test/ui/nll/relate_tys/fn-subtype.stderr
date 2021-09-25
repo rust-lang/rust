@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     let y: for<'a> fn(&'a ()) = x;
    |                                 ^ one type is more general than the other
    |
-   = note: expected fn pointer `for<'r> fn(&'r ())`
+   = note: expected fn pointer `for<'a> fn(&'a ())`
               found fn pointer `fn(&())`
 
 error: aborting due to previous error

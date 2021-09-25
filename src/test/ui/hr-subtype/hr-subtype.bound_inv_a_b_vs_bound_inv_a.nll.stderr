@@ -8,8 +8,8 @@ LL | / check! { bound_inv_a_b_vs_bound_inv_a: (for<'a,'b> fn(Inv<'a>, Inv<'b>),
 LL | | for<'a>    fn(Inv<'a>, Inv<'a>)) }
    | |__________________________________- in this macro invocation
    |
-   = note: expected enum `Option<for<'r, 's> fn(Inv<'r>, Inv<'s>)>`
-              found enum `Option<for<'r> fn(Inv<'r>, Inv<'r>)>`
+   = note: expected enum `Option<for<'a, 'b> fn(Inv<'a>, Inv<'b>)>`
+              found enum `Option<for<'a> fn(Inv<'a>, Inv<'a>)>`
    = note: this error originates in the macro `check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
@@ -22,8 +22,8 @@ LL | / check! { bound_inv_a_b_vs_bound_inv_a: (for<'a,'b> fn(Inv<'a>, Inv<'b>),
 LL | | for<'a>    fn(Inv<'a>, Inv<'a>)) }
    | |__________________________________- in this macro invocation
    |
-   = note: expected enum `Option<for<'r, 's> fn(Inv<'r>, Inv<'s>)>`
-              found enum `Option<for<'r> fn(Inv<'r>, Inv<'r>)>`
+   = note: expected enum `Option<for<'a, 'b> fn(Inv<'a>, Inv<'b>)>`
+              found enum `Option<for<'a> fn(Inv<'a>, Inv<'a>)>`
    = note: this error originates in the macro `check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors

@@ -8,8 +8,8 @@ LL | / check! { bound_a_b_ret_a_vs_bound_a_ret_a: (for<'a,'b> fn(&'a u32, &'b u3
 LL | | for<'a>    fn(&'a u32, &'a u32) -> &'a u32) }
    | |_____________________________________________- in this macro invocation
    |
-   = note: expected enum `Option<for<'r, 's> fn(&'r u32, &'s u32) -> &'r u32>`
-              found enum `Option<for<'r> fn(&'r u32, &'r u32) -> &'r u32>`
+   = note: expected enum `Option<for<'a, 'b> fn(&'a u32, &'b u32) -> &'a u32>`
+              found enum `Option<for<'a> fn(&'a u32, &'a u32) -> &'a u32>`
    = note: this error originates in the macro `check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
