@@ -19,7 +19,6 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
 use rustc_middle::ty::{ReLateBound, RePlaceholder, ReVar};
 use rustc_middle::ty::{Region, RegionVid};
-use rustc_span::Span;
 use std::fmt;
 
 /// This function performs lexical region resolution given a complete
@@ -108,11 +107,6 @@ pub enum RegionResolutionError<'tcx> {
         SubregionOrigin<'tcx>, // cause of the constraint
         Region<'tcx>,          // the placeholder `'b`
     ),
-
-    /// Indicates a failure of a `MemberConstraint`. These arise during
-    /// impl trait processing explicitly -- basically, the impl trait's hidden type
-    /// included some region that it was not supposed to.
-    MemberConstraintFailure { span: Span, hidden_ty: Ty<'tcx>, member_region: Region<'tcx> },
 }
 
 struct RegionAndOrigin<'tcx> {

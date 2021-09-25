@@ -386,21 +386,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                         self.report_placeholder_failure(sup_origin, sub_r, sup_r).emit();
                     }
-
-                    RegionResolutionError::MemberConstraintFailure {
-                        hidden_ty,
-                        member_region,
-                        span,
-                    } => {
-                        let hidden_ty = self.resolve_vars_if_possible(hidden_ty);
-                        unexpected_hidden_region_diagnostic(
-                            self.tcx,
-                            span,
-                            hidden_ty,
-                            member_region,
-                        )
-                        .emit();
-                    }
                 }
             }
         }
@@ -438,8 +423,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             RegionResolutionError::GenericBoundFailure(..) => true,
             RegionResolutionError::ConcreteFailure(..)
             | RegionResolutionError::SubSupConflict(..)
-            | RegionResolutionError::UpperBoundUniverseConflict(..)
-            | RegionResolutionError::MemberConstraintFailure { .. } => false,
+            | RegionResolutionError::UpperBoundUniverseConflict(..) => false,
         };
 
         let mut errors = if errors.iter().all(|e| is_bound_failure(e)) {
@@ -454,7 +438,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             RegionResolutionError::GenericBoundFailure(ref sro, _, _) => sro.span(),
             RegionResolutionError::SubSupConflict(_, ref rvo, _, _, _, _) => rvo.span(),
             RegionResolutionError::UpperBoundUniverseConflict(_, ref rvo, _, _, _) => rvo.span(),
-            RegionResolutionError::MemberConstraintFailure { span, .. } => span,
         });
         errors
     }
