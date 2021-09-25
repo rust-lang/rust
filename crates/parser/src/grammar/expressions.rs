@@ -27,11 +27,7 @@ pub(super) fn expr_with_attrs(p: &mut Parser) -> bool {
     let success = cm.is_some();
 
     match (has_attrs, cm) {
-        (true, Some(cm)) => {
-            let kind = cm.kind();
-            cm.undo_completion(p).abandon(p);
-            m.complete(p, kind);
-        }
+        (true, Some(cm)) => cm.extend_to(p, m),
         _ => m.abandon(p),
     }
 
@@ -92,11 +88,9 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi, prefer_expr: bool) {
         //     { #[A] bar!()? }
         //     #[B] &()
         // }
-        if let Some(cm) = cm {
-            cm.undo_completion(p).abandon(p);
-            m.complete(p, kind);
-        } else {
-            m.abandon(p);
+        match cm {
+            Some(cm) => cm.extend_to(p, m),
+            None => m.abandon(p),
         }
     } else {
         // test no_semi_after_block
