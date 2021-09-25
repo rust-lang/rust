@@ -2375,7 +2375,22 @@ impl<T: fmt::Display + ?Sized> ToString for T {
     // See <https://github.com/rust-lang/rust/pull/74852>, the last attempt
     // to try to remove it.
     #[inline]
-    default fn to_string(&self) -> String {
+    fn to_string(&self) -> String {
+        SpecToString::spec_to_string(self)
+    }
+}
+
+#[unstable(issue = "none", feature = "spec_to_string")]
+#[doc(hidden)]
+pub trait SpecToString {
+    fn spec_to_string(&self) -> String;
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(issue = "none", feature = "spec_to_string")]
+impl<T: fmt::Display + ?Sized> SpecToString for T {
+    #[inline]
+    default fn spec_to_string(&self) -> String {
         let mut buf = String::new();
         let mut formatter = core::fmt::Formatter::new(&mut buf);
         // Bypass format_args!() to avoid write_str with zero-length strs
@@ -2386,19 +2401,19 @@ impl<T: fmt::Display + ?Sized> ToString for T {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "char_to_string_specialization", since = "1.46.0")]
-impl ToString for char {
+#[unstable(issue = "none", feature = "spec_to_string")]
+impl SpecToString for char {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         String::from(self.encode_utf8(&mut [0; 4]))
     }
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "u8_to_string_specialization", since = "1.54.0")]
-impl ToString for u8 {
+#[unstable(issue = "none", feature = "spec_to_string")]
+impl SpecToString for u8 {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         let mut buf = String::with_capacity(3);
         let mut n = *self;
         if n >= 10 {
@@ -2415,10 +2430,10 @@ impl ToString for u8 {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "i8_to_string_specialization", since = "1.54.0")]
-impl ToString for i8 {
+#[unstable(issue = "none", feature = "spec_to_string")]
+impl SpecToString for i8 {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         let mut buf = String::with_capacity(4);
         if self.is_negative() {
             buf.push('-');
@@ -2438,28 +2453,28 @@ impl ToString for i8 {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "str_to_string_specialization", since = "1.9.0")]
-impl ToString for str {
+#[unstable(issue = "none", feature = "spec_to_string")]
+impl SpecToString for str {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         String::from(self)
     }
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "cow_str_to_string_specialization", since = "1.17.0")]
-impl ToString for Cow<'_, str> {
+#[unstable(issue = "none", feature = "spec_to_string")]
+impl SpecToString for Cow<'_, str> {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         self[..].to_owned()
     }
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "string_to_string_specialization", since = "1.17.0")]
-impl ToString for String {
+#[unstable(issue = "none", feature = "spec_to_string")]
+impl SpecToString for String {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         self.to_owned()
     }
 }

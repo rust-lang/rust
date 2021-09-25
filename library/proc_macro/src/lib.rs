@@ -31,6 +31,7 @@
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
 #![feature(min_specialization)]
+#![feature(spec_to_string)]
 #![recursion_limit = "256"]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
@@ -46,6 +47,7 @@ use std::cmp::Ordering;
 use std::ops::RangeBounds;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::string::SpecToString;
 use std::{error, fmt, iter, mem};
 
 /// Determines whether proc_macro has been made accessible to the currently
@@ -141,9 +143,9 @@ impl FromStr for TokenStream {
 
 // N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
-#[stable(feature = "proc_macro_lib", since = "1.15.0")]
-impl ToString for TokenStream {
-    fn to_string(&self) -> String {
+#[unstable(issue = "none", feature = "spec_to_string")]
+impl SpecToString for TokenStream {
+    fn spec_to_string(&self) -> String {
         self.0.to_string()
     }
 }
@@ -624,9 +626,9 @@ impl From<Literal> for TokenTree {
 
 // N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
-#[stable(feature = "proc_macro_lib", since = "1.15.0")]
-impl ToString for TokenTree {
-    fn to_string(&self) -> String {
+#[unstable(issue = "none", feature = "spec_to_string")]
+impl SpecToString for TokenTree {
+    fn spec_to_string(&self) -> String {
         match *self {
             TokenTree::Group(ref t) => t.to_string(),
             TokenTree::Ident(ref t) => t.to_string(),
@@ -754,9 +756,9 @@ impl Group {
 
 // N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
-#[stable(feature = "proc_macro_lib", since = "1.15.0")]
-impl ToString for Group {
-    fn to_string(&self) -> String {
+#[unstable(issue = "none", feature = "spec_to_string")]
+impl SpecToString for Group {
+    fn spec_to_string(&self) -> String {
         TokenStream::from(TokenTree::from(self.clone())).to_string()
     }
 }
@@ -854,9 +856,9 @@ impl Punct {
 
 // N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
-#[stable(feature = "proc_macro_lib", since = "1.15.0")]
-impl ToString for Punct {
-    fn to_string(&self) -> String {
+#[unstable(issue = "none", feature = "spec_to_string")]
+impl SpecToString for Punct {
+    fn spec_to_string(&self) -> String {
         TokenStream::from(TokenTree::from(self.clone())).to_string()
     }
 }
@@ -935,7 +937,7 @@ impl Ident {
     }
 
     /// Returns the span of this `Ident`, encompassing the entire string returned
-    /// by [`to_string`](Self::to_string).
+    /// by [`to_string`](ToString::to_string).
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn span(&self) -> Span {
         Span(self.0.span())
@@ -950,9 +952,9 @@ impl Ident {
 
 // N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
-#[stable(feature = "proc_macro_lib", since = "1.15.0")]
-impl ToString for Ident {
-    fn to_string(&self) -> String {
+#[unstable(issue = "none", feature = "spec_to_string")]
+impl SpecToString for Ident {
+    fn spec_to_string(&self) -> String {
         TokenStream::from(TokenTree::from(self.clone())).to_string()
     }
 }
@@ -1210,9 +1212,9 @@ impl FromStr for Literal {
 
 // N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
-#[stable(feature = "proc_macro_lib", since = "1.15.0")]
-impl ToString for Literal {
-    fn to_string(&self) -> String {
+#[unstable(issue = "none", feature = "spec_to_string")]
+impl SpecToString for Literal {
+    fn spec_to_string(&self) -> String {
         self.0.to_string()
     }
 }
