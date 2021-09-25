@@ -16,12 +16,12 @@ LL |     const ID: i32 = 3;
    |     ^^^^^^^^^^^^^^^^^^
 help: disambiguate the associated constant for candidate #1
    |
-LL | const X: i32 = Foo::ID;
-   |                ~~~~~
+LL | const X: i32 = <i32 as Foo>::ID;
+   |                ~~~~~~~~~~~~~~
 help: disambiguate the associated constant for candidate #2
    |
-LL | const X: i32 = Bar::ID;
-   |                ~~~~~
+LL | const X: i32 = <i32 as Bar>::ID;
+   |                ~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 
