@@ -63,7 +63,7 @@ pub(crate) mod entry_points {
     pub(crate) use types::type_;
 
     pub(crate) fn expr(p: &mut Parser) {
-        let _ = expressions::expr_with_attrs(p);
+        let _ = expressions::expr(p);
     }
 
     pub(crate) fn stmt(p: &mut Parser) {

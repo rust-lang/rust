@@ -339,7 +339,7 @@ impl CompletedMarker {
     }
 
     /// Extends this completed marker *to the left* up to `m`.
-    pub(crate) fn extend_to(self, p: &mut Parser, mut m: Marker) {
+    pub(crate) fn extend_to(self, p: &mut Parser, mut m: Marker) -> CompletedMarker {
         m.bomb.defuse();
         let idx = m.pos as usize;
         match &mut p.events[idx] {
@@ -348,6 +348,7 @@ impl CompletedMarker {
             }
             _ => unreachable!(),
         }
+        self
     }
 
     pub(crate) fn kind(&self) -> SyntaxKind {

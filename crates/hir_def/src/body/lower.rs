@@ -650,8 +650,10 @@ impl ExprCollector<'_> {
                 self.statements_in_scope.push(Statement::Let { pat, type_ref, initializer });
             }
             ast::Stmt::ExprStmt(stmt) => {
-                if self.check_cfg(&stmt).is_none() {
-                    return;
+                if let Some(expr) = stmt.expr() {
+                    if self.check_cfg(&expr).is_none() {
+                        return;
+                    }
                 }
                 let has_semi = stmt.semicolon_token().is_some();
                 // Note that macro could be expended to multiple statements

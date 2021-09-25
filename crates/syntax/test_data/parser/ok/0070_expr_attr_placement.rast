@@ -1,0 +1,58 @@
+SOURCE_FILE@0..44
+  FN@0..43
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..4
+      IDENT@3..4 "f"
+    PARAM_LIST@4..6
+      L_PAREN@4..5 "("
+      R_PAREN@5..6 ")"
+    WHITESPACE@6..7 " "
+    BLOCK_EXPR@7..43
+      L_CURLY@7..8 "{"
+      WHITESPACE@8..13 "\n    "
+      PAREN_EXPR@13..41
+        L_PAREN@13..14 "("
+        BIN_EXPR@14..40
+          TRY_EXPR@14..23
+            ATTR@14..18
+              POUND@14..15 "#"
+              L_BRACK@15..16 "["
+              META@16..17
+                PATH@16..17
+                  PATH_SEGMENT@16..17
+                    NAME_REF@16..17
+                      IDENT@16..17 "a"
+              R_BRACK@17..18 "]"
+            WHITESPACE@18..19 " "
+            PATH_EXPR@19..22
+              PATH@19..22
+                PATH_SEGMENT@19..22
+                  NAME_REF@19..22
+                    IDENT@19..22 "lhs"
+            QUESTION@22..23 "?"
+          WHITESPACE@23..24 " "
+          PLUS@24..25 "+"
+          WHITESPACE@25..26 " "
+          AWAIT_EXPR@26..40
+            ATTR@26..30
+              POUND@26..27 "#"
+              L_BRACK@27..28 "["
+              META@28..29
+                PATH@28..29
+                  PATH_SEGMENT@28..29
+                    NAME_REF@28..29
+                      IDENT@28..29 "b"
+              R_BRACK@29..30 "]"
+            WHITESPACE@30..31 " "
+            PATH_EXPR@31..34
+              PATH@31..34
+                PATH_SEGMENT@31..34
+                  NAME_REF@31..34
+                    IDENT@31..34 "rhs"
+            DOT@34..35 "."
+            AWAIT_KW@35..40 "await"
+        R_PAREN@40..41 ")"
+      WHITESPACE@41..42 "\n"
+      R_CURLY@42..43 "}"
+  WHITESPACE@43..44 "\n"
