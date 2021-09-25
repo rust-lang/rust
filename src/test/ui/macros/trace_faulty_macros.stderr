@@ -31,7 +31,7 @@ LL |         my_recursive_macro!();
 LL |     my_recursive_macro!();
    |     ---------------------- in this macro invocation
    |
-   = help: consider adding a `#![recursion_limit="8"]` attribute to your crate (`trace_faulty_macros`)
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "8"]` attribute to your crate (`trace_faulty_macros`)
    = note: this error originates in the macro `my_recursive_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: trace_macro
