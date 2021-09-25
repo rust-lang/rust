@@ -2552,7 +2552,7 @@ impl Path {
 
     /// Returns an iterator over the entries within a directory.
     ///
-    /// The iterator will yield instances of [`io::Result`]`<`[`fs::DirEntry`]`>`. New
+    /// The iterator will yield instances of <code>[io::Result]<[fs::DirEntry]></code>. New
     /// errors may be encountered after an iterator is initially constructed.
     ///
     /// This is an alias to [`fs::read_dir`].

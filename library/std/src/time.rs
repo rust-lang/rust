@@ -472,7 +472,7 @@ impl SystemTime {
     /// as the system clock being adjusted either forwards or backwards).
     /// [`Instant`] can be used to measure elapsed time without this risk of failure.
     ///
-    /// If successful, [`Ok`]`(`[`Duration`]`)` is returned where the duration represents
+    /// If successful, <code>[Ok]\([Duration])</code> is returned where the duration represents
     /// the amount of time elapsed from the specified measurement to this one.
     ///
     /// Returns an [`Err`] if `earlier` is later than `self`, and the error
@@ -499,7 +499,7 @@ impl SystemTime {
     ///
     /// This function may fail as the underlying system clock is susceptible to
     /// drift and updates (e.g., the system clock could go backwards), so this
-    /// function might not always succeed. If successful, [`Ok`]`(`[`Duration`]`)` is
+    /// function might not always succeed. If successful, <code>[Ok]\([Duration])</code> is
     /// returned where the duration represents the amount of time elapsed from
     /// this time measurement to the current time.
     ///

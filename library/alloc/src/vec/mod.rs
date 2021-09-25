@@ -296,8 +296,8 @@ mod spec_extend;
 /// on an empty Vec, it will not allocate memory. Similarly, if you store zero-sized
 /// types inside a `Vec`, it will not allocate space for them. *Note that in this case
 /// the `Vec` might not report a [`capacity`] of 0*. `Vec` will allocate if and only
-/// if [`mem::size_of::<T>`]`() * capacity() > 0`. In general, `Vec`'s allocation
-/// details are very subtle &mdash; if you intend to allocate memory using a `Vec`
+/// if <code>[mem::size_of::\<T>]\() * [capacity]\() > 0</code>. In general, `Vec`'s allocation
+/// details are very subtle --- if you intend to allocate memory using a `Vec`
 /// and use it for something else (either to pass to unsafe code, or to build your
 /// own memory-backed collection), be sure to deallocate this memory by using
 /// `from_raw_parts` to recover the `Vec` and then dropping it.
@@ -305,8 +305,8 @@ mod spec_extend;
 /// If a `Vec` *has* allocated memory, then the memory it points to is on the heap
 /// (as defined by the allocator Rust is configured to use by default), and its
 /// pointer points to [`len`] initialized, contiguous elements in order (what
-/// you would see if you coerced it to a slice), followed by [`capacity`]` -
-/// `[`len`] logically uninitialized, contiguous elements.
+/// you would see if you coerced it to a slice), followed by <code>[capacity] - [len]</code>
+/// logically uninitialized, contiguous elements.
 ///
 /// A vector containing the elements `'a'` and `'b'` with capacity 4 can be
 /// visualized as below. The top part is the `Vec` struct, it contains a
@@ -348,7 +348,7 @@ mod spec_extend;
 ///
 /// [`push`] and [`insert`] will never (re)allocate if the reported capacity is
 /// sufficient. [`push`] and [`insert`] *will* (re)allocate if
-/// [`len`]` == `[`capacity`]. That is, the reported capacity is completely
+/// <code>[len] == [capacity]</code>. That is, the reported capacity is completely
 /// accurate, and can be relied on. It can even be used to manually free the memory
 /// allocated by a `Vec` if desired. Bulk insertion methods *may* reallocate, even
 /// when not necessary.
@@ -360,7 +360,7 @@ mod spec_extend;
 ///
 /// `vec![x; n]`, `vec![a, b, c, d]`, and
 /// [`Vec::with_capacity(n)`][`Vec::with_capacity`], will all produce a `Vec`
-/// with exactly the requested capacity. If [`len`]` == `[`capacity`],
+/// with exactly the requested capacity. If <code>[len] == [capacity]</code>,
 /// (as is the case for the [`vec!`] macro), then a `Vec<T>` can be converted to
 /// and from a [`Box<[T]>`][owned slice] without reallocating or moving the elements.
 ///
@@ -384,8 +384,10 @@ mod spec_extend;
 /// [`&str`]: type@str
 /// [`shrink_to_fit`]: Vec::shrink_to_fit
 /// [`shrink_to`]: Vec::shrink_to
+/// [capacity]: Vec::capacity
 /// [`capacity`]: Vec::capacity
-/// [`mem::size_of::<T>`]: core::mem::size_of
+/// [mem::size_of::\<T>]: core::mem::size_of
+/// [len]: Vec::len
 /// [`len`]: Vec::len
 /// [`push`]: Vec::push
 /// [`insert`]: Vec::insert

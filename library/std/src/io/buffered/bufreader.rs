@@ -15,7 +15,7 @@ use crate::io::{
 /// *repeated* read calls to the same file or network socket. It does not
 /// help when reading very large amounts at once, or reading just one or a few
 /// times. It also provides no advantage when reading from a source that is
-/// already in memory, like a [`Vec`]`<u8>`.
+/// already in memory, like a <code>[Vec]\<u8></code>.
 ///
 /// When the `BufReader<R>` is dropped, the contents of its buffer will be
 /// discarded. Creating multiple instances of a `BufReader<R>` on the same
@@ -347,7 +347,7 @@ where
 impl<R: Seek> Seek for BufReader<R> {
     /// Seek to an offset, in bytes, in the underlying reader.
     ///
-    /// The position used for seeking with [`SeekFrom::Current`]`(_)` is the
+    /// The position used for seeking with <code>[SeekFrom::Current]\(_)</code> is the
     /// position the underlying reader would be at if the `BufReader<R>` had no
     /// internal buffer.
     ///
@@ -360,11 +360,11 @@ impl<R: Seek> Seek for BufReader<R> {
     ///
     /// See [`std::io::Seek`] for more details.
     ///
-    /// Note: In the edge case where you're seeking with [`SeekFrom::Current`]`(n)`
+    /// Note: In the edge case where you're seeking with <code>[SeekFrom::Current]\(n)</code>
     /// where `n` minus the internal buffer length overflows an `i64`, two
     /// seeks will be performed instead of one. If the second seek returns
     /// [`Err`], the underlying reader will be left at the same position it would
-    /// have if you called `seek` with [`SeekFrom::Current`]`(0)`.
+    /// have if you called `seek` with <code>[SeekFrom::Current]\(0)</code>.
     ///
     /// [`std::io::Seek`]: Seek
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {

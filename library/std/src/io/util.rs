@@ -19,7 +19,7 @@ pub struct Empty;
 
 /// Constructs a new handle to an empty reader.
 ///
-/// All reads from the returned reader will return [`Ok`]`(0)`.
+/// All reads from the returned reader will return <code>[Ok]\(0)</code>.
 ///
 /// # Examples
 ///

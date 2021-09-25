@@ -368,15 +368,15 @@
 //! [Vec::push]: ../../std/vec/struct.Vec.html#method.push "Vec::push"
 //! [Rc]: ../../std/rc/struct.Rc.html "rc::Rc"
 //! [RefCell]: crate::cell::RefCell "cell::RefCell"
-//! [`drop`]: Drop::drop "Drop::drop"
+//! [`drop`]: Drop::drop
 //! [VecDeque]: ../../std/collections/struct.VecDeque.html "collections::VecDeque"
 //! [`ptr::write`]: crate::ptr::write "ptr::write"
 //! [`Future`]: crate::future::Future "future::Future"
 //! [drop-impl]: #drop-implementation
 //! [drop-guarantee]: #drop-guarantee
 //! [`poll`]: crate::future::Future::poll "future::Future::poll"
-//! [&]: ../../std/primitive.reference.html "shared reference"
-//! [&mut]: ../../std/primitive.reference.html "mutable reference"
+//! [&]: reference "shared reference"
+//! [&mut]: reference "mutable reference"
 //! [`unsafe`]: ../../std/keyword.unsafe.html "keyword unsafe"
 
 #![stable(feature = "pin", since = "1.33.0")]

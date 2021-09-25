@@ -39,7 +39,7 @@
 //! ```
 //!
 //! An iterator has a method, [`next`], which when called, returns an
-//! [`Option`]`<Item>`. [`next`] will return [`Some(Item)`] as long as there
+//! <code>[Option]\<Item></code>. Calling [`next`] will return [`Some(Item)`] as long as there
 //! are elements, and once they've all been exhausted, will return `None` to
 //! indicate that iteration is finished. Individual iterators may choose to
 //! resume iteration, and so calling [`next`] again may or may not eventually

@@ -106,7 +106,7 @@ pub struct Metadata(fs_imp::FileAttr);
 /// Iterator over the entries in a directory.
 ///
 /// This iterator is returned from the [`read_dir`] function of this module and
-/// will yield instances of [`io::Result`]`<`[`DirEntry`]`>`. Through a [`DirEntry`]
+/// will yield instances of <code>[io::Result]<[DirEntry]></code>. Through a [`DirEntry`]
 /// information like the entry's path and possibly other metadata can be
 /// learned.
 ///
@@ -786,17 +786,17 @@ impl OpenOptions {
     /// If a file is opened with both read and append access, beware that after
     /// opening, and after every write, the position for reading may be set at the
     /// end of the file. So, before writing, save the current position (using
-    /// [`seek`]`(`[`SeekFrom`]`::`[`Current`]`(0))`), and restore it before the next read.
+    /// <code>[seek]\([SeekFrom]::[Current]\(0))</code>), and restore it before the next read.
     ///
     /// ## Note
     ///
     /// This function doesn't create the file if it doesn't exist. Use the
     /// [`OpenOptions::create`] method to do so.
     ///
-    /// [`write()`]: Write::write
-    /// [`flush()`]: Write::flush
-    /// [`seek`]: Seek::seek
-    /// [`Current`]: SeekFrom::Current
+    /// [`write()`]: Write::write "io::Write::write"
+    /// [`flush()`]: Write::flush "io::Write::flush"
+    /// [seek]: Seek::seek "io::Seek::seek"
+    /// [Current]: SeekFrom::Current "io::SeekFrom::Current"
     ///
     /// # Examples
     ///
@@ -2043,7 +2043,7 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 
 /// Returns an iterator over the entries within a directory.
 ///
-/// The iterator will yield instances of [`io::Result`]`<`[`DirEntry`]`>`.
+/// The iterator will yield instances of <code>[io::Result]<[DirEntry]></code>.
 /// New errors may be encountered after an iterator is initially constructed.
 /// Entries for the current and parent directories (typically `.` and `..`) are
 /// skipped.

@@ -30,9 +30,10 @@ impl<T> Poll<T> {
     ///
     /// # Examples
     ///
-    /// Converts a `Poll<`[`String`]`>` into an `Poll<`[`usize`]`>`, consuming the original:
+    /// Converts a <code>Poll<[String]></code> into a <code>Poll<[usize]></code>, consuming
+    /// the original:
     ///
-    /// [`String`]: ../../std/string/struct.String.html
+    /// [String]: ../../std/string/struct.String.html "String"
     /// ```
     /// # use core::task::Poll;
     /// let poll_some_string = Poll::Ready(String::from("Hello, World!"));

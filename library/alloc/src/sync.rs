@@ -99,8 +99,8 @@ macro_rules! acquire {
 /// first: after all, isn't the point of `Arc<T>` thread safety? The key is
 /// this: `Arc<T>` makes it thread safe to have multiple ownership of the same
 /// data, but it  doesn't add thread safety to its data. Consider
-/// `Arc<`[`RefCell<T>`]`>`. [`RefCell<T>`] isn't [`Sync`], and if `Arc<T>` was always
-/// [`Send`], `Arc<`[`RefCell<T>`]`>` would be as well. But then we'd have a problem:
+/// <code>Arc<[RefCell\<T>]></code>. [`RefCell<T>`] isn't [`Sync`], and if `Arc<T>` was always
+/// [`Send`], <code>Arc<[RefCell\<T>]></code> would be as well. But then we'd have a problem:
 /// [`RefCell<T>`] is not thread safe; it keeps track of the borrowing count using
 /// non-atomic operations.
 ///
@@ -176,6 +176,7 @@ macro_rules! acquire {
 /// [deref]: core::ops::Deref
 /// [downgrade]: Arc::downgrade
 /// [upgrade]: Weak::upgrade
+/// [RefCell\<T>]: core::cell::RefCell
 /// [`RefCell<T>`]: core::cell::RefCell
 /// [`std::sync`]: ../../std/sync/index.html
 /// [`Arc::clone(&from)`]: Arc::clone
@@ -206,7 +207,7 @@ macro_rules! acquire {
 ///
 /// Sharing a mutable [`AtomicUsize`]:
 ///
-/// [`AtomicUsize`]: core::sync::atomic::AtomicUsize
+/// [`AtomicUsize`]: core::sync::atomic::AtomicUsize "sync::atomic::AtomicUsize"
 ///
 /// ```no_run
 /// use std::sync::Arc;
@@ -262,7 +263,7 @@ impl<T: ?Sized> Arc<T> {
 
 /// `Weak` is a version of [`Arc`] that holds a non-owning reference to the
 /// managed allocation. The allocation is accessed by calling [`upgrade`] on the `Weak`
-/// pointer, which returns an [`Option`]`<`[`Arc`]`<T>>`.
+/// pointer, which returns an <code>[Option]<[Arc]\<T>></code>.
 ///
 /// Since a `Weak` reference does not count towards ownership, it will not
 /// prevent the value stored in the allocation from being dropped, and `Weak` itself makes no
@@ -476,7 +477,7 @@ impl<T> Arc<T> {
     /// assert_eq!(*zero, 0)
     /// ```
     ///
-    /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
+    /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Arc<mem::MaybeUninit<T>> {
@@ -684,7 +685,7 @@ impl<T> Arc<[T]> {
     /// assert_eq!(*values, [0, 0, 0])
     /// ```
     ///
-    /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
+    /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
@@ -712,7 +713,7 @@ impl<T> Arc<mem::MaybeUninit<T>> {
     /// Calling this when the content is not yet fully initialized
     /// causes immediate undefined behavior.
     ///
-    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
+    /// [`MaybeUninit::assume_init`]: mem::MaybeUninit::assume_init
     ///
     /// # Examples
     ///
@@ -751,7 +752,7 @@ impl<T> Arc<[mem::MaybeUninit<T>]> {
     /// Calling this when the content is not yet fully initialized
     /// causes immediate undefined behavior.
     ///
-    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
+    /// [`MaybeUninit::assume_init`]: mem::MaybeUninit::assume_init
     ///
     /// # Examples
     ///
@@ -1086,7 +1087,7 @@ impl<T: ?Sized> Arc<T> {
     /// assert!(!Arc::ptr_eq(&five, &other_five));
     /// ```
     ///
-    /// [`ptr::eq`]: core::ptr::eq
+    /// [`ptr::eq`]: core::ptr::eq "ptr::eq"
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
         this.ptr.as_ptr() == other.ptr.as_ptr()
     }
@@ -1714,7 +1715,7 @@ impl<T: ?Sized> Weak<T> {
     /// // assert_eq!("hello", unsafe { &*weak.as_ptr() });
     /// ```
     ///
-    /// [`null`]: core::ptr::null
+    /// [`null`]: core::ptr::null "ptr::null"
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn as_ptr(&self) -> *const T {
         let ptr: *mut ArcInner<T> = NonNull::as_ptr(self.ptr);
@@ -1806,7 +1807,6 @@ impl<T: ?Sized> Weak<T> {
     /// [`new`]: Weak::new
     /// [`into_raw`]: Weak::into_raw
     /// [`upgrade`]: Weak::upgrade
-    /// [`forget`]: std::mem::forget
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
         // See Weak::as_ptr for context on how the input pointer is derived.
@@ -1982,7 +1982,7 @@ impl<T: ?Sized> Weak<T> {
     /// assert!(!first.ptr_eq(&third));
     /// ```
     ///
-    /// [`ptr::eq`]: core::ptr::eq
+    /// [`ptr::eq`]: core::ptr::eq "ptr::eq"
     #[inline]
     #[stable(feature = "weak_ptr_eq", since = "1.39.0")]
     pub fn ptr_eq(&self, other: &Self) -> bool {
