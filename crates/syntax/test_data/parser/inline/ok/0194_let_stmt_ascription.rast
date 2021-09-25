@@ -1,5 +1,5 @@
-SOURCE_FILE@0..28
-  FN@0..27
+SOURCE_FILE@0..23
+  FN@0..22
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..4
@@ -8,10 +8,10 @@ SOURCE_FILE@0..28
       L_PAREN@4..5 "("
       R_PAREN@5..6 ")"
     WHITESPACE@6..7 " "
-    BLOCK_EXPR@7..27
+    BLOCK_EXPR@7..22
       L_CURLY@7..8 "{"
       WHITESPACE@8..9 " "
-      LET_STMT@9..25
+      LET_STMT@9..20
         LET_KW@9..12 "let"
         WHITESPACE@12..13 " "
         IDENT_PAT@13..14
@@ -24,12 +24,7 @@ SOURCE_FILE@0..28
             PATH_SEGMENT@16..19
               NAME_REF@16..19
                 IDENT@16..19 "i32"
-        WHITESPACE@19..20 " "
-        EQ@20..21 "="
-        WHITESPACE@21..22 " "
-        LITERAL@22..24
-          INT_NUMBER@22..24 "92"
-        SEMICOLON@24..25 ";"
-      WHITESPACE@25..26 " "
-      R_CURLY@26..27 "}"
-  WHITESPACE@27..28 "\n"
+        SEMICOLON@19..20 ";"
+      WHITESPACE@20..21 " "
+      R_CURLY@21..22 "}"
+  WHITESPACE@22..23 "\n"
