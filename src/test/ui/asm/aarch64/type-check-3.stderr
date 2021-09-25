@@ -1,0 +1,172 @@
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:48:15
+   |
+LL |         asm!("{}", in(reg) 0u8);
+   |               ^^           --- for this argument
+   |
+   = note: `#[warn(asm_sub_register)]` on by default
+   = help: use the `w` modifier to have the register formatted as `w0`
+   = help: or use the `x` modifier to keep the default formatting of `x0`
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:50:15
+   |
+LL |         asm!("{}", in(reg) 0u16);
+   |               ^^           ---- for this argument
+   |
+   = help: use the `w` modifier to have the register formatted as `w0`
+   = help: or use the `x` modifier to keep the default formatting of `x0`
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:52:15
+   |
+LL |         asm!("{}", in(reg) 0i32);
+   |               ^^           ---- for this argument
+   |
+   = help: use the `w` modifier to have the register formatted as `w0`
+   = help: or use the `x` modifier to keep the default formatting of `x0`
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:54:15
+   |
+LL |         asm!("{}", in(reg) 0f32);
+   |               ^^           ---- for this argument
+   |
+   = help: use the `w` modifier to have the register formatted as `w0`
+   = help: or use the `x` modifier to keep the default formatting of `x0`
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:57:15
+   |
+LL |         asm!("{}", in(vreg) 0i16);
+   |               ^^            ---- for this argument
+   |
+   = help: use the `h` modifier to have the register formatted as `h0`
+   = help: or use the `v` modifier to keep the default formatting of `v0`
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:59:15
+   |
+LL |         asm!("{}", in(vreg) 0f32);
+   |               ^^            ---- for this argument
+   |
+   = help: use the `s` modifier to have the register formatted as `s0`
+   = help: or use the `v` modifier to keep the default formatting of `v0`
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:61:15
+   |
+LL |         asm!("{}", in(vreg) 0f64);
+   |               ^^            ---- for this argument
+   |
+   = help: use the `d` modifier to have the register formatted as `d0`
+   = help: or use the `v` modifier to keep the default formatting of `v0`
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:63:15
+   |
+LL |         asm!("{}", in(vreg_low16) 0f64);
+   |               ^^                  ---- for this argument
+   |
+   = help: use the `d` modifier to have the register formatted as `d0`
+   = help: or use the `v` modifier to keep the default formatting of `v0`
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:66:15
+   |
+LL |         asm!("{0} {0}", in(reg) 0i16);
+   |               ^^^ ^^^           ---- for this argument
+   |
+   = help: use the `w` modifier to have the register formatted as `w0`
+   = help: or use the `x` modifier to keep the default formatting of `x0`
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:68:15
+   |
+LL |         asm!("{0} {0:x}", in(reg) 0i16);
+   |               ^^^                 ---- for this argument
+   |
+   = help: use the `w` modifier to have the register formatted as `w0`
+   = help: or use the `x` modifier to keep the default formatting of `x0`
+
+error: type `i128` cannot be used with this register class
+  --> $DIR/type-check-3.rs:73:28
+   |
+LL |         asm!("{}", in(reg) 0i128);
+   |                            ^^^^^
+   |
+   = note: register class `reg` supports these types: i8, i16, i32, i64, f32, f64
+
+error: type `float64x2_t` cannot be used with this register class
+  --> $DIR/type-check-3.rs:75:28
+   |
+LL |         asm!("{}", in(reg) f64x2);
+   |                            ^^^^^
+   |
+   = note: register class `reg` supports these types: i8, i16, i32, i64, f32, f64
+
+error: type `Simd256bit` cannot be used with this register class
+  --> $DIR/type-check-3.rs:77:29
+   |
+LL |         asm!("{}", in(vreg) f64x4);
+   |                             ^^^^^
+   |
+   = note: register class `vreg` supports these types: i8, i16, i32, i64, f32, f64, i8x8, i16x4, i32x2, i64x1, f32x2, f64x1, i8x16, i16x8, i32x4, i64x2, f32x4, f64x2
+
+error: incompatible types for asm inout argument
+  --> $DIR/type-check-3.rs:88:33
+   |
+LL |         asm!("{:x}", inout(reg) 0u32 => val_f32);
+   |                                 ^^^^    ^^^^^^^ type `f32`
+   |                                 |
+   |                                 type `u32`
+   |
+   = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
+
+error: incompatible types for asm inout argument
+  --> $DIR/type-check-3.rs:90:33
+   |
+LL |         asm!("{:x}", inout(reg) 0u32 => val_ptr);
+   |                                 ^^^^    ^^^^^^^ type `*mut u8`
+   |                                 |
+   |                                 type `u32`
+   |
+   = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
+
+error: incompatible types for asm inout argument
+  --> $DIR/type-check-3.rs:92:33
+   |
+LL |         asm!("{:x}", inout(reg) main => val_u32);
+   |                                 ^^^^    ^^^^^^^ type `u32`
+   |                                 |
+   |                                 type `fn()`
+   |
+   = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
+
+error[E0013]: constants cannot refer to statics
+  --> $DIR/type-check-3.rs:108:25
+   |
+LL | global_asm!("{}", const S);
+   |                         ^
+   |
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
+
+error[E0013]: constants cannot refer to statics
+  --> $DIR/type-check-3.rs:111:35
+   |
+LL | global_asm!("{}", const const_foo(S));
+   |                                   ^
+   |
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
+
+error[E0013]: constants cannot refer to statics
+  --> $DIR/type-check-3.rs:114:35
+   |
+LL | global_asm!("{}", const const_bar(S));
+   |                                   ^
+   |
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
+
+error: aborting due to 9 previous errors; 10 warnings emitted
+
+For more information about this error, try `rustc --explain E0013`.

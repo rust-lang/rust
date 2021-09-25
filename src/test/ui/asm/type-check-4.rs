@@ -1,4 +1,7 @@
-// only-x86_64
+// needs-asm-support
+// ignore-nvptx64
+// ignore-spirv
+// ignore-wasm32
 
 #![feature(asm)]
 

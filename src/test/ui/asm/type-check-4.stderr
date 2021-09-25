@@ -1,5 +1,5 @@
 error[E0506]: cannot assign to `a` because it is borrowed
-  --> $DIR/type-check-4.rs:11:9
+  --> $DIR/type-check-4.rs:14:9
    |
 LL |         let p = &a;
    |                 -- borrow of `a` occurs here
@@ -10,7 +10,7 @@ LL |         println!("{}", p);
    |                        - borrow later used here
 
 error[E0503]: cannot use `a` because it was mutably borrowed
-  --> $DIR/type-check-4.rs:19:28
+  --> $DIR/type-check-4.rs:22:28
    |
 LL |         let p = &mut a;
    |                 ------ borrow of `a` occurs here

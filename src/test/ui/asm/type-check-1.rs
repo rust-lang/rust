@@ -1,4 +1,7 @@
-// only-x86_64
+// needs-asm-support
+// ignore-nvptx64
+// ignore-spirv
+// ignore-wasm32
 
 #![feature(asm, global_asm)]
 
@@ -48,6 +51,8 @@ fn main() {
         asm!("{}", const 0f32);
         //~^ ERROR mismatched types
         asm!("{}", const 0 as *mut u8);
+        //~^ ERROR mismatched types
+        asm!("{}", const &0);
         //~^ ERROR mismatched types
     }
 }

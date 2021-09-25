@@ -1,5 +1,5 @@
 error[E0435]: attempt to use a non-constant value in a constant
-  --> $DIR/type-check-1.rs:34:26
+  --> $DIR/type-check-1.rs:37:26
    |
 LL |         let x = 0;
    |         ----- help: consider using `const` instead of `let`: `const x`
@@ -8,7 +8,7 @@ LL |         asm!("{}", const x);
    |                          ^ non-constant value
 
 error[E0435]: attempt to use a non-constant value in a constant
-  --> $DIR/type-check-1.rs:37:36
+  --> $DIR/type-check-1.rs:40:36
    |
 LL |         let x = 0;
    |         ----- help: consider using `const` instead of `let`: `const x`
@@ -17,7 +17,7 @@ LL |         asm!("{}", const const_foo(x));
    |                                    ^ non-constant value
 
 error[E0435]: attempt to use a non-constant value in a constant
-  --> $DIR/type-check-1.rs:40:36
+  --> $DIR/type-check-1.rs:43:36
    |
 LL |         let x = 0;
    |         ----- help: consider using `const` instead of `let`: `const x`
@@ -26,13 +26,13 @@ LL |         asm!("{}", const const_bar(x));
    |                                    ^ non-constant value
 
 error[E0308]: mismatched types
-  --> $DIR/type-check-1.rs:48:26
+  --> $DIR/type-check-1.rs:51:26
    |
 LL |         asm!("{}", const 0f32);
    |                          ^^^^ expected integer, found `f32`
 
 error[E0308]: mismatched types
-  --> $DIR/type-check-1.rs:50:26
+  --> $DIR/type-check-1.rs:53:26
    |
 LL |         asm!("{}", const 0 as *mut u8);
    |                          ^^^^^^^^^^^^ expected integer, found *-ptr
@@ -40,20 +40,32 @@ LL |         asm!("{}", const 0 as *mut u8);
    = note:     expected type `{integer}`
            found raw pointer `*mut u8`
 
+error[E0308]: mismatched types
+  --> $DIR/type-check-1.rs:55:26
+   |
+LL |         asm!("{}", const &0);
+   |                          ^^ expected integer, found `&{integer}`
+   |
+help: consider removing the borrow
+   |
+LL -         asm!("{}", const &0);
+LL +         asm!("{}", const 0);
+   | 
+
 error: invalid asm output
-  --> $DIR/type-check-1.rs:10:29
+  --> $DIR/type-check-1.rs:13:29
    |
 LL |         asm!("{}", out(reg) 1 + 2);
    |                             ^^^^^ cannot assign to this expression
 
 error: invalid asm output
-  --> $DIR/type-check-1.rs:12:31
+  --> $DIR/type-check-1.rs:15:31
    |
 LL |         asm!("{}", inout(reg) 1 + 2);
    |                               ^^^^^ cannot assign to this expression
 
 error[E0277]: the size for values of type `[u64]` cannot be known at compilation time
-  --> $DIR/type-check-1.rs:18:28
+  --> $DIR/type-check-1.rs:21:28
    |
 LL |         asm!("{}", in(reg) v[..]);
    |                            ^^^^^ doesn't have a size known at compile-time
@@ -62,7 +74,7 @@ LL |         asm!("{}", in(reg) v[..]);
    = note: all inline asm arguments must have a statically known size
 
 error[E0277]: the size for values of type `[u64]` cannot be known at compilation time
-  --> $DIR/type-check-1.rs:20:29
+  --> $DIR/type-check-1.rs:23:29
    |
 LL |         asm!("{}", out(reg) v[..]);
    |                             ^^^^^ doesn't have a size known at compile-time
@@ -71,7 +83,7 @@ LL |         asm!("{}", out(reg) v[..]);
    = note: all inline asm arguments must have a statically known size
 
 error[E0277]: the size for values of type `[u64]` cannot be known at compilation time
-  --> $DIR/type-check-1.rs:22:31
+  --> $DIR/type-check-1.rs:25:31
    |
 LL |         asm!("{}", inout(reg) v[..]);
    |                               ^^^^^ doesn't have a size known at compile-time
@@ -80,13 +92,13 @@ LL |         asm!("{}", inout(reg) v[..]);
    = note: all inline asm arguments must have a statically known size
 
 error[E0308]: mismatched types
-  --> $DIR/type-check-1.rs:60:25
+  --> $DIR/type-check-1.rs:65:25
    |
 LL | global_asm!("{}", const 0f32);
    |                         ^^^^ expected integer, found `f32`
 
 error[E0308]: mismatched types
-  --> $DIR/type-check-1.rs:62:25
+  --> $DIR/type-check-1.rs:67:25
    |
 LL | global_asm!("{}", const 0 as *mut u8);
    |                         ^^^^^^^^^^^^ expected integer, found *-ptr
@@ -94,7 +106,7 @@ LL | global_asm!("{}", const 0 as *mut u8);
    = note:     expected type `{integer}`
            found raw pointer `*mut u8`
 
-error: aborting due to 12 previous errors
+error: aborting due to 13 previous errors
 
 Some errors have detailed explanations: E0277, E0308, E0435.
 For more information about an error, try `rustc --explain E0277`.

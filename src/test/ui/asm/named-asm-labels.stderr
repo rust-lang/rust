@@ -1,5 +1,5 @@
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:19:15
+  --> $DIR/named-asm-labels.rs:22:15
    |
 LL |         asm!("bar: nop");
    |               ^^^
@@ -9,7 +9,7 @@ LL |         asm!("bar: nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:22:15
+  --> $DIR/named-asm-labels.rs:25:15
    |
 LL |         asm!("abcd:");
    |               ^^^^
@@ -18,7 +18,7 @@ LL |         asm!("abcd:");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:25:15
+  --> $DIR/named-asm-labels.rs:28:15
    |
 LL |         asm!("foo: bar1: nop");
    |               ^^^  ^^^^
@@ -27,7 +27,7 @@ LL |         asm!("foo: bar1: nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:29:15
+  --> $DIR/named-asm-labels.rs:32:15
    |
 LL |         asm!("foo1: nop", "nop");
    |               ^^^^
@@ -36,7 +36,7 @@ LL |         asm!("foo1: nop", "nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:30:15
+  --> $DIR/named-asm-labels.rs:33:15
    |
 LL |         asm!("foo2: foo3: nop", "nop");
    |               ^^^^  ^^^^
@@ -45,7 +45,7 @@ LL |         asm!("foo2: foo3: nop", "nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:32:22
+  --> $DIR/named-asm-labels.rs:35:22
    |
 LL |         asm!("nop", "foo4: nop");
    |                      ^^^^
@@ -54,7 +54,7 @@ LL |         asm!("nop", "foo4: nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:33:15
+  --> $DIR/named-asm-labels.rs:36:15
    |
 LL |         asm!("foo5: nop", "foo6: nop");
    |               ^^^^
@@ -63,7 +63,7 @@ LL |         asm!("foo5: nop", "foo6: nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:33:28
+  --> $DIR/named-asm-labels.rs:36:28
    |
 LL |         asm!("foo5: nop", "foo6: nop");
    |                            ^^^^
@@ -72,7 +72,7 @@ LL |         asm!("foo5: nop", "foo6: nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:38:15
+  --> $DIR/named-asm-labels.rs:41:15
    |
 LL |         asm!("foo7: nop; foo8: nop");
    |               ^^^^       ^^^^
@@ -81,7 +81,7 @@ LL |         asm!("foo7: nop; foo8: nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:40:15
+  --> $DIR/named-asm-labels.rs:43:15
    |
 LL |         asm!("foo9: nop; nop");
    |               ^^^^
@@ -90,7 +90,7 @@ LL |         asm!("foo9: nop; nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:41:20
+  --> $DIR/named-asm-labels.rs:44:20
    |
 LL |         asm!("nop; foo10: nop");
    |                    ^^^^^
@@ -99,7 +99,7 @@ LL |         asm!("nop; foo10: nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:44:15
+  --> $DIR/named-asm-labels.rs:47:15
    |
 LL |         asm!("bar2: nop\n bar3: nop");
    |               ^^^^        ^^^^
@@ -108,7 +108,7 @@ LL |         asm!("bar2: nop\n bar3: nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:46:15
+  --> $DIR/named-asm-labels.rs:49:15
    |
 LL |         asm!("bar4: nop\n nop");
    |               ^^^^
@@ -117,7 +117,7 @@ LL |         asm!("bar4: nop\n nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:47:21
+  --> $DIR/named-asm-labels.rs:50:21
    |
 LL |         asm!("nop\n bar5: nop");
    |                     ^^^^
@@ -126,7 +126,7 @@ LL |         asm!("nop\n bar5: nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:48:21
+  --> $DIR/named-asm-labels.rs:51:21
    |
 LL |         asm!("nop\n bar6: bar7: nop");
    |                     ^^^^  ^^^^
@@ -135,7 +135,7 @@ LL |         asm!("nop\n bar6: bar7: nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:54:13
+  --> $DIR/named-asm-labels.rs:57:13
    |
 LL |             blah2: nop
    |             ^^^^^
@@ -146,7 +146,7 @@ LL |             blah3: nop
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:63:19
+  --> $DIR/named-asm-labels.rs:66:19
    |
 LL |             nop ; blah4: nop
    |                   ^^^^^
@@ -155,7 +155,7 @@ LL |             nop ; blah4: nop
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:77:15
+  --> $DIR/named-asm-labels.rs:80:15
    |
 LL |         asm!("blah1: 2bar: nop");
    |               ^^^^^
@@ -164,7 +164,7 @@ LL |         asm!("blah1: 2bar: nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:80:15
+  --> $DIR/named-asm-labels.rs:83:15
    |
 LL |         asm!("def: def: nop");
    |               ^^^
@@ -173,7 +173,7 @@ LL |         asm!("def: def: nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:81:15
+  --> $DIR/named-asm-labels.rs:84:15
    |
 LL |         asm!("def: nop\ndef: nop");
    |               ^^^
@@ -182,7 +182,7 @@ LL |         asm!("def: nop\ndef: nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:82:15
+  --> $DIR/named-asm-labels.rs:85:15
    |
 LL |         asm!("def: nop; def: nop");
    |               ^^^
@@ -191,7 +191,7 @@ LL |         asm!("def: nop; def: nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:90:15
+  --> $DIR/named-asm-labels.rs:93:15
    |
 LL |         asm!("fooo\u{003A} nop");
    |               ^^^^^^^^^^^^^^^^
@@ -200,7 +200,7 @@ LL |         asm!("fooo\u{003A} nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:91:15
+  --> $DIR/named-asm-labels.rs:94:15
    |
 LL |         asm!("foooo\x3A nop");
    |               ^^^^^^^^^^^^^
@@ -209,7 +209,7 @@ LL |         asm!("foooo\x3A nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:94:15
+  --> $DIR/named-asm-labels.rs:97:15
    |
 LL |         asm!("fooooo:\u{000A} nop");
    |               ^^^^^^
@@ -218,7 +218,7 @@ LL |         asm!("fooooo:\u{000A} nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:95:15
+  --> $DIR/named-asm-labels.rs:98:15
    |
 LL |         asm!("foooooo:\x0A nop");
    |               ^^^^^^^
@@ -227,7 +227,7 @@ LL |         asm!("foooooo:\x0A nop");
    = note: see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:99:14
+  --> $DIR/named-asm-labels.rs:102:14
    |
 LL |         asm!("\x41\x42\x43\x3A\x20\x6E\x6F\x70");
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

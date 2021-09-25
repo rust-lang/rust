@@ -1,4 +1,4 @@
-// only-x86_64
+// needs-asm-support
 // check-pass
 
 #![feature(asm, never_type)]

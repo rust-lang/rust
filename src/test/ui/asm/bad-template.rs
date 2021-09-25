@@ -1,8 +1,29 @@
-// only-x86_64
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
+// revisions: x86_64_mirunsafeck aarch64_mirunsafeck x86_64_thirunsafeck aarch64_thirunsafeck
 
-#![feature(asm, global_asm)]
+// [x86_64_thirunsafeck] compile-flags: -Z thir-unsafeck --target x86_64-unknown-linux-gnu
+// [aarch64_thirunsafeck] compile-flags: -Z thir-unsafeck --target aarch64-unknown-linux-gnu
+// [x86_64_mirunsafeck] compile-flags: --target x86_64-unknown-linux-gnu
+// [aarch64_mirunsafeck] compile-flags: --target aarch64-unknown-linux-gnu
+
+// [x86_64_thirunsafeck] needs-llvm-components: x86
+// [x86_64_mirunsafeck] needs-llvm-components: x86
+// [aarch64_thirunsafeck] needs-llvm-components: aarch64
+// [aarch64_mirunsafeck] needs-llvm-components: aarch64
+
+#![feature(no_core, lang_items, rustc_attrs)]
+#![no_core]
+
+#[rustc_builtin_macro]
+macro_rules! asm {
+    () => {};
+}
+#[rustc_builtin_macro]
+macro_rules! global_asm {
+    () => {};
+}
+
+#[lang = "sized"]
+trait Sized {}
 
 fn main() {
     let mut foo = 0;
@@ -20,8 +41,12 @@ fn main() {
         asm!("{1}", a = in(reg) foo);
         //~^ ERROR invalid reference to argument at index 1
         //~^^ ERROR named argument never used
+        #[cfg(any(x86_64_thirunsafeck, x86_64_mirunsafeck))]
         asm!("{}", in("eax") foo);
-        //~^ ERROR invalid reference to argument at index 0
+        //[x86_64_thirunsafeck,x86_64_mirunsafeck]~^ ERROR invalid reference to argument at index 0
+        #[cfg(any(aarch64_thirunsafeck, aarch64_mirunsafeck))]
+        asm!("{}", in("x0") foo);
+        //[aarch64_thirunsafeck,aarch64_mirunsafeck]~^ ERROR invalid reference to argument at index 0
         asm!("{:foo}", in(reg) foo);
         //~^ ERROR asm template modifier must be a single character
         asm!("", in(reg) 0, in(reg) 1);

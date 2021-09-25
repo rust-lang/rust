@@ -1,0 +1,103 @@
+error: arguments for inline assembly must be copyable
+  --> $DIR/type-check-2.rs:46:31
+   |
+LL |         asm!("{:v}", in(vreg) SimdNonCopy(0.0, 0.0, 0.0, 0.0));
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `SimdNonCopy` does not implement the Copy trait
+
+error: cannot use value of type `[closure@$DIR/type-check-2.rs:58:28: 58:38]` for inline assembly
+  --> $DIR/type-check-2.rs:58:28
+   |
+LL |         asm!("{}", in(reg) |x: i32| x);
+   |                            ^^^^^^^^^^
+   |
+   = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
+
+error: cannot use value of type `Vec<i32>` for inline assembly
+  --> $DIR/type-check-2.rs:60:28
+   |
+LL |         asm!("{}", in(reg) vec![0]);
+   |                            ^^^^^^^
+   |
+   = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: cannot use value of type `(i32, i32, i32)` for inline assembly
+  --> $DIR/type-check-2.rs:62:28
+   |
+LL |         asm!("{}", in(reg) (1, 2, 3));
+   |                            ^^^^^^^^^
+   |
+   = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
+
+error: cannot use value of type `[i32; 3]` for inline assembly
+  --> $DIR/type-check-2.rs:64:28
+   |
+LL |         asm!("{}", in(reg) [1, 2, 3]);
+   |                            ^^^^^^^^^
+   |
+   = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
+
+error: cannot use value of type `fn() {main}` for inline assembly
+  --> $DIR/type-check-2.rs:72:31
+   |
+LL |         asm!("{}", inout(reg) f);
+   |                               ^
+   |
+   = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
+
+error: cannot use value of type `&mut i32` for inline assembly
+  --> $DIR/type-check-2.rs:75:31
+   |
+LL |         asm!("{}", inout(reg) r);
+   |                               ^
+   |
+   = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
+
+error: asm `sym` operand must point to a fn or static
+  --> $DIR/type-check-2.rs:39:24
+   |
+LL |         asm!("{}", sym C);
+   |                        ^
+
+error: asm `sym` operand must point to a fn or static
+  --> $DIR/type-check-2.rs:41:24
+   |
+LL |         asm!("{}", sym x);
+   |                        ^
+
+error[E0381]: use of possibly-uninitialized variable: `x`
+  --> $DIR/type-check-2.rs:17:28
+   |
+LL |         asm!("{}", in(reg) x);
+   |                            ^ use of possibly-uninitialized `x`
+
+error[E0381]: use of possibly-uninitialized variable: `y`
+  --> $DIR/type-check-2.rs:20:9
+   |
+LL |         asm!("{}", inout(reg) y);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ use of possibly-uninitialized `y`
+
+error[E0596]: cannot borrow `v` as mutable, as it is not declared as mutable
+  --> $DIR/type-check-2.rs:28:29
+   |
+LL |         let v: Vec<u64> = vec![0, 1, 2];
+   |             - help: consider changing this to be mutable: `mut v`
+LL |         asm!("{}", in(reg) v[0]);
+LL |         asm!("{}", out(reg) v[0]);
+   |                             ^ cannot borrow as mutable
+
+error[E0596]: cannot borrow `v` as mutable, as it is not declared as mutable
+  --> $DIR/type-check-2.rs:30:31
+   |
+LL |         let v: Vec<u64> = vec![0, 1, 2];
+   |             - help: consider changing this to be mutable: `mut v`
+...
+LL |         asm!("{}", inout(reg) v[0]);
+   |                               ^ cannot borrow as mutable
+
+error: aborting due to 13 previous errors
+
+Some errors have detailed explanations: E0381, E0596.
+For more information about an error, try `rustc --explain E0381`.

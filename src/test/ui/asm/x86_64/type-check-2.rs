@@ -26,10 +26,6 @@ fn main() {
         asm!("{}", inout(reg) v[0]);
         //~^ ERROR cannot borrow `v` as mutable, as it is not declared as mutable
 
-        // This currently causes an ICE: https://github.com/rust-lang/rust/issues/81857
-        // asm!("{}", const &0);
-        // ERROR asm `const` arguments must be integer or floating-point values
-
         // Sym operands must point to a function or static
 
         const C: i32 = 0;
