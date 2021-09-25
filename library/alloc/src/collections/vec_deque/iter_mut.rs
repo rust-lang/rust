@@ -13,10 +13,21 @@ use super::{count, wrap_index, RingSlices};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     // Internal safety invariant: the entire slice is dereferencable.
-    pub(crate) ring: *mut [T],
-    pub(crate) tail: usize,
-    pub(crate) head: usize,
-    pub(crate) phantom: PhantomData<&'a mut [T]>,
+    ring: *mut [T],
+    tail: usize,
+    head: usize,
+    phantom: PhantomData<&'a mut [T]>,
+}
+
+impl<'a, T> IterMut<'a, T> {
+    pub(super) unsafe fn new(
+        ring: *mut [T],
+        tail: usize,
+        head: usize,
+        phantom: PhantomData<&'a mut [T]>,
+    ) -> Self {
+        IterMut { ring, tail, head, phantom }
+    }
 }
 
 // SAFETY: we do nothing thread-local and there is no interior mutability,
