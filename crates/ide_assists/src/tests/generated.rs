@@ -1304,6 +1304,22 @@ mod foo;
 }
 
 #[test]
+fn doctest_move_to_mod_rs() {
+    check_doc_test(
+        "move_to_mod_rs",
+        r#####"
+//- /main.rs
+mod a;
+//- /a.rs
+$0fn t() {}$0
+"#####,
+        r#####"
+fn t() {}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_pull_assignment_up() {
     check_doc_test(
         "pull_assignment_up",
