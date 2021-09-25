@@ -243,12 +243,12 @@ fn current_op(p: &Parser) -> (u8, SyntaxKind) {
 fn expr_bp(p: &mut Parser, mut r: Restrictions, bp: u8) -> (Option<CompletedMarker>, BlockLike) {
     let mut lhs = match lhs(p, r) {
         Some((lhs, blocklike)) => {
-            // test stmt_bin_expr_ambiguity
-            // fn foo() {
-            //     let _ = {1} & 2;
-            //     {1} &2;
-            // }
             if r.prefer_stmt && blocklike.is_block() {
+                // test stmt_bin_expr_ambiguity
+                // fn f() {
+                //     let _ = {1} & 2;
+                //     {1} &2;
+                // }
                 return (Some(lhs), BlockLike::Block);
             }
             lhs
@@ -263,9 +263,7 @@ fn expr_bp(p: &mut Parser, mut r: Restrictions, bp: u8) -> (Option<CompletedMark
             break;
         }
         // test as_precedence
-        // fn foo() {
-        //     let _ = &1 as *const i32;
-        // }
+        // fn f() { let _ = &1 as *const i32; }
         if p.at(T![as]) {
             lhs = cast_expr(p, lhs);
             continue;
@@ -274,9 +272,7 @@ fn expr_bp(p: &mut Parser, mut r: Restrictions, bp: u8) -> (Option<CompletedMark
         p.bump(op);
 
         // test binop_resets_statementness
-        // fn foo() {
-        //     v = {1}&2;
-        // }
+        // fn f() { v = {1}&2; }
         r = Restrictions { prefer_stmt: false, ..r };
 
         if is_range {
