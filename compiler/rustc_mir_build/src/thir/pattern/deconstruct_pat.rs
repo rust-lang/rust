@@ -389,17 +389,17 @@ impl SplitIntRange {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum SliceKind {
     /// Patterns of length `n` (`[x, y]`).
-    FixedLen(u64),
+    FixedLen(usize),
     /// Patterns using the `..` notation (`[x, .., y]`).
     /// Captures any array constructor of `length >= i + j`.
     /// In the case where `array_len` is `Some(_)`,
     /// this indicates that we only care about the first `i` and the last `j` values of the array,
     /// and everything in between is a wildcard `_`.
-    VarLen(u64, u64),
+    VarLen(usize, usize),
 }
 
 impl SliceKind {
-    fn arity(self) -> u64 {
+    fn arity(self) -> usize {
         match self {
             FixedLen(length) => length,
             VarLen(prefix, suffix) => prefix + suffix,
@@ -407,7 +407,7 @@ impl SliceKind {
     }
 
     /// Whether this pattern includes patterns of length `other_len`.
-    fn covers_length(self, other_len: u64) -> bool {
+    fn covers_length(self, other_len: usize) -> bool {
         match self {
             FixedLen(len) => len == other_len,
             VarLen(prefix, suffix) => prefix + suffix <= other_len,
@@ -419,13 +419,13 @@ impl SliceKind {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(super) struct Slice {
     /// `None` if the matched value is a slice, `Some(n)` if it is an array of size `n`.
-    array_len: Option<u64>,
+    array_len: Option<usize>,
     /// The kind of pattern it is: fixed-length `[x, y]` or variable length `[x, .., y]`.
     kind: SliceKind,
 }
 
 impl Slice {
-    fn new(array_len: Option<u64>, kind: SliceKind) -> Self {
+    fn new(array_len: Option<usize>, kind: SliceKind) -> Self {
         let kind = match (array_len, kind) {
             // If the middle `..` is empty, we effectively have a fixed-length pattern.
             (Some(len), VarLen(prefix, suffix)) if prefix + suffix >= len => FixedLen(len),
@@ -434,7 +434,7 @@ impl Slice {
         Slice { array_len, kind }
     }
 
-    fn arity(self) -> u64 {
+    fn arity(self) -> usize {
         self.kind.arity()
     }
 
@@ -508,16 +508,16 @@ impl Slice {
 #[derive(Debug)]
 struct SplitVarLenSlice {
     /// If the type is an array, this is its size.
-    array_len: Option<u64>,
+    array_len: Option<usize>,
     /// The arity of the input slice.
-    arity: u64,
+    arity: usize,
     /// The smallest slice bigger than any slice seen. `max_slice.arity()` is the length `L`
     /// described above.
     max_slice: SliceKind,
 }
 
 impl SplitVarLenSlice {
-    fn new(prefix: u64, suffix: u64, array_len: Option<u64>) -> Self {
+    fn new(prefix: usize, suffix: usize, array_len: Option<usize>) -> Self {
         SplitVarLenSlice { array_len, arity: prefix + suffix, max_slice: VarLen(prefix, suffix) }
     }
 
@@ -687,12 +687,12 @@ impl<'tcx> Constructor<'tcx> {
             }
             PatKind::Array { prefix, slice, suffix } | PatKind::Slice { prefix, slice, suffix } => {
                 let array_len = match pat.ty.kind() {
-                    ty::Array(_, length) => Some(length.eval_usize(cx.tcx, cx.param_env)),
+                    ty::Array(_, length) => Some(length.eval_usize(cx.tcx, cx.param_env) as usize),
                     ty::Slice(_) => None,
                     _ => span_bug!(pat.span, "bad ty {:?} for slice pattern", pat.ty),
                 };
-                let prefix = prefix.len() as u64;
-                let suffix = suffix.len() as u64;
+                let prefix = prefix.len();
+                let suffix = suffix.len();
                 let kind = if slice.is_some() {
                     VarLen(prefix, suffix)
                 } else {
@@ -885,7 +885,7 @@ impl<'tcx> SplitWildcard<'tcx> {
         let all_ctors = match pcx.ty.kind() {
             ty::Bool => smallvec![make_range(0, 1)],
             ty::Array(sub_ty, len) if len.try_eval_usize(cx.tcx, cx.param_env).is_some() => {
-                let len = len.eval_usize(cx.tcx, cx.param_env);
+                let len = len.eval_usize(cx.tcx, cx.param_env) as usize;
                 if len != 0 && cx.is_uninhabited(sub_ty) {
                     smallvec![]
                 } else {
@@ -1273,7 +1273,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                     PatKind::Slice { prefix: subpatterns.collect(), slice: None, suffix: vec![] }
                 }
                 VarLen(prefix, _) => {
-                    let mut prefix: Vec<_> = subpatterns.by_ref().take(prefix as usize).collect();
+                    let mut prefix: Vec<_> = subpatterns.by_ref().take(prefix).collect();
                     if slice.array_len.is_some() {
                         // Improves diagnostics a bit: if the type is a known-size array, instead
                         // of reporting `[x, _, .., _, y]`, we prefer to report `[x, .., y]`.
