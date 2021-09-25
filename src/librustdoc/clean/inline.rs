@@ -400,7 +400,7 @@ crate fn build_impl(
                 .filter(|item| {
                     // Filter out impl items whose corresponding trait item has `doc(hidden)`
                     // not to document such impl items.
-                    // For inherent impls, we don't do any filtering.
+                    // For inherent impls, we don't do any filtering, because that's already done in strip_hidden.rs.
 
                     // When `--document-hidden-items` is passed, we don't
                     // do any filtering, too.
