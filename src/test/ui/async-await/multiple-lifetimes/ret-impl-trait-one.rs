@@ -15,7 +15,6 @@ async fn async_ret_impl_trait3<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> +
 // Only `'a` permitted in return type, not `'b`.
 async fn async_ret_impl_trait1<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> {
     //~^ ERROR captures lifetime that does not appear in bounds
-    //~| ERROR captures lifetime that does not appear in bounds
     (a, b)
 }
 

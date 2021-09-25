@@ -2,13 +2,14 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
   --> $DIR/ordinary-bounds-unrelated.rs:16:74
    |
 LL | fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'d, 'e>
-   |                                                                          ^^^^^^^^^^^^^^^^^^
+   |                     --                                                   ^^^^^^^^^^^^^^^^^^
+   |                     |
+   |                     hidden type `Ordinary<'b>` captures the lifetime `'b` as defined here
    |
-note: hidden type `Ordinary<'_>` captures lifetime smaller than the function body
-  --> $DIR/ordinary-bounds-unrelated.rs:16:74
+help: to declare that the `impl Trait` captures 'b, you can add an explicit `'b` lifetime bound
    |
-LL | fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'d, 'e>
-   |                                                                          ^^^^^^^^^^^^^^^^^^
+LL | fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'d, 'e> + 'b
+   |                                                                                             ++++
 
 error: aborting due to previous error
 

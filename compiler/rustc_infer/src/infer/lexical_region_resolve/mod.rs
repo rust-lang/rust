@@ -2,7 +2,6 @@
 
 use crate::infer::region_constraints::Constraint;
 use crate::infer::region_constraints::GenericKind;
-use crate::infer::region_constraints::MemberConstraint;
 use crate::infer::region_constraints::RegionConstraintData;
 use crate::infer::region_constraints::VarInfos;
 use crate::infer::region_constraints::VerifyBound;
@@ -150,12 +149,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         let graph = self.construct_graph();
         self.expand_givens(&graph);
-        loop {
-            self.expansion(&mut var_data);
-            if !self.enforce_member_constraints(&graph, &mut var_data) {
-                break;
-            }
-        }
+        self.expansion(&mut var_data);
         self.collect_errors(&mut var_data, errors);
         self.collect_var_errors(&var_data, &graph, errors);
         var_data
@@ -230,133 +224,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     self.data.givens.insert((r, succ_vid));
                 }
             }
-        }
-    }
-
-    /// Enforce all member constraints and return true if anything
-    /// changed. See `enforce_member_constraint` for more details.
-    fn enforce_member_constraints(
-        &self,
-        graph: &RegionGraph<'tcx>,
-        var_values: &mut LexicalRegionResolutions<'tcx>,
-    ) -> bool {
-        // Note: we don't use the `any` combinator because we don't
-        // want to stop at the first constraint that makes a change.
-        let mut any_changed = false;
-        for member_constraint in &self.data.member_constraints {
-            any_changed |= self.enforce_member_constraint(graph, member_constraint, var_values);
-        }
-        any_changed
-    }
-
-    /// Enforce a constraint like
-    ///
-    /// ```
-    /// 'r member of ['c...]
-    /// ```
-    ///
-    /// We look for all choice regions from the list `'c...` that:
-    ///
-    /// (a) are greater than the current value of `'r` (which is a lower bound)
-    ///
-    /// and
-    ///
-    /// (b) are compatible with the upper bounds of `'r` that we can
-    /// find by traversing the graph.
-    ///
-    /// From that list, we look for a *minimal* option `'c_min`. If we
-    /// find one, then we can enforce that `'r: 'c_min`.
-    #[instrument(level = "debug", skip(self, graph, member_constraint, var_values))]
-    fn enforce_member_constraint(
-        &self,
-        graph: &RegionGraph<'tcx>,
-        member_constraint: &MemberConstraint<'tcx>,
-        var_values: &mut LexicalRegionResolutions<'tcx>,
-    ) -> bool {
-        debug!("member_constraint={:#?}", member_constraint);
-
-        // The constraint is some inference variable (`vid`) which
-        // must be equal to one of the options.
-        let member_vid = match member_constraint.member_region {
-            ty::ReVar(vid) => *vid,
-            _ => return false,
-        };
-
-        // The current value of `vid` is a lower bound LB -- i.e., we
-        // know that `LB <= vid` must be true.
-        let member_lower_bound: ty::Region<'tcx> = match var_values.value(member_vid) {
-            VarValue::ErrorValue => return false,
-            VarValue::Value(r) => r,
-        };
-
-        // Find all the "upper bounds" -- that is, each region `b` such that
-        // `r0 <= b` must hold.
-        let (member_upper_bounds, ..) =
-            self.collect_bounding_regions(graph, member_vid, OUTGOING, None);
-
-        // Get an iterator over the *available choice* -- that is,
-        // each choice region `c` where `lb <= c` and `c <= ub` for all the
-        // upper bounds `ub`.
-        debug!("upper_bounds={:#?}", member_upper_bounds);
-        let mut options = member_constraint
-            .choice_regions
-            .iter()
-            // If any of the regions are inference vars, resolve them, as far
-            // as possible.
-            .filter_map(|option| match option {
-                ty::ReVar(vid) => match var_values.value(*vid) {
-                    VarValue::ErrorValue => None,
-                    VarValue::Value(r) => Some(r),
-                },
-                r => Some(r),
-            })
-            .filter(|option| {
-                self.sub_concrete_regions(member_lower_bound, option)
-                    && member_upper_bounds
-                        .iter()
-                        .all(|upper_bound| self.sub_concrete_regions(option, upper_bound.region))
-            });
-
-        // If there is more than one option, we only make a choice if
-        // there is a single *least* choice -- i.e., some available
-        // region that is `<=` all the others.
-        let mut least_choice: ty::Region<'tcx> = match options.next() {
-            Some(&r) => r,
-            None => return false,
-        };
-        debug!(?least_choice);
-        for &option in options {
-            debug!(?option);
-            if !self.sub_concrete_regions(least_choice, option) {
-                if self.sub_concrete_regions(option, least_choice) {
-                    debug!("new least choice");
-                    least_choice = option;
-                } else {
-                    debug!("no least choice");
-                    return false;
-                }
-            }
-        }
-
-        // (#72087) Different `ty::Regions` can be known to be equal, for
-        // example, we know that `'a` and `'static` are equal in a function
-        // with a parameter of type `&'static &'a ()`.
-        //
-        // When we have two equal regions like this `expansion` will use
-        // `lub_concrete_regions` to pick a canonical representative. The same
-        // choice is needed here so that we don't end up in a cycle of
-        // `expansion` changing the region one way and the code here changing
-        // it back.
-        let lub = self.lub_concrete_regions(least_choice, member_lower_bound);
-        debug!(
-            "enforce_member_constraint: final least choice = {:?}\nlub = {:?}",
-            least_choice, lub
-        );
-        if lub != member_lower_bound {
-            *var_values.value_mut(member_vid) = VarValue::Value(least_choice);
-            true
-        } else {
-            false
         }
     }
 
@@ -629,34 +496,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         *a_data = VarValue::ErrorValue;
                     }
                 }
-            }
-        }
-
-        // Check that all member constraints are satisfied.
-        for member_constraint in &self.data.member_constraints {
-            let member_region = var_data.normalize(self.tcx(), member_constraint.member_region);
-            let choice_regions = member_constraint
-                .choice_regions
-                .iter()
-                .map(|&choice_region| var_data.normalize(self.tcx(), choice_region));
-            let fr = &self.region_rels.free_regions;
-            let sub = |a, b| {
-                fr.is_free_or_static(a)
-                    && fr.is_free_or_static(b)
-                    && fr.sub_free_regions(self.tcx(), a, b)
-            };
-            if !choice_regions.clone().any(|choice_region| {
-                // This is really checking if the regions are equal. After member constraint
-                // resolution, one region must be equal, or a lifetime has been leaked into
-                // the hidden type, but does not appear in the corresponding impl trait.
-                sub(member_region, choice_region) && sub(choice_region, member_region)
-            }) {
-                let span = self.tcx().def_span(member_constraint.opaque_type_def_id);
-                errors.push(RegionResolutionError::MemberConstraintFailure {
-                    span,
-                    hidden_ty: member_constraint.hidden_ty,
-                    member_region,
-                });
             }
         }
 

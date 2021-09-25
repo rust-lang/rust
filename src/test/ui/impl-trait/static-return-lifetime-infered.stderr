@@ -2,98 +2,54 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
   --> $DIR/static-return-lifetime-infered.rs:6:35
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^
+   |                         -----     ^^^^^^^^^^^^^^^^^^^^^^^
+   |                         |
+   |                         hidden type `Map<std::slice::Iter<'_, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:9:27: 9:34]>` captures the anonymous lifetime defined here
    |
-note: hidden type `Map<std::slice::Iter<'_, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:11:27: 11:34]>` captures lifetime smaller than the function body
-  --> $DIR/static-return-lifetime-infered.rs:6:35
+help: to declare that the `impl Trait` captures '_, you can add an explicit `'_` lifetime bound
    |
-LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + '_ {
+   |                                                           ++++
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
   --> $DIR/static-return-lifetime-infered.rs:6:35
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^
+   |                         -----     ^^^^^^^^^^^^^^^^^^^^^^^
+   |                         |
+   |                         hidden type `Map<std::slice::Iter<'_, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:9:27: 9:34]>` captures the anonymous lifetime defined here
    |
-note: hidden type `Map<std::slice::Iter<'_, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:11:27: 11:34]>` captures lifetime smaller than the function body
-  --> $DIR/static-return-lifetime-infered.rs:6:35
+help: to declare that the `impl Trait` captures '_, you can add an explicit `'_` lifetime bound
    |
-LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + '_ {
+   |                                                           ++++
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/static-return-lifetime-infered.rs:6:35
+  --> $DIR/static-return-lifetime-infered.rs:11:37
    |
-LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
+   |                    --               ^^^^^^^^^^^^^^^^^^^^^^^
+   |                    |
+   |                    hidden type `Map<std::slice::Iter<'a, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:14:27: 14:34]>` captures the lifetime `'a` as defined here
    |
-note: hidden type `Map<std::slice::Iter<'_, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:11:27: 11:34]>` captures lifetime smaller than the function body
-  --> $DIR/static-return-lifetime-infered.rs:6:35
+help: to declare that the `impl Trait` captures 'a, you can add an explicit `'a` lifetime bound
    |
-LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> + 'a {
+   |                                                             ++++
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/static-return-lifetime-infered.rs:6:35
+  --> $DIR/static-return-lifetime-infered.rs:11:37
    |
-LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
+   |                    --               ^^^^^^^^^^^^^^^^^^^^^^^
+   |                    |
+   |                    hidden type `Map<std::slice::Iter<'a, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:14:27: 14:34]>` captures the lifetime `'a` as defined here
    |
-note: hidden type `Map<std::slice::Iter<'_, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:11:27: 11:34]>` captures lifetime smaller than the function body
-  --> $DIR/static-return-lifetime-infered.rs:6:35
+help: to declare that the `impl Trait` captures 'a, you can add an explicit `'a` lifetime bound
    |
-LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> + 'a {
+   |                                                             ++++
 
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/static-return-lifetime-infered.rs:13:37
-   |
-LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
-   |                                     ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: hidden type `Map<std::slice::Iter<'_, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:18:27: 18:34]>` captures lifetime smaller than the function body
-  --> $DIR/static-return-lifetime-infered.rs:13:37
-   |
-LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
-   |                                     ^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/static-return-lifetime-infered.rs:13:37
-   |
-LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
-   |                                     ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: hidden type `Map<std::slice::Iter<'_, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:18:27: 18:34]>` captures lifetime smaller than the function body
-  --> $DIR/static-return-lifetime-infered.rs:13:37
-   |
-LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
-   |                                     ^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/static-return-lifetime-infered.rs:13:37
-   |
-LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
-   |                                     ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: hidden type `Map<std::slice::Iter<'_, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:18:27: 18:34]>` captures lifetime smaller than the function body
-  --> $DIR/static-return-lifetime-infered.rs:13:37
-   |
-LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
-   |                                     ^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/static-return-lifetime-infered.rs:13:37
-   |
-LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
-   |                                     ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: hidden type `Map<std::slice::Iter<'_, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:18:27: 18:34]>` captures lifetime smaller than the function body
-  --> $DIR/static-return-lifetime-infered.rs:13:37
-   |
-LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
-   |                                     ^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 8 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0700`.

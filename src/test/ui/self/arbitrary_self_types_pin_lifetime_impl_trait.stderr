@@ -2,13 +2,14 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
   --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait.rs:6:31
    |
 LL |     fn f(self: Pin<&Self>) -> impl Clone { self }
-   |                               ^^^^^^^^^^
+   |                    -----      ^^^^^^^^^^
+   |                    |
+   |                    hidden type `Pin<&Foo>` captures the anonymous lifetime defined here
    |
-note: hidden type `Pin<&Foo>` captures lifetime smaller than the function body
-  --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait.rs:6:31
+help: to declare that the `impl Trait` captures '_, you can add an explicit `'_` lifetime bound
    |
-LL |     fn f(self: Pin<&Self>) -> impl Clone { self }
-   |                               ^^^^^^^^^^
+LL |     fn f(self: Pin<&Self>) -> impl Clone + '_ { self }
+   |                                          ++++
 
 error: aborting due to previous error
 

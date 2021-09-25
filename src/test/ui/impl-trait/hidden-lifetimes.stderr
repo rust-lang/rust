@@ -4,7 +4,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL | fn hide_ref<'a, 'b, T: 'static>(x: &'a mut &'b T) -> impl Swap + 'a {
    |                 --                                   ^^^^^^^^^^^^^^
    |                 |
-   |                 hidden type `&mut &'b T` captures the lifetime `'b` as defined here
+   |                 hidden type `&'a mut &'b T` captures the lifetime `'b` as defined here
    |
 help: to declare that the `impl Trait` captures 'b, you can add an explicit `'b` lifetime bound
    |
