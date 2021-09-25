@@ -407,8 +407,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     ) -> PatStack<'p, 'tcx> {
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
-        let mut new_fields: SmallVec<[_; 2]> =
-            self.head().specialize(cx, ctor).iter_patterns().collect();
+        let mut new_fields: SmallVec<[_; 2]> = self.head().specialize(cx, ctor);
         new_fields.extend_from_slice(&self.pats[1..]);
         PatStack::from_vec(new_fields)
     }

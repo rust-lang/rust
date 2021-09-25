@@ -62,7 +62,6 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, VariantIdx};
 
 use smallvec::{smallvec, SmallVec};
-use std::borrow::Cow;
 use std::cmp::{self, max, min, Ordering};
 use std::fmt;
 use std::iter::{once, IntoIterator};
@@ -1107,33 +1106,27 @@ impl<'tcx> SplitWildcard<'tcx> {
 /// because the code mustn't observe that it is uninhabited. In that case that field is not
 /// included in `fields`. For that reason, when you have a `mir::Field` you must use
 /// `index_with_declared_idx`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub(super) struct Fields<'p, 'tcx> {
-    fields: SmallVec<[&'p DeconstructedPat<'p, 'tcx>; 2]>,
+    fields: &'p [DeconstructedPat<'p, 'tcx>],
 }
 
 impl<'p, 'tcx> Fields<'p, 'tcx> {
     fn empty() -> Self {
-        Fields { fields: SmallVec::new() }
+        Fields { fields: &[] }
     }
 
     fn singleton(cx: &MatchCheckCtxt<'p, 'tcx>, field: DeconstructedPat<'p, 'tcx>) -> Self {
         let field: &_ = cx.pattern_arena.alloc(field);
-        Fields { fields: smallvec![field] }
+        Fields { fields: std::slice::from_ref(field) }
     }
 
     pub(super) fn from_iter(
         cx: &MatchCheckCtxt<'p, 'tcx>,
         fields: impl IntoIterator<Item = DeconstructedPat<'p, 'tcx>>,
     ) -> Self {
-        let fields: &_ = cx.pattern_arena.alloc_from_iter(fields);
-        Fields { fields: fields.into_iter().collect() }
-    }
-
-    pub(super) fn from_ref_iter(
-        fields: impl IntoIterator<Item = &'p DeconstructedPat<'p, 'tcx>>,
-    ) -> Self {
-        Fields { fields: fields.into_iter().collect() }
+        let fields: &[_] = cx.pattern_arena.alloc_from_iter(fields);
+        Fields { fields }
     }
 
     fn wildcards_from_tys(
@@ -1222,7 +1215,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     pub(super) fn iter_patterns<'a>(
         &'a self,
     ) -> impl Iterator<Item = &'p DeconstructedPat<'p, 'tcx>> + Captures<'a> {
-        self.fields.iter().copied()
+        self.fields.iter()
     }
 }
 
@@ -1245,9 +1238,8 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
 
     pub(crate) fn from_pat(cx: &MatchCheckCtxt<'p, 'tcx>, pat: &Pat<'tcx>) -> Self {
         let mkpat = |pat| DeconstructedPat::from_pat(cx, pat);
-        let allocpat = |pat| &*cx.pattern_arena.alloc(mkpat(pat));
         let ctor;
-        let mut fields;
+        let fields;
         match pat.kind.as_ref() {
             PatKind::AscribeUserType { subpattern, .. } => return mkpat(subpattern),
             PatKind::Binding { subpattern: Some(subpat), .. } => return mkpat(subpat),
@@ -1263,10 +1255,15 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 match pat.ty.kind() {
                     ty::Tuple(fs) => {
                         ctor = Single;
-                        fields = Fields::wildcards_from_tys(cx, fs.iter().map(|ty| ty.expect_ty()));
+                        let mut wilds: SmallVec<[_; 2]> = fs
+                            .iter()
+                            .map(|ty| ty.expect_ty())
+                            .map(DeconstructedPat::wildcard)
+                            .collect();
                         for pat in subpatterns {
-                            fields.fields[pat.field.index()] = allocpat(&pat.pattern);
+                            wilds[pat.field.index()] = mkpat(&pat.pattern);
                         }
+                        fields = Fields::from_iter(cx, wilds);
                     }
                     ty::Adt(adt, substs) if adt.is_box() => {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
@@ -1306,12 +1303,14 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                                 field_id_to_id[field.index()] = Some(i);
                                 ty
                             });
-                        fields = Fields::wildcards_from_tys(cx, tys);
+                        let mut wilds: SmallVec<[_; 2]> =
+                            tys.map(DeconstructedPat::wildcard).collect();
                         for pat in subpatterns {
                             if let Some(i) = field_id_to_id[pat.field.index()] {
-                                fields.fields[i] = allocpat(&pat.pattern);
+                                wilds[i] = mkpat(&pat.pattern);
                             }
                         }
+                        fields = Fields::from_iter(cx, wilds);
                     }
                     _ => bug!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, pat.ty),
                 }
@@ -1510,11 +1509,11 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         &'a self,
         cx: &MatchCheckCtxt<'p, 'tcx>,
         other_ctor: &Constructor<'tcx>,
-    ) -> Cow<'a, Fields<'p, 'tcx>> {
+    ) -> SmallVec<[&'p DeconstructedPat<'p, 'tcx>; 2]> {
         match (&self.ctor, other_ctor) {
             (Wildcard, _) => {
                 // We return a wildcard for each field of `other_ctor`.
-                Cow::Owned(Fields::wildcards(cx, self.ty, other_ctor))
+                Fields::wildcards(cx, self.ty, other_ctor).iter_patterns().collect()
             }
             (Slice(self_slice), Slice(other_slice))
                 if self_slice.arity() != other_slice.arity() =>
@@ -1522,8 +1521,8 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 // The only tricky case: two slices of different arity. Since `self_slice` covers
                 // `other_slice`, `self_slice` must be `VarLen`, i.e. of the form
                 // `[prefix, .., suffix]`. Moreover `other_slice` is guaranteed to have a larger
-                // arity. We fill the middle part with enough wildcards to reach the length of the
-                // new, larger slice.
+                // arity. So we fill the middle part with enough wildcards to reach the length of
+                // the new, larger slice.
                 match self_slice.kind {
                     FixedLen(_) => bug!("{:?} doesn't cover {:?}", self_slice, other_slice),
                     VarLen(prefix, suffix) => {
@@ -1531,19 +1530,17 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                             ty::Slice(ty) | ty::Array(ty, _) => ty,
                             _ => bug!("bad slice pattern {:?} {:?}", self.ctor, self.ty),
                         };
-                        let prefix = self.fields.fields[..prefix].iter().copied();
-                        let suffix =
-                            self.fields.fields[self_slice.arity() - suffix..].iter().copied();
+                        let prefix = &self.fields.fields[..prefix];
+                        let suffix = &self.fields.fields[self_slice.arity() - suffix..];
+                        let wildcard: &_ =
+                            cx.pattern_arena.alloc(DeconstructedPat::wildcard(inner_ty));
                         let extra_wildcards = other_slice.arity() - self_slice.arity();
-                        let extra_wildcards: &[_] = cx.pattern_arena.alloc_from_iter(
-                            (0..extra_wildcards).map(|_| DeconstructedPat::wildcard(inner_ty)),
-                        );
-                        let fields = prefix.chain(extra_wildcards).chain(suffix);
-                        Cow::Owned(Fields::from_ref_iter(fields))
+                        let extra_wildcards = (0..extra_wildcards).map(|_| wildcard);
+                        prefix.iter().chain(extra_wildcards).chain(suffix).collect()
                     }
                 }
             }
-            _ => Cow::Borrowed(&self.fields),
+            _ => self.fields.iter_patterns().collect(),
         }
     }
 }
