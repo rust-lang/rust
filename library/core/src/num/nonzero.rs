@@ -901,16 +901,22 @@ macro_rules! nonzero_constants_signed {
         $(
             impl $Ty {
                 #[unstable(feature = "nonzero_min_max", issue = "89065")]
-                #[doc = concat!("The maximum value for a`", stringify!($Ty), "` is the same as `", stringify!($Int), "`")]
+                #[doc = concat!("The maximum value for a `", stringify!($Ty), "` is the same as `", stringify!($Int), "`.")]
                 /// # Examples
+                ///
+                /// ```
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX, ", stringify!($Int), "::MAX);")]
+                /// ```
                 pub const MAX : $Ty = $Ty::new(<$Int>::MAX).unwrap();
                 #[unstable(feature = "nonzero_min_max", issue = "89065")]
-                #[doc = concat!("The minimum value for a`", stringify!($Ty), "`.")]
+                #[doc = concat!("The minimum value for a `", stringify!($Ty), " `.")]
                 /// # Examples
+                ///
+                /// ```
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN, ", stringify!($Int), "::MIN;")]
+                /// ```
                 pub const MIN : $Ty = $Ty::new(<$Int>::MIN).unwrap();
-                }
+            }
         )+
     }
 }
@@ -929,20 +935,26 @@ macro_rules! nonzero_constants_unsigned{
         $(
             impl $Ty {
                 #[unstable(feature = "nonzero_min_max", issue = "89065")]
-                #[doc = concat!("The maximum value for a`", stringify!($Ty), "` is the same as `", stringify!($Int), "`")]
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX, ", stringify!($Int), "::MAX);")]
-                /// Note, while most integer types are defined for every whole number between MIN and
+                #[doc = concat!("The maximum value for a `", stringify!($Ty), "` is the same as `", stringify!($Int), "`.")]
+                /// Note: While most integer types are defined for every whole number between MIN and
                 /// MAX, signed non-zero integers are a special case. They have a 'gap' at 0.
                 /// # Examples
+                ///
+                /// ```
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX, ", stringify!($Int), "::MAX);")]
+                /// ```
                 pub const MAX : $Ty = $Ty::new(<$Int>::MAX).unwrap() ;
                 #[unstable(feature = "nonzero_min_max", issue = "89065")]
-                #[doc = concat!("The minimum value for a`", stringify!($Ty), "`.")]
-                /// Note, while most integer types are defined for every whole number between MIN and
+                #[doc = concat!("The minimum value for a `", stringify!($Ty), "`.")]
+                /// Note: While most integer types are defined for every whole number between MIN and
                 /// MAX, signed non-zero integers are a special case. They have a 'gap' at 0.
                 /// # Examples
+                ///
+                /// ```
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN, ", stringify!($Int), "::MIN;")]
+                /// ```
                 pub const MIN : $Ty = $Ty::new(1).unwrap();
-                }
+            }
         )+
     }
 }
