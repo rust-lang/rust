@@ -4,6 +4,13 @@
 
 mod block;
 
+use std::convert::TryFrom;
+
+use rowan::Direction;
+use rustc_lexer::unescape::{
+    self, unescape_byte, unescape_byte_literal, unescape_char, unescape_literal, Mode,
+};
+
 use crate::{
     algo,
     ast::{self, VisibilityOwner},
@@ -11,11 +18,34 @@ use crate::{
     SyntaxKind::{CONST, FN, INT_NUMBER, TYPE_ALIAS},
     SyntaxNode, SyntaxToken, TextSize, T,
 };
-use rowan::Direction;
-use rustc_lexer::unescape::{
-    self, unescape_byte, unescape_byte_literal, unescape_char, unescape_literal, Mode,
-};
-use std::convert::TryFrom;
+
+pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
+    // FIXME:
+    // * Add unescape validation of raw string literals and raw byte string literals
+    // * Add validation of doc comments are being attached to nodes
+
+    let mut errors = Vec::new();
+    for node in root.descendants() {
+        match_ast! {
+            match node {
+                ast::Literal(it) => validate_literal(it, &mut errors),
+                ast::Const(it) => validate_const(it, &mut errors),
+                ast::BlockExpr(it) => block::validate_block_expr(it, &mut errors),
+                ast::FieldExpr(it) => validate_numeric_name(it.name_ref(), &mut errors),
+                ast::RecordExprField(it) => validate_numeric_name(it.name_ref(), &mut errors),
+                ast::Visibility(it) => validate_visibility(it, &mut errors),
+                ast::RangeExpr(it) => validate_range_expr(it, &mut errors),
+                ast::PathSegment(it) => validate_path_keywords(it, &mut errors),
+                ast::RefType(it) => validate_trait_object_ref_ty(it, &mut errors),
+                ast::PtrType(it) => validate_trait_object_ptr_ty(it, &mut errors),
+                ast::FnPtrType(it) => validate_trait_object_fn_ptr_ret_ty(it, &mut errors),
+                ast::MacroRules(it) => validate_macro_rules(it, &mut errors),
+                _ => (),
+            }
+        }
+    }
+    errors
+}
 
 fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> &'static str {
     use unescape::EscapeError as EE;
@@ -82,34 +112,6 @@ fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> &'static str {
     };
 
     err_message
-}
-
-pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
-    // FIXME:
-    // * Add unescape validation of raw string literals and raw byte string literals
-    // * Add validation of doc comments are being attached to nodes
-
-    let mut errors = Vec::new();
-    for node in root.descendants() {
-        match_ast! {
-            match node {
-                ast::Literal(it) => validate_literal(it, &mut errors),
-                ast::Const(it) => validate_const(it, &mut errors),
-                ast::BlockExpr(it) => block::validate_block_expr(it, &mut errors),
-                ast::FieldExpr(it) => validate_numeric_name(it.name_ref(), &mut errors),
-                ast::RecordExprField(it) => validate_numeric_name(it.name_ref(), &mut errors),
-                ast::Visibility(it) => validate_visibility(it, &mut errors),
-                ast::RangeExpr(it) => validate_range_expr(it, &mut errors),
-                ast::PathSegment(it) => validate_path_keywords(it, &mut errors),
-                ast::RefType(it) => validate_trait_object_ref_ty(it, &mut errors),
-                ast::PtrType(it) => validate_trait_object_ptr_ty(it, &mut errors),
-                ast::FnPtrType(it) => validate_trait_object_fn_ptr_ret_ty(it, &mut errors),
-                ast::MacroRules(it) => validate_macro_rules(it, &mut errors),
-                _ => (),
-            }
-        }
-    }
-    errors
 }
 
 fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
