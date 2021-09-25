@@ -161,7 +161,6 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi, prefer_expr: bool) {
 }
 
 pub(super) fn expr_block_contents(p: &mut Parser) {
-    // This is checked by a validator
     attributes::inner_attrs(p);
 
     while !p.at(EOF) && !p.at(T!['}']) {
@@ -197,7 +196,7 @@ struct Restrictions {
 
 /// Binding powers of operators for a Pratt parser.
 ///
-/// See <https://www.oilshell.org/blog/2016/11/03.html>
+/// See <https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html>
 #[rustfmt::skip]
 fn current_op(p: &Parser) -> (u8, SyntaxKind) {
     const NOT_AN_OP: (u8, SyntaxKind) = (0, T![@]);
