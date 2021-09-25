@@ -1183,6 +1183,10 @@
         ],
         "semanticTokenModifiers": [
             {
+                "id": "async",
+                "description": "Style for async functions and the `async` and `await` keywords"
+            },
+            {
                 "id": "attribute",
                 "description": "Style for elements within attributes"
             },
@@ -1191,24 +1195,52 @@
                 "description": "Style for compile-time constants"
             },
             {
-                "id": "controlFlow",
-                "description": "Style for control flow keywords"
-            },
-            {
-                "id": "mutable",
-                "description": "Style for mutable bindings"
-            },
-            {
-                "id": "unsafe",
-                "description": "Style for unsafe operations"
+                "id": "callable",
+                "description": "Style for locals whose types implements one of the `Fn*` traits"
             },
             {
                 "id": "consuming",
-                "description": "Style for non-Copy lvalues consumed by method/function call"
+                "description": "Style for locals that are being consumed when use in a function call"
             },
             {
-                "id": "callable",
-                "description": "Style for variables/parameters that can be used in call expressions"
+                "id": "controlFlow",
+                "description": "Style for control-flow related tokens, this includes the `?` operator"
+            },
+            {
+                "id": "definition",
+                "description": "Style for mutable bindings"
+            },
+            {
+                "id": "injected",
+                "description": "Style for doc-string injected highlighting like rust source blocks in documentation"
+            },
+            {
+                "id": "intraDocLink",
+                "description": "Style for intra doc links in doc-strings"
+            },
+            {
+                "id": "library",
+                "description": "Style for items that are defined outside of the current crate"
+            },
+            {
+                "id": "mutable",
+                "description": "Style for mutable locals and statics as well as functions taking `&mut self`"
+            },
+            {
+                "id": "public",
+                "description": "Style tems that are from the current crate and are `pub`"
+            },
+            {
+                "id": "reference",
+                "description": "Style for locals behind a reference and functions taking `self` by reference"
+            },
+            {
+                "id": "trait",
+                "description": "Style for associated trait items"
+            },
+            {
+                "id": "unsafe",
+                "description": "Style for unsafe operations, like unsafe function calls, as well as the `unsafe` token"
             }
         ],
         "semanticTokenScopes": [
