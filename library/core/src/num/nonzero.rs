@@ -913,7 +913,7 @@ macro_rules! nonzero_constants_signed {
                 /// # Examples
                 ///
                 /// ```
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN, ", stringify!($Int), "::MIN;")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN, ", stringify!($Int), "::MIN);")]
                 /// ```
                 pub const MIN : $Ty = $Ty::new(<$Int>::MIN).unwrap();
             }
@@ -951,7 +951,7 @@ macro_rules! nonzero_constants_unsigned{
                 /// # Examples
                 ///
                 /// ```
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN, ", stringify!($Int), "::MIN;")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN, ", stringify!($Int), "::MIN);")]
                 /// ```
                 pub const MIN : $Ty = $Ty::new(1).unwrap();
             }
