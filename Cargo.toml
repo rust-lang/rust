@@ -36,6 +36,7 @@ members = [
   "src/tools/jsondocck",
   "src/tools/html-checker",
   "src/tools/bump-stage0",
+  "src/tools/lld-wrapper",
 ]
 
 exclude = [
