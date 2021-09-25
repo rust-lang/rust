@@ -1,12 +1,13 @@
 use crate::cfg_eval::cfg_eval;
 
-use rustc_ast::{self as ast, attr, token, ItemKind, MetaItemKind, NestedMetaItem, StmtKind};
+use rustc_ast as ast;
+use rustc_ast::{attr, token, GenericParamKind, ItemKind, MetaItemKind, NestedMetaItem, StmtKind};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier};
 use rustc_feature::AttributeTemplate;
 use rustc_parse::validate_attr;
 use rustc_session::Session;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 
 crate struct Expander;
@@ -26,8 +27,7 @@ impl MultiItemModifier for Expander {
             return ExpandResult::Ready(vec![item]);
         }
 
-        let item = cfg_eval(ecx, item);
-
+        let (sess, features) = (ecx.sess, ecx.ecfg.features);
         let result =
             ecx.resolver.resolve_derives(ecx.current_expansion.id, ecx.force_mode, &|| {
                 let template =
@@ -40,7 +40,8 @@ impl MultiItemModifier for Expander {
                     template,
                 );
 
-                attr.meta_item_list()
+                let mut resolutions: Vec<_> = attr
+                    .meta_item_list()
                     .unwrap_or_default()
                     .into_iter()
                     .filter_map(|nested_meta| match nested_meta {
@@ -56,8 +57,21 @@ impl MultiItemModifier for Expander {
                         report_path_args(sess, &meta);
                         meta.path
                     })
-                    .map(|path| (path, item.clone(), None))
-                    .collect()
+                    .map(|path| (path, dummy_annotatable(), None))
+                    .collect();
+
+                // Do not configure or clone items unless necessary.
+                match &mut resolutions[..] {
+                    [] => {}
+                    [(_, first_item, _), others @ ..] => {
+                        *first_item = cfg_eval(sess, features, item.clone());
+                        for (_, item, _) in others {
+                            *item = first_item.clone();
+                        }
+                    }
+                }
+
+                resolutions
             });
 
         match result {
@@ -65,6 +79,18 @@ impl MultiItemModifier for Expander {
             Err(Indeterminate) => ExpandResult::Retry(item),
         }
     }
+}
+
+// The cheapest `Annotatable` to construct.
+fn dummy_annotatable() -> Annotatable {
+    Annotatable::GenericParam(ast::GenericParam {
+        id: ast::DUMMY_NODE_ID,
+        ident: Ident::invalid(),
+        attrs: Default::default(),
+        bounds: Default::default(),
+        is_placeholder: false,
+        kind: GenericParamKind::Lifetime,
+    })
 }
 
 fn report_bad_target(sess: &Session, item: &Annotatable, span: Span) -> bool {
