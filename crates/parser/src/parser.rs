@@ -340,10 +340,14 @@ impl CompletedMarker {
 
     /// Extends this completed marker *to the left* up to `m`.
     pub(crate) fn extend_to(self, p: &mut Parser, mut m: Marker) {
-        assert!(m.pos <= self.pos);
         m.bomb.defuse();
-
-        p.events.swap(self.pos as usize, m.pos as usize);
+        let idx = m.pos as usize;
+        match &mut p.events[idx] {
+            Event::Start { forward_parent, .. } => {
+                *forward_parent = Some(self.pos - m.pos);
+            }
+            _ => unreachable!(),
+        }
     }
 
     pub(crate) fn kind(&self) -> SyntaxKind {
