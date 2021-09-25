@@ -161,7 +161,8 @@ impl ChangeFixture {
         }
 
         if crates.is_empty() {
-            let crate_root = default_crate_root.unwrap();
+            let crate_root = default_crate_root
+                .expect("missing default crate root, specify a main.rs or lib.rs");
             crate_graph.add_crate_root(
                 crate_root,
                 Edition::CURRENT,
