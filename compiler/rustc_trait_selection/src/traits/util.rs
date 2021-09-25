@@ -248,7 +248,7 @@ pub fn predicate_for_trait_ref<'tcx>(
         cause,
         param_env,
         recursion_depth,
-        predicate: trait_ref.without_const().to_predicate(tcx),
+        predicate: ty::Binder::dummy(trait_ref).without_const().to_predicate(tcx),
     }
 }
 

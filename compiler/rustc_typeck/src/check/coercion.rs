@@ -256,10 +256,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     obligations.push(Obligation::new(
                         self.cause.clone(),
                         self.param_env,
-                        ty::PredicateKind::Coerce(ty::CoercePredicate {
+                        ty::Binder::dummy(ty::PredicateKind::Coerce(ty::CoercePredicate {
                             a: source_ty,
                             b: target_ty,
-                        })
+                        }))
                         .to_predicate(self.tcx()),
                     ));
                 }

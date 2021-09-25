@@ -21,9 +21,7 @@ use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::{
-    self, ParamEnvAnd, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
-};
+use rustc_middle::ty::{self, ParamEnvAnd, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::lev_distance::{find_best_match_for_name, lev_distance};
@@ -967,7 +965,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         if self.tcx.is_trait_alias(trait_def_id) {
             // For trait aliases, assume all super-traits are relevant.
-            let bounds = iter::once(trait_ref.to_poly_trait_ref());
+            let bounds = iter::once(ty::Binder::dummy(trait_ref));
             self.elaborate_bounds(bounds, |this, new_trait_ref, item| {
                 let new_trait_ref = this.erase_late_bound_regions(new_trait_ref);
 
@@ -1372,7 +1370,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         trait_ref: ty::TraitRef<'tcx>,
     ) -> traits::SelectionResult<'tcx, traits::Selection<'tcx>> {
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
-        let predicate = trait_ref.to_poly_trait_ref().to_poly_trait_predicate();
+        let predicate = ty::Binder::dummy(trait_ref).to_poly_trait_predicate();
         let obligation = traits::Obligation::new(cause, self.param_env, predicate);
         traits::SelectionContext::new(self).select(&obligation)
     }
@@ -1470,7 +1468,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             }
                         }
                     }
-                    let predicate = trait_ref.without_const().to_predicate(self.tcx);
+                    let predicate =
+                        ty::Binder::dummy(trait_ref).without_const().to_predicate(self.tcx);
                     let obligation = traits::Obligation::new(cause, self.param_env, predicate);
                     if !self.predicate_may_hold(&obligation) {
                         result = ProbeResult::NoMatch;

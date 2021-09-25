@@ -21,7 +21,7 @@ use rustc_infer::infer::{self, InferOk};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TypeFoldable, WithConstness};
+use rustc_middle::ty::{self, ToPredicate, Ty, TypeFoldable, WithConstness};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
@@ -331,7 +331,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let trait_ref = ty::TraitRef::new(trait_def_id, substs);
 
         // Construct an obligation
-        let poly_trait_ref = trait_ref.to_poly_trait_ref();
+        let poly_trait_ref = ty::Binder::dummy(trait_ref);
         let obligation = traits::Obligation::misc(
             span,
             self.body_id,
@@ -413,7 +413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         obligations.push(traits::Obligation::new(
             cause,
             self.param_env,
-            ty::PredicateKind::WellFormed(method_ty.into()).to_predicate(tcx),
+            ty::Binder::dummy(ty::PredicateKind::WellFormed(method_ty.into())).to_predicate(tcx),
         ));
 
         let callee = MethodCallee { def_id, substs: trait_ref.substs, sig: fn_sig };

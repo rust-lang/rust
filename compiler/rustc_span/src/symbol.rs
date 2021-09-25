@@ -1618,7 +1618,7 @@ impl fmt::Display for MacroRulesNormalizedIdent {
 pub struct Symbol(SymbolIndex);
 
 rustc_index::newtype_index! {
-    pub struct SymbolIndex { .. }
+    struct SymbolIndex { .. }
 }
 
 impl Symbol {
@@ -1642,10 +1642,6 @@ impl Symbol {
 
     pub fn as_u32(self) -> u32 {
         self.0.as_u32()
-    }
-
-    pub fn len(self) -> usize {
-        with_session_globals(|session_globals| session_globals.symbol_interner.get(self).len())
     }
 
     pub fn is_empty(self) -> bool {

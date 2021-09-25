@@ -2061,7 +2061,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             then {
                 let first_arg_span = first_arg_ty.span;
                 let first_arg_ty = hir_ty_to_ty(cx.tcx, first_arg_ty);
-                let self_ty = TraitRef::identity(cx.tcx, item.def_id.to_def_id()).self_ty();
+                let self_ty = TraitRef::identity(cx.tcx, item.def_id.to_def_id()).self_ty().skip_binder();
                 wrong_self_convention::check(
                     cx,
                     &item.ident.name.as_str(),
@@ -2078,7 +2078,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             if item.ident.name == sym::new;
             if let TraitItemKind::Fn(_, _) = item.kind;
             let ret_ty = return_ty(cx, item.hir_id());
-            let self_ty = TraitRef::identity(cx.tcx, item.def_id.to_def_id()).self_ty();
+            let self_ty = TraitRef::identity(cx.tcx, item.def_id.to_def_id()).self_ty().skip_binder();
             if !contains_ty(cx.tcx, ret_ty, self_ty);
 
             then {

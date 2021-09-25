@@ -96,7 +96,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let arg_tys = sig.inputs();
         let ret_ty = sig.output();
         let name = tcx.item_name(def_id);
-        let name_str = &*name.as_str();
 
         let llret_ty = self.layout_of(ret_ty).llvm_type(self);
         let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
@@ -230,9 +229,14 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                                 &[args[0].immediate(), y],
                             )
                         }
-                        sym::ctlz_nonzero | sym::cttz_nonzero => {
+                        sym::ctlz_nonzero => {
                             let y = self.const_bool(true);
-                            let llvm_name = &format!("llvm.{}.i{}", &name_str[..4], width);
+                            let llvm_name = &format!("llvm.ctlz.i{}", width);
+                            self.call_intrinsic(llvm_name, &[args[0].immediate(), y])
+                        }
+                        sym::cttz_nonzero => {
+                            let y = self.const_bool(true);
+                            let llvm_name = &format!("llvm.cttz.i{}", width);
                             self.call_intrinsic(llvm_name, &[args[0].immediate(), y])
                         }
                         sym::ctpop => self.call_intrinsic(
@@ -353,7 +357,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 return;
             }
 
-            _ if name_str.starts_with("simd_") => {
+            _ if name.as_str().starts_with("simd_") => {
                 match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
                     Ok(llval) => llval,
                     Err(()) => return,
@@ -843,7 +847,6 @@ fn generic_simd_intrinsic(
     let sig =
         tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), callee_ty.fn_sig(tcx));
     let arg_tys = sig.inputs();
-    let name_str = &*name.as_str();
 
     if name == sym::simd_select_bitmask {
         let in_ty = arg_tys[0];
@@ -917,7 +920,7 @@ fn generic_simd_intrinsic(
         ));
     }
 
-    if let Some(stripped) = name_str.strip_prefix("simd_shuffle") {
+    if let Some(stripped) = name.as_str().strip_prefix("simd_shuffle") {
         // If this intrinsic is the older "simd_shuffleN" form, simply parse the integer.
         // If there is no suffix, use the index array length.
         let n: u64 = if stripped.is_empty() {

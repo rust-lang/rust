@@ -1,6 +1,7 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(internal_output_capture)]
+#![feature(thread_spawn_unchecked)]
 #![feature(nll)]
 #![feature(once_cell)]
 #![recursion_limit = "256"]

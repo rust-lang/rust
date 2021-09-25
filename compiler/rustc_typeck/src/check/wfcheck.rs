@@ -593,10 +593,10 @@ fn check_type_defn<'tcx, F>(
                 fcx.register_predicate(traits::Obligation::new(
                     cause,
                     fcx.param_env,
-                    ty::PredicateKind::ConstEvaluatable(ty::Unevaluated::new(
+                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(ty::Unevaluated::new(
                         ty::WithOptConstParam::unknown(discr_def_id.to_def_id()),
                         discr_substs,
-                    ))
+                    )))
                     .to_predicate(tcx),
                 ));
             }
@@ -1204,10 +1204,10 @@ fn receiver_is_implemented(
     cause: ObligationCause<'tcx>,
     receiver_ty: Ty<'tcx>,
 ) -> bool {
-    let trait_ref = ty::TraitRef {
+    let trait_ref = ty::Binder::dummy(ty::TraitRef {
         def_id: receiver_trait_def_id,
         substs: fcx.tcx.mk_substs_trait(receiver_ty, &[]),
-    };
+    });
 
     let obligation = traits::Obligation::new(
         cause,
