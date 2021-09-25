@@ -90,13 +90,6 @@ pub enum WherePredicateTypeTarget {
     TypeParam(LocalTypeParamId),
 }
 
-#[derive(Default)]
-pub(crate) struct SourceMap {
-    pub(crate) type_params: ArenaMap<LocalTypeParamId, Either<ast::TypeParam, ast::Trait>>,
-    lifetime_params: ArenaMap<LocalLifetimeParamId, ast::LifetimeParam>,
-    const_params: ArenaMap<LocalConstParamId, ast::ConstParam>,
-}
-
 impl GenericParams {
     pub(crate) fn generic_params_query(
         db: &dyn DefDatabase,
@@ -153,14 +146,9 @@ impl GenericParams {
         }
     }
 
-    pub(crate) fn fill(
-        &mut self,
-        lower_ctx: &LowerCtx,
-        sm: &mut SourceMap,
-        node: &dyn HasGenericParams,
-    ) {
+    pub(crate) fn fill(&mut self, lower_ctx: &LowerCtx, node: &dyn HasGenericParams) {
         if let Some(params) = node.generic_param_list() {
-            self.fill_params(lower_ctx, sm, params)
+            self.fill_params(lower_ctx, params)
         }
         if let Some(where_clause) = node.where_clause() {
             self.fill_where_predicates(lower_ctx, where_clause);
@@ -180,12 +168,7 @@ impl GenericParams {
         }
     }
 
-    fn fill_params(
-        &mut self,
-        lower_ctx: &LowerCtx,
-        sm: &mut SourceMap,
-        params: ast::GenericParamList,
-    ) {
+    fn fill_params(&mut self, lower_ctx: &LowerCtx, params: ast::GenericParamList) {
         for type_param in params.type_params() {
             let name = type_param.name().map_or_else(Name::missing, |it| it.as_name());
             // FIXME: Use `Path::from_src`
@@ -196,9 +179,7 @@ impl GenericParams {
                 default,
                 provenance: TypeParamProvenance::TypeParamList,
             };
-            let param_id = self.types.alloc(param);
-            sm.type_params.insert(param_id, Either::Left(type_param.clone()));
-
+            self.types.alloc(param);
             let type_ref = TypeRef::Path(name.into());
             self.fill_bounds(lower_ctx, &type_param, Either::Left(type_ref));
         }
@@ -206,8 +187,7 @@ impl GenericParams {
             let name =
                 lifetime_param.lifetime().map_or_else(Name::missing, |lt| Name::new_lifetime(&lt));
             let param = LifetimeParamData { name: name.clone() };
-            let param_id = self.lifetimes.alloc(param);
-            sm.lifetime_params.insert(param_id, lifetime_param.clone());
+            self.lifetimes.alloc(param);
             let lifetime_ref = LifetimeRef::new_name(name);
             self.fill_bounds(lower_ctx, &lifetime_param, Either::Right(lifetime_ref));
         }
@@ -215,8 +195,7 @@ impl GenericParams {
             let name = const_param.name().map_or_else(Name::missing, |it| it.as_name());
             let ty = const_param.ty().map_or(TypeRef::Error, |it| TypeRef::from_ast(lower_ctx, it));
             let param = ConstParamData { name, ty: Interned::new(ty) };
-            let param_id = self.consts.alloc(param);
-            sm.const_params.insert(param_id, const_param.clone());
+            self.consts.alloc(param);
         }
     }
 
