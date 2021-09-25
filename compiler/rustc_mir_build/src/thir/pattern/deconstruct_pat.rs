@@ -62,6 +62,7 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, VariantIdx};
 
 use smallvec::{smallvec, SmallVec};
+use std::cell::Cell;
 use std::cmp::{self, max, min, Ordering};
 use std::fmt;
 use std::iter::{once, IntoIterator};
@@ -1219,21 +1220,45 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     }
 }
 
-#[derive(Clone)]
+/// Values and patterns can be represented as a constructor applied to some fields. This represents
+/// a pattern in this form.
+/// This also keeps track of whether the pattern has been foundreachable during analysis. For this
+/// reason we should be careful not to clone patterns for which we care about that. Use
+/// `clone_and_forget_reachability` is you're sure.
 pub(crate) struct DeconstructedPat<'p, 'tcx> {
     ctor: Constructor<'tcx>,
     fields: Fields<'p, 'tcx>,
     ty: Ty<'tcx>,
     span: Span,
+    reachable: Cell<bool>,
 }
 
 impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
     pub(super) fn wildcard(ty: Ty<'tcx>) -> Self {
-        Self::new(Wildcard, Fields::empty(), ty)
+        Self::new(Wildcard, Fields::empty(), ty, DUMMY_SP)
     }
 
-    pub(super) fn new(ctor: Constructor<'tcx>, fields: Fields<'p, 'tcx>, ty: Ty<'tcx>) -> Self {
-        DeconstructedPat { ctor, fields, ty, span: DUMMY_SP }
+    pub(super) fn new(
+        ctor: Constructor<'tcx>,
+        fields: Fields<'p, 'tcx>,
+        ty: Ty<'tcx>,
+        span: Span,
+    ) -> Self {
+        DeconstructedPat { ctor, fields, ty, span, reachable: Cell::new(false) }
+    }
+
+    /// Construct a pattern that matches everything that starts with this constructor.
+    /// For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get the pattern
+    /// `Some(_)`.
+    pub(super) fn wild_from_ctor(pcx: PatCtxt<'_, 'p, 'tcx>, ctor: Constructor<'tcx>) -> Self {
+        let fields = Fields::wildcards(pcx.cx, pcx.ty, &ctor);
+        DeconstructedPat::new(ctor, fields, pcx.ty, DUMMY_SP)
+    }
+
+    /// Clone this value. This method emphasizes that cloning loses reachability information and
+    /// should be done carefully.
+    pub(super) fn clone_and_forget_reachability(&self) -> Self {
+        DeconstructedPat::new(self.ctor.clone(), self.fields, self.ty, self.span)
     }
 
     pub(crate) fn from_pat(cx: &MatchCheckCtxt<'p, 'tcx>, pat: &Pat<'tcx>) -> Self {
@@ -1332,12 +1357,9 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                             // So here, the constructor for a `"foo"` pattern is `&` (represented by
                             // `Single`), and has one field. That field has constructor `Str(value)` and no
                             // fields.
-                            let subpattern = DeconstructedPat {
-                                ctor: Str(value),
-                                fields: Fields::empty(),
-                                ty: t, // `t` is `str`, not `&str`
-                                span: pat.span,
-                            };
+                            // Note: `t` is `str`, not `&str`.
+                            let subpattern =
+                                DeconstructedPat::new(Str(value), Fields::empty(), t, pat.span);
                             ctor = Single;
                             fields = Fields::singleton(cx, subpattern)
                         }
@@ -1386,7 +1408,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 fields = Fields::from_iter(cx, pats.into_iter().map(mkpat));
             }
         }
-        DeconstructedPat { ctor, fields, ty: pat.ty, span: pat.span }
+        DeconstructedPat::new(ctor, fields, pat.ty, pat.span)
     }
 
     pub(crate) fn to_pat(&self, cx: &MatchCheckCtxt<'p, 'tcx>) -> Pat<'tcx> {
@@ -1475,14 +1497,6 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         Pat { ty: self.ty, span: DUMMY_SP, kind: Box::new(pat) }
     }
 
-    /// Construct a pattern that matches everything that starts with this constructor.
-    // For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get the pattern
-    // `Some(_)`.
-    pub(super) fn wild_from_ctor(pcx: PatCtxt<'_, 'p, 'tcx>, ctor: Constructor<'tcx>) -> Self {
-        let fields = Fields::wildcards(pcx.cx, pcx.ty, &ctor);
-        DeconstructedPat::new(ctor, fields, pcx.ty)
-    }
-
     pub(super) fn is_or_pat(&self) -> bool {
         matches!(self.ctor, Or)
     }
@@ -1541,6 +1555,33 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 }
             }
             _ => self.fields.iter_patterns().collect(),
+        }
+    }
+
+    /// We keep track for each pattern if it was ever reachable during the analysis. This is used
+    /// with `unreachable_spans` to report unreachable subpatterns arising from or patterns.
+    pub(super) fn set_reachable(&self) {
+        self.reachable.set(true)
+    }
+    pub(super) fn is_reachable(&self) -> bool {
+        self.reachable.get()
+    }
+
+    /// Report the spans of subpatterns that were not reachable, if any.
+    pub(super) fn unreachable_spans(&self) -> Vec<Span> {
+        let mut spans = Vec::new();
+        self.collect_unreachable_spans(&mut spans);
+        spans
+    }
+
+    fn collect_unreachable_spans(&self, spans: &mut Vec<Span>) {
+        // We don't look at subpatterns if we already reported the whole pattern as unreachable.
+        if !self.is_reachable() {
+            spans.push(self.span);
+        } else {
+            for p in self.iter_fields() {
+                p.collect_unreachable_spans(spans);
+            }
         }
     }
 }
