@@ -198,7 +198,7 @@ impl<'a> Resolver<'a> {
                 err.span_label(first_use_span, format!("first use of `{}`", name));
                 err
             }
-            ResolutionError::MethodNotMemberOfTrait(method, trait_) => {
+            ResolutionError::MethodNotMemberOfTrait(method, trait_, candidate) => {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
@@ -208,9 +208,17 @@ impl<'a> Resolver<'a> {
                     trait_
                 );
                 err.span_label(span, format!("not a member of trait `{}`", trait_));
+                if let Some(candidate) = candidate {
+                    err.span_suggestion(
+                        method.span,
+                        "there is an associated function with a similar name",
+                        candidate.to_ident_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
                 err
             }
-            ResolutionError::TypeNotMemberOfTrait(type_, trait_) => {
+            ResolutionError::TypeNotMemberOfTrait(type_, trait_, candidate) => {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
@@ -220,9 +228,17 @@ impl<'a> Resolver<'a> {
                     trait_
                 );
                 err.span_label(span, format!("not a member of trait `{}`", trait_));
+                if let Some(candidate) = candidate {
+                    err.span_suggestion(
+                        type_.span,
+                        "there is an associated type with a similar name",
+                        candidate.to_ident_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
                 err
             }
-            ResolutionError::ConstNotMemberOfTrait(const_, trait_) => {
+            ResolutionError::ConstNotMemberOfTrait(const_, trait_, candidate) => {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
@@ -232,6 +248,14 @@ impl<'a> Resolver<'a> {
                     trait_
                 );
                 err.span_label(span, format!("not a member of trait `{}`", trait_));
+                if let Some(candidate) = candidate {
+                    err.span_suggestion(
+                        const_.span,
+                        "there is an associated constant with a similar name",
+                        candidate.to_ident_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
                 err
             }
             ResolutionError::VariableNotBoundInPattern(binding_error) => {
