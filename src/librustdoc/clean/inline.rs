@@ -389,13 +389,45 @@ crate fn build_impl(
         }
     }
 
+    let document_hidden = cx.render_options.document_hidden;
     let predicates = tcx.explicit_predicates_of(did);
     let (trait_items, generics) = match impl_item {
         Some(impl_) => (
             impl_
                 .items
                 .iter()
-                .map(|item| tcx.hir().impl_item(item.id).clean(cx))
+                .map(|item| tcx.hir().impl_item(item.id))
+                .filter(|item| {
+                    // Filter out impl items whose corresponding trait item has `doc(hidden)`
+                    // not to document such impl items.
+                    // For inherent impls, we don't do any filtering, because that's already done in strip_hidden.rs.
+
+                    // When `--document-hidden-items` is passed, we don't
+                    // do any filtering, too.
+                    if document_hidden {
+                        return true;
+                    }
+                    if let Some(associated_trait) = associated_trait {
+                        let assoc_kind = match item.kind {
+                            hir::ImplItemKind::Const(..) => ty::AssocKind::Const,
+                            hir::ImplItemKind::Fn(..) => ty::AssocKind::Fn,
+                            hir::ImplItemKind::TyAlias(..) => ty::AssocKind::Type,
+                        };
+                        let trait_item = tcx
+                            .associated_items(associated_trait.def_id)
+                            .find_by_name_and_kind(
+                                tcx,
+                                item.ident,
+                                assoc_kind,
+                                associated_trait.def_id,
+                            )
+                            .unwrap(); // SAFETY: For all impl items there exists trait item that has the same name.
+                        !tcx.get_attrs(trait_item.def_id).lists(sym::doc).has_word(sym::hidden)
+                    } else {
+                        true
+                    }
+                })
+                .map(|item| item.clean(cx))
                 .collect::<Vec<_>>(),
             impl_.generics.clean(cx),
         ),
