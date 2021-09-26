@@ -93,8 +93,6 @@ pub(super) fn process(sink: &mut dyn TreeSink, mut events: Vec<Event>) {
 
     for i in 0..events.len() {
         match mem::replace(&mut events[i], Event::tombstone()) {
-            Event::Start { kind: TOMBSTONE, .. } => (),
-
             Event::Start { kind, forward_parent } => {
                 // For events[A, B, C], B is A's forward_parent, C is B's forward_parent,
                 // in the normal control flow, the parent-child relation: `A -> B -> C`,
@@ -109,9 +107,7 @@ pub(super) fn process(sink: &mut dyn TreeSink, mut events: Vec<Event>) {
                     // append `A`'s forward_parent `B`
                     fp = match mem::replace(&mut events[idx], Event::tombstone()) {
                         Event::Start { kind, forward_parent } => {
-                            if kind != TOMBSTONE {
-                                forward_parents.push(kind);
-                            }
+                            forward_parents.push(kind);
                             forward_parent
                         }
                         _ => unreachable!(),
@@ -120,7 +116,9 @@ pub(super) fn process(sink: &mut dyn TreeSink, mut events: Vec<Event>) {
                 }
 
                 for kind in forward_parents.drain(..).rev() {
-                    sink.start_node(kind);
+                    if kind != TOMBSTONE {
+                        sink.start_node(kind);
+                    }
                 }
             }
             Event::Finish => sink.finish_node(),

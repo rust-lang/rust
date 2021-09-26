@@ -51,12 +51,11 @@ SOURCE_FILE@0..83
       BLOCK_EXPR@66..80
         L_CURLY@66..67 "{"
         WHITESPACE@67..68 " "
-        EXPR_STMT@68..75
-          ERROR@68..75
-            LABEL@68..75
-              LIFETIME@68..74
-                LIFETIME_IDENT@68..74 "'label"
-              COLON@74..75 ":"
+        ERROR@68..75
+          LABEL@68..75
+            LIFETIME@68..74
+              LIFETIME_IDENT@68..74 "'label"
+            COLON@74..75 ":"
         WHITESPACE@75..76 " "
         LITERAL@76..78
           INT_NUMBER@76..78 "92"
@@ -69,4 +68,3 @@ error 24..24: expected existential, fn, trait or impl
 error 41..41: expected existential, fn, trait or impl
 error 56..56: expected a block
 error 75..75: expected a loop
-error 75..75: expected SEMICOLON

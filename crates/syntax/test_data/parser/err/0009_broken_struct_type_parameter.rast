@@ -26,9 +26,8 @@ SOURCE_FILE@0..43
           PATH_SEGMENT@23..24
             NAME_REF@23..24
               IDENT@23..24 "f"
-    EXPR_STMT@24..25
-      ERROR@24..25
-        COLON@24..25 ":"
+    ERROR@24..25
+      COLON@24..25 ":"
     WHITESPACE@25..26 " "
     PATH_EXPR@26..29
       PATH@26..29
@@ -55,4 +54,3 @@ error 15..15: expected an item
 error 17..17: expected an item
 error 24..24: expected SEMICOLON
 error 24..24: expected expression
-error 25..25: expected SEMICOLON

@@ -176,7 +176,7 @@ fn tuple_expr(p: &mut Parser) -> CompletedMarker {
 
         // test tuple_attrs
         // const A: (i64, i64) = (1, #[cfg(test)] 2);
-        if !expr_with_attrs(p) {
+        if !expr(p) {
             break;
         }
 
@@ -209,7 +209,7 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
 
         // test array_attrs
         // const A: &[i64] = &[1, #[cfg(test)] 2];
-        if !expr_with_attrs(p) {
+        if !expr(p) {
             break;
         }
 
@@ -438,7 +438,10 @@ fn match_arm(p: &mut Parser) {
         match_guard(p);
     }
     p.expect(T![=>]);
-    let blocklike = expr_stmt(p).1;
+    let blocklike = match expr_stmt(p, None) {
+        Some((_, blocklike)) => blocklike,
+        None => BlockLike::NotBlock,
+    };
 
     // test match_arms_commas
     // fn foo() {
@@ -619,14 +622,14 @@ fn meta_var_expr(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(L_DOLLAR));
     let m = p.start();
     p.bump(L_DOLLAR);
-    let (completed, _is_block) =
-        expr_bp(p, Restrictions { forbid_structs: false, prefer_stmt: false }, 1);
+    let expr = expr_bp(p, None, Restrictions { forbid_structs: false, prefer_stmt: false }, 1);
 
-    match (completed, p.current()) {
-        (Some(it), R_DOLLAR) => {
+    match (expr, p.current()) {
+        (Some((cm, _)), R_DOLLAR) => {
             p.bump(R_DOLLAR);
+            // FIXME: this leaves the dollar hanging in the air...
             m.abandon(p);
-            it
+            cm
         }
         _ => {
             while !p.at(R_DOLLAR) {

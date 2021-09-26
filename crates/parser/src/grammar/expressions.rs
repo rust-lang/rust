@@ -13,35 +13,19 @@ pub(super) enum StmtWithSemi {
 
 const EXPR_FIRST: TokenSet = LHS_FIRST;
 
-pub(super) fn expr(p: &mut Parser) -> (Option<CompletedMarker>, BlockLike) {
+pub(super) fn expr(p: &mut Parser) -> bool {
     let r = Restrictions { forbid_structs: false, prefer_stmt: false };
-    expr_bp(p, r, 1)
+    expr_bp(p, None, r, 1).is_some()
 }
 
-pub(super) fn expr_with_attrs(p: &mut Parser) -> bool {
-    let m = p.start();
-    let has_attrs = p.at(T![#]);
-    attributes::outer_attrs(p);
-
-    let (cm, _block_like) = expr(p);
-    let success = cm.is_some();
-
-    match (has_attrs, cm) {
-        (true, Some(cm)) => cm.extend_to(p, m),
-        _ => m.abandon(p),
-    }
-
-    success
-}
-
-pub(super) fn expr_stmt(p: &mut Parser) -> (Option<CompletedMarker>, BlockLike) {
+pub(super) fn expr_stmt(p: &mut Parser, m: Option<Marker>) -> Option<(CompletedMarker, BlockLike)> {
     let r = Restrictions { forbid_structs: false, prefer_stmt: true };
-    expr_bp(p, r, 1)
+    expr_bp(p, m, r, 1)
 }
 
 fn expr_no_struct(p: &mut Parser) {
     let r = Restrictions { forbid_structs: true, prefer_stmt: false };
-    expr_bp(p, r, 1);
+    expr_bp(p, None, r, 1);
 }
 
 pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi, prefer_expr: bool) {
@@ -53,7 +37,6 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi, prefer_expr: bool) {
     //     #[C] #[D] {}
     //     #[D] return ();
     // }
-    let has_attrs = p.at(T![#]);
     attributes::outer_attrs(p);
 
     if p.at(T![let]) {
@@ -68,61 +51,39 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi, prefer_expr: bool) {
         Err(m) => m,
     };
 
-    let (cm, blocklike) = expr_stmt(p);
-    let kind = cm.as_ref().map(|cm| cm.kind()).unwrap_or(ERROR);
-
-    if has_attrs {
-        if matches!(kind, BIN_EXPR | RANGE_EXPR) {
-            // test_err attr_on_expr_not_allowed
+    if let Some((cm, blocklike)) = expr_stmt(p, Some(m)) {
+        if !(p.at(T!['}']) || (prefer_expr && p.at(EOF))) {
+            // test no_semi_after_block
             // fn foo() {
-            //    #[A] 1 + 2;
-            //    #[B] if true {};
+            //     if true {}
+            //     loop {}
+            //     match () {}
+            //     while true {}
+            //     for _ in () {}
+            //     {}
+            //     {}
+            //     macro_rules! test {
+            //          () => {}
+            //     }
+            //     test!{}
             // }
-            p.error(format!("attributes are not allowed on {:?}", kind));
-        }
-    }
-
-    if p.at(T!['}']) || (prefer_expr && p.at(EOF)) {
-        // test attr_on_last_expr_in_block
-        // fn foo() {
-        //     { #[A] bar!()? }
-        //     #[B] &()
-        // }
-        match cm {
-            Some(cm) => cm.extend_to(p, m),
-            None => m.abandon(p),
-        }
-    } else {
-        // test no_semi_after_block
-        // fn foo() {
-        //     if true {}
-        //     loop {}
-        //     match () {}
-        //     while true {}
-        //     for _ in () {}
-        //     {}
-        //     {}
-        //     macro_rules! test {
-        //          () => {}
-        //     }
-        //     test!{}
-        // }
-
-        match with_semi {
-            StmtWithSemi::No => (),
-            StmtWithSemi::Optional => {
-                p.eat(T![;]);
-            }
-            StmtWithSemi::Yes => {
-                if blocklike.is_block() {
+            let m = cm.precede(p);
+            match with_semi {
+                StmtWithSemi::No => (),
+                StmtWithSemi::Optional => {
                     p.eat(T![;]);
-                } else {
-                    p.expect(T![;]);
+                }
+                StmtWithSemi::Yes => {
+                    if blocklike.is_block() {
+                        p.eat(T![;]);
+                    } else {
+                        p.expect(T![;]);
+                    }
                 }
             }
-        }
 
-        m.complete(p, EXPR_STMT);
+            m.complete(p, EXPR_STMT);
+        }
     }
 
     // test let_stmt
@@ -138,7 +99,7 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi, prefer_expr: bool) {
         if p.eat(T![=]) {
             // test let_stmt_init
             // fn f() { let x = 92; }
-            expressions::expr_with_attrs(p);
+            expressions::expr(p);
         }
 
         match with_semi {
@@ -234,20 +195,34 @@ fn current_op(p: &Parser) -> (u8, SyntaxKind) {
 }
 
 // Parses expression with binding power of at least bp.
-fn expr_bp(p: &mut Parser, mut r: Restrictions, bp: u8) -> (Option<CompletedMarker>, BlockLike) {
+fn expr_bp(
+    p: &mut Parser,
+    m: Option<Marker>,
+    mut r: Restrictions,
+    bp: u8,
+) -> Option<(CompletedMarker, BlockLike)> {
+    let m = m.unwrap_or_else(|| {
+        let m = p.start();
+        attributes::outer_attrs(p);
+        m
+    });
     let mut lhs = match lhs(p, r) {
         Some((lhs, blocklike)) => {
+            let lhs = lhs.extend_to(p, m);
             if r.prefer_stmt && blocklike.is_block() {
                 // test stmt_bin_expr_ambiguity
                 // fn f() {
                 //     let _ = {1} & 2;
                 //     {1} &2;
                 // }
-                return (Some(lhs), BlockLike::Block);
+                return Some((lhs, BlockLike::Block));
             }
             lhs
         }
-        None => return (None, BlockLike::NotBlock),
+        None => {
+            m.abandon(p);
+            return None;
+        }
     };
 
     loop {
@@ -285,10 +260,10 @@ fn expr_bp(p: &mut Parser, mut r: Restrictions, bp: u8) -> (Option<CompletedMark
             }
         }
 
-        expr_bp(p, Restrictions { prefer_stmt: false, ..r }, op_bp + 1);
+        expr_bp(p, None, Restrictions { prefer_stmt: false, ..r }, op_bp + 1);
         lhs = m.complete(p, if is_range { RANGE_EXPR } else { BIN_EXPR });
     }
-    (Some(lhs), BlockLike::NotBlock)
+    Some((lhs, BlockLike::NotBlock))
 }
 
 const LHS_FIRST: TokenSet =
@@ -341,9 +316,10 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> 
                     m = p.start();
                     p.bump(op);
                     if p.at_ts(EXPR_FIRST) && !(r.forbid_structs && p.at(T!['{'])) {
-                        expr_bp(p, r, 2);
+                        expr_bp(p, None, r, 2);
                     }
-                    return Some((m.complete(p, RANGE_EXPR), BlockLike::NotBlock));
+                    let cm = m.complete(p, RANGE_EXPR);
+                    return Some((cm, BlockLike::NotBlock));
                 }
             }
 
@@ -353,12 +329,15 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> 
             //    {p}.x = 10;
             // }
             let (lhs, blocklike) = atom::atom_expr(p, r)?;
-            return Some(postfix_expr(p, lhs, blocklike, !(r.prefer_stmt && blocklike.is_block())));
+            let (cm, block_like) =
+                postfix_expr(p, lhs, blocklike, !(r.prefer_stmt && blocklike.is_block()));
+            return Some((cm, block_like));
         }
     };
     // parse the interior of the unary expression
-    expr_bp(p, r, 255);
-    Some((m.complete(p, kind), BlockLike::NotBlock))
+    expr_bp(p, None, r, 255);
+    let cm = m.complete(p, kind);
+    Some((cm, BlockLike::NotBlock))
 }
 
 fn postfix_expr(
@@ -536,7 +515,7 @@ fn arg_list(p: &mut Parser) {
         // fn main() {
         //     foo(#[attr] 92)
         // }
-        if !expr_with_attrs(p) {
+        if !expr(p) {
             break;
         }
         if !p.at(T![')']) && !p.expect(T![,]) {
