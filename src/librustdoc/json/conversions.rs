@@ -627,7 +627,11 @@ crate fn from_macro_kind(kind: rustc_span::hygiene::MacroKind) -> MacroKind {
 impl FromWithTcx<clean::Typedef> for Typedef {
     fn from_tcx(typedef: clean::Typedef, tcx: TyCtxt<'_>) -> Self {
         let clean::Typedef { type_, generics, item_type: _ } = typedef;
-        Typedef { type_: type_.into_tcx(tcx), generics: generics.into_tcx(tcx) }
+        Typedef {
+            type_: type_.into_tcx(tcx),
+            generics: generics.into_tcx(tcx),
+            impls: Vec::new(), // Added in JsonRenderer::item
+        }
     }
 }
 
