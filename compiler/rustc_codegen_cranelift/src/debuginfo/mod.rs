@@ -2,6 +2,7 @@
 
 mod emit;
 mod line_info;
+mod object;
 mod unwind;
 
 use crate::prelude::*;

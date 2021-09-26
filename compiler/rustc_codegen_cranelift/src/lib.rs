@@ -1,4 +1,5 @@
-#![feature(rustc_private, decl_macro, never_type, hash_drain_filter, vec_into_raw_parts, once_cell)]
+#![feature(rustc_private, decl_macro)]
+#![cfg_attr(feature = "jit", feature(never_type, vec_into_raw_parts, once_cell))]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
@@ -44,7 +45,6 @@ mod abi;
 mod allocator;
 mod analyze;
 mod archive;
-mod backend;
 mod base;
 mod cast;
 mod codegen_i128;
