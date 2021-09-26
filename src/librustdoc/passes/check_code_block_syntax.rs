@@ -4,7 +4,7 @@ use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_parse::parse_stream_from_source_str;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{FileName, InnerSpan};
+use rustc_span::{hygiene::AstPass, ExpnData, ExpnKind, FileName, InnerSpan, DUMMY_SP};
 
 use crate::clean;
 use crate::core::DocContext;
@@ -36,12 +36,22 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
         let source = dox[code_block.code].to_owned();
         let sess = ParseSess::with_span_handler(handler, sm);
 
+        let edition = code_block.lang_string.edition.unwrap_or(self.cx.tcx.sess.edition());
+        let expn_data = ExpnData::default(
+            ExpnKind::AstPass(AstPass::TestHarness),
+            DUMMY_SP,
+            edition,
+            None,
+            None,
+        );
+        let span = DUMMY_SP.fresh_expansion(expn_data, self.cx.tcx.create_stable_hashing_context());
+
         let is_empty = rustc_driver::catch_fatal_errors(|| {
             parse_stream_from_source_str(
                 FileName::Custom(String::from("doctest")),
                 source,
                 &sess,
-                None,
+                Some(span),
             )
             .is_empty()
         })
