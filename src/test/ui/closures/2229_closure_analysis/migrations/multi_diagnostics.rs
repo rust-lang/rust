@@ -4,7 +4,22 @@
 
 use std::thread;
 
-struct S(String);
+#[derive(Debug)]
+struct Foo(String);
+impl Drop for Foo {
+    fn drop(&mut self) {
+        println!("{:?} dropped", self.0);
+    }
+}
+
+impl Foo {
+    fn from(s: &str) -> Self {
+        Self(String::from(s))
+    }
+}
+
+
+struct S(Foo);
 
 #[derive(Clone)]
 struct T(i32);
@@ -13,13 +28,13 @@ struct U(S, T);
 
 impl Clone for U {
     fn clone(&self) -> Self {
-        U(S(String::from("Hello World")), T(0))
+        U(S(Foo::from("Hello World")), T(0))
     }
 }
 
 fn test_multi_issues() {
-    let f1 = U(S(String::from("foo")), T(0));
-    let f2 = U(S(String::from("bar")), T(0));
+    let f1 = U(S(Foo::from("foo")), T(0));
+    let f2 = U(S(Foo::from("bar")), T(0));
     let c = || {
         //~^ ERROR: `Clone` trait implementation for closure and drop order
         //~| NOTE: in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f1.0` does not implement `Clone`
@@ -38,7 +53,7 @@ fn test_multi_issues() {
 //~^ NOTE: in Rust 2018, `f2` is dropped here, but in Rust 2021, only `f2.1` will be dropped here as part of the closure
 
 fn test_capturing_all_disjoint_fields_individually() {
-    let f1 = U(S(String::from("foo")), T(0));
+    let f1 = U(S(Foo::from("foo")), T(0));
     let c = || {
         //~^ ERROR: `Clone` trait implementation for closure
         //~| NOTE: in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f1.0` does not implement `Clone`
@@ -58,12 +73,12 @@ struct U1(S, T, S);
 
 impl Clone for U1 {
     fn clone(&self) -> Self {
-        U1(S(String::from("foo")), T(0), S(String::from("bar")))
+        U1(S(Foo::from("foo")), T(0), S(Foo::from("bar")))
     }
 }
 
 fn test_capturing_several_disjoint_fields_individually_1() {
-    let f1 = U1(S(String::from("foo")), T(0), S(String::from("bar")));
+    let f1 = U1(S(Foo::from("foo")), T(0), S(Foo::from("bar")));
     let c = || {
         //~^ ERROR: `Clone` trait implementation for closure
         //~| NOTE: in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f1.0` does not implement `Clone`
@@ -82,7 +97,7 @@ fn test_capturing_several_disjoint_fields_individually_1() {
 }
 
 fn test_capturing_several_disjoint_fields_individually_2() {
-    let f1 = U1(S(String::from("foo")), T(0), S(String::from("bar")));
+    let f1 = U1(S(Foo::from("foo")), T(0), S(Foo::from("bar")));
     let c = || {
         //~^ ERROR: `Clone` trait implementation for closure and drop order
         //~| NOTE: in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f1.0` does not implement `Clone`

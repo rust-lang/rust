@@ -1,5 +1,5 @@
 warning: changes to closure capture in Rust 2021 will affect drop order
-  --> $DIR/closure-body-macro-fragment.rs:8:17
+  --> $DIR/closure-body-macro-fragment.rs:16:17
    |
 LL |           let f = || $body;
    |  _________________^
@@ -15,7 +15,7 @@ LL | /     m!({
 LL | |
 LL | |         let x = a.0;
    | |                 --- in Rust 2018, this closure captures all of `a`, but in Rust 2021, it will only capture `a.0`
-LL | |         println!("{}", x);
+LL | |         println!("{:?}", x);
 LL | |     });
    | |_______- in this macro invocation
    |

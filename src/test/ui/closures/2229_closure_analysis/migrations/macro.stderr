@@ -1,5 +1,5 @@
 error: changes to closure capture in Rust 2021 will affect drop order
-  --> $DIR/macro.rs:10:13
+  --> $DIR/macro.rs:19:13
    |
 LL |     let _ = || dbg!(a.0);
    |             ^^^^^^^^---^

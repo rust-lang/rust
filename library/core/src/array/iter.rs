@@ -10,6 +10,7 @@ use crate::{
 
 /// A by-value [array] iterator.
 #[stable(feature = "array_value_iter", since = "1.51.0")]
+#[rustc_insignificant_dtor]
 pub struct IntoIter<T, const N: usize> {
     /// This is the array we are iterating over.
     ///

@@ -1,169 +1,38 @@
+// run-pass
 // run-rustfix
 
 #![deny(rust_2021_incompatible_closure_captures)]
-//~^ NOTE: the lint level is defined here
+#![allow(unused)]
 
 // Test cases for types that implement an insignificant drop (stlib defined)
 
-// `t` needs Drop because one of its elements needs drop,
-// therefore precise capture might affect drop ordering
-fn test1_all_need_migration() {
-    let t = (String::new(), String::new());
-    let t1 = (String::new(), String::new());
-    let t2 = (String::new(), String::new());
+macro_rules! test_insig_dtor_for_type {
+    ($t: ty, $disambiguator: ident) => {
+        mod $disambiguator {
+            use std::collections::*;
+            use std::rc::Rc;
+            use std::sync::Mutex;
 
-    let c = || {
-        let _ = (&t, &t1, &t2);
-        //~^ ERROR: drop order
-        //~| NOTE: for more information, see
-        //~| HELP: add a dummy let to cause `t`, `t1`, `t2` to be fully captured
+            fn test_for_type(t: $t) {
+                let tup = (Mutex::new(0), t);
 
-        let _t = t.0;
-        //~^ NOTE: in Rust 2018, this closure captures all of `t`, but in Rust 2021, it will only capture `t.0`
-        let _t1 = t1.0;
-        //~^ NOTE: in Rust 2018, this closure captures all of `t1`, but in Rust 2021, it will only capture `t1.0`
-        let _t2 = t2.0;
-        //~^ NOTE: in Rust 2018, this closure captures all of `t2`, but in Rust 2021, it will only capture `t2.0`
+                let _c = || tup.0;
+            }
+        }
     };
-
-    c();
 }
-//~^ in Rust 2018, `t` is dropped here, but in Rust 2021, only `t.0` will be dropped here as part of the closure
-//~| in Rust 2018, `t1` is dropped here, but in Rust 2021, only `t1.0` will be dropped here as part of the closure
-//~| in Rust 2018, `t2` is dropped here, but in Rust 2021, only `t2.0` will be dropped here as part of the closure
 
-// String implements drop and therefore should be migrated.
-// But in this test cases, `t2` is completely captured and when it is dropped won't be affected
-fn test2_only_precise_paths_need_migration() {
-    let t = (String::new(), String::new());
-    let t1 = (String::new(), String::new());
-    let t2 = (String::new(), String::new());
+test_insig_dtor_for_type!(i32, prim_i32);
+test_insig_dtor_for_type!(Vec<i32>, vec_i32);
+test_insig_dtor_for_type!(String, string);
+test_insig_dtor_for_type!(Vec<String>, vec_string);
+test_insig_dtor_for_type!(HashMap<String, String>, hash_map);
+test_insig_dtor_for_type!(BTreeMap<String, i32>, btree_map);
+test_insig_dtor_for_type!(LinkedList<String>, linked_list);
+test_insig_dtor_for_type!(Rc<i32>, rc_i32);
+test_insig_dtor_for_type!(Rc<String>, rc_string);
+test_insig_dtor_for_type!(std::vec::IntoIter<String>, vec_into_iter);
+test_insig_dtor_for_type!(btree_map::IntoIter<String, String>, btree_map_into_iter);
+test_insig_dtor_for_type!(std::array::IntoIter<String, 5>, array_into_iter);
 
-    let c = || {
-        let _ = (&t, &t1);
-        //~^ ERROR: drop order
-        //~| NOTE: for more information, see
-        //~| HELP: add a dummy let to cause `t`, `t1` to be fully captured
-        let _t = t.0;
-        //~^ NOTE: in Rust 2018, this closure captures all of `t`, but in Rust 2021, it will only capture `t.0`
-        let _t1 = t1.0;
-        //~^ NOTE: in Rust 2018, this closure captures all of `t1`, but in Rust 2021, it will only capture `t1.0`
-        let _t2 = t2;
-    };
-
-    c();
-}
-//~^ in Rust 2018, `t` is dropped here, but in Rust 2021, only `t.0` will be dropped here as part of the closure
-//~| in Rust 2018, `t1` is dropped here, but in Rust 2021, only `t1.0` will be dropped here as part of the closure
-
-// If a variable would've not been captured by value then it would've not been
-// dropped with the closure and therefore doesn't need migration.
-fn test3_only_by_value_need_migration() {
-    let t = (String::new(), String::new());
-    let t1 = (String::new(), String::new());
-    let c = || {
-        let _ = &t;
-        //~^ ERROR: drop order
-        //~| NOTE: for more information, see
-        //~| HELP: add a dummy let to cause `t` to be fully captured
-        let _t = t.0;
-        //~^ NOTE: in Rust 2018, this closure captures all of `t`, but in Rust 2021, it will only capture `t.0`
-        println!("{}", t1.1);
-    };
-
-    c();
-}
-//~^ in Rust 2018, `t` is dropped here, but in Rust 2021, only `t.0` will be dropped here as part of the closure
-
-// Copy types get copied into the closure instead of move. Therefore we don't need to
-// migrate then as their drop order isn't tied to the closure.
-fn test4_only_non_copy_types_need_migration() {
-    let t = (String::new(), String::new());
-
-    // `t1` is Copy because all of its elements are Copy
-    let t1 = (0i32, 0i32);
-
-    let c = || {
-        let _ = &t;
-        //~^ ERROR: drop order
-        //~| NOTE: for more information, see
-        //~| HELP: add a dummy let to cause `t` to be fully captured
-        let _t = t.0;
-        //~^ NOTE: in Rust 2018, this closure captures all of `t`, but in Rust 2021, it will only capture `t.0`
-        let _t1 = t1.0;
-    };
-
-    c();
-}
-//~^ in Rust 2018, `t` is dropped here, but in Rust 2021, only `t.0` will be dropped here as part of the closure
-
-fn test5_only_drop_types_need_migration() {
-    struct S(i32, i32);
-
-    let t = (String::new(), String::new());
-
-    // `s` doesn't implement Drop or any elements within it, and doesn't need migration
-    let s = S(0i32, 0i32);
-
-    let c = || {
-        let _ = &t;
-        //~^ ERROR: drop order
-        //~| NOTE: for more information, see
-        //~| HELP: add a dummy let to cause `t` to be fully captured
-        let _t = t.0;
-        //~^ NOTE: in Rust 2018, this closure captures all of `t`, but in Rust 2021, it will only capture `t.0`
-        let _s = s.0;
-    };
-
-    c();
-}
-//~^ in Rust 2018, `t` is dropped here, but in Rust 2021, only `t.0` will be dropped here as part of the closure
-
-// Since we are using a move closure here, both `t` and `t1` get moved
-// even though they are being used by ref inside the closure.
-fn test6_move_closures_non_copy_types_might_need_migration() {
-    let t = (String::new(), String::new());
-    let t1 = (String::new(), String::new());
-    let c = move || {
-        let _ = (&t1, &t);
-        //~^ ERROR: drop order
-        //~| NOTE: for more information, see
-        //~| HELP: add a dummy let to cause `t1`, `t` to be fully captured
-        println!("{} {}", t1.1, t.1);
-        //~^ NOTE: in Rust 2018, this closure captures all of `t`, but in Rust 2021, it will only capture `t.1`
-        //~| NOTE: in Rust 2018, this closure captures all of `t1`, but in Rust 2021, it will only capture `t1.1`
-    };
-
-    c();
-}
-//~^ in Rust 2018, `t` is dropped here, but in Rust 2021, only `t.1` will be dropped here as part of the closure
-//~| in Rust 2018, `t1` is dropped here, but in Rust 2021, only `t1.1` will be dropped here as part of the closure
-
-// Test migration analysis in case of Drop + Non Drop aggregates.
-// Note we need migration here only because the non-copy (because Drop type) is captured,
-// otherwise we won't need to, since we can get away with just by ref capture in that case.
-fn test7_drop_non_drop_aggregate_need_migration() {
-    let t = (String::new(), String::new(), 0i32);
-
-    let c = || {
-        let _ = &t;
-        //~^ ERROR: drop order
-        //~| NOTE: for more information, see
-        //~| HELP: add a dummy let to cause `t` to be fully captured
-        let _t = t.0;
-        //~^ NOTE: in Rust 2018, this closure captures all of `t`, but in Rust 2021, it will only capture `t.0`
-    };
-
-    c();
-}
-//~^ in Rust 2018, `t` is dropped here, but in Rust 2021, only `t.0` will be dropped here as part of the closure
-
-fn main() {
-    test1_all_need_migration();
-    test2_only_precise_paths_need_migration();
-    test3_only_by_value_need_migration();
-    test4_only_non_copy_types_need_migration();
-    test5_only_drop_types_need_migration();
-    test6_move_closures_non_copy_types_might_need_migration();
-    test7_drop_non_drop_aggregate_need_migration();
-}
+fn main() {}

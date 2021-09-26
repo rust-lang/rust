@@ -90,6 +90,7 @@ const MAXIMUM_ZST_CAPACITY: usize = 1 << (usize::BITS - 1); // Largest possible 
 /// [`make_contiguous`]: VecDeque::make_contiguous
 #[cfg_attr(not(test), rustc_diagnostic_item = "vecdeque_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_insignificant_dtor]
 pub struct VecDeque<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,

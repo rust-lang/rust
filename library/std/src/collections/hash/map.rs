@@ -205,6 +205,7 @@ use crate::sys;
 
 #[cfg_attr(not(test), rustc_diagnostic_item = "hashmap_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_insignificant_dtor]
 pub struct HashMap<K, V, S = RandomState> {
     base: base::HashMap<K, V, S>,
 }

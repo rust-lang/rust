@@ -305,6 +305,7 @@ struct RcBox<T: ?Sized> {
 /// [get_mut]: Rc::get_mut
 #[cfg_attr(not(test), rustc_diagnostic_item = "Rc")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_insignificant_dtor]
 pub struct Rc<T: ?Sized> {
     ptr: NonNull<RcBox<T>>,
     phantom: PhantomData<RcBox<T>>,

@@ -5,8 +5,17 @@
 #![deny(rust_2021_incompatible_closure_captures)]
 //~^ NOTE: the lint level is defined here
 
+
+#[derive(Debug)]
+struct Foo(i32);
+impl Drop for Foo {
+    fn drop(&mut self) {
+        println!("{:?} dropped", self.0);
+    }
+}
+
 fn main() {
-    let a = ("hey".to_string(), "123".to_string());
+    let a = (Foo(0), Foo(1));
     let _ = || dbg!(a.0);
     //~^ ERROR: drop order
     //~| NOTE: will only capture `a.0`

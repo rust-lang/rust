@@ -1,5 +1,5 @@
 error: changes to closure capture in Rust 2021 will affect `Send` trait implementation for closure
-  --> $DIR/auto_traits.rs:14:19
+  --> $DIR/auto_traits.rs:22:19
    |
 LL |     thread::spawn(move || unsafe {
    |                   ^^^^^^^^^^^^^^ in Rust 2018, this closure implements `Send` as `fptr` implements `Send`, but in Rust 2021, this closure will no longer implement `Send` as `fptr.0` does not implement `Send`
@@ -24,7 +24,7 @@ LL |         *fptr.0 = 20;
  ...
 
 error: changes to closure capture in Rust 2021 will affect `Sync`, `Send` trait implementation for closure
-  --> $DIR/auto_traits.rs:34:19
+  --> $DIR/auto_traits.rs:42:19
    |
 LL |     thread::spawn(move || unsafe {
    |                   ^^^^^^^^^^^^^^ in Rust 2018, this closure implements `Sync`, `Send` as `fptr` implements `Sync`, `Send`, but in Rust 2021, this closure will no longer implement `Sync`, `Send` as `fptr.0.0` does not implement `Sync`, `Send`
@@ -44,7 +44,7 @@ LL |         *fptr.0.0 = 20;
  ...
 
 error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure and drop order
-  --> $DIR/auto_traits.rs:58:13
+  --> $DIR/auto_traits.rs:66:13
    |
 LL |     let c = || {
    |             ^^ in Rust 2018, this closure implements `Clone` as `f` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f.1` does not implement `Clone`
