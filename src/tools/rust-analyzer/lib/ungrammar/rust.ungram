@@ -318,7 +318,7 @@ LetStmt =
   '=' initializer:Expr ';'
 
 ExprStmt =
-  Attr* Expr ';'?
+  Expr ';'?
 
 Expr =
   ArrayExpr
