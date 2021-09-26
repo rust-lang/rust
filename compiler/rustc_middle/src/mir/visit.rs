@@ -266,7 +266,7 @@ macro_rules! make_mir_visitor {
                 }
 
                 self.visit_ty(
-                    &$($mutability)? body.return_ty(),
+                    &$($mutability)? body.local_decls[RETURN_PLACE].ty,
                     TyContext::ReturnTy(SourceInfo::outermost(body.span))
                 );
 
