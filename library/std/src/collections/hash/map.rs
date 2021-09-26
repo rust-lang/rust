@@ -1257,9 +1257,10 @@ impl<'a, K, V> IterMut<'a, K, V> {
 /// An owning iterator over the entries of a `HashMap`.
 ///
 /// This `struct` is created by the [`into_iter`] method on [`HashMap`]
-/// (provided by the `IntoIterator` trait). See its documentation for more.
+/// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: IntoIterator::into_iter
+/// [`IntoIterator`]: crate::iter::IntoIterator
 ///
 /// # Example
 ///
