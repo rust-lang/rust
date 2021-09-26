@@ -343,19 +343,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             | Rvalue::AddressOf(..)
             | Rvalue::Discriminant(..)
             | Rvalue::Len(..)
-            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _)
-            | Rvalue::NullaryOp(NullOp::Box, _) => {
-                // This returns an rvalue with uninitialized contents. We can't
-                // move out of it here because it is an rvalue - assignments always
-                // completely initialize their place.
-                //
-                // However, this does not matter - MIR building is careful to
-                // only emit a shallow free for the partially-initialized
-                // temporary.
-                //
-                // In any case, if we want to fix this, we have to register a
-                // special move and change the `statement_effect` functions.
-            }
+            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => {}
         }
     }
 
