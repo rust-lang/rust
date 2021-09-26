@@ -1,0 +1,19 @@
+warning: irrefutable `if let` guard pattern
+  --> $DIR/issue-88118-2.rs:7:29
+   |
+LL |             Registry if let _ = registry.try_find_description() => { }
+   |                             ^
+   |
+   = note: `#[warn(irrefutable_let_patterns)]` on by default
+   = note: this pattern will always match, so the guard is useless
+   = help: consider removing the guard and adding a `let` inside the match arm
+
+error[E0507]: cannot move out of `*registry` which is behind a shared reference
+  --> $DIR/issue-88118-2.rs:7:33
+   |
+LL |             Registry if let _ = registry.try_find_description() => { }
+   |                                 ^^^^^^^^ move occurs because `*registry` has type `Registry`, which does not implement the `Copy` trait
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0507`.
