@@ -601,7 +601,10 @@ pub fn debug_hygiene_data(verbose: bool) -> String {
                 let expn_data = expn_data.as_ref().expect("no expansion data for an expansion ID");
                 debug_expn_data((&id.to_expn_id(), expn_data))
             });
-            data.foreign_expn_data.iter().for_each(debug_expn_data);
+            // Sort the hash map for more reproducible output.
+            let mut foreign_expn_data: Vec<_> = data.foreign_expn_data.iter().collect();
+            foreign_expn_data.sort_by_key(|(id, _)| (id.krate, id.local_id));
+            foreign_expn_data.into_iter().for_each(debug_expn_data);
             s.push_str("\n\nSyntaxContexts:");
             data.syntax_context_data.iter().enumerate().for_each(|(id, ctxt)| {
                 s.push_str(&format!(
