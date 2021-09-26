@@ -318,7 +318,7 @@ LetStmt =
   '=' initializer:Expr ';'
 
 ExprStmt =
-  Attr* Expr ';'?
+  Expr ';'?
 
 Expr =
   ArrayExpr
@@ -331,7 +331,6 @@ Expr =
 | CastExpr
 | ClosureExpr
 | ContinueExpr
-| EffectExpr
 | FieldExpr
 | ForExpr
 | IfExpr
@@ -366,7 +365,7 @@ Literal =
 PathExpr =
   Attr* Path
 
-BlockExpr =
+StmtList =
   '{'
     Attr*
     statements:Stmt*
@@ -379,8 +378,8 @@ RefExpr =
 TryExpr =
   Attr* Expr '?'
 
-EffectExpr =
-  Attr* Label? ('try' | 'unsafe' | 'async' | 'const') BlockExpr
+BlockExpr =
+  Attr* Label? ('try' | 'unsafe' | 'async' | 'const') StmtList
 
 PrefixExpr =
   Attr* op:('-' | '!' | '*') Expr
