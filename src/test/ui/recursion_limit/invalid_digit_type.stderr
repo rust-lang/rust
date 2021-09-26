@@ -1,0 +1,8 @@
+error: malformed `recursion_limit` attribute input
+  --> $DIR/invalid_digit_type.rs:1:1
+   |
+LL | #![recursion_limit = 123]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#![recursion_limit = "N"]`
+
+error: aborting due to previous error
+

@@ -14,7 +14,7 @@ error: malformed `deny` attribute input
   --> $DIR/lint-malformed.rs:1:1
    |
 LL | #![deny = "foo"]
-   | ^^^^^^^^^^^^^^^^ help: must be of the form: `#[deny(lint1, lint2, ..., /*opt*/ reason = "...")]`
+   | ^^^^^^^^^^^^^^^^ help: must be of the form: `#![deny(lint1, lint2, ..., /*opt*/ reason = "...")]`
 
 error[E0452]: malformed lint attribute input
   --> $DIR/lint-malformed.rs:2:10

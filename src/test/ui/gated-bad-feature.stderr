@@ -20,13 +20,13 @@ error: malformed `feature` attribute input
   --> $DIR/gated-bad-feature.rs:5:1
    |
 LL | #![feature]
-   | ^^^^^^^^^^^ help: must be of the form: `#[feature(name1, name1, ...)]`
+   | ^^^^^^^^^^^ help: must be of the form: `#![feature(name1, name1, ...)]`
 
 error: malformed `feature` attribute input
   --> $DIR/gated-bad-feature.rs:6:1
    |
 LL | #![feature = "foo"]
-   | ^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[feature(name1, name1, ...)]`
+   | ^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#![feature(name1, name1, ...)]`
 
 error: aborting due to 5 previous errors
 

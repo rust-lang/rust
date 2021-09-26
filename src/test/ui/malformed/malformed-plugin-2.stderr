@@ -2,7 +2,7 @@ error: malformed `plugin` attribute input
   --> $DIR/malformed-plugin-2.rs:2:1
    |
 LL | #![plugin="bleh"]
-   | ^^^^^^^^^^^^^^^^^ help: must be of the form: `#[plugin(name)]`
+   | ^^^^^^^^^^^^^^^^^ help: must be of the form: `#![plugin(name)]`
 
 warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/malformed-plugin-2.rs:2:1

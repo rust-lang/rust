@@ -4,7 +4,7 @@ use crate::parse_in;
 
 use rustc_ast::tokenstream::{DelimSpan, TokenTree};
 use rustc_ast::{self as ast, Attribute, MacArgs, MacDelimiter, MetaItem, MetaItemKind};
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::ParseSess;
@@ -91,73 +91,86 @@ pub fn check_builtin_attribute(
     // Some special attributes like `cfg` must be checked
     // before the generic check, so we skip them here.
     let should_skip = |name| name == sym::cfg;
-    // Some of previously accepted forms were used in practice,
-    // report them as warnings for now.
-    let should_warn = |name| {
-        name == sym::doc
-            || name == sym::ignore
-            || name == sym::inline
-            || name == sym::link
-            || name == sym::test
-            || name == sym::bench
-    };
 
     match parse_meta(sess, attr) {
         Ok(meta) => {
             if !should_skip(name) && !is_attr_template_compatible(&template, &meta.kind) {
-                let error_msg = format!("malformed `{}` attribute input", name);
-                let mut msg = "attribute must be of the form ".to_owned();
-                let mut suggestions = vec![];
-                let mut first = true;
-                if template.word {
-                    first = false;
-                    let code = format!("#[{}]", name);
-                    msg.push_str(&format!("`{}`", &code));
-                    suggestions.push(code);
-                }
-                if let Some(descr) = template.list {
-                    if !first {
-                        msg.push_str(" or ");
-                    }
-                    first = false;
-                    let code = format!("#[{}({})]", name, descr);
-                    msg.push_str(&format!("`{}`", &code));
-                    suggestions.push(code);
-                }
-                if let Some(descr) = template.name_value_str {
-                    if !first {
-                        msg.push_str(" or ");
-                    }
-                    let code = format!("#[{} = \"{}\"]", name, descr);
-                    msg.push_str(&format!("`{}`", &code));
-                    suggestions.push(code);
-                }
-                if should_warn(name) {
-                    sess.buffer_lint(
-                        &ILL_FORMED_ATTRIBUTE_INPUT,
-                        meta.span,
-                        ast::CRATE_NODE_ID,
-                        &msg,
-                    );
-                } else {
-                    sess.span_diagnostic
-                        .struct_span_err(meta.span, &error_msg)
-                        .span_suggestions(
-                            meta.span,
-                            if suggestions.len() == 1 {
-                                "must be of the form"
-                            } else {
-                                "the following are the possible correct uses"
-                            },
-                            suggestions.into_iter(),
-                            Applicability::HasPlaceholders,
-                        )
-                        .emit();
-                }
+                emit_malformed_attribute(sess, attr, name, template);
             }
         }
         Err(mut err) => {
             err.emit();
         }
     }
+}
+
+fn emit_malformed_attribute(
+    sess: &ParseSess,
+    attr: &Attribute,
+    name: Symbol,
+    template: AttributeTemplate,
+) {
+    // Some of previously accepted forms were used in practice,
+    // report them as warnings for now.
+    let should_warn = |name| {
+        matches!(name, sym::doc | sym::ignore | sym::inline | sym::link | sym::test | sym::bench)
+    };
+
+    let error_msg = format!("malformed `{}` attribute input", name);
+    let mut msg = "attribute must be of the form ".to_owned();
+    let mut suggestions = vec![];
+    let mut first = true;
+    let inner = if attr.style == ast::AttrStyle::Inner { "!" } else { "" };
+    if template.word {
+        first = false;
+        let code = format!("#{}[{}]", inner, name);
+        msg.push_str(&format!("`{}`", &code));
+        suggestions.push(code);
+    }
+    if let Some(descr) = template.list {
+        if !first {
+            msg.push_str(" or ");
+        }
+        first = false;
+        let code = format!("#{}[{}({})]", inner, name, descr);
+        msg.push_str(&format!("`{}`", &code));
+        suggestions.push(code);
+    }
+    if let Some(descr) = template.name_value_str {
+        if !first {
+            msg.push_str(" or ");
+        }
+        let code = format!("#{}[{} = \"{}\"]", inner, name, descr);
+        msg.push_str(&format!("`{}`", &code));
+        suggestions.push(code);
+    }
+    if should_warn(name) {
+        sess.buffer_lint(&ILL_FORMED_ATTRIBUTE_INPUT, attr.span, ast::CRATE_NODE_ID, &msg);
+    } else {
+        sess.span_diagnostic
+            .struct_span_err(attr.span, &error_msg)
+            .span_suggestions(
+                attr.span,
+                if suggestions.len() == 1 {
+                    "must be of the form"
+                } else {
+                    "the following are the possible correct uses"
+                },
+                suggestions.into_iter(),
+                Applicability::HasPlaceholders,
+            )
+            .emit();
+    }
+}
+
+pub fn emit_fatal_malformed_builtin_attribute(
+    sess: &ParseSess,
+    attr: &Attribute,
+    name: Symbol,
+) -> ! {
+    let template = BUILTIN_ATTRIBUTE_MAP.get(&name).expect("builtin attr defined").2;
+    emit_malformed_attribute(sess, attr, name, template);
+    // This is fatal, otherwise it will likely cause a cascade of other errors
+    // (and an error here is expected to be very rare).
+    FatalError.raise()
 }
