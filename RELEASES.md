@@ -17,7 +17,7 @@ Compiler
 
 - [Upgrade to LLVM 13.][rust#87570]
 - [Support memory, address, and thread sanitizers on aarch64-unknown-freebsd.][rust#88023]
-- [Allow specifying an deployment target version for all iOS targets][rust#87699]
+- [Allow specifying a deployment target version for all iOS targets][rust#87699]
 - [Warnings can be forced on with `--force-warn`.][rust#87472]
   This feature is primarily intended for usage by `cargo fix`, rather than end users.
 - [Promote `aarch64-apple-ios-sim` to Tier 2\*.][rust#87760]
