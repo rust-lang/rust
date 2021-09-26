@@ -1,0 +1,16 @@
+error[E0433]: failed to resolve: use of undeclared type `NonZeroU32`
+  --> $DIR/core-std-import-order-issue-83564.rs:8:14
+   |
+LL |     let _x = NonZeroU32::new(5).unwrap();
+   |              ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these items
+   |
+LL | use std::num::NonZeroU32;
+   |
+LL | use core::num::NonZeroU32;
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.
