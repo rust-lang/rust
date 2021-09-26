@@ -1,0 +1,59 @@
+error[E0277]: the trait bound `A: Trait` is not satisfied
+  --> $DIR/suggest-imm-mut-trait-implementations.rs:20:9
+   |
+LL |     foo(a);
+   |     --- ^ expected an implementor of trait `Trait`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `foo`
+  --> $DIR/suggest-imm-mut-trait-implementations.rs:14:11
+   |
+LL | fn foo<X: Trait>(_: X) {}
+   |           ^^^^^ required by this bound in `foo`
+help: consider borrowing here
+   |
+LL |     foo(&a);
+   |         +
+LL |     foo(&mut a);
+   |         ++++
+
+error[E0277]: the trait bound `B: Trait` is not satisfied
+  --> $DIR/suggest-imm-mut-trait-implementations.rs:21:9
+   |
+LL |     foo(b);
+   |     --- ^ expected an implementor of trait `Trait`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `foo`
+  --> $DIR/suggest-imm-mut-trait-implementations.rs:14:11
+   |
+LL | fn foo<X: Trait>(_: X) {}
+   |           ^^^^^ required by this bound in `foo`
+help: consider borrowing here
+   |
+LL |     foo(&b);
+   |         +
+
+error[E0277]: the trait bound `C: Trait` is not satisfied
+  --> $DIR/suggest-imm-mut-trait-implementations.rs:22:9
+   |
+LL |     foo(c);
+   |     --- ^ expected an implementor of trait `Trait`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `foo`
+  --> $DIR/suggest-imm-mut-trait-implementations.rs:14:11
+   |
+LL | fn foo<X: Trait>(_: X) {}
+   |           ^^^^^ required by this bound in `foo`
+help: consider mutably borrowing here
+   |
+LL |     foo(&mut c);
+   |         ++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
