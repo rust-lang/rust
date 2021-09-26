@@ -995,7 +995,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for use of `.iter().nth()` (and the related
-    /// `.iter_mut().nth()`) on standard library types with O(1) element access.
+    /// `.iter_mut().nth()`) on standard library types with *O*(1) element access.
     ///
     /// ### Why is this bad?
     /// `.get()` and `.get_mut()` are more efficient and more
