@@ -2754,8 +2754,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
   // Whether we shuold actually return the value
   bool returnValue =
-      returnUsed && (mode == DerivativeMode::ReverseModeCombined ||
-                     mode == DerivativeMode::ForwardMode);
+      returnUsed && (mode == DerivativeMode::ReverseModeCombined);
 
   // TODO change this to go by default function type assumptions
   bool hasconstant = false;
@@ -3047,24 +3046,12 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
   assert(!todiff->empty());
 
-  ReturnType retVal;
-  if (mode == DerivativeMode::ForwardMode) {
-    auto TR = TA.analyzeFunction(oldTypeInfo);
-    bool retActive = TR.getReturnAnalysis().Inner0().isPossibleFloat() &&
-                     !todiff->getReturnType()->isVoidTy();
+  ReturnType retVal =
+      returnValue ? (dretPtr ? ReturnType::ArgsWithTwoReturns
+                             : ReturnType::ArgsWithReturn)
+                  : (dretPtr ? ReturnType::ArgsWithReturn : ReturnType::Args);
 
-    retVal = returnValue
-                 ? (retActive ? ReturnType::TwoReturns : ReturnType::Return)
-                 : (retActive ? ReturnType::Return : ReturnType::Void);
-  } else {
-    retVal = returnValue
-                 ? (dretPtr ? ReturnType::ArgsWithTwoReturns
-                            : ReturnType::ArgsWithReturn)
-                 : (dretPtr ? ReturnType::ArgsWithReturn : ReturnType::Args);
-  }
-
-  bool diffeReturnArg =
-      mode != DerivativeMode::ForwardMode && retType == DIFFE_TYPE::OUT_DIFF;
+  bool diffeReturnArg = retType == DIFFE_TYPE::OUT_DIFF;
 
   DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(
       *this, mode, todiff, TLI, TA, retType, diffeReturnArg, constant_args,
@@ -3203,7 +3190,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   }
 
   Argument *differetval = nullptr;
-  if (retType == DIFFE_TYPE::OUT_DIFF && mode != DerivativeMode::ForwardMode) {
+  if (retType == DIFFE_TYPE::OUT_DIFF) {
     auto endarg = gutils->newFunc->arg_end();
     endarg--;
     if (additionalArg)
@@ -3270,26 +3257,6 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     }
   }
 
-  if (mode == DerivativeMode::ForwardMode) {
-    // set derivative of function arguments
-    auto newArgs = gutils->newFunc->arg_begin();
-
-    for (size_t i = 0; i < constant_args.size(); ++i) {
-      auto arg = constant_args[i];
-      if (arg == DIFFE_TYPE::DUP_ARG) {
-        newArgs += 1;
-        auto pri = gutils->oldFunc->arg_begin() + i;
-        auto dif = newArgs;
-
-        BasicBlock &BB = gutils->newFunc->getEntryBlock();
-        IRBuilder<> Builder(&BB.front());
-
-        gutils->setDiffe(pri, dif, Builder);
-      }
-      newArgs += 1;
-    }
-  }
-
   AdjointGenerator<const AugmentedReturn *> maker(
       mode, gutils, constant_args, retType, TR, getIndex, uncacheable_args_map,
       /*returnuses*/ nullptr, augmenteddata, &replacedReturns,
@@ -3322,8 +3289,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
       for (auto I : toerase) {
         maker.eraseIfUnused(*I, /*erase*/ true,
                             /*check*/ mode ==
-                                    DerivativeMode::ReverseModeCombined ||
-                                mode == DerivativeMode::ForwardMode);
+                                DerivativeMode::ReverseModeCombined);
       }
       if (newBB->getTerminator())
         newBB->getTerminator()->eraseFromParent();
@@ -3341,35 +3307,24 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
       assert(0 && "unknown terminator inst");
     }
 
-    if (mode != DerivativeMode::ForwardMode) {
-      BasicBlock::reverse_iterator I = oBB.rbegin(), E = oBB.rend();
-      ++I;
-      for (; I != E; ++I) {
-        maker.visit(&*I);
-        assert(oBB.rend() == E);
-      }
-
-      createInvertedTerminator(TR, gutils, constant_args, &oBB, retAlloca,
-                               dretAlloca,
-                               0 + (additionalArg ? 1 : 0) +
-                                   ((retType == DIFFE_TYPE::DUP_ARG ||
-                                     retType == DIFFE_TYPE::DUP_NONEED)
-                                        ? 1
-                                        : 0),
-                               retType);
-    } else {
-      auto first = oBB.begin();
-      auto last = oBB.empty() ? oBB.end() : std::prev(oBB.end());
-      for (auto it = first; it != last; ++it) {
-        maker.visit(&*it);
-      }
-
-      createTerminator(gutils, &oBB, retType, retVal);
+    BasicBlock::reverse_iterator I = oBB.rbegin(), E = oBB.rend();
+    ++I;
+    for (; I != E; ++I) {
+      maker.visit(&*I);
+      assert(oBB.rend() == E);
     }
+
+    createInvertedTerminator(TR, gutils, constant_args, &oBB, retAlloca,
+                             dretAlloca,
+                             0 + (additionalArg ? 1 : 0) +
+                                 ((retType == DIFFE_TYPE::DUP_ARG ||
+                                   retType == DIFFE_TYPE::DUP_NONEED)
+                                      ? 1
+                                      : 0),
+                             retType);
   }
 
-  if (mode != DerivativeMode::ReverseModeCombined &&
-      mode != DerivativeMode::ForwardMode) {
+  if (mode != DerivativeMode::ReverseModeCombined) {
     // One must use this temporary map to first create all the replacements
     // prior to actually replacing to ensure that getSubLimits has the same
     // behavior and unwrap behavior for all replacements.
