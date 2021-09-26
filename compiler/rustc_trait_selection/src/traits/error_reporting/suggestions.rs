@@ -781,19 +781,19 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                         if imm_result && mut_result {
                             err.span_suggestions(
-                                span,
+                                span.shrink_to_lo(),
                                 "consider borrowing here",
-                                [format!("&{}", snippet), format!("&mut {}", snippet)].into_iter(),
+                                ["&".to_string(), "&mut ".to_string()].into_iter(),
                                 Applicability::MaybeIncorrect,
                             );
                         } else {
-                            err.span_suggestion(
-                                span,
+                            err.span_suggestion_verbose(
+                                span.shrink_to_lo(),
                                 &format!(
                                     "consider{} borrowing here",
                                     if mut_result { " mutably" } else { "" }
                                 ),
-                                format!("&{}{}", if mut_result { "mut " } else { "" }, snippet),
+                                format!("&{}", if mut_result { "mut " } else { "" }),
                                 Applicability::MaybeIncorrect,
                             );
                         }

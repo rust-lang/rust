@@ -2,10 +2,8 @@ error[E0277]: the trait bound `C: Copy` is not satisfied
   --> $DIR/deriving-copyclone.rs:31:13
    |
 LL |     is_copy(B { a: 1, b: C });
-   |     ------- ^^^^^^^^^^^^^^^^
-   |     |       |
-   |     |       expected an implementor of trait `Copy`
-   |     |       help: consider borrowing here: `&B { a: 1, b: C }`
+   |     ------- ^^^^^^^^^^^^^^^^ expected an implementor of trait `Copy`
+   |     |
    |     required by a bound introduced by this call
    |
 note: required because of the requirements on the impl of `Copy` for `B<C>`
@@ -19,15 +17,17 @@ note: required by a bound in `is_copy`
 LL | fn is_copy<T: Copy>(_: T) {}
    |               ^^^^ required by this bound in `is_copy`
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider borrowing here
+   |
+LL |     is_copy(&B { a: 1, b: C });
+   |             +
 
 error[E0277]: the trait bound `C: Clone` is not satisfied
   --> $DIR/deriving-copyclone.rs:32:14
    |
 LL |     is_clone(B { a: 1, b: C });
-   |     -------- ^^^^^^^^^^^^^^^^
-   |     |        |
-   |     |        expected an implementor of trait `Clone`
-   |     |        help: consider borrowing here: `&B { a: 1, b: C }`
+   |     -------- ^^^^^^^^^^^^^^^^ expected an implementor of trait `Clone`
+   |     |
    |     required by a bound introduced by this call
    |
 note: required because of the requirements on the impl of `Clone` for `B<C>`
@@ -41,15 +41,17 @@ note: required by a bound in `is_clone`
 LL | fn is_clone<T: Clone>(_: T) {}
    |                ^^^^^ required by this bound in `is_clone`
    = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider borrowing here
+   |
+LL |     is_clone(&B { a: 1, b: C });
+   |              +
 
 error[E0277]: the trait bound `D: Copy` is not satisfied
   --> $DIR/deriving-copyclone.rs:35:13
    |
 LL |     is_copy(B { a: 1, b: D });
-   |     ------- ^^^^^^^^^^^^^^^^
-   |     |       |
-   |     |       expected an implementor of trait `Copy`
-   |     |       help: consider borrowing here: `&B { a: 1, b: D }`
+   |     ------- ^^^^^^^^^^^^^^^^ expected an implementor of trait `Copy`
+   |     |
    |     required by a bound introduced by this call
    |
 note: required because of the requirements on the impl of `Copy` for `B<D>`
@@ -63,6 +65,10 @@ note: required by a bound in `is_copy`
 LL | fn is_copy<T: Copy>(_: T) {}
    |               ^^^^ required by this bound in `is_copy`
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider borrowing here
+   |
+LL |     is_copy(&B { a: 1, b: D });
+   |             +
 
 error: aborting due to 3 previous errors
 

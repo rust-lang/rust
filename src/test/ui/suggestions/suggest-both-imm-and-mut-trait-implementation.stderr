@@ -14,9 +14,9 @@ LL | fn foo<X: Trait>(_: X) {}
 help: consider borrowing here
    |
 LL |     foo(&s);
-   |         ~~
+   |         +
 LL |     foo(&mut s);
-   |         ~~~~~~
+   |         ++++
 
 error: aborting due to previous error
 

@@ -14,9 +14,9 @@ LL |     fn into_iter(self) -> Self::IntoIter;
 help: consider borrowing here
    |
 LL |   for _ in &v[1..] {
-   |            ~~~~~~~
+   |            +
 LL |   for _ in &mut v[1..] {
-   |            ~~~~~~~~~~~
+   |            ++++
 
 error[E0277]: `[i32]` is not an iterator
   --> $DIR/slice-issue-87994.rs:3:12
@@ -34,9 +34,9 @@ LL |     fn into_iter(self) -> Self::IntoIter;
 help: consider borrowing here
    |
 LL |   for _ in &v[1..] {
-   |            ~~~~~~~
+   |            +
 LL |   for _ in &mut v[1..] {
-   |            ~~~~~~~~~~~
+   |            ++++
 
 error[E0277]: the size for values of type `[K]` cannot be known at compilation time
   --> $DIR/slice-issue-87994.rs:11:13
@@ -54,9 +54,9 @@ LL |     fn into_iter(self) -> Self::IntoIter;
 help: consider borrowing here
    |
 LL |   for i2 in &v2[1..] {
-   |             ~~~~~~~~
+   |             +
 LL |   for i2 in &mut v2[1..] {
-   |             ~~~~~~~~~~~~
+   |             ++++
 
 error[E0277]: `[K]` is not an iterator
   --> $DIR/slice-issue-87994.rs:11:13
@@ -74,9 +74,9 @@ LL |     fn into_iter(self) -> Self::IntoIter;
 help: consider borrowing here
    |
 LL |   for i2 in &v2[1..] {
-   |             ~~~~~~~~
+   |             +
 LL |   for i2 in &mut v2[1..] {
-   |             ~~~~~~~~~~~~
+   |             ++++
 
 error: aborting due to 4 previous errors
 
