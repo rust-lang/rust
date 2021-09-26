@@ -1,5 +1,5 @@
 error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure and drop order
-  --> $DIR/multi_diagnostics.rs:23:13
+  --> $DIR/multi_diagnostics.rs:38:13
    |
 LL |     let c = || {
    |             ^^ in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f1.0` does not implement `Clone`
@@ -26,7 +26,7 @@ LL +         let _ = (&f1, &f2);
    |
 
 error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure
-  --> $DIR/multi_diagnostics.rs:42:13
+  --> $DIR/multi_diagnostics.rs:57:13
    |
 LL |     let c = || {
    |             ^^ in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f1.0` does not implement `Clone`
@@ -42,7 +42,7 @@ LL +         let _ = &f1;
    |
 
 error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure
-  --> $DIR/multi_diagnostics.rs:67:13
+  --> $DIR/multi_diagnostics.rs:82:13
    |
 LL |     let c = || {
    |             ^^
@@ -64,7 +64,7 @@ LL +         let _ = &f1;
    |
 
 error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure and drop order
-  --> $DIR/multi_diagnostics.rs:86:13
+  --> $DIR/multi_diagnostics.rs:101:13
    |
 LL |     let c = || {
    |             ^^ in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f1.0` does not implement `Clone`
@@ -89,7 +89,7 @@ LL +         let _ = &f1;
    |
 
 error: changes to closure capture in Rust 2021 will affect `Sync`, `Send` trait implementation for closure
-  --> $DIR/multi_diagnostics.rs:119:19
+  --> $DIR/multi_diagnostics.rs:134:19
    |
 LL |     thread::spawn(move || unsafe {
    |                   ^^^^^^^^^^^^^^

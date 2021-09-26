@@ -195,5 +195,22 @@ LL ~         let c = || {
 LL +             let _ = &tuple;
    |
 
-error: aborting due to 9 previous errors
+error: changes to closure capture in Rust 2021 will affect drop order
+  --> $DIR/significant_drop.rs:201:18
+   |
+LL |         let _c = || tup.0;
+   |                  ^^^-----
+   |                     |
+   |                     in Rust 2018, this closure captures all of `tup`, but in Rust 2021, it will only capture `tup.0`
+...
+LL | }
+   | - in Rust 2018, `tup` is dropped here, but in Rust 2021, only `tup.0` will be dropped here as part of the closure
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
+help: add a dummy let to cause `tup` to be fully captured
+   |
+LL |         let _c = || { let _ = &tup; tup.0 };
+   |                     +++++++++++++++       +
+
+error: aborting due to 10 previous errors
 

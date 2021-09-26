@@ -4,6 +4,14 @@
 
 use std::thread;
 
+#[derive(Debug)]
+struct Foo(i32);
+impl Drop for Foo {
+    fn drop(&mut self) {
+        println!("{:?} dropped", self.0);
+    }
+}
+
 /* Test Send Trait Migration */
 struct SendPointer(*mut i32);
 unsafe impl Send for SendPointer {}
@@ -42,19 +50,19 @@ fn test_sync_trait() {
 }
 
 /* Test Clone Trait Migration */
-struct S(String);
+struct S(Foo);
 struct T(i32);
 
 struct U(S, T);
 
 impl Clone for U {
     fn clone(&self) -> Self {
-        U(S(String::from("Hello World")), T(0))
+        U(S(Foo(0)), T(0))
     }
 }
 
 fn test_clone_trait() {
-    let f = U(S(String::from("Hello World")), T(0));
+    let f = U(S(Foo(0)), T(0));
     let c = || {
         let _ = &f;
         //~^ ERROR: `Clone` trait implementation for closure and drop order

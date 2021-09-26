@@ -5,13 +5,15 @@
 #![feature(rustc_attrs)]
 #![allow(unused)]
 
+use std::sync::Mutex;
+
+    #[rustc_insignificant_dtor]
 struct InsignificantDropPoint {
     x: i32,
-    y: i32,
+    y: Mutex<i32>,
 }
 
 impl Drop for InsignificantDropPoint {
-    #[rustc_insignificant_dtor]
     fn drop(&mut self) {}
 }
 
@@ -21,14 +23,14 @@ impl Drop for SigDrop {
     fn drop(&mut self) {}
 }
 
+#[rustc_insignificant_dtor]
 struct GenericStruct<T>(T, T);
 
-struct Wrapper<T>(GenericStruct<T>, i32);
-
 impl<T> Drop for GenericStruct<T> {
-    #[rustc_insignificant_dtor]
     fn drop(&mut self) {}
 }
+
+struct Wrapper<T>(GenericStruct<T>, i32);
 
 // `SigDrop` implements drop and therefore needs to be migrated.
 fn significant_drop_needs_migration() {
