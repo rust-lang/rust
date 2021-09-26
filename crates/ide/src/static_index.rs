@@ -179,3 +179,83 @@ fn get_definition(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Option<
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{fixture, StaticIndex};
+    use ide_db::base_db::FileRange;
+    use std::collections::HashSet;
+
+    fn check_all_ranges(ra_fixture: &str) {
+        let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
+        let s = StaticIndex::compute(&*analysis.db, &analysis).unwrap();
+        let mut range_set: HashSet<_> = ranges.iter().map(|x| x.0).collect();
+        for f in s.files {
+            for (range, _) in f.tokens {
+                let x = FileRange { file_id: f.file_id, range };
+                if !range_set.contains(&x) {
+                    panic!("additional range {:?}", x);
+                }
+                range_set.remove(&x);
+            }
+        }
+        if !range_set.is_empty() {
+            panic!("unfound ranges {:?}", range_set);
+        }
+    }
+
+    fn check_definitions(ra_fixture: &str) {
+        let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
+        let s = StaticIndex::compute(&*analysis.db, &analysis).unwrap();
+        let mut range_set: HashSet<_> = ranges.iter().map(|x| x.0).collect();
+        for (_, t) in s.tokens.iter() {
+            if let Some(x) = t.definition {
+                if !range_set.contains(&x) {
+                    panic!("additional definition {:?}", x);
+                }
+                range_set.remove(&x);
+            }
+        }
+        if !range_set.is_empty() {
+            panic!("unfound definitions {:?}", range_set);
+        }
+    }
+
+    #[test]
+    fn struct_and_enum() {
+        check_all_ranges(
+            r#"
+struct Foo;
+     //^^^
+enum E { X(Foo) }
+   //^   ^ ^^^
+"#,
+        );
+        check_definitions(
+            r#"
+struct Foo;
+     //^^^
+enum E { X(Foo) }
+   //^   ^
+"#,
+        );
+    }
+
+    #[test]
+    fn derives() {
+        check_all_ranges(
+            r#"
+#[rustc_builtin_macro]
+pub macro Copy {}
+        //^^^^
+#[rustc_builtin_macro]
+pub macro derive {}
+        //^^^^^^
+#[derive(Copy)]
+//^^^^^^ ^^^^
+struct Hello(i32);
+     //^^^^^ ^^^
+"#,
+        );
+    }
+}
