@@ -1,5 +1,5 @@
 error: OK
-  --> $DIR/dep-graph-variance-alias.rs:18:1
+  --> $DIR/dep-graph-variance-alias.rs:19:1
    |
 LL | #[rustc_then_this_would_need(variances_of)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

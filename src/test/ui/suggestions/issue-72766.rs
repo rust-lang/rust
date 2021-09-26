@@ -1,5 +1,5 @@
 // edition:2018
-// compile-flags: -Cincremental=tmp/issue-72766
+// incremental
 
 pub struct SadGirl;
 

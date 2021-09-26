@@ -1,7 +1,8 @@
 // Test that adding an impl to a trait `Foo` does not affect functions
 // that only use `Bar`, so long as they do not have methods in common.
 
-// compile-flags: -Z query-dep-graph -C incremental=tmp/dep-graph-trait-impl-two-traits
+// incremental
+// compile-flags: -Z query-dep-graph
 
 #![feature(rustc_attrs)]
 #![allow(warnings)]

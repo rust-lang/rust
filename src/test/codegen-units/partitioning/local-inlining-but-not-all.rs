@@ -1,7 +1,8 @@
 //
-// We specify -C incremental here because we want to test the partitioning for
+// We specify incremental here because we want to test the partitioning for
 // incremental compilation
-// compile-flags:-Zprint-mono-items=lazy -Cincremental=tmp/partitioning-tests/local-inlining-but-not-all
+// incremental
+// compile-flags:-Zprint-mono-items=lazy
 // compile-flags:-Zinline-in-all-cgus=no
 
 #![allow(dead_code)]

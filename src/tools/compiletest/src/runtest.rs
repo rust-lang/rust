@@ -1,7 +1,7 @@
 // ignore-tidy-filelength
 
 use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
-use crate::common::{output_base_dir, output_base_name, output_testname_unique};
+use crate::common::{incremental_dir, output_base_dir, output_base_name, output_testname_unique};
 use crate::common::{Assembly, Incremental, JsDocTest, MirOpt, RunMake, RustdocJson, Ui};
 use crate::common::{Codegen, CodegenUnits, DebugInfo, Debugger, Rustdoc};
 use crate::common::{CompareMode, FailMode, PassMode};
@@ -229,18 +229,24 @@ pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
         print!("\n\n");
     }
     debug!("running {:?}", testpaths.file.display());
-    let props = TestProps::from_file(&testpaths.file, revision, &config);
+    let mut props = TestProps::from_file(&testpaths.file, revision, &config);
+    if props.incremental {
+        props.incremental_dir = Some(incremental_dir(&config, testpaths));
+    }
 
     let cx = TestCx { config: &config, props: &props, testpaths, revision };
     create_dir_all(&cx.output_base_dir()).unwrap();
+    if props.incremental {
+        cx.init_incremental_test();
+    }
 
     if config.mode == Incremental {
         // Incremental tests are special because they cannot be run in
         // parallel.
         assert!(!props.revisions.is_empty(), "Incremental tests require revisions.");
-        cx.init_incremental_test();
         for revision in &props.revisions {
-            let revision_props = TestProps::from_file(&testpaths.file, Some(revision), &config);
+            let mut revision_props = TestProps::from_file(&testpaths.file, Some(revision), &config);
+            revision_props.incremental_dir = props.incremental_dir.clone();
             let rev_cx = TestCx {
                 config: &config,
                 props: &revision_props,
@@ -2937,7 +2943,7 @@ impl<'test> TestCx<'test> {
         // incremental workproduct directory.  Delete any old
         // incremental work products that may be there from prior
         // runs.
-        let incremental_dir = self.incremental_dir();
+        let incremental_dir = self.props.incremental_dir.as_ref().unwrap();
         if incremental_dir.exists() {
             // Canonicalizing the path will convert it to the //?/ format
             // on Windows, which enables paths longer than 260 character
@@ -2947,7 +2953,7 @@ impl<'test> TestCx<'test> {
         fs::create_dir_all(&incremental_dir).unwrap();
 
         if self.config.verbose {
-            print!("init_incremental_test: incremental_dir={}", incremental_dir.display());
+            println!("init_incremental_test: incremental_dir={}", incremental_dir.display());
         }
     }
 
@@ -2974,44 +2980,28 @@ impl<'test> TestCx<'test> {
         let revision = self.revision.expect("incremental tests require a list of revisions");
 
         // Incremental workproduct directory should have already been created.
-        let incremental_dir = self.incremental_dir();
+        let incremental_dir = self.props.incremental_dir.as_ref().unwrap();
         assert!(incremental_dir.exists(), "init_incremental_test failed to create incremental dir");
 
-        // Add an extra flag pointing at the incremental directory.
-        let mut revision_props = self.props.clone();
-        revision_props.incremental_dir = Some(incremental_dir);
-
-        let revision_cx = TestCx {
-            config: self.config,
-            props: &revision_props,
-            testpaths: self.testpaths,
-            revision: self.revision,
-        };
-
         if self.config.verbose {
-            print!("revision={:?} revision_props={:#?}", revision, revision_props);
+            print!("revision={:?} props={:#?}", revision, self.props);
         }
 
         if revision.starts_with("rpass") {
-            if revision_cx.props.should_ice {
-                revision_cx.fatal("can only use should-ice in cfail tests");
+            if self.props.should_ice {
+                self.fatal("can only use should-ice in cfail tests");
             }
-            revision_cx.run_rpass_test();
+            self.run_rpass_test();
         } else if revision.starts_with("rfail") {
-            if revision_cx.props.should_ice {
-                revision_cx.fatal("can only use should-ice in cfail tests");
+            if self.props.should_ice {
+                self.fatal("can only use should-ice in cfail tests");
             }
-            revision_cx.run_rfail_test();
+            self.run_rfail_test();
         } else if revision.starts_with("cfail") {
-            revision_cx.run_cfail_test();
+            self.run_cfail_test();
         } else {
-            revision_cx.fatal("revision name must begin with rpass, rfail, or cfail");
+            self.fatal("revision name must begin with rpass, rfail, or cfail");
         }
-    }
-
-    /// Directory where incremental work products are stored.
-    fn incremental_dir(&self) -> PathBuf {
-        self.output_base_name().with_extension("inc")
     }
 
     fn run_rmake_test(&self) {

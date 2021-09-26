@@ -1,5 +1,5 @@
 // Regression test for #87549.
-// compile-flags: -C incremental=tmp/wf/hir-wf-check-erase-regions
+// incremental
 
 pub struct Table<T, const N: usize>([Option<T>; N]);
 
