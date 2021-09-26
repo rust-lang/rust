@@ -162,10 +162,6 @@ impl SourceFile {
         let (green, mut errors) = parsing::parse_text(text);
         let root = SyntaxNode::new_root(green.clone());
 
-        if cfg!(debug_assertions) {
-            validation::validate_block_structure(&root);
-        }
-
         errors.extend(validation::validate(&root));
 
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
