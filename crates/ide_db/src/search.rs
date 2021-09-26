@@ -315,6 +315,7 @@ impl Definition {
     }
 }
 
+#[derive(Clone)]
 pub struct FindUsages<'a> {
     def: Definition,
     sema: &'a Semantics<'a, RootDatabase>,
@@ -341,7 +342,7 @@ impl<'a> FindUsages<'a> {
         self
     }
 
-    pub fn at_least_one(self) -> bool {
+    pub fn at_least_one(&self) -> bool {
         let mut found = false;
         self.search(&mut |_, _| {
             found = true;
@@ -359,7 +360,7 @@ impl<'a> FindUsages<'a> {
         res
     }
 
-    fn search(self, sink: &mut dyn FnMut(FileId, FileReference) -> bool) {
+    fn search(&self, sink: &mut dyn FnMut(FileId, FileReference) -> bool) {
         let _p = profile::span("FindUsages:search");
         let sema = self.sema;
 
