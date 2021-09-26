@@ -2,7 +2,7 @@ use hir::Semantics;
 use ide_db::{
     base_db::FilePosition,
     defs::{Definition, NameClass, NameRefClass},
-    helpers::{for_each_break_expr, for_each_tail_expr, pick_best_token},
+    helpers::{for_each_break_expr, for_each_tail_expr, node_ext::walk_expr, pick_best_token},
     search::{FileReference, ReferenceAccess, SearchScope},
     RootDatabase,
 };
@@ -122,7 +122,7 @@ fn highlight_exit_points(
     ) -> Option<Vec<HighlightedRange>> {
         let mut highlights = Vec::new();
         let body = body?;
-        body.walk(&mut |expr| match expr {
+        walk_expr(&body, &mut |expr| match expr {
             ast::Expr::ReturnExpr(expr) => {
                 if let Some(token) = expr.return_token() {
                     highlights.push(HighlightedRange { access: None, range: token.text_range() });
@@ -243,7 +243,7 @@ fn highlight_yield_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
         let mut highlights =
             vec![HighlightedRange { access: None, range: async_token?.text_range() }];
         if let Some(body) = body {
-            body.walk(&mut |expr| {
+            walk_expr(&body, &mut |expr| {
                 if let ast::Expr::AwaitExpr(expr) = expr {
                     if let Some(token) = expr.await_token() {
                         highlights

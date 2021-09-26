@@ -34,6 +34,7 @@ use text_edit::{TextEdit, TextEditBuilder};
 
 use crate::{
     defs::Definition,
+    helpers::node_ext::expr_as_name_ref,
     search::FileReference,
     source_change::{FileSystemEdit, SourceChange},
     RootDatabase,
@@ -339,7 +340,7 @@ fn source_edit_from_name_ref(
     if let Some(record_field) = ast::RecordExprField::for_name_ref(name_ref) {
         let rcf_name_ref = record_field.name_ref();
         let rcf_expr = record_field.expr();
-        match &(rcf_name_ref, rcf_expr.and_then(|it| it.name_ref())) {
+        match &(rcf_name_ref, rcf_expr.and_then(|it| expr_as_name_ref(&it))) {
             // field: init-expr, check if we can use a field init shorthand
             (Some(field_name), Some(init)) => {
                 if field_name == name_ref {

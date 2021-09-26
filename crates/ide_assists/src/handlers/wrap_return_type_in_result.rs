@@ -1,6 +1,6 @@
 use std::iter;
 
-use ide_db::helpers::{for_each_tail_expr, FamousDefs};
+use ide_db::helpers::{for_each_tail_expr, node_ext::walk_expr, FamousDefs};
 use syntax::{
     ast::{self, make, Expr},
     match_ast, AstNode,
@@ -54,7 +54,7 @@ pub(crate) fn wrap_return_type_in_result(acc: &mut Assists, ctx: &AssistContext)
 
             let mut exprs_to_wrap = Vec::new();
             let tail_cb = &mut |e: &_| tail_cb_impl(&mut exprs_to_wrap, e);
-            body.walk(&mut |expr| {
+            walk_expr(&body, &mut |expr| {
                 if let Expr::ReturnExpr(ret_expr) = expr {
                     if let Some(ret_expr_arg) = &ret_expr.expr() {
                         for_each_tail_expr(ret_expr_arg, tail_cb);
