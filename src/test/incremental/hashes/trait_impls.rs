@@ -35,9 +35,9 @@ impl ChangeMethodNameTrait for Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item_def_ids", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item_def_ids", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 pub trait ChangeMethodNameTrait {
     #[rustc_clean(cfg="cfail3")]
@@ -46,9 +46,9 @@ pub trait ChangeMethodNameTrait {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item_def_ids", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item_def_ids", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl ChangeMethodNameTrait for Foo {
     #[rustc_clean(cfg="cfail3")]
@@ -144,9 +144,9 @@ pub trait ChangeMethodSelfnessTrait {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl ChangeMethodSelfnessTrait for Foo {
     #[rustc_clean(
@@ -182,9 +182,9 @@ pub trait RemoveMethodSelfnessTrait {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl RemoveMethodSelfnessTrait for Foo {
     #[rustc_clean(
@@ -252,9 +252,9 @@ pub trait ChangeItemKindTrait {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item_def_ids", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item_def_ids", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl ChangeItemKindTrait for Foo {
     type name = ();
@@ -280,9 +280,9 @@ pub trait RemoveItemTrait {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item_def_ids", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item_def_ids", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl RemoveItemTrait for Foo {
     type TypeName = ();
@@ -307,9 +307,9 @@ pub trait AddItemTrait {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item_def_ids", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item_def_ids", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl AddItemTrait for Foo {
     type TypeName = ();
@@ -329,14 +329,14 @@ impl ChangeHasValueTrait for Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 pub trait ChangeHasValueTrait {
-    #[rustc_clean(except="hir_owner,associated_item", cfg="cfail2")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(except="hir_owner,associated_item", cfg="cfail5")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
     fn method_name() { }
 }
@@ -364,9 +364,9 @@ impl AddDefaultTrait for Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl AddDefaultTrait for Foo {
     #[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item", cfg="cfail2")]
@@ -459,9 +459,9 @@ impl AddTypeParameterToImpl<u32> for Bar<u32> {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner,generics_of,impl_trait_ref", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,generics_of,impl_trait_ref", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,generics_of,impl_trait_ref", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,generics_of,impl_trait_ref", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl<TTT> AddTypeParameterToImpl<TTT> for Bar<TTT> {
     #[rustc_clean(
@@ -490,9 +490,9 @@ impl ChangeSelfTypeOfImpl for u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner,impl_trait_ref", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,impl_trait_ref", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,impl_trait_ref", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,impl_trait_ref", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl ChangeSelfTypeOfImpl for u64 {
     #[rustc_clean(except="fn_sig,typeck,optimized_mir", cfg="cfail2")]
