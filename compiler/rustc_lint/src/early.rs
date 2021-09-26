@@ -329,12 +329,20 @@ fn early_lint_crate<T: EarlyLintPass>(
     sess: &Session,
     lint_store: &LintStore,
     krate: &ast::Crate,
+    crate_attrs: &[ast::Attribute],
     pass: T,
     buffered: LintBuffer,
     warn_about_weird_lints: bool,
 ) -> LintBuffer {
     let mut cx = EarlyContextAndPass {
-        context: EarlyContext::new(sess, lint_store, krate, buffered, warn_about_weird_lints),
+        context: EarlyContext::new(
+            sess,
+            lint_store,
+            krate,
+            crate_attrs,
+            buffered,
+            warn_about_weird_lints,
+        ),
         pass,
     };
 
@@ -355,6 +363,7 @@ pub fn check_ast_crate<T: EarlyLintPass>(
     sess: &Session,
     lint_store: &LintStore,
     krate: &ast::Crate,
+    crate_attrs: &[ast::Attribute],
     pre_expansion: bool,
     lint_buffer: Option<LintBuffer>,
     builtin_lints: T,
@@ -365,14 +374,22 @@ pub fn check_ast_crate<T: EarlyLintPass>(
     let mut buffered = lint_buffer.unwrap_or_default();
 
     if !sess.opts.debugging_opts.no_interleave_lints {
-        buffered =
-            early_lint_crate(sess, lint_store, krate, builtin_lints, buffered, pre_expansion);
+        buffered = early_lint_crate(
+            sess,
+            lint_store,
+            krate,
+            crate_attrs,
+            builtin_lints,
+            buffered,
+            pre_expansion,
+        );
 
         if !passes.is_empty() {
             buffered = early_lint_crate(
                 sess,
                 lint_store,
                 krate,
+                crate_attrs,
                 EarlyLintPassObjects { lints: &mut passes[..] },
                 buffered,
                 false,
@@ -386,6 +403,7 @@ pub fn check_ast_crate<T: EarlyLintPass>(
                         sess,
                         lint_store,
                         krate,
+                        crate_attrs,
                         EarlyLintPassObjects { lints: slice::from_mut(pass) },
                         buffered,
                         pre_expansion && i == 0,
