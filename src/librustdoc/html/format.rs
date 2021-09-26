@@ -752,9 +752,9 @@ fn fmt_type<'cx>(
 
     match *t {
         clean::Generic(name) => write!(f, "{}", name),
-        clean::ResolvedPath { did, ref path, is_generic } => {
+        clean::ResolvedPath { did, ref path } => {
             // Paths like `T::Output` and `Self::Output` should be rendered with all segments.
-            resolved_path(f, did, path, is_generic, use_absolute, cx)
+            resolved_path(f, did, path, path.is_assoc_ty(), use_absolute, cx)
         }
         clean::DynTrait(ref bounds, ref lt) => {
             f.write_str("dyn ")?;
@@ -825,28 +825,17 @@ fn fmt_type<'cx>(
                 hir::Mutability::Mut => "mut",
                 hir::Mutability::Not => "const",
             };
-            match **t {
-                clean::Generic(_) | clean::ResolvedPath { is_generic: true, .. } => {
-                    if f.alternate() {
-                        primitive_link(
-                            f,
-                            clean::PrimitiveType::RawPointer,
-                            &format!("*{} {:#}", m, t.print(cx)),
-                            cx,
-                        )
-                    } else {
-                        primitive_link(
-                            f,
-                            clean::PrimitiveType::RawPointer,
-                            &format!("*{} {}", m, t.print(cx)),
-                            cx,
-                        )
-                    }
-                }
-                _ => {
-                    primitive_link(f, clean::PrimitiveType::RawPointer, &format!("*{} ", m), cx)?;
-                    fmt::Display::fmt(&t.print(cx), f)
-                }
+
+            if matches!(**t, clean::Generic(_)) || t.is_assoc_ty() {
+                let text = if f.alternate() {
+                    format!("*{} {:#}", m, t.print(cx))
+                } else {
+                    format!("*{} {}", m, t.print(cx))
+                };
+                primitive_link(f, clean::PrimitiveType::RawPointer, &text, cx)
+            } else {
+                primitive_link(f, clean::PrimitiveType::RawPointer, &format!("*{} ", m), cx)?;
+                fmt::Display::fmt(&t.print(cx), f)
             }
         }
         clean::BorrowedRef { lifetime: ref l, mutability, type_: ref ty } => {

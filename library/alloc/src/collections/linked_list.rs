@@ -38,9 +38,12 @@ mod tests;
 /// let list = LinkedList::from([1, 2, 3]);
 /// ```
 ///
-/// NOTE: It is almost always better to use `Vec` or `VecDeque` because
+/// NOTE: It is almost always better to use [`Vec`] or [`VecDeque`] because
 /// array-based containers are generally faster,
 /// more memory efficient, and make better use of CPU cache.
+///
+/// [`Vec`]: crate::vec::Vec
+/// [`VecDeque`]: super::vec_deque::VecDeque
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "LinkedList")]
 pub struct LinkedList<T> {
@@ -121,9 +124,10 @@ impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
 /// An owning iterator over the elements of a `LinkedList`.
 ///
 /// This `struct` is created by the [`into_iter`] method on [`LinkedList`]
-/// (provided by the `IntoIterator` trait). See its documentation for more.
+/// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: LinkedList::into_iter
+/// [`IntoIterator`]: core::iter::IntoIterator
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {

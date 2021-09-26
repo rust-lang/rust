@@ -8,9 +8,10 @@ use super::VecDeque;
 /// An owning iterator over the elements of a `VecDeque`.
 ///
 /// This `struct` is created by the [`into_iter`] method on [`VecDeque`]
-/// (provided by the `IntoIterator` trait). See its documentation for more.
+/// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: VecDeque::into_iter
+/// [`IntoIterator`]: core::iter::IntoIterator
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<

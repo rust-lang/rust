@@ -107,9 +107,10 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
 /// An owning iterator over the items of a `BTreeSet`.
 ///
 /// This `struct` is created by the [`into_iter`] method on [`BTreeSet`]
-/// (provided by the `IntoIterator` trait). See its documentation for more.
+/// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: BTreeSet#method.into_iter
+/// [`IntoIterator`]: core::iter::IntoIterator
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct IntoIter<T> {

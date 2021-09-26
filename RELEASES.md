@@ -17,7 +17,7 @@ Compiler
 
 - [Upgrade to LLVM 13.][rust#87570]
 - [Support memory, address, and thread sanitizers on aarch64-unknown-freebsd.][rust#88023]
-- [Allow specifying an deployment target version for all iOS targets][rust#87699]
+- [Allow specifying a deployment target version for all iOS targets][rust#87699]
 - [Warnings can be forced on with `--force-warn`.][rust#87472]
   This feature is primarily intended for usage by `cargo fix`, rather than end users.
 - [Promote `aarch64-apple-ios-sim` to Tier 2\*.][rust#87760]
@@ -5170,7 +5170,7 @@ Libraries
 - [Upgrade to Unicode 10.0.0][42999]
 - [Reimplemented `{f32, f64}::{min, max}` in Rust instead of using CMath.][42430]
 - [Skip the main thread's manual stack guard on Linux][43072]
-- [Iterator::nth for `ops::{Range, RangeFrom}` is now done in O(1) time][43077]
+- [Iterator::nth for `ops::{Range, RangeFrom}` is now done in *O*(1) time][43077]
 - [`#[repr(align(N))]` attribute max number is now 2^31 - 1.][43097] This was
   previously 2^15.
 - [`{OsStr, Path}::Display` now avoids allocations where possible][42613]
@@ -8473,7 +8473,7 @@ Libraries
   algorithm][s].
 * [`std::io::copy` allows `?Sized` arguments][cc].
 * The `Windows`, `Chunks`, and `ChunksMut` iterators over slices all
-  [override `count`, `nth` and `last` with an O(1)
+  [override `count`, `nth` and `last` with an *O*(1)
   implementation][it].
 * [`Default` is implemented for arrays up to `[T; 32]`][d].
 * [`IntoRawFd` has been added to the Unix-specific prelude,
@@ -8995,7 +8995,7 @@ Libraries
 * The `Default` implementation for `Arc` [no longer requires `Sync +
   Send`][arc].
 * [The `Iterator` methods `count`, `nth`, and `last` have been
-  overridden for slices to have O(1) performance instead of O(n)][si].
+  overridden for slices to have *O*(1) performance instead of *O*(*n*)][si].
 * Incorrect handling of paths on Windows has been improved in both the
   compiler and the standard library.
 * [`AtomicPtr` gained a `Default` implementation][ap].

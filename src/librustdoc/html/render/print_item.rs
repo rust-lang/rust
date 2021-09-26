@@ -712,11 +712,10 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         let mut implementor_dups: FxHashMap<Symbol, (DefId, bool)> = FxHashMap::default();
         for implementor in implementors {
             match implementor.inner_impl().for_ {
-                clean::ResolvedPath { ref path, did, is_generic: false, .. }
+                clean::ResolvedPath { ref path, did, .. }
                 | clean::BorrowedRef {
-                    type_: box clean::ResolvedPath { ref path, did, is_generic: false, .. },
-                    ..
-                } => {
+                    type_: box clean::ResolvedPath { ref path, did, .. }, ..
+                } if !path.is_assoc_ty() => {
                     let &mut (prev_did, ref mut has_duplicates) =
                         implementor_dups.entry(path.last()).or_insert((did, false));
                     if prev_did != did {
@@ -1410,11 +1409,12 @@ fn render_implementor(
     // If there's already another implementor that has the same abridged name, use the
     // full path, for example in `std::iter::ExactSizeIterator`
     let use_absolute = match implementor.inner_impl().for_ {
-        clean::ResolvedPath { ref path, is_generic: false, .. }
-        | clean::BorrowedRef {
-            type_: box clean::ResolvedPath { ref path, is_generic: false, .. },
-            ..
-        } => implementor_dups[&path.last()].1,
+        clean::ResolvedPath { ref path, .. }
+        | clean::BorrowedRef { type_: box clean::ResolvedPath { ref path, .. }, .. }
+            if !path.is_assoc_ty() =>
+        {
+            implementor_dups[&path.last()].1
+        }
         _ => false,
     };
     render_impl(

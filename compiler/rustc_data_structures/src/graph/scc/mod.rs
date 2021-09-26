@@ -3,7 +3,7 @@
 //! Also computes as the resulting DAG if each SCC is replaced with a
 //! node in the graph. This uses [Tarjan's algorithm](
 //! https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm)
-//! that completes in *O(n)* time.
+//! that completes in *O*(*n*) time.
 
 use crate::fx::FxHashSet;
 use crate::graph::vec_graph::VecGraph;
