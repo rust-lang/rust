@@ -665,7 +665,6 @@ macro_rules! tool_doc {
     ($tool: ident, $should_run: literal, $path: literal, [$($krate: literal),+ $(,)?] $(,)?) => {
         #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $tool {
-            stage: u32,
             target: TargetSelection,
         }
 
@@ -679,7 +678,7 @@ macro_rules! tool_doc {
             }
 
             fn make_run(run: RunConfig<'_>) {
-                run.builder.ensure($tool { stage: run.builder.top_stage, target: run.target });
+                run.builder.ensure($tool { target: run.target });
             }
 
             /// Generates compiler documentation.
@@ -689,7 +688,7 @@ macro_rules! tool_doc {
             /// we do not merge it with the other documentation from std, test and
             /// proc_macros. This is largely just a wrapper around `cargo doc`.
             fn run(self, builder: &Builder<'_>) {
-                let stage = self.stage;
+                let stage = builder.top_stage;
                 let target = self.target;
                 builder.info(
                     &format!(
