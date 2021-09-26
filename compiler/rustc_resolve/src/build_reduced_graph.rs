@@ -220,8 +220,7 @@ impl<'a> Resolver<'a> {
     }
 
     crate fn build_reduced_graph_external(&mut self, module: Module<'a>) {
-        let def_id = module.def_id().expect("unpopulated module without a def-id");
-        for child in self.cstore().item_children_untracked(def_id, self.session) {
+        for child in self.cstore().item_children_untracked(module.def_id(), self.session) {
             let parent_scope = ParentScope::module(module, self);
             BuildReducedGraphVisitor { r: self, parent_scope }
                 .build_reduced_graph_for_external_crate_res(child);

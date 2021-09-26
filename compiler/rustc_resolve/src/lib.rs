@@ -413,7 +413,7 @@ impl ModuleOrUniformRoot<'_> {
     fn same_def(lhs: Self, rhs: Self) -> bool {
         match (lhs, rhs) {
             (ModuleOrUniformRoot::Module(lhs), ModuleOrUniformRoot::Module(rhs)) => {
-                lhs.def_id() == rhs.def_id()
+                ptr::eq(lhs, rhs)
             }
             (
                 ModuleOrUniformRoot::CrateRootAndExternPrelude,
@@ -602,7 +602,11 @@ impl<'a> ModuleData<'a> {
         }
     }
 
-    fn def_id(&self) -> Option<DefId> {
+    fn def_id(&self) -> DefId {
+        self.opt_def_id().expect("`ModuleData::def_id` is called on a block module")
+    }
+
+    fn opt_def_id(&self) -> Option<DefId> {
         match self.kind {
             ModuleKind::Def(_, def_id, _) => Some(def_id),
             _ => None,
@@ -1075,7 +1079,7 @@ impl<'a> ResolverArenas<'a> {
     ) -> Module<'a> {
         let module =
             self.modules.alloc(ModuleData::new(parent, kind, expn_id, span, no_implicit_prelude));
-        let def_id = module.def_id();
+        let def_id = module.opt_def_id();
         if def_id.map_or(true, |def_id| def_id.is_local()) {
             self.local_modules.borrow_mut().push(module);
         }
@@ -1588,7 +1592,7 @@ impl<'a> Resolver<'a> {
 
         if let Some(module) = current_trait {
             if self.trait_may_have_item(Some(module), assoc_item) {
-                let def_id = module.def_id().unwrap();
+                let def_id = module.def_id();
                 found_traits.push(TraitCandidate { def_id, import_ids: smallvec![] });
             }
         }
@@ -2189,8 +2193,9 @@ impl<'a> Resolver<'a> {
                 return self.graph_root;
             }
         };
-        let module = self
-            .expect_module(module.def_id().map_or(LOCAL_CRATE, |def_id| def_id.krate).as_def_id());
+        let module = self.expect_module(
+            module.opt_def_id().map_or(LOCAL_CRATE, |def_id| def_id.krate).as_def_id(),
+        );
         debug!(
             "resolve_crate_root({:?}): got module {:?} ({:?}) (ident.span = {:?})",
             ident,
@@ -3017,7 +3022,7 @@ impl<'a> Resolver<'a> {
         }
 
         let container = match parent.kind {
-            ModuleKind::Def(kind, _, _) => kind.descr(parent.def_id().unwrap()),
+            ModuleKind::Def(kind, _, _) => kind.descr(parent.def_id()),
             ModuleKind::Block(..) => "block",
         };
 

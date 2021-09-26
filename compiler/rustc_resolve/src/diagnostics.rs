@@ -801,7 +801,7 @@ impl<'a> Resolver<'a> {
             None => worklist_via_import.pop(),
             Some(x) => Some(x),
         } {
-            let in_module_is_extern = !in_module.def_id().unwrap().is_local();
+            let in_module_is_extern = !in_module.def_id().is_local();
             // We have to visit module children in deterministic order to avoid
             // instabilities in reported imports (#43552).
             in_module.for_each_child(self, |this, ident, ns, name_binding| {
@@ -884,7 +884,7 @@ impl<'a> Resolver<'a> {
 
                     if !is_extern_crate_that_also_appears_in_prelude {
                         // add the module to the lookup
-                        if seen_modules.insert(module.def_id().unwrap()) {
+                        if seen_modules.insert(module.def_id()) {
                             if via_import { &mut worklist_via_import } else { &mut worklist }
                                 .push((module, path_segments, child_accessible));
                         }

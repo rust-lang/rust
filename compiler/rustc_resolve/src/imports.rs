@@ -989,7 +989,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 }
 
                 if let ModuleOrUniformRoot::Module(module) = module {
-                    if module.def_id() == import.parent_scope.module.def_id() {
+                    if ptr::eq(module, import.parent_scope.module) {
                         // Importing a module into itself is not allowed.
                         return Some(UnresolvedImportError {
                             span: import.span,
@@ -1341,7 +1341,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         if module.is_trait() {
             self.r.session.span_err(import.span, "items in traits are not importable.");
             return;
-        } else if module.def_id() == import.parent_scope.module.def_id() {
+        } else if ptr::eq(module, import.parent_scope.module) {
             return;
         } else if let ImportKind::Glob { is_prelude: true, .. } = import.kind {
             self.r.prelude = Some(module);
@@ -1400,7 +1400,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         });
 
         if !reexports.is_empty() {
-            if let Some(def_id) = module.def_id() {
+            if let Some(def_id) = module.opt_def_id() {
                 // Call to `expect_local` should be fine because current
                 // code is only called for local modules.
                 self.r.export_map.insert(def_id.expect_local(), reexports);
