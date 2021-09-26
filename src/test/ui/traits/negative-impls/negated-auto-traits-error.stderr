@@ -102,10 +102,8 @@ error[E0277]: `main::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:66:13
    |
 LL |     is_sync(Outer2(TestType));
-   |     ------- ^^^^^^^^^^^^^^^^
-   |     |       |
-   |     |       expected an implementor of trait `Sync`
-   |     |       help: consider borrowing here: `&Outer2(TestType)`
+   |     ------- ^^^^^^^^^^^^^^^^ expected an implementor of trait `Sync`
+   |     |
    |     required by a bound introduced by this call
    |
    = note: the trait bound `main::TestType: Sync` is not satisfied
@@ -119,6 +117,12 @@ note: required by a bound in `is_sync`
    |
 LL | fn is_sync<T: Sync>(_: T) {}
    |               ^^^^ required by this bound in `is_sync`
+help: consider borrowing here
+   |
+LL |     is_sync(&Outer2(TestType));
+   |             ~~~~~~~~~~~~~~~~~
+LL |     is_sync(&mut Outer2(TestType));
+   |             ~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 7 previous errors
 
