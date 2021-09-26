@@ -148,22 +148,28 @@ fn extraction_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Fu
         return match stmt {
             ast::Stmt::Item(_) => None,
             ast::Stmt::ExprStmt(_) | ast::Stmt::LetStmt(_) => Some(FunctionBody::from_range(
-                node.parent().and_then(ast::BlockExpr::cast)?,
+                node.parent().and_then(ast::StmtList::cast)?,
                 node.text_range(),
             )),
         };
+    }
+
+    // Covering element returned the parent block of one or multiple statements that have been selected
+    if let Some(stmt_list) = ast::StmtList::cast(node.clone()) {
+        if let Some(block_expr) = stmt_list.syntax().parent().and_then(ast::BlockExpr::cast) {
+            if block_expr.syntax().text_range() == selection_range {
+                return FunctionBody::from_expr(block_expr.into());
+            }
+        }
+
+        // Extract the full statements.
+        return Some(FunctionBody::from_range(stmt_list, selection_range));
     }
 
     let expr = ast::Expr::cast(node.clone())?;
     // A node got selected fully
     if node.text_range() == selection_range {
         return FunctionBody::from_expr(expr.clone());
-    }
-
-    // Covering element returned the parent block of one or multiple statements that have been selected
-    if let ast::Expr::BlockExpr(block) = expr {
-        // Extract the full statements.
-        return Some(FunctionBody::from_range(block, selection_range));
     }
 
     node.ancestors().find_map(ast::Expr::cast).and_then(FunctionBody::from_expr)
@@ -284,7 +290,7 @@ impl RetType {
 #[derive(Debug)]
 enum FunctionBody {
     Expr(ast::Expr),
-    Span { parent: ast::BlockExpr, text_range: TextRange },
+    Span { parent: ast::StmtList, text_range: TextRange },
 }
 
 #[derive(Debug)]
@@ -441,7 +447,7 @@ impl FunctionBody {
         }
     }
 
-    fn from_range(parent: ast::BlockExpr, selected: TextRange) -> FunctionBody {
+    fn from_range(parent: ast::StmtList, selected: TextRange) -> FunctionBody {
         let mut text_range = parent
             .statements()
             .map(|stmt| stmt.syntax().text_range())
@@ -643,14 +649,14 @@ impl FunctionBody {
             break match_ast! {
                 match anc {
                     ast::ClosureExpr(closure) => (false, closure.body(), infer_expr_opt(closure.body())),
-                    ast::EffectExpr(effect) => {
-                        let (constness, block) = match effect.effect() {
-                            ast::Effect::Const(_) => (true, effect.block_expr()),
-                            ast::Effect::Try(_) => (false, effect.block_expr()),
-                            ast::Effect::Label(label) if label.lifetime().is_some() => (false, effect.block_expr()),
+                    ast::BlockExpr(block_expr) => {
+                        let (constness, block) = match block_expr.modifier() {
+                            Some(ast::BlockModifier::Const(_)) => (true, block_expr),
+                            Some(ast::BlockModifier::Try(_)) => (false, block_expr),
+                            Some(ast::BlockModifier::Label(label)) if label.lifetime().is_some() => (false, block_expr),
                             _ => continue,
                         };
-                        let expr = block.map(ast::Expr::BlockExpr);
+                        let expr = Some(ast::Expr::BlockExpr(block));
                         (constness, expr.clone(), infer_expr_opt(expr))
                     },
                     ast::Fn(fn_) => {
@@ -745,7 +751,7 @@ impl FunctionBody {
                         ast::Expr::LoopExpr(_)
                         | ast::Expr::ForExpr(_)
                         | ast::Expr::WhileExpr(_) => loop_depth -= 1,
-                        ast::Expr::EffectExpr(effect) if effect.unsafe_token().is_some() => {
+                        ast::Expr::BlockExpr(block_expr) if block_expr.unsafe_token().is_some() => {
                             unsafe_depth -= 1
                         }
                         _ => (),
@@ -757,7 +763,7 @@ impl FunctionBody {
                 ast::Expr::LoopExpr(_) | ast::Expr::ForExpr(_) | ast::Expr::WhileExpr(_) => {
                     loop_depth += 1;
                 }
-                ast::Expr::EffectExpr(effect) if effect.unsafe_token().is_some() => {
+                ast::Expr::BlockExpr(block_expr) if block_expr.unsafe_token().is_some() => {
                     unsafe_depth += 1
                 }
                 ast::Expr::ReturnExpr(it) => {

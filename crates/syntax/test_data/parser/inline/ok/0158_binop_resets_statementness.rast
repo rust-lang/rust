@@ -9,28 +9,30 @@ SOURCE_FILE@0..22
       R_PAREN@5..6 ")"
     WHITESPACE@6..7 " "
     BLOCK_EXPR@7..21
-      L_CURLY@7..8 "{"
-      WHITESPACE@8..9 " "
-      EXPR_STMT@9..19
-        BIN_EXPR@9..18
-          PATH_EXPR@9..10
-            PATH@9..10
-              PATH_SEGMENT@9..10
-                NAME_REF@9..10
-                  IDENT@9..10 "v"
-          WHITESPACE@10..11 " "
-          EQ@11..12 "="
-          WHITESPACE@12..13 " "
-          BIN_EXPR@13..18
-            BLOCK_EXPR@13..16
-              L_CURLY@13..14 "{"
-              LITERAL@14..15
-                INT_NUMBER@14..15 "1"
-              R_CURLY@15..16 "}"
-            AMP@16..17 "&"
-            LITERAL@17..18
-              INT_NUMBER@17..18 "2"
-        SEMICOLON@18..19 ";"
-      WHITESPACE@19..20 " "
-      R_CURLY@20..21 "}"
+      STMT_LIST@7..21
+        L_CURLY@7..8 "{"
+        WHITESPACE@8..9 " "
+        EXPR_STMT@9..19
+          BIN_EXPR@9..18
+            PATH_EXPR@9..10
+              PATH@9..10
+                PATH_SEGMENT@9..10
+                  NAME_REF@9..10
+                    IDENT@9..10 "v"
+            WHITESPACE@10..11 " "
+            EQ@11..12 "="
+            WHITESPACE@12..13 " "
+            BIN_EXPR@13..18
+              BLOCK_EXPR@13..16
+                STMT_LIST@13..16
+                  L_CURLY@13..14 "{"
+                  LITERAL@14..15
+                    INT_NUMBER@14..15 "1"
+                  R_CURLY@15..16 "}"
+              AMP@16..17 "&"
+              LITERAL@17..18
+                INT_NUMBER@17..18 "2"
+          SEMICOLON@18..19 ";"
+        WHITESPACE@19..20 " "
+        R_CURLY@20..21 "}"
   WHITESPACE@21..22 "\n"

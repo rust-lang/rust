@@ -721,7 +721,7 @@ impl ExpandTo {
 
         match parent.kind() {
             MACRO_ITEMS | SOURCE_FILE | ITEM_LIST => ExpandTo::Items,
-            MACRO_STMTS | EXPR_STMT | BLOCK_EXPR => ExpandTo::Statements,
+            MACRO_STMTS | EXPR_STMT | STMT_LIST => ExpandTo::Statements,
             MACRO_PAT => ExpandTo::Pattern,
             MACRO_TYPE => ExpandTo::Type,
 

@@ -27,8 +27,9 @@ SOURCE_FILE@0..118
           R_PAREN@27..28 ")"
         WHITESPACE@28..29 " "
         BLOCK_EXPR@29..31
-          L_CURLY@29..30 "{"
-          R_CURLY@30..31 "}"
+          STMT_LIST@29..31
+            L_CURLY@29..30 "{"
+            R_CURLY@30..31 "}"
       WHITESPACE@31..36 "\n    "
       FN@36..51
         VISIBILITY@36..39
@@ -43,8 +44,9 @@ SOURCE_FILE@0..118
           R_PAREN@47..48 ")"
         WHITESPACE@48..49 " "
         BLOCK_EXPR@49..51
-          L_CURLY@49..50 "{"
-          R_CURLY@50..51 "}"
+          STMT_LIST@49..51
+            L_CURLY@49..50 "{"
+            R_CURLY@50..51 "}"
       WHITESPACE@51..56 "\n    "
       TYPE_ALIAS@56..81
         VISIBILITY@56..66

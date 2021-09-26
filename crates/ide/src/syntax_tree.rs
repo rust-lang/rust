@@ -133,8 +133,9 @@ mod tests {
                       R_PAREN@7..8 ")"
                     WHITESPACE@8..9 " "
                     BLOCK_EXPR@9..11
-                      L_CURLY@9..10 "{"
-                      R_CURLY@10..11 "}"
+                      STMT_LIST@9..11
+                        L_CURLY@9..10 "{"
+                        R_CURLY@10..11 "}"
             "#]],
         );
 
@@ -158,25 +159,26 @@ fn test() {
                       R_PAREN@8..9 ")"
                     WHITESPACE@9..10 " "
                     BLOCK_EXPR@10..60
-                      L_CURLY@10..11 "{"
-                      WHITESPACE@11..16 "\n    "
-                      EXPR_STMT@16..58
-                        MACRO_CALL@16..57
-                          PATH@16..22
-                            PATH_SEGMENT@16..22
-                              NAME_REF@16..22
-                                IDENT@16..22 "assert"
-                          BANG@22..23 "!"
-                          TOKEN_TREE@23..57
-                            L_PAREN@23..24 "("
-                            STRING@24..52 "\"\n    fn foo() {\n     ..."
-                            COMMA@52..53 ","
-                            WHITESPACE@53..54 " "
-                            STRING@54..56 "\"\""
-                            R_PAREN@56..57 ")"
-                        SEMICOLON@57..58 ";"
-                      WHITESPACE@58..59 "\n"
-                      R_CURLY@59..60 "}"
+                      STMT_LIST@10..60
+                        L_CURLY@10..11 "{"
+                        WHITESPACE@11..16 "\n    "
+                        EXPR_STMT@16..58
+                          MACRO_CALL@16..57
+                            PATH@16..22
+                              PATH_SEGMENT@16..22
+                                NAME_REF@16..22
+                                  IDENT@16..22 "assert"
+                            BANG@22..23 "!"
+                            TOKEN_TREE@23..57
+                              L_PAREN@23..24 "("
+                              STRING@24..52 "\"\n    fn foo() {\n     ..."
+                              COMMA@52..53 ","
+                              WHITESPACE@53..54 " "
+                              STRING@54..56 "\"\""
+                              R_PAREN@56..57 ")"
+                          SEMICOLON@57..58 ";"
+                        WHITESPACE@58..59 "\n"
+                        R_CURLY@59..60 "}"
             "#]],
         )
     }
@@ -196,8 +198,9 @@ fn test() {
                     R_PAREN@7..8 ")"
                   WHITESPACE@8..9 " "
                   BLOCK_EXPR@9..11
-                    L_CURLY@9..10 "{"
-                    R_CURLY@10..11 "}"
+                    STMT_LIST@9..11
+                      L_CURLY@9..10 "{"
+                      R_CURLY@10..11 "}"
             "#]],
         );
 
@@ -252,9 +255,10 @@ fn bar() {
                       R_PAREN@7..8 ")"
                     WHITESPACE@8..9 " "
                     BLOCK_EXPR@9..12
-                      L_CURLY@9..10 "{"
-                      WHITESPACE@10..11 "\n"
-                      R_CURLY@11..12 "}"
+                      STMT_LIST@9..12
+                        L_CURLY@9..10 "{"
+                        WHITESPACE@10..11 "\n"
+                        R_CURLY@11..12 "}"
             "#]],
         );
 
@@ -280,9 +284,10 @@ fn bar() {
                       R_PAREN@7..8 ")"
                     WHITESPACE@8..9 " "
                     BLOCK_EXPR@9..12
-                      L_CURLY@9..10 "{"
-                      WHITESPACE@10..11 "\n"
-                      R_CURLY@11..12 "}"
+                      STMT_LIST@9..12
+                        L_CURLY@9..10 "{"
+                        WHITESPACE@10..11 "\n"
+                        R_CURLY@11..12 "}"
             "#]],
         );
 
@@ -307,9 +312,10 @@ fn bar() {
                       R_PAREN@7..8 ")"
                     WHITESPACE@8..9 " "
                     BLOCK_EXPR@9..12
-                      L_CURLY@9..10 "{"
-                      WHITESPACE@10..11 "\n"
-                      R_CURLY@11..12 "}"
+                      STMT_LIST@9..12
+                        L_CURLY@9..10 "{"
+                        WHITESPACE@10..11 "\n"
+                        R_CURLY@11..12 "}"
                   WHITESPACE@12..13 "\n"
                   FN@13..25
                     FN_KW@13..15 "fn"
@@ -321,9 +327,10 @@ fn bar() {
                       R_PAREN@20..21 ")"
                     WHITESPACE@21..22 " "
                     BLOCK_EXPR@22..25
-                      L_CURLY@22..23 "{"
-                      WHITESPACE@23..24 "\n"
-                      R_CURLY@24..25 "}"
+                      STMT_LIST@22..25
+                        L_CURLY@22..23 "{"
+                        WHITESPACE@23..24 "\n"
+                        R_CURLY@24..25 "}"
             "#]],
         );
     }

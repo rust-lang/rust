@@ -8,7 +8,7 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, AstNode, AstToken},
-    SyntaxKind::{BLOCK_EXPR, EXPR_STMT},
+    SyntaxKind::{EXPR_STMT, STMT_LIST},
     TextRange, TextSize,
 };
 use text_edit::TextEdit;
@@ -256,7 +256,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     .add_to(acc);
 
     if let Some(parent) = dot_receiver.syntax().parent().and_then(|p| p.parent()) {
-        if matches!(parent.kind(), BLOCK_EXPR | EXPR_STMT) {
+        if matches!(parent.kind(), STMT_LIST | EXPR_STMT) {
             postfix_snippet(
                 ctx,
                 cap,

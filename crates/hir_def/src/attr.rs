@@ -524,7 +524,8 @@ fn inner_attributes(
             },
             ast::Fn(it) => {
                 let body = it.body()?;
-                (body.attrs(), ast::CommentIter::from_syntax_node(body.syntax()))
+                let stmt_list = body.stmt_list()?;
+                (stmt_list.attrs(), ast::CommentIter::from_syntax_node(body.syntax()))
             },
             ast::Impl(it) => {
                 let assoc_item_list = it.assoc_item_list()?;

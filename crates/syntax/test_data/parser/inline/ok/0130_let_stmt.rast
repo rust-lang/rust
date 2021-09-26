@@ -9,27 +9,28 @@ SOURCE_FILE@0..28
       R_PAREN@5..6 ")"
     WHITESPACE@6..7 " "
     BLOCK_EXPR@7..27
-      L_CURLY@7..8 "{"
-      WHITESPACE@8..9 " "
-      LET_STMT@9..25
-        LET_KW@9..12 "let"
-        WHITESPACE@12..13 " "
-        IDENT_PAT@13..14
-          NAME@13..14
-            IDENT@13..14 "x"
-        COLON@14..15 ":"
-        WHITESPACE@15..16 " "
-        PATH_TYPE@16..19
-          PATH@16..19
-            PATH_SEGMENT@16..19
-              NAME_REF@16..19
-                IDENT@16..19 "i32"
-        WHITESPACE@19..20 " "
-        EQ@20..21 "="
-        WHITESPACE@21..22 " "
-        LITERAL@22..24
-          INT_NUMBER@22..24 "92"
-        SEMICOLON@24..25 ";"
-      WHITESPACE@25..26 " "
-      R_CURLY@26..27 "}"
+      STMT_LIST@7..27
+        L_CURLY@7..8 "{"
+        WHITESPACE@8..9 " "
+        LET_STMT@9..25
+          LET_KW@9..12 "let"
+          WHITESPACE@12..13 " "
+          IDENT_PAT@13..14
+            NAME@13..14
+              IDENT@13..14 "x"
+          COLON@14..15 ":"
+          WHITESPACE@15..16 " "
+          PATH_TYPE@16..19
+            PATH@16..19
+              PATH_SEGMENT@16..19
+                NAME_REF@16..19
+                  IDENT@16..19 "i32"
+          WHITESPACE@19..20 " "
+          EQ@20..21 "="
+          WHITESPACE@21..22 " "
+          LITERAL@22..24
+            INT_NUMBER@22..24 "92"
+          SEMICOLON@24..25 ";"
+        WHITESPACE@25..26 " "
+        R_CURLY@26..27 "}"
   WHITESPACE@27..28 "\n"

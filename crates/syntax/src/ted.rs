@@ -162,8 +162,8 @@ fn ws_before(position: &Position, new: &SyntaxElement) -> Option<SyntaxToken> {
     }
 
     if prev.kind() == T!['{'] && ast::Stmt::can_cast(new.kind()) {
-        if let Some(block_expr) = prev.parent().and_then(ast::BlockExpr::cast) {
-            let mut indent = IndentLevel::from_element(&block_expr.syntax().clone().into());
+        if let Some(stmt_list) = prev.parent().and_then(ast::StmtList::cast) {
+            let mut indent = IndentLevel::from_element(&stmt_list.syntax().clone().into());
             indent.0 += 1;
             return Some(make::tokens::whitespace(&format!("\n{}", indent)));
         }

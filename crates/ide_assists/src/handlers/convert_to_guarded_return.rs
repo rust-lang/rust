@@ -68,12 +68,16 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
 
     let cond_expr = cond.expr()?;
     let then_block = if_expr.then_branch()?;
+    let then_block = then_block.stmt_list()?;
 
     let parent_block = if_expr.syntax().parent()?.ancestors().find_map(ast::BlockExpr::cast)?;
 
     if parent_block.tail_expr()? != if_expr.clone().into() {
         return None;
     }
+
+    // FIXME: This relies on untyped syntax tree and casts to much. It should be
+    // rewritten to use strongly-typed APIs.
 
     // check for early return and continue
     let first_in_then_block = then_block.syntax().first_child()?;

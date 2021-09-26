@@ -9,34 +9,35 @@ SOURCE_FILE@0..37
       R_PAREN@5..6 ")"
     WHITESPACE@6..7 " "
     BLOCK_EXPR@7..36
-      L_CURLY@7..8 "{"
-      WHITESPACE@8..9 " "
-      LET_STMT@9..34
-        LET_KW@9..12 "let"
-        WHITESPACE@12..13 " "
-        WILDCARD_PAT@13..14
-          UNDERSCORE@13..14 "_"
-        WHITESPACE@14..15 " "
-        EQ@15..16 "="
-        WHITESPACE@16..17 " "
-        CAST_EXPR@17..33
-          REF_EXPR@17..19
-            AMP@17..18 "&"
-            LITERAL@18..19
-              INT_NUMBER@18..19 "1"
-          WHITESPACE@19..20 " "
-          AS_KW@20..22 "as"
-          WHITESPACE@22..23 " "
-          PTR_TYPE@23..33
-            STAR@23..24 "*"
-            CONST_KW@24..29 "const"
-            WHITESPACE@29..30 " "
-            PATH_TYPE@30..33
-              PATH@30..33
-                PATH_SEGMENT@30..33
-                  NAME_REF@30..33
-                    IDENT@30..33 "i32"
-        SEMICOLON@33..34 ";"
-      WHITESPACE@34..35 " "
-      R_CURLY@35..36 "}"
+      STMT_LIST@7..36
+        L_CURLY@7..8 "{"
+        WHITESPACE@8..9 " "
+        LET_STMT@9..34
+          LET_KW@9..12 "let"
+          WHITESPACE@12..13 " "
+          WILDCARD_PAT@13..14
+            UNDERSCORE@13..14 "_"
+          WHITESPACE@14..15 " "
+          EQ@15..16 "="
+          WHITESPACE@16..17 " "
+          CAST_EXPR@17..33
+            REF_EXPR@17..19
+              AMP@17..18 "&"
+              LITERAL@18..19
+                INT_NUMBER@18..19 "1"
+            WHITESPACE@19..20 " "
+            AS_KW@20..22 "as"
+            WHITESPACE@22..23 " "
+            PTR_TYPE@23..33
+              STAR@23..24 "*"
+              CONST_KW@24..29 "const"
+              WHITESPACE@29..30 " "
+              PATH_TYPE@30..33
+                PATH@30..33
+                  PATH_SEGMENT@30..33
+                    NAME_REF@30..33
+                      IDENT@30..33 "i32"
+          SEMICOLON@33..34 ";"
+        WHITESPACE@34..35 " "
+        R_CURLY@35..36 "}"
   WHITESPACE@36..37 "\n"

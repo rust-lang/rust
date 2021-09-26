@@ -8,48 +8,50 @@ SOURCE_FILE@0..50
       L_PAREN@6..7 "("
       R_PAREN@7..8 ")"
     BLOCK_EXPR@8..49
-      L_CURLY@8..9 "{"
-      WHITESPACE@9..14 "\n    "
-      SEMICOLON@14..15 ";"
-      SEMICOLON@15..16 ";"
-      SEMICOLON@16..17 ";"
-      EXPR_STMT@17..29
-        CALL_EXPR@17..28
-          PATH_EXPR@17..26
-            PATH@17..26
-              PATH_SEGMENT@17..26
-                NAME_REF@17..26
-                  IDENT@17..26 "some_expr"
-          ARG_LIST@26..28
-            L_PAREN@26..27 "("
-            R_PAREN@27..28 ")"
-        SEMICOLON@28..29 ";"
-      SEMICOLON@29..30 ";"
-      SEMICOLON@30..31 ";"
-      SEMICOLON@31..32 ";"
-      EXPR_STMT@32..38
-        BLOCK_EXPR@32..37
-          L_CURLY@32..33 "{"
-          SEMICOLON@33..34 ";"
-          SEMICOLON@34..35 ";"
-          SEMICOLON@35..36 ";"
-          R_CURLY@36..37 "}"
-        SEMICOLON@37..38 ";"
-      SEMICOLON@38..39 ";"
-      SEMICOLON@39..40 ";"
-      SEMICOLON@40..41 ";"
-      CALL_EXPR@41..47
-        PATH_EXPR@41..43
-          PATH@41..43
-            PATH_SEGMENT@41..43
-              NAME_REF@41..43
-                IDENT@41..43 "Ok"
-        ARG_LIST@43..47
-          L_PAREN@43..44 "("
-          TUPLE_EXPR@44..46
-            L_PAREN@44..45 "("
-            R_PAREN@45..46 ")"
-          R_PAREN@46..47 ")"
-      WHITESPACE@47..48 "\n"
-      R_CURLY@48..49 "}"
+      STMT_LIST@8..49
+        L_CURLY@8..9 "{"
+        WHITESPACE@9..14 "\n    "
+        SEMICOLON@14..15 ";"
+        SEMICOLON@15..16 ";"
+        SEMICOLON@16..17 ";"
+        EXPR_STMT@17..29
+          CALL_EXPR@17..28
+            PATH_EXPR@17..26
+              PATH@17..26
+                PATH_SEGMENT@17..26
+                  NAME_REF@17..26
+                    IDENT@17..26 "some_expr"
+            ARG_LIST@26..28
+              L_PAREN@26..27 "("
+              R_PAREN@27..28 ")"
+          SEMICOLON@28..29 ";"
+        SEMICOLON@29..30 ";"
+        SEMICOLON@30..31 ";"
+        SEMICOLON@31..32 ";"
+        EXPR_STMT@32..38
+          BLOCK_EXPR@32..37
+            STMT_LIST@32..37
+              L_CURLY@32..33 "{"
+              SEMICOLON@33..34 ";"
+              SEMICOLON@34..35 ";"
+              SEMICOLON@35..36 ";"
+              R_CURLY@36..37 "}"
+          SEMICOLON@37..38 ";"
+        SEMICOLON@38..39 ";"
+        SEMICOLON@39..40 ";"
+        SEMICOLON@40..41 ";"
+        CALL_EXPR@41..47
+          PATH_EXPR@41..43
+            PATH@41..43
+              PATH_SEGMENT@41..43
+                NAME_REF@41..43
+                  IDENT@41..43 "Ok"
+          ARG_LIST@43..47
+            L_PAREN@43..44 "("
+            TUPLE_EXPR@44..46
+              L_PAREN@44..45 "("
+              R_PAREN@45..46 ")"
+            R_PAREN@46..47 ")"
+        WHITESPACE@47..48 "\n"
+        R_CURLY@48..49 "}"
   WHITESPACE@49..50 "\n"

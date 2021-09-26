@@ -9,8 +9,9 @@ SOURCE_FILE@0..70
       R_PAREN@7..8 ")"
     WHITESPACE@8..9 " "
     BLOCK_EXPR@9..11
-      L_CURLY@9..10 "{"
-      R_CURLY@10..11 "}"
+      STMT_LIST@9..11
+        L_CURLY@9..10 "{"
+        R_CURLY@10..11 "}"
   WHITESPACE@11..12 "\n"
   MACRO_RULES@12..31
     MACRO_RULES_KW@12..23 "macro_rules"

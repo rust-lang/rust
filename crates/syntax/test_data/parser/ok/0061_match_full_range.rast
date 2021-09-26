@@ -9,18 +9,19 @@ SOURCE_FILE@0..35
       R_PAREN@8..9 ")"
     WHITESPACE@9..10 " "
     BLOCK_EXPR@10..34
-      L_CURLY@10..11 "{"
-      WHITESPACE@11..16 "\n    "
-      MATCH_EXPR@16..32
-        MATCH_KW@16..21 "match"
-        WHITESPACE@21..22 " "
-        RANGE_EXPR@22..24
-          DOT2@22..24 ".."
-        WHITESPACE@24..25 " "
-        MATCH_ARM_LIST@25..32
-          L_CURLY@25..26 "{"
-          WHITESPACE@26..31 "\n    "
-          R_CURLY@31..32 "}"
-      WHITESPACE@32..33 "\n"
-      R_CURLY@33..34 "}"
+      STMT_LIST@10..34
+        L_CURLY@10..11 "{"
+        WHITESPACE@11..16 "\n    "
+        MATCH_EXPR@16..32
+          MATCH_KW@16..21 "match"
+          WHITESPACE@21..22 " "
+          RANGE_EXPR@22..24
+            DOT2@22..24 ".."
+          WHITESPACE@24..25 " "
+          MATCH_ARM_LIST@25..32
+            L_CURLY@25..26 "{"
+            WHITESPACE@26..31 "\n    "
+            R_CURLY@31..32 "}"
+        WHITESPACE@32..33 "\n"
+        R_CURLY@33..34 "}"
   WHITESPACE@34..35 "\n"

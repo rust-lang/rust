@@ -25,7 +25,6 @@ impl ast::Expr {
                 | ast::Expr::WhileExpr(_)
                 | ast::Expr::BlockExpr(_)
                 | ast::Expr::MatchExpr(_)
-                | ast::Expr::EffectExpr(_)
         )
     }
 }
@@ -268,38 +267,23 @@ impl ast::Literal {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Effect {
+pub enum BlockModifier {
     Async(SyntaxToken),
     Unsafe(SyntaxToken),
     Try(SyntaxToken),
     Const(SyntaxToken),
-    // Very much not an effect, but we stuff it into this node anyway
     Label(ast::Label),
 }
 
-impl ast::EffectExpr {
-    pub fn effect(&self) -> Effect {
-        if let Some(token) = self.async_token() {
-            return Effect::Async(token);
-        }
-        if let Some(token) = self.unsafe_token() {
-            return Effect::Unsafe(token);
-        }
-        if let Some(token) = self.try_token() {
-            return Effect::Try(token);
-        }
-        if let Some(token) = self.const_token() {
-            return Effect::Const(token);
-        }
-        if let Some(label) = self.label() {
-            return Effect::Label(label);
-        }
-        unreachable!("ast::EffectExpr without Effect")
-    }
-}
-
 impl ast::BlockExpr {
+    pub fn modifier(&self) -> Option<BlockModifier> {
+        self.async_token()
+            .map(BlockModifier::Async)
+            .or_else(|| self.unsafe_token().map(BlockModifier::Unsafe))
+            .or_else(|| self.try_token().map(BlockModifier::Try))
+            .or_else(|| self.const_token().map(BlockModifier::Const))
+            .or_else(|| self.label().map(BlockModifier::Label))
+    }
     /// false if the block is an intrinsic part of the syntax and can't be
     /// replaced with arbitrary expression.
     ///
@@ -312,7 +296,7 @@ impl ast::BlockExpr {
             Some(it) => it,
             None => return true,
         };
-        !matches!(parent.kind(), FN | IF_EXPR | WHILE_EXPR | LOOP_EXPR | EFFECT_EXPR)
+        !matches!(parent.kind(), FN | IF_EXPR | WHILE_EXPR | LOOP_EXPR)
     }
 }
 

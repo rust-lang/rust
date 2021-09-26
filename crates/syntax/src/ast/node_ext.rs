@@ -11,8 +11,8 @@ use rowan::{GreenNodeData, GreenTokenData};
 
 use crate::{
     ast::{
-        self, support, AstChildren, AstNode, AstToken, AttrsOwner, GenericParamsOwner, NameOwner,
-        SyntaxNode,
+        self, support, AstNode, AstToken, AttrsOwner, GenericParamsOwner, ModuleItemOwner,
+        NameOwner, SyntaxNode,
     },
     NodeOrToken, SmolStr, SyntaxElement, SyntaxToken, TokenText, T,
 };
@@ -50,13 +50,22 @@ fn text_of_first_token(node: &SyntaxNode) -> TokenText<'_> {
     }
 }
 
+impl ast::ModuleItemOwner for ast::StmtList {}
+
 impl ast::BlockExpr {
-    pub fn items(&self) -> AstChildren<ast::Item> {
-        support::children(self.syntax())
+    // FIXME: remove all these methods, they belong to ast::StmtList
+    pub fn items(&self) -> impl Iterator<Item = ast::Item> {
+        self.stmt_list().into_iter().flat_map(|it| it.items())
     }
 
     pub fn is_empty(&self) -> bool {
         self.statements().next().is_none() && self.tail_expr().is_none()
+    }
+    pub fn statements(&self) -> impl Iterator<Item = ast::Stmt> {
+        self.stmt_list().into_iter().flat_map(|it| it.statements())
+    }
+    pub fn tail_expr(&self) -> Option<ast::Expr> {
+        self.stmt_list()?.tail_expr()
     }
 }
 

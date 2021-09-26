@@ -16,16 +16,17 @@ SOURCE_FILE@0..22
             L_ANGLE@10..11 "<"
             CONST_ARG@11..19
               BLOCK_EXPR@11..19
-                L_CURLY@11..12 "{"
-                BIN_EXPR@12..18
-                  LITERAL@12..14
-                    INT_NUMBER@12..14 "90"
-                  WHITESPACE@14..15 " "
-                  PLUS@15..16 "+"
-                  WHITESPACE@16..17 " "
-                  LITERAL@17..18
-                    INT_NUMBER@17..18 "2"
-                R_CURLY@18..19 "}"
+                STMT_LIST@11..19
+                  L_CURLY@11..12 "{"
+                  BIN_EXPR@12..18
+                    LITERAL@12..14
+                      INT_NUMBER@12..14 "90"
+                    WHITESPACE@14..15 " "
+                    PLUS@15..16 "+"
+                    WHITESPACE@16..17 " "
+                    LITERAL@17..18
+                      INT_NUMBER@17..18 "2"
+                  R_CURLY@18..19 "}"
             R_ANGLE@19..20 ">"
     SEMICOLON@20..21 ";"
   WHITESPACE@21..22 "\n"

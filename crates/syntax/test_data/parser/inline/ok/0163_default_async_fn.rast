@@ -33,8 +33,9 @@ SOURCE_FILE@0..49
           R_PAREN@42..43 ")"
         WHITESPACE@43..44 " "
         BLOCK_EXPR@44..46
-          L_CURLY@44..45 "{"
-          R_CURLY@45..46 "}"
+          STMT_LIST@44..46
+            L_CURLY@44..45 "{"
+            R_CURLY@45..46 "}"
       WHITESPACE@46..47 "\n"
       R_CURLY@47..48 "}"
   WHITESPACE@48..49 "\n"

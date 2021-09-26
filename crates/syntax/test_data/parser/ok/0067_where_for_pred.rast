@@ -57,9 +57,10 @@ SOURCE_FILE@0..374
       COMMA@50..51 ","
     WHITESPACE@51..52 "\n"
     BLOCK_EXPR@52..55
-      L_CURLY@52..53 "{"
-      WHITESPACE@53..54 "\n"
-      R_CURLY@54..55 "}"
+      STMT_LIST@52..55
+        L_CURLY@52..53 "{"
+        WHITESPACE@53..54 "\n"
+        R_CURLY@54..55 "}"
   WHITESPACE@55..56 "\n"
   FN@56..107
     FN_KW@56..58 "fn"
@@ -110,9 +111,10 @@ SOURCE_FILE@0..374
       COMMA@102..103 ","
     WHITESPACE@103..104 "\n"
     BLOCK_EXPR@104..107
-      L_CURLY@104..105 "{"
-      WHITESPACE@105..106 "\n"
-      R_CURLY@106..107 "}"
+      STMT_LIST@104..107
+        L_CURLY@104..105 "{"
+        WHITESPACE@105..106 "\n"
+        R_CURLY@106..107 "}"
   WHITESPACE@107..108 "\n"
   FN@108..170
     FN_KW@108..110 "fn"
@@ -180,9 +182,10 @@ SOURCE_FILE@0..374
       COMMA@165..166 ","
     WHITESPACE@166..167 "\n"
     BLOCK_EXPR@167..170
-      L_CURLY@167..168 "{"
-      WHITESPACE@168..169 "\n"
-      R_CURLY@169..170 "}"
+      STMT_LIST@167..170
+        L_CURLY@167..168 "{"
+        WHITESPACE@168..169 "\n"
+        R_CURLY@169..170 "}"
   WHITESPACE@170..171 "\n"
   FN@171..223
     FN_KW@171..173 "fn"
@@ -236,9 +239,10 @@ SOURCE_FILE@0..374
       COMMA@218..219 ","
     WHITESPACE@219..220 "\n"
     BLOCK_EXPR@220..223
-      L_CURLY@220..221 "{"
-      WHITESPACE@221..222 "\n"
-      R_CURLY@222..223 "}"
+      STMT_LIST@220..223
+        L_CURLY@220..221 "{"
+        WHITESPACE@221..222 "\n"
+        R_CURLY@222..223 "}"
   WHITESPACE@223..224 "\n"
   FN@224..300
     FN_KW@224..226 "fn"
@@ -320,9 +324,10 @@ SOURCE_FILE@0..374
       COMMA@295..296 ","
     WHITESPACE@296..297 "\n"
     BLOCK_EXPR@297..300
-      L_CURLY@297..298 "{"
-      WHITESPACE@298..299 "\n"
-      R_CURLY@299..300 "}"
+      STMT_LIST@297..300
+        L_CURLY@297..298 "{"
+        WHITESPACE@298..299 "\n"
+        R_CURLY@299..300 "}"
   WHITESPACE@300..301 "\n"
   FN@301..373
     FN_KW@301..303 "fn"
@@ -401,7 +406,8 @@ SOURCE_FILE@0..374
       COMMA@368..369 ","
     WHITESPACE@369..370 "\n"
     BLOCK_EXPR@370..373
-      L_CURLY@370..371 "{"
-      WHITESPACE@371..372 "\n"
-      R_CURLY@372..373 "}"
+      STMT_LIST@370..373
+        L_CURLY@370..371 "{"
+        WHITESPACE@371..372 "\n"
+        R_CURLY@372..373 "}"
   WHITESPACE@373..374 "\n"

@@ -11,8 +11,9 @@ SOURCE_FILE@0..328
       R_PAREN@13..14 ")"
     WHITESPACE@14..15 " "
     BLOCK_EXPR@15..17
-      L_CURLY@15..16 "{"
-      R_CURLY@16..17 "}"
+      STMT_LIST@15..17
+        L_CURLY@15..16 "{"
+        R_CURLY@16..17 "}"
   WHITESPACE@17..18 "\n"
   FN@18..36
     ABI@18..24
@@ -27,8 +28,9 @@ SOURCE_FILE@0..328
       R_PAREN@32..33 ")"
     WHITESPACE@33..34 " "
     BLOCK_EXPR@34..36
-      L_CURLY@34..35 "{"
-      R_CURLY@35..36 "}"
+      STMT_LIST@34..36
+        L_CURLY@34..35 "{"
+        R_CURLY@35..36 "}"
   WHITESPACE@36..37 "\n"
   FN@37..54
     CONST_KW@37..42 "const"
@@ -42,8 +44,9 @@ SOURCE_FILE@0..328
       R_PAREN@50..51 ")"
     WHITESPACE@51..52 " "
     BLOCK_EXPR@52..54
-      L_CURLY@52..53 "{"
-      R_CURLY@53..54 "}"
+      STMT_LIST@52..54
+        L_CURLY@52..53 "{"
+        R_CURLY@53..54 "}"
   WHITESPACE@54..55 "\n"
   FN@55..79
     CONST_KW@55..60 "const"
@@ -59,8 +62,9 @@ SOURCE_FILE@0..328
       R_PAREN@75..76 ")"
     WHITESPACE@76..77 " "
     BLOCK_EXPR@77..79
-      L_CURLY@77..78 "{"
-      R_CURLY@78..79 "}"
+      STMT_LIST@77..79
+        L_CURLY@77..78 "{"
+        R_CURLY@78..79 "}"
   WHITESPACE@79..80 "\n"
   FN@80..109
     UNSAFE_KW@80..86 "unsafe"
@@ -79,8 +83,9 @@ SOURCE_FILE@0..328
       R_PAREN@105..106 ")"
     WHITESPACE@106..107 " "
     BLOCK_EXPR@107..109
-      L_CURLY@107..108 "{"
-      R_CURLY@108..109 "}"
+      STMT_LIST@107..109
+        L_CURLY@107..108 "{"
+        R_CURLY@108..109 "}"
   WHITESPACE@109..110 "\n"
   FN@110..128
     UNSAFE_KW@110..116 "unsafe"
@@ -94,8 +99,9 @@ SOURCE_FILE@0..328
       R_PAREN@124..125 ")"
     WHITESPACE@125..126 " "
     BLOCK_EXPR@126..128
-      L_CURLY@126..127 "{"
-      R_CURLY@127..128 "}"
+      STMT_LIST@126..128
+        L_CURLY@126..127 "{"
+        R_CURLY@127..128 "}"
   WHITESPACE@128..129 "\n"
   FN@129..153
     ASYNC_KW@129..134 "async"
@@ -111,8 +117,9 @@ SOURCE_FILE@0..328
       R_PAREN@149..150 ")"
     WHITESPACE@150..151 " "
     BLOCK_EXPR@151..153
-      L_CURLY@151..152 "{"
-      R_CURLY@152..153 "}"
+      STMT_LIST@151..153
+        L_CURLY@151..152 "{"
+        R_CURLY@152..153 "}"
   WHITESPACE@153..154 "\n"
   FN@154..178
     CONST_KW@154..159 "const"
@@ -128,8 +135,9 @@ SOURCE_FILE@0..328
       R_PAREN@174..175 ")"
     WHITESPACE@175..176 " "
     BLOCK_EXPR@176..178
-      L_CURLY@176..177 "{"
-      R_CURLY@177..178 "}"
+      STMT_LIST@176..178
+        L_CURLY@176..177 "{"
+        R_CURLY@177..178 "}"
   WHITESPACE@178..180 "\n\n"
   TRAIT@180..197
     UNSAFE_KW@180..186 "unsafe"

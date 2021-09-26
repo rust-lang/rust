@@ -244,9 +244,10 @@ SOURCE_FILE@0..239
       COMMA@233..234 ","
     WHITESPACE@234..235 "\n"
     BLOCK_EXPR@235..238
-      L_CURLY@235..236 "{"
-      WHITESPACE@236..237 "\n"
-      R_CURLY@237..238 "}"
+      STMT_LIST@235..238
+        L_CURLY@235..236 "{"
+        WHITESPACE@236..237 "\n"
+        R_CURLY@237..238 "}"
   WHITESPACE@238..239 "\n"
 error 21..21: expected a function pointer or path
 error 52..52: expected a function pointer or path

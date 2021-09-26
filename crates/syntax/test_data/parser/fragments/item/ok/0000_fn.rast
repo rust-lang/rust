@@ -8,5 +8,6 @@ FN@0..11
     R_PAREN@7..8 ")"
   WHITESPACE@8..9 " "
   BLOCK_EXPR@9..11
-    L_CURLY@9..10 "{"
-    R_CURLY@10..11 "}"
+    STMT_LIST@9..11
+      L_CURLY@9..10 "{"
+      R_CURLY@10..11 "}"

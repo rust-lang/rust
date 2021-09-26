@@ -212,7 +212,7 @@ fn remove_newline(
 }
 
 fn join_single_expr_block(edit: &mut TextEditBuilder, token: &SyntaxToken) -> Option<()> {
-    let block_expr = ast::BlockExpr::cast(token.parent()?)?;
+    let block_expr = ast::BlockExpr::cast(token.ancestors().nth(1)?)?;
     if !block_expr.is_standalone() {
         return None;
     }

@@ -326,7 +326,7 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn has_block_expr_parent(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::BlockExpr))
+        matches!(self.completion_location, Some(ImmediateLocation::StmtList))
     }
 
     pub(crate) fn expects_ident_pat_or_ref_expr(&self) -> bool {
@@ -818,9 +818,9 @@ impl<'a> CompletionContext<'a> {
                     if let Some(stmt) = ast::ExprStmt::cast(node.clone()) {
                         return Some(stmt.syntax().text_range() == name_ref.syntax().text_range());
                     }
-                    if let Some(block) = ast::BlockExpr::cast(node) {
+                    if let Some(stmt_list) = ast::StmtList::cast(node) {
                         return Some(
-                            block.tail_expr().map(|e| e.syntax().text_range())
+                            stmt_list.tail_expr().map(|e| e.syntax().text_range())
                                 == Some(name_ref.syntax().text_range()),
                         );
                     }

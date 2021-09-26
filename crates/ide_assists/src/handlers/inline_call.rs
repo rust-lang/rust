@@ -389,9 +389,13 @@ fn inline(
             _ => {
                 let ty =
                     sema.type_of_expr(expr).filter(TypeInfo::has_adjustment).and(param_ty.clone());
-                body.push_front(
-                    make::let_stmt(pat.clone(), ty, Some(expr.clone())).clone_for_update().into(),
-                )
+                if let Some(stmt_list) = body.stmt_list() {
+                    stmt_list.push_front(
+                        make::let_stmt(pat.clone(), ty, Some(expr.clone()))
+                            .clone_for_update()
+                            .into(),
+                    )
+                }
             }
         }
     }

@@ -44,8 +44,9 @@ SOURCE_FILE@0..29
       R_PAREN@24..25 ")"
     WHITESPACE@25..26 " "
     BLOCK_EXPR@26..28
-      L_CURLY@26..27 "{"
-      R_CURLY@27..28 "}"
+      STMT_LIST@26..28
+        L_CURLY@26..27 "{"
+        R_CURLY@27..28 "}"
   WHITESPACE@28..29 "\n"
 error 6..6: missing type for function parameter
 error 6..6: expected COMMA

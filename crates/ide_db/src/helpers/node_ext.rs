@@ -32,8 +32,8 @@ pub fn walk_expr(expr: &ast::Expr, cb: &mut dyn FnMut(ast::Expr)) {
 /// Preorder walk all the expression's child expressions preserving events.
 /// If the callback returns true on an [`WalkEvent::Enter`], the subtree of the expression will be skipped.
 /// Note that the subtree may already be skipped due to the context analysis this function does.
-pub fn preorder_expr(expr: &ast::Expr, cb: &mut dyn FnMut(WalkEvent<ast::Expr>) -> bool) {
-    let mut preorder = expr.syntax().preorder();
+pub fn preorder_expr(start: &ast::Expr, cb: &mut dyn FnMut(WalkEvent<ast::Expr>) -> bool) {
+    let mut preorder = start.syntax().preorder();
     while let Some(event) = preorder.next() {
         let node = match event {
             WalkEvent::Enter(node) => node,
@@ -44,17 +44,17 @@ pub fn preorder_expr(expr: &ast::Expr, cb: &mut dyn FnMut(WalkEvent<ast::Expr>) 
                 continue;
             }
         };
-        match ast::Stmt::cast(node.clone()) {
-            // recursively walk the initializer, skipping potential const pat expressions
-            // let statements aren't usually nested too deeply so this is fine to recurse on
-            Some(ast::Stmt::LetStmt(l)) => {
-                if let Some(expr) = l.initializer() {
-                    preorder_expr(&expr, cb);
-                }
+        if let Some(let_stmt) = node.parent().and_then(ast::LetStmt::cast) {
+            if Some(node.clone()) != let_stmt.initializer().map(|it| it.syntax().clone()) {
+                // skipping potential const pat expressions in  let statements
                 preorder.skip_subtree();
+                continue;
             }
+        }
+
+        match ast::Stmt::cast(node.clone()) {
             // Don't skip subtree since we want to process the expression child next
-            Some(ast::Stmt::ExprStmt(_)) => (),
+            Some(ast::Stmt::ExprStmt(_)) | Some(ast::Stmt::LetStmt(_)) => (),
             // This might be an expression
             Some(ast::Stmt::Item(ast::Item::MacroCall(mcall))) => {
                 cb(WalkEvent::Enter(ast::Expr::MacroCall(mcall)));
@@ -68,15 +68,19 @@ pub fn preorder_expr(expr: &ast::Expr, cb: &mut dyn FnMut(WalkEvent<ast::Expr>) 
                     preorder.skip_subtree();
                 } else if let Some(expr) = ast::Expr::cast(node) {
                     let is_different_context = match &expr {
-                        ast::Expr::EffectExpr(effect) => {
+                        ast::Expr::BlockExpr(block_expr) => {
                             matches!(
-                                effect.effect(),
-                                ast::Effect::Async(_) | ast::Effect::Try(_) | ast::Effect::Const(_)
+                                block_expr.modifier(),
+                                Some(
+                                    ast::BlockModifier::Async(_)
+                                        | ast::BlockModifier::Try(_)
+                                        | ast::BlockModifier::Const(_)
+                                )
                             )
                         }
                         ast::Expr::ClosureExpr(_) => true,
                         _ => false,
-                    };
+                    } && expr.syntax() != start.syntax();
                     let skip = cb(WalkEvent::Enter(expr));
                     if skip || is_different_context {
                         preorder.skip_subtree();
@@ -88,8 +92,8 @@ pub fn preorder_expr(expr: &ast::Expr, cb: &mut dyn FnMut(WalkEvent<ast::Expr>) 
 }
 
 /// Preorder walk all the expression's child patterns.
-pub fn walk_patterns_in_expr(expr: &ast::Expr, cb: &mut dyn FnMut(ast::Pat)) {
-    let mut preorder = expr.syntax().preorder();
+pub fn walk_patterns_in_expr(start: &ast::Expr, cb: &mut dyn FnMut(ast::Pat)) {
+    let mut preorder = start.syntax().preorder();
     while let Some(event) = preorder.next() {
         let node = match event {
             WalkEvent::Enter(node) => node,
@@ -115,15 +119,19 @@ pub fn walk_patterns_in_expr(expr: &ast::Expr, cb: &mut dyn FnMut(ast::Pat)) {
                     preorder.skip_subtree();
                 } else if let Some(expr) = ast::Expr::cast(node.clone()) {
                     let is_different_context = match &expr {
-                        ast::Expr::EffectExpr(effect) => match effect.effect() {
-                            ast::Effect::Async(_) | ast::Effect::Try(_) | ast::Effect::Const(_) => {
-                                true
-                            }
-                            ast::Effect::Unsafe(_) | ast::Effect::Label(_) => false,
-                        },
+                        ast::Expr::BlockExpr(block_expr) => {
+                            matches!(
+                                block_expr.modifier(),
+                                Some(
+                                    ast::BlockModifier::Async(_)
+                                        | ast::BlockModifier::Try(_)
+                                        | ast::BlockModifier::Const(_)
+                                )
+                            )
+                        }
                         ast::Expr::ClosureExpr(_) => true,
                         _ => false,
-                    };
+                    } && expr.syntax() != start.syntax();
                     if is_different_context {
                         preorder.skip_subtree();
                     }

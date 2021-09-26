@@ -139,26 +139,27 @@ impl SnippetCap {
 pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
     match expr {
         ast::Expr::BlockExpr(b) => {
-            if let Some(e) = b.tail_expr() {
-                for_each_tail_expr(&e, cb);
-            }
-        }
-        ast::Expr::EffectExpr(e) => match e.effect() {
-            ast::Effect::Label(label) => {
-                for_each_break_expr(Some(label), e.block_expr(), &mut |b| {
-                    cb(&ast::Expr::BreakExpr(b))
-                });
-                if let Some(b) = e.block_expr() {
-                    for_each_tail_expr(&ast::Expr::BlockExpr(b), cb);
+            match b.modifier() {
+                Some(
+                    ast::BlockModifier::Async(_)
+                    | ast::BlockModifier::Try(_)
+                    | ast::BlockModifier::Const(_),
+                ) => return cb(expr),
+
+                Some(ast::BlockModifier::Label(label)) => {
+                    for_each_break_expr(Some(label), b.stmt_list(), &mut |b| {
+                        cb(&ast::Expr::BreakExpr(b))
+                    });
                 }
+                Some(ast::BlockModifier::Unsafe(_)) => (),
+                None => (),
             }
-            ast::Effect::Unsafe(_) => {
-                if let Some(e) = e.block_expr().and_then(|b| b.tail_expr()) {
+            if let Some(stmt_list) = b.stmt_list() {
+                if let Some(e) = stmt_list.tail_expr() {
                     for_each_tail_expr(&e, cb);
                 }
             }
-            ast::Effect::Async(_) | ast::Effect::Try(_) | ast::Effect::Const(_) => cb(expr),
-        },
+        }
         ast::Expr::IfExpr(if_) => {
             let mut if_ = if_.clone();
             loop {
@@ -176,7 +177,9 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
             }
         }
         ast::Expr::LoopExpr(l) => {
-            for_each_break_expr(l.label(), l.loop_body(), &mut |b| cb(&ast::Expr::BreakExpr(b)))
+            for_each_break_expr(l.label(), l.loop_body().and_then(|it| it.stmt_list()), &mut |b| {
+                cb(&ast::Expr::BreakExpr(b))
+            })
         }
         ast::Expr::MatchExpr(m) => {
             if let Some(arms) = m.match_arm_list() {
@@ -216,7 +219,7 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
 /// Calls `cb` on each break expr inside of `body` that is applicable for the given label.
 pub fn for_each_break_expr(
     label: Option<ast::Label>,
-    body: Option<ast::BlockExpr>,
+    body: Option<ast::StmtList>,
     cb: &mut dyn FnMut(ast::BreakExpr),
 ) {
     let label = label.and_then(|lbl| lbl.lifetime());
@@ -236,7 +239,7 @@ pub fn for_each_break_expr(
                     ast::Expr::LoopExpr(_) | ast::Expr::WhileExpr(_) | ast::Expr::ForExpr(_) => {
                         depth += 1
                     }
-                    ast::Expr::EffectExpr(e) if e.label().is_some() => depth += 1,
+                    ast::Expr::BlockExpr(e) if e.label().is_some() => depth += 1,
                     ast::Expr::BreakExpr(b)
                         if (depth == 0 && b.lifetime().is_none()) || eq_label(b.lifetime()) =>
                     {
@@ -248,7 +251,7 @@ pub fn for_each_break_expr(
                     ast::Expr::LoopExpr(_) | ast::Expr::WhileExpr(_) | ast::Expr::ForExpr(_) => {
                         depth -= 1
                     }
-                    ast::Expr::EffectExpr(e) if e.label().is_some() => depth -= 1,
+                    ast::Expr::BlockExpr(e) if e.label().is_some() => depth -= 1,
                     _ => (),
                 },
             }

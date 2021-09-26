@@ -9,90 +9,91 @@ SOURCE_FILE@0..135
       R_PAREN@8..9 ")"
     WHITESPACE@9..10 " "
     BLOCK_EXPR@10..134
-      L_CURLY@10..11 "{"
-      WHITESPACE@11..16 "\n    "
-      MATCH_EXPR@16..132
-        MATCH_KW@16..21 "match"
-        WHITESPACE@21..22 " "
-        LITERAL@22..24
-          INT_NUMBER@22..24 "92"
-        WHITESPACE@24..25 " "
-        MATCH_ARM_LIST@25..132
-          L_CURLY@25..26 "{"
-          WHITESPACE@26..35 "\n        "
-          MATCH_ARM@35..51
-            RANGE_PAT@35..44
-              LITERAL_PAT@35..36
-                LITERAL@35..36
-                  INT_NUMBER@35..36 "0"
-              WHITESPACE@36..37 " "
-              DOT3@37..40 "..."
-              WHITESPACE@40..41 " "
-              LITERAL_PAT@41..44
-                LITERAL@41..44
-                  INT_NUMBER@41..44 "100"
-            WHITESPACE@44..45 " "
-            FAT_ARROW@45..47 "=>"
-            WHITESPACE@47..48 " "
-            TUPLE_EXPR@48..50
-              L_PAREN@48..49 "("
-              R_PAREN@49..50 ")"
-            COMMA@50..51 ","
-          WHITESPACE@51..60 "\n        "
-          MATCH_ARM@60..78
-            RANGE_PAT@60..71
-              LITERAL_PAT@60..63
-                LITERAL@60..63
-                  INT_NUMBER@60..63 "101"
-              WHITESPACE@63..64 " "
-              DOT2EQ@64..67 "..="
-              WHITESPACE@67..68 " "
-              LITERAL_PAT@68..71
-                LITERAL@68..71
-                  INT_NUMBER@68..71 "200"
-            WHITESPACE@71..72 " "
-            FAT_ARROW@72..74 "=>"
-            WHITESPACE@74..75 " "
-            TUPLE_EXPR@75..77
-              L_PAREN@75..76 "("
-              R_PAREN@76..77 ")"
-            COMMA@77..78 ","
-          WHITESPACE@78..87 "\n        "
-          MATCH_ARM@87..104
-            RANGE_PAT@87..97
-              LITERAL_PAT@87..90
-                LITERAL@87..90
-                  INT_NUMBER@87..90 "200"
-              WHITESPACE@90..91 " "
-              DOT2@91..93 ".."
-              WHITESPACE@93..94 " "
-              LITERAL_PAT@94..97
-                LITERAL@94..97
-                  INT_NUMBER@94..97 "301"
-            WHITESPACE@97..98 " "
-            FAT_ARROW@98..100 "=>"
-            WHITESPACE@100..101 " "
-            TUPLE_EXPR@101..103
-              L_PAREN@101..102 "("
-              R_PAREN@102..103 ")"
-            COMMA@103..104 ","
-          WHITESPACE@104..113 "\n        "
-          MATCH_ARM@113..126
-            RANGE_PAT@113..119
-              LITERAL_PAT@113..116
-                LITERAL@113..116
-                  INT_NUMBER@113..116 "302"
-              WHITESPACE@116..117 " "
-              DOT2@117..119 ".."
-            WHITESPACE@119..120 " "
-            FAT_ARROW@120..122 "=>"
-            WHITESPACE@122..123 " "
-            TUPLE_EXPR@123..125
-              L_PAREN@123..124 "("
-              R_PAREN@124..125 ")"
-            COMMA@125..126 ","
-          WHITESPACE@126..131 "\n    "
-          R_CURLY@131..132 "}"
-      WHITESPACE@132..133 "\n"
-      R_CURLY@133..134 "}"
+      STMT_LIST@10..134
+        L_CURLY@10..11 "{"
+        WHITESPACE@11..16 "\n    "
+        MATCH_EXPR@16..132
+          MATCH_KW@16..21 "match"
+          WHITESPACE@21..22 " "
+          LITERAL@22..24
+            INT_NUMBER@22..24 "92"
+          WHITESPACE@24..25 " "
+          MATCH_ARM_LIST@25..132
+            L_CURLY@25..26 "{"
+            WHITESPACE@26..35 "\n        "
+            MATCH_ARM@35..51
+              RANGE_PAT@35..44
+                LITERAL_PAT@35..36
+                  LITERAL@35..36
+                    INT_NUMBER@35..36 "0"
+                WHITESPACE@36..37 " "
+                DOT3@37..40 "..."
+                WHITESPACE@40..41 " "
+                LITERAL_PAT@41..44
+                  LITERAL@41..44
+                    INT_NUMBER@41..44 "100"
+              WHITESPACE@44..45 " "
+              FAT_ARROW@45..47 "=>"
+              WHITESPACE@47..48 " "
+              TUPLE_EXPR@48..50
+                L_PAREN@48..49 "("
+                R_PAREN@49..50 ")"
+              COMMA@50..51 ","
+            WHITESPACE@51..60 "\n        "
+            MATCH_ARM@60..78
+              RANGE_PAT@60..71
+                LITERAL_PAT@60..63
+                  LITERAL@60..63
+                    INT_NUMBER@60..63 "101"
+                WHITESPACE@63..64 " "
+                DOT2EQ@64..67 "..="
+                WHITESPACE@67..68 " "
+                LITERAL_PAT@68..71
+                  LITERAL@68..71
+                    INT_NUMBER@68..71 "200"
+              WHITESPACE@71..72 " "
+              FAT_ARROW@72..74 "=>"
+              WHITESPACE@74..75 " "
+              TUPLE_EXPR@75..77
+                L_PAREN@75..76 "("
+                R_PAREN@76..77 ")"
+              COMMA@77..78 ","
+            WHITESPACE@78..87 "\n        "
+            MATCH_ARM@87..104
+              RANGE_PAT@87..97
+                LITERAL_PAT@87..90
+                  LITERAL@87..90
+                    INT_NUMBER@87..90 "200"
+                WHITESPACE@90..91 " "
+                DOT2@91..93 ".."
+                WHITESPACE@93..94 " "
+                LITERAL_PAT@94..97
+                  LITERAL@94..97
+                    INT_NUMBER@94..97 "301"
+              WHITESPACE@97..98 " "
+              FAT_ARROW@98..100 "=>"
+              WHITESPACE@100..101 " "
+              TUPLE_EXPR@101..103
+                L_PAREN@101..102 "("
+                R_PAREN@102..103 ")"
+              COMMA@103..104 ","
+            WHITESPACE@104..113 "\n        "
+            MATCH_ARM@113..126
+              RANGE_PAT@113..119
+                LITERAL_PAT@113..116
+                  LITERAL@113..116
+                    INT_NUMBER@113..116 "302"
+                WHITESPACE@116..117 " "
+                DOT2@117..119 ".."
+              WHITESPACE@119..120 " "
+              FAT_ARROW@120..122 "=>"
+              WHITESPACE@122..123 " "
+              TUPLE_EXPR@123..125
+                L_PAREN@123..124 "("
+                R_PAREN@124..125 ")"
+              COMMA@125..126 ","
+            WHITESPACE@126..131 "\n    "
+            R_CURLY@131..132 "}"
+        WHITESPACE@132..133 "\n"
+        R_CURLY@133..134 "}"
   WHITESPACE@134..135 "\n"
