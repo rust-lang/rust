@@ -111,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                             Applicability::MachineApplicable,
                         );
                     }
-                } else if digits > max as usize && sym_str != float_str {
+                } else if digits > max as usize && float_str.len() < sym_str.len() {
                     span_lint_and_sugg(
                         cx,
                         EXCESSIVE_PRECISION,
