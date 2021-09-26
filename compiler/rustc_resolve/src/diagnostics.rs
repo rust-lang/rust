@@ -1706,6 +1706,9 @@ crate fn show_candidates(
         candidates.iter().map(|c| path_names_to_string(&c.path)).collect();
 
     path_strings.sort();
+    let core_path_strings =
+        path_strings.drain_filter(|p| p.starts_with("core::")).collect::<Vec<String>>();
+    path_strings.extend(core_path_strings);
     path_strings.dedup();
 
     let (determiner, kind) = if candidates.len() == 1 {
