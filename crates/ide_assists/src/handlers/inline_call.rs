@@ -100,31 +100,7 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext) -> Opt
                     ast::NameLike::NameRef(name_ref) => Some(name_ref),
                     _ => None,
                 });
-                let call_infos = name_refs.filter_map(|name_ref| {
-                    let parent = name_ref.syntax().parent()?;
-                    if let Some(call) = ast::MethodCallExpr::cast(parent.clone()) {
-                        let receiver = call.receiver()?;
-                        let mut arguments = vec![receiver];
-                        arguments.extend(call.arg_list()?.args());
-                        Some(CallInfo {
-                            generic_arg_list: call.generic_arg_list(),
-                            node: CallExprNode::MethodCallExpr(call),
-                            arguments,
-                        })
-                    } else if let Some(segment) = ast::PathSegment::cast(parent) {
-                        let path = segment.syntax().parent().and_then(ast::Path::cast)?;
-                        let path = path.syntax().parent().and_then(ast::PathExpr::cast)?;
-                        let call = path.syntax().parent().and_then(ast::CallExpr::cast)?;
-
-                        Some(CallInfo {
-                            arguments: call.arg_list()?.args().collect(),
-                            node: CallExprNode::Call(call),
-                            generic_arg_list: segment.generic_arg_list(),
-                        })
-                    } else {
-                        None
-                    }
-                });
+                let call_infos = name_refs.filter_map(CallInfo::from_name_ref);
                 let replaced = call_infos
                     .map(|call_info| {
                         let replacement =
@@ -178,43 +154,25 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext) -> Opt
 // }
 // ```
 pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let (label, function, call_info) =
-        if let Some(path_expr) = ctx.find_node_at_offset::<ast::PathExpr>() {
-            // FIXME make applicable only on nameref
-            let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
-            let path = path_expr.path()?;
-
+    let name_ref: ast::NameRef = ctx.find_node_at_offset()?;
+    let call_info = CallInfo::from_name_ref(name_ref.clone())?;
+    let (function, label) = match &call_info.node {
+        CallExprNode::Call(call) => {
+            let path = match call.expr()? {
+                ast::Expr::PathExpr(path) => path.path(),
+                _ => None,
+            }?;
             let function = match ctx.sema.resolve_path(&path)? {
-                PathResolution::Def(hir::ModuleDef::Function(f))
-                | PathResolution::AssocItem(hir::AssocItem::Function(f)) => f,
+                PathResolution::Def(hir::ModuleDef::Function(f)) => f,
+                PathResolution::AssocItem(hir::AssocItem::Function(f)) => f,
                 _ => return None,
             };
-            (
-                format!("Inline `{}`", path),
-                function,
-                CallInfo {
-                    arguments: call.arg_list()?.args().collect(),
-                    node: CallExprNode::Call(call),
-                    generic_arg_list: path.segment().and_then(|it| it.generic_arg_list()),
-                },
-            )
-        } else {
-            let name_ref: ast::NameRef = ctx.find_node_at_offset()?;
-            let call = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast)?;
-            let receiver = call.receiver()?;
-            let function = ctx.sema.resolve_method_call(&call)?;
-            let mut arguments = vec![receiver];
-            arguments.extend(call.arg_list()?.args());
-            (
-                format!("Inline `{}`", name_ref),
-                function,
-                CallInfo {
-                    generic_arg_list: call.generic_arg_list(),
-                    node: CallExprNode::MethodCallExpr(call),
-                    arguments,
-                },
-            )
-        };
+            (function, format!("Inline `{}`", path))
+        }
+        CallExprNode::MethodCallExpr(call) => {
+            (ctx.sema.resolve_method_call(call)?, format!("Inline `{}`", name_ref))
+        }
+    };
 
     let fn_source = function.source(ctx.db())?;
     let fn_body = fn_source.value.body()?;
@@ -271,6 +229,34 @@ struct CallInfo {
     node: CallExprNode,
     arguments: Vec<ast::Expr>,
     generic_arg_list: Option<ast::GenericArgList>,
+}
+
+impl CallInfo {
+    fn from_name_ref(name_ref: ast::NameRef) -> Option<CallInfo> {
+        let parent = name_ref.syntax().parent()?;
+        if let Some(call) = ast::MethodCallExpr::cast(parent.clone()) {
+            let receiver = call.receiver()?;
+            let mut arguments = vec![receiver];
+            arguments.extend(call.arg_list()?.args());
+            Some(CallInfo {
+                generic_arg_list: call.generic_arg_list(),
+                node: CallExprNode::MethodCallExpr(call),
+                arguments,
+            })
+        } else if let Some(segment) = ast::PathSegment::cast(parent) {
+            let path = segment.syntax().parent().and_then(ast::Path::cast)?;
+            let path = path.syntax().parent().and_then(ast::PathExpr::cast)?;
+            let call = path.syntax().parent().and_then(ast::CallExpr::cast)?;
+
+            Some(CallInfo {
+                arguments: call.arg_list()?.args().collect(),
+                node: CallExprNode::Call(call),
+                generic_arg_list: segment.generic_arg_list(),
+            })
+        } else {
+            None
+        }
+    }
 }
 
 fn get_fn_params(
@@ -860,7 +846,7 @@ fn foo<T, const N: usize>() {
 fn bar<U, const M: usize>() {}
 
 fn main() {
-    foo::<usize, {0}>$0();
+    foo$0::<usize, {0}>();
 }
 "#,
             r#"
