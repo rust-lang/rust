@@ -1,21 +1,17 @@
-use crate::common::Debugger;
-use crate::common::{incremental_dir, Incremental, Ui};
-use crate::common::{Config, TestPaths};
+use crate::common::{incremental_dir, Config, Debugger, Incremental, TestPaths, Ui};
 use crate::header::TestProps;
 use crate::json;
 
+use tracing::*;
+
 use std::collections::hash_map::DefaultHasher;
 use std::collections::VecDeque;
-use std::env;
 use std::fs::create_dir_all;
 use std::hash::{Hash, Hasher};
 use std::io::prelude::*;
-use std::io::{self};
 use std::path::PathBuf;
 use std::process::{Child, ExitStatus, Output};
-use std::str;
-
-use tracing::*;
+use std::{env, io, str};
 
 mod test_cx;
 mod test_cx_run_test_fns;

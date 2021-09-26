@@ -1,35 +1,27 @@
 use super::*;
 
-use crate::common::{expected_output_path, UI_EXTENSIONS, UI_STDERR, UI_STDOUT};
-use crate::common::{output_base_dir, output_base_name, output_testname_unique};
-use crate::common::{Assembly, Incremental, JsDocTest, MirOpt, RunMake, RustdocJson, Ui};
-use crate::common::{Codegen, CodegenUnits, DebugInfo, Rustdoc};
-use crate::common::{CompareMode, FailMode, PassMode};
-use crate::common::{Config, TestPaths};
-use crate::common::{Pretty, RunPassValgrind};
-use crate::common::{UI_RUN_STDERR, UI_RUN_STDOUT};
+use crate::common::{
+    expected_output_path, output_base_dir, output_base_name, output_testname_unique, Assembly,
+    Codegen, CodegenUnits, CompareMode, Config, DebugInfo, FailMode, Incremental, JsDocTest,
+    MirOpt, PassMode, Pretty, RunMake, RunPassValgrind, Rustdoc, RustdocJson, TestPaths, Ui,
+    UI_EXTENSIONS, UI_RUN_STDERR, UI_RUN_STDOUT, UI_STDERR, UI_STDOUT,
+};
 use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
-use crate::json;
-use crate::util::get_pointer_width;
-use crate::util::{logv, PathBufExt};
-use crate::ColorConfig;
+use crate::util::{get_pointer_width, logv, PathBufExt};
+use crate::{extract_gdb_version, is_android_gdb_target, json, ColorConfig};
+
+use glob::glob;
+use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 
 use std::collections::{HashMap, HashSet};
-use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, create_dir_all, File};
 use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
-use std::str;
-
-use glob::glob;
-use lazy_static::lazy_static;
-
-use crate::extract_gdb_version;
-use crate::is_android_gdb_target;
+use std::{env, str};
 
 #[derive(Copy, Clone)]
 pub(super) struct TestCx<'test> {

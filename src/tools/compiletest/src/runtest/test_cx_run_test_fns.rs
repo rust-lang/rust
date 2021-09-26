@@ -1,11 +1,9 @@
 use super::*;
 
-use crate::common::Debugger;
-use crate::common::UI_FIXED;
-use crate::common::{CompareMode, FailMode, PassMode};
-use crate::errors::{self};
-use crate::json;
+use crate::common::{CompareMode, Debugger, FailMode, PassMode, UI_FIXED};
 use crate::util::logv;
+use crate::{errors, json};
+
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 
 use std::collections::HashSet;
