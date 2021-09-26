@@ -1,6 +1,7 @@
 use std::convert::TryFrom;
 
 use ide_assists::utils::extract_trivial_expression;
+use ide_db::helpers::node_ext::expr_as_name_ref;
 use itertools::Itertools;
 use syntax::{
     ast::{self, AstNode, AstToken, IsString},
@@ -263,7 +264,7 @@ fn join_assignments(
         return None;
     }
     let lhs = bin_expr.lhs()?;
-    let name_ref = lhs.name_ref()?;
+    let name_ref = expr_as_name_ref(&lhs)?;
 
     if name_ref.to_string() != let_ident_pat.syntax().to_string() {
         cov_mark::hit!(join_assignments_mismatch);

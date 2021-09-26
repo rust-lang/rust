@@ -1,11 +1,13 @@
 //! Various extension methods to ast Nodes, which are hard to code-generate.
 //! Extensions for various expressions live in a sibling `expr_extensions` module.
+//!
+//! These methods should only do simple, shallow tasks related to the syntax of the node itself.
 
 use std::{borrow::Cow, fmt, iter::successors};
 
 use itertools::Itertools;
 use parser::SyntaxKind;
-use rowan::{GreenNodeData, GreenTokenData, WalkEvent};
+use rowan::{GreenNodeData, GreenTokenData};
 
 use crate::{
     ast::{
@@ -55,66 +57,6 @@ impl ast::BlockExpr {
 
     pub fn is_empty(&self) -> bool {
         self.statements().next().is_none() && self.tail_expr().is_none()
-    }
-
-    pub fn as_lone_tail(&self) -> Option<ast::Expr> {
-        self.statements().next().is_none().then(|| self.tail_expr()).flatten()
-    }
-}
-
-impl ast::Pat {
-    /// Preorder walk all the pattern's sub patterns.
-    pub fn walk(&self, cb: &mut dyn FnMut(ast::Pat)) {
-        let mut preorder = self.syntax().preorder();
-        while let Some(event) = preorder.next() {
-            let node = match event {
-                WalkEvent::Enter(node) => node,
-                WalkEvent::Leave(_) => continue,
-            };
-            let kind = node.kind();
-            match ast::Pat::cast(node) {
-                Some(pat @ ast::Pat::ConstBlockPat(_)) => {
-                    preorder.skip_subtree();
-                    cb(pat);
-                }
-                Some(pat) => {
-                    cb(pat);
-                }
-                // skip const args
-                None if ast::GenericArg::can_cast(kind) => {
-                    preorder.skip_subtree();
-                }
-                None => (),
-            }
-        }
-    }
-}
-
-impl ast::Type {
-    /// Preorder walk all the type's sub types.
-    pub fn walk(&self, cb: &mut dyn FnMut(ast::Type)) {
-        let mut preorder = self.syntax().preorder();
-        while let Some(event) = preorder.next() {
-            let node = match event {
-                WalkEvent::Enter(node) => node,
-                WalkEvent::Leave(_) => continue,
-            };
-            let kind = node.kind();
-            match ast::Type::cast(node) {
-                Some(ty @ ast::Type::MacroType(_)) => {
-                    preorder.skip_subtree();
-                    cb(ty)
-                }
-                Some(ty) => {
-                    cb(ty);
-                }
-                // skip const args
-                None if ast::ConstArg::can_cast(kind) => {
-                    preorder.skip_subtree();
-                }
-                None => (),
-            }
-        }
     }
 }
 
@@ -443,7 +385,15 @@ impl ast::RecordExprField {
         if let Some(name_ref) = self.name_ref() {
             return Some(name_ref);
         }
-        self.expr()?.name_ref()
+        if let ast::Expr::PathExpr(expr) = self.expr()? {
+            let path = expr.path()?;
+            let segment = path.segment()?;
+            let name_ref = segment.name_ref()?;
+            if path.qualifier().is_none() {
+                return Some(name_ref);
+            }
+        }
+        None
     }
 }
 
@@ -719,29 +669,6 @@ impl ast::Visibility {
                 VisibilityKind::In(path)
             }
             None => VisibilityKind::Pub,
-        }
-    }
-
-    pub fn is_eq_to(&self, other: &Self) -> bool {
-        match (self.kind(), other.kind()) {
-            (VisibilityKind::In(this), VisibilityKind::In(other)) => {
-                stdx::iter_eq_by(this.segments(), other.segments(), |lhs, rhs| {
-                    lhs.kind().zip(rhs.kind()).map_or(false, |it| match it {
-                        (PathSegmentKind::CrateKw, PathSegmentKind::CrateKw)
-                        | (PathSegmentKind::SelfKw, PathSegmentKind::SelfKw)
-                        | (PathSegmentKind::SuperKw, PathSegmentKind::SuperKw) => true,
-                        (PathSegmentKind::Name(lhs), PathSegmentKind::Name(rhs)) => {
-                            lhs.text() == rhs.text()
-                        }
-                        _ => false,
-                    })
-                })
-            }
-            (VisibilityKind::PubSelf, VisibilityKind::PubSelf)
-            | (VisibilityKind::PubSuper, VisibilityKind::PubSuper)
-            | (VisibilityKind::PubCrate, VisibilityKind::PubCrate)
-            | (VisibilityKind::Pub, VisibilityKind::Pub) => true,
-            _ => false,
         }
     }
 }

@@ -1,6 +1,10 @@
 use hir::{known, AsAssocItem, Semantics};
 use ide_db::{
-    helpers::{for_each_tail_expr, FamousDefs},
+    helpers::{
+        for_each_tail_expr,
+        node_ext::{block_as_lone_tail, preorder_expr},
+        FamousDefs,
+    },
     RootDatabase,
 };
 use itertools::Itertools;
@@ -218,7 +222,7 @@ fn is_invalid_body(
     expr: &ast::Expr,
 ) -> bool {
     let mut invalid = false;
-    expr.preorder(&mut |e| {
+    preorder_expr(expr, &mut |e| {
         invalid |=
             matches!(e, syntax::WalkEvent::Enter(ast::Expr::TryExpr(_) | ast::Expr::ReturnExpr(_)));
         invalid
@@ -252,7 +256,7 @@ fn block_is_none_variant(
     block: &ast::BlockExpr,
     none_variant: hir::Variant,
 ) -> bool {
-    block.as_lone_tail().and_then(|e| match e {
+    block_as_lone_tail(block).and_then(|e| match e {
         ast::Expr::PathExpr(pat) => match sema.resolve_path(&pat.path()?)? {
             hir::PathResolution::Def(hir::ModuleDef::Variant(v)) => Some(v),
             _ => None,

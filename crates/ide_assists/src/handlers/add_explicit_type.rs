@@ -1,4 +1,5 @@
 use hir::HirDisplay;
+use ide_db::helpers::node_ext::walk_ty;
 use syntax::ast::{self, AstNode, LetStmt, Param};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -46,7 +47,7 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Optio
     // Don't enable the assist if there is a type ascription without any placeholders
     if let Some(ty) = &ascribed_ty {
         let mut contains_infer_ty = false;
-        ty.walk(&mut |ty| contains_infer_ty |= matches!(ty, ast::Type::InferType(_)));
+        walk_ty(ty, &mut |ty| contains_infer_ty |= matches!(ty, ast::Type::InferType(_)));
         if !contains_infer_ty {
             cov_mark::hit!(add_explicit_type_not_applicable_if_ty_already_specified);
             return None;

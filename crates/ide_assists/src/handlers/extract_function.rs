@@ -5,6 +5,7 @@ use either::Either;
 use hir::{HirDisplay, InFile, Local, Semantics, TypeInfo};
 use ide_db::{
     defs::{Definition, NameRefClass},
+    helpers::node_ext::{preorder_expr, walk_expr, walk_pat, walk_patterns_in_expr},
     search::{FileReference, ReferenceAccess, SearchScope},
     RootDatabase,
 };
@@ -478,7 +479,7 @@ impl FunctionBody {
 
     fn walk_expr(&self, cb: &mut dyn FnMut(ast::Expr)) {
         match self {
-            FunctionBody::Expr(expr) => expr.walk(cb),
+            FunctionBody::Expr(expr) => walk_expr(expr, cb),
             FunctionBody::Span { parent, text_range } => {
                 parent
                     .statements()
@@ -488,12 +489,12 @@ impl FunctionBody {
                         ast::Stmt::Item(_) => None,
                         ast::Stmt::LetStmt(stmt) => stmt.initializer(),
                     })
-                    .for_each(|expr| expr.walk(cb));
+                    .for_each(|expr| walk_expr(&expr, cb));
                 if let Some(expr) = parent
                     .tail_expr()
                     .filter(|it| text_range.contains_range(it.syntax().text_range()))
                 {
-                    expr.walk(cb);
+                    walk_expr(&expr, cb);
                 }
             }
         }
@@ -501,7 +502,7 @@ impl FunctionBody {
 
     fn preorder_expr(&self, cb: &mut dyn FnMut(WalkEvent<ast::Expr>) -> bool) {
         match self {
-            FunctionBody::Expr(expr) => expr.preorder(cb),
+            FunctionBody::Expr(expr) => preorder_expr(expr, cb),
             FunctionBody::Span { parent, text_range } => {
                 parent
                     .statements()
@@ -511,12 +512,12 @@ impl FunctionBody {
                         ast::Stmt::Item(_) => None,
                         ast::Stmt::LetStmt(stmt) => stmt.initializer(),
                     })
-                    .for_each(|expr| expr.preorder(cb));
+                    .for_each(|expr| preorder_expr(&expr, cb));
                 if let Some(expr) = parent
                     .tail_expr()
                     .filter(|it| text_range.contains_range(it.syntax().text_range()))
                 {
-                    expr.preorder(cb);
+                    preorder_expr(&expr, cb);
                 }
             }
         }
@@ -524,7 +525,7 @@ impl FunctionBody {
 
     fn walk_pat(&self, cb: &mut dyn FnMut(ast::Pat)) {
         match self {
-            FunctionBody::Expr(expr) => expr.walk_patterns(cb),
+            FunctionBody::Expr(expr) => walk_patterns_in_expr(expr, cb),
             FunctionBody::Span { parent, text_range } => {
                 parent
                     .statements()
@@ -532,16 +533,16 @@ impl FunctionBody {
                     .for_each(|stmt| match stmt {
                         ast::Stmt::ExprStmt(expr_stmt) => {
                             if let Some(expr) = expr_stmt.expr() {
-                                expr.walk_patterns(cb)
+                                walk_patterns_in_expr(&expr, cb)
                             }
                         }
                         ast::Stmt::Item(_) => (),
                         ast::Stmt::LetStmt(stmt) => {
                             if let Some(pat) = stmt.pat() {
-                                pat.walk(cb);
+                                walk_pat(&pat, cb);
                             }
                             if let Some(expr) = stmt.initializer() {
-                                expr.walk_patterns(cb);
+                                walk_patterns_in_expr(&expr, cb);
                             }
                         }
                     });
@@ -549,7 +550,7 @@ impl FunctionBody {
                     .tail_expr()
                     .filter(|it| text_range.contains_range(it.syntax().text_range()))
                 {
-                    expr.walk_patterns(cb);
+                    walk_patterns_in_expr(&expr, cb);
                 }
             }
         }

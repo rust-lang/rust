@@ -7,6 +7,8 @@ use syntax::{
     ted,
 };
 
+use crate::helpers::node_ext::vis_eq;
+
 /// What type of merges are allowed.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum MergeBehavior {
@@ -292,7 +294,7 @@ fn path_segment_cmp(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
 pub fn eq_visibility(vis0: Option<ast::Visibility>, vis1: Option<ast::Visibility>) -> bool {
     match (vis0, vis1) {
         (None, None) => true,
-        (Some(vis0), Some(vis1)) => vis0.is_eq_to(&vis1),
+        (Some(vis0), Some(vis1)) => vis_eq(&vis0, &vis1),
         _ => false,
     }
 }

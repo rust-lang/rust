@@ -1,4 +1,5 @@
 use either::Either;
+use ide_db::helpers::node_ext::walk_ty;
 use itertools::Itertools;
 use syntax::{
     ast::{self, edit::IndentLevel, AstNode, GenericParamsOwner, NameOwner},
@@ -120,7 +121,7 @@ fn collect_used_generics<'gp>(
     }
 
     let mut generics = Vec::new();
-    ty.walk(&mut |ty| match ty {
+    walk_ty(ty, &mut |ty| match ty {
         ast::Type::PathType(ty) => {
             if let Some(path) = ty.path() {
                 if let Some(name_ref) = path.as_single_name_ref() {
