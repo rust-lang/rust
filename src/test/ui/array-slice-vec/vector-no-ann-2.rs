@@ -2,6 +2,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(box_syntax)]
-
-pub fn main() { let _quux: Box<Vec<usize>> = box Vec::new(); }
+pub fn main() {
+    let _quux: Box<Vec<usize>> = Box::new(Vec::new());
+}

@@ -6,9 +6,7 @@
 // Check that we do not ICE when compiling this
 // macro, which reuses the expression `$id`
 
-
 #![feature(box_patterns)]
-#![feature(box_syntax)]
 
 struct Foo {
   a: isize
@@ -23,7 +21,7 @@ impl Foo {
     macro_rules! declare {
       ($id:expr, $rest:expr) => ({
         self.check_id($id);
-        box Bar::Bar2($id, $rest)
+        Box::new(Bar::Bar2($id, $rest))
       })
     }
     match s {

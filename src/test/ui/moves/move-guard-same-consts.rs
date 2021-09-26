@@ -8,10 +8,10 @@
 // that assumption did not hold, at least not in the long run (namely,
 // overlapping patterns were turned into warnings rather than errors).
 
-#![feature(box_syntax)]
+
 
 fn main() {
-    let x: Box<_> = box 1;
+    let x: Box<_> = Box::new(1);
 
     let v = (1, 2);
 

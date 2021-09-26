@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(box_syntax)]
-
 fn f(x: Box<isize>) {
     let y: &isize = &*x;
     println!("{}", *x);
@@ -27,6 +25,6 @@ fn g(x: Box<dyn Trait>) {
 }
 
 fn main() {
-    f(box 1234);
-    g(box Struct as Box<dyn Trait>);
+    f(Box::new(1234));
+    g(Box::new(Struct) as Box<dyn Trait>);
 }

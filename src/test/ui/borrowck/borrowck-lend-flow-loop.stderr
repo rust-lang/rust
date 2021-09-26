@@ -7,7 +7,7 @@ LL |     for _ in 0..3 {
 LL |         borrow(&*v);
    |                ^^^ immutable borrow occurs here
 LL |     }
-LL |     *x = box 5;
+LL |     *x = Box::new(5);
    |     -- mutable borrow later used here
 
 error[E0502]: cannot borrow `*v` as immutable because it is also borrowed as mutable

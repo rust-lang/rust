@@ -4,7 +4,7 @@
 // either genuine or would require more advanced changes.  The latter
 // cases are noted.
 
-#![feature(box_syntax)]
+
 
 fn borrow(_v: &isize) {}
 fn borrow_mut(_v: &mut isize) {}
@@ -13,13 +13,13 @@ fn for_func<F>(_f: F) where F: FnOnce() -> bool { panic!() }
 fn produce<T>() -> T { panic!(); }
 
 fn inc(v: &mut Box<isize>) {
-    *v = box (**v + 1);
+    *v = Box::new(**v + 1);
 }
 
 fn pre_freeze() {
     // In this instance, the freeze starts before the mut borrow.
 
-    let mut v: Box<_> = box 3;
+    let mut v: Box<_> = Box::new(3);
     let _w = &v;
     borrow_mut(&mut *v); //~ ERROR cannot borrow
     _w.use_ref();
@@ -28,7 +28,7 @@ fn pre_freeze() {
 fn post_freeze() {
     // In this instance, the const alias starts after the borrow.
 
-    let mut v: Box<_> = box 3;
+    let mut v: Box<_> = Box::new(3);
     borrow_mut(&mut *v);
     let _w = &v;
 }

@@ -121,8 +121,6 @@
 // lldbr-check:(isize) arg2 = -10
 // lldb-command:continue
 
-
-#![feature(box_syntax)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
@@ -154,7 +152,7 @@ fn main() {
     let _ = stack.self_by_ref(-1, -2);
     let _ = stack.self_by_val(-3, -4);
 
-    let owned: Box<_> = box Struct { x: 200 };
+    let owned: Box<_> = Box::new(Struct { x: 200 });
     let _ = owned.self_by_ref(-5, -6);
     let _ = owned.self_by_val(-7, -8);
     let _ = owned.self_owned(-9, -10);

@@ -1,7 +1,7 @@
-#![feature(box_syntax)]
-
 fn test(_x: &mut String) {}
+
 fn test2(_x: &mut i32) {}
+
 
 fn main() {
     let x: usize = String::new();
@@ -14,7 +14,7 @@ fn main() {
     test2(&y);
     //~^ ERROR E0308
     let f;
-    f = box f;
+    f = Box::new(f);
     //~^ ERROR E0308
 
     let s = &mut String::new();

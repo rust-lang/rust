@@ -1,10 +1,8 @@
 // run-pass
 
-#![feature(box_syntax)]
-
 // Tests for if as expressions returning boxed types
 fn test_box() {
-    let rs: Box<_> = if true { box 100 } else { box 101 };
+    let rs: Box<_> = if true { Box::new(100) } else { Box::new(101) };
     assert_eq!(*rs, 100);
 }
 

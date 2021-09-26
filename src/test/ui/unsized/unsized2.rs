@@ -4,7 +4,6 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unused_imports)]
-#![feature(box_syntax)]
 
 // Test sized-ness checking in substitution.
 
@@ -36,7 +35,7 @@ trait T2 {
 struct S;
 impl T2 for S {
     fn f() -> Box<S> {
-        box S
+        Box::new(S)
     }
 }
 fn f5<X: ?Sized+T2>(x: &X) {
@@ -51,7 +50,7 @@ trait T3 {
 }
 impl T3 for S {
     fn f() -> Box<S> {
-        box S
+        Box::new(S)
     }
 }
 fn f7<X: ?Sized+T3>(x: &X) {

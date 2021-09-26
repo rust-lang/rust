@@ -3,7 +3,6 @@
 // Issue #3148.
 
 #![feature(box_patterns)]
-#![feature(box_syntax)]
 
 struct A {
     value: B
@@ -81,7 +80,7 @@ pub fn main() {
                          v2: [23, 24, 25],
                          v3: vec![26, 27, 28],
                          v4: C { f: 29 },
-                         v5: box C { f: 30 },
+                         v5: Box::new(C { f: 30 }),
                          v6: Some(C { f: 31 })}};
 
     let p = get_v1(&a);

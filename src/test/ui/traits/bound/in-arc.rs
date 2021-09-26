@@ -5,8 +5,6 @@
 
 // ignore-emscripten no threads support
 
-#![feature(box_syntax)]
-
 use std::sync::Arc;
 use std::sync::mpsc::channel;
 use std::thread;
@@ -67,10 +65,11 @@ pub fn main() {
         swim_speed: 998,
         name: "alec_guinness".to_string(),
     };
-    let arc = Arc::new(vec![box catte  as Box<dyn Pet+Sync+Send>,
-                            box dogge1 as Box<dyn Pet+Sync+Send>,
-                            box fishe  as Box<dyn Pet+Sync+Send>,
-                            box dogge2 as Box<dyn Pet+Sync+Send>]);
+    let arc = Arc::new(vec![
+        Box::new(catte)  as Box<dyn Pet+Sync+Send>,
+        Box::new(dogge1) as Box<dyn Pet+Sync+Send>,
+        Box::new(fishe)  as Box<dyn Pet+Sync+Send>,
+        Box::new(dogge2) as Box<dyn Pet+Sync+Send>]);
     let (tx1, rx1) = channel();
     let arc1 = arc.clone();
     let t1 = thread::spawn(move|| { check_legs(arc1); tx1.send(()); });

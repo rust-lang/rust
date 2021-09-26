@@ -1,9 +1,8 @@
 // run-pass
-#![feature(box_syntax)]
 
 struct Recbox<T> {x: Box<T>}
 
-fn reclift<T>(t: T) -> Recbox<T> { return Recbox {x: box t}; }
+fn reclift<T>(t: T) -> Recbox<T> { return Recbox { x: Box::new(t) }; }
 
 pub fn main() {
     let foo: isize = 17;

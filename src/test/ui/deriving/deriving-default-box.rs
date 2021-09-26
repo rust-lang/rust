@@ -1,6 +1,4 @@
 // run-pass
-#![feature(box_syntax)]
-
 use std::default::Default;
 
 #[derive(Default)]

@@ -1,8 +1,6 @@
 // run-pass
 // aux-build:cci_class_cast.rs
 
-#![feature(box_syntax)]
-
 extern crate cci_class_cast;
 
 use std::string::ToString;
@@ -15,6 +13,6 @@ fn print_out(thing: Box<dyn ToString>, expected: String) {
 }
 
 pub fn main() {
-  let nyan: Box<dyn ToString> = box cat(0, 2, "nyan".to_string()) as Box<dyn ToString>;
+  let nyan: Box<dyn ToString> = Box::new(cat(0, 2, "nyan".to_string())) as Box<dyn ToString>;
   print_out(nyan, "nyan".to_string());
 }

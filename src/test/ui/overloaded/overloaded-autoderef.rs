@@ -2,8 +2,6 @@
 #![allow(unused_variables)]
 #![allow(stable_features)]
 
-#![feature(box_syntax, core)]
-
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -14,7 +12,7 @@ struct Point {
 }
 
 pub fn main() {
-    let box_5: Box<_> = box 5_usize;
+    let box_5: Box<_> = Box::new(5_usize);
     let point = Rc::new(Point {x: 2, y: 4});
     assert_eq!(point.x, 2);
     assert_eq!(point.y, 4);

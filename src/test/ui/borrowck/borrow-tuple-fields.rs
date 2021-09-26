@@ -1,13 +1,13 @@
-#![feature(box_syntax)]
-
-
-
 struct Foo(Box<isize>, isize);
 
 struct Bar(isize, isize);
 
+
+
+
+
 fn main() {
-    let x: (Box<_>, _) = (box 1, 2);
+    let x: (Box<_>, _) = (Box::new(1), 2);
     let r = &x.0;
     let y = x; //~ ERROR cannot move out of `x` because it is borrowed
 
@@ -23,7 +23,7 @@ fn main() {
     let b = &mut x.0; //~ ERROR cannot borrow `x.0` as mutable more than once at a time
     a.use_ref();
 
-    let x = Foo(box 1, 2);
+    let x = Foo(Box::new(1), 2);
     let r = &x.0;
     let y = x; //~ ERROR cannot move out of `x` because it is borrowed
     r.use_ref();

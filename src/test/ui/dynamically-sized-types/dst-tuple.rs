@@ -1,7 +1,6 @@
 // run-pass
 #![allow(type_alias_bounds)]
 
-#![feature(box_syntax)]
 #![feature(unsized_tuple_coercion)]
 
 type Fat<T: ?Sized> = (isize, &'static str, T);
@@ -109,7 +108,7 @@ pub fn main() {
     assert_eq!((*f2)[1], 2);
 
     // Nested Box.
-    let f1 : Box<Fat<[isize; 3]>> = box (5, "some str", [1, 2, 3]);
+    let f1 : Box<Fat<[isize; 3]>> = Box::new((5, "some str", [1, 2, 3]));
     foo(&*f1);
     let f2 : Box<Fat<[isize]>> = f1;
     foo(&*f2);

@@ -1,14 +1,12 @@
 // check-pass
 
-#![feature(box_syntax)]
-
 struct Foo { a: isize, b: isize }
 
 fn main() {
-    let mut x: Box<_> = box Foo { a: 1, b: 2 };
+    let mut x: Box<_> = Box::new(Foo { a: 1, b: 2 });
     let (a, b) = (&mut x.a, &mut x.b);
 
-    let mut foo: Box<_> = box Foo { a: 1, b: 2 };
+    let mut foo: Box<_> = Box::new(Foo { a: 1, b: 2 });
     let (c, d) = (&mut foo.a, &foo.b);
 
     // We explicitly use the references created above to illustrate that the

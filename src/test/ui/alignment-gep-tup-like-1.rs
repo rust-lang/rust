@@ -3,8 +3,6 @@
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
 
-#![feature(box_syntax)]
-
 struct pair<A,B> {
     a: A, b: B
 }
@@ -25,10 +23,10 @@ impl<A:Clone> Invokable<A> for Invoker<A> {
 }
 
 fn f<A:Clone + 'static>(a: A, b: u16) -> Box<dyn Invokable<A>+'static> {
-    box Invoker {
+    Box::new(Invoker {
         a: a,
         b: b,
-    } as Box<dyn Invokable<A>+'static>
+    }) as Box<dyn Invokable<A>+'static>
 }
 
 pub fn main() {

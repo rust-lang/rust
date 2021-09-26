@@ -1,5 +1,4 @@
 // run-pass
-#![feature(box_syntax)]
 
 struct X {
     a: isize
@@ -17,7 +16,7 @@ impl Changer for X {
 }
 
 pub fn main() {
-    let x: Box<_> = box X { a: 32 };
+    let x: Box<_> = Box::new(X { a: 32 });
     let new_x = x.change();
     assert_eq!(new_x.a, 55);
 }

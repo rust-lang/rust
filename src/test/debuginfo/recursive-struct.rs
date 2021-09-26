@@ -52,20 +52,20 @@
 // gdb-command:print long_cycle4.value
 // gdb-check:$18 = 29.5
 
-// gdbr-command:print long_cycle_w_anonymous_types.value
+// gdbr-command:print long_cycle_w_anon_types.value
 // gdb-check:$19 = 30
 
-// gdbr-command:print long_cycle_w_anonymous_types.next.val.value
+// gdbr-command:print long_cycle_w_anon_types.next.val.value
 // gdb-check:$20 = 31
 
 // gdb-command:continue
 
 #![allow(unused_variables)]
-#![feature(box_syntax)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 use self::Opt::{Empty, Val};
+use std::boxed::Box as B;
 
 enum Opt<T> {
     Empty,
@@ -120,75 +120,75 @@ struct LongCycleWithAnonymousTypes {
 fn main() {
     let stack_unique: UniqueNode<u16> = UniqueNode {
         next: Val {
-            val: box UniqueNode {
+            val: Box::new(UniqueNode {
                 next: Empty,
                 value: 1,
-            }
+            })
         },
         value: 0,
     };
 
-    let unique_unique: Box<UniqueNode<u32>> = box UniqueNode {
+    let unique_unique: Box<UniqueNode<u32>> = Box::new(UniqueNode {
         next: Val {
-            val: box UniqueNode {
+            val: Box::new(UniqueNode {
                 next: Empty,
                 value: 3,
-            }
+            })
         },
         value: 2,
-    };
+    });
 
     let vec_unique: [UniqueNode<f32>; 1] = [UniqueNode {
         next: Val {
-            val: box UniqueNode {
+            val: Box::new(UniqueNode {
                 next: Empty,
                 value: 7.5,
-            }
+            })
         },
         value: 6.5,
     }];
 
     let borrowed_unique: &UniqueNode<f64> = &UniqueNode {
         next: Val {
-            val: box UniqueNode {
+            val: Box::new(UniqueNode {
                 next: Empty,
                 value: 9.5,
-            }
+            })
         },
         value: 8.5,
     };
 
     // LONG CYCLE
     let long_cycle1: LongCycle1<u16> = LongCycle1 {
-        next: box LongCycle2 {
-            next: box LongCycle3 {
-                next: box LongCycle4 {
+        next: Box::new(LongCycle2 {
+            next: Box::new(LongCycle3 {
+                next: Box::new(LongCycle4 {
                     next: None,
                     value: 23,
-                },
+                }),
                 value: 22,
-            },
+            }),
             value: 21
-        },
+        }),
         value: 20
     };
 
     let long_cycle2: LongCycle2<u32> = LongCycle2 {
-        next: box LongCycle3 {
-            next: box LongCycle4 {
+        next: Box::new(LongCycle3 {
+            next: Box::new(LongCycle4 {
                 next: None,
                 value: 26,
-            },
+            }),
             value: 25,
-        },
+        }),
         value: 24
     };
 
     let long_cycle3: LongCycle3<u64> = LongCycle3 {
-        next: box LongCycle4 {
+        next: Box::new(LongCycle4 {
             next: None,
             value: 28,
-        },
+        }),
         value: 27,
     };
 
@@ -199,15 +199,15 @@ fn main() {
 
     // It's important that LongCycleWithAnonymousTypes is encountered only at the end of the
     // `box` chain.
-    let long_cycle_w_anonymous_types = box box box box box LongCycleWithAnonymousTypes {
+    let long_cycle_w_anon_types = B::new(B::new(B::new(B::new(B::new(LongCycleWithAnonymousTypes {
         next: Val {
-            val: box box box box box LongCycleWithAnonymousTypes {
+            val: Box::new(Box::new(Box::new(Box::new(Box::new(LongCycleWithAnonymousTypes {
                 next: Empty,
                 value: 31,
-            }
+            })))))
         },
         value: 30
-    };
+    })))));
 
     zzz(); // #break
 }

@@ -3,16 +3,16 @@ error[E0310]: the parameter type `A` may not live long enough
    |
 LL | fn make_object1<A: SomeTrait>(v: A) -> Box<dyn SomeTrait + 'static> {
    |                 -- help: consider adding an explicit lifetime bound...: `A: 'static +`
-LL |     box v as Box<dyn SomeTrait + 'static>
-   |     ^^^^^ ...so that the type `A` will meet its required lifetime bounds
+LL |     Box::new(v) as Box<dyn SomeTrait + 'static>
+   |     ^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
 
 error[E0309]: the parameter type `A` may not live long enough
   --> $DIR/regions-close-over-type-parameter-1.rs:21:5
    |
 LL | fn make_object3<'a, 'b, A: SomeTrait + 'a>(v: A) -> Box<dyn SomeTrait + 'b> {
    |                         -- help: consider adding an explicit lifetime bound...: `A: 'b +`
-LL |     box v as Box<dyn SomeTrait + 'b>
-   |     ^^^^^ ...so that the type `A` will meet its required lifetime bounds
+LL |     Box::new(v) as Box<dyn SomeTrait + 'b>
+   |     ^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
 
 error: aborting due to 2 previous errors
 

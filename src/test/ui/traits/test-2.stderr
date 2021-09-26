@@ -27,10 +27,27 @@ LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
    |                                       ^^^^ -
 
 error[E0038]: the trait `bar` cannot be made into an object
-  --> $DIR/test-2.rs:13:16
+  --> $DIR/test-2.rs:13:22
    |
-LL |     (box 10 as Box<dyn bar>).dup();
-   |                ^^^^^^^^^^^^ `bar` cannot be made into an object
+LL |     (Box::new(10) as Box<dyn bar>).dup();
+   |                      ^^^^^^^^^^^^ `bar` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/test-2.rs:4:30
+   |
+LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
+   |       ---                    ^^^^     ^^^^ ...because method `blah` has generic type parameters
+   |       |                      |
+   |       |                      ...because method `dup` references the `Self` type in its return type
+   |       this trait cannot be made into an object...
+   = help: consider moving `dup` to another trait
+   = help: consider moving `blah` to another trait
+
+error[E0038]: the trait `bar` cannot be made into an object
+  --> $DIR/test-2.rs:13:5
+   |
+LL |     (Box::new(10) as Box<dyn bar>).dup();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `bar` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/test-2.rs:4:30
@@ -46,8 +63,8 @@ LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
 error[E0038]: the trait `bar` cannot be made into an object
   --> $DIR/test-2.rs:13:6
    |
-LL |     (box 10 as Box<dyn bar>).dup();
-   |      ^^^^^^ `bar` cannot be made into an object
+LL |     (Box::new(10) as Box<dyn bar>).dup();
+   |      ^^^^^^^^^^^^ `bar` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/test-2.rs:4:30
@@ -62,7 +79,7 @@ LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
    = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn bar>>` for `Box<{integer}>`
    = note: required by cast to type `Box<dyn bar>`
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0038, E0107.
 For more information about an error, try `rustc --explain E0038`.

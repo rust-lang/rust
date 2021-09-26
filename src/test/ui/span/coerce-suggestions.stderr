@@ -37,13 +37,10 @@ LL |     test2(&y);
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:17:9
    |
-LL |     f = box f;
-   |         ^^^^^ cyclic type of infinite size
-   |
-help: try using a conversion method
-   |
-LL |     f = (box f).to_string();
-   |         +     +++++++++++++
+LL |     f = Box::new(f);
+   |         ^^^^^^^^^^^- help: try using a conversion method: `.to_string()`
+   |         |
+   |         cyclic type of infinite size
 
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:21:9

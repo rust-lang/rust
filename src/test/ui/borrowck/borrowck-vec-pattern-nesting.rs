@@ -1,12 +1,12 @@
 #![feature(box_patterns)]
-#![feature(box_syntax)]
+
 
 fn a() {
-    let mut vec = [box 1, box 2, box 3];
+    let mut vec = [Box::new(1), Box::new(2), Box::new(3)];
     match vec {
         [box ref _a, _, _] => {
         //~^ NOTE borrow of `vec[_]` occurs here
-            vec[0] = box 4; //~ ERROR cannot assign
+            vec[0] = Box::new(4); //~ ERROR cannot assign
             //~^ NOTE assignment to borrowed `vec[_]` occurs here
             _a.use_ref();
             //~^ NOTE borrow later used here
@@ -15,12 +15,12 @@ fn a() {
 }
 
 fn b() {
-    let mut vec = vec![box 1, box 2, box 3];
+    let mut vec = vec![Box::new(1), Box::new(2), Box::new(3)];
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
         &mut [ref _b @ ..] => {
         //~^ borrow of `vec[_]` occurs here
-            vec[0] = box 4; //~ ERROR cannot assign
+            vec[0] = Box::new(4); //~ ERROR cannot assign
             //~^ NOTE assignment to borrowed `vec[_]` occurs here
             _b.use_ref();
             //~^ NOTE borrow later used here
@@ -29,7 +29,7 @@ fn b() {
 }
 
 fn c() {
-    let mut vec = vec![box 1, box 2, box 3];
+    let mut vec = vec![Box::new(1), Box::new(2), Box::new(3)];
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
         //~^ ERROR cannot move out
@@ -50,7 +50,7 @@ fn c() {
 }
 
 fn d() {
-    let mut vec = vec![box 1, box 2, box 3];
+    let mut vec = vec![Box::new(1), Box::new(2), Box::new(3)];
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
         //~^ ERROR cannot move out
@@ -69,7 +69,7 @@ fn d() {
 }
 
 fn e() {
-    let mut vec = vec![box 1, box 2, box 3];
+    let mut vec = vec![Box::new(1), Box::new(2), Box::new(3)];
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
         //~^ ERROR cannot move out

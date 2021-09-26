@@ -4,8 +4,6 @@
 // Testing creating two vtables with the same self type, but different
 // traits.
 
-#![feature(box_syntax)]
-
 use std::any::Any;
 
 trait Wrap {
@@ -27,7 +25,7 @@ fn is<T:Any>(x: &dyn Any) -> bool {
 }
 
 fn main() {
-    let x = box 22isize as Box<dyn Wrap>;
+    let x = Box::new(22isize) as Box<dyn Wrap>;
     println!("x={}", x.get());
     let y = x.wrap();
 }

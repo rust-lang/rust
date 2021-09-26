@@ -9,8 +9,6 @@
 // changes were caught. However, those uses in the compiler could
 // easily get changed or refactored away in the future.
 
-#![feature(box_syntax)]
-
 struct Ctxt<'tcx> {
     x: &'tcx Vec<isize>
 }

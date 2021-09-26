@@ -3,8 +3,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
-#![feature(box_syntax)]
-
 static tau: f64 = 2.0*3.14159265358979323;
 
 struct Point {x: f64, y: f64}
@@ -64,7 +62,7 @@ trait Nus { fn f(&self); }
 impl Nus for thing { fn f(&self) {} }
 
 pub fn main() {
-    let y: Box<_> = box thing(A {a: 10});
+    let y: Box<_> = Box::new(thing(A {a: 10}));
     assert_eq!(y.clone().bar(), 10);
     assert_eq!(y.quux(), 10);
 

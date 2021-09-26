@@ -1,6 +1,5 @@
 // run-pass
 #![allow(non_camel_case_types)]
-#![feature(box_syntax)]
 
 trait double {
     fn double(self) -> usize;
@@ -15,6 +14,6 @@ impl double for Box<usize> {
 }
 
 pub fn main() {
-    let x: Box<_> = box 3;
+    let x: Box<_> = Box::new(3);
     assert_eq!(x.double(), 6);
 }

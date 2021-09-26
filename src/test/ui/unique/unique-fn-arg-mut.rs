@@ -1,12 +1,11 @@
 // run-pass
-#![feature(box_syntax)]
 
 fn f(i: &mut Box<isize>) {
-    *i = box 200;
+    *i = Box::new(200);
 }
 
 pub fn main() {
-    let mut i = box 100;
+    let mut i = Box::new(100);
     f(&mut i);
     assert_eq!(*i, 200);
 }

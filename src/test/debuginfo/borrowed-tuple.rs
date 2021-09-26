@@ -37,7 +37,6 @@
 
 
 #![allow(unused_variables)]
-#![feature(box_syntax)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
@@ -46,7 +45,7 @@ fn main() {
     let stack_val_ref: &(i16, f32) = &stack_val;
     let ref_to_unnamed: &(i16, f32) = &(-15, -20f32);
 
-    let unique_val: Box<(i16, f32)> = box (-17, -22f32);
+    let unique_val: Box<(i16, f32)> = Box::new((-17, -22f32));
     let unique_val_ref: &(i16, f32) = &*unique_val;
 
     zzz(); // #break

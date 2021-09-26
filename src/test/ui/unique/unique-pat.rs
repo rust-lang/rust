@@ -1,10 +1,9 @@
 // run-pass
 
 #![feature(box_patterns)]
-#![feature(box_syntax)]
 
 fn simple() {
-    match box true {
+    match Box::new(true) {
       box true => { }
       _ => { panic!(); }
     }

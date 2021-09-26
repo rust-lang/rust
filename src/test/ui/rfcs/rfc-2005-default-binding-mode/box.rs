@@ -1,11 +1,11 @@
 // run-pass
 #![allow(unreachable_patterns)]
-#![feature(box_syntax, box_patterns)]
+#![feature(box_patterns)]
 
 struct Foo{}
 
 pub fn main() {
-    let b = box Foo{};
+    let b = Box::new(Foo{});
     let box f = &b;
     let _: &Foo = f;
 

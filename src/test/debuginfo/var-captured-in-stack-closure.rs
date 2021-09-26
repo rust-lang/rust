@@ -115,7 +115,6 @@
 // cdb-command: dx owned
 // cdb-check:owned            : 0x[...] : 6 [Type: [...] *]
 
-#![feature(box_syntax)]
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
@@ -137,7 +136,7 @@ fn main() {
     };
 
     let struct_ref = &a_struct;
-    let owned: Box<_> = box 6;
+    let owned: Box<_> = Box::new(6);
 
     {
         let mut first_closure = || {

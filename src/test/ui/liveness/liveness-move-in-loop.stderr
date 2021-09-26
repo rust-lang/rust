@@ -1,7 +1,7 @@
 error[E0382]: use of moved value: `y`
   --> $DIR/liveness-move-in-loop.rs:11:25
    |
-LL |     let y: Box<isize> = box 42;
+LL |     let y: Box<isize> = 42.into();
    |         - move occurs because `y` has type `Box<isize>`, which does not implement the `Copy` trait
 ...
 LL |                     x = y;

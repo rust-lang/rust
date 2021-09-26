@@ -3,7 +3,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(dead_code)]
-#![feature(box_syntax)]
 
 // Example from lkuper's intern talk, August 2012 -- now with static
 // methods!
@@ -59,11 +58,11 @@ pub fn main() {
     assert!(Equal::isEq(&leaf(cyan), &leaf(cyan)));
     assert!(!Equal::isEq(&leaf(cyan), &leaf(yellow)));
 
-    assert!(Equal::isEq(&branch(box leaf(magenta), box leaf(cyan)),
-                &branch(box leaf(magenta), box leaf(cyan))));
+    assert!(Equal::isEq(&branch(Box::new(leaf(magenta)), Box::new(leaf(cyan))),
+                &branch(Box::new(leaf(magenta)), Box::new(leaf(cyan)))));
 
-    assert!(!Equal::isEq(&branch(box leaf(magenta), box leaf(cyan)),
-                 &branch(box leaf(magenta), box leaf(magenta))));
+    assert!(!Equal::isEq(&branch(Box::new(leaf(magenta)), Box::new(leaf(cyan))),
+                 &branch(Box::new(leaf(magenta)), Box::new(leaf(magenta)))));
 
     println!("Assertions all succeeded!");
 }

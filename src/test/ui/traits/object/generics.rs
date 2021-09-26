@@ -1,8 +1,6 @@
 // run-pass
 // test for #8664
 
-#![feature(box_syntax)]
-
 use std::marker;
 
 pub trait Trait2<A> {
@@ -38,6 +36,6 @@ impl<V> Trait<u8,V> for () {
 }
 
 pub fn main() {
-    let a = box () as Box<dyn Trait<u8, u8>>;
+    let a = Box::new(()) as Box<dyn Trait<u8, u8>>;
     assert_eq!(a.method(Type::Constant((1, 2))), 0);
 }

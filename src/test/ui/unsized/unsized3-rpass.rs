@@ -2,7 +2,7 @@
 // Test structs with always-unsized fields.
 
 #![allow(warnings)]
-#![feature(box_syntax, unsize, ptr_metadata)]
+#![feature(unsize, ptr_metadata)]
 
 use std::mem;
 use std::ptr;
@@ -58,7 +58,7 @@ pub fn main() {
             f: [T; 3],
         }
 
-        let data: Box<Foo_<i32>> = box Foo_ { f: [1, 2, 3] };
+        let data: Box<Foo_<i32>> = Box::new(Foo_ { f: [1, 2, 3] });
         let x: &Foo<i32> = mem::transmute(slice::from_raw_parts(&*data, 3));
         assert_eq!(x.f.len(), 3);
         assert_eq!(x.f[0], 1);
@@ -69,7 +69,7 @@ pub fn main() {
         }
 
         let data: Box<_> =
-            box Baz_ { f1: 42, f2: ['a' as u8, 'b' as u8, 'c' as u8, 'd' as u8, 'e' as u8] };
+            Box::new(Baz_ { f1: 42, f2: ['a' as u8, 'b' as u8, 'c' as u8, 'd' as u8, 'e' as u8] });
         let x: &Baz = mem::transmute(slice::from_raw_parts(&*data, 5));
         assert_eq!(x.f1, 42);
         let chs: Vec<char> = x.f2.chars().collect();
@@ -84,9 +84,9 @@ pub fn main() {
             f: St,
         }
 
-        let obj: Box<St> = box St { f: 42 };
+        let obj: Box<St> = Box::new(St { f: 42 });
         let obj: &Tr = &*obj;
-        let data: Box<_> = box Qux_ { f: St { f: 234 } };
+        let data: Box<_> = Box::new(Qux_ { f: St { f: 234 } });
         let x: &Qux = &*ptr::from_raw_parts::<Qux>((&*data as *const _).cast(), ptr::metadata(obj));
         assert_eq!(x.f.foo(), 234);
     }

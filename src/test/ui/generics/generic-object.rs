@@ -1,5 +1,4 @@
 // run-pass
-#![feature(box_syntax)]
 
 trait Foo<T> {
     fn get(&self) -> T;
@@ -16,7 +15,7 @@ impl Foo<isize> for S {
 }
 
 pub fn main() {
-    let x = box S { x: 1 };
+    let x = Box::new(S { x: 1 });
     let y = x as Box<dyn Foo<isize>>;
     assert_eq!(y.get(), 1);
 }

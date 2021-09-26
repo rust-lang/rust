@@ -1,5 +1,4 @@
 // run-pass
-#![feature(box_syntax)]
 
 fn borrow<F>(x: &isize, f: F) where F: FnOnce(&isize) {
     f(x)
@@ -14,5 +13,5 @@ fn test1(x: &Box<isize>) {
 }
 
 pub fn main() {
-    test1(&box 22);
+    test1(&Box::new(22));
 }

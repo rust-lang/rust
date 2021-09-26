@@ -1,8 +1,8 @@
-#![feature(box_syntax)]
-
 trait X {
     fn get_i(&self) -> isize;
 }
+
+
 
 
 struct B {
@@ -24,7 +24,7 @@ fn make_a<'a>(p: &'a dyn X) -> A<'a> {
 }
 
 fn make_make_a<'a>() -> A<'a> {
-    let b: Box<B> = box B {i:1};
+    let b: Box<B> = Box::new(B { i: 1 });
     let bb: &B = &*b;
     make_a(bb)  //~ ERROR cannot return value referencing local data `*b`
 }

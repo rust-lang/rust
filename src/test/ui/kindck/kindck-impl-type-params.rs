@@ -1,7 +1,7 @@
 // Issue #14061: tests the interaction between generic implementation
 // parameter bounds and trait objects.
 
-#![feature(box_syntax)]
+
 
 use std::marker;
 
@@ -34,7 +34,7 @@ fn foo<'a>() {
 }
 
 fn foo2<'a>() {
-    let t: Box<S<String>> = box S(marker::PhantomData);
+    let t: Box<S<String>> = Box::new(S(marker::PhantomData));
     let a = t as Box<dyn Gettable<String>>;
     //~^ ERROR : Copy` is not satisfied
 }
@@ -42,7 +42,7 @@ fn foo2<'a>() {
 fn foo3<'a>() {
     struct Foo; // does not impl Copy
 
-    let t: Box<S<Foo>> = box S(marker::PhantomData);
+    let t: Box<S<Foo>> = Box::new(S(marker::PhantomData));
     let a: Box<dyn Gettable<Foo>> = t;
     //~^ ERROR : Copy` is not satisfied
 }

@@ -173,7 +173,6 @@
 
 #![allow(unused_variables)]
 #![feature(box_patterns)]
-#![feature(box_syntax)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
@@ -214,7 +213,7 @@ fn main() {
             y: -300001.5,
             z: true
          },
-         box 854237.5);
+         Box::new(854237.5));
 
     for &(v1,
           &Struct { x: x1, y: ref y1, z: z1 },

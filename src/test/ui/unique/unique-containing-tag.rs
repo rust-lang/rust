@@ -4,12 +4,10 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(box_syntax)]
-
 pub fn main() {
     enum t { t1(isize), t2(isize), }
 
-    let _x: Box<_> = box t::t1(10);
+    let _x: Box<_> = Box::new(t::t1(10));
 
     /*alt *x {
       t1(a) {
@@ -19,9 +17,9 @@ pub fn main() {
     }*/
 
     /*alt x {
-      box t1(a) {
+      Box::new(t1(a) {
         assert_eq!(a, 10);
-      }
+      })
       _ { panic!(); }
     }*/
 }

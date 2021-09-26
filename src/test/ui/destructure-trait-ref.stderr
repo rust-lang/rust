@@ -13,7 +13,7 @@ LL |     let &&x = &(&1isize as &dyn T);
 error[E0033]: type `Box<dyn T>` cannot be dereferenced
   --> $DIR/destructure-trait-ref.rs:28:9
    |
-LL |     let box x = box 1isize as Box<dyn T>;
+LL |     let box x = Box::new(1isize) as Box<dyn T>;
    |         ^^^^^ type `Box<dyn T>` cannot be dereferenced
 
 error[E0308]: mismatched types
@@ -43,8 +43,8 @@ LL |     let &&&x = &(&1isize as &dyn T);
 error[E0308]: mismatched types
   --> $DIR/destructure-trait-ref.rs:40:13
    |
-LL |     let box box x = box 1isize as Box<dyn T>;
-   |             ^^^^^   ------------------------ this expression has type `Box<dyn T>`
+LL |     let box box x = Box::new(1isize) as Box<dyn T>;
+   |             ^^^^^   ------------------------------ this expression has type `Box<dyn T>`
    |             |
    |             expected trait object `dyn T`, found struct `Box`
    |

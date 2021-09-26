@@ -1,10 +1,11 @@
 error[E0382]: borrow of moved value: `x`
   --> $DIR/liveness-use-after-move.rs:6:20
    |
-LL |     let x: Box<_> = box 5;
+LL |     let x: Box<_> = 5.into();
    |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
 LL |     let y = x;
    |             - value moved here
+LL | 
 LL |     println!("{}", *x);
    |                    ^^ value borrowed here after move
 

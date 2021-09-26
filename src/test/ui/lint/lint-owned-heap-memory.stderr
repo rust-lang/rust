@@ -13,8 +13,8 @@ LL | #![forbid(box_pointers)]
 error: type uses owned (Box type) pointers: Box<isize>
   --> $DIR/lint-owned-heap-memory.rs:10:29
    |
-LL |     let _x : Foo = Foo {x : box 10};
-   |                             ^^^^^^
+LL |     let _x: Foo = Foo { x : Box::new(10) };
+   |                             ^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

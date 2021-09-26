@@ -1,7 +1,5 @@
-#![feature(box_syntax)]
-
 pub fn main() {
-    let x: Box<_> = box 1;
+    let x: Box<_> = Box::new(1);
 
     let v = (1, 2);
 

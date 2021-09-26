@@ -1,5 +1,4 @@
 #![feature(box_patterns)]
-#![feature(box_syntax)]
 
 struct HTMLImageData {
     image: Option<String>
@@ -23,8 +22,9 @@ struct NodeData {
 
 fn main() {
     let mut id = HTMLImageData { image: None };
-    let ed = ElementData { kind: box ElementKind::HTMLImageElement(id) };
-    let n = NodeData {kind : box NodeKind::Element(ed)};
+    let ed = ElementData { kind: Box::new(ElementKind::HTMLImageElement(id)) };
+    let n = NodeData { kind: Box::new(NodeKind::Element(ed)) };
+
     // n.b. span could be better
     match n.kind {
         box NodeKind::Element(ed) => match ed.kind { //~ ERROR non-exhaustive patterns

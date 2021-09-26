@@ -1,8 +1,8 @@
 error[E0308]: mismatched types
   --> $DIR/fn-trait-formatting.rs:6:17
    |
-LL |     let _: () = (box |_: isize| {}) as Box<dyn FnOnce(isize)>;
-   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found struct `Box`
+LL |     let _: () = Box::new(|_: isize| {}) as Box<dyn FnOnce(isize)>;
+   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found struct `Box`
    |            |
    |            expected due to this
    |
@@ -12,8 +12,8 @@ LL |     let _: () = (box |_: isize| {}) as Box<dyn FnOnce(isize)>;
 error[E0308]: mismatched types
   --> $DIR/fn-trait-formatting.rs:10:17
    |
-LL |     let _: () = (box |_: isize, isize| {}) as Box<dyn Fn(isize, isize)>;
-   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found struct `Box`
+LL |     let _: () = Box::new(|_: isize, isize| {}) as Box<dyn Fn(isize, isize)>;
+   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found struct `Box`
    |            |
    |            expected due to this
    |
@@ -23,8 +23,8 @@ LL |     let _: () = (box |_: isize, isize| {}) as Box<dyn Fn(isize, isize)>;
 error[E0308]: mismatched types
   --> $DIR/fn-trait-formatting.rs:14:17
    |
-LL |     let _: () = (box || -> isize { unimplemented!() }) as Box<dyn FnMut() -> isize>;
-   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found struct `Box`
+LL |     let _: () = Box::new(|| -> isize { unimplemented!() }) as Box<dyn FnMut() -> isize>;
+   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found struct `Box`
    |            |
    |            expected due to this
    |
@@ -41,7 +41,7 @@ LL |     needs_fn(1);
    |
    = help: the trait `Fn<(isize,)>` is not implemented for `{integer}`
 note: required by a bound in `needs_fn`
-  --> $DIR/fn-trait-formatting.rs:3:31
+  --> $DIR/fn-trait-formatting.rs:1:31
    |
 LL | fn needs_fn<F>(x: F) where F: Fn(isize) -> isize {}
    |                               ^^^^^^^^^^^^^^^^^^ required by this bound in `needs_fn`

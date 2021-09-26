@@ -1,14 +1,14 @@
-#![feature(box_syntax)]
-
 enum Foo {
     Foo1(Box<u32>, Box<u32>),
     Foo2(Box<u32>),
     Foo3,
 }
 
+
+
 fn blah() {
-    let f = &Foo::Foo1(box 1, box 2);
-    match *f {             //~ ERROR cannot move out of
+    let f = &Foo::Foo1(Box::new(1), Box::new(2));
+    match *f { //~ ERROR cannot move out of
         Foo::Foo1(num1,
                   num2) => (),
         Foo::Foo2(num) => (),
@@ -42,8 +42,8 @@ struct A {
 fn free<T>(_: T) {}
 
 fn blah2() {
-    let a = &A { a: box 1 };
-    match a.a {           //~ ERROR cannot move out of
+    let a = &A { a: Box::new(1) };
+    match a.a { //~ ERROR cannot move out of
         n => {
             free(n)
         }

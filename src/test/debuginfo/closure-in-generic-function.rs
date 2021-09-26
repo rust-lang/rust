@@ -39,7 +39,6 @@
 // lldbr-check:(i32) *y = 110
 // lldb-command:continue
 
-#![feature(box_syntax)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 

@@ -1,7 +1,7 @@
 error[E0382]: use of moved value: `x`
   --> $DIR/move-in-guard-1.rs:10:24
    |
-LL |     let x: Box<_> = box 1;
+LL |     let x: Box<_> = Box::new(1);
    |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
 ...
 LL |         (1, _) if take(x) => (),
