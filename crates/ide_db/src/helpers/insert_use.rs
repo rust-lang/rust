@@ -220,6 +220,23 @@ pub fn insert_use(scope: &ImportScope, path: ast::Path, cfg: &InsertUseConfig) {
     insert_use_(scope, &path, cfg.group, use_item);
 }
 
+pub fn remove_path_if_in_use_stmt(path: &ast::Path) {
+    // FIXME: improve this
+    if path.parent_path().is_some() {
+        return;
+    }
+    if let Some(use_tree) = path.syntax().parent().and_then(ast::UseTree::cast) {
+        if use_tree.use_tree_list().is_some() || use_tree.star_token().is_some() {
+            return;
+        }
+        if let Some(use_) = use_tree.syntax().parent().and_then(ast::Use::cast) {
+            use_.remove();
+            return;
+        }
+        use_tree.remove();
+    }
+}
+
 #[derive(Eq, PartialEq, PartialOrd, Ord)]
 enum ImportGroup {
     // the order here defines the order of new group inserts

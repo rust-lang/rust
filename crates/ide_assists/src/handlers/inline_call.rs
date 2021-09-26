@@ -1,13 +1,15 @@
 use ast::make;
+use either::Either;
 use hir::{db::HirDatabase, HasSource, PathResolution, Semantics, TypeInfo};
 use ide_db::{
     base_db::{FileId, FileRange},
     defs::Definition,
+    helpers::insert_use::remove_path_if_in_use_stmt,
     path_transform::PathTransform,
     search::{FileReference, SearchScope},
     RootDatabase,
 };
-use itertools::izip;
+use itertools::{izip, Itertools};
 use syntax::{
     ast::{self, edit_in_place::Indent, ArgListOwner},
     ted, AstNode, SyntaxNode,
@@ -96,26 +98,45 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext) -> Opt
             let mut inline_refs_for_file = |file_id, refs: Vec<FileReference>| {
                 builder.edit_file(file_id);
                 let count = refs.len();
-                let name_refs = refs.into_iter().filter_map(|file_ref| match file_ref.name {
-                    ast::NameLike::NameRef(name_ref) => Some(name_ref),
-                    _ => None,
-                });
-                let call_infos = name_refs.filter_map(CallInfo::from_name_ref);
-                let replaced = call_infos
+                // The collects are required as we are otherwise iterating while mutating 🙅‍♀️🙅‍♂️
+                let (name_refs, name_refs_use): (Vec<_>, Vec<_>) = refs
+                    .into_iter()
+                    .filter_map(|file_ref| match file_ref.name {
+                        ast::NameLike::NameRef(name_ref) => Some(name_ref),
+                        _ => None,
+                    })
+                    .partition_map(|name_ref| {
+                        match name_ref.syntax().ancestors().find_map(ast::UseTree::cast) {
+                            Some(use_tree) => Either::Right(builder.make_mut(use_tree)),
+                            None => Either::Left(name_ref),
+                        }
+                    });
+                let call_infos: Vec<_> = name_refs
+                    .into_iter()
+                    .filter_map(CallInfo::from_name_ref)
                     .map(|call_info| {
+                        let mut_node = builder.make_syntax_mut(call_info.node.syntax().clone());
+                        (call_info, mut_node)
+                    })
+                    .collect();
+                let replaced = call_infos
+                    .into_iter()
+                    .map(|(call_info, mut_node)| {
                         let replacement =
                             inline(&ctx.sema, def_file, function, &func_body, &params, &call_info);
-
-                        builder.replace_ast(
-                            match call_info.node {
-                                CallExprNode::Call(it) => ast::Expr::CallExpr(it),
-                                CallExprNode::MethodCallExpr(it) => ast::Expr::MethodCallExpr(it),
-                            },
-                            replacement,
-                        );
+                        ted::replace(mut_node, replacement.syntax());
                     })
                     .count();
-                remove_def &= replaced == count;
+                if replaced + name_refs_use.len() == count {
+                    // we replaced all usages in this file, so we can remove the imports
+                    name_refs_use.into_iter().for_each(|use_tree| {
+                        if let Some(path) = use_tree.path() {
+                            remove_path_if_in_use_stmt(&path);
+                        }
+                    })
+                } else {
+                    remove_def = false;
+                }
             };
             for (file_id, refs) in usages.into_iter() {
                 inline_refs_for_file(file_id, refs);
@@ -915,7 +936,10 @@ fn foo() {
 }
 "#,
             r#"
-use super::do_the_math;
+//- /lib.rs
+mod foo;
+
+//- /foo.rs
 fn foo() {
     {
         let foo = 10;
@@ -954,10 +978,7 @@ fn foo() {
             r#"
 //- /lib.rs
 mod foo;
-fn do_the_math(b: u32) -> u32 {
-    let foo = 10;
-    foo * b + foo
-}
+
 fn bar(a: u32, b: u32) -> u32 {
     {
         let foo = 10;
@@ -965,7 +986,6 @@ fn bar(a: u32, b: u32) -> u32 {
     };
 }
 //- /foo.rs
-use super::do_the_math;
 fn foo() {
     {
         let foo = 10;
