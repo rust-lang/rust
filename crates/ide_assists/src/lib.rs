@@ -217,6 +217,7 @@ mod handlers {
             generate_is_empty_from_len::generate_is_empty_from_len,
             generate_new::generate_new,
             inline_call::inline_call,
+            inline_call::inline_into_callers,
             inline_local_variable::inline_local_variable,
             introduce_named_generic::introduce_named_generic,
             introduce_named_lifetime::introduce_named_lifetime,

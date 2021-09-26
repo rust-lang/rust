@@ -1052,6 +1052,43 @@ fn foo(name: Option<&str>) {
 }
 
 #[test]
+fn doctest_inline_into_callers() {
+    check_doc_test(
+        "inline_into_callers",
+        r#####"
+fn print(_: &str) {}
+fn foo$0(word: &str) {
+    if !word.is_empty() {
+        print(word);
+    }
+}
+fn bar() {
+    foo("안녕하세요");
+    foo("여러분");
+}
+"#####,
+        r#####"
+fn print(_: &str) {}
+
+fn bar() {
+    {
+        let word = "안녕하세요";
+        if !word.is_empty() {
+            print(word);
+        }
+    };
+    {
+        let word = "여러분";
+        if !word.is_empty() {
+            print(word);
+        }
+    };
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_inline_local_variable() {
     check_doc_test(
         "inline_local_variable",
