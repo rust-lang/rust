@@ -170,7 +170,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
 
 pub(crate) fn validate_block_structure(root: &SyntaxNode) {
     let mut stack = Vec::new();
-    for node in root.descendants() {
+    for node in root.descendants_with_tokens() {
         match node.kind() {
             T!['{'] => stack.push(node),
             T!['}'] => {
@@ -183,11 +183,12 @@ pub(crate) fn validate_block_structure(root: &SyntaxNode) {
                         root,
                     );
                     assert!(
-                        node.next_sibling().is_none() && pair.prev_sibling().is_none(),
+                        node.next_sibling_or_token().is_none()
+                            && pair.prev_sibling_or_token().is_none(),
                         "\nfloating curlys at {:?}\nfile:\n{}\nerror:\n{}\n",
                         node,
                         root.text(),
-                        node.text(),
+                        node,
                     );
                 }
             }
