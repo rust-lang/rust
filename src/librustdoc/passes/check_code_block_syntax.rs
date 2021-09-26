@@ -61,8 +61,8 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
         };
 
         let hir_id = self.cx.tcx.hir().local_def_id_to_hir_id(local_id);
-        let empty_block = code_block.syntax.is_none() && code_block.is_fenced;
-        let is_ignore = code_block.is_ignore;
+        let empty_block = code_block.lang_string == Default::default() && code_block.is_fenced;
+        let is_ignore = code_block.lang_string.ignore != markdown::Ignore::None;
 
         // The span and whether it is precise or not.
         let (sp, precise_span) = match super::source_span_for_markdown_range(

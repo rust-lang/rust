@@ -1316,8 +1316,7 @@ crate struct RustCodeBlock {
     /// The range in the markdown that the code within the code block occupies.
     crate code: Range<usize>,
     crate is_fenced: bool,
-    crate syntax: Option<String>,
-    crate is_ignore: bool,
+    crate lang_string: LangString,
 }
 
 /// Returns a range of bytes for each code block in the markdown that is tagged as `rust` or
@@ -1333,7 +1332,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeB
 
     while let Some((event, offset)) = p.next() {
         if let Event::Start(Tag::CodeBlock(syntax)) = event {
-            let (syntax, code_start, code_end, range, is_fenced, is_ignore) = match syntax {
+            let (lang_string, code_start, code_end, range, is_fenced) = match syntax {
                 CodeBlockKind::Fenced(syntax) => {
                     let syntax = syntax.as_ref();
                     let lang_string = if syntax.is_empty() {
@@ -1344,8 +1343,6 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeB
                     if !lang_string.rust {
                         continue;
                     }
-                    let is_ignore = lang_string.ignore != Ignore::None;
-                    let syntax = if syntax.is_empty() { None } else { Some(syntax.to_owned()) };
                     let (code_start, mut code_end) = match p.next() {
                         Some((Event::Text(_), offset)) => (offset.start, offset.end),
                         Some((_, sub_offset)) => {
@@ -1354,8 +1351,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeB
                                 is_fenced: true,
                                 range: offset,
                                 code,
-                                syntax,
-                                is_ignore,
+                                lang_string,
                             });
                             continue;
                         }
@@ -1365,8 +1361,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeB
                                 is_fenced: true,
                                 range: offset,
                                 code,
-                                syntax,
-                                is_ignore,
+                                lang_string,
                             });
                             continue;
                         }
@@ -1374,22 +1369,21 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeB
                     while let Some((Event::Text(_), offset)) = p.next() {
                         code_end = offset.end;
                     }
-                    (syntax, code_start, code_end, offset, true, is_ignore)
+                    (lang_string, code_start, code_end, offset, true)
                 }
                 CodeBlockKind::Indented => {
                     // The ending of the offset goes too far sometime so we reduce it by one in
                     // these cases.
                     if offset.end > offset.start && md.get(offset.end..=offset.end) == Some(&"\n") {
                         (
-                            None,
+                            LangString::default(),
                             offset.start,
                             offset.end,
                             Range { start: offset.start, end: offset.end - 1 },
                             false,
-                            false,
                         )
                     } else {
-                        (None, offset.start, offset.end, offset, false, false)
+                        (LangString::default(), offset.start, offset.end, offset, false)
                     }
                 }
             };
@@ -1398,8 +1392,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeB
                 is_fenced,
                 range,
                 code: Range { start: code_start, end: code_end },
-                syntax,
-                is_ignore,
+                lang_string,
             });
         }
     }
