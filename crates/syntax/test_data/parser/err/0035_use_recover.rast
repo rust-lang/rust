@@ -45,8 +45,9 @@ SOURCE_FILE@0..48
       R_PAREN@43..44 ")"
     WHITESPACE@44..45 " "
     BLOCK_EXPR@45..47
-      L_CURLY@45..46 "{"
-      R_CURLY@46..47 "}"
+      STMT_LIST@45..47
+        L_CURLY@45..46 "{"
+        R_CURLY@46..47 "}"
   WHITESPACE@47..48 "\n"
 error 17..17: expected one of `*`, `::`, `{`, `self`, `super` or an identifier
 error 17..17: expected SEMICOLON

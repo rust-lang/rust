@@ -698,7 +698,7 @@ impl<'db> SemanticsImpl<'db> {
                     ast::ForExpr(it) => it.label(),
                     ast::WhileExpr(it) => it.label(),
                     ast::LoopExpr(it) => it.label(),
-                    ast::EffectExpr(it) => it.label(),
+                    ast::BlockExpr(it) => it.label(),
                     _ => None,
                 }
             };

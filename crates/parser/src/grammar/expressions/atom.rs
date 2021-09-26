@@ -93,8 +93,8 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
                 // test labeled_block
                 // fn f() { 'label: {}; }
                 T!['{'] => {
-                    block_expr(p);
-                    m.complete(p, EFFECT_EXPR)
+                    stmt_list(p);
+                    m.complete(p, BLOCK_EXPR)
                 }
                 _ => {
                     // test_err misplaced_label_err
@@ -111,8 +111,8 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
             let m = p.start();
             p.bump(T![async]);
             p.eat(T![move]);
-            block_expr(p);
-            m.complete(p, EFFECT_EXPR)
+            stmt_list(p);
+            m.complete(p, BLOCK_EXPR)
         }
         T![match] => match_expr(p),
         // test unsafe_block
@@ -120,16 +120,16 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
         T![unsafe] if la == T!['{'] => {
             let m = p.start();
             p.bump(T![unsafe]);
-            block_expr(p);
-            m.complete(p, EFFECT_EXPR)
+            stmt_list(p);
+            m.complete(p, BLOCK_EXPR)
         }
         // test const_block
         // fn f() { const { } }
         T![const] if la == T!['{'] => {
             let m = p.start();
             p.bump(T![const]);
-            block_expr(p);
-            m.complete(p, EFFECT_EXPR)
+            stmt_list(p);
+            m.complete(p, BLOCK_EXPR)
         }
         T!['{'] => {
             // test for_range_from
@@ -138,7 +138,9 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
             //        break;
             //    }
             // }
-            block_expr_unchecked(p)
+            let m = p.start();
+            stmt_list(p);
+            m.complete(p, BLOCK_EXPR)
         }
         T![return] => return_expr(p),
         T![yield] => yield_expr(p),
@@ -150,9 +152,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
         }
     };
     let blocklike = match done.kind() {
-        IF_EXPR | WHILE_EXPR | FOR_EXPR | LOOP_EXPR | MATCH_EXPR | BLOCK_EXPR | EFFECT_EXPR => {
-            BlockLike::Block
-        }
+        IF_EXPR | WHILE_EXPR | FOR_EXPR | LOOP_EXPR | MATCH_EXPR | BLOCK_EXPR => BlockLike::Block,
         _ => BlockLike::NotBlock,
     };
     Some((done, blocklike))
@@ -486,16 +486,18 @@ pub(crate) fn block_expr(p: &mut Parser) {
         p.error("expected a block");
         return;
     }
-    block_expr_unchecked(p);
+    let m = p.start();
+    stmt_list(p);
+    m.complete(p, BLOCK_EXPR);
 }
 
-fn block_expr_unchecked(p: &mut Parser) -> CompletedMarker {
+fn stmt_list(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.bump(T!['{']);
     expr_block_contents(p);
     p.expect(T!['}']);
-    m.complete(p, BLOCK_EXPR)
+    m.complete(p, STMT_LIST)
 }
 
 // test return_expr
@@ -597,8 +599,12 @@ fn try_block_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
     }
 
     p.bump(T![try]);
-    block_expr(p);
-    m.complete(p, EFFECT_EXPR)
+    if p.at(T!['{']) {
+        stmt_list(p);
+    } else {
+        p.error("expected a block")
+    }
+    m.complete(p, BLOCK_EXPR)
 }
 
 // test box_expr

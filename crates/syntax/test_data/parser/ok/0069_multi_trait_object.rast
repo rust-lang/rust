@@ -126,78 +126,79 @@ SOURCE_FILE@0..195
       R_PAREN@124..125 ")"
     WHITESPACE@125..126 " "
     BLOCK_EXPR@126..194
-      L_CURLY@126..127 "{"
-      WHITESPACE@127..132 "\n    "
-      LET_STMT@132..192
-        LET_KW@132..135 "let"
-        WHITESPACE@135..136 " "
-        IDENT_PAT@136..137
-          NAME@136..137
-            IDENT@136..137 "b"
-        WHITESPACE@137..138 " "
-        EQ@138..139 "="
-        WHITESPACE@139..140 " "
-        CAST_EXPR@140..191
-          PAREN_EXPR@140..144
-            L_PAREN@140..141 "("
-            REF_EXPR@141..143
-              AMP@141..142 "&"
-              PATH_EXPR@142..143
-                PATH@142..143
-                  PATH_SEGMENT@142..143
-                    NAME_REF@142..143
-                      IDENT@142..143 "a"
-            R_PAREN@143..144 ")"
-          WHITESPACE@144..145 " "
-          AS_KW@145..147 "as"
-          WHITESPACE@147..148 " "
-          REF_TYPE@148..191
-            AMP@148..149 "&"
-            PAREN_TYPE@149..191
-              L_PAREN@149..150 "("
-              DYN_TRAIT_TYPE@150..190
-                DYN_KW@150..153 "dyn"
-                WHITESPACE@153..154 " "
-                TYPE_BOUND_LIST@154..190
-                  TYPE_BOUND@154..182
-                    PATH_TYPE@154..182
-                      PATH@154..182
-                        PATH_SEGMENT@154..182
-                          NAME_REF@154..157
-                            IDENT@154..157 "Add"
-                          GENERIC_ARG_LIST@157..182
-                            L_ANGLE@157..158 "<"
-                            TYPE_ARG@158..163
-                              PATH_TYPE@158..163
-                                PATH@158..163
-                                  PATH_SEGMENT@158..163
-                                    NAME_REF@158..163
-                                      IDENT@158..163 "Other"
-                            COMMA@163..164 ","
-                            WHITESPACE@164..165 " "
-                            ASSOC_TYPE_ARG@165..181
-                              NAME_REF@165..171
-                                IDENT@165..171 "Output"
-                              WHITESPACE@171..172 " "
-                              EQ@172..173 "="
-                              WHITESPACE@173..174 " "
-                              PATH_TYPE@174..181
-                                PATH@174..181
-                                  PATH_SEGMENT@174..181
-                                    NAME_REF@174..181
-                                      IDENT@174..181 "Addable"
-                            R_ANGLE@181..182 ">"
-                  WHITESPACE@182..183 " "
-                  PLUS@183..184 "+"
-                  WHITESPACE@184..185 " "
-                  TYPE_BOUND@185..190
-                    PATH_TYPE@185..190
-                      PATH@185..190
-                        PATH_SEGMENT@185..190
-                          NAME_REF@185..190
-                            IDENT@185..190 "Other"
-              R_PAREN@190..191 ")"
-        SEMICOLON@191..192 ";"
-      WHITESPACE@192..193 "\n"
-      R_CURLY@193..194 "}"
+      STMT_LIST@126..194
+        L_CURLY@126..127 "{"
+        WHITESPACE@127..132 "\n    "
+        LET_STMT@132..192
+          LET_KW@132..135 "let"
+          WHITESPACE@135..136 " "
+          IDENT_PAT@136..137
+            NAME@136..137
+              IDENT@136..137 "b"
+          WHITESPACE@137..138 " "
+          EQ@138..139 "="
+          WHITESPACE@139..140 " "
+          CAST_EXPR@140..191
+            PAREN_EXPR@140..144
+              L_PAREN@140..141 "("
+              REF_EXPR@141..143
+                AMP@141..142 "&"
+                PATH_EXPR@142..143
+                  PATH@142..143
+                    PATH_SEGMENT@142..143
+                      NAME_REF@142..143
+                        IDENT@142..143 "a"
+              R_PAREN@143..144 ")"
+            WHITESPACE@144..145 " "
+            AS_KW@145..147 "as"
+            WHITESPACE@147..148 " "
+            REF_TYPE@148..191
+              AMP@148..149 "&"
+              PAREN_TYPE@149..191
+                L_PAREN@149..150 "("
+                DYN_TRAIT_TYPE@150..190
+                  DYN_KW@150..153 "dyn"
+                  WHITESPACE@153..154 " "
+                  TYPE_BOUND_LIST@154..190
+                    TYPE_BOUND@154..182
+                      PATH_TYPE@154..182
+                        PATH@154..182
+                          PATH_SEGMENT@154..182
+                            NAME_REF@154..157
+                              IDENT@154..157 "Add"
+                            GENERIC_ARG_LIST@157..182
+                              L_ANGLE@157..158 "<"
+                              TYPE_ARG@158..163
+                                PATH_TYPE@158..163
+                                  PATH@158..163
+                                    PATH_SEGMENT@158..163
+                                      NAME_REF@158..163
+                                        IDENT@158..163 "Other"
+                              COMMA@163..164 ","
+                              WHITESPACE@164..165 " "
+                              ASSOC_TYPE_ARG@165..181
+                                NAME_REF@165..171
+                                  IDENT@165..171 "Output"
+                                WHITESPACE@171..172 " "
+                                EQ@172..173 "="
+                                WHITESPACE@173..174 " "
+                                PATH_TYPE@174..181
+                                  PATH@174..181
+                                    PATH_SEGMENT@174..181
+                                      NAME_REF@174..181
+                                        IDENT@174..181 "Addable"
+                              R_ANGLE@181..182 ">"
+                    WHITESPACE@182..183 " "
+                    PLUS@183..184 "+"
+                    WHITESPACE@184..185 " "
+                    TYPE_BOUND@185..190
+                      PATH_TYPE@185..190
+                        PATH@185..190
+                          PATH_SEGMENT@185..190
+                            NAME_REF@185..190
+                              IDENT@185..190 "Other"
+                R_PAREN@190..191 ")"
+          SEMICOLON@191..192 ";"
+        WHITESPACE@192..193 "\n"
+        R_CURLY@193..194 "}"
   WHITESPACE@194..195 "\n"

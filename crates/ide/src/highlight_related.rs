@@ -164,8 +164,8 @@ fn highlight_exit_points(
             match anc {
                 ast::Fn(fn_) => hl(sema, fn_.body().map(ast::Expr::BlockExpr)),
                 ast::ClosureExpr(closure) => hl(sema, closure.body()),
-                ast::EffectExpr(effect) => if matches!(effect.effect(), ast::Effect::Async(_) | ast::Effect::Try(_)| ast::Effect::Const(_)) {
-                    hl(sema, effect.block_expr().map(ast::Expr::BlockExpr))
+                ast::BlockExpr(block_expr) => if matches!(block_expr.modifier(), Some(ast::BlockModifier::Async(_) | ast::BlockModifier::Try(_)| ast::BlockModifier::Const(_))) {
+                    hl(sema, Some(block_expr.into()))
                 } else {
                     continue;
                 },
@@ -180,7 +180,7 @@ fn highlight_break_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
     fn hl(
         token: Option<SyntaxToken>,
         label: Option<ast::Label>,
-        body: Option<ast::BlockExpr>,
+        body: Option<ast::StmtList>,
     ) -> Option<Vec<HighlightedRange>> {
         let mut highlights = Vec::new();
         let range = cover_range(
@@ -204,7 +204,7 @@ fn highlight_break_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
             ast::LoopExpr(l) => l.label().and_then(|it| it.lifetime()),
             ast::ForExpr(f) => f.label().and_then(|it| it.lifetime()),
             ast::WhileExpr(w) => w.label().and_then(|it| it.lifetime()),
-            ast::EffectExpr(b) => Some(b.label().and_then(|it| it.lifetime())?),
+            ast::BlockExpr(b) => Some(b.label().and_then(|it| it.lifetime())?),
             _ => return None,
         }
     };
@@ -218,16 +218,16 @@ fn highlight_break_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
     for anc in token.ancestors().flat_map(ast::Expr::cast) {
         return match anc {
             ast::Expr::LoopExpr(l) if label_matches(l.label()) => {
-                hl(l.loop_token(), l.label(), l.loop_body())
+                hl(l.loop_token(), l.label(), l.loop_body().and_then(|it| it.stmt_list()))
             }
             ast::Expr::ForExpr(f) if label_matches(f.label()) => {
-                hl(f.for_token(), f.label(), f.loop_body())
+                hl(f.for_token(), f.label(), f.loop_body().and_then(|it| it.stmt_list()))
             }
             ast::Expr::WhileExpr(w) if label_matches(w.label()) => {
-                hl(w.while_token(), w.label(), w.loop_body())
+                hl(w.while_token(), w.label(), w.loop_body().and_then(|it| it.stmt_list()))
             }
-            ast::Expr::EffectExpr(e) if e.label().is_some() && label_matches(e.label()) => {
-                hl(None, e.label(), e.block_expr())
+            ast::Expr::BlockExpr(e) if e.label().is_some() && label_matches(e.label()) => {
+                hl(None, e.label(), e.stmt_list())
             }
             _ => continue,
         };
@@ -258,7 +258,12 @@ fn highlight_yield_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
         return match_ast! {
             match anc {
                 ast::Fn(fn_) => hl(fn_.async_token(), fn_.body().map(ast::Expr::BlockExpr)),
-                ast::EffectExpr(effect) => hl(effect.async_token(), effect.block_expr().map(ast::Expr::BlockExpr)),
+                ast::BlockExpr(block_expr) => {
+                    if block_expr.async_token().is_none() {
+                        continue;
+                    }
+                    hl(block_expr.async_token(), Some(block_expr.into()))
+                },
                 ast::ClosureExpr(closure) => hl(closure.async_token(), closure.body()),
                 _ => continue,
             }

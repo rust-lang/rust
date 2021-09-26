@@ -9,40 +9,41 @@ SOURCE_FILE@0..45
       R_PAREN@8..9 ")"
     WHITESPACE@9..10 " "
     BLOCK_EXPR@10..44
-      L_CURLY@10..11 "{"
-      WHITESPACE@11..16 "\n    "
-      RECORD_EXPR@16..42
-        PATH@16..17
-          PATH_SEGMENT@16..17
-            NAME_REF@16..17
-              IDENT@16..17 "S"
-        WHITESPACE@17..18 " "
-        RECORD_EXPR_FIELD_LIST@18..42
-          L_CURLY@18..19 "{"
-          WHITESPACE@19..20 " "
-          RECORD_EXPR_FIELD@20..40
-            NAME_REF@20..25
-              IDENT@20..25 "field"
-            WHITESPACE@25..26 " "
-            RANGE_EXPR@26..40
-              DOT2@26..28 ".."
-              CALL_EXPR@28..40
-                PATH_EXPR@28..38
-                  PATH@28..38
-                    PATH@28..29
-                      PATH_SEGMENT@28..29
-                        NAME_REF@28..29
-                          IDENT@28..29 "S"
-                    COLON2@29..31 "::"
-                    PATH_SEGMENT@31..38
-                      NAME_REF@31..38
-                        IDENT@31..38 "default"
-                ARG_LIST@38..40
-                  L_PAREN@38..39 "("
-                  R_PAREN@39..40 ")"
-          WHITESPACE@40..41 " "
-          R_CURLY@41..42 "}"
-      WHITESPACE@42..43 "\n"
-      R_CURLY@43..44 "}"
+      STMT_LIST@10..44
+        L_CURLY@10..11 "{"
+        WHITESPACE@11..16 "\n    "
+        RECORD_EXPR@16..42
+          PATH@16..17
+            PATH_SEGMENT@16..17
+              NAME_REF@16..17
+                IDENT@16..17 "S"
+          WHITESPACE@17..18 " "
+          RECORD_EXPR_FIELD_LIST@18..42
+            L_CURLY@18..19 "{"
+            WHITESPACE@19..20 " "
+            RECORD_EXPR_FIELD@20..40
+              NAME_REF@20..25
+                IDENT@20..25 "field"
+              WHITESPACE@25..26 " "
+              RANGE_EXPR@26..40
+                DOT2@26..28 ".."
+                CALL_EXPR@28..40
+                  PATH_EXPR@28..38
+                    PATH@28..38
+                      PATH@28..29
+                        PATH_SEGMENT@28..29
+                          NAME_REF@28..29
+                            IDENT@28..29 "S"
+                      COLON2@29..31 "::"
+                      PATH_SEGMENT@31..38
+                        NAME_REF@31..38
+                          IDENT@31..38 "default"
+                  ARG_LIST@38..40
+                    L_PAREN@38..39 "("
+                    R_PAREN@39..40 ")"
+            WHITESPACE@40..41 " "
+            R_CURLY@41..42 "}"
+        WHITESPACE@42..43 "\n"
+        R_CURLY@43..44 "}"
   WHITESPACE@44..45 "\n"
 error 25..25: expected COLON

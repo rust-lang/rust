@@ -33,8 +33,9 @@ SOURCE_FILE@0..69
           R_PAREN@29..30 ")"
         WHITESPACE@30..31 " "
         BLOCK_EXPR@31..33
-          L_CURLY@31..32 "{"
-          R_CURLY@32..33 "}"
+          STMT_LIST@31..33
+            L_CURLY@31..32 "{"
+            R_CURLY@32..33 "}"
       WHITESPACE@33..38 "\n    "
       FN@38..66
         FN_KW@38..40 "fn"
@@ -67,8 +68,9 @@ SOURCE_FILE@0..69
           R_PAREN@62..63 ")"
         WHITESPACE@63..64 " "
         BLOCK_EXPR@64..66
-          L_CURLY@64..65 "{"
-          R_CURLY@65..66 "}"
+          STMT_LIST@64..66
+            L_CURLY@64..65 "{"
+            R_CURLY@65..66 "}"
       WHITESPACE@66..67 "\n"
       R_CURLY@67..68 "}"
   WHITESPACE@68..69 "\n"

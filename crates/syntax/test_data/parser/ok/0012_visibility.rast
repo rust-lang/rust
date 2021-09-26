@@ -9,8 +9,9 @@ SOURCE_FILE@0..122
       R_PAREN@5..6 ")"
     WHITESPACE@6..7 " "
     BLOCK_EXPR@7..9
-      L_CURLY@7..8 "{"
-      R_CURLY@8..9 "}"
+      STMT_LIST@7..9
+        L_CURLY@7..8 "{"
+        R_CURLY@8..9 "}"
   WHITESPACE@9..10 "\n"
   FN@10..23
     VISIBILITY@10..13
@@ -25,8 +26,9 @@ SOURCE_FILE@0..122
       R_PAREN@19..20 ")"
     WHITESPACE@20..21 " "
     BLOCK_EXPR@21..23
-      L_CURLY@21..22 "{"
-      R_CURLY@22..23 "}"
+      STMT_LIST@21..23
+        L_CURLY@21..22 "{"
+        R_CURLY@22..23 "}"
   WHITESPACE@23..24 "\n"
   MACRO_DEF@24..47
     VISIBILITY@24..27
@@ -67,8 +69,9 @@ SOURCE_FILE@0..122
       R_PAREN@64..65 ")"
     WHITESPACE@65..66 " "
     BLOCK_EXPR@66..68
-      L_CURLY@66..67 "{"
-      R_CURLY@67..68 "}"
+      STMT_LIST@66..68
+        L_CURLY@66..67 "{"
+        R_CURLY@67..68 "}"
   WHITESPACE@68..69 "\n"
   FN@69..89
     VISIBILITY@69..79
@@ -89,8 +92,9 @@ SOURCE_FILE@0..122
       R_PAREN@85..86 ")"
     WHITESPACE@86..87 " "
     BLOCK_EXPR@87..89
-      L_CURLY@87..88 "{"
-      R_CURLY@88..89 "}"
+      STMT_LIST@87..89
+        L_CURLY@87..88 "{"
+        R_CURLY@88..89 "}"
   WHITESPACE@89..90 "\n"
   FN@90..121
     VISIBILITY@90..111
@@ -123,6 +127,7 @@ SOURCE_FILE@0..122
       R_PAREN@117..118 ")"
     WHITESPACE@118..119 " "
     BLOCK_EXPR@119..121
-      L_CURLY@119..120 "{"
-      R_CURLY@120..121 "}"
+      STMT_LIST@119..121
+        L_CURLY@119..120 "{"
+        R_CURLY@120..121 "}"
   WHITESPACE@121..122 "\n"

@@ -149,6 +149,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "BREAK_EXPR",
         "LABEL",
         "BLOCK_EXPR",
+        "STMT_LIST",
         "RETURN_EXPR",
         "YIELD_EXPR",
         "MATCH_EXPR",
@@ -158,7 +159,6 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "RECORD_EXPR",
         "RECORD_EXPR_FIELD_LIST",
         "RECORD_EXPR_FIELD",
-        "EFFECT_EXPR",
         "BOX_EXPR",
         // postfix
         "CALL_EXPR",

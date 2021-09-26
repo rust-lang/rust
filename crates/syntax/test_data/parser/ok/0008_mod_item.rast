@@ -18,9 +18,10 @@ SOURCE_FILE@0..100
           R_PAREN@19..20 ")"
         WHITESPACE@20..21 " "
         BLOCK_EXPR@21..28
-          L_CURLY@21..22 "{"
-          WHITESPACE@22..27 "\n    "
-          R_CURLY@27..28 "}"
+          STMT_LIST@21..28
+            L_CURLY@21..22 "{"
+            WHITESPACE@22..27 "\n    "
+            R_CURLY@27..28 "}"
       WHITESPACE@28..33 "\n    "
       STRUCT@33..44
         STRUCT_KW@33..39 "struct"

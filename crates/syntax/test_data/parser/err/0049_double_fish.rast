@@ -9,48 +9,49 @@ SOURCE_FILE@0..90
       R_PAREN@5..6 ")"
     WHITESPACE@6..7 " "
     BLOCK_EXPR@7..40
-      L_CURLY@7..8 "{"
-      WHITESPACE@8..13 "\n    "
-      EXPR_STMT@13..31
-        PATH_EXPR@13..31
-          PATH@13..31
-            PATH_SEGMENT@13..31
-              NAME_REF@13..14
-                IDENT@13..14 "S"
-              GENERIC_ARG_LIST@14..31
-                COLON2@14..16 "::"
-                L_ANGLE@16..17 "<"
-                TYPE_ARG@17..31
-                  PATH_TYPE@17..31
-                    PATH@17..31
-                      PATH@17..28
-                        PATH_SEGMENT@17..28
-                          NAME_REF@17..21
-                            IDENT@17..21 "Item"
-                          GENERIC_ARG_LIST@21..28
-                            COLON2@21..23 "::"
-                            L_ANGLE@23..24 "<"
-                            TYPE_ARG@24..27
-                              PATH_TYPE@24..27
-                                PATH@24..27
-                                  PATH_SEGMENT@24..27
-                                    NAME_REF@24..27
-                                      IDENT@24..27 "lol"
-                            R_ANGLE@27..28 ">"
-                      COLON2@28..30 "::"
-                      ERROR@30..31
-                        L_ANGLE@30..31 "<"
-      BIN_EXPR@31..38
-        PATH_EXPR@31..35
-          PATH@31..35
-            PATH_SEGMENT@31..35
-              NAME_REF@31..35
-                IDENT@31..35 "nope"
-        SHR@35..37 ">>"
-        ERROR@37..38
-          SEMICOLON@37..38 ";"
-      WHITESPACE@38..39 "\n"
-      R_CURLY@39..40 "}"
+      STMT_LIST@7..40
+        L_CURLY@7..8 "{"
+        WHITESPACE@8..13 "\n    "
+        EXPR_STMT@13..31
+          PATH_EXPR@13..31
+            PATH@13..31
+              PATH_SEGMENT@13..31
+                NAME_REF@13..14
+                  IDENT@13..14 "S"
+                GENERIC_ARG_LIST@14..31
+                  COLON2@14..16 "::"
+                  L_ANGLE@16..17 "<"
+                  TYPE_ARG@17..31
+                    PATH_TYPE@17..31
+                      PATH@17..31
+                        PATH@17..28
+                          PATH_SEGMENT@17..28
+                            NAME_REF@17..21
+                              IDENT@17..21 "Item"
+                            GENERIC_ARG_LIST@21..28
+                              COLON2@21..23 "::"
+                              L_ANGLE@23..24 "<"
+                              TYPE_ARG@24..27
+                                PATH_TYPE@24..27
+                                  PATH@24..27
+                                    PATH_SEGMENT@24..27
+                                      NAME_REF@24..27
+                                        IDENT@24..27 "lol"
+                              R_ANGLE@27..28 ">"
+                        COLON2@28..30 "::"
+                        ERROR@30..31
+                          L_ANGLE@30..31 "<"
+        BIN_EXPR@31..38
+          PATH_EXPR@31..35
+            PATH@31..35
+              PATH_SEGMENT@31..35
+                NAME_REF@31..35
+                  IDENT@31..35 "nope"
+          SHR@35..37 ">>"
+          ERROR@37..38
+            SEMICOLON@37..38 ";"
+        WHITESPACE@38..39 "\n"
+        R_CURLY@39..40 "}"
   WHITESPACE@40..42 "\n\n"
   FN@42..89
     FN_KW@42..44 "fn"
@@ -62,53 +63,54 @@ SOURCE_FILE@0..90
       R_PAREN@47..48 ")"
     WHITESPACE@48..49 " "
     BLOCK_EXPR@49..89
-      L_CURLY@49..50 "{"
-      WHITESPACE@50..55 "\n    "
-      LET_STMT@55..76
-        LET_KW@55..58 "let"
-        WHITESPACE@58..59 " "
-        WILDCARD_PAT@59..60
-          UNDERSCORE@59..60 "_"
-        COLON@60..61 ":"
-        WHITESPACE@61..62 " "
-        PATH_TYPE@62..76
-          PATH@62..76
-            PATH@62..73
-              PATH_SEGMENT@62..73
-                NAME_REF@62..66
-                  IDENT@62..66 "Item"
-                GENERIC_ARG_LIST@66..73
-                  COLON2@66..68 "::"
-                  L_ANGLE@68..69 "<"
-                  TYPE_ARG@69..72
-                    PATH_TYPE@69..72
-                      PATH@69..72
-                        PATH_SEGMENT@69..72
-                          NAME_REF@69..72
-                            IDENT@69..72 "lol"
-                  R_ANGLE@72..73 ">"
-            COLON2@73..75 "::"
-            ERROR@75..76
-              L_ANGLE@75..76 "<"
-      EXPR_STMT@76..83
-        BIN_EXPR@76..83
-          PATH_EXPR@76..80
-            PATH@76..80
-              PATH_SEGMENT@76..80
-                NAME_REF@76..80
-                  IDENT@76..80 "nope"
-          R_ANGLE@80..81 ">"
-          WHITESPACE@81..82 " "
-          ERROR@82..83
-            EQ@82..83 "="
-      WHITESPACE@83..84 " "
-      EXPR_STMT@84..87
-        TUPLE_EXPR@84..86
-          L_PAREN@84..85 "("
-          R_PAREN@85..86 ")"
-        SEMICOLON@86..87 ";"
-      WHITESPACE@87..88 "\n"
-      R_CURLY@88..89 "}"
+      STMT_LIST@49..89
+        L_CURLY@49..50 "{"
+        WHITESPACE@50..55 "\n    "
+        LET_STMT@55..76
+          LET_KW@55..58 "let"
+          WHITESPACE@58..59 " "
+          WILDCARD_PAT@59..60
+            UNDERSCORE@59..60 "_"
+          COLON@60..61 ":"
+          WHITESPACE@61..62 " "
+          PATH_TYPE@62..76
+            PATH@62..76
+              PATH@62..73
+                PATH_SEGMENT@62..73
+                  NAME_REF@62..66
+                    IDENT@62..66 "Item"
+                  GENERIC_ARG_LIST@66..73
+                    COLON2@66..68 "::"
+                    L_ANGLE@68..69 "<"
+                    TYPE_ARG@69..72
+                      PATH_TYPE@69..72
+                        PATH@69..72
+                          PATH_SEGMENT@69..72
+                            NAME_REF@69..72
+                              IDENT@69..72 "lol"
+                    R_ANGLE@72..73 ">"
+              COLON2@73..75 "::"
+              ERROR@75..76
+                L_ANGLE@75..76 "<"
+        EXPR_STMT@76..83
+          BIN_EXPR@76..83
+            PATH_EXPR@76..80
+              PATH@76..80
+                PATH_SEGMENT@76..80
+                  NAME_REF@76..80
+                    IDENT@76..80 "nope"
+            R_ANGLE@80..81 ">"
+            WHITESPACE@81..82 " "
+            ERROR@82..83
+              EQ@82..83 "="
+        WHITESPACE@83..84 " "
+        EXPR_STMT@84..87
+          TUPLE_EXPR@84..86
+            L_PAREN@84..85 "("
+            R_PAREN@85..86 ")"
+          SEMICOLON@86..87 ";"
+        WHITESPACE@87..88 "\n"
+        R_CURLY@88..89 "}"
   WHITESPACE@89..90 "\n"
 error 30..30: expected identifier
 error 31..31: expected COMMA

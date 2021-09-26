@@ -24,6 +24,7 @@ SOURCE_FILE@0..23
       R_PAREN@18..19 ")"
     WHITESPACE@19..20 " "
     BLOCK_EXPR@20..22
-      L_CURLY@20..21 "{"
-      R_CURLY@21..22 "}"
+      STMT_LIST@20..22
+        L_CURLY@20..21 "{"
+        R_CURLY@21..22 "}"
   WHITESPACE@22..23 "\n"

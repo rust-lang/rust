@@ -245,43 +245,37 @@ impl ExprCollector<'_> {
 
                 self.alloc_expr(Expr::If { condition, then_branch, else_branch }, syntax_ptr)
             }
-            ast::Expr::EffectExpr(e) => match e.effect() {
-                ast::Effect::Try(_) => {
-                    let body = self.collect_block_opt(e.block_expr());
+            ast::Expr::BlockExpr(e) => match e.modifier() {
+                Some(ast::BlockModifier::Try(_)) => {
+                    let body = self.collect_block(e);
                     self.alloc_expr(Expr::TryBlock { body }, syntax_ptr)
                 }
-                ast::Effect::Unsafe(_) => {
-                    let body = self.collect_block_opt(e.block_expr());
+                Some(ast::BlockModifier::Unsafe(_)) => {
+                    let body = self.collect_block(e);
                     self.alloc_expr(Expr::Unsafe { body }, syntax_ptr)
                 }
                 // FIXME: we need to record these effects somewhere...
-                ast::Effect::Label(label) => {
+                Some(ast::BlockModifier::Label(label)) => {
                     let label = self.collect_label(label);
-                    match e.block_expr() {
-                        Some(block) => {
-                            let res = self.collect_block(block);
-                            match &mut self.body.exprs[res] {
-                                Expr::Block { label: block_label, .. } => {
-                                    *block_label = Some(label);
-                                }
-                                _ => unreachable!(),
-                            }
-                            res
+                    let res = self.collect_block(e);
+                    match &mut self.body.exprs[res] {
+                        Expr::Block { label: block_label, .. } => {
+                            *block_label = Some(label);
                         }
-                        None => self.missing_expr(),
+                        _ => unreachable!(),
                     }
+                    res
                 }
-                // FIXME: we need to record these effects somewhere...
-                ast::Effect::Async(_) => {
-                    let body = self.collect_block_opt(e.block_expr());
+                Some(ast::BlockModifier::Async(_)) => {
+                    let body = self.collect_block(e);
                     self.alloc_expr(Expr::Async { body }, syntax_ptr)
                 }
-                ast::Effect::Const(_) => {
-                    let body = self.collect_block_opt(e.block_expr());
+                Some(ast::BlockModifier::Const(_)) => {
+                    let body = self.collect_block(e);
                     self.alloc_expr(Expr::Const { body }, syntax_ptr)
                 }
+                None => self.collect_block(e),
             },
-            ast::Expr::BlockExpr(e) => self.collect_block(e),
             ast::Expr::LoopExpr(e) => {
                 let label = e.label().map(|label| self.collect_label(label));
                 let body = self.collect_block_opt(e.loop_body());

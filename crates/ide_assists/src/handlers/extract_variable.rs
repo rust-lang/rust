@@ -137,6 +137,7 @@ fn valid_target_expr(node: SyntaxNode) -> Option<ast::Expr> {
     }
 }
 
+#[derive(Debug)]
 enum Anchor {
     Before(SyntaxNode),
     Replace(ast::ExprStmt),
@@ -148,7 +149,7 @@ impl Anchor {
         to_extract.syntax().ancestors().take_while(|it| !ast::Item::can_cast(it.kind())).find_map(
             |node| {
                 if let Some(expr) =
-                    node.parent().and_then(ast::BlockExpr::cast).and_then(|it| it.tail_expr())
+                    node.parent().and_then(ast::StmtList::cast).and_then(|it| it.tail_expr())
                 {
                     if expr.syntax() == &node {
                         cov_mark::hit!(test_extract_var_last_expr);

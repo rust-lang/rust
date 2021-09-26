@@ -1,7 +1,7 @@
-use super::*;
-
 use hir::PrefixKind;
 use test_utils::{assert_eq_text, extract_range_or_offset, CURSOR_MARKER};
+
+use super::*;
 
 #[test]
 fn respects_cfg_attr_fn() {

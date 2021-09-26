@@ -46,7 +46,7 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         [] => {
             match_ast! {
                 match parent {
-                    ast::BlockExpr(__) => {
+                    ast::StmtList(__) => {
                         let range = macro_call.syntax().text_range();
                         let range = match whitespace_start(macro_call.syntax().prev_sibling_or_token()) {
                             Some(start) => range.cover_offset(start),

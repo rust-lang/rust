@@ -105,6 +105,7 @@ SOURCE_FILE@0..108
       R_PAREN@103..104 ")"
     WHITESPACE@104..105 " "
     BLOCK_EXPR@105..107
-      L_CURLY@105..106 "{"
-      R_CURLY@106..107 "}"
+      STMT_LIST@105..107
+        L_CURLY@105..106 "{"
+        R_CURLY@106..107 "}"
   WHITESPACE@107..108 "\n"

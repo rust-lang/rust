@@ -111,6 +111,7 @@ SOURCE_FILE@0..116
               LIFETIME_IDENT@110..112 "'a"
     WHITESPACE@112..113 "\n"
     BLOCK_EXPR@113..115
-      L_CURLY@113..114 "{"
-      R_CURLY@114..115 "}"
+      STMT_LIST@113..115
+        L_CURLY@113..114 "{"
+        R_CURLY@114..115 "}"
   WHITESPACE@115..116 "\n"

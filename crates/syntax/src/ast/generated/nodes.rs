@@ -477,10 +477,12 @@ pub struct BlockExpr {
 }
 impl ast::AttrsOwner for BlockExpr {}
 impl BlockExpr {
-    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    pub fn statements(&self) -> AstChildren<Stmt> { support::children(&self.syntax) }
-    pub fn tail_expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
+    pub fn label(&self) -> Option<Label> { support::child(&self.syntax) }
+    pub fn try_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![try]) }
+    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
+    pub fn async_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![async]) }
+    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
+    pub fn stmt_list(&self) -> Option<StmtList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SelfParam {
@@ -643,7 +645,6 @@ impl Meta {
 pub struct ExprStmt {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for ExprStmt {}
 impl ExprStmt {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
@@ -751,19 +752,6 @@ impl ContinueExpr {
         support::token(&self.syntax, T![continue])
     }
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EffectExpr {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for EffectExpr {}
-impl EffectExpr {
-    pub fn label(&self) -> Option<Label> { support::child(&self.syntax) }
-    pub fn try_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![try]) }
-    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
-    pub fn async_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![async]) }
-    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
-    pub fn block_expr(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldExpr {
@@ -943,6 +931,17 @@ impl ast::AttrsOwner for YieldExpr {}
 impl YieldExpr {
     pub fn yield_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![yield]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct StmtList {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for StmtList {}
+impl StmtList {
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
+    pub fn statements(&self) -> AstChildren<Stmt> { support::children(&self.syntax) }
+    pub fn tail_expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Label {
@@ -1339,7 +1338,6 @@ pub enum Expr {
     CastExpr(CastExpr),
     ClosureExpr(ClosureExpr),
     ContinueExpr(ContinueExpr),
-    EffectExpr(EffectExpr),
     FieldExpr(FieldExpr),
     ForExpr(ForExpr),
     IfExpr(IfExpr),
@@ -2255,17 +2253,6 @@ impl AstNode for ContinueExpr {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for EffectExpr {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == EFFECT_EXPR }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
 impl AstNode for FieldExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == FIELD_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2466,6 +2453,17 @@ impl AstNode for WhileExpr {
 }
 impl AstNode for YieldExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == YIELD_EXPR }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for StmtList {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == STMT_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3073,9 +3071,6 @@ impl From<ClosureExpr> for Expr {
 impl From<ContinueExpr> for Expr {
     fn from(node: ContinueExpr) -> Expr { Expr::ContinueExpr(node) }
 }
-impl From<EffectExpr> for Expr {
-    fn from(node: EffectExpr) -> Expr { Expr::EffectExpr(node) }
-}
 impl From<FieldExpr> for Expr {
     fn from(node: FieldExpr) -> Expr { Expr::FieldExpr(node) }
 }
@@ -3143,9 +3138,9 @@ impl AstNode for Expr {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             ARRAY_EXPR | AWAIT_EXPR | BIN_EXPR | BLOCK_EXPR | BOX_EXPR | BREAK_EXPR | CALL_EXPR
-            | CAST_EXPR | CLOSURE_EXPR | CONTINUE_EXPR | EFFECT_EXPR | FIELD_EXPR | FOR_EXPR
-            | IF_EXPR | INDEX_EXPR | LITERAL | LOOP_EXPR | MACRO_CALL | MACRO_STMTS
-            | MATCH_EXPR | METHOD_CALL_EXPR | PAREN_EXPR | PATH_EXPR | PREFIX_EXPR | RANGE_EXPR
+            | CAST_EXPR | CLOSURE_EXPR | CONTINUE_EXPR | FIELD_EXPR | FOR_EXPR | IF_EXPR
+            | INDEX_EXPR | LITERAL | LOOP_EXPR | MACRO_CALL | MACRO_STMTS | MATCH_EXPR
+            | METHOD_CALL_EXPR | PAREN_EXPR | PATH_EXPR | PREFIX_EXPR | RANGE_EXPR
             | RECORD_EXPR | REF_EXPR | RETURN_EXPR | TRY_EXPR | TUPLE_EXPR | WHILE_EXPR
             | YIELD_EXPR => true,
             _ => false,
@@ -3163,7 +3158,6 @@ impl AstNode for Expr {
             CAST_EXPR => Expr::CastExpr(CastExpr { syntax }),
             CLOSURE_EXPR => Expr::ClosureExpr(ClosureExpr { syntax }),
             CONTINUE_EXPR => Expr::ContinueExpr(ContinueExpr { syntax }),
-            EFFECT_EXPR => Expr::EffectExpr(EffectExpr { syntax }),
             FIELD_EXPR => Expr::FieldExpr(FieldExpr { syntax }),
             FOR_EXPR => Expr::ForExpr(ForExpr { syntax }),
             IF_EXPR => Expr::IfExpr(IfExpr { syntax }),
@@ -3201,7 +3195,6 @@ impl AstNode for Expr {
             Expr::CastExpr(it) => &it.syntax,
             Expr::ClosureExpr(it) => &it.syntax,
             Expr::ContinueExpr(it) => &it.syntax,
-            Expr::EffectExpr(it) => &it.syntax,
             Expr::FieldExpr(it) => &it.syntax,
             Expr::ForExpr(it) => &it.syntax,
             Expr::IfExpr(it) => &it.syntax,
@@ -3660,7 +3653,6 @@ impl AstNode for DynAttrsOwner {
             | CONST_PARAM
             | LIFETIME_PARAM
             | TYPE_PARAM
-            | EXPR_STMT
             | LET_STMT
             | ARRAY_EXPR
             | AWAIT_EXPR
@@ -3671,7 +3663,6 @@ impl AstNode for DynAttrsOwner {
             | CAST_EXPR
             | CLOSURE_EXPR
             | CONTINUE_EXPR
-            | EFFECT_EXPR
             | FIELD_EXPR
             | FOR_EXPR
             | IF_EXPR
@@ -3690,6 +3681,7 @@ impl AstNode for DynAttrsOwner {
             | TUPLE_EXPR
             | WHILE_EXPR
             | YIELD_EXPR
+            | STMT_LIST
             | RECORD_EXPR_FIELD_LIST
             | RECORD_EXPR_FIELD
             | MATCH_ARM_LIST
@@ -4222,11 +4214,6 @@ impl std::fmt::Display for ContinueExpr {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for EffectExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl std::fmt::Display for FieldExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -4318,6 +4305,11 @@ impl std::fmt::Display for WhileExpr {
     }
 }
 impl std::fmt::Display for YieldExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for StmtList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

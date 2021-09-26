@@ -100,9 +100,10 @@ fn extract_tail(ctx: &AssistContext) -> Option<(FnType, ast::Expr, InsertOrRepla
             let action = ret_ty_to_action(func.ret_type(), rparen_pos)?;
 
             let body = func.body()?;
-            let tail_expr = body.tail_expr()?;
+            let stmt_list = body.stmt_list()?;
+            let tail_expr = stmt_list.tail_expr()?;
 
-            let ret_range_end = body.l_curly_token()?.text_range().start();
+            let ret_range_end = stmt_list.l_curly_token()?.text_range().start();
             let ret_range = TextRange::new(rparen_pos, ret_range_end);
             (FnType::Function, tail_expr, ret_range, action)
         };

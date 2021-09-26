@@ -25,30 +25,34 @@ use crate::assist_context::{AssistBuilder, AssistContext};
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 
-pub(crate) fn unwrap_trivial_block(block: ast::BlockExpr) -> ast::Expr {
-    extract_trivial_expression(&block)
+pub(crate) fn unwrap_trivial_block(block_expr: ast::BlockExpr) -> ast::Expr {
+    extract_trivial_expression(&block_expr)
         .filter(|expr| !expr.syntax().text().contains_char('\n'))
-        .unwrap_or_else(|| block.into())
+        .unwrap_or_else(|| block_expr.into())
 }
 
-pub fn extract_trivial_expression(block: &ast::BlockExpr) -> Option<ast::Expr> {
+pub fn extract_trivial_expression(block_expr: &ast::BlockExpr) -> Option<ast::Expr> {
+    if block_expr.modifier().is_some() {
+        return None;
+    }
+    let stmt_list = block_expr.stmt_list()?;
     let has_anything_else = |thing: &SyntaxNode| -> bool {
         let mut non_trivial_children =
-            block.syntax().children_with_tokens().filter(|it| match it.kind() {
+            stmt_list.syntax().children_with_tokens().filter(|it| match it.kind() {
                 WHITESPACE | T!['{'] | T!['}'] => false,
                 _ => it.as_node() != Some(thing),
             });
         non_trivial_children.next().is_some()
     };
 
-    if let Some(expr) = block.tail_expr() {
+    if let Some(expr) = stmt_list.tail_expr() {
         if has_anything_else(expr.syntax()) {
             return None;
         }
         return Some(expr);
     }
     // Unwrap `{ continue; }`
-    let stmt = block.statements().next()?;
+    let stmt = stmt_list.statements().next()?;
     if let ast::Stmt::ExprStmt(expr_stmt) = stmt {
         if has_anything_else(expr_stmt.syntax()) {
             return None;

@@ -26,8 +26,9 @@ SOURCE_FILE@0..22
       R_PAREN@16..17 ")"
     WHITESPACE@17..18 " "
     BLOCK_EXPR@18..21
-      L_CURLY@18..19 "{"
-      WHITESPACE@19..20 "\n"
-      R_CURLY@20..21 "}"
+      STMT_LIST@18..21
+        L_CURLY@18..19 "{"
+        WHITESPACE@19..20 "\n"
+        R_CURLY@20..21 "}"
   WHITESPACE@21..22 "\n"
 error 16..16: missing type for function parameter

@@ -58,8 +58,9 @@ SOURCE_FILE@0..294
           R_PAREN@78..79 ")"
         WHITESPACE@79..80 " "
         BLOCK_EXPR@80..82
-          L_CURLY@80..81 "{"
-          R_CURLY@81..82 "}"
+          STMT_LIST@80..82
+            L_CURLY@80..81 "{"
+            R_CURLY@81..82 "}"
       WHITESPACE@82..85 "\n  "
       FN@85..111
         DEFAULT_KW@85..92 "default"
@@ -75,8 +76,9 @@ SOURCE_FILE@0..294
           R_PAREN@107..108 ")"
         WHITESPACE@108..109 " "
         BLOCK_EXPR@109..111
-          L_CURLY@109..110 "{"
-          R_CURLY@110..111 "}"
+          STMT_LIST@109..111
+            L_CURLY@109..110 "{"
+            R_CURLY@110..111 "}"
       WHITESPACE@111..112 "\n"
       R_CURLY@112..113 "}"
   WHITESPACE@113..115 "\n\n"
@@ -150,8 +152,9 @@ SOURCE_FILE@0..294
           R_PAREN@200..201 ")"
         WHITESPACE@201..202 " "
         BLOCK_EXPR@202..204
-          L_CURLY@202..203 "{"
-          R_CURLY@203..204 "}"
+          STMT_LIST@202..204
+            L_CURLY@202..203 "{"
+            R_CURLY@203..204 "}"
       WHITESPACE@204..207 "\n  "
       FN@207..233
         DEFAULT_KW@207..214 "default"
@@ -167,8 +170,9 @@ SOURCE_FILE@0..294
           R_PAREN@229..230 ")"
         WHITESPACE@230..231 " "
         BLOCK_EXPR@231..233
-          L_CURLY@231..232 "{"
-          R_CURLY@232..233 "}"
+          STMT_LIST@231..233
+            L_CURLY@231..232 "{"
+            R_CURLY@232..233 "}"
       WHITESPACE@233..234 "\n"
       R_CURLY@234..235 "}"
   WHITESPACE@235..237 "\n\n"

@@ -93,8 +93,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
                     | ast::Expr::ArrayExpr(_)
                     | ast::Expr::ParenExpr(_)
                     | ast::Expr::PathExpr(_)
-                    | ast::Expr::BlockExpr(_)
-                    | ast::Expr::EffectExpr(_),
+                    | ast::Expr::BlockExpr(_),
             );
             let parent = matches!(
                 usage_parent,

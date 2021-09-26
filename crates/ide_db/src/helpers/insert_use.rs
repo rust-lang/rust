@@ -46,7 +46,7 @@ pub struct InsertUseConfig {
 pub enum ImportScope {
     File(ast::SourceFile),
     Module(ast::ItemList),
-    Block(ast::BlockExpr),
+    Block(ast::StmtList),
 }
 
 impl ImportScope {
@@ -60,15 +60,15 @@ impl ImportScope {
             match syntax {
                 ast::Module(module) => module.item_list().map(ImportScope::Module),
                 ast::SourceFile(file) => Some(ImportScope::File(file)),
-                ast::Fn(func) => contains_cfg_attr(&func).then(|| func.body().map(ImportScope::Block)).flatten(),
+                ast::Fn(func) => contains_cfg_attr(&func).then(|| func.body().and_then(|it| it.stmt_list().map(ImportScope::Block))).flatten(),
                 ast::Const(konst) => contains_cfg_attr(&konst).then(|| match konst.body()? {
                     ast::Expr::BlockExpr(block) => Some(block),
                     _ => None,
-                }).flatten().map(ImportScope::Block),
+                }).flatten().and_then(|it| it.stmt_list().map(ImportScope::Block)),
                 ast::Static(statik) => contains_cfg_attr(&statik).then(|| match statik.body()? {
                     ast::Expr::BlockExpr(block) => Some(block),
                     _ => None,
-                }).flatten().map(ImportScope::Block),
+                }).flatten().and_then(|it| it.stmt_list().map(ImportScope::Block)),
                 _ => None,
 
             }

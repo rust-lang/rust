@@ -247,6 +247,7 @@ pub fn record_field(
     ast_from_text(&format!("struct S {{ {}{}: {}, }}", visibility, name, ty))
 }
 
+// TODO
 pub fn block_expr(
     stmts: impl IntoIterator<Item = ast::Stmt>,
     tail_expr: Option<ast::Expr>,

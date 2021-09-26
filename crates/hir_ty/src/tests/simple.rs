@@ -352,7 +352,7 @@ unsafe fn baz(u: MyUnion) {
             71..89 'MyUnio...o: 0 }': MyUnion
             86..87 '0': u32
             95..113 'unsafe...(u); }': ()
-            102..113 '{ baz(u); }': ()
+            95..113 'unsafe...(u); }': ()
             104..107 'baz': fn baz(MyUnion)
             104..110 'baz(u)': ()
             108..109 'u': MyUnion
@@ -360,7 +360,7 @@ unsafe fn baz(u: MyUnion) {
             126..146 'MyUnio... 0.0 }': MyUnion
             141..144 '0.0': f32
             152..170 'unsafe...(u); }': ()
-            159..170 '{ baz(u); }': ()
+            152..170 'unsafe...(u); }': ()
             161..164 'baz': fn baz(MyUnion)
             161..167 'baz(u)': ()
             165..166 'u': MyUnion
@@ -1914,41 +1914,41 @@ fn fn_pointer_return() {
 }
 
 #[test]
-fn effects_smoke_test() {
+fn block_modifiers_smoke_test() {
     check_infer(
         r#"
-        //- minicore: future
-        async fn main() {
-            let x = unsafe { 92 };
-            let y = async { async { () }.await };
-            let z = try { () };
-            let w = const { 92 };
-            let t = 'a: { 92 };
-        }
+//- minicore: future
+async fn main() {
+    let x = unsafe { 92 };
+    let y = async { async { () }.await };
+    let z = try { () };
+    let w = const { 92 };
+    let t = 'a: { 92 };
+}
         "#,
         expect![[r#"
             16..162 '{     ...2 }; }': ()
             26..27 'x': i32
             30..43 'unsafe { 92 }': i32
-            37..43 '{ 92 }': i32
+            30..43 'unsafe { 92 }': i32
             39..41 '92': i32
             53..54 'y': impl Future<Output = ()>
+            57..85 'async ...wait }': ()
             57..85 'async ...wait }': impl Future<Output = ()>
-            63..85 '{ asyn...wait }': ()
+            65..77 'async { () }': ()
             65..77 'async { () }': impl Future<Output = ()>
             65..83 'async ....await': ()
-            71..77 '{ () }': ()
             73..75 '()': ()
             95..96 'z': {unknown}
+            99..109 'try { () }': ()
             99..109 'try { () }': {unknown}
-            103..109 '{ () }': ()
             105..107 '()': ()
             119..120 'w': i32
             123..135 'const { 92 }': i32
-            129..135 '{ 92 }': i32
+            123..135 'const { 92 }': i32
             131..133 '92': i32
             145..146 't': i32
-            153..159 '{ 92 }': i32
+            149..159 ''a: { 92 }': i32
             155..157 '92': i32
         "#]],
     )
@@ -2104,32 +2104,32 @@ fn infer_labelled_break_with_val() {
 fn infer_labelled_block_break_with_val() {
     check_infer(
         r#"
-        fn default<T>() -> T { loop {} }
-        fn foo() {
-            let _x = 'outer: {
-                let inner = 'inner: {
-                    let i = default();
-                    if (break 'outer i) {
-                        break 'inner 5i8;
-                    } else if true {
-                        break 'inner 6;
-                    }
-                    break 'inner 'innermost: { 0 };
-                    42
-                };
-                break 'outer inner < 8;
-            };
-        }
-        "#,
+fn default<T>() -> T { loop {} }
+fn foo() {
+    let _x = 'outer: {
+        let inner = 'inner: {
+            let i = default();
+            if (break 'outer i) {
+                break 'inner 5i8;
+            } else if true {
+                break 'inner 6;
+            }
+            break 'inner 'innermost: { 0 };
+            42
+        };
+        break 'outer inner < 8;
+    };
+}
+"#,
         expect![[r#"
             21..32 '{ loop {} }': T
             23..30 'loop {}': !
             28..30 '{}': ()
             42..381 '{     ...  }; }': ()
             52..54 '_x': bool
-            65..378 '{     ...     }': bool
+            57..378 ''outer...     }': bool
             79..84 'inner': i8
-            95..339 '{     ...     }': i8
+            87..339 ''inner...     }': i8
             113..114 'i': bool
             117..124 'default': fn default<bool>() -> bool
             117..126 'default()': bool
@@ -2145,7 +2145,7 @@ fn infer_labelled_block_break_with_val() {
             241..255 'break 'inner 6': !
             254..255 '6': i8
             283..313 'break ... { 0 }': !
-            308..313 '{ 0 }': i8
+            296..313 ''inner... { 0 }': i8
             310..311 '0': i8
             327..329 '42': i8
             349..371 'break ...er < 8': !

@@ -9,42 +9,45 @@ SOURCE_FILE@0..44
       R_PAREN@5..6 ")"
     WHITESPACE@6..7 " "
     BLOCK_EXPR@7..43
-      L_CURLY@7..8 "{"
-      WHITESPACE@8..13 "\n    "
-      LET_STMT@13..29
-        LET_KW@13..16 "let"
-        WHITESPACE@16..17 " "
-        WILDCARD_PAT@17..18
-          UNDERSCORE@17..18 "_"
-        WHITESPACE@18..19 " "
-        EQ@19..20 "="
-        WHITESPACE@20..21 " "
-        BIN_EXPR@21..28
-          BLOCK_EXPR@21..24
-            L_CURLY@21..22 "{"
-            LITERAL@22..23
-              INT_NUMBER@22..23 "1"
-            R_CURLY@23..24 "}"
-          WHITESPACE@24..25 " "
-          AMP@25..26 "&"
-          WHITESPACE@26..27 " "
-          LITERAL@27..28
-            INT_NUMBER@27..28 "2"
-        SEMICOLON@28..29 ";"
-      WHITESPACE@29..34 "\n    "
-      EXPR_STMT@34..37
-        BLOCK_EXPR@34..37
-          L_CURLY@34..35 "{"
-          LITERAL@35..36
-            INT_NUMBER@35..36 "1"
-          R_CURLY@36..37 "}"
-      WHITESPACE@37..38 " "
-      EXPR_STMT@38..41
-        REF_EXPR@38..40
-          AMP@38..39 "&"
-          LITERAL@39..40
-            INT_NUMBER@39..40 "2"
-        SEMICOLON@40..41 ";"
-      WHITESPACE@41..42 "\n"
-      R_CURLY@42..43 "}"
+      STMT_LIST@7..43
+        L_CURLY@7..8 "{"
+        WHITESPACE@8..13 "\n    "
+        LET_STMT@13..29
+          LET_KW@13..16 "let"
+          WHITESPACE@16..17 " "
+          WILDCARD_PAT@17..18
+            UNDERSCORE@17..18 "_"
+          WHITESPACE@18..19 " "
+          EQ@19..20 "="
+          WHITESPACE@20..21 " "
+          BIN_EXPR@21..28
+            BLOCK_EXPR@21..24
+              STMT_LIST@21..24
+                L_CURLY@21..22 "{"
+                LITERAL@22..23
+                  INT_NUMBER@22..23 "1"
+                R_CURLY@23..24 "}"
+            WHITESPACE@24..25 " "
+            AMP@25..26 "&"
+            WHITESPACE@26..27 " "
+            LITERAL@27..28
+              INT_NUMBER@27..28 "2"
+          SEMICOLON@28..29 ";"
+        WHITESPACE@29..34 "\n    "
+        EXPR_STMT@34..37
+          BLOCK_EXPR@34..37
+            STMT_LIST@34..37
+              L_CURLY@34..35 "{"
+              LITERAL@35..36
+                INT_NUMBER@35..36 "1"
+              R_CURLY@36..37 "}"
+        WHITESPACE@37..38 " "
+        EXPR_STMT@38..41
+          REF_EXPR@38..40
+            AMP@38..39 "&"
+            LITERAL@39..40
+              INT_NUMBER@39..40 "2"
+          SEMICOLON@40..41 ";"
+        WHITESPACE@41..42 "\n"
+        R_CURLY@42..43 "}"
   WHITESPACE@43..44 "\n"
