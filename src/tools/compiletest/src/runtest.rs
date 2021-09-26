@@ -18,6 +18,7 @@ use std::str;
 use tracing::*;
 
 mod test_cx;
+mod test_cx_run_test_fns;
 use test_cx::TestCx;
 
 #[cfg(test)]
