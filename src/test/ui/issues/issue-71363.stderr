@@ -1,0 +1,13 @@
+error[E0277]: `Test` doesn't implement `std::fmt::Display`
+ --> $DIR/issue-71363.rs:6:6
+  |
+6 | impl std::error::Error for Test {}
+  |      ^^^^^^^^^^^^^^^^^ `Test` cannot be formatted with the default formatter
+  |
+  = help: the trait `std::fmt::Display` is not implemented for `Test`
+  = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+note: required by a bound in `std::error::Error`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
