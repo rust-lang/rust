@@ -1,5 +1,4 @@
 use std::env;
-use std::sync::Once;
 use std::time::Instant;
 
 use gccjit::{
@@ -7,7 +6,6 @@ use gccjit::{
     FunctionType,
     GlobalKind,
 };
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::dep_graph;
 use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::middle::exported_symbols;
@@ -20,7 +18,7 @@ use rustc_codegen_ssa::traits::DebugInfoMethods;
 use rustc_session::config::DebugInfo;
 use rustc_span::Symbol;
 
-use crate::{GccContext, create_function_calling_initializers};
+use crate::GccContext;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 
@@ -97,15 +95,6 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol) -> (Modul
         {
             let cx = CodegenCx::new(&context, cgu, tcx);
 
-            static START: Once = Once::new();
-            START.call_once(|| {
-                let initializer_name = format!("__gccGlobalCrateInit{}", tcx.crate_name(LOCAL_CRATE));
-                let func = context.new_function(None, FunctionType::Exported, context.new_type::<()>(), &[], initializer_name, false);
-                let block = func.new_block("initial");
-                create_function_calling_initializers(tcx, &context, block);
-                block.end_with_void_return(None);
-            });
-
             let mono_items = cgu.items_in_deterministic_order(tcx);
             for &(mono_item, (linkage, visibility)) in &mono_items {
                 mono_item.predefine::<Builder<'_, '_, '_>>(&cx, linkage, visibility);
@@ -124,8 +113,6 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol) -> (Modul
             if cx.sess().opts.debuginfo != DebugInfo::None {
                 cx.debuginfo_finalize();
             }
-
-            cx.global_init_block.end_with_void_return(None);
         }
 
         ModuleCodegen {

@@ -1,6 +1,7 @@
 use std::convert::TryFrom;
 use std::convert::TryInto;
 
+use gccjit::LValue;
 use gccjit::{Block, CType, RValue, Type, ToRValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{
@@ -10,7 +11,6 @@ use rustc_codegen_ssa::traits::{
     MiscMethods,
     StaticMethods,
 };
-use rustc_middle::bug;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::ScalarInt;
 use rustc_middle::ty::layout::{TyAndLayout, LayoutOf};
@@ -27,28 +27,27 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         bytes_in_context(self, bytes)
     }
 
-    fn const_cstr(&self, symbol: Symbol, _null_terminated: bool) -> RValue<'gcc> {
+    fn const_cstr(&self, symbol: Symbol, _null_terminated: bool) -> LValue<'gcc> {
         // TODO(antoyo): handle null_terminated.
         if let Some(&value) = self.const_cstr_cache.borrow().get(&symbol) {
-            return value.to_rvalue();
+            return value;
         }
 
         let global = self.global_string(&*symbol.as_str());
 
-        self.const_cstr_cache.borrow_mut().insert(symbol, global.dereference(None));
+        self.const_cstr_cache.borrow_mut().insert(symbol, global);
         global
     }
 
-    fn global_string(&self, string: &str) -> RValue<'gcc> {
+    fn global_string(&self, string: &str) -> LValue<'gcc> {
         // TODO(antoyo): handle non-null-terminated strings.
         let string = self.context.new_string_literal(&*string);
         let sym = self.generate_local_symbol_name("str");
         // NOTE: TLS is always off for a string litteral.
         // NOTE: string litterals do not have a link section.
-        let global = self.define_global(&sym, self.val_ty(string), false, None)
-            .unwrap_or_else(|| bug!("symbol `{}` is already defined", sym));
-        self.global_init_block.add_assignment(None, global.dereference(None), string);
-        global.to_rvalue()
+        let global = self.declare_private_global(&sym, self.val_ty(string));
+        global.global_set_initializer_value(string); // TODO: only set if not imported?
+        global
         // TODO(antoyo): set linkage.
     }
 
@@ -76,10 +75,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
 pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) -> RValue<'gcc> {
     let context = &cx.context;
-    let typ = context.new_array_type(None, context.new_type::<u8>(), bytes.len() as i32);
-    let global = cx.declare_unnamed_global(typ);
-    global.global_set_initializer(bytes);
-    global.to_rvalue()
+    let byte_type = context.new_type::<u8>();
+    let typ = context.new_array_type(None, byte_type, bytes.len() as i32);
+    let elements: Vec<_> =
+        bytes.iter()
+        .map(|&byte| context.new_rvalue_from_int(byte_type, byte as i32))
+        .collect();
+    context.new_rvalue_from_array(None, typ, &elements)
 }
 
 pub fn type_is_pointer<'gcc>(typ: Type<'gcc>) -> bool {
@@ -180,7 +182,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn const_str(&self, s: Symbol) -> (RValue<'gcc>, RValue<'gcc>) {
         let len = s.as_str().len();
-        let cs = self.const_ptrcast(self.const_cstr(s, false),
+        let cs = self.const_ptrcast(self.const_cstr(s, false).get_address(None),
             self.type_ptr_to(self.layout_of(self.tcx.types.str_).gcc_type(self, true)),
         );
         (cs, self.const_usize(len as u64))
@@ -191,16 +193,9 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             .map(|value| value.get_type())
             .collect();
         // TODO(antoyo): cache the type? It's anonymous, so probably not.
-        let name = fields.iter().map(|typ| format!("{:?}", typ)).collect::<Vec<_>>().join("_");
         let typ = self.type_struct(&fields, packed);
-        let structure = self.global_init_func.new_local(None, typ, &name);
         let struct_type = typ.is_struct().expect("struct type");
-        for (index, value) in values.iter().enumerate() {
-            let field = struct_type.get_field(index as i32);
-            let field_lvalue = structure.access_field(None, field);
-            self.global_init_block.add_assignment(None, field_lvalue, *value);
-        }
-        self.lvalue_to_rvalue(structure)
+        self.context.new_rvalue_from_struct(None, struct_type, values)
     }
 
     fn const_to_opt_uint(&self, _v: RValue<'gcc>) -> Option<u64> {
@@ -260,19 +255,18 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                         },
                         GlobalAlloc::Static(def_id) => {
                             assert!(self.tcx.is_static(def_id));
-                            self.get_static(def_id)
+                            self.get_static(def_id).get_address(None)
                         },
                     };
                 let ptr_type = base_addr.get_type();
                 let base_addr = self.const_bitcast(base_addr, self.usize_type);
                 let offset = self.context.new_rvalue_from_long(self.usize_type, offset.bytes() as i64);
                 let ptr = self.const_bitcast(base_addr + offset, ptr_type);
-                let value = ptr.dereference(None);
                 if layout.value != Pointer {
-                    self.const_bitcast(value.to_rvalue(), ty)
+                    self.const_bitcast(ptr.dereference(None).to_rvalue(), ty)
                 }
                 else {
-                    self.const_bitcast(value.get_address(None), ty)
+                    self.const_bitcast(ptr, ty)
                 }
             }
         }

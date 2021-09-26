@@ -46,10 +46,6 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub current_func: RefCell<Option<Function<'gcc>>>,
     pub normal_function_addresses: RefCell<FxHashSet<RValue<'gcc>>>,
 
-    /// The function where globals are initialized.
-    pub global_init_func: Function<'gcc>,
-    pub global_init_block: Block<'gcc>,
-
     pub functions: RefCell<FxHashMap<String, Function<'gcc>>>,
 
     pub tls_model: gccjit::TlsModel,
@@ -89,23 +85,20 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub types_with_fields_to_set: RefCell<FxHashMap<Type<'gcc>, (Struct<'gcc>, TyAndLayout<'tcx>)>>,
 
     /// Cache instances of monomorphic and polymorphic items
-    pub instances: RefCell<FxHashMap<Instance<'tcx>, RValue<'gcc>>>,
+    pub instances: RefCell<FxHashMap<Instance<'tcx>, LValue<'gcc>>>,
+    /// Cache function instances of monomorphic and polymorphic items
+    pub function_instances: RefCell<FxHashMap<Instance<'tcx>, RValue<'gcc>>>,
     /// Cache generated vtables
     pub vtables: RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
 
     /// Cache of emitted const globals (value -> global)
     pub const_globals: RefCell<FxHashMap<RValue<'gcc>, RValue<'gcc>>>,
 
-    pub init_argv_var: RefCell<String>,
-    pub argv_initialized: Cell<bool>,
-
     /// Cache of constant strings,
     pub const_cstr_cache: RefCell<FxHashMap<Symbol, LValue<'gcc>>>,
 
     /// Cache of globals.
     pub globals: RefCell<FxHashMap<String, RValue<'gcc>>>,
-    // TODO(antoyo): remove global_names.
-    pub global_names: RefCell<FxHashMap<RValue<'gcc>, String>>,
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
@@ -118,16 +111,9 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// NOTE: a hack is used because the rustc API is not suitable to libgccjit and as such,
     /// `const_undef()` returns struct as pointer so that they can later be assigned a value.
     /// As such, this set remembers which of these pointers were returned by this function so that
-    /// they can be derefered later.
+    /// they can be deferenced later.
     /// FIXME(antoyo): fix the rustc API to avoid having this hack.
     pub structs_as_pointer: RefCell<FxHashSet<RValue<'gcc>>>,
-
-    /// Store the pointer of different types for safety.
-    /// When casting the values back to their original types, check that they are indeed that type
-    /// with these sets.
-    /// FIXME(antoyo): remove when the API supports more types.
-    #[cfg(debug_assertions)]
-    lvalues: RefCell<FxHashSet<LValue<'gcc>>>,
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -180,10 +166,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             functions.insert(builtin.to_string(), context.get_builtin_function(builtin));
         }
 
-        let global_init_func = context.new_function(None, FunctionType::Exported, context.new_type::<()>(), &[],
-            &format!("__gccGlobalInit{}", unit_name(&codegen_unit)), false);
-        let global_init_block = global_init_func.new_block("initial");
-
         Self {
             check_overflow,
             codegen_unit,
@@ -192,8 +174,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             current_func: RefCell::new(None),
             normal_function_addresses: Default::default(),
             functions: RefCell::new(functions),
-            global_init_func,
-            global_init_block,
 
             tls_model,
 
@@ -221,15 +201,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             double_type,
 
             linkage: Cell::new(FunctionType::Internal),
-            #[cfg(debug_assertions)]
-            lvalues: Default::default(),
             instances: Default::default(),
+            function_instances: Default::default(),
             vtables: Default::default(),
             const_globals: Default::default(),
-            init_argv_var: RefCell::new(String::new()),
-            argv_initialized: Cell::new(false),
             const_cstr_cache: Default::default(),
-            global_names: Default::default(),
             globals: Default::default(),
             scalar_types: Default::default(),
             types: Default::default(),
@@ -244,22 +220,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         }
     }
 
-    pub fn lvalue_to_rvalue(&self, value: LValue<'gcc>) -> RValue<'gcc> {
-        #[cfg(debug_assertions)]
-        self.lvalues.borrow_mut().insert(value);
-        unsafe { std::mem::transmute(value) }
-    }
-
     pub fn rvalue_as_function(&self, value: RValue<'gcc>) -> Function<'gcc> {
         let function: Function<'gcc> = unsafe { std::mem::transmute(value) };
         debug_assert!(self.functions.borrow().values().find(|value| **value == function).is_some(),
             "{:?} ({:?}) is not a function", value, value.get_type());
         function
-    }
-
-    pub fn rvalue_as_lvalue(&self, value: RValue<'gcc>) -> LValue<'gcc> {
-        let lvalue: LValue<'gcc> = unsafe { std::mem::transmute(value) };
-        lvalue
     }
 
     pub fn sess(&self) -> &Session {

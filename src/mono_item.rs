@@ -18,12 +18,7 @@ impl<'gcc, 'tcx> PreDefineMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let gcc_type = self.layout_of(ty).gcc_type(self, true);
 
         let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
-        let global = self.define_global(symbol_name, gcc_type, is_tls, attrs.link_section).unwrap_or_else(|| {
-            self.sess().span_fatal(
-                self.tcx.def_span(def_id),
-                &format!("symbol `{}` is already defined", symbol_name),
-            )
-        });
+        let global = self.define_global(symbol_name, gcc_type, is_tls, attrs.link_section);
 
         // TODO(antoyo): set linkage and visibility.
         self.instances.borrow_mut().insert(instance, global);
