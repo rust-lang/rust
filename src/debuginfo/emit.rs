@@ -1,16 +1,16 @@
 //! Write the debuginfo into an object file.
 
+use cranelift_object::ObjectProduct;
 use rustc_data_structures::fx::FxHashMap;
 
 use gimli::write::{Address, AttributeValue, EndianVec, Result, Sections, Writer};
 use gimli::{RunTimeEndian, SectionId};
 
-use crate::backend::WriteDebugInfo;
-
+use super::object::WriteDebugInfo;
 use super::DebugContext;
 
 impl DebugContext<'_> {
-    pub(crate) fn emit<P: WriteDebugInfo>(&mut self, product: &mut P) {
+    pub(crate) fn emit(&mut self, product: &mut ObjectProduct) {
         let unit_range_list_id = self.dwarf.unit.ranges.add(self.unit_range_list.clone());
         let root = self.dwarf.unit.root();
         let root = self.dwarf.unit.get_mut(root);

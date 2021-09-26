@@ -24,6 +24,8 @@ $ $cg_clif_dir/build/bin/cg_clif my_crate.rs
 
 ## Jit mode
 
+> ⚠⚠⚠ The JIT mode is highly experimental. It may be slower than AOT compilation due to lack of incremental compilation. It may also be hard to setup if you have cargo dependencies. ⚠⚠⚠
+
 In jit mode cg_clif will immediately execute your code without creating an executable file.
 
 > This requires all dependencies to be available as dynamic library.

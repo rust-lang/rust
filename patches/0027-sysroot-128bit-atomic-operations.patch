@@ -1,4 +1,4 @@
-From 6a4e6f5dc8c8a529a822eb9b57f9e57519595439 Mon Sep 17 00:00:00 2001
+From ad7ffe71baba46865f2e65266ab025920dfdc20b Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
 Date: Thu, 18 Feb 2021 18:45:28 +0100
 Subject: [PATCH] Disable 128bit atomic operations
@@ -8,7 +8,8 @@ Cranelift doesn't support them yet
  library/core/src/panic/unwind_safe.rs |  6 -----
  library/core/src/sync/atomic.rs       | 38 ---------------------------
  library/core/tests/atomic.rs          |  4 ---
- 3 files changed, 48 deletions(-)
+ library/std/src/time/monotonic.rs     |  6 +++--
+ 4 files changed, 4 insertions(+), 50 deletions(-)
 
 diff --git a/library/core/src/panic/unwind_safe.rs b/library/core/src/panic/unwind_safe.rs
 index 092b7cf..158cf71 100644
@@ -35,10 +36,10 @@ index 092b7cf..158cf71 100644
  #[cfg(target_has_atomic_load_store = "8")]
  #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 diff --git a/library/core/src/sync/atomic.rs b/library/core/src/sync/atomic.rs
-index 0194c58..25a0038 100644
+index d9de37e..8293fce 100644
 --- a/library/core/src/sync/atomic.rs
 +++ b/library/core/src/sync/atomic.rs
-@@ -2229,44 +2229,6 @@ atomic_int! {
+@@ -2234,44 +2234,6 @@ atomic_int! {
      "AtomicU64::new(0)",
      u64 AtomicU64 ATOMIC_U64_INIT
  }
@@ -98,6 +99,38 @@ index b735957..ea728b6 100644
      #[cfg(target_has_atomic = "ptr")]
      assert_eq!(align_of::<AtomicUsize>(), size_of::<AtomicUsize>());
      #[cfg(target_has_atomic = "ptr")]
+diff --git a/library/std/src/time/monotonic.rs b/library/std/src/time/monotonic.rs
+index fa96b7a..2854f9c 100644
+--- a/library/std/src/time/monotonic.rs
++++ b/library/std/src/time/monotonic.rs
+@@ -5,7 +5,7 @@ pub(super) fn monotonize(raw: time::Instant) -> time::Instant {
+     inner::monotonize(raw)
+ }
+ 
+-#[cfg(all(target_has_atomic = "64", not(target_has_atomic = "128")))]
++#[cfg(target_has_atomic = "64")]
+ pub mod inner {
+     use crate::sync::atomic::AtomicU64;
+     use crate::sync::atomic::Ordering::*;
+@@ -70,6 +70,7 @@ pub mod inner {
+     }
+ }
+ 
++/*
+ #[cfg(target_has_atomic = "128")]
+ pub mod inner {
+     use crate::sync::atomic::AtomicU128;
+@@ -94,8 +95,9 @@ pub mod inner {
+         ZERO.checked_add_duration(&Duration::new(secs, nanos)).unwrap()
+     }
+ }
++*/
+ 
+-#[cfg(not(any(target_has_atomic = "64", target_has_atomic = "128")))]
++#[cfg(not(target_has_atomic = "64"))]
+ pub mod inner {
+     use crate::cmp;
+     use crate::sys::time;
 -- 
 2.26.2.7.g19db9cfb68
 

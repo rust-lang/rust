@@ -1,4 +1,4 @@
-#![feature(no_core, lang_items, never_type, linkage, extern_types, thread_local)]
+#![feature(no_core, lang_items, never_type, linkage, extern_types, thread_local, box_syntax)]
 #![no_core]
 #![allow(dead_code, non_camel_case_types)]
 
