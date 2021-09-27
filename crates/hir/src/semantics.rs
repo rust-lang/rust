@@ -542,32 +542,32 @@ impl<'db> SemanticsImpl<'db> {
             None => return,
         };
         let sa = self.analyze(&parent);
-        let mut queue = vec![InFile::new(sa.file_id, token)];
+        let mut stack: SmallVec<[_; 1]> = smallvec![InFile::new(sa.file_id, token)];
         let mut cache = self.expansion_info_cache.borrow_mut();
 
         let mut process_expansion_for_token =
-            |queue: &mut Vec<_>, file_id, item, token: InFile<&_>| {
+            |stack: &mut SmallVec<_>, file_id, item, token: InFile<&_>| {
                 let mapped_tokens = cache
                     .entry(file_id)
                     .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
                     .as_ref()?
                     .map_token_down(self.db.upcast(), item, token)?;
 
-                let len = queue.len();
+                let len = stack.len();
                 // requeue the tokens we got from mapping our current token down
-                queue.extend(mapped_tokens.inspect(|token| {
+                stack.extend(mapped_tokens.inspect(|token| {
                     if let Some(parent) = token.value.parent() {
                         self.cache(find_root(&parent), token.file_id);
                     }
                 }));
                 // if the length changed we have found a mapping for the token
-                (queue.len() != len).then(|| ())
+                (stack.len() != len).then(|| ())
             };
 
         // Remap the next token in the queue into a macro call its in, if it is not being remapped
         // either due to not being in a macro-call or because its unused push it into the result vec,
         // otherwise push the remapped tokens back into the queue as they can potentially be remapped again.
-        while let Some(token) = queue.pop() {
+        while let Some(token) = stack.pop() {
             self.db.unwind_if_cancelled();
             let was_not_remapped = (|| {
                 // are we inside an attribute macro call
@@ -584,7 +584,7 @@ impl<'db> SemanticsImpl<'db> {
                 if let Some((call_id, item)) = containing_attribute_macro_call {
                     let file_id = call_id.as_file();
                     return process_expansion_for_token(
-                        &mut queue,
+                        &mut stack,
                         file_id,
                         Some(item),
                         token.as_ref(),
@@ -607,7 +607,7 @@ impl<'db> SemanticsImpl<'db> {
                     }
 
                     let file_id = sa.expand(self.db, token.with_value(&macro_call))?;
-                    return process_expansion_for_token(&mut queue, file_id, None, token.as_ref());
+                    return process_expansion_for_token(&mut stack, file_id, None, token.as_ref());
                 }
 
                 // outside of a macro invocation so this is a "final" token
