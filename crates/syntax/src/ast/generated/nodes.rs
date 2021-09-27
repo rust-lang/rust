@@ -1444,45 +1444,45 @@ pub enum GenericParam {
 }
 impl ast::AttrsOwner for GenericParam {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynArgListOwner {
+pub struct AnyArgListOwner {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::ArgListOwner for DynArgListOwner {}
+impl ast::ArgListOwner for AnyArgListOwner {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynAttrsOwner {
+pub struct AnyAttrsOwner {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for DynAttrsOwner {}
+impl ast::AttrsOwner for AnyAttrsOwner {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynGenericParamsOwner {
+pub struct AnyGenericParamsOwner {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::GenericParamsOwner for DynGenericParamsOwner {}
+impl ast::GenericParamsOwner for AnyGenericParamsOwner {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynLoopBodyOwner {
+pub struct AnyLoopBodyOwner {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::LoopBodyOwner for DynLoopBodyOwner {}
+impl ast::LoopBodyOwner for AnyLoopBodyOwner {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynModuleItemOwner {
+pub struct AnyModuleItemOwner {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::ModuleItemOwner for DynModuleItemOwner {}
+impl ast::ModuleItemOwner for AnyModuleItemOwner {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynNameOwner {
+pub struct AnyNameOwner {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::NameOwner for DynNameOwner {}
+impl ast::NameOwner for AnyNameOwner {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynTypeBoundsOwner {
+pub struct AnyTypeBoundsOwner {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::TypeBoundsOwner for DynTypeBoundsOwner {}
+impl ast::TypeBoundsOwner for AnyTypeBoundsOwner {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynVisibilityOwner {
+pub struct AnyVisibilityOwner {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::VisibilityOwner for DynVisibilityOwner {}
+impl ast::VisibilityOwner for AnyVisibilityOwner {}
 impl AstNode for Name {
     fn can_cast(kind: SyntaxKind) -> bool { kind == NAME }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -3597,13 +3597,13 @@ impl AstNode for GenericParam {
         }
     }
 }
-impl DynArgListOwner {
+impl AnyArgListOwner {
     #[inline]
-    pub fn new<T: ast::ArgListOwner>(node: T) -> DynArgListOwner {
-        DynArgListOwner { syntax: node.syntax().clone() }
+    pub fn new<T: ast::ArgListOwner>(node: T) -> AnyArgListOwner {
+        AnyArgListOwner { syntax: node.syntax().clone() }
     }
 }
-impl AstNode for DynArgListOwner {
+impl AstNode for AnyArgListOwner {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             CALL_EXPR | METHOD_CALL_EXPR => true,
@@ -3611,17 +3611,17 @@ impl AstNode for DynArgListOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then(|| DynArgListOwner { syntax })
+        Self::can_cast(syntax.kind()).then(|| AnyArgListOwner { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl DynAttrsOwner {
+impl AnyAttrsOwner {
     #[inline]
-    pub fn new<T: ast::AttrsOwner>(node: T) -> DynAttrsOwner {
-        DynAttrsOwner { syntax: node.syntax().clone() }
+    pub fn new<T: ast::AttrsOwner>(node: T) -> AnyAttrsOwner {
+        AnyAttrsOwner { syntax: node.syntax().clone() }
     }
 }
-impl AstNode for DynAttrsOwner {
+impl AstNode for AnyAttrsOwner {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             MACRO_CALL
@@ -3692,17 +3692,17 @@ impl AstNode for DynAttrsOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then(|| DynAttrsOwner { syntax })
+        Self::can_cast(syntax.kind()).then(|| AnyAttrsOwner { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl DynGenericParamsOwner {
+impl AnyGenericParamsOwner {
     #[inline]
-    pub fn new<T: ast::GenericParamsOwner>(node: T) -> DynGenericParamsOwner {
-        DynGenericParamsOwner { syntax: node.syntax().clone() }
+    pub fn new<T: ast::GenericParamsOwner>(node: T) -> AnyGenericParamsOwner {
+        AnyGenericParamsOwner { syntax: node.syntax().clone() }
     }
 }
-impl AstNode for DynGenericParamsOwner {
+impl AstNode for AnyGenericParamsOwner {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             ENUM | FN | IMPL | STRUCT | TRAIT | TYPE_ALIAS | UNION => true,
@@ -3710,17 +3710,17 @@ impl AstNode for DynGenericParamsOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then(|| DynGenericParamsOwner { syntax })
+        Self::can_cast(syntax.kind()).then(|| AnyGenericParamsOwner { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl DynLoopBodyOwner {
+impl AnyLoopBodyOwner {
     #[inline]
-    pub fn new<T: ast::LoopBodyOwner>(node: T) -> DynLoopBodyOwner {
-        DynLoopBodyOwner { syntax: node.syntax().clone() }
+    pub fn new<T: ast::LoopBodyOwner>(node: T) -> AnyLoopBodyOwner {
+        AnyLoopBodyOwner { syntax: node.syntax().clone() }
     }
 }
-impl AstNode for DynLoopBodyOwner {
+impl AstNode for AnyLoopBodyOwner {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             FOR_EXPR | LOOP_EXPR | WHILE_EXPR => true,
@@ -3728,17 +3728,17 @@ impl AstNode for DynLoopBodyOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then(|| DynLoopBodyOwner { syntax })
+        Self::can_cast(syntax.kind()).then(|| AnyLoopBodyOwner { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl DynModuleItemOwner {
+impl AnyModuleItemOwner {
     #[inline]
-    pub fn new<T: ast::ModuleItemOwner>(node: T) -> DynModuleItemOwner {
-        DynModuleItemOwner { syntax: node.syntax().clone() }
+    pub fn new<T: ast::ModuleItemOwner>(node: T) -> AnyModuleItemOwner {
+        AnyModuleItemOwner { syntax: node.syntax().clone() }
     }
 }
-impl AstNode for DynModuleItemOwner {
+impl AstNode for AnyModuleItemOwner {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             MACRO_ITEMS | SOURCE_FILE | ITEM_LIST => true,
@@ -3746,17 +3746,17 @@ impl AstNode for DynModuleItemOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then(|| DynModuleItemOwner { syntax })
+        Self::can_cast(syntax.kind()).then(|| AnyModuleItemOwner { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl DynNameOwner {
+impl AnyNameOwner {
     #[inline]
-    pub fn new<T: ast::NameOwner>(node: T) -> DynNameOwner {
-        DynNameOwner { syntax: node.syntax().clone() }
+    pub fn new<T: ast::NameOwner>(node: T) -> AnyNameOwner {
+        AnyNameOwner { syntax: node.syntax().clone() }
     }
 }
-impl AstNode for DynNameOwner {
+impl AstNode for AnyNameOwner {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             CONST | ENUM | FN | MACRO_RULES | MACRO_DEF | MODULE | STATIC | STRUCT | TRAIT
@@ -3766,17 +3766,17 @@ impl AstNode for DynNameOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then(|| DynNameOwner { syntax })
+        Self::can_cast(syntax.kind()).then(|| AnyNameOwner { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl DynTypeBoundsOwner {
+impl AnyTypeBoundsOwner {
     #[inline]
-    pub fn new<T: ast::TypeBoundsOwner>(node: T) -> DynTypeBoundsOwner {
-        DynTypeBoundsOwner { syntax: node.syntax().clone() }
+    pub fn new<T: ast::TypeBoundsOwner>(node: T) -> AnyTypeBoundsOwner {
+        AnyTypeBoundsOwner { syntax: node.syntax().clone() }
     }
 }
-impl AstNode for DynTypeBoundsOwner {
+impl AstNode for AnyTypeBoundsOwner {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             ASSOC_TYPE_ARG | TRAIT | TYPE_ALIAS | LIFETIME_PARAM | TYPE_PARAM | WHERE_PRED => true,
@@ -3784,17 +3784,17 @@ impl AstNode for DynTypeBoundsOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then(|| DynTypeBoundsOwner { syntax })
+        Self::can_cast(syntax.kind()).then(|| AnyTypeBoundsOwner { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl DynVisibilityOwner {
+impl AnyVisibilityOwner {
     #[inline]
-    pub fn new<T: ast::VisibilityOwner>(node: T) -> DynVisibilityOwner {
-        DynVisibilityOwner { syntax: node.syntax().clone() }
+    pub fn new<T: ast::VisibilityOwner>(node: T) -> AnyVisibilityOwner {
+        AnyVisibilityOwner { syntax: node.syntax().clone() }
     }
 }
-impl AstNode for DynVisibilityOwner {
+impl AstNode for AnyVisibilityOwner {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             CONST | ENUM | EXTERN_CRATE | FN | IMPL | MACRO_RULES | MACRO_DEF | MODULE | STATIC
@@ -3805,7 +3805,7 @@ impl AstNode for DynVisibilityOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then(|| DynVisibilityOwner { syntax })
+        Self::can_cast(syntax.kind()).then(|| AnyVisibilityOwner { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }

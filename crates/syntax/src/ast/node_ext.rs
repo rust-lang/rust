@@ -531,7 +531,7 @@ impl ast::Variant {
 
 impl ast::Item {
     pub fn generic_param_list(&self) -> Option<ast::GenericParamList> {
-        ast::DynGenericParamsOwner::cast(self.syntax().clone())?.generic_param_list()
+        ast::AnyGenericParamsOwner::cast(self.syntax().clone())?.generic_param_list()
     }
 }
 

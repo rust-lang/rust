@@ -209,7 +209,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
         })
         .unzip();
 
-    let (dyn_node_defs, dyn_node_boilerplate_impls): (Vec<_>, Vec<_>) = grammar
+    let (any_node_defs, any_node_boilerplate_impls): (Vec<_>, Vec<_>) = grammar
         .nodes
         .iter()
         .flat_map(|node| node.traits.iter().map(move |t| (t, node)))
@@ -217,7 +217,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
         .into_iter()
         .sorted_by_key(|(k, _)| k.clone())
         .map(|(trait_name, nodes)| {
-            let name = format_ident!("Dyn{}", trait_name);
+            let name = format_ident!("Any{}", trait_name);
             let trait_name = format_ident!("{}", trait_name);
             let kinds: Vec<_> = nodes
                 .iter()
@@ -297,10 +297,10 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
 
         #(#node_defs)*
         #(#enum_defs)*
-        #(#dyn_node_defs)*
+        #(#any_node_defs)*
         #(#node_boilerplate_impls)*
         #(#enum_boilerplate_impls)*
-        #(#dyn_node_boilerplate_impls)*
+        #(#any_node_boilerplate_impls)*
         #(#display_impls)*
     };
 

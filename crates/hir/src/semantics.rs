@@ -682,7 +682,7 @@ impl<'db> SemanticsImpl<'db> {
     fn resolve_lifetime_param(&self, lifetime: &ast::Lifetime) -> Option<LifetimeParam> {
         let text = lifetime.text();
         let lifetime_param = lifetime.syntax().ancestors().find_map(|syn| {
-            let gpl = ast::DynGenericParamsOwner::cast(syn)?.generic_param_list()?;
+            let gpl = ast::AnyGenericParamsOwner::cast(syn)?.generic_param_list()?;
             gpl.lifetime_params()
                 .find(|tp| tp.lifetime().as_ref().map(|lt| lt.text()).as_ref() == Some(&text))
         })?;
