@@ -236,19 +236,19 @@ pub fn register_plugins<'a>(
 fn pre_expansion_lint(
     sess: &Session,
     lint_store: &LintStore,
-    krate: &ast::Crate,
     crate_attrs: &[ast::Attribute],
-    crate_name: &str,
+    check_node: &ast::Crate,
+    node_name: &str,
 ) {
-    sess.prof.generic_activity_with_arg("pre_AST_expansion_lint_checks", crate_name).run(|| {
-        rustc_lint::check_ast_crate(
+    sess.prof.generic_activity_with_arg("pre_AST_expansion_lint_checks", node_name).run(|| {
+        rustc_lint::check_ast_node(
             sess,
-            lint_store,
-            krate,
-            crate_attrs,
             true,
+            lint_store,
+            crate_attrs,
             None,
             rustc_lint::BuiltinCombinedPreExpansionLintPass::new(),
+            check_node,
         );
     });
 }
@@ -265,7 +265,7 @@ pub fn configure_and_expand(
     resolver: &mut Resolver<'_>,
 ) -> Result<ast::Crate> {
     tracing::trace!("configure_and_expand");
-    pre_expansion_lint(sess, lint_store, &krate, &krate.attrs, crate_name);
+    pre_expansion_lint(sess, lint_store, &krate.attrs, &krate, crate_name);
     rustc_builtin_macros::register_builtin_macros(resolver);
 
     krate = sess.time("crate_injection", || {
@@ -324,7 +324,7 @@ pub fn configure_and_expand(
         let crate_attrs = krate.attrs.clone();
         let extern_mod_loaded = |ident: Ident, attrs, items, span| {
             let krate = ast::Crate { attrs, items, span, id: DUMMY_NODE_ID, is_placeholder: false };
-            pre_expansion_lint(sess, lint_store, &krate, &crate_attrs, ident.name.as_str());
+            pre_expansion_lint(sess, lint_store, &crate_attrs, &krate, ident.name.as_str());
             (krate.attrs, krate.items)
         };
         let mut ecx = ExtCtxt::new(sess, cfg, resolver, Some(&extern_mod_loaded));
@@ -499,14 +499,14 @@ pub fn lower_to_hir<'res, 'tcx>(
     );
 
     sess.time("early_lint_checks", || {
-        rustc_lint::check_ast_crate(
+        rustc_lint::check_ast_node(
             sess,
-            lint_store,
-            &krate,
-            &krate.attrs,
             false,
+            lint_store,
+            &krate.attrs,
             Some(std::mem::take(resolver.lint_buffer())),
             rustc_lint::BuiltinCombinedEarlyLintPass::new(),
+            &krate,
         )
     });
 

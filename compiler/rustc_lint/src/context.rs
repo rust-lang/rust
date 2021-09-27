@@ -553,20 +553,9 @@ pub struct LateContext<'tcx> {
     pub only_module: bool,
 }
 
-/// Context for lint checking of the AST, after expansion, before lowering to
-/// HIR.
+/// Context for lint checking of the AST, after expansion, before lowering to HIR.
 pub struct EarlyContext<'a> {
-    /// Type context we're checking in.
-    pub sess: &'a Session,
-
-    /// The crate being checked.
-    pub krate: &'a ast::Crate,
-
     pub builder: LintLevelsBuilder<'a>,
-
-    /// The store of registered lints and the lint levels.
-    pub lint_store: &'a LintStore,
-
     pub buffered: LintBuffer,
 }
 
@@ -801,18 +790,14 @@ pub trait LintContext: Sized {
 }
 
 impl<'a> EarlyContext<'a> {
-    pub fn new(
+    pub(crate) fn new(
         sess: &'a Session,
+        warn_about_weird_lints: bool,
         lint_store: &'a LintStore,
-        krate: &'a ast::Crate,
         crate_attrs: &'a [ast::Attribute],
         buffered: LintBuffer,
-        warn_about_weird_lints: bool,
     ) -> EarlyContext<'a> {
         EarlyContext {
-            sess,
-            krate,
-            lint_store,
             builder: LintLevelsBuilder::new(sess, warn_about_weird_lints, lint_store, crate_attrs),
             buffered,
         }
@@ -851,11 +836,11 @@ impl LintContext for EarlyContext<'_> {
 
     /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {
-        &self.sess
+        &self.builder.sess()
     }
 
     fn lints(&self) -> &LintStore {
-        &*self.lint_store
+        self.builder.lint_store()
     }
 
     fn lookup<S: Into<MultiSpan>>(
