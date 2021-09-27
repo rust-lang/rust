@@ -449,8 +449,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                     .collect();
 
-                let destination = this.cfg.start_new_block();
+                if !options.contains(InlineAsmOptions::NORETURN) {
+                    this.cfg.push_assign_unit(block, source_info, destination, this.tcx);
+                }
 
+                let destination_block = this.cfg.start_new_block();
                 this.cfg.terminate(
                     block,
                     source_info,
@@ -462,11 +465,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         destination: if options.contains(InlineAsmOptions::NORETURN) {
                             None
                         } else {
-                            Some(destination)
+                            Some(destination_block)
                         },
                     },
                 );
-                destination.unit()
+                destination_block.unit()
             }
 
             // These cases don't actually need a destination
