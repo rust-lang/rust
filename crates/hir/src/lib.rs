@@ -2601,9 +2601,7 @@ impl Type {
     ) {
         // There should be no inference vars in types passed here
         // FIXME check that?
-        // FIXME replace Unknown by bound vars here
-        let canonical =
-            Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(&Interner) };
+        let canonical = hir_ty::replace_errors_with_variables(&self.ty);
 
         let env = self.env.clone();
         let krate = krate.id;
