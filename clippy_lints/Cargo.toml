@@ -6,7 +6,7 @@ repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 keywords = ["clippy", "lint", "plugin"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 cargo_metadata = "0.12"
