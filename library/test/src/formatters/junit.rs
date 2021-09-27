@@ -29,7 +29,7 @@ impl<T: Write> JunitFormatter<T> {
 impl<T: Write> OutputFormatter for JunitFormatter<T> {
     fn write_run_start(&mut self, _test_count: usize) -> io::Result<()> {
         // We write xml header on run start
-        self.out.write_all("\n".as_bytes())?;
+        self.out.write_all(b"\n")?;
         self.write_message("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
     }
 
@@ -134,7 +134,7 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
         self.write_message("</testsuite>")?;
         self.write_message("</testsuites>")?;
 
-        self.out.write_all("\n\n".as_bytes())?;
+        self.out.write_all(b"\n\n")?;
 
         Ok(state.failed == 0)
     }
