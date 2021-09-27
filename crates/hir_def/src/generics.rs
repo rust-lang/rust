@@ -6,7 +6,7 @@
 use base_db::FileId;
 use either::Either;
 use hir_expand::{
-    name::{name, AsName, Name},
+    name::{AsName, Name},
     HirFileId, InFile,
 };
 use la_arena::{Arena, ArenaMap};
@@ -90,13 +90,6 @@ pub enum WherePredicateTypeTarget {
     TypeParam(LocalTypeParamId),
 }
 
-#[derive(Default)]
-pub(crate) struct SourceMap {
-    pub(crate) type_params: ArenaMap<LocalTypeParamId, Either<ast::TypeParam, ast::Trait>>,
-    lifetime_params: ArenaMap<LocalLifetimeParamId, ast::LifetimeParam>,
-    const_params: ArenaMap<LocalConstParamId, ast::ConstParam>,
-}
-
 impl GenericParams {
     pub(crate) fn generic_params_query(
         db: &dyn DefDatabase,
@@ -153,93 +146,9 @@ impl GenericParams {
         }
     }
 
-    fn new(db: &dyn DefDatabase, def: GenericDefId) -> (GenericParams, InFile<SourceMap>) {
-        let mut generics = GenericParams::default();
-        let mut sm = SourceMap::default();
-
-        // FIXME: add `: Sized` bound for everything except for `Self` in traits
-        let file_id = match def {
-            GenericDefId::FunctionId(it) => {
-                let src = it.lookup(db).source(db);
-                let lower_ctx = LowerCtx::new(db, src.file_id);
-                generics.fill(&lower_ctx, &mut sm, &src.value);
-                // lower `impl Trait` in arguments
-                let data = db.function_data(it);
-                for param in &data.params {
-                    generics.fill_implicit_impl_trait_args(param);
-                }
-                src.file_id
-            }
-            GenericDefId::AdtId(AdtId::StructId(it)) => {
-                let src = it.lookup(db).source(db);
-                let lower_ctx = LowerCtx::new(db, src.file_id);
-                generics.fill(&lower_ctx, &mut sm, &src.value);
-                src.file_id
-            }
-            GenericDefId::AdtId(AdtId::UnionId(it)) => {
-                let src = it.lookup(db).source(db);
-                let lower_ctx = LowerCtx::new(db, src.file_id);
-                generics.fill(&lower_ctx, &mut sm, &src.value);
-                src.file_id
-            }
-            GenericDefId::AdtId(AdtId::EnumId(it)) => {
-                let src = it.lookup(db).source(db);
-                let lower_ctx = LowerCtx::new(db, src.file_id);
-                generics.fill(&lower_ctx, &mut sm, &src.value);
-                src.file_id
-            }
-            GenericDefId::TraitId(it) => {
-                let src = it.lookup(db).source(db);
-                let lower_ctx = LowerCtx::new(db, src.file_id);
-
-                // traits get the Self type as an implicit first type parameter
-                let self_param_id = generics.types.alloc(TypeParamData {
-                    name: Some(name![Self]),
-                    default: None,
-                    provenance: TypeParamProvenance::TraitSelf,
-                });
-                sm.type_params.insert(self_param_id, Either::Right(src.value.clone()));
-                // add super traits as bounds on Self
-                // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
-                let self_param = TypeRef::Path(name![Self].into());
-                generics.fill_bounds(&lower_ctx, &src.value, Either::Left(self_param));
-
-                generics.fill(&lower_ctx, &mut sm, &src.value);
-                src.file_id
-            }
-            GenericDefId::TypeAliasId(it) => {
-                let src = it.lookup(db).source(db);
-                let lower_ctx = LowerCtx::new(db, src.file_id);
-
-                generics.fill(&lower_ctx, &mut sm, &src.value);
-                src.file_id
-            }
-            // Note that we don't add `Self` here: in `impl`s, `Self` is not a
-            // type-parameter, but rather is a type-alias for impl's target
-            // type, so this is handled by the resolver.
-            GenericDefId::ImplId(it) => {
-                let src = it.lookup(db).source(db);
-                let lower_ctx = LowerCtx::new(db, src.file_id);
-
-                generics.fill(&lower_ctx, &mut sm, &src.value);
-                src.file_id
-            }
-            // We won't be using this ID anyway
-            GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => FileId(!0).into(),
-        };
-
-        generics.shrink_to_fit();
-        (generics, InFile::new(file_id, sm))
-    }
-
-    pub(crate) fn fill(
-        &mut self,
-        lower_ctx: &LowerCtx,
-        sm: &mut SourceMap,
-        node: &dyn HasGenericParams,
-    ) {
+    pub(crate) fn fill(&mut self, lower_ctx: &LowerCtx, node: &dyn HasGenericParams) {
         if let Some(params) = node.generic_param_list() {
-            self.fill_params(lower_ctx, sm, params)
+            self.fill_params(lower_ctx, params)
         }
         if let Some(where_clause) = node.where_clause() {
             self.fill_where_predicates(lower_ctx, where_clause);
@@ -259,12 +168,7 @@ impl GenericParams {
         }
     }
 
-    fn fill_params(
-        &mut self,
-        lower_ctx: &LowerCtx,
-        sm: &mut SourceMap,
-        params: ast::GenericParamList,
-    ) {
+    fn fill_params(&mut self, lower_ctx: &LowerCtx, params: ast::GenericParamList) {
         for type_param in params.type_params() {
             let name = type_param.name().map_or_else(Name::missing, |it| it.as_name());
             // FIXME: Use `Path::from_src`
@@ -275,9 +179,7 @@ impl GenericParams {
                 default,
                 provenance: TypeParamProvenance::TypeParamList,
             };
-            let param_id = self.types.alloc(param);
-            sm.type_params.insert(param_id, Either::Left(type_param.clone()));
-
+            self.types.alloc(param);
             let type_ref = TypeRef::Path(name.into());
             self.fill_bounds(lower_ctx, &type_param, Either::Left(type_ref));
         }
@@ -285,8 +187,7 @@ impl GenericParams {
             let name =
                 lifetime_param.lifetime().map_or_else(Name::missing, |lt| Name::new_lifetime(&lt));
             let param = LifetimeParamData { name: name.clone() };
-            let param_id = self.lifetimes.alloc(param);
-            sm.lifetime_params.insert(param_id, lifetime_param.clone());
+            self.lifetimes.alloc(param);
             let lifetime_ref = LifetimeRef::new_name(name);
             self.fill_bounds(lower_ctx, &lifetime_param, Either::Right(lifetime_ref));
         }
@@ -294,8 +195,7 @@ impl GenericParams {
             let name = const_param.name().map_or_else(Name::missing, |it| it.as_name());
             let ty = const_param.ty().map_or(TypeRef::Error, |it| TypeRef::from_ast(lower_ctx, it));
             let param = ConstParamData { name, ty: Interned::new(ty) };
-            let param_id = self.consts.alloc(param);
-            sm.const_params.insert(param_id, const_param.clone());
+            self.consts.alloc(param);
         }
     }
 
@@ -407,13 +307,71 @@ impl GenericParams {
     }
 }
 
+fn file_id_and_params_of(
+    def: GenericDefId,
+    db: &dyn DefDatabase,
+) -> (HirFileId, Option<ast::GenericParamList>) {
+    match def {
+        GenericDefId::FunctionId(it) => {
+            let src = it.lookup(db).source(db);
+            (src.file_id, src.value.generic_param_list())
+        }
+        GenericDefId::AdtId(AdtId::StructId(it)) => {
+            let src = it.lookup(db).source(db);
+            (src.file_id, src.value.generic_param_list())
+        }
+        GenericDefId::AdtId(AdtId::UnionId(it)) => {
+            let src = it.lookup(db).source(db);
+            (src.file_id, src.value.generic_param_list())
+        }
+        GenericDefId::AdtId(AdtId::EnumId(it)) => {
+            let src = it.lookup(db).source(db);
+            (src.file_id, src.value.generic_param_list())
+        }
+        GenericDefId::TraitId(it) => {
+            let src = it.lookup(db).source(db);
+            (src.file_id, src.value.generic_param_list())
+        }
+        GenericDefId::TypeAliasId(it) => {
+            let src = it.lookup(db).source(db);
+            (src.file_id, src.value.generic_param_list())
+        }
+        GenericDefId::ImplId(it) => {
+            let src = it.lookup(db).source(db);
+            (src.file_id, src.value.generic_param_list())
+        }
+        // We won't be using this ID anyway
+        GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => (FileId(!0).into(), None),
+    }
+}
+
 impl HasChildSource<LocalTypeParamId> for GenericDefId {
     type Value = Either<ast::TypeParam, ast::Trait>;
     fn child_source(
         &self,
         db: &dyn DefDatabase,
     ) -> InFile<ArenaMap<LocalTypeParamId, Self::Value>> {
-        GenericParams::new(db, *self).1.map(|source_maps| source_maps.type_params)
+        let generic_params = db.generic_params(*self);
+        let mut idx_iter = generic_params.types.iter().map(|(idx, _)| idx);
+
+        let (file_id, generic_params_list) = file_id_and_params_of(*self, db);
+
+        let mut params = ArenaMap::default();
+
+        // For traits the first type index is `Self`, we need to add it before the other params.
+        if let GenericDefId::TraitId(id) = *self {
+            let trait_ref = id.lookup(db).source(db).value.clone();
+            let idx = idx_iter.next().unwrap();
+            params.insert(idx, Either::Right(trait_ref))
+        }
+
+        if let Some(generic_params_list) = generic_params_list {
+            for (idx, ast_param) in idx_iter.zip(generic_params_list.type_params()) {
+                params.insert(idx, Either::Left(ast_param));
+            }
+        }
+
+        InFile::new(file_id, params)
     }
 }
 
@@ -423,7 +381,20 @@ impl HasChildSource<LocalLifetimeParamId> for GenericDefId {
         &self,
         db: &dyn DefDatabase,
     ) -> InFile<ArenaMap<LocalLifetimeParamId, Self::Value>> {
-        GenericParams::new(db, *self).1.map(|source_maps| source_maps.lifetime_params)
+        let generic_params = db.generic_params(*self);
+        let idx_iter = generic_params.lifetimes.iter().map(|(idx, _)| idx);
+
+        let (file_id, generic_params_list) = file_id_and_params_of(*self, db);
+
+        let mut params = ArenaMap::default();
+
+        if let Some(generic_params_list) = generic_params_list {
+            for (idx, ast_param) in idx_iter.zip(generic_params_list.lifetime_params()) {
+                params.insert(idx, ast_param);
+            }
+        }
+
+        InFile::new(file_id, params)
     }
 }
 
@@ -433,28 +404,50 @@ impl HasChildSource<LocalConstParamId> for GenericDefId {
         &self,
         db: &dyn DefDatabase,
     ) -> InFile<ArenaMap<LocalConstParamId, Self::Value>> {
-        GenericParams::new(db, *self).1.map(|source_maps| source_maps.const_params)
+        let generic_params = db.generic_params(*self);
+        let idx_iter = generic_params.consts.iter().map(|(idx, _)| idx);
+
+        let (file_id, generic_params_list) = file_id_and_params_of(*self, db);
+
+        let mut params = ArenaMap::default();
+
+        if let Some(generic_params_list) = generic_params_list {
+            for (idx, ast_param) in idx_iter.zip(generic_params_list.const_params()) {
+                params.insert(idx, ast_param);
+            }
+        }
+
+        InFile::new(file_id, params)
     }
 }
 
 impl ChildBySource for GenericDefId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, _: HirFileId) {
-        let (_, sm) = GenericParams::new(db, *self);
+        let generic_params = db.generic_params(*self);
+        let mut types_idx_iter = generic_params.types.iter().map(|(idx, _)| idx);
+        let lts_idx_iter = generic_params.lifetimes.iter().map(|(idx, _)| idx);
+        let consts_idx_iter = generic_params.consts.iter().map(|(idx, _)| idx);
 
-        let sm = sm.as_ref();
-        for (local_id, src) in sm.value.type_params.iter() {
-            let id = TypeParamId { parent: *self, local_id };
-            if let Either::Left(type_param) = src {
-                res[keys::TYPE_PARAM].insert(sm.with_value(type_param.clone()), id)
+        let (file_id, generic_params_list) = file_id_and_params_of(*self, db);
+
+        // For traits the first type index is `Self`, skip it.
+        if let GenericDefId::TraitId(_) = *self {
+            types_idx_iter.next().unwrap(); // advance_by(1);
+        }
+
+        if let Some(generic_params_list) = generic_params_list {
+            for (local_id, ast_param) in types_idx_iter.zip(generic_params_list.type_params()) {
+                let id = TypeParamId { parent: *self, local_id };
+                res[keys::TYPE_PARAM].insert(InFile::new(file_id, ast_param), id);
             }
-        }
-        for (local_id, src) in sm.value.lifetime_params.iter() {
-            let id = LifetimeParamId { parent: *self, local_id };
-            res[keys::LIFETIME_PARAM].insert(sm.with_value(src.clone()), id);
-        }
-        for (local_id, src) in sm.value.const_params.iter() {
-            let id = ConstParamId { parent: *self, local_id };
-            res[keys::CONST_PARAM].insert(sm.with_value(src.clone()), id);
+            for (local_id, ast_param) in lts_idx_iter.zip(generic_params_list.lifetime_params()) {
+                let id = LifetimeParamId { parent: *self, local_id };
+                res[keys::LIFETIME_PARAM].insert(InFile::new(file_id, ast_param), id);
+            }
+            for (local_id, ast_param) in consts_idx_iter.zip(generic_params_list.const_params()) {
+                let id = ConstParamId { parent: *self, local_id };
+                res[keys::CONST_PARAM].insert(InFile::new(file_id, ast_param), id);
+            }
         }
     }
 }

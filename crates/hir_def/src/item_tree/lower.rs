@@ -662,11 +662,10 @@ impl<'a> Ctx<'a> {
         owner: GenericsOwner<'_>,
         node: &impl ast::HasGenericParams,
     ) -> Interned<GenericParams> {
-        let mut sm = &mut Default::default();
         let mut generics = GenericParams::default();
         match owner {
             GenericsOwner::Function(func) => {
-                generics.fill(&self.body_ctx, sm, node);
+                generics.fill(&self.body_ctx, node);
                 // lower `impl Trait` in arguments
                 for id in func.params.clone() {
                     if let Param::Normal(ty) = &self.data().params[id] {
@@ -678,27 +677,26 @@ impl<'a> Ctx<'a> {
             | GenericsOwner::Enum
             | GenericsOwner::Union
             | GenericsOwner::TypeAlias => {
-                generics.fill(&self.body_ctx, sm, node);
+                generics.fill(&self.body_ctx, node);
             }
             GenericsOwner::Trait(trait_def) => {
                 // traits get the Self type as an implicit first type parameter
-                let self_param_id = generics.types.alloc(TypeParamData {
+                generics.types.alloc(TypeParamData {
                     name: Some(name![Self]),
                     default: None,
                     provenance: TypeParamProvenance::TraitSelf,
                 });
-                sm.type_params.insert(self_param_id, Either::Right(trait_def.clone()));
                 // add super traits as bounds on Self
                 // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
                 let self_param = TypeRef::Path(name![Self].into());
                 generics.fill_bounds(&self.body_ctx, trait_def, Either::Left(self_param));
-                generics.fill(&self.body_ctx, &mut sm, node);
+                generics.fill(&self.body_ctx, node);
             }
             GenericsOwner::Impl => {
                 // Note that we don't add `Self` here: in `impl`s, `Self` is not a
                 // type-parameter, but rather is a type-alias for impl's target
                 // type, so this is handled by the resolver.
-                generics.fill(&self.body_ctx, &mut sm, node);
+                generics.fill(&self.body_ctx, node);
             }
         }
 
