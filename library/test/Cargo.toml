@@ -18,6 +18,9 @@ panic_abort = { path = "../panic_abort" }
 # not actually used but needed to always have proc_macro in the sysroot
 proc_macro = { path = "../proc_macro" }
 
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
+getrandom = { version = "0.2", features = ['js'] }
+
 # Forward features to the `std` crate as necessary
 [features]
 default = ["std_detect_file_io", "std_detect_dlsym_getauxval", "panic-unwind"]
