@@ -5,7 +5,7 @@ use rustc_data_structures::binary_search_util;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::scc::Sccs;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::canonical::QueryOutlivesConstraint;
@@ -2000,8 +2000,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let cause_code = path
             .iter()
             .find_map(|constraint| {
-                if let ConstraintCategory::Predicate(def_id, predicate_span) = constraint.category {
-                    Some(ObligationCauseCode::BindingObligation(def_id, predicate_span))
+                if let ConstraintCategory::Predicate(predicate_span) = constraint.category {
+                    // We currentl'y doesn't store the `DefId` in the `ConstraintCategory`
+                    // for perforamnce reasons. The error reporting code used by NLL only
+                    // uses the span, so this doesn't cause any problems at the moment.
+                    Some(ObligationCauseCode::BindingObligation(
+                        CRATE_DEF_ID.to_def_id(),
+                        predicate_span,
+                    ))
                 } else {
                     None
                 }
@@ -2106,7 +2112,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     | ConstraintCategory::Boring
                     | ConstraintCategory::BoringNoLocation
                     | ConstraintCategory::Internal
-                    | ConstraintCategory::Predicate(_, _) => false,
+                    | ConstraintCategory::Predicate(_) => false,
                     ConstraintCategory::TypeAnnotation
                     | ConstraintCategory::Return(_)
                     | ConstraintCategory::Yield => true,
@@ -2118,7 +2124,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     | ConstraintCategory::Boring
                     | ConstraintCategory::BoringNoLocation
                     | ConstraintCategory::Internal
-                    | ConstraintCategory::Predicate(_, _) => false,
+                    | ConstraintCategory::Predicate(_) => false,
                     _ => true,
                 }
             }

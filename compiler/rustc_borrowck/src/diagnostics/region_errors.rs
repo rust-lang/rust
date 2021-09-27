@@ -40,7 +40,7 @@ impl ConstraintDescription for ConstraintCategory {
             ConstraintCategory::OpaqueType => "opaque type ",
             ConstraintCategory::ClosureUpvar(_) => "closure capture ",
             ConstraintCategory::Usage => "this usage ",
-            ConstraintCategory::Predicate(_, _)
+            ConstraintCategory::Predicate(_)
             | ConstraintCategory::Boring
             | ConstraintCategory::BoringNoLocation
             | ConstraintCategory::Internal => "",

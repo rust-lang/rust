@@ -101,7 +101,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     pub(super) fn normalize_and_prove_instantiated_predicates(
         &mut self,
-        def_id: DefId,
+        // Keep this parameter for now, in case we start using
+        // it in `ConstraintCategory` at some point.
+        _def_id: DefId,
         instantiated_predicates: ty::InstantiatedPredicates<'tcx>,
         locations: Locations,
     ) {
@@ -111,7 +113,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             .zip(instantiated_predicates.spans.into_iter())
         {
             let predicate = self.normalize(predicate, locations);
-            self.prove_predicate(predicate, locations, ConstraintCategory::Predicate(def_id, span));
+            self.prove_predicate(predicate, locations, ConstraintCategory::Predicate(span));
         }
     }
 
