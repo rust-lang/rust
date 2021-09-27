@@ -26,7 +26,7 @@ use hir_expand::{db::AstDatabase, InFile};
 use once_cell::race::OnceBool;
 use stdx::format_to;
 use syntax::{
-    ast::{self, AstNode, NameOwner},
+    ast::{self, AstNode, HasName},
     SyntaxNode,
 };
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};

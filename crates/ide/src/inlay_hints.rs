@@ -4,7 +4,7 @@ use ide_db::RootDatabase;
 use ide_db::{base_db::FileRange, helpers::FamousDefs};
 use stdx::to_lower_snake_case;
 use syntax::{
-    ast::{self, ArgListOwner, AstNode, NameOwner},
+    ast::{self, AstNode, HasArgList, HasName},
     match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, TextRange, T,
 };
 

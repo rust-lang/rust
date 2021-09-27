@@ -255,7 +255,7 @@ macro_rules! match_ast {
 /// API.
 #[test]
 fn api_walkthrough() {
-    use ast::{ModuleItemOwner, NameOwner};
+    use ast::{HasModuleItem, HasName};
 
     let source_code = "
         fn foo() {

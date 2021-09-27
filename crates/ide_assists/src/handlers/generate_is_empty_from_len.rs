@@ -1,6 +1,6 @@
 use hir::{known, HasSource, Name};
 use syntax::{
-    ast::{self, NameOwner},
+    ast::{self, HasName},
     AstNode,
 };
 

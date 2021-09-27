@@ -9,7 +9,7 @@ use db::TokenExpander;
 use either::Either;
 use mbe::Origin;
 use syntax::{
-    ast::{self, AttrsOwner},
+    ast::{self, HasAttrs},
     AstNode, SyntaxKind, SyntaxNode, TextRange, TextSize,
 };
 

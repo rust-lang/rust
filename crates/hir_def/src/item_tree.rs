@@ -44,7 +44,7 @@ use std::{
     sync::Arc,
 };
 
-use ast::{AstNode, NameOwner, StructKind};
+use ast::{AstNode, HasName, StructKind};
 use base_db::CrateId;
 use either::Either;
 use hir_expand::{

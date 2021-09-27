@@ -4,7 +4,7 @@ use crate::RootDatabase;
 use hir::Semantics;
 use rustc_hash::FxHashSet;
 use syntax::{
-    ast::{self, NameOwner},
+    ast::{self, HasName},
     AstNode,
 };
 

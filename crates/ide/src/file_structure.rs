@@ -1,6 +1,6 @@
 use ide_db::SymbolKind;
 use syntax::{
-    ast::{self, AttrsOwner, GenericParamsOwner, NameOwner},
+    ast::{self, HasAttrs, HasGenericParams, HasName},
     match_ast, AstNode, AstToken, NodeOrToken, SourceFile, SyntaxNode, SyntaxToken, TextRange,
     WalkEvent,
 };
@@ -74,11 +74,11 @@ pub(crate) fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
 }
 
 fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
-    fn decl<N: NameOwner + AttrsOwner>(node: N, kind: StructureNodeKind) -> Option<StructureNode> {
+    fn decl<N: HasName + HasAttrs>(node: N, kind: StructureNodeKind) -> Option<StructureNode> {
         decl_with_detail(&node, None, kind)
     }
 
-    fn decl_with_type_ref<N: NameOwner + AttrsOwner>(
+    fn decl_with_type_ref<N: HasName + HasAttrs>(
         node: &N,
         type_ref: Option<ast::Type>,
         kind: StructureNodeKind,
@@ -91,7 +91,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
         decl_with_detail(node, detail, kind)
     }
 
-    fn decl_with_detail<N: NameOwner + AttrsOwner>(
+    fn decl_with_detail<N: HasName + HasAttrs>(
         node: &N,
         detail: Option<String>,
         kind: StructureNodeKind,

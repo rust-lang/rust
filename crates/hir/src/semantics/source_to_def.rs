@@ -100,7 +100,7 @@ use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use stdx::impl_from;
 use syntax::{
-    ast::{self, NameOwner},
+    ast::{self, HasName},
     match_ast, AstNode, SyntaxNode,
 };
 

@@ -12,7 +12,7 @@ use hir_ty::{
     },
     Interner, TraitRefExt, WhereClause,
 };
-use syntax::ast::{self, NameOwner};
+use syntax::ast::{self, HasName};
 
 use crate::{
     Adt, Const, ConstParam, Enum, Field, Function, GenericParam, HasCrate, HasVisibility,

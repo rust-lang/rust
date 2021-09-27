@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use stdx::format_to;
-use syntax::ast::{self, AstNode, NameOwner, StructKind, VisibilityOwner};
+use syntax::ast::{self, AstNode, HasName, HasVisibility, StructKind};
 
 use crate::{
     utils::{find_impl_block_start, find_struct_impl, generate_impl_text},

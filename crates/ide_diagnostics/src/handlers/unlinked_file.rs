@@ -7,7 +7,7 @@ use ide_db::{
     RootDatabase,
 };
 use syntax::{
-    ast::{self, ModuleItemOwner, NameOwner},
+    ast::{self, HasModuleItem, HasName},
     AstNode, TextRange, TextSize,
 };
 use text_edit::TextEdit;

@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 
 use itertools::{EitherOrBoth, Itertools};
 use syntax::{
-    ast::{self, make, AstNode, AttrsOwner, PathSegmentKind, VisibilityOwner},
+    ast::{self, make, AstNode, HasAttrs, HasVisibility, PathSegmentKind},
     ted,
 };
 

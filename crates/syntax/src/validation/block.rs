@@ -1,7 +1,7 @@
 //! Logic for validating block expressions i.e. `ast::BlockExpr`.
 
 use crate::{
-    ast::{self, AstNode, AttrsOwner},
+    ast::{self, AstNode, HasAttrs},
     SyntaxError,
     SyntaxKind::*,
 };

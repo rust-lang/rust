@@ -1,7 +1,7 @@
 use hir::{db::AstDatabase, InFile};
 use ide_db::source_change::SourceChange;
 use syntax::{
-    ast::{self, ArgListOwner},
+    ast::{self, HasArgList},
     AstNode, TextRange,
 };
 use text_edit::TextEdit;

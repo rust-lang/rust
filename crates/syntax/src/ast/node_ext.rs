@@ -11,8 +11,8 @@ use rowan::{GreenNodeData, GreenTokenData};
 
 use crate::{
     ast::{
-        self, support, AstNode, AstToken, AttrsOwner, GenericParamsOwner, ModuleItemOwner,
-        NameOwner, SyntaxNode,
+        self, support, AstNode, AstToken, HasAttrs, HasGenericParams, HasModuleItem, HasName,
+        SyntaxNode,
     },
     NodeOrToken, SmolStr, SyntaxElement, SyntaxToken, TokenText, T,
 };
@@ -50,7 +50,7 @@ fn text_of_first_token(node: &SyntaxNode) -> TokenText<'_> {
     }
 }
 
-impl ast::ModuleItemOwner for ast::StmtList {}
+impl ast::HasModuleItem for ast::StmtList {}
 
 impl ast::BlockExpr {
     // FIXME: remove all these methods, they belong to ast::StmtList
@@ -107,7 +107,7 @@ impl AstNode for Macro {
     }
 }
 
-impl NameOwner for Macro {
+impl HasName for Macro {
     fn name(&self) -> Option<ast::Name> {
         match self {
             Macro::MacroRules(mac) => mac.name(),
@@ -116,7 +116,7 @@ impl NameOwner for Macro {
     }
 }
 
-impl AttrsOwner for Macro {}
+impl HasAttrs for Macro {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AttrKind {
@@ -531,7 +531,7 @@ impl ast::Variant {
 
 impl ast::Item {
     pub fn generic_param_list(&self) -> Option<ast::GenericParamList> {
-        ast::AnyGenericParamsOwner::cast(self.syntax().clone())?.generic_param_list()
+        ast::AnyHasGenericParams::cast(self.syntax().clone())?.generic_param_list()
     }
 }
 
@@ -765,21 +765,21 @@ impl ast::GenericParamList {
     }
 }
 
-impl ast::DocCommentsOwner for ast::SourceFile {}
-impl ast::DocCommentsOwner for ast::Fn {}
-impl ast::DocCommentsOwner for ast::Struct {}
-impl ast::DocCommentsOwner for ast::Union {}
-impl ast::DocCommentsOwner for ast::RecordField {}
-impl ast::DocCommentsOwner for ast::TupleField {}
-impl ast::DocCommentsOwner for ast::Enum {}
-impl ast::DocCommentsOwner for ast::Variant {}
-impl ast::DocCommentsOwner for ast::Trait {}
-impl ast::DocCommentsOwner for ast::Module {}
-impl ast::DocCommentsOwner for ast::Static {}
-impl ast::DocCommentsOwner for ast::Const {}
-impl ast::DocCommentsOwner for ast::TypeAlias {}
-impl ast::DocCommentsOwner for ast::Impl {}
-impl ast::DocCommentsOwner for ast::MacroRules {}
-impl ast::DocCommentsOwner for ast::MacroDef {}
-impl ast::DocCommentsOwner for ast::Macro {}
-impl ast::DocCommentsOwner for ast::Use {}
+impl ast::HasDocComments for ast::SourceFile {}
+impl ast::HasDocComments for ast::Fn {}
+impl ast::HasDocComments for ast::Struct {}
+impl ast::HasDocComments for ast::Union {}
+impl ast::HasDocComments for ast::RecordField {}
+impl ast::HasDocComments for ast::TupleField {}
+impl ast::HasDocComments for ast::Enum {}
+impl ast::HasDocComments for ast::Variant {}
+impl ast::HasDocComments for ast::Trait {}
+impl ast::HasDocComments for ast::Module {}
+impl ast::HasDocComments for ast::Static {}
+impl ast::HasDocComments for ast::Const {}
+impl ast::HasDocComments for ast::TypeAlias {}
+impl ast::HasDocComments for ast::Impl {}
+impl ast::HasDocComments for ast::MacroRules {}
+impl ast::HasDocComments for ast::MacroDef {}
+impl ast::HasDocComments for ast::Macro {}
+impl ast::HasDocComments for ast::Use {}

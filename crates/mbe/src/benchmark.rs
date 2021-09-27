@@ -2,7 +2,7 @@
 
 use rustc_hash::FxHashMap;
 use syntax::{
-    ast::{self, NameOwner},
+    ast::{self, HasName},
     AstNode, SmolStr,
 };
 use test_utils::{bench, bench_fixture, skip_slow_tests};

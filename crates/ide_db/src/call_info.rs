@@ -5,7 +5,7 @@ use hir::{HasAttrs, HirDisplay, Semantics, Type};
 use stdx::format_to;
 use syntax::{
     algo,
-    ast::{self, ArgListOwner, NameOwner},
+    ast::{self, HasArgList, HasName},
     match_ast, AstNode, Direction, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 

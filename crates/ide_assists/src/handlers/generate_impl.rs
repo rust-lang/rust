@@ -1,4 +1,4 @@
-use syntax::ast::{self, AstNode, NameOwner};
+use syntax::ast::{self, AstNode, HasName};
 
 use crate::{utils::generate_impl_text, AssistContext, AssistId, AssistKind, Assists};
 

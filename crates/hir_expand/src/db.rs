@@ -8,7 +8,7 @@ use mbe::{syntax_node_to_token_tree, ExpandError, ExpandResult};
 use rustc_hash::FxHashSet;
 use syntax::{
     algo::diff,
-    ast::{self, AttrsOwner, NameOwner},
+    ast::{self, HasAttrs, HasName},
     AstNode, GreenNode, Parse, SyntaxNode, SyntaxToken, T,
 };
 

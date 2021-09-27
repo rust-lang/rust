@@ -70,11 +70,11 @@ impl CfgExpander {
         CfgExpander { cfg_options, hygiene, krate }
     }
 
-    pub(crate) fn parse_attrs(&self, db: &dyn DefDatabase, owner: &dyn ast::AttrsOwner) -> Attrs {
+    pub(crate) fn parse_attrs(&self, db: &dyn DefDatabase, owner: &dyn ast::HasAttrs) -> Attrs {
         RawAttrs::new(db, owner, &self.hygiene).filter(db, self.krate)
     }
 
-    pub(crate) fn is_cfg_enabled(&self, db: &dyn DefDatabase, owner: &dyn ast::AttrsOwner) -> bool {
+    pub(crate) fn is_cfg_enabled(&self, db: &dyn DefDatabase, owner: &dyn ast::HasAttrs) -> bool {
         let attrs = self.parse_attrs(db, owner);
         attrs.is_cfg_enabled(&self.cfg_options)
     }
@@ -179,7 +179,7 @@ impl Expander {
         InFile { file_id: self.current_file_id, value }
     }
 
-    pub(crate) fn parse_attrs(&self, db: &dyn DefDatabase, owner: &dyn ast::AttrsOwner) -> Attrs {
+    pub(crate) fn parse_attrs(&self, db: &dyn DefDatabase, owner: &dyn ast::HasAttrs) -> Attrs {
         self.cfg_expander.parse_attrs(db, owner)
     }
 

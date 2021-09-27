@@ -30,8 +30,8 @@ pub use self::{
         QuoteOffsets, Radix,
     },
     traits::{
-        ArgListOwner, AttrsOwner, CommentIter, DocCommentsOwner, GenericParamsOwner, LoopBodyOwner,
-        ModuleItemOwner, NameOwner, TypeBoundsOwner, VisibilityOwner,
+        CommentIter, HasArgList, HasAttrs, HasDocComments, HasGenericParams, HasLoopBody,
+        HasModuleItem, HasName, HasTypeBounds, HasVisibility,
     },
 };
 
@@ -118,7 +118,7 @@ mod support {
 
 #[test]
 fn assert_ast_is_object_safe() {
-    fn _f(_: &dyn AstNode, _: &dyn NameOwner) {}
+    fn _f(_: &dyn AstNode, _: &dyn HasName) {}
 }
 
 #[test]

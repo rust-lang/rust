@@ -7,19 +7,19 @@ use crate::{
     SyntaxToken, T,
 };
 
-pub trait NameOwner: AstNode {
+pub trait HasName: AstNode {
     fn name(&self) -> Option<ast::Name> {
         support::child(self.syntax())
     }
 }
 
-pub trait VisibilityOwner: AstNode {
+pub trait HasVisibility: AstNode {
     fn visibility(&self) -> Option<ast::Visibility> {
         support::child(self.syntax())
     }
 }
 
-pub trait LoopBodyOwner: AstNode {
+pub trait HasLoopBody: AstNode {
     fn loop_body(&self) -> Option<ast::BlockExpr> {
         support::child(self.syntax())
     }
@@ -29,19 +29,19 @@ pub trait LoopBodyOwner: AstNode {
     }
 }
 
-pub trait ArgListOwner: AstNode {
+pub trait HasArgList: AstNode {
     fn arg_list(&self) -> Option<ast::ArgList> {
         support::child(self.syntax())
     }
 }
 
-pub trait ModuleItemOwner: AstNode {
+pub trait HasModuleItem: AstNode {
     fn items(&self) -> AstChildren<ast::Item> {
         support::children(self.syntax())
     }
 }
 
-pub trait GenericParamsOwner: AstNode {
+pub trait HasGenericParams: AstNode {
     fn generic_param_list(&self) -> Option<ast::GenericParamList> {
         support::child(self.syntax())
     }
@@ -51,7 +51,7 @@ pub trait GenericParamsOwner: AstNode {
     }
 }
 
-pub trait TypeBoundsOwner: AstNode {
+pub trait HasTypeBounds: AstNode {
     fn type_bound_list(&self) -> Option<ast::TypeBoundList> {
         support::child(self.syntax())
     }
@@ -61,7 +61,7 @@ pub trait TypeBoundsOwner: AstNode {
     }
 }
 
-pub trait AttrsOwner: AstNode {
+pub trait HasAttrs: AstNode {
     fn attrs(&self) -> AstChildren<ast::Attr> {
         support::children(self.syntax())
     }
@@ -70,7 +70,7 @@ pub trait AttrsOwner: AstNode {
     }
 }
 
-pub trait DocCommentsOwner: AttrsOwner {
+pub trait HasDocComments: HasAttrs {
     fn doc_comments(&self) -> CommentIter {
         CommentIter { iter: self.syntax().children_with_tokens() }
     }

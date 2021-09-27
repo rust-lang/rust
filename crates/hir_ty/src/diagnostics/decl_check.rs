@@ -22,7 +22,7 @@ use hir_def::{
 use hir_expand::name::{AsName, Name};
 use stdx::{always, never};
 use syntax::{
-    ast::{self, NameOwner},
+    ast::{self, HasName},
     AstNode, AstPtr,
 };
 

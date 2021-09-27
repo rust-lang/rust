@@ -14,7 +14,7 @@ use la_arena::Arena;
 use profile::Count;
 use syntax::{
     ast::{
-        self, ArgListOwner, ArrayExprKind, AstChildren, LiteralKind, LoopBodyOwner, NameOwner,
+        self, ArrayExprKind, AstChildren, HasArgList, HasLoopBody, HasName, LiteralKind,
         SlicePatComponents,
     },
     AstNode, AstPtr, SyntaxNodePtr,
@@ -912,7 +912,7 @@ impl ExprCollector<'_> {
 
     /// Returns `None` (and emits diagnostics) when `owner` if `#[cfg]`d out, and `Some(())` when
     /// not.
-    fn check_cfg(&mut self, owner: &dyn ast::AttrsOwner) -> Option<()> {
+    fn check_cfg(&mut self, owner: &dyn ast::HasAttrs) -> Option<()> {
         match self.expander.parse_attrs(self.db, owner).cfg() {
             Some(cfg) => {
                 if self.expander.cfg_options().check(&cfg) != Some(false) {

@@ -1,5 +1,5 @@
 use stdx::{format_to, to_lower_snake_case};
-use syntax::ast::{self, AstNode, NameOwner, VisibilityOwner};
+use syntax::ast::{self, AstNode, HasName, HasVisibility};
 
 use crate::{
     utils::useless_type_special_case,

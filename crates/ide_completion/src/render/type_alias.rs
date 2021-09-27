@@ -3,7 +3,7 @@
 use hir::{AsAssocItem, HasSource};
 use ide_db::SymbolKind;
 use syntax::{
-    ast::{NameOwner, TypeAlias},
+    ast::{HasName, TypeAlias},
     display::type_label,
 };
 

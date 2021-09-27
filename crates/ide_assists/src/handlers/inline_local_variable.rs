@@ -7,7 +7,7 @@ use ide_db::{
     RootDatabase,
 };
 use syntax::{
-    ast::{self, AstNode, AstToken, NameOwner},
+    ast::{self, AstNode, AstToken, HasName},
     SyntaxElement, TextRange,
 };
 

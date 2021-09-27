@@ -8,7 +8,7 @@ use hir::Semantics;
 use ide_db::RootDatabase;
 use syntax::{
     algo::non_trivia_sibling,
-    ast::{self, ArgListOwner, LoopBodyOwner},
+    ast::{self, HasArgList, HasLoopBody},
     match_ast, AstNode, Direction, SyntaxElement,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextSize, T,

@@ -22,7 +22,7 @@ use ide_db::{
 use rustc_hash::FxHashMap;
 use syntax::{
     algo::find_node_at_offset,
-    ast::{self, NameOwner},
+    ast::{self, HasName},
     match_ast, AstNode, SyntaxNode, TextRange, TextSize, T,
 };
 

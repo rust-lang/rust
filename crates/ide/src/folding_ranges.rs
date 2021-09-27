@@ -152,7 +152,7 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
 
 fn contiguous_range_for_item_group<N>(first: N, visited: &mut FxHashSet<N>) -> Option<TextRange>
 where
-    N: ast::VisibilityOwner + Clone + Hash + Eq,
+    N: ast::HasVisibility + Clone + Hash + Eq,
 {
     if !visited.insert(first.clone()) {
         return None;

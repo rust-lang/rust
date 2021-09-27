@@ -11,7 +11,7 @@ use ide_db::{
 };
 use itertools::{izip, Itertools};
 use syntax::{
-    ast::{self, edit_in_place::Indent, ArgListOwner},
+    ast::{self, edit_in_place::Indent, HasArgList},
     ted, AstNode, SyntaxNode,
 };
 

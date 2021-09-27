@@ -6,7 +6,7 @@ use syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
-        make, NameOwner,
+        make, HasName,
     },
     AstNode, TextRange,
 };

@@ -2,7 +2,7 @@ use ide_db::helpers::FamousDefs;
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
-    ast::{self, GenericParamsOwner, Impl, NameOwner, TypeBoundsOwner},
+    ast::{self, HasGenericParams, HasName, HasTypeBounds, Impl},
     AstNode,
 };
 
