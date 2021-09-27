@@ -102,16 +102,8 @@ fn open(builder: &Builder<'_>, path: impl AsRef<Path>) {
 // Used for deciding whether a particular step is one requested by the user on
 // the `x.py doc` command line, which determines whether `--open` will open that
 // page.
-fn components_simplified(path: &PathBuf) -> Vec<&str> {
+pub(crate) fn components_simplified(path: &PathBuf) -> Vec<&str> {
     path.iter().map(|component| component.to_str().unwrap_or("???")).collect()
-}
-
-fn is_explicit_request(builder: &Builder<'_>, path: &str) -> bool {
-    builder
-        .paths
-        .iter()
-        .map(components_simplified)
-        .any(|requested| requested.iter().copied().eq(path.split('/')))
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -248,7 +240,7 @@ impl Step for TheBook {
             invoke_rustdoc(builder, compiler, target, path);
         }
 
-        if is_explicit_request(builder, "src/doc/book") {
+        if builder.was_invoked_explicitly::<Self>() {
             let out = builder.doc_out(target);
             let index = out.join("book").join("index.html");
             open(builder, &index);
@@ -408,7 +400,7 @@ impl Step for Standalone {
 
         // We open doc/index.html as the default if invoked as `x.py doc --open`
         // with no particular explicit doc requested (e.g. library/core).
-        if builder.paths.is_empty() || is_explicit_request(builder, "src/doc") {
+        if builder.paths.is_empty() || builder.was_invoked_explicitly::<Self>() {
             let index = out.join("index.html");
             open(builder, &index);
         }
@@ -553,7 +545,6 @@ impl Step for Rustc {
     fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let target = self.target;
-        let mut is_explicit_request = false;
         builder.info(&format!("Documenting stage{} compiler ({})", stage, target));
 
         let paths = builder
@@ -562,7 +553,6 @@ impl Step for Rustc {
             .map(components_simplified)
             .filter_map(|path| {
                 if path.get(0) == Some(&"compiler") {
-                    is_explicit_request = true;
                     path.get(1).map(|p| p.to_owned())
                 } else {
                     None
@@ -570,7 +560,7 @@ impl Step for Rustc {
             })
             .collect::<Vec<_>>();
 
-        if !builder.config.compiler_docs && !is_explicit_request {
+        if !builder.config.compiler_docs && !builder.was_invoked_explicitly::<Self>() {
             builder.info("\tskipping - compiler/librustdoc docs disabled");
             return;
         }
@@ -700,7 +690,14 @@ macro_rules! tool_doc {
             fn run(self, builder: &Builder<'_>) {
                 let stage = self.stage;
                 let target = self.target;
-                builder.info(&format!("Documenting stage{} {} ({})", stage, stringify!($tool).to_lowercase(), target));
+                builder.info(
+                    &format!(
+                        "Documenting stage{} {} ({})",
+                        stage,
+                        stringify!($tool).to_lowercase(),
+                        target,
+                    ),
+                );
 
                 // This is the intended out directory for compiler documentation.
                 let out = builder.compiler_doc_out(target);
@@ -708,7 +705,7 @@ macro_rules! tool_doc {
 
                 let compiler = builder.compiler(stage, builder.config.build);
 
-                if !builder.config.compiler_docs {
+                if !builder.config.compiler_docs && !builder.was_invoked_explicitly::<Self>() {
                     builder.info("\tskipping - compiler/tool docs disabled");
                     return;
                 }
@@ -913,7 +910,7 @@ impl Step for RustcBook {
             name: INTERNER.intern_str("rustc"),
             src: INTERNER.intern_path(out_base),
         });
-        if is_explicit_request(builder, "src/doc/rustc") {
+        if builder.was_invoked_explicitly::<Self>() {
             let out = builder.doc_out(self.target);
             let index = out.join("rustc").join("index.html");
             open(builder, &index);

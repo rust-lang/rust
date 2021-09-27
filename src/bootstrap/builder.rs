@@ -1617,6 +1617,22 @@ impl<'a> Builder<'a> {
         // Only execute if it's supposed to run as default
         if desc.default && should_run.is_really_default() { self.ensure(step) } else { None }
     }
+
+    /// Checks if any of the "should_run" paths is in the `Builder` paths.
+    pub(crate) fn was_invoked_explicitly<S: Step>(&'a self) -> bool {
+        let desc = StepDescription::from::<S>();
+        let should_run = (desc.should_run)(ShouldRun::new(self));
+
+        for path in &self.paths {
+            if should_run.paths.iter().any(|s| s.has(path))
+                && !desc.is_excluded(self, &PathSet::Suite(path.clone()))
+            {
+                return true;
+            }
+        }
+
+        false
+    }
 }
 
 #[cfg(test)]
