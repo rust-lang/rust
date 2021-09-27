@@ -43,10 +43,8 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         // TODO(antoyo): handle non-null-terminated strings.
         let string = self.context.new_string_literal(&*string);
         let sym = self.generate_local_symbol_name("str");
-        // NOTE: TLS is always off for a string litteral.
-        // NOTE: string litterals do not have a link section.
         let global = self.declare_private_global(&sym, self.val_ty(string));
-        global.global_set_initializer_value(string); // TODO: only set if not imported?
+        global.global_set_initializer_value(string);
         global
         // TODO(antoyo): set linkage.
     }
