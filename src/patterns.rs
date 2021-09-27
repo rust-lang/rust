@@ -226,8 +226,9 @@ impl Rewrite for Pat {
             PatKind::Path(ref q_self, ref path) => {
                 rewrite_path(context, PathContext::Expr, q_self.as_ref(), path, shape)
             }
-            PatKind::TupleStruct(_, ref path, ref pat_vec) => {
-                let path_str = rewrite_path(context, PathContext::Expr, None, path, shape)?;
+            PatKind::TupleStruct(ref q_self, ref path, ref pat_vec) => {
+                let path_str =
+                    rewrite_path(context, PathContext::Expr, q_self.as_ref(), path, shape)?;
                 rewrite_tuple_pat(pat_vec, Some(path_str), self.span, context, shape)
             }
             PatKind::Lit(ref expr) => expr.rewrite(context, shape),
