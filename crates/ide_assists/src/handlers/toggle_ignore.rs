@@ -1,5 +1,5 @@
 use syntax::{
-    ast::{self, AttrsOwner},
+    ast::{self, HasAttrs},
     AstNode, AstToken,
 };
 

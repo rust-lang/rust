@@ -4,7 +4,7 @@ use rustc_hash::FxHashMap;
 use hir::{PathResolution, Semantics};
 use ide_db::RootDatabase;
 use syntax::{
-    ast::{self, NameOwner},
+    ast::{self, HasName},
     ted, AstNode,
 };
 

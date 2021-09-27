@@ -1,7 +1,7 @@
 //! This module contains functions to generate default trait impl function bodies where possible.
 
 use syntax::{
-    ast::{self, edit::AstNodeEdit, make, AstNode, BinaryOp, CmpOp, LogicOp, NameOwner},
+    ast::{self, edit::AstNodeEdit, make, AstNode, BinaryOp, CmpOp, HasName, LogicOp},
     ted,
 };
 

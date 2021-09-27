@@ -4,7 +4,7 @@ use syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
-        make, LoopBodyOwner,
+        make, HasLoopBody,
     },
     AstNode, T,
 };

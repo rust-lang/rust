@@ -1,7 +1,7 @@
 use either::Either;
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
-    ast::{self, AstNode, GenericParamsOwner, VisibilityOwner},
+    ast::{self, AstNode, HasGenericParams, HasVisibility},
     match_ast, SyntaxNode,
 };
 

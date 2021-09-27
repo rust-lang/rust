@@ -5,7 +5,7 @@ use ide_db::base_db::AnchoredPathBuf;
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
-    ast::{self, edit::AstNodeEdit, NameOwner},
+    ast::{self, edit::AstNodeEdit, HasName},
     AstNode, TextRange,
 };
 

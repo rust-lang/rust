@@ -7,16 +7,16 @@ use rowan::SyntaxElement;
 
 use crate::{
     algo::neighbor,
-    ast::{self, edit::IndentLevel, make, GenericParamsOwner},
+    ast::{self, edit::IndentLevel, make, HasGenericParams},
     ted::{self, Position},
     AstNode, AstToken, Direction,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     SyntaxNode,
 };
 
-use super::NameOwner;
+use super::HasName;
 
-pub trait GenericParamsOwnerEdit: ast::GenericParamsOwner {
+pub trait GenericParamsOwnerEdit: ast::HasGenericParams {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList;
     fn get_or_create_where_clause(&self) -> ast::WhereClause;
 }
@@ -194,7 +194,7 @@ fn create_generic_param_list(position: Position) -> ast::GenericParamList {
     gpl
 }
 
-pub trait AttrsOwnerEdit: ast::AttrsOwner {
+pub trait AttrsOwnerEdit: ast::HasAttrs {
     fn remove_attrs_and_docs(&self) {
         remove_attrs_and_docs(self.syntax());
 
@@ -218,7 +218,7 @@ pub trait AttrsOwnerEdit: ast::AttrsOwner {
     }
 }
 
-impl<T: ast::AttrsOwner> AttrsOwnerEdit for T {}
+impl<T: ast::HasAttrs> AttrsOwnerEdit for T {}
 
 impl ast::GenericParamList {
     pub fn add_generic_param(&self, generic_param: ast::GenericParam) {

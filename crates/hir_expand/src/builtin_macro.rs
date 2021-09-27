@@ -558,7 +558,7 @@ mod tests {
 
     use base_db::{fixture::WithFixture, SourceDatabase};
     use expect_test::{expect, Expect};
-    use syntax::ast::NameOwner;
+    use syntax::ast::HasName;
 
     use crate::{
         name::AsName, test_db::TestDB, AstNode, EagerCallInfo, ExpandTo, MacroCallId,

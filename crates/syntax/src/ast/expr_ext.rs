@@ -13,7 +13,7 @@ use crate::{
     SyntaxToken, T,
 };
 
-impl ast::AttrsOwner for ast::Expr {}
+impl ast::HasAttrs for ast::Expr {}
 
 impl ast::Expr {
     pub fn is_block_like(&self) -> bool {

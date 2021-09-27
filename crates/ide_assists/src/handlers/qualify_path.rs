@@ -8,7 +8,7 @@ use ide_db::helpers::{
 use ide_db::RootDatabase;
 use syntax::{
     ast,
-    ast::{make, ArgListOwner},
+    ast::{make, HasArgList},
     AstNode,
 };
 

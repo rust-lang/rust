@@ -14,7 +14,7 @@ use syntax::{
         self,
         edit::{self, AstNodeEdit},
         edit_in_place::AttrsOwnerEdit,
-        make, ArgListOwner, AttrsOwner, GenericParamsOwner, NameOwner, TypeBoundsOwner,
+        make, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds,
     },
     ted, AstNode, Direction, SmolStr,
     SyntaxKind::*,

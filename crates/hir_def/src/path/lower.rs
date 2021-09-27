@@ -6,7 +6,7 @@ use crate::intern::Interned;
 
 use either::Either;
 use hir_expand::name::{name, AsName};
-use syntax::ast::{self, AstNode, TypeBoundsOwner};
+use syntax::ast::{self, AstNode, HasTypeBounds};
 
 use super::AssociatedTypeBinding;
 use crate::{

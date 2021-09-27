@@ -9,7 +9,7 @@ use ide_db::{
 };
 use syntax::{
     algo::find_node_at_offset,
-    ast::{self, NameOrNameRef, NameOwner},
+    ast::{self, HasName, NameOrNameRef},
     match_ast, AstNode, NodeOrToken,
     SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, TextRange, TextSize, T,

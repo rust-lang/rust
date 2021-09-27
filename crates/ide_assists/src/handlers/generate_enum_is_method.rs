@@ -1,6 +1,6 @@
 use stdx::to_lower_snake_case;
-use syntax::ast::VisibilityOwner;
-use syntax::ast::{self, AstNode, NameOwner};
+use syntax::ast::HasVisibility;
+use syntax::ast::{self, AstNode, HasName};
 
 use crate::{
     utils::{add_method_to_adt, find_struct_impl},

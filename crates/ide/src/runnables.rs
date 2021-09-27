@@ -1,6 +1,6 @@
 use std::fmt;
 
-use ast::NameOwner;
+use ast::HasName;
 use cfg::CfgExpr;
 use either::Either;
 use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, InFile, Semantics};
@@ -14,7 +14,7 @@ use ide_db::{
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::{always, format_to};
-use syntax::ast::{self, AstNode, AttrsOwner};
+use syntax::ast::{self, AstNode, HasAttrs as _};
 
 use crate::{
     display::{ToNav, TryToNav},
@@ -328,7 +328,7 @@ pub(crate) fn runnable_fn(sema: &Semantics<RootDatabase>, def: hir::Function) ->
 
     let nav = NavigationTarget::from_named(
         sema.db,
-        func.as_ref().map(|it| it as &dyn ast::NameOwner),
+        func.as_ref().map(|it| it as &dyn ast::HasName),
         SymbolKind::Function,
     );
     let cfg = def.attrs(sema.db).cfg();

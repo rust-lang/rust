@@ -4,7 +4,7 @@ use tracing::debug;
 
 use mbe::ExpandResult;
 use syntax::{
-    ast::{self, AstNode, GenericParamsOwner, ModuleItemOwner, NameOwner},
+    ast::{self, AstNode, HasGenericParams, HasModuleItem, HasName},
     match_ast,
 };
 

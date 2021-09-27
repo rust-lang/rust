@@ -1,7 +1,7 @@
 use hir::{db::HirDatabase, HasSource, HasVisibility, PathResolution};
 use ide_db::base_db::FileId;
 use syntax::{
-    ast::{self, VisibilityOwner},
+    ast::{self, HasVisibility as _},
     AstNode, TextRange, TextSize,
 };
 
@@ -147,7 +147,7 @@ fn target_data_for_def(
     ) -> Option<(TextSize, Option<ast::Visibility>, TextRange, FileId)>
     where
         S: HasSource<Ast = Ast>,
-        Ast: AstNode + ast::VisibilityOwner,
+        Ast: AstNode + ast::HasVisibility,
     {
         let source = x.source(db)?;
         let in_file_syntax = source.syntax();

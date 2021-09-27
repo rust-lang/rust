@@ -1,5 +1,5 @@
 use stdx::{format_to, to_lower_snake_case};
-use syntax::ast::{self, AstNode, NameOwner, VisibilityOwner};
+use syntax::ast::{self, AstNode, HasName, HasVisibility};
 
 use crate::{
     utils::{find_impl_block_end, find_struct_impl, generate_impl_text},

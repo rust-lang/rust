@@ -5,7 +5,7 @@ use ide_db::RootDatabase;
 use itertools::Itertools;
 use stdx::to_lower_snake_case;
 use syntax::{
-    ast::{self, NameOwner},
+    ast::{self, HasName},
     match_ast, AstNode, SmolStr,
 };
 

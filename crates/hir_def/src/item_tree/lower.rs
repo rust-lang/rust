@@ -4,7 +4,7 @@ use std::{collections::hash_map::Entry, mem, sync::Arc};
 
 use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, name::known, HirFileId};
 use syntax::{
-    ast::{self, ModuleItemOwner},
+    ast::{self, HasModuleItem},
     SyntaxNode, WalkEvent,
 };
 
@@ -40,7 +40,7 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    pub(super) fn lower_module_items(mut self, item_owner: &dyn ModuleItemOwner) -> ItemTree {
+    pub(super) fn lower_module_items(mut self, item_owner: &dyn HasModuleItem) -> ItemTree {
         self.tree.top_level =
             item_owner.items().flat_map(|item| self.lower_mod_item(&item, false)).collect();
         self.tree
@@ -644,7 +644,7 @@ impl<'a> Ctx<'a> {
     fn lower_generic_params_and_inner_items(
         &mut self,
         owner: GenericsOwner<'_>,
-        node: &impl ast::GenericParamsOwner,
+        node: &impl ast::HasGenericParams,
     ) -> Interned<GenericParams> {
         // Generics are part of item headers and may contain inner items we need to collect.
         if let Some(params) = node.generic_param_list() {
@@ -660,7 +660,7 @@ impl<'a> Ctx<'a> {
     fn lower_generic_params(
         &mut self,
         owner: GenericsOwner<'_>,
-        node: &impl ast::GenericParamsOwner,
+        node: &impl ast::HasGenericParams,
     ) -> Interned<GenericParams> {
         let mut sm = &mut Default::default();
         let mut generics = GenericParams::default();
@@ -706,7 +706,7 @@ impl<'a> Ctx<'a> {
         Interned::new(generics)
     }
 
-    fn lower_type_bounds(&mut self, node: &impl ast::TypeBoundsOwner) -> Vec<Interned<TypeBound>> {
+    fn lower_type_bounds(&mut self, node: &impl ast::HasTypeBounds) -> Vec<Interned<TypeBound>> {
         match node.type_bound_list() {
             Some(bound_list) => bound_list
                 .bounds()
@@ -716,7 +716,7 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    fn lower_visibility(&mut self, item: &impl ast::VisibilityOwner) -> RawVisibilityId {
+    fn lower_visibility(&mut self, item: &impl ast::HasVisibility) -> RawVisibilityId {
         let vis = match self.forced_visibility {
             Some(vis) => return vis,
             None => RawVisibility::from_ast_with_hygiene(self.db, item.visibility(), &self.hygiene),

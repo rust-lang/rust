@@ -3,7 +3,7 @@
 use hir::{AsAssocItem, HasSource};
 use ide_db::SymbolKind;
 use syntax::{
-    ast::{Const, NameOwner},
+    ast::{Const, HasName},
     display::const_label,
 };
 

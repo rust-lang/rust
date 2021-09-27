@@ -7,7 +7,7 @@
 use either::Either;
 use hir_expand::HirFileId;
 use itertools::Itertools;
-use syntax::ast::AttrsOwner;
+use syntax::ast::HasAttrs;
 
 use crate::{
     db::DefDatabase,

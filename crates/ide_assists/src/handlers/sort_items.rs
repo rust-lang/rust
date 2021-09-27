@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use itertools::Itertools;
 
 use syntax::{
-    ast::{self, NameOwner},
+    ast::{self, HasName},
     ted, AstNode, TextRange,
 };
 
@@ -195,7 +195,7 @@ fn add_sort_variants_assist(acc: &mut Assists, variant_list: ast::VariantList) -
     )
 }
 
-fn sort_by_name<T: NameOwner + Clone>(initial: &[T]) -> Vec<T> {
+fn sort_by_name<T: HasName + Clone>(initial: &[T]) -> Vec<T> {
     initial
         .iter()
         .cloned()

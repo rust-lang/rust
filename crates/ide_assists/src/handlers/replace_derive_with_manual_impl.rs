@@ -3,7 +3,7 @@ use ide_db::helpers::{import_assets::NameToImport, mod_path_to_ast};
 use ide_db::items_locator;
 use itertools::Itertools;
 use syntax::{
-    ast::{self, make, AstNode, NameOwner},
+    ast::{self, make, AstNode, HasName},
     SyntaxKind::{IDENT, WHITESPACE},
 };
 

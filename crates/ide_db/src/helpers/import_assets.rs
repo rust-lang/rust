@@ -6,7 +6,7 @@ use hir::{
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{
-    ast::{self, NameOwner},
+    ast::{self, HasName},
     utils::path_to_string_stripping_turbo_fish,
     AstNode, SyntaxNode,
 };

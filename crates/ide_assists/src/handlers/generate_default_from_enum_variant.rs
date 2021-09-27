@@ -1,5 +1,5 @@
 use ide_db::{helpers::FamousDefs, RootDatabase};
-use syntax::ast::{self, AstNode, NameOwner};
+use syntax::ast::{self, AstNode, HasName};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 

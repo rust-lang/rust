@@ -13,7 +13,7 @@ use base_db::FileId;
 use either::Either;
 use hir::{ItemInNs, MacroDef, ModuleDef, Name, Semantics};
 use syntax::{
-    ast::{self, make, LoopBodyOwner},
+    ast::{self, make, HasLoopBody},
     AstNode, Direction, SyntaxElement, SyntaxKind, SyntaxToken, TokenAtOffset, WalkEvent, T,
 };
 

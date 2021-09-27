@@ -2,11 +2,11 @@
 //! into types that may be used to render in a UI.
 
 use crate::{
-    ast::{self, AstNode, AttrsOwner, GenericParamsOwner, NameOwner},
+    ast::{self, AstNode, HasAttrs, HasGenericParams, HasName},
     SyntaxKind::{ATTR, COMMENT},
 };
 
-use ast::VisibilityOwner;
+use ast::HasVisibility;
 use stdx::format_to;
 
 pub fn function_declaration(node: &ast::Fn) -> String {

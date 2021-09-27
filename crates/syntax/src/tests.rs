@@ -8,7 +8,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use ast::NameOwner;
+use ast::HasName;
 use expect_test::expect_file;
 use rayon::prelude::*;
 use test_utils::{bench, bench_fixture, project_root};

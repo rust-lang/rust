@@ -2,7 +2,7 @@
 
 use rustc_hash::FxHashMap;
 use syntax::{
-    ast::{self, ModuleItemOwner},
+    ast::{self, HasModuleItem},
     match_ast, AstNode,
 };
 

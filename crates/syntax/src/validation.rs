@@ -13,7 +13,7 @@ use rustc_lexer::unescape::{
 
 use crate::{
     algo,
-    ast::{self, VisibilityOwner},
+    ast::{self, HasVisibility},
     match_ast, AstNode, SyntaxError,
     SyntaxKind::{CONST, FN, INT_NUMBER, TYPE_ALIAS},
     SyntaxNode, SyntaxToken, TextSize, T,

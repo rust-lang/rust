@@ -15,8 +15,8 @@ use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{
-        self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, AttrsOwner,
-        GenericParamsOwner, NameOwner, TypeBoundsOwner, VisibilityOwner,
+        self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, HasAttrs, HasGenericParams,
+        HasName, HasTypeBounds, HasVisibility,
     },
     match_ast,
     ted::{self, Position},

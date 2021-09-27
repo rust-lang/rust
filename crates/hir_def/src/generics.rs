@@ -10,7 +10,7 @@ use hir_expand::{
     HirFileId, InFile,
 };
 use la_arena::{Arena, ArenaMap};
-use syntax::ast::{self, GenericParamsOwner, NameOwner, TypeBoundsOwner};
+use syntax::ast::{self, HasGenericParams, HasName, HasTypeBounds};
 
 use crate::{
     body::LowerCtx,
@@ -236,7 +236,7 @@ impl GenericParams {
         &mut self,
         lower_ctx: &LowerCtx,
         sm: &mut SourceMap,
-        node: &dyn GenericParamsOwner,
+        node: &dyn HasGenericParams,
     ) {
         if let Some(params) = node.generic_param_list() {
             self.fill_params(lower_ctx, sm, params)
@@ -249,7 +249,7 @@ impl GenericParams {
     pub(crate) fn fill_bounds(
         &mut self,
         lower_ctx: &LowerCtx,
-        node: &dyn ast::TypeBoundsOwner,
+        node: &dyn ast::HasTypeBounds,
         target: Either<TypeRef, LifetimeRef>,
     ) {
         for bound in

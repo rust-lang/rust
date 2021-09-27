@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use syntax::{
-    ast::{self, make, VisibilityOwner},
+    ast::{self, make, HasVisibility},
     ted::{self, Position},
     AstNode, SyntaxKind,
 };

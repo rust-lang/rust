@@ -527,7 +527,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         pattern_ufcs: &UfcsCallInfo,
         code: &ast::MethodCallExpr,
     ) -> Result<(), MatchFailed> {
-        use ast::ArgListOwner;
+        use ast::HasArgList;
         let code_resolved_function = self
             .sema
             .resolve_method_call(code)
@@ -587,7 +587,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         pattern_ufcs: &UfcsCallInfo,
         code: &ast::CallExpr,
     ) -> Result<(), MatchFailed> {
-        use ast::ArgListOwner;
+        use ast::HasArgList;
         // Check that the first argument is the expected type.
         if let (Some(pattern_type), Some(expr)) = (
             &pattern_ufcs.qualifier_type,

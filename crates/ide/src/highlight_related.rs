@@ -8,7 +8,7 @@ use ide_db::{
 };
 use rustc_hash::FxHashSet;
 use syntax::{
-    ast::{self, LoopBodyOwner},
+    ast::{self, HasLoopBody},
     match_ast, AstNode,
     SyntaxKind::IDENT,
     SyntaxNode, SyntaxToken, TextRange, TextSize, T,

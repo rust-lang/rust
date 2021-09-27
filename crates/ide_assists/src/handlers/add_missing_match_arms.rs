@@ -5,7 +5,7 @@ use hir::{Adt, HasSource, ModuleDef, Semantics};
 use ide_db::helpers::{mod_path_to_ast, FamousDefs};
 use ide_db::RootDatabase;
 use itertools::Itertools;
-use syntax::ast::{self, make, AstNode, MatchArm, NameOwner, Pat};
+use syntax::ast::{self, make, AstNode, HasName, MatchArm, Pat};
 
 use crate::{
     utils::{self, render_snippet, Cursor},

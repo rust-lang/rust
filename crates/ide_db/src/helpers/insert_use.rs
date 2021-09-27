@@ -7,7 +7,7 @@ use std::cmp::Ordering;
 use hir::Semantics;
 use syntax::{
     algo,
-    ast::{self, make, AstNode, AttrsOwner, ModuleItemOwner, PathSegmentKind, VisibilityOwner},
+    ast::{self, make, AstNode, HasAttrs, HasModuleItem, HasVisibility, PathSegmentKind},
     match_ast, ted, AstToken, Direction, NodeOrToken, SyntaxNode, SyntaxToken,
 };
 
@@ -51,7 +51,7 @@ pub enum ImportScope {
 
 impl ImportScope {
     fn from(syntax: SyntaxNode) -> Option<Self> {
-        fn contains_cfg_attr(attrs: &dyn AttrsOwner) -> bool {
+        fn contains_cfg_attr(attrs: &dyn HasAttrs) -> bool {
             attrs
                 .attrs()
                 .any(|attr| attr.as_simple_call().map_or(false, |(ident, _)| ident == "cfg"))

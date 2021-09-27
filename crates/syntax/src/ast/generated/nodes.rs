@@ -104,7 +104,7 @@ impl TypeArg {
 pub struct AssocTypeArg {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::TypeBoundsOwner for AssocTypeArg {}
+impl ast::HasTypeBounds for AssocTypeArg {}
 impl AssocTypeArg {
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
@@ -145,7 +145,7 @@ impl TypeBoundList {
 pub struct MacroCall {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for MacroCall {}
+impl ast::HasAttrs for MacroCall {}
 impl MacroCall {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
     pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
@@ -179,7 +179,7 @@ impl TokenTree {
 pub struct MacroItems {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::ModuleItemOwner for MacroItems {}
+impl ast::HasModuleItem for MacroItems {}
 impl MacroItems {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroStmts {
@@ -193,8 +193,8 @@ impl MacroStmts {
 pub struct SourceFile {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for SourceFile {}
-impl ast::ModuleItemOwner for SourceFile {}
+impl ast::HasAttrs for SourceFile {}
+impl ast::HasModuleItem for SourceFile {}
 impl SourceFile {
     pub fn shebang_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![shebang]) }
 }
@@ -202,9 +202,9 @@ impl SourceFile {
 pub struct Const {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for Const {}
-impl ast::NameOwner for Const {}
-impl ast::VisibilityOwner for Const {}
+impl ast::HasAttrs for Const {}
+impl ast::HasName for Const {}
+impl ast::HasVisibility for Const {}
 impl Const {
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
@@ -219,10 +219,10 @@ impl Const {
 pub struct Enum {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for Enum {}
-impl ast::NameOwner for Enum {}
-impl ast::VisibilityOwner for Enum {}
-impl ast::GenericParamsOwner for Enum {}
+impl ast::HasAttrs for Enum {}
+impl ast::HasName for Enum {}
+impl ast::HasVisibility for Enum {}
+impl ast::HasGenericParams for Enum {}
 impl Enum {
     pub fn enum_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![enum]) }
     pub fn variant_list(&self) -> Option<VariantList> { support::child(&self.syntax) }
@@ -231,7 +231,7 @@ impl Enum {
 pub struct ExternBlock {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for ExternBlock {}
+impl ast::HasAttrs for ExternBlock {}
 impl ExternBlock {
     pub fn abi(&self) -> Option<Abi> { support::child(&self.syntax) }
     pub fn extern_item_list(&self) -> Option<ExternItemList> { support::child(&self.syntax) }
@@ -240,8 +240,8 @@ impl ExternBlock {
 pub struct ExternCrate {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for ExternCrate {}
-impl ast::VisibilityOwner for ExternCrate {}
+impl ast::HasAttrs for ExternCrate {}
+impl ast::HasVisibility for ExternCrate {}
 impl ExternCrate {
     pub fn extern_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![extern]) }
     pub fn crate_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![crate]) }
@@ -253,10 +253,10 @@ impl ExternCrate {
 pub struct Fn {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for Fn {}
-impl ast::NameOwner for Fn {}
-impl ast::VisibilityOwner for Fn {}
-impl ast::GenericParamsOwner for Fn {}
+impl ast::HasAttrs for Fn {}
+impl ast::HasName for Fn {}
+impl ast::HasVisibility for Fn {}
+impl ast::HasGenericParams for Fn {}
 impl Fn {
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
@@ -273,9 +273,9 @@ impl Fn {
 pub struct Impl {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for Impl {}
-impl ast::VisibilityOwner for Impl {}
-impl ast::GenericParamsOwner for Impl {}
+impl ast::HasAttrs for Impl {}
+impl ast::HasVisibility for Impl {}
+impl ast::HasGenericParams for Impl {}
 impl Impl {
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
@@ -289,9 +289,9 @@ impl Impl {
 pub struct MacroRules {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for MacroRules {}
-impl ast::NameOwner for MacroRules {}
-impl ast::VisibilityOwner for MacroRules {}
+impl ast::HasAttrs for MacroRules {}
+impl ast::HasName for MacroRules {}
+impl ast::HasVisibility for MacroRules {}
 impl MacroRules {
     pub fn macro_rules_token(&self) -> Option<SyntaxToken> {
         support::token(&self.syntax, T![macro_rules])
@@ -303,9 +303,9 @@ impl MacroRules {
 pub struct MacroDef {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for MacroDef {}
-impl ast::NameOwner for MacroDef {}
-impl ast::VisibilityOwner for MacroDef {}
+impl ast::HasAttrs for MacroDef {}
+impl ast::HasName for MacroDef {}
+impl ast::HasVisibility for MacroDef {}
 impl MacroDef {
     pub fn macro_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![macro]) }
     pub fn args(&self) -> Option<TokenTree> { support::child(&self.syntax) }
@@ -315,9 +315,9 @@ impl MacroDef {
 pub struct Module {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for Module {}
-impl ast::NameOwner for Module {}
-impl ast::VisibilityOwner for Module {}
+impl ast::HasAttrs for Module {}
+impl ast::HasName for Module {}
+impl ast::HasVisibility for Module {}
 impl Module {
     pub fn mod_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mod]) }
     pub fn item_list(&self) -> Option<ItemList> { support::child(&self.syntax) }
@@ -327,9 +327,9 @@ impl Module {
 pub struct Static {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for Static {}
-impl ast::NameOwner for Static {}
-impl ast::VisibilityOwner for Static {}
+impl ast::HasAttrs for Static {}
+impl ast::HasName for Static {}
+impl ast::HasVisibility for Static {}
 impl Static {
     pub fn static_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![static]) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
@@ -343,10 +343,10 @@ impl Static {
 pub struct Struct {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for Struct {}
-impl ast::NameOwner for Struct {}
-impl ast::VisibilityOwner for Struct {}
-impl ast::GenericParamsOwner for Struct {}
+impl ast::HasAttrs for Struct {}
+impl ast::HasName for Struct {}
+impl ast::HasVisibility for Struct {}
+impl ast::HasGenericParams for Struct {}
 impl Struct {
     pub fn struct_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![struct]) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
@@ -356,11 +356,11 @@ impl Struct {
 pub struct Trait {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for Trait {}
-impl ast::NameOwner for Trait {}
-impl ast::VisibilityOwner for Trait {}
-impl ast::GenericParamsOwner for Trait {}
-impl ast::TypeBoundsOwner for Trait {}
+impl ast::HasAttrs for Trait {}
+impl ast::HasName for Trait {}
+impl ast::HasVisibility for Trait {}
+impl ast::HasGenericParams for Trait {}
+impl ast::HasTypeBounds for Trait {}
 impl Trait {
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
     pub fn auto_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![auto]) }
@@ -371,11 +371,11 @@ impl Trait {
 pub struct TypeAlias {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for TypeAlias {}
-impl ast::NameOwner for TypeAlias {}
-impl ast::VisibilityOwner for TypeAlias {}
-impl ast::GenericParamsOwner for TypeAlias {}
-impl ast::TypeBoundsOwner for TypeAlias {}
+impl ast::HasAttrs for TypeAlias {}
+impl ast::HasName for TypeAlias {}
+impl ast::HasVisibility for TypeAlias {}
+impl ast::HasGenericParams for TypeAlias {}
+impl ast::HasTypeBounds for TypeAlias {}
 impl TypeAlias {
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
     pub fn type_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![type]) }
@@ -387,10 +387,10 @@ impl TypeAlias {
 pub struct Union {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for Union {}
-impl ast::NameOwner for Union {}
-impl ast::VisibilityOwner for Union {}
-impl ast::GenericParamsOwner for Union {}
+impl ast::HasAttrs for Union {}
+impl ast::HasName for Union {}
+impl ast::HasVisibility for Union {}
+impl ast::HasGenericParams for Union {}
 impl Union {
     pub fn union_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![union]) }
     pub fn record_field_list(&self) -> Option<RecordFieldList> { support::child(&self.syntax) }
@@ -399,8 +399,8 @@ impl Union {
 pub struct Use {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for Use {}
-impl ast::VisibilityOwner for Use {}
+impl ast::HasAttrs for Use {}
+impl ast::HasVisibility for Use {}
 impl Use {
     pub fn use_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![use]) }
     pub fn use_tree(&self) -> Option<UseTree> { support::child(&self.syntax) }
@@ -421,8 +421,8 @@ impl Visibility {
 pub struct ItemList {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for ItemList {}
-impl ast::ModuleItemOwner for ItemList {}
+impl ast::HasAttrs for ItemList {}
+impl ast::HasModuleItem for ItemList {}
 impl ItemList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
@@ -431,7 +431,7 @@ impl ItemList {
 pub struct Rename {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::NameOwner for Rename {}
+impl ast::HasName for Rename {}
 impl Rename {
     pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
     pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
@@ -475,7 +475,7 @@ impl WhereClause {
 pub struct BlockExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for BlockExpr {}
+impl ast::HasAttrs for BlockExpr {}
 impl BlockExpr {
     pub fn label(&self) -> Option<Label> { support::child(&self.syntax) }
     pub fn try_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![try]) }
@@ -488,8 +488,8 @@ impl BlockExpr {
 pub struct SelfParam {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for SelfParam {}
-impl ast::NameOwner for SelfParam {}
+impl ast::HasAttrs for SelfParam {}
+impl ast::HasName for SelfParam {}
 impl SelfParam {
     pub fn amp_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![&]) }
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
@@ -501,7 +501,7 @@ impl SelfParam {
 pub struct Param {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for Param {}
+impl ast::HasAttrs for Param {}
 impl Param {
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
@@ -530,9 +530,9 @@ impl TupleFieldList {
 pub struct RecordField {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for RecordField {}
-impl ast::NameOwner for RecordField {}
-impl ast::VisibilityOwner for RecordField {}
+impl ast::HasAttrs for RecordField {}
+impl ast::HasName for RecordField {}
+impl ast::HasVisibility for RecordField {}
 impl RecordField {
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
@@ -541,8 +541,8 @@ impl RecordField {
 pub struct TupleField {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for TupleField {}
-impl ast::VisibilityOwner for TupleField {}
+impl ast::HasAttrs for TupleField {}
+impl ast::HasVisibility for TupleField {}
 impl TupleField {
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
@@ -559,9 +559,9 @@ impl VariantList {
 pub struct Variant {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for Variant {}
-impl ast::NameOwner for Variant {}
-impl ast::VisibilityOwner for Variant {}
+impl ast::HasAttrs for Variant {}
+impl ast::HasName for Variant {}
+impl ast::HasVisibility for Variant {}
 impl Variant {
     pub fn field_list(&self) -> Option<FieldList> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
@@ -571,7 +571,7 @@ impl Variant {
 pub struct AssocItemList {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for AssocItemList {}
+impl ast::HasAttrs for AssocItemList {}
 impl AssocItemList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
     pub fn assoc_items(&self) -> AstChildren<AssocItem> { support::children(&self.syntax) }
@@ -581,7 +581,7 @@ impl AssocItemList {
 pub struct ExternItemList {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for ExternItemList {}
+impl ast::HasAttrs for ExternItemList {}
 impl ExternItemList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
     pub fn extern_items(&self) -> AstChildren<ExternItem> { support::children(&self.syntax) }
@@ -591,8 +591,8 @@ impl ExternItemList {
 pub struct ConstParam {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for ConstParam {}
-impl ast::NameOwner for ConstParam {}
+impl ast::HasAttrs for ConstParam {}
+impl ast::HasName for ConstParam {}
 impl ConstParam {
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
@@ -604,8 +604,8 @@ impl ConstParam {
 pub struct LifetimeParam {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for LifetimeParam {}
-impl ast::TypeBoundsOwner for LifetimeParam {}
+impl ast::HasAttrs for LifetimeParam {}
+impl ast::HasTypeBounds for LifetimeParam {}
 impl LifetimeParam {
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
 }
@@ -613,9 +613,9 @@ impl LifetimeParam {
 pub struct TypeParam {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for TypeParam {}
-impl ast::NameOwner for TypeParam {}
-impl ast::TypeBoundsOwner for TypeParam {}
+impl ast::HasAttrs for TypeParam {}
+impl ast::HasName for TypeParam {}
+impl ast::HasTypeBounds for TypeParam {}
 impl TypeParam {
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn default_type(&self) -> Option<Type> { support::child(&self.syntax) }
@@ -624,7 +624,7 @@ impl TypeParam {
 pub struct WherePred {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::TypeBoundsOwner for WherePred {}
+impl ast::HasTypeBounds for WherePred {}
 impl WherePred {
     pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
     pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
@@ -653,7 +653,7 @@ impl ExprStmt {
 pub struct LetStmt {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for LetStmt {}
+impl ast::HasAttrs for LetStmt {}
 impl LetStmt {
     pub fn let_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![let]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
@@ -667,7 +667,7 @@ impl LetStmt {
 pub struct ArrayExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for ArrayExpr {}
+impl ast::HasAttrs for ArrayExpr {}
 impl ArrayExpr {
     pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
     pub fn exprs(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
@@ -679,7 +679,7 @@ impl ArrayExpr {
 pub struct AwaitExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for AwaitExpr {}
+impl ast::HasAttrs for AwaitExpr {}
 impl AwaitExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn dot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![.]) }
@@ -689,13 +689,13 @@ impl AwaitExpr {
 pub struct BinExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for BinExpr {}
+impl ast::HasAttrs for BinExpr {}
 impl BinExpr {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BoxExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for BoxExpr {}
+impl ast::HasAttrs for BoxExpr {}
 impl BoxExpr {
     pub fn box_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![box]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
@@ -704,7 +704,7 @@ impl BoxExpr {
 pub struct BreakExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for BreakExpr {}
+impl ast::HasAttrs for BreakExpr {}
 impl BreakExpr {
     pub fn break_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![break]) }
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
@@ -714,8 +714,8 @@ impl BreakExpr {
 pub struct CallExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for CallExpr {}
-impl ast::ArgListOwner for CallExpr {}
+impl ast::HasAttrs for CallExpr {}
+impl ast::HasArgList for CallExpr {}
 impl CallExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
@@ -723,7 +723,7 @@ impl CallExpr {
 pub struct CastExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for CastExpr {}
+impl ast::HasAttrs for CastExpr {}
 impl CastExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
@@ -733,7 +733,7 @@ impl CastExpr {
 pub struct ClosureExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for ClosureExpr {}
+impl ast::HasAttrs for ClosureExpr {}
 impl ClosureExpr {
     pub fn static_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![static]) }
     pub fn async_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![async]) }
@@ -746,7 +746,7 @@ impl ClosureExpr {
 pub struct ContinueExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for ContinueExpr {}
+impl ast::HasAttrs for ContinueExpr {}
 impl ContinueExpr {
     pub fn continue_token(&self) -> Option<SyntaxToken> {
         support::token(&self.syntax, T![continue])
@@ -757,7 +757,7 @@ impl ContinueExpr {
 pub struct FieldExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for FieldExpr {}
+impl ast::HasAttrs for FieldExpr {}
 impl FieldExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn dot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![.]) }
@@ -767,8 +767,8 @@ impl FieldExpr {
 pub struct ForExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for ForExpr {}
-impl ast::LoopBodyOwner for ForExpr {}
+impl ast::HasAttrs for ForExpr {}
+impl ast::HasLoopBody for ForExpr {}
 impl ForExpr {
     pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
@@ -779,7 +779,7 @@ impl ForExpr {
 pub struct IfExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for IfExpr {}
+impl ast::HasAttrs for IfExpr {}
 impl IfExpr {
     pub fn if_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![if]) }
     pub fn condition(&self) -> Option<Condition> { support::child(&self.syntax) }
@@ -789,7 +789,7 @@ impl IfExpr {
 pub struct IndexExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for IndexExpr {}
+impl ast::HasAttrs for IndexExpr {}
 impl IndexExpr {
     pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
@@ -798,14 +798,14 @@ impl IndexExpr {
 pub struct Literal {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for Literal {}
+impl ast::HasAttrs for Literal {}
 impl Literal {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LoopExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for LoopExpr {}
-impl ast::LoopBodyOwner for LoopExpr {}
+impl ast::HasAttrs for LoopExpr {}
+impl ast::HasLoopBody for LoopExpr {}
 impl LoopExpr {
     pub fn loop_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![loop]) }
 }
@@ -813,7 +813,7 @@ impl LoopExpr {
 pub struct MatchExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for MatchExpr {}
+impl ast::HasAttrs for MatchExpr {}
 impl MatchExpr {
     pub fn match_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![match]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
@@ -823,8 +823,8 @@ impl MatchExpr {
 pub struct MethodCallExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for MethodCallExpr {}
-impl ast::ArgListOwner for MethodCallExpr {}
+impl ast::HasAttrs for MethodCallExpr {}
+impl ast::HasArgList for MethodCallExpr {}
 impl MethodCallExpr {
     pub fn receiver(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn dot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![.]) }
@@ -835,7 +835,7 @@ impl MethodCallExpr {
 pub struct ParenExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for ParenExpr {}
+impl ast::HasAttrs for ParenExpr {}
 impl ParenExpr {
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
@@ -845,7 +845,7 @@ impl ParenExpr {
 pub struct PathExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for PathExpr {}
+impl ast::HasAttrs for PathExpr {}
 impl PathExpr {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
 }
@@ -853,7 +853,7 @@ impl PathExpr {
 pub struct PrefixExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for PrefixExpr {}
+impl ast::HasAttrs for PrefixExpr {}
 impl PrefixExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
@@ -861,7 +861,7 @@ impl PrefixExpr {
 pub struct RangeExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for RangeExpr {}
+impl ast::HasAttrs for RangeExpr {}
 impl RangeExpr {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordExpr {
@@ -877,7 +877,7 @@ impl RecordExpr {
 pub struct RefExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for RefExpr {}
+impl ast::HasAttrs for RefExpr {}
 impl RefExpr {
     pub fn amp_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![&]) }
     pub fn raw_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![raw]) }
@@ -889,7 +889,7 @@ impl RefExpr {
 pub struct ReturnExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for ReturnExpr {}
+impl ast::HasAttrs for ReturnExpr {}
 impl ReturnExpr {
     pub fn return_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![return]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
@@ -898,7 +898,7 @@ impl ReturnExpr {
 pub struct TryExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for TryExpr {}
+impl ast::HasAttrs for TryExpr {}
 impl TryExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn question_mark_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![?]) }
@@ -907,7 +907,7 @@ impl TryExpr {
 pub struct TupleExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for TupleExpr {}
+impl ast::HasAttrs for TupleExpr {}
 impl TupleExpr {
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
     pub fn fields(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
@@ -917,8 +917,8 @@ impl TupleExpr {
 pub struct WhileExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for WhileExpr {}
-impl ast::LoopBodyOwner for WhileExpr {}
+impl ast::HasAttrs for WhileExpr {}
+impl ast::HasLoopBody for WhileExpr {}
 impl WhileExpr {
     pub fn while_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![while]) }
     pub fn condition(&self) -> Option<Condition> { support::child(&self.syntax) }
@@ -927,7 +927,7 @@ impl WhileExpr {
 pub struct YieldExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for YieldExpr {}
+impl ast::HasAttrs for YieldExpr {}
 impl YieldExpr {
     pub fn yield_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![yield]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
@@ -936,7 +936,7 @@ impl YieldExpr {
 pub struct StmtList {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for StmtList {}
+impl ast::HasAttrs for StmtList {}
 impl StmtList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
     pub fn statements(&self) -> AstChildren<Stmt> { support::children(&self.syntax) }
@@ -955,7 +955,7 @@ impl Label {
 pub struct RecordExprFieldList {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for RecordExprFieldList {}
+impl ast::HasAttrs for RecordExprFieldList {}
 impl RecordExprFieldList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
     pub fn fields(&self) -> AstChildren<RecordExprField> { support::children(&self.syntax) }
@@ -967,7 +967,7 @@ impl RecordExprFieldList {
 pub struct RecordExprField {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for RecordExprField {}
+impl ast::HasAttrs for RecordExprField {}
 impl RecordExprField {
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
@@ -996,7 +996,7 @@ impl Condition {
 pub struct MatchArmList {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for MatchArmList {}
+impl ast::HasAttrs for MatchArmList {}
 impl MatchArmList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
     pub fn arms(&self) -> AstChildren<MatchArm> { support::children(&self.syntax) }
@@ -1006,7 +1006,7 @@ impl MatchArmList {
 pub struct MatchArm {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for MatchArm {}
+impl ast::HasAttrs for MatchArm {}
 impl MatchArm {
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
     pub fn guard(&self) -> Option<MatchGuard> { support::child(&self.syntax) }
@@ -1155,8 +1155,8 @@ impl TypeBound {
 pub struct IdentPat {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for IdentPat {}
-impl ast::NameOwner for IdentPat {}
+impl ast::HasAttrs for IdentPat {}
+impl ast::HasName for IdentPat {}
 impl IdentPat {
     pub fn ref_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ref]) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
@@ -1296,7 +1296,7 @@ impl RecordPatFieldList {
 pub struct RecordPatField {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for RecordPatField {}
+impl ast::HasAttrs for RecordPatField {}
 impl RecordPatField {
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
@@ -1379,7 +1379,7 @@ pub enum Item {
     Union(Union),
     Use(Use),
 }
-impl ast::AttrsOwner for Item {}
+impl ast::HasAttrs for Item {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Stmt {
     ExprStmt(ExprStmt),
@@ -1416,10 +1416,10 @@ pub enum Adt {
     Struct(Struct),
     Union(Union),
 }
-impl ast::AttrsOwner for Adt {}
-impl ast::GenericParamsOwner for Adt {}
-impl ast::NameOwner for Adt {}
-impl ast::VisibilityOwner for Adt {}
+impl ast::HasAttrs for Adt {}
+impl ast::HasGenericParams for Adt {}
+impl ast::HasName for Adt {}
+impl ast::HasVisibility for Adt {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AssocItem {
     Const(Const),
@@ -1427,7 +1427,7 @@ pub enum AssocItem {
     MacroCall(MacroCall),
     TypeAlias(TypeAlias),
 }
-impl ast::AttrsOwner for AssocItem {}
+impl ast::HasAttrs for AssocItem {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ExternItem {
     Fn(Fn),
@@ -1435,54 +1435,54 @@ pub enum ExternItem {
     Static(Static),
     TypeAlias(TypeAlias),
 }
-impl ast::AttrsOwner for ExternItem {}
+impl ast::HasAttrs for ExternItem {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GenericParam {
     ConstParam(ConstParam),
     LifetimeParam(LifetimeParam),
     TypeParam(TypeParam),
 }
-impl ast::AttrsOwner for GenericParam {}
+impl ast::HasAttrs for GenericParam {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynArgListOwner {
+pub struct AnyHasArgList {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::ArgListOwner for DynArgListOwner {}
+impl ast::HasArgList for AnyHasArgList {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynAttrsOwner {
+pub struct AnyHasAttrs {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for DynAttrsOwner {}
+impl ast::HasAttrs for AnyHasAttrs {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynGenericParamsOwner {
+pub struct AnyHasGenericParams {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::GenericParamsOwner for DynGenericParamsOwner {}
+impl ast::HasGenericParams for AnyHasGenericParams {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynLoopBodyOwner {
+pub struct AnyHasLoopBody {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::LoopBodyOwner for DynLoopBodyOwner {}
+impl ast::HasLoopBody for AnyHasLoopBody {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynModuleItemOwner {
+pub struct AnyHasModuleItem {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::ModuleItemOwner for DynModuleItemOwner {}
+impl ast::HasModuleItem for AnyHasModuleItem {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynNameOwner {
+pub struct AnyHasName {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::NameOwner for DynNameOwner {}
+impl ast::HasName for AnyHasName {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynTypeBoundsOwner {
+pub struct AnyHasTypeBounds {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::TypeBoundsOwner for DynTypeBoundsOwner {}
+impl ast::HasTypeBounds for AnyHasTypeBounds {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynVisibilityOwner {
+pub struct AnyHasVisibility {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::VisibilityOwner for DynVisibilityOwner {}
+impl ast::HasVisibility for AnyHasVisibility {}
 impl AstNode for Name {
     fn can_cast(kind: SyntaxKind) -> bool { kind == NAME }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -3597,13 +3597,13 @@ impl AstNode for GenericParam {
         }
     }
 }
-impl DynArgListOwner {
+impl AnyHasArgList {
     #[inline]
-    pub fn new<T: ast::ArgListOwner>(node: T) -> DynArgListOwner {
-        DynArgListOwner { syntax: node.syntax().clone() }
+    pub fn new<T: ast::HasArgList>(node: T) -> AnyHasArgList {
+        AnyHasArgList { syntax: node.syntax().clone() }
     }
 }
-impl AstNode for DynArgListOwner {
+impl AstNode for AnyHasArgList {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             CALL_EXPR | METHOD_CALL_EXPR => true,
@@ -3611,17 +3611,17 @@ impl AstNode for DynArgListOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then(|| DynArgListOwner { syntax })
+        Self::can_cast(syntax.kind()).then(|| AnyHasArgList { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl DynAttrsOwner {
+impl AnyHasAttrs {
     #[inline]
-    pub fn new<T: ast::AttrsOwner>(node: T) -> DynAttrsOwner {
-        DynAttrsOwner { syntax: node.syntax().clone() }
+    pub fn new<T: ast::HasAttrs>(node: T) -> AnyHasAttrs {
+        AnyHasAttrs { syntax: node.syntax().clone() }
     }
 }
-impl AstNode for DynAttrsOwner {
+impl AstNode for AnyHasAttrs {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             MACRO_CALL
@@ -3692,17 +3692,17 @@ impl AstNode for DynAttrsOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then(|| DynAttrsOwner { syntax })
+        Self::can_cast(syntax.kind()).then(|| AnyHasAttrs { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl DynGenericParamsOwner {
+impl AnyHasGenericParams {
     #[inline]
-    pub fn new<T: ast::GenericParamsOwner>(node: T) -> DynGenericParamsOwner {
-        DynGenericParamsOwner { syntax: node.syntax().clone() }
+    pub fn new<T: ast::HasGenericParams>(node: T) -> AnyHasGenericParams {
+        AnyHasGenericParams { syntax: node.syntax().clone() }
     }
 }
-impl AstNode for DynGenericParamsOwner {
+impl AstNode for AnyHasGenericParams {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             ENUM | FN | IMPL | STRUCT | TRAIT | TYPE_ALIAS | UNION => true,
@@ -3710,17 +3710,17 @@ impl AstNode for DynGenericParamsOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then(|| DynGenericParamsOwner { syntax })
+        Self::can_cast(syntax.kind()).then(|| AnyHasGenericParams { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl DynLoopBodyOwner {
+impl AnyHasLoopBody {
     #[inline]
-    pub fn new<T: ast::LoopBodyOwner>(node: T) -> DynLoopBodyOwner {
-        DynLoopBodyOwner { syntax: node.syntax().clone() }
+    pub fn new<T: ast::HasLoopBody>(node: T) -> AnyHasLoopBody {
+        AnyHasLoopBody { syntax: node.syntax().clone() }
     }
 }
-impl AstNode for DynLoopBodyOwner {
+impl AstNode for AnyHasLoopBody {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             FOR_EXPR | LOOP_EXPR | WHILE_EXPR => true,
@@ -3728,17 +3728,17 @@ impl AstNode for DynLoopBodyOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then(|| DynLoopBodyOwner { syntax })
+        Self::can_cast(syntax.kind()).then(|| AnyHasLoopBody { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl DynModuleItemOwner {
+impl AnyHasModuleItem {
     #[inline]
-    pub fn new<T: ast::ModuleItemOwner>(node: T) -> DynModuleItemOwner {
-        DynModuleItemOwner { syntax: node.syntax().clone() }
+    pub fn new<T: ast::HasModuleItem>(node: T) -> AnyHasModuleItem {
+        AnyHasModuleItem { syntax: node.syntax().clone() }
     }
 }
-impl AstNode for DynModuleItemOwner {
+impl AstNode for AnyHasModuleItem {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             MACRO_ITEMS | SOURCE_FILE | ITEM_LIST => true,
@@ -3746,17 +3746,17 @@ impl AstNode for DynModuleItemOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then(|| DynModuleItemOwner { syntax })
+        Self::can_cast(syntax.kind()).then(|| AnyHasModuleItem { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl DynNameOwner {
+impl AnyHasName {
     #[inline]
-    pub fn new<T: ast::NameOwner>(node: T) -> DynNameOwner {
-        DynNameOwner { syntax: node.syntax().clone() }
+    pub fn new<T: ast::HasName>(node: T) -> AnyHasName {
+        AnyHasName { syntax: node.syntax().clone() }
     }
 }
-impl AstNode for DynNameOwner {
+impl AstNode for AnyHasName {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             CONST | ENUM | FN | MACRO_RULES | MACRO_DEF | MODULE | STATIC | STRUCT | TRAIT
@@ -3766,17 +3766,17 @@ impl AstNode for DynNameOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then(|| DynNameOwner { syntax })
+        Self::can_cast(syntax.kind()).then(|| AnyHasName { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl DynTypeBoundsOwner {
+impl AnyHasTypeBounds {
     #[inline]
-    pub fn new<T: ast::TypeBoundsOwner>(node: T) -> DynTypeBoundsOwner {
-        DynTypeBoundsOwner { syntax: node.syntax().clone() }
+    pub fn new<T: ast::HasTypeBounds>(node: T) -> AnyHasTypeBounds {
+        AnyHasTypeBounds { syntax: node.syntax().clone() }
     }
 }
-impl AstNode for DynTypeBoundsOwner {
+impl AstNode for AnyHasTypeBounds {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             ASSOC_TYPE_ARG | TRAIT | TYPE_ALIAS | LIFETIME_PARAM | TYPE_PARAM | WHERE_PRED => true,
@@ -3784,17 +3784,17 @@ impl AstNode for DynTypeBoundsOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then(|| DynTypeBoundsOwner { syntax })
+        Self::can_cast(syntax.kind()).then(|| AnyHasTypeBounds { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl DynVisibilityOwner {
+impl AnyHasVisibility {
     #[inline]
-    pub fn new<T: ast::VisibilityOwner>(node: T) -> DynVisibilityOwner {
-        DynVisibilityOwner { syntax: node.syntax().clone() }
+    pub fn new<T: ast::HasVisibility>(node: T) -> AnyHasVisibility {
+        AnyHasVisibility { syntax: node.syntax().clone() }
     }
 }
-impl AstNode for DynVisibilityOwner {
+impl AstNode for AnyHasVisibility {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             CONST | ENUM | EXTERN_CRATE | FN | IMPL | MACRO_RULES | MACRO_DEF | MODULE | STATIC
@@ -3805,7 +3805,7 @@ impl AstNode for DynVisibilityOwner {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then(|| DynVisibilityOwner { syntax })
+        Self::can_cast(syntax.kind()).then(|| AnyHasVisibility { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }

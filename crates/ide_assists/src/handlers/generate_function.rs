@@ -11,7 +11,7 @@ use syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
-        make, ArgListOwner, AstNode, CallExpr, ModuleItemOwner,
+        make, AstNode, CallExpr, HasArgList, HasModuleItem,
     },
     SyntaxKind, SyntaxNode, TextRange, TextSize,
 };

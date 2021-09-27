@@ -9,7 +9,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 use syntax::{
-    ast::{self, edit::AstNodeEdit, make, ArgListOwner},
+    ast::{self, edit::AstNodeEdit, make, HasArgList},
     ted, AstNode, SyntaxNode,
 };
 

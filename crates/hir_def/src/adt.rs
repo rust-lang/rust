@@ -9,7 +9,7 @@ use hir_expand::{
     InFile,
 };
 use la_arena::{Arena, ArenaMap};
-use syntax::ast::{self, NameOwner, VisibilityOwner};
+use syntax::ast::{self, HasName, HasVisibility};
 use tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree};
 
 use crate::{

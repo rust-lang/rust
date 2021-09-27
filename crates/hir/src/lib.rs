@@ -72,7 +72,7 @@ use once_cell::unsync::Lazy;
 use rustc_hash::FxHashSet;
 use stdx::{format_to, impl_from};
 use syntax::{
-    ast::{self, AttrsOwner, NameOwner},
+    ast::{self, HasAttrs as _, HasName},
     AstNode, AstPtr, SmolStr, SyntaxKind, SyntaxNodePtr,
 };
 use tt::{Ident, Leaf, Literal, TokenTree};

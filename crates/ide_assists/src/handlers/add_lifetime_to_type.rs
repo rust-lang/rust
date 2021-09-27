@@ -1,4 +1,4 @@
-use syntax::ast::{self, AstNode, GenericParamsOwner, NameOwner};
+use syntax::ast::{self, AstNode, HasGenericParams, HasName};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 

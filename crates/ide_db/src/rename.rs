@@ -27,7 +27,7 @@ use either::Either;
 use hir::{AsAssocItem, FieldSource, HasSource, InFile, ModuleSource, Semantics};
 use stdx::never;
 use syntax::{
-    ast::{self, NameOwner},
+    ast::{self, HasName},
     lex_single_syntax_kind, AstNode, SyntaxKind, TextRange, T,
 };
 use text_edit::{TextEdit, TextEditBuilder};
@@ -156,7 +156,7 @@ impl Definition {
         fn name_range<D>(def: D, sema: &Semantics<RootDatabase>) -> Option<FileRange>
         where
             D: HasSource,
-            D::Ast: ast::NameOwner,
+            D::Ast: ast::HasName,
         {
             let src = def.source(sema.db)?;
             let name = src.value.name()?;

@@ -1,5 +1,5 @@
 use syntax::{
-    ast::{self, AstNode, AttrsOwner},
+    ast::{self, AstNode, HasAttrs},
     SyntaxKind::{COMMENT, WHITESPACE},
     TextSize,
 };

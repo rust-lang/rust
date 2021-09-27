@@ -2,7 +2,7 @@ use ide_db::{
     helpers::{mod_path_to_ast, FamousDefs},
     traits::resolve_target_trait,
 };
-use syntax::ast::{self, AstNode, NameOwner};
+use syntax::ast::{self, AstNode, HasName};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 

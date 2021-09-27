@@ -5,7 +5,7 @@ use ide_db::{
     helpers::visit_file_defs,
     RootDatabase,
 };
-use syntax::{ast::NameOwner, AstNode, TextRange};
+use syntax::{ast::HasName, AstNode, TextRange};
 
 use crate::{
     fn_references::find_all_methods,
@@ -99,7 +99,7 @@ pub(crate) fn annotations(
                 });
             }
 
-            fn name_range<T: NameOwner>(node: &InFile<T>, file_id: FileId) -> Option<TextRange> {
+            fn name_range<T: HasName>(node: &InFile<T>, file_id: FileId) -> Option<TextRange> {
                 if node.file_id == file_id.into() {
                     node.value.name().map(|it| it.syntax().text_range())
                 } else {

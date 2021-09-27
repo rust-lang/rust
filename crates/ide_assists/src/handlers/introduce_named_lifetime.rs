@@ -1,6 +1,6 @@
 use rustc_hash::FxHashSet;
 use syntax::{
-    ast::{self, edit_in_place::GenericParamsOwnerEdit, make, GenericParamsOwner},
+    ast::{self, edit_in_place::GenericParamsOwnerEdit, make, HasGenericParams},
     ted::{self, Position},
     AstNode, TextRange,
 };

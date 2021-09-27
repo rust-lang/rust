@@ -17,7 +17,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
 use syntax::{
     algo::skip_trivia_token,
-    ast::{self, GenericParamsOwner, LoopBodyOwner},
+    ast::{self, HasGenericParams, HasLoopBody},
     match_ast, AstNode, Direction, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize,
 };
 
@@ -682,7 +682,7 @@ impl<'db> SemanticsImpl<'db> {
     fn resolve_lifetime_param(&self, lifetime: &ast::Lifetime) -> Option<LifetimeParam> {
         let text = lifetime.text();
         let lifetime_param = lifetime.syntax().ancestors().find_map(|syn| {
-            let gpl = ast::DynGenericParamsOwner::cast(syn)?.generic_param_list()?;
+            let gpl = ast::AnyHasGenericParams::cast(syn)?.generic_param_list()?;
             gpl.lifetime_params()
                 .find(|tp| tp.lifetime().as_ref().map(|lt| lt.text()).as_ref() == Some(&text))
         })?;

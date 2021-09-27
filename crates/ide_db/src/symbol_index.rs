@@ -37,7 +37,7 @@ use hir::db::DefDatabase;
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
-    ast::{self, NameOwner},
+    ast::{self, HasName},
     match_ast, AstNode, Parse, SmolStr, SourceFile,
     SyntaxKind::*,
     SyntaxNode, SyntaxNodePtr, TextRange, WalkEvent,
@@ -427,7 +427,7 @@ fn source_file_to_file_symbols(source_file: &SourceFile, file_id: FileId) -> Vec
 }
 
 fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
-    fn decl<N: NameOwner>(node: N) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
+    fn decl<N: HasName>(node: N) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
         let name = node.name()?;
         let name_range = name.syntax().text_range();
         let name = name.text().into();

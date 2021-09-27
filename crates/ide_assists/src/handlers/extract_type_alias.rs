@@ -2,7 +2,7 @@ use either::Either;
 use ide_db::helpers::node_ext::walk_ty;
 use itertools::Itertools;
 use syntax::{
-    ast::{self, edit::IndentLevel, AstNode, GenericParamsOwner, NameOwner},
+    ast::{self, edit::IndentLevel, AstNode, HasGenericParams, HasName},
     match_ast,
 };
 

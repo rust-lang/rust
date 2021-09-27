@@ -1,5 +1,5 @@
 use syntax::{
-    ast::{self, NameOwner, VisibilityOwner},
+    ast::{self, HasName, HasVisibility},
     AstNode,
     SyntaxKind::{
         CONST, ENUM, FN, MACRO_DEF, MODULE, STATIC, STRUCT, TRAIT, TYPE_ALIAS, USE, VISIBILITY,

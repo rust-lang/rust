@@ -636,7 +636,7 @@ impl FunctionBody {
         let mut ancestors = self.parent()?.ancestors();
         let infer_expr_opt = |expr| sema.type_of_expr(&expr?).map(TypeInfo::adjusted);
         let mut parent_loop = None;
-        let mut set_parent_loop = |loop_: &dyn ast::LoopBodyOwner| {
+        let mut set_parent_loop = |loop_: &dyn ast::HasLoopBody| {
             if loop_
                 .loop_body()
                 .map_or(false, |it| it.syntax().text_range().contains_range(self.text_range()))

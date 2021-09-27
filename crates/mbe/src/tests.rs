@@ -238,7 +238,7 @@ fn debug_dump_ignore_spaces(node: &syntax::SyntaxNode) -> String {
 
 #[test]
 fn test_node_to_tt_censor() {
-    use syntax::ast::{AttrsOwner, ModuleItemOwner};
+    use syntax::ast::{HasAttrs, HasModuleItem};
 
     let source = r##"
 #[attr0]

@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use ide_db::{helpers::FamousDefs, RootDatabase};
 use syntax::{
-    ast::{self, NameOwner},
+    ast::{self, HasName},
     AstNode, SyntaxNode,
 };
 

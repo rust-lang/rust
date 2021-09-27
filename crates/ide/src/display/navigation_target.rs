@@ -14,7 +14,7 @@ use ide_db::{
 };
 use ide_db::{defs::Definition, RootDatabase};
 use syntax::{
-    ast::{self, NameOwner},
+    ast::{self, HasName},
     match_ast, AstNode, SmolStr, TextRange,
 };
 
@@ -133,7 +133,7 @@ impl NavigationTarget {
     /// Allows `NavigationTarget` to be created from a `NameOwner`
     pub(crate) fn from_named(
         db: &RootDatabase,
-        node: InFile<&dyn ast::NameOwner>,
+        node: InFile<&dyn ast::HasName>,
         kind: SymbolKind,
     ) -> NavigationTarget {
         let name = node.value.name().map(|it| it.text().into()).unwrap_or_else(|| "_".into());
@@ -257,13 +257,13 @@ impl ToNavFromAst for hir::Trait {
 impl<D> TryToNav for D
 where
     D: HasSource + ToNavFromAst + Copy + HasAttrs + HirDisplay,
-    D::Ast: ast::NameOwner,
+    D::Ast: ast::HasName,
 {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         let src = self.source(db)?;
         let mut res = NavigationTarget::from_named(
             db,
-            src.as_ref().map(|it| it as &dyn ast::NameOwner),
+            src.as_ref().map(|it| it as &dyn ast::HasName),
             D::KIND,
         );
         res.docs = self.docs(db);
@@ -343,7 +343,7 @@ impl TryToNav for hir::Field {
 impl TryToNav for hir::MacroDef {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         let src = self.source(db)?;
-        let name_owner: &dyn ast::NameOwner = match &src.value {
+        let name_owner: &dyn ast::HasName = match &src.value {
             Either::Left(it) => it,
             Either::Right(it) => it,
         };
