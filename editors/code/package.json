@@ -641,7 +641,7 @@
                 },
                 "rust-analyzer.experimental.procAttrMacros": {
                     "markdownDescription": "Expand attribute macros.",
-                    "default": false,
+                    "default": true,
                     "type": "boolean"
                 },
                 "rust-analyzer.files.watcher": {
