@@ -913,6 +913,10 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                     return;
                 }
 
+                if Some(callee) == tcx.lang_items().call_if_rt() {
+                    return;
+                }
+
                 if Some(callee) == tcx.lang_items().exchange_malloc_fn() {
                     self.check_op(ops::HeapAllocation);
                     return;

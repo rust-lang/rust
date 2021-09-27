@@ -23,10 +23,9 @@ use crate::interpret::{
 use super::error::*;
 
 impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
-    /// "Intercept" a function call to a panic-related function
-    /// because we have something special to do for it.
+    /// "Intercept" a function call to functions that require special handling.
     /// If this returns successfully (`Ok`), the function should just be evaluated normally.
-    fn hook_panic_fn(
+    fn hook_fn(
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
@@ -62,6 +61,19 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
                         ty::ParamEnv::reveal_all(),
                         const_panic_fmt,
                         self.tcx.intern_substs(&[]),
+                    )
+                    .unwrap()
+                    .unwrap(),
+                ));
+            }
+        } else if Some(def_id) == self.tcx.lang_items().call_if_rt() {
+            if let Some(const_call_if_rt) = self.tcx.lang_items().const_call_if_rt() {
+                return Ok(Some(
+                    ty::Instance::resolve(
+                        *self.tcx,
+                        ty::ParamEnv::reveal_all(),
+                        const_call_if_rt,
+                        instance.substs,
                     )
                     .unwrap()
                     .unwrap(),
@@ -263,7 +275,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 if !ecx.tcx.has_attr(def.did, sym::default_method_body_is_const) {
                     // Some functions we support even if they are non-const -- but avoid testing
                     // that for const fn!
-                    if let Some(new_instance) = ecx.hook_panic_fn(instance, args)? {
+                    if let Some(new_instance) = ecx.hook_fn(instance, args)? {
                         // We call another const fn instead.
                         return Self::find_mir_or_eval_fn(
                             ecx,

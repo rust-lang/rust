@@ -2221,3 +2221,18 @@ pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
     unsafe { write_bytes(dst, val, count) }
 }
+
+#[cfg(not(bootstrap))]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[lang = "call_if_rt"]
+#[inline(always)]
+pub fn call_if_rt<R, F: FnOnce() -> R + Copy>(f: F) -> Option<R> {
+    Some(f())
+}
+
+#[cfg(not(bootstrap))]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[lang = "const_call_if_rt"]
+pub const fn const_call_if_rt<R, F: FnOnce() -> R + Copy>(_f: F) -> Option<R> {
+    None
+}
