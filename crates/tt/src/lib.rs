@@ -274,3 +274,36 @@ impl Subtree {
 }
 
 pub mod buffer;
+
+pub fn pretty(tkns: &[TokenTree]) -> String {
+    fn tokentree_to_text(tkn: &TokenTree) -> String {
+        match tkn {
+            TokenTree::Leaf(Leaf::Ident(ident)) => ident.text.clone().into(),
+            TokenTree::Leaf(Leaf::Literal(literal)) => literal.text.clone().into(),
+            TokenTree::Leaf(Leaf::Punct(punct)) => format!("{}", punct.char),
+            TokenTree::Subtree(subtree) => {
+                let content = pretty(&subtree.token_trees);
+                let (open, close) = match subtree.delimiter.map(|it| it.kind) {
+                    None => ("", ""),
+                    Some(DelimiterKind::Brace) => ("{", "}"),
+                    Some(DelimiterKind::Parenthesis) => ("(", ")"),
+                    Some(DelimiterKind::Bracket) => ("[", "]"),
+                };
+                format!("{}{}{}", open, content, close)
+            }
+        }
+    }
+
+    tkns.iter()
+        .fold((String::new(), true), |(last, last_to_joint), tkn| {
+            let s = [last, tokentree_to_text(tkn)].join(if last_to_joint { "" } else { " " });
+            let mut is_joint = false;
+            if let TokenTree::Leaf(Leaf::Punct(punct)) = tkn {
+                if punct.spacing == Spacing::Joint {
+                    is_joint = true;
+                }
+            }
+            (s, is_joint)
+        })
+        .0
+}

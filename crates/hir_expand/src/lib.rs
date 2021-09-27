@@ -26,7 +26,7 @@ use base_db::{impl_intern_key, salsa, CrateId, FileId, FileRange};
 use syntax::{
     algo::skip_trivia_token,
     ast::{self, AstNode, HasAttrs},
-    Direction, SyntaxNode, SyntaxToken, TextRange, TextSize,
+    Direction, SyntaxNode, SyntaxToken, TextRange,
 };
 
 use crate::{
