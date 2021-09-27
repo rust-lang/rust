@@ -188,6 +188,12 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
 /// [`lock`]: Mutex::lock
 /// [`try_lock`]: Mutex::try_lock
 #[must_use = "if unused the Mutex will immediately unlock"]
+#[cfg_attr(
+    not(bootstrap),
+    must_not_suspend = "Holding a MutexGuard across suspend \
+                      points can cause deadlocks, delays, \
+                      and cause Future's to not implement `Send`"
+)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct MutexGuard<'a, T: ?Sized + 'a> {
     lock: &'a Mutex<T>,
