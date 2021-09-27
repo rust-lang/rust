@@ -5,6 +5,8 @@ The rustc compiler contains support for following sanitizers:
 * [AddressSanitizer][clang-asan] a faster memory error detector. Can
   detect out-of-bounds access to heap, stack, and globals, use after free, use
   after return, double free, invalid free, memory leaks.
+* [Hardware-assisted AddressSanitizer][clang-hwasan]  a tool similar to
+  AddressSanitizer but based on partial hardware assistance.
 * [LeakSanitizer][clang-lsan] a run-time memory leak detector.
 * [MemorySanitizer][clang-msan] a detector of uninitialized reads.
 * [ThreadSanitizer][clang-tsan] a fast data race detector.
@@ -12,8 +14,9 @@ The rustc compiler contains support for following sanitizers:
 ## How to use the sanitizers?
 
 To enable a sanitizer compile with `-Z sanitizer=...` option, where value is one
-of `address`, `leak`, `memory` or `thread`. For more details how to use
-sanitizers please refer to [the unstable book](https://doc.rust-lang.org/unstable-book/).
+of `address`, `hwaddress`, `leak`, `memory` or `thread`. For more details on how
+to use sanitizers please refer to the sanitizer flag in [the unstable
+book](https://doc.rust-lang.org/unstable-book/).
 
 ## How are sanitizers implemented in rustc?
 
@@ -22,7 +25,8 @@ an integration point for LLVM compile time instrumentation passes and runtime
 libraries. Highlight of the most important aspects of the implementation:
 
 *  The sanitizer runtime libraries are part of the [compiler-rt] project, and
-   [will be built on supported targets][sanitizer-build] when enabled in `config.toml`:
+   [will be built][sanitizer-build] on [supported targets][sanitizer-targets]
+   when enabled in `config.toml`:
 
    ```toml
    [build]
@@ -33,9 +37,9 @@ libraries. Highlight of the most important aspects of the implementation:
 
 *  During LLVM code generation, the functions intended for instrumentation are
    [marked][sanitizer-attribute] with appropriate LLVM attribute:
-   `SanitizeAddress`, `SanitizeMemory`, or `SanitizeThread`. By default all
-   functions are instrumented, but this behaviour can be changed with
-   `#[no_sanitize(...)]`.
+   `SanitizeAddress`, `SanitizeHWAddress`, `SanitizeMemory`, or
+   `SanitizeThread`. By default all functions are instrumented, but this
+   behaviour can be changed with `#[no_sanitize(...)]`.
 
 *  The decision whether to perform instrumentation or not is possible only at a
    function granularity. In the cases were those decision differ between
@@ -47,28 +51,66 @@ libraries. Highlight of the most important aspects of the implementation:
    passes are invoked after optimization passes.
 
 *  When producing an executable, the sanitizer specific runtime library is
-   [linked in][sanitizer-link]. The libraries are searched for in target libdir
-   relative to default system root, so that this process is not affected
-   by sysroot overrides used for example by cargo `-Z build-std` functionality.
+   [linked in][sanitizer-link]. The libraries are searched for in the target
+   libdir. First relative to the overridden system root and subsequently
+   relative to the default system root. Fall-back to the default system root
+   ensures that sanitizer runtimes remain available when using sysroot overrides
+   constructed by cargo `-Z build-std` or xargo.
 
 [compiler-rt]: https://github.com/llvm/llvm-project/tree/main/compiler-rt
-[sanitizer-build]: https://github.com/rust-lang/rust/blob/a29424a2265411dda7d7446516ac5fd7499e2b55/src/bootstrap/native.rs#L566-L624
-[sanitizer-copy]: https://github.com/rust-lang/rust/blob/a29424a2265411dda7d7446516ac5fd7499e2b55/src/bootstrap/compile.rs#L270-L304
-[sanitizer-attribute]: https://github.com/rust-lang/rust/blob/a29424a2265411dda7d7446516ac5fd7499e2b55/src/librustc_codegen_llvm/attributes.rs#L49-L72
-[inline-mir]: https://github.com/rust-lang/rust/blob/a29424a2265411dda7d7446516ac5fd7499e2b55/src/librustc_mir/transform/inline.rs#L232-L252
+[sanitizer-build]: https://github.com/rust-lang/rust/blob/1.55.0/src/bootstrap/native.rs#L700-L765
+[sanitizer-targets]: https://github.com/rust-lang/rust/blob/1.55.0/src/bootstrap/native.rs#L806-L820
+[sanitizer-copy]: https://github.com/rust-lang/rust/blob/1.55.0/src/bootstrap/compile.rs#L376-L407
+[sanitizer-attribute]: https://github.com/rust-lang/rust/blob/1.55.0/compiler/rustc_codegen_llvm/src/attributes.rs#L42-L58
+[inline-mir]: https://github.com/rust-lang/rust/blob/1.55.0/compiler/rustc_mir/src/transform/inline.rs#L314-L316
 [inline-llvm]: https://github.com/rust-lang/llvm-project/blob/9330ec5a4c1df5fc1fa62f993ed6a04da68cb040/llvm/include/llvm/IR/Attributes.td#L225-L241
-[sanitizer-pass]: https://github.com/rust-lang/rust/blob/a29424a2265411dda7d7446516ac5fd7499e2b55/src/librustc_codegen_llvm/back/write.rs#L454-L475
-[sanitizer-link]: https://github.com/rust-lang/rust/blob/a29424a2265411dda7d7446516ac5fd7499e2b55/src/librustc_codegen_ssa/back/link.rs#L748-L787
+[sanitizer-pass]: https://github.com/rust-lang/rust/blob/1.55.0/compiler/rustc_codegen_llvm/src/back/write.rs#L660-L678
+[sanitizer-link]: https://github.com/rust-lang/rust/blob/1.55.0/compiler/rustc_codegen_ssa/src/back/link.rs#L1053-L1089
+
+## Testing sanitizers
+
+Sanitizers are validated by code generation tests in
+[`src/test/codegen/sanitize*.rs`][test-cg] and end-to-end functional tests in
+[`src/test/ui/sanitize/`][test-ui] directory.
+
+Testing sanitizer functionality requires the sanitizer runtimes (built when
+`sanitizer = true` in `config.toml`) and target providing support for particular
+sanitizer. When sanitizer is unsupported on given target, sanitizers tests will
+be ignored. This behaviour is controlled by compiletest `needs-sanitizer-*`
+directives.
+
+[test-cg]: https://github.com/rust-lang/rust/tree/master/src/test/codegen
+[test-ui]: https://github.com/rust-lang/rust/tree/master/src/test/ui/sanitize
+
+## Enabling sanitizer on a new target
+
+To enable a sanitizer on a new target which is already supported by LLVM:
+
+1. Include the sanitizer in the list of `supported_sanitizers` in [the target
+   definition][target-definition]. `rustc --target .. -Zsanitizer=..` should now
+   recognize sanitizer as supported.
+2. [Build the runtime for the target and include it in the libdir.][sanitizer-targets]
+3. [Teach compiletest that your target now supports the sanitizer.][compiletest-definition]
+   Tests marked with `needs-sanitizer-*` should now run on the target.
+4. Run tests `./x.py test --force-rerun src/test/ui/sanitize/` to verify.
+5. [--enable-sanitizers in the CI configuration][ci-configuration] to build and
+   distribute the sanitizer runtime as part of the release process.
+
+[target-definition]: https://github.com/rust-lang/rust/blob/1.55.0/compiler/rustc_target/src/spec/x86_64_unknown_linux_gnu.rs#L10-L11
+[compiletest-definition]: https://github.com/rust-lang/rust/blob/1.55.0/src/tools/compiletest/src/util.rs#L87-L116
+[ci-configuration]: https://github.com/rust-lang/rust/blob/1.55.0/src/ci/docker/host-x86_64/dist-x86_64-linux/Dockerfile#L94
 
 ## Additional Information
 
 * [Sanitizers project page](https://github.com/google/sanitizers/wiki/)
 * [AddressSanitizer in Clang][clang-asan]
+* [Hardware-assisted AddressSanitizer][clang-hwasan]
 * [LeakSanitizer in Clang][clang-lsan]
 * [MemorySanitizer in Clang][clang-msan]
 * [ThreadSanitizer in Clang][clang-tsan]
 
 [clang-asan]: https://clang.llvm.org/docs/AddressSanitizer.html
+[clang-hwasan]: https://clang.llvm.org/docs/HardwareAssistedAddressSanitizerDesign.html
 [clang-lsan]: https://clang.llvm.org/docs/LeakSanitizer.html
 [clang-msan]: https://clang.llvm.org/docs/MemorySanitizer.html
 [clang-tsan]: https://clang.llvm.org/docs/ThreadSanitizer.html
