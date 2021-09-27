@@ -272,6 +272,18 @@ pub enum VarError {
     NotUnicode(#[stable(feature = "env", since = "1.0.0")] OsString),
 }
 
+impl VarError {
+    /// Checks if the error was caused by the environment variable being absent
+    pub const fn is_absent(&self) -> bool {
+        matches!(self, VarError::NotPresent)
+    }
+    /// Checks if the error was caused by the environment variable failing to be valid
+    /// Unicode
+    pub const fn is_unicode_error(&self) -> bool {
+        matches!(self, VarError::NotUnicode(_))
+    }
+}
+
 #[stable(feature = "env", since = "1.0.0")]
 impl fmt::Display for VarError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
