@@ -597,7 +597,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.yield_active_thread();
             }
             "llvm.aarch64.isb" if this.tcx.sess.target.arch == "aarch64" => {
-                let &[ref arg] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let &[ref arg] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
                 let arg = this.read_scalar(arg)?.to_i32()?;
                 match arg {
                     15 => { // SY ("full system scope")
