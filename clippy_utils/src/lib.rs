@@ -510,7 +510,6 @@ pub fn path_to_local_id(expr: &Expr<'_>, id: HirId) -> bool {
 }
 
 /// Gets the definition associated to a path.
-#[allow(clippy::shadow_unrelated)] // false positive #6563
 pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
     macro_rules! try_res {
         ($e:expr) => {

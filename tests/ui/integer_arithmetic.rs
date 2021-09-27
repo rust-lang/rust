@@ -1,12 +1,5 @@
 #![warn(clippy::integer_arithmetic, clippy::float_arithmetic)]
-#![allow(
-    unused,
-    clippy::shadow_reuse,
-    clippy::shadow_unrelated,
-    clippy::no_effect,
-    clippy::unnecessary_operation,
-    clippy::op_ref
-)]
+#![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::op_ref)]
 
 #[rustfmt::skip]
 fn main() {
