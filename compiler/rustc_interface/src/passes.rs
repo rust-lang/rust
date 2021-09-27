@@ -240,6 +240,7 @@ fn pre_expansion_lint(
     sess: &Session,
     lint_store: &LintStore,
     krate: &ast::Crate,
+    crate_attrs: &[ast::Attribute],
     crate_name: &str,
 ) {
     sess.prof.generic_activity_with_arg("pre_AST_expansion_lint_checks", crate_name).run(|| {
@@ -247,6 +248,7 @@ fn pre_expansion_lint(
             sess,
             lint_store,
             &krate,
+            crate_attrs,
             true,
             None,
             rustc_lint::BuiltinCombinedPreExpansionLintPass::new(),
@@ -266,7 +268,7 @@ pub fn configure_and_expand(
     resolver: &mut Resolver<'_>,
 ) -> Result<ast::Crate> {
     tracing::trace!("configure_and_expand");
-    pre_expansion_lint(sess, lint_store, &krate, crate_name);
+    pre_expansion_lint(sess, lint_store, &krate, &krate.attrs, crate_name);
     rustc_builtin_macros::register_builtin_macros(resolver);
 
     krate = sess.time("crate_injection", || {
@@ -322,9 +324,10 @@ pub fn configure_and_expand(
             ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
         };
 
+        let crate_attrs = krate.attrs.clone();
         let extern_mod_loaded = |ident: Ident, attrs, items, span| {
             let krate = ast::Crate { attrs, items, span };
-            pre_expansion_lint(sess, lint_store, &krate, &ident.name.as_str());
+            pre_expansion_lint(sess, lint_store, &krate, &crate_attrs, &ident.name.as_str());
             (krate.attrs, krate.items)
         };
         let mut ecx = ExtCtxt::new(&sess, cfg, resolver, Some(&extern_mod_loaded));
@@ -468,6 +471,7 @@ pub fn lower_to_hir<'res, 'tcx>(
             sess,
             lint_store,
             &krate,
+            &krate.attrs,
             false,
             Some(std::mem::take(resolver.lint_buffer())),
             rustc_lint::BuiltinCombinedEarlyLintPass::new(),

@@ -805,6 +805,7 @@ impl<'a> EarlyContext<'a> {
         sess: &'a Session,
         lint_store: &'a LintStore,
         krate: &'a ast::Crate,
+        crate_attrs: &'a [ast::Attribute],
         buffered: LintBuffer,
         warn_about_weird_lints: bool,
     ) -> EarlyContext<'a> {
@@ -812,7 +813,7 @@ impl<'a> EarlyContext<'a> {
             sess,
             krate,
             lint_store,
-            builder: LintLevelsBuilder::new(sess, warn_about_weird_lints, lint_store, &krate.attrs),
+            builder: LintLevelsBuilder::new(sess, warn_about_weird_lints, lint_store, crate_attrs),
             buffered,
         }
     }
