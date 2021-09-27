@@ -19,7 +19,7 @@ fn main() {
     let default = x4(0_usize, 1, 2, 3);
     let mask = x4(1_i32, 1, 1, 1);
     let expected = x4(10_usize, 11, 12, 13);
-        
+
     unsafe {
         let pointer = &x[0] as *const usize;
         let pointers =  x4(
@@ -36,7 +36,7 @@ fn main() {
     let x: [isize; 4] = [10, 11, 12, 13];
     let default = x4(0_isize, 1, 2, 3);
     let expected = x4(10_isize, 11, 12, 13);
-        
+
     unsafe {
         let pointer = &x[0] as *const isize;
         let pointers =  x4(
@@ -48,6 +48,4 @@ fn main() {
         let result = simd_gather(default, pointers, mask);
         assert_eq!(result, expected);
     }
-    
 }
-
