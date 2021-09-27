@@ -424,19 +424,20 @@ impl server::Group for Rustc {
         group.delimiter.map(|it| it.id).unwrap_or_else(tt::TokenId::unspecified)
     }
 
-    fn set_span(&mut self, _group: &mut Self::Group, _span: Self::Span) {
-        // FIXME handle span
+    fn set_span(&mut self, group: &mut Self::Group, span: Self::Span) {
+        if let Some(delim) = &mut group.delimiter {
+            delim.id = span;
+        }
     }
 
-    fn span_open(&mut self, _group: &Self::Group) -> Self::Span {
-        // FIXME handle span
-        // MySpan(self.span_interner.intern(&MySpanData(group.span_open())))
-        tt::TokenId::unspecified()
+    fn span_open(&mut self, group: &Self::Group) -> Self::Span {
+        // FIXME we only store one `TokenId` for the delimiters
+        group.delimiter.map(|it| it.id).unwrap_or_else(tt::TokenId::unspecified)
     }
 
-    fn span_close(&mut self, _group: &Self::Group) -> Self::Span {
-        // FIXME handle span
-        tt::TokenId::unspecified()
+    fn span_close(&mut self, group: &Self::Group) -> Self::Span {
+        // FIXME we only store one `TokenId` for the delimiters
+        group.delimiter.map(|it| it.id).unwrap_or_else(tt::TokenId::unspecified)
     }
 }
 
@@ -454,13 +455,11 @@ impl server::Punct for Rustc {
     fn spacing(&mut self, punct: Self::Punct) -> bridge::Spacing {
         spacing_to_external(punct.spacing)
     }
-    fn span(&mut self, _punct: Self::Punct) -> Self::Span {
-        // FIXME handle span
-        tt::TokenId::unspecified()
+    fn span(&mut self, punct: Self::Punct) -> Self::Span {
+        punct.id
     }
-    fn with_span(&mut self, punct: Self::Punct, _span: Self::Span) -> Self::Punct {
-        // FIXME handle span
-        punct
+    fn with_span(&mut self, punct: Self::Punct, span: Self::Span) -> Self::Punct {
+        tt::Punct { id: span, ..punct }
     }
 }
 
@@ -474,13 +473,13 @@ impl server::Ident for Rustc {
         )
     }
 
-    fn span(&mut self, _ident: Self::Ident) -> Self::Span {
-        // FIXME handle span
-        tt::TokenId::unspecified()
+    fn span(&mut self, ident: Self::Ident) -> Self::Span {
+        self.ident_interner.get(ident.0).0.id
     }
-    fn with_span(&mut self, ident: Self::Ident, _span: Self::Span) -> Self::Ident {
-        // FIXME handle span
-        ident
+    fn with_span(&mut self, ident: Self::Ident, span: Self::Span) -> Self::Ident {
+        let data = self.ident_interner.get(ident.0);
+        let new = IdentData(tt::Ident { id: span, ..data.0.clone() });
+        IdentId(self.ident_interner.intern(&new))
     }
 }
 
@@ -500,8 +499,8 @@ impl server::Literal for Rustc {
         None
     }
 
-    fn to_string(&mut self, _literal: &Self::Literal) -> String {
-        _literal.to_string()
+    fn to_string(&mut self, literal: &Self::Literal) -> String {
+        literal.to_string()
     }
 
     fn integer(&mut self, n: &str) -> Self::Literal {
@@ -581,8 +580,8 @@ impl server::Literal for Rustc {
         literal.id
     }
 
-    fn set_span(&mut self, _literal: &mut Self::Literal, _span: Self::Span) {
-        // FIXME handle span
+    fn set_span(&mut self, literal: &mut Self::Literal, span: Self::Span) {
+        literal.id = span;
     }
 
     fn subspan(
