@@ -1,3 +1,4 @@
+use super::MaskElement;
 use crate::simd::intrinsics;
 use crate::simd::{LaneCount, Simd, SupportedLaneCount};
 use core::marker::PhantomData;
