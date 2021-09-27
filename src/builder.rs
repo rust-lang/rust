@@ -1051,11 +1051,18 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     /* Comparisons */
-    fn icmp(&mut self, op: IntPredicate, lhs: RValue<'gcc>, mut rhs: RValue<'gcc>) -> RValue<'gcc> {
-        if lhs.get_type() != rhs.get_type() {
+    fn icmp(&mut self, op: IntPredicate, mut lhs: RValue<'gcc>, mut rhs: RValue<'gcc>) -> RValue<'gcc> {
+        let left_type = lhs.get_type();
+        let right_type = rhs.get_type();
+        if left_type != right_type {
+            // NOTE: because libgccjit cannot compare function pointers.
+            if left_type.is_function_ptr_type().is_some() && right_type.is_function_ptr_type().is_some() {
+                lhs = self.context.new_cast(None, lhs, self.usize_type.make_pointer());
+                rhs = self.context.new_cast(None, rhs, self.usize_type.make_pointer());
+            }
             // NOTE: hack because we try to cast a vector type to the same vector type.
-            if format!("{:?}", lhs.get_type()) != format!("{:?}", rhs.get_type()) {
-                rhs = self.context.new_cast(None, rhs, lhs.get_type());
+            else if format!("{:?}", left_type) != format!("{:?}", right_type) {
+                rhs = self.context.new_cast(None, rhs, left_type);
             }
         }
         self.context.new_comparison(None, op.to_gcc_comparison(), lhs, rhs)
@@ -1209,6 +1216,17 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             else {
                 panic!("Unexpected type {:?}", value_type);
             };
+
+        let lvalue_type = lvalue.to_rvalue().get_type();
+        let value =
+            // NOTE: sometimes, rustc will create a value with the wrong type.
+            if lvalue_type != value.get_type() {
+                self.context.new_cast(None, value, lvalue_type)
+            }
+            else {
+                value
+            };
+
         self.llbb().add_assignment(None, lvalue, value);
 
         aggregate_value
