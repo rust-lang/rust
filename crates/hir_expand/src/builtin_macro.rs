@@ -1,7 +1,7 @@
 //! Builtin macro
 use crate::{
     db::AstDatabase, name, quote, AstId, CrateId, MacroCallId, MacroCallLoc, MacroDefId,
-    MacroDefKind, TextSize,
+    MacroDefKind,
 };
 
 use base_db::{AnchoredPath, Edition, FileId};
@@ -148,25 +148,14 @@ fn line_expand(
 }
 
 fn stringify_expand(
-    db: &dyn AstDatabase,
-    id: MacroCallId,
-    _tt: &tt::Subtree,
+    _db: &dyn AstDatabase,
+    _id: MacroCallId,
+    tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
-    let loc = db.lookup_intern_macro(id);
-
-    let macro_content = {
-        let arg = match loc.kind.arg(db) {
-            Some(arg) => arg,
-            None => return ExpandResult::only_err(mbe::ExpandError::UnexpectedToken),
-        };
-        let macro_args = arg;
-        let text = macro_args.text();
-        let without_parens = TextSize::of('(')..text.len() - TextSize::of(')');
-        text.slice(without_parens).to_string()
-    };
+    let pretty = tt::pretty(&tt.token_trees);
 
     let expanded = quote! {
-        #macro_content
+        #pretty
     };
 
     ExpandResult::ok(expanded)
@@ -685,7 +674,11 @@ mod tests {
             r#"
             #[rustc_builtin_macro]
             macro_rules! stringify {() => {}}
-            stringify!(a b c)
+            stringify!(
+                a
+                b
+                c
+            )
             "#,
             expect![["\"a b c\""]],
         );
