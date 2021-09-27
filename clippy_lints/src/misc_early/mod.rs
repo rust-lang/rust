@@ -128,7 +128,7 @@ declare_clippy_lint! {
     /// let y = 123832_i32;
     /// ```
     pub UNSEPARATED_LITERAL_SUFFIX,
-    pedantic,
+    restriction,
     "literals whose suffix is not separated by an underscore"
 }
 
