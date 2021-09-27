@@ -3,8 +3,7 @@
 use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::adjustment::PointerCast;
-use rustc_middle::ty::layout::FnAbiExt;
-use rustc_target::abi::call::FnAbi;
+use rustc_middle::ty::layout::FnAbiOf;
 
 use crate::constant::ConstantCx;
 use crate::prelude::*;
@@ -62,7 +61,7 @@ pub(crate) fn codegen_fn<'tcx>(
         instance,
         symbol_name,
         mir,
-        fn_abi: Some(FnAbi::of_instance(&RevealAllLayoutCx(tcx), instance, &[])),
+        fn_abi: Some(RevealAllLayoutCx(tcx).fn_abi_of_instance(instance, ty::List::empty())),
 
         bcx,
         block_map,
@@ -701,6 +700,13 @@ fn codegen_stmt<'tcx>(
                     let usize_layout = fx.layout_of(fx.tcx.types.usize);
                     let len = codegen_array_len(fx, place);
                     lval.write_cvalue(fx, CValue::by_val(len, usize_layout));
+                }
+                Rvalue::ShallowInitBox(ref operand, content_ty) => {
+                    let content_ty = fx.monomorphize(content_ty);
+                    let box_layout = fx.layout_of(fx.tcx.mk_box(content_ty));
+                    let operand = codegen_operand(fx, operand);
+                    let operand = operand.load_scalar(fx);
+                    lval.write_cvalue(fx, CValue::by_val(operand, box_layout));
                 }
                 Rvalue::NullaryOp(NullOp::Box, content_ty) => {
                     let usize_type = fx.clif_type(fx.tcx.types.usize).unwrap();

@@ -129,9 +129,7 @@ pub(crate) fn codegen_constant<'tcx>(
     };
     let const_val = match const_.val {
         ConstKind::Value(const_val) => const_val,
-        ConstKind::Unevaluated(uv)
-            if fx.tcx.is_static(uv.def.did) =>
-        {
+        ConstKind::Unevaluated(uv) if fx.tcx.is_static(uv.def.did) => {
             assert!(uv.substs(fx.tcx).is_empty());
             assert!(uv.promoted.is_none());
 
