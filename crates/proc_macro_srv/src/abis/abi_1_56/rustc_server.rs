@@ -653,10 +653,12 @@ impl server::Span for Rustc {
         unimplemented!()
     }
     fn save_span(&mut self, _span: Self::Span) -> usize {
-        unimplemented!()
+        // FIXME stub
+        0
     }
     fn recover_proc_macro_span(&mut self, _id: usize) -> Self::Span {
-        unimplemented!()
+        // FIXME stub
+        tt::TokenId::unspecified()
     }
     /// Recent feature, not yet in the proc_macro
     ///
