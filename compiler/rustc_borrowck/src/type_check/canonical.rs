@@ -4,6 +4,7 @@ use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{self, ToPredicate, TypeFoldable};
+use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOpOutput};
 use rustc_trait_selection::traits::query::Fallible;
@@ -100,12 +101,19 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     pub(super) fn normalize_and_prove_instantiated_predicates(
         &mut self,
+        // Keep this parameter for now, in case we start using
+        // it in `ConstraintCategory` at some point.
+        _def_id: DefId,
         instantiated_predicates: ty::InstantiatedPredicates<'tcx>,
         locations: Locations,
     ) {
-        for predicate in instantiated_predicates.predicates {
+        for (predicate, span) in instantiated_predicates
+            .predicates
+            .into_iter()
+            .zip(instantiated_predicates.spans.into_iter())
+        {
             let predicate = self.normalize(predicate, locations);
-            self.prove_predicate(predicate, locations, ConstraintCategory::Boring);
+            self.prove_predicate(predicate, locations, ConstraintCategory::Predicate(span));
         }
     }
 

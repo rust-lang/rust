@@ -257,7 +257,7 @@ fn type_op_prove_predicate<'tcx>(
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, ProvePredicate<'tcx>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
     tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
-        type_op_prove_predicate_with_span(infcx, fulfill_cx, key, None);
+        type_op_prove_predicate_with_cause(infcx, fulfill_cx, key, ObligationCause::dummy());
         Ok(())
     })
 }
@@ -265,17 +265,12 @@ fn type_op_prove_predicate<'tcx>(
 /// The core of the `type_op_prove_predicate` query: for diagnostics purposes in NLL HRTB errors,
 /// this query can be re-run to better track the span of the obligation cause, and improve the error
 /// message. Do not call directly unless you're in that very specific context.
-pub fn type_op_prove_predicate_with_span<'a, 'tcx: 'a>(
+pub fn type_op_prove_predicate_with_cause<'a, 'tcx: 'a>(
     infcx: &'a InferCtxt<'a, 'tcx>,
     fulfill_cx: &'a mut dyn TraitEngine<'tcx>,
     key: ParamEnvAnd<'tcx, ProvePredicate<'tcx>>,
-    span: Option<Span>,
+    cause: ObligationCause<'tcx>,
 ) {
-    let cause = if let Some(span) = span {
-        ObligationCause::dummy_with_span(span)
-    } else {
-        ObligationCause::dummy()
-    };
     let (param_env, ProvePredicate { predicate }) = key.into_parts();
     fulfill_cx.register_predicate_obligation(infcx, Obligation::new(cause, param_env, predicate));
 }

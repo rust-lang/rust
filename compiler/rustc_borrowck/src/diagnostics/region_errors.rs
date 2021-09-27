@@ -13,6 +13,7 @@ use rustc_span::{BytePos, Span};
 
 use crate::borrowck_errors;
 
+use super::{OutlivesSuggestionBuilder, RegionName};
 use crate::region_infer::BlameConstraint;
 use crate::{
     nll::ConstraintDescription,
@@ -20,8 +21,6 @@ use crate::{
     universal_regions::DefiningTy,
     MirBorrowckCtxt,
 };
-
-use super::{OutlivesSuggestionBuilder, RegionName};
 
 impl ConstraintDescription for ConstraintCategory {
     fn description(&self) -> &'static str {
@@ -41,7 +40,8 @@ impl ConstraintDescription for ConstraintCategory {
             ConstraintCategory::OpaqueType => "opaque type ",
             ConstraintCategory::ClosureUpvar(_) => "closure capture ",
             ConstraintCategory::Usage => "this usage ",
-            ConstraintCategory::Boring
+            ConstraintCategory::Predicate(_)
+            | ConstraintCategory::Boring
             | ConstraintCategory::BoringNoLocation
             | ConstraintCategory::Internal => "",
         }
@@ -217,7 +217,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     let error_vid = self.regioncx.region_from_element(longer_fr, &error_element);
 
                     // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
-                    let (_, span) = self.regioncx.find_outlives_blame_span(
+                    let (_, cause) = self.regioncx.find_outlives_blame_span(
                         &self.body,
                         longer_fr,
                         NllRegionVariableOrigin::Placeholder(placeholder),
@@ -227,7 +227,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     let universe = placeholder.universe;
                     let universe_info = self.regioncx.universe_info(universe);
 
-                    universe_info.report_error(self, placeholder, error_element, span);
+                    universe_info.report_error(self, placeholder, error_element, cause);
                 }
 
                 RegionErrorKind::RegionError { fr_origin, longer_fr, shorter_fr, is_reported } => {
@@ -275,15 +275,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ) {
         debug!("report_region_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        let BlameConstraint { category, span, variance_info, from_closure: _ } =
+        let BlameConstraint { category, cause, variance_info, from_closure: _ } =
             self.regioncx.best_blame_constraint(&self.body, fr, fr_origin, |r| {
                 self.regioncx.provides_universal_region(r, fr, outlived_fr)
             });
 
-        debug!("report_region_error: category={:?} {:?} {:?}", category, span, variance_info);
+        debug!("report_region_error: category={:?} {:?} {:?}", category, cause, variance_info);
         // Check if we can use one of the "nice region errors".
         if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
-            let nice = NiceRegionError::new_from_span(self.infcx, span, o, f);
+            let nice = NiceRegionError::new_from_span(self.infcx, cause.span, o, f);
             if let Some(diag) = nice.try_report_from_nll() {
                 diag.buffer(&mut self.errors_buffer);
                 return;
@@ -306,7 +306,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             fr_is_local,
             outlived_fr_is_local,
             category,
-            span,
+            span: cause.span,
         };
 
         let mut diag = match (category, fr_is_local, outlived_fr_is_local) {

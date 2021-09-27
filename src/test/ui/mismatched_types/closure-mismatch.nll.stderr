@@ -20,6 +20,11 @@ note: this closure does not fulfill the lifetime requirements
    |
 LL |     baz(|_| ());
    |         ^^^^^^
+note: the lifetime requirement is introduced here
+  --> $DIR/closure-mismatch.rs:5:11
+   |
+LL | fn baz<T: Foo>(_: T) {}
+   |           ^^^
 
 error: aborting due to 2 previous errors
 

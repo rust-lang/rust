@@ -5,7 +5,8 @@ use rustc_data_structures::binary_search_util;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::scc::Sccs;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
+use rustc_hir::CRATE_HIR_ID;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::canonical::QueryOutlivesConstraint;
 use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};
@@ -14,6 +15,8 @@ use rustc_middle::mir::{
     Body, ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
     ConstraintCategory, Local, Location, ReturnConstraint,
 };
+use rustc_middle::traits::ObligationCause;
+use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 
@@ -1596,7 +1599,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     propagated_outlives_requirements.push(ClosureOutlivesRequirement {
                         subject: ClosureOutlivesSubject::Region(fr_minus),
                         outlived_free_region: fr,
-                        blame_span: blame_span_category.1,
+                        blame_span: blame_span_category.1.span,
                         category: blame_span_category.0,
                     });
                 }
@@ -1738,7 +1741,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 return BlameConstraint {
                     category: constraint.category,
                     from_closure: false,
-                    span,
+                    cause: ObligationCause::dummy_with_span(span),
                     variance_info: constraint.variance_info,
                 };
             }
@@ -1751,30 +1754,30 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .map(|&(category, span)| BlameConstraint {
                 category,
                 from_closure: true,
-                span: span,
+                cause: ObligationCause::dummy_with_span(span),
                 variance_info: constraint.variance_info,
             })
             .unwrap_or(BlameConstraint {
                 category: constraint.category,
                 from_closure: false,
-                span: body.source_info(loc).span,
+                cause: ObligationCause::dummy_with_span(body.source_info(loc).span),
                 variance_info: constraint.variance_info,
             })
     }
 
-    /// Finds a good span to blame for the fact that `fr1` outlives `fr2`.
+    /// Finds a good `ObligationCause` to blame for the fact that `fr1` outlives `fr2`.
     crate fn find_outlives_blame_span(
         &self,
         body: &Body<'tcx>,
         fr1: RegionVid,
         fr1_origin: NllRegionVariableOrigin,
         fr2: RegionVid,
-    ) -> (ConstraintCategory, Span) {
-        let BlameConstraint { category, span, .. } =
+    ) -> (ConstraintCategory, ObligationCause<'tcx>) {
+        let BlameConstraint { category, cause, .. } =
             self.best_blame_constraint(body, fr1, fr1_origin, |r| {
                 self.provides_universal_region(r, fr1, fr2)
             });
-        (category, span)
+        (category, cause)
     }
 
     /// Walks the graph of constraints (where `'a: 'b` is considered
@@ -1990,6 +1993,27 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .collect::<Vec<_>>()
         );
 
+        // We try to avoid reporting a `ConstraintCategory::Predicate` as our best constraint.
+        // Instead, we use it to produce an improved `ObligationCauseCode`.
+        // FIXME - determine what we should do if we encounter multiple `ConstraintCategory::Predicate`
+        // constraints. Currently, we just pick the first one.
+        let cause_code = path
+            .iter()
+            .find_map(|constraint| {
+                if let ConstraintCategory::Predicate(predicate_span) = constraint.category {
+                    // We currentl'y doesn't store the `DefId` in the `ConstraintCategory`
+                    // for perforamnce reasons. The error reporting code used by NLL only
+                    // uses the span, so this doesn't cause any problems at the moment.
+                    Some(ObligationCauseCode::BindingObligation(
+                        CRATE_DEF_ID.to_def_id(),
+                        predicate_span,
+                    ))
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| ObligationCauseCode::MiscObligation);
+
         // Classify each of the constraints along the path.
         let mut categorized_path: Vec<BlameConstraint<'tcx>> = path
             .iter()
@@ -2000,7 +2024,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     BlameConstraint {
                         category: constraint.category,
                         from_closure: false,
-                        span: constraint.locations.span(body),
+                        cause: ObligationCause::new(
+                            constraint.locations.span(body),
+                            CRATE_HIR_ID,
+                            cause_code.clone(),
+                        ),
                         variance_info: constraint.variance_info,
                     }
                 }
@@ -2083,7 +2111,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     ConstraintCategory::OpaqueType
                     | ConstraintCategory::Boring
                     | ConstraintCategory::BoringNoLocation
-                    | ConstraintCategory::Internal => false,
+                    | ConstraintCategory::Internal
+                    | ConstraintCategory::Predicate(_) => false,
                     ConstraintCategory::TypeAnnotation
                     | ConstraintCategory::Return(_)
                     | ConstraintCategory::Yield => true,
@@ -2094,7 +2123,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     ConstraintCategory::OpaqueType
                     | ConstraintCategory::Boring
                     | ConstraintCategory::BoringNoLocation
-                    | ConstraintCategory::Internal => false,
+                    | ConstraintCategory::Internal
+                    | ConstraintCategory::Predicate(_) => false,
                     _ => true,
                 }
             }
@@ -2249,6 +2279,6 @@ impl<'tcx> ClosureRegionRequirementsExt<'tcx> for ClosureRegionRequirements<'tcx
 pub struct BlameConstraint<'tcx> {
     pub category: ConstraintCategory,
     pub from_closure: bool,
-    pub span: Span,
+    pub cause: ObligationCause<'tcx>,
     pub variance_info: ty::VarianceDiagInfo<'tcx>,
 }

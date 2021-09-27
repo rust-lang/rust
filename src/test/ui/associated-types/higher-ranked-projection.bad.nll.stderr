@@ -6,6 +6,11 @@ LL |     foo(());
    |
    = note: expected reference `&'a ()`
               found reference `&()`
+note: the lifetime requirement is introduced here
+  --> $DIR/higher-ranked-projection.rs:15:33
+   |
+LL |     where for<'a> &'a T: Mirror<Image=U>
+   |                                 ^^^^^^^
 
 error: aborting due to previous error
 

@@ -309,6 +309,9 @@ pub struct ClosureOutlivesRequirement<'tcx> {
     pub category: ConstraintCategory,
 }
 
+// Make sure this enum doesn't unintentionally grow
+rustc_data_structures::static_assert_size!(ConstraintCategory, 12);
+
 /// Outlives-constraints can be categorized to determine whether and why they
 /// are interesting (for error reporting). Order of variants indicates sort
 /// order of the category, thereby influencing diagnostic output.
@@ -337,6 +340,11 @@ pub enum ConstraintCategory {
     Usage,
     OpaqueType,
     ClosureUpvar(hir::HirId),
+
+    /// A constraint from a user-written predicate
+    /// with the provided span, written on the item
+    /// with the given `DefId`
+    Predicate(Span),
 
     /// A "boring" constraint (caused by the given location) is one that
     /// the user probably doesn't want to see described in diagnostics,
