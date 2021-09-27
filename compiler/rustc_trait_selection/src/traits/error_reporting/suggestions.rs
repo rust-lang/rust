@@ -714,22 +714,28 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let mut_substs = self.tcx.mk_substs_trait(mut_borrowed_found_ty, &[]);
 
         // Try to apply the original trait binding obligation by borrowing.
-        let mut try_borrowing = |new_trait_ref: ty::TraitRef<'tcx>,
+        let mut try_borrowing = |new_imm_trait_ref: ty::TraitRef<'tcx>,
+                                 new_mut_trait_ref: ty::TraitRef<'tcx>,
                                  expected_trait_ref: ty::TraitRef<'tcx>,
-                                 mtbl: bool,
                                  blacklist: &[DefId]|
          -> bool {
             if blacklist.contains(&expected_trait_ref.def_id) {
                 return false;
             }
 
-            let new_obligation = Obligation::new(
+            let imm_result = self.predicate_must_hold_modulo_regions(&Obligation::new(
                 ObligationCause::dummy(),
                 param_env,
-                ty::Binder::dummy(new_trait_ref).without_const().to_predicate(self.tcx),
-            );
+                ty::Binder::dummy(new_imm_trait_ref).without_const().to_predicate(self.tcx),
+            ));
 
-            if self.predicate_must_hold_modulo_regions(&new_obligation) {
+            let mut_result = self.predicate_must_hold_modulo_regions(&Obligation::new(
+                ObligationCause::dummy(),
+                param_env,
+                ty::Binder::dummy(new_mut_trait_ref).without_const().to_predicate(self.tcx),
+            ));
+
+            if imm_result || mut_result {
                 if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                     // We have a very specific type of error, where just borrowing this argument
                     // might solve the problem. In cases like this, the important part is the
@@ -773,15 +779,24 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         // }
                         // ```
 
-                        err.span_suggestion(
-                            span,
-                            &format!(
-                                "consider{} borrowing here",
-                                if mtbl { " mutably" } else { "" }
-                            ),
-                            format!("&{}{}", if mtbl { "mut " } else { "" }, snippet),
-                            Applicability::MaybeIncorrect,
-                        );
+                        if imm_result && mut_result {
+                            err.span_suggestions(
+                                span.shrink_to_lo(),
+                                "consider borrowing here",
+                                ["&".to_string(), "&mut ".to_string()].into_iter(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            err.span_suggestion_verbose(
+                                span.shrink_to_lo(),
+                                &format!(
+                                    "consider{} borrowing here",
+                                    if mut_result { " mutably" } else { "" }
+                                ),
+                                format!("&{}", if mut_result { "mut " } else { "" }),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
                     }
                     return true;
                 }
@@ -795,29 +810,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 ty::TraitRef::new(obligation.parent_trait_ref.def_id(), imm_substs);
             let new_mut_trait_ref =
                 ty::TraitRef::new(obligation.parent_trait_ref.def_id(), mut_substs);
-            if try_borrowing(new_imm_trait_ref, expected_trait_ref, false, &[]) {
-                return true;
-            } else {
-                return try_borrowing(new_mut_trait_ref, expected_trait_ref, true, &[]);
-            }
+            return try_borrowing(new_imm_trait_ref, new_mut_trait_ref, expected_trait_ref, &[]);
         } else if let ObligationCauseCode::BindingObligation(_, _)
         | ObligationCauseCode::ItemObligation(_) = &*code
         {
-            if try_borrowing(
+            return try_borrowing(
                 ty::TraitRef::new(trait_ref.def_id, imm_substs),
+                ty::TraitRef::new(trait_ref.def_id, mut_substs),
                 trait_ref,
-                false,
                 &never_suggest_borrow[..],
-            ) {
-                return true;
-            } else {
-                return try_borrowing(
-                    ty::TraitRef::new(trait_ref.def_id, mut_substs),
-                    trait_ref,
-                    true,
-                    &never_suggest_borrow[..],
-                );
-            }
+            );
         } else {
             false
         }

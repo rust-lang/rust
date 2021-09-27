@@ -22,10 +22,8 @@ error[E0277]: the trait bound `S: Trait` is not satisfied
   --> $DIR/imm-ref-trait-object-literal.rs:13:7
    |
 LL |   foo(s);
-   |   --- ^
-   |   |   |
-   |   |   expected an implementor of trait `Trait`
-   |   |   help: consider mutably borrowing here: `&mut s`
+   |   --- ^ expected an implementor of trait `Trait`
+   |   |
    |   required by a bound introduced by this call
    |
 note: required by a bound in `foo`
@@ -33,6 +31,10 @@ note: required by a bound in `foo`
    |
 LL | fn foo<X: Trait>(_: X) {}
    |           ^^^^^ required by this bound in `foo`
+help: consider mutably borrowing here
+   |
+LL |   foo(&mut s);
+   |       ++++
 
 error: aborting due to 2 previous errors
 

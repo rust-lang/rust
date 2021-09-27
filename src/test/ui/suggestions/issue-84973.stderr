@@ -2,10 +2,8 @@ error[E0277]: the trait bound `Fancy: SomeTrait` is not satisfied
   --> $DIR/issue-84973.rs:6:24
    |
 LL |     let o = Other::new(f);
-   |             ---------- ^
-   |             |          |
-   |             |          expected an implementor of trait `SomeTrait`
-   |             |          help: consider borrowing here: `&f`
+   |             ---------- ^ expected an implementor of trait `SomeTrait`
+   |             |
    |             required by a bound introduced by this call
    |
 note: required by `Other::<'a, G>::new`
@@ -13,6 +11,10 @@ note: required by `Other::<'a, G>::new`
    |
 LL |     pub fn new(g: G) -> Self {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider borrowing here
+   |
+LL |     let o = Other::new(&f);
+   |                        +
 
 error: aborting due to previous error
 

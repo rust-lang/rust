@@ -61,10 +61,8 @@ error[E0277]: `dummy2::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:48:13
    |
 LL |     is_send(Box::new(TestType));
-   |     ------- ^^^^^^^^^^^^^^^^^^
-   |     |       |
-   |     |       expected an implementor of trait `Send`
-   |     |       help: consider borrowing here: `&Box::new(TestType)`
+   |     ------- ^^^^^^^^^^^^^^^^^^ expected an implementor of trait `Send`
+   |     |
    |     required by a bound introduced by this call
    |
    = note: the trait bound `dummy2::TestType: Send` is not satisfied
@@ -75,6 +73,10 @@ note: required by a bound in `is_send`
    |
 LL | fn is_send<T: Send>(_: T) {}
    |               ^^^^ required by this bound in `is_send`
+help: consider borrowing here
+   |
+LL |     is_send(&Box::new(TestType));
+   |             +
 
 error[E0277]: `dummy3::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:56:13
@@ -102,10 +104,8 @@ error[E0277]: `main::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:66:13
    |
 LL |     is_sync(Outer2(TestType));
-   |     ------- ^^^^^^^^^^^^^^^^
-   |     |       |
-   |     |       expected an implementor of trait `Sync`
-   |     |       help: consider borrowing here: `&Outer2(TestType)`
+   |     ------- ^^^^^^^^^^^^^^^^ expected an implementor of trait `Sync`
+   |     |
    |     required by a bound introduced by this call
    |
    = note: the trait bound `main::TestType: Sync` is not satisfied
@@ -119,6 +119,12 @@ note: required by a bound in `is_sync`
    |
 LL | fn is_sync<T: Sync>(_: T) {}
    |               ^^^^ required by this bound in `is_sync`
+help: consider borrowing here
+   |
+LL |     is_sync(&Outer2(TestType));
+   |             +
+LL |     is_sync(&mut Outer2(TestType));
+   |             ++++
 
 error: aborting due to 7 previous errors
 
