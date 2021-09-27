@@ -544,38 +544,54 @@ impl<'db> SemanticsImpl<'db> {
         let sa = self.analyze(&parent);
         let mut queue = vec![InFile::new(sa.file_id, token)];
         let mut cache = self.expansion_info_cache.borrow_mut();
+
+        let mut process_expansion_for_token =
+            |queue: &mut Vec<_>, file_id, item, token: InFile<&_>| {
+                let mapped_tokens = cache
+                    .entry(file_id)
+                    .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
+                    .as_ref()?
+                    .map_token_down(self.db.upcast(), item, token)?;
+
+                let len = queue.len();
+                // requeue the tokens we got from mapping our current token down
+                queue.extend(mapped_tokens.inspect(|token| {
+                    if let Some(parent) = token.value.parent() {
+                        self.cache(find_root(&parent), token.file_id);
+                    }
+                }));
+                // if the length changed we have found a mapping for the token
+                (queue.len() != len).then(|| ())
+            };
+
         // Remap the next token in the queue into a macro call its in, if it is not being remapped
         // either due to not being in a macro-call or because its unused push it into the result vec,
         // otherwise push the remapped tokens back into the queue as they can potentially be remapped again.
         while let Some(token) = queue.pop() {
             self.db.unwind_if_cancelled();
             let was_not_remapped = (|| {
-                if let Some((call_id, item)) = token
-                    .value
-                    .ancestors()
-                    .filter_map(ast::Item::cast)
-                    .filter_map(|item| {
-                        self.with_ctx(|ctx| ctx.item_to_macro_call(token.with_value(item.clone())))
-                            .zip(Some(item))
-                    })
-                    .last()
-                {
+                // are we inside an attribute macro call
+                let containing_attribute_macro_call = self.with_ctx(|ctx| {
+                    token
+                        .value
+                        .ancestors()
+                        .filter_map(ast::Item::cast)
+                        .filter_map(|item| {
+                            Some((ctx.item_to_macro_call(token.with_value(item.clone()))?, item))
+                        })
+                        .last()
+                });
+                if let Some((call_id, item)) = containing_attribute_macro_call {
                     let file_id = call_id.as_file();
-                    let tokens = cache
-                        .entry(file_id)
-                        .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
-                        .as_ref()?
-                        .map_token_down(self.db.upcast(), Some(item), token.as_ref())?;
-
-                    let len = queue.len();
-                    queue.extend(tokens.inspect(|token| {
-                        if let Some(parent) = token.value.parent() {
-                            self.cache(find_root(&parent), token.file_id);
-                        }
-                    }));
-                    return (queue.len() != len).then(|| ());
+                    return process_expansion_for_token(
+                        &mut queue,
+                        file_id,
+                        Some(item),
+                        token.as_ref(),
+                    );
                 }
 
+                // or are we inside a function-like macro call
                 if let Some(macro_call) = token.value.ancestors().find_map(ast::MacroCall::cast) {
                     let tt = macro_call.token_tree()?;
                     let l_delim = match tt.left_delimiter_token() {
@@ -589,21 +605,12 @@ impl<'db> SemanticsImpl<'db> {
                     if !TextRange::new(l_delim, r_delim).contains_range(token.value.text_range()) {
                         return None;
                     }
-                    let file_id = sa.expand(self.db, token.with_value(&macro_call))?;
-                    let tokens = cache
-                        .entry(file_id)
-                        .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
-                        .as_ref()?
-                        .map_token_down(self.db.upcast(), None, token.as_ref())?;
 
-                    let len = queue.len();
-                    queue.extend(tokens.inspect(|token| {
-                        if let Some(parent) = token.value.parent() {
-                            self.cache(find_root(&parent), token.file_id);
-                        }
-                    }));
-                    return (queue.len() != len).then(|| ());
+                    let file_id = sa.expand(self.db, token.with_value(&macro_call))?;
+                    return process_expansion_for_token(&mut queue, file_id, None, token.as_ref());
                 }
+
+                // outside of a macro invocation so this is a "final" token
                 None
             })()
             .is_none();
