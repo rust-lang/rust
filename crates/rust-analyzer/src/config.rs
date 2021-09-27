@@ -143,7 +143,7 @@ config_data! {
         diagnostics_warningsAsInfo: Vec<String> = "[]",
 
         /// Expand attribute macros.
-        experimental_procAttrMacros: bool = "false",
+        experimental_procAttrMacros: bool = "true",
 
         /// Controls file watching implementation.
         files_watcher: String = "\"client\"",

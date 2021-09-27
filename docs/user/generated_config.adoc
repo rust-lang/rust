@@ -191,7 +191,7 @@ List of warnings that should be displayed with info severity.
 The warnings will be indicated by a blue squiggly underline in code
 and a blue icon in the `Problems Panel`.
 --
-[[rust-analyzer.experimental.procAttrMacros]]rust-analyzer.experimental.procAttrMacros (default: `false`)::
+[[rust-analyzer.experimental.procAttrMacros]]rust-analyzer.experimental.procAttrMacros (default: `true`)::
 +
 --
 Expand attribute macros.
