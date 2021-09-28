@@ -8,7 +8,7 @@ use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream};
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AstLike, Attribute, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
@@ -920,6 +920,9 @@ pub trait ResolverExpand {
     /// we generated proc macros harnesses, so that we can map
     /// HIR proc macros items back to their harness items.
     fn declare_proc_macro(&mut self, id: NodeId);
+
+    /// Tools registered with `#![register_tool]` and used by tool attributes and lints.
+    fn registered_tools(&self) -> &FxHashSet<Ident>;
 }
 
 #[derive(Clone, Default)]

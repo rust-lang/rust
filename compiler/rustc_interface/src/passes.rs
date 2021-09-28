@@ -11,7 +11,7 @@ use rustc_data_structures::parallel;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{Applicability, ErrorReported, PResult};
-use rustc_expand::base::ExtCtxt;
+use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_hir::Crate;
 use rustc_lint::LintStore;
@@ -20,7 +20,7 @@ use rustc_metadata::{encode_metadata, EncodedMetadata};
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::query::{ExternProviders, Providers};
-use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
+use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, ResolverOutputs, TyCtxt};
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_attr};
 use rustc_passes::{self, hir_stats, layout_test};
@@ -236,7 +236,7 @@ pub fn register_plugins<'a>(
 fn pre_expansion_lint(
     sess: &Session,
     lint_store: &LintStore,
-    crate_attrs: &[ast::Attribute],
+    registered_tools: &RegisteredTools,
     check_node: &ast::Crate,
     node_name: &str,
 ) {
@@ -245,7 +245,7 @@ fn pre_expansion_lint(
             sess,
             true,
             lint_store,
-            crate_attrs,
+            registered_tools,
             None,
             rustc_lint::BuiltinCombinedPreExpansionLintPass::new(),
             check_node,
@@ -265,7 +265,7 @@ pub fn configure_and_expand(
     resolver: &mut Resolver<'_>,
 ) -> Result<ast::Crate> {
     tracing::trace!("configure_and_expand");
-    pre_expansion_lint(sess, lint_store, &krate.attrs, &krate, crate_name);
+    pre_expansion_lint(sess, lint_store, resolver.registered_tools(), &krate, crate_name);
     rustc_builtin_macros::register_builtin_macros(resolver);
 
     krate = sess.time("crate_injection", || {
@@ -321,10 +321,10 @@ pub fn configure_and_expand(
             ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
         };
 
-        let crate_attrs = krate.attrs.clone();
+        let registered_tools = resolver.registered_tools().clone();
         let extern_mod_loaded = |ident: Ident, attrs, items, span| {
             let krate = ast::Crate { attrs, items, span, id: DUMMY_NODE_ID, is_placeholder: false };
-            pre_expansion_lint(sess, lint_store, &crate_attrs, &krate, ident.name.as_str());
+            pre_expansion_lint(sess, lint_store, &registered_tools, &krate, ident.name.as_str());
             (krate.attrs, krate.items)
         };
         let mut ecx = ExtCtxt::new(sess, cfg, resolver, Some(&extern_mod_loaded));
@@ -499,12 +499,13 @@ pub fn lower_to_hir<'res, 'tcx>(
     );
 
     sess.time("early_lint_checks", || {
+        let lint_buffer = Some(std::mem::take(resolver.lint_buffer()));
         rustc_lint::check_ast_node(
             sess,
             false,
             lint_store,
-            &krate.attrs,
-            Some(std::mem::take(resolver.lint_buffer())),
+            resolver.registered_tools(),
+            lint_buffer,
             rustc_lint::BuiltinCombinedEarlyLintPass::new(),
             &krate,
         )

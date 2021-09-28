@@ -19,6 +19,7 @@ use crate::passes::{EarlyLintPass, EarlyLintPassObject};
 use rustc_ast as ast;
 use rustc_ast::visit as ast_visit;
 use rustc_ast::AstLike;
+use rustc_middle::ty::RegisteredTools;
 use rustc_session::lint::{BufferedEarlyLint, LintBuffer, LintPass};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
@@ -329,13 +330,19 @@ fn early_lint_node(
     sess: &Session,
     warn_about_weird_lints: bool,
     lint_store: &LintStore,
-    crate_attrs: &[ast::Attribute],
+    registered_tools: &RegisteredTools,
     buffered: LintBuffer,
     pass: impl EarlyLintPass,
     check_node: &ast::Crate,
 ) -> LintBuffer {
     let mut cx = EarlyContextAndPass {
-        context: EarlyContext::new(sess, warn_about_weird_lints, lint_store, crate_attrs, buffered),
+        context: EarlyContext::new(
+            sess,
+            warn_about_weird_lints,
+            lint_store,
+            registered_tools,
+            buffered,
+        ),
         pass,
     };
 
@@ -351,7 +358,7 @@ pub fn check_ast_node(
     sess: &Session,
     pre_expansion: bool,
     lint_store: &LintStore,
-    crate_attrs: &[ast::Attribute],
+    registered_tools: &RegisteredTools,
     lint_buffer: Option<LintBuffer>,
     builtin_lints: impl EarlyLintPass,
     check_node: &ast::Crate,
@@ -366,7 +373,7 @@ pub fn check_ast_node(
             sess,
             pre_expansion,
             lint_store,
-            crate_attrs,
+            registered_tools,
             buffered,
             builtin_lints,
             check_node,
@@ -377,7 +384,7 @@ pub fn check_ast_node(
                 sess,
                 false,
                 lint_store,
-                crate_attrs,
+                registered_tools,
                 buffered,
                 EarlyLintPassObjects { lints: &mut passes[..] },
                 check_node,
@@ -391,7 +398,7 @@ pub fn check_ast_node(
                         sess,
                         pre_expansion && i == 0,
                         lint_store,
-                        crate_attrs,
+                        registered_tools,
                         buffered,
                         EarlyLintPassObjects { lints: slice::from_mut(pass) },
                         check_node,
