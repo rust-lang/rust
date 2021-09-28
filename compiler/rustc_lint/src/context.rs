@@ -38,7 +38,6 @@ use rustc_serialize::json::Json;
 use rustc_session::lint::{BuiltinLintDiagnostics, ExternDepSpec};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
-use rustc_session::SessionLintStore;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
 use rustc_target::abi;
@@ -73,20 +72,6 @@ pub struct LintStore {
 
     /// Map of registered lint groups to what lints they expand to.
     lint_groups: FxHashMap<&'static str, LintGroup>,
-}
-
-impl SessionLintStore for LintStore {
-    fn name_to_lint(&self, lint_name: &str) -> LintId {
-        let lints = self
-            .find_lints(lint_name)
-            .unwrap_or_else(|_| panic!("Failed to find lint with name `{}`", lint_name));
-
-        if let &[lint] = lints.as_slice() {
-            return lint;
-        } else {
-            panic!("Found mutliple lints with name `{}`: {:?}", lint_name, lints);
-        }
-    }
 }
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.
