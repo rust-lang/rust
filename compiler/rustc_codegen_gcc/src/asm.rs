@@ -6,7 +6,7 @@ use rustc_codegen_ssa::traits::{AsmBuilderMethods, AsmMethods, BaseTypeMethods, 
 
 use rustc_hir::LlvmInlineAsmInner;
 use rustc_middle::{bug, ty::Instance};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use rustc_target::asm::*;
 
 use std::borrow::Cow;
@@ -173,7 +173,20 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             continue
                         },
                         (Register(reg_name), None) => {
-                            clobbers.push(reg_name);
+                            // `clobber_abi` can add lots of clobbers that are not supported by the target,
+                            // such as AVX-512 registers, so we just ignore unsupported registers
+                            let is_target_supported = reg.reg_class().supported_types(asm_arch).iter()
+                                .any(|&(_, feature)| {
+                                    if let Some(feature) = feature {
+                                        self.tcx.sess.target_features.contains(&Symbol::intern(feature))
+                                    } else {
+                                        true // Register class is unconditionally supported
+                                    }
+                                });
+
+                            if is_target_supported && !clobbers.contains(&reg_name) {
+                                clobbers.push(reg_name);
+                            }
                             continue
                         }
                     };
@@ -526,16 +539,20 @@ fn reg_to_gcc(reg: InlineAsmRegOrRegClass) -> ConstraintOrRegister {
     let constraint = match reg {
         // For vector registers LLVM wants the register name to match the type size.
         InlineAsmRegOrRegClass::Reg(reg) => {
-            // TODO(antoyo): add support for vector register.
-            match reg.name() {
-                "ax" => "a",
-                "bx" => "b",
-                "cx" => "c",
-                "dx" => "d",
-                "si" => "S",
-                "di" => "D",
-                // For registers like r11, we have to create a register variable: https://stackoverflow.com/a/31774784/389119
-                name => return ConstraintOrRegister::Register(name), 
+            match reg {
+                InlineAsmReg::X86(_) => {
+                    // TODO(antoyo): add support for vector register.
+                    //
+                    // // For explicit registers, we have to create a register variable: https://stackoverflow.com/a/31774784/389119
+                    return ConstraintOrRegister::Register(match reg.name() {
+                        // Some of registers' names does not map 1-1 from rust to gcc
+                        "st(0)" => "st",
+
+                        name => name,
+                    });
+                }
+
+                _ => unimplemented!(),
             }
         },
         InlineAsmRegOrRegClass::RegClass(reg) => match reg {

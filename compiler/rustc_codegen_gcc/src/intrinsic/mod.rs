@@ -18,7 +18,7 @@ use rustc_target::spec::PanicStrategy;
 
 use crate::abi::GccType;
 use crate::builder::Builder;
-use crate::common::TypeReflection;
+use crate::common::{SignType, TypeReflection};
 use crate::context::CodegenCx;
 use crate::type_of::LayoutGccExt;
 use crate::intrinsic::simd::generic_simd_intrinsic;
@@ -520,163 +520,176 @@ fn int_type_width_signed<'gcc, 'tcx>(ty: Ty<'tcx>, cx: &CodegenCx<'gcc, 'tcx>) -
 
 impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     fn bit_reverse(&mut self, width: u64, value: RValue<'gcc>) -> RValue<'gcc> {
-        let typ = value.get_type();
+        let result_type = value.get_type();
+        let typ = result_type.to_unsigned(self.cx);
+
+        let value =
+            if result_type.is_signed(self.cx) {
+                self.context.new_bitcast(None, value, typ)
+            }
+            else {
+                value
+            };
+
         let context = &self.cx.context;
-        match width {
-            8 => {
-                // First step.
-                let left = self.and(value, context.new_rvalue_from_int(typ, 0xF0));
-                let left = self.lshr(left, context.new_rvalue_from_int(typ, 4));
-                let right = self.and(value, context.new_rvalue_from_int(typ, 0x0F));
-                let right = self.shl(right, context.new_rvalue_from_int(typ, 4));
-                let step1 = self.or(left, right);
+        let result =
+            match width {
+                8 => {
+                    // First step.
+                    let left = self.and(value, context.new_rvalue_from_int(typ, 0xF0));
+                    let left = self.lshr(left, context.new_rvalue_from_int(typ, 4));
+                    let right = self.and(value, context.new_rvalue_from_int(typ, 0x0F));
+                    let right = self.shl(right, context.new_rvalue_from_int(typ, 4));
+                    let step1 = self.or(left, right);
 
-                // Second step.
-                let left = self.and(step1, context.new_rvalue_from_int(typ, 0xCC));
-                let left = self.lshr(left, context.new_rvalue_from_int(typ, 2));
-                let right = self.and(step1, context.new_rvalue_from_int(typ, 0x33));
-                let right = self.shl(right, context.new_rvalue_from_int(typ, 2));
-                let step2 = self.or(left, right);
+                    // Second step.
+                    let left = self.and(step1, context.new_rvalue_from_int(typ, 0xCC));
+                    let left = self.lshr(left, context.new_rvalue_from_int(typ, 2));
+                    let right = self.and(step1, context.new_rvalue_from_int(typ, 0x33));
+                    let right = self.shl(right, context.new_rvalue_from_int(typ, 2));
+                    let step2 = self.or(left, right);
 
-                // Third step.
-                let left = self.and(step2, context.new_rvalue_from_int(typ, 0xAA));
-                let left = self.lshr(left, context.new_rvalue_from_int(typ, 1));
-                let right = self.and(step2, context.new_rvalue_from_int(typ, 0x55));
-                let right = self.shl(right, context.new_rvalue_from_int(typ, 1));
-                let step3 = self.or(left, right);
+                    // Third step.
+                    let left = self.and(step2, context.new_rvalue_from_int(typ, 0xAA));
+                    let left = self.lshr(left, context.new_rvalue_from_int(typ, 1));
+                    let right = self.and(step2, context.new_rvalue_from_int(typ, 0x55));
+                    let right = self.shl(right, context.new_rvalue_from_int(typ, 1));
+                    let step3 = self.or(left, right);
 
-                step3
-            },
-            16 => {
-                // First step.
-                let left = self.and(value, context.new_rvalue_from_int(typ, 0x5555));
-                let left = self.shl(left, context.new_rvalue_from_int(typ, 1));
-                let right = self.and(value, context.new_rvalue_from_int(typ, 0xAAAA));
-                let right = self.lshr(right, context.new_rvalue_from_int(typ, 1));
-                let step1 = self.or(left, right);
+                    step3
+                },
+                16 => {
+                    // First step.
+                    let left = self.and(value, context.new_rvalue_from_int(typ, 0x5555));
+                    let left = self.shl(left, context.new_rvalue_from_int(typ, 1));
+                    let right = self.and(value, context.new_rvalue_from_int(typ, 0xAAAA));
+                    let right = self.lshr(right, context.new_rvalue_from_int(typ, 1));
+                    let step1 = self.or(left, right);
 
-                // Second step.
-                let left = self.and(step1, context.new_rvalue_from_int(typ, 0x3333));
-                let left = self.shl(left, context.new_rvalue_from_int(typ, 2));
-                let right = self.and(step1, context.new_rvalue_from_int(typ, 0xCCCC));
-                let right = self.lshr(right, context.new_rvalue_from_int(typ, 2));
-                let step2 = self.or(left, right);
+                    // Second step.
+                    let left = self.and(step1, context.new_rvalue_from_int(typ, 0x3333));
+                    let left = self.shl(left, context.new_rvalue_from_int(typ, 2));
+                    let right = self.and(step1, context.new_rvalue_from_int(typ, 0xCCCC));
+                    let right = self.lshr(right, context.new_rvalue_from_int(typ, 2));
+                    let step2 = self.or(left, right);
 
-                // Third step.
-                let left = self.and(step2, context.new_rvalue_from_int(typ, 0x0F0F));
-                let left = self.shl(left, context.new_rvalue_from_int(typ, 4));
-                let right = self.and(step2, context.new_rvalue_from_int(typ, 0xF0F0));
-                let right = self.lshr(right, context.new_rvalue_from_int(typ, 4));
-                let step3 = self.or(left, right);
+                    // Third step.
+                    let left = self.and(step2, context.new_rvalue_from_int(typ, 0x0F0F));
+                    let left = self.shl(left, context.new_rvalue_from_int(typ, 4));
+                    let right = self.and(step2, context.new_rvalue_from_int(typ, 0xF0F0));
+                    let right = self.lshr(right, context.new_rvalue_from_int(typ, 4));
+                    let step3 = self.or(left, right);
 
-                // Fourth step.
-                let left = self.and(step3, context.new_rvalue_from_int(typ, 0x00FF));
-                let left = self.shl(left, context.new_rvalue_from_int(typ, 8));
-                let right = self.and(step3, context.new_rvalue_from_int(typ, 0xFF00));
-                let right = self.lshr(right, context.new_rvalue_from_int(typ, 8));
-                let step4 = self.or(left, right);
+                    // Fourth step.
+                    let left = self.and(step3, context.new_rvalue_from_int(typ, 0x00FF));
+                    let left = self.shl(left, context.new_rvalue_from_int(typ, 8));
+                    let right = self.and(step3, context.new_rvalue_from_int(typ, 0xFF00));
+                    let right = self.lshr(right, context.new_rvalue_from_int(typ, 8));
+                    let step4 = self.or(left, right);
 
-                step4
-            },
-            32 => {
-                // TODO(antoyo): Refactor with other implementations.
-                // First step.
-                let left = self.and(value, context.new_rvalue_from_long(typ, 0x55555555));
-                let left = self.shl(left, context.new_rvalue_from_long(typ, 1));
-                let right = self.and(value, context.new_rvalue_from_long(typ, 0xAAAAAAAA));
-                let right = self.lshr(right, context.new_rvalue_from_long(typ, 1));
-                let step1 = self.or(left, right);
+                    step4
+                },
+                32 => {
+                    // TODO(antoyo): Refactor with other implementations.
+                    // First step.
+                    let left = self.and(value, context.new_rvalue_from_long(typ, 0x55555555));
+                    let left = self.shl(left, context.new_rvalue_from_long(typ, 1));
+                    let right = self.and(value, context.new_rvalue_from_long(typ, 0xAAAAAAAA));
+                    let right = self.lshr(right, context.new_rvalue_from_long(typ, 1));
+                    let step1 = self.or(left, right);
 
-                // Second step.
-                let left = self.and(step1, context.new_rvalue_from_long(typ, 0x33333333));
-                let left = self.shl(left, context.new_rvalue_from_long(typ, 2));
-                let right = self.and(step1, context.new_rvalue_from_long(typ, 0xCCCCCCCC));
-                let right = self.lshr(right, context.new_rvalue_from_long(typ, 2));
-                let step2 = self.or(left, right);
+                    // Second step.
+                    let left = self.and(step1, context.new_rvalue_from_long(typ, 0x33333333));
+                    let left = self.shl(left, context.new_rvalue_from_long(typ, 2));
+                    let right = self.and(step1, context.new_rvalue_from_long(typ, 0xCCCCCCCC));
+                    let right = self.lshr(right, context.new_rvalue_from_long(typ, 2));
+                    let step2 = self.or(left, right);
 
-                // Third step.
-                let left = self.and(step2, context.new_rvalue_from_long(typ, 0x0F0F0F0F));
-                let left = self.shl(left, context.new_rvalue_from_long(typ, 4));
-                let right = self.and(step2, context.new_rvalue_from_long(typ, 0xF0F0F0F0));
-                let right = self.lshr(right, context.new_rvalue_from_long(typ, 4));
-                let step3 = self.or(left, right);
+                    // Third step.
+                    let left = self.and(step2, context.new_rvalue_from_long(typ, 0x0F0F0F0F));
+                    let left = self.shl(left, context.new_rvalue_from_long(typ, 4));
+                    let right = self.and(step2, context.new_rvalue_from_long(typ, 0xF0F0F0F0));
+                    let right = self.lshr(right, context.new_rvalue_from_long(typ, 4));
+                    let step3 = self.or(left, right);
 
-                // Fourth step.
-                let left = self.and(step3, context.new_rvalue_from_long(typ, 0x00FF00FF));
-                let left = self.shl(left, context.new_rvalue_from_long(typ, 8));
-                let right = self.and(step3, context.new_rvalue_from_long(typ, 0xFF00FF00));
-                let right = self.lshr(right, context.new_rvalue_from_long(typ, 8));
-                let step4 = self.or(left, right);
+                    // Fourth step.
+                    let left = self.and(step3, context.new_rvalue_from_long(typ, 0x00FF00FF));
+                    let left = self.shl(left, context.new_rvalue_from_long(typ, 8));
+                    let right = self.and(step3, context.new_rvalue_from_long(typ, 0xFF00FF00));
+                    let right = self.lshr(right, context.new_rvalue_from_long(typ, 8));
+                    let step4 = self.or(left, right);
 
-                // Fifth step.
-                let left = self.and(step4, context.new_rvalue_from_long(typ, 0x0000FFFF));
-                let left = self.shl(left, context.new_rvalue_from_long(typ, 16));
-                let right = self.and(step4, context.new_rvalue_from_long(typ, 0xFFFF0000));
-                let right = self.lshr(right, context.new_rvalue_from_long(typ, 16));
-                let step5 = self.or(left, right);
+                    // Fifth step.
+                    let left = self.and(step4, context.new_rvalue_from_long(typ, 0x0000FFFF));
+                    let left = self.shl(left, context.new_rvalue_from_long(typ, 16));
+                    let right = self.and(step4, context.new_rvalue_from_long(typ, 0xFFFF0000));
+                    let right = self.lshr(right, context.new_rvalue_from_long(typ, 16));
+                    let step5 = self.or(left, right);
 
-                step5
-            },
-            64 => {
-                // First step.
-                let left = self.shl(value, context.new_rvalue_from_long(typ, 32));
-                let right = self.lshr(value, context.new_rvalue_from_long(typ, 32));
-                let step1 = self.or(left, right);
+                    step5
+                },
+                64 => {
+                    // First step.
+                    let left = self.shl(value, context.new_rvalue_from_long(typ, 32));
+                    let right = self.lshr(value, context.new_rvalue_from_long(typ, 32));
+                    let step1 = self.or(left, right);
 
-                // Second step.
-                let left = self.and(step1, context.new_rvalue_from_long(typ, 0x0001FFFF0001FFFF));
-                let left = self.shl(left, context.new_rvalue_from_long(typ, 15));
-                let right = self.and(step1, context.new_rvalue_from_long(typ, 0xFFFE0000FFFE0000u64 as i64)); // TODO(antoyo): transmute the number instead?
-                let right = self.lshr(right, context.new_rvalue_from_long(typ, 17));
-                let step2 = self.or(left, right);
+                    // Second step.
+                    let left = self.and(step1, context.new_rvalue_from_long(typ, 0x0001FFFF0001FFFF));
+                    let left = self.shl(left, context.new_rvalue_from_long(typ, 15));
+                    let right = self.and(step1, context.new_rvalue_from_long(typ, 0xFFFE0000FFFE0000u64 as i64)); // TODO(antoyo): transmute the number instead?
+                    let right = self.lshr(right, context.new_rvalue_from_long(typ, 17));
+                    let step2 = self.or(left, right);
 
-                // Third step.
-                let left = self.lshr(step2, context.new_rvalue_from_long(typ, 10));
-                let left = self.xor(step2, left);
-                let temp = self.and(left, context.new_rvalue_from_long(typ, 0x003F801F003F801F));
+                    // Third step.
+                    let left = self.lshr(step2, context.new_rvalue_from_long(typ, 10));
+                    let left = self.xor(step2, left);
+                    let temp = self.and(left, context.new_rvalue_from_long(typ, 0x003F801F003F801F));
 
-                let left = self.shl(temp, context.new_rvalue_from_long(typ, 10));
-                let left = self.or(temp, left);
-                let step3 = self.xor(left, step2);
+                    let left = self.shl(temp, context.new_rvalue_from_long(typ, 10));
+                    let left = self.or(temp, left);
+                    let step3 = self.xor(left, step2);
 
-                // Fourth step.
-                let left = self.lshr(step3, context.new_rvalue_from_long(typ, 4));
-                let left = self.xor(step3, left);
-                let temp = self.and(left, context.new_rvalue_from_long(typ, 0x0E0384210E038421));
+                    // Fourth step.
+                    let left = self.lshr(step3, context.new_rvalue_from_long(typ, 4));
+                    let left = self.xor(step3, left);
+                    let temp = self.and(left, context.new_rvalue_from_long(typ, 0x0E0384210E038421));
 
-                let left = self.shl(temp, context.new_rvalue_from_long(typ, 4));
-                let left = self.or(temp, left);
-                let step4 = self.xor(left, step3);
+                    let left = self.shl(temp, context.new_rvalue_from_long(typ, 4));
+                    let left = self.or(temp, left);
+                    let step4 = self.xor(left, step3);
 
-                // Fifth step.
-                let left = self.lshr(step4, context.new_rvalue_from_long(typ, 2));
-                let left = self.xor(step4, left);
-                let temp = self.and(left, context.new_rvalue_from_long(typ, 0x2248884222488842));
+                    // Fifth step.
+                    let left = self.lshr(step4, context.new_rvalue_from_long(typ, 2));
+                    let left = self.xor(step4, left);
+                    let temp = self.and(left, context.new_rvalue_from_long(typ, 0x2248884222488842));
 
-                let left = self.shl(temp, context.new_rvalue_from_long(typ, 2));
-                let left = self.or(temp, left);
-                let step5 = self.xor(left, step4);
+                    let left = self.shl(temp, context.new_rvalue_from_long(typ, 2));
+                    let left = self.or(temp, left);
+                    let step5 = self.xor(left, step4);
 
-                step5
-            },
-            128 => {
-                // TODO(antoyo): find a more efficient implementation?
-                let sixty_four = self.context.new_rvalue_from_long(typ, 64);
-                let high = self.context.new_cast(None, value >> sixty_four, self.u64_type);
-                let low = self.context.new_cast(None, value, self.u64_type);
+                    step5
+                },
+                128 => {
+                    // TODO(antoyo): find a more efficient implementation?
+                    let sixty_four = self.context.new_rvalue_from_long(typ, 64);
+                    let high = self.context.new_cast(None, value >> sixty_four, self.u64_type);
+                    let low = self.context.new_cast(None, value, self.u64_type);
 
-                let reversed_high = self.bit_reverse(64, high);
-                let reversed_low = self.bit_reverse(64, low);
+                    let reversed_high = self.bit_reverse(64, high);
+                    let reversed_low = self.bit_reverse(64, low);
 
-                let new_low = self.context.new_cast(None, reversed_high, typ);
-                let new_high = self.context.new_cast(None, reversed_low, typ) << sixty_four;
+                    let new_low = self.context.new_cast(None, reversed_high, typ);
+                    let new_high = self.context.new_cast(None, reversed_low, typ) << sixty_four;
 
-                new_low | new_high
-            },
-            _ => {
-                panic!("cannot bit reverse with width = {}", width);
-            },
-        }
+                    new_low | new_high
+                },
+                _ => {
+                    panic!("cannot bit reverse with width = {}", width);
+                },
+            };
+
+        self.context.new_bitcast(None, result, result_type)
     }
 
     fn count_leading_zeroes(&self, width: u64, arg: RValue<'gcc>) -> RValue<'gcc> {
@@ -746,6 +759,15 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     fn count_trailing_zeroes(&self, _width: u64, arg: RValue<'gcc>) -> RValue<'gcc> {
+        let result_type = arg.get_type();
+        let arg =
+            if result_type.is_signed(self.cx) {
+                let new_type = result_type.to_unsigned(self.cx);
+                self.context.new_bitcast(None, arg, new_type)
+            }
+            else {
+                arg
+            };
         let arg_type = arg.get_type();
         let (count_trailing_zeroes, expected_type) =
             if arg_type.is_uchar(&self.cx) || arg_type.is_ushort(&self.cx) || arg_type.is_uint(&self.cx) {
@@ -796,7 +818,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
                 let res = self.context.new_array_access(None, result, index);
 
-                return self.context.new_cast(None, res, arg_type);
+                return self.context.new_bitcast(None, res, result_type);
             }
             else {
                 unimplemented!("count_trailing_zeroes for {:?}", arg_type);
@@ -810,7 +832,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 arg
             };
         let res = self.context.new_call(None, count_trailing_zeroes, &[arg]);
-        self.context.new_cast(None, res, arg_type)
+        self.context.new_bitcast(None, res, result_type)
     }
 
     fn int_width(&self, typ: Type<'gcc>) -> i64 {
@@ -819,7 +841,16 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
     fn pop_count(&self, value: RValue<'gcc>) -> RValue<'gcc> {
         // TODO(antoyo): use the optimized version with fewer operations.
-        let value_type = value.get_type();
+        let result_type = value.get_type();
+        let value_type = result_type.to_unsigned(self.cx);
+
+        let value =
+            if result_type.is_signed(self.cx) {
+                self.context.new_bitcast(None, value, value_type)
+            }
+            else {
+                value
+            };
 
         if value_type.is_u128(&self.cx) {
             // TODO(antoyo): implement in the normal algorithm below to have a more efficient
@@ -830,7 +861,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let high = self.context.new_call(None, popcount, &[high]);
             let low = self.context.new_cast(None, value, self.cx.ulonglong_type);
             let low = self.context.new_call(None, popcount, &[low]);
-            return high + low;
+            let res = high + low;
+            return self.context.new_bitcast(None, res, result_type);
         }
 
         // First step.
@@ -855,7 +887,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let value = left + right;
 
         if value_type.is_u8(&self.cx) {
-            return value;
+            return self.context.new_bitcast(None, value, result_type);
         }
 
         // Fourth step.
@@ -866,7 +898,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let value = left + right;
 
         if value_type.is_u16(&self.cx) {
-            return value;
+            return self.context.new_bitcast(None, value, result_type);
         }
 
         // Fifth step.
@@ -877,7 +909,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let value = left + right;
 
         if value_type.is_u32(&self.cx) {
-            return value;
+            return self.context.new_bitcast(None, value, result_type);
         }
 
         // Sixth step.
@@ -887,7 +919,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let right = shifted & mask;
         let value = left + right;
 
-        value
+        self.context.new_bitcast(None, value, result_type)
     }
 
     // Algorithm from: https://blog.regehr.org/archives/1063

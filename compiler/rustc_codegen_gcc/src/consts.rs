@@ -1,4 +1,4 @@
-use gccjit::{RValue, Type};
+use gccjit::{LValue, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, DerivedTypeMethods, StaticMethods};
 use rustc_hir as hir;
 use rustc_hir::Node;
@@ -14,7 +14,6 @@ use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size, WrappingRan
 
 use crate::base;
 use crate::context::CodegenCx;
-use crate::mangled_std_symbols::{ARGC, ARGV, ARGV_INIT_ARRAY};
 use crate::type_of::LayoutGccExt;
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -45,17 +44,13 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
     fn codegen_static(&self, def_id: DefId, is_mutable: bool) {
         let attrs = self.tcx.codegen_fn_attrs(def_id);
 
-        let instance = Instance::mono(self.tcx, def_id);
-        let name = &*self.tcx.symbol_name(instance).name;
-
-        let (value, alloc) =
+        let value =
             match codegen_static_initializer(&self, def_id) {
-                Ok(value) => value,
+                Ok((value, _)) => value,
                 // Error has already been reported
                 Err(_) => return,
             };
 
-        let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
         let global = self.get_static(def_id);
 
         // boolean SSA values are i1, but they have to be stored in i8 slots,
@@ -73,45 +68,16 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
         let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
         let gcc_type = self.layout_of(ty).gcc_type(self, true);
 
-        let global =
-            if val_llty == gcc_type {
-                global
+        // TODO(antoyo): set alignment.
+
+        let value =
+            if value.get_type() != gcc_type {
+                self.context.new_bitcast(None, value, gcc_type)
             }
             else {
-                // If we created the global with the wrong type,
-                // correct the type.
-                // TODO(antoyo): set value name, linkage and visibility.
-
-                let new_global = self.get_or_insert_global(&name, val_llty, is_tls, attrs.link_section);
-
-                // To avoid breaking any invariants, we leave around the old
-                // global for the moment; we'll replace all references to it
-                // with the new global later. (See base::codegen_backend.)
-                //self.statics_to_rauw.borrow_mut().push((global, new_global));
-                new_global
+                value
             };
-        // TODO(antoyo): set alignment and initializer.
-        let value = self.rvalue_as_lvalue(value);
-        let value = value.get_address(None);
-        let dest_typ = global.get_type();
-        let value = self.context.new_cast(None, value, dest_typ);
-
-        // NOTE: do not init the variables related to argc/argv because it seems we cannot
-        // overwrite those variables.
-        // FIXME(antoyo): correctly support global variable initialization.
-        let skip_init = [
-            ARGV_INIT_ARRAY,
-            ARGC,
-            ARGV,
-        ];
-        if !skip_init.iter().any(|symbol_name| name.starts_with(symbol_name)) {
-            // TODO(antoyo): switch to set_initializer when libgccjit supports that.
-            let memcpy = self.context.get_builtin_function("memcpy");
-            let dst = self.context.new_cast(None, global, self.type_i8p());
-            let src = self.context.new_cast(None, value, self.type_ptr_to(self.type_void()));
-            let size = self.context.new_rvalue_from_long(self.sizet_type, alloc.size().bytes() as i64);
-            self.global_init_block.add_eval(None, self.context.new_call(None, memcpy, &[dst, src, size]));
-        }
+        global.global_set_initializer_value(value);
 
         // As an optimization, all shared statics which do not have interior
         // mutability are placed into read-only memory.
@@ -175,7 +141,7 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
         }
 
         if attrs.flags.contains(CodegenFnAttrFlags::USED) {
-            self.add_used_global(global);
+            self.add_used_global(global.to_rvalue());
         }
     }
 
@@ -191,38 +157,31 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn static_addr_of_mut(&self, cv: RValue<'gcc>, align: Align, kind: Option<&str>) -> RValue<'gcc> {
-        let (name, gv) =
+        let global =
             match kind {
                 Some(kind) if !self.tcx.sess.fewer_names() => {
                     let name = self.generate_local_symbol_name(kind);
                     // TODO(antoyo): check if it's okay that TLS is off here.
                     // TODO(antoyo): check if it's okay that link_section is None here.
                     // TODO(antoyo): set alignment here as well.
-                    let gv = self.define_global(&name[..], self.val_ty(cv), false, None).unwrap_or_else(|| {
-                        bug!("symbol `{}` is already defined", name);
-                    });
+                    let global = self.define_global(&name[..], self.val_ty(cv), false, None);
                     // TODO(antoyo): set linkage.
-                    (name, gv)
+                    global
                 }
                 _ => {
-                    let index = self.global_gen_sym_counter.get();
-                    let name = format!("global_{}_{}", index, self.codegen_unit.name());
                     let typ = self.val_ty(cv).get_aligned(align.bytes());
-                    let global = self.define_private_global(typ);
-                    (name, global)
+                    let global = self.declare_unnamed_global(typ);
+                    global
                 },
             };
         // FIXME(antoyo): I think the name coming from generate_local_symbol_name() above cannot be used
         // globally.
-        // NOTE: global seems to only be global in a module. So save the name instead of the value
-        // to import it later.
-        self.global_names.borrow_mut().insert(cv, name);
-        self.global_init_block.add_assignment(None, gv.dereference(None), cv);
+        global.global_set_initializer_value(cv);
         // TODO(antoyo): set unnamed address.
-        gv
+        global.get_address(None)
     }
 
-    pub fn get_static(&self, def_id: DefId) -> RValue<'gcc> {
+    pub fn get_static(&self, def_id: DefId) -> LValue<'gcc> {
         let instance = Instance::mono(self.tcx, def_id);
         let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
         if let Some(&global) = self.instances.borrow().get(&instance) {
@@ -380,7 +339,7 @@ pub fn codegen_static_initializer<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, def_id
     Ok((const_alloc_to_gcc(cx, alloc), alloc))
 }
 
-fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &CodegenFnAttrs, ty: Ty<'tcx>, sym: &str, span: Span) -> RValue<'gcc> {
+fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &CodegenFnAttrs, ty: Ty<'tcx>, sym: &str, span: Span) -> LValue<'gcc> {
     let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
     let llty = cx.layout_of(ty).gcc_type(cx, true);
     if let Some(linkage) = attrs.linkage {
@@ -410,13 +369,9 @@ fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &Codeg
         // zero.
         let mut real_name = "_rust_extern_with_linkage_".to_string();
         real_name.push_str(&sym);
-        let global2 =
-            cx.define_global(&real_name, llty, is_tls, attrs.link_section).unwrap_or_else(|| {
-                cx.sess().span_fatal(span, &format!("symbol `{}` is already defined", &sym))
-            });
+        let global2 = cx.define_global(&real_name, llty, is_tls, attrs.link_section);
         // TODO(antoyo): set linkage.
-        let lvalue = global2.dereference(None);
-        cx.global_init_block.add_assignment(None, lvalue, global1);
+        global2.global_set_initializer_value(global1.get_address(None));
         // TODO(antoyo): use global_set_initializer() when it will work.
         global2
     }

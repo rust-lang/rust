@@ -43,7 +43,6 @@ mod coverageinfo;
 mod debuginfo;
 mod declare;
 mod intrinsic;
-mod mangled_std_symbols;
 mod mono_item;
 mod type_;
 mod type_of;
@@ -51,7 +50,7 @@ mod type_of;
 use std::any::Any;
 use std::sync::Arc;
 
-use gccjit::{Block, Context, FunctionType, OptimizationLevel};
+use gccjit::{Context, OptimizationLevel};
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
 use rustc_codegen_ssa::base::codegen_crate;
@@ -64,12 +63,10 @@ use rustc_errors::{ErrorReported, Handler};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{CrateType, Lto, OptLevel, OutputFilenames};
+use rustc_session::config::{Lto, OptLevel, OutputFilenames};
 use rustc_session::Session;
 use rustc_span::Symbol;
 use rustc_span::fatal_error::FatalError;
-
-use crate::context::unit_name;
 
 pub struct PrintOnPanic<F: Fn() -> String>(pub F);
 
@@ -109,16 +106,8 @@ impl CodegenBackend for GccCodegenBackend {
         Ok((codegen_results, work_products))
     }
 
-    fn link(&self, sess: &Session, mut codegen_results: CodegenResults, outputs: &OutputFilenames) -> Result<(), ErrorReported> {
+    fn link(&self, sess: &Session, codegen_results: CodegenResults, outputs: &OutputFilenames) -> Result<(), ErrorReported> {
         use rustc_codegen_ssa::back::link::link_binary;
-        if let Some(symbols) = codegen_results.crate_info.exported_symbols.get_mut(&CrateType::Dylib) {
-            // TODO:(antoyo): remove when global initializer work without calling a function at runtime.
-            // HACK: since this codegen add some symbols (e.g. __gccGlobalCrateInit) and the UI
-            // tests load libstd.so as a dynamic library, and rustc use a version-script to specify
-            // the symbols visibility, we add * to export all symbols.
-            // It seems other symbols from libstd/libcore are causing some issues here as well.
-            symbols.push("*".to_string());
-        }
 
         link_binary::<crate::archive::ArArchiveBuilder<'_>>(
             sess,
@@ -203,6 +192,7 @@ impl WriteBackendMethods for GccCodegenBackend {
     fn run_fat_lto(_cgcx: &CodegenContext<Self>, mut modules: Vec<FatLTOInput<Self>>, _cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>) -> Result<LtoModuleCodegen<Self>, FatalError> {
         // TODO(antoyo): implement LTO by sending -flto to libgccjit and adding the appropriate gcc linker plugins.
         // NOTE: implemented elsewhere.
+        // TODO: what is implemented elsewhere ^ ?
         let module =
             match modules.remove(0) {
                 FatLTOInput::InMemory(module) => module,
@@ -270,15 +260,6 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
                 OptLevel::Size | OptLevel::SizeMin => OptimizationLevel::Limited,
             }
         },
-    }
-}
-
-fn create_function_calling_initializers<'gcc, 'tcx>(tcx: TyCtxt<'tcx>, context: &Context<'gcc>, block: Block<'gcc>) {
-    let codegen_units = tcx.collect_and_partition_mono_items(()).1;
-    for codegen_unit in codegen_units {
-        let codegen_init_func = context.new_function(None, FunctionType::Extern, context.new_type::<()>(), &[],
-            &format!("__gccGlobalInit{}", unit_name(&codegen_unit)), false);
-        block.add_eval(None, context.new_call(None, codegen_init_func, &[]));
     }
 }
 

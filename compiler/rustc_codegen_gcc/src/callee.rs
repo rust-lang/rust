@@ -1,8 +1,7 @@
 use gccjit::{FunctionType, RValue};
 use rustc_codegen_ssa::traits::BaseTypeMethods;
-use rustc_middle::ty::{Instance, TypeFoldable};
-use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
-use rustc_target::abi::call::FnAbi;
+use rustc_middle::ty::{self, Instance, TypeFoldable};
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
 
 use crate::abi::FnAbiGccExt;
 use crate::context::CodegenCx;
@@ -20,13 +19,13 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
     assert!(!instance.substs.needs_infer());
     assert!(!instance.substs.has_escaping_bound_vars());
 
-    if let Some(&func) = cx.instances.borrow().get(&instance) {
+    if let Some(&func) = cx.function_instances.borrow().get(&instance) {
         return func;
     }
 
     let sym = tcx.symbol_name(instance).name;
 
-    let fn_abi = FnAbi::of_instance(cx, instance, &[]);
+    let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
 
     let func =
         if let Some(func) = cx.get_declared_value(&sym) {
@@ -72,7 +71,7 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
             func
         };
 
-    cx.instances.borrow_mut().insert(instance, func);
+    cx.function_instances.borrow_mut().insert(instance, func);
 
     func
 }

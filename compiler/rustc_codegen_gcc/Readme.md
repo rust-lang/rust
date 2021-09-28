@@ -115,3 +115,21 @@ p loc->m_line
 
  * Build the stage2 compiler (`rustup toolchain link debug-current build/x86_64-unknown-linux-gnu/stage2`).
  * Clean and rebuild the codegen with `debug-current` in the file `rust-toolchain`.
+
+### How to build a cross-compiling libgccjit
+
+#### Building libgccjit
+
+ * Follow these instructions: https://preshing.com/20141119/how-to-build-a-gcc-cross-compiler/ with the following changes:
+ * Configure gcc with `../gcc/configure --enable-host-shared --disable-multilib --enable-languages=c,jit,c++ --disable-bootstrap --enable-checking=release --prefix=/opt/m68k-gcc/ --target=m68k-linux --without-headers`.
+ * Some shells, like fish, don't define the environment variable `$MACHTYPE`.
+ * Add `CFLAGS="-Wno-error=attributes -g -O2"` at the end of the configure command for building glibc (`CFLAGS="-Wno-error=attributes -Wno-error=array-parameter -Wno-error=stringop-overflow -Wno-error=array-bounds -g -O2"` for glibc 2.31, which is useful for Debian).
+
+#### Configuring rustc_codegen_gcc
+
+ * Set `TARGET_TRIPLE="m68k-unknown-linux-gnu"` in config.sh.
+ * Since rustc doesn't support this architecture yet, set it back to `TARGET_TRIPLE="mips-unknown-linux-gnu"` (or another target having the same attributes). Alternatively, create a [target specification file](https://book.avr-rust.com/005.1-the-target-specification-json-file.html) (note that the `arch` specified in this file must be supported by the rust compiler).
+ * Set `linker='-Clinker=m68k-linux-gcc'`.
+ * Set the path to the cross-compiling libgccjit in `gcc_path`.
+ * Disable the 128-bit integer types if the target doesn't support them by using `let i128_type = context.new_type::<i64>();` in `context.rs` (same for u128_type).
+ * (might not be necessary) Disable the compilation of libstd.so (and possibly libcore.so?).

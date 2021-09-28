@@ -31,11 +31,12 @@ use rustc_codegen_ssa::traits::{
     StaticBuilderMethods,
 };
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
-use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers, TyAndLayout};
+use rustc_middle::ty::layout::{FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{
     self,
+    call::FnAbi,
     Align,
     HasDataLayout,
     Size,
@@ -347,6 +348,20 @@ impl<'tcx> LayoutOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
     }
 }
 
+impl<'tcx> FnAbiOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
+    type FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>;
+
+    #[inline]
+    fn handle_fn_abi_err(
+        &self,
+        err: FnAbiError<'tcx>,
+        span: Span,
+        fn_abi_request: FnAbiRequest<'tcx>,
+    ) -> ! {
+        self.cx.handle_fn_abi_err(err, span, fn_abi_request)
+    }
+}
+
 impl<'gcc, 'tcx> Deref for Builder<'_, 'gcc, 'tcx> {
     type Target = CodegenCx<'gcc, 'tcx>;
 
@@ -505,7 +520,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // FIXME(antoyo): rustc_codegen_ssa::mir::intrinsic uses different types for a and b but they
         // should be the same.
         let typ = a.get_type().to_signed(self);
-        let a = self.context.new_cast(None, a, typ);
         let b = self.context.new_cast(None, b, typ);
         a / b
     }
@@ -1052,11 +1066,18 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     /* Comparisons */
-    fn icmp(&mut self, op: IntPredicate, lhs: RValue<'gcc>, mut rhs: RValue<'gcc>) -> RValue<'gcc> {
-        if lhs.get_type() != rhs.get_type() {
+    fn icmp(&mut self, op: IntPredicate, mut lhs: RValue<'gcc>, mut rhs: RValue<'gcc>) -> RValue<'gcc> {
+        let left_type = lhs.get_type();
+        let right_type = rhs.get_type();
+        if left_type != right_type {
+            // NOTE: because libgccjit cannot compare function pointers.
+            if left_type.is_function_ptr_type().is_some() && right_type.is_function_ptr_type().is_some() {
+                lhs = self.context.new_cast(None, lhs, self.usize_type.make_pointer());
+                rhs = self.context.new_cast(None, rhs, self.usize_type.make_pointer());
+            }
             // NOTE: hack because we try to cast a vector type to the same vector type.
-            if format!("{:?}", lhs.get_type()) != format!("{:?}", rhs.get_type()) {
-                rhs = self.context.new_cast(None, rhs, lhs.get_type());
+            else if format!("{:?}", left_type) != format!("{:?}", right_type) {
+                rhs = self.context.new_cast(None, rhs, left_type);
             }
         }
         self.context.new_comparison(None, op.to_gcc_comparison(), lhs, rhs)
@@ -1210,6 +1231,17 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             else {
                 panic!("Unexpected type {:?}", value_type);
             };
+
+        let lvalue_type = lvalue.to_rvalue().get_type();
+        let value =
+            // NOTE: sometimes, rustc will create a value with the wrong type.
+            if lvalue_type != value.get_type() {
+                self.context.new_cast(None, value, lvalue_type)
+            }
+            else {
+                value
+            };
+
         self.llbb().add_assignment(None, lvalue, value);
 
         aggregate_value
@@ -1413,7 +1445,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 impl<'a, 'gcc, 'tcx> StaticBuilderMethods for Builder<'a, 'gcc, 'tcx> {
     fn get_static(&mut self, def_id: DefId) -> RValue<'gcc> {
         // Forward to the `get_static` method of `CodegenCx`
-        self.cx().get_static(def_id)
+        self.cx().get_static(def_id).get_address(None)
     }
 }
 

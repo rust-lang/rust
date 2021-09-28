@@ -21,12 +21,15 @@ fi
 
 HOST_TRIPLE=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")
 TARGET_TRIPLE=$HOST_TRIPLE
-#TARGET_TRIPLE="aarch64-unknown-linux-gnu"
+#TARGET_TRIPLE="m68k-unknown-linux-gnu"
 
 linker=''
 RUN_WRAPPER=''
 if [[ "$HOST_TRIPLE" != "$TARGET_TRIPLE" ]]; then
-   if [[ "$TARGET_TRIPLE" == "aarch64-unknown-linux-gnu" ]]; then
+   if [[ "$TARGET_TRIPLE" == "m68k-unknown-linux-gnu" ]]; then
+       TARGET_TRIPLE="mips-unknown-linux-gnu"
+       linker='-Clinker=m68k-linux-gcc'
+   elif [[ "$TARGET_TRIPLE" == "aarch64-unknown-linux-gnu" ]]; then
       # We are cross-compiling for aarch64. Use the correct linker and run tests in qemu.
       linker='-Clinker=aarch64-linux-gnu-gcc'
       RUN_WRAPPER='qemu-aarch64 -L /usr/aarch64-linux-gnu'
@@ -35,7 +38,7 @@ if [[ "$HOST_TRIPLE" != "$TARGET_TRIPLE" ]]; then
    fi
 fi
 
-export RUSTFLAGS="$linker -Cpanic=abort -Cdebuginfo=2 -Clto=off -Zpanic-abort-tests -Zcodegen-backend=$(pwd)/target/${CHANNEL:-debug}/librustc_codegen_gcc.$dylib_ext --sysroot $(pwd)/build_sysroot/sysroot"
+export RUSTFLAGS="$linker -Cpanic=abort -Zsymbol-mangling-version=v0 -Cdebuginfo=2 -Clto=off -Zpanic-abort-tests -Zcodegen-backend=$(pwd)/target/${CHANNEL:-debug}/librustc_codegen_gcc.$dylib_ext --sysroot $(pwd)/build_sysroot/sysroot"
 
 # FIXME(antoyo): remove once the atomic shim is gone
 if [[ `uname` == 'Darwin' ]]; then
