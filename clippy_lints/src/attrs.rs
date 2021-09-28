@@ -527,8 +527,8 @@ fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::It
                 return;
             }
 
-            let begin_of_attr_to_item = Span::new(attr.span.lo(), item.span.lo(), item.span.ctxt());
-            let end_of_attr_to_item = Span::new(attr.span.hi(), item.span.lo(), item.span.ctxt());
+            let begin_of_attr_to_item = Span::new(attr.span.lo(), item.span.lo(), item.span.ctxt(), item.span.parent());
+            let end_of_attr_to_item = Span::new(attr.span.hi(), item.span.lo(), item.span.ctxt(), item.span.parent());
 
             if let Some(snippet) = snippet_opt(cx, end_of_attr_to_item) {
                 let lines = snippet.split('\n').collect::<Vec<_>>();

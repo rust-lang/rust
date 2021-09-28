@@ -68,6 +68,7 @@ pub const IO_WRITE: [&str; 3] = ["std", "io", "Write"];
 pub const IPADDR_V4: [&str; 5] = ["std", "net", "ip", "IpAddr", "V4"];
 pub const IPADDR_V6: [&str; 5] = ["std", "net", "ip", "IpAddr", "V6"];
 pub const ITER_REPEAT: [&str; 5] = ["core", "iter", "sources", "repeat", "repeat"];
+#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const ITERTOOLS_NEXT_TUPLE: [&str; 3] = ["itertools", "Itertools", "next_tuple"];
 #[cfg(feature = "internal-lints")]
 pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
@@ -104,7 +105,7 @@ pub const PARKING_LOT_RWLOCK_WRITE_GUARD: [&str; 2] = ["parking_lot", "RwLockWri
 pub const PATH_BUF_AS_PATH: [&str; 4] = ["std", "path", "PathBuf", "as_path"];
 pub const PATH_TO_PATH_BUF: [&str; 4] = ["std", "path", "Path", "to_path_buf"];
 pub const PERMISSIONS: [&str; 3] = ["std", "fs", "Permissions"];
-pub const PERMISSIONS_FROM_MODE: [&str; 7] = ["std", "os", "imp", "unix", "fs", "PermissionsExt", "from_mode"];
+pub const PERMISSIONS_FROM_MODE: [&str; 6] = ["std", "os", "unix", "fs", "PermissionsExt", "from_mode"];
 pub const POLL: [&str; 4] = ["core", "task", "poll", "Poll"];
 pub const POLL_PENDING: [&str; 5] = ["core", "task", "poll", "Poll", "Pending"];
 pub const POLL_READY: [&str; 5] = ["core", "task", "poll", "Poll", "Ready"];

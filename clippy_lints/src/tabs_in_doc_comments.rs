@@ -69,6 +69,7 @@ impl TabsInDocComments {
                     attr.span.lo() + BytePos(3 + lo),
                     attr.span.lo() + BytePos(3 + hi),
                     attr.span.ctxt(),
+                    attr.span.parent(),
                 );
                 span_lint_and_sugg(
                     cx,

@@ -130,7 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                         let pos = snippet_opt(cx, item.span.until(target.span()))
                             .and_then(|snip| Some(item.span.lo() + BytePos(snip.find("impl")? as u32 + 4)));
                         if let Some(pos) = pos {
-                            Span::new(pos, pos, item.span.data().ctxt)
+                            Span::new(pos, pos, item.span.ctxt(), item.span.parent())
                         } else {
                             return;
                         }
@@ -173,7 +173,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                                     Some(item.span.lo() + BytePos((i + (&snip[i..]).find('(')?) as u32))
                                 })
                                 .expect("failed to create span for type parameters");
-                            Span::new(pos, pos, item.span.data().ctxt)
+                            Span::new(pos, pos, item.span.ctxt(), item.span.parent())
                         });
 
                         let mut ctr_vis = ImplicitHasherConstructorVisitor::new(cx, target);

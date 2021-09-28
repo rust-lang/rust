@@ -63,6 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
                     hi_pos - BytePos::from_usize("const".len()),
                     hi_pos,
                     item.span.ctxt(),
+                    item.span.parent(),
                 );
                 span_lint_and_then(
                     cx,

@@ -616,15 +616,15 @@ fn check_for_loop<'tcx>(
         needless_range_loop::check(cx, pat, arg, body, expr);
         explicit_counter_loop::check(cx, pat, arg, body, expr);
     }
-    check_for_loop_arg(cx, pat, arg, expr);
-    for_kv_map::check(cx, pat, arg, body, expr);
+    check_for_loop_arg(cx, pat, arg);
+    for_kv_map::check(cx, pat, arg, body);
     mut_range_bound::check(cx, arg, body);
     single_element_loop::check(cx, pat, arg, body, expr);
     same_item_push::check(cx, pat, arg, body, expr);
     manual_flatten::check(cx, pat, arg, body, span);
 }
 
-fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>, expr: &Expr<'_>) {
+fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
     let mut next_loop_linted = false; // whether or not ITER_NEXT_LOOP lint was used
 
     if let ExprKind::MethodCall(method, _, [self_arg], _) = arg.kind {
@@ -637,7 +637,7 @@ fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>, expr:
                 explicit_into_iter_loop::check(cx, self_arg, arg);
             },
             "next" => {
-                next_loop_linted = iter_next_loop::check(cx, arg, expr);
+                next_loop_linted = iter_next_loop::check(cx, arg);
             },
             _ => {},
         }

@@ -21,37 +21,35 @@ name = "clippy-driver"
 path = "src/driver.rs"
 
 [dependencies]
-# begin automatic update
-clippy_lints = { version = "0.1.50", path = "clippy_lints" }
-# end automatic update
+clippy_lints = { version = "0.1", path = "clippy_lints" }
 semver = "0.11"
-rustc_tools_util = { version = "0.2.0", path = "rustc_tools_util" }
-tempfile = { version = "3.1.0", optional = true }
+rustc_tools_util = { version = "0.2", path = "rustc_tools_util" }
+tempfile = { version = "3.2", optional = true }
 
 [dev-dependencies]
 cargo_metadata = "0.12"
-compiletest_rs = { version = "0.6.0", features = ["tmp"] }
+compiletest_rs = { version = "0.7", features = ["tmp"] }
 tester = "0.9"
-regex = "1.4"
+regex = "1.5"
 # This is used by the `collect-metadata` alias.
 filetime = "0.2"
 
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
 # for more information.
-rustc-workspace-hack = "1.0.0"
+rustc-workspace-hack = "1.0"
 
 # UI test dependencies
 clippy_utils = { path = "clippy_utils" }
 derive-new = "0.5"
 if_chain = "1.0"
-itertools = "0.10.1"
-quote = "1"
+itertools = "0.10"
+quote = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-syn = { version = "1", features = ["full"] }
+syn = { version = "1.0", features = ["full"] }
 
 [build-dependencies]
-rustc_tools_util = { version = "0.2.0", path = "rustc_tools_util" }
+rustc_tools_util = { version = "0.2", path = "rustc_tools_util" }
 
 [features]
 deny-warnings = ["clippy_lints/deny-warnings"]

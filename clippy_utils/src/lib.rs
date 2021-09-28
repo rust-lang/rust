@@ -18,6 +18,7 @@
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
+extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hir;
@@ -25,7 +26,6 @@ extern crate rustc_infer;
 extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_middle;
-extern crate rustc_mir;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
@@ -520,7 +520,7 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
             }
         };
     }
-    fn item_child_by_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, name: &str) -> Option<&'tcx Export<HirId>> {
+    fn item_child_by_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, name: &str) -> Option<&'tcx Export> {
         tcx.item_children(def_id)
             .iter()
             .find(|item| item.ident.name.as_str() == name)
@@ -557,7 +557,7 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
                 None
             }
         });
-    try_res!(last).res
+    try_res!(last).res.expect_non_local()
 }
 
 /// Convenience function to get the `DefId` of a trait by path.
@@ -833,12 +833,11 @@ pub fn capture_local_usage(cx: &LateContext<'tcx>, e: &Expr<'_>) -> CaptureKind 
         ExprKind::Path(QPath::Resolved(None, Path { res: Res::Local(_), .. }))
     ));
 
-    let map = cx.tcx.hir();
     let mut child_id = e.hir_id;
     let mut capture = CaptureKind::Value;
     let mut capture_expr_ty = e;
 
-    for (parent_id, parent) in map.parent_iter(e.hir_id) {
+    for (parent_id, parent) in cx.tcx.hir().parent_iter(e.hir_id) {
         if let [Adjustment {
             kind: Adjust::Deref(_) | Adjust::Borrow(AutoBorrow::Ref(..)),
             target,
@@ -1224,8 +1223,7 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
 
 /// Gets the loop or closure enclosing the given expression, if any.
 pub fn get_enclosing_loop_or_closure(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
-    let map = tcx.hir();
-    for (_, node) in map.parent_iter(expr.hir_id) {
+    for (_, node) in tcx.hir().parent_iter(expr.hir_id) {
         match node {
             Node::Expr(
                 e
@@ -1244,8 +1242,7 @@ pub fn get_enclosing_loop_or_closure(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Opti
 
 /// Gets the parent node if it's an impl block.
 pub fn get_parent_as_impl(tcx: TyCtxt<'_>, id: HirId) -> Option<&Impl<'_>> {
-    let map = tcx.hir();
-    match map.parent_iter(id).next() {
+    match tcx.hir().parent_iter(id).next() {
         Some((
             _,
             Node::Item(Item {
@@ -1259,8 +1256,7 @@ pub fn get_parent_as_impl(tcx: TyCtxt<'_>, id: HirId) -> Option<&Impl<'_>> {
 
 /// Checks if the given expression is the else clause of either an `if` or `if let` expression.
 pub fn is_else_clause(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
-    let map = tcx.hir();
-    let mut iter = map.parent_iter(expr.hir_id);
+    let mut iter = tcx.hir().parent_iter(expr.hir_id);
     match iter.next() {
         Some((
             _,
@@ -1794,9 +1790,8 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
 
 /// Gets the node where an expression is either used, or it's type is unified with another branch.
 pub fn get_expr_use_or_unification_node(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<Node<'tcx>> {
-    let map = tcx.hir();
     let mut child_id = expr.hir_id;
-    let mut iter = map.parent_iter(child_id);
+    let mut iter = tcx.hir().parent_iter(child_id);
     loop {
         match iter.next() {
             None => break None,

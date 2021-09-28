@@ -105,8 +105,7 @@ impl<'hir> IfLet<'hir> {
             if_else,
         ) = expr.kind
         {
-            let hir = cx.tcx.hir();
-            let mut iter = hir.parent_iter(expr.hir_id);
+            let mut iter = cx.tcx.hir().parent_iter(expr.hir_id);
             if let Some((_, Node::Block(Block { stmts: [], .. }))) = iter.next() {
                 if let Some((
                     _,
@@ -524,28 +523,12 @@ impl FormatArgsExpn<'tcx> {
             if let ExpnKind::Macro(_, name) = expr.span.ctxt().outer_expn_data().kind;
             let name = name.as_str();
             if name.ends_with("format_args") || name.ends_with("format_args_nl");
-
-            if let ExprKind::Match(inner_match, [arm], _) = expr.kind;
-
-            // `match match`, if you will
-            if let ExprKind::Match(args, [inner_arm], _) = inner_match.kind;
-            if let ExprKind::Tup(value_args) = args.kind;
-            if let Some(value_args) = value_args
-                .iter()
-                .map(|e| match e.kind {
-                    ExprKind::AddrOf(_, _, e) => Some(e),
-                    _ => None,
-                })
-                .collect();
-            if let ExprKind::Array(args) = inner_arm.body.kind;
-
-            if let ExprKind::Block(Block { stmts: [], expr: Some(expr), .. }, _) = arm.body.kind;
-            if let ExprKind::Call(_, call_args) = expr.kind;
-            if let Some((strs_ref, fmt_expr)) = match call_args {
+            if let ExprKind::Call(_, args) = expr.kind;
+            if let Some((strs_ref, args, fmt_expr)) = match args {
                 // Arguments::new_v1
-                [strs_ref, _] => Some((strs_ref, None)),
+                [strs_ref, args] => Some((strs_ref, args, None)),
                 // Arguments::new_v1_formatted
-                [strs_ref, _, fmt_expr] => Some((strs_ref, Some(fmt_expr))),
+                [strs_ref, args, fmt_expr, _unsafe_arg] => Some((strs_ref, args, Some(fmt_expr))),
                 _ => None,
             };
             if let ExprKind::AddrOf(BorrowKind::Ref, _, strs_arr) = strs_ref.kind;
@@ -561,6 +544,17 @@ impl FormatArgsExpn<'tcx> {
                     None
                 })
                 .collect();
+            if let ExprKind::AddrOf(BorrowKind::Ref, _, args) = args.kind;
+            if let ExprKind::Match(args, [arm], _) = args.kind;
+            if let ExprKind::Tup(value_args) = args.kind;
+            if let Some(value_args) = value_args
+                .iter()
+                .map(|e| match e.kind {
+                    ExprKind::AddrOf(_, _, e) => Some(e),
+                    _ => None,
+                })
+                .collect();
+            if let ExprKind::Array(args) = arm.body.kind;
             then {
                 Some(FormatArgsExpn {
                     format_string_span: strs_ref.span,

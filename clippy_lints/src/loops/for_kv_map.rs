@@ -10,13 +10,7 @@ use rustc_middle::ty;
 use rustc_span::sym;
 
 /// Checks for the `FOR_KV_MAP` lint.
-pub(super) fn check<'tcx>(
-    cx: &LateContext<'tcx>,
-    pat: &'tcx Pat<'_>,
-    arg: &'tcx Expr<'_>,
-    body: &'tcx Expr<'_>,
-    expr: &'tcx Expr<'_>,
-) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, arg: &'tcx Expr<'_>, body: &'tcx Expr<'_>) {
     let pat_span = pat.span;
 
     if let PatKind::Tuple(pat, _) = pat.kind {
@@ -43,7 +37,7 @@ pub(super) fn check<'tcx>(
                 span_lint_and_then(
                     cx,
                     FOR_KV_MAP,
-                    expr.span,
+                    arg_span,
                     &format!("you seem to want to iterate on a map's {}s", kind),
                     |diag| {
                         let map = sugg::Sugg::hir(cx, arg, "map");

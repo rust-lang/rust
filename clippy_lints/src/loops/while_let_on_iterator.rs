@@ -69,8 +69,6 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
 struct IterExpr {
     /// The span of the whole expression, not just the path and fields stored here.
     span: Span,
-    /// The HIR id of the whole expression, not just the path and fields stored here.
-    hir_id: HirId,
     /// The fields used, in order of child to parent.
     fields: Vec<Symbol>,
     /// The path being used.
@@ -81,14 +79,12 @@ struct IterExpr {
 /// the expression might have side effects.
 fn try_parse_iter_expr(cx: &LateContext<'_>, mut e: &Expr<'_>) -> Option<IterExpr> {
     let span = e.span;
-    let hir_id = e.hir_id;
     let mut fields = Vec::new();
     loop {
         match e.kind {
             ExprKind::Path(ref path) => {
                 break Some(IterExpr {
                     span,
-                    hir_id,
                     fields,
                     path: cx.qpath_res(path, e.hir_id),
                 });

@@ -472,7 +472,7 @@ fn emit_branches_sharing_code_lint(
 
         let mut span = moved_start.to(span_end);
         // Improve formatting if the inner block has indention (i.e. normal Rust formatting)
-        let test_span = Span::new(span.lo() - BytePos(4), span.lo(), span.ctxt());
+        let test_span = Span::new(span.lo() - BytePos(4), span.lo(), span.ctxt(), span.parent());
         if snippet_opt(cx, test_span)
             .map(|snip| snip == "    ")
             .unwrap_or_default()
