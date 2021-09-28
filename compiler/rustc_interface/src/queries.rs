@@ -135,7 +135,7 @@ impl<'tcx> Queries<'tcx> {
             let krate = self.parse()?.take();
 
             let empty: &(dyn Fn(&Session, &mut LintStore) + Sync + Send) = &|_, _| {};
-            let result = passes::register_plugins(
+            let (krate, lint_store) = passes::register_plugins(
                 self.session(),
                 &*self.codegen_backend().metadata_loader(),
                 self.compiler.register_lints.as_deref().unwrap_or_else(|| empty),
@@ -150,7 +150,7 @@ impl<'tcx> Queries<'tcx> {
             // called, which happens within passes::register_plugins().
             self.dep_graph_future().ok();
 
-            Ok(result)
+            Ok((krate, Lrc::new(lint_store)))
         })
     }
 
