@@ -7,18 +7,16 @@ use syntax::{
 pub fn expr_as_name_ref(expr: &ast::Expr) -> Option<ast::NameRef> {
     if let ast::Expr::PathExpr(expr) = expr {
         let path = expr.path()?;
-        let segment = path.segment()?;
-        let name_ref = segment.name_ref()?;
-        if path.qualifier().is_none() {
-            return Some(name_ref);
-        }
+        path.as_single_name_ref()
+    } else {
+        None
     }
-    None
 }
 
 pub fn block_as_lone_tail(block: &ast::BlockExpr) -> Option<ast::Expr> {
     block.statements().next().is_none().then(|| block.tail_expr()).flatten()
 }
+
 /// Preorder walk all the expression's child expressions.
 pub fn walk_expr(expr: &ast::Expr, cb: &mut dyn FnMut(ast::Expr)) {
     preorder_expr(expr, &mut |ev| {
