@@ -136,7 +136,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         fn_span: expr_span,
                     },
                 );
-                this.diverge_from(block);
+                // FIXME(nbdd0121): add this back when oom=panic is implemented.
+                // this.diverge_from(block);
                 block = success;
 
                 // The `Box<T>` temporary created here is not a part of the HIR,
