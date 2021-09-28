@@ -40,12 +40,12 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         global
     }
 
-    pub fn declare_func(&self, name: &str, return_type: Type<'gcc>, params: &[Type<'gcc>], variadic: bool) -> RValue<'gcc> {
+    /*pub fn declare_func(&self, name: &str, return_type: Type<'gcc>, params: &[Type<'gcc>], variadic: bool) -> RValue<'gcc> {
         self.linkage.set(FunctionType::Exported);
         let func = declare_raw_fn(self, name, () /*llvm::CCallConv*/, return_type, params, variadic);
         // FIXME(antoyo): this is a wrong cast. That requires changing the compiler API.
         unsafe { std::mem::transmute(func) }
-    }
+    }*/
 
     pub fn declare_global(&self, name: &str, ty: Type<'gcc>, is_tls: bool, link_section: Option<Symbol>) -> LValue<'gcc> {
         let global = self.context.new_global(None, GlobalKind::Exported, ty, name);

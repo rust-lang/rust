@@ -272,7 +272,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     use rustc_target::abi::Abi::*;
                     let tp_ty = substs.type_at(0);
                     let layout = self.layout_of(tp_ty).layout;
-                    let use_integer_compare = match layout.abi {
+                    let _use_integer_compare = match layout.abi {
                         Scalar(_) | ScalarPair(_, _) => true,
                         Uninhabited | Vector { .. } => false,
                         Aggregate { .. } => {
