@@ -689,14 +689,18 @@ public:
     if (shadowHandlers.find(orig->getCalledFunction()->getName().str()) !=
         shadowHandlers.end()) {
       bb.SetInsertPoint(placeholder);
-      Value *anti = shadowHandlers[orig->getCalledFunction()->getName().str()](
-          bb, orig, args);
+      Value *anti = placeholder;
 
-      invertedPointers.erase(found);
-      bb.SetInsertPoint(placeholder);
+      if (mode != DerivativeMode::ReverseModeGradient) {
+        anti = shadowHandlers[orig->getCalledFunction()->getName().str()](
+            bb, orig, args);
 
-      replaceAWithB(placeholder, anti);
-      erase(placeholder);
+        invertedPointers.erase(found);
+        bb.SetInsertPoint(placeholder);
+
+        replaceAWithB(placeholder, anti);
+        erase(placeholder);
+      }
 
       if (auto inst = dyn_cast<Instruction>(anti))
         bb.SetInsertPoint(inst);
