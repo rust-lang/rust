@@ -860,3 +860,33 @@ pub const settings: () = ();
         "#]],
     )
 }
+
+#[test]
+fn non_prelude_deps() {
+    check(
+        r#"
+//- /lib.rs crate:lib deps:dep extern-prelude:
+use dep::Struct;
+//- /dep.rs crate:dep
+pub struct Struct;
+        "#,
+        expect![[r#"
+            crate
+            Struct: _
+        "#]],
+    );
+    check(
+        r#"
+//- /lib.rs crate:lib deps:dep extern-prelude:
+extern crate dep;
+use dep::Struct;
+//- /dep.rs crate:dep
+pub struct Struct;
+        "#,
+        expect![[r#"
+            crate
+            Struct: t v
+            dep: t
+        "#]],
+    );
+}

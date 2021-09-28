@@ -5,7 +5,9 @@
 use std::{collections::VecDeque, convert::TryFrom, fmt, fs, process::Command};
 
 use anyhow::{format_err, Context, Result};
-use base_db::{CrateDisplayName, CrateGraph, CrateId, CrateName, Edition, Env, FileId, ProcMacro};
+use base_db::{
+    CrateDisplayName, CrateGraph, CrateId, CrateName, Dependency, Edition, Env, FileId, ProcMacro,
+};
 use cfg::{CfgDiff, CfgOptions};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -468,9 +470,7 @@ fn project_json_to_crate_graph(
     for (from, krate) in project.crates() {
         if let Some(&from) = crates.get(&from) {
             if let Some((public_deps, libproc_macro)) = &sysroot_deps {
-                for (name, to) in public_deps.iter() {
-                    add_dep(&mut crate_graph, from, name.clone(), *to)
-                }
+                public_deps.add(from, &mut crate_graph);
                 if krate.is_proc_macro {
                     if let Some(proc_macro) = libproc_macro {
                         add_dep(
@@ -507,7 +507,7 @@ fn cargo_to_crate_graph(
     let mut crate_graph = CrateGraph::default();
     let (public_deps, libproc_macro) = match sysroot {
         Some(sysroot) => sysroot_to_crate_graph(&mut crate_graph, sysroot, rustc_cfg.clone(), load),
-        None => (Vec::new(), None),
+        None => (SysrootPublicDeps::default(), None),
     };
 
     let mut cfg_options = CfgOptions::default();
@@ -588,9 +588,7 @@ fn cargo_to_crate_graph(
                     add_dep(&mut crate_graph, *from, name, to);
                 }
             }
-            for (name, krate) in public_deps.iter() {
-                add_dep(&mut crate_graph, *from, name.clone(), *krate);
-            }
+            public_deps.add(*from, &mut crate_graph);
         }
     }
 
@@ -672,9 +670,7 @@ fn detached_files_to_crate_graph(
             Vec::new(),
         );
 
-        for (name, krate) in public_deps.iter() {
-            add_dep(&mut crate_graph, detached_file_crate, name.clone(), *krate);
-        }
+        public_deps.add(detached_file_crate, &mut crate_graph);
     }
     crate_graph
 }
@@ -686,7 +682,7 @@ fn handle_rustc_crates(
     cfg_options: &CfgOptions,
     load_proc_macro: &mut dyn FnMut(&AbsPath) -> Vec<ProcMacro>,
     pkg_to_lib_crate: &mut FxHashMap<la_arena::Idx<crate::PackageData>, CrateId>,
-    public_deps: &[(CrateName, CrateId)],
+    public_deps: &SysrootPublicDeps,
     cargo: &CargoWorkspace,
     pkg_crates: &FxHashMap<la_arena::Idx<crate::PackageData>, Vec<(CrateId, TargetKind)>>,
 ) {
@@ -726,9 +722,7 @@ fn handle_rustc_crates(
                     );
                     pkg_to_lib_crate.insert(pkg, crate_id);
                     // Add dependencies on core / std / alloc for this crate
-                    for (name, krate) in public_deps.iter() {
-                        add_dep(crate_graph, crate_id, name.clone(), *krate);
-                    }
+                    public_deps.add(crate_id, crate_graph);
                     rustc_pkg_crates.entry(pkg).or_insert_with(Vec::new).push(crate_id);
                 }
             }
@@ -826,12 +820,26 @@ fn add_target_crate_root(
     )
 }
 
+#[derive(Default)]
+struct SysrootPublicDeps {
+    deps: Vec<(CrateName, CrateId, bool)>,
+}
+
+impl SysrootPublicDeps {
+    /// Makes `from` depend on the public sysroot crates.
+    fn add(&self, from: CrateId, crate_graph: &mut CrateGraph) {
+        for (name, krate, prelude) in &self.deps {
+            add_dep_with_prelude(crate_graph, from, name.clone(), *krate, *prelude);
+        }
+    }
+}
+
 fn sysroot_to_crate_graph(
     crate_graph: &mut CrateGraph,
     sysroot: &Sysroot,
     rustc_cfg: Vec<CfgFlag>,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
-) -> (Vec<(CrateName, CrateId)>, Option<CrateId>) {
+) -> (SysrootPublicDeps, Option<CrateId>) {
     let _p = profile::span("sysroot_to_crate_graph");
     let mut cfg_options = CfgOptions::default();
     cfg_options.extend(rustc_cfg);
@@ -865,17 +873,35 @@ fn sysroot_to_crate_graph(
         }
     }
 
-    let public_deps = sysroot
-        .public_deps()
-        .map(|(name, idx)| (CrateName::new(name).unwrap(), sysroot_crates[&idx]))
-        .collect::<Vec<_>>();
+    let public_deps = SysrootPublicDeps {
+        deps: sysroot
+            .public_deps()
+            .map(|(name, idx, prelude)| {
+                (CrateName::new(name).unwrap(), sysroot_crates[&idx], prelude)
+            })
+            .collect::<Vec<_>>(),
+    };
 
     let libproc_macro = sysroot.proc_macro().and_then(|it| sysroot_crates.get(&it).copied());
     (public_deps, libproc_macro)
 }
 
 fn add_dep(graph: &mut CrateGraph, from: CrateId, name: CrateName, to: CrateId) {
-    if let Err(err) = graph.add_dep(from, name, to) {
+    add_dep_inner(graph, from, Dependency::new(name, to))
+}
+
+fn add_dep_with_prelude(
+    graph: &mut CrateGraph,
+    from: CrateId,
+    name: CrateName,
+    to: CrateId,
+    prelude: bool,
+) {
+    add_dep_inner(graph, from, Dependency::with_prelude(name, to, prelude))
+}
+
+fn add_dep_inner(graph: &mut CrateGraph, from: CrateId, dep: Dependency) {
+    if let Err(err) = graph.add_dep(from, dep) {
         tracing::error!("{}", err)
     }
 }

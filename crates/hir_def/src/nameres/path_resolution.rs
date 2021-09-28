@@ -11,7 +11,6 @@
 //! `ReachedFixedPoint` signals about this.
 
 use base_db::Edition;
-use hir_expand::name;
 use hir_expand::name::Name;
 
 use crate::{
@@ -65,11 +64,6 @@ impl DefMap {
         db: &dyn DefDatabase,
         name: &Name,
     ) -> PerNs {
-        if name == &name!(self) {
-            cov_mark::hit!(extern_crate_self_as);
-            return PerNs::types(self.module_id(self.root).into(), Visibility::Public);
-        }
-
         let arc;
         let root = match self.block {
             Some(_) => {

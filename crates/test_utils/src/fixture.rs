@@ -70,6 +70,7 @@ pub struct Fixture {
     pub text: String,
     pub krate: Option<String>,
     pub deps: Vec<String>,
+    pub extern_prelude: Option<Vec<String>>,
     pub cfg_atoms: Vec<String>,
     pub cfg_key_values: Vec<(String, String)>,
     pub edition: Option<String>,
@@ -171,6 +172,7 @@ impl Fixture {
 
         let mut krate = None;
         let mut deps = Vec::new();
+        let mut extern_prelude = None;
         let mut edition = None;
         let mut cfg_atoms = Vec::new();
         let mut cfg_key_values = Vec::new();
@@ -183,6 +185,14 @@ impl Fixture {
             match key {
                 "crate" => krate = Some(value.to_string()),
                 "deps" => deps = value.split(',').map(|it| it.to_string()).collect(),
+                "extern-prelude" => {
+                    if value.is_empty() {
+                        extern_prelude = Some(Vec::new());
+                    } else {
+                        extern_prelude =
+                            Some(value.split(',').map(|it| it.to_string()).collect::<Vec<_>>());
+                    }
+                }
                 "edition" => edition = Some(value.to_string()),
                 "cfg" => {
                     for entry in value.split(',') {
@@ -204,11 +214,21 @@ impl Fixture {
             }
         }
 
+        for prelude_dep in extern_prelude.iter().flatten() {
+            assert!(
+                deps.contains(prelude_dep),
+                "extern-prelude {:?} must be a subset of deps {:?}",
+                extern_prelude,
+                deps
+            );
+        }
+
         Fixture {
             path,
             text: String::new(),
             krate,
             deps,
+            extern_prelude,
             cfg_atoms,
             cfg_key_values,
             edition,
