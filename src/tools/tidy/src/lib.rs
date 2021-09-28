@@ -57,6 +57,7 @@ fn filter_dirs(path: &Path) -> bool {
     let skip = [
         "tidy-test-file",
         "compiler/rustc_codegen_cranelift",
+        "compiler/rustc_codegen_gcc",
         "src/llvm-project",
         "library/backtrace",
         "library/stdarch",
