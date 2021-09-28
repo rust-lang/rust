@@ -451,6 +451,35 @@ impl ast::RecordExprFieldList {
     }
 }
 
+impl ast::RecordExprField {
+    /// This will either replace the initializer, or in the case that this is a shorthand convert
+    /// the initializer into the name ref and insert the expr as the new initializer.
+    pub fn replace_expr(&self, expr: ast::Expr) {
+        if let Some(_) = self.name_ref() {
+            match self.expr() {
+                Some(prev) => ted::replace(prev.syntax(), expr.syntax()),
+                None => ted::append_child(self.syntax(), expr.syntax()),
+            }
+            return;
+        }
+        // this is a shorthand
+        if let Some(ast::Expr::PathExpr(path_expr)) = self.expr() {
+            if let Some(path) = path_expr.path() {
+                if let Some(name_ref) = path.as_single_name_ref() {
+                    path_expr.syntax().detach();
+                    let children = vec![
+                        name_ref.syntax().clone().into(),
+                        ast::make::token(T![:]).into(),
+                        ast::make::tokens::single_space().into(),
+                        expr.syntax().clone().into(),
+                    ];
+                    ted::insert_all_raw(Position::last_child_of(self.syntax()), children);
+                }
+            }
+        }
+    }
+}
+
 impl ast::StmtList {
     pub fn push_front(&self, statement: ast::Stmt) {
         ted::insert(Position::after(self.l_curly_token().unwrap()), statement.syntax());

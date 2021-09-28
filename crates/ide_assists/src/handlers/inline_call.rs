@@ -4,14 +4,14 @@ use hir::{db::HirDatabase, HasSource, PathResolution, Semantics, TypeInfo};
 use ide_db::{
     base_db::{FileId, FileRange},
     defs::Definition,
-    helpers::insert_use::remove_path_if_in_use_stmt,
+    helpers::{insert_use::remove_path_if_in_use_stmt, node_ext::expr_as_name_ref},
     path_transform::PathTransform,
     search::{FileReference, SearchScope},
     RootDatabase,
 };
 use itertools::{izip, Itertools};
 use syntax::{
-    ast::{self, edit_in_place::Indent, HasArgList},
+    ast::{self, edit_in_place::Indent, HasArgList, PathExpr},
     ted, AstNode, SyntaxNode,
 };
 
@@ -359,11 +359,17 @@ fn inline(
     }
     // Inline parameter expressions or generate `let` statements depending on whether inlining works or not.
     for ((pat, param_ty, _), usages, expr) in izip!(params, param_use_nodes, arguments).rev() {
-        let expr_is_name_ref = matches!(&expr,
-            ast::Expr::PathExpr(expr)
-                if expr.path().and_then(|path| path.as_single_name_ref()).is_some()
-        );
-        match &*usages {
+        let inline_direct = |usage, replacement: &ast::Expr| {
+            if let Some(field) = path_expr_as_record_field(usage) {
+                cov_mark::hit!(inline_call_inline_direct_field);
+                field.replace_expr(replacement.clone_for_update());
+            } else {
+                ted::replace(usage.syntax(), &replacement.syntax().clone_for_update());
+            }
+        };
+        // izip confuses RA due to our lack of hygiene info currently losing us typeinfo
+        let usages: &[ast::PathExpr] = &*usages;
+        match usages {
             // inline single use closure arguments
             [usage]
                 if matches!(expr, ast::Expr::ClosureExpr(_))
@@ -371,21 +377,19 @@ fn inline(
             {
                 cov_mark::hit!(inline_call_inline_closure);
                 let expr = make::expr_paren(expr.clone());
-                ted::replace(usage.syntax(), expr.syntax().clone_for_update());
+                inline_direct(usage, &expr);
             }
             // inline single use literals
             [usage] if matches!(expr, ast::Expr::Literal(_)) => {
                 cov_mark::hit!(inline_call_inline_literal);
-                ted::replace(usage.syntax(), expr.syntax().clone_for_update());
+                inline_direct(usage, &expr);
             }
             // inline direct local arguments
-            [_, ..] if expr_is_name_ref => {
+            [_, ..] if expr_as_name_ref(&expr).is_some() => {
                 cov_mark::hit!(inline_call_inline_locals);
-                usages.into_iter().for_each(|usage| {
-                    ted::replace(usage.syntax(), &expr.syntax().clone_for_update());
-                });
+                usages.into_iter().for_each(|usage| inline_direct(usage, &expr));
             }
-            // cant inline, emit a let statement
+            // can't inline, emit a let statement
             _ => {
                 let ty =
                     sema.type_of_expr(expr).filter(TypeInfo::has_adjustment).and(param_ty.clone());
@@ -419,6 +423,12 @@ fn inline(
         Some(expr) if body.statements().next().is_none() => expr,
         _ => ast::Expr::BlockExpr(body),
     }
+}
+
+fn path_expr_as_record_field(usage: &PathExpr) -> Option<ast::RecordExprField> {
+    let path = usage.path()?;
+    let name_ref = path.as_single_name_ref()?;
+    ast::RecordExprField::for_name_ref(&name_ref)
 }
 
 #[cfg(test)]
@@ -1021,6 +1031,61 @@ fn foo$0() {
             r#"
 fn foo() {
     foo$0();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn inline_call_field_shorthand() {
+        cov_mark::check!(inline_call_inline_direct_field);
+        check_assist(
+            inline_call,
+            r#"
+struct Foo {
+    field: u32,
+    field1: u32,
+    field2: u32,
+    field3: u32,
+}
+fn foo(field: u32, field1: u32, val2: u32, val3: u32) -> Foo {
+    Foo {
+        field,
+        field1,
+        field2: val2,
+        field3: val3,
+    }
+}
+fn main() {
+    let bar = 0;
+    let baz = 0;
+    foo$0(bar, 0, baz, 0);
+}
+"#,
+            r#"
+struct Foo {
+    field: u32,
+    field1: u32,
+    field2: u32,
+    field3: u32,
+}
+fn foo(field: u32, field1: u32, val2: u32, val3: u32) -> Foo {
+    Foo {
+        field,
+        field1,
+        field2: val2,
+        field3: val3,
+    }
+}
+fn main() {
+    let bar = 0;
+    let baz = 0;
+    Foo {
+            field: bar,
+            field1: 0,
+            field2: baz,
+            field3: 0,
+        };
 }
 "#,
         );
