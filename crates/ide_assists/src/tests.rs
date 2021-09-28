@@ -169,7 +169,7 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
                 let sr = db.source_root(sr);
                 let mut base = sr.path_for_file(&dst.anchor).unwrap().clone();
                 base.pop();
-                let created_file_path = format!("{}{}", base.to_string(), &dst.path[1..]);
+                let created_file_path = base.join(&dst.path).unwrap();
                 format_to!(buf, "//- {}\n", created_file_path);
                 buf.push_str(&contents);
             }
