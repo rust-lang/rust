@@ -1,3 +1,4 @@
+use crate::TargetSelection;
 use crate::{t, VERSION};
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
@@ -107,6 +108,17 @@ pub fn setup(src_path: &Path, profile: Profile) {
     let include_path = profile.include_path(src_path);
     println!("`x.py` will now use the configuration at {}", include_path.display());
 
+    let build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
+    let stage_path = ["build", build.rustc_target_arg(), "stage1"].join("/");
+
+    println!();
+
+    if !rustup_installed() && profile != Profile::User {
+        println!("`rustup` is not installed; cannot link `stage1` toolchain");
+    } else if stage_dir_exists(&stage_path[..]) {
+        attempt_toolchain_link(&stage_path[..]);
+    }
+
     let suggestions = match profile {
         Profile::Codegen | Profile::Compiler => &["check", "build", "test"][..],
         Profile::Tools => &[
@@ -137,6 +149,74 @@ pub fn setup(src_path: &Path, profile: Profile) {
             "For more suggestions, see https://rustc-dev-guide.rust-lang.org/building/suggested.html"
         );
     }
+}
+
+fn rustup_installed() -> bool {
+    Command::new("rustup")
+        .arg("--version")
+        .stdout(std::process::Stdio::null())
+        .output()
+        .map_or(false, |output| output.status.success())
+}
+
+fn stage_dir_exists(stage_path: &str) -> bool {
+    match fs::create_dir(&stage_path[..]) {
+        Ok(_) => true,
+        Err(_) => Path::new(&stage_path[..]).exists(),
+    }
+}
+
+fn attempt_toolchain_link(stage_path: &str) {
+    if toolchain_is_linked() {
+        return;
+    }
+
+    if try_link_toolchain(&stage_path[..]) {
+        println!(
+            "Added `stage1` rustup toolchain; try `cargo +stage1 build` on a separate rust project to run a newly-built toolchain"
+        );
+    } else {
+        println!("`rustup` failed to link stage 1 build to `stage1` toolchain");
+        println!(
+            "To manually link stage 1 build to `stage1` toolchain, run:\n
+            `rustup toolchain link stage1 {}`",
+            &stage_path[..]
+        );
+    }
+}
+
+fn toolchain_is_linked() -> bool {
+    match Command::new("rustup")
+        .args(&["toolchain", "list"])
+        .stdout(std::process::Stdio::piped())
+        .output()
+    {
+        Ok(toolchain_list) => {
+            if !String::from_utf8_lossy(&toolchain_list.stdout).contains("stage1") {
+                return false;
+            }
+            // The toolchain has already been linked.
+            println!(
+                "`stage1` toolchain already linked; not attempting to link `stage1` toolchain"
+            );
+        }
+        Err(_) => {
+            // In this case, we don't know if the `stage1` toolchain has been linked;
+            // but `rustup` failed, so let's not go any further.
+            println!(
+                "`rustup` failed to list current toolchains; not attempting to link `stage1` toolchain"
+            );
+        }
+    }
+    true
+}
+
+fn try_link_toolchain(stage_path: &str) -> bool {
+    Command::new("rustup")
+        .stdout(std::process::Stdio::null())
+        .args(&["toolchain", "link", "stage1", &stage_path[..]])
+        .output()
+        .map_or(false, |output| output.status.success())
 }
 
 // Used to get the path for `Subcommand::Setup`
