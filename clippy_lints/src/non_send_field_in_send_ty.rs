@@ -12,31 +12,34 @@ declare_clippy_lint! {
     /// Warns about a field in a `Send` struct that is neither `Send` nor `Copy`.
     ///
     /// ### Why is this bad?
-    /// Sending the struct to another thread and drops it there will also drop
-    /// the field in the new thread. This effectively changes the ownership of
-    /// the field type to the new thread and creates a soundness issue by
-    /// breaking the non-`Send` invariant.
+    /// Sending the struct to another thread will transfer the ownership to
+    /// the new thread by dropping in the current thread during the transfer.
+    /// This causes soundness issues for non-`Send` fields, as they are also
+    /// dropped and might not be set up to handle this.
+    ///
+    /// See:
+    /// * [*The Rustonomicon* about *Send and Sync*](https://doc.rust-lang.org/nomicon/send-and-sync.html)
+    /// * [The documentation of `Send`](https://doc.rust-lang.org/std/marker/trait.Send.html)
     ///
     /// ### Known Problems
     /// Data structures that contain raw pointers may cause false positives.
     /// They are sometimes safe to be sent across threads but do not implement
     /// the `Send` trait. This lint has a heuristic to filter out basic cases
-    /// such as `Vec<*const T>`, but it's not perfect.
+    /// such as `Vec<*const T>`, but it's not perfect. Feel free to create an
+    /// issue if you have a suggestion on how this heuristic can be improved.
     ///
     /// ### Example
-    /// ```rust
-    /// use std::sync::Arc;
-    ///
-    /// // There is no `RC: Send` bound here
-    /// unsafe impl<RC, T: Send> Send for ArcGuard<RC, T> {}
-    ///
-    /// #[derive(Debug, Clone)]
-    /// pub struct ArcGuard<RC, T> {
-    ///     inner: T,
-    ///     // Possibly drops `Arc<RC>` (and in turn `RC`) on a wrong thread
-    ///     head: Arc<RC>
+    /// ```rust,ignore
+    /// struct ExampleStruct<T> {
+    ///     rc_is_not_send: Rc<String>,
+    ///     unbounded_generic_field: T,
     /// }
+    ///
+    /// // This impl is unsound because it allows sending `!Send` types through `ExampleStruct`
+    /// unsafe impl<T> Send for ExampleStruct<T> {}
     /// ```
+    /// Use thread-safe types like [`std::sync::Arc`](https://doc.rust-lang.org/std/sync/struct.Arc.html)
+    /// and specify correct bounds on generic type parameters (`T: Send`).
     pub NON_SEND_FIELD_IN_SEND_TY,
     nursery,
     "there is field that does not implement `Send` in a `Send` struct"
