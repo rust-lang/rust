@@ -19,6 +19,7 @@ ignore = [
     "library/backtrace",
     "library/stdarch",
     "compiler/rustc_codegen_cranelift",
+    "compiler/rustc_codegen_gcc",
     "src/doc/book",
     "src/doc/edition-guide",
     "src/doc/embedded-book",

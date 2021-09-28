@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install packages
+      run: sudo apt-get install ninja-build ripgrep
+
+    - name: Download artifact
+      uses: dawidd6/action-download-artifact@v2
+      with:
+          workflow: main.yml
+          name: libgccjit.so
+          path: gcc-build
+          repo: antoyo/gcc
+
+    - name: Setup path to libgccjit
+      run: |
+          echo $(readlink -f gcc-build) > gcc_path
+          ln gcc-build/libgccjit.so gcc-build/libgccjit.so.0
+
+    - name: Set LIBRARY_PATH
+      run: |
+        echo "LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
+
+    # https://github.com/actions/cache/issues/133
+    - name: Fixup owner of ~/.cargo/
+      # Don't remove the trailing /. It is necessary to follow the symlink.
+      run: sudo chown -R $(whoami):$(id -ng) ~/.cargo/
+
+    - name: Cache cargo installed crates
+      uses: actions/cache@v1.1.2
+      with:
+        path: ~/.cargo/bin
+        key: cargo-installed-crates2-ubuntu-latest
+
+    - name: Cache cargo registry
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry2-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache cargo index
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache cargo target dir
+      uses: actions/cache@v1.1.2
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain') }}
+
+    - name: Build
+      run: |
+        ./prepare_build.sh
+        ./build.sh
+        cargo test
+        ./clean_all.sh
+
+    - name: Prepare dependencies
+      run: |
+        git config --global user.email "user@example.com"
+        git config --global user.name "User"
+        ./prepare.sh
+
+    # Compile is a separate step, as the actions-rs/cargo action supports error annotations
+    - name: Compile
+      uses: actions-rs/cargo@v1.0.3
+      with:
+        command: build
+        args: --release
+
+    - name: Test
+      run: |
+        # Enable backtraces for easier debugging
+        export RUST_BACKTRACE=1
+
+        # Reduce amount of benchmark runs as they are slow
+        export COMPILE_RUNS=2
+        export RUN_RUNS=2
+
+        ./test.sh --release

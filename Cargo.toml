@@ -41,6 +41,7 @@ members = [
 exclude = [
   "build",
   "compiler/rustc_codegen_cranelift",
+  "compiler/rustc_codegen_gcc",
   "src/test/rustdoc-gui",
   # HACK(eddyb) This hardcodes the fact that our CI uses `/checkout/obj`.
   "obj",
