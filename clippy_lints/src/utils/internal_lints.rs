@@ -892,7 +892,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
                 }).collect();
             if !check_path(cx, &path[..]);
             then {
-                span_lint(cx, CLIPPY_LINTS_INTERNAL, item.span, "invalid path");
+                span_lint(cx, INVALID_PATHS, item.span, "invalid path");
             }
         }
     }
