@@ -108,6 +108,7 @@ pub use core::time::FromSecsError;
 /// | UNIX      | [clock_gettime (Monotonic Clock)]                                    |
 /// | Darwin    | [mach_absolute_time]                                                 |
 /// | VXWorks   | [clock_gettime (Monotonic Clock)]                                    |
+/// | SOLID     | `get_tim`                                                            |
 /// | WASI      | [__wasi_clock_time_get (Monotonic Clock)]                            |
 /// | Windows   | [QueryPerformanceCounter]                                            |
 ///
@@ -184,6 +185,7 @@ pub struct Instant(time::Instant);
 /// | UNIX      | [clock_gettime (Realtime Clock)]                                     |
 /// | Darwin    | [gettimeofday]                                                       |
 /// | VXWorks   | [clock_gettime (Realtime Clock)]                                     |
+/// | SOLID     | `SOLID_RTC_ReadTime`                                                 |
 /// | WASI      | [__wasi_clock_time_get (Realtime Clock)]                             |
 /// | Windows   | [GetSystemTimePreciseAsFileTime] / [GetSystemTimeAsFileTime]         |
 ///

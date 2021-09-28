@@ -31,6 +31,9 @@ cfg_if::cfg_if! {
     } else if #[cfg(windows)] {
         mod windows;
         pub use self::windows::*;
+    } else if #[cfg(target_os = "solid_asp3")] {
+        mod solid;
+        pub use self::solid::*;
     } else if #[cfg(target_os = "hermit")] {
         mod hermit;
         pub use self::hermit::*;
