@@ -302,6 +302,7 @@ pub trait SignType<'gcc, 'tcx> {
     fn is_signed(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
     fn is_unsigned(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
     fn to_signed(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
+    fn to_unsigned(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
 }
 
 impl<'gcc, 'tcx> SignType<'gcc, 'tcx> for Type<'gcc> {
@@ -328,6 +329,27 @@ impl<'gcc, 'tcx> SignType<'gcc, 'tcx> for Type<'gcc> {
         }
         else if self.is_u128(cx) {
             cx.i128_type
+        }
+        else {
+            self.clone()
+        }
+    }
+
+    fn to_unsigned(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc> {
+        if self.is_i8(cx) {
+            cx.u8_type
+        }
+        else if self.is_i16(cx) {
+            cx.u16_type
+        }
+        else if self.is_i32(cx) {
+            cx.u32_type
+        }
+        else if self.is_i64(cx) {
+            cx.u64_type
+        }
+        else if self.is_i128(cx) {
+            cx.u128_type
         }
         else {
             self.clone()
