@@ -124,7 +124,22 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             ty::ReVar(vid) => {
                 // Find something that we can name
                 let upper_bound = self.approx_universal_upper_bound(vid);
-                self.definitions[upper_bound].external_name.unwrap_or(region)
+                let upper_bound = &self.definitions[upper_bound];
+                match upper_bound.external_name {
+                    Some(reg) => reg,
+                    None => {
+                        // Nothing exact found, so we pick the first one that we find.
+                        let scc = self.constraint_sccs.scc(vid);
+                        for vid in self.rev_scc_graph.as_ref().unwrap().upper_bounds(scc) {
+                            match self.definitions[vid].external_name {
+                                None => {}
+                                Some(&ty::ReStatic) => {}
+                                Some(region) => return region,
+                            }
+                        }
+                        region
+                    }
+                }
             }
             _ => region,
         })
