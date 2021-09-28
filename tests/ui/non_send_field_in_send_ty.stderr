@@ -115,44 +115,57 @@ LL |     vec: Vec<(A, B)>,
    |     ^^^^^^^^^^^^^^^^
    = help: add bounds on type parameters `A, B` that satisfy `std::vec::Vec<(A, B)>: Send`
 
+error: this implementation is unsound, as some fields in `HeuristicTest` are `!Send`
+  --> $DIR/non_send_field_in_send_ty.rs:95:1
+   |
+LL | unsafe impl Send for HeuristicTest {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the field `field4` has type `(*const NonSend, std::rc::Rc<u8>)` which is not `Send`
+  --> $DIR/non_send_field_in_send_ty.rs:90:5
+   |
+LL |     field4: (*const NonSend, Rc<u8>),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use a thread-safe type that implements `Send`
+
 error: this implementation is unsound, as some fields in `AttrTest3<T>` are `!Send`
-  --> $DIR/non_send_field_in_send_ty.rs:107:1
+  --> $DIR/non_send_field_in_send_ty.rs:114:1
    |
 LL | unsafe impl<T> Send for AttrTest3<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the field `0` has type `T` which is not `Send`
-  --> $DIR/non_send_field_in_send_ty.rs:102:11
+  --> $DIR/non_send_field_in_send_ty.rs:109:11
    |
 LL |     Enum2(T),
    |           ^
    = help: add `T: Send` bound in `Send` impl
 
 error: this implementation is unsound, as some fields in `Complex<P, u32>` are `!Send`
-  --> $DIR/non_send_field_in_send_ty.rs:115:1
+  --> $DIR/non_send_field_in_send_ty.rs:122:1
    |
 LL | unsafe impl<P> Send for Complex<P, u32> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the field `field1` has type `P` which is not `Send`
-  --> $DIR/non_send_field_in_send_ty.rs:111:5
+  --> $DIR/non_send_field_in_send_ty.rs:118:5
    |
 LL |     field1: A,
    |     ^^^^^^^^^
    = help: add `P: Send` bound in `Send` impl
 
 error: this implementation is unsound, as some fields in `Complex<Q, std::sync::MutexGuard<'static, bool>>` are `!Send`
-  --> $DIR/non_send_field_in_send_ty.rs:118:1
+  --> $DIR/non_send_field_in_send_ty.rs:125:1
    |
 LL | unsafe impl<Q: Send> Send for Complex<Q, MutexGuard<'static, bool>> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the field `field2` has type `std::sync::MutexGuard<'static, bool>` which is not `Send`
-  --> $DIR/non_send_field_in_send_ty.rs:112:5
+  --> $DIR/non_send_field_in_send_ty.rs:119:5
    |
 LL |     field2: B,
    |     ^^^^^^^^^
    = help: use a thread-safe type that implements `Send`
 
-error: aborting due to 11 previous errors
+error: aborting due to 12 previous errors
 

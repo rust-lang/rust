@@ -121,7 +121,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                                 };
                             }
                         },
-                    )
+                    );
                 }
             }
         }
@@ -145,6 +145,8 @@ impl<'tcx> NonSendField<'tcx> {
     }
 }
 
+/// Given a type, collect all of its generic parameters.
+/// Example: MyStruct<P, Box<Q, R>> => vec![P, Q, R]
 fn collect_generic_params<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Vec<Ty<'tcx>> {
     ty.walk(cx.tcx)
         .filter_map(|inner| match inner.unpack() {
@@ -155,14 +157,47 @@ fn collect_generic_params<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Vec<Ty<
         .collect()
 }
 
-fn ty_allowed_in_send<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, send_trait: DefId) -> bool {
-    raw_pointer_in_ty_def(cx, ty) || implements_trait(cx, ty, send_trait, &[]) || is_copy(cx, ty)
+/// Determine if the given type is allowed in an ADT that implements `Send`
+fn ty_allowed_in_send(cx: &LateContext<'tcx>, ty: Ty<'tcx>, send_trait: DefId) -> bool {
+    // TODO: check configuration and call `ty_implements_send_or_copy()` or
+    // `ty_allowed_with_raw_pointer_heuristic()`
+    ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait)
 }
 
-/// Returns `true` if the type itself is a raw pointer or has a raw pointer as a
-/// generic parameter, e.g., `Vec<*const u8>`.
-/// Note that it does not look into enum variants or struct fields.
-fn raw_pointer_in_ty_def<'tcx>(cx: &LateContext<'tcx>, target_ty: Ty<'tcx>) -> bool {
+/// Determine if the given type is `Send` or `Copy`
+fn ty_implements_send_or_copy(cx: &LateContext<'tcx>, ty: Ty<'tcx>, send_trait: DefId) -> bool {
+    implements_trait(cx, ty, send_trait, &[]) || is_copy(cx, ty)
+}
+
+/// Heuristic to allow cases like `Vec<*const u8>`
+fn ty_allowed_with_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, send_trait: DefId) -> bool {
+    if ty_implements_send_or_copy(cx, ty, send_trait) {
+        true
+    } else {
+        // The type is known to be `!Send` and `!Copy`
+        match ty.kind() {
+            ty::Tuple(_) => ty
+                .tuple_fields()
+                .all(|ty| ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait)),
+            ty::Array(ty, _) | ty::Slice(ty) => ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait),
+            ty::Adt(_, substs) => {
+                if contains_raw_pointer(cx, ty) {
+                    // descends only if ADT contains any raw pointers
+                    substs.iter().all(|generic_arg| match generic_arg.unpack() {
+                        GenericArgKind::Type(ty) => ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait),
+                        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => true,
+                    })
+                } else {
+                    false
+                }
+            },
+            ty::RawPtr(_) => true,
+            _ => false,
+        }
+    }
+}
+
+fn contains_raw_pointer<'tcx>(cx: &LateContext<'tcx>, target_ty: Ty<'tcx>) -> bool {
     for ty_node in target_ty.walk(cx.tcx) {
         if_chain! {
             if let GenericArgKind::Type(inner_ty) = ty_node.unpack();

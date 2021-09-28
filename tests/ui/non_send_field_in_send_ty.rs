@@ -76,16 +76,23 @@ pub struct MultiParam<A, B> {
 
 unsafe impl<A, B> Send for MultiParam<A, B> {}
 
-// Raw pointers are allowed
+// Tests for raw pointer heuristic
 extern "C" {
-    type SomeFfiType;
+    type NonSend;
 }
 
-pub struct FpTest {
-    vec: Vec<*const SomeFfiType>,
+pub struct HeuristicTest {
+    // raw pointers are allowed
+    field1: Vec<*const NonSend>,
+    field2: [*const NonSend; 3],
+    field3: (*const NonSend, *const NonSend, *const NonSend),
+    // not allowed when it contains concrete `!Send` field
+    field4: (*const NonSend, Rc<u8>),
+    // nested raw pointer is also allowed
+    field5: Vec<Vec<*const NonSend>>,
 }
 
-unsafe impl Send for FpTest {}
+unsafe impl Send for HeuristicTest {}
 
 // Test attributes
 #[allow(clippy::non_send_field_in_send_ty)]
