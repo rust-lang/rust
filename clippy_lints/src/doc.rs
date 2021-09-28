@@ -242,7 +242,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                         cx,
                         MISSING_SAFETY_DOC,
                         item.span,
-                        "unsafe trait's docs miss `# Safety` section",
+                        "docs for unsafe trait missing `# Safety` section",
                     );
                 }
             },

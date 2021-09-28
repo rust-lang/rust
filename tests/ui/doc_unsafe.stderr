@@ -22,7 +22,7 @@ error: unsafe function's docs miss `# Safety` section
 LL |     unsafe fn woefully_underdocumented(self);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: unsafe trait's docs miss `# Safety` section
+error: docs for unsafe trait missing `# Safety` section
   --> $DIR/doc_unsafe.rs:44:1
    |
 LL | / pub unsafe trait UnsafeTrait {
