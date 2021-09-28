@@ -19,7 +19,7 @@ struct AsmArgs {
     operands: Vec<(ast::InlineAsmOperand, Span)>,
     named_args: FxHashMap<Symbol, usize>,
     reg_args: FxHashSet<usize>,
-    clobber_abi: Option<(Symbol, Span)>,
+    clobber_abis: Vec<(Symbol, Span)>,
     options: ast::InlineAsmOptions,
     options_spans: Vec<Span>,
 }
@@ -64,7 +64,7 @@ fn parse_args<'a>(
         operands: vec![],
         named_args: FxHashMap::default(),
         reg_args: FxHashSet::default(),
-        clobber_abi: None,
+        clobber_abis: Vec::new(),
         options: ast::InlineAsmOptions::empty(),
         options_spans: vec![],
     };
@@ -210,7 +210,7 @@ fn parse_args<'a>(
                 .span_labels(args.options_spans.clone(), "previous options")
                 .span_label(span, "argument")
                 .emit();
-        } else if let Some((_, abi_span)) = args.clobber_abi {
+        } else if let Some(&(_, abi_span)) = args.clobber_abis.last() {
             ecx.struct_span_err(span, "arguments are not allowed after clobber_abi")
                 .span_label(abi_span, "clobber_abi")
                 .span_label(span, "argument")
@@ -322,7 +322,7 @@ fn parse_args<'a>(
         // Bail out now since this is likely to confuse MIR
         return Err(err);
     }
-    if let Some((_, abi_span)) = args.clobber_abi {
+    if let Some(&(_, abi_span)) = args.clobber_abis.last() {
         if is_global_asm {
             let err =
                 ecx.struct_span_err(abi_span, "`clobber_abi` cannot be used with `global_asm!`");
@@ -453,14 +453,7 @@ fn parse_clobber_abi<'a>(
 
     let new_span = span_start.to(p.prev_token.span);
 
-    if let Some((_, prev_span)) = args.clobber_abi {
-        let mut err = p
-            .sess
-            .span_diagnostic
-            .struct_span_err(new_span, "clobber_abi specified multiple times");
-        err.span_label(prev_span, "clobber_abi previously specified here");
-        return Err(err);
-    } else if !args.options_spans.is_empty() {
+    if !args.options_spans.is_empty() {
         let mut err = p
             .sess
             .span_diagnostic
@@ -469,7 +462,7 @@ fn parse_clobber_abi<'a>(
         return Err(err);
     }
 
-    args.clobber_abi = Some((clobber_abi, new_span));
+    args.clobber_abis.push((clobber_abi, new_span));
 
     Ok(())
 }
@@ -770,7 +763,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
         template,
         template_strs: template_strs.into_boxed_slice(),
         operands: args.operands,
-        clobber_abi: args.clobber_abi,
+        clobber_abis: args.clobber_abis,
         options: args.options,
         line_spans,
     })

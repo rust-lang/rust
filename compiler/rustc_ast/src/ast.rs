@@ -2056,7 +2056,7 @@ pub struct InlineAsm {
     pub template: Vec<InlineAsmTemplatePiece>,
     pub template_strs: Box<[(Symbol, Option<Symbol>, Span)]>,
     pub operands: Vec<(InlineAsmOperand, Span)>,
-    pub clobber_abi: Option<(Symbol, Span)>,
+    pub clobber_abis: Vec<(Symbol, Span)>,
     pub options: InlineAsmOptions,
     pub line_spans: Vec<Span>,
 }
@@ -2744,7 +2744,7 @@ pub enum ItemKind {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(ItemKind, 112);
+rustc_data_structures::static_assert_size!(ItemKind, 128);
 
 impl ItemKind {
     pub fn article(&self) -> &str {
