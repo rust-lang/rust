@@ -4,8 +4,7 @@ use ide_db::{
 };
 use syntax::{ast, AstNode, TextRange};
 
-use crate::assist_context::{AssistContext, Assists};
-use crate::utils::trimmed_text_range;
+use crate::{assist_context::{AssistContext, Assists}, utils::trimmed_text_range};
 
 // Assist: move_from_mod_rs
 //
