@@ -218,7 +218,7 @@ where
     /// // If this mask was used to scatter, it would be unsound. Let's fix that.
     /// let mask = mask & idxs.lanes_lt(Simd::splat(vec.len()));
     ///
-    /// // We have masked the OOB lane, so it's safe to gather now.
+    /// // We have masked the OOB lane, so it's safe to scatter now.
     /// unsafe { vals.scatter_select_unchecked(&mut vec, mask, idxs); }
     /// // index 0's second write is masked, thus was omitted.
     /// assert_eq!(vec, vec![-41, 11, 12, 82, 14, 15, 16, 17, 18]);
