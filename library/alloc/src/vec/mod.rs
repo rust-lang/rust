@@ -1976,7 +1976,8 @@ impl<T, A: Allocator> Vec<T, A> {
     where
         A: 'a,
     {
-        Box::leak(self.into_boxed_slice())
+        let mut me = ManuallyDrop::new(self);
+        unsafe { slice::from_raw_parts_mut(me.as_mut_ptr(), me.len) }
     }
 
     /// Returns the remaining spare capacity of the vector as a slice of
