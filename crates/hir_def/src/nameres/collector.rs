@@ -61,14 +61,17 @@ pub(super) fn collect_defs(
 ) -> DefMap {
     let crate_graph = db.crate_graph();
 
-    if block.is_none() {
-        // populate external prelude
-        for dep in &crate_graph[def_map.krate].dependencies {
-            tracing::debug!("crate dep {:?} -> {:?}", dep.name, dep.crate_id);
-            let dep_def_map = db.crate_def_map(dep.crate_id);
-            def_map
-                .extern_prelude
-                .insert(dep.as_name(), dep_def_map.module_id(dep_def_map.root).into());
+    let mut deps = FxHashMap::default();
+    // populate external prelude and dependency list
+    for dep in &crate_graph[def_map.krate].dependencies {
+        tracing::debug!("crate dep {:?} -> {:?}", dep.name, dep.crate_id);
+        let dep_def_map = db.crate_def_map(dep.crate_id);
+        let dep_root = dep_def_map.module_id(dep_def_map.root);
+
+        deps.insert(dep.as_name(), dep_root.into());
+
+        if dep.is_prelude() && block.is_none() {
+            def_map.extern_prelude.insert(dep.as_name(), dep_root.into());
         }
     }
 
@@ -87,6 +90,7 @@ pub(super) fn collect_defs(
     let mut collector = DefCollector {
         db,
         def_map,
+        deps,
         glob_imports: FxHashMap::default(),
         unresolved_imports: Vec::new(),
         resolved_imports: Vec::new(),
@@ -239,6 +243,7 @@ struct DefData<'a> {
 struct DefCollector<'a> {
     db: &'a dyn DefDatabase,
     def_map: DefMap,
+    deps: FxHashMap<Name, ModuleDefId>,
     glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility)>>,
     unresolved_imports: Vec<ImportDirective>,
     resolved_imports: Vec<ImportDirective>,
@@ -660,7 +665,7 @@ impl DefCollector<'_> {
             self.def_map.edition,
         );
 
-        let res = self.def_map.resolve_name_in_extern_prelude(self.db, &extern_crate.name);
+        let res = self.resolve_extern_crate(&extern_crate.name);
 
         if let Some(ModuleDefId::ModuleId(m)) = res.take_types() {
             if m == self.def_map.module_id(current_module_id) {
@@ -720,13 +725,13 @@ impl DefCollector<'_> {
     fn resolve_import(&self, module_id: LocalModuleId, import: &Import) -> PartialResolvedImport {
         tracing::debug!("resolving import: {:?} ({:?})", import, self.def_map.edition);
         if import.is_extern_crate {
-            let res = self.def_map.resolve_name_in_extern_prelude(
-                self.db,
-                import
-                    .path
-                    .as_ident()
-                    .expect("extern crate should have been desugared to one-element path"),
-            );
+            let name = import
+                .path
+                .as_ident()
+                .expect("extern crate should have been desugared to one-element path");
+
+            let res = self.resolve_extern_crate(name);
+
             if res.is_none() {
                 PartialResolvedImport::Unresolved
             } else {
@@ -763,6 +768,24 @@ impl DefCollector<'_> {
             } else {
                 PartialResolvedImport::Indeterminate(def)
             }
+        }
+    }
+
+    fn resolve_extern_crate(&self, name: &Name) -> PerNs {
+        let arc;
+        let root = match self.def_map.block {
+            Some(_) => {
+                arc = self.def_map.crate_root(self.db).def_map(self.db);
+                &*arc
+            }
+            None => &self.def_map,
+        };
+
+        if name == &name!(self) {
+            cov_mark::hit!(extern_crate_self_as);
+            PerNs::types(root.module_id(root.root()).into(), Visibility::Public)
+        } else {
+            self.deps.get(name).map_or(PerNs::none(), |&it| PerNs::types(it, Visibility::Public))
         }
     }
 
@@ -2009,6 +2032,7 @@ mod tests {
         let mut collector = DefCollector {
             db,
             def_map,
+            deps: FxHashMap::default(),
             glob_imports: FxHashMap::default(),
             unresolved_imports: Vec::new(),
             resolved_imports: Vec::new(),

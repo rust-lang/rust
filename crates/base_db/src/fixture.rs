@@ -10,8 +10,8 @@ use tt::Subtree;
 use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
-    input::CrateName, Change, CrateDisplayName, CrateGraph, CrateId, Edition, Env, FileId,
-    FilePosition, FileRange, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
+    input::CrateName, Change, CrateDisplayName, CrateGraph, CrateId, Dependency, Edition, Env,
+    FileId, FilePosition, FileRange, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
     SourceDatabaseExt, SourceRoot, SourceRootId,
 };
 
@@ -144,8 +144,9 @@ impl ChangeFixture {
                 let prev = crates.insert(crate_name.clone(), crate_id);
                 assert!(prev.is_none());
                 for dep in meta.deps {
+                    let prelude = meta.extern_prelude.contains(&dep);
                     let dep = CrateName::normalize_dashes(&dep);
-                    crate_deps.push((crate_name.clone(), dep))
+                    crate_deps.push((crate_name.clone(), dep, prelude))
                 }
             } else if meta.path == "/main.rs" || meta.path == "/lib.rs" {
                 assert!(default_crate_root.is_none());
@@ -173,10 +174,15 @@ impl ChangeFixture {
                 Default::default(),
             );
         } else {
-            for (from, to) in crate_deps {
+            for (from, to, prelude) in crate_deps {
                 let from_id = crates[&from];
                 let to_id = crates[&to];
-                crate_graph.add_dep(from_id, CrateName::new(&to).unwrap(), to_id).unwrap();
+                crate_graph
+                    .add_dep(
+                        from_id,
+                        Dependency::with_prelude(CrateName::new(&to).unwrap(), to_id, prelude),
+                    )
+                    .unwrap();
             }
         }
 
@@ -203,7 +209,9 @@ impl ChangeFixture {
             );
 
             for krate in all_crates {
-                crate_graph.add_dep(krate, CrateName::new("core").unwrap(), core_crate).unwrap();
+                crate_graph
+                    .add_dep(krate, Dependency::new(CrateName::new("core").unwrap(), core_crate))
+                    .unwrap();
             }
         }
 
@@ -235,7 +243,10 @@ impl ChangeFixture {
 
             for krate in all_crates {
                 crate_graph
-                    .add_dep(krate, CrateName::new("proc_macros").unwrap(), proc_macros_crate)
+                    .add_dep(
+                        krate,
+                        Dependency::new(CrateName::new("proc_macros").unwrap(), proc_macros_crate),
+                    )
                     .unwrap();
             }
         }
@@ -301,6 +312,7 @@ struct FileMeta {
     path: String,
     krate: Option<String>,
     deps: Vec<String>,
+    extern_prelude: Vec<String>,
     cfg: CfgOptions,
     edition: Edition,
     env: Env,
@@ -313,10 +325,12 @@ impl From<Fixture> for FileMeta {
         f.cfg_atoms.iter().for_each(|it| cfg.insert_atom(it.into()));
         f.cfg_key_values.iter().for_each(|(k, v)| cfg.insert_key_value(k.into(), v.into()));
 
+        let deps = f.deps;
         FileMeta {
             path: f.path,
             krate: f.krate,
-            deps: f.deps,
+            extern_prelude: f.extern_prelude.unwrap_or_else(|| deps.clone()),
+            deps,
             cfg,
             edition: f.edition.as_ref().map_or(Edition::CURRENT, |v| Edition::from_str(v).unwrap()),
             env: f.env.into_iter().collect(),

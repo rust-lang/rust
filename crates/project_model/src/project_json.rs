@@ -83,9 +83,8 @@ impl ProjectJson {
                         deps: crate_data
                             .deps
                             .into_iter()
-                            .map(|dep_data| Dependency {
-                                crate_id: CrateId(dep_data.krate as u32),
-                                name: dep_data.name,
+                            .map(|dep_data| {
+                                Dependency::new(dep_data.name, CrateId(dep_data.krate as u32))
                             })
                             .collect::<Vec<_>>(),
                         cfg: crate_data.cfg,

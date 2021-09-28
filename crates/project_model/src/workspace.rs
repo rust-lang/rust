@@ -5,7 +5,9 @@
 use std::{collections::VecDeque, convert::TryFrom, fmt, fs, process::Command};
 
 use anyhow::{format_err, Context, Result};
-use base_db::{CrateDisplayName, CrateGraph, CrateId, CrateName, Edition, Env, FileId, ProcMacro};
+use base_db::{
+    CrateDisplayName, CrateGraph, CrateId, CrateName, Dependency, Edition, Env, FileId, ProcMacro,
+};
 use cfg::{CfgDiff, CfgOptions};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -875,7 +877,7 @@ fn sysroot_to_crate_graph(
 }
 
 fn add_dep(graph: &mut CrateGraph, from: CrateId, name: CrateName, to: CrateId) {
-    if let Err(err) = graph.add_dep(from, name, to) {
+    if let Err(err) = graph.add_dep(from, Dependency::new(name, to)) {
         tracing::error!("{}", err)
     }
 }
