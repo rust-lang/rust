@@ -2504,9 +2504,8 @@ impl Type {
 
     pub fn autoderef<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Type> + 'a {
         // There should be no inference vars in types passed here
-        // FIXME check that?
-        let canonical =
-            Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(&Interner) };
+        let ty = hir_ty::replace_errors_with_variables(&self.ty).value;
+        let canonical = Canonical { value: ty, binders: CanonicalVarKinds::empty(&Interner) };
         let environment = self.env.env.clone();
         let ty = InEnvironment { goal: canonical, environment };
         autoderef(db, Some(self.krate), ty)
@@ -2600,10 +2599,7 @@ impl Type {
         callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
     ) {
         // There should be no inference vars in types passed here
-        // FIXME check that?
-        // FIXME replace Unknown by bound vars here
-        let canonical =
-            Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(&Interner) };
+        let canonical = hir_ty::replace_errors_with_variables(&self.ty);
 
         let env = self.env.clone();
         let krate = krate.id;
