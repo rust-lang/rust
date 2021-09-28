@@ -6,7 +6,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, subst::GenericArgKind, Ty};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span};
 
@@ -48,10 +48,29 @@ declare_clippy_lint! {
     "there is field that does not implement `Send` in a `Send` struct"
 }
 
-declare_lint_pass!(NonSendFieldInSendTy => [NON_SEND_FIELD_IN_SEND_TY]);
+#[derive(Copy, Clone)]
+pub struct NonSendFieldInSendTy {
+    enable_raw_pointer_heuristic: bool,
+}
+
+impl NonSendFieldInSendTy {
+    pub fn new(enable_raw_pointer_heuristic: bool) -> Self {
+        Self {
+            enable_raw_pointer_heuristic,
+        }
+    }
+}
+
+impl_lint_pass!(NonSendFieldInSendTy => [NON_SEND_FIELD_IN_SEND_TY]);
 
 impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
+        let ty_allowed_in_send = if self.enable_raw_pointer_heuristic {
+            ty_allowed_with_raw_pointer_heuristic
+        } else {
+            ty_implements_send_or_copy
+        };
+
         // Checks if we are in `Send` impl item.
         // We start from `Send` impl instead of `check_field_def()` because
         // single `AdtDef` may have multiple `Send` impls due to generic
@@ -155,13 +174,6 @@ fn collect_generic_params<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Vec<Ty<
         })
         .filter(|&inner_ty| is_ty_param(inner_ty))
         .collect()
-}
-
-/// Determine if the given type is allowed in an ADT that implements `Send`
-fn ty_allowed_in_send(cx: &LateContext<'tcx>, ty: Ty<'tcx>, send_trait: DefId) -> bool {
-    // TODO: check configuration and call `ty_implements_send_or_copy()` or
-    // `ty_allowed_with_raw_pointer_heuristic()`
-    ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait)
 }
 
 /// Determine if the given type is `Send` or `Copy`
