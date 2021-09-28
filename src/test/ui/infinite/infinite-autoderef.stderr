@@ -12,7 +12,7 @@ error[E0055]: reached the recursion limit while auto-dereferencing `Foo`
 LL |     Foo.foo;
    |     ^^^^^^^ deref recursion limit reached
    |
-   = help: consider adding a `#![recursion_limit="256"]` attribute to your crate (`infinite_autoderef`)
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`infinite_autoderef`)
 
 error[E0055]: reached the recursion limit while auto-dereferencing `Foo`
   --> $DIR/infinite-autoderef.rs:25:9
@@ -20,7 +20,7 @@ error[E0055]: reached the recursion limit while auto-dereferencing `Foo`
 LL |     Foo.foo;
    |         ^^^ deref recursion limit reached
    |
-   = help: consider adding a `#![recursion_limit="256"]` attribute to your crate (`infinite_autoderef`)
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`infinite_autoderef`)
 
 error[E0609]: no field `foo` on type `Foo`
   --> $DIR/infinite-autoderef.rs:25:9
@@ -34,7 +34,7 @@ error[E0055]: reached the recursion limit while auto-dereferencing `Foo`
 LL |     Foo.bar();
    |         ^^^ deref recursion limit reached
    |
-   = help: consider adding a `#![recursion_limit="256"]` attribute to your crate (`infinite_autoderef`)
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`infinite_autoderef`)
 
 error[E0599]: no method named `bar` found for struct `Foo` in the current scope
   --> $DIR/infinite-autoderef.rs:26:9
