@@ -1026,9 +1026,15 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
                 self.suggest_using_enum_variant(err, source, def_id, span);
             }
-            (Res::Def(DefKind::Struct, def_id), _) if ns == ValueNS => {
+            (Res::Def(DefKind::Struct, def_id), source) if ns == ValueNS => {
                 let (ctor_def, ctor_vis, fields) =
                     if let Some(struct_ctor) = self.r.struct_constructors.get(&def_id).cloned() {
+                        if let PathSource::Expr(Some(parent)) = source {
+                            if let ExprKind::Field(..) | ExprKind::MethodCall(..) = parent.kind {
+                                bad_struct_syntax_suggestion(def_id);
+                                return true;
+                            }
+                        }
                         struct_ctor
                     } else {
                         bad_struct_syntax_suggestion(def_id);
