@@ -96,7 +96,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             stack = &stack[..index + REPORT_SYMBOL_NAMES.len()];
         }
 
-        const ENCODE_METADATA: &str = "rustc_metadata::encode_metadata";
+        const ENCODE_METADATA: &str = "rustc_metadata::rmeta::encoder::encode_metadata";
         if let Some(index) = stack.find(ENCODE_METADATA) {
             stack = &stack[..index + ENCODE_METADATA.len()];
         }
