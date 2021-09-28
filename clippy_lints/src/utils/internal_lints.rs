@@ -1222,5 +1222,10 @@ fn if_chain_local_span(cx: &LateContext<'_>, local: &Local<'_>, if_chain_span: S
     let sm = cx.sess().source_map();
     let span = sm.span_extend_to_prev_str(span, "let", false);
     let span = sm.span_extend_to_next_char(span, ';', false);
-    Span::new(span.lo() - BytePos(3), span.hi() + BytePos(1), span.ctxt(), None)
+    Span::new(
+        span.lo() - BytePos(3),
+        span.hi() + BytePos(1),
+        span.ctxt(),
+        span.parent(),
+    )
 }
