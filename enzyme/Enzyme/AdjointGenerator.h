@@ -1271,45 +1271,77 @@ public:
     // TODO handle pointers
     // TODO type analysis handle structs
 
-    IRBuilder<> Builder2(IVI.getParent());
-    getReverseBuilder(Builder2);
+    switch (Mode) {
+    case DerivativeMode::ForwardMode: {
+      IRBuilder<> Builder2(&IVI);
+      getForwardBuilder(Builder2);
 
-    Value *orig_inserted = IVI.getInsertedValueOperand();
-    Value *orig_agg = IVI.getAggregateOperand();
+      Value *orig_inserted = IVI.getInsertedValueOperand();
+      Value *orig_agg = IVI.getAggregateOperand();
 
-    size_t size0 = 1;
-    if (orig_inserted->getType()->isSized())
-      size0 = (gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
-                   orig_inserted->getType()) +
-               7) /
-              8;
+      Value *diff_inserted = gutils->isConstantValue(orig_inserted)
+                                 ? ConstantFP::get(orig_inserted->getType(), 0)
+                                 : diffe(orig_inserted, Builder2);
 
-    Type *flt = nullptr;
-    if (!gutils->isConstantValue(orig_inserted) &&
-        (flt = TR.intType(size0, orig_inserted).isFloat())) {
-      auto prediff = diffe(&IVI, Builder2);
-      auto dindex = Builder2.CreateExtractValue(prediff, IVI.getIndices());
-      addToDiffe(orig_inserted, dindex, Builder2, flt);
+      Value *prediff =
+          gutils->isConstantValue(orig_agg)
+              ? diffe(orig_agg, Builder2)
+              : ConstantAggregate::getNullValue(orig_agg->getType());
+      auto dindex =
+          Builder2.CreateInsertValue(prediff, diff_inserted, IVI.getIndices());
+      setDiffe(&IVI, dindex, Builder2);
+
+      return;
     }
+    case DerivativeMode::ReverseModeCombined:
+    case DerivativeMode::ReverseModeGradient: {
+      IRBuilder<> Builder2(IVI.getParent());
+      getReverseBuilder(Builder2);
 
-    size_t size1 = 1;
-    if (orig_agg->getType()->isSized() &&
-        (orig_agg->getType()->isIntOrIntVectorTy() ||
-         orig_agg->getType()->isFPOrFPVectorTy()))
-      size1 = (gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
-                   orig_agg->getType()) +
-               7) /
-              8;
+      Value *orig_inserted = IVI.getInsertedValueOperand();
+      Value *orig_agg = IVI.getAggregateOperand();
 
-    if (!gutils->isConstantValue(orig_agg)) {
-      auto prediff = diffe(&IVI, Builder2);
-      auto dindex = Builder2.CreateInsertValue(
-          prediff, Constant::getNullValue(orig_inserted->getType()),
-          IVI.getIndices());
-      addToDiffe(orig_agg, dindex, Builder2, TR.addingType(size1, orig_agg));
+      size_t size0 = 1;
+      if (orig_inserted->getType()->isSized())
+        size0 =
+            (gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
+                 orig_inserted->getType()) +
+             7) /
+            8;
+
+      Type *flt = nullptr;
+      if (!gutils->isConstantValue(orig_inserted) &&
+          (flt = TR.intType(size0, orig_inserted).isFloat())) {
+        auto prediff = diffe(&IVI, Builder2);
+        auto dindex = Builder2.CreateExtractValue(prediff, IVI.getIndices());
+        addToDiffe(orig_inserted, dindex, Builder2, flt);
+      }
+
+      size_t size1 = 1;
+      if (orig_agg->getType()->isSized() &&
+          (orig_agg->getType()->isIntOrIntVectorTy() ||
+           orig_agg->getType()->isFPOrFPVectorTy()))
+        size1 =
+            (gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
+                 orig_agg->getType()) +
+             7) /
+            8;
+
+      if (!gutils->isConstantValue(orig_agg)) {
+        auto prediff = diffe(&IVI, Builder2);
+        auto dindex = Builder2.CreateInsertValue(
+            prediff, Constant::getNullValue(orig_inserted->getType()),
+            IVI.getIndices());
+        addToDiffe(orig_agg, dindex, Builder2, TR.addingType(size1, orig_agg));
+      }
+
+      setDiffe(&IVI, Constant::getNullValue(IVI.getType()), Builder2);
+      return;
     }
-
-    setDiffe(&IVI, Constant::getNullValue(IVI.getType()), Builder2);
+    case DerivativeMode::ReverseModePrimal: {
+      return;
+    }
+    }
   }
 
   void getReverseBuilder(IRBuilder<> &Builder2, bool original = true) {
