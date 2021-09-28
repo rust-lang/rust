@@ -8,6 +8,10 @@ document.
 
 [74d1561...master](https://github.com/rust-lang/rust-clippy/compare/74d1561...master)
 
+### New Lints
+
+* Renamed Lint: `if_let_some_result` is now called [`match_result_ok`]. Now also handles `while let` case.
+
 ## Rust 1.55
 
 Current beta, release 2021-09-09
@@ -1491,7 +1495,7 @@ Released 2020-03-12
 * `unknown_clippy_lints` [#4963](https://github.com/rust-lang/rust-clippy/pull/4963)
 * [`explicit_into_iter_loop`] [#4978](https://github.com/rust-lang/rust-clippy/pull/4978)
 * [`useless_attribute`] [#5022](https://github.com/rust-lang/rust-clippy/pull/5022)
-* [`if_let_some_result`] [#5032](https://github.com/rust-lang/rust-clippy/pull/5032)
+* `if_let_some_result` [#5032](https://github.com/rust-lang/rust-clippy/pull/5032)
 
 ### ICE fixes
 
@@ -2685,7 +2689,6 @@ Released 2018-09-13
 [`identity_op`]: https://rust-lang.github.io/rust-clippy/master/index.html#identity_op
 [`if_let_mutex`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_let_mutex
 [`if_let_redundant_pattern_matching`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_let_redundant_pattern_matching
-[`if_let_some_result`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_let_some_result
 [`if_not_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_not_else
 [`if_same_then_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_same_then_else
 [`if_then_panic`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_then_panic
@@ -2775,6 +2778,7 @@ Released 2018-09-13
 [`match_on_vec_items`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_on_vec_items
 [`match_overlapping_arm`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_overlapping_arm
 [`match_ref_pats`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_ref_pats
+[`match_result_ok`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_result_ok
 [`match_same_arms`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
 [`match_single_binding`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_single_binding
 [`match_wild_err_arm`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_wild_err_arm
