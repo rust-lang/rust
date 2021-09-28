@@ -169,6 +169,8 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 s.impls = self.get_impls(id.expect_def_id())
             } else if let types::ItemEnum::Enum(ref mut e) = new_item.inner {
                 e.impls = self.get_impls(id.expect_def_id())
+            } else if let types::ItemEnum::Union(ref mut u) = new_item.inner {
+                u.impls = self.get_impls(id.expect_def_id())
             }
             let removed = self.index.borrow_mut().insert(from_item_id(id), new_item.clone());
 
