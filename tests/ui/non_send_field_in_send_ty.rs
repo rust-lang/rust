@@ -3,6 +3,7 @@
 
 use std::cell::UnsafeCell;
 use std::ptr::NonNull;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 // disrustor / RUSTSEC-2020-0150
@@ -47,6 +48,12 @@ pub struct DeviceHandle<T: UsbContext> {
 unsafe impl<T: UsbContext> Send for DeviceHandle<T> {}
 
 // Other basic tests
+pub struct NoGeneric {
+    rc_is_not_send: Rc<String>,
+}
+
+unsafe impl Send for NoGeneric {}
+
 pub struct MultiField<T> {
     field1: T,
     field2: T,
@@ -61,6 +68,13 @@ pub enum MyOption<T> {
 }
 
 unsafe impl<T> Send for MyOption<T> {}
+
+// Multiple type parameters
+pub struct MultiParam<A, B> {
+    vec: Vec<(A, B)>,
+}
+
+unsafe impl<A, B> Send for MultiParam<A, B> {}
 
 // Raw pointers are allowed
 extern "C" {

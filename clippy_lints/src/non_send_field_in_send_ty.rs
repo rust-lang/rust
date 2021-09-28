@@ -1,11 +1,14 @@
-use clippy_utils::diagnostics::span_lint_hir_and_then;
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_lint_allowed;
 use clippy_utils::ty::{implements_trait, is_copy};
 use rustc_ast::ImplPolarity;
+use rustc_hir::def_id::DefId;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, subst::GenericArgKind, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::sym;
+use rustc_span::symbol::Symbol;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -64,49 +67,96 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
             if let self_ty = ty_trait_ref.self_ty();
             if let ty::Adt(adt_def, impl_trait_substs) = self_ty.kind();
             then {
+                let mut non_send_fields = Vec::new();
+
+                let hir_map = cx.tcx.hir();
                 for variant in &adt_def.variants {
                     for field in &variant.fields {
-                        let field_ty = field.ty(cx.tcx, impl_trait_substs);
-
-                        if raw_pointer_in_ty_def(cx, field_ty)
-                            || implements_trait(cx, field_ty, send_trait, &[])
-                            || is_copy(cx, field_ty)
-                        {
-                            continue;
-                        }
-
-                        if let Some(field_hir_id) = field
-                            .did
-                            .as_local()
-                            .map(|local_def_id| cx.tcx.hir().local_def_id_to_hir_id(local_def_id))
-                        {
-                            if let Some(field_span) = cx.tcx.hir().span_if_local(field.did) {
-                                span_lint_hir_and_then(
-                                    cx,
-                                    NON_SEND_FIELD_IN_SEND_TY,
-                                    field_hir_id,
-                                    field_span,
-                                    "non-`Send` field found in a `Send` struct",
-                                    |diag| {
-                                        diag.span_note(
-                                            item.span,
-                                            &format!(
-                                                "type `{}` doesn't implement `Send` when `{}` is `Send`",
-                                                field_ty, self_ty
-                                            ),
-                                        );
-                                        if is_ty_param(field_ty) {
-                                            diag.help(&format!("add `{}: Send` bound", field_ty));
-                                        }
-                                    },
-                                );
+                        if_chain! {
+                            if let Some(field_hir_id) = field
+                                .did
+                                .as_local()
+                                .map(|local_def_id| hir_map.local_def_id_to_hir_id(local_def_id));
+                            if !is_lint_allowed(cx, NON_SEND_FIELD_IN_SEND_TY, field_hir_id);
+                            if let field_ty = field.ty(cx.tcx, impl_trait_substs);
+                            if !ty_allowed_in_send(cx, field_ty, send_trait);
+                            if let Some(field_span) = hir_map.span_if_local(field.did);
+                            then {
+                                non_send_fields.push(NonSendField {
+                                    name: hir_map.name(field_hir_id),
+                                    span: field_span,
+                                    ty: field_ty,
+                                    generic_params: collect_generic_params(cx, field_ty),
+                                })
                             }
                         }
                     }
                 }
+
+                if !non_send_fields.is_empty() {
+                    span_lint_and_then(
+                        cx,
+                        NON_SEND_FIELD_IN_SEND_TY,
+                        item.span,
+                        &format!(
+                            "this implementation is unsound, as some fields in `{}` are `!Send`",
+                            self_ty
+                        ),
+                        |diag| {
+                            for field in non_send_fields {
+                                diag.span_note(
+                                    field.span,
+                                    &format!("the field `{}` has type `{}` which is not `Send`", field.name, field.ty),
+                                );
+
+                                match field.generic_params.len() {
+                                    0 => diag.help("use a thread-safe type that implements `Send`"),
+                                    1 if is_ty_param(field.ty) => diag.help(&format!("add `{}: Send` bound in `Send` impl", field.ty)),
+                                    _ => diag.help(&format!(
+                                        "add bounds on type parameter{} `{}` that satisfy `{}: Send`",
+                                        if field.generic_params.len() > 1 { "s" } else { "" },
+                                        field.generic_params_string(),
+                                        field.ty
+                                    )),
+                                };
+                            }
+                        },
+                    )
+                }
             }
         }
     }
+}
+
+struct NonSendField<'tcx> {
+    name: Symbol,
+    span: Span,
+    ty: Ty<'tcx>,
+    generic_params: Vec<Ty<'tcx>>,
+}
+
+impl<'tcx> NonSendField<'tcx> {
+    fn generic_params_string(&self) -> String {
+        self.generic_params
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+}
+
+fn collect_generic_params<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Vec<Ty<'tcx>> {
+    ty.walk(cx.tcx)
+        .filter_map(|inner| match inner.unpack() {
+            GenericArgKind::Type(inner_ty) => Some(inner_ty),
+            _ => None,
+        })
+        .filter(|&inner_ty| is_ty_param(inner_ty))
+        .collect()
+}
+
+fn ty_allowed_in_send<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, send_trait: DefId) -> bool {
+    raw_pointer_in_ty_def(cx, ty) || implements_trait(cx, ty, send_trait, &[]) || is_copy(cx, ty)
 }
 
 /// Returns `true` if the type itself is a raw pointer or has a raw pointer as a
