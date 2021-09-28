@@ -7,8 +7,16 @@ LL | struct E {
 LL |     x: NoCloneOrEq
    |     ^^^^^^^^^^^^^^
    |
-   = note: an implementation of `std::cmp::PartialEq` might be missing for `NoCloneOrEq`
+note: an implementation of `PartialEq<_>` might be missing for `NoCloneOrEq`
+  --> $DIR/deriving-no-inner-impl-error-message.rs:1:1
+   |
+LL | struct NoCloneOrEq;
+   | ^^^^^^^^^^^^^^^^^^^ must implement `PartialEq<_>`
    = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `NoCloneOrEq` with `#[derive(PartialEq)]`
+   |
+LL | #[derive(PartialEq)]
+   |
 
 error[E0369]: binary operation `!=` cannot be applied to type `NoCloneOrEq`
   --> $DIR/deriving-no-inner-impl-error-message.rs:5:5
@@ -19,8 +27,16 @@ LL | struct E {
 LL |     x: NoCloneOrEq
    |     ^^^^^^^^^^^^^^
    |
-   = note: an implementation of `std::cmp::PartialEq` might be missing for `NoCloneOrEq`
+note: an implementation of `PartialEq<_>` might be missing for `NoCloneOrEq`
+  --> $DIR/deriving-no-inner-impl-error-message.rs:1:1
+   |
+LL | struct NoCloneOrEq;
+   | ^^^^^^^^^^^^^^^^^^^ must implement `PartialEq<_>`
    = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `NoCloneOrEq` with `#[derive(PartialEq)]`
+   |
+LL | #[derive(PartialEq)]
+   |
 
 error[E0277]: the trait bound `NoCloneOrEq: Clone` is not satisfied
   --> $DIR/deriving-no-inner-impl-error-message.rs:10:5

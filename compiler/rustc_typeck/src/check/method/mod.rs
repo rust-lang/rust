@@ -290,29 +290,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
     }
 
-    /// `lookup_method_in_trait` is used for overloaded operators.
-    /// It does a very narrow slice of what the normal probe/confirm path does.
-    /// In particular, it doesn't really do any probing: it simply constructs
-    /// an obligation for a particular trait with the given self type and checks
-    /// whether that trait is implemented.
-    //
-    // FIXME(#18741): it seems likely that we can consolidate some of this
-    // code with the other method-lookup code. In particular, the second half
-    // of this method is basically the same as confirmation.
-    #[instrument(level = "debug", skip(self, span, opt_input_types))]
-    pub fn lookup_method_in_trait(
+    pub(super) fn obligation_for_method(
         &self,
         span: Span,
-        m_name: Ident,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
         opt_input_types: Option<&[Ty<'tcx>]>,
-    ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
-        debug!(
-            "lookup_in_trait_adjusted(self_ty={:?}, m_name={}, trait_def_id={:?}, opt_input_types={:?})",
-            self_ty, m_name, trait_def_id, opt_input_types
-        );
-
+    ) -> (traits::Obligation<'tcx, ty::Predicate<'tcx>>, &'tcx ty::List<ty::subst::GenericArg<'tcx>>)
+    {
         // Construct a trait-reference `self_ty : Trait<input_tys>`
         let substs = InternalSubsts::for_item(self.tcx, trait_def_id, |param, _| {
             match param.kind {
@@ -332,17 +317,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Construct an obligation
         let poly_trait_ref = ty::Binder::dummy(trait_ref);
-        let obligation = traits::Obligation::misc(
-            span,
-            self.body_id,
-            self.param_env,
-            poly_trait_ref.without_const().to_predicate(self.tcx),
+        (
+            traits::Obligation::misc(
+                span,
+                self.body_id,
+                self.param_env,
+                poly_trait_ref.without_const().to_predicate(self.tcx),
+            ),
+            substs,
+        )
+    }
+
+    /// `lookup_method_in_trait` is used for overloaded operators.
+    /// It does a very narrow slice of what the normal probe/confirm path does.
+    /// In particular, it doesn't really do any probing: it simply constructs
+    /// an obligation for a particular trait with the given self type and checks
+    /// whether that trait is implemented.
+    //
+    // FIXME(#18741): it seems likely that we can consolidate some of this
+    // code with the other method-lookup code. In particular, the second half
+    // of this method is basically the same as confirmation.
+    #[instrument(level = "debug", skip(self, span, opt_input_types))]
+    pub(super) fn lookup_method_in_trait(
+        &self,
+        span: Span,
+        m_name: Ident,
+        trait_def_id: DefId,
+        self_ty: Ty<'tcx>,
+        opt_input_types: Option<&[Ty<'tcx>]>,
+    ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
+        debug!(
+            "lookup_in_trait_adjusted(self_ty={:?}, m_name={}, trait_def_id={:?}, opt_input_types={:?})",
+            self_ty, m_name, trait_def_id, opt_input_types
         );
+
+        let (obligation, substs) =
+            self.obligation_for_method(span, trait_def_id, self_ty, opt_input_types);
 
         // Now we want to know if this can be matched
         if !self.predicate_may_hold(&obligation) {
             debug!("--> Cannot match obligation");
-            return None; // Cannot be matched, no such method resolution is possible.
+            // Cannot be matched, no such method resolution is possible.
+            return None;
         }
 
         // Trait must have a method named `m_name` and it should not have
@@ -416,7 +432,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Binder::dummy(ty::PredicateKind::WellFormed(method_ty.into())).to_predicate(tcx),
         ));
 
-        let callee = MethodCallee { def_id, substs: trait_ref.substs, sig: fn_sig };
+        let callee = MethodCallee { def_id, substs, sig: fn_sig };
 
         debug!("callee = {:?}", callee);
 

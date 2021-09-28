@@ -521,7 +521,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                     "this error might have been caused by changes to \
                                     Rust's type-inference algorithm (see issue #48950 \
                                     <https://github.com/rust-lang/rust/issues/48950> \
-                                    for more information).",
+                                    for more information)",
                                 );
                                 err.help("did you intend to use the type `()` here instead?");
                             }

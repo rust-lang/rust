@@ -20,7 +20,22 @@ LL |     let y = World::Hello + World::Goodbye;
    |             |
    |             World
    |
-   = note: an implementation of `std::ops::Add` might be missing for `World`
+note: an implementation of `Add<_>` might be missing for `World`
+  --> $DIR/issue-39018.rs:15:1
+   |
+LL | enum World {
+   | ^^^^^^^^^^ must implement `Add<_>`
+note: the following trait must be implemented
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+LL | / pub trait Add<Rhs = Self> {
+LL | |     /// The resulting type after applying the `+` operator.
+LL | |     #[stable(feature = "rust1", since = "1.0.0")]
+LL | |     type Output;
+...  |
+LL | |     fn add(self, rhs: Rhs) -> Self::Output;
+LL | | }
+   | |_^
 
 error[E0369]: cannot add `String` to `&str`
   --> $DIR/issue-39018.rs:11:22

@@ -36,7 +36,22 @@ error[E0600]: cannot apply unary operator `!` to type `Question`
 LL |     !Question::Yes;
    |     ^^^^^^^^^^^^^^ cannot apply unary operator `!`
    |
-   = note: an implementation of `std::ops::Not` might be missing for `Question`
+note: an implementation of `Not` might be missing for `Question`
+  --> $DIR/error-festival.rs:1:1
+   |
+LL | enum Question {
+   | ^^^^^^^^^^^^^ must implement `Not`
+note: the following trait must be implemented
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+   |
+LL | / pub trait Not {
+LL | |     /// The resulting type after applying the `!` operator.
+LL | |     #[stable(feature = "rust1", since = "1.0.0")]
+LL | |     type Output;
+...  |
+LL | |     fn not(self) -> Self::Output;
+LL | | }
+   | |_^
 
 error[E0604]: only `u8` can be cast as `char`, not `u32`
   --> $DIR/error-festival.rs:25:5

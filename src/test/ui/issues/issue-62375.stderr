@@ -6,7 +6,15 @@ LL |     a == A::Value;
    |     |
    |     A
    |
-   = note: an implementation of `std::cmp::PartialEq` might be missing for `A`
+note: an implementation of `PartialEq<_>` might be missing for `A`
+  --> $DIR/issue-62375.rs:1:1
+   |
+LL | enum A {
+   | ^^^^^^ must implement `PartialEq<_>`
+help: consider annotating `A` with `#[derive(PartialEq)]`
+   |
+LL | #[derive(PartialEq)]
+   |
 
 error: aborting due to previous error
 

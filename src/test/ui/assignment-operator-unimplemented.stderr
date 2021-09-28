@@ -6,7 +6,22 @@ LL |   a += *b;
    |   |
    |   cannot use `+=` on type `Foo`
    |
-   = note: an implementation of `std::ops::AddAssign` might be missing for `Foo`
+note: an implementation of `AddAssign<_>` might be missing for `Foo`
+  --> $DIR/assignment-operator-unimplemented.rs:1:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^^ must implement `AddAssign<_>`
+note: the following trait must be implemented
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+LL | / pub trait AddAssign<Rhs = Self> {
+LL | |     /// Performs the `+=` operation.
+LL | |     ///
+LL | |     /// # Example
+...  |
+LL | |     fn add_assign(&mut self, rhs: Rhs);
+LL | | }
+   | |_^
 
 error: aborting due to previous error
 

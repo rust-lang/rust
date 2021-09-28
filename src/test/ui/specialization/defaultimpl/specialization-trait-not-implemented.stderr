@@ -22,6 +22,14 @@ LL |     println!("{}", MyStruct.foo_one());
    |
    = note: the following trait bounds were not satisfied:
            `MyStruct: Foo`
+note: the following trait must be implemented
+  --> $DIR/specialization-trait-not-implemented.rs:7:1
+   |
+LL | / trait Foo {
+LL | |     fn foo_one(&self) -> &'static str;
+LL | |     fn foo_two(&self) -> &'static str;
+LL | | }
+   | |_^
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Foo` defines an item `foo_one`, perhaps you need to implement it
   --> $DIR/specialization-trait-not-implemented.rs:7:1

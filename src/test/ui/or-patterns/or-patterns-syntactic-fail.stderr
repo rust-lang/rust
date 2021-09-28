@@ -30,7 +30,22 @@ LL |     let _ = |A | B: E| ();
    |                  |
    |                  E
    |
-   = note: an implementation of `std::ops::BitOr` might be missing for `E`
+note: an implementation of `BitOr<_>` might be missing for `E`
+  --> $DIR/or-patterns-syntactic-fail.rs:6:1
+   |
+LL | enum E { A, B }
+   | ^^^^^^ must implement `BitOr<_>`
+note: the following trait must be implemented
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+   |
+LL | / pub trait BitOr<Rhs = Self> {
+LL | |     /// The resulting type after applying the `|` operator.
+LL | |     #[stable(feature = "rust1", since = "1.0.0")]
+LL | |     type Output;
+...  |
+LL | |     fn bitor(self, rhs: Rhs) -> Self::Output;
+LL | | }
+   | |_^
 
 error: aborting due to 5 previous errors
 

@@ -4,7 +4,22 @@ error[E0600]: cannot apply unary operator `!` to type `BytePos`
 LL |     assert!(x, x);
    |     ^^^^^^^^^^^^^^ cannot apply unary operator `!`
    |
-   = note: an implementation of `std::ops::Not` might be missing for `BytePos`
+note: an implementation of `Not` might be missing for `BytePos`
+  --> $DIR/issue-14091-2.rs:6:1
+   |
+LL | pub struct BytePos(pub u32);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ must implement `Not`
+note: the following trait must be implemented
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+   |
+LL | / pub trait Not {
+LL | |     /// The resulting type after applying the `!` operator.
+LL | |     #[stable(feature = "rust1", since = "1.0.0")]
+LL | |     type Output;
+...  |
+LL | |     fn not(self) -> Self::Output;
+LL | | }
+   | |_^
    = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
