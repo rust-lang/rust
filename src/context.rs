@@ -21,10 +21,10 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::span_bug;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::{self, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
-use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutError, TyAndLayout, LayoutOfHelpers};
+use rustc_middle::ty::layout::{FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, TyAndLayout, LayoutOfHelpers};
 use rustc_session::Session;
 use rustc_span::{Span, Symbol};
-use rustc_target::abi::{HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
+use rustc_target::abi::{call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_target::spec::{HasTargetSpec, Target, TlsModel};
 
 use crate::callee::get_fn;
@@ -397,6 +397,43 @@ impl<'gcc, 'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
             self.sess().span_fatal(span, &err.to_string())
         } else {
             span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
+        }
+    }
+}
+
+impl<'gcc, 'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
+    type FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>;
+
+    #[inline]
+    fn handle_fn_abi_err(
+        &self,
+        err: FnAbiError<'tcx>,
+        span: Span,
+        fn_abi_request: FnAbiRequest<'tcx>,
+    ) -> ! {
+        if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
+            self.sess().span_fatal(span, &err.to_string())
+        } else {
+            match fn_abi_request {
+                FnAbiRequest::OfFnPtr { sig, extra_args } => {
+                    span_bug!(
+                        span,
+                        "`fn_abi_of_fn_ptr({}, {:?})` failed: {}",
+                        sig,
+                        extra_args,
+                        err
+                    );
+                }
+                FnAbiRequest::OfInstance { instance, extra_args } => {
+                    span_bug!(
+                        span,
+                        "`fn_abi_of_instance({}, {:?})` failed: {}",
+                        instance,
+                        extra_args,
+                        err
+                    );
+                }
+            }
         }
     }
 }

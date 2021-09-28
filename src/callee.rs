@@ -1,8 +1,7 @@
 use gccjit::{FunctionType, RValue};
 use rustc_codegen_ssa::traits::BaseTypeMethods;
-use rustc_middle::ty::{Instance, TypeFoldable};
-use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
-use rustc_target::abi::call::FnAbi;
+use rustc_middle::ty::{self, Instance, TypeFoldable};
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
 
 use crate::abi::FnAbiGccExt;
 use crate::context::CodegenCx;
@@ -26,7 +25,7 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
 
     let sym = tcx.symbol_name(instance).name;
 
-    let fn_abi = FnAbi::of_instance(cx, instance, &[]);
+    let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
 
     let func =
         if let Some(func) = cx.get_declared_value(&sym) {
