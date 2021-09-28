@@ -2,9 +2,12 @@ use ide_db::{
     assists::{AssistId, AssistKind},
     base_db::AnchoredPathBuf,
 };
-use syntax::{ast, AstNode, TextRange};
+use syntax::{ast, AstNode};
 
-use crate::{assist_context::{AssistContext, Assists}, utils::trimmed_text_range};
+use crate::{
+    assist_context::{AssistContext, Assists},
+    utils::trimmed_text_range,
+};
 
 // Assist: move_from_mod_rs
 //
@@ -35,16 +38,13 @@ pub(crate) fn move_from_mod_rs(acc: &mut Assists, ctx: &AssistContext) -> Option
         return None;
     }
 
-    let target = TextRange::new(
-        source_file.syntax().text_range().start(),
-        source_file.syntax().text_range().end(),
-    );
+    let target = source_file.syntax().text_range();
     let module_name = module.name(ctx.db())?.to_string();
     let path = format!("../{}.rs", module_name);
     let dst = AnchoredPathBuf { anchor: ctx.frange.file_id, path };
     acc.add(
         AssistId("move_from_mod_rs", AssistKind::Refactor),
-        format!("Turn {}/mod.rs to {}.rs", module_name, module_name),
+        format!("Convert {}/mod.rs to {}.rs", module_name, module_name),
         target,
         |builder| {
             builder.move_file(ctx.frange.file_id, dst);
