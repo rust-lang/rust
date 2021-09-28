@@ -640,7 +640,6 @@ E0785: include_str!("./error_codes/E0785.md"),
     E0717, // rustc_promotable without stability attribute
 //  E0721, // `await` keyword
 //  E0723, unstable feature in `const` context
-    E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
     E0772, // `'static' obligation coming from `impl dyn Trait {}` or `impl Foo for dyn Bar {}`.
 }
