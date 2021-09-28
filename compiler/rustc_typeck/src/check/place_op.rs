@@ -49,7 +49,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         base_expr: &'tcx hir::Expr<'tcx>,
         base_ty: Ty<'tcx>,
-        idx_expr: &'tcx hir::Expr<'tcx>,
+        index_expr: &'tcx hir::Expr<'tcx>,
         idx_ty: Ty<'tcx>,
     ) -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)> {
         // FIXME(#18741) -- this is almost but not quite the same as the
@@ -59,10 +59,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut autoderef = self.autoderef(base_expr.span, base_ty);
         let mut result = None;
         while result.is_none() && autoderef.next().is_some() {
-            result = self.try_index_step(expr, base_expr, &autoderef, idx_ty, idx_expr);
+            result = self.try_index_step(expr, base_expr, &autoderef, idx_ty, index_expr);
         }
         self.register_predicates(autoderef.into_obligations());
         result
+    }
+
+    fn negative_index(
+        &self,
+        ty: Ty<'tcx>,
+        span: Span,
+        base_expr: &hir::Expr<'_>,
+    ) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
+        let ty = self.resolve_vars_if_possible(ty);
+        let mut err = self.tcx.sess.struct_span_err(
+            span,
+            &format!("negative integers cannot be used to index on a `{}`", ty),
+        );
+        err.span_label(span, &format!("cannot use a negative integer for indexing on `{}`", ty));
+        if let (hir::ExprKind::Path(..), Ok(snippet)) =
+            (&base_expr.kind, self.tcx.sess.source_map().span_to_snippet(base_expr.span))
+        {
+            // `foo[-1]` to `foo[foo.len() - 1]`
+            err.span_suggestion_verbose(
+                span.shrink_to_lo(),
+                &format!(
+                    "to access an element starting from the end of the `{}`, compute the index",
+                    ty,
+                ),
+                format!("{}.len() ", snippet),
+                Applicability::MachineApplicable,
+            );
+        }
+        err.emit();
+        Some((self.tcx.ty_error(), self.tcx.ty_error()))
     }
 
     /// To type-check `base_expr[index_expr]`, we progressively autoderef
@@ -76,7 +106,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_expr: &hir::Expr<'_>,
         autoderef: &Autoderef<'a, 'tcx>,
         index_ty: Ty<'tcx>,
-        idx_expr: &hir::Expr<'_>,
+        index_expr: &hir::Expr<'_>,
     ) -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)> {
         let adjusted_ty =
             self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
@@ -86,49 +116,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr, base_expr, adjusted_ty, index_ty
         );
 
-        let negative_index = || {
-            let ty = self.resolve_vars_if_possible(adjusted_ty);
-            let mut err = self.tcx.sess.struct_span_err(
-                idx_expr.span,
-                &format!("negative integers cannot be used to index on a `{}`", ty),
-            );
-            err.span_label(
-                idx_expr.span,
-                &format!("cannot use a negative integer for indexing on `{}`", ty),
-            );
-            if let (hir::ExprKind::Path(..), Ok(snippet)) =
-                (&base_expr.kind, self.tcx.sess.source_map().span_to_snippet(base_expr.span))
-            {
-                // `foo[-1]` to `foo[foo.len() - 1]`
-                err.span_suggestion_verbose(
-                    idx_expr.span.shrink_to_lo(),
-                    &format!(
-                        "if you wanted to access an element starting from the end of the `{}`, you \
-                        must compute it",
-                        ty,
-                    ),
-                    format!("{}.len() ", snippet),
-                    Applicability::MachineApplicable,
-                );
-            }
-            err.emit();
-            Some((self.tcx.ty_error(), self.tcx.ty_error()))
-        };
         if let hir::ExprKind::Unary(
             hir::UnOp::Neg,
             hir::Expr {
                 kind: hir::ExprKind::Lit(hir::Lit { node: ast::LitKind::Int(..), .. }),
                 ..
             },
-        ) = idx_expr.kind
+        ) = index_expr.kind
         {
             match adjusted_ty.kind() {
                 ty::Adt(ty::AdtDef { did, .. }, _)
                     if self.tcx.is_diagnostic_item(sym::vec_type, *did) =>
                 {
-                    return negative_index();
+                    return self.negative_index(adjusted_ty, index_expr.span, base_expr);
                 }
-                ty::Slice(_) | ty::Array(_, _) => return negative_index(),
+                ty::Slice(_) | ty::Array(_, _) => {
+                    return self.negative_index(adjusted_ty, index_expr.span, base_expr);
+                }
                 _ => {}
             }
         }

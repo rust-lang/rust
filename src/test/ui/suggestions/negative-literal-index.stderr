@@ -4,7 +4,7 @@ error: negative integers cannot be used to index on a `Vec<{integer}>`
 LL |     x[-1];
    |       ^^ cannot use a negative integer for indexing on `Vec<{integer}>`
    |
-help: if you wanted to access an element starting from the end of the `Vec<{integer}>`, you must compute it
+help: to access an element starting from the end of the `Vec<{integer}>`, compute the index
    |
 LL |     x[x.len() -1];
    |       +++++++
@@ -15,7 +15,7 @@ error: negative integers cannot be used to index on a `[{integer}; 3]`
 LL |     x[-1];
    |       ^^ cannot use a negative integer for indexing on `[{integer}; 3]`
    |
-help: if you wanted to access an element starting from the end of the `[{integer}; 3]`, you must compute it
+help: to access an element starting from the end of the `[{integer}; 3]`, compute the index
    |
 LL |     x[x.len() -1];
    |       +++++++
@@ -26,7 +26,7 @@ error: negative integers cannot be used to index on a `[{integer}; 3]`
 LL |     x[-1];
    |       ^^ cannot use a negative integer for indexing on `[{integer}; 3]`
    |
-help: if you wanted to access an element starting from the end of the `[{integer}; 3]`, you must compute it
+help: to access an element starting from the end of the `[{integer}; 3]`, compute the index
    |
 LL |     x[x.len() -1];
    |       +++++++
