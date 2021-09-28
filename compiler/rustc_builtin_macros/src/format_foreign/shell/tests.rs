@@ -3,7 +3,7 @@ use super::{parse_next_substitution as pns, Substitution as S};
 macro_rules! assert_eq_pnsat {
     ($lhs:expr, $rhs:expr) => {
         assert_eq!(
-            pns($lhs).and_then(|(f, _)| f.translate()),
+            pns($lhs).and_then(|(f, _)| f.translate().ok()),
             $rhs.map(<String as From<&str>>::from)
         )
     };
@@ -37,7 +37,7 @@ fn test_parse() {
 fn test_iter() {
     use super::iter_subs;
     let s = "The $0'th word $$ is: `$WORD` $!\n";
-    let subs: Vec<_> = iter_subs(s, 0).map(|sub| sub.translate()).collect();
+    let subs: Vec<_> = iter_subs(s, 0).map(|sub| sub.translate().ok()).collect();
     assert_eq!(
         subs.iter().map(|ms| ms.as_ref().map(|s| &s[..])).collect::<Vec<_>>(),
         vec![Some("{0}"), None, Some("{WORD}")]
