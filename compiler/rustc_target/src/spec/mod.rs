@@ -75,6 +75,7 @@ mod netbsd_base;
 mod openbsd_base;
 mod redox_base;
 mod solaris_base;
+mod solid_base;
 mod thumb_base;
 mod uefi_msvc_base;
 mod vxworks_base;
@@ -931,6 +932,10 @@ supported_targets! {
     ("powerpc-wrs-vxworks", powerpc_wrs_vxworks),
     ("powerpc-wrs-vxworks-spe", powerpc_wrs_vxworks_spe),
     ("powerpc64-wrs-vxworks", powerpc64_wrs_vxworks),
+
+    ("aarch64-kmc-solid_asp3", aarch64_kmc_solid_asp3),
+    ("armv7a-kmc-solid_asp3-eabi", armv7a_kmc_solid_asp3_eabi),
+    ("armv7a-kmc-solid_asp3-eabihf", armv7a_kmc_solid_asp3_eabihf),
 
     ("mipsel-sony-psp", mipsel_sony_psp),
     ("mipsel-unknown-none", mipsel_unknown_none),

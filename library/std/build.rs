@@ -27,6 +27,7 @@ fn main() {
         || target.contains("wasm32")
         || target.contains("asmjs")
         || target.contains("espidf")
+        || target.contains("solid")
     {
         // These platforms don't have any special requirements.
     } else {

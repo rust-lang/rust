@@ -44,6 +44,7 @@ pub unsafe extern "C-unwind" fn __rust_start_panic(_payload: *mut &mut dyn BoxMe
                 libc::abort();
             }
         } else if #[cfg(any(target_os = "hermit",
+                            target_os = "solid_asp3",
                             all(target_vendor = "fortanix", target_env = "sgx")
         ))] {
             unsafe fn abort() -> ! {
