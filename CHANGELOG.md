@@ -6,7 +6,73 @@ document.
 
 ## Unreleased / In Rust Nightly
 
-[74d1561...master](https://github.com/rust-lang/rust-clippy/compare/74d1561...master)
+[7bfc26e...master](https://github.com/rust-lang/rust-clippy/compare/7bfc26e...master)
+
+## Rust 1.56
+
+Current beta, release 2021-10-21
+
+[74d1561...7bfc26e](https://github.com/rust-lang/rust-clippy/compare/74d1561...7bfc26e)
+
+### New Lints
+
+* [`unwrap_or_else_default`]
+  [#7516](https://github.com/rust-lang/rust-clippy/pull/7516)
+
+### Enhancements
+
+* [`needless_continue`]: Now also lints in `loop { continue; }` case
+  [#7477](https://github.com/rust-lang/rust-clippy/pull/7477)
+* [`disallowed_type`]: Now also primitive types can be disallowed
+  [#7488](https://github.com/rust-lang/rust-clippy/pull/7488)
+* [`manual_swap`]: Now also lints on xor swaps
+  [#7506](https://github.com/rust-lang/rust-clippy/pull/7506)
+* [`map_flatten`]: Now also lints on the `Result` type
+  [#7522](https://github.com/rust-lang/rust-clippy/pull/7522)
+* [`no_effect`]: Now also lints on inclusive ranges
+  [#7556](https://github.com/rust-lang/rust-clippy/pull/7556)
+
+### False Positive Fixes
+
+* [`nonstandard_macro_braces`]: No longer lints on similar named nested macros
+  [#7478](https://github.com/rust-lang/rust-clippy/pull/7478)
+* [`too_many_lines`]: No longer lints in closures to avoid duplicated diagnostics
+  [#7534](https://github.com/rust-lang/rust-clippy/pull/7534)
+* [`similar_names`]: No longer complains about `iter` and `item` being too
+  similar [#7546](https://github.com/rust-lang/rust-clippy/pull/7546)
+
+### Suggestion Fixes/Improvements
+
+* [`similar_names`]: No longer suggests to insert or add an underscore as a fix
+  [#7221](https://github.com/rust-lang/rust-clippy/pull/7221)
+* [`new_without_default`]: No longer shows the full qualified type path when
+  suggesting adding a `Default` implementation
+  [#7493](https://github.com/rust-lang/rust-clippy/pull/7493)
+* [`while_let_on_iterator`]: Now suggests re-borrowing mutable references
+  [#7520](https://github.com/rust-lang/rust-clippy/pull/7520)
+* [`extend_with_drain`]: Improve code suggestion for mutable and immutable
+  references [#7533](https://github.com/rust-lang/rust-clippy/pull/7533)
+* [`trivially_copy_pass_by_ref`]: Now properly handles `Self` type
+  [#7535](https://github.com/rust-lang/rust-clippy/pull/7535)
+* [`never_loop`]: Now suggests using `if let` instead of a `for` loop when
+  applicable [#7541](https://github.com/rust-lang/rust-clippy/pull/7541)
+
+### Documentation Improvements
+
+* Clippy now uses a lint to generate its lint documentation. [Lints all the way
+  down](https://en.wikipedia.org/wiki/Turtles_all_the_way_down).
+  [#7502](https://github.com/rust-lang/rust-clippy/pull/7502)
+* Reworked Clippy's website:
+  [#7172](https://github.com/rust-lang/rust-clippy/issues/7172)
+  [#7279](https://github.com/rust-lang/rust-clippy/pull/7279)
+  * Added applicability information about lints
+  * Added a link to jump into the implementation
+  * Improved loading times
+  * Adapted some styling
+* `cargo clippy --help` now also explains the `--fix` and `--no-deps` flag
+  [#7492](https://github.com/rust-lang/rust-clippy/pull/7492)
+* [`unnested_or_patterns`]: Removed `or_patterns` feature gate in the code
+  example [#7507](https://github.com/rust-lang/rust-clippy/pull/7507)
 
 ### New Lints
 
@@ -14,7 +80,7 @@ document.
 
 ## Rust 1.55
 
-Current beta, release 2021-09-09
+Current stable, released 2021-09-09
 
 [3ae8faf...74d1561](https://github.com/rust-lang/rust-clippy/compare/3ae8faf...74d1561)
 
@@ -130,21 +196,9 @@ Current beta, release 2021-09-09
 * [`use_self`]
   [#7428](https://github.com/rust-lang/rust-clippy/pull/7428)
 
-### Documentation Improvements
-
-* Reworked Clippy's website:
-  [#7279](https://github.com/rust-lang/rust-clippy/pull/7279)
-  [#7172](https://github.com/rust-lang/rust-clippy/issues/7172)
-  * Added applicability information about lints
-  * Added a link to jump into the implementation
-  * Improved loading times
-  * Adapted some styling
-* Clippy now uses a lint to generate its documentation
-  [#7298](https://github.com/rust-lang/rust-clippy/pull/7298)
-
 ## Rust 1.54
 
-Current stable, released 2021-07-29
+Released 2021-07-29
 
 [7c7683c...3ae8faf](https://github.com/rust-lang/rust-clippy/compare/7c7683c...3ae8faf)
 
