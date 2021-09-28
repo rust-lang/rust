@@ -1,4 +1,5 @@
 #![deny(clippy::fallible_impl_from)]
+#![allow(clippy::if_then_panic)]
 
 // docs example
 struct Foo(i32);

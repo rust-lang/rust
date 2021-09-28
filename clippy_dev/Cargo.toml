@@ -1,7 +1,7 @@
 [package]
 name = "clippy_dev"
 version = "0.0.1"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 bytecount = "0.6"

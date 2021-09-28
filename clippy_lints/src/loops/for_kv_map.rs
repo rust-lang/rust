@@ -10,12 +10,7 @@ use rustc_middle::ty;
 use rustc_span::sym;
 
 /// Checks for the `FOR_KV_MAP` lint.
-pub(super) fn check<'tcx>(
-    cx: &LateContext<'tcx>,
-    pat: &'tcx Pat<'_>,
-    arg: &'tcx Expr<'_>,
-    body: &'tcx Expr<'_>,
-) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, arg: &'tcx Expr<'_>, body: &'tcx Expr<'_>) {
     let pat_span = pat.span;
 
     if let PatKind::Tuple(pat, _) = pat.kind {

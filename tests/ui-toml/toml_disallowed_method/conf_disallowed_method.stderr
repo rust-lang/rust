@@ -1,4 +1,4 @@
-error: use of a disallowed method `regex::re_unicode::Regex::new`
+error: use of a disallowed method `regex::Regex::new`
   --> $DIR/conf_disallowed_method.rs:7:14
    |
 LL |     let re = Regex::new(r"ab.*c").unwrap();
@@ -6,13 +6,15 @@ LL |     let re = Regex::new(r"ab.*c").unwrap();
    |
    = note: `-D clippy::disallowed-method` implied by `-D warnings`
 
-error: use of a disallowed method `regex::re_unicode::Regex::is_match`
+error: use of a disallowed method `regex::Regex::is_match`
   --> $DIR/conf_disallowed_method.rs:8:5
    |
 LL |     re.is_match("abc");
    |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: no matching allowed (from clippy.toml)
 
-error: use of a disallowed method `core::iter::traits::iterator::Iterator::sum`
+error: use of a disallowed method `std::iter::Iterator::sum`
   --> $DIR/conf_disallowed_method.rs:11:5
    |
 LL |     a.iter().sum::<i32>();

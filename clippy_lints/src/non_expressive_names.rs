@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// let (a, b, c, d, e, f, g) = (...);
     /// ```
     pub MANY_SINGLE_CHAR_NAMES,
-    style,
+    pedantic,
     "too many single character bindings"
 }
 

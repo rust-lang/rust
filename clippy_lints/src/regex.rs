@@ -5,7 +5,7 @@ use if_chain::if_chain;
 use rustc_ast::ast::{LitKind, StrStyle};
 use rustc_hir::{BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{BytePos, Span};
 use std::convert::TryFrom;
 
@@ -51,10 +51,7 @@ declare_clippy_lint! {
     "trivial regular expressions"
 }
 
-#[derive(Clone, Default)]
-pub struct Regex {}
-
-impl_lint_pass!(Regex => [INVALID_REGEX, TRIVIAL_REGEX]);
+declare_lint_pass!(Regex => [INVALID_REGEX, TRIVIAL_REGEX]);
 
 impl<'tcx> LateLintPass<'tcx> for Regex {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

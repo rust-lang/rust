@@ -16,7 +16,6 @@ fn foob() -> bool {
     unimplemented!()
 }
 
-#[allow(clippy::many_single_char_names)]
 fn immutable_condition() {
     // Should warn when all vars mentioned are immutable
     let y = 0;

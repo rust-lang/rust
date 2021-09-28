@@ -1,4 +1,9 @@
+// aux-build:proc_macro_suspicious_else_formatting.rs
+
 #![warn(clippy::suspicious_else_formatting)]
+
+extern crate proc_macro_suspicious_else_formatting;
+use proc_macro_suspicious_else_formatting::DeriveBadSpan;
 
 fn foo() -> bool {
     true
@@ -103,3 +108,7 @@ fn main() {
     {
     }
 }
+
+// #7650 - Don't lint. Proc-macro using bad spans for `if` expressions.
+#[derive(DeriveBadSpan)]
+struct _Foo(u32, u32);

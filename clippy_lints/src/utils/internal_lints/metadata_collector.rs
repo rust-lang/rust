@@ -298,6 +298,7 @@ pub struct ClippyConfiguration {
     default: String,
     lints: Vec<String>,
     doc: String,
+    #[allow(dead_code)]
     deprecation_reason: Option<&'static str>,
 }
 

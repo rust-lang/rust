@@ -1,5 +1,5 @@
 error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices
-  --> $DIR/ptr_arg.rs:7:14
+  --> $DIR/ptr_arg.rs:12:14
    |
 LL | fn do_vec(x: &Vec<i64>) {
    |              ^^^^^^^^^ help: change this to: `&[i64]`
@@ -7,25 +7,25 @@ LL | fn do_vec(x: &Vec<i64>) {
    = note: `-D clippy::ptr-arg` implied by `-D warnings`
 
 error: writing `&String` instead of `&str` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:16:14
+  --> $DIR/ptr_arg.rs:21:14
    |
 LL | fn do_str(x: &String) {
    |              ^^^^^^^ help: change this to: `&str`
 
 error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:25:15
+  --> $DIR/ptr_arg.rs:30:15
    |
 LL | fn do_path(x: &PathBuf) {
    |               ^^^^^^^^ help: change this to: `&Path`
 
 error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices
-  --> $DIR/ptr_arg.rs:38:18
+  --> $DIR/ptr_arg.rs:43:18
    |
 LL |     fn do_vec(x: &Vec<i64>);
    |                  ^^^^^^^^^ help: change this to: `&[i64]`
 
 error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices
-  --> $DIR/ptr_arg.rs:51:14
+  --> $DIR/ptr_arg.rs:56:14
    |
 LL | fn cloned(x: &Vec<u8>) -> Vec<u8> {
    |              ^^^^^^^^
@@ -44,7 +44,7 @@ LL |     x.to_owned()
    |
 
 error: writing `&String` instead of `&str` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:60:18
+  --> $DIR/ptr_arg.rs:65:18
    |
 LL | fn str_cloned(x: &String) -> String {
    |                  ^^^^^^^
@@ -67,7 +67,7 @@ LL |     x.to_string()
    |
 
 error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:68:19
+  --> $DIR/ptr_arg.rs:73:19
    |
 LL | fn path_cloned(x: &PathBuf) -> PathBuf {
    |                   ^^^^^^^^
@@ -90,7 +90,7 @@ LL |     x.to_path_buf()
    |
 
 error: writing `&String` instead of `&str` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:76:44
+  --> $DIR/ptr_arg.rs:81:44
    |
 LL | fn false_positive_capacity(x: &Vec<u8>, y: &String) {
    |                                            ^^^^^^^
@@ -109,13 +109,13 @@ LL |     let c = y;
    |             ~
 
 error: using a reference to `Cow` is not recommended
-  --> $DIR/ptr_arg.rs:90:25
+  --> $DIR/ptr_arg.rs:95:25
    |
 LL | fn test_cow_with_ref(c: &Cow<[i32]>) {}
    |                         ^^^^^^^^^^^ help: change this to: `&[i32]`
 
 error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices
-  --> $DIR/ptr_arg.rs:143:21
+  --> $DIR/ptr_arg.rs:148:21
    |
 LL |     fn foo_vec(vec: &Vec<u8>) {
    |                     ^^^^^^^^
@@ -134,7 +134,7 @@ LL |         let _ = vec.to_owned().clone();
    |                 ~~~~~~~~~~~~~~
 
 error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:148:23
+  --> $DIR/ptr_arg.rs:153:23
    |
 LL |     fn foo_path(path: &PathBuf) {
    |                       ^^^^^^^^
@@ -153,7 +153,7 @@ LL |         let _ = path.to_path_buf().clone();
    |                 ~~~~~~~~~~~~~~~~~~
 
 error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
-  --> $DIR/ptr_arg.rs:153:21
+  --> $DIR/ptr_arg.rs:158:21
    |
 LL |     fn foo_str(str: &PathBuf) {
    |                     ^^^^^^^^

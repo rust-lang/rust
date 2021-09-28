@@ -1,0 +1,20 @@
+error: only a `panic!` in `if`-then statement
+  --> $DIR/if_then_panic.rs:19:5
+   |
+LL | /     if !a.is_empty() {
+LL | |         panic!("qaqaq{:?}", a);
+LL | |     }
+   | |_____^ help: try: `assert!(a.is_empty(), "qaqaq{:?}", a);`
+   |
+   = note: `-D clippy::if-then-panic` implied by `-D warnings`
+
+error: only a `panic!` in `if`-then statement
+  --> $DIR/if_then_panic.rs:22:5
+   |
+LL | /     if !a.is_empty() {
+LL | |         panic!("qwqwq");
+LL | |     }
+   | |_____^ help: try: `assert!(a.is_empty(), "qwqwq");`
+
+error: aborting due to 2 previous errors
+
