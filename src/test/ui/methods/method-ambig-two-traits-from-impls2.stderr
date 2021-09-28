@@ -16,12 +16,12 @@ LL |     fn foo() {}
    |     ^^^^^^^^
 help: disambiguate the associated function for candidate #1
    |
-LL |     A::foo();
-   |     ~~~
+LL |     <AB as A>::foo();
+   |     ~~~~~~~~~~~
 help: disambiguate the associated function for candidate #2
    |
-LL |     B::foo();
-   |     ~~~
+LL |     <AB as B>::foo();
+   |     ~~~~~~~~~~~
 
 error: aborting due to previous error
 

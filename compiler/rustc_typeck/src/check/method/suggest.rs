@@ -176,6 +176,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 sugg_span,
                                 idx,
                                 self.tcx.sess.source_map(),
+                                item.fn_has_self_parameter,
                             );
                         }
                     }
@@ -218,6 +219,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             sugg_span,
                             idx,
                             self.tcx.sess.source_map(),
+                            item.fn_has_self_parameter,
                         );
                     }
                 }
@@ -1736,6 +1738,7 @@ fn print_disambiguation_help(
     span: Span,
     candidate: Option<usize>,
     source_map: &source_map::SourceMap,
+    fn_has_self_parameter: bool,
 ) {
     let mut applicability = Applicability::MachineApplicable;
     let (span, sugg) = if let (ty::AssocKind::Fn, Some(args)) = (kind, args) {
@@ -1754,9 +1757,14 @@ fn print_disambiguation_help(
                 .collect::<Vec<_>>()
                 .join(", "),
         );
+        let trait_name = if !fn_has_self_parameter {
+            format!("<{} as {}>", rcvr_ty, trait_name)
+        } else {
+            trait_name
+        };
         (span, format!("{}::{}{}", trait_name, item_name, args))
     } else {
-        (span.with_hi(item_name.span.lo()), format!("{}::", trait_name))
+        (span.with_hi(item_name.span.lo()), format!("<{} as {}>::", rcvr_ty, trait_name))
     };
     err.span_suggestion_verbose(
         span,
