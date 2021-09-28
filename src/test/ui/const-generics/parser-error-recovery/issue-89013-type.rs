@@ -8,7 +8,6 @@ const T: usize = 42;
 
 impl Foo<N = type 3> for Bar {
 //~^ERROR missing type to the right of `=`
-//~^^ERROR found keyword `type`
     fn do_x(&self) -> [u8; 3] {
         [0u8; 3]
     }
