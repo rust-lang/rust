@@ -1,5 +1,8 @@
 disallowed-methods = [
+    # just a string is shorthand for path only
     "std::iter::Iterator::sum",
-    "regex::Regex::is_match",
-    "regex::Regex::new"
+    # can give path and reason with an inline table
+    { path = "regex::Regex::is_match", reason = "no matching allowed" },
+    # can use an inline table but omit reason
+    { path = "regex::Regex::new" },
 ]

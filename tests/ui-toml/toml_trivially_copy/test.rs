@@ -2,7 +2,6 @@
 // normalize-stderr-test "\(limit: \d+ byte\)" -> "(limit: N byte)"
 
 #![deny(clippy::trivially_copy_pass_by_ref)]
-#![allow(clippy::many_single_char_names)]
 
 #[derive(Copy, Clone)]
 struct Foo(u8);

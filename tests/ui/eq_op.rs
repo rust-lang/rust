@@ -2,7 +2,7 @@
 
 #[rustfmt::skip]
 #[warn(clippy::eq_op)]
-#[allow(clippy::identity_op, clippy::double_parens, clippy::many_single_char_names)]
+#[allow(clippy::identity_op, clippy::double_parens)]
 #[allow(clippy::no_effect, unused_variables, clippy::unnecessary_operation, clippy::short_circuit_statement)]
 #[allow(clippy::nonminimal_bool)]
 #[allow(unused)]

@@ -68,3 +68,40 @@ mod issue7179 {
         fn as_byte_slice(slice: &[Self]) -> &[u8];
     }
 }
+
+mod issue3414 {
+    struct CellLikeThing<T>(T);
+
+    impl<T> CellLikeThing<T> {
+        // don't trigger
+        fn into_inner(this: Self) -> T {
+            this.0
+        }
+    }
+
+    impl<T> std::ops::Deref for CellLikeThing<T> {
+        type Target = T;
+
+        fn deref(&self) -> &T {
+            &self.0
+        }
+    }
+}
+
+// don't trigger
+mod issue4546 {
+    use std::pin::Pin;
+
+    struct S;
+    impl S {
+        pub fn as_mut(self: Pin<&mut Self>) {}
+
+        pub fn as_other_thingy(self: Pin<&Self>) {}
+
+        pub fn is_other_thingy(self: Pin<&Self>) {}
+
+        pub fn to_mut(self: Pin<&mut Self>) {}
+
+        pub fn to_other_thingy(self: Pin<&Self>) {}
+    }
+}

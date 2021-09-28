@@ -4,7 +4,6 @@
 #[allow(
     unused_assignments,
     unused_variables,
-    clippy::many_single_char_names,
     clippy::no_effect,
     dead_code,
     clippy::blacklisted_name

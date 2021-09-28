@@ -1,5 +1,5 @@
 error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
-  --> $DIR/test.rs:15:11
+  --> $DIR/test.rs:14:11
    |
 LL | fn bad(x: &u16, y: &Foo) {}
    |           ^^^^ help: consider passing by value instead: `u16`
@@ -11,7 +11,7 @@ LL | #![deny(clippy::trivially_copy_pass_by_ref)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
-  --> $DIR/test.rs:15:20
+  --> $DIR/test.rs:14:20
    |
 LL | fn bad(x: &u16, y: &Foo) {}
    |                    ^^^^ help: consider passing by value instead: `Foo`

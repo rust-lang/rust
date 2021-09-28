@@ -1,4 +1,4 @@
-#![allow(unused, clippy::many_single_char_names, clippy::diverging_sub_expression)]
+#![allow(unused, clippy::diverging_sub_expression)]
 #![warn(clippy::nonminimal_bool)]
 
 fn main() {

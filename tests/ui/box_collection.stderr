@@ -1,0 +1,27 @@
+error: you seem to be trying to use `Box<Vec<..>>`. Consider using just `Vec<..>`
+  --> $DIR/box_collection.rs:21:14
+   |
+LL | fn test(foo: Box<Vec<bool>>) {}
+   |              ^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::box-collection` implied by `-D warnings`
+   = help: `Vec<..>` is already on the heap, `Box<Vec<..>>` makes an extra allocation
+
+error: you seem to be trying to use `Box<String>`. Consider using just `String`
+  --> $DIR/box_collection.rs:28:15
+   |
+LL | fn test3(foo: Box<String>) {}
+   |               ^^^^^^^^^^^
+   |
+   = help: `String` is already on the heap, `Box<String>` makes an extra allocation
+
+error: you seem to be trying to use `Box<HashMap<..>>`. Consider using just `HashMap<..>`
+  --> $DIR/box_collection.rs:30:15
+   |
+LL | fn test4(foo: Box<HashMap<String, String>>) {}
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `HashMap<..>` is already on the heap, `Box<HashMap<..>>` makes an extra allocation
+
+error: aborting due to 3 previous errors
+

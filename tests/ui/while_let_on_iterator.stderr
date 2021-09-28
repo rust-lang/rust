@@ -46,7 +46,7 @@ error: this loop could be written as a `for` loop
   --> $DIR/while_let_on_iterator.rs:191:9
    |
 LL |         while let Some(m) = it.next() {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in &mut it`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in it.by_ref()`
 
 error: this loop could be written as a `for` loop
   --> $DIR/while_let_on_iterator.rs:202:5
@@ -70,19 +70,19 @@ error: this loop could be written as a `for` loop
   --> $DIR/while_let_on_iterator.rs:222:9
    |
 LL |         while let Some(m) = it.next() {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in &mut it`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in it.by_ref()`
 
 error: this loop could be written as a `for` loop
   --> $DIR/while_let_on_iterator.rs:239:9
    |
 LL |         while let Some(m) = it.next() {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in &mut it`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in it.by_ref()`
 
 error: this loop could be written as a `for` loop
   --> $DIR/while_let_on_iterator.rs:254:13
    |
 LL |             while let Some(i) = self.0.next() {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for i in &mut self.0`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for i in self.0.by_ref()`
 
 error: manual `!RangeInclusive::contains` implementation
   --> $DIR/while_let_on_iterator.rs:255:20
@@ -96,31 +96,31 @@ error: this loop could be written as a `for` loop
   --> $DIR/while_let_on_iterator.rs:286:13
    |
 LL |             while let Some(i) = self.0.0.0.next() {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for i in &mut self.0.0.0`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for i in self.0.0.0.by_ref()`
 
 error: this loop could be written as a `for` loop
   --> $DIR/while_let_on_iterator.rs:315:5
    |
 LL |     while let Some(n) = it.next() {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for n in &mut it`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for n in it.by_ref()`
 
 error: this loop could be written as a `for` loop
   --> $DIR/while_let_on_iterator.rs:327:9
    |
 LL |         while let Some(x) = it.next() {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in &mut it`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it.by_ref()`
 
 error: this loop could be written as a `for` loop
   --> $DIR/while_let_on_iterator.rs:341:5
    |
 LL |     while let Some(x) = it.next() {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in &mut *it`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it.by_ref()`
 
 error: this loop could be written as a `for` loop
   --> $DIR/while_let_on_iterator.rs:352:5
    |
 LL |     while let Some(x) = it.0.next() {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in &mut *it.0`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it.0.by_ref()`
 
 error: this loop could be written as a `for` loop
   --> $DIR/while_let_on_iterator.rs:371:5
