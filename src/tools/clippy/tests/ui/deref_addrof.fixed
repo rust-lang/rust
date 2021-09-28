@@ -9,7 +9,7 @@ fn get_reference(n: &usize) -> &usize {
     n
 }
 
-#[allow(clippy::many_single_char_names, clippy::double_parens)]
+#[allow(clippy::double_parens)]
 #[allow(unused_variables, unused_parens)]
 fn main() {
     let a = 10;

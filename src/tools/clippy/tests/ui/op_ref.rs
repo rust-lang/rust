@@ -1,6 +1,5 @@
 #![allow(unused_variables, clippy::blacklisted_name)]
 #![warn(clippy::op_ref)]
-#![allow(clippy::many_single_char_names)]
 use std::collections::HashSet;
 use std::ops::BitAnd;
 

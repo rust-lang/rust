@@ -1,5 +1,4 @@
 #![feature(test)] // compiletest_rs requires this attribute
-#![feature(once_cell)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
@@ -46,14 +45,6 @@ extern crate quote;
 #[allow(unused_extern_crates)]
 extern crate syn;
 
-fn host_lib() -> PathBuf {
-    option_env!("HOST_LIBS").map_or(cargo::CARGO_TARGET_DIR.join(env!("PROFILE")), PathBuf::from)
-}
-
-fn clippy_driver_path() -> PathBuf {
-    option_env!("CLIPPY_DRIVER_PATH").map_or(cargo::TARGET_LIB.join("clippy-driver"), PathBuf::from)
-}
-
 /// Produces a string with an `--extern` flag for all UI test crate
 /// dependencies.
 ///
@@ -99,12 +90,14 @@ fn extern_flags() -> String {
         .copied()
         .filter(|n| !crates.contains_key(n))
         .collect();
-    if !not_found.is_empty() {
-        panic!("dependencies not found in depinfo: {:?}", not_found);
-    }
+    assert!(
+        not_found.is_empty(),
+        "dependencies not found in depinfo: {:?}",
+        not_found
+    );
     crates
         .into_iter()
-        .map(|(name, path)| format!("--extern {}={} ", name, path))
+        .map(|(name, path)| format!(" --extern {}={}", name, path))
         .collect()
 }
 
@@ -120,19 +113,29 @@ fn default_config() -> compiletest::Config {
         config.run_lib_path = path.clone();
         config.compile_lib_path = path;
     }
+    let current_exe_path = std::env::current_exe().unwrap();
+    let deps_path = current_exe_path.parent().unwrap();
+    let profile_path = deps_path.parent().unwrap();
 
     // Using `-L dependency={}` enforces that external dependencies are added with `--extern`.
     // This is valuable because a) it allows us to monitor what external dependencies are used
     // and b) it ensures that conflicting rlibs are resolved properly.
+    let host_libs = option_env!("HOST_LIBS")
+        .map(|p| format!(" -L dependency={}", Path::new(p).join("deps").display()))
+        .unwrap_or_default();
     config.target_rustcflags = Some(format!(
-        "--emit=metadata -L dependency={} -L dependency={} -Dwarnings -Zui-testing {}",
-        host_lib().join("deps").display(),
-        cargo::TARGET_LIB.join("deps").display(),
+        "--emit=metadata -Dwarnings -Zui-testing -L dependency={}{}{}",
+        deps_path.display(),
+        host_libs,
         extern_flags(),
     ));
 
-    config.build_base = host_lib().join("test_build_base");
-    config.rustc_path = clippy_driver_path();
+    config.build_base = profile_path.join("test");
+    config.rustc_path = profile_path.join(if cfg!(windows) {
+        "clippy-driver.exe"
+    } else {
+        "clippy-driver"
+    });
     config
 }
 

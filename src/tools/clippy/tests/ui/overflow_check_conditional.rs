@@ -1,4 +1,3 @@
-#![allow(clippy::many_single_char_names)]
 #![warn(clippy::overflow_check_conditional)]
 
 fn main() {

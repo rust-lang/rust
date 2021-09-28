@@ -15,6 +15,8 @@ use std::{
     env, fmt,
     fs::write,
     path::{Path, PathBuf},
+    thread,
+    time::Duration,
 };
 
 use clap::{App, Arg, ArgMatches};
@@ -109,6 +111,22 @@ impl std::fmt::Display for ClippyWarning {
     }
 }
 
+fn get(path: &str) -> Result<ureq::Response, ureq::Error> {
+    const MAX_RETRIES: u8 = 4;
+    let mut retries = 0;
+    loop {
+        match ureq::get(path).call() {
+            Ok(res) => return Ok(res),
+            Err(e) if retries >= MAX_RETRIES => return Err(e),
+            Err(ureq::Error::Transport(e)) => eprintln!("Error: {}", e),
+            Err(e) => return Err(e),
+        }
+        eprintln!("retrying in {} seconds...", retries);
+        thread::sleep(Duration::from_secs(retries as u64));
+        retries += 1;
+    }
+}
+
 impl CrateSource {
     /// Makes the sources available on the disk for clippy to check.
     /// Clones a git repo and checks out the specified commit or downloads a crate from crates.io or
@@ -129,7 +147,7 @@ impl CrateSource {
                 if !krate_file_path.is_file() {
                     // create a file path to download and write the crate data into
                     let mut krate_dest = std::fs::File::create(&krate_file_path).unwrap();
-                    let mut krate_req = ureq::get(&url).call().unwrap().into_reader();
+                    let mut krate_req = get(&url).unwrap().into_reader();
                     // copy the crate into the file
                     std::io::copy(&mut krate_req, &mut krate_dest).unwrap();
 

@@ -1,5 +1,5 @@
 error: this looks like an `else {..}` but the `else` is missing
-  --> $DIR/suspicious_else_formatting.rs:11:6
+  --> $DIR/suspicious_else_formatting.rs:16:6
    |
 LL |     } {
    |      ^
@@ -8,7 +8,7 @@ LL |     } {
    = note: to remove this lint, add the missing `else` or add a new line before the next block
 
 error: this looks like an `else if` but the `else` is missing
-  --> $DIR/suspicious_else_formatting.rs:15:6
+  --> $DIR/suspicious_else_formatting.rs:20:6
    |
 LL |     } if foo() {
    |      ^
@@ -16,7 +16,7 @@ LL |     } if foo() {
    = note: to remove this lint, add the missing `else` or add a new line before the second `if`
 
 error: this looks like an `else if` but the `else` is missing
-  --> $DIR/suspicious_else_formatting.rs:22:10
+  --> $DIR/suspicious_else_formatting.rs:27:10
    |
 LL |         } if foo() {
    |          ^
@@ -24,7 +24,7 @@ LL |         } if foo() {
    = note: to remove this lint, add the missing `else` or add a new line before the second `if`
 
 error: this looks like an `else if` but the `else` is missing
-  --> $DIR/suspicious_else_formatting.rs:30:10
+  --> $DIR/suspicious_else_formatting.rs:35:10
    |
 LL |         } if foo() {
    |          ^
@@ -32,7 +32,7 @@ LL |         } if foo() {
    = note: to remove this lint, add the missing `else` or add a new line before the second `if`
 
 error: this is an `else {..}` but the formatting might hide it
-  --> $DIR/suspicious_else_formatting.rs:39:6
+  --> $DIR/suspicious_else_formatting.rs:44:6
    |
 LL |       } else
    |  ______^
@@ -42,7 +42,7 @@ LL | |     {
    = note: to remove this lint, remove the `else` or remove the new line between `else` and `{..}`
 
 error: this is an `else if` but the formatting might hide it
-  --> $DIR/suspicious_else_formatting.rs:51:6
+  --> $DIR/suspicious_else_formatting.rs:56:6
    |
 LL |       } else
    |  ______^
@@ -52,7 +52,7 @@ LL | |     if foo() { // the span of the above error should continue here
    = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
 
 error: this is an `else if` but the formatting might hide it
-  --> $DIR/suspicious_else_formatting.rs:56:6
+  --> $DIR/suspicious_else_formatting.rs:61:6
    |
 LL |       }
    |  ______^
@@ -63,7 +63,7 @@ LL | |     if foo() { // the span of the above error should continue here
    = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
 
 error: this is an `else {..}` but the formatting might hide it
-  --> $DIR/suspicious_else_formatting.rs:83:6
+  --> $DIR/suspicious_else_formatting.rs:88:6
    |
 LL |       }
    |  ______^
@@ -75,7 +75,7 @@ LL | |     {
    = note: to remove this lint, remove the `else` or remove the new line between `else` and `{..}`
 
 error: this is an `else {..}` but the formatting might hide it
-  --> $DIR/suspicious_else_formatting.rs:91:6
+  --> $DIR/suspicious_else_formatting.rs:96:6
    |
 LL |       }
    |  ______^

@@ -188,7 +188,7 @@ fn issue6491() {
     // Used in outer loop, needs &mut
     let mut it = 1..40;
     while let Some(n) = it.next() {
-        for m in &mut it {
+        for m in it.by_ref() {
             if m % 10 == 0 {
                 break;
             }
@@ -219,7 +219,7 @@ fn issue6491() {
 
         // Used after the loop, needs &mut.
         let mut it = 1..40;
-        for m in &mut it {
+        for m in it.by_ref() {
             if m % 10 == 0 {
                 break;
             }
@@ -236,7 +236,7 @@ fn issue6231() {
     let mut it = 1..40;
     let mut opt = Some(0);
     while let Some(n) = opt.take().or_else(|| it.next()) {
-        for m in &mut it {
+        for m in it.by_ref() {
             if n % 10 == 0 {
                 break;
             }
@@ -251,7 +251,7 @@ fn issue1924() {
     impl<T: Iterator<Item = u32>> S<T> {
         fn f(&mut self) -> Option<u32> {
             // Used as a field.
-            for i in &mut self.0 {
+            for i in self.0.by_ref() {
                 if !(3..=7).contains(&i) {
                     return Some(i);
                 }
@@ -283,7 +283,7 @@ fn issue1924() {
                 }
             }
             // This one is fine, a different field is borrowed
-            for i in &mut self.0.0.0 {
+            for i in self.0.0.0.by_ref() {
                 if i == 1 {
                     return self.0.1.take();
                 } else {
@@ -312,7 +312,7 @@ fn issue1924() {
 
     // Needs &mut, field of the iterator is accessed after the loop
     let mut it = S2(1..40, 0);
-    for n in &mut it {
+    for n in it.by_ref() {
         if n == 0 {
             break;
         }
@@ -324,7 +324,7 @@ fn issue7249() {
     let mut it = 0..10;
     let mut x = || {
         // Needs &mut, the closure can be called multiple times
-        for x in &mut it {
+        for x in it.by_ref() {
             if x % 2 == 0 {
                 break;
             }
@@ -338,7 +338,7 @@ fn issue7510() {
     let mut it = 0..10;
     let it = &mut it;
     // Needs to reborrow `it` as the binding isn't mutable
-    for x in &mut *it {
+    for x in it.by_ref() {
         if x % 2 == 0 {
             break;
         }
@@ -349,7 +349,7 @@ fn issue7510() {
     let mut it = 0..10;
     let it = S(&mut it);
     // Needs to reborrow `it.0` as the binding isn't mutable
-    for x in &mut *it.0 {
+    for x in it.0.by_ref() {
         if x % 2 == 0 {
             break;
         }

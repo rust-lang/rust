@@ -113,7 +113,7 @@ declare_clippy_lint! {
     /// if (y - x).abs() > error_margin { }
     /// ```
     pub FLOAT_CMP,
-    correctness,
+    pedantic,
     "using `==` or `!=` on float values instead of comparing difference with an epsilon"
 }
 

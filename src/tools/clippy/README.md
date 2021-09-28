@@ -18,7 +18,7 @@ You can choose how much Clippy is supposed to ~~annoy~~ help you by changing the
 | `clippy::style`       | code that should be written in a more idiomatic way                                 | **warn**      |
 | `clippy::complexity`  | code that does something simple but in a complex way                                | **warn**      |
 | `clippy::perf`        | code that can be written to run faster                                              | **warn**      |
-| `clippy::pedantic`    | lints which are rather strict or might have false positives                         | allow         |
+| `clippy::pedantic`    | lints which are rather strict or have occasional false positives                    | allow         |
 | `clippy::nursery`     | new lints that are still under development                                          | allow         |
 | `clippy::cargo`       | lints for the cargo manifest                                                        | allow         |
 

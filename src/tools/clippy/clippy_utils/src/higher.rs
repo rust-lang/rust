@@ -602,3 +602,33 @@ pub fn is_from_for_desugar(local: &hir::Local<'_>) -> bool {
 
     false
 }
+
+/// A parsed `panic!` expansion
+pub struct PanicExpn<'tcx> {
+    /// Span of `panic!(..)`
+    pub call_site: Span,
+    /// Inner `format_args!` expansion
+    pub format_args: FormatArgsExpn<'tcx>,
+}
+
+impl PanicExpn<'tcx> {
+    /// Parses an expanded `panic!` invocation
+    pub fn parse(expr: &'tcx Expr<'tcx>) -> Option<Self> {
+        if_chain! {
+            if let ExprKind::Block(block, _) = expr.kind;
+            if let Some(init) = block.expr;
+            if let ExprKind::Call(_, [format_args]) = init.kind;
+            let expn_data = expr.span.ctxt().outer_expn_data();
+            if let ExprKind::AddrOf(_, _, format_args) = format_args.kind;
+            if let Some(format_args) = FormatArgsExpn::parse(format_args);
+            then {
+                Some(PanicExpn {
+                    call_site: expn_data.call_site,
+                    format_args,
+                })
+            } else {
+                None
+            }
+        }
+    }
+}

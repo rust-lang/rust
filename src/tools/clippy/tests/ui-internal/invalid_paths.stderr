@@ -4,7 +4,7 @@ error: invalid path
 LL |     pub const BAD_CRATE_PATH: [&str; 2] = ["bad", "path"];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::clippy-lints-internal` implied by `-D warnings`
+   = note: `-D clippy::invalid-paths` implied by `-D warnings`
 
 error: invalid path
   --> $DIR/invalid_paths.rs:20:5

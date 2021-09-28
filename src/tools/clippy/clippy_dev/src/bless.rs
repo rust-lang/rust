@@ -1,7 +1,6 @@
 //! `bless` updates the reference files in the repo with changed output files
 //! from the last test run.
 
-use std::env;
 use std::ffi::OsStr;
 use std::fs;
 use std::lazy::SyncLazy;
@@ -10,17 +9,9 @@ use walkdir::WalkDir;
 
 use crate::clippy_project_root;
 
-// NOTE: this is duplicated with tests/cargo/mod.rs What to do?
-pub static CARGO_TARGET_DIR: SyncLazy<PathBuf> = SyncLazy::new(|| match env::var_os("CARGO_TARGET_DIR") {
-    Some(v) => v.into(),
-    None => env::current_dir().unwrap().join("target"),
-});
-
 static CLIPPY_BUILD_TIME: SyncLazy<Option<std::time::SystemTime>> = SyncLazy::new(|| {
-    let profile = env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
-    let mut path = PathBuf::from(&**CARGO_TARGET_DIR);
-    path.push(profile);
-    path.push("cargo-clippy");
+    let mut path = std::env::current_exe().unwrap();
+    path.set_file_name("cargo-clippy");
     fs::metadata(path).ok()?.modified().ok()
 });
 
@@ -94,10 +85,7 @@ fn updated_since_clippy_build(path: &Path) -> Option<bool> {
 }
 
 fn build_dir() -> PathBuf {
-    let profile = env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
-    let mut path = PathBuf::new();
-    path.push(CARGO_TARGET_DIR.clone());
-    path.push(profile);
-    path.push("test_build_base");
+    let mut path = std::env::current_exe().unwrap();
+    path.set_file_name("test");
     path
 }
