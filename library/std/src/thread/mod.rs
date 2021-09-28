@@ -1455,12 +1455,12 @@ fn _assert_sync_and_send() {
 ///
 /// ```
 /// # #![allow(dead_code)]
-/// #![feature(available_concurrency)]
+/// #![feature(available_parallelism)]
 /// use std::thread;
 ///
-/// let count = thread::available_concurrency().map(|n| n.get()).unwrap_or(1);
+/// let count = thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
 /// ```
-#[unstable(feature = "available_concurrency", issue = "74479")]
-pub fn available_concurrency() -> io::Result<NonZeroUsize> {
-    imp::available_concurrency()
+#[unstable(feature = "available_parallelism", issue = "74479")]
+pub fn available_parallelism() -> io::Result<NonZeroUsize> {
+    imp::available_parallelism()
 }

@@ -9,6 +9,6 @@ pub fn get_concurrency() -> usize {
             _ => panic!("RUST_TEST_THREADS is `{}`, should be a positive integer.", value),
         }
     } else {
-        thread::available_concurrency().map(|n| n.get()).unwrap_or(1)
+        thread::available_parallelism().map(|n| n.get()).unwrap_or(1)
     }
 }

@@ -263,7 +263,7 @@ impl Drop for Thread {
     }
 }
 
-pub fn available_concurrency() -> io::Result<NonZeroUsize> {
+pub fn available_parallelism() -> io::Result<NonZeroUsize> {
     cfg_if::cfg_if! {
         if #[cfg(any(
             target_os = "android",

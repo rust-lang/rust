@@ -161,7 +161,7 @@ The following options affect how tests are executed.
 
 Sets the number of threads to use for running tests in parallel. By default,
 uses the amount of concurrency available on the hardware as indicated by
-[`available_concurrency`].
+[`available_parallelism`].
 
 This can also be specified with the `RUST_TEST_THREADS` environment variable.
 
@@ -265,7 +265,7 @@ Experimental support for using custom test harnesses is available on the
 
 [`--test` option]: ../command-line-arguments.md#option-test
 [`-Z panic-abort-tests`]: https://github.com/rust-lang/rust/issues/67650
-[`available_concurrency`]: ../../std/thread/fn.available_concurrency.html
+[`available_parallelism`]: ../../std/thread/fn.available_parallelism.html
 [`cargo test`]: ../../cargo/commands/cargo-test.html
 [`libtest`]: ../../test/index.html
 [`main` function]: ../../reference/crates-and-source-files.html#main-functions
