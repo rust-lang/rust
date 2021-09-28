@@ -1961,7 +1961,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(empty_enum::EmptyEnum));
     store.register_late_pass(|| Box::new(absurd_extreme_comparisons::AbsurdExtremeComparisons));
     store.register_late_pass(|| Box::new(invalid_upcast_comparisons::InvalidUpcastComparisons));
-    store.register_late_pass(|| Box::new(regex::Regex::default()));
+    store.register_late_pass(|| Box::new(regex::Regex));
     store.register_late_pass(|| Box::new(copies::CopyAndPaste));
     store.register_late_pass(|| Box::new(copy_iterator::CopyIterator));
     store.register_late_pass(|| Box::new(format::UselessFormat));
