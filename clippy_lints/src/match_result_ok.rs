@@ -47,8 +47,15 @@ declare_lint_pass!(MatchResultOk => [MATCH_RESULT_OK]);
 
 impl<'tcx> LateLintPass<'tcx> for MatchResultOk {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        let (let_pat, let_expr, ifwhile) = if let Some(higher::IfLet { let_pat, let_expr, .. }) = higher::IfLet::hir(cx, expr) {
+            (let_pat, let_expr, "if")
+        } else if let Some(higher::WhileLet { let_pat, let_expr, .. }) = higher::WhileLet::hir(expr) {
+            (let_pat, let_expr, "while")
+        } else {
+            return
+        };
+
         if_chain! {
-            if let Some(higher::IfLet { let_pat, let_expr, .. }) = higher::IfLet::hir(cx, expr);
             if let ExprKind::MethodCall(_, ok_span, [ref result_types_0, ..], _) = let_expr.kind; //check is expr.ok() has type Result<T,E>.ok(, _)
             if let PatKind::TupleStruct(QPath::Resolved(_, x), y, _)  = let_pat.kind; //get operation
             if method_chain_args(let_expr, &["ok"]).is_some(); //test to see if using ok() methoduse std::marker::Sized;
@@ -61,37 +68,8 @@ impl<'tcx> LateLintPass<'tcx> for MatchResultOk {
                 let some_expr_string = snippet_with_applicability(cx, y[0].span, "", &mut applicability);
                 let trimmed_ok = snippet_with_applicability(cx, let_expr.span.until(ok_span), "", &mut applicability);
                 let sugg = format!(
-                    "if let Ok({}) = {}",
-                    some_expr_string,
-                    trimmed_ok.trim().trim_end_matches('.'),
-                );
-                span_lint_and_sugg(
-                    cx,
-                    MATCH_RESULT_OK,
-                    expr.span.with_hi(let_expr.span.hi()),
-                    "matching on `Some` with `ok()` is redundant",
-                    &format!("consider matching on `Ok({})` and removing the call to `ok` instead", some_expr_string),
-                    sugg,
-                    applicability,
-                );
-            }
-        }
-
-        if_chain! {
-            if let Some(higher::WhileLet { let_pat, let_expr, .. }) = higher::WhileLet::hir(expr);
-            if let ExprKind::MethodCall(_, ok_span, [ref result_types_0, ..], _) = let_expr.kind; //check is expr.ok() has type Result<T,E>.ok(, _)
-            if let PatKind::TupleStruct(QPath::Resolved(_, x), y, _)  = let_pat.kind; //get operation
-            if method_chain_args(let_expr, &["ok"]).is_some(); //test to see if using ok() methoduse std::marker::Sized;
-            if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(result_types_0), sym::result_type);
-            if rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_path(x, false)) == "Some";
-
-            then {
-
-                let mut applicability = Applicability::MachineApplicable;
-                let some_expr_string = snippet_with_applicability(cx, y[0].span, "", &mut applicability);
-                let trimmed_ok = snippet_with_applicability(cx, let_expr.span.until(ok_span), "", &mut applicability);
-                let sugg = format!(
-                    "while let Ok({}) = {}",
+                    "{} let Ok({}) = {}",
+                    ifwhile,
                     some_expr_string,
                     trimmed_ok.trim().trim_end_matches('.'),
                 );
