@@ -2212,6 +2212,7 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::identity_conversion", "clippy::useless_conversion");
     ls.register_renamed("clippy::zero_width_space", "clippy::invisible_characters");
     ls.register_renamed("clippy::single_char_push_str", "clippy::single_char_add_str");
+    ls.register_renamed("clippy::if_let_some_result", "clippy::match_result_ok");
 
     // uplifted lints
     ls.register_renamed("clippy::invalid_ref", "invalid_value");
