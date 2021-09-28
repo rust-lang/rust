@@ -234,7 +234,7 @@ impl<'a> Printer<'a> {
                 let Function {
                     name,
                     visibility,
-                    generic_params,
+                    explicit_generic_params,
                     abi,
                     params,
                     ret_type,
@@ -250,7 +250,7 @@ impl<'a> Printer<'a> {
                     w!(self, "extern \"{}\" ", abi);
                 }
                 w!(self, "fn {}", name);
-                self.print_generic_params(generic_params);
+                self.print_generic_params(explicit_generic_params);
                 w!(self, "(");
                 if !params.is_empty() {
                     self.indented(|this| {
@@ -271,7 +271,7 @@ impl<'a> Printer<'a> {
                 }
                 w!(self, ") -> ");
                 self.print_type_ref(ret_type);
-                self.print_where_clause(generic_params);
+                self.print_where_clause(explicit_generic_params);
                 wln!(self, ";");
             }
             ModItem::Struct(it) => {

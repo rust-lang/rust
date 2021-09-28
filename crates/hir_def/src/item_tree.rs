@@ -605,7 +605,7 @@ pub struct ExternBlock {
 pub struct Function {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: Interned<GenericParams>,
+    pub explicit_generic_params: Interned<GenericParams>,
     pub abi: Option<Interned<str>>,
     pub params: IdRange<Param>,
     pub ret_type: Interned<TypeRef>,

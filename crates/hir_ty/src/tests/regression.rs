@@ -1177,3 +1177,24 @@ fn multiexp_inner() {
         "#,
     );
 }
+
+#[test]
+fn macro_expands_to_impl_trait() {
+    check_no_mismatches(
+        r#"
+trait Foo {}
+
+macro_rules! ty {
+    () => {
+        impl Foo
+    }
+}
+
+fn foo(_: ty!()) {}
+
+fn bar() {
+    foo(());
+}
+    "#,
+    )
+}

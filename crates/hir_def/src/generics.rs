@@ -7,13 +7,15 @@ use base_db::FileId;
 use either::Either;
 use hir_expand::{
     name::{AsName, Name},
-    HirFileId, InFile,
+    ExpandResult, HirFileId, InFile,
 };
 use la_arena::{Arena, ArenaMap};
+use once_cell::unsync::Lazy;
+use std::ops::DerefMut;
 use syntax::ast::{self, HasGenericParams, HasName, HasTypeBounds};
 
 use crate::{
-    body::LowerCtx,
+    body::{Expander, LowerCtx},
     child_by_source::ChildBySource,
     db::DefDatabase,
     dyn_map::DynMap,
@@ -21,8 +23,8 @@ use crate::{
     keys,
     src::{HasChildSource, HasSource},
     type_ref::{LifetimeRef, TypeBound, TypeRef},
-    AdtId, ConstParamId, GenericDefId, LifetimeParamId, LocalConstParamId, LocalLifetimeParamId,
-    LocalTypeParamId, Lookup, TypeParamId,
+    AdtId, ConstParamId, GenericDefId, HasModule, LifetimeParamId, LocalConstParamId,
+    LocalLifetimeParamId, LocalTypeParamId, Lookup, TypeParamId,
 };
 
 /// Data about a generic type parameter (to a function, struct, impl, ...).
@@ -99,10 +101,23 @@ impl GenericParams {
 
         match def {
             GenericDefId::FunctionId(id) => {
-                let id = id.lookup(db).id;
-                let tree = id.item_tree(db);
-                let item = &tree[id.value];
-                item.generic_params.clone()
+                let loc = id.lookup(db);
+                let tree = loc.id.item_tree(db);
+                let item = &tree[loc.id.value];
+
+                let mut generic_params = GenericParams::clone(&item.explicit_generic_params);
+
+                let module = loc.container.module(db);
+                let func_data = db.function_data(id);
+
+                // Don't create an `Expander` nor call `loc.source(db)` if not needed since this
+                // causes a reparse after the `ItemTree` has been created.
+                let mut expander = Lazy::new(|| Expander::new(db, loc.source(db).file_id, module));
+                for param in &func_data.params {
+                    generic_params.fill_implicit_impl_trait_args(db, &mut expander, param);
+                }
+
+                Interned::new(generic_params)
             }
             GenericDefId::AdtId(AdtId::StructId(id)) => {
                 let id = id.lookup(db).id;
@@ -259,7 +274,12 @@ impl GenericParams {
         self.where_predicates.push(predicate);
     }
 
-    pub(crate) fn fill_implicit_impl_trait_args(&mut self, type_ref: &TypeRef) {
+    pub(crate) fn fill_implicit_impl_trait_args(
+        &mut self,
+        db: &dyn DefDatabase,
+        expander: &mut impl DerefMut<Target = Expander>,
+        type_ref: &TypeRef,
+    ) {
         type_ref.walk(&mut |type_ref| {
             if let TypeRef::ImplTrait(bounds) = type_ref {
                 let param = TypeParamData {
@@ -273,6 +293,18 @@ impl GenericParams {
                         target: WherePredicateTypeTarget::TypeParam(param_id),
                         bound: bound.clone(),
                     });
+                }
+            }
+            if let TypeRef::Macro(mc) = type_ref {
+                let macro_call = mc.to_node(db.upcast());
+                match expander.enter_expand::<ast::Type>(db, macro_call) {
+                    Ok(ExpandResult { value: Some((mark, expanded)), .. }) => {
+                        let ctx = LowerCtx::new(db, mc.file_id);
+                        let type_ref = TypeRef::from_ast(&ctx, expanded);
+                        self.fill_implicit_impl_trait_args(db, expander, &type_ref);
+                        expander.exit(db, mark);
+                    }
+                    _ => {}
                 }
             }
         });
