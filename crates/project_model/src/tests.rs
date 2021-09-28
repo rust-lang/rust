@@ -1690,6 +1690,15 @@ fn rust_project_hello_world_project_model() {
                                 ),
                                 prelude: true,
                             },
+                            Dependency {
+                                crate_id: CrateId(
+                                    9,
+                                ),
+                                name: CrateName(
+                                    "test",
+                                ),
+                                prelude: false,
+                            },
                         ],
                         proc_macro: [],
                     },
