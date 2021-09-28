@@ -1297,6 +1297,22 @@ fn apply<T, U, F>(f: F, x: T) -> U where F: FnOnce(T) -> U {
 }
 
 #[test]
+fn doctest_move_from_mod_rs() {
+    check_doc_test(
+        "move_from_mod_rs",
+        r#####"
+//- /main.rs
+mod a;
+//- /a/mod.rs
+$0fn t() {}$0
+"#####,
+        r#####"
+fn t() {}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_move_guard_to_arm_body() {
     check_doc_test(
         "move_guard_to_arm_body",

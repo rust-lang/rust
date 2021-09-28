@@ -359,6 +359,9 @@ impl VirtualPath {
             }
             path = &path["../".len()..]
         }
+        while path.starts_with("./") {
+            path = &path["./".len()..]
+        }
         res.0 = format!("{}/{}", res.0, path);
         Some(res)
     }
