@@ -20,6 +20,9 @@
 #![recursion_limit = "256"]
 #![allow(rustdoc::private_intra_doc_links)]
 
+#[macro_use]
+extern crate tracing;
+
 pub use rustc_hir::def::{Namespace, PerNS};
 
 use Determinacy::*;

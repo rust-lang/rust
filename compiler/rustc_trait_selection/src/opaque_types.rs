@@ -517,6 +517,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         debug!(?id_substs);
         let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> =
             substs.iter().enumerate().map(|(index, subst)| (subst, id_substs[index])).collect();
+        debug!("map = {:#?}", map);
 
         // Convert the type from the function into a type valid outside
         // the function, by replacing invalid regions with 'static,
@@ -672,6 +673,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
         self.tcx
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match r {
             // Ignore bound regions and `'static` regions that appear in the
@@ -1098,18 +1100,17 @@ fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: LocalDefId, opaque_hir_id: hi
 ///
 /// Requires that trait definitions have been processed so that we can
 /// elaborate predicates and walk supertraits.
+#[instrument(skip(tcx, predicates), level = "debug")]
 crate fn required_region_bounds(
     tcx: TyCtxt<'tcx>,
     erased_self_ty: Ty<'tcx>,
     predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
 ) -> Vec<ty::Region<'tcx>> {
-    debug!("required_region_bounds(erased_self_ty={:?})", erased_self_ty);
-
     assert!(!erased_self_ty.has_escaping_bound_vars());
 
     traits::elaborate_predicates(tcx, predicates)
         .filter_map(|obligation| {
-            debug!("required_region_bounds(obligation={:?})", obligation);
+            debug!(?obligation);
             match obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Projection(..)
                 | ty::PredicateKind::Trait(..)

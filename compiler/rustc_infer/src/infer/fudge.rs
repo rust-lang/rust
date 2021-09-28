@@ -94,13 +94,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// the actual types (`?T`, `Option<?T>`) -- and remember that
     /// after the snapshot is popped, the variable `?T` is no longer
     /// unified.
+    #[instrument(skip(self, f), level = "debug")]
     pub fn fudge_inference_if_ok<T, E, F>(&self, f: F) -> Result<T, E>
     where
         F: FnOnce() -> Result<T, E>,
         T: TypeFoldable<'tcx>,
     {
-        debug!("fudge_inference_if_ok()");
-
         let variable_lengths = self.variable_lengths();
         let (mut fudger, value) = self.probe(|_| {
             match f() {

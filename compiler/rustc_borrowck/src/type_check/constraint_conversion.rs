@@ -53,9 +53,8 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         }
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub(super) fn convert_all(&mut self, query_constraints: &QueryRegionConstraints<'tcx>) {
-        debug!("convert_all(query_constraints={:#?})", query_constraints);
-
         let QueryRegionConstraints { outlives, member_constraints } = query_constraints;
 
         // Annoying: to invoke `self.to_region_vid`, we need access to

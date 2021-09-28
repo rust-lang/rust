@@ -327,6 +327,7 @@ impl TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
     }
 }
 
+#[instrument(skip(fulfill_cx, infcx), level = "debug")]
 fn try_extract_error_from_fulfill_cx<'tcx>(
     mut fulfill_cx: Box<dyn TraitEngine<'tcx> + 'tcx>,
     infcx: &InferCtxt<'_, 'tcx>,
@@ -341,7 +342,7 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
     let _errors = fulfill_cx.select_all_or_error(infcx).err().unwrap_or_else(Vec::new);
 
     let (sub_region, cause) = infcx.with_region_constraints(|region_constraints| {
-        debug!(?region_constraints);
+        debug!("{:#?}", region_constraints);
         region_constraints.constraints.iter().find_map(|(constraint, cause)| {
             match *constraint {
                 Constraint::RegSubReg(sub, sup) if sup == placeholder_region && sup != sub => {
@@ -356,7 +357,7 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
         })
     })?;
 
-    debug!(?sub_region, ?cause);
+    debug!(?sub_region, "cause = {:#?}", cause);
     let nice_error = match (error_region, sub_region) {
         (Some(error_region), &ty::ReVar(vid)) => NiceRegionError::new(
             infcx,

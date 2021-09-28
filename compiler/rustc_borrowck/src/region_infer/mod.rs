@@ -552,6 +552,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Performs region inference and report errors if we see any
     /// unsatisfiable constraints. If this is a closure, returns the
     /// region requirements to propagate to our creator, if any.
+    #[instrument(skip(self, infcx, body, polonius_output), level = "debug")]
     pub(super) fn solve(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
@@ -607,10 +608,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// for each region variable until all the constraints are
     /// satisfied. Note that some values may grow **too** large to be
     /// feasible, but we check this later.
+    #[instrument(skip(self, _body), level = "debug")]
     fn propagate_constraints(&mut self, _body: &Body<'tcx>) {
-        debug!("propagate_constraints()");
-
-        debug!("propagate_constraints: constraints={:#?}", {
+        debug!("constraints={:#?}", {
             let mut constraints: Vec<_> = self.constraints.outlives().iter().collect();
             constraints.sort();
             constraints
@@ -637,12 +637,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// computed, by unioning the values of its successors.
     /// Assumes that all successors have been computed already
     /// (which is assured by iterating over SCCs in dependency order).
+    #[instrument(skip(self), level = "debug")]
     fn compute_value_for_scc(&mut self, scc_a: ConstraintSccIndex) {
         let constraint_sccs = self.constraint_sccs.clone();
 
         // Walk each SCC `B` such that `A: B`...
         for &scc_b in constraint_sccs.successors(scc_a) {
-            debug!("propagate_constraint_sccs: scc_a = {:?} scc_b = {:?}", scc_a, scc_b);
+            debug!(?scc_b);
 
             // ...and add elements from `B` into `A`. One complication
             // arises because of universes: If `B` contains something
@@ -663,11 +664,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.apply_member_constraint(scc_a, m_c_i, member_constraints.choice_regions(m_c_i));
         }
 
-        debug!(
-            "propagate_constraint_sccs: scc_a = {:?} has value {:?}",
-            scc_a,
-            self.scc_values.region_value_str(scc_a),
-        );
+        debug!(value = ?self.scc_values.region_value_str(scc_a));
     }
 
     /// Invoked for each `R0 member of [R1..Rn]` constraint.
@@ -681,14 +678,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// is considered a *lower bound*.  If possible, we will modify
     /// the constraint to set it equal to one of the option regions.
     /// If we make any changes, returns true, else false.
+    #[instrument(skip(self, member_constraint_index), level = "debug")]
     fn apply_member_constraint(
         &mut self,
         scc: ConstraintSccIndex,
         member_constraint_index: NllMemberConstraintIndex,
         choice_regions: &[ty::RegionVid],
     ) -> bool {
-        debug!("apply_member_constraint(scc={:?}, choice_regions={:#?})", scc, choice_regions,);
-
         // Create a mutable vector of the options. We'll try to winnow
         // them down.
         let mut choice_regions: Vec<ty::RegionVid> = choice_regions.to_vec();
@@ -714,7 +710,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .universal_regions_outlived_by(scc)
                 .all(|lb| self.universal_region_relations.outlives(o_r, lb))
         });
-        debug!("apply_member_constraint: after lb, choice_regions={:?}", choice_regions);
+        debug!(?choice_regions, "after lb");
 
         // Now find all the *upper bounds* -- that is, each UB is a
         // free region that must outlive the member region `R0` (`UB:
@@ -723,10 +719,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let rev_scc_graph = self.reverse_scc_graph();
         let universal_region_relations = &self.universal_region_relations;
         for ub in rev_scc_graph.upper_bounds(scc) {
-            debug!("apply_member_constraint: ub={:?}", ub);
+            debug!(?ub);
             choice_regions.retain(|&o_r| universal_region_relations.outlives(ub, o_r));
         }
-        debug!("apply_member_constraint: after ub, choice_regions={:?}", choice_regions);
+        debug!(?choice_regions, "after ub");
 
         // If we ruled everything out, we're done.
         if choice_regions.is_empty() {
@@ -735,7 +731,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // Otherwise, we need to find the minimum remaining choice, if
         // any, and take that.
-        debug!("apply_member_constraint: choice_regions remaining are {:#?}", choice_regions);
+        debug!("choice_regions remaining are {:#?}", choice_regions);
         let min = |r1: ty::RegionVid, r2: ty::RegionVid| -> Option<ty::RegionVid> {
             let r1_outlives_r2 = self.universal_region_relations.outlives(r1, r2);
             let r2_outlives_r1 = self.universal_region_relations.outlives(r2, r1);
@@ -748,27 +744,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         };
         let mut min_choice = choice_regions[0];
         for &other_option in &choice_regions[1..] {
-            debug!(
-                "apply_member_constraint: min_choice={:?} other_option={:?}",
-                min_choice, other_option,
-            );
+            debug!(?min_choice, ?other_option,);
             match min(min_choice, other_option) {
                 Some(m) => min_choice = m,
                 None => {
-                    debug!(
-                        "apply_member_constraint: {:?} and {:?} are incomparable; no min choice",
-                        min_choice, other_option,
-                    );
+                    debug!(?min_choice, ?other_option, "incomparable; no min choice",);
                     return false;
                 }
             }
         }
 
         let min_choice_scc = self.constraint_sccs.scc(min_choice);
-        debug!(
-            "apply_member_constraint: min_choice={:?} best_choice_scc={:?}",
-            min_choice, min_choice_scc,
-        );
+        debug!(?min_choice, ?min_choice_scc);
         if self.scc_values.add_region(scc, min_choice_scc) {
             self.member_constraints_applied.push(AppliedMemberConstraint {
                 member_region_scc: scc,
@@ -1091,8 +1078,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///   include the CFG anyhow.
     /// - For each `end('x)` element in `'r`, compute the mutual LUB, yielding
     ///   a result `'y`.
+    #[instrument(skip(self), level = "debug")]
     pub(crate) fn universal_upper_bound(&self, r: RegionVid) -> RegionVid {
-        debug!("universal_upper_bound(r={:?}={})", r, self.region_value_str(r));
+        debug!(r = %self.region_value_str(r));
 
         // Find the smallest universal region that contains all other
         // universal regions within `region`.
@@ -1102,7 +1090,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             lub = self.universal_region_relations.postdom_upper_bound(lub, ur);
         }
 
-        debug!("universal_upper_bound: r={:?} lub={:?}", r, lub);
+        debug!(?lub);
 
         lub
     }
@@ -1262,9 +1250,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     // Evaluate whether `sup_region: sub_region`.
+    #[instrument(skip(self), level = "debug")]
     fn eval_outlives(&self, sup_region: RegionVid, sub_region: RegionVid) -> bool {
-        debug!("eval_outlives({:?}: {:?})", sup_region, sub_region);
-
         debug!(
             "eval_outlives: sup_region's value = {:?} universal={:?}",
             self.region_value_str(sup_region),
@@ -1467,6 +1454,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// Things that are to be propagated are accumulated into the
     /// `outlives_requirements` vector.
+    #[instrument(
+        skip(self, body, propagated_outlives_requirements, errors_buffer),
+        level = "debug"
+    )]
     fn check_universal_region(
         &self,
         body: &Body<'tcx>,
@@ -1474,8 +1465,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
         errors_buffer: &mut RegionErrors<'tcx>,
     ) {
-        debug!("check_universal_region(fr={:?})", longer_fr);
-
         let longer_fr_scc = self.constraint_sccs.scc(longer_fr);
 
         // Because this free region must be in the ROOT universe, we
@@ -1880,21 +1869,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Finds some region R such that `fr1: R` and `R` is live at `elem`.
+    #[instrument(skip(self), level = "trace")]
     crate fn find_sub_region_live_at(&self, fr1: RegionVid, elem: Location) -> RegionVid {
-        debug!("find_sub_region_live_at(fr1={:?}, elem={:?})", fr1, elem);
-        debug!("find_sub_region_live_at: {:?} is in scc {:?}", fr1, self.constraint_sccs.scc(fr1));
-        debug!(
-            "find_sub_region_live_at: {:?} is in universe {:?}",
-            fr1,
-            self.scc_universes[self.constraint_sccs.scc(fr1)]
-        );
+        trace!(scc = ?self.constraint_sccs.scc(fr1));
+        trace!(universe = ?self.scc_universes[self.constraint_sccs.scc(fr1)]);
         self.find_constraint_paths_between_regions(fr1, |r| {
             // First look for some `r` such that `fr1: r` and `r` is live at `elem`
-            debug!(
-                "find_sub_region_live_at: liveness_constraints for {:?} are {:?}",
-                r,
-                self.liveness_constraints.region_value_str(r),
-            );
+            trace!(?r, liveness_constraints=?self.liveness_constraints.region_value_str(r));
             self.liveness_constraints.contains(r, elem)
         })
         .or_else(|| {

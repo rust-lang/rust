@@ -601,12 +601,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(ImplSourceGeneratorData { generator_def_id, substs, nested: obligations })
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn confirm_closure_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
     ) -> Result<ImplSourceClosureData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
-        debug!(?obligation, "confirm_closure_candidate");
-
         let kind = self
             .tcx()
             .fn_trait_kind_from_lang_item(obligation.predicate.def_id())
@@ -680,6 +679,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// because these output type parameters should not affect the
     /// selection of the impl. Therefore, if there is a mismatch, we
     /// report an error to the user.
+    #[instrument(skip(self), level = "trace")]
     fn confirm_poly_trait_refs(
         &mut self,
         obligation_cause: ObligationCause<'tcx>,

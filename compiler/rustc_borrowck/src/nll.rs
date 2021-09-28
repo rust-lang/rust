@@ -54,6 +54,7 @@ crate struct NllOutput<'tcx> {
 /// Rewrites the regions in the MIR to use NLL variables, also scraping out the set of universal
 /// regions (e.g., region parameters) declared on the function. That set will need to be given to
 /// `compute_regions`.
+#[instrument(skip(infcx, param_env, body, promoted), level = "debug")]
 pub(crate) fn replace_regions_in_mir<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -62,7 +63,7 @@ pub(crate) fn replace_regions_in_mir<'cx, 'tcx>(
 ) -> UniversalRegions<'tcx> {
     let def = body.source.with_opt_param().as_local().unwrap();
 
-    debug!("replace_regions_in_mir(def={:?})", def);
+    debug!(?def);
 
     // Compute named region information. This also renumbers the inputs/outputs.
     let universal_regions = UniversalRegions::new(infcx, def, param_env);

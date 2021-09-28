@@ -59,6 +59,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.demand_suptype_with_origin(&self.misc(sp), expected, actual)
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub fn demand_suptype_with_origin(
         &self,
         cause: &ObligationCause<'tcx>,

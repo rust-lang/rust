@@ -197,6 +197,11 @@ pub(crate) fn type_check<'mir, 'tcx>(
                 .into_iter()
                 .filter_map(|(opaque_type_key, mut decl)| {
                     decl.concrete_ty = infcx.resolve_vars_if_possible(decl.concrete_ty);
+                    trace!(
+                        "finalized opaque type {:?} to {:#?}",
+                        opaque_type_key,
+                        decl.concrete_ty.kind()
+                    );
                     if decl.concrete_ty.has_infer_types_or_consts() {
                         infcx.tcx.sess.delay_span_bug(
                             body.span,
@@ -247,6 +252,18 @@ pub(crate) fn type_check<'mir, 'tcx>(
     MirTypeckResults { constraints, universal_region_relations, opaque_type_values }
 }
 
+#[instrument(
+    skip(
+        infcx,
+        body,
+        promoted,
+        region_bound_pairs,
+        borrowck_context,
+        universal_region_relations,
+        extra
+    ),
+    level = "debug"
+)]
 fn type_check_internal<'a, 'tcx, R>(
     infcx: &'a InferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -1114,13 +1131,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
+    #[instrument(skip(self, data), level = "debug")]
     fn push_region_constraints(
         &mut self,
         locations: Locations,
         category: ConstraintCategory,
         data: &QueryRegionConstraints<'tcx>,
     ) {
-        debug!("push_region_constraints: constraints generated at {:?} are {:#?}", locations, data);
+        debug!("constraints generated: {:#?}", data);
 
         constraint_conversion::ConstraintConversion::new(
             self.infcx,
@@ -1180,6 +1198,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.relate_types(expected, ty::Variance::Invariant, found, locations, category)
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn relate_type_and_user_type(
         &mut self,
         a: Ty<'tcx>,
@@ -1188,11 +1207,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         locations: Locations,
         category: ConstraintCategory,
     ) -> Fallible<()> {
-        debug!(
-            "relate_type_and_user_type(a={:?}, v={:?}, user_ty={:?}, locations={:?})",
-            a, v, user_ty, locations,
-        );
-
         let annotated_type = self.user_type_annotations[user_ty.base].inferred_ty;
         let mut curr_projected_ty = PlaceTy::from_ty(annotated_type);
 
@@ -1250,6 +1264,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ///   generics of `foo`). Note that `anon_ty` is not just the opaque type,
     ///   but the entire return type (which may contain opaque types within it).
     /// * `revealed_ty` would be `Box<(T, u32)>`
+    #[instrument(skip(self), level = "debug")]
     fn eq_opaque_type_and_type(
         &mut self,
         revealed_ty: Ty<'tcx>,
@@ -1257,13 +1272,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         locations: Locations,
         category: ConstraintCategory,
     ) -> Fallible<()> {
-        debug!(
-            "eq_opaque_type_and_type( \
-             revealed_ty={:?}, \
-             anon_ty={:?})",
-            revealed_ty, anon_ty
-        );
-
         // Fast path for the common case.
         if !anon_ty.has_opaque_types() {
             if let Err(terr) = self.eq_types(anon_ty, revealed_ty, locations, category) {
@@ -1283,7 +1291,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let body = self.body;
         let mir_def_id = body.source.def_id().expect_local();
 
-        debug!("eq_opaque_type_and_type: mir_def_id={:?}", mir_def_id);
+        debug!(?mir_def_id);
         self.fully_perform_op(
             locations,
             category,
@@ -1305,12 +1313,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         anon_ty,
                         locations.span(body),
                     ));
-                    debug!(
-                        "eq_opaque_type_and_type: \
-                         instantiated output_ty={:?} \
-                         revealed_ty={:?}",
-                        output_ty, revealed_ty
-                    );
+                    debug!(?output_ty, ?revealed_ty);
 
                     // Make sure that the inferred types are well-formed. I'm
                     // not entirely sure this is needed (the HIR type check
@@ -1328,7 +1331,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             .eq(output_ty, revealed_ty)?,
                     );
 
-                    debug!("eq_opaque_type_and_type: equated");
+                    debug!("equated");
 
                     Ok(InferOk { value: (), obligations: obligations.into_vec() })
                 },
@@ -1368,8 +1371,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.infcx.tcx
     }
 
+    #[instrument(skip(self, body, location), level = "debug")]
     fn check_stmt(&mut self, body: &Body<'tcx>, stmt: &Statement<'tcx>, location: Location) {
-        debug!("check_stmt: {:?}", stmt);
         let tcx = self.tcx();
         match stmt.kind {
             StatementKind::Assign(box (ref place, ref rv)) => {
@@ -1522,13 +1525,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
+    #[instrument(skip(self, body, term_location), level = "debug")]
     fn check_terminator(
         &mut self,
         body: &Body<'tcx>,
         term: &Terminator<'tcx>,
         term_location: Location,
     ) {
-        debug!("check_terminator: {:?}", term);
         let tcx = self.tcx();
         match term.kind {
             TerminatorKind::Goto { .. }
@@ -2685,9 +2688,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         tcx.predicates_of(def_id).instantiate(tcx, substs)
     }
 
+    #[instrument(skip(self, body), level = "debug")]
     fn typeck_mir(&mut self, body: &Body<'tcx>) {
         self.last_span = body.span;
-        debug!("run_on_mir: {:?}", body.span);
+        debug!(?body.span);
 
         for (local, local_decl) in body.local_decls.iter_enumerated() {
             self.check_local(&body, local, local_decl);

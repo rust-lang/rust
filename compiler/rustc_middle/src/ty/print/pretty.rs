@@ -2033,12 +2033,11 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
         Ok(inner)
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn prepare_late_bound_region_info<T>(&mut self, value: &ty::Binder<'tcx, T>)
     where
         T: TypeFoldable<'tcx>,
     {
-        debug!("prepare_late_bound_region_info(value: {:?})", value);
-
         struct LateBoundRegionNameCollector<'a, 'tcx> {
             tcx: TyCtxt<'tcx>,
             used_region_names: &'a mut FxHashSet<Symbol>,
@@ -2052,8 +2051,9 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
                 Some(self.tcx)
             }
 
+            #[instrument(skip(self), level = "trace")]
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-                debug!("LateBoundRegionNameCollector::visit_region(r: {:?}, address: {:p})", r, &r);
+                trace!("address: {:p}", r);
                 if let ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) = *r {
                     self.used_region_names.insert(name);
                 } else if let ty::RePlaceholder(ty::PlaceholderRegion {
@@ -2068,8 +2068,8 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
 
             // We collect types in order to prevent really large types from compiling for
             // a really long time. See issue #83150 for why this is necessary.
+            #[instrument(skip(self), level = "trace")]
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-                debug!("LateBoundRegionNameCollector::visit_ty(ty: {:?}", ty);
                 let not_previously_inserted = self.type_collector.insert(ty);
                 if not_previously_inserted {
                     ty.super_visit_with(self)
