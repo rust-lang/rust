@@ -837,7 +837,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         );
     }
 
-    fn ast_path_to_mono_trait_ref(
+    pub(crate) fn ast_path_to_mono_trait_ref(
         &self,
         span: Span,
         trait_def_id: DefId,

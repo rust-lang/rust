@@ -80,6 +80,7 @@ extern crate rustc_middle;
 pub mod check;
 pub mod expr_use_visitor;
 
+mod abstract_const_build;
 mod astconv;
 mod bounds;
 mod check_unused;

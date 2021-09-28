@@ -1792,4 +1792,14 @@ rustc_queries! {
         no_hash
         desc { "performing HIR wf-checking for predicate {:?} at item {:?}", key.0, key.1 }
     }
+
+    /// Builds an abstract const, do not use this directly, but use `AbstractConst::new` instead.
+    query abstract_const_from_fully_qualif_assoc(
+        key: ty::WithOptConstParam<LocalDefId>
+    ) -> Option<Option<&'tcx [thir::abstract_const::Node<'tcx>]>> {
+        desc {
+            "building an abstract representation for the const argument {}",
+            tcx.def_path_str(key.did.to_def_id()),
+        }
+    }
 }

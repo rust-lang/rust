@@ -91,6 +91,9 @@ pub fn provide(providers: &mut Providers) {
         codegen_fn_attrs,
         collect_mod_item_types,
         should_inherit_track_caller,
+        // TODO: find a proper place for this
+        abstract_const_from_fully_qualif_assoc:
+            crate::abstract_const_build::abstract_const_from_fully_qualif_assoc,
         ..*providers
     };
 }

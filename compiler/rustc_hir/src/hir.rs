@@ -3253,6 +3253,13 @@ impl<'hir> Node<'hir> {
             _ => None,
         }
     }
+
+    pub fn is_anon_const(&self) -> Option<&'hir AnonConst> {
+        match self {
+            Self::AnonConst(ct) => Some(ct),
+            _ => None,
+        }
+    }
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.

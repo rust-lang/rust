@@ -433,29 +433,37 @@ pub(super) fn thir_abstract_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
 ) -> Result<Option<&'tcx [thir::abstract_const::Node<'tcx>]>, ErrorReported> {
-    if tcx.features().generic_const_exprs {
-        match tcx.def_kind(def.did) {
-            // FIXME(generic_const_exprs): We currently only do this for anonymous constants,
-            // meaning that we do not look into associated constants. I(@lcnr) am not yet sure whether
-            // we want to look into them or treat them as opaque projections.
-            //
-            // Right now we do neither of that and simply always fail to unify them.
-            DefKind::AnonConst => (),
-            _ => return Ok(None),
-        }
-
-        let body = tcx.thir_body(def);
-        if body.0.borrow().exprs.is_empty() {
-            // type error in constant, there is no thir
-            return Err(ErrorReported);
-        }
-
-        AbstractConstBuilder::new(tcx, (&*body.0.borrow(), body.1))?
-            .map(AbstractConstBuilder::build)
-            .transpose()
-    } else {
-        Ok(None)
+    if tcx.lazy_normalization() == false {
+        return Ok(None);
     }
+
+    match tcx.def_kind(def.did) {
+        // FIXME(generic_const_exprs): We currently only do this for anonymous constants,
+        // meaning that we do not look into associated constants. I(@lcnr) am not yet sure whether
+        // we want to look into them or treat them as opaque projections.
+        //
+        // Right now we do neither of that and simply always fail to unify them.
+        DefKind::AnonConst => (),
+        _ => return Ok(None),
+    }
+    debug!("thir_abstract_const: def={:?}", def.did);
+
+    // If the anon const is a fully qualified assoc const i.e. `{ <T as Trait<U>>::ASSOC }`
+    // we lower it to an abstract const without typeck'ing which helps to avoid cycles when
+    // equating consts in where clauses
+    if let Some(opt_unevaluated) = tcx.abstract_const_from_fully_qualif_assoc(def) {
+        return Ok(opt_unevaluated);
+    }
+
+    let body = tcx.thir_body(def);
+    if body.0.borrow().exprs.is_empty() {
+        // type error in constant, there is no thir
+        return Err(ErrorReported);
+    }
+
+    AbstractConstBuilder::new(tcx, (&*body.0.borrow(), body.1))?
+        .map(AbstractConstBuilder::build)
+        .transpose()
 }
 
 pub(super) fn try_unify_abstract_consts<'tcx>(
