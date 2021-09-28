@@ -47,13 +47,14 @@ declare_lint_pass!(MatchResultOk => [MATCH_RESULT_OK]);
 
 impl<'tcx> LateLintPass<'tcx> for MatchResultOk {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        let (let_pat, let_expr, ifwhile) = if let Some(higher::IfLet { let_pat, let_expr, .. }) = higher::IfLet::hir(cx, expr) {
-            (let_pat, let_expr, "if")
-        } else if let Some(higher::WhileLet { let_pat, let_expr, .. }) = higher::WhileLet::hir(expr) {
-            (let_pat, let_expr, "while")
-        } else {
-            return
-        };
+        let (let_pat, let_expr, ifwhile) =
+            if let Some(higher::IfLet { let_pat, let_expr, .. }) = higher::IfLet::hir(cx, expr) {
+                (let_pat, let_expr, "if")
+            } else if let Some(higher::WhileLet { let_pat, let_expr, .. }) = higher::WhileLet::hir(expr) {
+                (let_pat, let_expr, "while")
+            } else {
+                return;
+            };
 
         if_chain! {
             if let ExprKind::MethodCall(_, ok_span, [ref result_types_0, ..], _) = let_expr.kind; //check is expr.ok() has type Result<T,E>.ok(, _)
