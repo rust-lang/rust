@@ -7,29 +7,12 @@ LL | impl Foo<N = 3> for Bar {
    |          |   ...cannot be constrained to this value
    |          this associated constant...
 
-error[E0107]: this trait takes 1 generic argument but 0 generic arguments were supplied
-  --> $DIR/issue-89013-no-kw.rs:9:6
-   |
-LL | impl Foo<N = 3> for Bar {
-   |      ^^^ expected 1 generic argument
-   |
-note: trait defined here, with 1 generic parameter: `N`
-  --> $DIR/issue-89013-no-kw.rs:1:7
-   |
-LL | trait Foo<const N: usize> {
-   |       ^^^       -
-help: add missing generic argument
-   |
-LL | impl Foo<N, N = 3> for Bar {
-   |          ++
-
 error[E0229]: associated type bindings are not allowed here
   --> $DIR/issue-89013-no-kw.rs:9:10
    |
 LL | impl Foo<N = 3> for Bar {
    |          ^^^^^ associated type not allowed here
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0107, E0229.
-For more information about an error, try `rustc --explain E0107`.
+For more information about this error, try `rustc --explain E0229`.
