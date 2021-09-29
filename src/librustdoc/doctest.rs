@@ -91,6 +91,7 @@ crate fn run(options: RustdocOptions) -> Result<(), ErrorReported> {
     let config = interface::Config {
         opts: sessopts,
         crate_cfg: interface::parse_cfgspecs(cfgs),
+        crate_check_cfg: interface::parse_check_cfg(vec![]),
         input,
         input_path: None,
         output_file: None,
