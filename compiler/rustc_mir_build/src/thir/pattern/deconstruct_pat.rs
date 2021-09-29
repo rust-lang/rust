@@ -628,6 +628,8 @@ pub(super) enum Constructor<'tcx> {
     Single,
     /// Enum variants.
     Variant(VariantIdx),
+    /// Box patterns.
+    BoxPat(Ty<'tcx>),
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
@@ -695,17 +697,12 @@ impl<'tcx> Constructor<'tcx> {
                 ty::Tuple(fs) => fs.len(),
                 ty::Ref(..) => 1,
                 ty::Adt(adt, ..) => {
-                    if adt.is_box() {
-                        // The only legal patterns of type `Box` (outside `std`) are `_` and box
-                        // patterns. If we're here we can assume this is a box pattern.
-                        1
-                    } else {
-                        let variant = &adt.variants[self.variant_index_for_adt(adt)];
-                        Fields::list_variant_nonhidden_fields(pcx.cx, pcx.ty, variant).count()
-                    }
+                    let variant = &adt.variants[self.variant_index_for_adt(adt)];
+                    Fields::list_variant_nonhidden_fields(pcx.cx, pcx.ty, variant).count()
                 }
                 _ => bug!("Unexpected type for `Single` constructor: {:?}", pcx.ty),
             },
+            BoxPat(_) => 1,
             Slice(slice) => slice.arity(),
             Str(..)
             | FloatRange(..)
@@ -778,6 +775,7 @@ impl<'tcx> Constructor<'tcx> {
             (Missing { .. } | Wildcard, _) => false,
 
             (Single, Single) => true,
+            (BoxPat(_), BoxPat(_)) => true,
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
 
             (IntRange(self_range), IntRange(other_range)) => self_range.is_covered_by(other_range),
@@ -835,8 +833,9 @@ impl<'tcx> Constructor<'tcx> {
 
         // This must be kept in sync with `is_covered_by`.
         match self {
-            // If `self` is `Single`, `used_ctors` cannot contain anything else than `Single`s.
-            Single => !used_ctors.is_empty(),
+            // If `self` is `Single` or `BoxPat`, `used_ctors` contains at most one ctor and that
+            // ctor is the expected one.
+            Single | BoxPat(_) => !used_ctors.is_empty(),
             Variant(vid) => used_ctors.iter().any(|c| matches!(c, Variant(i) if i == vid)),
             IntRange(range) => used_ctors
                 .iter()
@@ -998,6 +997,9 @@ impl<'tcx> SplitWildcard<'tcx> {
             }
             ty::Never => smallvec![],
             _ if cx.is_uninhabited(pcx.ty) => smallvec![],
+            // The only legal non-wildcard patterns of type `Box` are box patterns, so we emit
+            // that.
+            ty::Adt(def, substs) if def.is_box() => smallvec![BoxPat(substs.type_at(0))],
             ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => smallvec![Single],
             // This type is one for which we cannot list constructors, like `str` or `f64`.
             _ => smallvec![NonExhaustive],
@@ -1181,20 +1183,15 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
             Single | Variant(_) => match ty.kind() {
                 ty::Tuple(fs) => Fields::wildcards_from_tys(cx, fs.iter().map(|ty| ty.expect_ty())),
                 ty::Ref(_, rty, _) => Fields::wildcards_from_tys(cx, once(*rty)),
-                ty::Adt(adt, substs) => {
-                    if adt.is_box() {
-                        // The only legal patterns of type `Box` (outside `std`) are `_` and box
-                        // patterns. If we're here we can assume this is a box pattern.
-                        Fields::wildcards_from_tys(cx, once(substs.type_at(0)))
-                    } else {
-                        let variant = &adt.variants[constructor.variant_index_for_adt(adt)];
-                        let tys = Fields::list_variant_nonhidden_fields(cx, ty, variant)
-                            .map(|(_, ty)| ty);
-                        Fields::wildcards_from_tys(cx, tys)
-                    }
+                ty::Adt(adt, _) => {
+                    let variant = &adt.variants[constructor.variant_index_for_adt(adt)];
+                    let tys =
+                        Fields::list_variant_nonhidden_fields(cx, ty, variant).map(|(_, ty)| ty);
+                    Fields::wildcards_from_tys(cx, tys)
                 }
                 _ => bug!("Unexpected type for `Single` constructor: {:?}", ty),
             },
+            BoxPat(ty) => Fields::wildcards_from_tys(cx, once(*ty)),
             Slice(slice) => match *ty.kind() {
                 ty::Slice(ty) | ty::Array(ty, _) => {
                     let arity = slice.arity();
@@ -1278,7 +1275,10 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 fields = Fields::empty();
             }
             PatKind::Deref { subpattern } => {
-                ctor = Single;
+                ctor = match pat.ty.kind() {
+                    ty::Adt(adt, substs) if adt.is_box() => BoxPat(substs.type_at(0)),
+                    _ => Single,
+                };
                 fields = Fields::singleton(cx, mkpat(subpattern));
             }
             PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
@@ -1296,26 +1296,14 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                         fields = Fields::from_iter(cx, wilds);
                     }
                     ty::Adt(adt, substs) if adt.is_box() => {
-                        // The only legal patterns of type `Box` (outside `std`) are `_` and box
-                        // patterns. If we're here we can assume this is a box pattern.
-                        // FIXME(Nadrieril): A `Box` can in theory be matched either with `Box(_,
-                        // _)` or a box pattern. As a hack to avoid an ICE with the former, we
-                        // ignore other fields than the first one. This will trigger an error later
-                        // anyway.
+                        // If we're here, the pattern is using the private `Box(_, _)` constructor.
+                        // Since this is private, we can ignore the subpatterns here and pretend it's a
+                        // `box _`. There'll be an error later anyways. This prevents an ICE.
                         // See https://github.com/rust-lang/rust/issues/82772 ,
                         // explanation: https://github.com/rust-lang/rust/pull/82789#issuecomment-796921977
-                        // The problem is that we can't know from the type whether we'll match
-                        // normally or through box-patterns. We'll have to figure out a proper
-                        // solution when we introduce generalized deref patterns. Also need to
-                        // prevent mixing of those two options.
-                        let pat = subpatterns.into_iter().find(|pat| pat.field.index() == 0);
-                        let pat = if let Some(pat) = pat {
-                            mkpat(&pat.pattern)
-                        } else {
-                            DeconstructedPat::wildcard(substs.type_at(0))
-                        };
-                        ctor = Single;
-                        fields = Fields::singleton(cx, pat);
+                        let inner_ty = substs.type_at(0);
+                        ctor = Constructor::BoxPat(inner_ty);
+                        fields = Fields::singleton(cx, DeconstructedPat::wildcard(inner_ty));
                     }
                     ty::Adt(adt, _) => {
                         ctor = match pat.kind.as_ref() {
@@ -1429,12 +1417,6 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                         .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
                         .collect(),
                 },
-                ty::Adt(adt_def, _) if adt_def.is_box() => {
-                    // Without `box_patterns`, the only legal pattern of type `Box` is `_` (outside
-                    // of `std`). So this branch is only reachable when the feature is enabled and
-                    // the pattern is a box pattern.
-                    PatKind::Deref { subpattern: subpatterns.next().unwrap() }
-                }
                 ty::Adt(adt_def, substs) => {
                     let variant_index = self.ctor.variant_index_for_adt(adt_def);
                     let variant = &adt_def.variants[variant_index];
@@ -1456,6 +1438,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
                 _ => bug!("unexpected ctor for type {:?} {:?}", self.ctor, self.ty),
             },
+            BoxPat(_) => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
             Slice(slice) => {
                 match slice.kind {
                     FixedLen(_) => PatKind::Slice {
@@ -1609,13 +1592,6 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
 
         match &self.ctor {
             Single | Variant(_) => match self.ty.kind() {
-                ty::Adt(def, _) if def.is_box() => {
-                    // Without `box_patterns`, the only legal pattern of type `Box` is `_` (outside
-                    // of `std`). So this branch is only reachable when the feature is enabled and
-                    // the pattern is a box pattern.
-                    let subpattern = self.iter_fields().next().unwrap();
-                    write!(f, "box {:?}", subpattern)
-                }
                 ty::Adt(..) | ty::Tuple(..) => {
                     let variant = match self.ty.kind() {
                         ty::Adt(adt, _) => {
@@ -1648,6 +1624,10 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                 }
                 _ => write!(f, "_"),
             },
+            BoxPat(_) => {
+                let subpattern = self.iter_fields().next().unwrap();
+                write!(f, "box {:?}", subpattern)
+            }
             Slice(slice) => {
                 let mut subpatterns = self.fields.iter_patterns();
                 write!(f, "[")?;
