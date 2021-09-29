@@ -9,7 +9,7 @@
 import sys
 import json
 
-crate = json.load(open(sys.argv[1]))
+crate = json.load(open(sys.argv[1], encoding="utf-8"))
 
 
 def get_local_item(item_id):
