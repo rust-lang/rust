@@ -1167,13 +1167,16 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
             | hir::ItemKind::Struct(_, ref generics)
             | hir::ItemKind::Union(_, ref generics) => {
                 if generics.params.is_empty() {
-                    if self.mode == MonoItemCollectionMode::Eager {
+                    let def_id = item.def_id.to_def_id();
+                    let force_share_drop_glue =
+                        self.tcx.sess.opts.share_generics() && def_id.is_local();
+                    if self.mode == MonoItemCollectionMode::Eager || force_share_drop_glue {
                         debug!(
                             "RootCollector: ADT drop-glue for {}",
-                            self.tcx.def_path_str(item.def_id.to_def_id())
+                            self.tcx.def_path_str(def_id)
                         );
 
-                        let ty = Instance::new(item.def_id.to_def_id(), InternalSubsts::empty())
+                        let ty = Instance::new(def_id, InternalSubsts::empty())
                             .ty(self.tcx, ty::ParamEnv::reveal_all());
                         visit_drop_use(self.tcx, ty, true, DUMMY_SP, self.output);
                     }

@@ -1,8 +1,8 @@
 // build-pass
 
-#![feature(lang_items,no_core)]
+#![feature(lang_items, no_core)]
 #![no_core]
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 #[lang = "sized"]
 trait MySized {}
@@ -13,6 +13,7 @@ trait MyCopy {}
 #[lang = "drop"]
 trait MyDrop<T> {}
 
+#[lang = "drop_in_place"]
 struct S;
 
 impl<T> MyDrop<T> for S {}
