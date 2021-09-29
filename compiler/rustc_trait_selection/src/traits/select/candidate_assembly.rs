@@ -284,32 +284,32 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // structs and enums.
                 self.assemble_candidates_from_impls(obligation, &mut candidates);
 
-                // For other types, we'll use the builtin rules.
-                let copy_conditions = self.copy_clone_conditions(obligation);
-                self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates);
-            } else if lang_items.discriminant_kind_trait() == Some(def_id) {
-                // `DiscriminantKind` is automatically implemented for every type.
-                candidates.vec.push(DiscriminantKindCandidate);
-            } else if lang_items.pointee_trait() == Some(def_id) {
-                // `Pointee` is automatically implemented for every type.
-                candidates.vec.push(PointeeCandidate);
-            } else if lang_items.sized_trait() == Some(def_id) {
-                // Sized is never implementable by end-users, it is
-                // always automatically computed.
-                let sized_conditions = self.sized_conditions(obligation);
-                self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
-            } else if lang_items.unsize_trait() == Some(def_id) {
-                self.assemble_candidates_for_unsizing(obligation, &mut candidates);
-            } else if lang_items.drop_trait() == Some(def_id)
-                && obligation.predicate.skip_binder().constness == ty::BoundConstness::ConstIfConst
-            {
-                if self.is_in_const_context {
-                    self.assemble_const_drop_candidates(obligation, &mut candidates)?;
-                } else {
-                    debug!("passing ~const Drop bound; in non-const context");
-                    // `~const Drop` when we are not in a const context has no effect.
-                    candidates.vec.push(ConstDropCandidate)
-                }
+                            // For other types, we'll use the builtin rules.
+            let copy_conditions = self.copy_clone_conditions(obligation);
+            self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates);
+        } else if lang_items.discriminant_kind_trait() == Some(def_id) {
+            // `DiscriminantKind` is automatically implemented for every type.
+            candidates.vec.push(DiscriminantKindCandidate);
+        } else if lang_items.pointee_trait() == Some(def_id) {
+            // `Pointee` is automatically implemented for every type.
+            candidates.vec.push(PointeeCandidate);
+        } else if lang_items.sized_trait() == Some(def_id) {
+            // Sized is never implementable by end-users, it is
+            // always automatically computed.
+            let sized_conditions = self.sized_conditions(obligation);
+            self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
+        } else if lang_items.unsize_trait() == Some(def_id) {
+            self.assemble_candidates_for_unsizing(obligation, &mut candidates);
+        } else if lang_items.drop_trait() == Some(def_id)
+            && obligation.predicate.skip_binder().constness == ty::BoundConstness::ConstIfConst
+        {
+            if self.is_in_const_context {
+                self.assemble_const_drop_candidates(obligation, stack, &mut candidates)?;
+            } else {
+                debug!("passing ~const Drop bound; in non-const context");
+                // `~const Drop` when we are not in a const context has no effect.
+                candidates.vec.push(ConstDropCandidate)
+            }
             } else {
                 if lang_items.clone_trait() == Some(def_id) {
                     // Same builtin conditions as `Copy`, i.e., every type which has builtin support
@@ -911,9 +911,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    fn assemble_const_drop_candidates(
+    fn assemble_const_drop_candidates<'a>(
         &mut self,
         obligation: &TraitObligation<'tcx>,
+        obligation_stack: &TraitObligationStack<'a, 'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) -> Result<(), SelectionError<'tcx>> {
         let mut stack: Vec<(Ty<'tcx>, usize)> = vec![(obligation.self_ty().skip_binder(), 0)];
@@ -922,7 +923,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let mut noreturn = false;
 
             self.check_recursion_depth(depth, obligation)?;
-            let mut copy_candidates = SelectionCandidateSet { vec: Vec::new(), ambiguous: false };
+            let mut new_candidates = SelectionCandidateSet { vec: Vec::new(), ambiguous: false };
             let mut copy_obligation =
                 obligation.with(obligation.predicate.rebind(ty::TraitPredicate {
                     trait_ref: ty::TraitRef {
@@ -933,13 +934,28 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     polarity: ty::ImplPolarity::Positive,
                 }));
             copy_obligation.recursion_depth = depth + 1;
-            self.assemble_candidates_from_impls(&copy_obligation, &mut copy_candidates);
+            self.assemble_candidates_from_impls(&copy_obligation, &mut new_candidates);
             let copy_conditions = self.copy_clone_conditions(&copy_obligation);
-            self.assemble_builtin_bound_candidates(copy_conditions, &mut copy_candidates);
-            if !copy_candidates.vec.is_empty() {
+            self.assemble_builtin_bound_candidates(copy_conditions, &mut new_candidates);
+            let copy_stack = self.push_stack(obligation_stack.list(), &copy_obligation);
+            self.assemble_candidates_from_caller_bounds(&copy_stack, &mut new_candidates)?;
+
+            let const_drop_obligation =
+                obligation.with(obligation.predicate.rebind(ty::TraitPredicate {
+                    trait_ref: ty::TraitRef {
+                        def_id: self.tcx().require_lang_item(hir::LangItem::Drop, None),
+                        substs: self.tcx().mk_substs_trait(ty, &[]),
+                    },
+                    constness: ty::BoundConstness::ConstIfConst,
+                }));
+
+            let const_drop_stack = self.push_stack(obligation_stack.list(), &const_drop_obligation);
+            self.assemble_candidates_from_caller_bounds(&const_drop_stack, &mut new_candidates)?;
+
+            if !new_candidates.vec.is_empty() {
                 noreturn = true;
             }
-            debug!(?copy_candidates.vec, "assemble_const_drop_candidates - copy");
+            debug!(?new_candidates.vec, "assemble_const_drop_candidates");
 
             match ty.kind() {
                 ty::Int(_)
