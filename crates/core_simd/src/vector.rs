@@ -57,8 +57,10 @@ where
         self.0
     }
 
-    /// SIMD gather: construct a SIMD vector by reading from a slice, using potentially discontiguous indices.
-    /// If an index is out of bounds, that lane instead selects the value from the "or" vector.
+    /// Reads from potentially discontiguous indices in `slice` to construct a SIMD vector.
+    /// Lanes given an out-of-bounds index instead select values from the `or` vector.
+    ///
+    /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "std")] use core_simd::Simd;
@@ -76,8 +78,10 @@ where
         Self::gather_select(slice, Mask::splat(true), idxs, or)
     }
 
-    /// SIMD gather: construct a SIMD vector by reading from a slice, using potentially discontiguous indices.
-    /// Out-of-bounds indices instead use the default value for that lane (0).
+    /// Reads from potentially discontiguous indices in `slice` to construct a SIMD vector.
+    /// Lanes given an out-of-bounds index instead are set the default value for the type.
+    ///
+    /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "std")] use core_simd::Simd;
@@ -97,8 +101,11 @@ where
         Self::gather_or(slice, idxs, Self::splat(T::default()))
     }
 
-    /// SIMD gather: construct a SIMD vector by reading from a slice, using potentially discontiguous indices.
-    /// Out-of-bounds or masked indices instead select the value from the "or" vector.
+    /// Reads from potentially discontiguous indices in `slice` to construct a SIMD vector.
+    /// The mask `enable`s all `true` lanes and disables all `false` lanes.
+    /// If an index is disabled or is out-of-bounds, the lane is selected from the `or` vector.
+    ///
+    /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "std")] use core_simd::{Simd, Mask};
@@ -106,27 +113,34 @@ where
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 5]);
     /// let alt = Simd::from_array([-5, -4, -3, -2]);
-    /// let mask = Mask::from_array([true, true, true, false]); // Note the mask of the last lane.
+    /// let enable = Mask::from_array([true, true, true, false]); // Note the mask of the last lane.
     ///
-    /// let result = Simd::gather_select(&vec, mask, idxs, alt); // Note the lane that is out-of-bounds.
+    /// let result = Simd::gather_select(&vec, enable, idxs, alt); // Note the lane that is out-of-bounds.
     /// assert_eq!(result, Simd::from_array([-5, 13, 10, -2]));
     /// ```
     #[must_use]
     #[inline]
     pub fn gather_select(
         slice: &[T],
-        mask: Mask<isize, LANES>,
+        enable: Mask<isize, LANES>,
         idxs: Simd<usize, LANES>,
         or: Self,
     ) -> Self {
-        let mask: Mask<isize, LANES> = mask & idxs.lanes_lt(Simd::splat(slice.len()));
+        let enable: Mask<isize, LANES> = enable & idxs.lanes_lt(Simd::splat(slice.len()));
         // SAFETY: We have masked-off out-of-bounds lanes.
-        unsafe { Self::gather_select_unchecked(slice, mask, idxs, or) }
+        unsafe { Self::gather_select_unchecked(slice, enable, idxs, or) }
     }
 
-    /// Unsafe SIMD gather: construct a SIMD vector by reading from a slice, using potentially discontiguous indices.
-    /// Masked indices instead select the value from the "or" vector.
-    /// `gather_select_unchecked` is unsound if any unmasked index is out-of-bounds of the slice.
+    /// Reads from potentially discontiguous indices in `slice` to construct a SIMD vector.
+    /// The mask `enable`s all `true` lanes and disables all `false` lanes.
+    /// If an index is disabled, the lane is selected from the `or` vector.
+    ///
+    /// # Safety
+    ///
+    /// Calling this function with an `enable`d out-of-bounds index is *[undefined behavior]*
+    /// even if the resulting value is not used.
+    ///
+    /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "std")] use core_simd::{Simd, Mask};
@@ -134,19 +148,20 @@ where
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 5]);
     /// let alt = Simd::from_array([-5, -4, -3, -2]);
-    /// let mask = Mask::from_array([true, true, true, false]); // Note the final mask lane.
+    /// let enable = Mask::from_array([true, true, true, false]); // Note the final mask lane.
     /// // If this mask was used to gather, it would be unsound. Let's fix that.
-    /// let mask = mask & idxs.lanes_lt(Simd::splat(vec.len()));
+    /// let enable = enable & idxs.lanes_lt(Simd::splat(vec.len()));
     ///
     /// // We have masked the OOB lane, so it's safe to gather now.
-    /// let result = unsafe { Simd::gather_select_unchecked(&vec, mask, idxs, alt) };
+    /// let result = unsafe { Simd::gather_select_unchecked(&vec, enable, idxs, alt) };
     /// assert_eq!(result, Simd::from_array([-5, 13, 10, -2]));
     /// ```
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[must_use]
     #[inline]
     pub unsafe fn gather_select_unchecked(
         slice: &[T],
-        mask: Mask<isize, LANES>,
+        enable: Mask<isize, LANES>,
         idxs: Simd<usize, LANES>,
         or: Self,
     ) -> Self {
@@ -154,12 +169,14 @@ where
         // Ferris forgive me, I have done pointer arithmetic here.
         let ptrs = base_ptr.wrapping_add(idxs);
         // SAFETY: The ptrs have been bounds-masked to prevent memory-unsafe reads insha'allah
-        unsafe { intrinsics::simd_gather(or, ptrs, mask.to_int()) }
+        unsafe { intrinsics::simd_gather(or, ptrs, enable.to_int()) }
     }
 
-    /// SIMD scatter: write a SIMD vector's values into a slice, using potentially discontiguous indices.
-    /// Out-of-bounds indices are not written.
-    /// `scatter` writes "in order", so if an index receives two writes, only the last is guaranteed.
+    /// Writes the values in a SIMD vector to potentially discontiguous indices in `slice`.
+    /// If two lanes in the scattered vector would write to the same index
+    /// only the last lane is guaranteed to actually be written.
+    ///
+    /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "std")] use core_simd::Simd;
@@ -176,9 +193,13 @@ where
         self.scatter_select(slice, Mask::splat(true), idxs)
     }
 
-    /// SIMD scatter: write a SIMD vector's values into a slice, using potentially discontiguous indices.
-    /// Out-of-bounds or masked indices are not written.
-    /// `scatter_select` writes "in order", so if an index receives two writes, only the last is guaranteed.
+    /// Writes the values in a SIMD vector to multiple potentially discontiguous indices in `slice`.
+    /// The mask `enable`s all `true` lanes and disables all `false` lanes.
+    /// If an enabled index is out-of-bounds, the lane is not written.
+    /// If two enabled lanes in the scattered vector would write to the same index,
+    /// only the last lane is guaranteed to actually be written.
+    ///
+    /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "std")] use core_simd::{Simd, Mask};
@@ -186,27 +207,34 @@ where
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 0]);
     /// let vals = Simd::from_array([-27, 82, -41, 124]);
-    /// let mask = Mask::from_array([true, true, true, false]); // Note the mask of the last lane.
+    /// let enable = Mask::from_array([true, true, true, false]); // Note the mask of the last lane.
     ///
-    /// vals.scatter_select(&mut vec, mask, idxs); // index 0's second write is masked, thus omitted.
+    /// vals.scatter_select(&mut vec, enable, idxs); // index 0's second write is masked, thus omitted.
     /// assert_eq!(vec, vec![-41, 11, 12, 82, 14, 15, 16, 17, 18]);
     /// ```
     #[inline]
     pub fn scatter_select(
         self,
         slice: &mut [T],
-        mask: Mask<isize, LANES>,
+        enable: Mask<isize, LANES>,
         idxs: Simd<usize, LANES>,
     ) {
-        let mask: Mask<isize, LANES> = mask & idxs.lanes_lt(Simd::splat(slice.len()));
+        let enable: Mask<isize, LANES> = enable & idxs.lanes_lt(Simd::splat(slice.len()));
         // SAFETY: We have masked-off out-of-bounds lanes.
-        unsafe { self.scatter_select_unchecked(slice, mask, idxs) }
+        unsafe { self.scatter_select_unchecked(slice, enable, idxs) }
     }
 
-    /// Unsafe SIMD scatter: write a SIMD vector's values into a slice, using potentially discontiguous indices.
-    /// Out-of-bounds or masked indices are not written.
-    /// `scatter_select_unchecked` is unsound if any unmasked index is out of bounds of the slice.
-    /// `scatter_select_unchecked` writes "in order", so if the same index receives two writes, only the last is guaranteed.
+    /// Writes the values in a SIMD vector to multiple potentially discontiguous indices in `slice`.
+    /// The mask `enable`s all `true` lanes and disables all `false` lanes.
+    /// If two enabled lanes in the scattered vector would write to the same index,
+    /// only the last lane is guaranteed to actually be written.
+    ///
+    /// # Safety
+    ///
+    /// Calling this function with an enabled out-of-bounds index is *[undefined behavior]*,
+    /// and may lead to memory corruption.
+    ///
+    /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "std")] use core_simd::{Simd, Mask};
@@ -214,20 +242,21 @@ where
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 0]);
     /// let vals = Simd::from_array([-27, 82, -41, 124]);
-    /// let mask = Mask::from_array([true, true, true, false]); // Note the mask of the last lane.
+    /// let enable = Mask::from_array([true, true, true, false]); // Note the mask of the last lane.
     /// // If this mask was used to scatter, it would be unsound. Let's fix that.
-    /// let mask = mask & idxs.lanes_lt(Simd::splat(vec.len()));
+    /// let enable = enable & idxs.lanes_lt(Simd::splat(vec.len()));
     ///
     /// // We have masked the OOB lane, so it's safe to scatter now.
-    /// unsafe { vals.scatter_select_unchecked(&mut vec, mask, idxs); }
+    /// unsafe { vals.scatter_select_unchecked(&mut vec, enable, idxs); }
     /// // index 0's second write is masked, thus was omitted.
     /// assert_eq!(vec, vec![-41, 11, 12, 82, 14, 15, 16, 17, 18]);
     /// ```
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     pub unsafe fn scatter_select_unchecked(
         self,
         slice: &mut [T],
-        mask: Mask<isize, LANES>,
+        enable: Mask<isize, LANES>,
         idxs: Simd<usize, LANES>,
     ) {
         // SAFETY: This block works with *mut T derived from &mut 'a [T],
@@ -237,7 +266,7 @@ where
         // to prevent invalidating the raw ptrs while they're live.
         // Thus, entering this block requires all values to use being already ready:
         // 0. idxs we want to write to, which are used to construct the mask.
-        // 1. mask, which depends on an initial &'a [T] and the idxs.
+        // 1. enable, which depends on an initial &'a [T] and the idxs.
         // 2. actual values to scatter (self).
         // 3. &mut [T] which will become our base ptr.
         unsafe {
@@ -246,7 +275,7 @@ where
             // Ferris forgive me, I have done pointer arithmetic here.
             let ptrs = base_ptr.wrapping_add(idxs);
             // The ptrs have been bounds-masked to prevent memory-unsafe writes insha'allah
-            intrinsics::simd_scatter(self, ptrs, mask.to_int())
+            intrinsics::simd_scatter(self, ptrs, enable.to_int())
             // Cleared ☢️ *mut T Zone
         }
     }
