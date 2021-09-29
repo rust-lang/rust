@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// The Mutex types found in std::sync and parking_lot
     /// are not designed to operate in an async context across await points.
     ///
-    /// There are two potential solutions. One is to use an asynx-aware Mutex
+    /// There are two potential solutions. One is to use an async-aware Mutex
     /// type. Many asynchronous foundation crates provide such a Mutex type. The
     /// other solution is to ensure the mutex is unlocked before calling await,
     /// either by introducing a scope or an explicit call to Drop::drop.
