@@ -897,6 +897,17 @@ pub struct CheckCfg {
     pub values_valid: FxHashSet<(String, String)>,
 }
 
+impl Default for CheckCfg {
+    fn default() -> Self {
+        CheckCfg {
+            names_checked: false,
+            names_valid: FxHashSet::default(),
+            values_checked: FxHashSet::default(),
+            values_valid: FxHashSet::default(),
+        }
+    }
+}
+
 /// Converts the crate `--check-cfg` options from `String` to `Symbol`.
 /// `rustc_interface::interface::Config` accepts this in the compiler configuration,
 /// but the symbol interner is not yet set up then, so we must convert it later.

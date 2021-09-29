@@ -49,6 +49,7 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
     let config = interface::Config {
         opts,
         crate_cfg: Default::default(),
+        crate_check_cfg: Default::default(),
         input,
         input_path: None,
         output_file: Some(output),
