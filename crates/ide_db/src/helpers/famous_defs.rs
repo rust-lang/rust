@@ -68,8 +68,16 @@ impl FamousDefs<'_, '_> {
         self.find_trait("core:ops:Deref")
     }
 
+    pub fn core_convert_AsRef(&self) -> Option<Trait> {
+        self.find_trait("core:convert:AsRef")
+    }
+
     pub fn core_ops_ControlFlow(&self) -> Option<Enum> {
         self.find_enum("core:ops:ControlFlow")
+    }
+
+    pub fn core_marker_Copy(&self) -> Option<Trait> {
+        self.find_trait("core:marker:Copy")
     }
 
     pub fn alloc(&self) -> Option<Crate> {

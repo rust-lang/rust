@@ -2,8 +2,7 @@ use stdx::{format_to, to_lower_snake_case};
 use syntax::ast::{self, AstNode, HasName, HasVisibility};
 
 use crate::{
-    utils::useless_type_special_case,
-    utils::{find_impl_block_end, find_struct_impl, generate_impl_text},
+    utils::{convert_reference_type, find_impl_block_end, find_struct_impl, generate_impl_text},
     AssistContext, AssistId, AssistKind, Assists, GroupLabel,
 };
 
@@ -12,12 +11,27 @@ use crate::{
 // Generate a getter method.
 //
 // ```
+// # //- minicore: as_ref
+// # pub struct String;
+// # impl AsRef<str> for String {
+// #     fn as_ref(&self) -> &str {
+// #         ""
+// #     }
+// # }
+// #
 // struct Person {
 //     nam$0e: String,
 // }
 // ```
 // ->
 // ```
+// # pub struct String;
+// # impl AsRef<str> for String {
+// #     fn as_ref(&self) -> &str {
+// #         ""
+// #     }
+// # }
+// #
 // struct Person {
 //     name: String,
 // }
@@ -25,7 +39,7 @@ use crate::{
 // impl Person {
 //     /// Get a reference to the person's name.
 //     fn $0name(&self) -> &str {
-//         self.name.as_str()
+//         self.name.as_ref()
 //     }
 // }
 // ```
@@ -98,9 +112,23 @@ pub(crate) fn generate_getter_impl(
 
             let vis = strukt.visibility().map_or(String::new(), |v| format!("{} ", v));
             let (ty, body) = if mutable {
-                (format!("&mut {}", field_ty), format!("&mut self.{}", field_name))
+                (
+                    format!("&mut {}", field_ty.to_string()),
+                    format!("&mut self.{}", field_name.to_string()),
+                )
             } else {
-                useless_type_special_case(&field_name.to_string(), &field_ty.to_string())
+                ctx.sema
+                    .resolve_type(&field_ty)
+                    .and_then(|ty| {
+                        convert_reference_type(ty, ctx, ctx.sema.scope(field_ty.syntax()).krate())
+                    })
+                    .map(|conversion| {
+                        cov_mark::hit!(convert_reference_type);
+                        (
+                            conversion.convert_type(ctx.db()),
+                            conversion.getter(field_name.to_string()),
+                        )
+                    })
                     .unwrap_or_else(|| (format!("&{}", field_ty), format!("&self.{}", field_name)))
             };
 
@@ -284,30 +312,113 @@ impl Context {
     }
 
     #[test]
-    fn test_special_cases() {
-        cov_mark::check!(useless_type_special_case);
+    fn test_not_a_special_case() {
+        cov_mark::check_count!(convert_reference_type, 0);
+        // Fake string which doesn't implement AsRef<str>
         check_assist(
             generate_getter,
             r#"
+pub struct String;
+
 struct S { foo: $0String }
 "#,
             r#"
+pub struct String;
+
+struct S { foo: String }
+
+impl S {
+    /// Get a reference to the s's foo.
+    fn $0foo(&self) -> &String {
+        &self.foo
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_convert_reference_type() {
+        cov_mark::check_count!(convert_reference_type, 6);
+
+        // Copy
+        check_assist(
+            generate_getter,
+            r#"
+//- minicore: copy
+struct S { foo: $0bool }
+"#,
+            r#"
+struct S { foo: bool }
+
+impl S {
+    /// Get a reference to the s's foo.
+    fn $0foo(&self) -> bool {
+        self.foo
+    }
+}
+"#,
+        );
+
+        // AsRef<str>
+        check_assist(
+            generate_getter,
+            r#"
+//- minicore: as_ref
+pub struct String;
+impl AsRef<str> for String {
+    fn as_ref(&self) -> &str {
+        ""
+    }
+}
+
+struct S { foo: $0String }
+"#,
+            r#"
+pub struct String;
+impl AsRef<str> for String {
+    fn as_ref(&self) -> &str {
+        ""
+    }
+}
+
 struct S { foo: String }
 
 impl S {
     /// Get a reference to the s's foo.
     fn $0foo(&self) -> &str {
-        self.foo.as_str()
+        self.foo.as_ref()
     }
 }
 "#,
         );
+
+        // AsRef<T>
         check_assist(
             generate_getter,
             r#"
+//- minicore: as_ref
+struct Sweets;
+
+pub struct Box<T>(T);
+impl<T> AsRef<T> for Box<T> {
+    fn as_ref(&self) -> &T {
+        &self.0
+    }
+}
+
 struct S { foo: $0Box<Sweets> }
 "#,
             r#"
+struct Sweets;
+
+pub struct Box<T>(T);
+impl<T> AsRef<T> for Box<T> {
+    fn as_ref(&self) -> &T {
+        &self.0
+    }
+}
+
 struct S { foo: Box<Sweets> }
 
 impl S {
@@ -318,34 +429,81 @@ impl S {
 }
 "#,
         );
+
+        // AsRef<[T]>
         check_assist(
             generate_getter,
             r#"
+//- minicore: as_ref
+pub struct Vec<T>;
+impl<T> AsRef<[T]> for Vec<T> {
+    fn as_ref(&self) -> &[T] {
+        &[]
+    }
+}
+
 struct S { foo: $0Vec<()> }
 "#,
             r#"
+pub struct Vec<T>;
+impl<T> AsRef<[T]> for Vec<T> {
+    fn as_ref(&self) -> &[T] {
+        &[]
+    }
+}
+
 struct S { foo: Vec<()> }
 
 impl S {
     /// Get a reference to the s's foo.
     fn $0foo(&self) -> &[()] {
-        self.foo.as_slice()
+        self.foo.as_ref()
     }
 }
 "#,
         );
+
+        // Option
         check_assist(
             generate_getter,
             r#"
+//- minicore: option
+struct Failure;
+
 struct S { foo: $0Option<Failure> }
 "#,
             r#"
+struct Failure;
+
 struct S { foo: Option<Failure> }
 
 impl S {
     /// Get a reference to the s's foo.
     fn $0foo(&self) -> Option<&Failure> {
         self.foo.as_ref()
+    }
+}
+"#,
+        );
+
+        // Result
+        check_assist(
+            generate_getter,
+            r#"
+//- minicore: result
+struct Context {
+    dat$0a: Result<bool, i32>,
+}
+"#,
+            r#"
+struct Context {
+    data: Result<bool, i32>,
+}
+
+impl Context {
+    /// Get a reference to the context's data.
+    fn $0data(&self) -> Result<&bool, &i32> {
+        self.data.as_ref()
     }
 }
 "#,

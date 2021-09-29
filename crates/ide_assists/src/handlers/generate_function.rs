@@ -1,3 +1,5 @@
+use rustc_hash::{FxHashMap, FxHashSet};
+
 use hir::{HasSource, HirDisplay, Module, ModuleDef, Semantics, TypeInfo};
 use ide_db::{
     base_db::FileId,
@@ -5,7 +7,6 @@ use ide_db::{
     helpers::SnippetCap,
     RootDatabase,
 };
-use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{
@@ -17,7 +18,7 @@ use syntax::{
 };
 
 use crate::{
-    utils::useless_type_special_case,
+    utils::convert_reference_type,
     utils::{find_struct_impl, render_snippet, Cursor},
     AssistContext, AssistId, AssistKind, Assists,
 };
@@ -424,19 +425,7 @@ fn fn_args(
     let mut arg_types = Vec::new();
     for arg in call.arg_list()?.args() {
         arg_names.push(fn_arg_name(&ctx.sema, &arg));
-        arg_types.push(match fn_arg_type(ctx, target_module, &arg) {
-            Some(ty) => {
-                if !ty.is_empty() && ty.starts_with('&') {
-                    match useless_type_special_case("", &ty[1..].to_owned()) {
-                        Some((new_ty, _)) => new_ty,
-                        None => ty,
-                    }
-                } else {
-                    ty
-                }
-            }
-            None => String::from("_"),
-        });
+        arg_types.push(fn_arg_type(ctx, target_module, &arg));
     }
     deduplicate_arg_names(&mut arg_names);
     let params = arg_names.into_iter().zip(arg_types).map(|(name, ty)| {
@@ -511,17 +500,31 @@ fn fn_arg_name(sema: &Semantics<RootDatabase>, arg_expr: &ast::Expr) -> String {
     }
 }
 
-fn fn_arg_type(
-    ctx: &AssistContext,
-    target_module: hir::Module,
-    fn_arg: &ast::Expr,
-) -> Option<String> {
-    let ty = ctx.sema.type_of_expr(fn_arg)?.adjusted();
-    if ty.is_unknown() {
-        return None;
+fn fn_arg_type(ctx: &AssistContext, target_module: hir::Module, fn_arg: &ast::Expr) -> String {
+    fn maybe_displayed_type(
+        ctx: &AssistContext,
+        target_module: hir::Module,
+        fn_arg: &ast::Expr,
+    ) -> Option<String> {
+        let ty = ctx.sema.type_of_expr(fn_arg)?.adjusted();
+        if ty.is_unknown() {
+            return None;
+        }
+
+        if ty.is_reference() || ty.is_mutable_reference() {
+            convert_reference_type(
+                ty.strip_references(),
+                ctx,
+                ctx.sema.scope(fn_arg.syntax()).krate(),
+            )
+            .map(|conversion| conversion.convert_type(ctx.db()))
+            .or_else(|| ty.display_source_code(ctx.db(), target_module.into()).ok())
+        } else {
+            ty.display_source_code(ctx.db(), target_module.into()).ok()
+        }
     }
 
-    ty.display_source_code(ctx.db(), target_module.into()).ok()
+    maybe_displayed_type(ctx, target_module, fn_arg).unwrap_or_else(|| String::from("_"))
 }
 
 /// Returns the position inside the current mod or file

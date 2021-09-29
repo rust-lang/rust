@@ -1,13 +1,14 @@
 //! Assorted functions shared by several assists.
 
-pub(crate) mod suggest_name;
-mod gen_trait_fn_body;
-
 use std::ops;
 
-use hir::HasSource;
-use ide_db::{helpers::SnippetCap, path_transform::PathTransform, RootDatabase};
 use itertools::Itertools;
+
+pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
+use hir::db::HirDatabase;
+use hir::{Crate, HasSource, HirDisplay};
+use ide_db::helpers::FamousDefs;
+use ide_db::{helpers::SnippetCap, path_transform::PathTransform, RootDatabase};
 use stdx::format_to;
 use syntax::{
     ast::{
@@ -23,7 +24,8 @@ use syntax::{
 
 use crate::assist_context::{AssistBuilder, AssistContext};
 
-pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
+pub(crate) mod suggest_name;
+mod gen_trait_fn_body;
 
 pub(crate) fn unwrap_trivial_block(block_expr: ast::BlockExpr) -> ast::Expr {
     extract_trivial_expression(&block_expr)
@@ -507,27 +509,156 @@ pub(crate) fn add_method_to_adt(
     builder.insert(start_offset, buf);
 }
 
-pub fn useless_type_special_case(field_name: &str, field_ty: &String) -> Option<(String, String)> {
-    if field_ty == "String" {
-        cov_mark::hit!(useless_type_special_case);
-        return Some(("&str".to_string(), format!("self.{}.as_str()", field_name)));
-    }
-    if let Some(arg) = ty_ctor(field_ty, "Vec") {
-        return Some((format!("&[{}]", arg), format!("self.{}.as_slice()", field_name)));
-    }
-    if let Some(arg) = ty_ctor(field_ty, "Box") {
-        return Some((format!("&{}", arg), format!("self.{}.as_ref()", field_name)));
-    }
-    if let Some(arg) = ty_ctor(field_ty, "Option") {
-        return Some((format!("Option<&{}>", arg), format!("self.{}.as_ref()", field_name)));
-    }
-    None
+#[derive(Debug)]
+pub(crate) struct ReferenceConversion {
+    conversion: ReferenceConversionType,
+    ty: hir::Type,
 }
 
-// FIXME: This should rely on semantic info.
-fn ty_ctor(ty: &String, ctor: &str) -> Option<String> {
-    let res = ty.to_string().strip_prefix(ctor)?.strip_prefix('<')?.strip_suffix('>')?.to_string();
-    Some(res)
+#[derive(Debug)]
+enum ReferenceConversionType {
+    // reference can be stripped if the type is Copy
+    Copy,
+    // &String -> &str
+    AsRefStr,
+    // &Vec<T> -> &[T]
+    AsRefSlice,
+    // &Box<T> -> &T
+    Dereferenced,
+    // &Option<T> -> Option<&T>
+    Option,
+    // &Result<T, E> -> Result<&T, &E>
+    Result,
+}
+
+impl ReferenceConversion {
+    pub(crate) fn convert_type(&self, db: &dyn HirDatabase) -> String {
+        match self.conversion {
+            ReferenceConversionType::Copy => self.ty.display(db).to_string(),
+            ReferenceConversionType::AsRefStr => "&str".to_string(),
+            ReferenceConversionType::AsRefSlice => {
+                let type_argument_name =
+                    self.ty.type_arguments().next().unwrap().display(db).to_string();
+                format!("&[{}]", type_argument_name)
+            }
+            ReferenceConversionType::Dereferenced => {
+                let type_argument_name =
+                    self.ty.type_arguments().next().unwrap().display(db).to_string();
+                format!("&{}", type_argument_name)
+            }
+            ReferenceConversionType::Option => {
+                let type_argument_name =
+                    self.ty.type_arguments().next().unwrap().display(db).to_string();
+                format!("Option<&{}>", type_argument_name)
+            }
+            ReferenceConversionType::Result => {
+                let mut type_arguments = self.ty.type_arguments();
+                let first_type_argument_name =
+                    type_arguments.next().unwrap().display(db).to_string();
+                let second_type_argument_name =
+                    type_arguments.next().unwrap().display(db).to_string();
+                format!("Result<&{}, &{}>", first_type_argument_name, second_type_argument_name)
+            }
+        }
+    }
+
+    pub(crate) fn getter(&self, field_name: String) -> String {
+        match self.conversion {
+            ReferenceConversionType::Copy => format!("self.{}", field_name),
+            ReferenceConversionType::AsRefStr
+            | ReferenceConversionType::AsRefSlice
+            | ReferenceConversionType::Dereferenced
+            | ReferenceConversionType::Option
+            | ReferenceConversionType::Result => format!("self.{}.as_ref()", field_name),
+        }
+    }
+}
+
+// FIXME: It should return a new hir::Type, but currently constructing new types is too cumbersome
+//        and all users of this function operate on string type names, so they can do the conversion
+//        itself themselves.
+//        Another problem is that it probably shouldn't take AssistContext as a parameter, as
+//        it should be usable not only in assists.
+pub(crate) fn convert_reference_type(
+    ty: hir::Type,
+    ctx: &AssistContext,
+    krate: Option<Crate>,
+) -> Option<ReferenceConversion> {
+    let sema = &ctx.sema;
+    let db = sema.db;
+    let famous_defs = &FamousDefs(sema, krate);
+
+    handle_copy(&ty, db)
+        .or_else(|| handle_as_ref_str(&ty, db, famous_defs, ctx))
+        .or_else(|| handle_as_ref_slice(&ty, db, famous_defs))
+        .or_else(|| handle_dereferenced(&ty, db, famous_defs))
+        .or_else(|| handle_option_as_ref(&ty, db, famous_defs))
+        .or_else(|| handle_result_as_ref(&ty, db, famous_defs))
+        .map(|conversion| ReferenceConversion { ty, conversion })
+}
+
+fn handle_copy(ty: &hir::Type, db: &dyn HirDatabase) -> Option<ReferenceConversionType> {
+    ty.is_copy(db).then(|| ReferenceConversionType::Copy)
+}
+
+fn handle_as_ref_str(
+    ty: &hir::Type,
+    db: &dyn HirDatabase,
+    famous_defs: &FamousDefs,
+    ctx: &AssistContext,
+) -> Option<ReferenceConversionType> {
+    let module = ctx.sema.to_module_def(ctx.file_id())?;
+    let str_type = hir::BuiltinType::str().ty(db, module);
+
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[str_type])
+        .then(|| ReferenceConversionType::AsRefStr)
+}
+
+fn handle_as_ref_slice(
+    ty: &hir::Type,
+    db: &dyn HirDatabase,
+    famous_defs: &FamousDefs,
+) -> Option<ReferenceConversionType> {
+    let type_argument = ty.type_arguments().next()?;
+    let slice_type = type_argument.make_slice_of();
+
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[slice_type])
+        .then(|| ReferenceConversionType::AsRefSlice)
+}
+
+fn handle_dereferenced(
+    ty: &hir::Type,
+    db: &dyn HirDatabase,
+    famous_defs: &FamousDefs,
+) -> Option<ReferenceConversionType> {
+    let type_argument = ty.type_arguments().next()?;
+
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[type_argument])
+        .then(|| ReferenceConversionType::Dereferenced)
+}
+
+fn handle_option_as_ref(
+    ty: &hir::Type,
+    db: &dyn HirDatabase,
+    famous_defs: &FamousDefs,
+) -> Option<ReferenceConversionType> {
+    if ty.as_adt() == famous_defs.core_option_Option()?.ty(db).as_adt() {
+        Some(ReferenceConversionType::Option)
+    } else {
+        None
+    }
+}
+
+fn handle_result_as_ref(
+    ty: &hir::Type,
+    db: &dyn HirDatabase,
+    famous_defs: &FamousDefs,
+) -> Option<ReferenceConversionType> {
+    if ty.as_adt() == famous_defs.core_result_Result()?.ty(db).as_adt() {
+        Some(ReferenceConversionType::Result)
+    } else {
+        None
+    }
 }
 
 pub(crate) fn get_methods(items: &ast::AssocItemList) -> Vec<ast::Fn> {
