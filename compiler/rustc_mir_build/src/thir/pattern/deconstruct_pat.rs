@@ -109,7 +109,7 @@ pub(super) struct IntRange {
 impl IntRange {
     #[inline]
     fn is_integral(ty: Ty<'_>) -> bool {
-        matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_) | ty::Bool)
+        matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_))
     }
 
     fn is_singleton(&self) -> bool {
@@ -123,7 +123,6 @@ impl IntRange {
     #[inline]
     fn integral_size_and_signed_bias(tcx: TyCtxt<'_>, ty: Ty<'_>) -> Option<(Size, u128)> {
         match *ty.kind() {
-            ty::Bool => Some((Size::from_bytes(1), 0)),
             ty::Char => Some((Size::from_bytes(4), 0)),
             ty::Int(ity) => {
                 let size = Integer::from_int_ty(&tcx, ity).size();
@@ -634,6 +633,8 @@ pub(super) enum Constructor<'tcx> {
     Ref(Ty<'tcx>),
     /// Box patterns.
     BoxPat(Ty<'tcx>),
+    /// Booleans.
+    Bool(bool),
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
@@ -708,8 +709,9 @@ impl<'tcx> Constructor<'tcx> {
             Ref(_) | BoxPat(_) => 1,
             Slice(slice) => slice.arity(),
             Str(..)
-            | FloatRange(..)
+            | Bool(..)
             | IntRange(..)
+            | FloatRange(..)
             | NonExhaustive
             | Opaque
             | Missing { .. }
@@ -782,6 +784,7 @@ impl<'tcx> Constructor<'tcx> {
             (Ref(_), Ref(_)) => true,
             (BoxPat(_), BoxPat(_)) => true,
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
+            (Bool(self_b), Bool(other_b)) => self_b == other_b,
 
             (IntRange(self_range), IntRange(other_range)) => self_range.is_covered_by(other_range),
             (
@@ -842,6 +845,9 @@ impl<'tcx> Constructor<'tcx> {
             // simpler.
             Single | Tuple(_) | Ref(_) | BoxPat(_) => !used_ctors.is_empty(),
             Variant(vid) => used_ctors.iter().any(|c| matches!(c, Variant(i) if i == vid)),
+            Bool(self_b) => {
+                used_ctors.iter().any(|c| matches!(c, Bool(other_b) if self_b == other_b))
+            }
             IntRange(range) => used_ctors
                 .iter()
                 .filter_map(|c| c.as_int_range())
@@ -902,7 +908,7 @@ impl<'tcx> SplitWildcard<'tcx> {
         // `cx.is_uninhabited()`).
         let all_ctors = match pcx.ty.kind() {
             _ if cx.is_uninhabited(pcx.ty) => smallvec![],
-            ty::Bool => smallvec![make_range(0, 1)],
+            ty::Bool => smallvec![Bool(false), Bool(true)],
             ty::Char => {
                 smallvec![
                     // The valid Unicode Scalar Value ranges.
@@ -1078,7 +1084,8 @@ impl<'tcx> SplitWildcard<'tcx> {
             //
             // The exception is: if we are at the top-level, for example in an empty match, we
             // sometimes prefer reporting the list of constructors instead of just `_`.
-            let report_when_all_missing = pcx.is_top_level && !IntRange::is_integral(pcx.ty);
+            let report_when_all_missing = pcx.is_top_level
+                && !matches!(pcx.ty.kind(), ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_));
             let ctor = if !self.matrix_ctors.is_empty() || report_when_all_missing {
                 if pcx.is_non_exhaustive {
                     Missing {
@@ -1210,8 +1217,9 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
             },
             Str(..)
-            | FloatRange(..)
+            | Bool(..)
             | IntRange(..)
+            | FloatRange(..)
             | NonExhaustive
             | Opaque
             | Missing { .. }
@@ -1349,6 +1357,14 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                     fields = Fields::empty();
                 } else {
                     match pat.ty.kind() {
+                        ty::Bool => {
+                            ctor = match value.try_eval_bool(cx.tcx, cx.param_env) {
+                                Some(b) => Bool(b),
+                                // FIXME(Nadrieril): Does this ever happen?
+                                None => Opaque,
+                            };
+                            fields = Fields::empty();
+                        }
                         ty::Float(_) => {
                             ctor = FloatRange(value, value, RangeEnd::Included);
                             fields = Fields::empty();
@@ -1478,9 +1494,10 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                     }
                 }
             }
-            &Str(value) => PatKind::Constant { value },
-            &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
+            Bool(b) => PatKind::Constant { value: ty::Const::from_bool(cx.tcx, *b) },
             IntRange(range) => return range.to_pat(cx.tcx, self.ty),
+            &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
+            &Str(value) => PatKind::Constant { value },
             Wildcard | NonExhaustive => PatKind::Wild,
             Missing { .. } => bug!(
                 "trying to convert a `Missing` constructor into a `Pat`; this is probably a bug,
@@ -1651,12 +1668,13 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                 }
                 write!(f, "]")
             }
+            Bool(b) => write!(f, "{}", b),
+            IntRange(range) => write!(f, "{:?}", range), // Best-effort, will render chars as ranges etc.
             &FloatRange(lo, hi, end) => {
                 write!(f, "{}", lo)?;
                 write!(f, "{}", end)?;
                 write!(f, "{}", hi)
             }
-            IntRange(range) => write!(f, "{:?}", range), // Best-effort, will render e.g. `false` as `0..=0`
             Wildcard | Missing { .. } | NonExhaustive => write!(f, "_ : {:?}", self.ty),
             Or => {
                 for pat in self.iter_fields() {
