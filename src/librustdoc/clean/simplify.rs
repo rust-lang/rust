@@ -11,8 +11,7 @@
 //! This module attempts to reconstruct the original where and/or parameter
 //! bounds by special casing scenarios such as these. Fun!
 
-use std::collections::BTreeMap;
-
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
 use rustc_span::Symbol;
@@ -23,8 +22,11 @@ use crate::clean::WherePredicate as WP;
 use crate::core::DocContext;
 
 crate fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
-    // First, partition the where clause into its separate components
-    let mut params: BTreeMap<_, (Vec<_>, Vec<_>)> = BTreeMap::new();
+    // First, partition the where clause into its separate components.
+    //
+    // We use `FxIndexMap` so that the insertion order is preserved to prevent messing up to
+    // the order of the generated bounds.
+    let mut params: FxIndexMap<Symbol, (Vec<_>, Vec<_>)> = FxIndexMap::default();
     let mut lifetimes = Vec::new();
     let mut equalities = Vec::new();
     let mut tybounds = Vec::new();
