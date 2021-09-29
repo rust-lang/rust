@@ -141,6 +141,7 @@
 #![feature(link_llvm_intrinsics)]
 #![feature(llvm_asm)]
 #![feature(min_specialization)]
+#![cfg_attr(not(bootstrap), feature(must_not_suspend))]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(no_core)]

@@ -99,7 +99,7 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
     not(bootstrap),
     must_not_suspend = "Holding a RwLockReadGuard across suspend \
                       points can cause deadlocks, delays, \
-                      and cause Future's to not implement `Send`"
+                      and cause Futures to not implement `Send`"
 )]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
