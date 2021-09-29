@@ -19,6 +19,28 @@ use std::str;
 /// environment of the crate, used to drive conditional compilation.
 pub type CrateConfig = FxHashSet<(Symbol, Option<Symbol>)>;
 
+pub struct CrateCheckConfig {
+    /// Set if `names()` checking is enabled
+    pub names_checked: bool,
+    /// The union of all `names()`
+    pub names_valid: FxHashSet<Symbol>,
+    /// The set of names for which `values()` was used
+    pub values_checked: FxHashSet<Symbol>,
+    /// The set of all (name, value) pairs passed in `values()`
+    pub values_valid: FxHashSet<(Symbol, Symbol)>,
+}
+
+impl Default for CrateCheckConfig {
+    fn default() -> Self {
+        Self {
+            names_checked: false,
+            names_valid: FxHashSet::default(),
+            values_checked: FxHashSet::default(),
+            values_valid: FxHashSet::default(),
+        }
+    }
+}
+
 /// Collected spans during parsing for places where a certain feature was
 /// used and should be feature gated accordingly in `check_crate`.
 #[derive(Default)]
@@ -117,6 +139,7 @@ pub struct ParseSess {
     pub span_diagnostic: Handler,
     pub unstable_features: UnstableFeatures,
     pub config: CrateConfig,
+    pub check_config: CrateCheckConfig,
     pub edition: Edition,
     pub missing_fragment_specifiers: Lock<FxHashMap<Span, NodeId>>,
     /// Places where raw identifiers were used. This is used for feature-gating raw identifiers.
@@ -157,6 +180,7 @@ impl ParseSess {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(None),
             config: FxHashSet::default(),
+            check_config: CrateCheckConfig::default(),
             edition: ExpnId::root().expn_data().edition,
             missing_fragment_specifiers: Default::default(),
             raw_identifier_spans: Lock::new(Vec::new()),

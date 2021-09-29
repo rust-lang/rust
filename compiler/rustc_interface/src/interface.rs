@@ -2,7 +2,7 @@ pub use crate::passes::BoxedResolver;
 use crate::util;
 
 use rustc_ast::token;
-use rustc_ast::{self as ast, MetaItemKind};
+use rustc_ast::{self as ast, LitKind, MetaItemKind};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
@@ -13,12 +13,13 @@ use rustc_lint::LintStore;
 use rustc_middle::ty;
 use rustc_parse::new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
-use rustc_session::config::{self, ErrorOutputType, Input, OutputFilenames};
+use rustc_session::config::{self, CheckCfg, ErrorOutputType, Input, OutputFilenames};
 use rustc_session::early_error;
 use rustc_session::lint;
 use rustc_session::parse::{CrateConfig, ParseSess};
 use rustc_session::{DiagnosticOutput, Session};
 use rustc_span::source_map::{FileLoader, FileName};
+use rustc_span::symbol::sym;
 use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex};
@@ -123,6 +124,81 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
     })
 }
 
+/// Converts strings provided as `--check-cfg [spec]` into a `CheckCfg`.
+pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
+    rustc_span::create_default_session_if_not_set_then(move |_| {
+        let mut cfg = CheckCfg {
+            names_checked: false,
+            names_valid: Default::default(),
+            values_checked: Default::default(),
+            values_valid: Default::default(),
+        };
+        for s in specs {
+            let sess = ParseSess::with_silent_emitter();
+            let filename = FileName::cfg_spec_source_code(&s);
+            let mut parser = new_parser_from_source_str(&sess, filename, s.to_string());
+
+            macro_rules! error {
+                ($reason: expr) => {
+                    early_error(
+                        ErrorOutputType::default(),
+                        &format!(
+                            concat!("invalid `--check-cfg` argument: `{}` (", $reason, ")"),
+                            s
+                        ),
+                    );
+                };
+            }
+
+            match &mut parser.parse_meta_item() {
+                Ok(meta_item) if parser.token == token::Eof => {
+                    if let Some(args) = meta_item.meta_item_list() {
+                        if meta_item.has_name(sym::names) {
+                            cfg.names_checked = true;
+                            for arg in args {
+                                if arg.is_word() && arg.ident().is_some() {
+                                    let ident = arg.ident().expect("multi-segment cfg key");
+                                    cfg.names_valid.insert(ident.name.to_string());
+                                } else {
+                                    error!("`names()` arguments must be simple identifers");
+                                }
+                            }
+                            continue;
+                        } else if meta_item.has_name(sym::values) {
+                            if let Some((name, values)) = args.split_first() {
+                                if name.is_word() && name.ident().is_some() {
+                                    let ident = name.ident().expect("multi-segment cfg key");
+                                    cfg.values_checked.insert(ident.to_string());
+                                    for val in values {
+                                        if let Some(lit) = val.literal() {
+                                            if let LitKind::Str(s, _) = lit.kind {
+                                                cfg.values_valid
+                                                    .insert((ident.to_string(), s.to_string()));
+                                                continue;
+                                            }
+                                        }
+                                        error!("`values()` arguments must be string literals");
+                                    }
+                                } else {
+                                    error!("`values()` first argument must be a simple identifer");
+                                }
+                                continue;
+                            }
+                        }
+                    }
+                }
+                Ok(..) => {}
+                Err(err) => err.cancel(),
+            }
+
+            error!(
+                r#"expected `names(name1, name2, ... nameN)` or `values(name, "value1", "value2", ... "valueN")`"#
+            );
+        }
+        cfg
+    })
+}
+
 /// The compiler configuration
 pub struct Config {
     /// Command line options
@@ -130,6 +206,7 @@ pub struct Config {
 
     /// cfg! configuration in addition to the default ones
     pub crate_cfg: FxHashSet<(String, Option<String>)>,
+    pub crate_check_cfg: CheckCfg,
 
     pub input: Input,
     pub input_path: Option<PathBuf>,
@@ -173,6 +250,7 @@ pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R
     let (mut sess, codegen_backend) = util::create_session(
         config.opts,
         config.crate_cfg,
+        config.crate_check_cfg,
         config.diagnostic_output,
         config.file_loader,
         config.input_path.clone(),

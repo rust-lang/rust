@@ -1,0 +1,10 @@
+warning: unknown condition value used
+  --> $DIR/invalid-cfg-value.rs:7:7
+   |
+LL | #[cfg(feature = "sedre")]
+   |       ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(invalid_cfg_value)]` on by default
+
+warning: 1 warning emitted
+

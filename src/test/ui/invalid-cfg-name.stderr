@@ -1,0 +1,10 @@
+warning: unknown condition name used
+  --> $DIR/invalid-cfg-name.rs:7:7
+   |
+LL | #[cfg(widnows)]
+   |       ^^^^^^^
+   |
+   = note: `#[warn(invalid_cfg_name)]` on by default
+
+warning: 1 warning emitted
+

@@ -1,10 +1,14 @@
 //! Parsing and validation of builtin attributes
 
-use rustc_ast::{self as ast, Attribute, Lit, LitKind, MetaItem, MetaItemKind, NestedMetaItem};
+use rustc_ast::{
+    self as ast, node_id::CRATE_NODE_ID, Attribute, Lit, LitKind, MetaItem, MetaItemKind,
+    NestedMetaItem,
+};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
+use rustc_session::lint::builtin::{INVALID_CFG_NAME, INVALID_CFG_VALUE};
 use rustc_session::parse::{feature_err, ParseSess};
 use rustc_session::Session;
 use rustc_span::hygiene::Transparency;
@@ -463,7 +467,30 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
             }
             MetaItemKind::NameValue(..) | MetaItemKind::Word => {
                 let ident = cfg.ident().expect("multi-segment cfg predicate");
-                sess.config.contains(&(ident.name, cfg.value_str()))
+                let value = cfg.value_str();
+                if sess.check_config.names_checked
+                    && !sess.check_config.names_valid.contains(&ident.name)
+                {
+                    sess.buffer_lint(
+                        INVALID_CFG_NAME,
+                        cfg.span,
+                        CRATE_NODE_ID,
+                        "unknown condition name used",
+                    );
+                }
+                if let Some(val) = value {
+                    if sess.check_config.values_checked.contains(&ident.name)
+                        && !sess.check_config.values_valid.contains(&(ident.name, val))
+                    {
+                        sess.buffer_lint(
+                            INVALID_CFG_VALUE,
+                            cfg.span,
+                            CRATE_NODE_ID,
+                            "unknown condition value used",
+                        );
+                    }
+                }
+                sess.config.contains(&(ident.name, value))
             }
         }
     })

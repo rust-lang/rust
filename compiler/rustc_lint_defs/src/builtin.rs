@@ -2956,6 +2956,80 @@ declare_lint! {
     "detects large moves or copies",
 }
 
+declare_lint! {
+    /// The `invalid_cfg_name` lint detects invalid conditional compilation conditions.
+    ///
+    /// ### Example
+    ///
+    /// ```text
+    /// rustc --check-cfg 'names()'
+    /// ```
+    ///
+    /// ```rust,ignore (needs command line option)
+    /// #[cfg(widnows)]
+    /// fn foo() {}
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning: unknown condition name used
+    ///  --> lint_example.rs:1:7
+    ///   |
+    /// 1 | #[cfg(widnows)]
+    ///   |       ^^^^^^^
+    ///   |
+    ///   = note: `#[warn(invalid_cfg_name)]` on by default
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// This lint is only active when a `--check-cfg='names(...)'` option has been passed
+    /// to the compiler and triggers whenever an unknown condition name is used.  The known
+    /// condition names include names passed in `--check-cfg`, `--cfg`, and some well-known
+    /// names built into the compiler.
+    pub INVALID_CFG_NAME,
+    Warn,
+    "detects invalid #[cfg] condition names",
+}
+
+declare_lint! {
+    /// The `invalid_cfg_value` lint detects invalid conditional compilation conditions.
+    ///
+    /// ### Example
+    ///
+    /// ```text
+    /// rustc --check-cfg 'values(feature, "serde")'
+    /// ```
+    ///
+    /// ```rust,ignore (needs command line option)
+    /// #[cfg(feature = "sedre"))]
+    /// fn foo() {}
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning: unknown condition value used
+    ///  --> lint_example.rs:1:7
+    ///   |
+    /// 1 | #[cfg(feature = "sedre")]
+    ///   |       ^^^^^^^^^^^^^^^^^
+    ///   |
+    ///   = note: `#[warn(invalid_cfg_value)]` on by default
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// This lint is only active when a `--check-cfg='values(...)'` option has been passed
+    /// to the compiler and triggers whenever an unknown condition value is used for the
+    /// given name.  The known condition values include values passed in `--check-cfg`
+    /// and `--cfg`.
+    pub INVALID_CFG_VALUE,
+    Warn,
+    "detects invalid #[cfg] condition values",
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -3050,6 +3124,8 @@ declare_lint_pass! {
         BREAK_WITH_LABEL_AND_LOOP,
         UNUSED_ATTRIBUTES,
         NON_EXHAUSTIVE_OMITTED_PATTERNS,
+        INVALID_CFG_NAME,
+        INVALID_CFG_VALUE,
     ]
 }
 
