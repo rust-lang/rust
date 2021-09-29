@@ -22,6 +22,7 @@ use rustc_middle::ty::{
     Infer, InferTy, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
 use rustc_middle::ty::{TypeAndMut, TypeckResults};
+use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, DesugaringKind, ExpnKind, ForLoopLoc, MultiSpan, Span, DUMMY_SP};
@@ -2426,10 +2427,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     }
 
     fn suggest_new_overflow_limit(&self, err: &mut DiagnosticBuilder<'_>) {
-        let current_limit = self.tcx.recursion_limit();
-        let suggested_limit = current_limit * 2;
+        let suggested_limit = match self.tcx.recursion_limit() {
+            Limit(0) => Limit(2),
+            limit => limit * 2,
+        };
         err.help(&format!(
-            "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate (`{}`)",
+            "consider increasing the recursion limit by adding a \
+             `#![recursion_limit = \"{}\"]` attribute to your crate (`{}`)",
             suggested_limit,
             self.tcx.crate_name(LOCAL_CRATE),
         ));

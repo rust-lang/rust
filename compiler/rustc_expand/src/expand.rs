@@ -633,14 +633,18 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     fn error_recursion_limit_reached(&mut self) {
         let expn_data = self.cx.current_expansion.id.expn_data();
-        let suggested_limit = self.cx.ecfg.recursion_limit * 2;
+        let suggested_limit = match self.cx.ecfg.recursion_limit {
+            Limit(0) => Limit(2),
+            limit => limit * 2,
+        };
         self.cx
             .struct_span_err(
                 expn_data.call_site,
                 &format!("recursion limit reached while expanding `{}`", expn_data.kind.descr()),
             )
             .help(&format!(
-                "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate (`{}`)",
+                "consider increasing the recursion limit by adding a \
+                 `#![recursion_limit = \"{}\"]` attribute to your crate (`{}`)",
                 suggested_limit, self.cx.ecfg.crate_name,
             ))
             .emit();

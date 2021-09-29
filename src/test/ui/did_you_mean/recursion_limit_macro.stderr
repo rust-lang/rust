@@ -7,7 +7,7 @@ LL |     ($t:tt $($tail:tt)*) => { recurse!($($tail)*) };
 LL |     recurse!(0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9);
    |     -------------------------------------------------- in this macro invocation
    |
-   = help: consider adding a `#![recursion_limit="20"]` attribute to your crate (`recursion_limit_macro`)
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "20"]` attribute to your crate (`recursion_limit_macro`)
    = note: this error originates in the macro `recurse` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

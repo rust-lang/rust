@@ -7,7 +7,7 @@ LL |             $n + prob1!($n - 1);
 LL |     println!("Problem 1: {}", prob1!(1000));
    |                               ------------ in this macro invocation
    |
-   = help: consider adding a `#![recursion_limit="256"]` attribute to your crate (`issue_16098`)
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_16098`)
    = note: this error originates in the macro `prob1` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
