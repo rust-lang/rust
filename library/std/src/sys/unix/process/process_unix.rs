@@ -335,7 +335,7 @@ impl Command {
             cvt(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(), ptr::null_mut()))?;
             let mut action: libc::sigaction = mem::zeroed();
             action.sa_sigaction = libc::SIG_DFL;
-            cvt(libc::sigaction(libc::SIGPIPE, &action as *const _, ptr::null_mut()))?;
+            cvt(libc::sigaction(libc::SIGPIPE, &action, ptr::null_mut()))?;
         }
 
         for callback in self.get_closures().iter_mut() {
