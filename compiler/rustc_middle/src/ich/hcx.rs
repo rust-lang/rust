@@ -1,5 +1,4 @@
 use crate::ich;
-use crate::ty::TyCtxt;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -175,35 +174,6 @@ impl<'a> StableHashingContext<'a> {
             static IGNORED_ATTRIBUTES: FxHashSet<Symbol> = compute_ignored_attr_names();
         }
         IGNORED_ATTRIBUTES.with(|attrs| attrs.contains(&name))
-    }
-}
-
-/// Something that can provide a stable hashing context.
-pub trait StableHashingContextProvider<'a> {
-    fn get_stable_hashing_context(&self) -> StableHashingContext<'a>;
-}
-
-impl<'a, 'b, T: StableHashingContextProvider<'a>> StableHashingContextProvider<'a> for &'b T {
-    fn get_stable_hashing_context(&self) -> StableHashingContext<'a> {
-        (**self).get_stable_hashing_context()
-    }
-}
-
-impl<'a, 'b, T: StableHashingContextProvider<'a>> StableHashingContextProvider<'a> for &'b mut T {
-    fn get_stable_hashing_context(&self) -> StableHashingContext<'a> {
-        (**self).get_stable_hashing_context()
-    }
-}
-
-impl StableHashingContextProvider<'tcx> for TyCtxt<'tcx> {
-    fn get_stable_hashing_context(&self) -> StableHashingContext<'tcx> {
-        (*self).create_stable_hashing_context()
-    }
-}
-
-impl<'a> StableHashingContextProvider<'a> for StableHashingContext<'a> {
-    fn get_stable_hashing_context(&self) -> StableHashingContext<'a> {
-        self.clone()
     }
 }
 
