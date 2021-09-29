@@ -860,7 +860,6 @@ fn is_useful<'p, 'tcx>(
         let start_matrix = &matrix;
         for ctor in split_ctors {
             debug!("specialize({:?})", ctor);
-            // We cache the result of `Fields::wildcards` because it is used a lot.
             let spec_matrix = start_matrix.specialize_constructor(pcx, &ctor);
             let v = v.pop_head_constructor(cx, &ctor);
             let usefulness =
