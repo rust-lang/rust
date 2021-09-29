@@ -24,6 +24,11 @@ where
     LaneCount<LANES>: SupportedLaneCount,
     T: SimdElement,
 {
+    /// Get the number of lanes in this vector.
+    pub const fn lanes(&self) -> usize {
+        LANES
+    }
+
     /// Construct a SIMD vector by setting all lanes to the given value.
     pub const fn splat(value: T) -> Self {
         Self([value; LANES])
