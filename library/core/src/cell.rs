@@ -435,8 +435,15 @@ impl<T: Copy> Cell<T> {
         // but `Cell` is `!Sync` so this won't happen.
         unsafe { *self.value.get() }
     }
+}
 
-    /// Updates the contained value using a function and returns the new value.
+impl<T> Cell<T> {
+    /// Updates the contained value using a function.
+    ///
+    /// If `T` implements [`Copy`], the function is called on a copy of the
+    /// contain value. Otherwise, if `T` implements [`Default`], the value
+    /// contained in the cell is temporarily replaced by [`Default::default()]`
+    /// while the function runs.
     ///
     /// # Examples
     ///
@@ -445,22 +452,78 @@ impl<T: Copy> Cell<T> {
     ///
     /// use std::cell::Cell;
     ///
-    /// let c = Cell::new(5);
-    /// let new = c.update(|x| x + 1);
+    /// let a = Cell::new(5);
+    /// a.update(|x| x + 1);
     ///
-    /// assert_eq!(new, 6);
-    /// assert_eq!(c.get(), 6);
+    /// let b = Cell::new("Hello".to_string());
+    /// b.update(|x| x + " World!");
+    ///
+    /// assert_eq!(a.get(), 6);
+    /// assert_eq!(b.take(), "Hello World!");
     /// ```
     #[inline]
     #[unstable(feature = "cell_update", issue = "50186")]
-    pub fn update<F>(&self, f: F) -> T
+    pub fn update<F>(&self, f: F)
     where
         F: FnOnce(T) -> T,
+        T: get_or_take::CopyOrDefault,
     {
-        let old = self.get();
+        let old = <T as get_or_take::CopySpec>::get_or_take(self);
         let new = f(old);
         self.set(new);
-        new
+    }
+}
+
+#[unstable(feature = "cell_update_specializations", issue = "none")]
+mod get_or_take {
+    use super::Cell;
+
+    #[rustc_on_unimplemented(
+        label = "`{Self}` implements neither Copy nor Default",
+        message = "`Cell<{Self}>::update()` requires either `{Self}: Copy` or `{Self}: Default`"
+    )]
+    #[marker]
+    pub trait CopyOrDefault: Sized {}
+
+    impl<T: Copy> CopyOrDefault for T {}
+    impl<T: Default> CopyOrDefault for T {}
+
+    #[rustc_unsafe_specialization_marker]
+    trait IsDefault: Default {}
+    impl<T: Default> IsDefault for T {}
+
+    pub(super) trait CopySpec {
+        fn get_or_take(cell: &Cell<Self>) -> Self;
+    }
+
+    trait DefaultSpec {
+        fn get_or_take(cell: &Cell<Self>) -> Self;
+    }
+
+    impl<T> CopySpec for T {
+        default fn get_or_take(cell: &Cell<Self>) -> Self {
+            <T as DefaultSpec>::get_or_take(cell)
+        }
+    }
+
+    impl<T: Copy> CopySpec for T {
+        fn get_or_take(cell: &Cell<Self>) -> Self {
+            cell.get()
+        }
+    }
+
+    impl<T> DefaultSpec for T {
+        default fn get_or_take(_: &Cell<Self>) -> Self {
+            // This is unreachable because we'd only get here for types that
+            // implement CopyOrDefault, but not Copy or Default, which isn't possible.
+            unreachable!()
+        }
+    }
+
+    impl<T: IsDefault> DefaultSpec for T {
+        fn get_or_take(cell: &Cell<Self>) -> Self {
+            cell.take()
+        }
     }
 }
 

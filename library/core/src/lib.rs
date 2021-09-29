@@ -140,6 +140,7 @@
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
 #![feature(llvm_asm)]
+#![feature(marker_trait_attr)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
