@@ -299,7 +299,7 @@ impl GenericParams {
                 let macro_call = mc.to_node(db.upcast());
                 match expander.enter_expand::<ast::Type>(db, macro_call) {
                     Ok(ExpandResult { value: Some((mark, expanded)), .. }) => {
-                        let ctx = LowerCtx::new(db, mc.file_id);
+                        let ctx = LowerCtx::new(db, expander.current_file_id());
                         let type_ref = TypeRef::from_ast(&ctx, expanded);
                         self.fill_implicit_impl_trait_args(db, expander, &type_ref);
                         expander.exit(db, mark);

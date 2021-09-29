@@ -1198,3 +1198,26 @@ fn bar() {
     "#,
     )
 }
+
+#[test]
+fn nested_macro_in_fn_params() {
+    check_no_mismatches(
+        r#"
+macro_rules! U32Inner {
+    () => {
+        u32
+    };
+}
+
+macro_rules! U32 {
+    () => {
+        U32Inner!()
+    };
+}
+
+fn mamba(a: U32!(), p: u32) -> u32 {
+    a
+}
+    "#,
+    )
+}
