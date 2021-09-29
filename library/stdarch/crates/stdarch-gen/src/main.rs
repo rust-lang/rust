@@ -918,10 +918,9 @@ fn ext(s: &str, in_t: &[&str; 3], out_t: &str) -> String {
 
 fn is_vldx(name: &str) -> bool {
     let s: Vec<_> = name.split('_').collect();
-    s.len() == 2
-        && &name[0..3] == "vld"
+    &name[0..3] == "vld"
         && name[3..4].parse::<i32>().unwrap() > 1
-        && (s[1].starts_with("s") || s[1].starts_with("f"))
+        && (s.last().unwrap().starts_with("s") || s.last().unwrap().starts_with("f"))
 }
 
 fn is_vstx(name: &str) -> bool {
@@ -1114,8 +1113,13 @@ fn gen_aarch64(
                 };
                 (format!("{}, ptr: *mut {}", subs, ptr_type), String::new())
             } else if is_vldx(&name) {
+                let ptr_type = if name.contains("dup") {
+                    type_to_native_type(out_t)
+                } else {
+                    type_to_sub_type(out_t)
+                };
                 (
-                    format!("ptr: *const {}", type_to_sub_type(out_t)),
+                    format!("ptr: *const {}", ptr_type),
                     format!(" -> {}", out_t),
                 )
             } else {
@@ -1828,9 +1832,14 @@ fn gen_arm(
                         ),
                         _ => panic!("unknown type: {}", in_t[1]),
                     };
+                    let out = if out_t == "void" {
+                        String::new()
+                    } else {
+                        format!(" -> {}", out_t)
+                    };
                     (
                         format!("ptr: {}, {}, n: i32, size: i32", ptr_type, inputs),
-                        String::new(),
+                        out,
                     )
                 } else {
                     let (_, const_type) = if const_arm.contains(":") {
@@ -1978,8 +1987,13 @@ fn gen_arm(
                 inputs.push_str(&format!(", ptr: *mut {}", ptr_type));
                 (inputs, String::new())
             } else if is_vldx(&name) {
+                let ptr_type = if name.contains("dup") {
+                    type_to_native_type(out_t)
+                } else {
+                    type_to_sub_type(out_t)
+                };
                 (
-                    format!("ptr: *const {}", type_to_sub_type(out_t)),
+                    format!("ptr: *const {}", ptr_type),
                     format!(" -> {}", out_t),
                 )
             } else {
