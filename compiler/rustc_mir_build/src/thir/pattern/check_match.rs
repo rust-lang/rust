@@ -360,7 +360,7 @@ fn pat_is_catchall(pat: &DeconstructedPat<'_, '_>) -> bool {
     use Constructor::*;
     match pat.ctor() {
         Wildcard => true,
-        Single | Ref(_) | BoxPat(_) => pat.iter_fields().all(|pat| pat_is_catchall(pat)),
+        Single | Tuple(_) | Ref(_) | BoxPat(_) => pat.iter_fields().all(|pat| pat_is_catchall(pat)),
         _ => false,
     }
 }

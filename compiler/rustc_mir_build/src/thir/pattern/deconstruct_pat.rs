@@ -57,6 +57,7 @@ use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::Field;
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::layout::IntegerExt;
+use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, VariantDef};
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
@@ -623,11 +624,12 @@ impl SplitVarLenSlice {
 /// `Fields`.
 #[derive(Clone, Debug, PartialEq)]
 pub(super) enum Constructor<'tcx> {
-    /// The constructor for patterns that have a single constructor, like tuples, struct patterns
-    /// and fixed-length arrays.
+    /// Structs.
     Single,
     /// Enum variants.
     Variant(VariantIdx),
+    /// Tuple patterns.
+    Tuple(&'tcx [GenericArg<'tcx>]),
     /// Ref patterns (`&_` and `&mut _`).
     Ref(Ty<'tcx>),
     /// Box patterns.
@@ -696,13 +698,13 @@ impl<'tcx> Constructor<'tcx> {
     pub(super) fn arity(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> usize {
         match self {
             Single | Variant(_) => match pcx.ty.kind() {
-                ty::Tuple(fs) => fs.len(),
                 ty::Adt(adt, ..) => {
                     let variant = &adt.variants[self.variant_index_for_adt(adt)];
                     Fields::list_variant_nonhidden_fields(pcx.cx, pcx.ty, variant).count()
                 }
                 _ => bug!("Unexpected type for `Single` constructor: {:?}", pcx.ty),
             },
+            Tuple(fs) => fs.len(),
             Ref(_) | BoxPat(_) => 1,
             Slice(slice) => slice.arity(),
             Str(..)
@@ -776,6 +778,7 @@ impl<'tcx> Constructor<'tcx> {
             (Missing { .. } | Wildcard, _) => false,
 
             (Single, Single) => true,
+            (Tuple(_), Tuple(_)) => true,
             (Ref(_), Ref(_)) => true,
             (BoxPat(_), BoxPat(_)) => true,
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
@@ -837,7 +840,7 @@ impl<'tcx> Constructor<'tcx> {
         match self {
             // If `self` is one of these the type has exactly one constructor so the check is
             // simpler.
-            Single | Ref(_) | BoxPat(_) => !used_ctors.is_empty(),
+            Single | Tuple(_) | Ref(_) | BoxPat(_) => !used_ctors.is_empty(),
             Variant(vid) => used_ctors.iter().any(|c| matches!(c, Variant(i) if i == vid)),
             IntRange(range) => used_ctors
                 .iter()
@@ -1003,7 +1006,8 @@ impl<'tcx> SplitWildcard<'tcx> {
             // that.
             ty::Adt(def, substs) if def.is_box() => smallvec![BoxPat(substs.type_at(0))],
             ty::Ref(_, ty, _) => smallvec![Ref(*ty)],
-            ty::Adt(..) | ty::Tuple(..) => smallvec![Single],
+            ty::Tuple(fs) => smallvec![Tuple(*fs)],
+            ty::Adt(..) => smallvec![Single],
             // This type is one for which we cannot list constructors, like `str` or `f64`.
             _ => smallvec![NonExhaustive],
         };
@@ -1184,7 +1188,6 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     ) -> Self {
         let ret = match constructor {
             Single | Variant(_) => match ty.kind() {
-                ty::Tuple(fs) => Fields::wildcards_from_tys(cx, fs.iter().map(|ty| ty.expect_ty())),
                 ty::Adt(adt, _) => {
                     let variant = &adt.variants[constructor.variant_index_for_adt(adt)];
                     let tys =
@@ -1193,6 +1196,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 }
                 _ => bug!("Unexpected type for `Single` constructor: {:?}", ty),
             },
+            Tuple(fs) => Fields::wildcards_from_tys(cx, fs.iter().map(|ty| ty.expect_ty())),
             Ref(ty) | BoxPat(ty) => Fields::wildcards_from_tys(cx, once(*ty)),
             Slice(slice) => match *ty.kind() {
                 ty::Slice(ty) | ty::Array(ty, _) => {
@@ -1286,7 +1290,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
             PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
                 match pat.ty.kind() {
                     ty::Tuple(fs) => {
-                        ctor = Single;
+                        ctor = Tuple(fs);
                         let mut wilds: SmallVec<[_; 2]> = fs
                             .iter()
                             .map(|ty| ty.expect_ty())
@@ -1413,12 +1417,6 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         let mut subpatterns = self.iter_fields().map(|p| p.to_pat(cx));
         let pat = match &self.ctor {
             Single | Variant(_) => match self.ty.kind() {
-                ty::Tuple(..) => PatKind::Leaf {
-                    subpatterns: subpatterns
-                        .enumerate()
-                        .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
-                        .collect(),
-                },
                 ty::Adt(adt_def, substs) => {
                     let variant_index = self.ctor.variant_index_for_adt(adt_def);
                     let variant = &adt_def.variants[variant_index];
@@ -1434,6 +1432,12 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                     }
                 }
                 _ => bug!("unexpected ctor for type {:?} {:?}", self.ctor, self.ty),
+            },
+            Tuple(..) => PatKind::Leaf {
+                subpatterns: subpatterns
+                    .enumerate()
+                    .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
+                    .collect(),
             },
             // Note: given the expansion of `&str` patterns done in `DeconstructedPat::from_pat`,
             // we should be careful to reconstruct the correct constant pattern here. However a
@@ -1592,32 +1596,27 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
         let mut start_or_comma = || start_or_continue(", ");
 
         match &self.ctor {
-            Single | Variant(_) => match self.ty.kind() {
-                ty::Adt(..) | ty::Tuple(..) => {
-                    let variant = match self.ty.kind() {
-                        ty::Adt(adt, _) => {
-                            Some(&adt.variants[self.ctor.variant_index_for_adt(adt)])
-                        }
-                        ty::Tuple(_) => None,
-                        _ => unreachable!(),
-                    };
+            Single | Variant(_) | Tuple(_) => {
+                let variant = match self.ty.kind() {
+                    ty::Adt(adt, _) => Some(&adt.variants[self.ctor.variant_index_for_adt(adt)]),
+                    ty::Tuple(_) => None,
+                    _ => unreachable!(),
+                };
 
-                    if let Some(variant) = variant {
-                        write!(f, "{}", variant.ident)?;
-                    }
-
-                    // Without `cx`, we can't know which field corresponds to which, so we can't
-                    // get the names of the fields. Instead we just display everything as a suple
-                    // struct, which should be good enough.
-                    write!(f, "(")?;
-                    for p in self.iter_fields() {
-                        write!(f, "{}", start_or_comma())?;
-                        write!(f, "{:?}", p)?;
-                    }
-                    write!(f, ")")
+                if let Some(variant) = variant {
+                    write!(f, "{}", variant.ident)?;
                 }
-                _ => write!(f, "_"),
-            },
+
+                // Without `cx`, we can't know which field corresponds to which, so we can't
+                // get the names of the fields. Instead we just display everything as a suple
+                // struct, which should be good enough.
+                write!(f, "(")?;
+                for p in self.iter_fields() {
+                    write!(f, "{}", start_or_comma())?;
+                    write!(f, "{:?}", p)?;
+                }
+                write!(f, ")")
+            }
             Ref(_) => {
                 let subpattern = self.iter_fields().next().unwrap();
                 write!(f, "&{:?}", subpattern)
