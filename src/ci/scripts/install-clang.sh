@@ -61,3 +61,9 @@ elif isWindows && [[ ${CUSTOM_MINGW-0} -ne 1 ]]; then
     ciCommandSetEnv RUST_CONFIGURE_ARGS \
         "${RUST_CONFIGURE_ARGS} --set llvm.clang-cl=$(pwd)/clang-rust/bin/clang-cl.exe"
 fi
+
+if isWindows; then
+    # GitHub image 20210928.2 added LLVM, but it is broken (and we don't want
+    # to use it anyways).
+    rm -rf /c/Program\ Files/LLVM
+fi
