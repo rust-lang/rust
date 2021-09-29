@@ -1,4 +1,5 @@
 #![allow(dead_code)] // stack_guard isn't used right now on all platforms
+#![allow(unused_unsafe)] // thread_local with `const {}` triggers this liny
 
 use crate::cell::RefCell;
 use crate::sys::thread::guard::Guard;
@@ -9,7 +10,7 @@ struct ThreadInfo {
     thread: Thread,
 }
 
-thread_local! { static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(None) }
+thread_local! { static THREAD_INFO: RefCell<Option<ThreadInfo>> = const { RefCell::new(None) } }
 
 impl ThreadInfo {
     fn with<R, F>(f: F) -> Option<R>
@@ -17,12 +18,13 @@ impl ThreadInfo {
         F: FnOnce(&mut ThreadInfo) -> R,
     {
         THREAD_INFO
-            .try_with(move |c| {
-                if c.borrow().is_none() {
-                    *c.borrow_mut() =
-                        Some(ThreadInfo { stack_guard: None, thread: Thread::new(None) })
-                }
-                f(c.borrow_mut().as_mut().unwrap())
+            .try_with(move |thread_info| {
+                let mut thread_info = thread_info.borrow_mut();
+                let thread_info = thread_info.get_or_insert_with(|| ThreadInfo {
+                    stack_guard: None,
+                    thread: Thread::new(None),
+                });
+                f(thread_info)
             })
             .ok()
     }
@@ -37,10 +39,9 @@ pub fn stack_guard() -> Option<Guard> {
 }
 
 pub fn set(stack_guard: Option<Guard>, thread: Thread) {
-    THREAD_INFO.with(|c| assert!(c.borrow().is_none()));
-    THREAD_INFO.with(move |c| *c.borrow_mut() = Some(ThreadInfo { stack_guard, thread }));
-}
-
-pub fn reset_guard(stack_guard: Option<Guard>) {
-    THREAD_INFO.with(move |c| c.borrow_mut().as_mut().unwrap().stack_guard = stack_guard);
+    THREAD_INFO.with(move |thread_info| {
+        let mut thread_info = thread_info.borrow_mut();
+        rtassert!(thread_info.is_none());
+        *thread_info = Some(ThreadInfo { stack_guard, thread });
+    });
 }

@@ -520,19 +520,19 @@ pub mod task {
     pub use alloc::task::*;
 }
 
-// Platform-abstraction modules
+// The runtime entry point and a few unstable public functions used by the
+// compiler
 #[macro_use]
-mod sys_common;
+pub mod rt;
+
+// Platform-abstraction modules
 mod sys;
+mod sys_common;
 
 pub mod alloc;
 
 // Private support modules
 mod panicking;
-
-// The runtime entry point and a few unstable public functions used by the
-// compiler
-pub mod rt;
 
 #[path = "../../backtrace/src/lib.rs"]
 #[allow(dead_code, unused_attributes)]

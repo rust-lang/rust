@@ -457,7 +457,9 @@ impl Builder {
 
         let stack_size = stack_size.unwrap_or_else(thread::min_stack);
 
-        let my_thread = Thread::new(name);
+        let my_thread = Thread::new(name.map(|name| {
+            CString::new(name).expect("thread name may not contain interior null bytes")
+        }));
         let their_thread = my_thread.clone();
 
         let my_packet: Arc<UnsafeCell<Option<Result<T>>>> = Arc::new(UnsafeCell::new(None));
@@ -1073,12 +1075,8 @@ pub struct Thread {
 impl Thread {
     // Used only internally to construct a thread object without spawning
     // Panics if the name contains nuls.
-    pub(crate) fn new(name: Option<String>) -> Thread {
-        let cname =
-            name.map(|n| CString::new(n).expect("thread name may not contain interior null bytes"));
-        Thread {
-            inner: Arc::new(Inner { name: cname, id: ThreadId::new(), parker: Parker::new() }),
-        }
+    pub(crate) fn new(name: Option<CString>) -> Thread {
+        Thread { inner: Arc::new(Inner { name, id: ThreadId::new(), parker: Parker::new() }) }
     }
 
     /// Atomically makes the handle's token available if it is not already.
