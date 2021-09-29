@@ -561,9 +561,7 @@ declare_lint_pass!(ProduceIce => [PRODUCE_ICE]);
 
 impl EarlyLintPass for ProduceIce {
     fn check_fn(&mut self, _: &EarlyContext<'_>, fn_kind: FnKind<'_>, _: Span, _: NodeId) {
-        if is_trigger_fn(fn_kind) {
-            panic!("Would you like some help with that?");
-        }
+        assert!(!is_trigger_fn(fn_kind), "Would you like some help with that?");
     }
 }
 
@@ -894,7 +892,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
                 }).collect();
             if !check_path(cx, &path[..]);
             then {
-                span_lint(cx, CLIPPY_LINTS_INTERNAL, item.span, "invalid path");
+                span_lint(cx, INVALID_PATHS, item.span, "invalid path");
             }
         }
     }
@@ -1224,5 +1222,10 @@ fn if_chain_local_span(cx: &LateContext<'_>, local: &Local<'_>, if_chain_span: S
     let sm = cx.sess().source_map();
     let span = sm.span_extend_to_prev_str(span, "let", false);
     let span = sm.span_extend_to_next_char(span, ';', false);
-    Span::new(span.lo() - BytePos(3), span.hi() + BytePos(1), span.ctxt())
+    Span::new(
+        span.lo() - BytePos(3),
+        span.hi() + BytePos(1),
+        span.ctxt(),
+        span.parent(),
+    )
 }

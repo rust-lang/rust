@@ -1,5 +1,5 @@
 mod borrowed_box;
-mod box_vec;
+mod box_collection;
 mod linked_list;
 mod option_option;
 mod rc_buffer;
@@ -21,12 +21,12 @@ use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for use of `Box<Vec<_>>` anywhere in the code.
+    /// Checks for use of `Box<T>` where T is a collection such as Vec anywhere in the code.
     /// Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
     ///
     /// ### Why is this bad?
-    /// `Vec` already keeps its contents in a separate area on
-    /// the heap. So if you `Box` it, you just add another level of indirection
+    /// Collections already keeps their contents in a separate area on
+    /// the heap. So if you `Box` them, you just add another level of indirection
     /// without any benefit whatsoever.
     ///
     /// ### Example
@@ -43,7 +43,7 @@ declare_clippy_lint! {
     ///     values: Vec<Foo>,
     /// }
     /// ```
-    pub BOX_VEC,
+    pub BOX_COLLECTION,
     perf,
     "usage of `Box<Vec<T>>`, vector elements are already on the heap"
 }
@@ -298,7 +298,7 @@ pub struct Types {
     avoid_breaking_exported_api: bool,
 }
 
-impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION, RC_BUFFER, RC_MUTEX, TYPE_COMPLEXITY]);
+impl_lint_pass!(Types => [BOX_COLLECTION, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION, RC_BUFFER, RC_MUTEX, TYPE_COMPLEXITY]);
 
 impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_fn(&mut self, cx: &LateContext<'_>, _: FnKind<'_>, decl: &FnDecl<'_>, _: &Body<'_>, _: Span, id: HirId) {
@@ -447,7 +447,7 @@ impl Types {
                         // in `clippy_lints::utils::conf.rs`
 
                         let mut triggered = false;
-                        triggered |= box_vec::check(cx, hir_ty, qpath, def_id);
+                        triggered |= box_collection::check(cx, hir_ty, qpath, def_id);
                         triggered |= redundant_allocation::check(cx, hir_ty, qpath, def_id);
                         triggered |= rc_buffer::check(cx, hir_ty, qpath, def_id);
                         triggered |= vec_box::check(cx, hir_ty, qpath, def_id, self.vec_box_size_threshold);

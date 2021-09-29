@@ -4,8 +4,7 @@
     clippy::no_effect,
     clippy::op_ref,
     clippy::unnecessary_operation,
-    clippy::cast_lossless,
-    clippy::many_single_char_names
+    clippy::cast_lossless
 )]
 
 use std::ops::Add;

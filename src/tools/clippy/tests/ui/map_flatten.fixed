@@ -4,6 +4,7 @@
 #![allow(clippy::let_underscore_drop)]
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::map_identity)]
+#![allow(clippy::redundant_closure)]
 #![allow(clippy::unnecessary_wraps)]
 #![feature(result_flattening)]
 

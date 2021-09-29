@@ -27,10 +27,9 @@ fn identify_some_pure_patterns(expr: &Expr<'_>) -> bool {
     match expr.kind {
         ExprKind::Lit(..) | ExprKind::ConstBlock(..) | ExprKind::Path(..) | ExprKind::Field(..) => true,
         ExprKind::AddrOf(_, _, addr_of_expr) => identify_some_pure_patterns(addr_of_expr),
-        ExprKind::Tup(tup_exprs) => tup_exprs.iter().all(|expr| identify_some_pure_patterns(expr)),
+        ExprKind::Tup(tup_exprs) => tup_exprs.iter().all(identify_some_pure_patterns),
         ExprKind::Struct(_, fields, expr) => {
-            fields.iter().all(|f| identify_some_pure_patterns(f.expr))
-                && expr.map_or(true, |e| identify_some_pure_patterns(e))
+            fields.iter().all(|f| identify_some_pure_patterns(f.expr)) && expr.map_or(true, identify_some_pure_patterns)
         },
         ExprKind::Call(
             &Expr {
@@ -45,7 +44,7 @@ fn identify_some_pure_patterns(expr: &Expr<'_>) -> bool {
                 ..
             },
             args,
-        ) => args.iter().all(|expr| identify_some_pure_patterns(expr)),
+        ) => args.iter().all(identify_some_pure_patterns),
         ExprKind::Block(
             &Block {
                 stmts,

@@ -1,6 +1,6 @@
 // run-rustfix
 #![warn(clippy::repeat_once)]
-#[allow(unused, clippy::many_single_char_names, clippy::redundant_clone)]
+#[allow(unused, clippy::redundant_clone)]
 fn main() {
     const N: usize = 1;
     let s = "str";

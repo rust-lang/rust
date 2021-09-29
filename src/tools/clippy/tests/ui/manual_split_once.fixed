@@ -36,6 +36,12 @@ fn main() {
 
     // Don't lint, slices don't have `split_once`
     let _ = [0, 1, 2].splitn(2, |&x| x == 1).nth(1).unwrap();
+
+    // `rsplitn` gives the results in the reverse order of `rsplit_once`
+    let _ = "key=value".rsplit_once('=').unwrap().1;
+    let _ = "key=value".rsplit_once('=').map_or("key=value", |x| x.0);
+    let _ = "key=value".rsplit_once('=').map(|x| x.1);
+    let (_, _) = "key=value".rsplit_once('=').map(|(x, y)| (y, x)).unwrap();
 }
 
 fn _msrv_1_51() {

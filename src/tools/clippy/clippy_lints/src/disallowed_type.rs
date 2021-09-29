@@ -48,7 +48,7 @@ impl DisallowedType {
         Self {
             disallowed: disallowed
                 .iter()
-                .map(|s| s.split("::").map(|seg| Symbol::intern(seg)).collect::<Vec<_>>())
+                .map(|s| s.split("::").map(Symbol::intern).collect::<Vec<_>>())
                 .collect(),
             def_ids: FxHashSet::default(),
             prim_tys: FxHashSet::default(),

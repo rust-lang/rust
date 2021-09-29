@@ -8,7 +8,7 @@ use clippy_utils::{
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, ErasedMap, NestedVisitorMap, Visitor};
-use rustc_hir::{def::Res, Expr, ExprKind, HirId, Local, Mutability, PatKind, QPath, UnOp};
+use rustc_hir::{def::Res, Expr, ExprKind, HirId, Local, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_span::{symbol::sym, Span, Symbol};
 
@@ -47,13 +47,8 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     // If the iterator is a field or the iterator is accessed after the loop is complete it needs to be
     // borrowed mutably. TODO: If the struct can be partially moved from and the struct isn't used
     // afterwards a mutable borrow of a field isn't necessary.
-    let ref_mut = if !iter_expr.fields.is_empty() || needs_mutable_borrow(cx, &iter_expr, loop_expr) {
-        if cx.typeck_results().node_type(iter_expr.hir_id).ref_mutability() == Some(Mutability::Mut) {
-            // Reborrow for mutable references. It may not be possible to get a mutable reference here.
-            "&mut *"
-        } else {
-            "&mut "
-        }
+    let by_ref = if !iter_expr.fields.is_empty() || needs_mutable_borrow(cx, &iter_expr, loop_expr) {
+        ".by_ref()"
     } else {
         ""
     };
@@ -65,7 +60,7 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         expr.span.with_hi(scrutinee_expr.span.hi()),
         "this loop could be written as a `for` loop",
         "try",
-        format!("for {} in {}{}", loop_var, ref_mut, iterator),
+        format!("for {} in {}{}", loop_var, iterator, by_ref),
         applicability,
     );
 }
@@ -74,8 +69,6 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
 struct IterExpr {
     /// The span of the whole expression, not just the path and fields stored here.
     span: Span,
-    /// The HIR id of the whole expression, not just the path and fields stored here.
-    hir_id: HirId,
     /// The fields used, in order of child to parent.
     fields: Vec<Symbol>,
     /// The path being used.
@@ -86,14 +79,12 @@ struct IterExpr {
 /// the expression might have side effects.
 fn try_parse_iter_expr(cx: &LateContext<'_>, mut e: &Expr<'_>) -> Option<IterExpr> {
     let span = e.span;
-    let hir_id = e.hir_id;
     let mut fields = Vec::new();
     loop {
         match e.kind {
             ExprKind::Path(ref path) => {
                 break Some(IterExpr {
                     span,
-                    hir_id,
                     fields,
                     path: cx.qpath_res(path, e.hir_id),
                 });

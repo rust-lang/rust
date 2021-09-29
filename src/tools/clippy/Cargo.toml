@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 keywords = ["clippy", "lint", "plugin"]
 categories = ["development-tools", "development-tools::cargo-plugins"]
 build = "build.rs"
-edition = "2018"
+edition = "2021"
 publish = false
 
 [[bin]]
