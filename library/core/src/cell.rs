@@ -441,8 +441,8 @@ impl<T> Cell<T> {
     /// Updates the contained value using a function.
     ///
     /// If `T` implements [`Copy`], the function is called on a copy of the
-    /// contain value. Otherwise, if `T` implements [`Default`], the value
-    /// contained in the cell is temporarily replaced by [`Default::default()]`
+    /// contained value. Otherwise, if `T` implements [`Default`], the value
+    /// contained in the cell is temporarily replaced by [`Default::default()`]
     /// while the function runs.
     ///
     /// # Examples
