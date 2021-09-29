@@ -253,7 +253,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Len(place) => {
-                // FIXME(CTFE): don't allow computing the length of arrays in const eval
                 let src = self.eval_place(place)?;
                 let mplace = self.force_allocation(&src)?;
                 let len = mplace.len(self)?;
