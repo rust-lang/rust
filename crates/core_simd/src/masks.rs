@@ -118,7 +118,7 @@ where
     /// All lanes must be either 0 or -1.
     #[inline]
     pub unsafe fn from_int_unchecked(value: Simd<T, LANES>) -> Self {
-        Self(mask_impl::Mask::from_int_unchecked(value))
+        unsafe { Self(mask_impl::Mask::from_int_unchecked(value)) }
     }
 
     /// Converts a vector of integers to a mask, where 0 represents `false` and -1
@@ -145,7 +145,7 @@ where
     /// `lane` must be less than `LANES`.
     #[inline]
     pub unsafe fn test_unchecked(&self, lane: usize) -> bool {
-        self.0.test_unchecked(lane)
+        unsafe { self.0.test_unchecked(lane) }
     }
 
     /// Tests the value of the specified lane.
@@ -164,7 +164,9 @@ where
     /// `lane` must be less than `LANES`.
     #[inline]
     pub unsafe fn set_unchecked(&mut self, lane: usize, value: bool) {
-        self.0.set_unchecked(lane, value);
+        unsafe {
+            self.0.set_unchecked(lane, value);
+        }
     }
 
     /// Sets the value of the specified lane.

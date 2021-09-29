@@ -61,7 +61,7 @@ macro_rules! implement {
             /// * Be representable in the return type, after truncating off its fractional part
             #[inline]
             pub unsafe fn to_int_unchecked(self) -> Simd<$int_type, LANES> {
-                intrinsics::simd_cast(self)
+                unsafe { intrinsics::simd_cast(self) }
             }
 
             /// Creates a floating-point vector from an integer vector.  Rounds values that are

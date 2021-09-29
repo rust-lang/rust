@@ -93,7 +93,9 @@ where
 
     #[inline]
     pub unsafe fn set_unchecked(&mut self, lane: usize, value: bool) {
-        self.0.as_mut()[lane / 8] ^= ((value ^ self.test_unchecked(lane)) as u8) << (lane % 8)
+        unsafe {
+            self.0.as_mut()[lane / 8] ^= ((value ^ self.test_unchecked(lane)) as u8) << (lane % 8)
+        }
     }
 
     #[inline]
@@ -112,9 +114,11 @@ where
             core::mem::size_of::<<LaneCount::<LANES> as SupportedLaneCount>::BitMask>(),
             core::mem::size_of::<<LaneCount::<LANES> as SupportedLaneCount>::IntBitMask>(),
         );
-        let mask: <LaneCount<LANES> as SupportedLaneCount>::IntBitMask =
-            intrinsics::simd_bitmask(value);
-        Self(core::mem::transmute_copy(&mask), PhantomData)
+        unsafe {
+            let mask: <LaneCount<LANES> as SupportedLaneCount>::IntBitMask =
+                intrinsics::simd_bitmask(value);
+            Self(core::mem::transmute_copy(&mask), PhantomData)
+        }
     }
 
     #[cfg(feature = "generic_const_exprs")]

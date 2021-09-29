@@ -11,6 +11,7 @@
 )]
 #![cfg_attr(feature = "generic_const_exprs", feature(generic_const_exprs))]
 #![warn(missing_docs)]
+#![deny(unsafe_op_in_unsafe_fn)]
 #![unstable(feature = "portable_simd", issue = "86656")]
 //! Portable SIMD module.
 
