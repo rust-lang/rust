@@ -901,19 +901,34 @@ impl<'tcx> SplitWildcard<'tcx> {
         // Invariant: this is empty if and only if the type is uninhabited (as determined by
         // `cx.is_uninhabited()`).
         let all_ctors = match pcx.ty.kind() {
+            _ if cx.is_uninhabited(pcx.ty) => smallvec![],
             ty::Bool => smallvec![make_range(0, 1)],
-            ty::Array(sub_ty, len) if len.try_eval_usize(cx.tcx, cx.param_env).is_some() => {
-                let len = len.eval_usize(cx.tcx, cx.param_env) as usize;
-                if len != 0 && cx.is_uninhabited(sub_ty) {
-                    smallvec![]
-                } else {
-                    smallvec![Slice(Slice::new(Some(len), VarLen(0, 0)))]
-                }
+            ty::Char => {
+                smallvec![
+                    // The valid Unicode Scalar Value ranges.
+                    make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
+                    make_range('\u{E000}' as u128, '\u{10FFFF}' as u128),
+                ]
             }
-            // Treat arrays of a constant but unknown length like slices.
-            ty::Array(sub_ty, _) | ty::Slice(sub_ty) => {
-                let kind = if cx.is_uninhabited(sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
-                smallvec![Slice(Slice::new(None, kind))]
+            ty::Int(_) | ty::Uint(_)
+                if pcx.ty.is_ptr_sized_integral()
+                    && !cx.tcx.features().precise_pointer_size_matching =>
+            {
+                // `usize`/`isize` are not allowed to be matched exhaustively unless the
+                // `precise_pointer_size_matching` feature is enabled. So we treat those types like
+                // `#[non_exhaustive]` enums by returning a special unmatcheable constructor.
+                smallvec![NonExhaustive]
+            }
+            &ty::Int(ity) => {
+                let bits = Integer::from_int_ty(&cx.tcx, ity).size().bits() as u128;
+                let min = 1u128 << (bits - 1);
+                let max = min - 1;
+                smallvec![make_range(min, max)]
+            }
+            &ty::Uint(uty) => {
+                let size = Integer::from_uint_ty(&cx.tcx, uty).size();
+                let max = size.truncate(u128::MAX);
+                smallvec![make_range(0, max)]
             }
             ty::Adt(def, substs) if def.is_enum() => {
                 // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
@@ -967,48 +982,37 @@ impl<'tcx> SplitWildcard<'tcx> {
                 }
                 ctors
             }
-            ty::Char => {
-                smallvec![
-                    // The valid Unicode Scalar Value ranges.
-                    make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
-                    make_range('\u{E000}' as u128, '\u{10FFFF}' as u128),
-                ]
-            }
-            ty::Int(_) | ty::Uint(_)
-                if pcx.ty.is_ptr_sized_integral()
-                    && !cx.tcx.features().precise_pointer_size_matching =>
-            {
-                // `usize`/`isize` are not allowed to be matched exhaustively unless the
-                // `precise_pointer_size_matching` feature is enabled. So we treat those types like
-                // `#[non_exhaustive]` enums by returning a special unmatcheable constructor.
-                smallvec![NonExhaustive]
-            }
-            &ty::Int(ity) => {
-                let bits = Integer::from_int_ty(&cx.tcx, ity).size().bits() as u128;
-                let min = 1u128 << (bits - 1);
-                let max = min - 1;
-                smallvec![make_range(min, max)]
-            }
-            &ty::Uint(uty) => {
-                let size = Integer::from_uint_ty(&cx.tcx, uty).size();
-                let max = size.truncate(u128::MAX);
-                smallvec![make_range(0, max)]
-            }
-            // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we cannot
-            // expose its emptiness. The exception is if the pattern is at the top level, because we
-            // want empty matches to be considered exhaustive.
-            ty::Never if !cx.tcx.features().exhaustive_patterns && !pcx.is_top_level => {
-                smallvec![NonExhaustive]
-            }
-            ty::Never => smallvec![],
-            _ if cx.is_uninhabited(pcx.ty) => smallvec![],
             // The only legal non-wildcard patterns of type `Box` are box patterns, so we emit
             // that.
             ty::Adt(def, substs) if def.is_box() => smallvec![BoxPat(substs.type_at(0))],
+            ty::Adt(..) => smallvec![Single],
             ty::Ref(_, ty, _) => smallvec![Ref(*ty)],
             ty::Tuple(fs) => smallvec![Tuple(*fs)],
-            ty::Adt(..) => smallvec![Single],
-            // This type is one for which we cannot list constructors, like `str` or `f64`.
+            ty::Array(sub_ty, len) => {
+                match len.try_eval_usize(cx.tcx, cx.param_env) {
+                    Some(len) => {
+                        // The uninhabited case is already handled.
+                        smallvec![Slice(Slice::new(Some(len as usize), VarLen(0, 0)))]
+                    }
+                    None => {
+                        // Treat arrays of a constant but unknown length like slices.
+                        let kind =
+                            if cx.is_uninhabited(sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
+                        smallvec![Slice(Slice::new(None, kind))]
+                    }
+                }
+            }
+            ty::Slice(sub_ty) => {
+                let kind = if cx.is_uninhabited(sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
+                smallvec![Slice(Slice::new(None, kind))]
+            }
+            // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we don't
+            // expose its emptiness and return `NonExhaustive` below. The exception is if the
+            // pattern is at the top level, because we want empty matches to be considered
+            // exhaustive.
+            ty::Never if pcx.is_top_level => smallvec![],
+            // This type is one for which we cannot list constructors, like `str` or `f64`, or is
+            // uninhabited but `exhaustive_patterns` is disabled.
             _ => smallvec![NonExhaustive],
         };
 
