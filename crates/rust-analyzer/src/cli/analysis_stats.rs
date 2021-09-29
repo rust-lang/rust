@@ -367,8 +367,6 @@ fn expr_syntax_range(
 ) -> Option<(VfsPath, LineCol, LineCol)> {
     let src = sm.expr_syntax(expr_id);
     if let Ok(src) = src {
-        // FIXME: it might be nice to have a function (on Analysis?) that goes from Source<T> -> (LineCol, LineCol) directly
-        // But also, we should just turn the type mismatches into diagnostics and provide these
         let root = db.parse_or_expand(src.file_id).unwrap();
         let node = src.map(|e| e.to_node(&root).syntax().clone());
         let original_range = node.as_ref().original_file_range(db);

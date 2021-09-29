@@ -102,6 +102,10 @@ xflags::xflags! {
         }
 
         cmd proc-macro {}
+
+        cmd lsif
+            required path: PathBuf
+        {}
     }
 }
 
@@ -129,6 +133,7 @@ pub enum RustAnalyzerCmd {
     Ssr(Ssr),
     Search(Search),
     ProcMacro(ProcMacro),
+    Lsif(Lsif),
 }
 
 #[derive(Debug)]
@@ -189,6 +194,11 @@ pub struct Search {
 
 #[derive(Debug)]
 pub struct ProcMacro;
+
+#[derive(Debug)]
+pub struct Lsif {
+    pub path: PathBuf,
+}
 
 impl RustAnalyzer {
     pub const HELP: &'static str = Self::HELP_;
