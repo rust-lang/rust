@@ -377,7 +377,7 @@ fn find_type_parameters(
             trait_ref: &'a ast::PolyTraitRef,
             modifier: &'a ast::TraitBoundModifier,
         ) {
-            let stack_len = trait_ref.bound_generic_params.len();
+            let stack_len = self.bound_generic_params_stack.len();
             self.bound_generic_params_stack
                 .extend(trait_ref.bound_generic_params.clone().into_iter());
 
