@@ -2,10 +2,9 @@ use crate::cgu_reuse_tracker::CguReuseTracker;
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use crate::config::{self, CrateType, OutputType, SwitchWithOptPath};
-use crate::filesearch;
-use crate::lint::{self, LintId};
 use crate::parse::ParseSess;
 use crate::search_paths::{PathKind, SearchPath};
+use crate::{filesearch, lint};
 
 pub use rustc_ast::attr::MarkedAttrs;
 pub use rustc_ast::Attribute;
@@ -40,10 +39,6 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
-
-pub trait SessionLintStore: sync::Send + sync::Sync {
-    fn name_to_lint(&self, lint_name: &str) -> LintId;
-}
 
 pub struct OptimizationFuel {
     /// If `-zfuel=crate=n` is specified, initially set to `n`, otherwise `0`.
@@ -152,8 +147,6 @@ pub struct Session {
     pub stable_crate_id: OnceCell<StableCrateId>,
 
     features: OnceCell<rustc_feature::Features>,
-
-    lint_store: OnceCell<Lrc<dyn SessionLintStore>>,
 
     incr_comp_session: OneThread<RefCell<IncrCompSession>>,
     /// Used for incremental compilation tests. Will only be populated if
@@ -589,13 +582,6 @@ impl Session {
             Ok(()) => {}
             Err(_) => panic!("`features` was initialized twice"),
         }
-    }
-
-    pub fn init_lint_store(&self, lint_store: Lrc<dyn SessionLintStore>) {
-        self.lint_store
-            .set(lint_store)
-            .map_err(|_| ())
-            .expect("`lint_store` was initialized twice");
     }
 
     /// Calculates the flavor of LTO to use for this compilation.
@@ -1315,7 +1301,6 @@ pub fn build_session(
         crate_types: OnceCell::new(),
         stable_crate_id: OnceCell::new(),
         features: OnceCell::new(),
-        lint_store: OnceCell::new(),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,
         prof,

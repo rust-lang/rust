@@ -16,12 +16,12 @@ LL |     fn foo() {}
    |     ^^^^^^^^
 help: disambiguate the associated function for candidate #1
    |
-LL |     Trait1::foo()
-   |     ~~~~~~~~
+LL |     <Test as Trait1>::foo()
+   |     ~~~~~~~~~~~~~~~~~~
 help: disambiguate the associated function for candidate #2
    |
-LL |     Trait2::foo()
-   |     ~~~~~~~~
+LL |     <Test as Trait2>::foo()
+   |     ~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

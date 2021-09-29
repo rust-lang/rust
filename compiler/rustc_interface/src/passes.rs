@@ -179,7 +179,7 @@ pub fn register_plugins<'a>(
     register_lints: impl Fn(&Session, &mut LintStore),
     mut krate: ast::Crate,
     crate_name: &str,
-) -> Result<(ast::Crate, Lrc<LintStore>)> {
+) -> Result<(ast::Crate, LintStore)> {
     krate = sess.time("attributes_injection", || {
         rustc_builtin_macros::cmdline_attrs::inject(
             krate,
@@ -229,9 +229,6 @@ pub fn register_plugins<'a>(
             registrar(&mut registry);
         }
     });
-
-    let lint_store = Lrc::new(lint_store);
-    sess.init_lint_store(lint_store.clone());
 
     Ok((krate, lint_store))
 }
