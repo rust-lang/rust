@@ -14,7 +14,7 @@ use syntax::{SyntaxToken, TextRange};
 
 use crate::display::TryToNav;
 use crate::hover::hover_for_definition;
-use crate::{Analysis, Cancellable, Fold, HoverConfig, HoverDocFormat, HoverResult};
+use crate::{Analysis, Fold, HoverConfig, HoverDocFormat, HoverResult};
 
 /// A static representation of fully analyzed source code.
 ///
@@ -84,8 +84,8 @@ fn all_modules(db: &dyn HirDatabase) -> Vec<Module> {
 }
 
 impl StaticIndex<'_> {
-    fn add_file(&mut self, file_id: FileId) -> Cancellable<()> {
-        let folds = self.analysis.folding_ranges(file_id)?;
+    fn add_file(&mut self, file_id: FileId) {
+        let folds = self.analysis.folding_ranges(file_id).unwrap();
         // hovers
         let sema = hir::Semantics::new(self.db);
         let tokens_or_nodes = sema.parse(file_id).syntax().clone();
@@ -133,13 +133,9 @@ impl StaticIndex<'_> {
             result.tokens.push((range, id));
         }
         self.files.push(result);
-        Ok(())
     }
 
-    pub fn compute<'a>(
-        db: &'a RootDatabase,
-        analysis: &'a Analysis,
-    ) -> Cancellable<StaticIndex<'a>> {
+    pub fn compute<'a>(db: &'a RootDatabase, analysis: &'a Analysis) -> StaticIndex<'a> {
         let work = all_modules(db).into_iter().filter(|module| {
             let file_id = module.definition_source(db).file_id.original_file(db);
             let source_root = db.file_source_root(file_id);
@@ -159,12 +155,11 @@ impl StaticIndex<'_> {
             if visited_files.contains(&file_id) {
                 continue;
             }
-            this.add_file(file_id)?;
+            this.add_file(file_id);
             // mark the file
             visited_files.insert(file_id);
         }
-        //eprintln!("{:#?}", token_map);
-        Ok(this)
+        this
     }
 }
 
@@ -188,7 +183,7 @@ mod tests {
 
     fn check_all_ranges(ra_fixture: &str) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
-        let s = StaticIndex::compute(&*analysis.db, &analysis).unwrap();
+        let s = StaticIndex::compute(&*analysis.db, &analysis);
         let mut range_set: HashSet<_> = ranges.iter().map(|x| x.0).collect();
         for f in s.files {
             for (range, _) in f.tokens {
@@ -206,7 +201,7 @@ mod tests {
 
     fn check_definitions(ra_fixture: &str) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
-        let s = StaticIndex::compute(&*analysis.db, &analysis).unwrap();
+        let s = StaticIndex::compute(&*analysis.db, &analysis);
         let mut range_set: HashSet<_> = ranges.iter().map(|x| x.0).collect();
         for (_, t) in s.tokens.iter() {
             if let Some(x) = t.definition {
