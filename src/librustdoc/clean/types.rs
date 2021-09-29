@@ -1376,7 +1376,7 @@ crate struct PolyTrait {
 crate enum Type {
     /// A named type, which could be a trait.
     ///
-    /// This is mostly Rustdoc's version of [`hir::Path`].
+    /// This is mostly Rustdoc's version of [`hir::Path`]. It has to be different because Rustdoc's [`PathSegment`] can contain cleaned generics.
     ResolvedPath { path: Path, did: DefId },
     /// A `dyn Trait` object: `dyn for<'a> Trait<'a> + Send + 'static`
     DynTrait(Vec<PolyTrait>, Option<Lifetime>),
