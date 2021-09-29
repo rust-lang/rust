@@ -7,8 +7,11 @@ LL |         FOO => {},
 error: unreachable pattern
   --> $DIR/issue-78057.rs:14:9
    |
+LL |         FOO => {},
+   |         --- matches any value
+LL |
 LL |         _ => {}
-   |         ^
+   |         ^ unreachable pattern
    |
 note: the lint level is defined here
   --> $DIR/issue-78057.rs:1:9

@@ -7,8 +7,11 @@ LL |         FOO => {}
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:32:9
    |
+LL |         FOO => {}
+   |         --- matches any value
+LL |
 LL |         _ => {} // should not be emitting unreachable warning
-   |         ^
+   |         ^ unreachable pattern
    |
 note: the lint level is defined here
   --> $DIR/consts-opaque.rs:6:9
@@ -25,8 +28,11 @@ LL |         FOO_REF => {}
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:39:9
    |
+LL |         FOO_REF => {}
+   |         ------- matches any value
+LL |
 LL |         Foo(_) => {} // should not be emitting unreachable warning
-   |         ^^^^^^
+   |         ^^^^^^ unreachable pattern
 
 warning: to use a constant of type `Foo` in a pattern, `Foo` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/consts-opaque.rs:45:9
@@ -70,15 +76,18 @@ LL |         BAR => {}
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:63:9
    |
+LL |         BAR => {}
+   |         --- matches any value
+LL |
 LL |         Bar => {} // should not be emitting unreachable warning
-   |         ^^^
+   |         ^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:65:9
    |
-LL |         Bar => {} // should not be emitting unreachable warning
+LL |         BAR => {}
    |         --- matches any value
-LL |
+...
 LL |         _ => {}
    |         ^ unreachable pattern
 
@@ -97,14 +106,20 @@ LL |         BAR => {} // should not be emitting unreachable warning
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:72:9
    |
+LL |         BAR => {}
+   |         --- matches any value
+LL |
 LL |         BAR => {} // should not be emitting unreachable warning
-   |         ^^^
+   |         ^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:75:9
    |
+LL |         BAR => {}
+   |         --- matches any value
+...
 LL |         _ => {} // should not be emitting unreachable warning
-   |         ^
+   |         ^ unreachable pattern
 
 error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/consts-opaque.rs:80:9
@@ -115,14 +130,20 @@ LL |         BAZ => {}
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:82:9
    |
+LL |         BAZ => {}
+   |         --- matches any value
+LL |
 LL |         Baz::Baz1 => {} // should not be emitting unreachable warning
-   |         ^^^^^^^^^
+   |         ^^^^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:84:9
    |
+LL |         BAZ => {}
+   |         --- matches any value
+...
 LL |         _ => {}
-   |         ^
+   |         ^ unreachable pattern
 
 error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/consts-opaque.rs:90:9
@@ -133,8 +154,11 @@ LL |         BAZ => {}
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:92:9
    |
+LL |         BAZ => {}
+   |         --- matches any value
+LL |
 LL |         _ => {}
-   |         ^
+   |         ^ unreachable pattern
 
 error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/consts-opaque.rs:97:9
@@ -145,20 +169,28 @@ LL |         BAZ => {}
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:99:9
    |
+LL |         BAZ => {}
+   |         --- matches any value
+LL |
 LL |         Baz::Baz2 => {} // should not be emitting unreachable warning
-   |         ^^^^^^^^^
+   |         ^^^^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:101:9
    |
+LL |         BAZ => {}
+   |         --- matches any value
+...
 LL |         _ => {} // should not be emitting unreachable warning
-   |         ^
+   |         ^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:127:9
    |
+LL |         Wrap(_) => {}
+   |         ------- matches any value
 LL |         WRAPQUUX => {} // detected unreachable because we do inspect the `Wrap` layer
-   |         ^^^^^^^^
+   |         ^^^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:141:9
