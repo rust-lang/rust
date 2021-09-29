@@ -322,10 +322,12 @@ fn parse_args<'a>(
         // Bail out now since this is likely to confuse MIR
         return Err(err);
     }
-    if let Some(&(_, abi_span)) = args.clobber_abis.last() {
+    if args.clobber_abis.len() > 0 {
         if is_global_asm {
-            let err =
-                ecx.struct_span_err(abi_span, "`clobber_abi` cannot be used with `global_asm!`");
+            let err = ecx.struct_span_err(
+                args.clobber_abis.iter().map(|(_, sp)| *sp).collect::<Vec<Span>>(),
+                "`clobber_abi` cannot be used with `global_asm!`",
+            );
 
             // Bail out now since this is likely to confuse later stages
             return Err(err);
@@ -335,7 +337,10 @@ fn parse_args<'a>(
                 regclass_outputs.clone(),
                 "asm with `clobber_abi` must specify explicit registers for outputs",
             )
-            .span_label(abi_span, "clobber_abi")
+            .span_labels(
+                args.clobber_abis.iter().map(|(_, sp)| *sp).collect::<Vec<Span>>(),
+                "clobber_abi",
+            )
             .span_labels(regclass_outputs, "generic outputs")
             .emit();
         }
@@ -808,7 +813,7 @@ pub fn expand_global_asm<'cx>(
                     ident: Ident::invalid(),
                     attrs: Vec::new(),
                     id: ast::DUMMY_NODE_ID,
-                    kind: ast::ItemKind::GlobalAsm(inline_asm),
+                    kind: ast::ItemKind::GlobalAsm(Box::new(inline_asm)),
                     vis: ast::Visibility {
                         span: sp.shrink_to_lo(),
                         kind: ast::VisibilityKind::Inherited,

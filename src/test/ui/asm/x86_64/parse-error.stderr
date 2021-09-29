@@ -335,10 +335,10 @@ LL | global_asm!("{}", options(), clobber_abi("C"), const FOO);
    |                   options
 
 error: `clobber_abi` cannot be used with `global_asm!`
-  --> $DIR/parse-error.rs:121:35
+  --> $DIR/parse-error.rs:121:17
    |
 LL | global_asm!("", clobber_abi("C"), clobber_abi("C"));
-   |                                   ^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^
 
 error: duplicate argument named `a`
   --> $DIR/parse-error.rs:123:35

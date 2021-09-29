@@ -21,6 +21,8 @@ fn main() {
         //~^ ERROR invalid ABI for `clobber_abi`
         asm!("{}", out(reg) foo, clobber_abi("C"));
         //~^ ERROR asm with `clobber_abi` must specify explicit registers for outputs
+        asm!("{}", out(reg) foo, clobber_abi("C"), clobber_abi("C"));
+        //~^ ERROR asm with `clobber_abi` must specify explicit registers for outputs
         asm!("", out("eax") foo, clobber_abi("C"));
     }
 }

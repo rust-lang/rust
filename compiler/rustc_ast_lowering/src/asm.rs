@@ -28,12 +28,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 .emit();
         }
 
-        let mut clobber_abis = FxHashSet::default();
+        let mut clobber_abis = FxHashMap::default();
         if let Some(asm_arch) = asm_arch {
             for &(abi_name, abi_span) in &asm.clobber_abis {
                 match asm::InlineAsmClobberAbi::parse(asm_arch, &self.sess.target, abi_name) {
                     Ok(abi) => {
-                        clobber_abis.insert((abi, abi_span));
+                        clobber_abis.insert(abi, abi_span);
                     }
                     Err(&[]) => {
                         self.sess
@@ -371,8 +371,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // If a clobber_abi is specified, add the necessary clobbers to the
         // operands list.
+        let mut clobbered = FxHashSet::default();
         for (abi, abi_span) in clobber_abis {
             for &clobber in abi.clobbered_regs() {
+                // Don't emit a clobber for a register already clobbered
+                if clobbered.contains(&clobber) {
+                    continue;
+                }
+
                 let mut output_used = false;
                 clobber.overlapping_regs(|reg| {
                     if used_output_regs.contains_key(&reg) {
@@ -389,6 +395,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         },
                         self.lower_span(abi_span),
                     ));
+                    clobbered.insert(clobber);
                 }
             }
         }
