@@ -129,7 +129,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     };
 
                     (
-                        ty_sub.span,
+                        ty_sup.span,
                         ret_span,
                         format!(
                             "this parameter and the {} are declared with different lifetimes...",
