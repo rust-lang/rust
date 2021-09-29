@@ -244,7 +244,6 @@ fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option
         | clean::Tuple(_)
         | clean::Slice(_)
         | clean::Array(_, _)
-        | clean::Never
         | clean::RawPointer(_, _)
         | clean::QPath { .. }
         | clean::Infer
