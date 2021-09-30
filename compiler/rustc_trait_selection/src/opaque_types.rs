@@ -334,14 +334,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         );
 
         // (B) We can also generate outlives bounds that must be enforced.
-        let required_region_bounds = required_region_bounds(tcx, opaque_type, bounds);
-        if !required_region_bounds.is_empty() {
-            for required_region in required_region_bounds {
-                concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
-                    tcx,
-                    op: |r| self.sub_regions(infer::CallReturn(span), required_region, r),
-                });
-            }
+        for required_region in required_region_bounds(tcx, opaque_type, bounds) {
+            concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
+                tcx,
+                op: |r| self.sub_regions(infer::CallReturn(span), required_region, r),
+            });
         }
     }
 
