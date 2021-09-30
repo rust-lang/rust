@@ -441,10 +441,14 @@ macro_rules! println {
     })
 }
 #[rustc_builtin_macro]
-macro_rules! format_args_nl {
-    ($fmt:expr) => {{ /* compiler built-in */ }};
-    ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
-}
+#[macro_export]
+macro_rules! format_args {}
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! const_format_args {}
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! format_args_nl {}
 
 mod panic {
     pub macro panic_2015 {
@@ -473,6 +477,11 @@ mod panic {
 macro_rules! panic {}
 #[rustc_builtin_macro]
 macro_rules! assert {}
+
+macro_rules! toho {
+    () => ($crate::panic!("not yet implemented"));
+    ($($arg:tt)+) => ($crate::panic!("not yet implemented: {}", $crate::format_args!($($arg)+)));
+}
 
 fn main() {
     // from https://doc.rust-lang.org/std/fmt/index.html
@@ -527,6 +536,7 @@ fn main() {
     panic!("more {}", 1);
     assert!(true, "{}", 1);
     assert!(true, "{} asdasd", 1);
+    toho!("{}fmt", 0);
 }"#
         .trim(),
         expect_file!["./test_data/highlight_strings.html"],

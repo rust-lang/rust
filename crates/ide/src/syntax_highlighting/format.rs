@@ -38,6 +38,9 @@ fn is_format_string(string: &ast::String) -> Option<()> {
         return None;
     }
 
+    // NB: we match against `panic_2015`/`panic_2021` here because they have a special-cased arm for
+    // `"{}"`, which otherwise wouldn't get highlighted.
+
     let first_literal = parent
         .children_with_tokens()
         .find_map(|it| it.as_token().cloned().and_then(ast::String::cast))?;
