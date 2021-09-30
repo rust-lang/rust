@@ -1128,8 +1128,7 @@ where
 
 impl<T, S, A> fmt::Debug for HashSet<T, S, A>
 where
-    T: Eq + Hash + fmt::Debug,
-    S: BuildHasher,
+    T: fmt::Debug,
     A: Allocator + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
