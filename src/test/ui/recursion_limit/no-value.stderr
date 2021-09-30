@@ -1,0 +1,8 @@
+error: malformed `recursion_limit` attribute input
+  --> $DIR/no-value.rs:3:1
+   |
+LL | #![recursion_limit]
+   | ^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#![recursion_limit = "N"]`
+
+error: aborting due to previous error
+

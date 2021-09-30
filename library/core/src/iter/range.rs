@@ -673,6 +673,11 @@ impl<A: Step> Iterator for ops::Range<A> {
     }
 
     #[inline]
+    fn is_sorted(self) -> bool {
+        true
+    }
+
+    #[inline]
     #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
@@ -1094,6 +1099,11 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
     #[inline]
     fn max(mut self) -> Option<A> {
         self.next_back()
+    }
+
+    #[inline]
+    fn is_sorted(self) -> bool {
+        true
     }
 }
 
