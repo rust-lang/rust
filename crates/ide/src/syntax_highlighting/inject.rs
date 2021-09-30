@@ -12,10 +12,9 @@ use syntax::{
 
 use crate::{
     doc_links::{doc_attributes, extract_definitions_from_docs, resolve_doc_path_for_def},
+    syntax_highlighting::{highlights::Highlights, injector::Injector},
     Analysis, HlMod, HlRange, HlTag, RootDatabase,
 };
-
-use super::{highlights::Highlights, injector::Injector};
 
 pub(super) fn ra_fixture(
     hl: &mut Highlights,

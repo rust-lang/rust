@@ -17,9 +17,11 @@ impl Injector {
         assert_eq!(len, source_range.len());
         self.add_impl(text, Some(source_range.start()));
     }
+
     pub(super) fn add_unmapped(&mut self, text: &str) {
         self.add_impl(text, None);
     }
+
     fn add_impl(&mut self, text: &str, source: Option<TextSize>) {
         let len = TextSize::of(text);
         let target_range = TextRange::at(TextSize::of(&self.buf), len);
@@ -30,6 +32,7 @@ impl Injector {
     pub(super) fn text(&self) -> &str {
         &self.buf
     }
+
     pub(super) fn map_range_up(&self, range: TextRange) -> impl Iterator<Item = TextRange> + '_ {
         equal_range_by(&self.ranges, |&(r, _)| TextRange::ordering(r, range)).filter_map(move |i| {
             let (target_range, delta) = self.ranges[i];

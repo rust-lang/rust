@@ -309,6 +309,7 @@ fn traverse(
                     match (token.kind(), parent.kind()) {
                         (T![ident], NAME | NAME_REF) => parent.into(),
                         (T![self] | T![super] | T![crate], NAME_REF) => parent.into(),
+                        (INT_NUMBER, NAME_REF) => parent.into(),
                         _ => token.into(),
                     }
                 }
