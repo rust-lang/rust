@@ -761,6 +761,9 @@ fn fmt_type<'cx>(
             fmt::Display::fmt(&tybounds(bounds, lt, cx), f)
         }
         clean::Infer => write!(f, "_"),
+        clean::Primitive(clean::PrimitiveType::Never) => {
+            primitive_link(f, PrimitiveType::Never, "!", cx)
+        }
         clean::Primitive(prim) => primitive_link(f, prim, &*prim.as_sym().as_str(), cx),
         clean::BareFunction(ref decl) => {
             if f.alternate() {
@@ -819,7 +822,6 @@ fn fmt_type<'cx>(
                 primitive_link(f, PrimitiveType::Array, &format!("; {}]", Escape(n)), cx)
             }
         }
-        clean::Never => primitive_link(f, PrimitiveType::Never, "!", cx),
         clean::RawPointer(m, ref t) => {
             let m = match m {
                 hir::Mutability::Mut => "mut",

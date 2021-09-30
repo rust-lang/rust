@@ -1313,7 +1313,7 @@ impl Clean<Type> for hir::Ty<'_> {
         use rustc_hir::*;
 
         match self.kind {
-            TyKind::Never => Never,
+            TyKind::Never => Primitive(PrimitiveType::Never),
             TyKind::Ptr(ref m) => RawPointer(m.mutbl, box m.ty.clean(cx)),
             TyKind::Rptr(ref l, ref m) => {
                 // There are two times a `Fresh` lifetime can be created:
@@ -1402,7 +1402,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
         trace!("cleaning type: {:?}", self);
         let ty = normalize(cx, self).unwrap_or(self);
         match *ty.kind() {
-            ty::Never => Never,
+            ty::Never => Primitive(PrimitiveType::Never),
             ty::Bool => Primitive(PrimitiveType::Bool),
             ty::Char => Primitive(PrimitiveType::Char),
             ty::Int(int_ty) => Primitive(int_ty.into()),
