@@ -211,9 +211,16 @@ impl CodegenBackend for LlvmCodegenBackend {
         match req {
             PrintRequest::RelocationModels => {
                 println!("Available relocation models:");
-                for name in
-                    &["static", "pic", "dynamic-no-pic", "ropi", "rwpi", "ropi-rwpi", "default"]
-                {
+                for name in &[
+                    "static",
+                    "pic",
+                    "pie",
+                    "dynamic-no-pic",
+                    "ropi",
+                    "rwpi",
+                    "ropi-rwpi",
+                    "default",
+                ] {
                     println!("    {}", name);
                 }
                 println!();

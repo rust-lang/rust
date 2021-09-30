@@ -288,6 +288,7 @@ impl ToJson for MergeFunctions {
 pub enum RelocModel {
     Static,
     Pic,
+    Pie,
     DynamicNoPic,
     Ropi,
     Rwpi,
@@ -301,6 +302,7 @@ impl FromStr for RelocModel {
         Ok(match s {
             "static" => RelocModel::Static,
             "pic" => RelocModel::Pic,
+            "pie" => RelocModel::Pie,
             "dynamic-no-pic" => RelocModel::DynamicNoPic,
             "ropi" => RelocModel::Ropi,
             "rwpi" => RelocModel::Rwpi,
@@ -315,6 +317,7 @@ impl ToJson for RelocModel {
         match *self {
             RelocModel::Static => "static",
             RelocModel::Pic => "pic",
+            RelocModel::Pie => "pie",
             RelocModel::DynamicNoPic => "dynamic-no-pic",
             RelocModel::Ropi => "ropi",
             RelocModel::Rwpi => "rwpi",
