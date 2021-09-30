@@ -87,6 +87,7 @@ fn after_struct_name() {
         r"struct Struct $0",
         expect![[r##"
             kw pub(crate)
+            kw pub(super)
             kw pub
             kw unsafe
             kw fn
@@ -120,6 +121,7 @@ fn after_fn_name() {
         r"fn func() $0",
         expect![[r##"
             kw pub(crate)
+            kw pub(super)
             kw pub
             kw unsafe
             kw fn
@@ -157,6 +159,7 @@ struct Foo {
 "#,
         expect![[r#"
             kw pub(crate)
+            kw pub(super)
             kw pub
         "#]],
     )

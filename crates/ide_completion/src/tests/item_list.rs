@@ -14,6 +14,7 @@ fn in_mod_item_list() {
         r#"mod tests { $0 }"#,
         expect![[r##"
             kw pub(crate)
+            kw pub(super)
             kw pub
             kw unsafe
             kw fn
@@ -45,6 +46,7 @@ fn in_source_file_item_list() {
         r#"$0"#,
         expect![[r##"
             kw pub(crate)
+            kw pub(super)
             kw pub
             kw unsafe
             kw fn
@@ -77,6 +79,7 @@ fn in_item_list_after_attr() {
         r#"#[attr] $0"#,
         expect![[r#"
             kw pub(crate)
+            kw pub(super)
             kw pub
             kw unsafe
             kw fn
@@ -161,6 +164,7 @@ fn in_impl_assoc_item_list() {
         r#"impl Struct { $0 }"#,
         expect![[r##"
             kw pub(crate)
+            kw pub(super)
             kw pub
             kw unsafe
             kw fn
@@ -181,6 +185,7 @@ fn in_impl_assoc_item_list_after_attr() {
         r#"impl Struct { #[attr] $0 }"#,
         expect![[r#"
             kw pub(crate)
+            kw pub(super)
             kw pub
             kw unsafe
             kw fn
@@ -230,6 +235,7 @@ impl Test for () {
 "#,
         expect![[r##"
             kw pub(crate)
+            kw pub(super)
             kw pub
             kw unsafe
             kw fn
