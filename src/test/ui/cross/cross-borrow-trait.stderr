@@ -2,10 +2,8 @@ error[E0308]: mismatched types
   --> $DIR/cross-borrow-trait.rs:10:26
    |
 LL |     let _y: &dyn Trait = x;
-   |             ----------   ^
-   |             |            |
-   |             |            expected `&dyn Trait`, found struct `Box`
-   |             |            help: consider borrowing here: `&x`
+   |             ----------   ^ expected `&dyn Trait`, found struct `Box`
+   |             |
    |             expected due to this
    |
    = note: expected reference `&dyn Trait`

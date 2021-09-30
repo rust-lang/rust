@@ -373,7 +373,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let box_found = self.tcx.mk_box(found);
         let pin_box_found = self.tcx.mk_lang_item(box_found, LangItem::Pin).unwrap();
         let pin_found = self.tcx.mk_lang_item(found, LangItem::Pin).unwrap();
-        if self.can_coerce_and_satisfy_predicates(pin_box_found, expected) {
+        if self.can_coerce(pin_box_found, expected) {
             debug!("can coerce {:?} to {:?}, suggesting Box::pin", pin_box_found, expected);
             match found.kind() {
                 ty::Adt(def, _) if def.is_box() => {
@@ -391,7 +391,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             true
-        } else if self.can_coerce_and_satisfy_predicates(pin_found, expected) {
+        } else if self.can_coerce(pin_found, expected) {
             match found.kind() {
                 ty::Adt(def, _) if def.is_box() => {
                     err.help("use `Box::pin`");

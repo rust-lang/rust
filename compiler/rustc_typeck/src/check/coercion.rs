@@ -934,20 +934,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Same as `try_coerce()`, but without side-effects.
+    ///
+    /// Returns false if the coercion creates any obligations that result in
+    /// errors.
     pub fn can_coerce(&self, expr_ty: Ty<'tcx>, target: Ty<'tcx>) -> bool {
-        let source = self.resolve_vars_with_obligations(expr_ty);
-        debug!("coercion::can({:?} -> {:?})", source, target);
-
-        let cause = self.cause(rustc_span::DUMMY_SP, ObligationCauseCode::ExprAssignable);
-        // We don't ever need two-phase here since we throw out the result of the coercion
-        let coerce = Coerce::new(self, cause, AllowTwoPhase::No);
-        self.probe(|_| coerce.coerce(source, target)).is_ok()
-    }
-
-    /// Same as `try_coerce()`, but without side-effects and attempts to select
-    /// all predicates created by the coercion. This is useful for e.g. checking
-    /// that associated types are correct.
-    pub fn can_coerce_and_satisfy_predicates(&self, expr_ty: Ty<'tcx>, target: Ty<'tcx>) -> bool {
         let source = self.resolve_vars_with_obligations(expr_ty);
         debug!("coercion::can_with_predicates({:?} -> {:?})", source, target);
 
