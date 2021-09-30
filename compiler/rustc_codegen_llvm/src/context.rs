@@ -195,11 +195,14 @@ pub unsafe fn create_module(
     let llvm_target = SmallCStr::new(&sess.target.llvm_target);
     llvm::LLVMRustSetNormalizedTarget(llmod, llvm_target.as_ptr());
 
-    if sess.relocation_model() == RelocModel::Pic {
+    let reloc_model = sess.relocation_model();
+    if matches!(reloc_model, RelocModel::Pic | RelocModel::Pie) {
         llvm::LLVMRustSetModulePICLevel(llmod);
         // PIE is potentially more effective than PIC, but can only be used in executables.
         // If all our outputs are executables, then we can relax PIC to PIE.
-        if sess.crate_types().iter().all(|ty| *ty == CrateType::Executable) {
+        if reloc_model == RelocModel::Pie
+            || sess.crate_types().iter().all(|ty| *ty == CrateType::Executable)
+        {
             llvm::LLVMRustSetModulePIELevel(llmod);
         }
     }
