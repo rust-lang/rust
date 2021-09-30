@@ -619,8 +619,8 @@ mod tests {
             Lint::new("should_assert_eq2", "group2", "abc", None, "module_name"),
         ];
         let expected = vec![
-            format!("[`should_assert_eq`]: {}#should_assert_eq", DOCS_LINK.to_string()),
-            format!("[`should_assert_eq2`]: {}#should_assert_eq2", DOCS_LINK.to_string()),
+            format!("[`should_assert_eq`]: {}#should_assert_eq", DOCS_LINK),
+            format!("[`should_assert_eq2`]: {}#should_assert_eq2", DOCS_LINK),
         ];
         assert_eq!(expected, gen_changelog_lint_list(lints.iter()));
     }

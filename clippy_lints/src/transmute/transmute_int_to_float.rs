@@ -36,7 +36,7 @@ pub(super) fn check<'tcx>(
                     diag.span_suggestion(
                         e.span,
                         "consider using",
-                        format!("{}::from_bits({})", to_ty, arg.to_string()),
+                        format!("{}::from_bits({})", to_ty, arg),
                         Applicability::Unspecified,
                     );
                 },
