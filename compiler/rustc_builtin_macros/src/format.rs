@@ -1154,11 +1154,12 @@ pub fn expand_preparsed_format_args(
                     // account for `"` and account for raw strings `r#`
                     let padding = str_style.map(|i| i + 2).unwrap_or(1);
                     for sub in foreign::$kind::iter_subs(fmt_str, padding) {
-                        let trn = match sub.translate() {
-                            Some(trn) => trn,
+                        let (trn, success) = match sub.translate() {
+                            Ok(trn) => (trn, true),
+                            Err(Some(msg)) => (msg, false),
 
                             // If it has no translation, don't call it out specifically.
-                            None => continue,
+                            _ => continue,
                         };
 
                         let pos = sub.position();
@@ -1175,9 +1176,24 @@ pub fn expand_preparsed_format_args(
 
                         if let Some(inner_sp) = pos {
                             let sp = fmt_sp.from_inner(inner_sp);
-                            suggestions.push((sp, trn));
+
+                            if success {
+                                suggestions.push((sp, trn));
+                            } else {
+                                diag.span_note(
+                                    sp,
+                                    &format!("format specifiers use curly braces, and {}", trn),
+                                );
+                            }
                         } else {
-                            diag.help(&format!("`{}` should be written as `{}`", sub, trn));
+                            if success {
+                                diag.help(&format!("`{}` should be written as `{}`", sub, trn));
+                            } else {
+                                diag.note(&format!(
+                                    "`{}` should use curly braces, and {}",
+                                    sub, trn
+                                ));
+                            }
                         }
                     }
 
