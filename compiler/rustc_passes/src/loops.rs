@@ -233,6 +233,12 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
             Normal | AnonConst => {
                 struct_span_err!(self.sess, span, E0268, "`{}` outside of a loop", name)
                     .span_label(span, format!("cannot `{}` outside of a loop", name))
+                    .span_suggestion(
+                        span,
+                        "consider removing the",
+                        name.into(),
+                        rustc_errors::Applicability::MachineApplicable,
+                    )
                     .emit();
             }
         }
