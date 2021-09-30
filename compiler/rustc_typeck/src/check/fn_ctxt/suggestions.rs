@@ -370,9 +370,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ if pin_did.is_none() || self.tcx.lang_items().owned_box().is_none() => return false,
             _ => {}
         }
-        let boxed_found = self.tcx.mk_box(found);
-        let new_found = self.tcx.mk_lang_item(boxed_found, LangItem::Pin).unwrap();
-        if self.can_coerce(new_found, expected) {
+        let box_found = self.tcx.mk_box(found);
+        let pin_box_found = self.tcx.mk_lang_item(box_found, LangItem::Pin).unwrap();
+        let pin_found = self.tcx.mk_lang_item(found, LangItem::Pin).unwrap();
+        if self.can_coerce_and_satisfy_predicates(pin_box_found, expected) {
+            debug!("can coerce {:?} to {:?}, suggesting Box::pin", pin_box_found, expected);
             match found.kind() {
                 ty::Adt(def, _) if def.is_box() => {
                     err.help("use `Box::pin`");
@@ -384,11 +386,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             (expr.span.shrink_to_lo(), "Box::pin(".to_string()),
                             (expr.span.shrink_to_hi(), ")".to_string()),
                         ],
-                        Applicability::MachineApplicable,
+                        Applicability::MaybeIncorrect,
                     );
                 }
             }
             true
+        } else if self.can_coerce_and_satisfy_predicates(pin_found, expected) {
+            match found.kind() {
+                ty::Adt(def, _) if def.is_box() => {
+                    err.help("use `Box::pin`");
+                    true
+                }
+                _ => false,
+            }
         } else {
             false
         }
