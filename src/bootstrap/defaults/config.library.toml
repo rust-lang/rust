@@ -10,6 +10,5 @@ bench-stage = 0
 incremental = true
 
 [llvm]
-# Will download LLVM from CI if available on your platform (Linux only for now)
-# https://github.com/rust-lang/rust/issues/77084 tracks support for more platforms
+# Will download LLVM from CI if available on your platform.
 download-ci-llvm = "if-available"
