@@ -1,0 +1,21 @@
+error[E0170]: pattern binding `C` is named the same as one of the variants of the type `Foo`
+  --> $DIR/issue-88730.rs:12:8
+   |
+LL | fn foo(C: Foo) {}
+   |        ^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-88730.rs:2:9
+   |
+LL | #![deny(bindings_with_variant_name)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0170]: pattern binding `C` is named the same as one of the variants of the type `Foo`
+  --> $DIR/issue-88730.rs:15:9
+   |
+LL |     let C = Foo::D;
+   |         ^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0170`.
