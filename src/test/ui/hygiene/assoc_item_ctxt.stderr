@@ -2,7 +2,10 @@ error[E0407]: method `method` is not a member of trait `Tr`
   --> $DIR/assoc_item_ctxt.rs:35:13
    |
 LL |             fn method() {}
-   |             ^^^^^^^^^^^^^^ not a member of trait `Tr`
+   |             ^^^------^^^^^
+   |             |  |
+   |             |  help: there is an associated function with a similar name: `method`
+   |             not a member of trait `Tr`
 ...
 LL |     mac_trait_impl!();
    |     ------------------ in this macro invocation
