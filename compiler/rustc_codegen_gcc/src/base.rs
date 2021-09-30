@@ -7,7 +7,6 @@ use gccjit::{
     GlobalKind,
 };
 use rustc_middle::dep_graph;
-use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::middle::exported_symbols;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::mir::mono::Linkage;
@@ -15,6 +14,7 @@ use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::DebugInfoMethods;
+use rustc_metadata::EncodedMetadata;
 use rustc_session::config::DebugInfo;
 use rustc_span::Symbol;
 
@@ -149,7 +149,7 @@ pub fn write_compressed_metadata<'tcx>(tcx: TyCtxt<'tcx>, metadata: &EncodedMeta
 
     let context = &gcc_module.context;
     let mut compressed = rustc_metadata::METADATA_HEADER.to_vec();
-    FrameEncoder::new(&mut compressed).write_all(&metadata.raw_data).unwrap();
+    FrameEncoder::new(&mut compressed).write_all(&metadata.raw_data()).unwrap();
 
     let name = exported_symbols::metadata_symbol_name(tcx);
     let typ = context.new_array_type(None, context.new_type::<u8>(), compressed.len() as i32);
