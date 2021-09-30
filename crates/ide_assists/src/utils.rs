@@ -74,7 +74,12 @@ pub fn extract_trivial_expression(block_expr: &ast::BlockExpr) -> Option<ast::Ex
 pub fn test_related_attribute(fn_def: &ast::Fn) -> Option<ast::Attr> {
     fn_def.attrs().find_map(|attr| {
         let path = attr.path()?;
-        path.syntax().text().to_string().contains("test").then(|| attr)
+        let text = path.syntax().text().to_string();
+        if text.starts_with("test") || text.ends_with("test") {
+            Some(attr)
+        } else {
+            None
+        }
     })
 }
 
