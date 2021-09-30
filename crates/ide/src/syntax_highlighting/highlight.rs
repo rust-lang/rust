@@ -515,7 +515,7 @@ fn highlight_def(
     });
     let is_from_other_crate = def_crate != krate;
     let is_from_builtin_crate =
-        def_crate.map_or(false, |it| famous_defs.builtin_crates().contains(&it));
+        def_crate.map_or(false, |def_crate| famous_defs.builtin_crates().any(|it| def_crate == it));
     let is_builtin_type = matches!(def, Definition::ModuleDef(hir::ModuleDef::BuiltinType(_)));
     let is_public = def.visibility(db) == Some(hir::Visibility::Public);
 
@@ -564,7 +564,7 @@ fn highlight_method_call(
     let famous_defs = FamousDefs(&sema, krate);
     let def_crate = func.module(sema.db).krate();
     let is_from_other_crate = Some(def_crate) != krate;
-    let is_from_builtin_crate = famous_defs.builtin_crates().contains(&def_crate);
+    let is_from_builtin_crate = famous_defs.builtin_crates().any(|it| def_crate == it);
     let is_public = func.visibility(sema.db) == hir::Visibility::Public;
 
     if is_from_other_crate {
