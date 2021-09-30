@@ -418,10 +418,7 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) ->
     // The trailing space after each tag is to space it properly against the rest of the docs.
     if let Some(depr) = &item.deprecation(tcx) {
         let mut message = "Deprecated";
-        if !stability::deprecation_in_effect(
-            depr.is_since_rustc_version,
-            depr.since.map(|s| s.as_str()).as_deref(),
-        ) {
+        if !stability::deprecation_in_effect(depr) {
             message = "Deprecation planned";
         }
         tags += &tag_html("deprecated", "", message);

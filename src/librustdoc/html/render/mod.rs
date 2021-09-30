@@ -599,14 +599,14 @@ fn short_item_info(
     let mut extra_info = vec![];
     let error_codes = cx.shared.codes;
 
-    if let Some(Deprecation { note, since, is_since_rustc_version, suggestion: _ }) =
+    if let Some(depr @ Deprecation { note, since, is_since_rustc_version: _, suggestion: _ }) =
         item.deprecation(cx.tcx())
     {
         // We display deprecation messages for #[deprecated] and #[rustc_deprecated]
         // but only display the future-deprecation messages for #[rustc_deprecated].
         let mut message = if let Some(since) = since {
             let since = &since.as_str();
-            if !stability::deprecation_in_effect(is_since_rustc_version, Some(since)) {
+            if !stability::deprecation_in_effect(&depr) {
                 if *since == "TBD" {
                     String::from("Deprecating in a future Rust version")
                 } else {

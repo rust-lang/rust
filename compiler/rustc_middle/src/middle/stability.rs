@@ -15,12 +15,11 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, HirId};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
-use rustc_session::lint::{BuiltinLintDiagnostics, Lint, LintBuffer};
+use rustc_session::lint::{BuiltinLintDiagnostics, Level, Lint, LintBuffer};
 use rustc_session::parse::feature_err_issue;
 use rustc_session::{DiagnosticMessageId, Session};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span};
-
 use std::num::NonZeroU32;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -125,7 +124,11 @@ pub fn report_unstable(
 
 /// Checks whether an item marked with `deprecated(since="X")` is currently
 /// deprecated (i.e., whether X is not greater than the current rustc version).
-pub fn deprecation_in_effect(is_since_rustc_version: bool, since: Option<&str>) -> bool {
+pub fn deprecation_in_effect(depr: &Deprecation) -> bool {
+    let is_since_rustc_version = depr.is_since_rustc_version;
+    let since = depr.since.map(Symbol::as_str);
+    let since = since.as_deref();
+
     fn parse_version(ver: &str) -> Vec<u32> {
         // We ignore non-integer components of the version (e.g., "nightly").
         ver.split(|c| c == '.' || c == '-').flat_map(|s| s.parse()).collect()
@@ -175,33 +178,50 @@ pub fn deprecation_suggestion(
     }
 }
 
-pub fn deprecation_message(depr: &Deprecation, kind: &str, path: &str) -> (String, &'static Lint) {
-    let since = depr.since.map(Symbol::as_str);
-    let (message, lint) = if deprecation_in_effect(depr.is_since_rustc_version, since.as_deref()) {
-        (format!("use of deprecated {} `{}`", kind, path), DEPRECATED)
+fn deprecation_lint(is_in_effect: bool) -> &'static Lint {
+    if is_in_effect { DEPRECATED } else { DEPRECATED_IN_FUTURE }
+}
+
+fn deprecation_message(
+    is_in_effect: bool,
+    since: Option<Symbol>,
+    note: Option<Symbol>,
+    kind: &str,
+    path: &str,
+) -> String {
+    let message = if is_in_effect {
+        format!("use of deprecated {} `{}`", kind, path)
     } else {
-        (
-            if since.as_deref() == Some("TBD") {
-                format!(
-                    "use of {} `{}` that will be deprecated in a future Rust version",
-                    kind, path
-                )
-            } else {
-                format!(
-                    "use of {} `{}` that will be deprecated in future version {}",
-                    kind,
-                    path,
-                    since.unwrap()
-                )
-            },
-            DEPRECATED_IN_FUTURE,
-        )
+        let since = since.map(Symbol::as_str);
+
+        if since.as_deref() == Some("TBD") {
+            format!("use of {} `{}` that will be deprecated in a future Rust version", kind, path)
+        } else {
+            format!(
+                "use of {} `{}` that will be deprecated in future version {}",
+                kind,
+                path,
+                since.unwrap()
+            )
+        }
     };
-    let message = match depr.note {
+
+    match note {
         Some(reason) => format!("{}: {}", message, reason),
         None => message,
-    };
-    (message, lint)
+    }
+}
+
+pub fn deprecation_message_and_lint(
+    depr: &Deprecation,
+    kind: &str,
+    path: &str,
+) -> (String, &'static Lint) {
+    let is_in_effect = deprecation_in_effect(depr);
+    (
+        deprecation_message(is_in_effect, depr.since, depr.note, kind, path),
+        deprecation_lint(is_in_effect),
+    )
 }
 
 pub fn early_report_deprecation(
@@ -303,20 +323,34 @@ impl<'tcx> TyCtxt<'tcx> {
                 //
                 // #[rustc_deprecated] however wants to emit down the whole
                 // hierarchy.
-                if !skip || depr_entry.attr.is_since_rustc_version {
-                    let path = &with_no_trimmed_paths(|| self.def_path_str(def_id));
-                    let kind = self.def_kind(def_id).descr(def_id);
-                    let (message, lint) = deprecation_message(&depr_entry.attr, kind, path);
-                    late_report_deprecation(
-                        self,
-                        &message,
-                        depr_entry.attr.suggestion,
-                        lint,
-                        span,
-                        method_span,
-                        id,
-                        def_id,
-                    );
+                let depr_attr = &depr_entry.attr;
+                if !skip || depr_attr.is_since_rustc_version {
+                    // Calculating message for lint involves calling `self.def_path_str`.
+                    // Which by default to calculate visible path will invoke expensive `visible_parent_map` query.
+                    // So we skip message calculation altogether, if lint is allowed.
+                    let is_in_effect = deprecation_in_effect(depr_attr);
+                    let lint = deprecation_lint(is_in_effect);
+                    if self.lint_level_at_node(lint, id).0 != Level::Allow {
+                        let def_path = &with_no_trimmed_paths(|| self.def_path_str(def_id));
+                        let def_kind = self.def_kind(def_id).descr(def_id);
+
+                        late_report_deprecation(
+                            self,
+                            &deprecation_message(
+                                is_in_effect,
+                                depr_attr.since,
+                                depr_attr.note,
+                                def_kind,
+                                def_path,
+                            ),
+                            depr_attr.suggestion,
+                            lint,
+                            span,
+                            method_span,
+                            id,
+                            def_id,
+                        );
+                    }
                 }
             };
         }
