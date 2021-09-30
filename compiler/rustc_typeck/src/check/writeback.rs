@@ -736,6 +736,26 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     }
 }
 
+struct EraseEarlyRegions<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> TypeFolder<'tcx> for EraseEarlyRegions<'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if ty.has_type_flags(ty::TypeFlags::HAS_POTENTIAL_FREE_REGIONS) {
+            ty.super_fold_with(self)
+        } else {
+            ty
+        }
+    }
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        if let ty::ReLateBound(..) = r { r } else { self.tcx.lifetimes.re_erased }
+    }
+}
+
 impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
         self.tcx
@@ -743,7 +763,13 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match self.infcx.fully_resolve(t) {
-            Ok(t) => self.infcx.tcx.erase_regions(t),
+            Ok(t) => {
+                // Do not anonymize late-bound regions
+                // (e.g. keep `for<'a>` named `for<'a>`).
+                // This allows NLL to generate error messages that
+                // refer to the higher-ranked lifetime names written by the user.
+                EraseEarlyRegions { tcx: self.infcx.tcx }.fold_ty(t)
+            }
             Err(_) => {
                 debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
                 self.report_type_error(t);

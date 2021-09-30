@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     let y: Box<dyn for<'a> Foo<'a>> = x;
    |                                       ^ one type is more general than the other
    |
-   = note: expected trait object `dyn for<'r> Foo<'r>`
+   = note: expected trait object `dyn for<'a> Foo<'a>`
               found trait object `dyn Foo<'_>`
 
 error: aborting due to previous error
