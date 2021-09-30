@@ -50,6 +50,7 @@ store.register_group(true, "clippy::restriction", Some("clippy_restriction"), ve
     LintId::of(same_name_method::SAME_NAME_METHOD),
     LintId::of(shadow::SHADOW_REUSE),
     LintId::of(shadow::SHADOW_SAME),
+    LintId::of(shadow::SHADOW_UNRELATED),
     LintId::of(strings::STRING_ADD),
     LintId::of(strings::STRING_TO_STRING),
     LintId::of(strings::STR_TO_STRING),

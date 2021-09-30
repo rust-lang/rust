@@ -7,14 +7,7 @@
     clippy::iter_next_loop,
     clippy::for_kv_map
 )]
-#[allow(
-    clippy::linkedlist,
-    clippy::shadow_unrelated,
-    clippy::unnecessary_mut_passed,
-    clippy::similar_names,
-    unused,
-    dead_code
-)]
+#[allow(clippy::linkedlist, clippy::unnecessary_mut_passed, clippy::similar_names)]
 fn main() {
     let vec = vec![1, 2, 3, 4];
 
