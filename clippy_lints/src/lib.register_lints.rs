@@ -139,6 +139,8 @@ store.register_lints(&[
     floating_point_arithmetic::IMPRECISE_FLOPS,
     floating_point_arithmetic::SUBOPTIMAL_FLOPS,
     format::USELESS_FORMAT,
+    format_args::FORMAT_IN_FORMAT_ARGS,
+    format_args::TO_STRING_IN_FORMAT_ARGS,
     formatting::POSSIBLE_MISSING_COMMA,
     formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
     formatting::SUSPICIOUS_ELSE_FORMATTING,
