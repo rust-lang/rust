@@ -266,7 +266,7 @@ fn gen_modules_list<'a>(lints: impl Iterator<Item = &'a Lint>) -> String {
     output
 }
 
-/// Generates the list of lint links at the bottom of the README
+/// Generates the list of lint links at the bottom of the CHANGELOG
 #[must_use]
 fn gen_changelog_lint_list<'a>(lints: impl Iterator<Item = &'a Lint>) -> Vec<String> {
     lints
