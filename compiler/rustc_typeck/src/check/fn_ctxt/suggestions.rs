@@ -364,11 +364,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
         let pin_did = self.tcx.lang_items().pin_type();
+        // This guards the `unwrap` and `mk_box` below.
+        if pin_did.is_none() || self.tcx.lang_items().owned_box().is_none() {
+            return false;
+        }
         match expected.kind() {
-            ty::Adt(def, _) if Some(def.did) != pin_did => return false,
-            // This guards the `unwrap` and `mk_box` below.
-            _ if pin_did.is_none() || self.tcx.lang_items().owned_box().is_none() => return false,
-            _ => {}
+            ty::Adt(def, _) if Some(def.did) == pin_did => (),
+            _ => return false,
         }
         let box_found = self.tcx.mk_box(found);
         let pin_box_found = self.tcx.mk_lang_item(box_found, LangItem::Pin).unwrap();
