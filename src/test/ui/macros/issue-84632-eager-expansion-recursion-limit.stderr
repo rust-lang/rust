@@ -7,7 +7,7 @@ LL |     (A, $($A:ident),*) => (concat!("", a!($($A),*)))
 LL |     a!(A, A, A, A, A, A, A, A, A, A, A);
    |     ------------------------------------ in this macro invocation
    |
-   = help: consider adding a `#![recursion_limit="30"]` attribute to your crate (`issue_84632_eager_expansion_recursion_limit`)
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "30"]` attribute to your crate (`issue_84632_eager_expansion_recursion_limit`)
    = note: this error originates in the macro `a` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

@@ -7,7 +7,7 @@ macro_rules! a {
     (A) => (concat!("", a!()));
     (A, $($A:ident),*) => (concat!("", a!($($A),*)))
     //~^ ERROR recursion limit reached
-    //~| HELP consider adding
+    //~| HELP consider increasing the recursion limit
 }
 
 fn main() {

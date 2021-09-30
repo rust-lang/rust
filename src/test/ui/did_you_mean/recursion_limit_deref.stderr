@@ -4,7 +4,7 @@ error[E0055]: reached the recursion limit while auto-dereferencing `J`
 LL |     let x: &Bottom = &t;
    |                      ^^ deref recursion limit reached
    |
-   = help: consider adding a `#![recursion_limit="20"]` attribute to your crate (`recursion_limit_deref`)
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "20"]` attribute to your crate (`recursion_limit_deref`)
 
 error[E0308]: mismatched types
   --> $DIR/recursion_limit_deref.rs:50:22

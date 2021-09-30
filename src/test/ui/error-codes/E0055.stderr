@@ -4,7 +4,7 @@ error[E0055]: reached the recursion limit while auto-dereferencing `Foo`
 LL |     ref_foo.foo();
    |             ^^^ deref recursion limit reached
    |
-   = help: consider adding a `#![recursion_limit="8"]` attribute to your crate (`E0055`)
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "8"]` attribute to your crate (`E0055`)
 
 error: aborting due to previous error
 
