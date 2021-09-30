@@ -31,14 +31,16 @@ fn is_format_string(string: &ast::String) -> Option<()> {
     let parent = string.syntax().parent()?;
 
     let name = parent.parent().and_then(ast::MacroCall::cast)?.path()?.segment()?.name_ref()?;
-    if !matches!(name.text().as_str(), "format_args" | "format_args_nl") {
+    if !matches!(
+        name.text().as_str(),
+        "format_args" | "format_args_nl" | "const_format_args" | "panic_2015" | "panic_2021"
+    ) {
         return None;
     }
 
     let first_literal = parent
         .children_with_tokens()
-        .filter_map(|it| it.as_token().cloned().and_then(ast::String::cast))
-        .next()?;
+        .find_map(|it| it.as_token().cloned().and_then(ast::String::cast))?;
     if &first_literal != string {
         return None;
     }

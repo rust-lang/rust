@@ -446,6 +446,34 @@ macro_rules! format_args_nl {
     ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
 }
 
+mod panic {
+    pub macro panic_2015 {
+        () => (
+            $crate::panicking::panic("explicit panic")
+        ),
+        ($msg:literal $(,)?) => (
+            $crate::panicking::panic($msg)
+        ),
+        // Use `panic_str` instead of `panic_display::<&str>` for non_fmt_panic lint.
+        ($msg:expr $(,)?) => (
+            $crate::panicking::panic_str($msg)
+        ),
+        // Special-case the single-argument case for const_panic.
+        ("{}", $arg:expr $(,)?) => (
+            $crate::panicking::panic_display(&$arg)
+        ),
+        ($fmt:expr, $($arg:tt)+) => (
+            $crate::panicking::panic_fmt($crate::const_format_args!($fmt, $($arg)+))
+        ),
+    }
+}
+
+#[rustc_builtin_macro(std_panic)]
+#[macro_export]
+macro_rules! panic {}
+#[rustc_builtin_macro]
+macro_rules! assert {}
+
 fn main() {
     // from https://doc.rust-lang.org/std/fmt/index.html
     println!("Hello");                 // => "Hello"
@@ -495,6 +523,10 @@ fn main() {
     println!("{ничоси}", ничоси = 92);
 
     println!("{:x?} {} ", thingy, n2);
+    panic!("{}", 0);
+    panic!("more {}", 1);
+    assert!(true, "{}", 1);
+    assert!(true, "{} asdasd", 1);
 }"#
         .trim(),
         expect_file!["./test_data/highlight_strings.html"],
