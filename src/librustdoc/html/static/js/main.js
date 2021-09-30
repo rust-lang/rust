@@ -1001,7 +1001,7 @@ function hideThemeButtonState() {
         container.appendChild(rustdoc_version);
 
         popup.appendChild(container);
-        insertAfter(popup, searchState.outputElement());
+        insertAfter(popup, document.querySelector("main"));
         // So that it's only built once and then it'll do nothing when called!
         buildHelperPopup = function() {};
     };
