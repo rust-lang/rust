@@ -81,6 +81,7 @@ macro_rules! define_semantic_token_modifiers {
             SemanticTokenModifier::ABSTRACT,
             SemanticTokenModifier::DEPRECATED,
             SemanticTokenModifier::READONLY,
+            SemanticTokenModifier::DEFAULT_LIBRARY,
             $($ident),*
         ];
     };
