@@ -339,7 +339,7 @@ fn get_time_options(
 
 fn get_shuffle(matches: &getopts::Matches, allow_unstable: bool) -> OptPartRes<bool> {
     let mut shuffle = unstable_optflag!(matches, allow_unstable, "shuffle");
-    if !shuffle {
+    if !shuffle && allow_unstable {
         shuffle = match env::var("RUST_TEST_SHUFFLE") {
             Ok(val) => &val != "0",
             Err(_) => false,
@@ -364,7 +364,7 @@ fn get_shuffle_seed(matches: &getopts::Matches, allow_unstable: bool) -> OptPart
         None => None,
     };
 
-    if shuffle_seed.is_none() {
+    if shuffle_seed.is_none() && allow_unstable {
         shuffle_seed = match env::var("RUST_TEST_SHUFFLE_SEED") {
             Ok(val) => match val.parse::<u64>() {
                 Ok(n) => Some(n),
