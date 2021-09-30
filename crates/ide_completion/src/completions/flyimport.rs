@@ -1220,4 +1220,17 @@ fn function() {
             "#]],
         );
     }
+
+    #[test]
+    fn flyimport_rename() {
+        check(
+            r#"
+mod module {
+    pub struct Struct;
+}
+use self as Str$0;
+    "#,
+            expect![[r#""#]],
+        );
+    }
 }

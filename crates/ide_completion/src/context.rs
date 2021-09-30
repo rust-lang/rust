@@ -383,6 +383,7 @@ impl<'a> CompletionContext<'a> {
                         | ImmediateLocation::ModDeclaration(_)
                         | ImmediateLocation::RecordPat(_)
                         | ImmediateLocation::RecordExpr(_)
+                        | ImmediateLocation::Rename
                 )
             )
     }
