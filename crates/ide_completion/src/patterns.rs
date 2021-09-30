@@ -32,6 +32,7 @@ pub(crate) enum ImmediatePrevSibling {
 pub(crate) enum ImmediateLocation {
     Use,
     UseTree,
+    Rename,
     Impl,
     Trait,
     RecordField,
@@ -201,6 +202,7 @@ pub(crate) fn determine_location(
             ast::Use(_it) => ImmediateLocation::Use,
             ast::UseTree(_it) => ImmediateLocation::UseTree,
             ast::UseTreeList(_it) => ImmediateLocation::UseTree,
+            ast::Rename(_it) => ImmediateLocation::Rename,
             ast::StmtList(_it) => ImmediateLocation::StmtList,
             ast::SourceFile(_it) => ImmediateLocation::ItemList,
             ast::ItemList(_it) => ImmediateLocation::ItemList,
