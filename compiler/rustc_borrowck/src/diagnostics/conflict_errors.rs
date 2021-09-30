@@ -10,8 +10,7 @@ use rustc_middle::mir::{
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
 use rustc_middle::ty::{self, suggest_constraining_type_param, Ty};
-use rustc_mir_dataflow::drop_flag_effects;
-use rustc_mir_dataflow::move_paths::{MoveOutIndex, MovePathIndex};
+use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, MultiSpan, Span, DUMMY_SP};
@@ -1531,25 +1530,45 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
 
+        let mut mpis = vec![mpi];
+        let move_paths = &self.move_data.move_paths;
+        mpis.extend(move_paths[mpi].parents(move_paths).map(|(mpi, _)| mpi));
+
         let mut stack = Vec::new();
-        stack.extend(predecessor_locations(self.body, location).map(|predecessor| {
-            let is_back_edge = location.dominates(predecessor, &self.dominators);
-            (predecessor, is_back_edge)
-        }));
+        let mut back_edge_stack = Vec::new();
+
+        predecessor_locations(self.body, location).for_each(|predecessor| {
+            if location.dominates(predecessor, &self.dominators) {
+                back_edge_stack.push(predecessor)
+            } else {
+                stack.push(predecessor);
+            }
+        });
+
+        let mut reached_start = false;
+
+        /* Check if the mpi is initialized as an argument */
+        let mut is_argument = false;
+        for arg in self.body.args_iter() {
+            let path = self.move_data.rev_lookup.find_local(arg);
+            if mpis.contains(&path) {
+                is_argument = true;
+            }
+        }
 
         let mut visited = FxHashSet::default();
         let mut move_locations = FxHashSet::default();
         let mut reinits = vec![];
         let mut result = vec![];
 
-        'dfs: while let Some((location, is_back_edge)) = stack.pop() {
+        let mut dfs_iter = |result: &mut Vec<MoveSite>, location: Location, is_back_edge: bool| {
             debug!(
                 "report_use_of_moved_or_uninitialized: (current_location={:?}, back_edge={})",
                 location, is_back_edge
             );
 
             if !visited.insert(location) {
-                continue;
+                return true;
             }
 
             // check for moves
@@ -1568,10 +1587,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // worry about the other case: that is, if there is a move of a.b.c, it is already
                 // marked as a move of a.b and a as well, so we will generate the correct errors
                 // there.
-                let mut mpis = vec![mpi];
-                let move_paths = &self.move_data.move_paths;
-                mpis.extend(move_paths[mpi].parents(move_paths).map(|(mpi, _)| mpi));
-
                 for moi in &self.move_data.loc_map[location] {
                     debug!("report_use_of_moved_or_uninitialized: moi={:?}", moi);
                     let path = self.move_data.moves[*moi].path;
@@ -1599,33 +1614,70 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         // Because we stop the DFS here, we only highlight `let c = a`,
                         // and not `let b = a`. We will of course also report an error at
                         // `let c = a` which highlights `let b = a` as the move.
-                        continue 'dfs;
+                        return true;
                     }
                 }
             }
 
             // check for inits
             let mut any_match = false;
-            drop_flag_effects::for_location_inits(
-                self.infcx.tcx,
-                &self.body,
-                self.move_data,
-                location,
-                |m| {
-                    if m == mpi {
-                        any_match = true;
+            for ii in &self.move_data.init_loc_map[location] {
+                let init = self.move_data.inits[*ii];
+                match init.kind {
+                    InitKind::Deep | InitKind::NonPanicPathOnly => {
+                        if mpis.contains(&init.path) {
+                            any_match = true;
+                        }
                     }
-                },
-            );
+                    InitKind::Shallow => {
+                        if mpi == init.path {
+                            any_match = true;
+                        }
+                    }
+                }
+            }
             if any_match {
                 reinits.push(location);
-                continue 'dfs;
+                return true;
+            }
+            return false;
+        };
+
+        while let Some(location) = stack.pop() {
+            if dfs_iter(&mut result, location, false) {
+                continue;
             }
 
-            stack.extend(predecessor_locations(self.body, location).map(|predecessor| {
-                let back_edge = location.dominates(predecessor, &self.dominators);
-                (predecessor, is_back_edge || back_edge)
-            }));
+            let mut has_predecessor = false;
+            predecessor_locations(self.body, location).for_each(|predecessor| {
+                if location.dominates(predecessor, &self.dominators) {
+                    back_edge_stack.push(predecessor)
+                } else {
+                    stack.push(predecessor);
+                }
+                has_predecessor = true;
+            });
+
+            if !has_predecessor {
+                reached_start = true;
+            }
+        }
+        if (is_argument || !reached_start) && result.is_empty() {
+            /* Process back edges (moves in future loop iterations) only if
+               the move path is definitely initialized upon loop entry,
+               to avoid spurious "in previous iteration" errors.
+               During DFS, if there's a path from the error back to the start
+               of the function with no intervening init or move, then the
+               move path may be uninitialized at loop entry.
+            */
+            while let Some(location) = back_edge_stack.pop() {
+                if dfs_iter(&mut result, location, true) {
+                    continue;
+                }
+
+                predecessor_locations(self.body, location)
+                    .for_each(|predecessor| back_edge_stack.push(predecessor));
+            }
         }
 
         // Check if we can reach these reinits from a move location.
