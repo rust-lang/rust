@@ -529,23 +529,24 @@ fn semantic_token_type_and_modifiers(
 
     for modifier in highlight.mods.iter() {
         let modifier = match modifier {
+            HlMod::Associated => continue,
+            HlMod::Async => semantic_tokens::ASYNC,
             HlMod::Attribute => semantic_tokens::ATTRIBUTE_MODIFIER,
+            HlMod::Callable => semantic_tokens::CALLABLE,
+            HlMod::Consuming => semantic_tokens::CONSUMING,
+            HlMod::ControlFlow => semantic_tokens::CONTROL_FLOW,
+            HlMod::DefaultLibrary => semantic_tokens::DEFAULT_LIBRARY,
             HlMod::Definition => lsp_types::SemanticTokenModifier::DECLARATION,
             HlMod::Documentation => lsp_types::SemanticTokenModifier::DOCUMENTATION,
             HlMod::Injected => semantic_tokens::INJECTED,
-            HlMod::ControlFlow => semantic_tokens::CONTROL_FLOW,
-            HlMod::Mutable => semantic_tokens::MUTABLE,
-            HlMod::Reference => semantic_tokens::REFERENCE,
-            HlMod::Consuming => semantic_tokens::CONSUMING,
-            HlMod::Async => semantic_tokens::ASYNC,
-            HlMod::Library => semantic_tokens::LIBRARY,
-            HlMod::Public => semantic_tokens::PUBLIC,
-            HlMod::Unsafe => semantic_tokens::UNSAFE,
-            HlMod::Callable => semantic_tokens::CALLABLE,
-            HlMod::Static => lsp_types::SemanticTokenModifier::STATIC,
             HlMod::IntraDocLink => semantic_tokens::INTRA_DOC_LINK,
+            HlMod::Library => semantic_tokens::LIBRARY,
+            HlMod::Mutable => semantic_tokens::MUTABLE,
+            HlMod::Public => semantic_tokens::PUBLIC,
+            HlMod::Reference => semantic_tokens::REFERENCE,
+            HlMod::Static => lsp_types::SemanticTokenModifier::STATIC,
             HlMod::Trait => semantic_tokens::TRAIT_MODIFIER,
-            HlMod::Associated => continue,
+            HlMod::Unsafe => semantic_tokens::UNSAFE,
         };
         mods |= modifier;
     }

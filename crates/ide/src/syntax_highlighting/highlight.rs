@@ -3,7 +3,7 @@
 use hir::{AsAssocItem, HasVisibility, Semantics};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
-    helpers::try_resolve_derive_input_at,
+    helpers::{try_resolve_derive_input_at, FamousDefs},
     RootDatabase, SymbolKind,
 };
 use rustc_hash::FxHashMap;
@@ -25,7 +25,6 @@ pub(super) fn element(
     syntactic_name_ref_highlighting: bool,
     element: SyntaxElement,
 ) -> Option<(Highlight, Option<u64>)> {
-    let db = sema.db;
     let mut binding_hash = None;
     let highlight: Highlight = match element.kind() {
         FN => {
@@ -79,10 +78,10 @@ pub(super) fn element(
 
             match NameClass::classify_lifetime(sema, &lifetime) {
                 Some(NameClass::Definition(def)) => {
-                    highlight_def(db, krate, def) | HlMod::Definition
+                    highlight_def(sema, krate, def) | HlMod::Definition
                 }
                 None => match NameRefClass::classify_lifetime(sema, &lifetime) {
-                    Some(NameRefClass::Definition(def)) => highlight_def(db, krate, def),
+                    Some(NameRefClass::Definition(def)) => highlight_def(sema, krate, def),
                     _ => SymbolKind::LifetimeParam.into(),
                 },
                 _ => Highlight::from(SymbolKind::LifetimeParam) | HlMod::Definition,
@@ -93,7 +92,7 @@ pub(super) fn element(
                 element.ancestors().nth(2).and_then(ast::Attr::cast).zip(element.as_token())
             {
                 match try_resolve_derive_input_at(sema, &attr, token) {
-                    Some(makro) => highlight_def(sema.db, krate, Definition::Macro(makro)),
+                    Some(makro) => highlight_def(sema, krate, Definition::Macro(makro)),
                     None => HlTag::None.into(),
                 }
             } else {
@@ -275,7 +274,7 @@ fn highlight_name_ref(
                     }
                 };
 
-                let mut h = highlight_def(db, krate, def);
+                let mut h = highlight_def(sema, krate, def);
 
                 match def {
                     Definition::Local(local)
@@ -334,7 +333,7 @@ fn highlight_name(
     };
     match name_kind {
         Some(NameClass::Definition(def)) => {
-            let mut h = highlight_def(db, krate, def) | HlMod::Definition;
+            let mut h = highlight_def(sema, krate, def) | HlMod::Definition;
             if let Definition::ModuleDef(hir::ModuleDef::Trait(trait_)) = &def {
                 if trait_.is_unsafe(db) {
                     h |= HlMod::Unsafe;
@@ -342,7 +341,7 @@ fn highlight_name(
             }
             h
         }
-        Some(NameClass::ConstReference(def)) => highlight_def(db, krate, def),
+        Some(NameClass::ConstReference(def)) => highlight_def(sema, krate, def),
         Some(NameClass::PatFieldShorthand { field_ref, .. }) => {
             let mut h = HlTag::Symbol(SymbolKind::Field).into();
             if let hir::VariantDef::Union(_) = field_ref.parent_def(db) {
@@ -366,7 +365,12 @@ fn calc_binding_hash(name: &hir::Name, shadow_count: u32) -> u64 {
     hash((name, shadow_count))
 }
 
-fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) -> Highlight {
+fn highlight_def(
+    sema: &Semantics<RootDatabase>,
+    krate: Option<hir::Crate>,
+    def: Definition,
+) -> Highlight {
+    let db = sema.db;
     let mut h = match def {
         Definition::Macro(_) => Highlight::new(HlTag::Symbol(SymbolKind::Macro)),
         Definition::Field(_) => Highlight::new(HlTag::Symbol(SymbolKind::Field)),
@@ -504,7 +508,14 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
         Definition::Label(_) => Highlight::new(HlTag::Symbol(SymbolKind::Label)),
     };
 
-    let is_from_other_crate = def.module(db).map(hir::Module::krate) != krate;
+    let famous_defs = FamousDefs(&sema, krate);
+    let def_crate = def.module(db).map(hir::Module::krate).or_else(|| match def {
+        Definition::ModuleDef(hir::ModuleDef::Module(module)) => Some(module.krate()),
+        _ => None,
+    });
+    let is_from_other_crate = def_crate != krate;
+    let is_from_builtin_crate =
+        def_crate.map_or(false, |it| famous_defs.builtin_crates().contains(&it));
     let is_builtin_type = matches!(def, Definition::ModuleDef(hir::ModuleDef::BuiltinType(_)));
     let is_public = def.visibility(db) == Some(hir::Visibility::Public);
 
@@ -512,6 +523,10 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
         (true, false, _) => h |= HlMod::Library,
         (false, _, true) => h |= HlMod::Public,
         _ => {}
+    }
+
+    if is_from_builtin_crate {
+        h |= HlMod::DefaultLibrary;
     }
 
     h
@@ -546,13 +561,20 @@ fn highlight_method_call(
         h |= HlMod::Trait;
     }
 
-    let is_from_other_crate = Some(func.module(sema.db).krate()) != krate;
+    let famous_defs = FamousDefs(&sema, krate);
+    let def_crate = func.module(sema.db).krate();
+    let is_from_other_crate = Some(def_crate) != krate;
+    let is_from_builtin_crate = famous_defs.builtin_crates().contains(&def_crate);
     let is_public = func.visibility(sema.db) == hir::Visibility::Public;
 
     if is_from_other_crate {
         h |= HlMod::Library;
     } else if is_public {
         h |= HlMod::Public;
+    }
+
+    if is_from_builtin_crate {
+        h |= HlMod::DefaultLibrary;
     }
 
     if let Some(self_param) = func.self_param(sema.db) {
