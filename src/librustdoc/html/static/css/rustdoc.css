@@ -110,7 +110,6 @@ body {
 	font: 16px/1.4 "Source Serif 4", "Noto Sans KR", serif;
 	margin: 0;
 	position: relative;
-	padding: 10px 15px 20px 15px;
 
 	-webkit-font-feature-settings: "kern", "liga";
 	-moz-font-feature-settings: "kern", "liga";
@@ -236,6 +235,25 @@ textarea {
 
 /* end tweaks for normalize.css 8 */
 
+.rustdoc {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+}
+
+main {
+	position: relative;
+	flex-grow: 1;
+	padding: 10px 15px 40px 45px;
+	height: 100vh;
+	overflow-y: auto;
+}
+
+.main-inner {
+	max-width: 960px;
+	margin-right: auto;
+}
+
 details:not(.rustdoc-toggle) summary {
 	margin-bottom: .6em;
 }
@@ -283,10 +301,8 @@ nav.sub {
 
 .sidebar {
 	width: 200px;
-	position: fixed;
-	left: 0;
-	top: 0;
-	bottom: 0;
+	min-width: 200px;
+	height: 100vh;
 	overflow: auto;
 }
 
@@ -311,10 +327,6 @@ nav.sub {
 
 .sidebar .block > ul > li {
 	margin-right: -10px;
-}
-
-.content, nav {
-	max-width: 960px;
 }
 
 /* Everything else */
@@ -420,10 +432,6 @@ nav.sub {
 	display: none;
 }
 
-.content {
-	padding: 15px 0;
-}
-
 .source .content pre.rust {
 	white-space: pre;
 	overflow: auto;
@@ -463,7 +471,6 @@ nav.sub {
 }
 
 #search {
-	margin-left: 230px;
 	position: relative;
 }
 
@@ -691,7 +698,7 @@ nav.sub {
 nav:not(.sidebar) {
 	border-bottom: 1px solid;
 	padding-bottom: 10px;
-	margin-bottom: 10px;
+	margin-bottom: 25px;
 }
 nav.main {
 	padding: 20px 0;
@@ -709,10 +716,6 @@ nav.main .separator {
 }
 nav.sum { text-align: right; }
 nav.sub form { display: inline; }
-
-nav.sub, .content {
-	margin-left: 230px;
-}
 
 a {
 	text-decoration: none;
@@ -1340,7 +1343,7 @@ pre.rust {
 
 .theme-picker {
 	position: absolute;
-	left: 211px;
+	left: 11px;
 	top: 19px;
 }
 
@@ -1657,11 +1660,23 @@ details.undocumented[open] > summary::before {
 		padding-top: 0px;
 	}
 
+	main {
+		height: auto;
+		padding-left: 15px;
+		padding-top: 0px;
+		overflow-y: visible;
+	}
+
+	.rustdoc {
+		flex-direction: column;
+	}
+
 	.rustdoc > .sidebar {
+		width: 100%;
 		height: 45px;
 		min-height: 40px;
+		max-height: 45px;
 		margin: 0;
-		margin-left: -15px;
 		padding: 0 15px;
 		position: static;
 		z-index: 11;
@@ -1752,20 +1767,17 @@ details.undocumented[open] > summary::before {
 
 	nav.sub {
 		width: calc(100% - 32px);
-		float: right;
+		margin-left: 32px;
+		margin-bottom: 10px;
 	}
 
 	.content {
 		margin-left: 0px;
 	}
 
-	#main, #search {
-		margin-top: 45px;
-		padding: 0;
-	}
-
 	#search {
 		margin-left: 0;
+		padding: 0;
 	}
 
 	.anchor {
@@ -1774,7 +1786,7 @@ details.undocumented[open] > summary::before {
 
 	.theme-picker {
 		left: 10px;
-		top: 54px;
+		top: 9px;
 		z-index: 1;
 	}
 
@@ -1794,22 +1806,12 @@ details.undocumented[open] > summary::before {
 	}
 
 	.sidebar.mobile {
-		position: fixed;
+		position: sticky;
+		top: 0;
+		left: 0;
 		width: 100%;
 		margin-left: 0;
 		background-color: rgba(0,0,0,0);
-		height: 100%;
-	}
-	/*
-	This allows to prevent the version text to overflow the sidebar title on mobile mode when the
-	sidebar is displayed (after clicking on the "hamburger" button).
-	*/
-	.sidebar.mobile > div.version {
-		overflow: hidden;
-		max-height: 33px;
-	}
-	.sidebar {
-		width: calc(100% + 30px);
 	}
 
 	.show-it, .sidebar-elems:focus-within {
@@ -1922,13 +1924,6 @@ details.undocumented[open] > summary::before {
 @media (max-width: 464px) {
 	#titles, #titles > button {
 		height: 73px;
-	}
-
-	/* This is to prevent the search bar from being underneath the <section>
-	 * element following it.
-	 */
-	#main, #search {
-		margin-top: 100px;
 	}
 
 	#main > table:not(.table-display) td {
