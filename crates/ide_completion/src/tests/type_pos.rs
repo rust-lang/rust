@@ -44,6 +44,7 @@ struct Foo<'lt, T, const C: usize>(f$0);
 "#,
         expect![[r##"
             kw pub(crate)
+            kw pub(super)
             kw pub
             kw self
             kw super
