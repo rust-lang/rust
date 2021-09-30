@@ -93,7 +93,6 @@ define_semantic_token_modifiers![
     (CONSTANT, "constant"),
     (CONSUMING, "consuming"),
     (CONTROL_FLOW, "controlFlow"),
-    (DEFAULT_LIBRARY, "defaultLibrary"),
     (INJECTED, "injected"),
     (INTRA_DOC_LINK, "intraDocLink"),
     (LIBRARY, "library"),
