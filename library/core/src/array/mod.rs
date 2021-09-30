@@ -568,18 +568,17 @@ where
         fn drop(&mut self) {
             debug_assert!(self.initialized <= N);
 
-            let ptr = MaybeUninit::slice_as_mut_ptr(self.array_mut);
-            let initialized_part = crate::ptr::slice_from_raw_parts_mut(ptr, self.initialized);
-
-            // SAFETY: this raw slice will contain only initialized objects.
+            // SAFETY: this slice will contain only initialized objects.
             unsafe {
-                crate::ptr::drop_in_place(initialized_part);
+                crate::ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(
+                    &mut self.array_mut.get_unchecked_mut(..self.initialized),
+                ));
             }
         }
     }
 
     let mut array = MaybeUninit::uninit_array::<N>();
-    let mut guard: Guard<'_, _, N> = Guard { array_mut: &mut array, initialized: 0 };
+    let mut guard = Guard { array_mut: &mut array, initialized: 0 };
 
     while let Some(item_rslt) = iter.next() {
         let item = match item_rslt {
