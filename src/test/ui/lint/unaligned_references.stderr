@@ -47,7 +47,7 @@ error: reference to packed field is unaligned
   --> $DIR/unaligned_references.rs:32:17
    |
 LL |         let _ = good.data.clone();
-   |                 ^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>

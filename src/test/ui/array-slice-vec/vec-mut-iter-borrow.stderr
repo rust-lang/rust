@@ -7,7 +7,7 @@ LL |     for x in &mut xs {
    |              first mutable borrow occurs here
    |              first borrow later used here
 LL |         xs.push(1)
-   |         ^^ second mutable borrow occurs here
+   |         ^^^^^^^^^^ second mutable borrow occurs here
 
 error: aborting due to previous error
 

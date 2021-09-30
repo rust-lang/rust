@@ -6,7 +6,7 @@ LL |     let ref y = a;
 LL |     bar(a);
    |         ^ mutable borrow occurs here
 LL |     y.use_ref();
-   |     - immutable borrow later used here
+   |     ----------- immutable borrow later used here
 
 error: aborting due to previous error
 

@@ -7,7 +7,7 @@ LL |
 LL |     }
    |     - here, drop of `child` needs exclusive access to `*child.raw`, because the type `C<'_>` implements the `Drop` trait
 LL |     members.len();
-   |     ------- borrow later used here
+   |     ------------- borrow later used here
    |
    = note: consider using a `let` binding to create a longer lived value
 

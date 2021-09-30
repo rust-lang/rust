@@ -2,7 +2,7 @@ error[E0597]: `*a` does not live long enough
   --> $DIR/destructor-restrictions.rs:8:10
    |
 LL |         *a.borrow() + 1
-   |          ^---------
+   |          ^^^^^^^^^^
    |          |
    |          borrowed value does not live long enough
    |          a temporary with access to the borrow is created here ...

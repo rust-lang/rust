@@ -56,7 +56,7 @@ error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
 LL | fn deref_mut_method1(x: Own<Point>) {
    |                      - help: consider changing this to be mutable: `mut x`
 LL |     x.set(0, 0);
-   |     ^ cannot borrow as mutable
+   |     ^^^^^^^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:121:5
@@ -64,7 +64,7 @@ error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
 LL | fn deref_extend_mut_method1(x: &Own<Point>) -> &mut isize {
    |                                ----------- help: consider changing this to be a mutable reference: `&mut Own<Point>`
 LL |     x.y_mut()
-   |     ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |     ^^^^^^^^^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:129:6
@@ -72,7 +72,7 @@ error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
 LL | fn assign_method1<'a>(x: Own<Point>) {
    |                       - help: consider changing this to be mutable: `mut x`
 LL |     *x.y_mut() = 3;
-   |      ^ cannot borrow as mutable
+   |      ^^^^^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:133:6
@@ -80,7 +80,7 @@ error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
 LL | fn assign_method2<'a>(x: &'a Own<Point>) {
    |                          -------------- help: consider changing this to be a mutable reference: `&'a mut Own<Point>`
 LL |     *x.y_mut() = 3;
-   |      ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |      ^^^^^^^^^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error: aborting due to 10 previous errors
 

@@ -6,7 +6,7 @@ LL |     let _borrow = &mut value;
 LL |     let _sum = value + 1;
    |                ^^^^^ use of borrowed `value`
 LL |     _borrow.use_mut();
-   |     ------- borrow later used here
+   |     ----------------- borrow later used here
 
 error: aborting due to previous error
 

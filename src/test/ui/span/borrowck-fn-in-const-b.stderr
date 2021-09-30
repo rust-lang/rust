@@ -4,7 +4,7 @@ error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
 LL |     fn broken(x: &Vec<String>) {
    |                  ------------ help: consider changing this to be a mutable reference: `&mut Vec<String>`
 LL |         x.push(format!("this is broken"));
-   |         ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error: aborting due to previous error
 

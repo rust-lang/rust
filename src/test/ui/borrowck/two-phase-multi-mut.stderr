@@ -12,8 +12,9 @@ error[E0499]: cannot borrow `foo` as mutable more than once at a time
   --> $DIR/two-phase-multi-mut.rs:11:16
    |
 LL |     foo.method(&mut foo);
-   |     --- ------ ^^^^^^^^ second mutable borrow occurs here
-   |     |   |
+   |     -----------^^^^^^^^-
+   |     |   |      |
+   |     |   |      second mutable borrow occurs here
    |     |   first borrow later used by call
    |     first mutable borrow occurs here
 

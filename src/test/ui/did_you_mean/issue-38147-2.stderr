@@ -5,7 +5,7 @@ LL |     s: &'a String
    |        ---------- help: consider changing this to be mutable: `&'a mut String`
 ...
 LL |         self.s.push('x');
-   |         ^^^^^^ cannot borrow as mutable
+   |         ^^^^^^^^^^^^^^^^ cannot borrow as mutable
 
 error: aborting due to previous error
 

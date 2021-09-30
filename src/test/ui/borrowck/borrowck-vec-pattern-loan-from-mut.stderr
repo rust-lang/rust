@@ -5,8 +5,9 @@ LL |     let vb: &mut [isize] = &mut v;
    |                            ------ first mutable borrow occurs here
 ...
 LL |             v.push(tail[0] + tail[1]);
-   |             ^      ------- first borrow later used here
-   |             |
+   |             ^^^^^^^-------^^^^^^^^^^^
+   |             |      |
+   |             |      first borrow later used here
    |             second mutable borrow occurs here
 
 error: aborting due to previous error

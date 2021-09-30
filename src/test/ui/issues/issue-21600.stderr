@@ -5,7 +5,7 @@ LL | fn call_it<F>(f: F) where F: Fn() { f(); }
    |                  - change this to accept `FnMut` instead of `Fn`
 ...
 LL |         call_it(|| x.gen_mut());
-   |         -------    ^ cannot borrow as mutable
+   |         -------    ^^^^^^^^^^^ cannot borrow as mutable
    |         |
    |         expects `Fn` instead of `FnMut`
 

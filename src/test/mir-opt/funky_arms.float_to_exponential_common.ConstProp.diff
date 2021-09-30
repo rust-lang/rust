@@ -7,9 +7,9 @@
       debug upper => _3;                   // in scope 0 at $DIR/funky_arms.rs:11:69: 11:74
       let mut _0: std::result::Result<(), std::fmt::Error>; // return place in scope 0 at $DIR/funky_arms.rs:11:85: 11:91
       let _4: bool;                        // in scope 0 at $DIR/funky_arms.rs:15:9: 15:19
-      let mut _5: &std::fmt::Formatter;    // in scope 0 at $DIR/funky_arms.rs:15:22: 15:25
+      let mut _5: &std::fmt::Formatter;    // in scope 0 at $DIR/funky_arms.rs:15:22: 15:37
       let mut _7: std::option::Option<usize>; // in scope 0 at $DIR/funky_arms.rs:24:30: 24:45
-      let mut _8: &std::fmt::Formatter;    // in scope 0 at $DIR/funky_arms.rs:24:30: 24:33
+      let mut _8: &std::fmt::Formatter;    // in scope 0 at $DIR/funky_arms.rs:24:30: 24:45
       let mut _9: isize;                   // in scope 0 at $DIR/funky_arms.rs:24:12: 24:27
       let mut _11: &mut std::fmt::Formatter; // in scope 0 at $DIR/funky_arms.rs:26:43: 26:46
       let mut _12: &T;                     // in scope 0 at $DIR/funky_arms.rs:26:48: 26:51
@@ -36,8 +36,8 @@
   
       bb0: {
           StorageLive(_4);                 // scope 0 at $DIR/funky_arms.rs:15:9: 15:19
-          StorageLive(_5);                 // scope 0 at $DIR/funky_arms.rs:15:22: 15:25
-          _5 = &(*_1);                     // scope 0 at $DIR/funky_arms.rs:15:22: 15:25
+          StorageLive(_5);                 // scope 0 at $DIR/funky_arms.rs:15:22: 15:37
+          _5 = &(*_1);                     // scope 0 at $DIR/funky_arms.rs:15:22: 15:37
           _4 = Formatter::sign_plus(move _5) -> bb1; // scope 0 at $DIR/funky_arms.rs:15:22: 15:37
                                            // mir::Constant
                                            // + span: $DIR/funky_arms.rs:15:26: 15:35
@@ -62,8 +62,8 @@
   
       bb4: {
           StorageLive(_7);                 // scope 2 at $DIR/funky_arms.rs:24:30: 24:45
-          StorageLive(_8);                 // scope 2 at $DIR/funky_arms.rs:24:30: 24:33
-          _8 = &(*_1);                     // scope 2 at $DIR/funky_arms.rs:24:30: 24:33
+          StorageLive(_8);                 // scope 2 at $DIR/funky_arms.rs:24:30: 24:45
+          _8 = &(*_1);                     // scope 2 at $DIR/funky_arms.rs:24:30: 24:45
           _7 = Formatter::precision(move _8) -> bb5; // scope 2 at $DIR/funky_arms.rs:24:30: 24:45
                                            // mir::Constant
                                            // + span: $DIR/funky_arms.rs:24:34: 24:43

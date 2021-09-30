@@ -7,7 +7,7 @@ LL |     !x;
    |     -- `x` moved due to usage in operator
 LL | 
 LL |     x.clone();
-   |     ^ value borrowed here after move
+   |     ^^^^^^^^^ value borrowed here after move
    |
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL

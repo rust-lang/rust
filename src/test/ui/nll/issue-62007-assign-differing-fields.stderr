@@ -17,7 +17,7 @@ LL | fn to_refs<'a, T>(mut list: (&'a mut List<T>, &'a mut List<T>)) -> Vec<&'a 
    |            -- lifetime `'a` defined here
 ...
 LL |         if let Some(n) = (list.0).next.as_mut() {
-   |                          ^^^^^^^^^^^^^---------
+   |                          ^^^^^^^^^^^^^^^^^^^^^^
    |                          |
    |                          `list.0.next` was mutably borrowed here in the previous iteration of the loop
    |                          argument requires that `list.0.next` is borrowed for `'a`

@@ -5,7 +5,7 @@ LL | fn b(x: &Foo) {
    |         ---- help: consider changing this to be a mutable reference: `&mut Foo`
 LL |     x.f();
 LL |     x.h();
-   |     ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |     ^^^^^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error: aborting due to previous error
 

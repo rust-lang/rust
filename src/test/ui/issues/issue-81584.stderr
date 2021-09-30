@@ -2,7 +2,7 @@ error[E0515]: cannot return value referencing function parameter `y`
   --> $DIR/issue-81584.rs:5:22
    |
 LL |             .map(|y| y.iter().map(|x| x + 1))
-   |                      -^^^^^^^^^^^^^^^^^^^^^^
+   |                      --------^^^^^^^^^^^^^^^
    |                      |
    |                      returns a value referencing data owned by the current function
    |                      `y` is borrowed here

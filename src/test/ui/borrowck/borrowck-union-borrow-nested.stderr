@@ -6,7 +6,7 @@ LL |             let ra = &mut u.s.a;
 LL |             let b = u.c;
    |                     ^^^ use of borrowed `u.s.a`
 LL |             ra.use_mut();
-   |             -- borrow later used here
+   |             ------------ borrow later used here
 
 error: aborting due to previous error
 

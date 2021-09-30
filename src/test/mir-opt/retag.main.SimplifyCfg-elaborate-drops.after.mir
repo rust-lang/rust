@@ -4,7 +4,7 @@ fn main() -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/retag.rs:29:11: 29:11
     let mut _1: i32;                     // in scope 0 at $DIR/retag.rs:30:9: 30:14
     let _2: ();                          // in scope 0 at $DIR/retag.rs:31:5: 37:6
-    let mut _4: &Test;                   // in scope 0 at $DIR/retag.rs:32:17: 32:24
+    let mut _4: &Test;                   // in scope 0 at $DIR/retag.rs:32:17: 32:36
     let _5: Test;                        // in scope 0 at $DIR/retag.rs:32:17: 32:24
     let mut _6: &mut i32;                // in scope 0 at $DIR/retag.rs:32:29: 32:35
     let mut _7: &mut i32;                // in scope 0 at $DIR/retag.rs:32:29: 32:35
@@ -15,7 +15,7 @@ fn main() -> () {
     let mut _17: &i32;                   // in scope 0 at $DIR/retag.rs:44:16: 44:18
     let _18: &i32;                       // in scope 0 at $DIR/retag.rs:44:16: 44:18
     let _19: &i32;                       // in scope 0 at $DIR/retag.rs:47:5: 47:24
-    let mut _20: &Test;                  // in scope 0 at $DIR/retag.rs:47:5: 47:12
+    let mut _20: &Test;                  // in scope 0 at $DIR/retag.rs:47:5: 47:24
     let _21: Test;                       // in scope 0 at $DIR/retag.rs:47:5: 47:12
     let mut _22: &i32;                   // in scope 0 at $DIR/retag.rs:47:21: 47:23
     let _23: &i32;                       // in scope 0 at $DIR/retag.rs:47:21: 47:23
@@ -60,11 +60,11 @@ fn main() -> () {
         _1 = const 0_i32;                // scope 0 at $DIR/retag.rs:30:17: 30:18
         StorageLive(_2);                 // scope 1 at $DIR/retag.rs:31:5: 37:6
         StorageLive(_3);                 // scope 1 at $DIR/retag.rs:32:13: 32:14
-        StorageLive(_4);                 // scope 1 at $DIR/retag.rs:32:17: 32:24
+        StorageLive(_4);                 // scope 1 at $DIR/retag.rs:32:17: 32:36
         StorageLive(_5);                 // scope 1 at $DIR/retag.rs:32:17: 32:24
         _5 = Test(const 0_i32);          // scope 1 at $DIR/retag.rs:32:17: 32:24
-        _4 = &_5;                        // scope 1 at $DIR/retag.rs:32:17: 32:24
-        Retag(_4);                       // scope 1 at $DIR/retag.rs:32:17: 32:24
+        _4 = &_5;                        // scope 1 at $DIR/retag.rs:32:17: 32:36
+        Retag(_4);                       // scope 1 at $DIR/retag.rs:32:17: 32:36
         StorageLive(_6);                 // scope 1 at $DIR/retag.rs:32:29: 32:35
         StorageLive(_7);                 // scope 1 at $DIR/retag.rs:32:29: 32:35
         _7 = &mut _1;                    // scope 1 at $DIR/retag.rs:32:29: 32:35
@@ -140,11 +140,11 @@ fn main() -> () {
         StorageDead(_16);                // scope 6 at $DIR/retag.rs:44:18: 44:19
         StorageDead(_18);                // scope 6 at $DIR/retag.rs:44:19: 44:20
         StorageLive(_19);                // scope 7 at $DIR/retag.rs:47:5: 47:24
-        StorageLive(_20);                // scope 7 at $DIR/retag.rs:47:5: 47:12
+        StorageLive(_20);                // scope 7 at $DIR/retag.rs:47:5: 47:24
         StorageLive(_21);                // scope 7 at $DIR/retag.rs:47:5: 47:12
         _21 = Test(const 0_i32);         // scope 7 at $DIR/retag.rs:47:5: 47:12
-        _20 = &_21;                      // scope 7 at $DIR/retag.rs:47:5: 47:12
-        Retag(_20);                      // scope 7 at $DIR/retag.rs:47:5: 47:12
+        _20 = &_21;                      // scope 7 at $DIR/retag.rs:47:5: 47:24
+        Retag(_20);                      // scope 7 at $DIR/retag.rs:47:5: 47:24
         StorageLive(_22);                // scope 7 at $DIR/retag.rs:47:21: 47:23
         StorageLive(_23);                // scope 7 at $DIR/retag.rs:47:21: 47:23
         _28 = const main::promoted[0];   // scope 7 at $DIR/retag.rs:47:21: 47:23

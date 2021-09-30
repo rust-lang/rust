@@ -8,7 +8,7 @@ LL |     l.push(n);
    |            - value moved here
 LL | 
 LL |     let x = n.to_string();
-   |             ^ value borrowed here after move
+   |             ^^^^^^^^^^^^^ value borrowed here after move
 
 error: aborting due to previous error
 

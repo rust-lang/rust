@@ -5,8 +5,9 @@ LL |         let shared = &v;
    |                      -- immutable borrow occurs here
 LL | 
 LL |         v.push(shared.len());
-   |         ^      ------ immutable borrow later used here
-   |         |
+   |         ^^^^^^^------------^
+   |         |      |
+   |         |      immutable borrow later used here
    |         mutable borrow occurs here
 
 error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immutable
@@ -16,8 +17,9 @@ LL |         let shared = &v;
    |                      -- immutable borrow occurs here
 LL | 
 LL |         v.push(shared.len());
-   |         ^      ------ immutable borrow later used here
-   |         |
+   |         ^^^^^^^------------^
+   |         |      |
+   |         |      immutable borrow later used here
    |         mutable borrow occurs here
 
 error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immutable
@@ -27,8 +29,9 @@ LL |         let shared = &v;
    |                      -- immutable borrow occurs here
 LL | 
 LL |         v.push(shared.len());
-   |         ^      ------ immutable borrow later used here
-   |         |
+   |         ^^^^^^^------------^
+   |         |      |
+   |         |      immutable borrow later used here
    |         mutable borrow occurs here
 
 error: aborting due to 3 previous errors

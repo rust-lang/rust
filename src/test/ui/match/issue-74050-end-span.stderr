@@ -5,7 +5,7 @@ LL |     let _arg = match args.next() {
    |         ---- borrow later stored here
 LL |         Some(arg) => {
 LL |             match arg.to_str() {
-   |                   ^^^ borrowed value does not live long enough
+   |                   ^^^^^^^^^^^^ borrowed value does not live long enough
 ...
 LL |         }
    |         - `arg` dropped here while still borrowed

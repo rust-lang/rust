@@ -9,6 +9,7 @@ use rustc_ast as ast;
 use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::HirId;
 use rustc_hir::Node;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
@@ -46,6 +47,14 @@ struct Cx<'tcx> {
     crate region_scope_tree: &'tcx region::ScopeTree,
     crate typeck_results: &'tcx ty::TypeckResults<'tcx>,
 
+    /// When applying adjustments to the expression
+    /// with the given `HirId`, use the given `Span`,
+    /// instead of the usual span. This is used to
+    /// assign the span of an overall method call
+    /// (e.g. `my_val.foo()`) to the adjustment expressions
+    /// for the receiver.
+    adjustment_span: Option<(HirId, Span)>,
+
     /// The `DefId` of the owner of this body.
     body_owner: DefId,
 }
@@ -60,6 +69,7 @@ impl<'tcx> Cx<'tcx> {
             region_scope_tree: tcx.region_scope_tree(def.did),
             typeck_results,
             body_owner: def.did.to_def_id(),
+            adjustment_span: None,
         }
     }
 

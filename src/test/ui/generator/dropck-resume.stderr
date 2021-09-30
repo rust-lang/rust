@@ -5,7 +5,7 @@ LL |     let z = &mut y;
    |             ------ mutable borrow occurs here
 ...
 LL |         r = y.as_ref().unwrap();
-   |             ^ immutable borrow occurs here
+   |             ^^^^^^^^^^ immutable borrow occurs here
 LL |
 LL |     }
    |     - mutable borrow might be used here, when `g` is dropped and runs the destructor for generator

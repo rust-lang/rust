@@ -7,7 +7,7 @@ LL |     while x < 10 {
    |           ^ use of borrowed `x`
 LL |         let mut z = x;
 LL |         _y.push(&mut z);
-   |         -- borrow later used here
+   |         --------------- borrow later used here
 
 error[E0503]: cannot use `x` because it was mutably borrowed
   --> $DIR/regions-escape-loop-via-vec.rs:6:21
@@ -18,14 +18,15 @@ LL |     while x < 10 {
 LL |         let mut z = x;
    |                     ^ use of borrowed `x`
 LL |         _y.push(&mut z);
-   |         -- borrow later used here
+   |         --------------- borrow later used here
 
 error[E0597]: `z` does not live long enough
   --> $DIR/regions-escape-loop-via-vec.rs:7:17
    |
 LL |         _y.push(&mut z);
-   |         --      ^^^^^^ borrowed value does not live long enough
-   |         |
+   |         --------^^^^^^-
+   |         |       |
+   |         |       borrowed value does not live long enough
    |         borrow later used here
 ...
 LL |     }
@@ -38,7 +39,7 @@ LL |     let mut _y = vec![&mut x];
    |                       ------ borrow of `x` occurs here
 ...
 LL |         _y.push(&mut z);
-   |         -- borrow later used here
+   |         --------------- borrow later used here
 LL |
 LL |         x += 1;
    |         ^^^^^^ use of borrowed `x`

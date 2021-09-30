@@ -32,7 +32,7 @@ LL |         v4.push(&id('y'));
    |                  creates a temporary which is freed while still in use
 ...
 LL |         v4.use_ref();
-   |         -- borrow later used here
+   |         ------------ borrow later used here
    |
    = note: consider using a `let` binding to create a longer lived value
 

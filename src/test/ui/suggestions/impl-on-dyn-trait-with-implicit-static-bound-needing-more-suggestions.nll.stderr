@@ -4,7 +4,7 @@ error[E0597]: `val` does not live long enough
 LL |     fn use_it<'a>(val: Box<dyn ObjectTrait<Assoc = i32>>) -> impl OtherTrait<'a> {
    |               -- lifetime `'a` defined here                  ------------------- opaque type requires that `val` is borrowed for `'a`
 LL |         val.use_self()
-   |         ^^^ borrowed value does not live long enough
+   |         ^^^^^^^^^^^^^^ borrowed value does not live long enough
 LL |     }
    |     - `val` dropped here while still borrowed
    |
@@ -13,23 +13,17 @@ help: you can add a bound to the opaque type to make it last less than `'static`
 LL |     fn use_it<'a>(val: Box<dyn ObjectTrait<Assoc = i32>>) -> impl OtherTrait<'a> + 'a {
    |                                                                                  ++++
 
-error[E0515]: cannot return value referencing function parameter `val`
+error[E0515]: cannot return reference to function parameter `val`
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:43:9
    |
 LL |         val.use_self()
-   |         ---^^^^^^^^^^^
-   |         |
-   |         returns a value referencing data owned by the current function
-   |         `val` is borrowed here
+   |         ^^^^^^^^^^^^^^ returns a reference to data owned by the current function
 
-error[E0515]: cannot return value referencing function parameter `val`
+error[E0515]: cannot return reference to function parameter `val`
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:109:9
    |
 LL |         val.use_self()
-   |         ---^^^^^^^^^^^
-   |         |
-   |         returns a value referencing data owned by the current function
-   |         `val` is borrowed here
+   |         ^^^^^^^^^^^^^^ returns a reference to data owned by the current function
 
 error: aborting due to 3 previous errors
 

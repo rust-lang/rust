@@ -5,8 +5,9 @@ LL |         let shared = &v;
    |                      -- immutable borrow occurs here
 LL | 
 LL |         v.push(shared.len());
-   |         ^      ------ immutable borrow later used here
-   |         |
+   |         ^^^^^^^------------^
+   |         |      |
+   |         |      immutable borrow later used here
    |         mutable borrow occurs here
    |
 note: the lint level is defined here
@@ -24,8 +25,9 @@ LL |         let shared = &v;
    |                      -- immutable borrow occurs here
 LL | 
 LL |         v.push(shared.len());
-   |         ^      ------ immutable borrow later used here
-   |         |
+   |         ^^^^^^^------------^
+   |         |      |
+   |         |      immutable borrow later used here
    |         mutable borrow occurs here
    |
 note: the lint level is defined here

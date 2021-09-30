@@ -3,11 +3,11 @@
 fn test(_1: &dyn X) -> u32 {
     debug x => _1;                       // in scope 0 at $DIR/inline-trait-method.rs:8:9: 8:10
     let mut _0: u32;                     // return place in scope 0 at $DIR/inline-trait-method.rs:8:23: 8:26
-    let mut _2: &dyn X;                  // in scope 0 at $DIR/inline-trait-method.rs:9:5: 9:6
+    let mut _2: &dyn X;                  // in scope 0 at $DIR/inline-trait-method.rs:9:5: 9:10
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/inline-trait-method.rs:9:5: 9:6
-        _2 = &(*_1);                     // scope 0 at $DIR/inline-trait-method.rs:9:5: 9:6
+        StorageLive(_2);                 // scope 0 at $DIR/inline-trait-method.rs:9:5: 9:10
+        _2 = &(*_1);                     // scope 0 at $DIR/inline-trait-method.rs:9:5: 9:10
         _0 = <dyn X as X>::y(move _2) -> bb1; // scope 0 at $DIR/inline-trait-method.rs:9:5: 9:10
                                          // mir::Constant
                                          // + span: $DIR/inline-trait-method.rs:9:7: 9:8

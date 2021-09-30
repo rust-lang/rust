@@ -7,7 +7,7 @@ LL |     a.b = B;
 LL |     foo(a);
    |         - value moved here
 LL |     a.b.clone()
-   |     ^^^ value borrowed here after move
+   |     ^^^^^^^^^^^ value borrowed here after move
 
 error: aborting due to previous error
 

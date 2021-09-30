@@ -7,7 +7,7 @@ LL |     match heap.peek_mut() {
    |           first mutable borrow occurs here
    |           a temporary with access to the first borrow is created here ...
 LL |         Some(_) => { heap.pop(); },
-   |                      ^^^^ second mutable borrow occurs here
+   |                      ^^^^^^^^^^ second mutable borrow occurs here
 ...
 LL | }
    | - ... and the first borrow might be used here, when that temporary is dropped and runs the destructor for type `Option<PeekMut<'_, i32>>`
