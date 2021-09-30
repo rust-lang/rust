@@ -14,7 +14,7 @@ pub fn target() -> Target {
         linker: Some("rust-lld".to_owned()),
         features: "+strict-align,+neon,+fp-armv8".to_string(),
         executables: true,
-        relocation_model: RelocModel::Static,
+        relocation_model: RelocModel::Pic,
         disable_redzone: true,
         max_atomic_width: Some(128),
         panic_strategy: PanicStrategy::Abort,
