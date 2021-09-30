@@ -1940,7 +1940,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             //
             // And that's what happens below - we're just mixing both messages
             // into a single one.
-            let mut parent_err = this.r.into_struct_error(parent_err.span, parent_err.node);
+            let mut parent_err = parent_err.node.into_struct_error(this.r, parent_err.span);
 
             parent_err.cancel();
 

@@ -102,7 +102,7 @@ impl<'a> Resolver<'a> {
     /// This takes the error provided, combines it with the span and any additional spans inside the
     /// error and emits it.
     crate fn report_error(&self, span: Span, resolution_error: ResolutionError<'_>) {
-        self.into_struct_error(span, resolution_error).emit();
+        resolution_error.into_struct_error(self, span).emit();
     }
 
     crate fn into_struct_error(
@@ -610,7 +610,7 @@ impl<'a> Resolver<'a> {
                 "visibilities can only be restricted to ancestor modules"
             ),
             VisResolutionError::FailedToResolve(span, label, suggestion) => {
-                self.into_struct_error(span, ResolutionError::FailedToResolve { label, suggestion })
+                ResolutionError::FailedToResolve { label, suggestion }.into_struct_error(self, span)
             }
             VisResolutionError::ExpectedFound(span, path_str, res) => {
                 let mut err = struct_span_err!(

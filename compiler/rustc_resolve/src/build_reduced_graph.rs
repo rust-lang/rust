@@ -603,10 +603,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     })
                     .collect::<Vec<_>>();
                 if self_spans.len() > 1 {
-                    let mut e = self.r.into_struct_error(
-                        self_spans[0],
-                        ResolutionError::SelfImportCanOnlyAppearOnceInTheList,
-                    );
+                    let mut e = ResolutionError::SelfImportCanOnlyAppearOnceInTheList
+                        .into_struct_error(self.r, self_spans[0]);
 
                     for other_span in self_spans.iter().skip(1) {
                         e.span_label(*other_span, "another `self` import appears here");
