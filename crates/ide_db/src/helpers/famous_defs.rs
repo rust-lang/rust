@@ -80,7 +80,7 @@ impl FamousDefs<'_, '_> {
         self.find_crate("proc_macro")
     }
 
-    pub fn builtin_crates(&self) -> Vec<Crate> {
+    pub fn builtin_crates(&self) -> impl Iterator<Item = Crate> {
         IntoIterator::into_iter([
             self.std(),
             self.core(),
@@ -89,7 +89,6 @@ impl FamousDefs<'_, '_> {
             self.proc_macro(),
         ])
         .filter_map(|it| it)
-        .collect()
     }
 
     fn find_trait(&self, path: &str) -> Option<Trait> {
