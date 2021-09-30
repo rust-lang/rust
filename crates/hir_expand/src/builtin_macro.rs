@@ -103,6 +103,7 @@ register_builtin! {
     (assert, Assert) => assert_expand,
     (stringify, Stringify) => stringify_expand,
     (format_args, FormatArgs) => format_args_expand,
+    (const_format_args, ConstFormatArgs) => format_args_expand,
     // format_args_nl only differs in that it adds a newline in the end,
     // so we use the same stub expansion for now
     (format_args_nl, FormatArgsNl) => format_args_expand,

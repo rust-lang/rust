@@ -211,6 +211,7 @@ pub mod known {
         // Builtin macros
         file,
         column,
+        const_format_args,
         compile_error,
         line,
         module_path,
