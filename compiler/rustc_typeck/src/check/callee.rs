@@ -356,6 +356,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
+                let callee_ty = self.resolve_vars_if_possible(callee_ty);
                 let mut err = type_error_struct!(
                     self.tcx.sess,
                     callee_expr.span,
