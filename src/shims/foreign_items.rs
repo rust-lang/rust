@@ -6,6 +6,7 @@ use std::{
 use log::trace;
 
 use rustc_apfloat::Float;
+use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_hir::{
     def::DefKind,
     def_id::{CrateNum, DefId, LOCAL_CRATE},
@@ -27,11 +28,13 @@ use super::backtrace::EvalContextExt as _;
 use crate::*;
 
 /// Returned by `emulate_foreign_item_by_name`.
-pub enum EmulateByNameResult {
+pub enum EmulateByNameResult<'mir, 'tcx> {
     /// The caller is expected to jump to the return block.
     NeedsJumping,
     /// Jumping has already been taken care of.
     AlreadyJumped,
+    /// A MIR body has been found for the function
+    MirBody(&'mir mir::Body<'tcx>),
     /// The item is not supported.
     NotSupported,
 }
@@ -281,6 +284,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.go_to_block(ret);
             }
             EmulateByNameResult::AlreadyJumped => (),
+            EmulateByNameResult::MirBody(mir) => return Ok(Some(mir)),
             EmulateByNameResult::NotSupported => {
                 if let Some(body) = this.lookup_exported_symbol(link_name)? {
                     return Ok(Some(body));
@@ -294,6 +298,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(None)
     }
 
+    /// Emulates calling the internal __rust_* allocator functions
+    fn emulate_allocator(
+        &mut self,
+        symbol: Symbol,
+        default: impl FnOnce(&mut MiriEvalContext<'mir, 'tcx>) -> InterpResult<'tcx>,
+    ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
+        let this = self.eval_context_mut();
+
+        let allocator_kind = if let Some(allocator_kind) = this.tcx.allocator_kind(()) {
+            allocator_kind
+        } else {
+            // in real code, this symbol does not exist without an allocator
+            return Ok(EmulateByNameResult::NotSupported);
+        };
+
+        match allocator_kind {
+            AllocatorKind::Global => {
+                let body = this
+                    .lookup_exported_symbol(symbol)?
+                    .expect("symbol should be present if there is a global allocator");
+
+                Ok(EmulateByNameResult::MirBody(body))
+            }
+            AllocatorKind::Default => {
+                default(this)?;
+                Ok(EmulateByNameResult::NeedsJumping)
+            }
+        }
+    }
+
     /// Emulates calling a foreign item using its name.
     fn emulate_foreign_item_by_name(
         &mut self,
@@ -302,7 +336,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         args: &[OpTy<'tcx, Tag>],
         dest: &PlaceTy<'tcx, Tag>,
         ret: mir::BasicBlock,
-    ) -> InterpResult<'tcx, EmulateByNameResult> {
+    ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
         let this = self.eval_context_mut();
 
         // Here we dispatch all the shims for foreign functions. If you have a platform specific
@@ -362,45 +396,56 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // Rust allocation
-            // (Usually these would be forwarded to to `#[global_allocator]`; we instead implement a generic
-            // allocation that also checks that all conditions are met, such as not permitting zero-sized allocations.)
             "__rust_alloc" => {
                 let &[ref size, ref align] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let size = this.read_scalar(size)?.to_machine_usize(this)?;
                 let align = this.read_scalar(align)?.to_machine_usize(this)?;
-                Self::check_alloc_request(size, align)?;
-                let ptr = this.memory.allocate(
-                    Size::from_bytes(size),
-                    Align::from_bytes(align).unwrap(),
-                    MiriMemoryKind::Rust.into(),
-                )?;
-                this.write_pointer(ptr, dest)?;
+
+                return this.emulate_allocator(Symbol::intern("__rg_alloc"), |this| {
+                    Self::check_alloc_request(size, align)?;
+
+                    let ptr = this.memory.allocate(
+                        Size::from_bytes(size),
+                        Align::from_bytes(align).unwrap(),
+                        MiriMemoryKind::Rust.into(),
+                    )?;
+
+                    this.write_pointer(ptr, dest)
+                });
             }
             "__rust_alloc_zeroed" => {
                 let &[ref size, ref align] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let size = this.read_scalar(size)?.to_machine_usize(this)?;
                 let align = this.read_scalar(align)?.to_machine_usize(this)?;
-                Self::check_alloc_request(size, align)?;
-                let ptr = this.memory.allocate(
-                    Size::from_bytes(size),
-                    Align::from_bytes(align).unwrap(),
-                    MiriMemoryKind::Rust.into(),
-                )?;
-                // We just allocated this, the access is definitely in-bounds.
-                this.memory.write_bytes(ptr.into(), iter::repeat(0u8).take(usize::try_from(size).unwrap())).unwrap();
-                this.write_pointer(ptr, dest)?;
+
+                return this.emulate_allocator(Symbol::intern("__rg_alloc_zeroed"), |this| {
+                    Self::check_alloc_request(size, align)?;
+
+                    let ptr = this.memory.allocate(
+                        Size::from_bytes(size),
+                        Align::from_bytes(align).unwrap(),
+                        MiriMemoryKind::Rust.into(),
+                    )?;
+
+                    // We just allocated this, the access is definitely in-bounds.
+                    this.memory.write_bytes(ptr.into(), iter::repeat(0u8).take(usize::try_from(size).unwrap())).unwrap();
+                    this.write_pointer(ptr, dest)
+                });
             }
             "__rust_dealloc" => {
                 let &[ref ptr, ref old_size, ref align] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
                 let old_size = this.read_scalar(old_size)?.to_machine_usize(this)?;
                 let align = this.read_scalar(align)?.to_machine_usize(this)?;
-                // No need to check old_size/align; we anyway check that they match the allocation.
-                this.memory.deallocate(
-                    ptr,
-                    Some((Size::from_bytes(old_size), Align::from_bytes(align).unwrap())),
-                    MiriMemoryKind::Rust.into(),
-                )?;
+
+                return this.emulate_allocator(Symbol::intern("__rg_dealloc"), |this| {
+                    // No need to check old_size/align; we anyway check that they match the allocation.
+                    this.memory.deallocate(
+                        ptr,
+                        Some((Size::from_bytes(old_size), Align::from_bytes(align).unwrap())),
+                        MiriMemoryKind::Rust.into(),
+                    )
+                });
             }
             "__rust_realloc" => {
                 let &[ref ptr, ref old_size, ref align, ref new_size] = this.check_shim(abi, Abi::Rust, link_name, args)?;
@@ -408,17 +453,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let old_size = this.read_scalar(old_size)?.to_machine_usize(this)?;
                 let align = this.read_scalar(align)?.to_machine_usize(this)?;
                 let new_size = this.read_scalar(new_size)?.to_machine_usize(this)?;
-                Self::check_alloc_request(new_size, align)?;
                 // No need to check old_size; we anyway check that they match the allocation.
-                let align = Align::from_bytes(align).unwrap();
-                let new_ptr = this.memory.reallocate(
-                    ptr,
-                    Some((Size::from_bytes(old_size), align)),
-                    Size::from_bytes(new_size),
-                    align,
-                    MiriMemoryKind::Rust.into(),
-                )?;
-                this.write_pointer(new_ptr, dest)?;
+
+                return this.emulate_allocator(Symbol::intern("__rg_realloc"), |this| {
+                    Self::check_alloc_request(new_size, align)?;
+
+                    let align = Align::from_bytes(align).unwrap();
+                    let new_ptr = this.memory.reallocate(
+                        ptr,
+                        Some((Size::from_bytes(old_size), align)),
+                        Size::from_bytes(new_size),
+                        align,
+                        MiriMemoryKind::Rust.into(),
+                    )?;
+                    this.write_pointer(new_ptr, dest)
+                });
             }
 
             // C memory handling functions
