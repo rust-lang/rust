@@ -44,7 +44,7 @@ pub fn get_fn(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value
 
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
 
-    let llfn = if let Some(llfn) = cx.get_declared_value(&sym) {
+    let llfn = if let Some(llfn) = cx.get_declared_value(sym) {
         // Create a fn pointer with the new signature.
         let llptrty = fn_abi.ptr_to_llvm_type(cx);
 
@@ -79,7 +79,7 @@ pub fn get_fn(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value
             llfn
         }
     } else {
-        let llfn = cx.declare_fn(&sym, &fn_abi);
+        let llfn = cx.declare_fn(sym, fn_abi);
         debug!("get_fn: not casting pointer!");
 
         attributes::from_fn_attrs(cx, llfn, instance);

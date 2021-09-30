@@ -110,7 +110,7 @@ impl<'tcx> Queries<'tcx> {
         &self.compiler.sess
     }
     fn codegen_backend(&self) -> &Lrc<Box<dyn CodegenBackend>> {
-        &self.compiler.codegen_backend()
+        self.compiler.codegen_backend()
     }
 
     fn dep_graph_future(&self) -> Result<&Query<Option<DepGraphFuture>>> {
@@ -181,7 +181,7 @@ impl<'tcx> Queries<'tcx> {
                 &crate_name,
             );
             let krate = resolver.access(|resolver| {
-                passes::configure_and_expand(&sess, &lint_store, krate, &crate_name, resolver)
+                passes::configure_and_expand(sess, &lint_store, krate, &crate_name, resolver)
             })?;
             Ok((Rc::new(krate), Rc::new(RefCell::new(resolver)), lint_store))
         })
@@ -343,7 +343,7 @@ impl Linker {
         let sess = &self.sess;
         let dep_graph = self.dep_graph;
         sess.time("serialize_work_products", || {
-            rustc_incremental::save_work_product_index(&sess, &dep_graph, work_products)
+            rustc_incremental::save_work_product_index(sess, &dep_graph, work_products)
         });
 
         let prof = self.sess.prof.clone();
@@ -386,7 +386,7 @@ impl Compiler {
         F: for<'tcx> FnOnce(&'tcx Queries<'tcx>) -> T,
     {
         let mut _timer = None;
-        let queries = Queries::new(&self);
+        let queries = Queries::new(self);
         let ret = f(&queries);
 
         // NOTE: intentionally does not compute the global context if it hasn't been built yet,

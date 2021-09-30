@@ -57,7 +57,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
             ty::Foreign(did) => {
                 self.check_def_id(item, did);
             }
-            ty::Dynamic(ref data, ..) if data.principal_def_id().is_some() => {
+            ty::Dynamic(data, ..) if data.principal_def_id().is_some() => {
                 self.check_def_id(item, data.principal_def_id().unwrap());
             }
             ty::Dynamic(..) => {
@@ -411,7 +411,7 @@ impl InherentCollect<'tcx> {
                 // OK
             }
             _ => {
-                let to_implement = if assoc_items.len() == 0 {
+                let to_implement = if assoc_items.is_empty() {
                     String::new()
                 } else {
                     let plural = assoc_items.len() > 1;

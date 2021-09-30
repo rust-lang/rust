@@ -105,7 +105,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let r = r.unwrap();
 
         // Again, based on how many outputs we have
-        let outputs = ia.outputs.iter().zip(&outputs).filter(|&(ref o, _)| !o.is_indirect);
+        let outputs = ia.outputs.iter().zip(&outputs).filter(|&(o, _)| !o.is_indirect);
         for (i, (_, &place)) in outputs.enumerate() {
             let v = if num_outputs == 1 { r } else { self.extract_value(r, i as u64) };
             OperandValue::Immediate(v).store(self, place);
@@ -331,7 +331,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let output_type = match &output_types[..] {
             [] => self.type_void(),
             [ty] => ty,
-            tys => self.type_struct(&tys, false),
+            tys => self.type_struct(tys, false),
         };
         let dialect = match asm_arch {
             InlineAsmArch::X86 | InlineAsmArch::X86_64

@@ -144,20 +144,20 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         hir::ItemKind::Fn(ref sig, ..) => {
             check_item_fn(tcx, item.hir_id(), item.ident, item.span, sig.decl);
         }
-        hir::ItemKind::Static(ref ty, ..) => {
+        hir::ItemKind::Static(ty, ..) => {
             check_item_type(tcx, item.hir_id(), ty.span, false);
         }
-        hir::ItemKind::Const(ref ty, ..) => {
+        hir::ItemKind::Const(ty, ..) => {
             check_item_type(tcx, item.hir_id(), ty.span, false);
         }
         hir::ItemKind::ForeignMod { items, .. } => {
             for it in items.iter() {
                 let it = tcx.hir().foreign_item(it.id);
                 match it.kind {
-                    hir::ForeignItemKind::Fn(ref decl, ..) => {
+                    hir::ForeignItemKind::Fn(decl, ..) => {
                         check_item_fn(tcx, it.hir_id(), it.ident, it.span, decl)
                     }
-                    hir::ForeignItemKind::Static(ref ty, ..) => {
+                    hir::ForeignItemKind::Static(ty, ..) => {
                         check_item_type(tcx, it.hir_id(), ty.span, true)
                     }
                     hir::ForeignItemKind::Type => (),
@@ -198,7 +198,7 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         hir::TraitItemKind::Type(_bounds, Some(ty)) => (None, ty.span),
         _ => (None, trait_item.span),
     };
-    check_object_unsafe_self_trait_by_name(tcx, &trait_item);
+    check_object_unsafe_self_trait_by_name(tcx, trait_item);
     check_associated_item(tcx, trait_item.hir_id(), span, method_sig);
 
     let encl_trait_hir_id = tcx.hir().get_parent_item(hir_id);
@@ -218,7 +218,7 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         // We are looking at the `call` function of the `fn` or `fn_mut` lang item.
         // Do some rudimentary sanity checking to avoid an ICE later (issue #83471).
         if let Some(hir::FnSig { decl, span, .. }) = method_sig {
-            if let &[self_ty, _] = &decl.inputs {
+            if let [self_ty, _] = decl.inputs {
                 if !matches!(self_ty.kind, hir::TyKind::Rptr(_, _)) {
                     tcx.sess
                         .struct_span_err(
@@ -473,7 +473,7 @@ fn check_associated_item(
                     item.def_id,
                     &mut implied_bounds,
                 );
-                check_method_receiver(fcx, hir_sig, &item, self_ty);
+                check_method_receiver(fcx, hir_sig, item, self_ty);
             }
             ty::AssocKind::Type => {
                 if let ty::AssocItemContainer::TraitContainer(_) = item.container {
@@ -794,7 +794,7 @@ fn check_where_clauses<'tcx, 'fcx>(
     for param in &generics.params {
         match param.kind {
             GenericParamDefKind::Type { .. } => {
-                if is_our_default(&param) {
+                if is_our_default(param) {
                     let ty = tcx.type_of(param.def_id);
                     // Ignore dependent defaults -- that is, where the default of one type
                     // parameter includes another (e.g., `<T, U = T>`). In those cases, we can't
@@ -809,7 +809,7 @@ fn check_where_clauses<'tcx, 'fcx>(
                 }
             }
             GenericParamDefKind::Const { .. } => {
-                if is_our_default(&param) {
+                if is_our_default(param) {
                     // FIXME(const_generics_defaults): This
                     // is incorrect when dealing with unused substs, for example
                     // for `struct Foo<const N: usize, const M: usize = { 1 - 2 }>`

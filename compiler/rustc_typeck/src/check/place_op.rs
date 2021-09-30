@@ -288,7 +288,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         | hir::ExprKind::Index(ref expr, _)
         | hir::ExprKind::Unary(hir::UnOp::Deref, ref expr) = exprs.last().unwrap().kind
         {
-            exprs.push(&expr);
+            exprs.push(expr);
         }
 
         debug!("convert_place_derefs_to_mutable: exprs={:?}", exprs);
@@ -350,10 +350,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             match expr.kind {
-                hir::ExprKind::Index(ref base_expr, ..) => {
+                hir::ExprKind::Index(base_expr, ..) => {
                     self.convert_place_op_to_mutable(PlaceOp::Index, expr, base_expr);
                 }
-                hir::ExprKind::Unary(hir::UnOp::Deref, ref base_expr) => {
+                hir::ExprKind::Unary(hir::UnOp::Deref, base_expr) => {
                     self.convert_place_op_to_mutable(PlaceOp::Deref, expr, base_expr);
                 }
                 _ => {}

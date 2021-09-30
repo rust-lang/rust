@@ -298,7 +298,7 @@ fn print_target_features(sess: &Session, tm: &llvm::TargetMachine) {
     for (feature, desc) in &target_features {
         println!("    {1:0$} - {2}.", max_feature_len, feature, desc);
     }
-    if target_features.len() == 0 {
+    if target_features.is_empty() {
         println!("    Target features listing is not supported by this LLVM version.");
     }
     println!("\nUse +feature to enable a feature, or -feature to disable it.");

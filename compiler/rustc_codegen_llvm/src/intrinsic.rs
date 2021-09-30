@@ -71,7 +71,7 @@ fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: Symbol) -> Option<(&'ll T
         sym::roundf64 => "llvm.round.f64",
         _ => return None,
     };
-    Some(cx.get_intrinsic(&llvm_name))
+    Some(cx.get_intrinsic(llvm_name))
 }
 
 impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
@@ -743,7 +743,7 @@ fn gen_fn<'ll, 'tcx>(
 ) -> (&'ll Type, &'ll Value) {
     let fn_abi = cx.fn_abi_of_fn_ptr(rust_fn_sig, ty::List::empty());
     let llty = fn_abi.llvm_type(cx);
-    let llfn = cx.declare_fn(name, &fn_abi);
+    let llfn = cx.declare_fn(name, fn_abi);
     cx.set_frame_pointer_type(llfn);
     cx.apply_target_cpu_attr(llfn);
     // FIXME(eddyb) find a nicer way to do this.
@@ -1159,7 +1159,7 @@ fn generic_simd_intrinsic(
             _ => return_error!("unrecognized intrinsic `{}`", name),
         };
         let llvm_name = &format!("llvm.{0}.v{1}{2}", intr_name, in_len, elem_ty_str);
-        let f = bx.declare_cfn(&llvm_name, llvm::UnnamedAddr::No, fn_ty);
+        let f = bx.declare_cfn(llvm_name, llvm::UnnamedAddr::No, fn_ty);
         let c =
             bx.call(fn_ty, f, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None);
         Ok(c)
@@ -1793,7 +1793,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
 
         let fn_ty = bx.type_func(&[vec_ty, vec_ty], vec_ty);
-        let f = bx.declare_cfn(&llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
+        let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
         let v = bx.call(fn_ty, f, &[lhs, rhs], None);
         return Ok(v);
     }

@@ -296,7 +296,7 @@ struct TypedAnnotation<'tcx> {
 
 impl<'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'tcx> {
     fn sess(&self) -> &Session {
-        &self.tcx.sess
+        self.tcx.sess
     }
 
     fn hir_map(&self) -> Option<hir_map::Map<'tcx>> {
@@ -347,8 +347,7 @@ impl<'tcx> pprust_hir::PpAnn for TypedAnnotation<'tcx> {
 fn get_source(input: &Input, sess: &Session) -> (String, FileName) {
     let src_name = input.source_name();
     let src = String::clone(
-        &sess
-            .source_map()
+        sess.source_map()
             .get_source_file(&src_name)
             .expect("get_source_file")
             .src

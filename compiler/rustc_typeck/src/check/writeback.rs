@@ -140,7 +140,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // operating on scalars, we clear the overload.
     fn fix_scalar_builtin_expr(&mut self, e: &hir::Expr<'_>) {
         match e.kind {
-            hir::ExprKind::Unary(hir::UnOp::Neg | hir::UnOp::Not, ref inner) => {
+            hir::ExprKind::Unary(hir::UnOp::Neg | hir::UnOp::Not, inner) => {
                 let inner_ty = self.fcx.node_ty(inner.hir_id);
                 let inner_ty = self.fcx.resolve_vars_if_possible(inner_ty);
 
@@ -150,8 +150,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     typeck_results.node_substs_mut().remove(e.hir_id);
                 }
             }
-            hir::ExprKind::Binary(ref op, ref lhs, ref rhs)
-            | hir::ExprKind::AssignOp(ref op, ref lhs, ref rhs) => {
+            hir::ExprKind::Binary(ref op, lhs, rhs) | hir::ExprKind::AssignOp(ref op, lhs, rhs) => {
                 let lhs_ty = self.fcx.node_ty(lhs.hir_id);
                 let lhs_ty = self.fcx.resolve_vars_if_possible(lhs_ty);
 
@@ -198,7 +197,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
             // All valid indexing looks like this; might encounter non-valid indexes at this point.
             let base_ty = typeck_results
-                .expr_ty_adjusted_opt(&base)
+                .expr_ty_adjusted_opt(base)
                 .map(|t| self.fcx.resolve_vars_if_possible(t).kind());
             if base_ty.is_none() {
                 // When encountering `return [0][0]` outside of a `fn` body we can encounter a base
@@ -207,7 +206,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 self.tcx().sess.delay_span_bug(e.span, &format!("bad base: `{:?}`", base));
             }
             if let Some(ty::Ref(_, base_ty, _)) = base_ty {
-                let index_ty = typeck_results.expr_ty_adjusted_opt(&index).unwrap_or_else(|| {
+                let index_ty = typeck_results.expr_ty_adjusted_opt(index).unwrap_or_else(|| {
                     // When encountering `return [0][0]` outside of a `fn` body we would attempt
                     // to access an unexistend index. We assume that more relevant errors will
                     // already have been emitted, so we only gate on this with an ICE if no

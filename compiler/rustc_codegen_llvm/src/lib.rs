@@ -339,7 +339,7 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
             let llmod_raw = back::lto::parse_module(llcx, name, buffer, handler)?;
-            let tm_factory_config = TargetMachineFactoryConfig::new(&cgcx, name.to_str().unwrap());
+            let tm_factory_config = TargetMachineFactoryConfig::new(cgcx, name.to_str().unwrap());
             let tm = match (cgcx.tm_factory)(tm_factory_config) {
                 Ok(m) => m,
                 Err(e) => {

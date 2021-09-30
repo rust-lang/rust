@@ -132,7 +132,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         let kind_ord = param.kind.to_ord(tcx);
-        let arg_ord = arg.to_ord(&tcx.features());
+        let arg_ord = arg.to_ord(tcx.features());
 
         // This note is only true when generic parameters are strictly ordered by their kind.
         if possible_ordering_error && kind_ord.cmp(&arg_ord) != core::cmp::Ordering::Equal {
@@ -423,7 +423,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         is_method_call: IsMethodCall,
     ) -> GenericArgCountResult {
         let empty_args = hir::GenericArgs::none();
-        let suppress_mismatch = Self::check_impl_trait(tcx, seg, &generics);
+        let suppress_mismatch = Self::check_impl_trait(tcx, seg, generics);
 
         let gen_args = seg.args.unwrap_or(&empty_args);
         let gen_pos = if is_method_call == IsMethodCall::Yes {

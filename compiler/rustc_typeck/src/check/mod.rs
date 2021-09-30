@@ -271,22 +271,22 @@ fn primary_body_of(
 ) -> Option<(hir::BodyId, Option<&hir::Ty<'_>>, Option<&hir::FnSig<'_>>)> {
     match tcx.hir().get(id) {
         Node::Item(item) => match item.kind {
-            hir::ItemKind::Const(ref ty, body) | hir::ItemKind::Static(ref ty, _, body) => {
+            hir::ItemKind::Const(ty, body) | hir::ItemKind::Static(ty, _, body) => {
                 Some((body, Some(ty), None))
             }
-            hir::ItemKind::Fn(ref sig, .., body) => Some((body, None, Some(&sig))),
+            hir::ItemKind::Fn(ref sig, .., body) => Some((body, None, Some(sig))),
             _ => None,
         },
         Node::TraitItem(item) => match item.kind {
-            hir::TraitItemKind::Const(ref ty, Some(body)) => Some((body, Some(ty), None)),
+            hir::TraitItemKind::Const(ty, Some(body)) => Some((body, Some(ty), None)),
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                Some((body, None, Some(&sig)))
+                Some((body, None, Some(sig)))
             }
             _ => None,
         },
         Node::ImplItem(item) => match item.kind {
-            hir::ImplItemKind::Const(ref ty, body) => Some((body, Some(ty), None)),
-            hir::ImplItemKind::Fn(ref sig, body) => Some((body, None, Some(&sig))),
+            hir::ImplItemKind::Const(ty, body) => Some((body, Some(ty), None)),
+            hir::ImplItemKind::Fn(ref sig, body) => Some((body, None, Some(sig))),
             _ => None,
         },
         Node::AnonConst(constant) => Some((constant.body, None, None)),
@@ -555,16 +555,13 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId, span: S
     // `#[link_section]` may contain arbitrary, or even undefined bytes, but it is
     // the consumer's responsibility to ensure all bytes that have been read
     // have defined values.
-    match tcx.eval_static_initializer(id.to_def_id()) {
-        Ok(alloc) => {
-            if alloc.relocations().len() != 0 {
-                let msg = "statics with a custom `#[link_section]` must be a \
+    if let Ok(alloc) = tcx.eval_static_initializer(id.to_def_id()) {
+        if alloc.relocations().len() != 0 {
+            let msg = "statics with a custom `#[link_section]` must be a \
                            simple list of bytes on the wasm target with no \
                            extra levels of indirection such as references";
-                tcx.sess.span_err(span, msg);
-            }
+            tcx.sess.span_err(span, msg);
         }
-        Err(_) => {}
     }
 }
 
@@ -631,7 +628,7 @@ fn missing_items_err(
     let padding: String = " ".repeat(indentation);
 
     for trait_item in missing_items {
-        let snippet = suggestion_signature(&trait_item, tcx);
+        let snippet = suggestion_signature(trait_item, tcx);
         let code = format!("{}{}\n{}", padding, snippet, padding);
         let msg = format!("implement the missing item: `{}`", snippet);
         let appl = Applicability::HasPlaceholders;

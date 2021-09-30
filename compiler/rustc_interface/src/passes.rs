@@ -169,7 +169,7 @@ pub fn create_resolver(
 ) -> BoxedResolver {
     tracing::trace!("create_resolver");
     BoxedResolver::new(sess, move |sess, resolver_arenas| {
-        Resolver::new(sess, &krate, &crate_name, metadata_loader, &resolver_arenas)
+        Resolver::new(sess, krate, crate_name, metadata_loader, resolver_arenas)
     })
 }
 
@@ -201,7 +201,7 @@ pub fn register_plugins<'a>(
         sess.opts.cg.metadata.clone(),
     );
     sess.stable_crate_id.set(stable_crate_id).expect("not yet initialized");
-    rustc_incremental::prepare_session_directory(sess, &crate_name, stable_crate_id)?;
+    rustc_incremental::prepare_session_directory(sess, crate_name, stable_crate_id)?;
 
     if sess.opts.incremental.is_some() {
         sess.time("incr_comp_garbage_collect_session_directories", || {
@@ -219,7 +219,7 @@ pub fn register_plugins<'a>(
         sess.opts.debugging_opts.no_interleave_lints,
         sess.unstable_options(),
     );
-    register_lints(&sess, &mut lint_store);
+    register_lints(sess, &mut lint_store);
 
     let registrars =
         sess.time("plugin_loading", || plugin::load::load_plugins(sess, metadata_loader, &krate));
@@ -244,7 +244,7 @@ fn pre_expansion_lint(
         rustc_lint::check_ast_crate(
             sess,
             lint_store,
-            &krate,
+            krate,
             crate_attrs,
             true,
             None,
@@ -270,10 +270,10 @@ pub fn configure_and_expand(
 
     krate = sess.time("crate_injection", || {
         let alt_std_name = sess.opts.alt_std_name.as_ref().map(|s| Symbol::intern(s));
-        rustc_builtin_macros::standard_library_imports::inject(krate, resolver, &sess, alt_std_name)
+        rustc_builtin_macros::standard_library_imports::inject(krate, resolver, sess, alt_std_name)
     });
 
-    util::check_attr_crate_type(&sess, &krate.attrs, &mut resolver.lint_buffer());
+    util::check_attr_crate_type(sess, &krate.attrs, &mut resolver.lint_buffer());
 
     // Expand all macros
     krate = sess.time("macro_expand_crate", || {
@@ -310,9 +310,9 @@ pub fn configure_and_expand(
 
         // Create the config for macro expansion
         let features = sess.features_untracked();
-        let recursion_limit = get_recursion_limit(&krate.attrs, &sess);
+        let recursion_limit = get_recursion_limit(&krate.attrs, sess);
         let cfg = rustc_expand::expand::ExpansionConfig {
-            features: Some(&features),
+            features: Some(features),
             recursion_limit,
             trace_mac: sess.opts.debugging_opts.trace_macros,
             should_test: sess.opts.test,
@@ -327,7 +327,7 @@ pub fn configure_and_expand(
             pre_expansion_lint(sess, lint_store, &krate, &crate_attrs, &ident.name.as_str());
             (krate.attrs, krate.items)
         };
-        let mut ecx = ExtCtxt::new(&sess, cfg, resolver, Some(&extern_mod_loaded));
+        let mut ecx = ExtCtxt::new(sess, cfg, resolver, Some(&extern_mod_loaded));
 
         // Expand macros now!
         let krate = sess.time("expand_crate", || ecx.monotonic_expander().expand_crate(krate));
@@ -369,7 +369,7 @@ pub fn configure_and_expand(
     })?;
 
     sess.time("maybe_building_test_harness", || {
-        rustc_builtin_macros::test_harness::inject(&sess, resolver, &mut krate)
+        rustc_builtin_macros::test_harness::inject(sess, resolver, &mut krate)
     });
 
     if let Some(PpMode::Source(PpSourceMode::EveryBodyLoops)) = sess.opts.pretty {
@@ -392,8 +392,8 @@ pub fn configure_and_expand(
     // start passing '--crate-type proc-macro'
     if has_proc_macro_decls && sess.opts.actually_rustdoc && !is_proc_macro_crate {
         let mut msg = sess.diagnostic().struct_warn(
-            &"Trying to document proc macro crate \
-            without passing '--crate-type proc-macro to rustdoc",
+            "Trying to document proc macro crate \
+             without passing '--crate-type proc-macro to rustdoc",
         );
 
         msg.warn("The generated documentation may be incorrect");
@@ -403,7 +403,7 @@ pub fn configure_and_expand(
             let num_crate_types = crate_types.len();
             let is_test_crate = sess.opts.test;
             rustc_builtin_macros::proc_macro_harness::inject(
-                &sess,
+                sess,
                 resolver,
                 krate,
                 is_proc_macro_crate,
@@ -691,7 +691,7 @@ pub fn prepare_outputs(
     );
 
     let output_paths =
-        generated_output_paths(sess, &outputs, compiler.output_file.is_some(), &crate_name);
+        generated_output_paths(sess, &outputs, compiler.output_file.is_some(), crate_name);
 
     // Ensure the source file isn't accidentally overwritten during compilation.
     if let Some(ref input_path) = compiler.input_path {
@@ -832,7 +832,7 @@ pub fn create_global_ctxt<'tcx>(
                 dep_graph,
                 queries.on_disk_cache.as_ref().map(OnDiskCache::as_dyn),
                 queries.as_dyn(),
-                &crate_name,
+                crate_name,
                 outputs,
             )
         })

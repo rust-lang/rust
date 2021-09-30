@@ -22,7 +22,7 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate
 
     if matches!(tcx.def_kind(item_def_id), hir::def::DefKind::AnonConst) && tcx.lazy_normalization()
     {
-        if let Some(_) = tcx.hir().opt_const_param_default_param_hir_id(id) {
+        if tcx.hir().opt_const_param_default_param_hir_id(id).is_some() {
             // In `generics_of` we set the generics' parent to be our parent's parent which means that
             // we lose out on the predicates of our actual parent if we dont return those predicates here.
             // (See comment in `generics_of` for more information on why the parent shenanigans is necessary)

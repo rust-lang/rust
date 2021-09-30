@@ -26,7 +26,7 @@ impl ItemLikeVisitor<'v> for CheckVisitor<'tcx> {
         if item.vis.node.is_pub() || item.span.is_dummy() {
             return;
         }
-        if let hir::ItemKind::Use(ref path, _) = item.kind {
+        if let hir::ItemKind::Use(path, _) = item.kind {
             self.check_import(item.item_id(), path.span);
         }
     }

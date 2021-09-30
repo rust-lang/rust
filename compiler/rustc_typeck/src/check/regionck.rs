@@ -190,7 +190,7 @@ pub struct RegionCtxt<'a, 'tcx> {
 impl<'a, 'tcx> Deref for RegionCtxt<'a, 'tcx> {
     type Target = FnCtxt<'a, 'tcx>;
     fn deref(&self) -> &Self::Target {
-        &self.fcx
+        self.fcx
     }
 }
 
@@ -292,7 +292,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
         self.outlives_environment.add_implied_bounds(self.fcx, fn_sig_tys, body_id.hir_id, span);
         self.outlives_environment.save_implied_bounds(body_id.hir_id);
-        self.link_fn_params(&body.params);
+        self.link_fn_params(body.params);
         self.visit_body(body);
         self.visit_region_obligations(body_id.hir_id);
 
@@ -379,13 +379,13 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
         // see above
-        self.constrain_bindings_in_pat(&arm.pat);
+        self.constrain_bindings_in_pat(arm.pat);
         intravisit::walk_arm(self, arm);
     }
 
     fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
         // see above
-        self.constrain_bindings_in_pat(&l.pat);
+        self.constrain_bindings_in_pat(l.pat);
         self.link_local(l);
         intravisit::walk_local(self, l);
     }
@@ -407,13 +407,13 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
 
         match expr.kind {
             hir::ExprKind::AddrOf(hir::BorrowKind::Ref, m, ref base) => {
-                self.link_addr_of(expr, m, &base);
+                self.link_addr_of(expr, m, base);
 
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprKind::Match(ref discr, ref arms, _) => {
-                self.link_match(&discr, &arms[..]);
+            hir::ExprKind::Match(ref discr, arms, _) => {
+                self.link_match(discr, &arms[..]);
 
                 intravisit::walk_expr(self, expr);
             }
@@ -448,7 +448,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         let mut place = self.with_mc(|mc| mc.cat_expr_unadjusted(expr))?;
 
         let typeck_results = self.typeck_results.borrow();
-        let adjustments = typeck_results.expr_adjustments(&expr);
+        let adjustments = typeck_results.expr_adjustments(expr);
         if adjustments.is_empty() {
             return Ok(place);
         }
@@ -475,7 +475,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
                 self.link_autoref(expr, &place, autoref);
             }
 
-            place = self.with_mc(|mc| mc.cat_expr_adjusted(expr, place, &adjustment))?;
+            place = self.with_mc(|mc| mc.cat_expr_adjusted(expr, place, adjustment))?;
         }
 
         Ok(place)
@@ -540,10 +540,10 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
             None => {
                 return;
             }
-            Some(ref expr) => &**expr,
+            Some(expr) => &*expr,
         };
         let discr_cmt = ignore_err!(self.with_mc(|mc| mc.cat_expr(init_expr)));
-        self.link_pattern(discr_cmt, &local.pat);
+        self.link_pattern(discr_cmt, local.pat);
     }
 
     /// Computes the guarantors for any ref bindings in a match and
@@ -554,7 +554,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         let discr_cmt = ignore_err!(self.with_mc(|mc| mc.cat_expr(discr)));
         debug!("discr_cmt={:?}", discr_cmt);
         for arm in arms {
-            self.link_pattern(discr_cmt.clone(), &arm.pat);
+            self.link_pattern(discr_cmt.clone(), arm.pat);
         }
     }
 
@@ -567,7 +567,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
             let param_cmt =
                 self.with_mc(|mc| mc.cat_rvalue(param.hir_id, param.pat.span, param_ty));
             debug!("param_ty={:?} param_cmt={:?} param={:?}", param_ty, param_cmt, param);
-            self.link_pattern(param_cmt, &param.pat);
+            self.link_pattern(param_cmt, param.pat);
         }
     }
 
@@ -582,7 +582,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
                     if let Some(ty::BindByReference(mutbl)) =
                         mc.typeck_results.extract_binding_mode(self.tcx.sess, *hir_id, *span)
                     {
-                        self.link_region_from_node_type(*span, *hir_id, mutbl, &sub_cmt);
+                        self.link_region_from_node_type(*span, *hir_id, mutbl, sub_cmt);
                     }
                 }
             })

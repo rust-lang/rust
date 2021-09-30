@@ -402,7 +402,7 @@ pub fn get_codegen_sysroot(
         .iter()
         .chain(sysroot_candidates.iter())
         .map(|sysroot| {
-            filesearch::make_target_lib_path(&sysroot, &target).with_file_name("codegen-backends")
+            filesearch::make_target_lib_path(sysroot, target).with_file_name("codegen-backends")
         })
         .find(|f| {
             info!("codegen backend candidate: {}", f.display());
@@ -619,7 +619,7 @@ pub fn build_output_filenames(
                 .opts
                 .crate_name
                 .clone()
-                .or_else(|| rustc_attr::find_crate_name(&sess, attrs).map(|n| n.to_string()))
+                .or_else(|| rustc_attr::find_crate_name(sess, attrs).map(|n| n.to_string()))
                 .unwrap_or_else(|| input.filestem().to_owned());
 
             OutputFilenames::new(

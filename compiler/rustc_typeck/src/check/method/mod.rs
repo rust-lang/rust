@@ -160,7 +160,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .unwrap_or(0);
 
         // Account for `foo.bar<T>`;
-        let sugg_span = span.unwrap_or_else(|| call_expr.span).shrink_to_hi();
+        let sugg_span = span.unwrap_or(call_expr.span).shrink_to_hi();
         let (suggestion, applicability) = (
             format!("({})", (0..params).map(|_| "_").collect::<Vec<_>>().join(", ")),
             if params > 0 { Applicability::HasPlaceholders } else { Applicability::MaybeIncorrect },
@@ -320,7 +320,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 GenericParamDefKind::Type { .. } => {
                     if param.index == 0 {
                         return self_ty.into();
-                    } else if let Some(ref input_types) = opt_input_types {
+                    } else if let Some(input_types) = opt_input_types {
                         return input_types[param.index as usize - 1].into();
                     }
                 }

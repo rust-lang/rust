@@ -128,7 +128,7 @@ impl Callbacks for TimePassesCallbacks {
 }
 
 pub fn diagnostics_registry() -> Registry {
-    Registry::new(&rustc_error_codes::DIAGNOSTICS)
+    Registry::new(rustc_error_codes::DIAGNOSTICS)
 }
 
 /// This is the primary entry point for rustc.
@@ -265,8 +265,8 @@ fn run_compiler(
                         &***compiler.codegen_backend(),
                         compiler.session(),
                         None,
-                        &compiler.output_dir(),
-                        &compiler.output_file(),
+                        compiler.output_dir(),
+                        compiler.output_file(),
                     );
 
                     if should_stop == Compilation::Stop {
@@ -330,7 +330,7 @@ fn run_compiler(
                     let krate = queries.parse()?.take();
                     pretty::print_after_parsing(
                         sess,
-                        &compiler.input(),
+                        compiler.input(),
                         &krate,
                         *ppm,
                         compiler.output_file().as_ref().map(|p| &**p),
@@ -356,7 +356,7 @@ fn run_compiler(
 
                 // Lint plugins are registered; now we can process command line flags.
                 if sess.opts.describe_lints {
-                    describe_lints(&sess, &lint_store, true);
+                    describe_lints(sess, lint_store, true);
                     return early_exit();
                 }
             }
@@ -388,7 +388,7 @@ fn run_compiler(
                         save::process_crate(
                             tcx,
                             &crate_name,
-                            &compiler.input(),
+                            compiler.input(),
                             None,
                             DumpHandler::new(
                                 compiler.output_dir().as_ref().map(|p| &**p),
@@ -598,7 +598,7 @@ impl RustcDefaultCalls {
             if let Input::File(file) = compiler.input() {
                 // FIXME: #![crate_type] and #![crate_name] support not implemented yet
                 sess.init_crate_types(collect_crate_types(sess, &[]));
-                let outputs = compiler.build_output_filenames(&sess, &[]);
+                let outputs = compiler.build_output_filenames(sess, &[]);
                 let rlink_data = fs::read_to_string(file).unwrap_or_else(|err| {
                     sess.fatal(&format!("failed to read rlink file: {}", err));
                 });
@@ -606,7 +606,7 @@ impl RustcDefaultCalls {
                     json::decode(&rlink_data).unwrap_or_else(|err| {
                         sess.fatal(&format!("failed to decode rlink: {}", err));
                     });
-                let result = compiler.codegen_backend().link(&sess, codegen_results, &outputs);
+                let result = compiler.codegen_backend().link(sess, codegen_results, &outputs);
                 abort_on_err(result, sess);
             } else {
                 sess.fatal("rlink must be a file")
@@ -894,9 +894,9 @@ Available lint options:
     };
 
     println!("Lint groups provided by rustc:\n");
-    println!("    {}  {}", padded("name"), "sub-lints");
-    println!("    {}  {}", padded("----"), "---------");
-    println!("    {}  {}", padded("warnings"), "all lints that are set to issue warnings");
+    println!("    {}  sub-lints", padded("name"));
+    println!("    {}  ---------", padded("----"));
+    println!("    {}  all lints that are set to issue warnings", padded("warnings"));
 
     let print_lint_groups = |lints: Vec<(&'static str, Vec<LintId>)>| {
         for (name, to) in lints {
@@ -1217,7 +1217,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     }
 
     for note in &xs {
-        handler.note_without_error(&note);
+        handler.note_without_error(note);
     }
 
     // If backtraces are enabled, also print the query stack
@@ -1326,7 +1326,7 @@ mod signal_handler {
                 std::alloc::alloc(std::alloc::Layout::from_size_align(ALT_STACK_SIZE, 1).unwrap())
                     as *mut libc::c_void;
             alt_stack.ss_size = ALT_STACK_SIZE;
-            libc::sigaltstack(&mut alt_stack, std::ptr::null_mut());
+            libc::sigaltstack(&alt_stack, std::ptr::null_mut());
 
             let mut sa: libc::sigaction = std::mem::zeroed();
             sa.sa_sigaction = print_stack_trace as libc::sighandler_t;

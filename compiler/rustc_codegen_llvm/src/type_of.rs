@@ -232,7 +232,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
                     cx.type_ptr_to(cx.layout_of(self.ty.boxed_ty()).llvm_type(cx))
                 }
                 ty::FnPtr(sig) => {
-                    cx.fn_ptr_backend_type(&cx.fn_abi_of_fn_ptr(sig, ty::List::empty()))
+                    cx.fn_ptr_backend_type(cx.fn_abi_of_fn_ptr(sig, ty::List::empty()))
                 }
                 _ => self.scalar_llvm_type_at(cx, scalar, Size::ZERO),
             };
@@ -245,7 +245,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             Variants::Single { index } => Some(index),
             _ => None,
         };
-        if let Some(ref llty) = cx.type_lowering.borrow().get(&(self.ty, variant_index)) {
+        if let Some(llty) = cx.type_lowering.borrow().get(&(self.ty, variant_index)) {
             return llty.lltype;
         }
 
@@ -270,10 +270,9 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         };
         debug!("--> mapped {:#?} to llty={:?}", self, llty);
 
-        cx.type_lowering.borrow_mut().insert(
-            (self.ty, variant_index),
-            TypeLowering { lltype: llty, field_remapping: field_remapping },
-        );
+        cx.type_lowering
+            .borrow_mut()
+            .insert((self.ty, variant_index), TypeLowering { lltype: llty, field_remapping });
 
         if let Some((llty, layout)) = defer {
             let (llfields, packed, new_field_remapping) = struct_llfields(cx, layout);

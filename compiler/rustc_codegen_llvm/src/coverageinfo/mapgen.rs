@@ -73,7 +73,7 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
             mapgen.write_coverage_mapping(expressions, counter_regions, coverage_mapping_buffer);
         });
         debug_assert!(
-            coverage_mapping_buffer.len() > 0,
+            !coverage_mapping_buffer.is_empty(),
             "Every `FunctionCoverage` should have at least one counter"
         );
 
@@ -311,8 +311,7 @@ fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     // for each region in it's MIR.
 
     // Convert the `HashSet` of `codegenned_def_ids` to a sortable vector, and sort them.
-    let mut sorted_codegenned_def_ids: Vec<DefId> =
-        codegenned_def_ids.iter().map(|def_id| *def_id).collect();
+    let mut sorted_codegenned_def_ids: Vec<DefId> = codegenned_def_ids.iter().copied().collect();
     sorted_codegenned_def_ids.sort_unstable();
 
     let mut first_covered_def_id_by_file: FxHashMap<Symbol, DefId> = FxHashMap::default();

@@ -125,7 +125,7 @@ fn emit_aapcs_va_arg(
     // if the offset >= 0 then the value will be on the stack
     let mut reg_off_v = bx.load(bx.type_i32(), reg_off, offset_align);
     let use_stack = bx.icmp(IntPredicate::IntSGE, reg_off_v, zero);
-    bx.cond_br(use_stack, &on_stack.llbb(), &maybe_reg.llbb());
+    bx.cond_br(use_stack, on_stack.llbb(), maybe_reg.llbb());
 
     // The value at this point might be in a register, but there is a chance that
     // it could be on the stack so we have to update the offset and then check
@@ -142,7 +142,7 @@ fn emit_aapcs_va_arg(
     // Check to see if we have overflowed the registers as a result of this.
     // If we have then we need to use the stack for this value
     let use_stack = maybe_reg.icmp(IntPredicate::IntSGT, new_reg_off_v, zero);
-    maybe_reg.cond_br(use_stack, &on_stack.llbb(), &in_reg.llbb());
+    maybe_reg.cond_br(use_stack, on_stack.llbb(), in_reg.llbb());
 
     let top_type = bx.type_i8p();
     let top = in_reg.struct_gep(va_list_ty, va_list_addr, reg_top_index);
@@ -158,17 +158,17 @@ fn emit_aapcs_va_arg(
     let reg_type = layout.llvm_type(bx);
     let reg_addr = in_reg.bitcast(reg_addr, bx.cx.type_ptr_to(reg_type));
     let reg_value = in_reg.load(reg_type, reg_addr, layout.align.abi);
-    in_reg.br(&end.llbb());
+    in_reg.br(end.llbb());
 
     // On Stack block
     let stack_value =
         emit_ptr_va_arg(&mut on_stack, list, target_ty, false, Align::from_bytes(8).unwrap(), true);
-    on_stack.br(&end.llbb());
+    on_stack.br(end.llbb());
 
     let val = end.phi(
         layout.immediate_llvm_type(bx),
         &[reg_value, stack_value],
-        &[&in_reg.llbb(), &on_stack.llbb()],
+        &[in_reg.llbb(), on_stack.llbb()],
     );
 
     *bx = end;

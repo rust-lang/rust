@@ -65,13 +65,7 @@ impl Compiler {
         sess: &Session,
         attrs: &[ast::Attribute],
     ) -> OutputFilenames {
-        util::build_output_filenames(
-            &self.input,
-            &self.output_dir,
-            &self.output_file,
-            &attrs,
-            &sess,
-        )
+        util::build_output_filenames(&self.input, &self.output_dir, &self.output_file, attrs, sess)
     }
 }
 

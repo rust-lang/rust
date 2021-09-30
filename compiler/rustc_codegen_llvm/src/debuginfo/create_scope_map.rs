@@ -41,7 +41,7 @@ pub fn compute_mir_scopes(
     // Instantiate all scopes.
     for idx in 0..mir.source_scopes.len() {
         let scope = SourceScope::new(idx);
-        make_mir_scope(cx, instance, &mir, fn_dbg_scope, &has_variables, debug_context, scope);
+        make_mir_scope(cx, instance, mir, fn_dbg_scope, &has_variables, debug_context, scope);
     }
 }
 
@@ -94,7 +94,7 @@ fn make_mir_scope(
                 callee,
             );
             let callee_fn_abi = cx.fn_abi_of_instance(callee, ty::List::empty());
-            cx.dbg_scope_fn(callee, &callee_fn_abi, None)
+            cx.dbg_scope_fn(callee, callee_fn_abi, None)
         }
         None => unsafe {
             llvm::LLVMRustDIBuilderCreateLexicalBlock(
