@@ -1,5 +1,5 @@
 use rustc_infer::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
-use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
+use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{self, Const, Ty};
@@ -7,7 +7,7 @@ use rustc_trait_selection::traits::query::Fallible;
 
 use crate::constraints::OutlivesConstraint;
 use crate::diagnostics::UniverseInfo;
-use crate::type_check::{BorrowCheckContext, Locations};
+use crate::type_check::{Locations, TypeChecker};
 
 /// Adds sufficient constraints to ensure that `a R b` where `R` depends on `v`:
 ///
@@ -17,27 +17,18 @@ use crate::type_check::{BorrowCheckContext, Locations};
 ///
 /// N.B., the type `a` is permitted to have unresolved inference
 /// variables, but not the type `b`.
-#[instrument(skip(infcx, param_env, borrowck_context), level = "debug")]
+#[instrument(skip(type_checker), level = "debug")]
 pub(super) fn relate_types<'tcx>(
-    infcx: &InferCtxt<'_, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    type_checker: &mut TypeChecker<'_, 'tcx>,
     a: Ty<'tcx>,
     v: ty::Variance,
     b: Ty<'tcx>,
     locations: Locations,
     category: ConstraintCategory,
-    borrowck_context: &mut BorrowCheckContext<'_, 'tcx>,
 ) -> Fallible<()> {
     TypeRelating::new(
-        infcx,
-        NllTypeRelatingDelegate::new(
-            infcx,
-            borrowck_context,
-            param_env,
-            locations,
-            category,
-            UniverseInfo::relate(a, b),
-        ),
+        type_checker.infcx,
+        NllTypeRelatingDelegate::new(type_checker, locations, category, UniverseInfo::relate(a, b)),
         v,
     )
     .relate(a, b)?;
@@ -45,10 +36,7 @@ pub(super) fn relate_types<'tcx>(
 }
 
 struct NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
-    infcx: &'me InferCtxt<'me, 'tcx>,
-    borrowck_context: &'me mut BorrowCheckContext<'bccx, 'tcx>,
-
-    param_env: ty::ParamEnv<'tcx>,
+    type_checker: &'me mut TypeChecker<'bccx, 'tcx>,
 
     /// Where (and why) is this relation taking place?
     locations: Locations,
@@ -63,25 +51,24 @@ struct NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
 
 impl NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
     fn new(
-        infcx: &'me InferCtxt<'me, 'tcx>,
-        borrowck_context: &'me mut BorrowCheckContext<'bccx, 'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        type_checker: &'me mut TypeChecker<'bccx, 'tcx>,
         locations: Locations,
         category: ConstraintCategory,
         universe_info: UniverseInfo<'tcx>,
     ) -> Self {
-        Self { infcx, borrowck_context, param_env, locations, category, universe_info }
+        Self { type_checker, locations, category, universe_info }
     }
 }
 
 impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
+        self.type_checker.param_env
     }
 
     fn create_next_universe(&mut self) -> ty::UniverseIndex {
-        let universe = self.infcx.create_next_universe();
-        self.borrowck_context
+        let universe = self.type_checker.infcx.create_next_universe();
+        self.type_checker
+            .borrowck_context
             .constraints
             .universe_causes
             .insert(universe, self.universe_info.clone());
@@ -90,15 +77,18 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
 
     fn next_existential_region_var(&mut self, from_forall: bool) -> ty::Region<'tcx> {
         let origin = NllRegionVariableOrigin::Existential { from_forall };
-        self.infcx.next_nll_region_var(origin)
+        self.type_checker.infcx.next_nll_region_var(origin)
     }
 
     fn next_placeholder_region(&mut self, placeholder: ty::PlaceholderRegion) -> ty::Region<'tcx> {
-        self.borrowck_context.constraints.placeholder_region(self.infcx, placeholder)
+        self.type_checker
+            .borrowck_context
+            .constraints
+            .placeholder_region(self.type_checker.infcx, placeholder)
     }
 
     fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
-        self.infcx.next_nll_region_var_in_universe(
+        self.type_checker.infcx.next_nll_region_var_in_universe(
             NllRegionVariableOrigin::Existential { from_forall: false },
             universe,
         )
@@ -110,15 +100,17 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
         sub: ty::Region<'tcx>,
         info: ty::VarianceDiagInfo<'tcx>,
     ) {
-        let sub = self.borrowck_context.universal_regions.to_region_vid(sub);
-        let sup = self.borrowck_context.universal_regions.to_region_vid(sup);
-        self.borrowck_context.constraints.outlives_constraints.push(OutlivesConstraint {
-            sup,
-            sub,
-            locations: self.locations,
-            category: self.category,
-            variance_info: info,
-        });
+        let sub = self.type_checker.borrowck_context.universal_regions.to_region_vid(sub);
+        let sup = self.type_checker.borrowck_context.universal_regions.to_region_vid(sup);
+        self.type_checker.borrowck_context.constraints.outlives_constraints.push(
+            OutlivesConstraint {
+                sup,
+                sub,
+                locations: self.locations,
+                category: self.category,
+                variance_info: info,
+            },
+        );
     }
 
     // We don't have to worry about the equality of consts during borrow checking

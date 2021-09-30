@@ -1163,16 +1163,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         locations: Locations,
         category: ConstraintCategory,
     ) -> Fallible<()> {
-        relate_tys::relate_types(
-            self.infcx,
-            self.param_env,
-            a,
-            v,
-            b,
-            locations,
-            category,
-            self.borrowck_context,
-        )
+        relate_tys::relate_types(self, a, v, b, locations, category)
     }
 
     /// Try to relate `sub <: sup`
