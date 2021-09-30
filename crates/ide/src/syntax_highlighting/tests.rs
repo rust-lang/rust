@@ -777,6 +777,23 @@ fn test_extern_crate() {
 }
 
 #[test]
+fn test_default_library() {
+    check_highlighting(
+        r#"
+        //- minicore: option, iterators
+        use core::iter;
+
+        fn main() {
+            let foo = Some(92);
+            let nums = iter::repeat(foo.unwrap());
+        }
+        "#,
+        expect_file!["./test_data/highlight_default_library.html"],
+        false,
+    );
+}
+
+#[test]
 fn test_associated_function() {
     check_highlighting(
         r#"

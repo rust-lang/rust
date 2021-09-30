@@ -68,6 +68,29 @@ impl FamousDefs<'_, '_> {
         self.find_trait("core:ops:Deref")
     }
 
+    pub fn alloc(&self) -> Option<Crate> {
+        self.find_crate("alloc")
+    }
+
+    pub fn test(&self) -> Option<Crate> {
+        self.find_crate("test")
+    }
+
+    pub fn proc_macro(&self) -> Option<Crate> {
+        self.find_crate("proc_macro")
+    }
+
+    pub fn builtin_crates(&self) -> impl Iterator<Item = Crate> {
+        IntoIterator::into_iter([
+            self.std(),
+            self.core(),
+            self.alloc(),
+            self.test(),
+            self.proc_macro(),
+        ])
+        .filter_map(|it| it)
+    }
+
     fn find_trait(&self, path: &str) -> Option<Trait> {
         match self.find_def(path)? {
             hir::ScopeDef::ModuleDef(hir::ModuleDef::Trait(it)) => Some(it),

@@ -75,7 +75,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="comment documentation">/// #</span><span class="none injected"> </span><span class="attribute attribute injected">#</span><span class="attribute attribute injected">!</span><span class="attribute attribute injected">[</span><span class="builtin_attr attribute injected">allow</span><span class="parenthesis attribute injected">(</span><span class="none attribute injected">unused_mut</span><span class="parenthesis attribute injected">)</span><span class="attribute attribute injected">]</span>
     <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="keyword injected">mut</span><span class="none injected"> </span><span class="variable declaration injected mutable">foo</span><span class="colon injected">:</span><span class="none injected"> </span><span class="struct injected">Foo</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="function injected">new</span><span class="parenthesis injected">(</span><span class="parenthesis injected">)</span><span class="semicolon injected">;</span>
     <span class="comment documentation">/// ```</span>
-    <span class="keyword">pub</span> <span class="keyword">const</span> <span class="keyword">fn</span> <span class="function associated declaration static public">new</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="struct">Foo</span> <span class="brace">{</span>
+    <span class="keyword">pub</span> <span class="keyword">const</span> <span class="keyword">fn</span> <span class="function associated declaration public static">new</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="struct">Foo</span> <span class="brace">{</span>
         <span class="struct">Foo</span> <span class="brace">{</span> <span class="field">bar</span><span class="colon">:</span> <span class="bool_literal">true</span> <span class="brace">}</span>
     <span class="brace">}</span>
 
@@ -109,7 +109,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="comment documentation">/// ```sh</span>
     <span class="comment documentation">/// echo 1</span>
     <span class="comment documentation">/// ```</span>
-    <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function associated declaration reference public">foo</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">bool</span> <span class="brace">{</span>
+    <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function associated declaration public reference">foo</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">bool</span> <span class="brace">{</span>
         <span class="bool_literal">true</span>
     <span class="brace">}</span>
 <span class="brace">}</span>

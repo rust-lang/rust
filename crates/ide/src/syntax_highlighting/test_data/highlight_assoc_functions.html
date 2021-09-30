@@ -45,8 +45,8 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="keyword">struct</span> <span class="struct declaration">foo</span> <span class="brace">{</span><span class="brace">}</span>
 
 <span class="keyword">impl</span> <span class="struct">foo</span> <span class="brace">{</span>
-    <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function associated declaration static public">is_static</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
-    <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function associated declaration reference public">is_not_static</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
+    <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function associated declaration public static">is_static</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
+    <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function associated declaration public reference">is_not_static</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
 <span class="brace">}</span>
 
 <span class="keyword">trait</span> <span class="trait declaration">t</span> <span class="brace">{</span>
@@ -55,7 +55,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="brace">}</span>
 
 <span class="keyword">impl</span> <span class="trait">t</span> <span class="keyword">for</span> <span class="struct">foo</span> <span class="brace">{</span>
-    <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function associated declaration static trait public">is_static</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
-    <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function associated declaration reference trait public">is_not_static</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
+    <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function associated declaration public static trait">is_static</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
+    <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function associated declaration public reference trait">is_not_static</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
 <span class="brace">}</span>
         </code></pre>

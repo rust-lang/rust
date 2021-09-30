@@ -87,20 +87,20 @@ macro_rules! define_semantic_token_modifiers {
 }
 
 define_semantic_token_modifiers![
+    (ASYNC, "async"),
+    (ATTRIBUTE_MODIFIER, "attribute"),
+    (CALLABLE, "callable"),
     (CONSTANT, "constant"),
+    (CONSUMING, "consuming"),
     (CONTROL_FLOW, "controlFlow"),
     (INJECTED, "injected"),
-    (MUTABLE, "mutable"),
-    (CONSUMING, "consuming"),
-    (ASYNC, "async"),
-    (LIBRARY, "library"),
-    (PUBLIC, "public"),
-    (UNSAFE, "unsafe"),
-    (ATTRIBUTE_MODIFIER, "attribute"),
-    (TRAIT_MODIFIER, "trait"),
-    (CALLABLE, "callable"),
     (INTRA_DOC_LINK, "intraDocLink"),
+    (LIBRARY, "library"),
+    (MUTABLE, "mutable"),
+    (PUBLIC, "public"),
     (REFERENCE, "reference"),
+    (TRAIT_MODIFIER, "trait"),
+    (UNSAFE, "unsafe"),
 ];
 
 #[derive(Default)]

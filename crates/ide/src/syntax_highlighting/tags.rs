@@ -55,6 +55,8 @@ pub enum HlMod {
     Consuming,
     /// Used with keywords like `if` and `break`.
     ControlFlow,
+    /// Used for items from built-in crates (std, core, alloc, test and proc_macro).
+    DefaultLibrary,
     /// `foo` in `fn foo(x: i32)` is a definition, `foo` in `foo(90 + 2)` is
     /// not.
     Definition,
@@ -187,42 +189,44 @@ impl fmt::Display for HlTag {
 impl HlMod {
     const ALL: &'static [HlMod; HlMod::Unsafe as u8 as usize + 1] = &[
         HlMod::Associated,
+        HlMod::Async,
         HlMod::Attribute,
         HlMod::Callable,
         HlMod::Consuming,
         HlMod::ControlFlow,
+        HlMod::DefaultLibrary,
         HlMod::Definition,
         HlMod::Documentation,
         HlMod::Injected,
         HlMod::IntraDocLink,
+        HlMod::Library,
         HlMod::Mutable,
+        HlMod::Public,
         HlMod::Reference,
         HlMod::Static,
         HlMod::Trait,
-        HlMod::Async,
-        HlMod::Library,
-        HlMod::Public,
         HlMod::Unsafe,
     ];
 
     fn as_str(self) -> &'static str {
         match self {
             HlMod::Associated => "associated",
+            HlMod::Async => "async",
             HlMod::Attribute => "attribute",
             HlMod::Callable => "callable",
             HlMod::Consuming => "consuming",
             HlMod::ControlFlow => "control",
+            HlMod::DefaultLibrary => "default_library",
             HlMod::Definition => "declaration",
             HlMod::Documentation => "documentation",
             HlMod::Injected => "injected",
             HlMod::IntraDocLink => "intra_doc_link",
+            HlMod::Library => "library",
             HlMod::Mutable => "mutable",
+            HlMod::Public => "public",
             HlMod::Reference => "reference",
             HlMod::Static => "static",
             HlMod::Trait => "trait",
-            HlMod::Async => "async",
-            HlMod::Library => "library",
-            HlMod::Public => "public",
             HlMod::Unsafe => "unsafe",
         }
     }
