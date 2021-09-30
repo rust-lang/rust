@@ -684,7 +684,17 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             _ => false,
         },
         ExprKind::Tup(items) | ExprKind::Array(items) => items.iter().all(|x| is_default_equivalent(cx, x)),
-        ExprKind::Repeat(x, _) => is_default_equivalent(cx, x),
+        ExprKind::Repeat(x, y) => if_chain! {
+            if let ExprKind::Lit(ref const_lit) = cx.tcx.hir().body(y.body).value.kind;
+            if let LitKind::Int(v, _) = const_lit.node;
+            if v <= 32 && is_default_equivalent(cx, x);
+            then {
+                true
+            }
+            else {
+                false
+            }
+        },
         ExprKind::Call(repl_func, _) => if_chain! {
             if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
             if let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
