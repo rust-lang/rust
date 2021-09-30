@@ -86,6 +86,7 @@ mod diagnostics;
 mod imports;
 mod late;
 mod macros;
+mod resolution_error;
 
 enum Weak {
     Yes,

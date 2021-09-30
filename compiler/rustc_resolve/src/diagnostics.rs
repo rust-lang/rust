@@ -29,7 +29,7 @@ use crate::{
 use crate::{NameBinding, NameBindingKind, PrivacyError, VisResolutionError};
 use crate::{ParentScope, PathResult, ResolutionError, Resolver, Scope, ScopeSet, Segment};
 
-type Res = def::Res<ast::NodeId>;
+crate type Res = def::Res<ast::NodeId>;
 
 /// A vector of spans and replacements, a message and applicability.
 crate type Suggestion = (Vec<(Span, String)>, String, Applicability);
@@ -75,7 +75,7 @@ crate struct ImportSuggestion {
 /// *Attention*: the method used is very fragile since it essentially duplicates the work of the
 /// parser. If you need to use this function or something similar, please consider updating the
 /// `source_map` functions and this function to something more robust.
-fn reduce_impl_span_to_impl_keyword(sm: &SourceMap, impl_span: Span) -> Span {
+crate fn reduce_impl_span_to_impl_keyword(sm: &SourceMap, impl_span: Span) -> Span {
     let impl_span = sm.span_until_char(impl_span, '<');
     sm.span_until_whitespace(impl_span)
 }
