@@ -180,22 +180,28 @@ fn assert_expand(
     _id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
-    // A hacky implementation for goto def and hover
-    // We expand `assert!(cond, arg1, arg2)` to
-    // ```
-    // {(cond, &(arg1), &(arg2));}
-    // ```,
-    // which is wrong but useful.
-
+    let krate = tt::Ident { text: "$crate".into(), id: tt::TokenId::unspecified() };
     let args = parse_exprs_with_sep(tt, ',');
-
-    let arg_tts = args.into_iter().flat_map(|arg| {
-        quote! { &(#arg), }
-    }.token_trees);
-
-    let expanded = quote! {
-        { { (##arg_tts); } }
+    let expanded = match &*args {
+        [cond, panic_args @ ..] => {
+            let cond = cond.clone();
+            let panic_args = panic_args.iter().cloned().intersperse(tt::Subtree {
+                delimiter: None,
+                token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
+                    char: ',',
+                    spacing: tt::Spacing::Alone,
+                    id: tt::TokenId::unspecified(),
+                }))],
+            });
+            quote! {{
+                if !#cond {
+                    #krate::panic!(##panic_args);
+                }
+            }}
+        }
+        [] => quote! {{}},
     };
+
     ExpandResult::ok(expanded)
 }
 
@@ -731,7 +737,7 @@ mod tests {
             }
             assert!(true, "{} {:?}", arg1(a, b, c), arg2);
             "#,
-            expect![["{{(&(true), &(\"{} {:?}\"), &(arg1(a,b,c)), &(arg2),);}}"]],
+            expect![[r#"{if!true{$crate::panic!("{} {:?}",arg1(a,b,c),arg2);}}"#]],
         );
     }
 

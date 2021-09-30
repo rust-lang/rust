@@ -469,7 +469,10 @@ mod panic {
 }
 
 #[rustc_builtin_macro(std_panic)]
+#[macro_export]
 macro_rules! panic {}
+#[rustc_builtin_macro]
+macro_rules! assert {}
 
 fn main() {
     // from https://doc.rust-lang.org/std/fmt/index.html
@@ -522,6 +525,8 @@ fn main() {
     println!("{:x?} {} ", thingy, n2);
     panic!("{}", 0);
     panic!("more {}", 1);
+    assert!(true, "{}", 1);
+    assert!(true, "{} asdasd", 1);
 }"#
         .trim(),
         expect_file!["./test_data/highlight_strings.html"],
