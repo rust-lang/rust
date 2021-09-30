@@ -184,15 +184,16 @@ fn assert_expand(
     let args = parse_exprs_with_sep(tt, ',');
     let expanded = match &*args {
         [cond, panic_args @ ..] => {
-            let cond = cond.clone();
-            let panic_args = panic_args.iter().cloned().intersperse(tt::Subtree {
+            let comma = tt::Subtree {
                 delimiter: None,
                 token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
                     char: ',',
                     spacing: tt::Spacing::Alone,
                     id: tt::TokenId::unspecified(),
                 }))],
-            });
+            };
+            let cond = cond.clone();
+            let panic_args = itertools::Itertools::intersperse(panic_args.iter().cloned(), comma);
             quote! {{
                 if !#cond {
                     #krate::panic!(##panic_args);
