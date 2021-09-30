@@ -535,6 +535,7 @@ fn semantic_token_type_and_modifiers(
             HlMod::Callable => semantic_tokens::CALLABLE,
             HlMod::Consuming => semantic_tokens::CONSUMING,
             HlMod::ControlFlow => semantic_tokens::CONTROL_FLOW,
+            HlMod::CrateRoot => semantic_tokens::CRATE_ROOT,
             HlMod::DefaultLibrary => lsp_types::SemanticTokenModifier::DEFAULT_LIBRARY,
             HlMod::Definition => lsp_types::SemanticTokenModifier::DECLARATION,
             HlMod::Documentation => lsp_types::SemanticTokenModifier::DOCUMENTATION,

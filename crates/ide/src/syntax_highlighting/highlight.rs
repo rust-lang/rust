@@ -164,8 +164,10 @@ fn token(
                     T![for] if !is_child_of_impl(&token) => h | HlMod::ControlFlow,
                     T![unsafe] => h | HlMod::Unsafe,
                     T![true] | T![false] => HlTag::BoolLiteral.into(),
-                    // self is handled as either a Name or NameRef already
-                    T![self] => return None,
+                    // crate is handled just as a token if it's in an `extern crate`
+                    T![crate] if parent_matches::<ast::ExternCrate>(&token) => h,
+                    // self, crate and super are handled as either a Name or NameRef already
+                    T![self] | T![crate] | T![super] => return None,
                     T![ref] => token
                         .parent()
                         .and_then(ast::IdentPat::cast)
@@ -283,7 +285,7 @@ fn highlight_name_ref(
                 }
             }
         };
-        let h = match name_class {
+        let mut h = match name_class {
             NameRefClass::Definition(def) => {
                 if let Definition::Local(local) = &def {
                     if let Some(name) = local.name(db) {
@@ -325,11 +327,15 @@ fn highlight_name_ref(
             }
             NameRefClass::FieldShorthand { .. } => SymbolKind::Field.into(),
         };
-        if h.tag == HlTag::Symbol(SymbolKind::Module) && name_ref.self_token().is_some() {
-            SymbolKind::SelfParam.into()
-        } else {
-            h
+        if h.tag == HlTag::Symbol(SymbolKind::Module) {
+            if name_ref.self_token().is_some() {
+                return SymbolKind::SelfParam.into();
+            }
+            if name_ref.crate_token().is_some() || name_ref.super_token().is_some() {
+                h.tag = HlTag::Keyword;
+            }
         }
+        h
     })
 }
 
@@ -393,7 +399,13 @@ fn highlight_def(
         Definition::Macro(_) => Highlight::new(HlTag::Symbol(SymbolKind::Macro)),
         Definition::Field(_) => Highlight::new(HlTag::Symbol(SymbolKind::Field)),
         Definition::ModuleDef(def) => match def {
-            hir::ModuleDef::Module(_) => Highlight::new(HlTag::Symbol(SymbolKind::Module)),
+            hir::ModuleDef::Module(module) => {
+                let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Module));
+                if module.parent(db).is_none() {
+                    h |= HlMod::CrateRoot
+                }
+                h
+            }
             hir::ModuleDef::Function(func) => {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Function));
                 if let Some(item) = func.as_assoc_item(db) {

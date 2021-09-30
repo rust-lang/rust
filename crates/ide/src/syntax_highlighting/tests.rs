@@ -777,6 +777,50 @@ fn test_extern_crate() {
 }
 
 #[test]
+fn test_crate_root() {
+    check_highlighting(
+        r#"
+        //- minicore: iterators
+        //- /main.rs crate:main deps:foo
+        extern crate foo;
+        use core::iter;
+
+        pub const NINETY_TWO: u8 = 92;
+
+        use foo as foooo;
+
+        pub(crate) fn main() {
+            let baz = iter::repeat(92);
+        }
+
+        mod bar {
+            pub(in super) const FORTY_TWO: u8 = 42;
+
+            mod baz {
+                use super::super::NINETY_TWO;
+                use crate::foooo::Point;
+
+                pub(in super::super) const TWENTY_NINE: u8 = 29;
+            }
+        }
+        //- /foo.rs crate:foo
+        struct Point {
+            x: u8,
+            y: u8,
+        }
+
+        mod inner {
+            pub(super) fn swap(p: crate::Point) -> crate::Point {
+                crate::Point { x: p.y, y: p.x }
+            }
+        }
+        "#,
+        expect_file!["./test_data/highlight_crate_root.html"],
+        false,
+    );
+}
+
+#[test]
 fn test_default_library() {
     check_highlighting(
         r#"
