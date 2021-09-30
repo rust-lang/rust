@@ -478,7 +478,7 @@ macro_rules! panic {}
 #[rustc_builtin_macro]
 macro_rules! assert {}
 
-macro_rules! todo {
+macro_rules! toho {
     () => ($crate::panic!("not yet implemented"));
     ($($arg:tt)+) => ($crate::panic!("not yet implemented: {}", $crate::format_args!($($arg)+)));
 }
@@ -536,7 +536,7 @@ fn main() {
     panic!("more {}", 1);
     assert!(true, "{}", 1);
     assert!(true, "{} asdasd", 1);
-    todo!("{}fmt", 0);
+    toho!("{}fmt", 0);
 }"#
         .trim(),
         expect_file!["./test_data/highlight_strings.html"],
