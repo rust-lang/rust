@@ -1,5 +1,5 @@
 #![warn(clippy::to_string_in_display)]
-#![allow(clippy::inherent_to_string_shadow_display)]
+#![allow(clippy::inherent_to_string_shadow_display, clippy::to_string_in_format_args)]
 
 use std::fmt;
 
