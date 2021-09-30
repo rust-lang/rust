@@ -559,16 +559,17 @@ where
         return unsafe { Some(Ok(mem::zeroed())) };
     }
 
-    struct Guard<T, const N: usize> {
-        ptr: *mut T,
+    struct Guard<'a, T, const N: usize> {
+        array_mut: &'a mut [MaybeUninit<T>; N],
         initialized: usize,
     }
 
-    impl<T, const N: usize> Drop for Guard<T, N> {
+    impl<T, const N: usize> Drop for Guard<'_, T, N> {
         fn drop(&mut self) {
             debug_assert!(self.initialized <= N);
 
-            let initialized_part = crate::ptr::slice_from_raw_parts_mut(self.ptr, self.initialized);
+            let ptr = MaybeUninit::slice_as_mut_ptr(self.array_mut);
+            let initialized_part = crate::ptr::slice_from_raw_parts_mut(ptr, self.initialized);
 
             // SAFETY: this raw slice will contain only initialized objects.
             unsafe {
@@ -578,8 +579,7 @@ where
     }
 
     let mut array = MaybeUninit::uninit_array::<N>();
-    let mut guard: Guard<_, N> =
-        Guard { ptr: MaybeUninit::slice_as_mut_ptr(&mut array), initialized: 0 };
+    let mut guard: Guard<'_, _, N> = Guard { array_mut: &mut array, initialized: 0 };
 
     while let Some(item_rslt) = iter.next() {
         let item = match item_rslt {
@@ -593,7 +593,7 @@ where
         // loop and the loop is aborted once it reaches N (which is
         // `array.len()`).
         unsafe {
-            array.get_unchecked_mut(guard.initialized).write(item);
+            guard.array_mut.get_unchecked_mut(guard.initialized).write(item);
         }
         guard.initialized += 1;
 
