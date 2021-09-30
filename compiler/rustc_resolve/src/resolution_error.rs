@@ -559,3 +559,92 @@ impl<'a, 'b> StructErrorBuilder<'a, 'b> {
         err
     }
 }
+
+impl<'a> ResolutionError<'a> {
+    crate fn into_struct_error<'b>(
+        self,
+        resolver: &Resolver<'b>,
+        span: Span,
+    ) -> DiagnosticBuilder<'b> {
+        let builder = StructErrorBuilder { resolver, span };
+
+        match self {
+            ResolutionError::GenericParamsFromOuterFunction(outer_res, has_generic_params) => {
+                builder.generic_params_from_outer_function(outer_res, has_generic_params)
+            }
+            ResolutionError::NameAlreadyUsedInParameterList(name, first_use_span) => {
+                builder.name_already_used_in_parameter_list(name, first_use_span)
+            }
+            ResolutionError::MethodNotMemberOfTrait(method, trait_, candidate) => {
+                builder.method_not_member_of_trait(method, trait_, candidate)
+            }
+            ResolutionError::TypeNotMemberOfTrait(type_, trait_, candidate) => {
+                builder.type_not_member_of_trait(type_, trait_, candidate)
+            }
+            ResolutionError::ConstNotMemberOfTrait(const_, trait_, candidate) => {
+                builder.const_not_member_of_trait(const_, trait_, candidate)
+            }
+            ResolutionError::VariableNotBoundInPattern(binding_error) => {
+                builder.variable_not_bound_in_pattern(binding_error)
+            }
+            ResolutionError::VariableBoundWithDifferentMode(variable_name, first_binding_span) => {
+                builder.variable_bound_with_different_mode(variable_name, first_binding_span)
+            }
+            ResolutionError::IdentifierBoundMoreThanOnceInParameterList(identifier) => {
+                builder.identifier_bound_more_than_once_in_parameter_list(identifier)
+            }
+            ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(identifier) => {
+                builder.identifier_bound_more_than_once_in_same_pattern(identifier)
+            }
+            ResolutionError::UndeclaredLabel { name, suggestion } => {
+                builder.undeclared_label(name, suggestion)
+            }
+            ResolutionError::SelfImportsOnlyAllowedWithin { root, span_with_rename } => {
+                builder.self_imports_only_allowed_within(root, span_with_rename)
+            }
+            ResolutionError::SelfImportCanOnlyAppearOnceInTheList => {
+                builder.self_import_can_only_appear_once_in_the_list()
+            }
+            ResolutionError::SelfImportOnlyInImportListWithNonEmptyPrefix => {
+                builder.self_import_only_in_import_list_with_non_empty_prefix()
+            }
+            ResolutionError::FailedToResolve { label, suggestion } => {
+                builder.failed_to_resolve(label, suggestion)
+            }
+            ResolutionError::CannotCaptureDynamicEnvironmentInFnItem => {
+                builder.cannot_capture_dynamic_environment_in_fn_item()
+            }
+            ResolutionError::AttemptToUseNonConstantValueInConstant(ident, sugg, current) => {
+                builder.attempt_to_use_non_constant_value_in_constant(ident, sugg, current)
+            }
+            ResolutionError::BindingShadowsSomethingUnacceptable {
+                shadowing_binding_descr,
+                name,
+                participle,
+                article,
+                shadowed_binding_descr,
+                shadowed_binding_span,
+            } => builder.binding_shadows_something_unacceptable(
+                shadowing_binding_descr,
+                name,
+                participle,
+                article,
+                shadowed_binding_descr,
+                shadowed_binding_span,
+            ),
+            ResolutionError::ForwardDeclaredGenericParam => {
+                builder.forward_declared_generic_param()
+            }
+            ResolutionError::ParamInTyOfConstParam(name) => {
+                builder.param_in_ty_of_const_param(name)
+            }
+            ResolutionError::ParamInNonTrivialAnonConst { name, is_type } => {
+                builder.param_in_non_trivial_anon_const(name, is_type)
+            }
+            ResolutionError::SelfInGenericParamDefault => builder.self_in_generic_param_default(),
+            ResolutionError::UnreachableLabel { name, definition_span, suggestion } => {
+                builder.unreachable_label(name, definition_span, suggestion)
+            }
+        }
+    }
+}
