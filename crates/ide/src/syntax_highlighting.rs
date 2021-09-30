@@ -134,6 +134,7 @@ pub struct HlRange {
 // consuming:: Emitted for locals that are being consumed when use in a function call.
 // controlFlow:: Emitted for control-flow related tokens, this includes the `?` operator.
 // declaration:: Emitted for names of definitions, like `foo` in `fn foo() {}`.
+// defaultLibrary:: Emitted for items from built-in crates (std, core, alloc, test and proc_macro).
 // documentation:: Emitted for documentation comments.
 // injected:: Emitted for doc-string injected highlighting like rust source blocks in documentation.
 // intraDocLink:: Emitted for intra doc links in doc-strings.
