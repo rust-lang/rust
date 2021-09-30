@@ -676,7 +676,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
-        trait_ref: &ty::Binder<'tcx, ty::TraitRef<'tcx>>,
+        poly_trait_ref: &ty::Binder<'tcx, ty::TraitRef<'tcx>>,
         has_custom_message: bool,
     ) -> bool {
         let span = obligation.cause.span;
@@ -705,7 +705,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         never_suggest_borrow.push(self.tcx.get_diagnostic_item(sym::send_trait).unwrap());
 
         let param_env = obligation.param_env;
-        let trait_ref = trait_ref.skip_binder();
+        let trait_ref = poly_trait_ref.skip_binder();
 
         let found_ty = trait_ref.self_ty();
         let found_ty_str = found_ty.to_string();
@@ -715,25 +715,25 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let mut_substs = self.tcx.mk_substs_trait(mut_borrowed_found_ty, &[]);
 
         // Try to apply the original trait binding obligation by borrowing.
-        let mut try_borrowing = |new_imm_trait_ref: ty::TraitRef<'tcx>,
-                                 new_mut_trait_ref: ty::TraitRef<'tcx>,
-                                 expected_trait_ref: ty::TraitRef<'tcx>,
+        let mut try_borrowing = |new_imm_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
+                                 new_mut_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
+                                 expected_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
                                  blacklist: &[DefId]|
          -> bool {
-            if blacklist.contains(&expected_trait_ref.def_id) {
+            if blacklist.contains(&expected_trait_ref.def_id()) {
                 return false;
             }
 
             let imm_result = self.predicate_must_hold_modulo_regions(&Obligation::new(
                 ObligationCause::dummy(),
                 param_env,
-                ty::Binder::dummy(new_imm_trait_ref).without_const().to_predicate(self.tcx),
+                new_imm_trait_ref.without_const().to_predicate(self.tcx),
             ));
 
             let mut_result = self.predicate_must_hold_modulo_regions(&Obligation::new(
                 ObligationCause::dummy(),
                 param_env,
-                ty::Binder::dummy(new_mut_trait_ref).without_const().to_predicate(self.tcx),
+                new_mut_trait_ref.without_const().to_predicate(self.tcx),
             ));
 
             if imm_result || mut_result {
@@ -806,19 +806,19 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         };
 
         if let ObligationCauseCode::ImplDerivedObligation(obligation) = &*code {
-            let expected_trait_ref = obligation.parent_trait_ref.skip_binder();
-            let new_imm_trait_ref =
-                ty::TraitRef::new(obligation.parent_trait_ref.def_id(), imm_substs);
-            let new_mut_trait_ref =
-                ty::TraitRef::new(obligation.parent_trait_ref.def_id(), mut_substs);
+            let expected_trait_ref = obligation.parent_trait_ref;
+            let new_imm_trait_ref = poly_trait_ref
+                .rebind(ty::TraitRef::new(obligation.parent_trait_ref.def_id(), imm_substs));
+            let new_mut_trait_ref = poly_trait_ref
+                .rebind(ty::TraitRef::new(obligation.parent_trait_ref.def_id(), mut_substs));
             return try_borrowing(new_imm_trait_ref, new_mut_trait_ref, expected_trait_ref, &[]);
         } else if let ObligationCauseCode::BindingObligation(_, _)
         | ObligationCauseCode::ItemObligation(_) = &*code
         {
             return try_borrowing(
-                ty::TraitRef::new(trait_ref.def_id, imm_substs),
-                ty::TraitRef::new(trait_ref.def_id, mut_substs),
-                trait_ref,
+                poly_trait_ref.rebind(ty::TraitRef::new(trait_ref.def_id, imm_substs)),
+                poly_trait_ref.rebind(ty::TraitRef::new(trait_ref.def_id, mut_substs)),
+                *poly_trait_ref,
                 &never_suggest_borrow[..],
             );
         } else {

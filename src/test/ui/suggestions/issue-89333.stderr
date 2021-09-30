@@ -1,0 +1,23 @@
+error[E0277]: the trait bound `for<'a> &'a {integer}: Default` is not satisfied
+  --> $DIR/issue-89333.rs:6:10
+   |
+LL |     test(&|| 0);
+   |     ---- ^^^^^ the trait `for<'a> Default` is not implemented for `&'a {integer}`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the following implementations were found:
+             <&CStr as Default>
+             <&OsStr as Default>
+             <&[T] as Default>
+             <&mut [T] as Default>
+           and 217 others
+note: required by a bound in `test`
+  --> $DIR/issue-89333.rs:9:55
+   |
+LL | fn test<T>(arg: &impl Fn() -> T) where for<'a> &'a T: Default {}
+   |                                                       ^^^^^^^ required by this bound in `test`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
