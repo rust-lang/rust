@@ -63,6 +63,10 @@ llvm::cl::opt<bool> EnzymePrintType("enzyme-print-type", cl::init(false),
 llvm::cl::opt<bool> RustTypeRules("enzyme-rust-type", cl::init(false),
                                   cl::Hidden,
                                   cl::desc("Enable rust-specific type rules"));
+
+llvm::cl::opt<bool> EnzymeStrictAliasing(
+    "enzyme-strict-aliasing", cl::init(true), cl::Hidden,
+    cl::desc("Assume strict aliasing of types / type stability"));
 }
 
 const std::map<std::string, llvm::Intrinsic::ID> LIBM_FUNCTIONS = {
@@ -149,6 +153,7 @@ TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
     : notForAnalysis(getGuaranteedUnreachable(fn.Function)), intseen(),
       fntypeinfo(fn), interprocedural(TA), direction(direction), Invalid(false),
       PHIRecur(false), DT(std::make_shared<DominatorTree>(*fn.Function)),
+      PDT(std::make_shared<PostDominatorTree>(*fn.Function)),
       LI(std::make_shared<LoopInfo>(*DT)) {
 
   assert(fntypeinfo.KnownValues.size() ==
@@ -176,11 +181,12 @@ TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
 TypeAnalyzer::TypeAnalyzer(
     const FnTypeInfo &fn, TypeAnalysis &TA,
     const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &notForAnalysis,
-    std::shared_ptr<llvm::DominatorTree> DT, std::shared_ptr<llvm::LoopInfo> LI,
-    uint8_t direction, bool PHIRecur)
+    std::shared_ptr<llvm::DominatorTree> DT,
+    std::shared_ptr<llvm::PostDominatorTree> PDT,
+    std::shared_ptr<llvm::LoopInfo> LI, uint8_t direction, bool PHIRecur)
     : notForAnalysis(notForAnalysis.begin(), notForAnalysis.end()), intseen(),
       fntypeinfo(fn), interprocedural(TA), direction(direction), Invalid(false),
-      PHIRecur(PHIRecur), DT(DT), LI(LI) {
+      PHIRecur(PHIRecur), DT(DT), PDT(PDT), LI(LI) {
   assert(fntypeinfo.KnownValues.size() ==
          fntypeinfo.Function->getFunctionType()->getNumParams());
 }
@@ -402,7 +408,7 @@ void getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
     // Just analyze this new "instruction" and none of the others
     {
       TypeAnalyzer tmpAnalysis(TA.fntypeinfo, TA.interprocedural,
-                               TA.notForAnalysis, TA.DT, TA.LI);
+                               TA.notForAnalysis, TA.DT, TA.PDT, TA.LI);
       tmpAnalysis.visit(*I);
       analysis[Val] = tmpAnalysis.getAnalysis(I);
     }
@@ -548,8 +554,32 @@ void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
       llvm::errs() << "inst: " << *I << "\n";
     }
     assert(fntypeinfo.Function == I->getParent()->getParent());
-  } else if (auto Arg = dyn_cast<Argument>(Val))
+    assert(Origin);
+    if (!EnzymeStrictAliasing) {
+      if (auto OI = dyn_cast<Instruction>(Origin)) {
+        if (OI->getParent() != I->getParent() &&
+            !PDT->dominates(OI->getParent(), I->getParent())) {
+          if (EnzymePrintType)
+            llvm::errs() << " skipping update into " << *I << " of "
+                         << Data.str() << " from " << *OI << "\n";
+          return;
+        }
+      }
+    }
+  } else if (auto Arg = dyn_cast<Argument>(Val)) {
     assert(fntypeinfo.Function == Arg->getParent());
+    if (!EnzymeStrictAliasing)
+      if (auto OI = dyn_cast<Instruction>(Origin)) {
+        auto I = &*fntypeinfo.Function->getEntryBlock().begin();
+        if (OI->getParent() != I->getParent() &&
+            !PDT->dominates(OI->getParent(), I->getParent())) {
+          if (EnzymePrintType)
+            llvm::errs() << " skipping update into " << *Arg << " of "
+                         << Data.str() << " from " << *OI << "\n";
+          return;
+        }
+      }
+  }
 
   // Attempt to update the underlying analysis
   bool LegalOr = true;
@@ -641,7 +671,7 @@ void TypeAnalyzer::prepareArgs() {
   // Propagate input type information for arguments
   for (auto &pair : fntypeinfo.Arguments) {
     assert(pair.first->getParent() == fntypeinfo.Function);
-    updateAnalysis(pair.first, pair.second, nullptr);
+    updateAnalysis(pair.first, pair.second, pair.first);
   }
 
   // Get type and other information about argument
@@ -656,7 +686,7 @@ void TypeAnalyzer::prepareArgs() {
     for (Instruction &I : BB) {
       if (ReturnInst *RI = dyn_cast<ReturnInst>(&I)) {
         if (Value *RV = RI->getReturnValue()) {
-          updateAnalysis(RV, fntypeinfo.Return, nullptr);
+          updateAnalysis(RV, fntypeinfo.Return, RV);
           updateAnalysis(RV, getAnalysis(RV), RV);
         }
       }
@@ -852,7 +882,7 @@ void TypeAnalyzer::runPHIHypotheses() {
             // the incoming operands are integral
 
             TypeAnalyzer tmpAnalysis(fntypeinfo, interprocedural,
-                                     notForAnalysis, DT, LI, DOWN,
+                                     notForAnalysis, DT, PDT, LI, DOWN,
                                      /*PHIRecur*/ true);
             tmpAnalysis.intseen = intseen;
             tmpAnalysis.analysis = analysis;
@@ -884,7 +914,7 @@ void TypeAnalyzer::runPHIHypotheses() {
             // Assume that this is an integer, does that mean we can prove that
             // the incoming operands are integral
             TypeAnalyzer tmpAnalysis(fntypeinfo, interprocedural,
-                                     notForAnalysis, DT, LI, DOWN,
+                                     notForAnalysis, DT, PDT, LI, DOWN,
                                      /*PHIRecur*/ true);
             tmpAnalysis.intseen = intseen;
             tmpAnalysis.analysis = analysis;

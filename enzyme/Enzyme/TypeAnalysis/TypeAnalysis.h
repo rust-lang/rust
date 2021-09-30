@@ -40,6 +40,7 @@
 #include "llvm/IR/Value.h"
 
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/PostDominators.h"
 #include "llvm/IR/Dominators.h"
 
 #include "TypeTree.h"
@@ -223,6 +224,7 @@ public:
   std::map<llvm::Value *, TypeTree> analysis;
 
   std::shared_ptr<llvm::DominatorTree> DT;
+  std::shared_ptr<llvm::PostDominatorTree> PDT;
 
   std::shared_ptr<llvm::LoopInfo> LI;
 
@@ -234,6 +236,7 @@ public:
   TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
                const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &notForAnalysis,
                std::shared_ptr<llvm::DominatorTree> DT,
+               std::shared_ptr<llvm::PostDominatorTree> PDT,
                std::shared_ptr<llvm::LoopInfo> LI, uint8_t direction = BOTH,
                bool PHIRecur = false);
 
