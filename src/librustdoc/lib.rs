@@ -19,8 +19,6 @@
 #![warn(rustc::internal)]
 
 #[macro_use]
-extern crate lazy_static;
-#[macro_use]
 extern crate tracing;
 
 // N.B. these need `extern crate` even in 2018 edition
