@@ -2408,7 +2408,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
 ///
 /// The implementation uses similar import discovery logic to that of 'use' suggestions.
 fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> FxHashMap<DefId, Symbol> {
-    let mut map = FxHashMap::default();
+    let mut map: FxHashMap<DefId, Symbol> = FxHashMap::default();
 
     if let TrimmedDefPaths::GoodPath = tcx.sess.opts.trimmed_def_paths {
         // For good paths causing this bug, the `rustc_middle::ty::print::with_no_trimmed_paths`
@@ -2446,8 +2446,29 @@ fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> FxHashMap<DefId, Symbol> {
     });
 
     for ((_, symbol), opt_def_id) in unique_symbols_rev.drain() {
+        use std::collections::hash_map::Entry::{Occupied, Vacant};
+
         if let Some(def_id) = opt_def_id {
-            map.insert(def_id, symbol);
+            match map.entry(def_id) {
+                Occupied(mut v) => {
+                    // A single DefId can be known under multiple names (e.g.,
+                    // with a `pub use ... as ...;`). We need to ensure that the
+                    // name placed in this map is chosen deterministically, so
+                    // if we find multiple names (`symbol`) resolving to the
+                    // same `def_id`, we prefer the lexicographically smallest
+                    // name.
+                    //
+                    // Any stable ordering would be fine here though.
+                    if *v.get() != symbol {
+                        if v.get().as_str() > symbol.as_str() {
+                            v.insert(symbol);
+                        }
+                    }
+                }
+                Vacant(v) => {
+                    v.insert(symbol);
+                }
+            }
         }
     }
 
