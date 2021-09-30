@@ -9,8 +9,8 @@ use crate::clean::PrimitiveType;
 use crate::html::escape::Escape;
 use crate::html::render::Context;
 
+use std::collections::VecDeque;
 use std::fmt::{Display, Write};
-use std::iter::Peekable;
 
 use rustc_lexer::{LiteralKind, TokenKind};
 use rustc_span::edition::Edition;
@@ -201,10 +201,57 @@ fn get_real_ident_class(text: &str, edition: Edition, allow_path_keywords: bool)
     })
 }
 
+/// This iterator comes from the same idea than "Peekable" except that it allows to "peek" more than
+/// just the next item by using `peek_next`. The `peek` method always returns the next item after
+/// the current one whereas `peek_next` will return the next item after the last one peeked.
+///
+/// You can use both `peek` and `peek_next` at the same time without problem.
+struct PeekIter<'a> {
+    stored: VecDeque<(TokenKind, &'a str)>,
+    /// This position is reinitialized when using `next`. It is used in `peek_next`.
+    peek_pos: usize,
+    iter: TokenIter<'a>,
+}
+
+impl PeekIter<'a> {
+    fn new(iter: TokenIter<'a>) -> Self {
+        Self { stored: VecDeque::new(), peek_pos: 0, iter }
+    }
+    /// Returns the next item after the current one. It doesn't interfer with `peek_next` output.
+    fn peek(&mut self) -> Option<&(TokenKind, &'a str)> {
+        if self.stored.is_empty() {
+            if let Some(next) = self.iter.next() {
+                self.stored.push_back(next);
+            }
+        }
+        self.stored.front()
+    }
+    /// Returns the next item after the last one peeked. It doesn't interfer with `peek` output.
+    fn peek_next(&mut self) -> Option<&(TokenKind, &'a str)> {
+        self.peek_pos += 1;
+        if self.peek_pos - 1 < self.stored.len() {
+            self.stored.get(self.peek_pos - 1)
+        } else if let Some(next) = self.iter.next() {
+            self.stored.push_back(next);
+            self.stored.back()
+        } else {
+            None
+        }
+    }
+}
+
+impl Iterator for PeekIter<'a> {
+    type Item = (TokenKind, &'a str);
+    fn next(&mut self) -> Option<Self::Item> {
+        self.peek_pos = 0;
+        if let Some(first) = self.stored.pop_front() { Some(first) } else { self.iter.next() }
+    }
+}
+
 /// Processes program tokens, classifying strings of text by highlighting
 /// category (`Class`).
 struct Classifier<'a> {
-    tokens: Peekable<TokenIter<'a>>,
+    tokens: PeekIter<'a>,
     in_attribute: bool,
     in_macro: bool,
     in_macro_nonterminal: bool,
@@ -218,7 +265,7 @@ impl<'a> Classifier<'a> {
     /// Takes as argument the source code to HTML-ify, the rust edition to use and the source code
     /// file span which will be used later on by the `span_correspondance_map`.
     fn new(src: &str, edition: Edition, file_span: Span) -> Classifier<'_> {
-        let tokens = TokenIter { src }.peekable();
+        let tokens = PeekIter::new(TokenIter { src });
         Classifier {
             tokens,
             in_attribute: false,
@@ -369,7 +416,7 @@ impl<'a> Classifier<'a> {
             // Assume that '&' or '*' is the reference or dereference operator
             // or a reference or pointer type. Unless, of course, it looks like
             // a logical and or a multiplication operator: `&&` or `* `.
-            TokenKind::Star => match lookahead {
+            TokenKind::Star => match self.peek() {
                 Some(TokenKind::Whitespace) => Class::Op,
                 _ => Class::RefKeyWord,
             },
@@ -480,6 +527,9 @@ impl<'a> Classifier<'a> {
                 None => match text {
                     "Option" | "Result" => Class::PreludeTy,
                     "Some" | "None" | "Ok" | "Err" => Class::PreludeVal,
+                    // "union" is a weak keyword and is only considered as a keyword when declaring
+                    // a union type.
+                    "union" if self.check_if_is_union_keyword() => Class::KeyWord,
                     _ if self.in_macro_nonterminal => {
                         self.in_macro_nonterminal = false;
                         Class::MacroNonTerminal
@@ -500,7 +550,17 @@ impl<'a> Classifier<'a> {
     }
 
     fn peek(&mut self) -> Option<TokenKind> {
-        self.tokens.peek().map(|(toke_kind, _text)| *toke_kind)
+        self.tokens.peek().map(|(token_kind, _text)| *token_kind)
+    }
+
+    fn check_if_is_union_keyword(&mut self) -> bool {
+        while let Some(kind) = self.tokens.peek_next().map(|(token_kind, _text)| token_kind) {
+            if *kind == TokenKind::Whitespace {
+                continue;
+            }
+            return *kind == TokenKind::Ident;
+        }
+        false
     }
 }
 
