@@ -1435,6 +1435,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
         .span_label(span, format!("multiple uses of `{}` in pattern", ident))
         .span_label(other_field, format!("first use of `{}`", ident))
+        .span_suggestion(span, "consider removing one usage of", ident.to_string(), rustc_errors::Applicability::MachineApplicable)
         .emit();
     }
 
