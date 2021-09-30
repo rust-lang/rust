@@ -1572,7 +1572,11 @@ extern "C" bool
 LLVMRustPrepareThinLTOResolveWeak(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
   Module &Mod = *unwrap(M);
   const auto &DefinedGlobals = Data->ModuleToDefinedGVSummaries.lookup(Mod.getModuleIdentifier());
+#if LLVM_VERSION_GE(14, 0)
+  thinLTOFinalizeInModule(Mod, DefinedGlobals, /*PropagateAttrs=*/true);
+#else
   thinLTOResolvePrevailingInModule(Mod, DefinedGlobals);
+#endif
   return true;
 }
 
