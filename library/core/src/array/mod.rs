@@ -533,11 +533,14 @@ unsafe fn collect_into_array_unchecked<I, const N: usize>(iter: &mut I) -> [I::I
 where
     I: Iterator + TrustedLen,
 {
-    let mut map = iter.map(|el| Ok::<_, Infallible>(el));
+    let mut map = iter.map(Ok::<_, Infallible>);
 
-    // SAFETY: Valid array elements are covered by the fact that all passed values
-    // to `collect_into_array` are `Ok`.
-    unsafe { collect_into_array_rslt_unchecked(&mut map).unwrap_unchecked() }
+    // SAFETY: The same safety considerations w.r.t. the iterator length
+    // apply for `collect_into_array_rslt_unchecked` as for
+    // `collect_into_array_unchecked`
+    match unsafe { collect_into_array_rslt_unchecked(&mut map) } {
+        Ok(array) => array,
+    }
 }
 
 /// Pulls `N` items from `iter` and returns them as an array. If the iterator
