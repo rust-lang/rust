@@ -129,7 +129,8 @@ fn to_pass_builder_opt_level(cfg: config::OptLevel) -> llvm::PassBuilderOptLevel
 fn to_llvm_relocation_model(relocation_model: RelocModel) -> llvm::RelocModel {
     match relocation_model {
         RelocModel::Static => llvm::RelocModel::Static,
-        RelocModel::Pic => llvm::RelocModel::PIC,
+        // LLVM doesn't have a PIE relocation model, it represents PIE as PIC with an extra attribute.
+        RelocModel::Pic | RelocModel::Pie => llvm::RelocModel::PIC,
         RelocModel::DynamicNoPic => llvm::RelocModel::DynamicNoPic,
         RelocModel::Ropi => llvm::RelocModel::ROPI,
         RelocModel::Rwpi => llvm::RelocModel::RWPI,

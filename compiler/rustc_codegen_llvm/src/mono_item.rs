@@ -143,6 +143,12 @@ impl CodegenCx<'ll, 'tcx> {
             return true;
         }
 
+        // With pie relocation model calls of functions defined in the translation
+        // unit can use copy relocations.
+        if self.tcx.sess.relocation_model() == RelocModel::Pie && !is_declaration {
+            return true;
+        }
+
         return false;
     }
 }
