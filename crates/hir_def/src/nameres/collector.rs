@@ -275,6 +275,8 @@ struct DefCollector<'a> {
 
 impl DefCollector<'_> {
     fn seed_with_top_level(&mut self) {
+        let _p = profile::span("seed_with_top_level");
+
         let file_id = self.db.crate_graph()[self.def_map.krate].root_file_id;
         let item_tree = self.db.file_item_tree(file_id.into());
         let module_id = self.def_map.root;
@@ -346,15 +348,20 @@ impl DefCollector<'_> {
         }
     }
 
-    fn collect(&mut self) {
+    fn resolution_loop(&mut self) {
+        let _p = profile::span("DefCollector::resolution_loop");
+
         // main name resolution fixed-point loop.
         let mut i = 0;
         'outer: loop {
             loop {
                 self.db.unwind_if_cancelled();
-                loop {
-                    if self.resolve_imports() == ReachedFixedPoint::Yes {
-                        break;
+                {
+                    let _p = profile::span("resolve_imports loop");
+                    loop {
+                        if self.resolve_imports() == ReachedFixedPoint::Yes {
+                            break;
+                        }
                     }
                 }
                 if self.resolve_macros() == ReachedFixedPoint::Yes {
@@ -372,6 +379,12 @@ impl DefCollector<'_> {
                 break;
             }
         }
+    }
+
+    fn collect(&mut self) {
+        let _p = profile::span("DefCollector::collect");
+
+        self.resolution_loop();
 
         // Resolve all indeterminate resolved imports again
         // As some of the macros will expand newly import shadowing partial resolved imports
@@ -723,6 +736,7 @@ impl DefCollector<'_> {
     }
 
     fn resolve_import(&self, module_id: LocalModuleId, import: &Import) -> PartialResolvedImport {
+        let _p = profile::span("resolve_import").detail(|| format!("{}", import.path));
         tracing::debug!("resolving import: {:?} ({:?})", import, self.def_map.edition);
         if import.is_extern_crate {
             let name = import
@@ -790,6 +804,8 @@ impl DefCollector<'_> {
     }
 
     fn record_resolved_import(&mut self, directive: &ImportDirective) {
+        let _p = profile::span("record_resolved_import");
+
         let module_id = directive.module_id;
         let import = &directive.import;
         let mut def = directive.status.namespaces();
@@ -1243,6 +1259,8 @@ impl DefCollector<'_> {
 
     fn finish(mut self) -> DefMap {
         // Emit diagnostics for all remaining unexpanded macros.
+
+        let _p = profile::span("DefCollector::finish");
 
         for directive in &self.unresolved_macros {
             match &directive.kind {
