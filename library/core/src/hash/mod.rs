@@ -156,8 +156,10 @@ mod sip;
 /// ## Prefix collisions
 ///
 /// Implementations of `hash` should ensure that the data they
-/// pass to the `Hasher` are prefix-free. That is, different concatenations
-/// of the same data should not produce the same output.
+/// pass to the `Hasher` are prefix-free. That is,
+/// unequal values should cause two different byte sequences to be written,
+/// and neither of the two sequences should be a prefix of the other.
+///
 /// For example, the standard implementation of [`Hash` for `&str`][impl] passes an extra
 /// `0xFF` byte to the `Hasher` so that the values `("ab", "c")` and `("a",
 /// "bc")` hash differently.
