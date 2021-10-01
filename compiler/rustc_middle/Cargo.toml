@@ -32,3 +32,5 @@ chalk-ir = "0.55.0"
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 rustc_session = { path = "../rustc_session" }
 rustc_type_ir = { path = "../rustc_type_ir" }
+rand = "0.8.4"
+rand_xoshiro = "0.6.0"

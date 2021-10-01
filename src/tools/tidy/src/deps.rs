@@ -167,6 +167,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "rand_hc",
     "rand_pcg",
     "rand_xorshift",
+    "rand_xoshiro",
     "redox_syscall",
     "regex",
     "regex-automata",
