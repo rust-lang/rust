@@ -9,8 +9,7 @@ edition = "2018"
 doctest = false
 
 [dependencies]
-# build issues on freebsd, see https://github.com/rust-analyzer/rust-analyzer/pull/10145#issuecomment-912925976
-libc = "=0.2.99"
+libc = "0.2"
 backtrace = { version = "0.3.44", optional = true }
 always-assert = { version = "0.1.2", features = ["log"] }
 # Think twice before adding anything here
