@@ -1856,6 +1856,20 @@ fn foo() {
 }
 
 #[test]
+fn doctest_unwrap_result_return_type() {
+    check_doc_test(
+        "unwrap_result_return_type",
+        r#####"
+//- minicore: result
+fn foo() -> Result<i32>$0 { Ok(42i32) }
+"#####,
+        r#####"
+fn foo() -> i32 { 42i32 }
+"#####,
+    )
+}
+
+#[test]
 fn doctest_wrap_return_type_in_result() {
     check_doc_test(
         "wrap_return_type_in_result",
