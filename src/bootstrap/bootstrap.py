@@ -373,6 +373,7 @@ class RustBuild(object):
         self._download_url = ''
         self.build = ''
         self.build_dir = ''
+        self.clippy = False
         self.clean = False
         self.config_toml = ''
         self.rust_root = ''
@@ -397,6 +398,8 @@ class RustBuild(object):
             rustc_channel = self.stage0_compiler.version
         bin_root = self.bin_root(stage0)
 
+        tarball_suffix = '.tar.xz' if support_xz() else '.tar.gz'
+
         key = self.stage0_compiler.date
         if not stage0:
             key += str(self.rustc_commit)
@@ -405,7 +408,6 @@ class RustBuild(object):
                  self.program_out_of_date(self.rustc_stamp(stage0), key)):
             if os.path.exists(bin_root):
                 shutil.rmtree(bin_root)
-            tarball_suffix = '.tar.xz' if support_xz() else '.tar.gz'
             filename = "rust-std-{}-{}{}".format(
                 rustc_channel, self.build, tarball_suffix)
             pattern = "rust-std-{}".format(self.build)
@@ -434,6 +436,10 @@ class RustBuild(object):
             with output(self.rustc_stamp(stage0)) as rust_stamp:
                 rust_stamp.write(key)
 
+        if self.clippy:
+            filename = "clippy-{}-{}{}".format(rustc_channel, self.build, tarball_suffix)
+            self._download_component_helper(filename, "clippy", tarball_suffix, False, key=key)
+
         if self.rustfmt() and self.rustfmt().startswith(bin_root) and (
             not os.path.exists(self.rustfmt())
             or self.program_out_of_date(
@@ -442,7 +448,6 @@ class RustBuild(object):
             )
         ):
             if self.stage0_rustfmt is not None:
-                tarball_suffix = '.tar.xz' if support_xz() else '.tar.gz'
                 filename = "rustfmt-{}-{}{}".format(
                     self.stage0_rustfmt.version, self.build, tarball_suffix,
                 )
@@ -508,6 +513,17 @@ class RustBuild(object):
         return opt == "true" \
             or (opt == "if-available" and self.build in supported_platforms)
 
+    def get_rustc_commit(self):
+        if self.rustc_commit is None:
+            # Look for a version to compare to based on the current commit.
+            # Only commits merged by bors will have CI artifacts.
+            merge_base = [
+                "git", "rev-list", "--author=bors@rust-lang.org", "-n1",
+                "--merges", "--first-parent", "HEAD"
+            ]
+            self.rustc_commit = subprocess.check_output(merge_base, universal_newlines=True).strip()
+        return self.rustc_commit
+
     def _download_component_helper(
         self, filename, pattern, tarball_suffix, stage0=True, key=None
     ):
@@ -515,7 +531,7 @@ class RustBuild(object):
             if stage0:
                 key = self.stage0_compiler.date
             else:
-                key = self.rustc_commit
+                key = self.get_rustc_commit()
         cache_dst = os.path.join(self.build_dir, "cache")
         rustc_cache = os.path.join(cache_dst, key)
         if not os.path.exists(rustc_cache):
@@ -526,7 +542,7 @@ class RustBuild(object):
             url = "dist/{}".format(key)
         else:
             base = "https://ci-artifacts.rust-lang.org"
-            url = "rustc-builds/{}".format(self.rustc_commit)
+            url = "rustc-builds/{}".format(self.get_rustc_commit())
         tarball = os.path.join(rustc_cache, filename)
         if not os.path.exists(tarball):
             get(
@@ -677,13 +693,7 @@ class RustBuild(object):
         compiler = "{}/compiler/".format(top_level)
         library = "{}/library/".format(top_level)
 
-        # Look for a version to compare to based on the current commit.
-        # Only commits merged by bors will have CI artifacts.
-        merge_base = [
-            "git", "rev-list", "--author=bors@rust-lang.org", "-n1",
-            "--merges", "--first-parent", "HEAD"
-        ]
-        commit = subprocess.check_output(merge_base, universal_newlines=True).strip()
+        commit = self.get_rustc_commit()
 
         # Warn if there were changes to the compiler or standard library since the ancestor commit.
         status = subprocess.call(["git", "diff-index", "--quiet", commit, "--", compiler, library])
@@ -695,7 +705,6 @@ class RustBuild(object):
 
         if self.verbose:
             print("using downloaded stage1 artifacts from CI (commit {})".format(commit))
-        self.rustc_commit = commit
         # FIXME: support downloading artifacts from the beta channel
         self.download_toolchain(False, "nightly")
 
@@ -1115,6 +1124,8 @@ def bootstrap(help_triggered):
         print("      command. See src/bootstrap/README.md for help with common")
         print("      commands.")
 
+    clippy_triggered = 'clippy' in sys.argv
+
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
     parser.add_argument('--build')
@@ -1129,6 +1140,7 @@ def bootstrap(help_triggered):
     build.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
     build.verbose = args.verbose
     build.clean = args.clean
+    build.clippy = clippy_triggered
 
     # Read from `RUST_BOOTSTRAP_CONFIG`, then `--config`, then fallback to `config.toml` (if it
     # exists).
