@@ -221,7 +221,7 @@ struct DerefDelegate<'a, 'tcx> {
 
 impl DerefDelegate<'_, 'tcx> {
     pub fn finish(&mut self) -> String {
-        let end_span = Span::new(self.next_pos, self.closure_span.hi(), self.closure_span.ctxt());
+        let end_span = Span::new(self.next_pos, self.closure_span.hi(), self.closure_span.ctxt(), None);
         let end_snip = snippet_with_applicability(self.cx, end_span, "..", &mut self.applicability);
         format!("{}{}", self.suggestion_start, end_snip)
     }
@@ -255,7 +255,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
             let map = self.cx.tcx.hir();
             let ident_str = map.name(id).to_string();
             let span = map.span(cmt.hir_id);
-            let start_span = Span::new(self.next_pos, span.lo(), span.ctxt());
+            let start_span = Span::new(self.next_pos, span.lo(), span.ctxt(), None);
             let mut start_snip = snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
 
             if cmt.place.projections.is_empty() {
@@ -263,8 +263,14 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                 // i.e.: suggest `&x` instead of `x`
                 self.suggestion_start.push_str(&format!("{}&{}", start_snip, ident_str));
             } else {
-                // cases where a parent call is using the item
+                // cases where a parent `Call` or `MethodCall` is using the item
                 // i.e.: suggest `.contains(&x)` for `.find(|x| [1, 2, 3].contains(x)).is_none()`
+                //
+                // Note about method calls:
+                // - compiler automatically dereference references if the target type is a reference (works also for
+                //   function call)
+                // - `self` arguments in the case of `x.is_something()` are also automatically (de)referenced, and
+                //   no projection should be suggested
                 if let Some(parent_expr) = get_parent_expr_for_hir(self.cx, cmt.hir_id) {
                     if let ExprKind::Call(_, call_args) | ExprKind::MethodCall(_, _, call_args, _) = parent_expr.kind {
                         let expr = self.cx.tcx.hir().expect_expr(cmt.hir_id);
@@ -316,7 +322,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                         // so the span is set-up again to get more code, using `span.hi()` (i.e.: `foo[x]`)
                         // instead of `span.lo()` (i.e.: `foo`)
                         ProjectionKind::Index => {
-                            let start_span = Span::new(self.next_pos, span.hi(), span.ctxt());
+                            let start_span = Span::new(self.next_pos, span.hi(), span.ctxt(), None);
                             start_snip = snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
                             replacement_str.clear();
                             projections_handled = true;
