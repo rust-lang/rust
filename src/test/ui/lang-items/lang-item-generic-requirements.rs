@@ -1,9 +1,8 @@
-// Checks whether declaring a lang item with the wrong number
-// of generic arguments crashes the compiler (issue #83893, #87573, and part of #9307).
+// Checks that declaring a lang item with the wrong number
+// of generic arguments errors rather than crashing (issue #83893, #87573, part of #9307, #79559).
 
 #![feature(lang_items, no_core)]
 #![no_core]
-#![crate_type = "lib"]
 
 #[lang = "sized"]
 trait MySized {}
@@ -26,6 +25,14 @@ struct MyPhantomData<T, U>;
 //~^ ERROR parameter `T` is never used
 //~| ERROR parameter `U` is never used
 
+// When the `start` lang item is missing generics very odd things can happen, especially when
+// it comes to cross-crate monomorphization
+#[lang = "start"]
+//~^ ERROR `start` language item must be applied to a function with 1 generic argument [E0718]
+fn start(_: *const u8, _: isize, _: *const *const u8) -> isize {
+    0
+}
+
 fn ice() {
     // Use add
     let r = 5;
@@ -42,3 +49,6 @@ fn ice() {
     // Use phantomdata
     let _ = MyPhantomData::<(), i32>;
 }
+
+// use `start`
+fn main() {}
