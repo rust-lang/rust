@@ -275,13 +275,13 @@ pub enum VarError {
 impl VarError {
     /// Checks if the error was caused by the environment variable being absent
     #[unstable(feature = "varerror_methods", issue = "89302")]
-    pub const fn is_absent(&self) -> bool {
+    pub const fn is_not_present(&self) -> bool {
         matches!(self, VarError::NotPresent)
     }
     /// Checks if the error was caused by the environment variable failing to be valid
     /// Unicode
     #[unstable(feature = "varerror_methods", issue = "89302")]
-    pub const fn is_unicode_error(&self) -> bool {
+    pub const fn is_not_unicode(&self) -> bool {
         matches!(self, VarError::NotUnicode(_))
     }
 }
