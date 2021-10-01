@@ -1331,9 +1331,13 @@ Function *PreProcessCache::preprocessForClone(Function *F,
   auto PA = LoopSimplifyPass().run(*NewF, FAM);
   FAM.invalidate(*NewF, PA);
 
-  // For subfunction calls upgrade stack allocations to mallocs
-  // to ensure availability in the reverse pass
-  UpgradeAllocasToMallocs(NewF, mode);
+  if (mode == DerivativeMode::ReverseModePrimal ||
+      mode == DerivativeMode::ReverseModeGradient ||
+      mode == DerivativeMode::ReverseModeCombined) {
+    // For subfunction calls upgrade stack allocations to mallocs
+    // to ensure availability in the reverse pass
+    UpgradeAllocasToMallocs(NewF, mode);
+  }
 
   CanonicalizeLoops(NewF, FAM);
 

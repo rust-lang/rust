@@ -7309,10 +7309,20 @@ public:
         } else if (Mode == DerivativeMode::ForwardMode) {
           IRBuilder<> Builder2(&call);
           getForwardBuilder(Builder2);
+
           SmallVector<Value *, 2> args = {orig->getArgOperand(0)};
           CallInst *CI = Builder2.CreateCall(orig->getFunctionType(),
                                              orig->getCalledFunction(), args);
           CI->setAttributes(orig->getAttributes());
+
+          auto found = gutils->invertedPointers.find(orig);
+          PHINode *placeholder = cast<PHINode>(&*found->second);
+
+          gutils->invertedPointers.erase(found);
+          gutils->replaceAWithB(placeholder, CI);
+          gutils->erase(placeholder);
+          gutils->invertedPointers.insert(
+              std::make_pair(orig, InvertedPointerVH(gutils, CI)));
           return;
         }
       }
@@ -7322,8 +7332,10 @@ public:
         if (!pair.second)
           Seen[UsageKey(pair.first, ValueType::Primal)] = false;
       bool primalNeededInReverse =
-          is_value_needed_in_reverse<ValueType::Primal>(TR, gutils, orig, Mode,
-                                                        Seen, oldUnreachable);
+          Mode == DerivativeMode::ForwardMode
+              ? false
+              : is_value_needed_in_reverse<ValueType::Primal>(
+                    TR, gutils, orig, Mode, Seen, oldUnreachable);
       bool hasPDFree = gutils->allocationsWithGuaranteedFree.count(orig);
       if (!primalNeededInReverse && hasPDFree) {
         if (Mode == DerivativeMode::ReverseModeGradient) {
