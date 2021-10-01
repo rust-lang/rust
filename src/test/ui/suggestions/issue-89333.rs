@@ -6,4 +6,6 @@ fn main() {
     test(&|| 0); //~ ERROR the trait bound
 }
 
-fn test<T>(arg: &impl Fn() -> T) where for<'a> &'a T: Default {}
+trait Trait {}
+
+fn test<T>(arg: &impl Fn() -> T) where for<'a> &'a T: Trait {}

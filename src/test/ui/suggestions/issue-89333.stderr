@@ -1,22 +1,14 @@
-error[E0277]: the trait bound `for<'a> &'a {integer}: Default` is not satisfied
-  --> $DIR/issue-89333.rs:6:10
+error[E0277]: the trait bound `for<'a> &'a _: Trait` is not satisfied
+  --> $DIR/issue-89333.rs:6:5
    |
 LL |     test(&|| 0);
-   |     ---- ^^^^^ the trait `for<'a> Default` is not implemented for `&'a {integer}`
-   |     |
-   |     required by a bound introduced by this call
+   |     ^^^^ the trait `for<'a> Trait` is not implemented for `&'a _`
    |
-   = help: the following implementations were found:
-             <&CStr as Default>
-             <&OsStr as Default>
-             <&[T] as Default>
-             <&mut [T] as Default>
-           and 217 others
 note: required by a bound in `test`
-  --> $DIR/issue-89333.rs:9:55
+  --> $DIR/issue-89333.rs:11:55
    |
-LL | fn test<T>(arg: &impl Fn() -> T) where for<'a> &'a T: Default {}
-   |                                                       ^^^^^^^ required by this bound in `test`
+LL | fn test<T>(arg: &impl Fn() -> T) where for<'a> &'a T: Trait {}
+   |                                                       ^^^^^ required by this bound in `test`
 
 error: aborting due to previous error
 
