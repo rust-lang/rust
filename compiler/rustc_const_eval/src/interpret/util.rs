@@ -44,22 +44,10 @@ where
                         let is_used = unused_params.contains(index).map_or(true, |unused| !unused);
                         // Only recurse when generic parameters in fns, closures and generators
                         // are used and require substitution.
-                        match (is_used, subst.needs_subst()) {
-                            // Just in case there are closures or generators within this subst,
-                            // recurse.
-                            (true, true) => return subst.visit_with(self),
-                            // Confirm that polymorphization replaced the parameter with
-                            // `ty::Param`/`ty::ConstKind::Param`.
-                            (false, true) if cfg!(debug_assertions) => match subst.unpack() {
-                                ty::subst::GenericArgKind::Type(ty) => {
-                                    assert!(matches!(ty.kind(), ty::Param(_)))
-                                }
-                                ty::subst::GenericArgKind::Const(ct) => {
-                                    assert!(matches!(ct.kind(), ty::ConstKind::Param(_)))
-                                }
-                                ty::subst::GenericArgKind::Lifetime(..) => (),
-                            },
-                            _ => {}
+                        // Just in case there are closures or generators within this subst,
+                        // recurse.
+                        if is_used && subst.needs_subst() {
+                            return subst.visit_with(self);
                         }
                     }
                     ControlFlow::CONTINUE
