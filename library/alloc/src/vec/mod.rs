@@ -110,6 +110,9 @@ mod is_zero;
 #[cfg(not(no_global_oom_handling))]
 mod source_iter_marker;
 
+#[cfg(not(no_global_oom_handling))]
+use source_iter_marker::SpecFromIterWithSource;
+
 mod partial_eq;
 
 #[cfg(not(no_global_oom_handling))]

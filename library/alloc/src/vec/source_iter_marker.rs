@@ -2,7 +2,20 @@ use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
 use core::mem::{self, ManuallyDrop};
 use core::ptr::{self};
 
-use super::{AsIntoIter, InPlaceDrop, SpecFromIter, SpecFromIterNested, Vec};
+use super::{AsIntoIter, InPlaceDrop, SpecFromIterNested, Vec};
+
+pub(super) trait SpecFromIterWithSource<T, I> {
+    fn from_iter(iter: I) -> Self;
+}
+
+impl<T, I> SpecFromIterWithSource<T, I> for Vec<T>
+where
+    I: Iterator<Item = T>,
+{
+    default fn from_iter(iterator: I) -> Self {
+        SpecFromIterNested::from_iter(iterator)
+    }
+}
 
 /// Specialization marker for collecting an iterator pipeline into a Vec while reusing the
 /// source allocation, i.e. executing the pipeline in place.
@@ -21,7 +34,7 @@ pub(super) trait SourceIterMarker: SourceIter<Source: AsIntoIter> {}
 // several other specializations already depend on.
 impl<T> SourceIterMarker for T where T: SourceIter<Source: AsIntoIter> + InPlaceIterable {}
 
-impl<T, I> SpecFromIter<T, I> for Vec<T>
+impl<T, I> SpecFromIterWithSource<T, I> for Vec<T>
 where
     I: Iterator<Item = T> + SourceIterMarker,
 {

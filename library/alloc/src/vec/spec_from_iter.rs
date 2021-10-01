@@ -1,7 +1,8 @@
+use core::array;
 use core::mem::ManuallyDrop;
 use core::ptr::{self};
 
-use super::{IntoIter, SpecExtend, SpecFromIterNested, Vec};
+use super::{IntoIter, SpecExtend, SpecFromIterWithSource, Vec};
 
 /// Specialization trait used for Vec::from_iter
 ///
@@ -13,13 +14,20 @@ use super::{IntoIter, SpecExtend, SpecFromIterNested, Vec};
 /// +-+-----------+
 ///   |
 ///   v
-/// +-+-------------------------------+  +---------------------+
-/// |SpecFromIter                  +---->+SpecFromIterNested   |
+/// +-+---------------------+
+/// |SpecFromIter           |
+/// |where I:               |
+/// |  Iterator (default)-+ |
+/// |  vec::IntoIter      | |
+/// |  array::IntoIter    | |
+/// +---------------------|-+
+///                       v
+/// +---------------------------------+  +---------------------+
+/// |SpecFromIterWithSource        +---->+SpecFromIterNested   |
 /// |where I:                      |  |  |where I:             |
 /// |  Iterator (default)----------+  |  |  Iterator (default) |
-/// |  vec::IntoIter               |  |  |  TrustedLen         |
-/// |  SourceIterMarker---fallback-+  |  +---------------------+
-/// +---------------------------------+
+/// |  SourceIterMarker---fallback-+  |  |  TrustedLen         |
+/// +---------------------------------+  +---------------------+
 /// ```
 pub(super) trait SpecFromIter<T, I> {
     fn from_iter(iter: I) -> Self;
@@ -30,7 +38,15 @@ where
     I: Iterator<Item = T>,
 {
     default fn from_iter(iterator: I) -> Self {
-        SpecFromIterNested::from_iter(iterator)
+        SpecFromIterWithSource::from_iter(iterator)
+    }
+}
+
+impl<T, const N: usize> SpecFromIter<T, array::IntoIter<T, N>> for Vec<T> {
+    fn from_iter(iterator: array::IntoIter<T, N>) -> Self {
+        let mut vec = Vec::with_capacity(N);
+        vec.spec_extend(iterator);
+        vec
     }
 }
 

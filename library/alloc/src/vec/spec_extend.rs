@@ -1,7 +1,6 @@
 use crate::alloc::Allocator;
 use core::iter::TrustedLen;
-use core::ptr::{self};
-use core::slice::{self};
+use core::{array, mem, ptr, slice};
 
 use super::{IntoIter, SetLenOnDrop, Vec};
 
@@ -63,6 +62,15 @@ impl<T, A: Allocator> SpecExtend<T, IntoIter<T>> for Vec<T, A> {
             self.append_elements(iterator.as_slice() as _);
         }
         iterator.ptr = iterator.end;
+    }
+}
+
+impl<T, A: Allocator, const N: usize> SpecExtend<T, array::IntoIter<T, N>> for Vec<T, A> {
+    fn spec_extend(&mut self, iterator: array::IntoIter<T, N>) {
+        unsafe {
+            self.append_elements(iterator.as_slice());
+        }
+        mem::forget(iterator);
     }
 }
 
