@@ -17,7 +17,7 @@ object = { version = "0.26", default-features = false, features = [
     "pe",
 ] }
 libloading = "0.7.0"
-memmap2 = "0.3.0"
+memmap2 = "0.5"
 
 tt = { path = "../tt", version = "0.0.0" }
 mbe = { path = "../mbe", version = "0.0.0" }
