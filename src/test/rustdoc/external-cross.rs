@@ -6,5 +6,5 @@
 extern crate external_cross;
 
 // @has host/struct.NeedMoreDocs.html
-// @has - '//h1' 'Cross-crate imported docs'
+// @has - '//h2' 'Cross-crate imported docs'
 pub use external_cross::NeedMoreDocs;

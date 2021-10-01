@@ -12,7 +12,7 @@
 //!
 //! let s = "My *markdown* _text_";
 //! let mut id_map = IdMap::new();
-//! let md = Markdown(s, &[], &mut id_map, ErrorCodes::Yes, Edition::Edition2015, &None);
+//! let md = Markdown(s, &[], &mut id_map, ErrorCodes::Yes, Edition::Edition2015, &None, 0);
 //! let html = md.into_string();
 //! // ... something using html
 //! ```
@@ -47,6 +47,8 @@ use pulldown_cmark::{
 #[cfg(test)]
 mod tests;
 
+const MAX_HEADER_LEVEL: u32 = 6;
+
 /// Options for rendering Markdown in the main body of documentation.
 pub(crate) fn main_body_opts() -> Options {
     Options::ENABLE_TABLES
@@ -78,6 +80,7 @@ pub struct Markdown<'a>(
     /// Default edition to use when parsing doctests (to add a `fn main`).
     pub Edition,
     pub &'a Option<Playground>,
+    pub u32,
 );
 /// A tuple struct like `Markdown` that renders the markdown with a table of contents.
 crate struct MarkdownWithToc<'a>(
@@ -489,11 +492,12 @@ struct HeadingLinks<'a, 'b, 'ids, I> {
     toc: Option<&'b mut TocBuilder>,
     buf: VecDeque<SpannedEvent<'a>>,
     id_map: &'ids mut IdMap,
+    level: u32,
 }
 
 impl<'a, 'b, 'ids, I> HeadingLinks<'a, 'b, 'ids, I> {
-    fn new(iter: I, toc: Option<&'b mut TocBuilder>, ids: &'ids mut IdMap) -> Self {
-        HeadingLinks { inner: iter, toc, buf: VecDeque::new(), id_map: ids }
+    fn new(iter: I, toc: Option<&'b mut TocBuilder>, ids: &'ids mut IdMap, level: u32) -> Self {
+        HeadingLinks { inner: iter, toc, buf: VecDeque::new(), id_map: ids, level }
     }
 }
 
@@ -530,6 +534,7 @@ impl<'a, 'b, 'ids, I: Iterator<Item = SpannedEvent<'a>>> Iterator
                 self.buf.push_front((Event::Html(format!("{} ", sec).into()), 0..0));
             }
 
+            let level = std::cmp::min(level + self.level + 1, MAX_HEADER_LEVEL);
             self.buf.push_back((Event::Html(format!("</a></h{}>", level).into()), 0..0));
 
             let start_tags = format!(
@@ -1005,7 +1010,7 @@ impl LangString {
 
 impl Markdown<'_> {
     pub fn into_string(self) -> String {
-        let Markdown(md, links, mut ids, codes, edition, playground) = self;
+        let Markdown(md, links, mut ids, codes, edition, playground, level) = self;
 
         // This is actually common enough to special-case
         if md.is_empty() {
@@ -1026,7 +1031,7 @@ impl Markdown<'_> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        let p = HeadingLinks::new(p, None, &mut ids);
+        let p = HeadingLinks::new(p, None, &mut ids, level);
         let p = Footnotes::new(p);
         let p = LinkReplacer::new(p.map(|(ev, _)| ev), links);
         let p = TableWrapper::new(p);
@@ -1048,7 +1053,7 @@ impl MarkdownWithToc<'_> {
         let mut toc = TocBuilder::new();
 
         {
-            let p = HeadingLinks::new(p, Some(&mut toc), &mut ids);
+            let p = HeadingLinks::new(p, Some(&mut toc), &mut ids, 0);
             let p = Footnotes::new(p);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
             let p = CodeBlocks::new(p, codes, edition, playground);
@@ -1077,7 +1082,7 @@ impl MarkdownHtml<'_> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        let p = HeadingLinks::new(p, None, &mut ids);
+        let p = HeadingLinks::new(p, None, &mut ids, 0);
         let p = Footnotes::new(p);
         let p = TableWrapper::new(p.map(|(ev, _)| ev));
         let p = CodeBlocks::new(p, codes, edition, playground);
@@ -1295,7 +1300,7 @@ crate fn markdown_links(md: &str) -> Vec<MarkdownLink> {
     // There's no need to thread an IdMap through to here because
     // the IDs generated aren't going to be emitted anywhere.
     let mut ids = IdMap::new();
-    let iter = Footnotes::new(HeadingLinks::new(p, None, &mut ids));
+    let iter = Footnotes::new(HeadingLinks::new(p, None, &mut ids, 0));
 
     for ev in iter {
         if let Event::Start(Tag::Link(kind, dest, _)) = ev.0 {

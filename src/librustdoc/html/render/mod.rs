@@ -471,19 +471,35 @@ fn settings(root_path: &str, suffix: &str, themes: &[StylePath]) -> Result<Strin
 }
 
 fn document(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, parent: Option<&clean::Item>) {
+    document_at_level(w, cx, item, parent, 0)
+}
+
+fn document_at_level(
+    w: &mut Buffer,
+    cx: &Context<'_>,
+    item: &clean::Item,
+    parent: Option<&clean::Item>,
+    level: u32,
+) {
     if let Some(ref name) = item.name {
         info!("Documenting {}", name);
     }
     document_item_info(w, cx, item, parent);
     if parent.is_none() {
-        document_full_collapsible(w, item, cx);
+        document_full_collapsible(w, item, cx, level);
     } else {
-        document_full(w, item, cx);
+        document_full(w, item, cx, level);
     }
 }
 
 /// Render md_text as markdown.
-fn render_markdown(w: &mut Buffer, cx: &Context<'_>, md_text: &str, links: Vec<RenderedLink>) {
+fn render_markdown(
+    w: &mut Buffer,
+    cx: &Context<'_>,
+    md_text: &str,
+    links: Vec<RenderedLink>,
+    level: u32,
+) {
     let mut ids = cx.id_map.borrow_mut();
     write!(
         w,
@@ -494,7 +510,8 @@ fn render_markdown(w: &mut Buffer, cx: &Context<'_>, md_text: &str, links: Vec<R
             &mut ids,
             cx.shared.codes,
             cx.shared.edition(),
-            &cx.shared.playground
+            &cx.shared.playground,
+            level
         )
         .into_string()
     )
@@ -531,15 +548,21 @@ fn document_short(
     }
 }
 
-fn document_full_collapsible(w: &mut Buffer, item: &clean::Item, cx: &Context<'_>) {
-    document_full_inner(w, item, cx, true);
+fn document_full_collapsible(w: &mut Buffer, item: &clean::Item, cx: &Context<'_>, level: u32) {
+    document_full_inner(w, item, cx, true, level);
 }
 
-fn document_full(w: &mut Buffer, item: &clean::Item, cx: &Context<'_>) {
-    document_full_inner(w, item, cx, false);
+fn document_full(w: &mut Buffer, item: &clean::Item, cx: &Context<'_>, level: u32) {
+    document_full_inner(w, item, cx, false, level);
 }
 
-fn document_full_inner(w: &mut Buffer, item: &clean::Item, cx: &Context<'_>, is_collapsible: bool) {
+fn document_full_inner(
+    w: &mut Buffer,
+    item: &clean::Item,
+    cx: &Context<'_>,
+    is_collapsible: bool,
+    level: u32,
+) {
     if let Some(s) = cx.shared.maybe_collapsed_doc_value(item) {
         debug!("Doc block: =====\n{}\n=====", s);
         if is_collapsible {
@@ -549,10 +572,10 @@ fn document_full_inner(w: &mut Buffer, item: &clean::Item, cx: &Context<'_>, is_
                      <span>Expand description</span>\
                 </summary>",
             );
-            render_markdown(w, cx, &s, item.links(cx));
+            render_markdown(w, cx, &s, item.links(cx), level);
             w.write_str("</details>");
         } else {
-            render_markdown(w, cx, &s, item.links(cx));
+            render_markdown(w, cx, &s, item.links(cx), level);
         }
     }
 }
@@ -1321,7 +1344,7 @@ fn render_impl(
                         // because impls can't have a stability.
                         if item.doc_value().is_some() {
                             document_item_info(&mut info_buffer, cx, it, Some(parent));
-                            document_full(&mut doc_buffer, item, cx);
+                            document_full(&mut doc_buffer, item, cx, 0);
                             short_documented = false;
                         } else {
                             // In case the item isn't documented,
@@ -1339,7 +1362,7 @@ fn render_impl(
                 } else {
                     document_item_info(&mut info_buffer, cx, item, Some(parent));
                     if rendering_params.show_def_docs {
-                        document_full(&mut doc_buffer, item, cx);
+                        document_full(&mut doc_buffer, item, cx, 3);
                         short_documented = false;
                     }
                 }
@@ -1579,7 +1602,8 @@ fn render_impl(
                     &mut ids,
                     cx.shared.codes,
                     cx.shared.edition(),
-                    &cx.shared.playground
+                    &cx.shared.playground,
+                    0
                 )
                 .into_string()
             );

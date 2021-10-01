@@ -16,10 +16,10 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::abi::{Layout, Primitive, TagEncoding, Variants};
 
 use super::{
-    collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_strs, notable_traits_decl,
-    render_assoc_item, render_assoc_items, render_attributes_in_code, render_attributes_in_pre,
-    render_impl, render_stability_since_raw, write_srclink, AssocItemLink, Context,
-    ImplRenderingParameters,
+    collect_paths_for_type, document, document_at_level, ensure_trailing_slash, item_ty_to_strs,
+    notable_traits_decl, render_assoc_item, render_assoc_items, render_attributes_in_code,
+    render_attributes_in_pre, render_impl, render_stability_since_raw, write_srclink,
+    AssocItemLink, Context, ImplRenderingParameters,
 };
 use crate::clean::{self, GetDefId};
 use crate::formats::item_type::ItemType;
@@ -626,7 +626,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         let item_type = m.type_();
         let id = cx.derive_id(format!("{}.{}", item_type, name));
         let mut content = Buffer::empty_from(w);
-        document(&mut content, cx, m, Some(t));
+        document_at_level(&mut content, cx, m, Some(t), 3);
         let toggled = !content.is_empty();
         if toggled {
             write!(w, "<details class=\"rustdoc-toggle\" open><summary>");

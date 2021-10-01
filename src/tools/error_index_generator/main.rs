@@ -125,7 +125,8 @@ impl Formatter for HTMLFormatter {
                         &mut id_map,
                         ErrorCodes::Yes,
                         DEFAULT_EDITION,
-                        &Some(playground)
+                        &Some(playground),
+                        0
                     )
                     .into_string()
                 )?
