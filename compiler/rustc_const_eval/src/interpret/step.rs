@@ -197,12 +197,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Aggregate(ref kind, ref operands) => {
+                // active_field_index is for union initialization.
                 let (dest, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, _, _, active_field_index) => {
                         self.write_discriminant(variant_index, &dest)?;
                         if adt_def.is_enum() {
-                            (self.place_downcast(&dest, variant_index)?, active_field_index)
+                            assert!(active_field_index.is_none());
+                            (self.place_downcast(&dest, variant_index)?, None)
                         } else {
+                            if active_field_index.is_some() {
+                                assert_eq!(operands.len(), 1);
+                            }
                             (dest, active_field_index)
                         }
                     }
@@ -211,12 +216,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 for (i, operand) in operands.iter().enumerate() {
                     let op = self.eval_operand(operand, None)?;
-                    // Ignore zero-sized fields.
-                    if !op.layout.is_zst() {
-                        let field_index = active_field_index.unwrap_or(i);
-                        let field_dest = self.place_field(&dest, field_index)?;
-                        self.copy_op(&op, &field_dest)?;
-                    }
+                    let field_index = active_field_index.unwrap_or(i);
+                    let field_dest = self.place_field(&dest, field_index)?;
+                    self.copy_op(&op, &field_dest)?;
                 }
             }
 
@@ -253,7 +255,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Len(place) => {
-                // FIXME(CTFE): don't allow computing the length of arrays in const eval
                 let src = self.eval_place(place)?;
                 let mplace = self.force_allocation(&src)?;
                 let len = mplace.len(self)?;
