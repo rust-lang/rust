@@ -39,7 +39,7 @@ use crate::{
 // }
 // ```
 pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    // todo, applies to match as well
+    // FIXME applies to match as well
     let expr = ctx.find_node_at_offset::<ast::IfExpr>()?;
     if !expr.if_token()?.text_range().contains_inclusive(ctx.offset()) {
         return None;
@@ -101,7 +101,29 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext) ->
                 e => e,
             };
 
+            let parenthesize = matches!(
+                cond,
+                ast::Expr::BinExpr(_)
+                    | ast::Expr::BlockExpr(_)
+                    | ast::Expr::BoxExpr(_)
+                    | ast::Expr::BreakExpr(_)
+                    | ast::Expr::CastExpr(_)
+                    | ast::Expr::ClosureExpr(_)
+                    | ast::Expr::ContinueExpr(_)
+                    | ast::Expr::ForExpr(_)
+                    | ast::Expr::IfExpr(_)
+                    | ast::Expr::LoopExpr(_)
+                    | ast::Expr::MacroCall(_)
+                    | ast::Expr::MatchExpr(_)
+                    | ast::Expr::PrefixExpr(_)
+                    | ast::Expr::RangeExpr(_)
+                    | ast::Expr::RefExpr(_)
+                    | ast::Expr::ReturnExpr(_)
+                    | ast::Expr::WhileExpr(_)
+                    | ast::Expr::YieldExpr(_)
+            );
             let cond = if invert_cond { invert_boolean_expression(cond) } else { cond };
+            let cond = if parenthesize { make::expr_paren(cond) } else { cond };
             let arg_list = make::arg_list(Some(make::expr_closure(None, closure_body)));
             let mcall = make::expr_method_call(cond, make::name_ref("then"), arg_list);
             builder.replace(target, mcall.to_string());
