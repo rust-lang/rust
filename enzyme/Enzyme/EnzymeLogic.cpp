@@ -2802,9 +2802,13 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
     if (mode == DerivativeMode::ReverseModeCombined) {
 
-      FunctionType *FTy =
-          FunctionType::get(StructType::get(todiff->getContext(), {res.second}),
-                            res.first, todiff->getFunctionType()->isVarArg());
+      Type *FRetTy = res.second.empty()
+                         ? Type::getVoidTy(todiff->getContext())
+                         : StructType::get(todiff->getContext(), {res.second});
+
+      FunctionType *FTy = FunctionType::get(
+          FRetTy, res.first, todiff->getFunctionType()->isVarArg());
+
       Function *NewF = Function::Create(
           FTy, Function::LinkageTypes::InternalLinkage,
           "fixgradient_" + todiff->getName(), todiff->getParent());
@@ -2862,10 +2866,14 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
       }
       auto revcal = bb.CreateCall(revfn, revargs);
       revcal->setCallingConv(revfn->getCallingConv());
-      if (NewF->getReturnType()->isEmptyTy())
+
+      if (NewF->getReturnType()->isEmptyTy()) {
         bb.CreateRet(UndefValue::get(NewF->getReturnType()));
-      else
+      } else if (NewF->getReturnType()->isVoidTy()) {
+        bb.CreateRetVoid();
+      } else {
         bb.CreateRet(revcal);
+      }
       assert(!returnUsed);
 
       return insert_or_assign2<ReverseCacheKey, Function *>(
@@ -3008,9 +3016,13 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
           st == nullptr && !foundcalled->getReturnType()->isVoidTy();
       if (wrongRet) {
         // if (wrongRet || !hasTape) {
+        Type *FRetTy =
+            res.second.empty()
+                ? Type::getVoidTy(todiff->getContext())
+                : StructType::get(todiff->getContext(), {res.second});
+
         FunctionType *FTy = FunctionType::get(
-            StructType::get(todiff->getContext(), {res.second}), res.first,
-            todiff->getFunctionType()->isVarArg());
+            FRetTy, res.first, todiff->getFunctionType()->isVarArg());
         Function *NewF = Function::Create(
             FTy, Function::LinkageTypes::InternalLinkage,
             "fixgradient_" + todiff->getName(), todiff->getParent());
