@@ -287,7 +287,7 @@ define_Conf! {
     /// Lint: NON_SEND_FIELD_IN_SEND_TY.
     ///
     /// Whether to apply the raw pointer heuristic in `non_send_field_in_send_ty` lint.
-    (enable_raw_pointer_heuristic: bool = true),
+    (enable_raw_pointer_heuristic_for_send: bool = true),
 }
 
 /// Search for the configuration file.

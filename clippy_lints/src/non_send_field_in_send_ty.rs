@@ -42,7 +42,7 @@ declare_clippy_lint! {
     /// unsafe impl<T> Send for ExampleStruct<T> {}
     /// ```
     /// Use thread-safe types like [`std::sync::Arc`](https://doc.rust-lang.org/std/sync/struct.Arc.html)
-    /// and specify correct bounds on generic type parameters (`T: Send`).
+    /// or specify correct bounds on generic type parameters (`T: Send`).
     pub NON_SEND_FIELD_IN_SEND_TY,
     nursery,
     "there is field that does not implement `Send` in a `Send` struct"
@@ -125,7 +125,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                             for field in non_send_fields {
                                 diag.span_note(
                                     field.span,
-                                    &format!("the field `{}` has type `{}` which is not `Send`", field.name, field.ty),
+                                    &format!("the field `{}` has type `{}` which is `!Send`", field.name, field.ty),
                                 );
 
                                 match field.generic_params.len() {
@@ -165,7 +165,7 @@ impl<'tcx> NonSendField<'tcx> {
 }
 
 /// Given a type, collect all of its generic parameters.
-/// Example: MyStruct<P, Box<Q, R>> => vec![P, Q, R]
+/// Example: `MyStruct<P, Box<Q, R>>` => `vec![P, Q, R]`
 fn collect_generic_params<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Vec<Ty<'tcx>> {
     ty.walk(cx.tcx)
         .filter_map(|inner| match inner.unpack() {
@@ -184,31 +184,34 @@ fn ty_implements_send_or_copy(cx: &LateContext<'tcx>, ty: Ty<'tcx>, send_trait: 
 /// Heuristic to allow cases like `Vec<*const u8>`
 fn ty_allowed_with_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, send_trait: DefId) -> bool {
     if ty_implements_send_or_copy(cx, ty, send_trait) {
-        true
-    } else {
-        // The type is known to be `!Send` and `!Copy`
-        match ty.kind() {
-            ty::Tuple(_) => ty
-                .tuple_fields()
-                .all(|ty| ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait)),
-            ty::Array(ty, _) | ty::Slice(ty) => ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait),
-            ty::Adt(_, substs) => {
-                if contains_raw_pointer(cx, ty) {
-                    // descends only if ADT contains any raw pointers
-                    substs.iter().all(|generic_arg| match generic_arg.unpack() {
-                        GenericArgKind::Type(ty) => ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait),
-                        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => true,
-                    })
-                } else {
-                    false
-                }
-            },
-            ty::RawPtr(_) => true,
-            _ => false,
-        }
+        return true;
+    }
+
+    // The type is known to be `!Send` and `!Copy`
+    match ty.kind() {
+        ty::Tuple(_) => ty
+            .tuple_fields()
+            .all(|ty| ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait)),
+        ty::Array(ty, _) | ty::Slice(ty) => ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait),
+        ty::Adt(_, substs) => {
+            if contains_raw_pointer(cx, ty) {
+                // descends only if ADT contains any raw pointers
+                substs.iter().all(|generic_arg| match generic_arg.unpack() {
+                    GenericArgKind::Type(ty) => ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait),
+                    // Lifetimes and const generics are not solid part of ADT and ignored
+                    GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => true,
+                })
+            } else {
+                false
+            }
+        },
+        // Raw pointers are `!Send` but allowed by the heuristic
+        ty::RawPtr(_) => true,
+        _ => false,
     }
 }
 
+/// Checks if the type contains any raw pointers in substs (including nested ones).
 fn contains_raw_pointer<'tcx>(cx: &LateContext<'tcx>, target_ty: Ty<'tcx>) -> bool {
     for ty_node in target_ty.walk(cx.tcx) {
         if_chain! {

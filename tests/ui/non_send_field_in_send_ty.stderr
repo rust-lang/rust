@@ -5,7 +5,7 @@ LL | unsafe impl<T> Send for RingBuffer<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::non-send-field-in-send-ty` implied by `-D warnings`
-note: the field `data` has type `std::vec::Vec<std::cell::UnsafeCell<T>>` which is not `Send`
+note: the field `data` has type `std::vec::Vec<std::cell::UnsafeCell<T>>` which is `!Send`
   --> $DIR/non_send_field_in_send_ty.rs:11:5
    |
 LL |     data: Vec<UnsafeCell<T>>,
@@ -18,7 +18,7 @@ error: this implementation is unsound, as some fields in `MvccRwLock<T>` are `!S
 LL | unsafe impl<T> Send for MvccRwLock<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the field `lock` has type `std::sync::Mutex<std::boxed::Box<T>>` which is not `Send`
+note: the field `lock` has type `std::sync::Mutex<std::boxed::Box<T>>` which is `!Send`
   --> $DIR/non_send_field_in_send_ty.rs:21:5
    |
 LL |     lock: Mutex<Box<T>>,
@@ -31,7 +31,7 @@ error: this implementation is unsound, as some fields in `ArcGuard<RC, T>` are `
 LL | unsafe impl<RC, T: Send> Send for ArcGuard<RC, T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the field `head` has type `std::sync::Arc<RC>` which is not `Send`
+note: the field `head` has type `std::sync::Arc<RC>` which is `!Send`
   --> $DIR/non_send_field_in_send_ty.rs:29:5
    |
 LL |     head: Arc<RC>,
@@ -44,7 +44,7 @@ error: this implementation is unsound, as some fields in `DeviceHandle<T>` are `
 LL | unsafe impl<T: UsbContext> Send for DeviceHandle<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the field `context` has type `T` which is not `Send`
+note: the field `context` has type `T` which is `!Send`
   --> $DIR/non_send_field_in_send_ty.rs:44:5
    |
 LL |     context: T,
@@ -57,7 +57,7 @@ error: this implementation is unsound, as some fields in `NoGeneric` are `!Send`
 LL | unsafe impl Send for NoGeneric {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the field `rc_is_not_send` has type `std::rc::Rc<std::string::String>` which is not `Send`
+note: the field `rc_is_not_send` has type `std::rc::Rc<std::string::String>` which is `!Send`
   --> $DIR/non_send_field_in_send_ty.rs:52:5
    |
 LL |     rc_is_not_send: Rc<String>,
@@ -70,19 +70,19 @@ error: this implementation is unsound, as some fields in `MultiField<T>` are `!S
 LL | unsafe impl<T> Send for MultiField<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the field `field1` has type `T` which is not `Send`
+note: the field `field1` has type `T` which is `!Send`
   --> $DIR/non_send_field_in_send_ty.rs:58:5
    |
 LL |     field1: T,
    |     ^^^^^^^^^
    = help: add `T: Send` bound in `Send` impl
-note: the field `field2` has type `T` which is not `Send`
+note: the field `field2` has type `T` which is `!Send`
   --> $DIR/non_send_field_in_send_ty.rs:59:5
    |
 LL |     field2: T,
    |     ^^^^^^^^^
    = help: add `T: Send` bound in `Send` impl
-note: the field `field3` has type `T` which is not `Send`
+note: the field `field3` has type `T` which is `!Send`
   --> $DIR/non_send_field_in_send_ty.rs:60:5
    |
 LL |     field3: T,
@@ -95,7 +95,7 @@ error: this implementation is unsound, as some fields in `MyOption<T>` are `!Sen
 LL | unsafe impl<T> Send for MyOption<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the field `0` has type `T` which is not `Send`
+note: the field `0` has type `T` which is `!Send`
   --> $DIR/non_send_field_in_send_ty.rs:66:12
    |
 LL |     MySome(T),
@@ -108,7 +108,7 @@ error: this implementation is unsound, as some fields in `MultiParam<A, B>` are 
 LL | unsafe impl<A, B> Send for MultiParam<A, B> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the field `vec` has type `std::vec::Vec<(A, B)>` which is not `Send`
+note: the field `vec` has type `std::vec::Vec<(A, B)>` which is `!Send`
   --> $DIR/non_send_field_in_send_ty.rs:74:5
    |
 LL |     vec: Vec<(A, B)>,
@@ -121,7 +121,7 @@ error: this implementation is unsound, as some fields in `HeuristicTest` are `!S
 LL | unsafe impl Send for HeuristicTest {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the field `field4` has type `(*const NonSend, std::rc::Rc<u8>)` which is not `Send`
+note: the field `field4` has type `(*const NonSend, std::rc::Rc<u8>)` which is `!Send`
   --> $DIR/non_send_field_in_send_ty.rs:90:5
    |
 LL |     field4: (*const NonSend, Rc<u8>),
@@ -134,7 +134,7 @@ error: this implementation is unsound, as some fields in `AttrTest3<T>` are `!Se
 LL | unsafe impl<T> Send for AttrTest3<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the field `0` has type `T` which is not `Send`
+note: the field `0` has type `T` which is `!Send`
   --> $DIR/non_send_field_in_send_ty.rs:109:11
    |
 LL |     Enum2(T),
@@ -147,7 +147,7 @@ error: this implementation is unsound, as some fields in `Complex<P, u32>` are `
 LL | unsafe impl<P> Send for Complex<P, u32> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the field `field1` has type `P` which is not `Send`
+note: the field `field1` has type `P` which is `!Send`
   --> $DIR/non_send_field_in_send_ty.rs:118:5
    |
 LL |     field1: A,
@@ -160,7 +160,7 @@ error: this implementation is unsound, as some fields in `Complex<Q, std::sync::
 LL | unsafe impl<Q: Send> Send for Complex<Q, MutexGuard<'static, bool>> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the field `field2` has type `std::sync::MutexGuard<'static, bool>` which is not `Send`
+note: the field `field2` has type `std::sync::MutexGuard<'static, bool>` which is `!Send`
   --> $DIR/non_send_field_in_send_ty.rs:119:5
    |
 LL |     field2: B,
