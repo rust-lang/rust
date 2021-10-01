@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
         let ty_allowed_in_send = if self.enable_raw_pointer_heuristic {
             ty_allowed_with_raw_pointer_heuristic
         } else {
-            ty_implements_send_or_copy
+            ty_allowed_without_raw_pointer_heuristic
         };
 
         // Checks if we are in `Send` impl item.
@@ -176,14 +176,22 @@ fn collect_generic_params<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Vec<Ty<
         .collect()
 }
 
-/// Determine if the given type is `Send` or `Copy`
-fn ty_implements_send_or_copy(cx: &LateContext<'tcx>, ty: Ty<'tcx>, send_trait: DefId) -> bool {
-    implements_trait(cx, ty, send_trait, &[]) || is_copy(cx, ty)
+/// Be more strict when the heuristic is disabled
+fn ty_allowed_without_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, send_trait: DefId) -> bool {
+    if implements_trait(cx, ty, send_trait, &[]) {
+        return true;
+    }
+
+    if is_copy(cx, ty) && !contains_raw_pointer(cx, ty) {
+        return true;
+    }
+
+    false
 }
 
 /// Heuristic to allow cases like `Vec<*const u8>`
 fn ty_allowed_with_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, send_trait: DefId) -> bool {
-    if ty_implements_send_or_copy(cx, ty, send_trait) {
+    if implements_trait(cx, ty, send_trait, &[]) || is_copy(cx, ty) {
         return true;
     }
 
