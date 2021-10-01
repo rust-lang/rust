@@ -39,7 +39,7 @@ impl<'a, 'tcx> BareUrlsLinter<'a, 'tcx> {
     ) {
         trace!("looking for raw urls in {}", text);
         // For now, we only check "full" URLs (meaning, starting with "http://" or "https://").
-        for match_ in URL_REGEX.find_iter(&text) {
+        for match_ in URL_REGEX.find_iter(text) {
             let url = match_.as_str();
             let url_range = match_.range();
             f(

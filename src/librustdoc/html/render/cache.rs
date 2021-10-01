@@ -1,3 +1,4 @@
+use std::collections::hash_map::Entry;
 use std::collections::BTreeMap;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -36,7 +37,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
         if let Some(&(ref fqp, _)) = cache.paths.get(&did) {
             let desc = item
                 .doc_value()
-                .map_or_else(String::new, |s| short_markdown_summary(&s, &item.link_names(&cache)));
+                .map_or_else(String::new, |s| short_markdown_summary(&s, &item.link_names(cache)));
             cache.search_index.push(IndexItem {
                 ty: item.type_(),
                 name: item.name.unwrap().to_string(),
@@ -44,7 +45,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
                 desc,
                 parent: Some(did),
                 parent_idx: None,
-                search_type: get_index_search_type(&item, tcx),
+                search_type: get_index_search_type(item, tcx),
                 aliases: item.attrs.get_doc_aliases(),
             });
         }
@@ -53,7 +54,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
     let crate_doc = krate
         .module
         .doc_value()
-        .map_or_else(String::new, |s| short_markdown_summary(&s, &krate.module.link_names(&cache)));
+        .map_or_else(String::new, |s| short_markdown_summary(&s, &krate.module.link_names(cache)));
 
     let Cache { ref mut search_index, ref paths, .. } = *cache;
 
@@ -72,7 +73,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
     // Set up alias indexes.
     for (i, item) in search_index.iter().enumerate() {
         for alias in &item.aliases[..] {
-            aliases.entry(alias.to_lowercase()).or_insert(Vec::new()).push(i);
+            aliases.entry(alias.to_lowercase()).or_insert_with(Vec::new).push(i);
         }
     }
 
@@ -82,12 +83,11 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
     let mut lastpathid = 0usize;
 
     for item in search_index {
-        item.parent_idx = item.parent.and_then(|defid| {
-            if defid_to_pathid.contains_key(&defid) {
-                defid_to_pathid.get(&defid).copied()
-            } else {
+        item.parent_idx = item.parent.and_then(|defid| match defid_to_pathid.entry(defid) {
+            Entry::Occupied(entry) => Some(*entry.get()),
+            Entry::Vacant(entry) => {
                 let pathid = lastpathid;
-                defid_to_pathid.insert(defid, pathid);
+                entry.insert(pathid);
                 lastpathid += 1;
 
                 if let Some(&(ref fqp, short)) = paths.get(&defid) {
@@ -203,12 +203,12 @@ crate fn get_index_search_type<'tcx>(
 
     let inputs = all_types
         .iter()
-        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty), *kind)))
+        .map(|(ty, kind)| TypeWithKind::from((get_index_type(ty), *kind)))
         .filter(|a| a.ty.name.is_some())
         .collect();
     let output = ret_types
         .iter()
-        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty), *kind)))
+        .map(|(ty, kind)| TypeWithKind::from((get_index_type(ty), *kind)))
         .filter(|a| a.ty.name.is_some())
         .collect::<Vec<_>>();
     let output = if output.is_empty() { None } else { Some(output) };
@@ -296,7 +296,7 @@ crate fn get_real_types<'tcx>(
     }
     let mut nb_added = 0;
 
-    if let &Type::Generic(arg_s) = arg {
+    if let Type::Generic(arg_s) = *arg {
         if let Some(where_pred) = generics.where_predicates.iter().find(|g| match g {
             WherePredicate::BoundPredicate { ty, .. } => ty.def_id() == arg.def_id(),
             _ => false,
@@ -374,7 +374,7 @@ crate fn get_all_types<'tcx>(
     let ret_types = match decl.output {
         FnRetTy::Return(ref return_type) => {
             let mut ret = FxHashSet::default();
-            get_real_types(generics, &return_type, tcx, 0, &mut ret);
+            get_real_types(generics, return_type, tcx, 0, &mut ret);
             if ret.is_empty() {
                 if let Some(kind) = return_type.def_id().map(|did| tcx.def_kind(did).into()) {
                     ret.insert((return_type.clone(), kind));

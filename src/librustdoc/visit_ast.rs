@@ -9,7 +9,6 @@ use rustc_hir::Node;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::middle::privacy::AccessLevel;
 use rustc_middle::ty::TyCtxt;
-use rustc_span;
 use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -277,7 +276,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             _ if self.inlining && !is_pub => {}
             hir::ItemKind::GlobalAsm(..) => {}
             hir::ItemKind::Use(_, hir::UseKind::ListStem) => {}
-            hir::ItemKind::Use(ref path, kind) => {
+            hir::ItemKind::Use(path, kind) => {
                 let is_glob = kind == hir::UseKind::Glob;
 
                 // Struct and variant constructors and proc macro stubs always show up alongside

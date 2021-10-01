@@ -216,17 +216,15 @@ impl<'tcx> Clean<GenericBound> for ty::PolyTraitRef<'tcx> {
 impl Clean<Lifetime> for hir::Lifetime {
     fn clean(&self, cx: &mut DocContext<'_>) -> Lifetime {
         let def = cx.tcx.named_region(self.hir_id);
-        match def {
-            Some(
-                rl::Region::EarlyBound(_, node_id, _)
-                | rl::Region::LateBound(_, _, node_id, _)
-                | rl::Region::Free(_, node_id),
-            ) => {
-                if let Some(lt) = cx.lt_substs.get(&node_id).cloned() {
-                    return lt;
-                }
+        if let Some(
+            rl::Region::EarlyBound(_, node_id, _)
+            | rl::Region::LateBound(_, _, node_id, _)
+            | rl::Region::Free(_, node_id),
+        ) = def
+        {
+            if let Some(lt) = cx.lt_substs.get(&node_id).cloned() {
+                return lt;
             }
-            _ => {}
         }
         Lifetime(self.name.ident().name)
     }
@@ -828,7 +826,7 @@ impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], hir::BodyId) {
                 .iter()
                 .enumerate()
                 .map(|(i, ty)| Argument {
-                    name: name_from_pat(&body.params[i].pat),
+                    name: name_from_pat(body.params[i].pat),
                     type_: ty.clean(cx),
                 })
                 .collect(),
@@ -924,7 +922,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     }
                     MethodItem(m, None)
                 }
-                hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(ref names)) => {
+                hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(names)) => {
                     let (generics, decl) = enter_impl_trait(cx, |cx| {
                         (self.generics.clean(cx), (&*sig.decl, &names[..]).clean(cx))
                     });
@@ -936,7 +934,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     }
                     TyMethodItem(t)
                 }
-                hir::TraitItemKind::Type(ref bounds, ref default) => {
+                hir::TraitItemKind::Type(bounds, ref default) => {
                     AssocTypeItem(bounds.clean(cx), default.clean(cx))
                 }
             };
@@ -1260,7 +1258,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
             let path = path.clean(cx);
             resolve_type(cx, path)
         }
-        hir::QPath::Resolved(Some(ref qself), ref p) => {
+        hir::QPath::Resolved(Some(ref qself), p) => {
             // Try to normalize `<X as Y>::T` to a type
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
             if let Some(normalized_value) = normalize(cx, ty) {
@@ -1281,7 +1279,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
                 trait_,
             }
         }
-        hir::QPath::TypeRelative(ref qself, ref segment) => {
+        hir::QPath::TypeRelative(ref qself, segment) => {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
             let res = match ty.kind() {
                 ty::Projection(proj) => Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id),
@@ -1337,7 +1335,7 @@ impl Clean<Type> for hir::Ty<'_> {
                 let length = print_const(cx, ct.eval(cx.tcx, param_env));
                 Array(box ty.clean(cx), length)
             }
-            TyKind::Tup(ref tys) => Tuple(tys.clean(cx)),
+            TyKind::Tup(tys) => Tuple(tys.clean(cx)),
             TyKind::OpaqueDef(item_id, _) => {
                 let item = cx.tcx.hir().item(item_id);
                 if let hir::ItemKind::OpaqueTy(ref ty) = item.kind {
@@ -1346,8 +1344,8 @@ impl Clean<Type> for hir::Ty<'_> {
                     unreachable!()
                 }
             }
-            TyKind::Path(_) => clean_qpath(&self, cx),
-            TyKind::TraitObject(ref bounds, ref lifetime, _) => {
+            TyKind::Path(_) => clean_qpath(self, cx),
+            TyKind::TraitObject(bounds, ref lifetime, _) => {
                 let bounds = bounds.iter().map(|bound| bound.clean(cx)).collect();
                 let lifetime = if !lifetime.is_elided() { Some(lifetime.clean(cx)) } else { None };
                 DynTrait(bounds, lifetime)
@@ -1441,7 +1439,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 let path = external_path(cx, did, false, vec![], InternalSubsts::empty());
                 ResolvedPath { path, did }
             }
-            ty::Dynamic(ref obj, ref reg) => {
+            ty::Dynamic(obj, ref reg) => {
                 // HACK: pick the first `did` as the `did` of the trait object. Someone
                 // might want to implement "native" support for marker-trait-only
                 // trait objects.
@@ -1481,9 +1479,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
                 DynTrait(bounds, lifetime)
             }
-            ty::Tuple(ref t) => {
-                Tuple(t.iter().map(|t| t.expect_ty()).collect::<Vec<_>>().clean(cx))
-            }
+            ty::Tuple(t) => Tuple(t.iter().map(|t| t.expect_ty()).collect::<Vec<_>>().clean(cx)),
 
             ty::Projection(ref data) => data.clean(cx),
 
@@ -1821,9 +1817,9 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                     clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
                 }
                 ItemKind::Macro(ref macro_def) => MacroItem(Macro {
-                    source: display_macro_source(cx, name, &macro_def, def_id, &item.vis),
+                    source: display_macro_source(cx, name, macro_def, def_id, &item.vis),
                 }),
-                ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref item_ids) => {
+                ItemKind::Trait(is_auto, unsafety, ref generics, bounds, item_ids) => {
                     let items = item_ids
                         .iter()
                         .map(|ti| cx.tcx.hir().trait_item(ti.id).clean(cx))
@@ -2065,10 +2061,10 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
         let def_id = item.def_id.to_def_id();
         cx.with_param_env(def_id, |cx| {
             let kind = match item.kind {
-                hir::ForeignItemKind::Fn(ref decl, ref names, ref generics) => {
+                hir::ForeignItemKind::Fn(decl, names, ref generics) => {
                     let abi = cx.tcx.hir().get_foreign_abi(item.hir_id());
                     let (generics, decl) = enter_impl_trait(cx, |cx| {
-                        (generics.clean(cx), (&**decl, &names[..]).clean(cx))
+                        (generics.clean(cx), (&*decl, &names[..]).clean(cx))
                     });
                     ForeignFunctionItem(Function {
                         decl,
@@ -2113,7 +2109,7 @@ impl Clean<TypeBindingKind> for hir::TypeBindingKind<'_> {
             hir::TypeBindingKind::Equality { ref ty } => {
                 TypeBindingKind::Equality { ty: ty.clean(cx) }
             }
-            hir::TypeBindingKind::Constraint { ref bounds } => {
+            hir::TypeBindingKind::Constraint { bounds } => {
                 TypeBindingKind::Constraint { bounds: bounds.iter().map(|b| b.clean(cx)).collect() }
             }
         }

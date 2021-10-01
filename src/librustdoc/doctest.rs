@@ -73,7 +73,7 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
         search_paths: options.libs.clone(),
         crate_types,
         lint_opts: if !options.display_doctest_warnings { lint_opts } else { vec![] },
-        lint_cap: Some(options.lint_cap.unwrap_or_else(|| lint::Forbid)),
+        lint_cap: Some(options.lint_cap.unwrap_or(lint::Forbid)),
         cg: options.codegen_options.clone(),
         externs: options.externs.clone(),
         unstable_features: options.render_options.unstable_features,
@@ -176,7 +176,7 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
                 .iter()
                 .map(|uexts| uexts.unused_extern_names.iter().collect::<FxHashSet<&String>>())
                 .fold(extern_names, |uextsa, uextsb| {
-                    uextsa.intersection(&uextsb).map(|v| *v).collect::<FxHashSet<&String>>()
+                    uextsa.intersection(&uextsb).copied().collect::<FxHashSet<&String>>()
                 })
                 .iter()
                 .map(|v| (*v).clone())
@@ -423,7 +423,7 @@ fn run_test(
 
     // Add a \n to the end to properly terminate the last line,
     // but only if there was output to be printed
-    if out_lines.len() > 0 {
+    if !out_lines.is_empty() {
         out_lines.push("");
     }
 
@@ -1124,7 +1124,7 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
         let mut attrs = Attributes::from_ast(ast_attrs, None);
 
         if let Some(ref cfg) = ast_attrs.cfg(self.tcx, &FxHashSet::default()) {
-            if !cfg.matches(&self.sess.parse_sess, Some(&self.sess.features_untracked())) {
+            if !cfg.matches(&self.sess.parse_sess, Some(self.sess.features_untracked())) {
                 return;
             }
         }

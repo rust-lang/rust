@@ -105,7 +105,7 @@ impl Visitor<'tcx> for SpanMapVisitor<'tcx> {
         }
         for bound in p.bounds {
             if let Some(trait_ref) = bound.trait_ref() {
-                self.handle_path(&trait_ref.path, None);
+                self.handle_path(trait_ref.path, None);
             }
         }
     }
@@ -121,42 +121,33 @@ impl Visitor<'tcx> for SpanMapVisitor<'tcx> {
         if !span.overlaps(m.inner) {
             // Now that we confirmed it's a file import, we want to get the span for the module
             // name only and not all the "mod foo;".
-            if let Some(node) = self.tcx.hir().find(id) {
-                match node {
-                    Node::Item(item) => {
-                        self.matches
-                            .insert(item.ident.span, LinkFromSrc::Local(clean::Span::new(m.inner)));
-                    }
-                    _ => {}
-                }
+            if let Some(Node::Item(item)) = self.tcx.hir().find(id) {
+                self.matches.insert(item.ident.span, LinkFromSrc::Local(clean::Span::new(m.inner)));
             }
         }
         intravisit::walk_mod(self, m, id);
     }
 
     fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
-        match expr.kind {
-            ExprKind::MethodCall(segment, method_span, _, _) => {
-                if let Some(hir_id) = segment.hir_id {
-                    let hir = self.tcx.hir();
-                    let body_id = hir.enclosing_body_owner(hir_id);
-                    let typeck_results = self.tcx.sess.with_disabled_diagnostic(|| {
-                        self.tcx.typeck_body(
-                            hir.maybe_body_owned_by(body_id).expect("a body which isn't a body"),
-                        )
-                    });
-                    if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
-                        self.matches.insert(
-                            method_span,
-                            match hir.span_if_local(def_id) {
-                                Some(span) => LinkFromSrc::Local(clean::Span::new(span)),
-                                None => LinkFromSrc::External(def_id),
-                            },
-                        );
-                    }
+        if let ExprKind::MethodCall(segment, method_span, _, _) = expr.kind {
+            if let Some(hir_id) = segment.hir_id {
+                let hir = self.tcx.hir();
+                let body_id = hir.enclosing_body_owner(hir_id);
+                let typeck_results = self.tcx.sess.with_disabled_diagnostic(|| {
+                    self.tcx.typeck_body(
+                        hir.maybe_body_owned_by(body_id).expect("a body which isn't a body"),
+                    )
+                });
+                if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
+                    self.matches.insert(
+                        method_span,
+                        match hir.span_if_local(def_id) {
+                            Some(span) => LinkFromSrc::Local(clean::Span::new(span)),
+                            None => LinkFromSrc::External(def_id),
+                        },
+                    );
                 }
             }
-            _ => {}
         }
         intravisit::walk_expr(self, expr);
     }
