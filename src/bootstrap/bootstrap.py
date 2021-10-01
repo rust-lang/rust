@@ -370,6 +370,7 @@ class RustBuild(object):
         self.checksums_sha256 = {}
         self.stage0_compiler = None
         self.stage0_rustfmt = None
+        self.stage0_clippy = None
         self._download_url = ''
         self.build = ''
         self.build_dir = ''
@@ -437,8 +438,10 @@ class RustBuild(object):
                 rust_stamp.write(key)
 
         if self.clippy:
-            filename = "clippy-{}-{}{}".format(rustc_channel, self.build, tarball_suffix)
-            self._download_component_helper(filename, "clippy", tarball_suffix, False, key=key)
+            filename = "clippy-{}-{}{}".format(
+                self.stage0_clippy.version, self.build, tarball_suffix)
+            self._download_component_helper(
+                filename, "clippy", tarball_suffix, stage0, key=self.stage0_clippy.date)
 
         if self.rustfmt() and self.rustfmt().startswith(bin_root) and (
             not os.path.exists(self.rustfmt())
@@ -1184,6 +1187,8 @@ def bootstrap(help_triggered):
     build.stage0_compiler = Stage0Toolchain(data["compiler"])
     if data.get("rustfmt") is not None:
         build.stage0_rustfmt = Stage0Toolchain(data["rustfmt"])
+    if data.get("clippy") is not None:
+        build.stage0_clippy = Stage0Toolchain(data["clippy"])
 
     build.set_dist_environment(data["dist_server"])
 
