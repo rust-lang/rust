@@ -300,7 +300,7 @@ language_item_table! {
     Oom,                     sym::oom,                 oom,                        Target::Fn,             GenericRequirement::None;
     AllocLayout,             sym::alloc_layout,        alloc_layout,               Target::Struct,         GenericRequirement::None;
 
-    Start,                   sym::start,               start_fn,                   Target::Fn,             GenericRequirement::None;
+    Start,                   sym::start,               start_fn,                   Target::Fn,             GenericRequirement::Exact(1);
 
     EhPersonality,           sym::eh_personality,      eh_personality,             Target::Fn,             GenericRequirement::None;
     EhCatchTypeinfo,         sym::eh_catch_typeinfo,   eh_catch_typeinfo,          Target::Static,         GenericRequirement::None;

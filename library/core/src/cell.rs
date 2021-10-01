@@ -1303,6 +1303,11 @@ impl Clone for BorrowRef<'_> {
 ///
 /// See the [module-level documentation](self) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(
+    not(bootstrap),
+    must_not_suspend = "Holding a Ref across suspend \
+                      points can cause BorrowErrors"
+)]
 pub struct Ref<'b, T: ?Sized + 'b> {
     value: &'b T,
     borrow: BorrowRef<'b>,
@@ -1679,6 +1684,11 @@ impl<'b> BorrowRefMut<'b> {
 ///
 /// See the [module-level documentation](self) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(
+    not(bootstrap),
+    must_not_suspend = "Holding a RefMut across suspend \
+                      points can cause BorrowErrors"
+)]
 pub struct RefMut<'b, T: ?Sized + 'b> {
     value: &'b mut T,
     borrow: BorrowRefMut<'b>,
