@@ -305,7 +305,7 @@ pub(super) fn write_shared(
 
     if cx.shared.layout.scrape_examples_extension {
         cx.write_minify(
-            SharedResource::Unversioned { name: "scrape-examples.js" },
+            SharedResource::InvocationSpecific { basename: "scrape-examples.js" },
             static_files::SCRAPE_EXAMPLES_JS,
             options.enable_minification,
             &options.emit,
