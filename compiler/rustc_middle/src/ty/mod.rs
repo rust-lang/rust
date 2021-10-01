@@ -1491,6 +1491,9 @@ bitflags! {
         const IS_LINEAR          = 1 << 3;
         // If true, don't expose any niche to type's context.
         const HIDE_NICHE         = 1 << 4;
+        // If true, the type's layout can be randomized using
+        // the seed stored in `ReprOptions.layout_seed`
+        const RANDOMIZE_LAYOUT   = 1 << 5;
         // Any of these flags being set prevent field reordering optimisation.
         const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits |
                                    ReprFlags::IS_SIMD.bits |
@@ -1505,6 +1508,14 @@ pub struct ReprOptions {
     pub align: Option<Align>,
     pub pack: Option<Align>,
     pub flags: ReprFlags,
+    /// The seed to be used for randomizing a type's layout
+    ///
+    /// Note: This could technically be a `[u8; 16]` (a `u128`) which would
+    /// be the "most accurate" hash as it'd encompass the item and crate
+    /// hash without loss, but it does pay the price of being larger.
+    /// Everything's a tradeoff, a `u64` seed should be sufficient for our
+    /// purposes (primarily `-Z randomize-layout`)
+    pub field_shuffle_seed: u64,
 }
 
 impl ReprOptions {
@@ -1513,6 +1524,11 @@ impl ReprOptions {
         let mut size = None;
         let mut max_align: Option<Align> = None;
         let mut min_pack: Option<Align> = None;
+
+        // Generate a deterministically-derived seed from the item's path hash
+        // to allow for cross-crate compilation to actually work
+        let field_shuffle_seed = tcx.def_path_hash(did).0.to_smaller_hash();
+
         for attr in tcx.get_attrs(did).iter() {
             for r in attr::find_repr_attrs(&tcx.sess, attr) {
                 flags.insert(match r {
@@ -1541,33 +1557,45 @@ impl ReprOptions {
             }
         }
 
+        // If `-Z randomize-layout` was enabled for the type definition then we can
+        // consider performing layout randomization
+        if tcx.sess.opts.debugging_opts.randomize_layout {
+            flags.insert(ReprFlags::RANDOMIZE_LAYOUT);
+        }
+
         // This is here instead of layout because the choice must make it into metadata.
         if !tcx.consider_optimizing(|| format!("Reorder fields of {:?}", tcx.def_path_str(did))) {
             flags.insert(ReprFlags::IS_LINEAR);
         }
-        ReprOptions { int: size, align: max_align, pack: min_pack, flags }
+
+        Self { int: size, align: max_align, pack: min_pack, flags, field_shuffle_seed }
     }
 
     #[inline]
     pub fn simd(&self) -> bool {
         self.flags.contains(ReprFlags::IS_SIMD)
     }
+
     #[inline]
     pub fn c(&self) -> bool {
         self.flags.contains(ReprFlags::IS_C)
     }
+
     #[inline]
     pub fn packed(&self) -> bool {
         self.pack.is_some()
     }
+
     #[inline]
     pub fn transparent(&self) -> bool {
         self.flags.contains(ReprFlags::IS_TRANSPARENT)
     }
+
     #[inline]
     pub fn linear(&self) -> bool {
         self.flags.contains(ReprFlags::IS_LINEAR)
     }
+
     #[inline]
     pub fn hide_niche(&self) -> bool {
         self.flags.contains(ReprFlags::HIDE_NICHE)
@@ -1594,7 +1622,15 @@ impl ReprOptions {
                 return true;
             }
         }
+
         self.flags.intersects(ReprFlags::IS_UNOPTIMISABLE) || self.int.is_some()
+    }
+
+    /// Returns `true` if this type is valid for reordering and `-Z randomize-layout`
+    /// was enabled for its declaration crate
+    pub fn can_randomize_type_layout(&self) -> bool {
+        !self.inhibit_struct_field_reordering_opt()
+            && self.flags.contains(ReprFlags::RANDOMIZE_LAYOUT)
     }
 
     /// Returns `true` if this `#[repr()]` should inhibit union ABI optimisations.

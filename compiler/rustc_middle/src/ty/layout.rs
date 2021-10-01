@@ -24,6 +24,9 @@ use std::iter;
 use std::num::NonZeroUsize;
 use std::ops::Bound;
 
+use rand::{seq::SliceRandom, SeedableRng};
+use rand_xoshiro::Xoshiro128StarStar;
+
 pub fn provide(providers: &mut ty::query::Providers) {
     *providers =
         ty::query::Providers { layout_of, fn_abi_of_fn_ptr, fn_abi_of_instance, ..*providers };
@@ -324,6 +327,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
 
+        // `ReprOptions.layout_seed` is a deterministic seed that we can use to
+        // randomize field ordering with
+        let mut rng = Xoshiro128StarStar::seed_from_u64(repr.field_shuffle_seed);
+
         let optimize = !repr.inhibit_struct_field_reordering_opt();
         if optimize {
             let end =
@@ -332,20 +339,35 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             let field_align = |f: &TyAndLayout<'_>| {
                 if let Some(pack) = pack { f.align.abi.min(pack) } else { f.align.abi }
             };
-            match kind {
-                StructKind::AlwaysSized | StructKind::MaybeUnsized => {
-                    optimizing.sort_by_key(|&x| {
-                        // Place ZSTs first to avoid "interesting offsets",
-                        // especially with only one or two non-ZST fields.
-                        let f = &fields[x as usize];
-                        (!f.is_zst(), cmp::Reverse(field_align(f)))
-                    });
+
+            // If `-Z randomize-layout` was enabled for the type definition we can shuffle
+            // the field ordering to try and catch some code making assumptions about layouts
+            // we don't guarantee
+            if repr.can_randomize_type_layout() {
+                // Shuffle the ordering of the fields
+                optimizing.shuffle(&mut rng);
+
+            // Otherwise we just leave things alone and actually optimize the type's fields
+            } else {
+                match kind {
+                    StructKind::AlwaysSized | StructKind::MaybeUnsized => {
+                        optimizing.sort_by_key(|&x| {
+                            // Place ZSTs first to avoid "interesting offsets",
+                            // especially with only one or two non-ZST fields.
+                            let f = &fields[x as usize];
+                            (!f.is_zst(), cmp::Reverse(field_align(f)))
+                        });
+                    }
+
+                    StructKind::Prefixed(..) => {
+                        // Sort in ascending alignment so that the layout stays optimal
+                        // regardless of the prefix
+                        optimizing.sort_by_key(|&x| field_align(&fields[x as usize]));
+                    }
                 }
-                StructKind::Prefixed(..) => {
-                    // Sort in ascending alignment so that the layout stay optimal
-                    // regardless of the prefix
-                    optimizing.sort_by_key(|&x| field_align(&fields[x as usize]));
-                }
+
+                // FIXME(Kixiron): We can always shuffle fields within a given alignment class
+                //                 regardless of the status of `-Z randomize-layout`
             }
         }
 
