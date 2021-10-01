@@ -1,0 +1,26 @@
+error: `MutexGuard` held across a suspend point, but should not be
+  --> $DIR/mutex.rs:7:9
+   |
+LL |     let _guard = m.lock().unwrap();
+   |         ^^^^^^
+LL |     other().await;
+   |     ------------- the value is held across this suspend point
+   |
+note: the lint level is defined here
+  --> $DIR/mutex.rs:2:9
+   |
+LL | #![deny(must_not_suspend)]
+   |         ^^^^^^^^^^^^^^^^
+note: Holding a MutexGuard across suspend points can cause deadlocks, delays, and cause Futures to not implement `Send`
+  --> $DIR/mutex.rs:7:9
+   |
+LL |     let _guard = m.lock().unwrap();
+   |         ^^^^^^
+help: consider using a block (`{ ... }`) to shrink the value's scope, ending before the suspend point
+  --> $DIR/mutex.rs:7:9
+   |
+LL |     let _guard = m.lock().unwrap();
+   |         ^^^^^^
+
+error: aborting due to previous error
+
