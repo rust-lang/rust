@@ -59,7 +59,6 @@ use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, VariantDef};
-use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::Primitive;
 use rustc_target::abi::{Integer, Size, VariantIdx};
@@ -199,7 +198,11 @@ impl IntRange {
         }
     }
 
-    fn suspicious_intersection(&self, other: &Self) -> bool {
+    /// Check whether two non-singleton ranges touch exactly on on of their endpoints.
+    fn suspicious_intersection(&self, other: &Self) -> Option<Self> {
+        if self.is_singleton() || other.is_singleton() {
+            return None;
+        }
         // `false` in the following cases:
         // 1     ----      // 1  ----------   // 1 ----        // 1       ----
         // 2  ----------   // 2     ----      // 2       ----  // 2 ----
@@ -213,7 +216,11 @@ impl IntRange {
         // 2       --------   // 2 -------
         let (lo, hi) = self.boundaries();
         let (other_lo, other_hi) = other.boundaries();
-        (lo == other_hi || hi == other_lo) && !self.is_singleton() && !other.is_singleton()
+        if lo == other_hi || hi == other_lo {
+            Some(self.intersection(other).unwrap())
+        } else {
+            None
+        }
     }
 
     /// Only used for displaying the range properly.
@@ -240,6 +247,7 @@ impl IntRange {
     pub(super) fn lint_overlapping_range_endpoints<'a, 'p: 'a, 'tcx: 'a>(
         &self,
         pcx: PatCtxt<'_, 'p, 'tcx>,
+        report: &mut Vec<(Span, HirId, Vec<DeconstructedPat<'p, 'tcx>>)>,
         pats: impl Iterator<Item = &'a DeconstructedPat<'p, 'tcx>>,
         column_count: usize,
         hir_id: HirId,
@@ -262,33 +270,22 @@ impl IntRange {
             return;
         }
 
-        let overlaps: Vec<_> = pats
-            .filter_map(|pat| Some((pat.ctor().as_int_range()?, pat.span())))
-            .filter(|(range, _)| self.suspicious_intersection(range))
-            .map(|(range, span)| (self.intersection(&range).unwrap(), span))
-            .collect();
-
+        let mut overlaps = Vec::new();
+        for pat in pats {
+            if let IntRange(range) = pat.ctor() {
+                if let Some(intersection) = self.suspicious_intersection(range) {
+                    let intersection = DeconstructedPat::new(
+                        IntRange(intersection),
+                        Fields::empty(),
+                        pcx.ty,
+                        pat.span(),
+                    );
+                    overlaps.push(intersection);
+                }
+            }
+        }
         if !overlaps.is_empty() {
-            pcx.cx.tcx.struct_span_lint_hir(
-                lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
-                hir_id,
-                pcx.span,
-                |lint| {
-                    let mut err = lint.build("multiple patterns overlap on their endpoints");
-                    for (int_range, span) in overlaps {
-                        err.span_label(
-                            span,
-                            &format!(
-                                "this range overlaps on `{}`...",
-                                int_range.to_pat(pcx.cx.tcx, pcx.ty)
-                            ),
-                        );
-                    }
-                    err.span_label(pcx.span, "... with this range");
-                    err.note("you likely meant to write mutually exclusive ranges");
-                    err.emit();
-                },
-            );
+            report.push((pcx.span, hir_id, overlaps));
         }
     }
 

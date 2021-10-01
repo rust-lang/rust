@@ -14,7 +14,8 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{HirId, Pat};
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_session::lint::builtin::{
-    BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
+    BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, NON_EXHAUSTIVE_OMITTED_PATTERNS,
+    OVERLAPPING_RANGE_ENDPOINTS, UNREACHABLE_PATTERNS,
 };
 use rustc_session::Session;
 use rustc_span::{DesugaringKind, ExpnKind, Span};
@@ -197,7 +198,8 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
         match source {
             hir::MatchSource::ForLoopDesugar | hir::MatchSource::Normal => {
-                report_arm_reachability(&cx, &report)
+                report_exhaustiveness_lints(&cx, &report);
+                report_arm_reachability(&cx, &report);
             }
             // Unreachable patterns in try and await expressions occur when one of
             // the arms are an uninhabited type. Which is OK.
@@ -219,6 +221,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         let pattern_ty = pattern.ty();
         let arms = vec![MatchArm { pat: pattern, hir_id: pat.hir_id, has_guard: false }];
         let report = compute_match_usefulness(&cx, &arms, pat.hir_id, pattern_ty);
+        report_exhaustiveness_lints(&cx, &report);
 
         // Note: we ignore whether the pattern is unreachable (i.e. whether the type is empty). We
         // only care about exhaustiveness here.
@@ -444,6 +447,7 @@ fn check_let_reachability<'p, 'tcx>(
 ) {
     let arms = [MatchArm { pat, hir_id: pat_id, has_guard: false }];
     let report = compute_match_usefulness(&cx, &arms, pat_id, pat.ty());
+    report_exhaustiveness_lints(&cx, &report);
 
     // Report if the pattern is unreachable, which can only occur when the type is uninhabited.
     // This also reports unreachable sub-patterns though, so we can't just replace it with an
@@ -480,6 +484,67 @@ fn report_arm_reachability<'p, 'tcx>(
         if !arm.has_guard && catchall.is_none() && pat_is_catchall(arm.pat) {
             catchall = Some(arm.pat.span());
         }
+    }
+}
+
+/// Report various things detected during exhaustiveness checking.
+fn report_exhaustiveness_lints<'p, 'tcx>(
+    cx: &MatchCheckCtxt<'p, 'tcx>,
+    report: &UsefulnessReport<'p, 'tcx>,
+) {
+    for (ty, span, hir_id, patterns) in &report.non_exhaustive_omitted_patterns {
+        lint_non_exhaustive_omitted_patterns(cx, ty, *span, *hir_id, patterns.as_slice());
+    }
+    for (span, hir_id, overlaps) in &report.overlapping_range_endpoints {
+        lint_overlapping_range_endpoints(cx, *span, *hir_id, overlaps.as_slice());
+    }
+}
+
+/// Report when some variants of a `non_exhaustive` enum failed to be listed explicitly.
+///
+/// NB: The partner lint for structs lives in `compiler/rustc_typeck/src/check/pat.rs`.
+pub(super) fn lint_non_exhaustive_omitted_patterns<'p, 'tcx>(
+    cx: &MatchCheckCtxt<'p, 'tcx>,
+    scrut_ty: Ty<'tcx>,
+    span: Span,
+    hir_id: HirId,
+    witnesses: &[DeconstructedPat<'p, 'tcx>],
+) {
+    let joined_patterns = joined_uncovered_patterns(cx, &witnesses);
+    cx.tcx.struct_span_lint_hir(NON_EXHAUSTIVE_OMITTED_PATTERNS, hir_id, span, |build| {
+        let mut lint = build.build("some variants are not matched explicitly");
+        lint.span_label(span, pattern_not_covered_label(witnesses, &joined_patterns));
+        lint.help(
+            "ensure that all variants are matched explicitly by adding the suggested match arms",
+        );
+        lint.note(&format!(
+            "the matched value is of type `{}` and the `non_exhaustive_omitted_patterns` attribute was found",
+            scrut_ty,
+        ));
+        lint.emit();
+    });
+}
+
+/// Lint on likely incorrect range patterns (#63987)
+pub(super) fn lint_overlapping_range_endpoints<'p, 'tcx>(
+    cx: &MatchCheckCtxt<'p, 'tcx>,
+    span: Span,
+    hir_id: HirId,
+    overlaps: &[DeconstructedPat<'p, 'tcx>],
+) {
+    if !overlaps.is_empty() {
+        cx.tcx.struct_span_lint_hir(OVERLAPPING_RANGE_ENDPOINTS, hir_id, span, |lint| {
+            let mut err = lint.build("multiple patterns overlap on their endpoints");
+            for pat in overlaps {
+                err.span_label(
+                    pat.span(),
+                    &format!("this range overlaps on `{}`...", pat.to_pat(cx)),
+                );
+            }
+            err.span_label(span, "... with this range");
+            err.note("you likely meant to write mutually exclusive ranges");
+            err.emit();
+        });
     }
 }
 
