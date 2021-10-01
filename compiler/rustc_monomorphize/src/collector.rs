@@ -450,7 +450,9 @@ fn collect_items_rec<'tcx>(
     // involving a dependency, and the lack of context is confusing) in this MVP, we focus on
     // diagnostics on edges crossing a crate boundary: the collected mono items which are not
     // defined in the local crate.
-    if tcx.sess.diagnostic().err_count() > error_count && starting_point.node.krate() != LOCAL_CRATE
+    if tcx.sess.diagnostic().err_count() > error_count
+        && starting_point.node.krate() != LOCAL_CRATE
+        && starting_point.node.is_user_defined()
     {
         let formatted_item = with_no_trimmed_paths(|| starting_point.node.to_string());
         tcx.sess.span_note_without_error(

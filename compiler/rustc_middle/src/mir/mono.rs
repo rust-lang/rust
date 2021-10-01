@@ -47,6 +47,14 @@ pub enum MonoItem<'tcx> {
 }
 
 impl<'tcx> MonoItem<'tcx> {
+    /// Returns `true` if the mono item is user-defined (i.e. not compiler-generated, like shims).
+    pub fn is_user_defined(&self) -> bool {
+        match *self {
+            MonoItem::Fn(instance) => matches!(instance.def, InstanceDef::Item(..)),
+            MonoItem::Static(..) | MonoItem::GlobalAsm(..) => true,
+        }
+    }
+
     pub fn size_estimate(&self, tcx: TyCtxt<'tcx>) -> usize {
         match *self {
             MonoItem::Fn(instance) => {
