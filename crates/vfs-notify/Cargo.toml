@@ -13,7 +13,7 @@ tracing = "0.1"
 jod-thread = "0.1.0"
 walkdir = "2.3.1"
 crossbeam-channel = "0.5.0"
-notify = "=5.0.0-pre.12"
+notify = "=5.0.0-pre.13"
 
 vfs = { path = "../vfs", version = "0.0.0" }
 paths = { path = "../paths", version = "0.0.0" }

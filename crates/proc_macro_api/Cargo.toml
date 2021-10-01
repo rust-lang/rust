@@ -12,7 +12,7 @@ doctest = false
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["unbounded_depth"] }
 tracing = "0.1"
-memmap2 = "0.3.0"
+memmap2 = "0.5"
 snap = "1.0"
 
 paths = { path = "../paths", version = "0.0.0" }
@@ -25,4 +25,4 @@ profile = { path = "../profile", version = "0.0.0" }
 [dependencies.object]
 version = "0.26"
 default-features = false
-features = [ "std", "read_core", "elf", "macho", "pe" ]
+features = ["std", "read_core", "elf", "macho", "pe"]
