@@ -71,7 +71,11 @@ if (${ENZYME_EXTERNAL_SHARED_LIB})
         ${ENZYME_SRC}    
     )
     target_link_libraries(Enzyme-${LLVM_VERSION_MAJOR} LLVM)
-    install(TARGETS Enzyme-${LLVM_VERSION_MAJOR} DESTINATION lib)
+    install(TARGETS Enzyme-${LLVM_VERSION_MAJOR}
+        EXPORT EnzymeTargets
+        LIBRARY DESTINATION lib COMPONENT shlib
+        PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}/Enzyme"
+        COMPONENT dev)
 endif()
 
 if (APPLE)
@@ -81,3 +85,9 @@ set_target_properties(LLVMEnzyme-${LLVM_VERSION_MAJOR} PROPERTIES
 set_target_properties(ClangEnzyme-${LLVM_VERSION_MAJOR} PROPERTIES
         LINK_FLAGS "-Wl,-flat_namespace -Wl,-undefined -Wl,suppress")
 endif()
+
+install(TARGETS LLVMEnzyme-${LLVM_VERSION_MAJOR} ClangEnzyme-${LLVM_VERSION_MAJOR}
+    EXPORT EnzymeTargets
+    LIBRARY DESTINATION lib COMPONENT shlib
+    PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}/Enzyme"
+    COMPONENT dev)
