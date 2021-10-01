@@ -909,11 +909,7 @@ crate struct MatchArm<'p, 'tcx> {
 /// Indicates whether or not a given arm is reachable.
 #[derive(Clone, Debug)]
 crate enum Reachability {
-    /// The arm is reachable. This additionally carries a set of or-pattern branches that have been
-    /// found to be unreachable despite the overall arm being reachable. Used only in the presence
-    /// of or-patterns, otherwise it stays empty.
-    Reachable(Vec<Span>),
-    /// The arm is unreachable.
+    Reachable,
     Unreachable,
 }
 
@@ -925,6 +921,8 @@ crate struct UsefulnessReport<'p, 'tcx> {
     /// If the match is exhaustive, this is empty. If not, this contains witnesses for the lack of
     /// exhaustiveness.
     crate non_exhaustiveness_witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
+    /// Reports any unreachable sub-or-patterns.
+    crate unreachable_subpatterns: Vec<(Span, HirId)>,
     /// Report when some variants of a `non_exhaustive` enum failed to be listed explicitly.
     crate non_exhaustive_omitted_patterns:
         Vec<(Ty<'tcx>, Span, HirId, Vec<DeconstructedPat<'p, 'tcx>>)>,
@@ -952,7 +950,10 @@ crate fn compute_match_usefulness<'p, 'tcx>(
             matrix.push(v);
         }
         let reachability = if arm.pat.is_reachable() {
-            Reachability::Reachable(arm.pat.unreachable_spans())
+            for span in arm.pat.unreachable_spans() {
+                report.unreachable_subpatterns.push((span, arm.hir_id));
+            }
+            Reachability::Reachable
         } else {
             Reachability::Unreachable
         };

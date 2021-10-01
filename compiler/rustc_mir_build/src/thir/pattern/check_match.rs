@@ -450,8 +450,6 @@ fn check_let_reachability<'p, 'tcx>(
     report_exhaustiveness_lints(&cx, &report);
 
     // Report if the pattern is unreachable, which can only occur when the type is uninhabited.
-    // This also reports unreachable sub-patterns though, so we can't just replace it with an
-    // `is_uninhabited` check.
     report_arm_reachability(&cx, &report);
 
     if report.non_exhaustiveness_witnesses.is_empty() {
@@ -465,21 +463,13 @@ fn report_arm_reachability<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     report: &UsefulnessReport<'p, 'tcx>,
 ) {
-    use Reachability::*;
     let mut catchall = None;
-    for (arm, is_useful) in report.arm_usefulness.iter() {
-        match is_useful {
-            Unreachable => unreachable_pattern(cx.tcx, arm.pat.span(), arm.hir_id, catchall),
-            Reachable(unreachables) if unreachables.is_empty() => {}
-            // The arm is reachable, but contains unreachable subpatterns (from or-patterns).
-            Reachable(unreachables) => {
-                let mut unreachables = unreachables.clone();
-                // Emit lints in the order in which they occur in the file.
-                unreachables.sort_unstable();
-                for span in unreachables {
-                    unreachable_pattern(cx.tcx, span, arm.hir_id, None);
-                }
+    for (arm, reachability) in report.arm_usefulness.iter() {
+        match reachability {
+            Reachability::Unreachable => {
+                unreachable_pattern(cx.tcx, arm.pat.span(), arm.hir_id, catchall)
             }
+            Reachability::Reachable => {}
         }
         if !arm.has_guard && catchall.is_none() && pat_is_catchall(arm.pat) {
             catchall = Some(arm.pat.span());
@@ -492,6 +482,14 @@ fn report_exhaustiveness_lints<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     report: &UsefulnessReport<'p, 'tcx>,
 ) {
+    if !report.unreachable_subpatterns.is_empty() {
+        let mut unreachables = report.unreachable_subpatterns.clone();
+        // Emit lints in the order in which they occur in the file.
+        unreachables.sort_unstable();
+        for (span, hir_id) in unreachables {
+            unreachable_pattern(cx.tcx, span, hir_id, None);
+        }
+    }
     for (ty, span, hir_id, patterns) in &report.non_exhaustive_omitted_patterns {
         lint_non_exhaustive_omitted_patterns(cx, ty, *span, *hir_id, patterns.as_slice());
     }

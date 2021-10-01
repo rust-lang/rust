@@ -166,5 +166,11 @@ error: unreachable pattern
 LL |             | true,
    |               ^^^^
 
-error: aborting due to 26 previous errors
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:153:25
+   |
+LL |     let (true | false | true, _) = (true, true);
+   |                         ^^^^
+
+error: aborting due to 27 previous errors
 

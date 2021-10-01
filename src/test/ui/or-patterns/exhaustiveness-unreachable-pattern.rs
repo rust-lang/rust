@@ -151,4 +151,5 @@ fn main() {
     }
 
     let (true | false | true, _) = (true, true);
+    //~^ ERROR unreachable pattern
 }
