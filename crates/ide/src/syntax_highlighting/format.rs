@@ -28,9 +28,18 @@ pub(super) fn highlight_format_string(
 }
 
 fn is_format_string(string: &ast::String) -> Option<()> {
-    let parent = string.syntax().parent()?;
+    // Check if `string` is a format string argument of a macro invocation.
+    // `string` is a string literal, mapped down into the innermost macro expansion.
+    // Since `format_args!` etc. remove the format string when expanding, but place all arguments
+    // in the expanded output, we know that the string token is (part of) the format string if it
+    // appears in `format_args!` (otherwise it would have been mapped down further).
+    //
+    // This setup lets us correctly highlight the components of `concat!("{}", "bla")` format
+    // strings. It still fails for `concat!("{", "}")`, but that is rare.
 
-    let name = parent.parent().and_then(ast::MacroCall::cast)?.path()?.segment()?.name_ref()?;
+    let macro_call = string.syntax().ancestors().find_map(ast::MacroCall::cast)?;
+    let name = macro_call.path()?.segment()?.name_ref()?;
+
     if !matches!(
         name.text().as_str(),
         "format_args" | "format_args_nl" | "const_format_args" | "panic_2015" | "panic_2021"
@@ -40,13 +49,6 @@ fn is_format_string(string: &ast::String) -> Option<()> {
 
     // NB: we match against `panic_2015`/`panic_2021` here because they have a special-cased arm for
     // `"{}"`, which otherwise wouldn't get highlighted.
-
-    let first_literal = parent
-        .children_with_tokens()
-        .find_map(|it| it.as_token().cloned().and_then(ast::String::cast))?;
-    if &first_literal != string {
-        return None;
-    }
 
     Some(())
 }

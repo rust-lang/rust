@@ -540,6 +540,7 @@ fn main() {
     assert!(true, "{} asdasd", 1);
     toho!("{}fmt", 0);
     asm!("mov eax, {0}");
+    format_args!(concat!("{}"), "{}");
 }"#
         .trim(),
         expect_file!["./test_data/highlight_strings.html"],
