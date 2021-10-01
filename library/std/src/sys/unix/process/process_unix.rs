@@ -333,9 +333,20 @@ impl Command {
             let mut set = MaybeUninit::<libc::sigset_t>::uninit();
             cvt(sigemptyset(set.as_mut_ptr()))?;
             cvt(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(), ptr::null_mut()))?;
-            let mut action: libc::sigaction = mem::zeroed();
-            action.sa_sigaction = libc::SIG_DFL;
-            cvt(libc::sigaction(libc::SIGPIPE, &action, ptr::null_mut()))?;
+
+            #[cfg(target_os = "android")] // see issue #88585
+            {
+                let mut action: libc::sigaction = mem::zeroed();
+                action.sa_sigaction = libc::SIG_DFL;
+                cvt(libc::sigaction(libc::SIGPIPE, &action, ptr::null_mut()))?;
+            }
+            #[cfg(not(target_os = "android"))]
+            {
+                let ret = sys::signal(libc::SIGPIPE, libc::SIG_DFL);
+                if ret == libc::SIG_ERR {
+                    return Err(io::Error::last_os_error());
+                }
+            }
         }
 
         for callback in self.get_closures().iter_mut() {
