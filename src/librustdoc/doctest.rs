@@ -853,6 +853,7 @@ impl Collector {
 
     fn generate_name(&self, line: usize, filename: &FileName) -> String {
         let mut item_path = self.names.join("::");
+        item_path.retain(|c| c != ' ');
         if !item_path.is_empty() {
             item_path.push(' ');
         }
