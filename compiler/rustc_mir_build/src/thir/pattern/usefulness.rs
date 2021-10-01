@@ -781,8 +781,7 @@ fn is_useful<'p, 'tcx>(
 
     assert!(rows.iter().all(|r| r.len() == v.len()));
 
-    // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).
-    let ty = matrix.heads().next().map_or(v.head().ty(), |r| r.ty());
+    let ty = v.head().ty();
     let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
     let pcx = PatCtxt { cx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };
 

@@ -1154,6 +1154,8 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
 
         variant.fields.iter().enumerate().filter_map(move |(i, field)| {
             let ty = field.ty(cx.tcx, substs);
+            // `field.ty()` doesn't normalize after substituting.
+            let ty = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
             let is_visible = adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
             let is_uninhabited = cx.is_uninhabited(ty);
 
@@ -1671,7 +1673,7 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                 write!(f, "{}", hi)
             }
             IntRange(range) => write!(f, "{:?}", range), // Best-effort, will render e.g. `false` as `0..=0`
-            Wildcard | Missing { .. } | NonExhaustive => write!(f, "_"),
+            Wildcard | Missing { .. } | NonExhaustive => write!(f, "_ : {:?}", self.ty),
             Or => {
                 for pat in self.iter_fields() {
                     write!(f, "{}{:?}", start_or_continue(" | "), pat)?;
