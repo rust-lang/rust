@@ -384,6 +384,16 @@ impl GenericArgs<'_> {
         self.args.iter().any(|arg| matches!(arg, GenericArg::Type(_)))
     }
 
+    pub fn has_err(&self) -> bool {
+        self.args.iter().any(|arg| match arg {
+            GenericArg::Type(ty) => matches!(ty.kind, TyKind::Err),
+            _ => false,
+        }) || self.bindings.iter().any(|arg| match arg.kind {
+            TypeBindingKind::Equality { ty } => matches!(ty.kind, TyKind::Err),
+            _ => false,
+        })
+    }
+
     #[inline]
     pub fn num_type_params(&self) -> usize {
         self.args.iter().filter(|arg| matches!(arg, GenericArg::Type(_))).count()

@@ -600,7 +600,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     def_id,
                 )
                 .diagnostic()
-                .emit();
+                .emit_unless(gen_args.has_err());
 
                 false
             };

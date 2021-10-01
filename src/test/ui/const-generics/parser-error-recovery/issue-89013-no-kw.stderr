@@ -1,0 +1,18 @@
+error: cannot constrain an associated constant to a value
+  --> $DIR/issue-89013-no-kw.rs:9:10
+   |
+LL | impl Foo<N = 3> for Bar {
+   |          -^^^-
+   |          |   |
+   |          |   ...cannot be constrained to this value
+   |          this associated constant...
+
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/issue-89013-no-kw.rs:9:10
+   |
+LL | impl Foo<N = 3> for Bar {
+   |          ^^^^^ associated type not allowed here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0229`.
