@@ -1,0 +1,30 @@
+error: expected lifetime, type, or constant, found keyword `const`
+  --> $DIR/issue-89013.rs:9:14
+   |
+LL | impl Foo<N = const 3> for Bar {
+   |              ^^^^^
+   |
+help: the `const` keyword is only needed in the definition of the type
+   |
+LL - impl Foo<N = const 3> for Bar {
+LL + impl Foo<N = 3> for Bar {
+   | 
+
+error: cannot constrain an associated constant to a value
+  --> $DIR/issue-89013.rs:9:10
+   |
+LL | impl Foo<N = const 3> for Bar {
+   |          -^^^^^^^^^-
+   |          |         |
+   |          |         ...cannot be constrained to this value
+   |          this associated constant...
+
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/issue-89013.rs:9:10
+   |
+LL | impl Foo<N = const 3> for Bar {
+   |          ^^^^^^^^^^^ associated type not allowed here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0229`.
