@@ -268,16 +268,14 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
 
     let flags = settings::Flags::new(flags_builder);
 
-    let variant = cranelift_codegen::isa::BackendVariant::MachInst;
-
     let isa_builder = match sess.opts.cg.target_cpu.as_deref() {
         Some("native") => {
-            let builder = cranelift_native::builder_with_options(variant, true).unwrap();
+            let builder = cranelift_native::builder_with_options(true).unwrap();
             builder
         }
         Some(value) => {
             let mut builder =
-                cranelift_codegen::isa::lookup_variant(target_triple.clone(), variant)
+                cranelift_codegen::isa::lookup(target_triple.clone())
                     .unwrap_or_else(|err| {
                         sess.fatal(&format!("can't compile for {}: {}", target_triple, err));
                     });
@@ -288,7 +286,7 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
         }
         None => {
             let mut builder =
-                cranelift_codegen::isa::lookup_variant(target_triple.clone(), variant)
+                cranelift_codegen::isa::lookup(target_triple.clone())
                     .unwrap_or_else(|err| {
                         sess.fatal(&format!("can't compile for {}: {}", target_triple, err));
                     });
