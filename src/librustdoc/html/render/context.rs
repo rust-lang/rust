@@ -417,7 +417,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             krate: krate.name.to_string(),
             css_file_extension: extension_css,
             generate_search_filter,
-            scrape_examples_extension: call_locations.len() > 0,
+            scrape_examples_extension: !call_locations.is_empty(),
         };
         let mut issue_tracker_base_url = None;
         let mut include_sources = true;

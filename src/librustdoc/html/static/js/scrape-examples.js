@@ -1,3 +1,5 @@
+/* global addClass, hasClass, removeClass, onEach */
+
 (function () {
     // Scroll code block to put the given code location in the middle of the viewer
     function scrollToLoc(elt, loc) {
