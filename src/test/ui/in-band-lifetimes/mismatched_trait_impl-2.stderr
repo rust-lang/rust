@@ -2,15 +2,15 @@ error: `impl` item signature doesn't match `trait` item signature
   --> $DIR/mismatched_trait_impl-2.rs:8:5
    |
 LL |     fn deref(&self) -> &dyn Trait {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&Struct) -> &dyn Trait`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&'1 Struct) -> &'1 (dyn Trait + '1)`
    |
   ::: $SRC_DIR/core/src/ops/deref.rs:LL:COL
    |
 LL |     fn deref(&self) -> &Self::Target;
-   |     --------------------------------- expected `fn(&Struct) -> &(dyn Trait + 'static)`
+   |     --------------------------------- expected `fn(&'1 Struct) -> &'1 (dyn Trait + 'static)`
    |
-   = note: expected `fn(&Struct) -> &(dyn Trait + 'static)`
-              found `fn(&Struct) -> &dyn Trait`
+   = note: expected `fn(&'1 Struct) -> &'1 (dyn Trait + 'static)`
+              found `fn(&'1 Struct) -> &'1 (dyn Trait + '1)`
    = help: the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
    = help: verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output
 
