@@ -100,6 +100,8 @@ ENV CARGO_TARGET_AARCH64_FUCHSIA_RUSTFLAGS \
 
 ENV TARGETS=x86_64-fuchsia
 ENV TARGETS=$TARGETS,aarch64-fuchsia
+ENV TARGETS=$TARGETS,bpfel-unknown-none
+ENV TARGETS=$TARGETS,bpfeb-unknown-none
 ENV TARGETS=$TARGETS,wasm32-unknown-unknown
 ENV TARGETS=$TARGETS,wasm32-wasi
 ENV TARGETS=$TARGETS,sparcv9-sun-solaris
