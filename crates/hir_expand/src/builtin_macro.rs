@@ -267,13 +267,30 @@ fn format_args_expand(
 fn asm_expand(
     _db: &dyn AstDatabase,
     _id: MacroCallId,
-    _tt: &tt::Subtree,
+    tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
-    // both asm and llvm_asm don't return anything, so we can expand them to nothing,
-    // for now
-    let expanded = quote! {
+    // We expand all assembly snippets to `format_args!` invocations to get format syntax
+    // highlighting for them.
+
+    let krate = tt::Ident { text: "$crate".into(), id: tt::TokenId::unspecified() };
+
+    let mut literals = Vec::new();
+    for tt in tt.token_trees.chunks(2) {
+        match tt {
+            [tt::TokenTree::Leaf(tt::Leaf::Literal(lit))]
+            | [tt::TokenTree::Leaf(tt::Leaf::Literal(lit)), tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: ',', id: _, spacing: _ }))] =>
+            {
+                let krate = krate.clone();
+                literals.push(quote!(#krate::format_args!(#lit);));
+            }
+            _ => break,
+        }
+    }
+
+    let expanded = quote! {{
+        ##literals
         ()
-    };
+    }};
     ExpandResult::ok(expanded)
 }
 

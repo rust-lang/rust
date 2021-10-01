@@ -477,6 +477,8 @@ mod panic {
 macro_rules! panic {}
 #[rustc_builtin_macro]
 macro_rules! assert {}
+#[rustc_builtin_macro]
+macro_rules! asm {}
 
 macro_rules! toho {
     () => ($crate::panic!("not yet implemented"));
@@ -537,6 +539,7 @@ fn main() {
     assert!(true, "{}", 1);
     assert!(true, "{} asdasd", 1);
     toho!("{}fmt", 0);
+    asm!("mov eax, {0}");
 }"#
         .trim(),
         expect_file!["./test_data/highlight_strings.html"],
