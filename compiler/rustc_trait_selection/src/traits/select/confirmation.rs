@@ -92,7 +92,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(ImplSource::Generator(vtable_generator))
             }
 
-            FnPointerCandidate => {
+            FnPointerCandidate { .. } => {
                 let data = self.confirm_fn_pointer_candidate(obligation)?;
                 Ok(ImplSource::FnPointer(data))
             }
