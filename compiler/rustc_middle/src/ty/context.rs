@@ -2701,6 +2701,29 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn lifetime_scope(self, id: HirId) -> Option<LifetimeScopeForPath> {
         self.lifetime_scope_map(id.owner).and_then(|mut map| map.remove(&id.local_id))
     }
+
+    /// Whether the `def_id` counts as const fn in the current crate, considering all active
+    /// feature gates
+    pub fn is_const_fn(self, def_id: DefId) -> bool {
+        if self.is_const_fn_raw(def_id) {
+            match self.lookup_const_stability(def_id) {
+                Some(stability) if stability.level.is_unstable() => {
+                    // has a `rustc_const_unstable` attribute, check whether the user enabled the
+                    // corresponding feature gate.
+                    self.features()
+                        .declared_lib_features
+                        .iter()
+                        .any(|&(sym, _)| sym == stability.feature)
+                }
+                // functions without const stability are either stable user written
+                // const fn or the user is using feature gates and we thus don't
+                // care what they do
+                _ => true,
+            }
+        } else {
+            false
+        }
+    }
 }
 
 impl TyCtxtAt<'tcx> {
