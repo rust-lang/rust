@@ -166,7 +166,7 @@ pub trait ResolverAstLowering {
     fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>>;
 
     /// Obtains resolution for a `NodeId` with a single resolution.
-    fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes>;
+    fn get_partial_res(&self, id: NodeId) -> Option<PartialRes>;
 
     /// Obtains per-namespace resolutions for `use` statement with the given `NodeId`.
     fn get_import_res(&mut self, id: NodeId) -> PerNS<Option<Res<NodeId>>>;

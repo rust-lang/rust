@@ -1,32 +1,32 @@
 error: `?Trait` bounds are only permitted at the point where a type parameter is declared
-  --> $DIR/maybe-bounds-where.rs:1:23
+  --> $DIR/maybe-bounds-where.rs:1:28
    |
 LL | struct S1<T>(T) where (T): ?Sized;
-   |                       ^^^
+   |                            ^^^^^^
 
 error: `?Trait` bounds are only permitted at the point where a type parameter is declared
-  --> $DIR/maybe-bounds-where.rs:4:23
+  --> $DIR/maybe-bounds-where.rs:4:27
    |
 LL | struct S2<T>(T) where u8: ?Sized;
-   |                       ^^
+   |                           ^^^^^^
 
 error: `?Trait` bounds are only permitted at the point where a type parameter is declared
-  --> $DIR/maybe-bounds-where.rs:7:23
+  --> $DIR/maybe-bounds-where.rs:7:35
    |
 LL | struct S3<T>(T) where &'static T: ?Sized;
-   |                       ^^^^^^^^^^
+   |                                   ^^^^^^
 
 error: `?Trait` bounds are only permitted at the point where a type parameter is declared
-  --> $DIR/maybe-bounds-where.rs:12:31
+  --> $DIR/maybe-bounds-where.rs:12:34
    |
 LL | struct S4<T>(T) where for<'a> T: ?Trait<'a>;
-   |                               ^
+   |                                  ^^^^^^^^^^
 
 error: `?Trait` bounds are only permitted at the point where a type parameter is declared
-  --> $DIR/maybe-bounds-where.rs:21:18
+  --> $DIR/maybe-bounds-where.rs:21:21
    |
 LL |     fn f() where T: ?Sized {}
-   |                  ^
+   |                     ^^^^^^
 
 warning: default bound relaxed for a type parameter, but this does nothing because the given bound is not a default; only `?Sized` is supported
   --> $DIR/maybe-bounds-where.rs:12:11

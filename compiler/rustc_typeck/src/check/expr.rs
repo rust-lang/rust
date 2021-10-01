@@ -2137,7 +2137,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             idx_t
         } else {
             let base_t = self.structurally_resolved_type(base.span, base_t);
-            match self.lookup_indexing(expr, base, base_t, idx_t) {
+            match self.lookup_indexing(expr, base, base_t, idx, idx_t) {
                 Some((index_ty, element_ty)) => {
                     // two-phase not needed because index_ty is never mutable
                     self.demand_coerce(idx, idx_t, index_ty, None, AllowTwoPhase::No);

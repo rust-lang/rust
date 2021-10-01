@@ -33,10 +33,11 @@ error[E0423]: expected value, found struct `xcrate::S`
 LL |     xcrate::S;
    |     ^^^^^^^^^ constructor is not visible here due to private fields
    |
-help: consider importing this tuple struct instead
+note: tuple struct `m::S` exists but is inaccessible
+  --> $DIR/privacy-struct-ctor.rs:6:5
    |
-LL | use m::S;
-   |
+LL |     pub struct S(u8);
+   |     ^^^^^^^^^^^^^^^^^ not accessible
 
 error[E0603]: tuple struct constructor `Z` is private
   --> $DIR/privacy-struct-ctor.rs:18:12

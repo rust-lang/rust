@@ -342,7 +342,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
             let source_info = data.terminator().source_info;
             // We must assign the value first in case it gets declared dead below
             data.statements.extend(self.make_state(state_idx, v, source_info));
-            let state = if let Some((resume, resume_arg)) = resume {
+            let state = if let Some((resume, mut resume_arg)) = resume {
                 // Yield
                 let state = 3 + self.suspension_points.len();
 
@@ -350,7 +350,8 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
                 // live across a yield.
                 let resume_arg =
                     if let Some(&(ty, variant, idx)) = self.remap.get(&resume_arg.local) {
-                        self.make_field(variant, idx, ty)
+                        replace_base(&mut resume_arg, self.make_field(variant, idx, ty), self.tcx);
+                        resume_arg
                     } else {
                         resume_arg
                     };

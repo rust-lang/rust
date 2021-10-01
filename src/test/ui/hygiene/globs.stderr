@@ -4,7 +4,7 @@ error[E0425]: cannot find function `f` in this scope
 LL |         f();
    |         ^ not found in this scope
    |
-help: consider importing one of these items
+help: consider importing this function
    |
 LL | use foo::f;
    |
@@ -37,7 +37,7 @@ LL | n!(f);
 LL |         n!(f);
    |            ^ not found in this scope
    |
-   = note: consider importing one of these items:
+   = note: consider importing this function:
            foo::f
    = note: this error originates in the macro `n` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -50,7 +50,7 @@ LL | n!(f);
 LL |                 f
    |                 ^ not found in this scope
    |
-   = note: consider importing one of these items:
+   = note: consider importing this function:
            foo::f
    = note: this error originates in the macro `n` (in Nightly builds, run with -Z macro-backtrace for more info)
 
