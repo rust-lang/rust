@@ -369,7 +369,7 @@ mod spec_extend;
 /// scratch space that it may use however it wants. It will generally just do
 /// whatever is most efficient or otherwise easy to implement. Do not rely on
 /// removed data to be erased for security purposes. Even if you drop a `Vec`, its
-/// buffer may simply be reused by another `Vec`. Even if you zero a `Vec`'s memory
+/// buffer may simply be reused by another allocation. Even if you zero a `Vec`'s memory
 /// first, that might not actually happen because the optimizer does not consider
 /// this a side-effect that must be preserved. There is one case which we will
 /// not break, however: using `unsafe` code to write to the excess capacity,
