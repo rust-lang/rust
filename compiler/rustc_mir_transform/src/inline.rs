@@ -43,7 +43,14 @@ crate fn is_enabled(tcx: TyCtxt<'_>) -> bool {
         return enabled;
     }
 
-    tcx.sess.mir_opt_level() >= 3
+    // If you change this optimization level, also change the level in
+    // `mir_drops_elaborated_and_const_checked` for the call to `mir_inliner_callees`.
+    // Otherwise you will get an ICE about stolen MIR.
+    match tcx.sess.mir_opt_level() {
+        0 | 1 => false,
+        2 => tcx.sess.opts.incremental == None,
+        _ => true,
+    }
 }
 
 impl<'tcx> MirPass<'tcx> for Inline {
@@ -325,6 +332,17 @@ impl Inliner<'tcx> {
             }
         }
 
+        // At mir-opt-level=1, only inline `#[inline(always)]` functions
+        if self.tcx.sess.mir_opt_level() == 1 && callee_attrs.inline != InlineAttr::Always {
+            return Err("at mir-opt-level=1, only inline(always) is inlined");
+        }
+
+        if self.tcx.sess.mir_opt_level() == 1
+            && self.tcx.sess.opts.optimize != rustc_session::config::OptLevel::Aggressive
+        {
+            return Err("at mir-opt-level=1, only inline if -O is specified");
+        }
+
         Ok(())
     }
 
@@ -470,8 +488,24 @@ impl Inliner<'tcx> {
         }
 
         if let InlineAttr::Always = callee_attrs.inline {
-            debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
-            Ok(())
+            if self.tcx.sess.mir_opt_level() == 1 {
+                if cost <= 25 {
+                    debug!(
+                        "INLINING {:?} because inline(always) and [cost={} <= threshold=25]",
+                        callsite, cost
+                    );
+                    Ok(())
+                } else {
+                    debug!(
+                        "NOT inlining {:?} because inline(always) but [cost={} > threshold=25]",
+                        callsite, cost
+                    );
+                    Err("cost above threshold")
+                }
+            } else {
+                debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
+                Ok(())
+            }
         } else {
             if cost <= threshold {
                 debug!("INLINING {:?} [cost={} <= threshold={}]", callsite, cost, threshold);
