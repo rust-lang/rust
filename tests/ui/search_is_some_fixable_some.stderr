@@ -204,5 +204,11 @@ error: called `is_some()` after searching an `Iterator` with `find`
 LL |         let _ = vfoo.iter().find(|x| (**x)[0] == 9).is_some();
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x| (**x)[0] == 9)`
 
-error: aborting due to 33 previous errors
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:180:29
+   |
+LL |         let _ = vfoo.iter().find(|v| v.by_ref(&v.bar)).is_some();
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|v| v.by_ref(&v.bar))`
+
+error: aborting due to 34 previous errors
 

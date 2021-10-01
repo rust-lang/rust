@@ -167,4 +167,17 @@ mod issue7392 {
         let vfoo = vec![&&[0, 1, 2, 3]];
         let _ = vfoo.iter().find(|x| (**x)[0] == 9).is_none();
     }
+
+    fn method_call_by_ref() {
+        struct Foo {
+            bar: u32,
+        }
+        impl Foo {
+            pub fn by_ref(&self, x: &u32) -> bool {
+                *x == self.bar
+            }
+        }
+        let vfoo = vec![Foo { bar: 1 }];
+        let _ = vfoo.iter().find(|v| v.by_ref(&v.bar)).is_none();
+    }
 }

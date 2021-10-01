@@ -221,5 +221,11 @@ error: called `is_none()` after searching an `Iterator` with `find`
 LL |         let _ = vfoo.iter().find(|x| (**x)[0] == 9).is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!vfoo.iter().any(|x| (**x)[0] == 9)`
 
-error: aborting due to 33 previous errors
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:181:17
+   |
+LL |         let _ = vfoo.iter().find(|v| v.by_ref(&v.bar)).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!vfoo.iter().any(|v| v.by_ref(&v.bar))`
+
+error: aborting due to 34 previous errors
 

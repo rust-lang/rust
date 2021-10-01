@@ -227,23 +227,23 @@ impl DerefDelegate<'_, 'tcx> {
     }
 
     fn func_takes_arg_by_ref(&self, parent_expr: &'tcx hir::Expr<'_>, cmt_hir_id: HirId) -> bool {
-        if_chain! {
-            if let ExprKind::Call(func, call_args) = parent_expr.kind;
-            let typ = self.cx.typeck_results().expr_ty(func);
-            if let ty::FnDef(..) = typ.kind();
-
-            then {
-                let mut takes_by_ref = false;
-                for (arg, ty) in iter::zip(call_args, typ.fn_sig(self.cx.tcx).skip_binder().inputs()) {
-                    if arg.hir_id == cmt_hir_id {
-                        takes_by_ref = matches!(ty.kind(), ty::Ref(_, inner, _) if inner.is_ref());
-                    }
+        let (call_args, inputs) = match parent_expr.kind {
+            ExprKind::MethodCall(_, _, call_args, _) => {
+                if let Some(method_did) = self.cx.typeck_results().type_dependent_def_id(parent_expr.hir_id) {
+                    (call_args, self.cx.tcx.fn_sig(method_did).skip_binder().inputs())
+                } else {
+                    return false;
                 }
-                takes_by_ref
-            } else {
-                false
-            }
-        }
+            },
+            ExprKind::Call(func, call_args) => {
+                let typ = self.cx.typeck_results().expr_ty(func);
+                (call_args, typ.fn_sig(self.cx.tcx).skip_binder().inputs())
+            },
+            _ => return false,
+        };
+
+        iter::zip(call_args, inputs)
+            .any(|(arg, ty)| arg.hir_id == cmt_hir_id && matches!(ty.kind(), ty::Ref(_, inner, _) if inner.is_ref()))
     }
 }
 
@@ -271,10 +271,6 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                         let arg_ty_kind = self.cx.typeck_results().expr_ty(expr).kind();
 
                         if matches!(arg_ty_kind, ty::Ref(_, _, Mutability::Not)) {
-                            let start_span = Span::new(self.next_pos, span.lo(), span.ctxt());
-                            let start_snip =
-                                snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
-
                             // suggest ampersand if call function is taking args by ref
                             let takes_arg_by_ref = self.func_takes_arg_by_ref(parent_expr, cmt.hir_id);
 
@@ -294,14 +290,12 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                     }
                 }
 
-                // handle item projections by removing one explicit deref
-                // i.e.: suggest `*x` instead of `**x`
                 let mut replacement_str = ident_str;
-
                 let mut projections_handled = false;
                 cmt.place.projections.iter().enumerate().for_each(|(i, proj)| {
                     match proj.kind {
                         // Field projection like `|v| v.foo`
+                        // no adjustment needed here, as field projections are handled by the compiler
                         ProjectionKind::Field(idx, variant) => match cmt.place.ty_before_projection(i).kind() {
                             ty::Adt(def, ..) => {
                                 replacement_str = format!(
@@ -342,7 +336,8 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                     }
                 });
 
-                // handle `ProjectionKind::Deref` if no special case detected
+                // handle `ProjectionKind::Deref` by removing one explicit deref
+                // if no special case was detected (i.e.: suggest `*x` instead of `**x`)
                 if !projections_handled {
                     let last_deref = cmt
                         .place
