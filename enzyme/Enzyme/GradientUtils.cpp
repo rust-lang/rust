@@ -2081,100 +2081,79 @@ bool GradientUtils::legalRecompute(const Value *val,
 
   // TODO consider callinst here
 
-  if (auto li = dyn_cast<LoadInst>(val)) {
+  if (auto li = dyn_cast<Instruction>(val)) {
 
-    // If this is an already unwrapped value, legal to recompute again.
-    if (unwrappedLoads.find(li) != unwrappedLoads.end())
-      return legalRecompute(unwrappedLoads.find(li)->second, available,
-                            BuilderM, reverse);
+    const IntrinsicInst *II;
+    if (isa<LoadInst>(li) ||
+        ((II = dyn_cast<IntrinsicInst>(li)) &&
+         (II->getIntrinsicID() == Intrinsic::nvvm_ldu_global_i ||
+          II->getIntrinsicID() == Intrinsic::nvvm_ldu_global_p ||
+          II->getIntrinsicID() == Intrinsic::nvvm_ldu_global_f ||
+          II->getIntrinsicID() == Intrinsic::nvvm_ldg_global_i ||
+          II->getIntrinsicID() == Intrinsic::nvvm_ldg_global_p ||
+          II->getIntrinsicID() == Intrinsic::nvvm_ldg_global_f ||
+          II->getIntrinsicID() == Intrinsic::masked_load))) {
+      // If this is an already unwrapped value, legal to recompute again.
+      if (unwrappedLoads.find(li) != unwrappedLoads.end())
+        return legalRecompute(unwrappedLoads.find(li)->second, available,
+                              BuilderM, reverse);
 
-    const Instruction *orig = nullptr;
-    if (li->getParent()->getParent() == oldFunc) {
-      orig = li;
-    } else if (li->getParent()->getParent() == newFunc) {
-      orig = isOriginal(li);
-      // todo consider when we pass non original queries
-      if (orig && !isa<LoadInst>(orig)) {
-        return legalRecompute(orig, available, BuilderM, reverse,
-                              legalRecomputeCache);
-      }
-    } else {
-      llvm::errs() << " newFunc: " << *newFunc << "\n";
-      llvm::errs() << " parent: " << *li->getParent()->getParent() << "\n";
-      llvm::errs() << " li: " << *li << "\n";
-      assert(0 && "illegal load legalRecopmute query");
-    }
-
-    if (orig) {
-      assert(can_modref_map);
-      auto found = can_modref_map->find(const_cast<Instruction *>(orig));
-      if (found == can_modref_map->end()) {
-        llvm::errs() << *newFunc << "\n";
-        llvm::errs() << *oldFunc << "\n";
-        llvm::errs() << "can_modref_map:\n";
-        for (auto &pair : *can_modref_map) {
-          llvm::errs() << " + " << *pair.first << ": " << pair.second
-                       << " of func "
-                       << pair.first->getParent()->getParent()->getName()
-                       << "\n";
+      const Instruction *orig = nullptr;
+      if (li->getParent()->getParent() == oldFunc) {
+        orig = li;
+      } else if (li->getParent()->getParent() == newFunc) {
+        orig = isOriginal(li);
+        // todo consider when we pass non original queries
+        if (orig && !isa<LoadInst>(orig)) {
+          return legalRecompute(orig, available, BuilderM, reverse,
+                                legalRecomputeCache);
         }
-        llvm::errs() << "couldn't find in can_modref_map: " << *li << " - "
-                     << *orig
-                     << " in fn: " << orig->getParent()->getParent()->getName();
+      } else {
+        llvm::errs() << " newFunc: " << *newFunc << "\n";
+        llvm::errs() << " parent: " << *li->getParent()->getParent() << "\n";
+        llvm::errs() << " li: " << *li << "\n";
+        assert(0 && "illegal load legalRecopmute query");
       }
-      assert(found != can_modref_map->end());
-      if (!found->second)
-        return true;
-      // if insertion block of this function:
-      BasicBlock *fwdBlockIfReverse = nullptr;
-      if (BuilderM) {
-        fwdBlockIfReverse = BuilderM->GetInsertBlock();
-        if (!reverse) {
-          auto found = reverseBlockToPrimal.find(BuilderM->GetInsertBlock());
-          if (found != reverseBlockToPrimal.end()) {
-            fwdBlockIfReverse = found->second;
-            reverse = true;
+
+      if (orig) {
+        assert(can_modref_map);
+        auto found = can_modref_map->find(const_cast<Instruction *>(orig));
+        if (found == can_modref_map->end()) {
+          llvm::errs() << *newFunc << "\n";
+          llvm::errs() << *oldFunc << "\n";
+          llvm::errs() << "can_modref_map:\n";
+          for (auto &pair : *can_modref_map) {
+            llvm::errs() << " + " << *pair.first << ": " << pair.second
+                         << " of func "
+                         << pair.first->getParent()->getParent()->getName()
+                         << "\n";
           }
+          llvm::errs() << "couldn't find in can_modref_map: " << *li << " - "
+                       << *orig << " in fn: "
+                       << orig->getParent()->getParent()->getName();
         }
-        if (fwdBlockIfReverse->getParent() != oldFunc)
-          fwdBlockIfReverse =
-              cast_or_null<BasicBlock>(isOriginal(fwdBlockIfReverse));
-      }
-      if (mode == DerivativeMode::ReverseModeCombined && fwdBlockIfReverse) {
-        if (reverse) {
-          bool failed = false;
-          allFollowersOf(
-              const_cast<Instruction *>(orig), [&](Instruction *I) -> bool {
-                if (I->mayWriteToMemory() &&
-                    writesToMemoryReadBy(
-                        OrigAA, /*maybeReader*/ const_cast<Instruction *>(orig),
-                        /*maybeWriter*/ I)) {
-                  failed = true;
-                  EmitWarning("UncacheableLoad", orig->getDebugLoc(), oldFunc,
-                              orig->getParent(), "Load must be recomputed ",
-                              *orig, " in reverse_",
-                              BuilderM->GetInsertBlock()->getName(), " due to ",
-                              *I);
-                  return /*earlyBreak*/ true;
-                }
-                return /*earlyBreak*/ false;
-              });
-          if (!failed)
-            return true;
-        } else {
-          Instruction *origStart = &*BuilderM->GetInsertPoint();
-          do {
-            if (Instruction *og = isOriginal(origStart)) {
-              origStart = og;
-              break;
+        assert(found != can_modref_map->end());
+        if (!found->second)
+          return true;
+        // if insertion block of this function:
+        BasicBlock *fwdBlockIfReverse = nullptr;
+        if (BuilderM) {
+          fwdBlockIfReverse = BuilderM->GetInsertBlock();
+          if (!reverse) {
+            auto found = reverseBlockToPrimal.find(BuilderM->GetInsertBlock());
+            if (found != reverseBlockToPrimal.end()) {
+              fwdBlockIfReverse = found->second;
+              reverse = true;
             }
-            origStart = origStart->getNextNode();
-          } while (true);
-          if (OrigDT.dominates(origStart, const_cast<Instruction *>(orig))) {
+          }
+          if (fwdBlockIfReverse->getParent() != oldFunc)
+            fwdBlockIfReverse =
+                cast_or_null<BasicBlock>(isOriginal(fwdBlockIfReverse));
+        }
+        if (mode == DerivativeMode::ReverseModeCombined && fwdBlockIfReverse) {
+          if (reverse) {
             bool failed = false;
-
-            allInstructionsBetween(
-                const_cast<GradientUtils *>(this)->LI, origStart,
+            allFollowersOf(
                 const_cast<Instruction *>(orig), [&](Instruction *I) -> bool {
                   if (I->mayWriteToMemory() &&
                       writesToMemoryReadBy(
@@ -2184,7 +2163,7 @@ bool GradientUtils::legalRecompute(const Value *val,
                     failed = true;
                     EmitWarning("UncacheableLoad", orig->getDebugLoc(), oldFunc,
                                 orig->getParent(), "Load must be recomputed ",
-                                *orig, " in ",
+                                *orig, " in reverse_",
                                 BuilderM->GetInsertBlock()->getName(),
                                 " due to ", *I);
                     return /*earlyBreak*/ true;
@@ -2193,21 +2172,54 @@ bool GradientUtils::legalRecompute(const Value *val,
                 });
             if (!failed)
               return true;
+          } else {
+            Instruction *origStart = &*BuilderM->GetInsertPoint();
+            do {
+              if (Instruction *og = isOriginal(origStart)) {
+                origStart = og;
+                break;
+              }
+              origStart = origStart->getNextNode();
+            } while (true);
+            if (OrigDT.dominates(origStart, const_cast<Instruction *>(orig))) {
+              bool failed = false;
+
+              allInstructionsBetween(
+                  const_cast<GradientUtils *>(this)->LI, origStart,
+                  const_cast<Instruction *>(orig), [&](Instruction *I) -> bool {
+                    if (I->mayWriteToMemory() &&
+                        writesToMemoryReadBy(
+                            OrigAA,
+                            /*maybeReader*/ const_cast<Instruction *>(orig),
+                            /*maybeWriter*/ I)) {
+                      failed = true;
+                      EmitWarning("UncacheableLoad", orig->getDebugLoc(),
+                                  oldFunc, orig->getParent(),
+                                  "Load must be recomputed ", *orig, " in ",
+                                  BuilderM->GetInsertBlock()->getName(),
+                                  " due to ", *I);
+                      return /*earlyBreak*/ true;
+                    }
+                    return /*earlyBreak*/ false;
+                  });
+              if (!failed)
+                return true;
+            }
           }
         }
-      }
-      return false;
-    } else {
-      if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(li))) {
-        return legalRecompute(dli, available, BuilderM, reverse);
-      }
+        return false;
+      } else {
+        if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(li))) {
+          return legalRecompute(dli, available, BuilderM, reverse);
+        }
 
-      // TODO mark all the explicitly legal nodes (caches, etc)
-      return true;
-      llvm::errs() << *li << " orig: " << orig
-                   << " parent: " << li->getParent()->getParent()->getName()
-                   << "\n";
-      llvm_unreachable("unknown load to redo!");
+        // TODO mark all the explicitly legal nodes (caches, etc)
+        return true;
+        llvm::errs() << *li << " orig: " << orig
+                     << " parent: " << li->getParent()->getParent()->getName()
+                     << "\n";
+        llvm_unreachable("unknown load to redo!");
+      }
     }
   }
 
@@ -2222,20 +2234,6 @@ bool GradientUtils::legalRecompute(const Value *val,
           n == "omp_get_max_threads") {
         return true;
       }
-    }
-  }
-
-  if (auto II = dyn_cast<IntrinsicInst>(val)) {
-    switch (II->getIntrinsicID()) {
-    case Intrinsic::nvvm_ldu_global_i:
-    case Intrinsic::nvvm_ldu_global_p:
-    case Intrinsic::nvvm_ldu_global_f:
-    case Intrinsic::nvvm_ldg_global_i:
-    case Intrinsic::nvvm_ldg_global_p:
-    case Intrinsic::nvvm_ldg_global_f:
-      return true;
-    default:
-      break;
     }
   }
 

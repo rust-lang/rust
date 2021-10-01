@@ -238,13 +238,13 @@ struct CacheAnalysis {
     return seen[obj] = mustcache;
   }
 
-  bool is_load_uncacheable(LoadInst &li) {
+  bool is_load_uncacheable(Instruction &li) {
     assert(li.getParent()->getParent() == oldFunc);
 
     auto Arch = llvm::Triple(oldFunc->getParent()->getTargetTriple()).getArch();
     if (Arch == Triple::amdgcn &&
-        cast<PointerType>(li.getPointerOperand()->getType())
-                ->getAddressSpace() == 4) {
+        cast<PointerType>(li.getOperand(0)->getType())->getAddressSpace() ==
+            4) {
       return false;
     }
 
@@ -257,9 +257,9 @@ struct CacheAnalysis {
     // instruction.
     auto obj =
 #if LLVM_VERSION_MAJOR >= 12
-        getUnderlyingObject(li.getPointerOperand(), 100);
+        getUnderlyingObject(li.getOperand(0), 100);
 #else
-        GetUnderlyingObject(li.getPointerOperand(),
+        GetUnderlyingObject(li.getOperand(0),
                             oldFunc->getParent()->getDataLayout(), 100);
 #endif
 
@@ -298,109 +298,69 @@ struct CacheAnalysis {
           }
         }
 
-        if (auto SI = dyn_cast<StoreInst>(inst2)) {
+        if (auto LI = dyn_cast<LoadInst>(&li))
+          if (auto SI = dyn_cast<StoreInst>(inst2)) {
 
-          const SCEV *LS = SE.getSCEV(li.getPointerOperand());
-          const SCEV *SS = SE.getSCEV(SI->getPointerOperand());
-          if (SS != SE.getCouldNotCompute()) {
+            const SCEV *LS = SE.getSCEV(LI->getPointerOperand());
+            const SCEV *SS = SE.getSCEV(SI->getPointerOperand());
+            if (SS != SE.getCouldNotCompute()) {
 
-            // llvm::errs() << *inst2 << " - " << li << "\n";
-            // llvm::errs() << *SS << " - " << *LS << "\n";
-            const auto &DL = li.getModule()->getDataLayout();
+              // llvm::errs() << *inst2 << " - " << li << "\n";
+              // llvm::errs() << *SS << " - " << *LS << "\n";
+              const auto &DL = li.getModule()->getDataLayout();
 
 #if LLVM_VERSION_MAJOR >= 10
-            auto TS = SE.getConstant(
-                APInt(64, DL.getTypeStoreSize(li.getType()).getFixedSize()));
+              auto TS = SE.getConstant(
+                  APInt(64, DL.getTypeStoreSize(li.getType()).getFixedSize()));
 #else
             auto TS = SE.getConstant(
                 APInt(64, DL.getTypeStoreSize(li.getType())));
 #endif
-            for (auto lim = LS; lim != SE.getCouldNotCompute();) {
-              // [start load, L+Size] [S, S+Size]
-              for (auto slim = SS; slim != SE.getCouldNotCompute();) {
-                bool check = true;
-                if (auto SExpr = dyn_cast<SCEVAddRecExpr>(slim)) {
-                  auto SH = SExpr->getLoop()->getHeader();
-                  if (auto LExpr = dyn_cast<SCEVAddRecExpr>(lim)) {
-                    auto LH = LExpr->getLoop()->getHeader();
-                    if (SH != LH && !OrigDT.dominates(SH, LH) &&
-                        !OrigDT.dominates(LH, SH)) {
-                      check = false;
+              for (auto lim = LS; lim != SE.getCouldNotCompute();) {
+                // [start load, L+Size] [S, S+Size]
+                for (auto slim = SS; slim != SE.getCouldNotCompute();) {
+                  bool check = true;
+                  if (auto SExpr = dyn_cast<SCEVAddRecExpr>(slim)) {
+                    auto SH = SExpr->getLoop()->getHeader();
+                    if (auto LExpr = dyn_cast<SCEVAddRecExpr>(lim)) {
+                      auto LH = LExpr->getLoop()->getHeader();
+                      if (SH != LH && !OrigDT.dominates(SH, LH) &&
+                          !OrigDT.dominates(LH, SH)) {
+                        check = false;
+                      }
                     }
                   }
-                }
 
-                if (check) {
-                  auto lsub = SE.getMinusSCEV(slim, SE.getAddExpr(lim, TS));
-                  if (lsub != SE.getCouldNotCompute() &&
-                      SE.isKnownNonNegative(lsub)) {
-                    return false;
-                  }
-                }
-
-                if (auto arL = dyn_cast<SCEVAddRecExpr>(slim)) {
-                  if (SE.isKnownNonNegative(arL->getStepRecurrence(SE))) {
-                    slim = arL->getStart();
-                    continue;
-                  } else if (SE.isKnownNonPositive(
-                                 arL->getStepRecurrence(SE))) {
-#if LLVM_VERSION_MAJOR >= 12
-                    auto bd =
-                        SE.getSymbolicMaxBackedgeTakenCount(arL->getLoop());
-#else
-                    auto bd = SE.getBackedgeTakenCount(arL->getLoop());
-#endif
-                    if (bd == SE.getCouldNotCompute())
-                      break;
-                    slim = arL->evaluateAtIteration(bd, SE);
-                    continue;
-                  }
-                }
-                break;
-              }
-
-              if (auto arL = dyn_cast<SCEVAddRecExpr>(lim)) {
-                if (SE.isKnownNonNegative(arL->getStepRecurrence(SE))) {
-#if LLVM_VERSION_MAJOR >= 12
-                  auto bd = SE.getSymbolicMaxBackedgeTakenCount(arL->getLoop());
-#else
-                  auto bd = SE.getBackedgeTakenCount(arL->getLoop());
-#endif
-                  if (bd == SE.getCouldNotCompute())
-                    break;
-                  lim = arL->evaluateAtIteration(bd, SE);
-                  continue;
-                } else if (SE.isKnownNonPositive(arL->getStepRecurrence(SE))) {
-                  lim = arL->getStart();
-                  continue;
-                }
-              }
-              break;
-            }
-            for (auto lim = LS; lim != SE.getCouldNotCompute();) {
-              // [S, S+Size][start load, L+Size]
-              for (auto slim = SS; slim != SE.getCouldNotCompute();) {
-                bool check = true;
-                if (auto SExpr = dyn_cast<SCEVAddRecExpr>(slim)) {
-                  auto SH = SExpr->getLoop()->getHeader();
-                  if (auto LExpr = dyn_cast<SCEVAddRecExpr>(lim)) {
-                    auto LH = LExpr->getLoop()->getHeader();
-                    if (SH != LH && !OrigDT.dominates(SH, LH) &&
-                        !OrigDT.dominates(LH, SH)) {
-                      check = false;
+                  if (check) {
+                    auto lsub = SE.getMinusSCEV(slim, SE.getAddExpr(lim, TS));
+                    if (lsub != SE.getCouldNotCompute() &&
+                        SE.isKnownNonNegative(lsub)) {
+                      return false;
                     }
                   }
-                }
 
-                if (check) {
-                  auto lsub = SE.getMinusSCEV(lim, SE.getAddExpr(slim, TS));
-                  if (lsub != SE.getCouldNotCompute() &&
-                      SE.isKnownNonNegative(lsub)) {
-                    return false;
+                  if (auto arL = dyn_cast<SCEVAddRecExpr>(slim)) {
+                    if (SE.isKnownNonNegative(arL->getStepRecurrence(SE))) {
+                      slim = arL->getStart();
+                      continue;
+                    } else if (SE.isKnownNonPositive(
+                                   arL->getStepRecurrence(SE))) {
+#if LLVM_VERSION_MAJOR >= 12
+                      auto bd =
+                          SE.getSymbolicMaxBackedgeTakenCount(arL->getLoop());
+#else
+                      auto bd = SE.getBackedgeTakenCount(arL->getLoop());
+#endif
+                      if (bd == SE.getCouldNotCompute())
+                        break;
+                      slim = arL->evaluateAtIteration(bd, SE);
+                      continue;
+                    }
                   }
+                  break;
                 }
 
-                if (auto arL = dyn_cast<SCEVAddRecExpr>(slim)) {
+                if (auto arL = dyn_cast<SCEVAddRecExpr>(lim)) {
                   if (SE.isKnownNonNegative(arL->getStepRecurrence(SE))) {
 #if LLVM_VERSION_MAJOR >= 12
                     auto bd =
@@ -410,37 +370,82 @@ struct CacheAnalysis {
 #endif
                     if (bd == SE.getCouldNotCompute())
                       break;
-                    slim = arL->evaluateAtIteration(bd, SE);
+                    lim = arL->evaluateAtIteration(bd, SE);
                     continue;
                   } else if (SE.isKnownNonPositive(
                                  arL->getStepRecurrence(SE))) {
-                    slim = arL->getStart();
+                    lim = arL->getStart();
                     continue;
                   }
                 }
                 break;
               }
+              for (auto lim = LS; lim != SE.getCouldNotCompute();) {
+                // [S, S+Size][start load, L+Size]
+                for (auto slim = SS; slim != SE.getCouldNotCompute();) {
+                  bool check = true;
+                  if (auto SExpr = dyn_cast<SCEVAddRecExpr>(slim)) {
+                    auto SH = SExpr->getLoop()->getHeader();
+                    if (auto LExpr = dyn_cast<SCEVAddRecExpr>(lim)) {
+                      auto LH = LExpr->getLoop()->getHeader();
+                      if (SH != LH && !OrigDT.dominates(SH, LH) &&
+                          !OrigDT.dominates(LH, SH)) {
+                        check = false;
+                      }
+                    }
+                  }
 
-              if (auto arL = dyn_cast<SCEVAddRecExpr>(lim)) {
-                if (SE.isKnownNonNegative(arL->getStepRecurrence(SE))) {
-                  lim = arL->getStart();
-                  continue;
-                } else if (SE.isKnownNonPositive(arL->getStepRecurrence(SE))) {
+                  if (check) {
+                    auto lsub = SE.getMinusSCEV(lim, SE.getAddExpr(slim, TS));
+                    if (lsub != SE.getCouldNotCompute() &&
+                        SE.isKnownNonNegative(lsub)) {
+                      return false;
+                    }
+                  }
+
+                  if (auto arL = dyn_cast<SCEVAddRecExpr>(slim)) {
+                    if (SE.isKnownNonNegative(arL->getStepRecurrence(SE))) {
 #if LLVM_VERSION_MAJOR >= 12
-                  auto bd = SE.getSymbolicMaxBackedgeTakenCount(arL->getLoop());
+                      auto bd =
+                          SE.getSymbolicMaxBackedgeTakenCount(arL->getLoop());
+#else
+                    auto bd = SE.getBackedgeTakenCount(arL->getLoop());
+#endif
+                      if (bd == SE.getCouldNotCompute())
+                        break;
+                      slim = arL->evaluateAtIteration(bd, SE);
+                      continue;
+                    } else if (SE.isKnownNonPositive(
+                                   arL->getStepRecurrence(SE))) {
+                      slim = arL->getStart();
+                      continue;
+                    }
+                  }
+                  break;
+                }
+
+                if (auto arL = dyn_cast<SCEVAddRecExpr>(lim)) {
+                  if (SE.isKnownNonNegative(arL->getStepRecurrence(SE))) {
+                    lim = arL->getStart();
+                    continue;
+                  } else if (SE.isKnownNonPositive(
+                                 arL->getStepRecurrence(SE))) {
+#if LLVM_VERSION_MAJOR >= 12
+                    auto bd =
+                        SE.getSymbolicMaxBackedgeTakenCount(arL->getLoop());
 #else
                   auto bd = SE.getBackedgeTakenCount(arL->getLoop());
 #endif
-                  if (bd == SE.getCouldNotCompute())
-                    break;
-                  lim = arL->evaluateAtIteration(bd, SE);
-                  continue;
+                    if (bd == SE.getCouldNotCompute())
+                      break;
+                    lim = arL->evaluateAtIteration(bd, SE);
+                    continue;
+                  }
                 }
+                break;
               }
-              break;
             }
           }
-        }
 
         if (auto II = dyn_cast<IntrinsicInst>(inst2)) {
           if (II->getIntrinsicID() == Intrinsic::nvvm_barrier0 ||
@@ -507,6 +512,23 @@ struct CacheAnalysis {
       // For each load instruction, determine if it is uncacheable.
       if (auto op = dyn_cast<LoadInst>(inst)) {
         can_modref_map[inst] = is_load_uncacheable(*op);
+      }
+      if (auto II = dyn_cast<IntrinsicInst>(inst)) {
+        switch (II->getIntrinsicID()) {
+        case Intrinsic::nvvm_ldu_global_i:
+        case Intrinsic::nvvm_ldu_global_p:
+        case Intrinsic::nvvm_ldu_global_f:
+        case Intrinsic::nvvm_ldg_global_i:
+        case Intrinsic::nvvm_ldg_global_p:
+        case Intrinsic::nvvm_ldg_global_f:
+          can_modref_map[inst] = false;
+          break;
+        case Intrinsic::masked_load:
+          can_modref_map[inst] = is_load_uncacheable(*II);
+          break;
+        default:
+          break;
+        }
       }
     }
     return can_modref_map;

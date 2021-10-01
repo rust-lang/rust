@@ -376,14 +376,17 @@ public:
 
 #if LLVM_VERSION_MAJOR >= 10
   void visitLoadLike(llvm::Instruction &I, MaybeAlign alignment,
-                     bool constantval, bool can_modref,
-                     Value *OrigOffset = nullptr)
+                     bool constantval, Value *OrigOffset = nullptr,
 #else
   void visitLoadLike(llvm::Instruction &I, unsigned alignment, bool constantval,
-                     bool can_modref, Value *OrigOffset = nullptr)
+                     Value *OrigOffset = nullptr,
 #endif
-  {
+                     Value *mask = nullptr, Value *orig_maskInit = nullptr) {
     auto &DL = gutils->newFunc->getParent()->getDataLayout();
+
+    assert(gutils->can_modref_map);
+    assert(gutils->can_modref_map->find(&I) != gutils->can_modref_map->end());
+    bool can_modref = gutils->can_modref_map->find(&I)->second;
 
     constantval |= gutils->isConstantValue(&I);
 
@@ -536,7 +539,8 @@ public:
     // the instruction if the value is a potential pointer. This may not be
     // caught by type analysis is the result does not have a known type.
     if (!gutils->isConstantInstruction(&I)) {
-      bool isfloat = type->isFPOrFPVectorTy();
+      Type *isfloat =
+          type->isFPOrFPVectorTy() ? type->getScalarType() : nullptr;
       if (!isfloat && type->isIntOrIntVectorTy()) {
         auto LoadSize = DL.getTypeSizeInBits(type) / 8;
         ConcreteType vd = BaseType::Unknown;
@@ -560,8 +564,34 @@ public:
           getForwardBuilder(Builder2);
 
           if (!gutils->isConstantValue(&I)) {
-            auto diff = Builder2.CreateLoad(
-                gutils->invertPointerM(I.getOperand(0), Builder2));
+            Value *diff;
+            if (!mask) {
+              auto LI = Builder2.CreateLoad(
+                  gutils->invertPointerM(I.getOperand(0), Builder2));
+              if (alignment)
+#if LLVM_VERSION_MAJOR >= 10
+                LI->setAlignment(*alignment);
+#else
+                LI->setAlignment(alignment);
+#endif
+              diff = LI;
+            } else {
+              Type *tys[] = {I.getType(), I.getOperand(0)->getType()};
+              auto F = Intrinsic::getDeclaration(gutils->oldFunc->getParent(),
+                                                 Intrinsic::masked_load, tys);
+#if LLVM_VERSION_MAJOR >= 10
+              Value *alignv =
+                  ConstantInt::get(Type::getInt32Ty(mask->getContext()),
+                                   alignment ? alignment->value() : 0);
+#else
+              Value *alignv = ConstantInt::get(
+                  Type::getInt32Ty(mask->getContext()), alignment);
+#endif
+              Value *args[] = {
+                  gutils->invertPointerM(I.getOperand(0), Builder2), alignv,
+                  mask, diffe(orig_maskInit, Builder2)};
+              diff = Builder2.CreateCall(F, args);
+            }
             setDiffe(&I, diff, Builder2);
           }
           break;
@@ -576,8 +606,13 @@ public:
 
           if (!gutils->isConstantValue(I.getOperand(0))) {
             ((DiffeGradientUtils *)gutils)
-                ->addToInvertedPtrDiffe(I.getOperand(0), prediff, Builder2,
-                                        alignment, OrigOffset);
+                ->addToInvertedPtrDiffe(
+                    I.getOperand(0), prediff, Builder2, alignment, OrigOffset,
+                    mask ? lookup(mask, Builder2) : nullptr);
+          }
+          if (mask && !gutils->isConstantValue(orig_maskInit)) {
+            addToDiffe(orig_maskInit, prediff, Builder2, isfloat,
+                       Builder2.CreateNot(mask));
           }
           break;
         }
@@ -614,10 +649,7 @@ public:
     auto &DL = gutils->newFunc->getParent()->getDataLayout();
 
     bool constantval = parseTBAA(LI, DL).Inner0().isIntegral();
-    assert(gutils->can_modref_map);
-    assert(gutils->can_modref_map->find(&LI) != gutils->can_modref_map->end());
-    bool can_modref = gutils->can_modref_map->find(&LI)->second;
-    visitLoadLike(LI, alignment, constantval, can_modref);
+    visitLoadLike(LI, alignment, constantval);
     eraseIfUnused(LI);
   }
 
@@ -636,15 +668,9 @@ public:
   }
 
   void visitStoreInst(llvm::StoreInst &SI) {
-    Value *orig_ptr = SI.getPointerOperand();
-    Value *orig_val = SI.getValueOperand();
-    Value *val = gutils->getNewFromOriginal(orig_val);
-    Type *valType = orig_val->getType();
-
-    auto &DL = gutils->newFunc->getParent()->getDataLayout();
     // If a store of an omp init argument, don't delete in reverse
     // and don't do any adjoint propagation (assumed integral)
-    for (auto U : orig_ptr->users()) {
+    for (auto U : SI.getPointerOperand()->users()) {
       if (auto CI = dyn_cast<CallInst>(U)) {
         if (auto F = CI->getCalledFunction()) {
           if (F->getName() == "__kmpc_for_static_init_4" ||
@@ -656,24 +682,47 @@ public:
         }
       }
     }
+#if LLVM_VERSION_MAJOR >= 10
+    auto align = SI.getAlign();
+#else
+    auto align = SI.getAlignment();
+#endif
+    visitCommonStore(SI, SI.getPointerOperand(), SI.getValueOperand(), align,
+                     SI.isVolatile(), SI.getOrdering(), SI.getSyncScopeID(),
+                     /*mask=*/nullptr);
+    eraseIfUnused(SI);
+  }
 
-    if (unnecessaryStores.count(&SI)) {
-      eraseIfUnused(SI);
+#if LLVM_VERSION_MAJOR >= 10
+  void visitCommonStore(llvm::Instruction &I, Value *orig_ptr, Value *orig_val,
+                        MaybeAlign align, bool isVolatile,
+                        AtomicOrdering ordering, SyncScope::ID syncScope,
+                        Value *mask = nullptr)
+#else
+  void visitCommonStore(llvm::Instruction &I, Value *orig_ptr, Value *orig_val,
+                        unsigned align, bool isVolatile,
+                        AtomicOrdering ordering, SyncScope::ID syncScope,
+                        Value *mask = nullptr)
+#endif
+  {
+    Value *val = gutils->getNewFromOriginal(orig_val);
+    Type *valType = orig_val->getType();
+
+    auto &DL = gutils->newFunc->getParent()->getDataLayout();
+
+    if (unnecessaryStores.count(&I)) {
       return;
     }
 
     if (gutils->isConstantValue(orig_ptr)) {
-      eraseIfUnused(SI);
       return;
     }
 
     bool constantval = gutils->isConstantValue(orig_val) ||
-                       parseTBAA(SI, DL).Inner0().isIntegral();
+                       parseTBAA(I, DL).Inner0().isIntegral();
 
     // TODO allow recognition of other types that could contain pointers [e.g.
     // {void*, void*} or <2 x i64> ]
-    StoreInst *ts = nullptr;
-
     auto storeSize = DL.getTypeSizeInBits(valType) / 8;
 
     //! Storing a floating point value
@@ -688,12 +737,12 @@ public:
           FT = fp.isFloat();
         } else if (isa<ConstantInt>(orig_val) ||
                    valType->isIntOrIntVectorTy()) {
-          llvm::errs() << "assuming type as integral for store: " << SI << "\n";
+          llvm::errs() << "assuming type as integral for store: " << I << "\n";
           FT = nullptr;
         } else {
           TR.firstPointer(storeSize, orig_ptr, /*errifnotfound*/ true,
                           /*pointerIntSame*/ true);
-          llvm::errs() << "cannot deduce type of store " << SI << "\n";
+          llvm::errs() << "cannot deduce type of store " << I << "\n";
           assert(0 && "cannot deduce");
         }
       } else {
@@ -710,35 +759,61 @@ public:
         break;
       case DerivativeMode::ReverseModeGradient:
       case DerivativeMode::ReverseModeCombined: {
-        IRBuilder<> Builder2(SI.getParent());
+        IRBuilder<> Builder2(I.getParent());
         getReverseBuilder(Builder2);
 
         if (constantval) {
-          ts = setPtrDiffe(orig_ptr, Constant::getNullValue(valType), Builder2);
+          gutils->setPtrDiffe(orig_ptr, Constant::getNullValue(valType),
+                              Builder2, align, isVolatile, ordering, syncScope,
+                              mask);
         } else {
-          auto dif1 = Builder2.CreateLoad(
-              lookup(gutils->invertPointerM(orig_ptr, Builder2), Builder2));
+          Value *diff;
+          if (!mask) {
+            auto dif1 = Builder2.CreateLoad(
+                lookup(gutils->invertPointerM(orig_ptr, Builder2), Builder2),
+                isVolatile);
+            if (align)
 #if LLVM_VERSION_MAJOR >= 10
-          dif1->setAlignment(SI.getAlign());
+              dif1->setAlignment(*align);
 #else
-          dif1->setAlignment(SI.getAlignment());
+              dif1->setAlignment(align);
 #endif
-          ts = setPtrDiffe(orig_ptr, Constant::getNullValue(valType), Builder2);
-          addToDiffe(orig_val, dif1, Builder2, FT);
+            dif1->setOrdering(ordering);
+            dif1->setSyncScopeID(syncScope);
+            diff = dif1;
+          } else {
+            mask = lookup(mask, Builder2);
+            Type *tys[] = {valType, orig_ptr->getType()};
+            auto F = Intrinsic::getDeclaration(gutils->oldFunc->getParent(),
+                                               Intrinsic::masked_load, tys);
+#if LLVM_VERSION_MAJOR >= 10
+            Value *alignv =
+                ConstantInt::get(Type::getInt32Ty(mask->getContext()),
+                                 align ? align->value() : 0);
+#else
+            Value *alignv =
+                ConstantInt::get(Type::getInt32Ty(mask->getContext()), align);
+#endif
+            Value *args[] = {
+                lookup(gutils->invertPointerM(orig_ptr, Builder2), Builder2),
+                alignv, mask, Constant::getNullValue(valType)};
+            diff = Builder2.CreateCall(F, args);
+          }
+          gutils->setPtrDiffe(orig_ptr, Constant::getNullValue(valType),
+                              Builder2, align, isVolatile, ordering, syncScope,
+                              mask);
+          addToDiffe(orig_val, diff, Builder2, FT, mask);
         }
         break;
       }
       case DerivativeMode::ForwardMode: {
-        IRBuilder<> Builder2(&SI);
+        IRBuilder<> Builder2(&I);
         getForwardBuilder(Builder2);
 
-        if (constantval) {
-          ts = setPtrDiffe(orig_ptr, Constant::getNullValue(valType), Builder2);
-        } else {
-          auto diff = diffe(orig_val, Builder2);
-
-          ts = setPtrDiffe(orig_ptr, diff, Builder2);
-        }
+        Value *diff = constantval ? Constant::getNullValue(valType)
+                                  : diffe(orig_val, Builder2);
+        gutils->setPtrDiffe(orig_ptr, diff, Builder2, align, isVolatile,
+                            ordering, syncScope, mask);
         break;
       }
       }
@@ -749,7 +824,7 @@ public:
       if (Mode == DerivativeMode::ReverseModePrimal ||
           Mode == DerivativeMode::ReverseModeCombined ||
           Mode == DerivativeMode::ForwardMode) {
-        IRBuilder<> storeBuilder(gutils->getNewFromOriginal(&SI));
+        IRBuilder<> storeBuilder(gutils->getNewFromOriginal(&I));
 
         Value *valueop = nullptr;
 
@@ -758,21 +833,10 @@ public:
         } else {
           valueop = gutils->invertPointerM(orig_val, storeBuilder);
         }
-        ts = setPtrDiffe(orig_ptr, valueop, storeBuilder);
+        gutils->setPtrDiffe(orig_ptr, valueop, storeBuilder, align, isVolatile,
+                            ordering, syncScope, mask);
       }
     }
-
-    if (ts) {
-#if LLVM_VERSION_MAJOR >= 10
-      ts->setAlignment(SI.getAlign());
-#else
-      ts->setAlignment(SI.getAlignment());
-#endif
-      ts->setVolatile(SI.isVolatile());
-      ts->setOrdering(SI.getOrdering());
-      ts->setSyncScopeID(SI.getSyncScopeID());
-    }
-    eraseIfUnused(SI);
   }
 
   void visitGetElementPtrInst(llvm::GetElementPtrInst &gep) {
@@ -1366,13 +1430,11 @@ public:
     ((DiffeGradientUtils *)gutils)->setDiffe(val, dif, Builder);
   }
 
-  StoreInst *setPtrDiffe(Value *val, Value *dif, IRBuilder<> &Builder) {
-    return gutils->setPtrDiffe(val, dif, Builder);
-  }
-
   std::vector<SelectInst *> addToDiffe(Value *val, Value *dif,
-                                       IRBuilder<> &Builder, Type *T) {
-    return ((DiffeGradientUtils *)gutils)->addToDiffe(val, dif, Builder, T);
+                                       IRBuilder<> &Builder, Type *T,
+                                       Value *mask = nullptr) {
+    return ((DiffeGradientUtils *)gutils)
+        ->addToDiffe(val, dif, Builder, T, /*idxs*/ {}, mask);
   }
 
   Value *lookup(Value *val, IRBuilder<> &Builder) {
@@ -2351,17 +2413,45 @@ public:
       auto CI = cast<ConstantInt>(I.getOperand(1));
 #if LLVM_VERSION_MAJOR >= 10
       visitLoadLike(I, /*Align*/ MaybeAlign(CI->getZExtValue()),
-                    /*constantval*/ false,
-                    /*can_modref*/ false);
+                    /*constantval*/ false);
 #else
-      visitLoadLike(I, /*Align*/ CI->getZExtValue(), /*constantval*/ false,
-                    /*can_modref*/ false);
+      visitLoadLike(I, /*Align*/ CI->getZExtValue(), /*constantval*/ false);
 #endif
       return;
     }
     default:
       break;
     }
+
+    if (ID == Intrinsic::masked_store) {
+      auto align0 = cast<ConstantInt>(I.getOperand(2))->getZExtValue();
+#if LLVM_VERSION_MAJOR >= 10
+      auto align = MaybeAlign(align0);
+#else
+      auto align = align0;
+#endif
+      visitCommonStore(I, /*orig_ptr*/ I.getOperand(1),
+                       /*orig_val*/ I.getOperand(0), align,
+                       /*isVolatile*/ false, llvm::AtomicOrdering::NotAtomic,
+                       SyncScope::SingleThread,
+                       /*mask*/ gutils->getNewFromOriginal(I.getOperand(3)));
+      return;
+    }
+    if (ID == Intrinsic::masked_load) {
+      auto align0 = cast<ConstantInt>(I.getOperand(1))->getZExtValue();
+#if LLVM_VERSION_MAJOR >= 10
+      auto align = MaybeAlign(align0);
+#else
+      auto align = align0;
+#endif
+      auto &DL = gutils->newFunc->getParent()->getDataLayout();
+      bool constantval = parseTBAA(I, DL).Inner0().isIntegral();
+      visitLoadLike(I, align, constantval, /*OrigOffset*/ nullptr,
+                    /*mask*/ gutils->getNewFromOriginal(I.getOperand(2)),
+                    /*orig_maskInit*/ I.getOperand(3));
+      return;
+    }
+
     switch (Mode) {
     case DerivativeMode::ReverseModePrimal: {
       switch (ID) {
