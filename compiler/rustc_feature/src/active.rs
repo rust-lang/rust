@@ -678,6 +678,9 @@ declare_features! (
     /// Allows `#[doc(cfg_hide(...))]`.
     (active, doc_cfg_hide, "1.57.0", Some(43781), None),
 
+    /// Allows using the `non_exhaustive_omitted_patterns` lint.
+    (active, non_exhaustive_omitted_patterns_lint, "1.57.0", Some(89554), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
