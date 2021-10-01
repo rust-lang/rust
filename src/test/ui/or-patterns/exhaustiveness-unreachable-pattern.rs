@@ -61,7 +61,7 @@ fn main() {
     }
     match None {
         // There is only one error that correctly points to the whole subpattern
-        Some(0) |
+        Some(0) | //xx
             Some( //~ ERROR unreachable
                 0 | 0) => {}
         _ => {}
@@ -131,7 +131,7 @@ fn main() {
     // https://github.com/rust-lang/rust/issues/76836
     match None {
         Some(false) => {}
-        None | Some(true
+        None | Some(true //xx
                 | false) => {} //~ ERROR unreachable
     }
 
@@ -139,14 +139,16 @@ fn main() {
     match (true, true) {
         (false, true) => {}
         (true, true) => {}
-        (false | true, false
+        (false | true, false //xx
             | true) => {} //~ ERROR unreachable
     }
     match (true, true) {
         (true, false) => {}
         (true, true) => {}
-        (false
+        (false //xx
             | true, //~ ERROR unreachable
             false | true) => {}
     }
+
+    let (true | false | true, _) = (true, true);
 }
