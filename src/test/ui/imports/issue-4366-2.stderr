@@ -4,10 +4,11 @@ error[E0412]: cannot find type `Bar` in this scope
 LL |         fn sub() -> Bar { 1 }
    |                     ^^^ not found in this scope
    |
-help: consider importing this type alias
+note: type alias `a::b::Bar` exists but is inaccessible
+  --> $DIR/issue-4366-2.rs:11:9
    |
-LL |         use a::b::Bar;
-   |
+LL |         type Bar = isize;
+   |         ^^^^^^^^^^^^^^^^^ not accessible
 
 error[E0423]: expected function, found module `foo`
   --> $DIR/issue-4366-2.rs:25:5

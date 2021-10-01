@@ -66,10 +66,11 @@ error[E0531]: cannot find unit struct, unit variant or constant `Self` in this s
 LL |         mut Self => (),
    |             ^^^^ not found in this scope
    |
-help: consider importing this unit struct
+note: unit struct `foo::Self` exists but is inaccessible
+  --> $DIR/self_type_keyword.rs:2:3
    |
-LL | use foo::Self;
-   |
+LL |   struct Self;
+   |   ^^^^^^^^^^^^ not accessible
 
 error[E0392]: parameter `'Self` is never used
   --> $DIR/self_type_keyword.rs:6:12
