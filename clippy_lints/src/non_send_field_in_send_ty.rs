@@ -1,14 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_lint_allowed;
+use clippy_utils::source::snippet;
 use clippy_utils::ty::{implements_trait, is_copy};
 use rustc_ast::ImplPolarity;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Item, ItemKind};
+use rustc_hir::{FieldDef, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, subst::GenericArgKind, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::symbol::Symbol;
-use rustc_span::{sym, Span};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -99,11 +99,10 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                             if !is_lint_allowed(cx, NON_SEND_FIELD_IN_SEND_TY, field_hir_id);
                             if let field_ty = field.ty(cx.tcx, impl_trait_substs);
                             if !ty_allowed_in_send(cx, field_ty, send_trait);
-                            if let Some(field_span) = hir_map.span_if_local(field.did);
+                            if let Node::Field(field_def) = hir_map.get(field_hir_id);
                             then {
                                 non_send_fields.push(NonSendField {
-                                    name: hir_map.name(field_hir_id),
-                                    span: field_span,
+                                    def: field_def,
                                     ty: field_ty,
                                     generic_params: collect_generic_params(cx, field_ty),
                                 })
@@ -119,13 +118,13 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                         item.span,
                         &format!(
                             "this implementation is unsound, as some fields in `{}` are `!Send`",
-                            self_ty
+                            snippet(cx, hir_impl.self_ty.span, "Unknown")
                         ),
                         |diag| {
                             for field in non_send_fields {
                                 diag.span_note(
-                                    field.span,
-                                    &format!("the field `{}` has type `{}` which is `!Send`", field.name, field.ty),
+                                    field.def.span,
+                                    &format!("the type of field `{}` is `!Send`", field.def.ident.name),
                                 );
 
                                 match field.generic_params.len() {
@@ -135,7 +134,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                                         "add bounds on type parameter{} `{}` that satisfy `{}: Send`",
                                         if field.generic_params.len() > 1 { "s" } else { "" },
                                         field.generic_params_string(),
-                                        field.ty
+                                        snippet(cx, field.def.ty.span, "Unknown"),
                                     )),
                                 };
                             }
@@ -148,8 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
 }
 
 struct NonSendField<'tcx> {
-    name: Symbol,
-    span: Span,
+    def: &'tcx FieldDef<'tcx>,
     ty: Ty<'tcx>,
     generic_params: Vec<Ty<'tcx>>,
 }
