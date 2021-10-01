@@ -39,6 +39,13 @@ fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBu
     struct_span_err!(sess, sp, E0004, "{}", &error_message)
 }
 
+#[derive(PartialEq)]
+enum RefutableFlag {
+    Irrefutable,
+    Refutable,
+}
+use RefutableFlag::*;
+
 struct MatchVisitor<'a, 'p, 'tcx> {
     tcx: TyCtxt<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
@@ -73,13 +80,13 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
             hir::LocalSource::AssignDesugar(_) => ("destructuring assignment binding", None),
         };
         self.check_irrefutable(&loc.pat, msg, sp);
-        self.check_patterns(&loc.pat);
+        self.check_patterns(&loc.pat, Irrefutable);
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
         intravisit::walk_param(self, param);
         self.check_irrefutable(&param.pat, "function argument", None);
-        self.check_patterns(&param.pat);
+        self.check_patterns(&param.pat, Irrefutable);
     }
 }
 
@@ -113,9 +120,9 @@ impl PatCtxt<'_, '_> {
 }
 
 impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
-    fn check_patterns(&self, pat: &Pat<'_>) {
+    fn check_patterns(&self, pat: &Pat<'_>, rf: RefutableFlag) {
         pat.walk_always(|pat| check_borrow_conflicts_in_at_patterns(self, pat));
-        check_for_bindings_named_same_as_variants(self, pat);
+        check_for_bindings_named_same_as_variants(self, pat, rf);
     }
 
     fn lower_pattern(
@@ -145,7 +152,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
     }
 
     fn check_let(&mut self, pat: &'tcx hir::Pat<'tcx>, expr: &hir::Expr<'_>, span: Span) {
-        self.check_patterns(pat);
+        self.check_patterns(pat, Refutable);
         let mut cx = self.new_cx(expr.hir_id);
         let tpat = self.lower_pattern(&mut cx, pat, &mut false);
         check_let_reachability(&mut cx, pat.hir_id, tpat, span);
@@ -161,9 +168,9 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
         for arm in arms {
             // Check the arm for some things unrelated to exhaustiveness.
-            self.check_patterns(&arm.pat);
+            self.check_patterns(&arm.pat, Refutable);
             if let Some(hir::Guard::IfLet(ref pat, _)) = arm.guard {
-                self.check_patterns(pat);
+                self.check_patterns(pat, Refutable);
                 let tpat = self.lower_pattern(&mut cx, pat, &mut false);
                 check_let_reachability(&mut cx, pat.hir_id, tpat, tpat.span());
             }
@@ -297,7 +304,11 @@ fn const_not_var(
     }
 }
 
-fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_, '_>, pat: &Pat<'_>) {
+fn check_for_bindings_named_same_as_variants(
+    cx: &MatchVisitor<'_, '_, '_>,
+    pat: &Pat<'_>,
+    rf: RefutableFlag,
+) {
     pat.walk_always(|p| {
         if let hir::PatKind::Binding(_, _, ident, None) = p.kind {
             if let Some(ty::BindByValue(hir::Mutability::Not)) =
@@ -310,25 +321,31 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_, '_>, pat:
                             variant.ident == ident && variant.ctor_kind == CtorKind::Const
                         })
                     {
+                        let variant_count = edef.variants.len();
                         cx.tcx.struct_span_lint_hir(
                             BINDINGS_WITH_VARIANT_NAME,
                             p.hir_id,
                             p.span,
                             |lint| {
                                 let ty_path = cx.tcx.def_path_str(edef.did);
-                                lint.build(&format!(
+                                let mut err = lint.build(&format!(
                                     "pattern binding `{}` is named the same as one \
-                                                of the variants of the type `{}`",
+                                                    of the variants of the type `{}`",
                                     ident, ty_path
-                                ))
-                                .code(error_code!(E0170))
-                                .span_suggestion(
-                                    p.span,
-                                    "to match on the variant, qualify the path",
-                                    format!("{}::{}", ty_path, ident),
-                                    Applicability::MachineApplicable,
-                                )
-                                .emit();
+                                ));
+                                err.code(error_code!(E0170));
+                                // If this is an irrefutable pattern, and there's > 1 variant,
+                                // then we can't actually match on this. Applying the below
+                                // suggestion would produce code that breaks on `check_irrefutable`.
+                                if rf == Refutable || variant_count == 1 {
+                                    err.span_suggestion(
+                                        p.span,
+                                        "to match on the variant, qualify the path",
+                                        format!("{}::{}", ty_path, ident),
+                                        Applicability::MachineApplicable,
+                                    );
+                                }
+                                err.emit();
                             },
                         )
                     }
