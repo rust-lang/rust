@@ -159,7 +159,7 @@ fn insert_whitespaces(syn: SyntaxNode) -> String {
                 res.push_str("}\n");
                 res.extend(iter::repeat(" ").take(2 * indent));
             }
-            LIFETIME_IDENT if is_next(|it| it == IDENT, true) => {
+            LIFETIME_IDENT if is_next(|it| it == IDENT || it == MUT_KW, true) => {
                 res.push_str(token.text());
                 res.push(' ');
             }
