@@ -33,8 +33,8 @@ fn main() {
     }
     let b = vec![1, 2, 3];
     assert!(!b.is_empty(), "panic1");
-    assert!(!b.is_empty() || !a.is_empty(), "panic2");
-    assert!(!a.is_empty() || b.is_empty(), "panic3");
-    assert!(!b.is_empty() && !a.is_empty(), "panic4");
-    assert!(!a.is_empty() && b.is_empty(), "panic5");
+    assert!(!(b.is_empty() && a.is_empty()), "panic2");
+    assert!(!(a.is_empty() && !b.is_empty()), "panic3");
+    assert!(!(b.is_empty() || a.is_empty()), "panic4");
+    assert!(!(a.is_empty() || !b.is_empty()), "panic5");
 }

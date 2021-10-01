@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher::PanicExpn;
-use clippy_utils::is_expn_of;
 use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::{is_expn_of, sugg};
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};
+use rustc_hir::{Block, Expr, ExprKind, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -74,40 +74,14 @@ impl LateLintPass<'_> for IfThenPanic {
                 };
                 let mut applicability = Applicability::MachineApplicable;
                 let sugg = snippet_with_applicability(cx, span, "..", &mut applicability);
-                //let mut cond_sugg = format!("!{}", snippet_with_applicability(cx, cond.span, "..", &mut applicability));
                 let cond_sugg = if let ExprKind::DropTemps(e, ..) = cond.kind {
                     if let Expr{kind: ExprKind::Unary(UnOp::Not, not_expr), ..} = e {
-                        snippet_with_applicability(cx, not_expr.span, "..", &mut applicability).to_string()
-                    } else if let Expr{kind: ExprKind::Binary(op, left, right), ..} = e {//BinOp{BinOpKind::And, ..}
-                        match op.node {
-                            BinOpKind::And | BinOpKind::Or => {
-                                let left_span =  {
-                                    if let Expr{kind: ExprKind::Unary(UnOp::Not, not_expr), ..} = left {
-                                        snippet_with_applicability(cx, not_expr.span, "..", &mut applicability).to_string()
-                                    } else {
-                                        format!("!{}", snippet_with_applicability(cx, left.span, "..", &mut applicability))
-                                    }
-                                };
-                                let right_span = {
-                                    if let Expr{kind: ExprKind::Unary(UnOp::Not, not_expr), ..} = right {
-                                        snippet_with_applicability(cx, not_expr.span, "..", &mut applicability).to_string()
-                                    } else {
-                                        format!("!{}", snippet_with_applicability(cx, right.span, "..", &mut applicability))
-                                    }
-                                };
-                                if op.node == BinOpKind::And {
-                                  format!("{} || {}", left_span, right_span)
-                                } else  {
-                                  format!("{} && {}", left_span, right_span)
-                                }
-                            }
-                            _ => format!("!({})", snippet_with_applicability(cx, cond.span, "..", &mut applicability))
-                        }
+                         sugg::Sugg::hir_with_applicability(cx, not_expr, "..", &mut applicability).maybe_par().to_string()
                     } else {
-                        format!("!{}", snippet_with_applicability(cx, cond.span, "..", &mut applicability))
+                       format!("!{}", sugg::Sugg::hir_with_applicability(cx, e, "..", &mut applicability).maybe_par().to_string())
                     }
                 } else {
-                    format!("!{}", snippet_with_applicability(cx, cond.span, "..", &mut applicability))
+                   format!("!{}", sugg::Sugg::hir_with_applicability(cx, cond, "..", &mut applicability).maybe_par().to_string())
                 };
 
                 span_lint_and_sugg(
