@@ -52,6 +52,11 @@ fn unused_generic_params(tcx: TyCtxt<'_>, def_id: DefId) -> FiniteBitSet<u32> {
         return FiniteBitSet::new_empty();
     }
 
+    // Exit early for foreign items, these have no bodies to analyze.
+    if tcx.is_foreign_item(def_id) {
+        return FiniteBitSet::new_empty();
+    }
+
     // Exit early when there is no MIR available.
     let context = tcx.hir().body_const_context(def_id.expect_local());
     match context {
