@@ -30,4 +30,4 @@ pub mod creader;
 pub mod dynamic_lib;
 pub mod locator;
 
-pub use rmeta::METADATA_HEADER;
+pub use rmeta::{encode_metadata, EncodedMetadata, METADATA_HEADER};

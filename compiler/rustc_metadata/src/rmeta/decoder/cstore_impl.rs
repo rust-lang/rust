@@ -1,7 +1,6 @@
 use crate::creader::{CStore, LoadedMacro};
 use crate::foreign_modules;
 use crate::native_libs;
-use crate::rmeta::encoder;
 
 use rustc_ast as ast;
 use rustc_data_structures::stable_map::FxHashMap;
@@ -10,7 +9,7 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE}
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::hir::exports::Export;
 use rustc_middle::middle::cstore::ForeignModule;
-use rustc_middle::middle::cstore::{CrateSource, CrateStore, EncodedMetadata};
+use rustc_middle::middle::cstore::{CrateSource, CrateStore};
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::ty::query::Providers;
@@ -510,9 +509,5 @@ impl CrateStore for CStore {
 
     fn expn_hash_to_expn_id(&self, cnum: CrateNum, index_guess: u32, hash: ExpnHash) -> ExpnId {
         self.get_crate_data(cnum).expn_hash_to_expn_id(index_guess, hash)
-    }
-
-    fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata {
-        encoder::encode_metadata(tcx)
     }
 }

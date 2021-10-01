@@ -2,8 +2,6 @@
 //! are *mostly* used as a part of that interface, but these should
 //! probably get a better home if someone can find one.
 
-use crate::ty::TyCtxt;
-
 use rustc_ast as ast;
 use rustc_data_structures::sync::{self, MetadataRef};
 use rustc_hir::def_id::{CrateNum, DefId, StableCrateId, LOCAL_CRATE};
@@ -150,17 +148,6 @@ pub enum ExternCrateSource {
     Path,
 }
 
-#[derive(Encodable, Decodable)]
-pub struct EncodedMetadata {
-    pub raw_data: Vec<u8>,
-}
-
-impl EncodedMetadata {
-    pub fn new() -> EncodedMetadata {
-        EncodedMetadata { raw_data: Vec::new() }
-    }
-}
-
 /// The backend's way to give the crate store access to the metadata in a library.
 /// Note that it returns the raw metadata bytes stored in the library file, whether
 /// it is compressed, uncompressed, some weird mix, etc.
@@ -204,9 +191,6 @@ pub trait CrateStore: std::fmt::Debug {
     /// Fetch a DefId from a DefPathHash for a foreign crate.
     fn def_path_hash_to_def_id(&self, cnum: CrateNum, hash: DefPathHash) -> DefId;
     fn expn_hash_to_expn_id(&self, cnum: CrateNum, index_guess: u32, hash: ExpnHash) -> ExpnId;
-
-    // utility functions
-    fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata;
 }
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
