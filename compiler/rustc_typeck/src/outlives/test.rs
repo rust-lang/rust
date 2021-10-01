@@ -5,7 +5,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 
 pub fn test_inferred_outlives(tcx: TyCtxt<'_>) {
-    tcx.hir().krate().visit_all_item_likes(&mut OutlivesTest { tcx });
+    tcx.hir().visit_all_item_likes(&mut OutlivesTest { tcx });
 }
 
 struct OutlivesTest<'tcx> {

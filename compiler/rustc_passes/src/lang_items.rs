@@ -262,7 +262,7 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
     }
 
     // Collect lang items in this crate.
-    tcx.hir().krate().visit_all_item_likes(&mut collector);
+    tcx.hir().visit_all_item_likes(&mut collector);
 
     // Extract out the found lang items.
     let LanguageItemCollector { mut items, .. } = collector;

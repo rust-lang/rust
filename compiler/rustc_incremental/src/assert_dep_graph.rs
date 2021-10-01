@@ -74,7 +74,7 @@ pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
             let mut visitor =
                 IfThisChanged { tcx, if_this_changed: vec![], then_this_would_need: vec![] };
             visitor.process_attrs(hir::CRATE_HIR_ID);
-            tcx.hir().krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
+            tcx.hir().visit_all_item_likes(&mut visitor.as_deep_visitor());
             (visitor.if_this_changed, visitor.then_this_would_need)
         };
 

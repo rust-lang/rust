@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::{diagnostics::span_lint, is_lint_allowed};
-use rustc_hir::{Crate, CRATE_HIR_ID};
+use rustc_hir::CRATE_HIR_ID;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::DUMMY_SP;
@@ -110,7 +110,7 @@ fn lint(cx: &LateContext<'_>, feature: &str, substring: &str, is_prefix: bool) {
 }
 
 impl LateLintPass<'_> for FeatureName {
-    fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
+    fn check_crate(&mut self, cx: &LateContext<'_>) {
         if is_lint_allowed(cx, REDUNDANT_FEATURE_NAMES, CRATE_HIR_ID)
             && is_lint_allowed(cx, NEGATIVE_FEATURE_NAMES, CRATE_HIR_ID)
         {

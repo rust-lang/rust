@@ -330,7 +330,7 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
 
         let mut visitor = RootCollector { tcx, mode, entry_fn, output: &mut roots };
 
-        tcx.hir().krate().visit_all_item_likes(&mut visitor);
+        tcx.hir().visit_all_item_likes(&mut visitor);
 
         visitor.push_extra_entry_roots();
     }

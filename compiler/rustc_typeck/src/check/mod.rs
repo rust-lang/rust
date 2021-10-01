@@ -921,9 +921,7 @@ impl ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
 }
 
 fn typeck_item_bodies(tcx: TyCtxt<'_>, (): ()) {
-    tcx.par_body_owners(|body_owner_def_id| {
-        tcx.ensure().typeck(body_owner_def_id);
-    });
+    tcx.hir().par_body_owners(|body_owner_def_id| tcx.ensure().typeck(body_owner_def_id));
 }
 
 fn fatally_break_rust(sess: &Session) {

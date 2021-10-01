@@ -71,12 +71,12 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         self.exact_paths.entry(did).or_insert_with(|| def_id_to_path(tcx, did));
     }
 
-    crate fn visit(mut self, krate: &'tcx hir::Crate<'_>) -> Module<'tcx> {
-        let span = krate.module().inner;
+    crate fn visit(mut self) -> Module<'tcx> {
+        let span = self.cx.tcx.def_span(CRATE_DEF_ID);
         let mut top_level_module = self.visit_mod_contents(
             &Spanned { span, node: hir::VisibilityKind::Public },
             hir::CRATE_HIR_ID,
-            &krate.module(),
+            self.cx.tcx.hir().root_module(),
             self.cx.tcx.crate_name(LOCAL_CRATE),
         );
 

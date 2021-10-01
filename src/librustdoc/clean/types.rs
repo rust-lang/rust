@@ -230,8 +230,7 @@ impl ExternalCrate {
         };
         if root.is_local() {
             tcx.hir()
-                .krate()
-                .module()
+                .root_module()
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
@@ -297,8 +296,7 @@ impl ExternalCrate {
 
         if root.is_local() {
             tcx.hir()
-                .krate()
-                .module()
+                .root_module()
                 .item_ids
                 .iter()
                 .filter_map(|&id| {

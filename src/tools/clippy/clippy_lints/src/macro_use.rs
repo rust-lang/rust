@@ -135,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
         }
     }
     #[allow(clippy::too_many_lines)]
-    fn check_crate_post(&mut self, cx: &LateContext<'_>, _krate: &hir::Crate<'_>) {
+    fn check_crate_post(&mut self, cx: &LateContext<'_>) {
         let mut used = FxHashMap::default();
         let mut check_dup = vec![];
         for (import, span) in &self.imports {

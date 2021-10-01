@@ -23,7 +23,7 @@ pub fn report_symbol_names(tcx: TyCtxt<'_>) {
 
     tcx.dep_graph.with_ignore(|| {
         let mut visitor = SymbolNamesTest { tcx };
-        tcx.hir().krate().visit_all_item_likes(&mut visitor);
+        tcx.hir().visit_all_item_likes(&mut visitor);
     })
 }
 

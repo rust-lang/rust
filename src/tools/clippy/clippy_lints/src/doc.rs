@@ -212,7 +212,7 @@ impl_lint_pass!(DocMarkdown =>
 );
 
 impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
-    fn check_crate(&mut self, cx: &LateContext<'tcx>, _: &'tcx hir::Crate<'_>) {
+    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
         let attrs = cx.tcx.hir().attrs(hir::CRATE_HIR_ID);
         check_attrs(cx, &self.valid_idents, attrs);
     }

@@ -51,19 +51,6 @@ pub struct NoAnn;
 impl PpAnn for NoAnn {}
 pub const NO_ANN: &dyn PpAnn = &NoAnn;
 
-impl PpAnn for hir::Crate<'_> {
-    fn nested(&self, state: &mut State<'_>, nested: Nested) {
-        match nested {
-            Nested::Item(id) => state.print_item(self.item(id)),
-            Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
-            Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
-            Nested::ForeignItem(id) => state.print_foreign_item(self.foreign_item(id)),
-            Nested::Body(id) => state.print_expr(&self.body(id).value),
-            Nested::BodyParamPat(id, i) => state.print_pat(&self.body(id).params[i].pat),
-        }
-    }
-}
-
 /// Identical to the `PpAnn` implementation for `hir::Crate`,
 /// except it avoids creating a dependency on the whole crate.
 impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {

@@ -9,14 +9,14 @@ use rustc_span::{Span, Symbol};
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
     let mut used_trait_imports = FxHashSet::default();
-    for item_def_id in tcx.body_owners() {
+    for item_def_id in tcx.hir().body_owners() {
         let imports = tcx.used_trait_imports(item_def_id);
         debug!("GatherVisitor: item_def_id={:?} with imports {:#?}", item_def_id, imports);
         used_trait_imports.extend(imports.iter());
     }
 
     let mut visitor = CheckVisitor { tcx, used_trait_imports };
-    tcx.hir().krate().visit_all_item_likes(&mut visitor);
+    tcx.hir().visit_all_item_likes(&mut visitor);
 
     unused_crates_lint(tcx);
 }
@@ -111,7 +111,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
 
     // Collect all the extern crates (in a reliable order).
     let mut crates_to_lint = vec![];
-    tcx.hir().krate().visit_all_item_likes(&mut CollectExternCrateVisitor {
+    tcx.hir().visit_all_item_likes(&mut CollectExternCrateVisitor {
         crates_to_lint: &mut crates_to_lint,
     });
 

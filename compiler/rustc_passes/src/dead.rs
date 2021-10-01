@@ -510,15 +510,14 @@ fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
 //   or
 //   2) We are not sure to be live or not
 //     * Implementations of traits and trait methods
-struct LifeSeeder<'k, 'tcx> {
+struct LifeSeeder<'tcx> {
     worklist: Vec<LocalDefId>,
-    krate: &'k hir::Crate<'k>,
     tcx: TyCtxt<'tcx>,
     // see `MarkSymbolVisitor::struct_constructors`
     struct_constructors: FxHashMap<LocalDefId, LocalDefId>,
 }
 
-impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
+impl<'v, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         let allow_dead_code = has_allow_dead_code_or_lang_attr(self.tcx, item.hir_id());
         if allow_dead_code {
@@ -545,7 +544,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                     self.worklist.push(item.def_id);
                 }
                 for impl_item_ref in items {
-                    let impl_item = self.krate.impl_item(impl_item_ref.id);
+                    let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                     if of_trait.is_some()
                         || has_allow_dead_code_or_lang_attr(self.tcx, impl_item.hir_id())
                     {
@@ -589,7 +588,6 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
 fn create_and_seed_worklist<'tcx>(
     tcx: TyCtxt<'tcx>,
     access_levels: &privacy::AccessLevels,
-    krate: &hir::Crate<'_>,
 ) -> (Vec<LocalDefId>, FxHashMap<LocalDefId, LocalDefId>) {
     let worklist = access_levels
         .map
@@ -604,9 +602,8 @@ fn create_and_seed_worklist<'tcx>(
         .collect::<Vec<_>>();
 
     // Seed implemented trait items
-    let mut life_seeder =
-        LifeSeeder { worklist, krate, tcx, struct_constructors: Default::default() };
-    krate.visit_all_item_likes(&mut life_seeder);
+    let mut life_seeder = LifeSeeder { worklist, tcx, struct_constructors: Default::default() };
+    tcx.hir().visit_all_item_likes(&mut life_seeder);
 
     (life_seeder.worklist, life_seeder.struct_constructors)
 }
@@ -614,9 +611,8 @@ fn create_and_seed_worklist<'tcx>(
 fn find_live<'tcx>(
     tcx: TyCtxt<'tcx>,
     access_levels: &privacy::AccessLevels,
-    krate: &hir::Crate<'_>,
 ) -> FxHashSet<LocalDefId> {
-    let (worklist, struct_constructors) = create_and_seed_worklist(tcx, access_levels, krate);
+    let (worklist, struct_constructors) = create_and_seed_worklist(tcx, access_levels);
     let mut symbol_visitor = MarkSymbolVisitor {
         worklist,
         tcx,
@@ -834,8 +830,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
     let access_levels = &tcx.privacy_access_levels(());
-    let krate = tcx.hir().krate();
-    let live_symbols = find_live(tcx, access_levels, krate);
+    let live_symbols = find_live(tcx, access_levels);
     let mut visitor = DeadVisitor { tcx, live_symbols };
     tcx.hir().walk_toplevel_module(&mut visitor);
 }

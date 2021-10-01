@@ -1646,7 +1646,7 @@ fn compute_all_traits(tcx: TyCtxt<'_>, (): ()) -> &[DefId] {
         fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {}
     }
 
-    tcx.hir().krate().visit_all_item_likes(&mut Visitor { traits: &mut traits });
+    tcx.hir().visit_all_item_likes(&mut Visitor { traits: &mut traits });
 
     // Cross-crate:
 

@@ -105,7 +105,7 @@ fn diagnostic_items<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> FxHashMap<Symbol
     let mut collector = DiagnosticItemCollector::new(tcx);
 
     // Collect diagnostic items in this crate.
-    tcx.hir().krate().visit_all_item_likes(&mut collector);
+    tcx.hir().visit_all_item_likes(&mut collector);
 
     collector.items
 }

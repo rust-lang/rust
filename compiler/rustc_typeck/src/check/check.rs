@@ -31,7 +31,7 @@ use std::ops::ControlFlow;
 
 pub fn check_wf_new(tcx: TyCtxt<'_>) {
     let visit = wfcheck::CheckTypeWellFormedVisitor::new(tcx);
-    tcx.hir().krate().par_visit_all_item_likes(&visit);
+    tcx.hir().par_visit_all_item_likes(&visit);
 }
 
 pub(super) fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {

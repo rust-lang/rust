@@ -6,6 +6,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
+use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -154,6 +155,21 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
 impl<'hir> Map<'hir> {
     pub fn krate(&self) -> &'hir Crate<'hir> {
         self.tcx.hir_crate(())
+    }
+
+    pub fn root_module(&self) -> &'hir Mod<'hir> {
+        match self.tcx.hir_owner(CRATE_DEF_ID).map(|o| o.node) {
+            Some(OwnerNode::Crate(item)) => item,
+            _ => bug!(),
+        }
+    }
+
+    pub fn items(&self) -> impl Iterator<Item = &'hir Item<'hir>> + 'hir {
+        let krate = self.krate();
+        krate.owners.iter().filter_map(|owner| match owner.as_ref()? {
+            OwnerNode::Item(item) => Some(*item),
+            _ => None,
+        })
     }
 
     pub fn def_key(&self, def_id: LocalDefId) -> DefKey {
@@ -475,6 +491,17 @@ impl<'hir> Map<'hir> {
         Some(ccx)
     }
 
+    /// Returns an iterator of the `DefId`s for all body-owners in this
+    /// crate. If you would prefer to iterate over the bodies
+    /// themselves, you can do `self.hir().krate().body_ids.iter()`.
+    pub fn body_owners(self) -> impl Iterator<Item = LocalDefId> + 'hir {
+        self.krate().bodies.keys().map(move |&body_id| self.body_owner_def_id(body_id))
+    }
+
+    pub fn par_body_owners<F: Fn(LocalDefId) + Sync + Send>(self, f: F) {
+        par_for_each_in(&self.krate().bodies, |(&body_id, _)| f(self.body_owner_def_id(body_id)));
+    }
+
     pub fn ty_param_owner(&self, id: HirId) -> HirId {
         match self.get(id) {
             Node::Item(&Item { kind: ItemKind::Trait(..) | ItemKind::TraitAlias(..), .. }) => id,
@@ -529,6 +556,45 @@ impl<'hir> Map<'hir> {
                 visitor.visit_attribute(id, a)
             }
         }
+    }
+
+    /// Visits all items in the crate in some deterministic (but
+    /// unspecified) order. If you just need to process every item,
+    /// but don't care about nesting, this method is the best choice.
+    ///
+    /// If you do care about nesting -- usually because your algorithm
+    /// follows lexical scoping rules -- then you want a different
+    /// approach. You should override `visit_nested_item` in your
+    /// visitor and then call `intravisit::walk_crate` instead.
+    pub fn visit_all_item_likes<V>(&self, visitor: &mut V)
+    where
+        V: itemlikevisit::ItemLikeVisitor<'hir>,
+    {
+        let krate = self.krate();
+        for owner in krate.owners.iter().filter_map(Option::as_ref) {
+            match owner {
+                OwnerNode::Item(item) => visitor.visit_item(item),
+                OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
+                OwnerNode::ImplItem(item) => visitor.visit_impl_item(item),
+                OwnerNode::TraitItem(item) => visitor.visit_trait_item(item),
+                OwnerNode::Crate(_) => {}
+            }
+        }
+    }
+
+    /// A parallel version of `visit_all_item_likes`.
+    pub fn par_visit_all_item_likes<V>(&self, visitor: &V)
+    where
+        V: itemlikevisit::ParItemLikeVisitor<'hir> + Sync + Send,
+    {
+        let krate = self.krate();
+        par_for_each_in(&krate.owners.raw, |owner| match owner.as_ref() {
+            Some(OwnerNode::Item(item)) => visitor.visit_item(item),
+            Some(OwnerNode::ForeignItem(item)) => visitor.visit_foreign_item(item),
+            Some(OwnerNode::ImplItem(item)) => visitor.visit_impl_item(item),
+            Some(OwnerNode::TraitItem(item)) => visitor.visit_trait_item(item),
+            Some(OwnerNode::Crate(_)) | None => {}
+        })
     }
 
     pub fn visit_item_likes_in_module<V>(&self, module: LocalDefId, visitor: &mut V)

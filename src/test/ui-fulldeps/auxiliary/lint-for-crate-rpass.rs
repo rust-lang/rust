@@ -13,6 +13,7 @@ extern crate rustc_ast;
 use rustc_ast::attr;
 use rustc_driver::plugin::Registry;
 use rustc_lint::{LateContext, LateLintPass, LintContext, LintPass};
+use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::symbol::Symbol;
 
 macro_rules! fake_lint_pass {
@@ -26,13 +27,14 @@ macro_rules! fake_lint_pass {
         }
 
         impl LateLintPass<'_> for $struct {
-            fn check_crate(&mut self, cx: &LateContext, krate: &rustc_hir::Crate) {
+            fn check_crate(&mut self, cx: &LateContext) {
                 let attrs = cx.tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
+                let span = cx.tcx.def_span(CRATE_DEF_ID);
                 $(
                     if !cx.sess().contains_name(attrs, $attr) {
                         cx.lint(CRATE_NOT_OKAY, |lint| {
                              let msg = format!("crate is not marked with #![{}]", $attr);
-                             lint.build(&msg).set_span(krate.module().inner).emit()
+                             lint.build(&msg).set_span(span).emit()
                         });
                     }
                 )*

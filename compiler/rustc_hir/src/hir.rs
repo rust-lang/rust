@@ -1,7 +1,7 @@
 use crate::def::{CtorKind, DefKind, Res};
 use crate::def_id::{DefId, CRATE_DEF_ID};
 crate use crate::hir_id::{HirId, ItemLocalId};
-use crate::{itemlikevisit, LangItem};
+use crate::LangItem;
 
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{self as ast, CrateSugar, LlvmAsmDialect};
@@ -10,7 +10,6 @@ pub use rustc_ast::{BorrowKind, ImplPolarity, IsAuto};
 pub use rustc_ast::{CaptureBy, Movability, Mutability};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable_Generic;
 use rustc_span::source_map::Spanned;
@@ -705,52 +704,6 @@ impl Crate<'hir> {
 
     pub fn body(&self, id: BodyId) -> &Body<'hir> {
         &self.bodies[&id]
-    }
-}
-
-impl Crate<'_> {
-    /// Visits all items in the crate in some deterministic (but
-    /// unspecified) order. If you just need to process every item,
-    /// but don't care about nesting, this method is the best choice.
-    ///
-    /// If you do care about nesting -- usually because your algorithm
-    /// follows lexical scoping rules -- then you want a different
-    /// approach. You should override `visit_nested_item` in your
-    /// visitor and then call `intravisit::walk_crate` instead.
-    pub fn visit_all_item_likes<'hir, V>(&'hir self, visitor: &mut V)
-    where
-        V: itemlikevisit::ItemLikeVisitor<'hir>,
-    {
-        for owner in self.owners.iter().filter_map(Option::as_ref) {
-            match owner {
-                OwnerNode::Item(item) => visitor.visit_item(item),
-                OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
-                OwnerNode::ImplItem(item) => visitor.visit_impl_item(item),
-                OwnerNode::TraitItem(item) => visitor.visit_trait_item(item),
-                OwnerNode::Crate(_) => {}
-            }
-        }
-    }
-
-    /// A parallel version of `visit_all_item_likes`.
-    pub fn par_visit_all_item_likes<'hir, V>(&'hir self, visitor: &V)
-    where
-        V: itemlikevisit::ParItemLikeVisitor<'hir> + Sync + Send,
-    {
-        par_for_each_in(&self.owners.raw, |owner| match owner {
-            Some(OwnerNode::Item(item)) => visitor.visit_item(item),
-            Some(OwnerNode::ForeignItem(item)) => visitor.visit_foreign_item(item),
-            Some(OwnerNode::ImplItem(item)) => visitor.visit_impl_item(item),
-            Some(OwnerNode::TraitItem(item)) => visitor.visit_trait_item(item),
-            Some(OwnerNode::Crate(_)) | None => {}
-        })
-    }
-
-    pub fn items<'hir>(&'hir self) -> impl Iterator<Item = &'hir Item<'hir>> + 'hir {
-        self.owners.iter().filter_map(|owner| match owner {
-            Some(OwnerNode::Item(item)) => Some(*item),
-            _ => None,
-        })
     }
 }
 

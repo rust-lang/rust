@@ -16,8 +16,8 @@ macro_rules! late_lint_methods {
             fn check_body(a: &$hir hir::Body<$hir>);
             fn check_body_post(a: &$hir hir::Body<$hir>);
             fn check_name(a: Span, b: Symbol);
-            fn check_crate(a: &$hir hir::Crate<$hir>);
-            fn check_crate_post(a: &$hir hir::Crate<$hir>);
+            fn check_crate();
+            fn check_crate_post();
             fn check_mod(a: &$hir hir::Mod<$hir>, b: Span, c: hir::HirId);
             fn check_mod_post(a: &$hir hir::Mod<$hir>, b: Span, c: hir::HirId);
             fn check_foreign_item(a: &$hir hir::ForeignItem<$hir>);

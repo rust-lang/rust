@@ -489,7 +489,7 @@ fn print_with_analysis(
             let mut out = String::new();
             abort_on_err(rustc_typeck::check_crate(tcx), tcx.sess);
             debug!("pretty printing THIR tree");
-            for did in tcx.body_owners() {
+            for did in tcx.hir().body_owners() {
                 let _ = writeln!(
                     out,
                     "{:?}:\n{}\n",

@@ -906,11 +906,10 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     let access_levels = &tcx.privacy_access_levels(());
 
     if tcx.stability().staged_api[&LOCAL_CRATE] {
-        let krate = tcx.hir().krate();
         let mut missing = MissingStabilityAnnotations { tcx, access_levels };
         missing.check_missing_stability(CRATE_DEF_ID, tcx.hir().span(CRATE_HIR_ID));
         tcx.hir().walk_toplevel_module(&mut missing);
-        krate.visit_all_item_likes(&mut missing.as_deep_visitor());
+        tcx.hir().visit_all_item_likes(&mut missing.as_deep_visitor());
     }
 
     let declared_lang_features = &tcx.features().declared_lang_features;
