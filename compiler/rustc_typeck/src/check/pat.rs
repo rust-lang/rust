@@ -1286,8 +1286,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     field.vis.is_accessible_from(tcx.parent_module(pat.hir_id).to_def_id(), tcx)
                 })
                 .collect();
-            if non_exhaustive {
-                self.non_exhaustive_reachable_pattern(pat, &accessible_unmentioned_fields, adt_ty)
+            if non_exhaustive && !accessible_unmentioned_fields.is_empty() {
+                self.lint_non_exhaustive_omitted_patterns(
+                    pat,
+                    &accessible_unmentioned_fields,
+                    adt_ty,
+                )
             } else if !etc {
                 if accessible_unmentioned_fields.is_empty() {
                     unmentioned_err = Some(self.error_no_accessible_fields(pat, fields));
@@ -1626,7 +1630,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// is not exhaustive enough.
     ///
     /// Nb: the partner lint for enums lives in `compiler/rustc_mir_build/src/thir/pattern/usefulness.rs`.
-    fn non_exhaustive_reachable_pattern(
+    fn lint_non_exhaustive_omitted_patterns(
         &self,
         pat: &Pat<'_>,
         unmentioned_fields: &[(&ty::FieldDef, Ident)],
