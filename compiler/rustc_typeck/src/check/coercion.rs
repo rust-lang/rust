@@ -185,9 +185,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 debug!("coerce: unsize not object safe");
                 return Err(TypeError::ObjectUnsafeCoercion(did));
             }
-            Err(_) => {}
+            Err(error) => {
+                debug!(?error, "coerce: unsize failed");
+            }
         }
-        debug!("coerce: unsize failed");
 
         // Examine the supertype and consider auto-borrowing.
         match *b.kind() {

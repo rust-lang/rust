@@ -18,7 +18,7 @@ use crate::traits;
 use crate::traits::coherence::Conflict;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{util, SelectionResult};
-use crate::traits::{ErrorReporting, Overflow, Unimplemented};
+use crate::traits::{Ambiguous, ErrorReporting, Overflow, Unimplemented};
 
 use super::BuiltinImplConditions;
 use super::IntercrateAmbiguityCause;
@@ -197,7 +197,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // and report ambiguity.
                     if i > 1 {
                         debug!("multiple matches, ambig");
-                        return Ok(None);
+                        return Err(Ambiguous(
+                            candidates
+                                .into_iter()
+                                .filter_map(|c| match c.candidate {
+                                    SelectionCandidate::ImplCandidate(def_id) => Some(def_id),
+                                    _ => None,
+                                })
+                                .collect(),
+                        ));
                     }
                 }
             }

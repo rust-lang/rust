@@ -6,7 +6,10 @@ LL |         .get(&"key".into())
    |          |
    |          cannot infer type for type parameter `Q` declared on the associated function `get`
    |
-   = note: cannot satisfy `String: Borrow<_>`
+   = note: multiple `impl`s satisfying `String: Borrow<_>` found in the following crates: `alloc`, `core`:
+           - impl Borrow<str> for String;
+           - impl<T> Borrow<T> for T
+             where T: ?Sized;
 
 error: aborting due to previous error
 

@@ -34,7 +34,22 @@ LL |         n + sum_to(n - 1)
    |
    = help: the trait `Add<impl Foo>` is not implemented for `u32`
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error[E0283]: type annotations needed
+  --> $DIR/equality.rs:20:22
+   |
+LL | fn sum_to(n: u32) -> impl Foo {
+   |                      ^^^^^^^^ cannot infer type for type `{integer}`
+   |
+   = note: multiple `impl`s satisfying `{integer}: ToString` found in the `alloc` crate:
+           - impl ToString for i8;
+           - impl ToString for u8;
+note: required because of the requirements on the impl of `Foo` for `{integer}`
+  --> $DIR/equality.rs:5:26
+   |
+LL | impl<T: Copy + ToString> Foo for T {}
+   |                          ^^^     ^
 
-Some errors have detailed explanations: E0277, E0308.
+error: aborting due to 3 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0277, E0283, E0308.
 For more information about an error, try `rustc --explain E0277`.

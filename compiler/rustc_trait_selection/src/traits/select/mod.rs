@@ -357,17 +357,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
-        debug_assert!(!obligation.predicate.has_escaping_bound_vars());
-
-        let pec = &ProvisionalEvaluationCache::default();
-        let stack = self.push_stack(TraitObligationStackList::empty(pec), obligation);
-
-        let candidate = match self.candidate_from_obligation(&stack) {
+        let candidate = match self.select_from_obligation(obligation) {
             Err(SelectionError::Overflow) => {
                 // In standard mode, overflow must have been caught and reported
                 // earlier.
                 assert!(self.query_mode == TraitQueryMode::Canonical);
                 return Err(SelectionError::Overflow);
+            }
+            Err(SelectionError::Ambiguous(_)) => {
+                return Ok(None);
             }
             Err(e) => {
                 return Err(e);
@@ -389,6 +387,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(Some(candidate))
             }
         }
+    }
+
+    crate fn select_from_obligation(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+    ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
+        debug_assert!(!obligation.predicate.has_escaping_bound_vars());
+
+        let pec = &ProvisionalEvaluationCache::default();
+        let stack = self.push_stack(TraitObligationStackList::empty(pec), obligation);
+
+        self.candidate_from_obligation(&stack)
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -915,6 +925,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match self.candidate_from_obligation(stack) {
             Ok(Some(c)) => self.evaluate_candidate(stack, &c),
+            Err(SelectionError::Ambiguous(_)) => Ok(EvaluatedToAmbig),
             Ok(None) => Ok(EvaluatedToAmbig),
             Err(Overflow) => Err(OverflowError::Canonical),
             Err(ErrorReporting) => Err(OverflowError::ErrorReporting),

@@ -4,6 +4,26 @@ error[E0284]: type annotations needed: cannot satisfy `<u64 as Test<_>>::Output 
 LL |     println!("{}", 23u64.test(xs.iter().sum()));
    |                          ^^^^ cannot satisfy `<u64 as Test<_>>::Output == _`
 
-error: aborting due to previous error
+error[E0283]: type annotations needed
+  --> $DIR/issue-69455.rs:29:26
+   |
+LL |     println!("{}", 23u64.test(xs.iter().sum()));
+   |                          ^^^^ cannot infer type for type parameter `Rhs` declared on the trait `Test`
+   |
+note: multiple `impl`s satisfying `u64: Test<_>` found
+  --> $DIR/issue-69455.rs:11:1
+   |
+LL | impl Test<u32> for u64 {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl Test<u64> for u64 {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+help: consider specifying the type argument in the method call
+   |
+LL |     println!("{}", 23u64.test(xs.iter().sum::<S>()));
+   |                                            +++++
 
-For more information about this error, try `rustc --explain E0284`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0283, E0284.
+For more information about an error, try `rustc --explain E0283`.
