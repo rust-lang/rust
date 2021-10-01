@@ -406,12 +406,14 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         None
     };
 
-    let llvm_selfprofiler = if cgcx.prof.llvm_recording_enabled() {
-        let mut llvm_profiler = LlvmSelfProfiler::new(cgcx.prof.get_self_profiler().unwrap());
-        &mut llvm_profiler as *mut _ as *mut c_void
+    let mut llvm_profiler = if cgcx.prof.llvm_recording_enabled() {
+        Some(LlvmSelfProfiler::new(cgcx.prof.get_self_profiler().unwrap()))
     } else {
-        std::ptr::null_mut()
+        None
     };
+
+    let llvm_selfprofiler =
+        llvm_profiler.as_mut().map(|s| s as *mut _ as *mut c_void).unwrap_or(std::ptr::null_mut());
 
     let extra_passes = config.passes.join(",");
 
