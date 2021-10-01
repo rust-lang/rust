@@ -210,5 +210,17 @@ error: called `is_some()` after searching an `Iterator` with `find`
 LL |         let _ = vfoo.iter().find(|v| v.by_ref(&v.bar)).is_some();
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|v| v.by_ref(&v.bar))`
 
-error: aborting due to 34 previous errors
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:184:55
+   |
+LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|(&x, y)| x == *y).is_some();
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|(&x, y)| x == *y)`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:185:55
+   |
+LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|&(&x, y)| x == *y).is_some();
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|(&x, y)| x == *y)`
+
+error: aborting due to 36 previous errors
 

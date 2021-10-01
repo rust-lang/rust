@@ -180,4 +180,9 @@ mod issue7392 {
         let vfoo = vec![Foo { bar: 1 }];
         let _ = vfoo.iter().find(|v| v.by_ref(&v.bar)).is_none();
     }
+
+    fn ref_bindings() {
+        let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|(&x, y)| x == *y).is_none();
+        let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|&(&x, y)| x == *y).is_none();
+    }
 }

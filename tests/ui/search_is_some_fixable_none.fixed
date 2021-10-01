@@ -174,4 +174,9 @@ mod issue7392 {
         let vfoo = vec![Foo { bar: 1 }];
         let _ = !vfoo.iter().any(|v| v.by_ref(&v.bar));
     }
+
+    fn ref_bindings() {
+        let _ = ![&(&1, 2), &(&3, 4), &(&5, 4)].iter().any(|(&x, y)| x == *y);
+        let _ = ![&(&1, 2), &(&3, 4), &(&5, 4)].iter().any(|(&x, y)| x == *y);
+    }
 }
