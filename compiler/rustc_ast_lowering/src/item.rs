@@ -1328,32 +1328,45 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // keep track of the Span info. Now, `add_implicitly_sized` in `AstConv` checks both param bounds and
         // where clauses for `?Sized`.
         for pred in &generics.where_clause.predicates {
-            if let WherePredicate::BoundPredicate(ref bound_pred) = *pred {
-                'next_bound: for bound in &bound_pred.bounds {
-                    if let GenericBound::Trait(_, TraitBoundModifier::Maybe) = *bound {
-                        // Check if the where clause type is a plain type parameter.
-                        match self
-                            .resolver
-                            .get_partial_res(bound_pred.bounded_ty.id)
-                            .map(|d| (d.base_res(), d.unresolved_segments()))
-                        {
-                            Some((Res::Def(DefKind::TyParam, def_id), 0))
-                                if bound_pred.bound_generic_params.is_empty() =>
-                            {
-                                for param in &generics.params {
-                                    if def_id == self.resolver.local_def_id(param.id).to_def_id() {
-                                        continue 'next_bound;
-                                    }
-                                }
-                            }
-                            _ => {}
-                        }
-                        self.diagnostic().span_err(
-                            bound_pred.bounded_ty.span,
-                            "`?Trait` bounds are only permitted at the \
-                                 point where a type parameter is declared",
-                        );
+            let bound_pred = match *pred {
+                WherePredicate::BoundPredicate(ref bound_pred) => bound_pred,
+                _ => continue,
+            };
+            let compute_is_param = || {
+                // Check if the where clause type is a plain type parameter.
+                match self
+                    .resolver
+                    .get_partial_res(bound_pred.bounded_ty.id)
+                    .map(|d| (d.base_res(), d.unresolved_segments()))
+                {
+                    Some((Res::Def(DefKind::TyParam, def_id), 0))
+                        if bound_pred.bound_generic_params.is_empty() =>
+                    {
+                        generics
+                            .params
+                            .iter()
+                            .find(|p| def_id == self.resolver.local_def_id(p.id).to_def_id())
+                            .is_some()
                     }
+                    // Either the `bounded_ty` is not a plain type parameter, or
+                    // it's not found in the generic type parameters list.
+                    _ => false,
+                }
+            };
+            // We only need to compute this once per `WherePredicate`, but don't
+            // need to compute this at all unless there is a Maybe bound.
+            let mut is_param: Option<bool> = None;
+            for bound in &bound_pred.bounds {
+                if !matches!(*bound, GenericBound::Trait(_, TraitBoundModifier::Maybe)) {
+                    continue;
+                }
+                let is_param = *is_param.get_or_insert_with(compute_is_param);
+                if !is_param {
+                    self.diagnostic().span_err(
+                        bound.span(),
+                        "`?Trait` bounds are only permitted at the \
+                        point where a type parameter is declared",
+                    );
                 }
             }
         }

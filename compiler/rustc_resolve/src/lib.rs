@@ -1152,7 +1152,7 @@ impl ResolverAstLowering for Resolver<'_> {
         self.legacy_const_generic_args(expr)
     }
 
-    fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes> {
+    fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
         self.partial_res_map.get(&id).cloned()
     }
 
