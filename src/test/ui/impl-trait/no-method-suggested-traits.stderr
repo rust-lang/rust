@@ -9,11 +9,11 @@ help: the following traits are implemented but not in scope; perhaps add a `use`
    |
 LL | use foo::Bar;
    |
+LL | use no_method_suggested_traits::Reexported;
+   |
 LL | use no_method_suggested_traits::foo::PubPub;
    |
 LL | use no_method_suggested_traits::qux::PrivPub;
-   |
-LL | use no_method_suggested_traits::Reexported;
    |
 
 error[E0599]: no method named `method` found for struct `Rc<&mut Box<&u32>>` in the current scope
@@ -27,11 +27,11 @@ help: the following traits are implemented but not in scope; perhaps add a `use`
    |
 LL | use foo::Bar;
    |
+LL | use no_method_suggested_traits::Reexported;
+   |
 LL | use no_method_suggested_traits::foo::PubPub;
    |
 LL | use no_method_suggested_traits::qux::PrivPub;
-   |
-LL | use no_method_suggested_traits::Reexported;
    |
 
 error[E0599]: no method named `method` found for type `char` in the current scope
