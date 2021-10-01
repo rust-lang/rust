@@ -282,6 +282,14 @@ LLVMValueRef EnzymeGradientUtilsNewFromOriginal(GradientUtils *gutils,
   return wrap(gutils->getNewFromOriginal(unwrap(val)));
 }
 
+void EnzymeGradientUtilsSetDebugLocFromOriginal(GradientUtils *gutils,
+                                                LLVMValueRef val,
+                                                LLVMValueRef orig) {
+  return cast<Instruction>(unwrap(val))
+      ->setDebugLoc(gutils->getNewFromOriginal(
+          cast<Instruction>(unwrap(orig))->getDebugLoc()));
+}
+
 LLVMValueRef EnzymeGradientUtilsLookup(GradientUtils *gutils, LLVMValueRef val,
                                        LLVMBuilderRef B) {
   return wrap(gutils->lookupM(unwrap(val), *unwrap(B)));
