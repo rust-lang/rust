@@ -1309,14 +1309,15 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                     use crate::ResolutionError::*;
                                     match &item.kind {
                                         AssocItemKind::Const(_default, _ty, _expr) => {
-                                            debug!("resolve_implementation AssocItemKind::Const",);
+                                            debug!("resolve_implementation AssocItemKind::Const");
                                             // If this is a trait impl, ensure the const
                                             // exists in trait
                                             this.check_trait_item(
                                                 item.ident,
+                                                &item.kind,
                                                 ValueNS,
                                                 item.span,
-                                                |n, s| ConstNotMemberOfTrait(n, s),
+                                                |i, s, c| ConstNotMemberOfTrait(i, s, c),
                                             );
 
                                             // We allow arbitrary const expressions inside of associated consts,
@@ -1338,6 +1339,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                             );
                                         }
                                         AssocItemKind::Fn(box FnKind(.., generics, _)) => {
+                                            debug!("resolve_implementation AssocItemKind::Fn");
                                             // We also need a new scope for the impl item type parameters.
                                             this.with_generic_param_rib(
                                                 generics,
@@ -1347,9 +1349,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                     // exists in trait
                                                     this.check_trait_item(
                                                         item.ident,
+                                                        &item.kind,
                                                         ValueNS,
                                                         item.span,
-                                                        |n, s| MethodNotMemberOfTrait(n, s),
+                                                        |i, s, c| MethodNotMemberOfTrait(i, s, c),
                                                     );
 
                                                     visit::walk_assoc_item(
@@ -1366,6 +1369,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                             _,
                                             _,
                                         )) => {
+                                            debug!("resolve_implementation AssocItemKind::TyAlias");
                                             // We also need a new scope for the impl item type parameters.
                                             this.with_generic_param_rib(
                                                 generics,
@@ -1375,9 +1379,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                     // exists in trait
                                                     this.check_trait_item(
                                                         item.ident,
+                                                        &item.kind,
                                                         TypeNS,
                                                         item.span,
-                                                        |n, s| TypeNotMemberOfTrait(n, s),
+                                                        |i, s, c| TypeNotMemberOfTrait(i, s, c),
                                                     );
 
                                                     visit::walk_assoc_item(
@@ -1401,9 +1406,15 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         });
     }
 
-    fn check_trait_item<F>(&mut self, ident: Ident, ns: Namespace, span: Span, err: F)
-    where
-        F: FnOnce(Symbol, &str) -> ResolutionError<'_>,
+    fn check_trait_item<F>(
+        &mut self,
+        ident: Ident,
+        kind: &AssocItemKind,
+        ns: Namespace,
+        span: Span,
+        err: F,
+    ) where
+        F: FnOnce(Ident, &str, Option<Symbol>) -> ResolutionError<'_>,
     {
         // If there is a TraitRef in scope for an impl, then the method must be in the
         // trait.
@@ -1420,8 +1431,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 )
                 .is_err()
             {
+                let candidate = self.find_similarly_named_assoc_item(ident.name, kind);
                 let path = &self.current_trait_ref.as_ref().unwrap().1.path;
-                self.report_error(span, err(ident.name, &path_names_to_string(path)));
+                self.report_error(span, err(ident, &path_names_to_string(path), candidate));
             }
         }
     }
