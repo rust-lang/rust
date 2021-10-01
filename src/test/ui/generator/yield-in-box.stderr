@@ -1,5 +1,5 @@
 warning: unused generator that must be used
-  --> $DIR/yield-in-box.rs:9:5
+  --> $DIR/yield-in-box.rs:11:5
    |
 LL | /     || {
 LL | |         let y = 2u32;
