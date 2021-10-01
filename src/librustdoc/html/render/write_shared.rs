@@ -303,6 +303,10 @@ pub(super) fn write_shared(
         )?;
     }
 
+    if cx.shared.layout.scrape_examples_extension {
+        write_minify("scrape-examples.js", static_files::SCRAPE_EXAMPLES_JS, cx, options)?;
+    }
+
     if let Some(ref css) = cx.shared.layout.css_file_extension {
         let buffer = try_err!(fs::read_to_string(css), css);
         // This varies based on the invocation, so it can't go through the write_minify wrapper.
