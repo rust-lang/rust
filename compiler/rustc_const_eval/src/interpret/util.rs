@@ -35,7 +35,8 @@ where
                 ty::Closure(def_id, substs)
                 | ty::Generator(def_id, substs, ..)
                 | ty::FnDef(def_id, substs) => {
-                    let unused_params = self.tcx.unused_generic_params(def_id);
+                    let instance = ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id));
+                    let unused_params = self.tcx.unused_generic_params(instance);
                     for (index, subst) in substs.into_iter().enumerate() {
                         let index = index
                             .try_into()
