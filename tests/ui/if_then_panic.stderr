@@ -16,5 +16,45 @@ LL | |         panic!("qwqwq");
 LL | |     }
    | |_____^ help: try: `assert!(a.is_empty(), "qwqwq");`
 
-error: aborting due to 2 previous errors
+error: only a `panic!` in `if`-then statement
+  --> $DIR/if_then_panic.rs:39:5
+   |
+LL | /     if b.is_empty() {
+LL | |         panic!("panic1");
+LL | |     }
+   | |_____^ help: try: `assert!(!b.is_empty(), "panic1");`
+
+error: only a `panic!` in `if`-then statement
+  --> $DIR/if_then_panic.rs:42:5
+   |
+LL | /     if b.is_empty() && a.is_empty() {
+LL | |         panic!("panic2");
+LL | |     }
+   | |_____^ help: try: `assert!(!(b.is_empty() && a.is_empty()), "panic2");`
+
+error: only a `panic!` in `if`-then statement
+  --> $DIR/if_then_panic.rs:45:5
+   |
+LL | /     if a.is_empty() && !b.is_empty() {
+LL | |         panic!("panic3");
+LL | |     }
+   | |_____^ help: try: `assert!(!(a.is_empty() && !b.is_empty()), "panic3");`
+
+error: only a `panic!` in `if`-then statement
+  --> $DIR/if_then_panic.rs:48:5
+   |
+LL | /     if b.is_empty() || a.is_empty() {
+LL | |         panic!("panic4");
+LL | |     }
+   | |_____^ help: try: `assert!(!(b.is_empty() || a.is_empty()), "panic4");`
+
+error: only a `panic!` in `if`-then statement
+  --> $DIR/if_then_panic.rs:51:5
+   |
+LL | /     if a.is_empty() || !b.is_empty() {
+LL | |         panic!("panic5");
+LL | |     }
+   | |_____^ help: try: `assert!(!(a.is_empty() || !b.is_empty()), "panic5");`
+
+error: aborting due to 7 previous errors
 
