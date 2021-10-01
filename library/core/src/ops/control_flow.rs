@@ -7,6 +7,10 @@ use crate::{convert, ops};
 /// Having the enum makes it clearer -- no more wondering "wait, what did `false`
 /// mean again?" -- and allows including a value.
 ///
+/// Similar to [`Option`] and [`Result`], this enum can be used with the `?` operator
+/// to return immediatly if the [`Break`] variant is present or to continue normally
+/// with the value inside the [`Continue`] variant.
+///
 /// # Examples
 ///
 /// Early-exiting from [`Iterator::try_for_each`]:
@@ -46,6 +50,9 @@ use crate::{convert, ops};
 ///     }
 /// }
 /// ```
+///
+/// [`Break`]: ControlFlow::Break
+/// [`Continue`]: ControlFlow::Continue
 #[stable(feature = "control_flow_enum_type", since = "1.55.0")]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ControlFlow<B, C = ()> {
