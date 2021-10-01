@@ -147,7 +147,7 @@ impl Inliner<'tcx> {
         self.check_mir_body(callsite, callee_body, callee_attrs)?;
 
         if !self.tcx.consider_optimizing(|| {
-            format!("Inline {:?} into {}", callee_body.span, callsite.callee)
+            format!("Inline {:?} into {:?}", callsite.callee, caller_body.source)
         }) {
             return Err("optimization fuel exhausted");
         }

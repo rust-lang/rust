@@ -1660,7 +1660,7 @@ checksum = "3ca8957e71f04a205cb162508f9326aea04676c8dfd0711220190d6b83664f3f"
 dependencies = [
  "bitmaps",
  "rand_core 0.5.1",
- "rand_xoshiro",
+ "rand_xoshiro 0.4.0",
  "sized-chunks",
  "typenum",
  "version_check",
@@ -2256,7 +2256,7 @@ dependencies = [
  "libc",
  "log",
  "measureme",
- "rand 0.8.3",
+ "rand 0.8.4",
  "rustc-workspace-hack",
  "rustc_version",
  "shell-escape",
@@ -2852,9 +2852,9 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.8.3"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ef9e7e66b4468674bfcb0c81af8b7fa0bb154fa9f28eb840da5c447baeb8d7e"
+checksum = "2e7573632e6454cf6b99d7aac4ccca54be06da05aca2ef7423d22d27d4d4bcd8"
 dependencies = [
  "libc",
  "rand_chacha 0.3.0",
@@ -2943,6 +2943,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a9fcdd2e881d02f1d9390ae47ad8e5696a9e4be7b547a1da2afbc61973217004"
 dependencies = [
  "rand_core 0.5.1",
+]
+
+[[package]]
+name = "rand_xoshiro"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6f97cdb2a36ed4183de61b2f824cc45c9f1037f28afe0a322e9fff4c108b5aaa"
+dependencies = [
+ "rand_core 0.6.2",
 ]
 
 [[package]]
@@ -4087,6 +4096,8 @@ dependencies = [
  "either",
  "gsgdt",
  "polonius-engine",
+ "rand 0.8.4",
+ "rand_xoshiro 0.6.0",
  "rustc-rayon-core",
  "rustc_apfloat",
  "rustc_arena",
@@ -5097,7 +5108,7 @@ checksum = "dac1c663cfc93810f88aed9b8941d48cabf856a1b111c29a40439018d870eb22"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
- "rand 0.8.3",
+ "rand 0.8.4",
  "redox_syscall",
  "remove_dir_all",
  "winapi",

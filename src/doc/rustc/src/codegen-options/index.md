@@ -435,6 +435,10 @@ Equivalent to the "uppercase" `-fPIC` or `-fPIE` options in other compilers,
 depending on the produced crate types.  \
 This is the default model for majority of supported targets.
 
+- `pie` - position independent executable, relocatable code but without support for symbol
+interpositioning (replacing symbols by name using `LD_PRELOAD` and similar). Equivalent to the "uppercase" `-fPIE` option in other compilers. `pie`
+code cannot be linked into shared libraries (you'll get a linking error on attempt to do this).
+
 #### Special relocation models
 
 - `dynamic-no-pic` - relocatable external references, non-relocatable code.  \
