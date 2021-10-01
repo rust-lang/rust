@@ -364,7 +364,7 @@ fn check_terminator(
 }
 
 fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: Option<&RustcVersion>) -> bool {
-    rustc_const_eval::const_eval::is_const_fn(tcx, def_id)
+    tcx.is_const_fn(def_id)
         && tcx.lookup_const_stability(def_id).map_or(true, |const_stab| {
             if let rustc_attr::StabilityLevel::Stable { since } = const_stab.level {
                 // Checking MSRV is manually necessary because `rustc` has no such concept. This entire

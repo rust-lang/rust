@@ -70,6 +70,8 @@ This lint **warns by default**. This lint detects when [intra-doc links] from pu
 For example:
 
 ```rust
+#![warn(rustdoc::private_intra_doc_links)] // note: unecessary - warns by default.
+
 /// [private]
 pub fn public() {}
 fn private() {}
@@ -227,6 +229,8 @@ This lint **warns by default**. It detects code block attributes in
 documentation examples that have potentially mis-typed values. For example:
 
 ```rust
+#![warn(rustdoc::invalid_codeblock_attributes)]  // note: unecessary - warns by default.
+
 /// Example.
 ///
 /// ```should-panic
@@ -344,6 +348,8 @@ This lint is **warn-by-default**. It detects URLs which are not links.
 For example:
 
 ```rust
+#![warn(rustdoc::bare_urls)] // note: unecessary - warns by default.
+
 /// http://example.org
 /// [http://example.net]
 pub fn foo() {}

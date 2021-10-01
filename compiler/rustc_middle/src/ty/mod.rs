@@ -1638,8 +1638,8 @@ impl ReprOptions {
 }
 
 impl<'tcx> FieldDef {
-    /// Returns the type of this field. The `subst` is typically obtained
-    /// via the second field of `TyKind::AdtDef`.
+    /// Returns the type of this field. The resulting type is not normalized. The `subst` is
+    /// typically obtained via the second field of `TyKind::AdtDef`.
     pub fn ty(&self, tcx: TyCtxt<'tcx>, subst: SubstsRef<'tcx>) -> Ty<'tcx> {
         tcx.type_of(self.did).subst(tcx, subst)
     }

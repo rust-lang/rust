@@ -1112,6 +1112,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // generator, this will raise error in other places
                 // or ignore error with const_async_blocks feature
                 GeneratorCandidate => {}
+                // FnDef where the function is const
+                FnPointerCandidate { is_const: true } => {}
                 ConstDropCandidate => {}
                 _ => {
                     // reject all other types of candidates
@@ -1539,6 +1541,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
+            // Drop otherwise equivalent non-const fn pointer candidates
+            (FnPointerCandidate { .. }, FnPointerCandidate { is_const: false }) => true,
+
             // Global bounds from the where clause should be ignored
             // here (see issue #50825). Otherwise, we have a where
             // clause so don't go around looking for impls.
@@ -1549,7 +1554,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplCandidate(..)
                 | ClosureCandidate
                 | GeneratorCandidate
-                | FnPointerCandidate
+                | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
                 | TraitUpcastingUnsizeCandidate(_)
@@ -1567,7 +1572,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplCandidate(_)
                 | ClosureCandidate
                 | GeneratorCandidate
-                | FnPointerCandidate
+                | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
                 | TraitUpcastingUnsizeCandidate(_)
@@ -1597,7 +1602,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplCandidate(..)
                 | ClosureCandidate
                 | GeneratorCandidate
-                | FnPointerCandidate
+                | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
                 | TraitUpcastingUnsizeCandidate(_)
@@ -1609,7 +1614,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplCandidate(..)
                 | ClosureCandidate
                 | GeneratorCandidate
-                | FnPointerCandidate
+                | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
                 | TraitUpcastingUnsizeCandidate(_)
@@ -1690,7 +1695,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplCandidate(_)
                 | ClosureCandidate
                 | GeneratorCandidate
-                | FnPointerCandidate
+                | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
                 | TraitUpcastingUnsizeCandidate(_)
@@ -1699,7 +1704,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplCandidate(_)
                 | ClosureCandidate
                 | GeneratorCandidate
-                | FnPointerCandidate
+                | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
                 | TraitUpcastingUnsizeCandidate(_)
