@@ -133,6 +133,7 @@ pub struct HlRange {
 // constant:: Emitted for consts.
 // consuming:: Emitted for locals that are being consumed when use in a function call.
 // controlFlow:: Emitted for control-flow related tokens, this includes the `?` operator.
+// crateRoot:: Emitted for crate names, like `serde` and `crate`.
 // declaration:: Emitted for names of definitions, like `foo` in `fn foo() {}`.
 // defaultLibrary:: Emitted for items from built-in crates (std, core, alloc, test and proc_macro).
 // documentation:: Emitted for documentation comments.

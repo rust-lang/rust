@@ -55,6 +55,8 @@ pub enum HlMod {
     Consuming,
     /// Used with keywords like `if` and `break`.
     ControlFlow,
+    /// Used for crate names, like `serde`.
+    CrateRoot,
     /// Used for items from built-in crates (std, core, alloc, test and proc_macro).
     DefaultLibrary,
     /// `foo` in `fn foo(x: i32)` is a definition, `foo` in `foo(90 + 2)` is
@@ -194,6 +196,7 @@ impl HlMod {
         HlMod::Callable,
         HlMod::Consuming,
         HlMod::ControlFlow,
+        HlMod::CrateRoot,
         HlMod::DefaultLibrary,
         HlMod::Definition,
         HlMod::Documentation,
@@ -216,6 +219,7 @@ impl HlMod {
             HlMod::Callable => "callable",
             HlMod::Consuming => "consuming",
             HlMod::ControlFlow => "control",
+            HlMod::CrateRoot => "crate_root",
             HlMod::DefaultLibrary => "default_library",
             HlMod::Definition => "declaration",
             HlMod::Documentation => "documentation",

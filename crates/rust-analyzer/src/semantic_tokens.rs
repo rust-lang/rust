@@ -94,6 +94,7 @@ define_semantic_token_modifiers![
     (CONSTANT, "constant"),
     (CONSUMING, "consuming"),
     (CONTROL_FLOW, "controlFlow"),
+    (CRATE_ROOT, "crateRoot"),
     (INJECTED, "injected"),
     (INTRA_DOC_LINK, "intraDocLink"),
     (LIBRARY, "library"),
