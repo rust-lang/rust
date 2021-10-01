@@ -7,6 +7,7 @@ use std::convert::TryInto;
 const DIST_SERVER: &str = "https://static.rust-lang.org";
 const COMPILER_COMPONENTS: &[&str] = &["rustc", "rust-std", "cargo"];
 const RUSTFMT_COMPONENTS: &[&str] = &["rustfmt-preview"];
+const CLIPPY_COMPONENTS: &[&str] = &["clippy-preview"];
 
 struct Tool {
     channel: Channel,
@@ -46,6 +47,7 @@ impl Tool {
                     dist_server: DIST_SERVER.into(),
                     compiler: self.detect_compiler()?,
                     rustfmt: self.detect_rustfmt()?,
+                    clippy: self.detect_clippy()?,
                     checksums_sha256: {
                         // Keys are sorted here instead of beforehand because values in this map
                         // are added while filling the other struct fields just above this block.
@@ -102,6 +104,16 @@ impl Tool {
 
         let manifest = fetch_manifest("nightly")?;
         self.collect_checksums(&manifest, RUSTFMT_COMPONENTS)?;
+        Ok(Some(Stage0Toolchain { date: manifest.date, version: "nightly".into() }))
+    }
+
+    fn detect_clippy(&mut self) -> Result<Option<Stage0Toolchain>, Error> {
+        if self.channel != Channel::Nightly {
+            return Ok(None);
+        }
+
+        let manifest = fetch_manifest("nightly")?;
+        self.collect_checksums(&manifest, CLIPPY_COMPONENTS)?;
         Ok(Some(Stage0Toolchain { date: manifest.date, version: "nightly".into() }))
     }
 
@@ -173,6 +185,7 @@ struct Stage0 {
     dist_server: String,
     compiler: Stage0Toolchain,
     rustfmt: Option<Stage0Toolchain>,
+    clippy: Option<Stage0Toolchain>,
     checksums_sha256: IndexMap<String, String>,
 }
 
