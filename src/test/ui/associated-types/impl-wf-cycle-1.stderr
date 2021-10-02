@@ -15,7 +15,7 @@ note: required because of the requirements on the impl of `Grault` for `(T,)`
    |
 LL | impl<T: Grault> Grault for (T,)
    |                 ^^^^^^     ^^^^
-   = note: 1 redundant requirements hidden
+   = note: 1 redundant requirement hidden
    = note: required because of the requirements on the impl of `Grault` for `(T,)`
 
 error[E0275]: overflow evaluating the requirement `<(T,) as Grault>::A == _`
@@ -29,7 +29,7 @@ note: required because of the requirements on the impl of `Grault` for `(T,)`
    |
 LL | impl<T: Grault> Grault for (T,)
    |                 ^^^^^^     ^^^^
-   = note: 1 redundant requirements hidden
+   = note: 1 redundant requirement hidden
    = note: required because of the requirements on the impl of `Grault` for `(T,)`
 
 error[E0275]: overflow evaluating the requirement `<(T,) as Grault>::A == _`
@@ -43,7 +43,7 @@ note: required because of the requirements on the impl of `Grault` for `(T,)`
    |
 LL | impl<T: Grault> Grault for (T,)
    |                 ^^^^^^     ^^^^
-   = note: 1 redundant requirements hidden
+   = note: 1 redundant requirement hidden
    = note: required because of the requirements on the impl of `Grault` for `(T,)`
 
 error: aborting due to 3 previous errors
