@@ -201,6 +201,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     const_param_default => { table }
     thir_abstract_const => { table }
     optimized_mir => { table }
+    optimized_mir_summary => { table }
     mir_for_ctfe => { table }
     promoted_mir => { table }
     def_span => { table }

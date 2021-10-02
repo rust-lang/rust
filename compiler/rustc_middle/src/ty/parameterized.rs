@@ -54,6 +54,7 @@ trivially_parameterized_over_tcx! {
     crate::middle::codegen_fn_attrs::CodegenFnAttrs,
     crate::middle::exported_symbols::SymbolExportInfo,
     crate::mir::ConstQualifs,
+    crate::mir::Summary,
     ty::Generics,
     ty::ImplPolarity,
     ty::ReprOptions,

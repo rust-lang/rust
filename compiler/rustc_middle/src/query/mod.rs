@@ -431,6 +431,13 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Summary of `optimized_mir` to avoid decoding it when we are not planning to use it.
+    query optimized_mir_summary(key: DefId) -> mir::Summary {
+        desc { |tcx| "summarizing MIR for `{}`", tcx.def_path_str(key) }
+        cache_on_disk_if { key.is_local() }
+        separate_provide_extern
+    }
+
     /// Returns coverage summary info for a function, after executing the `InstrumentCoverage`
     /// MIR pass (assuming the -Cinstrument-coverage option is enabled).
     query coverageinfo(key: ty::InstanceDef<'tcx>) -> mir::CoverageInfo {

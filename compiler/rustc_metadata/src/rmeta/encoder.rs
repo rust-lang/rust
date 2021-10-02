@@ -1352,6 +1352,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             debug!("EntryBuilder::encode_mir({:?})", def_id);
             if encode_opt {
                 record!(self.tables.optimized_mir[def_id.to_def_id()] <- self.tcx.optimized_mir(def_id));
+                record!(self.tables.optimized_mir_summary[def_id.to_def_id()] <- self.tcx.optimized_mir_summary(def_id));
             }
             if encode_const {
                 record!(self.tables.mir_for_ctfe[def_id.to_def_id()] <- self.tcx.mir_for_ctfe(def_id));

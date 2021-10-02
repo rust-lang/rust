@@ -360,6 +360,7 @@ define_tables! {
     optimized_mir: Table<DefIndex, LazyValue<mir::Body<'static>>>,
     mir_for_ctfe: Table<DefIndex, LazyValue<mir::Body<'static>>>,
     promoted_mir: Table<DefIndex, LazyValue<IndexVec<mir::Promoted, mir::Body<'static>>>>,
+    optimized_mir_summary: Table<DefIndex, LazyValue<mir::Summary>>,
     // FIXME(compiler-errors): Why isn't this a LazyArray?
     thir_abstract_const: Table<DefIndex, LazyValue<&'static [ty::abstract_const::Node<'static>]>>,
     impl_parent: Table<DefIndex, RawDefId>,

@@ -26,7 +26,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
-use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPass, MirPhase, Promoted};
+use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPass, MirPhase, Promoted, Summary};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_span::{Span, Symbol};
@@ -120,6 +120,7 @@ pub fn provide(providers: &mut Providers) {
         mir_for_ctfe,
         mir_for_ctfe_of_const_arg,
         optimized_mir,
+        optimized_mir_summary,
         is_mir_available,
         is_ctfe_mir_available: |tcx, did| is_mir_available(tcx, did),
         mir_callgraph_reachable: inline::cycle::mir_callgraph_reachable,
@@ -572,4 +573,12 @@ fn promoted_mir<'tcx>(
     debug_assert!(!promoted.has_free_regions(), "Free regions in promoted MIR");
 
     tcx.arena.alloc(promoted)
+}
+
+fn optimized_mir_summary<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> Summary {
+    let body = tcx.optimized_mir(did);
+    let param_env = tcx.param_env_reveal_all_normalized(did);
+    let cost_info = inline::body_cost(tcx, param_env, body, |ty| ty);
+    let inline::InlineCostInfo { cost, bbcount, diverges } = cost_info;
+    Summary { inlining_cost: cost, bbcount, diverges }
 }

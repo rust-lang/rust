@@ -2900,3 +2900,10 @@ impl Location {
         }
     }
 }
+
+#[derive(Debug, Copy, Clone, HashStable, Encodable, Decodable)]
+pub struct Summary {
+    pub inlining_cost: usize,
+    pub bbcount: usize,
+    pub diverges: bool,
+}
