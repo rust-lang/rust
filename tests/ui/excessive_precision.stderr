@@ -82,7 +82,7 @@ error: float has excessive precision
   --> $DIR/excessive_precision.rs:65:13
    |
 LL |     let _ = 2.225_073_858_507_201_1e-308_f64;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `2.225_073_858_507_201e-_308_f64`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `2.225_073_858_507_201e-308_f64`
 
 error: aborting due to 14 previous errors
 
