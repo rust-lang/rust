@@ -24,6 +24,7 @@ use rustc_middle::mir::{BorrowKind, Field, Mutability};
 use rustc_middle::thir::{Ascription, BindingMode, FieldPat, Pat, PatKind, PatRange, PatTyProj};
 use rustc_middle::ty::{self, ConstKind, DefIdTree, Ty, TyCtxt};
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::abi::Size;
 
 use smallvec::SmallVec;
 use std::cmp::Ordering;
@@ -653,9 +654,9 @@ crate fn compare_const_vals<'tcx>(
 
 /// Return the size of the corresponding number type.
 #[inline]
-fn number_type_size<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> rustc_target::abi::Size {
+fn number_type_size<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Size {
     use rustc_middle::ty::layout::IntegerExt;
-    use rustc_target::abi::{Integer, Primitive, Size};
+    use rustc_target::abi::{Integer, Primitive};
     match ty.kind() {
         ty::Bool => Size::from_bytes(1),
         ty::Char => Size::from_bytes(4),
@@ -672,6 +673,7 @@ fn number_type_size<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> rustc_target::abi:
 fn fast_try_eval_bits<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    ty_size: Size,
     value: &ty::Const<'tcx>,
 ) -> Option<u128> {
     let int = if let ty::ConstKind::Value(ConstValue::Scalar(Scalar::Int(int))) = value.val {
@@ -681,8 +683,7 @@ fn fast_try_eval_bits<'tcx>(
         // This is a more general but slower form of the previous case.
         value.val.eval(tcx, param_env).try_to_scalar_int()?
     };
-    let size = number_type_size(tcx, value.ty);
-    int.to_bits(size).ok()
+    int.to_bits(ty_size).ok()
 }
 
 fn pat_to_deconstructed<'p, 'tcx>(
@@ -763,13 +764,13 @@ fn pat_to_deconstructed<'p, 'tcx>(
             match pat.ty.kind() {
                 ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
                     use rustc_apfloat::Float;
-                    ctor = match fast_try_eval_bits(cx.tcx, cx.param_env, value) {
+                    let size = number_type_size(cx.tcx, value.ty);
+                    ctor = match fast_try_eval_bits(cx.tcx, cx.param_env, size, value) {
                         Some(bits) => match pat.ty.kind() {
                             ty::Bool => Constructor::Bool(bits != 0),
-                            ty::Char | ty::Int(_) | ty::Uint(_) => {
-                                let int_range = IntRange::from_singleton_bits(cx.tcx, pat.ty, bits);
-                                Constructor::IntRange(int_range)
-                            }
+                            ty::Char | ty::Int(_) | ty::Uint(_) => Constructor::IntRange(
+                                IntRange::from_bits(pat.ty, size, bits, bits, &RangeEnd::Included),
+                            ),
                             ty::Float(ty::FloatTy::F32) => {
                                 let value = rustc_apfloat::ieee::Single::from_bits(bits);
                                 Constructor::F32Range(value, value, RangeEnd::Included)
@@ -820,11 +821,12 @@ fn pat_to_deconstructed<'p, 'tcx>(
         &PatKind::Range(PatRange { lo, hi, end }) => {
             use rustc_apfloat::Float;
             let ty = lo.ty;
+            let size = number_type_size(cx.tcx, ty);
             let lo = lo.eval_bits(cx.tcx, cx.param_env, ty);
             let hi = hi.eval_bits(cx.tcx, cx.param_env, ty);
             ctor = match ty.kind() {
                 ty::Char | ty::Int(_) | ty::Uint(_) => {
-                    Constructor::IntRange(IntRange::from_range_bits(cx.tcx, lo, hi, ty, &end))
+                    Constructor::IntRange(IntRange::from_bits(ty, size, lo, hi, &end))
                 }
                 ty::Float(ty::FloatTy::F32) => {
                     let lo = rustc_apfloat::ieee::Single::from_bits(lo);
@@ -943,7 +945,7 @@ fn deconstructed_to_pat<'p, 'tcx>(
         }
         Bool(b) => PatKind::Constant { value: ty::Const::from_bool(cx.tcx, *b) },
         IntRange(range) => {
-            let (lo, hi) = range.to_bits();
+            let (lo, hi, end) = range.to_bits();
             let env = ty::ParamEnv::empty().and(pat.ty());
             let lo_const = ty::Const::from_bits(cx.tcx, lo, env);
             let hi_const = ty::Const::from_bits(cx.tcx, hi, env);
@@ -951,7 +953,7 @@ fn deconstructed_to_pat<'p, 'tcx>(
             if lo == hi {
                 PatKind::Constant { value: lo_const }
             } else {
-                PatKind::Range(PatRange { lo: lo_const, hi: hi_const, end: RangeEnd::Included })
+                PatKind::Range(PatRange { lo: lo_const, hi: hi_const, end })
             }
         }
         Wildcard | NonExhaustive => PatKind::Wild,

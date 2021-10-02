@@ -45,6 +45,7 @@
 use self::Constructor::*;
 use self::SliceKind::*;
 
+use super::number_type_size;
 use super::usefulness::{MatchCheckCtxt, PatCtxt};
 
 use rustc_apfloat::ieee::{DoubleS, IeeeFloat, SingleS};
@@ -54,11 +55,9 @@ use rustc_index::vec::Idx;
 use rustc_hir::{HirId, RangeEnd};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::mir::Field;
-use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::subst::GenericArg;
-use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
+use rustc_middle::ty::{self, Ty, VariantDef};
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::Integer;
 use rustc_target::abi::VariantIdx;
 
 use smallvec::{smallvec, SmallVec};
@@ -99,39 +98,23 @@ impl IntRange {
 
     // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
     #[inline]
-    fn signed_bias(tcx: TyCtxt<'_>, ty: Ty<'_>) -> u128 {
+    fn signed_bias(ty: Ty<'_>, ty_size: rustc_target::abi::Size) -> u128 {
         match *ty.kind() {
-            ty::Int(ity) => {
-                let size = Integer::from_int_ty(&tcx, ity).size();
-                1u128 << (size.bits() as u128 - 1)
-            }
+            ty::Int(_) => 1u128 << (ty_size.bits() as u128 - 1),
             ty::Char | ty::Uint(_) => 0,
             _ => bug!("invalid type for `IntRange`: {}", ty),
         }
     }
 
     #[inline]
-    pub(super) fn from_singleton_bits<'tcx>(
-        tcx: TyCtxt<'tcx>,
+    pub(super) fn from_bits<'tcx>(
         ty: Ty<'tcx>,
-        bits: u128,
-    ) -> IntRange {
-        let bias = IntRange::signed_bias(tcx, ty);
-        // Perform a shift if the underlying types are signed,
-        // which makes the interval arithmetic simpler.
-        let val = bits ^ bias;
-        IntRange { range: val..=val, bias }
-    }
-
-    #[inline]
-    pub(super) fn from_range_bits<'tcx>(
-        tcx: TyCtxt<'tcx>,
+        ty_size: rustc_target::abi::Size,
         lo: u128,
         hi: u128,
-        ty: Ty<'tcx>,
         end: &RangeEnd,
     ) -> IntRange {
-        let bias = IntRange::signed_bias(tcx, ty);
+        let bias = IntRange::signed_bias(ty, ty_size);
         // Perform a shift if the underlying types are signed,
         // which makes the interval arithmetic simpler.
         let (lo, hi) = (lo ^ bias, hi ^ bias);
@@ -143,11 +126,11 @@ impl IntRange {
         IntRange { range: lo..=(hi - offset), bias }
     }
 
-    /// The reverse of `Self::from_range/from_bits`.
-    pub(super) fn to_bits(&self) -> (u128, u128) {
+    /// The reverse of `Self::from_bits`.
+    pub(super) fn to_bits(&self) -> (u128, u128, RangeEnd) {
         let (lo, hi) = self.boundaries();
         let bias = self.bias;
-        (lo ^ bias, hi ^ bias)
+        (lo ^ bias, hi ^ bias, RangeEnd::Included)
     }
 
     fn is_subrange(&self, other: &Self) -> bool {
@@ -825,10 +808,11 @@ impl<'tcx> SplitWildcard<'tcx> {
     pub(super) fn new<'p>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Self {
         debug!("SplitWildcard::new({:?})", pcx.ty);
         let cx = pcx.cx;
-        let make_range = |start, end| {
-            IntRange(IntRange::from_range_bits(cx.tcx, start, end, pcx.ty, &RangeEnd::Included))
+        let ty = pcx.ty;
+        let make_range = |size, start, end| {
+            IntRange(IntRange::from_bits(ty, size, start, end, &RangeEnd::Included))
         };
-        // This determines the set of all possible constructors for the type `pcx.ty`. For numbers,
+        // This determines the set of all possible constructors for the type `ty`. For numbers,
         // arrays and slices we use ranges and variable-length slices when appropriate.
         //
         // If the `exhaustive_patterns` feature is enabled, we make sure to omit constructors that
@@ -836,18 +820,19 @@ impl<'tcx> SplitWildcard<'tcx> {
         // returned list of constructors.
         // Invariant: this is empty if and only if the type is uninhabited (as determined by
         // `cx.is_uninhabited()`).
-        let all_ctors = match pcx.ty.kind() {
-            _ if cx.is_uninhabited(pcx.ty) => smallvec![],
+        let all_ctors = match ty.kind() {
+            _ if cx.is_uninhabited(ty) => smallvec![],
             ty::Bool => smallvec![Bool(false), Bool(true)],
             ty::Char => {
+                let size = number_type_size(cx.tcx, ty);
                 smallvec![
                     // The valid Unicode Scalar Value ranges.
-                    make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
-                    make_range('\u{E000}' as u128, '\u{10FFFF}' as u128),
+                    make_range(size, '\u{0000}' as u128, '\u{D7FF}' as u128),
+                    make_range(size, '\u{E000}' as u128, '\u{10FFFF}' as u128),
                 ]
             }
             ty::Int(_) | ty::Uint(_)
-                if pcx.ty.is_ptr_sized_integral()
+                if ty.is_ptr_sized_integral()
                     && !cx.tcx.features().precise_pointer_size_matching =>
             {
                 // `usize`/`isize` are not allowed to be matched exhaustively unless the
@@ -855,16 +840,17 @@ impl<'tcx> SplitWildcard<'tcx> {
                 // `#[non_exhaustive]` enums by returning a special unmatcheable constructor.
                 smallvec![NonExhaustive]
             }
-            &ty::Int(ity) => {
-                let bits = Integer::from_int_ty(&cx.tcx, ity).size().bits() as u128;
+            &ty::Int(_) => {
+                let size = number_type_size(cx.tcx, ty);
+                let bits = size.bits() as u128;
                 let min = 1u128 << (bits - 1);
                 let max = min - 1;
-                smallvec![make_range(min, max)]
+                smallvec![make_range(size, min, max)]
             }
-            &ty::Uint(uty) => {
-                let size = Integer::from_uint_ty(&cx.tcx, uty).size();
+            &ty::Uint(_) => {
+                let size = number_type_size(cx.tcx, ty);
                 let max = size.truncate(u128::MAX);
-                smallvec![make_range(0, max)]
+                smallvec![make_range(size, 0, max)]
             }
             ty::Adt(def, substs) if def.is_enum() => {
                 // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
@@ -883,7 +869,7 @@ impl<'tcx> SplitWildcard<'tcx> {
                 //
                 // we don't want to show every possible IO error, but instead have only `_` as the
                 // witness.
-                let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
+                let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(ty);
 
                 let is_exhaustive_pat_feature = cx.tcx.features().exhaustive_patterns;
 
