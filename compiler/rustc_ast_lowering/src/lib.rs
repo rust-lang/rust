@@ -84,6 +84,9 @@ mod index;
 mod item;
 mod pat;
 mod path;
+mod query;
+
+pub use query::provide;
 
 struct LoweringContext<'hir> {
     tcx: TyCtxt<'hir>,

@@ -34,35 +34,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Owner<'tcx> {
     }
 }
 
-/// Gather the LocalDefId for each item-like within a module, including items contained within
-/// bodies.  The Ids are in visitor order.  This is used to partition a pass between modules.
-#[derive(Debug, HashStable)]
-pub struct ModuleItems {
-    submodules: Box<[LocalDefId]>,
-    items: Box<[ItemId]>,
-    trait_items: Box<[TraitItemId]>,
-    impl_items: Box<[ImplItemId]>,
-    foreign_items: Box<[ForeignItemId]>,
-}
-
-impl ModuleItems {
-    pub fn items(&self) -> impl Iterator<Item = ItemId> + '_ {
-        self.items.iter().copied()
-    }
-
-    pub fn trait_items(&self) -> impl Iterator<Item = TraitItemId> + '_ {
-        self.trait_items.iter().copied()
-    }
-
-    pub fn impl_items(&self) -> impl Iterator<Item = ImplItemId> + '_ {
-        self.impl_items.iter().copied()
-    }
-
-    pub fn foreign_items(&self) -> impl Iterator<Item = ForeignItemId> + '_ {
-        self.foreign_items.iter().copied()
-    }
-}
-
 impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     pub fn hir(self) -> map::Map<'tcx> {
@@ -85,9 +56,6 @@ pub fn provide(providers: &mut Providers) {
         let hir = tcx.hir();
         hir.get_module_parent_node(hir.local_def_id_to_hir_id(id))
     };
-    providers.hir_crate_items = map::hir_crate_items;
-    providers.crate_hash = map::crate_hash;
-    providers.hir_module_items = map::hir_module_items;
     providers.hir_owner = |tcx, id| {
         let owner = tcx.lower_to_hir(id).as_owner()?;
         let node = owner.node();

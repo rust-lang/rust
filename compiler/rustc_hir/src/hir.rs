@@ -796,6 +796,35 @@ impl<T> MaybeOwner<T> {
     }
 }
 
+/// Gather the LocalDefId for each item-like within a module, including items contained within
+/// bodies.  The Ids are in visitor order.  This is used to partition a pass between modules.
+#[derive(Debug, HashStable_Generic)]
+pub struct ModuleItems {
+    pub submodules: Box<[LocalDefId]>,
+    pub items: Box<[ItemId]>,
+    pub trait_items: Box<[TraitItemId]>,
+    pub impl_items: Box<[ImplItemId]>,
+    pub foreign_items: Box<[ForeignItemId]>,
+}
+
+impl ModuleItems {
+    pub fn items(&self) -> impl Iterator<Item = ItemId> + '_ {
+        self.items.iter().copied()
+    }
+
+    pub fn trait_items(&self) -> impl Iterator<Item = TraitItemId> + '_ {
+        self.trait_items.iter().copied()
+    }
+
+    pub fn impl_items(&self) -> impl Iterator<Item = ImplItemId> + '_ {
+        self.impl_items.iter().copied()
+    }
+
+    pub fn foreign_items(&self) -> impl Iterator<Item = ForeignItemId> + '_ {
+        self.foreign_items.iter().copied()
+    }
+}
+
 /// The top-level data structure that stores the entire contents of
 /// the crate currently being compiled.
 ///

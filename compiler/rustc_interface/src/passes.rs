@@ -15,7 +15,7 @@ use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
 use rustc_hir::def_id::{LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
-use rustc_hir::{Crate, MaybeOwner, OwnerInfo};
+use rustc_hir::Crate;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_lint::{EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
@@ -525,11 +525,6 @@ fn hir_crate<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> Crate<'tcx> {
     hir_crate
 }
 
-/// Lower AST to HIR.
-fn lower_to_hir<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> MaybeOwner<&'tcx OwnerInfo<'tcx>> {
-    rustc_ast_lowering::lower_to_hir(tcx, def_id, rustc_parse::nt_to_tokenstream)
-}
-
 // Returns all the paths that correspond to generated files.
 fn generated_output_paths(
     sess: &Session,
@@ -795,7 +790,9 @@ pub static DEFAULT_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|| {
     let providers = &mut Providers::default();
     providers.analysis = analysis;
     providers.hir_crate = hir_crate;
-    providers.lower_to_hir = lower_to_hir;
+    providers.lower_to_hir =
+        |tcx, def_id| rustc_ast_lowering::lower_to_hir(tcx, def_id, rustc_parse::nt_to_tokenstream);
+    rustc_ast_lowering::provide(providers);
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);

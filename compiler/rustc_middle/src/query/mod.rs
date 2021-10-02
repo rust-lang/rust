@@ -53,7 +53,7 @@ rustc_queries! {
     }
 
     /// All items in the crate.
-    query hir_crate_items(_: ()) -> rustc_middle::hir::ModuleItems {
+    query hir_crate_items(_: ()) -> hir::ModuleItems {
         storage(ArenaCacheSelector<'tcx>)
         eval_always
         desc { "get HIR crate items" }
@@ -63,7 +63,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by `tcx.hir().visit_item_likes_in_module`.
     /// Avoid calling this query directly.
-    query hir_module_items(key: LocalDefId) -> rustc_middle::hir::ModuleItems {
+    query hir_module_items(key: LocalDefId) -> hir::ModuleItems {
         storage(ArenaCacheSelector<'tcx>)
         desc { |tcx| "HIR module items in `{}`", tcx.def_path_str(key.to_def_id()) }
     }
