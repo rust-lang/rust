@@ -8,7 +8,7 @@ use crate::{convert, ops};
 /// mean again?" -- and allows including a value.
 ///
 /// Similar to [`Option`] and [`Result`], this enum can be used with the `?` operator
-/// to return immediatly if the [`Break`] variant is present or to continue normally
+/// to return immediately if the [`Break`] variant is present or otherwise continue normally
 /// with the value inside the [`Continue`] variant.
 ///
 /// # Examples
