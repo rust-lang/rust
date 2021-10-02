@@ -1286,13 +1286,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     field.vis.is_accessible_from(tcx.parent_module(pat.hir_id).to_def_id(), tcx)
                 })
                 .collect();
-            if non_exhaustive && !accessible_unmentioned_fields.is_empty() {
-                self.lint_non_exhaustive_omitted_patterns(
-                    pat,
-                    &accessible_unmentioned_fields,
-                    adt_ty,
-                )
-            } else if !etc {
+
+            if !etc {
                 if accessible_unmentioned_fields.is_empty() {
                     unmentioned_err = Some(self.error_no_accessible_fields(pat, fields));
                 } else {
@@ -1303,6 +1298,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         fields,
                     ));
                 }
+            } else if non_exhaustive && !accessible_unmentioned_fields.is_empty() {
+                self.lint_non_exhaustive_omitted_patterns(
+                    pat,
+                    &accessible_unmentioned_fields,
+                    adt_ty,
+                )
             }
         }
         match (inexistent_fields_err, unmentioned_err) {
