@@ -6,7 +6,7 @@ use hir::{HirDisplay, InFile, Local, Semantics, TypeInfo};
 use ide_db::{
     defs::{Definition, NameRefClass},
     helpers::node_ext::{preorder_expr, walk_expr, walk_pat, walk_patterns_in_expr},
-    search::{FileReference, ReferenceAccess, SearchScope},
+    search::{FileReference, ReferenceCategory, SearchScope},
     RootDatabase,
 };
 use itertools::Itertools;
@@ -877,7 +877,7 @@ fn reference_is_exclusive(
     ctx: &AssistContext,
 ) -> bool {
     // we directly modify variable with set: `n = 0`, `n += 1`
-    if reference.access == Some(ReferenceAccess::Write) {
+    if reference.category == Some(ReferenceCategory::Write) {
         return true;
     }
 

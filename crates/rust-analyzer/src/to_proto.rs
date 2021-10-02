@@ -9,7 +9,7 @@ use ide::{
     Annotation, AnnotationKind, Assist, AssistKind, CallInfo, Cancellable, CompletionItem,
     CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange, FileSystemEdit,
     Fold, FoldKind, Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel, InlayHint,
-    InlayKind, Markup, NavigationTarget, ReferenceAccess, RenameError, Runnable, Severity,
+    InlayKind, Markup, NavigationTarget, ReferenceCategory, RenameError, Runnable, Severity,
     SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
 };
 use itertools::Itertools;
@@ -75,11 +75,11 @@ pub(crate) fn structure_node_kind(kind: StructureNodeKind) -> lsp_types::SymbolK
 }
 
 pub(crate) fn document_highlight_kind(
-    reference_access: ReferenceAccess,
+    category: ReferenceCategory,
 ) -> lsp_types::DocumentHighlightKind {
-    match reference_access {
-        ReferenceAccess::Read => lsp_types::DocumentHighlightKind::Read,
-        ReferenceAccess::Write => lsp_types::DocumentHighlightKind::Write,
+    match category {
+        ReferenceCategory::Read => lsp_types::DocumentHighlightKind::Read,
+        ReferenceCategory::Write => lsp_types::DocumentHighlightKind::Write,
     }
 }
 
