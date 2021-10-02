@@ -59,7 +59,7 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         LIFETIME_IDENT,
     ]));
 
-const EXPR_RECOVERY_SET: TokenSet = TokenSet::new(&[LET_KW, R_DOLLAR]);
+const EXPR_RECOVERY_SET: TokenSet = TokenSet::new(&[T![let], R_DOLLAR]);
 
 pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> {
     if let Some(m) = literal(p) {
