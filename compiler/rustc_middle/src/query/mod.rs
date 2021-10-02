@@ -267,6 +267,11 @@ rustc_queries! {
         desc { "getting a list of all mir_keys" }
     }
 
+    // Array of all the functions or closures `DefId`s in this crate that have MIR
+    query mir_fn_and_closures_keys(_: ()) -> &'tcx [LocalDefId] {
+        desc { "getting list of functions or closure keys" }
+    }
+
     /// Maps DefId's that have an associated `mir::Body` to the result
     /// of the MIR const-checking pass. This is the set of qualifs in
     /// the final value of a `const`.
@@ -824,6 +829,19 @@ rustc_queries! {
         desc { |tcx|
             "computing all local function calls in `{}`",
             tcx.def_path_str(key.def_id()),
+        }
+    }
+
+    // Computes number of functions calls in call graph
+    query mir_inliner_crate_fn_callees_count_map(_: ()) -> Lrc<FxHashMap<DefId, usize>> {
+        desc { "computing number of function calls in call graph" }
+    }
+
+    // Computes number of functions calls to function or closure
+    query mir_inliner_crate_fn_callees_count(def_id: DefId) -> Option<usize> {
+        desc { |tcx|
+            "computing number of function calls to {}",
+            tcx.def_path_str(def_id)
         }
     }
 

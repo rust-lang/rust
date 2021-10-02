@@ -17,6 +17,10 @@ use crate::MirPass;
 use std::iter;
 use std::ops::{Range, RangeFrom};
 
+use crate::DefId;
+use rustc_data_structures::stable_map::FxHashMap;
+use rustc_data_structures::sync::Lrc;
+
 crate mod cycle;
 
 const INSTR_COST: usize = 5;
@@ -351,9 +355,34 @@ impl Inliner<'tcx> {
         if callee_body.basic_blocks().len() <= 3 {
             threshold += threshold / 4;
         }
+
+        let callee_def_id = callsite.callee.def_id();
+
+        // We check number of function calls in current crate.
+        // And give a bonus to a function called only once in current module.
+        if self.tcx.mir_inliner_crate_fn_callees_count(callee_def_id) == Some(1) {
+            // If callee function is local to current module.
+            // there is higher chance, that it isn't used somewhere else.
+            if let Some(callee_def_id) = callee_def_id.as_local() {
+                // If function is actually exported to outside world.
+                // Add limited bonus, because it could have been called in other crate.
+                if self.tcx.privacy_access_levels(()).is_exported(callee_def_id) {
+                    threshold += threshold / 4;
+                } else {
+                    // We are sole caller across all crates.
+                    // Make sure function is inlined.
+                    threshold *= 2;
+                }
+            } else {
+                // Function isn't local to current module.
+                // There is high chance it's called somewhere else.
+                // Regardless give 10% bonus.
+                threshold += threshold / 10;
+            }
+        }
+
         debug!("    final inline threshold = {}", threshold);
 
-        // FIXME: Give a bonus to functions with only a single caller
         let mut first_block = true;
         let mut cost = 0;
 
@@ -963,4 +992,35 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
             }
         }
     }
+}
+
+pub(crate) fn mir_inliner_crate_fn_callees_count_map<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    _: (),
+) -> Lrc<FxHashMap<DefId, usize>> {
+    let mut callers_count_map = FxHashMap::default();
+
+    for (callee_def_id, _) in tcx
+        // Iterate over all functions and closures of current crate
+        .mir_fn_and_closures_keys(())
+        .iter()
+        // Get all calless in crate functions
+        .map(|def_id| {
+            tcx.mir_inliner_callees(ty::InstanceDef::Item(ty::WithOptConstParam::unknown(
+                def_id.to_def_id(),
+            )))
+        })
+        .flatten()
+    {
+        *callers_count_map.entry(*callee_def_id).or_insert(0) += 1;
+    }
+
+    Lrc::new(callers_count_map)
+}
+
+pub(crate) fn mir_inliner_crate_fn_callees_count<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> Option<usize> {
+    tcx.mir_inliner_crate_fn_callees_count_map(()).get(&def_id).copied()
 }

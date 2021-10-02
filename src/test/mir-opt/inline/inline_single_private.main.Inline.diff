@@ -1,0 +1,111 @@
+- // MIR for `main` before Inline
++ // MIR for `main` after Inline
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/inline-single-private.rs:20:11: 20:11
+      let _1: ();                          // in scope 0 at $DIR/inline-single-private.rs:21:5: 21:17
+      let _2: ();                          // in scope 0 at $DIR/inline-single-private.rs:22:5: 22:25
++     scope 1 (inlined one_caller) {       // at $DIR/inline-single-private.rs:21:5: 21:17
++         let _3: ();                      // in scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         let mut _4: std::fmt::Arguments; // in scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         let mut _5: &[&str];             // in scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         let mut _6: &[&str; 1];          // in scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         let _7: &[&str; 1];              // in scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         let mut _8: &[std::fmt::ArgumentV1]; // in scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         let mut _9: &[std::fmt::ArgumentV1; 0]; // in scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         let _10: &[std::fmt::ArgumentV1; 0]; // in scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         let mut _11: &[std::fmt::ArgumentV1; 0]; // in scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         let mut _12: &[&str; 1];         // in scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++     }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/inline-single-private.rs:21:5: 21:17
+-         _1 = one_caller() -> bb1;        // scope 0 at $DIR/inline-single-private.rs:21:5: 21:17
++         StorageLive(_11);                // scope 0 at $DIR/inline-single-private.rs:21:5: 21:17
++         StorageLive(_12);                // scope 0 at $DIR/inline-single-private.rs:21:5: 21:17
++         StorageLive(_3);                 // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         StorageLive(_4);                 // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         StorageLive(_5);                 // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         StorageLive(_6);                 // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         StorageLive(_7);                 // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         _12 = const {alloc3: &[&str; 1]}; // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++                                          // ty::Const
++                                          // + ty: &[&str; 1]
++                                          // + val: Value(Scalar(alloc3))
+                                           // mir::Constant
+-                                          // + span: $DIR/inline-single-private.rs:21:5: 21:15
+-                                          // + literal: Const { ty: fn() {one_caller}, val: Value(Scalar(<ZST>)) }
++                                          // + span: $DIR/inline-single-private.rs:21:5: 21:17
++                                          // + literal: Const { ty: &[&str; 1], val: Value(Scalar(alloc3)) }
++         _7 = _12;                        // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         _6 = _7;                         // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         _5 = move _6 as &[&str] (Pointer(Unsize)); // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         StorageDead(_6);                 // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         StorageLive(_8);                 // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         StorageLive(_9);                 // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         StorageLive(_10);                // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         _11 = const {alloc5: &[ArgumentV1; 0]}; // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++                                          // ty::Const
++                                          // + ty: &[std::fmt::ArgumentV1; 0]
++                                          // + val: Value(Scalar(alloc5))
++                                          // mir::Constant
++                                          // + span: $DIR/inline-single-private.rs:21:5: 21:17
++                                          // + literal: Const { ty: &[std::fmt::ArgumentV1; 0], val: Value(Scalar(alloc5)) }
++         _10 = _11;                       // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         _9 = _10;                        // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         _8 = move _9 as &[std::fmt::ArgumentV1] (Pointer(Unsize)); // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         StorageDead(_9);                 // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         _4 = Arguments::new_v1(move _5, move _8) -> bb2; // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++                                          // mir::Constant
++                                          // + span: $DIR/inline-single-private.rs:21:5: 21:17
++                                          // + user_ty: UserType(0)
++                                          // + literal: Const { ty: fn(&[&'static str], &[std::fmt::ArgumentV1]) -> std::fmt::Arguments {std::fmt::Arguments::new_v1}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb1: {
++         StorageDead(_2);                 // scope 0 at $DIR/inline-single-private.rs:22:25: 22:26
++         _0 = const ();                   // scope 0 at $DIR/inline-single-private.rs:20:11: 23:2
++         return;                          // scope 0 at $DIR/inline-single-private.rs:23:2: 23:2
++     }
++ 
++     bb2: {
++         StorageDead(_8);                 // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         StorageDead(_5);                 // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         _3 = _print(move _4) -> bb3;     // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++                                          // mir::Constant
++                                          // + span: $DIR/inline-single-private.rs:21:5: 21:17
++                                          // + literal: Const { ty: for<'r> fn(std::fmt::Arguments<'r>) {std::io::_print}, val: Value(Scalar(<ZST>)) }
++     }
++ 
++     bb3: {
++         StorageDead(_4);                 // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         StorageDead(_10);                // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         StorageDead(_7);                 // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         StorageDead(_3);                 // scope 1 at $DIR/inline-single-private.rs:21:5: 21:17
++         StorageDead(_12);                // scope 0 at $DIR/inline-single-private.rs:21:5: 21:17
++         StorageDead(_11);                // scope 0 at $DIR/inline-single-private.rs:21:5: 21:17
+          StorageDead(_1);                 // scope 0 at $DIR/inline-single-private.rs:21:17: 21:18
+          StorageLive(_2);                 // scope 0 at $DIR/inline-single-private.rs:22:5: 22:25
+-         _2 = more_than_one_call() -> bb2; // scope 0 at $DIR/inline-single-private.rs:22:5: 22:25
++         _2 = more_than_one_call() -> bb1; // scope 0 at $DIR/inline-single-private.rs:22:5: 22:25
+                                           // mir::Constant
+                                           // + span: $DIR/inline-single-private.rs:22:5: 22:23
+                                           // + literal: Const { ty: fn() {more_than_one_call}, val: Value(Scalar(<ZST>)) }
+      }
++ }
+  
+-     bb2: {
+-         StorageDead(_2);                 // scope 0 at $DIR/inline-single-private.rs:22:25: 22:26
+-         _0 = const ();                   // scope 0 at $DIR/inline-single-private.rs:20:11: 23:2
+-         return;                          // scope 0 at $DIR/inline-single-private.rs:23:2: 23:2
+-     }
++ alloc5 (size: 0, align: 8) {}
++ 
++ alloc3 (size: 16, align: 8) {
++     ╾───────alloc2────────╼ 0e 00 00 00 00 00 00 00 │ ╾──────╼........
++ }
++ 
++ alloc2 (size: 14, align: 1) {
++     48 65 6c 6c 6f 77 20 77 6f 72 6c 64 21 0a       │ Hellow world!.
+  }
+  

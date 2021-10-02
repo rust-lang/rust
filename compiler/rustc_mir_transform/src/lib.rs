@@ -86,6 +86,7 @@ pub fn provide(providers: &mut Providers) {
     shim::provide(providers);
     *providers = Providers {
         mir_keys,
+        mir_fn_and_closures_keys,
         mir_const,
         mir_const_qualif: |tcx, def_id| {
             let def_id = def_id.expect_local();
@@ -107,6 +108,8 @@ pub fn provide(providers: &mut Providers) {
         is_ctfe_mir_available: |tcx, did| is_mir_available(tcx, did),
         mir_callgraph_reachable: inline::cycle::mir_callgraph_reachable,
         mir_inliner_callees: inline::cycle::mir_inliner_callees,
+        mir_inliner_crate_fn_callees_count_map: inline::mir_inliner_crate_fn_callees_count_map,
+        mir_inliner_crate_fn_callees_count: inline::mir_inliner_crate_fn_callees_count,
         promoted_mir: |tcx, def_id| {
             let def_id = def_id.expect_local();
             if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
@@ -163,6 +166,20 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxHashSet<LocalDefId> {
     tcx.hir().visit_all_item_likes(&mut GatherCtors { tcx, set: &mut set }.as_deep_visitor());
 
     set
+}
+
+/// Returns array of all the function or closures `DefId`s in this crate that have MIR
+fn mir_fn_and_closures_keys<'tcx>(tcx: TyCtxt<'tcx>, _: ()) -> &'tcx [LocalDefId] {
+    tcx.arena.alloc_from_iter(
+        tcx.hir()
+            .body_owners()
+            // We are interested only in functions or closures
+            .filter(|def_id| {
+                tcx.hir()
+                    .body_owner_kind(tcx.hir().local_def_id_to_hir_id(*def_id))
+                    .is_fn_or_closure()
+            }),
+    )
 }
 
 fn run_passes(
@@ -592,6 +609,7 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
         None => {}
         Some(other) => panic!("do not use `optimized_mir` for constants: {:?}", other),
     }
+
     let mut body =
         tcx.mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(did)).steal();
     run_optimization_passes(tcx, &mut body);
