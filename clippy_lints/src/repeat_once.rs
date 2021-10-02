@@ -72,7 +72,7 @@ impl<'tcx> LateLintPass<'tcx> for RepeatOnce {
                         format!("{}.to_vec()", snippet(cx, receiver.span, r#""...""#)),
                         Applicability::MachineApplicable,
                     );
-                } else if is_type_diagnostic_item(cx, ty, sym::string_type) {
+                } else if is_type_diagnostic_item(cx, ty, sym::String) {
                     span_lint_and_sugg(
                         cx,
                         REPEAT_ONCE,

@@ -132,11 +132,11 @@ fn collect_unwrap_info<'tcx>(
     is_entire_condition: bool,
 ) -> Vec<UnwrapInfo<'tcx>> {
     fn is_relevant_option_call(cx: &LateContext<'_>, ty: Ty<'_>, method_name: &str) -> bool {
-        is_type_diagnostic_item(cx, ty, sym::option_type) && ["is_some", "is_none"].contains(&method_name)
+        is_type_diagnostic_item(cx, ty, sym::Option) && ["is_some", "is_none"].contains(&method_name)
     }
 
     fn is_relevant_result_call(cx: &LateContext<'_>, ty: Ty<'_>, method_name: &str) -> bool {
-        is_type_diagnostic_item(cx, ty, sym::result_type) && ["is_ok", "is_err"].contains(&method_name)
+        is_type_diagnostic_item(cx, ty, sym::Result) && ["is_ok", "is_err"].contains(&method_name)
     }
 
     if let ExprKind::Binary(op, left, right) = &expr.kind {
@@ -165,7 +165,7 @@ fn collect_unwrap_info<'tcx>(
                     _ => unreachable!(),
                 };
                 let safe_to_unwrap = unwrappable != invert;
-                let kind = if is_type_diagnostic_item(cx, ty, sym::option_type) {
+                let kind = if is_type_diagnostic_item(cx, ty, sym::Option) {
                     UnwrappableKind::Option
                 } else {
                     UnwrappableKind::Result

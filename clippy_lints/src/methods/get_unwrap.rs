@@ -27,13 +27,13 @@ pub(super) fn check<'tcx>(
     let caller_type = if derefs_to_slice(cx, recv, expr_ty).is_some() {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "slice"
-    } else if is_type_diagnostic_item(cx, expr_ty, sym::vec_type) {
+    } else if is_type_diagnostic_item(cx, expr_ty, sym::Vec) {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "Vec"
-    } else if is_type_diagnostic_item(cx, expr_ty, sym::vecdeque_type) {
+    } else if is_type_diagnostic_item(cx, expr_ty, sym::VecDeque) {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "VecDeque"
-    } else if !is_mut && is_type_diagnostic_item(cx, expr_ty, sym::hashmap_type) {
+    } else if !is_mut && is_type_diagnostic_item(cx, expr_ty, sym::HashMap) {
         needs_ref = true;
         "HashMap"
     } else if !is_mut && is_type_diagnostic_item(cx, expr_ty, sym::BTreeMap) {

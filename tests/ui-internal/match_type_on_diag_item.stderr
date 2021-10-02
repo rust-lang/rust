@@ -2,7 +2,7 @@ error: usage of `clippy_utils::ty::match_type()` on a type diagnostic item
   --> $DIR/match_type_on_diag_item.rs:30:17
    |
 LL |         let _ = match_type(cx, ty, &OPTION);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `clippy_utils::ty::is_type_diagnostic_item(cx, ty, sym::option_type)`
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `clippy_utils::ty::is_type_diagnostic_item(cx, ty, sym::Option)`
    |
 note: the lint level is defined here
   --> $DIR/match_type_on_diag_item.rs:1:9
@@ -15,7 +15,7 @@ error: usage of `clippy_utils::ty::match_type()` on a type diagnostic item
   --> $DIR/match_type_on_diag_item.rs:31:17
    |
 LL |         let _ = match_type(cx, ty, &["core", "result", "Result"]);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `clippy_utils::ty::is_type_diagnostic_item(cx, ty, sym::result_type)`
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `clippy_utils::ty::is_type_diagnostic_item(cx, ty, sym::Result)`
 
 error: usage of `clippy_utils::ty::match_type()` on a type diagnostic item
   --> $DIR/match_type_on_diag_item.rs:34:17

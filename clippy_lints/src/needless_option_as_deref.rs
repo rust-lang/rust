@@ -45,7 +45,7 @@ impl<'tcx> LateLintPass<'tcx> for OptionNeedlessDeref {
         let outer_ty = typeck.expr_ty(expr);
 
         if_chain! {
-            if is_type_diagnostic_item(cx,outer_ty,sym::option_type);
+            if is_type_diagnostic_item(cx,outer_ty,sym::Option);
             if let ExprKind::MethodCall(path, _, [sub_expr], _) = expr.kind;
             let symbol = path.ident.as_str();
             if symbol=="as_deref" || symbol=="as_deref_mut";

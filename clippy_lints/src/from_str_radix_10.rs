@@ -98,5 +98,5 @@ impl LateLintPass<'tcx> for FromStrRadix10 {
 
 /// Checks if a Ty is `String` or `&str`
 fn is_ty_stringish(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    is_type_diagnostic_item(cx, ty, sym::string_type) || is_type_diagnostic_item(cx, ty, sym::str)
+    is_type_diagnostic_item(cx, ty, sym::String) || is_type_diagnostic_item(cx, ty, sym::str)
 }

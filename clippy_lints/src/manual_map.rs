@@ -61,8 +61,8 @@ impl LateLintPass<'_> for ManualMap {
 
         let (scrutinee_ty, ty_ref_count, ty_mutability) =
             peel_mid_ty_refs_is_mutable(cx.typeck_results().expr_ty(scrutinee));
-        if !(is_type_diagnostic_item(cx, scrutinee_ty, sym::option_type)
-            && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::option_type))
+        if !(is_type_diagnostic_item(cx, scrutinee_ty, sym::Option)
+            && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::Option))
         {
             return;
         }

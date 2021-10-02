@@ -33,7 +33,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, arg: &'tcx
                 _ => arg,
             };
 
-            if is_type_diagnostic_item(cx, ty, sym::hashmap_type) || is_type_diagnostic_item(cx, ty, sym::BTreeMap) {
+            if is_type_diagnostic_item(cx, ty, sym::HashMap) || is_type_diagnostic_item(cx, ty, sym::BTreeMap) {
                 span_lint_and_then(
                     cx,
                     FOR_KV_MAP,

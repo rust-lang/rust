@@ -23,7 +23,7 @@ pub(super) fn check(
         if is_trait_method(cx, collect_recv, sym::Iterator);
         // return of collect `Result<(),_>`
         let collect_ret_ty = cx.typeck_results().expr_ty(expr);
-        if is_type_diagnostic_item(cx, collect_ret_ty, sym::result_type);
+        if is_type_diagnostic_item(cx, collect_ret_ty, sym::Result);
         if let ty::Adt(_, substs) = collect_ret_ty.kind();
         if let Some(result_t) = substs.types().next();
         if result_t.is_unit();

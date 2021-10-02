@@ -143,7 +143,7 @@ impl QuestionMark {
     fn is_option(cx: &LateContext<'_>, expression: &Expr<'_>) -> bool {
         let expr_ty = cx.typeck_results().expr_ty(expression);
 
-        is_type_diagnostic_item(cx, expr_ty, sym::option_type)
+        is_type_diagnostic_item(cx, expr_ty, sym::Option)
     }
 
     fn expression_returns_none(cx: &LateContext<'_>, expression: &Expr<'_>) -> bool {

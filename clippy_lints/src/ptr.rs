@@ -258,7 +258,7 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
         }
 
         if let ty::Ref(_, ty, Mutability::Not) = ty.kind() {
-            if is_type_diagnostic_item(cx, ty, sym::vec_type) {
+            if is_type_diagnostic_item(cx, ty, sym::Vec) {
                 if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_owned()")]) {
                     span_lint_and_then(
                         cx,
@@ -288,7 +288,7 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                         },
                     );
                 }
-            } else if is_type_diagnostic_item(cx, ty, sym::string_type) {
+            } else if is_type_diagnostic_item(cx, ty, sym::String) {
                 if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_string()"), ("as_str", "")]) {
                     span_lint_and_then(
                         cx,

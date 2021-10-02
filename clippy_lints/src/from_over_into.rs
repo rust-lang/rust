@@ -61,7 +61,7 @@ impl LateLintPass<'_> for FromOverInto {
         if_chain! {
             if let hir::ItemKind::Impl{ .. } = &item.kind;
             if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(item.def_id);
-            if cx.tcx.is_diagnostic_item(sym::into_trait, impl_trait_ref.def_id);
+            if cx.tcx.is_diagnostic_item(sym::Into, impl_trait_ref.def_id);
 
             then {
                 span_lint_and_help(

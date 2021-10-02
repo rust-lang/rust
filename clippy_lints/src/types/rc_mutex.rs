@@ -10,7 +10,7 @@ use super::RC_MUTEX;
 pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_>, def_id: DefId) -> bool {
     if_chain! {
         if cx.tcx.is_diagnostic_item(sym::Rc, def_id) ;
-        if let Some(_) = is_ty_param_diagnostic_item(cx, qpath, sym!(mutex_type)) ;
+        if let Some(_) = is_ty_param_diagnostic_item(cx, qpath, sym::Mutex) ;
         then {
             span_lint_and_help(
                 cx,

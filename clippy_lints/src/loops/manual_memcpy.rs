@@ -332,7 +332,7 @@ fn is_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'_>) -> bool {
         _ => false,
     };
 
-    is_slice || is_type_diagnostic_item(cx, ty, sym::vec_type) || is_type_diagnostic_item(cx, ty, sym::vecdeque_type)
+    is_slice || is_type_diagnostic_item(cx, ty, sym::Vec) || is_type_diagnostic_item(cx, ty, sym::VecDeque)
 }
 
 fn fetch_cloned_expr<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {

@@ -8,6 +8,7 @@ use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -74,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for Mutex {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let ty = cx.typeck_results().expr_ty(expr);
         if let ty::Adt(_, subst) = ty.kind() {
-            if is_type_diagnostic_item(cx, ty, sym!(mutex_type)) {
+            if is_type_diagnostic_item(cx, ty, sym::Mutex) {
                 let mutex_param = subst.type_at(0);
                 if let Some(atomic_name) = get_atomic_name(mutex_param) {
                     let msg = format!(

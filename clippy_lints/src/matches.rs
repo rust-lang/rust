@@ -948,7 +948,7 @@ fn check_overlapping_arms<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms
 
 fn check_wild_err_arm<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm<'tcx>]) {
     let ex_ty = cx.typeck_results().expr_ty(ex).peel_refs();
-    if is_type_diagnostic_item(cx, ex_ty, sym::result_type) {
+    if is_type_diagnostic_item(cx, ex_ty, sym::Result) {
         for arm in arms {
             if let PatKind::TupleStruct(ref path, inner, _) = arm.pat.kind {
                 let path_str = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false));
@@ -1025,8 +1025,8 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
     let adt_def = match ty.kind() {
         ty::Adt(adt_def, _)
             if adt_def.is_enum()
-                && !(is_type_diagnostic_item(cx, ty, sym::option_type)
-                    || is_type_diagnostic_item(cx, ty, sym::result_type)) =>
+                && !(is_type_diagnostic_item(cx, ty, sym::Option)
+                    || is_type_diagnostic_item(cx, ty, sym::Result)) =>
         {
             adt_def
         },
@@ -1869,7 +1869,7 @@ mod redundant_pattern_match {
             }
         }
         // Check for std types which implement drop, but only for memory allocation.
-        else if is_type_diagnostic_item(cx, ty, sym::vec_type)
+        else if is_type_diagnostic_item(cx, ty, sym::Vec)
             || is_type_lang_item(cx, ty, LangItem::OwnedBox)
             || is_type_diagnostic_item(cx, ty, sym::Rc)
             || is_type_diagnostic_item(cx, ty, sym::Arc)
