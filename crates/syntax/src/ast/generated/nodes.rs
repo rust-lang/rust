@@ -5,6 +5,7 @@ use crate::{
     SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, T,
 };
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Name {
     pub(crate) syntax: SyntaxNode,
@@ -13,6 +14,7 @@ impl Name {
     pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
     pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NameRef {
     pub(crate) syntax: SyntaxNode,
@@ -23,6 +25,7 @@ impl NameRef {
     pub fn super_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![super]) }
     pub fn crate_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![crate]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Lifetime {
     pub(crate) syntax: SyntaxNode,
@@ -32,6 +35,7 @@ impl Lifetime {
         support::token(&self.syntax, T![lifetime_ident])
     }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
     pub(crate) syntax: SyntaxNode,
@@ -41,6 +45,7 @@ impl Path {
     pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
     pub fn segment(&self) -> Option<PathSegment> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathSegment {
     pub(crate) syntax: SyntaxNode,
@@ -56,6 +61,7 @@ impl PathSegment {
     pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
     pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenericArgList {
     pub(crate) syntax: SyntaxNode,
@@ -66,6 +72,7 @@ impl GenericArgList {
     pub fn generic_args(&self) -> AstChildren<GenericArg> { support::children(&self.syntax) }
     pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParamList {
     pub(crate) syntax: SyntaxNode,
@@ -78,6 +85,7 @@ impl ParamList {
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
     pub fn pipe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![|]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RetType {
     pub(crate) syntax: SyntaxNode,
@@ -86,6 +94,7 @@ impl RetType {
     pub fn thin_arrow_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![->]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathType {
     pub(crate) syntax: SyntaxNode,
@@ -93,6 +102,7 @@ pub struct PathType {
 impl PathType {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeArg {
     pub(crate) syntax: SyntaxNode,
@@ -100,6 +110,7 @@ pub struct TypeArg {
 impl TypeArg {
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AssocTypeArg {
     pub(crate) syntax: SyntaxNode,
@@ -111,6 +122,7 @@ impl AssocTypeArg {
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LifetimeArg {
     pub(crate) syntax: SyntaxNode,
@@ -118,6 +130,7 @@ pub struct LifetimeArg {
 impl LifetimeArg {
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstArg {
     pub(crate) syntax: SyntaxNode,
@@ -125,6 +138,7 @@ pub struct ConstArg {
 impl ConstArg {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenericParamList {
     pub(crate) syntax: SyntaxNode,
@@ -134,6 +148,7 @@ impl GenericParamList {
     pub fn generic_params(&self) -> AstChildren<GenericParam> { support::children(&self.syntax) }
     pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeBoundList {
     pub(crate) syntax: SyntaxNode,
@@ -141,6 +156,7 @@ pub struct TypeBoundList {
 impl TypeBoundList {
     pub fn bounds(&self) -> AstChildren<TypeBound> { support::children(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCall {
     pub(crate) syntax: SyntaxNode,
@@ -152,6 +168,7 @@ impl MacroCall {
     pub fn token_tree(&self) -> Option<TokenTree> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Attr {
     pub(crate) syntax: SyntaxNode,
@@ -163,6 +180,7 @@ impl Attr {
     pub fn meta(&self) -> Option<Meta> { support::child(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TokenTree {
     pub(crate) syntax: SyntaxNode,
@@ -175,12 +193,14 @@ impl TokenTree {
     pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroItems {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasModuleItem for MacroItems {}
 impl MacroItems {}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroStmts {
     pub(crate) syntax: SyntaxNode,
@@ -189,6 +209,7 @@ impl MacroStmts {
     pub fn statements(&self) -> AstChildren<Stmt> { support::children(&self.syntax) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SourceFile {
     pub(crate) syntax: SyntaxNode,
@@ -198,6 +219,7 @@ impl ast::HasModuleItem for SourceFile {}
 impl SourceFile {
     pub fn shebang_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![shebang]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Const {
     pub(crate) syntax: SyntaxNode,
@@ -215,6 +237,7 @@ impl Const {
     pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Enum {
     pub(crate) syntax: SyntaxNode,
@@ -227,6 +250,7 @@ impl Enum {
     pub fn enum_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![enum]) }
     pub fn variant_list(&self) -> Option<VariantList> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExternBlock {
     pub(crate) syntax: SyntaxNode,
@@ -236,6 +260,7 @@ impl ExternBlock {
     pub fn abi(&self) -> Option<Abi> { support::child(&self.syntax) }
     pub fn extern_item_list(&self) -> Option<ExternItemList> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExternCrate {
     pub(crate) syntax: SyntaxNode,
@@ -249,6 +274,7 @@ impl ExternCrate {
     pub fn rename(&self) -> Option<Rename> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Fn {
     pub(crate) syntax: SyntaxNode,
@@ -269,6 +295,7 @@ impl Fn {
     pub fn body(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Impl {
     pub(crate) syntax: SyntaxNode,
@@ -285,6 +312,7 @@ impl Impl {
     pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
     pub fn assoc_item_list(&self) -> Option<AssocItemList> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroRules {
     pub(crate) syntax: SyntaxNode,
@@ -299,6 +327,7 @@ impl MacroRules {
     pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
     pub fn token_tree(&self) -> Option<TokenTree> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroDef {
     pub(crate) syntax: SyntaxNode,
@@ -311,6 +340,7 @@ impl MacroDef {
     pub fn args(&self) -> Option<TokenTree> { support::child(&self.syntax) }
     pub fn body(&self) -> Option<TokenTree> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Module {
     pub(crate) syntax: SyntaxNode,
@@ -323,6 +353,7 @@ impl Module {
     pub fn item_list(&self) -> Option<ItemList> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Static {
     pub(crate) syntax: SyntaxNode,
@@ -339,6 +370,7 @@ impl Static {
     pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Struct {
     pub(crate) syntax: SyntaxNode,
@@ -352,6 +384,7 @@ impl Struct {
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
     pub fn field_list(&self) -> Option<FieldList> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Trait {
     pub(crate) syntax: SyntaxNode,
@@ -367,6 +400,7 @@ impl Trait {
     pub fn trait_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![trait]) }
     pub fn assoc_item_list(&self) -> Option<AssocItemList> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeAlias {
     pub(crate) syntax: SyntaxNode,
@@ -383,6 +417,7 @@ impl TypeAlias {
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Union {
     pub(crate) syntax: SyntaxNode,
@@ -395,6 +430,7 @@ impl Union {
     pub fn union_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![union]) }
     pub fn record_field_list(&self) -> Option<RecordFieldList> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Use {
     pub(crate) syntax: SyntaxNode,
@@ -406,6 +442,7 @@ impl Use {
     pub fn use_tree(&self) -> Option<UseTree> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Visibility {
     pub(crate) syntax: SyntaxNode,
@@ -417,6 +454,7 @@ impl Visibility {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ItemList {
     pub(crate) syntax: SyntaxNode,
@@ -427,6 +465,7 @@ impl ItemList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rename {
     pub(crate) syntax: SyntaxNode,
@@ -436,6 +475,7 @@ impl Rename {
     pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
     pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseTree {
     pub(crate) syntax: SyntaxNode,
@@ -447,6 +487,7 @@ impl UseTree {
     pub fn use_tree_list(&self) -> Option<UseTreeList> { support::child(&self.syntax) }
     pub fn rename(&self) -> Option<Rename> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseTreeList {
     pub(crate) syntax: SyntaxNode,
@@ -456,6 +497,7 @@ impl UseTreeList {
     pub fn use_trees(&self) -> AstChildren<UseTree> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Abi {
     pub(crate) syntax: SyntaxNode,
@@ -463,6 +505,7 @@ pub struct Abi {
 impl Abi {
     pub fn extern_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![extern]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WhereClause {
     pub(crate) syntax: SyntaxNode,
@@ -471,6 +514,7 @@ impl WhereClause {
     pub fn where_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![where]) }
     pub fn predicates(&self) -> AstChildren<WherePred> { support::children(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BlockExpr {
     pub(crate) syntax: SyntaxNode,
@@ -484,6 +528,7 @@ impl BlockExpr {
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     pub fn stmt_list(&self) -> Option<StmtList> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SelfParam {
     pub(crate) syntax: SyntaxNode,
@@ -497,6 +542,7 @@ impl SelfParam {
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Param {
     pub(crate) syntax: SyntaxNode,
@@ -508,6 +554,7 @@ impl Param {
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn dotdotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![...]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordFieldList {
     pub(crate) syntax: SyntaxNode,
@@ -517,6 +564,7 @@ impl RecordFieldList {
     pub fn fields(&self) -> AstChildren<RecordField> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleFieldList {
     pub(crate) syntax: SyntaxNode,
@@ -526,6 +574,7 @@ impl TupleFieldList {
     pub fn fields(&self) -> AstChildren<TupleField> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordField {
     pub(crate) syntax: SyntaxNode,
@@ -537,6 +586,7 @@ impl RecordField {
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleField {
     pub(crate) syntax: SyntaxNode,
@@ -546,6 +596,7 @@ impl ast::HasVisibility for TupleField {}
 impl TupleField {
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VariantList {
     pub(crate) syntax: SyntaxNode,
@@ -555,6 +606,7 @@ impl VariantList {
     pub fn variants(&self) -> AstChildren<Variant> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Variant {
     pub(crate) syntax: SyntaxNode,
@@ -567,6 +619,7 @@ impl Variant {
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AssocItemList {
     pub(crate) syntax: SyntaxNode,
@@ -577,6 +630,7 @@ impl AssocItemList {
     pub fn assoc_items(&self) -> AstChildren<AssocItem> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExternItemList {
     pub(crate) syntax: SyntaxNode,
@@ -587,6 +641,7 @@ impl ExternItemList {
     pub fn extern_items(&self) -> AstChildren<ExternItem> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstParam {
     pub(crate) syntax: SyntaxNode,
@@ -600,6 +655,7 @@ impl ConstParam {
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn default_val(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LifetimeParam {
     pub(crate) syntax: SyntaxNode,
@@ -609,6 +665,7 @@ impl ast::HasTypeBounds for LifetimeParam {}
 impl LifetimeParam {
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeParam {
     pub(crate) syntax: SyntaxNode,
@@ -620,6 +677,7 @@ impl TypeParam {
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn default_type(&self) -> Option<Type> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WherePred {
     pub(crate) syntax: SyntaxNode,
@@ -631,6 +689,7 @@ impl WherePred {
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Meta {
     pub(crate) syntax: SyntaxNode,
@@ -641,6 +700,7 @@ impl Meta {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn token_tree(&self) -> Option<TokenTree> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExprStmt {
     pub(crate) syntax: SyntaxNode,
@@ -649,6 +709,7 @@ impl ExprStmt {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LetStmt {
     pub(crate) syntax: SyntaxNode,
@@ -663,6 +724,7 @@ impl LetStmt {
     pub fn initializer(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ArrayExpr {
     pub(crate) syntax: SyntaxNode,
@@ -675,6 +737,7 @@ impl ArrayExpr {
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AwaitExpr {
     pub(crate) syntax: SyntaxNode,
@@ -685,12 +748,14 @@ impl AwaitExpr {
     pub fn dot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![.]) }
     pub fn await_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![await]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BinExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for BinExpr {}
 impl BinExpr {}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BoxExpr {
     pub(crate) syntax: SyntaxNode,
@@ -700,6 +765,7 @@ impl BoxExpr {
     pub fn box_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![box]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BreakExpr {
     pub(crate) syntax: SyntaxNode,
@@ -710,6 +776,7 @@ impl BreakExpr {
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CallExpr {
     pub(crate) syntax: SyntaxNode,
@@ -719,6 +786,7 @@ impl ast::HasArgList for CallExpr {}
 impl CallExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CastExpr {
     pub(crate) syntax: SyntaxNode,
@@ -729,6 +797,7 @@ impl CastExpr {
     pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ClosureExpr {
     pub(crate) syntax: SyntaxNode,
@@ -742,6 +811,7 @@ impl ClosureExpr {
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
     pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ContinueExpr {
     pub(crate) syntax: SyntaxNode,
@@ -753,6 +823,7 @@ impl ContinueExpr {
     }
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldExpr {
     pub(crate) syntax: SyntaxNode,
@@ -763,6 +834,7 @@ impl FieldExpr {
     pub fn dot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![.]) }
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ForExpr {
     pub(crate) syntax: SyntaxNode,
@@ -775,6 +847,7 @@ impl ForExpr {
     pub fn in_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![in]) }
     pub fn iterable(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IfExpr {
     pub(crate) syntax: SyntaxNode,
@@ -785,6 +858,7 @@ impl IfExpr {
     pub fn condition(&self) -> Option<Condition> { support::child(&self.syntax) }
     pub fn else_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![else]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IndexExpr {
     pub(crate) syntax: SyntaxNode,
@@ -794,12 +868,14 @@ impl IndexExpr {
     pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Literal {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for Literal {}
 impl Literal {}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LoopExpr {
     pub(crate) syntax: SyntaxNode,
@@ -809,6 +885,7 @@ impl ast::HasLoopBody for LoopExpr {}
 impl LoopExpr {
     pub fn loop_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![loop]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchExpr {
     pub(crate) syntax: SyntaxNode,
@@ -819,6 +896,7 @@ impl MatchExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn match_arm_list(&self) -> Option<MatchArmList> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MethodCallExpr {
     pub(crate) syntax: SyntaxNode,
@@ -831,6 +909,7 @@ impl MethodCallExpr {
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn generic_arg_list(&self) -> Option<GenericArgList> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParenExpr {
     pub(crate) syntax: SyntaxNode,
@@ -841,6 +920,7 @@ impl ParenExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathExpr {
     pub(crate) syntax: SyntaxNode,
@@ -849,6 +929,7 @@ impl ast::HasAttrs for PathExpr {}
 impl PathExpr {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PrefixExpr {
     pub(crate) syntax: SyntaxNode,
@@ -857,12 +938,14 @@ impl ast::HasAttrs for PrefixExpr {}
 impl PrefixExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RangeExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for RangeExpr {}
 impl RangeExpr {}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordExpr {
     pub(crate) syntax: SyntaxNode,
@@ -873,6 +956,7 @@ impl RecordExpr {
         support::child(&self.syntax)
     }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RefExpr {
     pub(crate) syntax: SyntaxNode,
@@ -885,6 +969,7 @@ impl RefExpr {
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ReturnExpr {
     pub(crate) syntax: SyntaxNode,
@@ -894,6 +979,7 @@ impl ReturnExpr {
     pub fn return_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![return]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TryExpr {
     pub(crate) syntax: SyntaxNode,
@@ -903,6 +989,7 @@ impl TryExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn question_mark_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![?]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleExpr {
     pub(crate) syntax: SyntaxNode,
@@ -913,6 +1000,7 @@ impl TupleExpr {
     pub fn fields(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WhileExpr {
     pub(crate) syntax: SyntaxNode,
@@ -923,6 +1011,7 @@ impl WhileExpr {
     pub fn while_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![while]) }
     pub fn condition(&self) -> Option<Condition> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct YieldExpr {
     pub(crate) syntax: SyntaxNode,
@@ -932,6 +1021,7 @@ impl YieldExpr {
     pub fn yield_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![yield]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StmtList {
     pub(crate) syntax: SyntaxNode,
@@ -943,6 +1033,7 @@ impl StmtList {
     pub fn tail_expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Label {
     pub(crate) syntax: SyntaxNode,
@@ -951,6 +1042,7 @@ impl Label {
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordExprFieldList {
     pub(crate) syntax: SyntaxNode,
@@ -963,6 +1055,7 @@ impl RecordExprFieldList {
     pub fn spread(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordExprField {
     pub(crate) syntax: SyntaxNode,
@@ -973,6 +1066,7 @@ impl RecordExprField {
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ArgList {
     pub(crate) syntax: SyntaxNode,
@@ -982,6 +1076,7 @@ impl ArgList {
     pub fn args(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Condition {
     pub(crate) syntax: SyntaxNode,
@@ -992,6 +1087,7 @@ impl Condition {
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchArmList {
     pub(crate) syntax: SyntaxNode,
@@ -1002,6 +1098,7 @@ impl MatchArmList {
     pub fn arms(&self) -> AstChildren<MatchArm> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchArm {
     pub(crate) syntax: SyntaxNode,
@@ -1014,6 +1111,7 @@ impl MatchArm {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn comma_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![,]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchGuard {
     pub(crate) syntax: SyntaxNode,
@@ -1025,6 +1123,7 @@ impl MatchGuard {
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ArrayType {
     pub(crate) syntax: SyntaxNode,
@@ -1036,6 +1135,7 @@ impl ArrayType {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DynTraitType {
     pub(crate) syntax: SyntaxNode,
@@ -1044,6 +1144,7 @@ impl DynTraitType {
     pub fn dyn_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![dyn]) }
     pub fn type_bound_list(&self) -> Option<TypeBoundList> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnPtrType {
     pub(crate) syntax: SyntaxNode,
@@ -1057,6 +1158,7 @@ impl FnPtrType {
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ForType {
     pub(crate) syntax: SyntaxNode,
@@ -1066,6 +1168,7 @@ impl ForType {
     pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImplTraitType {
     pub(crate) syntax: SyntaxNode,
@@ -1074,6 +1177,7 @@ impl ImplTraitType {
     pub fn impl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![impl]) }
     pub fn type_bound_list(&self) -> Option<TypeBoundList> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct InferType {
     pub(crate) syntax: SyntaxNode,
@@ -1081,6 +1185,7 @@ pub struct InferType {
 impl InferType {
     pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroType {
     pub(crate) syntax: SyntaxNode,
@@ -1088,6 +1193,7 @@ pub struct MacroType {
 impl MacroType {
     pub fn macro_call(&self) -> Option<MacroCall> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NeverType {
     pub(crate) syntax: SyntaxNode,
@@ -1095,6 +1201,7 @@ pub struct NeverType {
 impl NeverType {
     pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParenType {
     pub(crate) syntax: SyntaxNode,
@@ -1104,6 +1211,7 @@ impl ParenType {
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PtrType {
     pub(crate) syntax: SyntaxNode,
@@ -1114,6 +1222,7 @@ impl PtrType {
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RefType {
     pub(crate) syntax: SyntaxNode,
@@ -1124,6 +1233,7 @@ impl RefType {
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SliceType {
     pub(crate) syntax: SyntaxNode,
@@ -1133,6 +1243,7 @@ impl SliceType {
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleType {
     pub(crate) syntax: SyntaxNode,
@@ -1142,6 +1253,7 @@ impl TupleType {
     pub fn fields(&self) -> AstChildren<Type> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeBound {
     pub(crate) syntax: SyntaxNode,
@@ -1151,6 +1263,7 @@ impl TypeBound {
     pub fn question_mark_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![?]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IdentPat {
     pub(crate) syntax: SyntaxNode,
@@ -1163,6 +1276,7 @@ impl IdentPat {
     pub fn at_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![@]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BoxPat {
     pub(crate) syntax: SyntaxNode,
@@ -1171,6 +1285,7 @@ impl BoxPat {
     pub fn box_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![box]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RestPat {
     pub(crate) syntax: SyntaxNode,
@@ -1178,6 +1293,7 @@ pub struct RestPat {
 impl RestPat {
     pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![..]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LiteralPat {
     pub(crate) syntax: SyntaxNode,
@@ -1185,6 +1301,7 @@ pub struct LiteralPat {
 impl LiteralPat {
     pub fn literal(&self) -> Option<Literal> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroPat {
     pub(crate) syntax: SyntaxNode,
@@ -1192,6 +1309,7 @@ pub struct MacroPat {
 impl MacroPat {
     pub fn macro_call(&self) -> Option<MacroCall> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OrPat {
     pub(crate) syntax: SyntaxNode,
@@ -1199,6 +1317,7 @@ pub struct OrPat {
 impl OrPat {
     pub fn pats(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParenPat {
     pub(crate) syntax: SyntaxNode,
@@ -1208,6 +1327,7 @@ impl ParenPat {
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathPat {
     pub(crate) syntax: SyntaxNode,
@@ -1215,6 +1335,7 @@ pub struct PathPat {
 impl PathPat {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WildcardPat {
     pub(crate) syntax: SyntaxNode,
@@ -1222,11 +1343,13 @@ pub struct WildcardPat {
 impl WildcardPat {
     pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RangePat {
     pub(crate) syntax: SyntaxNode,
 }
 impl RangePat {}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordPat {
     pub(crate) syntax: SyntaxNode,
@@ -1237,6 +1360,7 @@ impl RecordPat {
         support::child(&self.syntax)
     }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RefPat {
     pub(crate) syntax: SyntaxNode,
@@ -1246,6 +1370,7 @@ impl RefPat {
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SlicePat {
     pub(crate) syntax: SyntaxNode,
@@ -1255,6 +1380,7 @@ impl SlicePat {
     pub fn pats(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TuplePat {
     pub(crate) syntax: SyntaxNode,
@@ -1264,6 +1390,7 @@ impl TuplePat {
     pub fn fields(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleStructPat {
     pub(crate) syntax: SyntaxNode,
@@ -1274,6 +1401,7 @@ impl TupleStructPat {
     pub fn fields(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstBlockPat {
     pub(crate) syntax: SyntaxNode,
@@ -1282,6 +1410,7 @@ impl ConstBlockPat {
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     pub fn block_expr(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordPatFieldList {
     pub(crate) syntax: SyntaxNode,
@@ -1292,6 +1421,7 @@ impl RecordPatFieldList {
     pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![..]) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordPatField {
     pub(crate) syntax: SyntaxNode,
@@ -1302,6 +1432,7 @@ impl RecordPatField {
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GenericArg {
     TypeArg(TypeArg),
@@ -1309,6 +1440,7 @@ pub enum GenericArg {
     LifetimeArg(LifetimeArg),
     ConstArg(ConstArg),
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
     ArrayType(ArrayType),
@@ -1326,6 +1458,7 @@ pub enum Type {
     SliceType(SliceType),
     TupleType(TupleType),
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
     ArrayExpr(ArrayExpr),
@@ -1360,6 +1493,7 @@ pub enum Expr {
     WhileExpr(WhileExpr),
     YieldExpr(YieldExpr),
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Item {
     Const(Const),
@@ -1380,12 +1514,14 @@ pub enum Item {
     Use(Use),
 }
 impl ast::HasAttrs for Item {}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Stmt {
     ExprStmt(ExprStmt),
     Item(Item),
     LetStmt(LetStmt),
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Pat {
     IdentPat(IdentPat),
@@ -1405,11 +1541,13 @@ pub enum Pat {
     TupleStructPat(TupleStructPat),
     ConstBlockPat(ConstBlockPat),
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum FieldList {
     RecordFieldList(RecordFieldList),
     TupleFieldList(TupleFieldList),
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Adt {
     Enum(Enum),
@@ -1420,6 +1558,7 @@ impl ast::HasAttrs for Adt {}
 impl ast::HasGenericParams for Adt {}
 impl ast::HasName for Adt {}
 impl ast::HasVisibility for Adt {}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AssocItem {
     Const(Const),
@@ -1428,6 +1567,7 @@ pub enum AssocItem {
     TypeAlias(TypeAlias),
 }
 impl ast::HasAttrs for AssocItem {}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ExternItem {
     Fn(Fn),
@@ -1436,6 +1576,7 @@ pub enum ExternItem {
     TypeAlias(TypeAlias),
 }
 impl ast::HasAttrs for ExternItem {}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GenericParam {
     ConstParam(ConstParam),
@@ -1443,41 +1584,49 @@ pub enum GenericParam {
     TypeParam(TypeParam),
 }
 impl ast::HasAttrs for GenericParam {}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AnyHasArgList {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasArgList for AnyHasArgList {}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AnyHasAttrs {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for AnyHasAttrs {}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AnyHasGenericParams {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasGenericParams for AnyHasGenericParams {}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AnyHasLoopBody {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasLoopBody for AnyHasLoopBody {}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AnyHasModuleItem {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasModuleItem for AnyHasModuleItem {}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AnyHasName {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasName for AnyHasName {}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AnyHasTypeBounds {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasTypeBounds for AnyHasTypeBounds {}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AnyHasVisibility {
     pub(crate) syntax: SyntaxNode,
