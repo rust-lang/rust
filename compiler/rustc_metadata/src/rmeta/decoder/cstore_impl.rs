@@ -506,7 +506,13 @@ impl CrateStore for CStore {
         DefId { krate: cnum, index: def_index }
     }
 
-    fn expn_hash_to_expn_id(&self, cnum: CrateNum, index_guess: u32, hash: ExpnHash) -> ExpnId {
-        self.get_crate_data(cnum).expn_hash_to_expn_id(index_guess, hash)
+    fn expn_hash_to_expn_id(
+        &self,
+        sess: &Session,
+        cnum: CrateNum,
+        index_guess: u32,
+        hash: ExpnHash,
+    ) -> ExpnId {
+        self.get_crate_data(cnum).expn_hash_to_expn_id(sess, index_guess, hash)
     }
 }
