@@ -104,8 +104,10 @@ pub enum DefKind {
     Use,
     /// An `extern` block.
     ForeignMod,
-    /// Anonymous constant, e.g. the `1 + 2` in `[u8; 1 + 2]`, or `const { 1 + 2}`
+    /// Anonymous constant, e.g. the `1 + 2` in `[u8; 1 + 2]`
     AnonConst,
+    /// An inline constant, e.g. `const { 1 + 2 }`
+    InlineConst,
     /// Opaque type, aka `impl Trait`.
     OpaqueTy,
     Field,
@@ -155,6 +157,7 @@ impl DefKind {
             DefKind::Use => "import",
             DefKind::ForeignMod => "foreign module",
             DefKind::AnonConst => "constant expression",
+            DefKind::InlineConst => "inline constant",
             DefKind::Field => "field",
             DefKind::Impl => "implementation",
             DefKind::Closure => "closure",
@@ -174,6 +177,7 @@ impl DefKind {
             | DefKind::OpaqueTy
             | DefKind::Impl
             | DefKind::Use
+            | DefKind::InlineConst
             | DefKind::ExternCrate => "an",
             DefKind::Macro(macro_kind) => macro_kind.article(),
             _ => "a",
@@ -207,6 +211,7 @@ impl DefKind {
 
             // Not namespaced.
             DefKind::AnonConst
+            | DefKind::InlineConst
             | DefKind::Field
             | DefKind::LifetimeParam
             | DefKind::ExternCrate

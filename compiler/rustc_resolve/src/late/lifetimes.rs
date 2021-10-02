@@ -540,7 +540,7 @@ fn is_late_bound_map<'tcx>(
     def_id: LocalDefId,
 ) -> Option<(LocalDefId, &'tcx FxHashSet<ItemLocalId>)> {
     match tcx.def_kind(def_id) {
-        DefKind::AnonConst => {
+        DefKind::AnonConst | DefKind::InlineConst => {
             let mut def_id = tcx
                 .parent(def_id.to_def_id())
                 .unwrap_or_else(|| bug!("anon const or closure without a parent"));

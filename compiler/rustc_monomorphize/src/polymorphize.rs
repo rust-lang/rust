@@ -167,6 +167,7 @@ fn mark_used_by_default_parameters<'tcx>(
         | DefKind::Use
         | DefKind::ForeignMod
         | DefKind::AnonConst
+        | DefKind::InlineConst
         | DefKind::OpaqueTy
         | DefKind::Field
         | DefKind::LifetimeParam
@@ -303,7 +304,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
                 ControlFlow::CONTINUE
             }
             ty::ConstKind::Unevaluated(uv)
-                if self.tcx.def_kind(uv.def.did) == DefKind::AnonConst =>
+                if matches!(self.tcx.def_kind(uv.def.did), DefKind::AnonConst | DefKind::InlineConst) =>
             {
                 self.visit_child_body(uv.def.did, uv.substs(self.tcx));
                 ControlFlow::CONTINUE

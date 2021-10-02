@@ -1927,7 +1927,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 | DefKind::Static
                 | DefKind::AssocConst
                 | DefKind::Ctor(..)
-                | DefKind::AnonConst => self.mir_for_ctfe_opt_const_arg(def),
+                | DefKind::AnonConst
+                | DefKind::InlineConst => self.mir_for_ctfe_opt_const_arg(def),
                 // If the caller wants `mir_for_ctfe` of a function they should not be using
                 // `instance_mir`, so we'll assume const fn also wants the optimized version.
                 _ => {

@@ -1065,7 +1065,10 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
                 PatKind::Path(path) => {
                     #[allow(clippy::match_same_arms)]
                     let id = match cx.qpath_res(path, pat.hir_id) {
-                        Res::Def(DefKind::Const | DefKind::ConstParam | DefKind::AnonConst, _) => return,
+                        Res::Def(
+                            DefKind::Const | DefKind::ConstParam | DefKind::AnonConst | DefKind::InlineConst,
+                            _,
+                        ) => return,
                         Res::Def(_, id) => id,
                         _ => return,
                     };

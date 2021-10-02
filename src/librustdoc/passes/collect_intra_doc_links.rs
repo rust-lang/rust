@@ -1937,7 +1937,8 @@ fn resolution_failure(
                             | Use
                             | LifetimeParam
                             | Ctor(_, _)
-                            | AnonConst => {
+                            | AnonConst
+                            | InlineConst => {
                                 let note = assoc_item_not_allowed(res);
                                 if let Some(span) = sp {
                                     diag.span_label(span, &note);

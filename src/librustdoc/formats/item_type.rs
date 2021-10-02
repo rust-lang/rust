@@ -134,6 +134,7 @@ impl From<DefKind> for ItemType {
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::AnonConst
+            | DefKind::InlineConst
             | DefKind::OpaqueTy
             | DefKind::Field
             | DefKind::LifetimeParam
