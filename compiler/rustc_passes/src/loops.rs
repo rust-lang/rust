@@ -235,9 +235,9 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
                     .span_label(span, format!("cannot `{}` outside of a loop", name))
                     .span_suggestion(
                         span,
-                        "consider removing the",
-                        name.into(),
-                        rustc_errors::Applicability::MachineApplicable,
+                        &format!("consider removing the `{}`", name),
+                        String::new(),
+                        Applicability::MaybeIncorrect,
                     )
                     .emit();
             }
