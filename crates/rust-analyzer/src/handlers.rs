@@ -1182,9 +1182,9 @@ pub(crate) fn handle_document_highlight(
     };
     let res = refs
         .into_iter()
-        .map(|ide::HighlightedRange { range, access }| lsp_types::DocumentHighlight {
+        .map(|ide::HighlightedRange { range, category }| lsp_types::DocumentHighlight {
             range: to_proto::range(&line_index, range),
-            kind: access.map(to_proto::document_highlight_kind),
+            kind: category.map(to_proto::document_highlight_kind),
         })
         .collect();
     Ok(Some(res))

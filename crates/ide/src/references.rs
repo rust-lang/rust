@@ -37,7 +37,7 @@ pub struct ReferenceSearchResult {
 #[derive(Debug, Clone)]
 pub struct Declaration {
     pub nav: NavigationTarget,
-    pub access: Option<ReferenceCategory>,
+    pub is_mut: bool,
 }
 
 // Feature: Find All References
@@ -88,7 +88,7 @@ pub(crate) fn find_all_refs(
                 .map(|nav| {
                     let decl_range = nav.focus_or_full_range();
                     Declaration {
-                        access: decl_access(&def, sema.parse(nav.file_id).syntax(), decl_range),
+                        is_mut: decl_mutability(&def, sema.parse(nav.file_id).syntax(), decl_range),
                         nav,
                     }
                 });
@@ -145,27 +145,19 @@ pub(crate) fn find_defs<'a>(
     })
 }
 
-pub(crate) fn decl_access(
-    def: &Definition,
-    syntax: &SyntaxNode,
-    range: TextRange,
-) -> Option<ReferenceCategory> {
+pub(crate) fn decl_mutability(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> bool {
     match def {
         Definition::Local(_) | Definition::Field(_) => {}
-        _ => return None,
+        _ => return false,
     };
 
-    let stmt = find_node_at_offset::<ast::LetStmt>(syntax, range.start())?;
-    if stmt.initializer().is_some() {
-        let pat = stmt.pat()?;
-        if let ast::Pat::IdentPat(it) = pat {
-            if it.mut_token().is_some() {
-                return Some(ReferenceCategory::Write);
-            }
-        }
+    match find_node_at_offset::<ast::LetStmt>(syntax, range.start()) {
+        Some(stmt) if stmt.initializer().is_some() => match stmt.pat() {
+            Some(ast::Pat::IdentPat(it)) => it.mut_token().is_some(),
+            _ => false,
+        },
+        _ => false,
     }
-
-    None
 }
 
 /// Filter out all non-literal usages for adt-defs
@@ -283,7 +275,7 @@ fn is_lit_name_ref(name_ref: &ast::NameRef) -> bool {
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use ide_db::base_db::FileId;
+    use ide_db::{base_db::FileId, search::ReferenceCategory};
     use stdx::format_to;
 
     use crate::{fixture, SearchScope};
@@ -1095,8 +1087,8 @@ impl Foo {
 
             if let Some(decl) = refs.declaration {
                 format_to!(actual, "{}", decl.nav.debug_render());
-                if let Some(access) = decl.access {
-                    format_to!(actual, " {:?}", access)
+                if decl.is_mut {
+                    format_to!(actual, " {:?}", ReferenceCategory::Write)
                 }
                 actual += "\n\n";
             }
