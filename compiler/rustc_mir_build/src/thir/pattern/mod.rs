@@ -822,8 +822,10 @@ fn pat_to_deconstructed<'p, 'tcx>(
             use rustc_apfloat::Float;
             let ty = lo.ty;
             let size = number_type_size(cx.tcx, ty);
-            let lo = lo.eval_bits(cx.tcx, cx.param_env, ty);
-            let hi = hi.eval_bits(cx.tcx, cx.param_env, ty);
+            let lo = fast_try_eval_bits(cx.tcx, cx.param_env, size, lo)
+                .unwrap_or_else(|| bug!("expected bits of {:?}, got {:?}", ty, lo));
+            let hi = fast_try_eval_bits(cx.tcx, cx.param_env, size, hi)
+                .unwrap_or_else(|| bug!("expected bits of {:?}, got {:?}", ty, hi));
             ctor = match ty.kind() {
                 ty::Char | ty::Int(_) | ty::Uint(_) => {
                     Constructor::IntRange(IntRange::from_bits(ty, size, lo, hi, &end))
