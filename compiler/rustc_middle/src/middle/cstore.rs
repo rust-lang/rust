@@ -9,6 +9,7 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_macros::HashStable;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
+use rustc_session::Session;
 use rustc_span::hygiene::{ExpnHash, ExpnId};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -190,7 +191,13 @@ pub trait CrateStore: std::fmt::Debug {
 
     /// Fetch a DefId from a DefPathHash for a foreign crate.
     fn def_path_hash_to_def_id(&self, cnum: CrateNum, hash: DefPathHash) -> DefId;
-    fn expn_hash_to_expn_id(&self, cnum: CrateNum, index_guess: u32, hash: ExpnHash) -> ExpnId;
+    fn expn_hash_to_expn_id(
+        &self,
+        sess: &Session,
+        cnum: CrateNum,
+        index_guess: u32,
+        hash: ExpnHash,
+    ) -> ExpnId;
 }
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync;

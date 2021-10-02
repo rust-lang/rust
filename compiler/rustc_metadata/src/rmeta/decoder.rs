@@ -1623,7 +1623,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.def_path_hash_map.def_path_hash_to_def_index(&hash)
     }
 
-    fn expn_hash_to_expn_id(&self, index_guess: u32, hash: ExpnHash) -> ExpnId {
+    fn expn_hash_to_expn_id(&self, sess: &Session, index_guess: u32, hash: ExpnHash) -> ExpnId {
         debug_assert_eq!(ExpnId::from_hash(hash), None);
         let index_guess = ExpnIndex::from_u32(index_guess);
         let old_hash = self.root.expn_hashes.get(self, index_guess).map(|lazy| lazy.decode(self));
@@ -1654,7 +1654,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             map[&hash]
         };
 
-        let data = self.root.expn_data.get(self, index).unwrap().decode(self);
+        let data = self.root.expn_data.get(self, index).unwrap().decode((self, sess));
         rustc_span::hygiene::register_expn_id(self.cnum, index, data, hash)
     }
 

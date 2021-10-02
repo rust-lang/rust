@@ -667,7 +667,12 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
             rustc_span::hygiene::register_local_expn_id(data, hash)
         } else {
             let index_guess = decoder.foreign_expn_data[&hash];
-            decoder.tcx.cstore_untracked().expn_hash_to_expn_id(krate, index_guess, hash)
+            decoder.tcx.cstore_untracked().expn_hash_to_expn_id(
+                decoder.tcx.sess,
+                krate,
+                index_guess,
+                hash,
+            )
         };
 
         #[cfg(debug_assertions)]
