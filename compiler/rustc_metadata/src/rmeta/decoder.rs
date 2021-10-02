@@ -1646,8 +1646,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     let i = ExpnIndex::from_u32(i);
                     if let Some(hash) = self.root.expn_hashes.get(self, i) {
                         map.insert(hash.decode(self), i);
-                    } else {
-                        panic!("Missing expn_hash entry for {:?}", i);
                     }
                 }
                 map
