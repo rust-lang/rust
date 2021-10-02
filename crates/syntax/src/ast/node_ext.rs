@@ -58,9 +58,6 @@ impl ast::BlockExpr {
         self.stmt_list().into_iter().flat_map(|it| it.items())
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.statements().next().is_none() && self.tail_expr().is_none()
-    }
     pub fn statements(&self) -> impl Iterator<Item = ast::Stmt> {
         self.stmt_list().into_iter().flat_map(|it| it.statements())
     }

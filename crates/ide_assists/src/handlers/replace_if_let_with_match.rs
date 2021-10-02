@@ -253,7 +253,10 @@ fn pick_pattern_and_expr_order(
 
 fn is_empty_expr(expr: &ast::Expr) -> bool {
     match expr {
-        ast::Expr::BlockExpr(expr) => expr.is_empty(),
+        ast::Expr::BlockExpr(expr) => match expr.stmt_list() {
+            Some(it) => it.statements().next().is_none() && it.tail_expr().is_none(),
+            None => true,
+        },
         ast::Expr::TupleExpr(expr) => expr.fields().next().is_none(),
         _ => false,
     }
