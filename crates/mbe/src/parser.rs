@@ -24,19 +24,27 @@ pub(crate) struct MetaTemplate(pub(crate) Vec<Op>);
 
 impl MetaTemplate {
     pub(crate) fn parse_pattern(pattern: &tt::Subtree) -> Result<MetaTemplate, ParseError> {
-        let ops =
-            parse_inner(pattern, Mode::Pattern).into_iter().collect::<Result<_, ParseError>>()?;
-        Ok(MetaTemplate(ops))
+        MetaTemplate::parse(pattern, Mode::Pattern)
     }
 
     pub(crate) fn parse_template(template: &tt::Subtree) -> Result<MetaTemplate, ParseError> {
-        let ops =
-            parse_inner(template, Mode::Template).into_iter().collect::<Result<_, ParseError>>()?;
-        Ok(MetaTemplate(ops))
+        MetaTemplate::parse(template, Mode::Template)
     }
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = &Op> {
         self.0.iter()
+    }
+
+    fn parse(tt: &tt::Subtree, mode: Mode) -> Result<MetaTemplate, ParseError> {
+        let mut src = TtIter::new(tt);
+
+        let mut res = Vec::new();
+        while let Some(first) = src.next() {
+            let op = next_op(first, &mut src, mode)?;
+            res.push(op)
+        }
+
+        Ok(MetaTemplate(res))
     }
 }
 
@@ -96,15 +104,6 @@ enum Mode {
     Template,
 }
 
-fn parse_inner(tt: &tt::Subtree, mode: Mode) -> Vec<Result<Op, ParseError>> {
-    let mut src = TtIter::new(tt);
-    std::iter::from_fn(move || {
-        let first = src.next()?;
-        Some(next_op(first, &mut src, mode))
-    })
-    .collect()
-}
-
 macro_rules! err {
     ($($tt:tt)*) => {
         ParseError::UnexpectedToken(($($tt)*).to_string())
@@ -128,10 +127,8 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
             match second {
                 tt::TokenTree::Subtree(subtree) => {
                     let (separator, kind) = parse_repeat(src)?;
-                    let tokens = parse_inner(subtree, mode)
-                        .into_iter()
-                        .collect::<Result<Vec<Op>, ParseError>>()?;
-                    Op::Repeat { tokens: MetaTemplate(tokens), separator, kind }
+                    let tokens = MetaTemplate::parse(subtree, mode)?;
+                    Op::Repeat { tokens, separator, kind }
                 }
                 tt::TokenTree::Leaf(leaf) => match leaf {
                     tt::Leaf::Punct(_) => {
@@ -162,9 +159,8 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
         }
         tt::TokenTree::Leaf(tt) => Op::Leaf(tt.clone()),
         tt::TokenTree::Subtree(subtree) => {
-            let tokens =
-                parse_inner(subtree, mode).into_iter().collect::<Result<Vec<Op>, ParseError>>()?;
-            Op::Subtree { tokens: MetaTemplate(tokens), delimiter: subtree.delimiter }
+            let tokens = MetaTemplate::parse(subtree, mode)?;
+            Op::Subtree { tokens, delimiter: subtree.delimiter }
         }
     };
     Ok(res)
