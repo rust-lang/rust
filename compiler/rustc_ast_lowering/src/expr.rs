@@ -865,9 +865,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 if movability == Movability::Static {
                     struct_span_err!(self.sess, fn_decl_span, E0697, "closures cannot be static")
                         .span_suggestion(
-                            fn_decl_span,
-                            "consider removing the",
-                            "static".into(),
+                            fn_decl_span.with_lo(fn_decl_span.lo() + BytePos("static ".len())),
+                            "remove the `static` keyword to define a regular closure",
+                            "".into(),
                             rustc_errors::Applicability::MachineApplicable,
                         )
                         .emit();
