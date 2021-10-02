@@ -765,7 +765,7 @@ enum OpDelimited<'a> {
 
 #[derive(Debug, Clone, Copy)]
 struct OpDelimitedIter<'a> {
-    inner: &'a Vec<Op>,
+    inner: &'a [Op],
     delimited: Option<&'a tt::Delimiter>,
     idx: usize,
 }

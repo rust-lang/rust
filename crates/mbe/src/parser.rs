@@ -6,12 +6,38 @@ use syntax::SmolStr;
 
 use crate::{tt_iter::TtIter, ParseError};
 
-pub(crate) fn parse_template(template: &tt::Subtree) -> Result<Vec<Op>, ParseError> {
-    parse_inner(template, Mode::Template).into_iter().collect()
-}
+/// Consider
+///
+/// ```
+/// macro_rules! an_macro {
+///     ($x:expr + $y:expr) => ($y * $x)
+/// }
+/// ```
+///
+/// Stuff to the left of `=>` is a [`MetaTemplate`] pattern (which is matched
+/// with input).
+///
+/// Stuff to the right is a [`MetaTemplate`] template which is used to produce
+/// output.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct MetaTemplate(pub(crate) Vec<Op>);
 
-pub(crate) fn parse_pattern(pattern: &tt::Subtree) -> Result<Vec<Op>, ParseError> {
-    parse_inner(pattern, Mode::Pattern).into_iter().collect()
+impl MetaTemplate {
+    pub(crate) fn parse_pattern(pattern: &tt::Subtree) -> Result<MetaTemplate, ParseError> {
+        let ops =
+            parse_inner(pattern, Mode::Pattern).into_iter().collect::<Result<_, ParseError>>()?;
+        Ok(MetaTemplate(ops))
+    }
+
+    pub(crate) fn parse_template(template: &tt::Subtree) -> Result<MetaTemplate, ParseError> {
+        let ops =
+            parse_inner(template, Mode::Template).into_iter().collect::<Result<_, ParseError>>()?;
+        Ok(MetaTemplate(ops))
+    }
+
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &Op> {
+        self.0.iter()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -34,15 +60,6 @@ pub(crate) enum Separator {
     Literal(tt::Literal),
     Ident(tt::Ident),
     Puncts(SmallVec<[tt::Punct; 3]>),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct MetaTemplate(pub(crate) Vec<Op>);
-
-impl MetaTemplate {
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &Op> {
-        self.0.iter()
-    }
 }
 
 // Note that when we compare a Separator, we just care about its textual value.
