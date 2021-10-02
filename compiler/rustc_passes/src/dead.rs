@@ -243,26 +243,15 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     /// will be ignored for the purposes of dead code analysis (see PR #85200
     /// for discussion).
     fn should_ignore_item(&self, def_id: DefId) -> bool {
-        if !self.tcx.has_attr(def_id, sym::automatically_derived)
-            && !self
-                .tcx
-                .impl_of_method(def_id)
-                .map_or(false, |impl_id| self.tcx.has_attr(impl_id, sym::automatically_derived))
-        {
-            return false;
-        }
-
-        let has_attr = |def_id| self.tcx.has_attr(def_id, sym::rustc_trivial_field_reads);
-
         if let Some(impl_of) = self.tcx.impl_of_method(def_id) {
+            if !self.tcx.has_attr(impl_of, sym::automatically_derived) {
+                return false;
+            }
+
             if let Some(trait_of) = self.tcx.trait_id_of_impl(impl_of) {
-                if has_attr(trait_of) {
+                if self.tcx.has_attr(trait_of, sym::rustc_trivial_field_reads) {
                     return true;
                 }
-            }
-        } else if let Some(trait_of) = self.tcx.trait_of_item(def_id) {
-            if has_attr(trait_of) {
-                return true;
             }
         }
 
@@ -271,8 +260,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn visit_node(&mut self, node: Node<'tcx>) {
         if let Some(item_def_id) = match node {
-            Node::TraitItem(hir::TraitItem { def_id, .. })
-            | Node::ImplItem(hir::ImplItem { def_id, .. }) => Some(def_id.to_def_id()),
+            Node::ImplItem(hir::ImplItem { def_id, .. }) => Some(def_id.to_def_id()),
             _ => None,
         } {
             if self.should_ignore_item(item_def_id) {
