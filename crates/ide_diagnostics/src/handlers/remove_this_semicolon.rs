@@ -1,6 +1,8 @@
-use hir::db::AstDatabase;
-use ide_db::source_change::SourceChange;
-use syntax::{ast, AstNode};
+use ide_db::{
+    base_db::{FileLoader, FileRange},
+    source_change::SourceChange,
+};
+use syntax::{TextRange, TextSize};
 use text_edit::TextEdit;
 
 use crate::{fix, Assist, Diagnostic, DiagnosticsContext};
@@ -15,29 +17,42 @@ pub(crate) fn remove_this_semicolon(
     Diagnostic::new(
         "remove-this-semicolon",
         "remove this semicolon",
-        ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into())).range,
+        semicolon_range(ctx, d).unwrap_or_else(|it| it).range,
     )
     .with_fixes(fixes(ctx, d))
 }
 
+fn semicolon_range(
+    ctx: &DiagnosticsContext<'_>,
+    d: &hir::RemoveThisSemicolon,
+) -> Result<FileRange, FileRange> {
+    let expr_range = ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into()));
+    let file_text = ctx.sema.db.file_text(expr_range.file_id);
+    let range_end: usize = expr_range.range.end().into();
+    // FIXME: This doesn't handle whitespace and comments, but handling those in
+    // the presence of macros might prove tricky...
+    if file_text[range_end..].starts_with(';') {
+        Ok(FileRange {
+            file_id: expr_range.file_id,
+            range: TextRange::at(expr_range.range.end(), TextSize::of(';')),
+        })
+    } else {
+        Err(expr_range)
+    }
+}
+
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::RemoveThisSemicolon) -> Option<Vec<Assist>> {
-    let root = ctx.sema.db.parse_or_expand(d.expr.file_id)?;
+    let semicolon_range = semicolon_range(ctx, d).ok()?;
 
-    let semicolon = d
-        .expr
-        .value
-        .to_node(&root)
-        .syntax()
-        .parent()
-        .and_then(ast::ExprStmt::cast)
-        .and_then(|expr| expr.semicolon_token())?
-        .text_range();
+    let edit = TextEdit::delete(semicolon_range.range);
+    let source_change = SourceChange::from_text_edit(semicolon_range.file_id, edit);
 
-    let edit = TextEdit::delete(semicolon);
-    let source_change =
-        SourceChange::from_text_edit(d.expr.file_id.original_file(ctx.sema.db), edit);
-
-    Some(vec![fix("remove_semicolon", "Remove this semicolon", source_change, semicolon)])
+    Some(vec![fix(
+        "remove_semicolon",
+        "Remove this semicolon",
+        source_change,
+        semicolon_range.range,
+    )])
 }
 
 #[cfg(test)]
@@ -49,7 +64,7 @@ mod tests {
         check_diagnostics(
             r#"
 fn test() -> i32 { 123; }
-                 //^^^ 💡 error: remove this semicolon
+                    //^ 💡 error: remove this semicolon
 "#,
         );
     }
