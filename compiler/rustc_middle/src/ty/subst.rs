@@ -3,7 +3,7 @@
 use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use crate::ty::sty::{ClosureSubsts, GeneratorSubsts};
+use crate::ty::sty::{ClosureSubsts, GeneratorSubsts, InlineConstSubsts};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
 use rustc_hir::def_id::DefId;
@@ -202,6 +202,14 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
     /// see `ty::GeneratorSubsts` struct for more comments.
     pub fn as_generator(&'tcx self) -> GeneratorSubsts<'tcx> {
         GeneratorSubsts { substs: self }
+    }
+
+    /// Interpret these substitutions as the substitutions of an inline const.
+    /// Inline const substitutions have a particular structure controlled by the
+    /// compiler that encodes information like the inferred type;
+    /// see `ty::InlineConstSubsts` struct for more comments.
+    pub fn as_inline_const(&'tcx self) -> InlineConstSubsts<'tcx> {
+        InlineConstSubsts { substs: self }
     }
 
     /// Creates an `InternalSubsts` that maps each generic parameter to itself.

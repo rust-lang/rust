@@ -1345,7 +1345,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     Some(RETURN_PLACE) => {
                         if let BorrowCheckContext {
                             universal_regions:
-                                UniversalRegions { defining_ty: DefiningTy::Const(def_id, _), .. },
+                                UniversalRegions {
+                                    defining_ty:
+                                        DefiningTy::Const(def_id, _)
+                                        | DefiningTy::InlineConst(def_id, _),
+                                    ..
+                                },
                             ..
                         } = self.borrowck_context
                         {
@@ -1650,7 +1655,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     Some(RETURN_PLACE) => {
                         if let BorrowCheckContext {
                             universal_regions:
-                                UniversalRegions { defining_ty: DefiningTy::Const(def_id, _), .. },
+                                UniversalRegions {
+                                    defining_ty:
+                                        DefiningTy::Const(def_id, _)
+                                        | DefiningTy::InlineConst(def_id, _),
+                                    ..
+                                },
                             ..
                         } = self.borrowck_context
                         {

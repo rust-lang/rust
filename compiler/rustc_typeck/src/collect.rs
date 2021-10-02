@@ -1494,7 +1494,9 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                     {
                         Some(parent_def_id.to_def_id())
                     }
-
+                    Node::Expr(&Expr { kind: ExprKind::ConstBlock(_), .. }) => {
+                        Some(tcx.closure_base_def_id(def_id))
+                    }
                     _ => None,
                 }
             }
@@ -1690,6 +1692,24 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 synthetic: None,
             },
         }));
+    }
+
+    // provide junk type parameter defs for const blocks.
+    if let Node::AnonConst(_) = node {
+        let parent_node = tcx.hir().get(tcx.hir().get_parent_node(hir_id));
+        if let Node::Expr(&Expr { kind: ExprKind::ConstBlock(_), .. }) = parent_node {
+            params.push(ty::GenericParamDef {
+                index: type_start,
+                name: Symbol::intern("<const_ty>"),
+                def_id,
+                pure_wrt_drop: false,
+                kind: ty::GenericParamDefKind::Type {
+                    has_default: false,
+                    object_lifetime_default: rl::Set1::Empty,
+                    synthetic: None,
+                },
+            });
+        }
     }
 
     let param_def_id_to_index = params.iter().map(|param| (param.def_id, param.index)).collect();

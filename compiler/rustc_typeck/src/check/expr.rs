@@ -30,6 +30,7 @@ use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder,
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ExprKind, QPath};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -323,7 +324,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ExprKind::DropTemps(e) => self.check_expr_with_expectation(e, expected),
             ExprKind::Array(args) => self.check_expr_array(args, expected, expr),
-            ExprKind::ConstBlock(ref anon_const) => self.to_const(anon_const).ty,
+            ExprKind::ConstBlock(ref anon_const) => {
+                self.check_expr_const_block(anon_const, expected, expr)
+            }
             ExprKind::Repeat(element, ref count) => {
                 self.check_expr_repeat(element, count, expected, expr)
             }
@@ -1164,6 +1167,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
         };
         self.tcx.mk_array(element_ty, args.len() as u64)
+    }
+
+    fn check_expr_const_block(
+        &self,
+        anon_const: &'tcx hir::AnonConst,
+        expected: Expectation<'tcx>,
+        _expr: &'tcx hir::Expr<'tcx>,
+    ) -> Ty<'tcx> {
+        let body = self.tcx.hir().body(anon_const.body);
+
+        // Create a new function context.
+        let fcx = FnCtxt::new(self, self.param_env, body.value.hir_id);
+        crate::check::GatherLocalsVisitor::new(&fcx).visit_body(body);
+
+        let ty = fcx.check_expr_with_expectation(&body.value, expected);
+        fcx.require_type_is_sized(ty, body.value.span, traits::ConstSized);
+        fcx.write_ty(anon_const.hir_id, ty);
+        ty
     }
 
     fn check_expr_repeat(

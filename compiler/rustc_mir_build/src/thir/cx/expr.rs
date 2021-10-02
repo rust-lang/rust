@@ -578,7 +578,7 @@ impl<'tcx> Cx<'tcx> {
 
             hir::ExprKind::ConstBlock(ref anon_const) => {
                 let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
-                let value = ty::Const::from_anon_const(self.tcx, anon_const_def_id);
+                let value = ty::Const::from_inline_const(self.tcx, anon_const_def_id);
 
                 ExprKind::ConstBlock { value }
             }

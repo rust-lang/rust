@@ -23,7 +23,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
+use rustc_middle::ty::{self, InlineConstSubsts, InlineConstSubstsParts, RegionVid, Ty, TyCtxt};
 use std::iter;
 
 use crate::nll::ToRegionVid;
@@ -108,6 +108,10 @@ pub enum DefiningTy<'tcx> {
     /// is that it has no inputs and a single return value, which is
     /// the value of the constant.
     Const(DefId, SubstsRef<'tcx>),
+
+    /// The MIR represents an inline const. The signature has no inputs and a
+    /// single return value found via `InlineConstSubsts::ty`.
+    InlineConst(DefId, SubstsRef<'tcx>),
 }
 
 impl<'tcx> DefiningTy<'tcx> {
@@ -121,7 +125,7 @@ impl<'tcx> DefiningTy<'tcx> {
             DefiningTy::Generator(_, substs, _) => {
                 Either::Right(Either::Left(substs.as_generator().upvar_tys()))
             }
-            DefiningTy::FnDef(..) | DefiningTy::Const(..) => {
+            DefiningTy::FnDef(..) | DefiningTy::Const(..) | DefiningTy::InlineConst(..) => {
                 Either::Right(Either::Right(iter::empty()))
             }
         }
@@ -133,7 +137,7 @@ impl<'tcx> DefiningTy<'tcx> {
     pub fn implicit_inputs(self) -> usize {
         match self {
             DefiningTy::Closure(..) | DefiningTy::Generator(..) => 1,
-            DefiningTy::FnDef(..) | DefiningTy::Const(..) => 0,
+            DefiningTy::FnDef(..) | DefiningTy::Const(..) | DefiningTy::InlineConst(..) => 0,
         }
     }
 
@@ -142,7 +146,7 @@ impl<'tcx> DefiningTy<'tcx> {
     }
 
     pub fn is_const(&self) -> bool {
-        matches!(*self, DefiningTy::Const(..))
+        matches!(*self, DefiningTy::Const(..) | DefiningTy::InlineConst(..))
     }
 
     pub fn def_id(&self) -> DefId {
@@ -150,7 +154,8 @@ impl<'tcx> DefiningTy<'tcx> {
             DefiningTy::Closure(def_id, ..)
             | DefiningTy::Generator(def_id, ..)
             | DefiningTy::FnDef(def_id, ..)
-            | DefiningTy::Const(def_id, ..) => def_id,
+            | DefiningTy::Const(def_id, ..)
+            | DefiningTy::InlineConst(def_id, ..) => def_id,
         }
     }
 }
@@ -376,6 +381,12 @@ impl<'tcx> UniversalRegions<'tcx> {
                     tcx.def_path_str_with_substs(def_id, substs),
                 ));
             }
+            DefiningTy::InlineConst(def_id, substs) => {
+                err.note(&format!(
+                    "defining inline constant type: {}",
+                    tcx.def_path_str_with_substs(def_id, substs),
+                ));
+            }
         }
     }
 }
@@ -534,11 +545,21 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             }
 
             BodyOwnerKind::Const | BodyOwnerKind::Static(..) => {
-                assert_eq!(self.mir_def.did.to_def_id(), closure_base_def_id);
                 let identity_substs = InternalSubsts::identity_for_item(tcx, closure_base_def_id);
-                let substs =
-                    self.infcx.replace_free_regions_with_nll_infer_vars(FR, identity_substs);
-                DefiningTy::Const(self.mir_def.did.to_def_id(), substs)
+                if self.mir_def.did.to_def_id() == closure_base_def_id {
+                    let substs =
+                        self.infcx.replace_free_regions_with_nll_infer_vars(FR, identity_substs);
+                    DefiningTy::Const(self.mir_def.did.to_def_id(), substs)
+                } else {
+                    let ty = tcx.typeck(self.mir_def.did).node_type(self.mir_hir_id);
+                    let substs = InlineConstSubsts::new(
+                        tcx,
+                        InlineConstSubstsParts { parent_substs: identity_substs, ty },
+                    )
+                    .substs;
+                    let substs = self.infcx.replace_free_regions_with_nll_infer_vars(FR, substs);
+                    DefiningTy::InlineConst(self.mir_def.did.to_def_id(), substs)
+                }
             }
         }
     }
@@ -556,7 +577,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let closure_base_def_id = tcx.closure_base_def_id(self.mir_def.did.to_def_id());
         let identity_substs = InternalSubsts::identity_for_item(tcx, closure_base_def_id);
         let fr_substs = match defining_ty {
-            DefiningTy::Closure(_, ref substs) | DefiningTy::Generator(_, ref substs, _) => {
+            DefiningTy::Closure(_, ref substs)
+            | DefiningTy::Generator(_, ref substs, _)
+            | DefiningTy::InlineConst(_, ref substs) => {
                 // In the case of closures, we rely on the fact that
                 // the first N elements in the ClosureSubsts are
                 // inherited from the `closure_base_def_id`.
@@ -646,6 +669,12 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 assert_eq!(self.mir_def.did.to_def_id(), def_id);
                 let ty = tcx.type_of(self.mir_def.def_id_for_type_of());
                 let ty = indices.fold_to_region_vids(tcx, ty);
+                ty::Binder::dummy(tcx.intern_type_list(&[ty]))
+            }
+
+            DefiningTy::InlineConst(def_id, substs) => {
+                assert_eq!(self.mir_def.did.to_def_id(), def_id);
+                let ty = substs.as_inline_const().ty();
                 ty::Binder::dummy(tcx.intern_type_list(&[ty]))
             }
         }

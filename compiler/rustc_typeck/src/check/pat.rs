@@ -292,7 +292,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // String and byte-string literals result in types `&str` and `&[u8]` respectively.
             // All other literals result in non-reference types.
             // As a result, we allow `if let 0 = &&0 {}` but not `if let "foo" = &&"foo {}`.
-            PatKind::Lit(lt) => match self.check_expr(lt).kind() {
+            //
+            // Call `resolve_vars_if_possible` here for inline const blocks.
+            PatKind::Lit(lt) => match self.resolve_vars_if_possible(self.check_expr(lt)).kind() {
                 ty::Ref(..) => AdjustMode::Pass,
                 _ => AdjustMode::Peel,
             },

@@ -74,9 +74,10 @@ pub use self::sty::{
     Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar, BoundVariableKind,
     CanonicalPolyFnSig, ClosureSubsts, ClosureSubstsParts, ConstVid, EarlyBoundRegion,
     ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FnSig, FreeRegion, GenSig,
-    GeneratorSubsts, GeneratorSubstsParts, ParamConst, ParamTy, PolyExistentialProjection,
-    PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef, ProjectionTy, Region, RegionKind,
-    RegionVid, TraitRef, TyKind, TypeAndMut, UpvarSubsts, VarianceDiagInfo, VarianceDiagMutKind,
+    GeneratorSubsts, GeneratorSubstsParts, InlineConstSubsts, InlineConstSubstsParts, ParamConst,
+    ParamTy, PolyExistentialProjection, PolyExistentialTraitRef, PolyFnSig, PolyGenSig,
+    PolyTraitRef, ProjectionTy, Region, RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut,
+    UpvarSubsts, VarianceDiagInfo, VarianceDiagMutKind,
 };
 pub use self::trait_def::TraitDef;
 

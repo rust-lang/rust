@@ -282,6 +282,12 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
             hir::ExprKind::Field(..) => {
                 self.visit_field_id(e.hir_id);
             }
+            hir::ExprKind::ConstBlock(anon_const) => {
+                self.visit_node_id(e.span, anon_const.hir_id);
+
+                let body = self.tcx().hir().body(anon_const.body);
+                self.visit_body(body);
+            }
             _ => {}
         }
 
