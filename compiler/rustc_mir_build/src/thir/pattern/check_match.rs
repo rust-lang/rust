@@ -2,7 +2,7 @@ use super::deconstruct_pat::{Constructor, DeconstructedPat};
 use super::usefulness::{
     compute_match_usefulness, MatchArm, MatchCheckCtxt, Reachability, UsefulnessReport,
 };
-use super::{PatCtxt, PatternError};
+use super::{deconstructed_to_pat, pat_to_deconstructed, PatCtxt, PatternError};
 
 use rustc_arena::TypedArena;
 use rustc_ast::Mutability;
@@ -135,7 +135,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         let mut patcx = PatCtxt::new(self.tcx, self.param_env, self.typeck_results);
         patcx.include_lint_checks();
         let pattern = patcx.lower_pattern(pat);
-        let pattern: &_ = cx.pattern_arena.alloc(DeconstructedPat::from_pat(cx, &pattern));
+        let pattern: &_ = cx.pattern_arena.alloc(pat_to_deconstructed(cx, &pattern));
         if !patcx.errors.is_empty() {
             *have_errors = true;
             patcx.report_inlining_errors();
@@ -536,7 +536,7 @@ pub(super) fn lint_overlapping_range_endpoints<'p, 'tcx>(
             for pat in overlaps {
                 err.span_label(
                     pat.span(),
-                    &format!("this range overlaps on `{}`...", pat.to_pat(cx)),
+                    &format!("this range overlaps on `{}`...", deconstructed_to_pat(cx, pat)),
                 );
             }
             err.span_label(span, "... with this range");
@@ -623,13 +623,13 @@ crate fn joined_uncovered_patterns<'p, 'tcx>(
     witnesses: &[DeconstructedPat<'p, 'tcx>],
 ) -> String {
     const LIMIT: usize = 3;
-    let pat_to_str = |pat: &DeconstructedPat<'p, 'tcx>| pat.to_pat(cx).to_string();
+    let pat_to_str = |pat| deconstructed_to_pat(cx, pat).to_string();
     match witnesses {
         [] => bug!(),
-        [witness] => format!("`{}`", witness.to_pat(cx)),
+        [witness] => format!("`{}`", deconstructed_to_pat(cx, witness)),
         [head @ .., tail] if head.len() < LIMIT => {
             let head: Vec<_> = head.iter().map(pat_to_str).collect();
-            format!("`{}` and `{}`", head.join("`, `"), tail.to_pat(cx))
+            format!("`{}` and `{}`", head.join("`, `"), deconstructed_to_pat(cx, tail))
         }
         _ => {
             let (head, tail) = witnesses.split_at(LIMIT);
