@@ -291,23 +291,26 @@ pub fn source_edit_from_references(
     new_name: &str,
 ) -> TextEdit {
     let mut edit = TextEdit::builder();
-    for reference in references {
-        let has_emitted_edit = match &reference.name {
+    // macros can cause multiple refs to occur for the same text range, so keep track of what we have edited so far
+    let mut edited_ranges = Vec::new();
+    for &FileReference { range, ref name, .. } in references {
+        let has_emitted_edit = match name {
             // if the ranges differ then the node is inside a macro call, we can't really attempt
             // to make special rewrites like shorthand syntax and such, so just rename the node in
             // the macro input
-            ast::NameLike::NameRef(name_ref)
-                if name_ref.syntax().text_range() == reference.range =>
-            {
+            ast::NameLike::NameRef(name_ref) if name_ref.syntax().text_range() == range => {
                 source_edit_from_name_ref(&mut edit, name_ref, new_name, def)
             }
-            ast::NameLike::Name(name) if name.syntax().text_range() == reference.range => {
+            ast::NameLike::Name(name) if name.syntax().text_range() == range => {
                 source_edit_from_name(&mut edit, name, new_name)
             }
             _ => false,
         };
         if !has_emitted_edit {
-            edit.replace(reference.range, new_name.to_string());
+            if !edited_ranges.contains(&range.start()) {
+                edit.replace(range, new_name.to_string());
+                edited_ranges.push(range.start());
+            }
         }
     }
 
