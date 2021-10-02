@@ -181,8 +181,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat_tuple_struct(pat, qpath, subpats, ddpos, expected, def_bm, ti)
             }
             PatKind::Path(_) => self.check_pat_path(pat, path_res.unwrap(), expected, ti),
-            PatKind::Struct(ref qpath, fields, etc) => {
-                self.check_pat_struct(pat, qpath, fields, etc, expected, def_bm, ti)
+            PatKind::Struct(ref qpath, fields, has_rest_pat) => {
+                self.check_pat_struct(pat, qpath, fields, has_rest_pat, expected, def_bm, ti)
             }
             PatKind::Or(pats) => {
                 let parent_pat = Some(pat);
@@ -685,7 +685,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx Pat<'tcx>,
         qpath: &hir::QPath<'_>,
         fields: &'tcx [hir::PatField<'tcx>],
-        etc: bool,
+        has_rest_pat: bool,
         expected: Ty<'tcx>,
         def_bm: BindingMode,
         ti: TopInfo<'tcx>,
@@ -707,7 +707,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.demand_eqtype_pat(pat.span, expected, pat_ty, ti);
 
         // Type-check subpatterns.
-        if self.check_struct_pat_fields(pat_ty, pat, variant, fields, etc, def_bm, ti) {
+        if self.check_struct_pat_fields(pat_ty, &pat, variant, fields, has_rest_pat, def_bm, ti) {
             pat_ty
         } else {
             self.tcx.ty_error()
@@ -1189,7 +1189,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx Pat<'tcx>,
         variant: &'tcx ty::VariantDef,
         fields: &'tcx [hir::PatField<'tcx>],
-        etc: bool,
+        has_rest_pat: bool,
         def_bm: BindingMode,
         ti: TopInfo<'tcx>,
     ) -> bool {
@@ -1263,7 +1263,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Require `..` if struct has non_exhaustive attribute.
         let non_exhaustive = variant.is_field_list_non_exhaustive() && !adt.did.is_local();
-        if non_exhaustive && !etc {
+        if non_exhaustive && !has_rest_pat {
             self.error_foreign_non_exhaustive_spat(pat, adt.variant_descr(), fields.is_empty());
         }
 
@@ -1275,7 +1275,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .struct_span_err(pat.span, "union patterns should have exactly one field")
                     .emit();
             }
-            if etc {
+            if has_rest_pat {
                 tcx.sess.struct_span_err(pat.span, "`..` cannot be used in union patterns").emit();
             }
         } else if !unmentioned_fields.is_empty() {
@@ -1287,7 +1287,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
                 .collect();
 
-            if !etc {
+            if !has_rest_pat {
                 if accessible_unmentioned_fields.is_empty() {
                     unmentioned_err = Some(self.error_no_accessible_fields(pat, fields));
                 } else {
