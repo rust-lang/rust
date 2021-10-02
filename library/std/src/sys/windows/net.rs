@@ -29,12 +29,12 @@ pub mod netc {
 
 pub struct Socket(OwnedSocket);
 
-static WSA: SyncOnceCell<unsafe extern "system" fn() -> i32> = SyncOnceCell::new();
+static WSA_CLEANUP: SyncOnceCell<unsafe extern "system" fn() -> i32> = SyncOnceCell::new();
 
 /// Checks whether the Windows socket interface has been started already, and
 /// if not, starts it.
 pub fn init() {
-    let _ = WSA.get_or_init(|| unsafe {
+    let _ = WSA_CLEANUP.get_or_init(|| unsafe {
         let mut data: c::WSADATA = mem::zeroed();
         let ret = c::WSAStartup(
             0x202, // version 2.2
@@ -51,7 +51,7 @@ pub fn init() {
 
 pub fn cleanup() {
     // only perform cleanup if network functionality was actually initialized
-    if let Some(cleanup) = WSA.get() {
+    if let Some(cleanup) = WSA_CLEANUP.get() {
         unsafe {
             cleanup();
         }

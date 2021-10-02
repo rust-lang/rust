@@ -1,4 +1,4 @@
-# only-windows
+# only-windows-msvc
 
 -include ../../run-make-fulldeps/tools.mk
 
