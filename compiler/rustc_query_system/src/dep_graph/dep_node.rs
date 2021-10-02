@@ -42,7 +42,7 @@
 //!   `DefId` it was computed from. In other cases, too much information gets
 //!   lost during fingerprint computation.
 
-use super::{DepContext, DepKind};
+use super::{DepContext, DepKind, FingerprintStyle};
 use crate::ich::StableHashingContext;
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
@@ -75,7 +75,7 @@ impl<K: DepKind> DepNode<K> {
 
         #[cfg(debug_assertions)]
         {
-            if !kind.can_reconstruct_query_key()
+            if !kind.fingerprint_style().reconstructible()
                 && (tcx.sess().opts.debugging_opts.incremental_info
                     || tcx.sess().opts.debugging_opts.query_dep_graph)
             {
@@ -94,7 +94,7 @@ impl<K: DepKind> fmt::Debug for DepNode<K> {
 }
 
 pub trait DepNodeParams<Ctxt: DepContext>: fmt::Debug + Sized {
-    fn can_reconstruct_query_key() -> bool;
+    fn fingerprint_style() -> FingerprintStyle;
 
     /// This method turns the parameters of a DepNodeConstructor into an opaque
     /// Fingerprint to be used in DepNode.
@@ -111,7 +111,7 @@ pub trait DepNodeParams<Ctxt: DepContext>: fmt::Debug + Sized {
     /// This method tries to recover the query key from the given `DepNode`,
     /// something which is needed when forcing `DepNode`s during red-green
     /// evaluation. The query system will only call this method if
-    /// `can_reconstruct_query_key()` is `true`.
+    /// `fingerprint_style()` is not `FingerprintStyle::Opaque`.
     /// It is always valid to return `None` here, in which case incremental
     /// compilation will treat the query as having changed instead of forcing it.
     fn recover(tcx: Ctxt, dep_node: &DepNode<Ctxt::DepKind>) -> Option<Self>;
@@ -122,8 +122,8 @@ where
     T: for<'a> HashStable<StableHashingContext<'a>> + fmt::Debug,
 {
     #[inline]
-    default fn can_reconstruct_query_key() -> bool {
-        false
+    default fn fingerprint_style() -> FingerprintStyle {
+        FingerprintStyle::Opaque
     }
 
     default fn to_fingerprint(&self, tcx: Ctxt) -> Fingerprint {
