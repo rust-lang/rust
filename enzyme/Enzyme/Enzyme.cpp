@@ -102,7 +102,7 @@ public:
 
   /// Return whether successful
   bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, bool PostOpt,
-                      DerivativeMode mode) {
+                      DerivativeMode mode, bool sizeOnly) {
 
     Value *fn = CI->getArgOperand(0);
 
@@ -155,6 +155,7 @@ public:
     std::map<int, Type *> byVal;
     llvm::Value *differet = nullptr;
     llvm::Value *tape = nullptr;
+    bool tapeIsPointer = false;
     int allocatedTapeSize = -1;
     for (unsigned i = 1; i < CI->getNumArgOperands(); ++i) {
       Value *res = CI->getArgOperand(i);
@@ -193,10 +194,32 @@ public:
           ty = DIFFE_TYPE::OUT_DIFF;
         } else if (MS == "enzyme_const") {
           ty = DIFFE_TYPE::CONSTANT;
+        } else if (MS == "enzyme_allocated") {
+          assert(!sizeOnly);
+          ++i;
+          if (!isa<ConstantInt>(CI->getArgOperand(i))) {
+            EmitFailure("IllegalAllocatedSize", CI->getDebugLoc(), CI,
+                        "illegal enzyme allocated size ", *CI->getArgOperand(i),
+                        "in", *CI);
+            return false;
+          }
+          allocatedTapeSize =
+              cast<ConstantInt>(CI->getArgOperand(i))->getSExtValue();
+          continue;
+        } else if (MS == "enzyme_tape") {
+          assert(!sizeOnly);
+          ++i;
+          tape = CI->getArgOperand(i);
+          tapeIsPointer = true;
+          continue;
         } else {
           EmitFailure("IllegalDiffeType", CI->getDebugLoc(), CI,
                       "illegal enzyme metadata classification ", *CI);
           return false;
+        }
+        if (sizeOnly) {
+          constants.push_back(ty);
+          continue;
         }
         ++i;
         res = CI->getArgOperand(i);
@@ -207,24 +230,53 @@ public:
         auto MS = gv->getName();
         if (MS == "enzyme_dup") {
           ty = DIFFE_TYPE::DUP_ARG;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS == "enzyme_dupnoneed") {
           ty = DIFFE_TYPE::DUP_NONEED;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS == "enzyme_out") {
           ty = DIFFE_TYPE::OUT_DIFF;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS == "enzyme_const") {
           ty = DIFFE_TYPE::CONSTANT;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS == "enzyme_allocated") {
+          assert(!sizeOnly);
           ++i;
+          if (!isa<ConstantInt>(CI->getArgOperand(i))) {
+            EmitFailure("IllegalAllocatedSize", CI->getDebugLoc(), CI,
+                        "illegal enzyme allocated size ", *CI->getArgOperand(i),
+                        "in", *CI);
+            return false;
+          }
           allocatedTapeSize =
               cast<ConstantInt>(CI->getArgOperand(i))->getSExtValue();
+          continue;
+        } else if (MS == "enzyme_tape") {
+          assert(!sizeOnly);
+          ++i;
+          tape = CI->getArgOperand(i);
+          tapeIsPointer = true;
           continue;
         } else {
           ty = whatType(PTy, mode);
@@ -242,24 +294,53 @@ public:
         auto MS = gv->getName();
         if (MS == "enzyme_dup") {
           ty = DIFFE_TYPE::DUP_ARG;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS == "enzyme_dupnoneed") {
           ty = DIFFE_TYPE::DUP_NONEED;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS == "enzyme_out") {
           ty = DIFFE_TYPE::OUT_DIFF;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS == "enzyme_const") {
           ty = DIFFE_TYPE::CONSTANT;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS == "enzyme_allocated") {
+          assert(!sizeOnly);
           ++i;
+          if (!isa<ConstantInt>(CI->getArgOperand(i))) {
+            EmitFailure("IllegalAllocatedSize", CI->getDebugLoc(), CI,
+                        "illegal enzyme allocated size ", *CI->getArgOperand(i),
+                        "in", *CI);
+            return false;
+          }
           allocatedTapeSize =
               cast<ConstantInt>(CI->getArgOperand(i))->getSExtValue();
+          continue;
+        } else if (MS == "enzyme_tape") {
+          assert(!sizeOnly);
+          ++i;
+          tape = CI->getArgOperand(i);
+          tapeIsPointer = true;
           continue;
         } else {
           ty = whatType(PTy, mode);
@@ -269,20 +350,54 @@ public:
         auto MS = gv->getName();
         if (MS == "enzyme_dup") {
           ty = DIFFE_TYPE::DUP_ARG;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS == "enzyme_dupnoneed") {
           ty = DIFFE_TYPE::DUP_NONEED;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS == "enzyme_out") {
           ty = DIFFE_TYPE::OUT_DIFF;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS == "enzyme_const") {
           ty = DIFFE_TYPE::CONSTANT;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
+        } else if (MS == "enzyme_allocated") {
+          assert(!sizeOnly);
+          ++i;
+          if (!isa<ConstantInt>(CI->getArgOperand(i))) {
+            EmitFailure("IllegalAllocatedSize", CI->getDebugLoc(), CI,
+                        "illegal enzyme allocated size ", *CI->getArgOperand(i),
+                        "in", *CI);
+            return false;
+          }
+          allocatedTapeSize =
+              cast<ConstantInt>(CI->getArgOperand(i))->getSExtValue();
+          continue;
+        } else if (MS == "enzyme_tape") {
+          assert(!sizeOnly);
+          ++i;
+          tape = CI->getArgOperand(i);
+          tapeIsPointer = true;
+          continue;
         } else {
           ty = whatType(PTy, mode);
         }
@@ -292,20 +407,54 @@ public:
         auto MS = gv->getName();
         if (MS == "enzyme_dup") {
           ty = DIFFE_TYPE::DUP_ARG;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS == "enzyme_dupnoneed") {
           ty = DIFFE_TYPE::DUP_NONEED;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS == "enzyme_out") {
           ty = DIFFE_TYPE::OUT_DIFF;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS == "enzyme_const") {
           ty = DIFFE_TYPE::CONSTANT;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
+        } else if (MS == "enzyme_allocated") {
+          assert(!sizeOnly);
+          ++i;
+          if (!isa<ConstantInt>(CI->getArgOperand(i))) {
+            EmitFailure("IllegalAllocatedSize", CI->getDebugLoc(), CI,
+                        "illegal enzyme allocated size ", *CI->getArgOperand(i),
+                        "in", *CI);
+            return false;
+          }
+          allocatedTapeSize =
+              cast<ConstantInt>(CI->getArgOperand(i))->getSExtValue();
+          continue;
+        } else if (MS == "enzyme_tape") {
+          assert(!sizeOnly);
+          ++i;
+          tape = CI->getArgOperand(i);
+          tapeIsPointer = true;
+          continue;
         } else {
           ty = whatType(PTy, mode);
         }
@@ -315,20 +464,54 @@ public:
         auto MS = gv->getName();
         if (MS.startswith("enzyme_dup")) {
           ty = DIFFE_TYPE::DUP_ARG;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS.startswith("enzyme_dupnoneed")) {
           ty = DIFFE_TYPE::DUP_NONEED;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS.startswith("enzyme_out")) {
           ty = DIFFE_TYPE::OUT_DIFF;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS.startswith("enzyme_const")) {
           ty = DIFFE_TYPE::CONSTANT;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
+        } else if (MS == "enzyme_allocated") {
+          assert(!sizeOnly);
+          ++i;
+          if (!isa<ConstantInt>(CI->getArgOperand(i))) {
+            EmitFailure("IllegalAllocatedSize", CI->getDebugLoc(), CI,
+                        "illegal enzyme allocated size ", *CI->getArgOperand(i),
+                        "in", *CI);
+            return false;
+          }
+          allocatedTapeSize =
+              cast<ConstantInt>(CI->getArgOperand(i))->getSExtValue();
+          continue;
+        } else if (MS == "enzyme_tape") {
+          assert(!sizeOnly);
+          ++i;
+          tape = CI->getArgOperand(i);
+          tapeIsPointer = true;
+          continue;
         } else {
           ty = whatType(PTy, mode);
         }
@@ -337,18 +520,34 @@ public:
         auto MS = gv->getName();
         if (MS.startswith("enzyme_dup")) {
           ty = DIFFE_TYPE::DUP_ARG;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS.startswith("enzyme_dupnoneed")) {
           ty = DIFFE_TYPE::DUP_NONEED;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS.startswith("enzyme_out")) {
           ty = DIFFE_TYPE::OUT_DIFF;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else if (MS.startswith("enzyme_const")) {
           ty = DIFFE_TYPE::CONSTANT;
+          if (sizeOnly) {
+            constants.push_back(ty);
+            continue;
+          }
           ++i;
           res = CI->getArgOperand(i);
         } else {
@@ -480,6 +679,7 @@ public:
 
     Function *newFunc = nullptr;
     Type *tapeType = nullptr;
+    const AugmentedReturn *aug;
     switch (mode) {
     case DerivativeMode::ForwardMode:
       newFunc = Logic.CreateForwardDiff(
@@ -496,20 +696,28 @@ public:
       break;
     case DerivativeMode::ReverseModePrimal:
     case DerivativeMode::ReverseModeGradient: {
-      bool returnUsed = false;
-      bool forceAnonymousTape = allocatedTapeSize == -1;
-      auto &aug = Logic.CreateAugmentedPrimal(
+      bool forceAnonymousTape = !sizeOnly && allocatedTapeSize == -1;
+      bool returnUsed = !cast<Function>(fn)->getReturnType()->isVoidTy() &&
+                        !cast<Function>(fn)->getReturnType()->isEmptyTy();
+      aug = &Logic.CreateAugmentedPrimal(
           cast<Function>(fn), retType, constants, TLI, TA,
           /*returnUsed*/ returnUsed, type_args, volatile_args,
           forceAnonymousTape, /*atomicAdd*/ AtomicAdd, /*PostOpt*/ PostOpt);
       auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
       if (!forceAnonymousTape) {
-        assert(!aug.tapeType);
-        if (aug.returns.find(AugmentedStruct::Tape) != aug.returns.end()) {
-          auto tapeIdx = aug.returns.find(AugmentedStruct::Tape)->second;
-          tapeType = (tapeIdx == -1) ? aug.fn->getReturnType()
-                                     : cast<StructType>(aug.fn->getReturnType())
-                                           ->getElementType(tapeIdx);
+        assert(!aug->tapeType);
+        if (aug->returns.find(AugmentedStruct::Tape) != aug->returns.end()) {
+          auto tapeIdx = aug->returns.find(AugmentedStruct::Tape)->second;
+          tapeType = (tapeIdx == -1)
+                         ? aug->fn->getReturnType()
+                         : cast<StructType>(aug->fn->getReturnType())
+                               ->getElementType(tapeIdx);
+        }
+        if (sizeOnly) {
+          auto size = DL.getTypeSizeInBits(tapeType) / 8;
+          CI->replaceAllUsesWith(ConstantInt::get(CI->getType(), size, false));
+          CI->eraseFromParent();
+          return true;
         }
         if (tapeType &&
             DL.getTypeSizeInBits(tapeType) < 8 * (size_t)allocatedTapeSize) {
@@ -522,12 +730,12 @@ public:
         tapeType = PointerType::getInt8PtrTy(fn->getContext());
       }
       if (mode == DerivativeMode::ReverseModePrimal)
-        newFunc = aug.fn;
+        newFunc = aug->fn;
       else
         newFunc = Logic.CreatePrimalAndGradient(
             cast<Function>(fn), retType, constants, TLI, TA,
             /*should return*/ false, /*dretPtr*/ false, mode, tapeType,
-            type_args, volatile_args, &aug, AtomicAdd, PostOpt);
+            type_args, volatile_args, aug, AtomicAdd, PostOpt);
     }
     }
 
@@ -542,11 +750,16 @@ public:
             ConstantFP::get(cast<Function>(fn)->getReturnType(), 1.0));
     }
 
-    if (tape && tapeType) {
+    if (mode == DerivativeMode::ReverseModeGradient && tape && tapeType) {
       auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
-      if (tapeType != tape->getType() &&
-          DL.getTypeSizeInBits(tapeType) <=
-              DL.getTypeSizeInBits(tape->getType())) {
+      if (tapeIsPointer) {
+        tape = Builder.CreateLoad(Builder.CreateBitCast(
+            tape, PointerType::get(
+                      tapeType,
+                      cast<PointerType>(tape->getType())->getAddressSpace())));
+      } else if (tapeType != tape->getType() &&
+                 DL.getTypeSizeInBits(tapeType) <=
+                     DL.getTypeSizeInBits(tape->getType())) {
         IRBuilder<> EB(&CI->getParent()->getParent()->getEntryBlock().front());
         auto AL = EB.CreateAlloca(tape->getType());
         Builder.CreateStore(tape, AL);
@@ -580,16 +793,54 @@ public:
       return false;
     }
     assert(args.size() == newFunc->getFunctionType()->getNumParams());
-    CallInst *diffret = cast<CallInst>(Builder.CreateCall(newFunc, args));
-    diffret->setCallingConv(CI->getCallingConv());
-    diffret->setDebugLoc(CI->getDebugLoc());
+    CallInst *diffretc = cast<CallInst>(Builder.CreateCall(newFunc, args));
+    diffretc->setCallingConv(CI->getCallingConv());
+    diffretc->setDebugLoc(CI->getDebugLoc());
 #if LLVM_VERSION_MAJOR >= 9
     for (auto pair : byVal) {
-      diffret->addParamAttr(
+      diffretc->addParamAttr(
           pair.first,
-          Attribute::getWithByValType(diffret->getContext(), pair.second));
+          Attribute::getWithByValType(diffretc->getContext(), pair.second));
     }
 #endif
+    Value *diffret = diffretc;
+    if (mode == DerivativeMode::ReverseModePrimal && tape) {
+      if (aug->returns.find(AugmentedStruct::Tape) != aug->returns.end()) {
+        auto tapeIdx = aug->returns.find(AugmentedStruct::Tape)->second;
+        tapeType = (tapeIdx == -1) ? aug->fn->getReturnType()
+                                   : cast<StructType>(aug->fn->getReturnType())
+                                         ->getElementType(tapeIdx);
+        unsigned idxs[] = {(unsigned)tapeIdx};
+        Value *tapeRes = (tapeIdx == -1)
+                             ? diffret
+                             : Builder.CreateExtractValue(diffret, idxs);
+        Builder.CreateStore(
+            tapeRes,
+            Builder.CreateBitCast(
+                tape,
+                PointerType::get(
+                    tapeRes->getType(),
+                    cast<PointerType>(tape->getType())->getAddressSpace())));
+        if (tapeIdx != -1) {
+          auto ST = cast<StructType>(diffret->getType());
+          SmallVector<Type *, 2> tys(ST->elements().begin(),
+                                     ST->elements().end());
+          tys.erase(tys.begin());
+          auto ST0 = StructType::get(ST->getContext(), tys);
+          Value *out = UndefValue::get(ST0);
+          for (unsigned i = 0; i < tys.size(); i++) {
+            unsigned in_idx[] = {i};
+            unsigned out_idx[] = {i + 1};
+            out = Builder.CreateInsertValue(
+                out, Builder.CreateExtractValue(diffret, out_idx), in_idx);
+          }
+          diffret = out;
+        } else {
+          auto ST0 = StructType::get(tape->getContext(), {});
+          diffret = UndefValue::get(ST0);
+        }
+      }
+    }
 
     if (!diffret->getType()->isEmptyTy() && !diffret->getType()->isVoidTy()) {
       if (diffret->getType() == CI->getType()) {
@@ -635,7 +886,7 @@ public:
       auto Params = llvm::getInlineParams();
 
       llvm::SetVector<CallInst *> Q;
-      Q.insert(diffret);
+      Q.insert(diffretc);
       TargetLibraryInfoWrapperPass TLIWP(
           Triple(newFunc->getParent()->getTargetTriple()));
       while (Q.size()) {
@@ -735,6 +986,7 @@ public:
               Fn->getName().contains("__enzyme_autodiff") ||
               Fn->getName().contains("__enzyme_fwddiff") ||
               Fn->getName().contains("__enzyme_augmentfwd") ||
+              Fn->getName().contains("__enzyme_augmentsize") ||
               Fn->getName().contains("__enzyme_reverse")))
           continue;
 
@@ -770,6 +1022,7 @@ public:
 
     std::map<CallInst *, DerivativeMode> toLower;
     std::map<CallInst *, DerivativeMode> toVirtual;
+    std::map<CallInst *, DerivativeMode> toSize;
     std::set<CallInst *> InactiveCalls;
     std::set<CallInst *> IterCalls;
   retry:;
@@ -972,6 +1225,7 @@ public:
 
         bool enableEnzyme = false;
         bool virtualCall = false;
+        bool sizeOnly = false;
         DerivativeMode mode;
         if (Fn->getName().contains("__enzyme_autodiff")) {
           enableEnzyme = true;
@@ -981,6 +1235,10 @@ public:
           mode = DerivativeMode::ForwardMode;
         } else if (Fn->getName().contains("__enzyme_augmentfwd")) {
           enableEnzyme = true;
+          mode = DerivativeMode::ReverseModePrimal;
+        } else if (Fn->getName().contains("__enzyme_augmentsize")) {
+          enableEnzyme = true;
+          sizeOnly = true;
           mode = DerivativeMode::ReverseModePrimal;
         } else if (Fn->getName().contains("__enzyme_reverse")) {
           enableEnzyme = true;
@@ -1031,6 +1289,8 @@ public:
 
           if (virtualCall)
             toVirtual[CI] = mode;
+          else if (sizeOnly)
+            toSize[CI] = mode;
           else
             toLower[CI] = mode;
 
@@ -1063,8 +1323,17 @@ public:
       Changed = true;
     }
 
+    // Perform all the size replacements first to create constants
+    for (auto pair : toSize) {
+      successful &= HandleAutoDiff(pair.first, TLI, PostOpt, pair.second,
+                                   /*sizeOnly*/ true);
+      Changed = true;
+      if (!successful)
+        break;
+    }
     for (auto pair : toLower) {
-      successful &= HandleAutoDiff(pair.first, TLI, PostOpt, pair.second);
+      successful &= HandleAutoDiff(pair.first, TLI, PostOpt, pair.second,
+                                   /*sizeOnly*/ false);
       Changed = true;
       if (!successful)
         break;
