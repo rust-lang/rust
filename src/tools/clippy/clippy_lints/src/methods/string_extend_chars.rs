@@ -12,7 +12,7 @@ use super::STRING_EXTEND_CHARS;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
     let obj_ty = cx.typeck_results().expr_ty(recv).peel_refs();
-    if !is_type_diagnostic_item(cx, obj_ty, sym::string_type) {
+    if !is_type_diagnostic_item(cx, obj_ty, sym::String) {
         return;
     }
     if let Some(arglists) = method_chain_args(arg, &["chars"]) {
@@ -20,7 +20,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
         let self_ty = cx.typeck_results().expr_ty(target).peel_refs();
         let ref_str = if *self_ty.kind() == ty::Str {
             ""
-        } else if is_type_diagnostic_item(cx, self_ty, sym::string_type) {
+        } else if is_type_diagnostic_item(cx, self_ty, sym::String) {
             "&"
         } else {
             return;

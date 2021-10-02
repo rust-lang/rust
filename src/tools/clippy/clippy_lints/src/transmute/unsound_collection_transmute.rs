@@ -9,13 +9,13 @@ use rustc_span::symbol::{sym, Symbol};
 
 // used to check for UNSOUND_COLLECTION_TRANSMUTE
 static COLLECTIONS: &[Symbol] = &[
-    sym::vec_type,
-    sym::vecdeque_type,
+    sym::Vec,
+    sym::VecDeque,
     sym::BinaryHeap,
     sym::BTreeSet,
     sym::BTreeMap,
-    sym::hashset_type,
-    sym::hashmap_type,
+    sym::HashSet,
+    sym::HashMap,
 ];
 
 /// Checks for `unsound_collection_transmute` lint.

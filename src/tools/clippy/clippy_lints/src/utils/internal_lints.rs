@@ -242,7 +242,7 @@ declare_clippy_lint! {
     ///
     /// Good:
     /// ```rust,ignore
-    /// utils::is_type_diagnostic_item(cx, ty, sym::vec_type)
+    /// utils::is_type_diagnostic_item(cx, ty, sym::Vec)
     /// ```
     pub MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
     internal,

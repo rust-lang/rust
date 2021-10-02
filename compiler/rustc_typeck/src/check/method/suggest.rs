@@ -983,7 +983,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             sym::Copy,
             sym::Hash,
             sym::Default,
-            sym::debug_trait,
+            sym::Debug,
         ];
         let mut derives = unsatisfied_predicates
             .iter()

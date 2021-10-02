@@ -9,7 +9,7 @@ use rustc_span::symbol::sym;
 /// Checks for `for` loops over `Option`s and `Result`s.
 pub(super) fn check(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
     let ty = cx.typeck_results().expr_ty(arg);
-    if is_type_diagnostic_item(cx, ty, sym::option_type) {
+    if is_type_diagnostic_item(cx, ty, sym::Option) {
         span_lint_and_help(
             cx,
             FOR_LOOPS_OVER_FALLIBLES,
@@ -26,7 +26,7 @@ pub(super) fn check(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
                 snippet(cx, arg.span, "_")
             ),
         );
-    } else if is_type_diagnostic_item(cx, ty, sym::result_type) {
+    } else if is_type_diagnostic_item(cx, ty, sym::Result) {
         span_lint_and_help(
             cx,
             FOR_LOOPS_OVER_FALLIBLES,

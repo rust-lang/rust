@@ -123,7 +123,7 @@ fn parse_iter_usage(
                     return if_chain! {
                         if match_def_path(cx, did, &paths::ITERTOOLS_NEXT_TUPLE);
                         if let ty::Adt(adt_def, subs) = cx.typeck_results().expr_ty(e).kind();
-                        if cx.tcx.is_diagnostic_item(sym::option_type, adt_def.did);
+                        if cx.tcx.is_diagnostic_item(sym::Option, adt_def.did);
                         if let ty::Tuple(subs) = subs.type_at(0).kind();
                         if subs.len() == 2;
                         then {
@@ -193,7 +193,7 @@ fn parse_iter_usage(
                     && cx
                         .typeck_results()
                         .type_dependent_def_id(e.hir_id)
-                        .map_or(false, |id| is_diag_item_method(cx, id, sym::option_type)) =>
+                        .map_or(false, |id| is_diag_item_method(cx, id, sym::Option)) =>
             {
                 (Some(UnwrapKind::Unwrap), e.span)
             },

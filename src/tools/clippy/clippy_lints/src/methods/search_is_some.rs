@@ -101,7 +101,7 @@ pub(super) fn check<'tcx>(
     else if search_method == "find" {
         let is_string_or_str_slice = |e| {
             let self_ty = cx.typeck_results().expr_ty(e).peel_refs();
-            if is_type_diagnostic_item(cx, self_ty, sym::string_type) {
+            if is_type_diagnostic_item(cx, self_ty, sym::String) {
                 true
             } else {
                 *self_ty.kind() == ty::Str

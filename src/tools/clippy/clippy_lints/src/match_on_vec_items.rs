@@ -93,7 +93,7 @@ fn is_vec_indexing<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Opti
 fn is_vector(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
     let ty = ty.peel_refs();
-    is_type_diagnostic_item(cx, ty, sym::vec_type)
+    is_type_diagnostic_item(cx, ty, sym::Vec)
 }
 
 fn is_full_range(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {

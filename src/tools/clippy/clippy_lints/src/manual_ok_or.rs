@@ -51,7 +51,7 @@ impl LateLintPass<'_> for ManualOkOr {
             if args.len() == 3;
             let method_receiver = &args[0];
             let ty = cx.typeck_results().expr_ty(method_receiver);
-            if is_type_diagnostic_item(cx, ty, sym::option_type);
+            if is_type_diagnostic_item(cx, ty, sym::Option);
             let or_expr = &args[1];
             if is_ok_wrapping(cx, &args[2]);
             if let ExprKind::Call(Expr { kind: ExprKind::Path(err_path), .. }, &[ref err_arg]) = or_expr.kind;

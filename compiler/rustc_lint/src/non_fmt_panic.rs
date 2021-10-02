@@ -130,14 +130,14 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 ty::Ref(_, r, _) if *r.kind() == ty::Str,
             ) || matches!(
                 ty.ty_adt_def(),
-                Some(ty_def) if cx.tcx.is_diagnostic_item(sym::string_type, ty_def.did),
+                Some(ty_def) if cx.tcx.is_diagnostic_item(sym::String, ty_def.did),
             );
 
             let (suggest_display, suggest_debug) = cx.tcx.infer_ctxt().enter(|infcx| {
-                let display = is_str || cx.tcx.get_diagnostic_item(sym::display_trait).map(|t| {
+                let display = is_str || cx.tcx.get_diagnostic_item(sym::Display).map(|t| {
                     infcx.type_implements_trait(t, ty, InternalSubsts::empty(), cx.param_env).may_apply()
                 }) == Some(true);
-                let debug = !display && cx.tcx.get_diagnostic_item(sym::debug_trait).map(|t| {
+                let debug = !display && cx.tcx.get_diagnostic_item(sym::Debug).map(|t| {
                     infcx.type_implements_trait(t, ty, InternalSubsts::empty(), cx.param_env).may_apply()
                 }) == Some(true);
                 (display, debug)

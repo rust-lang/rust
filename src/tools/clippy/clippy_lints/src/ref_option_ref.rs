@@ -45,7 +45,7 @@ impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
             if let Some(res) = last.res;
             if let Some(def_id) = res.opt_def_id();
 
-            if cx.tcx.is_diagnostic_item(sym::option_type, def_id);
+            if cx.tcx.is_diagnostic_item(sym::Option, def_id);
             if let Some(params) = last_path_segment(qpath).args ;
             if !params.parenthesized;
             if let Some(inner_ty) = params.args.iter().find_map(|arg| match arg {

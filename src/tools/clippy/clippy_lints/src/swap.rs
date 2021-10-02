@@ -86,8 +86,8 @@ fn generate_swap_warning(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>, spa
 
                     if matches!(ty.kind(), ty::Slice(_))
                         || matches!(ty.kind(), ty::Array(_, _))
-                        || is_type_diagnostic_item(cx, ty, sym::vec_type)
-                        || is_type_diagnostic_item(cx, ty, sym::vecdeque_type)
+                        || is_type_diagnostic_item(cx, ty, sym::Vec)
+                        || is_type_diagnostic_item(cx, ty, sym::VecDeque)
                     {
                         let slice = Sugg::hir_with_applicability(cx, lhs1, "<slice>", &mut applicability);
                         span_lint_and_sugg(
@@ -231,7 +231,7 @@ fn check_xor_swap(cx: &LateContext<'_>, block: &Block<'_>) {
     }
 }
 
-/// Returns the lhs and rhs of an xor assignment statement.  
+/// Returns the lhs and rhs of an xor assignment statement.
 fn extract_sides_of_xor_assign<'a, 'hir>(stmt: &'a Stmt<'hir>) -> Option<(&'a Expr<'hir>, &'a Expr<'hir>)> {
     if let StmtKind::Semi(expr) = stmt.kind {
         if let ExprKind::AssignOp(

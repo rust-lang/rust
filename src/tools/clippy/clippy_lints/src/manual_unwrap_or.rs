@@ -82,9 +82,9 @@ fn lint_manual_unwrap_or<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
     if_chain! {
         if let ExprKind::Match(scrutinee, match_arms, _) = expr.kind;
         let ty = cx.typeck_results().expr_ty(scrutinee);
-        if let Some(ty_name) = if is_type_diagnostic_item(cx, ty, sym::option_type) {
+        if let Some(ty_name) = if is_type_diagnostic_item(cx, ty, sym::Option) {
             Some("Option")
-        } else if is_type_diagnostic_item(cx, ty, sym::result_type) {
+        } else if is_type_diagnostic_item(cx, ty, sym::Result) {
             Some("Result")
         } else {
             None

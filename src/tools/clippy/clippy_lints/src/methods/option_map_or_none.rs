@@ -19,8 +19,8 @@ pub(super) fn check<'tcx>(
     def_arg: &'tcx hir::Expr<'_>,
     map_arg: &'tcx hir::Expr<'_>,
 ) {
-    let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::option_type);
-    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::result_type);
+    let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option);
+    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
 
     // There are two variants of this `map_or` lint:
     // (1) using `map_or` as an adapter from `Result<T,E>` to `Option<T>`

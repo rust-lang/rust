@@ -2533,7 +2533,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// within `?` desugaring.
     pub fn is_try_conversion(&self, span: Span, trait_def_id: DefId) -> bool {
         span.is_desugaring(DesugaringKind::QuestionMark)
-            && self.tcx.is_diagnostic_item(sym::from_trait, trait_def_id)
+            && self.tcx.is_diagnostic_item(sym::From, trait_def_id)
     }
 }
 

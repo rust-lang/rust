@@ -617,7 +617,7 @@ impl Display for Arguments<'_> {
     label = "`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{Debug}`"
 )]
 #[doc(alias = "{:?}")]
-#[rustc_diagnostic_item = "debug_trait"]
+#[rustc_diagnostic_item = "Debug"]
 #[cfg_attr(not(bootstrap), rustc_trivial_field_reads)]
 pub trait Debug {
     /// Formats the value using the given formatter.
@@ -710,7 +710,7 @@ pub use macros::Debug;
     note = "in format strings you may be able to use `{{:?}}` (or {{:#?}} for pretty-print) instead"
 )]
 #[doc(alias = "{}")]
-#[rustc_diagnostic_item = "display_trait"]
+#[rustc_diagnostic_item = "Display"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Display {
     /// Formats the value using the given formatter.
@@ -1003,7 +1003,7 @@ pub trait UpperHex {
 /// assert_eq!(&l_ptr[..2], "0x");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "pointer_trait"]
+#[rustc_diagnostic_item = "Pointer"]
 pub trait Pointer {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]

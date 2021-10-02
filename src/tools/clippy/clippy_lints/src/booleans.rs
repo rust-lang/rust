@@ -260,8 +260,8 @@ fn simplify_not(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
         },
         ExprKind::MethodCall(path, _, args, _) if args.len() == 1 => {
             let type_of_receiver = cx.typeck_results().expr_ty(&args[0]);
-            if !is_type_diagnostic_item(cx, type_of_receiver, sym::option_type)
-                && !is_type_diagnostic_item(cx, type_of_receiver, sym::result_type)
+            if !is_type_diagnostic_item(cx, type_of_receiver, sym::Option)
+                && !is_type_diagnostic_item(cx, type_of_receiver, sym::Result)
             {
                 return None;
             }

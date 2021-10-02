@@ -19,7 +19,7 @@ pub(super) fn check(
     def_id: DefId,
     box_size_threshold: u64,
 ) -> bool {
-    if cx.tcx.is_diagnostic_item(sym::vec_type, def_id) {
+    if cx.tcx.is_diagnostic_item(sym::Vec, def_id) {
         if_chain! {
             // Get the _ part of Vec<_>
             if let Some(last) = last_path_segment(qpath).args;

@@ -966,8 +966,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         _ => None,
                     });
                 let is_option_or_result = parent_self_ty.map_or(false, |def_id| {
-                    tcx.is_diagnostic_item(sym::option_type, def_id)
-                        || tcx.is_diagnostic_item(sym::result_type, def_id)
+                    tcx.is_diagnostic_item(sym::Option, def_id)
+                        || tcx.is_diagnostic_item(sym::Result, def_id)
                 });
                 FnSelfUseKind::Normal { self_arg, implicit_into_iter, is_option_or_result }
             });

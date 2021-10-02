@@ -20,7 +20,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 format!("Rc<{}>", alternate),
                 Applicability::MachineApplicable,
             );
-        } else if let Some(ty) = is_ty_param_diagnostic_item(cx, qpath, sym::vec_type) {
+        } else if let Some(ty) = is_ty_param_diagnostic_item(cx, qpath, sym::Vec) {
             let qpath = match &ty.kind {
                 TyKind::Path(qpath) => qpath,
                 _ => return false,
@@ -55,7 +55,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 format!("Arc<{}>", alternate),
                 Applicability::MachineApplicable,
             );
-        } else if let Some(ty) = is_ty_param_diagnostic_item(cx, qpath, sym::vec_type) {
+        } else if let Some(ty) = is_ty_param_diagnostic_item(cx, qpath, sym::Vec) {
             let qpath = match &ty.kind {
                 TyKind::Path(qpath) => qpath,
                 _ => return false,
@@ -85,7 +85,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
 }
 
 fn match_buffer_type(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<&'static str> {
-    if is_ty_param_diagnostic_item(cx, qpath, sym::string_type).is_some() {
+    if is_ty_param_diagnostic_item(cx, qpath, sym::String).is_some() {
         Some("str")
     } else if is_ty_param_diagnostic_item(cx, qpath, sym::OsString).is_some() {
         Some("std::ffi::OsStr")

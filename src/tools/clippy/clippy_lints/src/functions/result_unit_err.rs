@@ -48,7 +48,7 @@ fn check_result_unit_err(cx: &LateContext<'_>, decl: &hir::FnDecl<'_>, item_span
         if !in_external_macro(cx.sess(), item_span);
         if let hir::FnRetTy::Return(ty) = decl.output;
         let ty = hir_ty_to_ty(cx.tcx, ty);
-        if is_type_diagnostic_item(cx, ty, sym::result_type);
+        if is_type_diagnostic_item(cx, ty, sym::Result);
         if let ty::Adt(_, substs) = ty.kind();
         let err_ty = substs.type_at(1);
         if err_ty.is_unit();

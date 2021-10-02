@@ -123,7 +123,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             let from_borrow = match_def_path(cx, fn_def_id, &paths::CLONE_TRAIT_METHOD)
                 || match_def_path(cx, fn_def_id, &paths::TO_OWNED_METHOD)
                 || (match_def_path(cx, fn_def_id, &paths::TO_STRING_METHOD)
-                    && is_type_diagnostic_item(cx, arg_ty, sym::string_type));
+                    && is_type_diagnostic_item(cx, arg_ty, sym::String));
 
             let from_deref = !from_borrow
                 && (match_def_path(cx, fn_def_id, &paths::PATH_TO_PATH_BUF)

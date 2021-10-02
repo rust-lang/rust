@@ -509,7 +509,7 @@ use crate::{
 
 /// The `Option` type. See [the module level documentation](self) for more.
 #[derive(Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-#[rustc_diagnostic_item = "option_type"]
+#[rustc_diagnostic_item = "Option"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Option<T> {
     /// No value

@@ -35,7 +35,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
             let in_ty = cx.typeck_results().node_type(body.params[0].hir_id);
             match cx.typeck_results().expr_ty(&body.value).kind() {
                 ty::Adt(adt, subst)
-                    if cx.tcx.is_diagnostic_item(sym::option_type, adt.did)
+                    if cx.tcx.is_diagnostic_item(sym::Option, adt.did)
                         && TyS::same_type(in_ty, subst.type_at(0)) =>
                 {
                     "filter"

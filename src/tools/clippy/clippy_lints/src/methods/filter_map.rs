@@ -61,7 +61,7 @@ fn lint_filter_some_map_unwrap(
     methods_span: Span,
 ) {
     let iterator = is_trait_method(cx, expr, sym::Iterator);
-    let option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(filter_recv), sym::option_type);
+    let option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(filter_recv), sym::Option);
     if (iterator || option) && is_option_filter_map(cx, filter_arg, map_arg) {
         let msg = "`filter` for `Some` followed by `unwrap`";
         let help = "consider using `flatten` instead";
@@ -120,9 +120,9 @@ pub(super) fn check<'tcx>(
             if let PatKind::Binding(_, filter_param_id, _, None) = filter_pat.kind;
             if let ExprKind::MethodCall(path, _, [filter_arg], _) = filter_body.value.kind;
             if let Some(opt_ty) = cx.typeck_results().expr_ty(filter_arg).ty_adt_def();
-            if let Some(is_result) = if cx.tcx.is_diagnostic_item(sym::option_type, opt_ty.did) {
+            if let Some(is_result) = if cx.tcx.is_diagnostic_item(sym::Option, opt_ty.did) {
                 Some(false)
-            } else if cx.tcx.is_diagnostic_item(sym::result_type, opt_ty.did) {
+            } else if cx.tcx.is_diagnostic_item(sym::Result, opt_ty.did) {
                 Some(true)
             } else {
                 None

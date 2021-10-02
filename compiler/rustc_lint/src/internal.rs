@@ -33,9 +33,9 @@ impl LateLintPass<'_> for DefaultHashTypes {
             // don't lint imports, only actual usages
             return;
         }
-        let replace = if cx.tcx.is_diagnostic_item(sym::hashmap_type, def_id) {
+        let replace = if cx.tcx.is_diagnostic_item(sym::HashMap, def_id) {
             "FxHashMap"
-        } else if cx.tcx.is_diagnostic_item(sym::hashset_type, def_id) {
+        } else if cx.tcx.is_diagnostic_item(sym::HashSet, def_id) {
             "FxHashSet"
         } else {
             return;
