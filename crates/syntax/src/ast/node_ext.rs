@@ -10,10 +10,7 @@ use parser::SyntaxKind;
 use rowan::{GreenNodeData, GreenTokenData};
 
 use crate::{
-    ast::{
-        self, support, AstNode, AstToken, HasAttrs, HasGenericParams, HasModuleItem, HasName,
-        SyntaxNode,
-    },
+    ast::{self, support, AstNode, AstToken, HasAttrs, HasGenericParams, HasName, SyntaxNode},
     NodeOrToken, SmolStr, SyntaxElement, SyntaxToken, TokenText, T,
 };
 
@@ -54,13 +51,6 @@ impl ast::HasModuleItem for ast::StmtList {}
 
 impl ast::BlockExpr {
     // FIXME: remove all these methods, they belong to ast::StmtList
-    pub fn items(&self) -> impl Iterator<Item = ast::Item> {
-        self.stmt_list().into_iter().flat_map(|it| it.items())
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.statements().next().is_none() && self.tail_expr().is_none()
-    }
     pub fn statements(&self) -> impl Iterator<Item = ast::Stmt> {
         self.stmt_list().into_iter().flat_map(|it| it.statements())
     }
