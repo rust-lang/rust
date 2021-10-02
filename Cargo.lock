@@ -4457,6 +4457,7 @@ dependencies = [
  "rustc_hir",
  "rustc_index",
  "rustc_infer",
+ "rustc_lint_defs",
  "rustc_macros",
  "rustc_middle",
  "rustc_parse_format",
