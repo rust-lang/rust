@@ -392,7 +392,9 @@ impl<'tcx> Inliner<'tcx> {
         callee_body: &Body<'tcx>,
         callee_attrs: &CodegenFnAttrs,
     ) -> Result<(), &'static str> {
-        let tcx = self.tcx;
+        let cost_info = body_cost(self.tcx, self.param_env, callee_body, |ty| {
+            callsite.callee.subst_mir(self.tcx, &ty)
+        });
 
         let mut threshold = if callee_attrs.requests_inline() {
             self.tcx.sess.opts.unstable_opts.inline_mir_hint_threshold.unwrap_or(100)
@@ -403,123 +405,16 @@ impl<'tcx> Inliner<'tcx> {
         // Give a bonus functions with a small number of blocks,
         // We normally have two or three blocks for even
         // very small functions.
-        if callee_body.basic_blocks().len() <= 3 {
+        if cost_info.bbcount <= 3 {
             threshold += threshold / 4;
         }
         debug!("    final inline threshold = {}", threshold);
 
-        // FIXME: Give a bonus to functions with only a single caller
-        let mut first_block = true;
-        let mut cost = 0;
-
-        // Traverse the MIR manually so we can account for the effects of
-        // inlining on the CFG.
-        let mut work_list = vec![START_BLOCK];
-        let mut visited = BitSet::new_empty(callee_body.basic_blocks().len());
-        while let Some(bb) = work_list.pop() {
-            if !visited.insert(bb.index()) {
-                continue;
-            }
-            let blk = &callee_body.basic_blocks()[bb];
-
-            for stmt in &blk.statements {
-                // Don't count StorageLive/StorageDead in the inlining cost.
-                match stmt.kind {
-                    StatementKind::StorageLive(_)
-                    | StatementKind::StorageDead(_)
-                    | StatementKind::Deinit(_)
-                    | StatementKind::Nop => {}
-                    _ => cost += INSTR_COST,
-                }
-            }
-            let term = blk.terminator();
-            let mut is_drop = false;
-            match term.kind {
-                TerminatorKind::Drop { ref place, target, unwind }
-                | TerminatorKind::DropAndReplace { ref place, target, unwind, .. } => {
-                    is_drop = true;
-                    work_list.push(target);
-                    // If the place doesn't actually need dropping, treat it like
-                    // a regular goto.
-                    let ty = callsite.callee.subst_mir(self.tcx, &place.ty(callee_body, tcx).ty);
-                    if ty.needs_drop(tcx, self.param_env) {
-                        cost += CALL_PENALTY;
-                        if let Some(unwind) = unwind {
-                            cost += LANDINGPAD_PENALTY;
-                            work_list.push(unwind);
-                        }
-                    } else {
-                        cost += INSTR_COST;
-                    }
-                }
-
-                TerminatorKind::Unreachable | TerminatorKind::Call { target: None, .. }
-                    if first_block =>
-                {
-                    // If the function always diverges, don't inline
-                    // unless the cost is zero
-                    threshold = 0;
-                }
-
-                TerminatorKind::Call { func: Operand::Constant(ref f), cleanup, .. } => {
-                    if let ty::FnDef(def_id, _) =
-                        *callsite.callee.subst_mir(self.tcx, &f.literal.ty()).kind()
-                    {
-                        // Don't give intrinsics the extra penalty for calls
-                        if tcx.is_intrinsic(def_id) {
-                            cost += INSTR_COST;
-                        } else {
-                            cost += CALL_PENALTY;
-                        }
-                    } else {
-                        cost += CALL_PENALTY;
-                    }
-                    if cleanup.is_some() {
-                        cost += LANDINGPAD_PENALTY;
-                    }
-                }
-                TerminatorKind::Assert { cleanup, .. } => {
-                    cost += CALL_PENALTY;
-
-                    if cleanup.is_some() {
-                        cost += LANDINGPAD_PENALTY;
-                    }
-                }
-                TerminatorKind::Resume => cost += RESUME_PENALTY,
-                TerminatorKind::InlineAsm { cleanup, .. } => {
-                    cost += INSTR_COST;
-
-                    if cleanup.is_some() {
-                        cost += LANDINGPAD_PENALTY;
-                    }
-                }
-                _ => cost += INSTR_COST,
-            }
-
-            if !is_drop {
-                for succ in term.successors() {
-                    work_list.push(succ);
-                }
-            }
-
-            first_block = false;
+        if cost_info.diverges {
+            threshold = 0;
         }
 
-        // Count up the cost of local variables and temps, if we know the size
-        // use that, otherwise we use a moderately-large dummy cost.
-
-        let ptr_size = tcx.data_layout.pointer_size.bytes();
-
-        for v in callee_body.vars_and_temps_iter() {
-            let ty = callsite.callee.subst_mir(self.tcx, &callee_body.local_decls[v].ty);
-            // Cost of the var is the size in machine-words, if we know
-            // it.
-            if let Some(size) = type_size_of(tcx, self.param_env, ty) {
-                cost += ((size + ptr_size - 1) / ptr_size) as usize;
-            } else {
-                cost += UNKNOWN_SIZE_COST;
-            }
-        }
+        let cost = cost_info.cost;
 
         if let InlineAttr::Always = callee_attrs.inline {
             debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
@@ -1011,4 +906,131 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
             }
         }
     }
+}
+
+pub struct InlineCostInfo {
+    pub cost: usize,
+    pub bbcount: usize,
+    pub diverges: bool,
+}
+
+pub fn body_cost<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    callee_body: &Body<'tcx>,
+    subst_mir: impl Fn(Ty<'tcx>) -> Ty<'tcx>,
+) -> InlineCostInfo {
+    // FIXME: Give a bonus to functions with only a single caller
+    let mut diverges = false;
+    let mut first_block = true;
+    let mut cost = 0;
+
+    // Traverse the MIR manually so we can account for the effects of
+    // inlining on the CFG.
+    let mut work_list = vec![START_BLOCK];
+    let mut visited = BitSet::new_empty(callee_body.basic_blocks().len());
+    while let Some(bb) = work_list.pop() {
+        if !visited.insert(bb.index()) {
+            continue;
+        }
+        let blk = &callee_body.basic_blocks()[bb];
+
+        for stmt in &blk.statements {
+            // Don't count StorageLive/StorageDead in the inlining cost.
+            match stmt.kind {
+                StatementKind::StorageLive(_)
+                | StatementKind::StorageDead(_)
+                | StatementKind::Deinit(_)
+                | StatementKind::Nop => {}
+                _ => cost += INSTR_COST,
+            }
+        }
+        let term = blk.terminator();
+        let mut is_drop = false;
+        match term.kind {
+            TerminatorKind::Drop { ref place, target, unwind }
+            | TerminatorKind::DropAndReplace { ref place, target, unwind, .. } => {
+                is_drop = true;
+                work_list.push(target);
+                // If the place doesn't actually need dropping, treat it like
+                // a regular goto.
+                let ty = subst_mir(place.ty(callee_body, tcx).ty);
+                if ty.needs_drop(tcx, param_env) {
+                    cost += CALL_PENALTY;
+                    if let Some(unwind) = unwind {
+                        cost += LANDINGPAD_PENALTY;
+                        work_list.push(unwind);
+                    }
+                } else {
+                    cost += INSTR_COST;
+                }
+            }
+
+            TerminatorKind::Unreachable | TerminatorKind::Call { target: None, .. }
+                if first_block =>
+            {
+                // If the function always diverges, don't inline
+                // unless the cost is zero
+                diverges = true;
+            }
+
+            TerminatorKind::Call { func: Operand::Constant(ref f), cleanup, .. } => {
+                if let ty::FnDef(def_id, _) = *subst_mir(f.literal.ty()).kind() {
+                    // Don't give intrinsics the extra penalty for calls
+                    if tcx.is_intrinsic(def_id) {
+                        cost += INSTR_COST;
+                    } else {
+                        cost += CALL_PENALTY;
+                    }
+                } else {
+                    cost += CALL_PENALTY;
+                }
+                if cleanup.is_some() {
+                    cost += LANDINGPAD_PENALTY;
+                }
+            }
+            TerminatorKind::Assert { cleanup, .. } => {
+                cost += CALL_PENALTY;
+
+                if cleanup.is_some() {
+                    cost += LANDINGPAD_PENALTY;
+                }
+            }
+            TerminatorKind::Resume => cost += RESUME_PENALTY,
+            TerminatorKind::InlineAsm { cleanup, .. } => {
+                cost += INSTR_COST;
+
+                if cleanup.is_some() {
+                    cost += LANDINGPAD_PENALTY;
+                }
+            }
+            _ => cost += INSTR_COST,
+        }
+
+        if !is_drop {
+            for succ in term.successors() {
+                work_list.push(succ);
+            }
+        }
+
+        first_block = false;
+    }
+
+    // Count up the cost of local variables and temps, if we know the size
+    // use that, otherwise we use a moderately-large dummy cost.
+
+    let ptr_size = tcx.data_layout.pointer_size.bytes();
+
+    for v in callee_body.vars_and_temps_iter() {
+        let ty = subst_mir(callee_body.local_decls[v].ty);
+        // Cost of the var is the size in machine-words, if we know
+        // it.
+        if let Some(size) = type_size_of(tcx, param_env, ty) {
+            cost += ((size + ptr_size - 1) / ptr_size) as usize;
+        } else {
+            cost += UNKNOWN_SIZE_COST;
+        }
+    }
+
+    InlineCostInfo { cost, diverges, bbcount: callee_body.basic_blocks().len() }
 }
