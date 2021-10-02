@@ -318,7 +318,8 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
         }
     }
 
-    sourcegen::add_preamble("sourcegen_ast", sourcegen::reformat(res))
+    let res = sourcegen::add_preamble("sourcegen_ast", sourcegen::reformat(res));
+    res.replace("#[derive", "\n#[derive")
 }
 
 fn write_doc_comment(contents: &[String], dest: &mut String) {
