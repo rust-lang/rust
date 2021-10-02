@@ -4,7 +4,6 @@
 #![feature(iter_zip)]
 #![feature(min_specialization)]
 #![feature(test)]
-#![feature(fn_traits)]
 
 pub mod bit_set;
 pub mod vec;

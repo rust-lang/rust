@@ -144,7 +144,7 @@ impl<R> MemberConstraintSet<'tcx, R>
 where
     R: Copy + Hash + Eq,
 {
-    crate fn all_indices(&self) -> impl Iterator<Item = NllMemberConstraintIndex> {
+    crate fn all_indices(&self) -> impl Iterator<Item = NllMemberConstraintIndex> + '_ {
         self.constraints.indices()
     }
 
