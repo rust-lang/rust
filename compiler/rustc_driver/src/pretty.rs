@@ -88,7 +88,7 @@ trait PrinterSupport: pprust::PpAnn {
     /// Produces the pretty-print annotation object.
     ///
     /// (Rust does not yet support upcasting from a trait object to
-    /// an object for one of its super-traits.)
+    /// an object for one of its supertraits.)
     fn pp_ann(&self) -> &dyn pprust::PpAnn;
 }
 
@@ -104,7 +104,7 @@ trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
     /// Produces the pretty-print annotation object.
     ///
     /// (Rust does not yet support upcasting from a trait object to
-    /// an object for one of its super-traits.)
+    /// an object for one of its supertraits.)
     fn pp_ann(&self) -> &dyn pprust_hir::PpAnn;
 }
 

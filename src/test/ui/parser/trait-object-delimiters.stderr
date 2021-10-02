@@ -52,7 +52,7 @@ LL | fn foo1(_: &dyn Drop + AsRef<str>) {}
    |                 |
    |                 first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Drop + AsRef<str> {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Drop + AsRef<str> {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0224]: at least one trait is required for an object type
@@ -69,7 +69,7 @@ LL | fn foo5(_: &(dyn Drop + dyn AsRef<str>)) {}
    |                  |
    |                  first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Drop + AsRef<str> {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Drop + AsRef<str> {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error: aborting due to 9 previous errors

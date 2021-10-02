@@ -1,5 +1,5 @@
 warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/specialization-super-traits.rs:3:12
+  --> $DIR/specialization-supertraits.rs:3:12
    |
 LL | #![feature(specialization)]
    |            ^^^^^^^^^^^^^^

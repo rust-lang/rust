@@ -52,7 +52,7 @@ LL |     let _: Box<(Obj) + (?Sized) + (for<'a> Trait<'a>)>;
    |                |
    |                first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + for<'a> Trait<'a> {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + for<'a> Trait<'a> {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -63,7 +63,7 @@ LL |     let _: Box<?Sized + (for<'a> Trait<'a>) + (Obj)>;
    |                         |
    |                         first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: for<'a> Trait<'a> + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: for<'a> Trait<'a> + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -74,7 +74,7 @@ LL |     let _: Box<for<'a> Trait<'a> + (Obj) + (?Sized)>;
    |                |
    |                first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: for<'a> Trait<'a> + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: for<'a> Trait<'a> + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error: aborting due to 6 previous errors; 3 warnings emitted

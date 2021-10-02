@@ -964,7 +964,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let trait_ref = ty::TraitRef::new(trait_def_id, trait_substs);
 
         if self.tcx.is_trait_alias(trait_def_id) {
-            // For trait aliases, assume all super-traits are relevant.
+            // For trait aliases, assume all supertraits are relevant.
             let bounds = iter::once(ty::Binder::dummy(trait_ref));
             self.elaborate_bounds(bounds, |this, new_trait_ref, item| {
                 let new_trait_ref = this.erase_late_bound_regions(new_trait_ref);
