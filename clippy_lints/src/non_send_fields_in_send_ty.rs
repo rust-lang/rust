@@ -12,7 +12,7 @@ use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Warns about a field in a `Send` struct that is neither `Send` nor `Copy`.
+    /// Warns about fields in struct implementing `Send` that are neither `Send` nor `Copy`.
     ///
     /// ### Why is this bad?
     /// Sending the struct to another thread will transfer the ownership to
@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// ```
     /// Use thread-safe types like [`std::sync::Arc`](https://doc.rust-lang.org/std/sync/struct.Arc.html)
     /// or specify correct bounds on generic type parameters (`T: Send`).
-    pub NON_SEND_FIELD_IN_SEND_TY,
+    pub NON_SEND_FIELDS_IN_SEND_TY,
     nursery,
     "there is field that does not implement `Send` in a `Send` struct"
 }
@@ -61,7 +61,7 @@ impl NonSendFieldInSendTy {
     }
 }
 
-impl_lint_pass!(NonSendFieldInSendTy => [NON_SEND_FIELD_IN_SEND_TY]);
+impl_lint_pass!(NonSendFieldInSendTy => [NON_SEND_FIELDS_IN_SEND_TY]);
 
 impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                                 .did
                                 .as_local()
                                 .map(|local_def_id| hir_map.local_def_id_to_hir_id(local_def_id));
-                            if !is_lint_allowed(cx, NON_SEND_FIELD_IN_SEND_TY, field_hir_id);
+                            if !is_lint_allowed(cx, NON_SEND_FIELDS_IN_SEND_TY, field_hir_id);
                             if let field_ty = field.ty(cx.tcx, impl_trait_substs);
                             if !ty_allowed_in_send(cx, field_ty, send_trait);
                             if let Node::Field(field_def) = hir_map.get(field_hir_id);
@@ -114,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                 if !non_send_fields.is_empty() {
                     span_lint_and_then(
                         cx,
-                        NON_SEND_FIELD_IN_SEND_TY,
+                        NON_SEND_FIELDS_IN_SEND_TY,
                         item.span,
                         &format!(
                             "this implementation is unsound, as some fields in `{}` are `!Send`",

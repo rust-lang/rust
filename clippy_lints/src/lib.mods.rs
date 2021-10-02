@@ -149,7 +149,7 @@ mod no_effect;
 mod non_copy_const;
 mod non_expressive_names;
 mod non_octal_unix_permissions;
-mod non_send_field_in_send_ty;
+mod non_send_fields_in_send_ty;
 mod nonstandard_macro_braces;
 mod open_options;
 mod option_env_unwrap;

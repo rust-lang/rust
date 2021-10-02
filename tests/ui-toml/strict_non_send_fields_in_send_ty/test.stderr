@@ -4,7 +4,7 @@ error: this implementation is unsound, as some fields in `NoGeneric` are `!Send`
 LL | unsafe impl Send for NoGeneric {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::non-send-field-in-send-ty` implied by `-D warnings`
+   = note: `-D clippy::non-send-fields-in-send-ty` implied by `-D warnings`
 note: the type of field `rc_is_not_send` is `!Send`
   --> $DIR/test.rs:8:5
    |

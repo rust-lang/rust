@@ -1,4 +1,4 @@
-#![warn(clippy::non_send_field_in_send_ty)]
+#![warn(clippy::non_send_fields_in_send_ty)]
 #![feature(extern_types)]
 
 use std::cell::UnsafeCell;
@@ -95,16 +95,16 @@ pub struct HeuristicTest {
 unsafe impl Send for HeuristicTest {}
 
 // Test attributes
-#[allow(clippy::non_send_field_in_send_ty)]
+#[allow(clippy::non_send_fields_in_send_ty)]
 pub struct AttrTest1<T>(T);
 
 pub struct AttrTest2<T> {
-    #[allow(clippy::non_send_field_in_send_ty)]
+    #[allow(clippy::non_send_fields_in_send_ty)]
     field: T,
 }
 
 pub enum AttrTest3<T> {
-    #[allow(clippy::non_send_field_in_send_ty)]
+    #[allow(clippy::non_send_fields_in_send_ty)]
     Enum1(T),
     Enum2(T),
 }

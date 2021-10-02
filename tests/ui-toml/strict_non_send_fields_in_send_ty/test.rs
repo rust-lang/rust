@@ -1,4 +1,4 @@
-#![warn(clippy::non_send_field_in_send_ty)]
+#![warn(clippy::non_send_fields_in_send_ty)]
 #![feature(extern_types)]
 
 use std::rc::Rc;
