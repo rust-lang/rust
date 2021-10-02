@@ -58,7 +58,7 @@ where
     }
 
     /// Reads from potentially discontiguous indices in `slice` to construct a SIMD vector.
-    /// Lanes given an out-of-bounds index instead select values from the `or` vector.
+    /// If an index is out-of-bounds, the lane is instead selected from the `or` vector.
     ///
     /// # Examples
     /// ```
@@ -79,7 +79,7 @@ where
     }
 
     /// Reads from potentially discontiguous indices in `slice` to construct a SIMD vector.
-    /// Lanes given an out-of-bounds index instead are set the default value for the type.
+    /// If an index is out-of-bounds, the lane is set to the default value for the type.
     ///
     /// # Examples
     /// ```
