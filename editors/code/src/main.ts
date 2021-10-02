@@ -66,7 +66,7 @@ async function tryActivate(context: vscode.ExtensionContext) {
     ctx.pushCleanup(configureLanguage());
 
     vscode.workspace.onDidChangeConfiguration(
-        _ => ctx?.client?.sendNotification('workspace/didChangeConfiguration', { settings: "" }),
+        _ => ctx?.client?.sendNotification('workspace/didChangeConfiguration', { settings: "" }).catch(log.error),
         null,
         ctx.subscriptions,
     );
