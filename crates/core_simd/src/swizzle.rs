@@ -1,9 +1,7 @@
 use crate::simd::intrinsics;
 use crate::{LaneCount, Simd, SimdElement, SupportedLaneCount};
 
-/// Rearrange vector elements.
-///
-/// A new vector is constructed by specifying the the lanes of the source vector or vectors to use.
+/// Constructs a new vector by selecting values from the lanes of the source vector or vectors to use.
 ///
 /// When swizzling one vector, the indices of the result vector are indicated by a `const` array
 /// of `usize`, like [`Swizzle`].
