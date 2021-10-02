@@ -361,9 +361,9 @@ mod inner {
         }
     }
 
-    #[cfg(not(any(target_os = "dragonfly", target_os = "espidf")))]
-    pub type clock_t = libc::c_int;
-    #[cfg(any(target_os = "dragonfly", target_os = "espidf"))]
+    #[cfg(not(target_os = "espidf"))]
+    pub type clock_t = libc::clock_t;
+    #[cfg(target_os = "espidf")]
     pub type clock_t = libc::c_ulong;
 
     fn now(clock: clock_t) -> Timespec {
