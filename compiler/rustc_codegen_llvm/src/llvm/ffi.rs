@@ -789,7 +789,7 @@ pub mod coverageinfo {
                 start_line,
                 start_col,
                 end_line,
-                end_col: ((1 as u32) << 31) | end_col,
+                end_col: (1_u32 << 31) | end_col,
                 kind: RegionKind::GapRegion,
             }
         }

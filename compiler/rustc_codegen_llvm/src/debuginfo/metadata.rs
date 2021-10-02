@@ -477,7 +477,7 @@ fn subroutine_type_metadata(
     let signature_metadata: Vec<_> = iter::once(
         // return type
         match signature.output().kind() {
-            ty::Tuple(ref tys) if tys.is_empty() => None,
+            ty::Tuple(tys) if tys.is_empty() => None,
             _ => Some(type_metadata(cx, signature.output(), span)),
         },
     )
@@ -647,7 +647,7 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
         ty::Never | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
-        ty::Tuple(ref elements) if elements.is_empty() => {
+        ty::Tuple(elements) if elements.is_empty() => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
         ty::Array(typ, _) | ty::Slice(typ) => {
@@ -746,7 +746,7 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
                     .finalize(cx)
             }
         },
-        ty::Tuple(ref elements) => {
+        ty::Tuple(elements) => {
             let tys: Vec<_> = elements.iter().map(|k| k.expect_ty()).collect();
             prepare_tuple_metadata(cx, t, &tys, unique_type_id, usage_site_span, NO_SCOPE_METADATA)
                 .finalize(cx)
@@ -932,7 +932,7 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
 
     let (name, encoding) = match t.kind() {
         ty::Never => ("!", DW_ATE_unsigned),
-        ty::Tuple(ref elements) if elements.is_empty() => ("()", DW_ATE_unsigned),
+        ty::Tuple(elements) if elements.is_empty() => ("()", DW_ATE_unsigned),
         ty::Bool => ("bool", DW_ATE_boolean),
         ty::Char => ("char", DW_ATE_unsigned_char),
         ty::Int(int_ty) if msvc_like_names => (int_ty.msvc_basic_name(), DW_ATE_signed),
@@ -1123,7 +1123,7 @@ pub fn compile_unit_metadata(
 
             let gcov_cu_info = [
                 path_to_mdstring(debug_context.llcontext, &output_filenames.with_extension("gcno")),
-                path_to_mdstring(debug_context.llcontext, &gcda_path),
+                path_to_mdstring(debug_context.llcontext, gcda_path),
                 cu_desc_metadata,
             ];
             let gcov_metadata = llvm::LLVMMDNodeInContext(
@@ -1963,17 +1963,13 @@ impl<'tcx> VariantInfo<'_, 'tcx> {
     }
 
     fn source_info(&self, cx: &CodegenCx<'ll, 'tcx>) -> Option<SourceInfo<'ll>> {
-        match self {
-            VariantInfo::Generator { def_id, variant_index, .. } => {
-                let span = cx.tcx.generator_layout(*def_id).unwrap().variant_source_info
-                    [*variant_index]
-                    .span;
-                if !span.is_dummy() {
-                    let loc = cx.lookup_debug_loc(span.lo());
-                    return Some(SourceInfo { file: file_metadata(cx, &loc.file), line: loc.line });
-                }
+        if let VariantInfo::Generator { def_id, variant_index, .. } = self {
+            let span =
+                cx.tcx.generator_layout(*def_id).unwrap().variant_source_info[*variant_index].span;
+            if !span.is_dummy() {
+                let loc = cx.lookup_debug_loc(span.lo());
+                return Some(SourceInfo { file: file_metadata(cx, &loc.file), line: loc.line });
             }
-            _ => {}
         }
         None
     }
@@ -1994,11 +1990,11 @@ fn describe_enum_variant(
         let unique_type_id = debug_context(cx)
             .type_map
             .borrow_mut()
-            .get_unique_type_id_of_enum_variant(cx, layout.ty, &variant_name);
+            .get_unique_type_id_of_enum_variant(cx, layout.ty, variant_name);
         create_struct_stub(
             cx,
             layout.ty,
-            &variant_name,
+            variant_name,
             unique_type_id,
             Some(containing_scope),
             DIFlags::FlagZero,
@@ -2385,7 +2381,7 @@ fn set_members_of_composite_type(
     {
         let mut composite_types_completed =
             debug_context(cx).composite_types_completed.borrow_mut();
-        if !composite_types_completed.insert(&composite_type_metadata) {
+        if !composite_types_completed.insert(composite_type_metadata) {
             bug!(
                 "debuginfo::set_members_of_composite_type() - \
                   Already completed forward declaration re-encountered."

@@ -88,7 +88,7 @@ struct ProbeContext<'a, 'tcx> {
 impl<'a, 'tcx> Deref for ProbeContext<'a, 'tcx> {
     type Target = FnCtxt<'a, 'tcx>;
     fn deref(&self) -> &Self::Target {
-        &self.fcx
+        self.fcx
     }
 }
 
@@ -614,7 +614,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let lang_items = self.tcx.lang_items();
 
         match *self_ty.value.value.kind() {
-            ty::Dynamic(ref data, ..) if let Some(p) = data.principal() => {
+            ty::Dynamic(data, ..) if let Some(p) = data.principal() => {
                 // Subtle: we can't use `instantiate_query_response` here: using it will
                 // commit to all of the type equalities assumed by inference going through
                 // autoderef (see the `method-probe-no-guessing` test).
@@ -634,7 +634,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 // type variables in any form, so just do that!
                 let (QueryResponse { value: generalized_self_ty, .. }, _ignored_var_values) =
                     self.fcx
-                        .instantiate_canonical_with_fresh_inference_vars(self.span, &self_ty);
+                        .instantiate_canonical_with_fresh_inference_vars(self.span, self_ty);
 
                 self.assemble_inherent_candidates_from_object(generalized_self_ty);
                 self.assemble_inherent_impl_candidates_for_type(p.def_id());
@@ -1428,7 +1428,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             // match as well (or at least may match, sometimes we
             // don't have enough information to fully evaluate).
             match probe.kind {
-                InherentImplCandidate(ref substs, ref ref_obligations) => {
+                InherentImplCandidate(substs, ref ref_obligations) => {
                     // Check whether the impl imposes obligations we have to worry about.
                     let impl_def_id = probe.item.container.id();
                     let impl_bounds = self.tcx.predicates_of(impl_def_id);

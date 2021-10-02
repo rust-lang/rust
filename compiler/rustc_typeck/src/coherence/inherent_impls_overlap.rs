@@ -187,7 +187,7 @@ impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
                             .collect::<FxHashSet<usize>>();
                         match ids.len() {
                             0 | 1 => {
-                                let id_to_set = if ids.len() == 0 {
+                                let id_to_set = if ids.is_empty() {
                                     // Create a new connected region
                                     let region = ConnectedRegion {
                                         idents: idents_to_add,

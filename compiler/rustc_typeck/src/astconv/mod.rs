@@ -352,8 +352,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             span,
             def_id,
             seg,
-            &generics,
-            &generic_args,
+            generics,
+            generic_args,
             GenericArgPosition::Type,
             self_ty.is_some(),
             infer_args,
@@ -363,7 +363,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // Traits always have `Self` as a generic parameter, which means they will not return early
         // here and so associated type bindings will be handled regardless of whether there are any
         // non-`Self` generic parameters.
-        if generics.params.len() == 0 {
+        if generics.params.is_empty() {
             return (tcx.intern_substs(&[]), arg_count);
         }
 
@@ -417,7 +417,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let tcx = self.astconv.tcx();
                 match (&param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
-                        self.astconv.ast_region_to_region(&lt, Some(param)).into()
+                        self.astconv.ast_region_to_region(lt, Some(param)).into()
                     }
                     (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Type(ty)) => {
                         if has_default {
@@ -441,7 +441,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             self.inferred_params.push(ty.span);
                             tcx.ty_error().into()
                         } else {
-                            self.astconv.ast_ty_to_ty(&ty).into()
+                            self.astconv.ast_ty_to_ty(ty).into()
                         }
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
@@ -622,10 +622,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .iter()
             .map(|binding| {
                 let kind = match binding.kind {
-                    hir::TypeBindingKind::Equality { ref ty } => {
+                    hir::TypeBindingKind::Equality { ty } => {
                         ConvertedBindingKind::Equality(self.ast_ty_to_ty(ty))
                     }
-                    hir::TypeBindingKind::Constraint { ref bounds } => {
+                    hir::TypeBindingKind::Constraint { bounds } => {
                         ConvertedBindingKind::Constraint(bounds)
                     }
                 };
@@ -908,18 +908,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if let Some((self_ty, where_clause)) = self_ty_where_predicates {
             let self_ty_def_id = tcx.hir().local_def_id(self_ty).to_def_id();
             for clause in where_clause {
-                match clause {
-                    hir::WherePredicate::BoundPredicate(pred) => {
-                        match pred.bounded_ty.kind {
-                            hir::TyKind::Path(hir::QPath::Resolved(_, path)) => match path.res {
-                                Res::Def(DefKind::TyParam, def_id) if def_id == self_ty_def_id => {}
-                                _ => continue,
-                            },
+                if let hir::WherePredicate::BoundPredicate(pred) = clause {
+                    match pred.bounded_ty.kind {
+                        hir::TyKind::Path(hir::QPath::Resolved(_, path)) => match path.res {
+                            Res::Def(DefKind::TyParam, def_id) if def_id == self_ty_def_id => {}
                             _ => continue,
-                        }
-                        search_bounds(pred.bounds);
+                        },
+                        _ => continue,
                     }
-                    _ => {}
+                    search_bounds(pred.bounds);
                 }
             }
         }
@@ -1030,7 +1027,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound<'_>],
     ) -> Bounds<'tcx> {
-        self.compute_bounds_inner(param_ty, &ast_bounds)
+        self.compute_bounds_inner(param_ty, ast_bounds)
     }
 
     /// Convert the bounds in `ast_bounds` that refer to traits which define an associated type
@@ -1231,7 +1228,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         match binding.kind {
-            ConvertedBindingKind::Equality(ref ty) => {
+            ConvertedBindingKind::Equality(ty) => {
                 // "Desugar" a constraint like `T: Iterator<Item = u32>` this to
                 // the "projection predicate" for:
                 //
@@ -2207,7 +2204,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 assert_eq!(opt_self_ty, None);
 
                 let path_segs =
-                    self.def_ids_for_value_path_segments(&path.segments, None, kind, def_id);
+                    self.def_ids_for_value_path_segments(path.segments, None, kind, def_id);
                 let generic_segs: FxHashSet<_> =
                     path_segs.iter().map(|PathSeg(_, index)| index).collect();
                 self.prohibit_generics(path.segments.iter().enumerate().filter_map(
@@ -2304,34 +2301,32 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
 
         let result_ty = match ast_ty.kind {
-            hir::TyKind::Slice(ref ty) => tcx.mk_slice(self.ast_ty_to_ty(&ty)),
+            hir::TyKind::Slice(ref ty) => tcx.mk_slice(self.ast_ty_to_ty(ty)),
             hir::TyKind::Ptr(ref mt) => {
-                tcx.mk_ptr(ty::TypeAndMut { ty: self.ast_ty_to_ty(&mt.ty), mutbl: mt.mutbl })
+                tcx.mk_ptr(ty::TypeAndMut { ty: self.ast_ty_to_ty(mt.ty), mutbl: mt.mutbl })
             }
             hir::TyKind::Rptr(ref region, ref mt) => {
                 let r = self.ast_region_to_region(region, None);
                 debug!(?r);
-                let t = self.ast_ty_to_ty_inner(&mt.ty, true);
+                let t = self.ast_ty_to_ty_inner(mt.ty, true);
                 tcx.mk_ref(r, ty::TypeAndMut { ty: t, mutbl: mt.mutbl })
             }
             hir::TyKind::Never => tcx.types.never,
-            hir::TyKind::Tup(ref fields) => {
-                tcx.mk_tup(fields.iter().map(|t| self.ast_ty_to_ty(&t)))
-            }
-            hir::TyKind::BareFn(ref bf) => {
-                require_c_abi_if_c_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
+            hir::TyKind::Tup(fields) => tcx.mk_tup(fields.iter().map(|t| self.ast_ty_to_ty(t))),
+            hir::TyKind::BareFn(bf) => {
+                require_c_abi_if_c_variadic(tcx, bf.decl, bf.abi, ast_ty.span);
 
                 tcx.mk_fn_ptr(self.ty_of_fn(
                     ast_ty.hir_id,
                     bf.unsafety,
                     bf.abi,
-                    &bf.decl,
+                    bf.decl,
                     &hir::Generics::empty(),
                     None,
                     Some(ast_ty),
                 ))
             }
-            hir::TyKind::TraitObject(ref bounds, ref lifetime, _) => {
+            hir::TyKind::TraitObject(bounds, ref lifetime, _) => {
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime, borrowed)
             }
             hir::TyKind::Path(hir::QPath::Resolved(ref maybe_qself, ref path)) => {
@@ -2339,7 +2334,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.ast_ty_to_ty(qself));
                 self.res_to_ty(opt_self_ty, path, false)
             }
-            hir::TyKind::OpaqueDef(item_id, ref lifetimes) => {
+            hir::TyKind::OpaqueDef(item_id, lifetimes) => {
                 let opaque_ty = tcx.hir().item(item_id);
                 let def_id = item_id.def_id.to_def_id();
 
@@ -2354,7 +2349,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 debug!(?qself, ?segment);
                 let ty = self.ast_ty_to_ty(qself);
 
-                let res = if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = qself.kind {
+                let res = if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = qself.kind {
                     path.res
                 } else {
                     Res::Err
@@ -2379,7 +2374,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             hir::TyKind::Array(ref ty, ref length) => {
                 let length_def_id = tcx.hir().local_def_id(length.hir_id);
                 let length = ty::Const::from_anon_const(tcx, length_def_id);
-                let array_ty = tcx.mk_ty(ty::Array(self.ast_ty_to_ty(&ty), length));
+                let array_ty = tcx.mk_ty(ty::Array(self.ast_ty_to_ty(ty), length));
                 self.normalize_ty(ast_ty.span, array_ty)
             }
             hir::TyKind::Typeof(ref e) => {
@@ -2485,7 +2480,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let input_tys = decl.inputs.iter().map(|a| self.ty_of_arg(a, None));
         let output_ty = match decl.output {
-            hir::FnRetTy::Return(ref output) => {
+            hir::FnRetTy::Return(output) => {
                 visitor.visit_ty(output);
                 self.ast_ty_to_ty(output)
             }

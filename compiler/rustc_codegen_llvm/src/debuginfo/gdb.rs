@@ -59,10 +59,8 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(cx: &CodegenCx<'ll, '_>) -
 }
 
 pub fn needs_gdb_debug_scripts_section(cx: &CodegenCx<'_, '_>) -> bool {
-    let omit_gdb_pretty_printer_section = cx
-        .tcx
-        .sess
-        .contains_name(&cx.tcx.hir().krate_attrs(), sym::omit_gdb_pretty_printer_section);
+    let omit_gdb_pretty_printer_section =
+        cx.tcx.sess.contains_name(cx.tcx.hir().krate_attrs(), sym::omit_gdb_pretty_printer_section);
 
     !omit_gdb_pretty_printer_section
         && cx.sess().opts.debuginfo != DebugInfo::None

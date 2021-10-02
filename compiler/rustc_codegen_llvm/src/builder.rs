@@ -86,7 +86,7 @@ impl ty::layout::HasParamEnv<'tcx> for Builder<'_, '_, 'tcx> {
 impl HasTargetSpec for Builder<'_, '_, 'tcx> {
     #[inline]
     fn target_spec(&self) -> &Target {
-        &self.cx.target_spec()
+        self.cx.target_spec()
     }
 }
 

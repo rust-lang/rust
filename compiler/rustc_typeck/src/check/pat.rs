@@ -341,7 +341,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         mut def_bm: BindingMode,
     ) -> (Ty<'tcx>, BindingMode) {
-        let mut expected = self.resolve_vars_with_obligations(&expected);
+        let mut expected = self.resolve_vars_with_obligations(expected);
 
         // Peel off as many `&` or `&mut` from the scrutinee type as possible. For example,
         // for `match &&&mut Some(5)` the loop runs three times, aborting when it reaches
@@ -587,7 +587,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if let Some(p) = sub {
-            self.check_pat(&p, expected, def_bm, TopInfo { parent_pat: Some(&pat), ..ti });
+            self.check_pat(p, expected, def_bm, TopInfo { parent_pat: Some(pat), ..ti });
         }
 
         local_ty
@@ -697,8 +697,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             let err = self.tcx.ty_error();
             for field in fields {
-                let ti = TopInfo { parent_pat: Some(&pat), ..ti };
-                self.check_pat(&field.pat, err, def_bm, ti);
+                let ti = TopInfo { parent_pat: Some(pat), ..ti };
+                self.check_pat(field.pat, err, def_bm, ti);
             }
             return err;
         };
@@ -707,7 +707,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.demand_eqtype_pat(pat.span, expected, pat_ty, ti);
 
         // Type-check subpatterns.
-        if self.check_struct_pat_fields(pat_ty, &pat, variant, fields, etc, def_bm, ti) {
+        if self.check_struct_pat_fields(pat_ty, pat, variant, fields, etc, def_bm, ti) {
             pat_ty
         } else {
             self.tcx.ty_error()
@@ -876,7 +876,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let on_error = || {
             let parent_pat = Some(pat);
             for pat in subpats {
-                self.check_pat(&pat, tcx.ty_error(), def_bm, TopInfo { parent_pat, ..ti });
+                self.check_pat(pat, tcx.ty_error(), def_bm, TopInfo { parent_pat, ..ti });
             }
         };
         let report_unexpected_res = |res: Res| {
@@ -961,7 +961,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
                 let field_ty = self.field_ty(subpat.span, &variant.fields[i], substs);
-                self.check_pat(&subpat, field_ty, def_bm, TopInfo { parent_pat: Some(&pat), ..ti });
+                self.check_pat(subpat, field_ty, def_bm, TopInfo { parent_pat: Some(pat), ..ti });
 
                 self.tcx.check_stability(
                     variant.fields[i].did,
@@ -1151,7 +1151,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut expected_len = elements.len();
         if ddpos.is_some() {
             // Require known type only when `..` is present.
-            if let ty::Tuple(ref tys) = self.structurally_resolved_type(span, expected).kind() {
+            if let ty::Tuple(tys) = self.structurally_resolved_type(span, expected).kind() {
                 expected_len = tys.len();
             }
         }
@@ -1172,12 +1172,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // further errors being emitted when using the bindings. #50333
             let element_tys_iter = (0..max_len).map(|_| tcx.ty_error());
             for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                self.check_pat(elem, &tcx.ty_error(), def_bm, ti);
+                self.check_pat(elem, tcx.ty_error(), def_bm, ti);
             }
             tcx.mk_tup(element_tys_iter)
         } else {
             for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                self.check_pat(elem, &element_tys[i].expect_ty(), def_bm, ti);
+                self.check_pat(elem, element_tys[i].expect_ty(), def_bm, ti);
             }
             pat_ty
         }
@@ -1240,14 +1240,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             };
 
-            self.check_pat(&field.pat, field_ty, def_bm, TopInfo { parent_pat: Some(&pat), ..ti });
+            self.check_pat(field.pat, field_ty, def_bm, TopInfo { parent_pat: Some(pat), ..ti });
         }
 
         let mut unmentioned_fields = variant
             .fields
             .iter()
             .map(|field| (field, field.ident.normalize_to_macros_2_0()))
-            .filter(|(_, ident)| !used_fields.contains_key(&ident))
+            .filter(|(_, ident)| !used_fields.contains_key(ident))
             .collect::<Vec<_>>();
 
         let inexistent_fields_err = if !(inexistent_fields.is_empty() || variant.is_recovered()) {
@@ -1290,13 +1290,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.non_exhaustive_reachable_pattern(pat, &accessible_unmentioned_fields, adt_ty)
             } else if !etc {
                 if accessible_unmentioned_fields.is_empty() {
-                    unmentioned_err = Some(self.error_no_accessible_fields(pat, &fields));
+                    unmentioned_err = Some(self.error_no_accessible_fields(pat, fields));
                 } else {
                     unmentioned_err = Some(self.error_unmentioned_fields(
                         pat,
                         &accessible_unmentioned_fields,
                         accessible_unmentioned_fields.len() != unmentioned_fields.len(),
-                        &fields,
+                        fields,
                     ));
                 }
             }
@@ -1763,7 +1763,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let (box_ty, inner_ty) = if self.check_dereferenceable(span, expected, &inner) {
+        let (box_ty, inner_ty) = if self.check_dereferenceable(span, expected, inner) {
             // Here, `demand::subtype` is good enough, but I don't
             // think any errors can be introduced by using `demand::eqtype`.
             let inner_ty = self.next_ty_var(TypeVariableOrigin {
@@ -1777,7 +1777,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let err = tcx.ty_error();
             (err, err)
         };
-        self.check_pat(&inner, inner_ty, def_bm, ti);
+        self.check_pat(inner, inner_ty, def_bm, ti);
         box_ty
     }
 
@@ -1792,7 +1792,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let expected = self.shallow_resolve(expected);
-        let (rptr_ty, inner_ty) = if self.check_dereferenceable(pat.span, expected, &inner) {
+        let (rptr_ty, inner_ty) = if self.check_dereferenceable(pat.span, expected, inner) {
             // `demand::subtype` would be good enough, but using `eqtype` turns
             // out to be equally general. See (note_1) for details.
 
@@ -1814,7 +1814,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Look for a case like `fn foo(&foo: u32)` and suggest
                     // `fn foo(foo: &u32)`
                     if let Some(mut err) = err {
-                        self.borrow_pat_suggestion(&mut err, &pat, &inner, &expected);
+                        self.borrow_pat_suggestion(&mut err, pat, inner, expected);
                         err.emit();
                     }
                     (rptr_ty, inner_ty)
@@ -1824,7 +1824,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let err = tcx.ty_error();
             (err, err)
         };
-        self.check_pat(&inner, inner_ty, def_bm, TopInfo { parent_pat: Some(&pat), ..ti });
+        self.check_pat(inner, inner_ty, def_bm, TopInfo { parent_pat: Some(pat), ..ti });
         rptr_ty
     }
 
@@ -1880,15 +1880,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type check all the patterns before `slice`.
         for elt in before {
-            self.check_pat(&elt, element_ty, def_bm, ti);
+            self.check_pat(elt, element_ty, def_bm, ti);
         }
         // Type check the `slice`, if present, against its expected type.
         if let Some(slice) = slice {
-            self.check_pat(&slice, opt_slice_ty.unwrap(), def_bm, ti);
+            self.check_pat(slice, opt_slice_ty.unwrap(), def_bm, ti);
         }
         // Type check the elements after `slice`, if present.
         for elt in after {
-            self.check_pat(&elt, element_ty, def_bm, ti);
+            self.check_pat(elt, element_ty, def_bm, ti);
         }
         inferred
     }

@@ -28,7 +28,7 @@ struct ConfirmContext<'a, 'tcx> {
 impl<'a, 'tcx> Deref for ConfirmContext<'a, 'tcx> {
     type Target = FnCtxt<'a, 'tcx>;
     fn deref(&self) -> &Self::Target {
-        &self.fcx
+        self.fcx
     }
 }
 
@@ -290,7 +290,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             .autoderef(self.span, self_ty)
             .include_raw_pointers()
             .find_map(|(ty, _)| match ty.kind() {
-                ty::Dynamic(ref data, ..) => Some(closure(
+                ty::Dynamic(data, ..) => Some(closure(
                     self,
                     ty,
                     data.principal().unwrap_or_else(|| {
@@ -323,7 +323,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             self.tcx,
             self.span,
             pick.item.def_id,
-            &generics,
+            generics,
             seg,
             IsMethodCall::Yes,
         );
@@ -343,7 +343,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 def_id: DefId,
             ) -> (Option<&'a hir::GenericArgs<'a>>, bool) {
                 if def_id == self.pick.item.def_id {
-                    if let Some(ref data) = self.seg.args {
+                    if let Some(data) = self.seg.args {
                         return (Some(data), false);
                     }
                 }

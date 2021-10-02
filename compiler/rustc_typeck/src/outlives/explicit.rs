@@ -30,20 +30,20 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
             // process predicates and convert to `RequiredPredicates` entry, see below
             for &(predicate, span) in predicates.predicates {
                 match predicate.kind().skip_binder() {
-                    ty::PredicateKind::TypeOutlives(OutlivesPredicate(ref ty, ref reg)) => {
+                    ty::PredicateKind::TypeOutlives(OutlivesPredicate(ty, reg)) => {
                         insert_outlives_predicate(
                             tcx,
-                            (*ty).into(),
+                            ty.into(),
                             reg,
                             span,
                             &mut required_predicates,
                         )
                     }
 
-                    ty::PredicateKind::RegionOutlives(OutlivesPredicate(ref reg1, ref reg2)) => {
+                    ty::PredicateKind::RegionOutlives(OutlivesPredicate(reg1, reg2)) => {
                         insert_outlives_predicate(
                             tcx,
-                            (*reg1).into(),
+                            reg1.into(),
                             reg2,
                             span,
                             &mut required_predicates,

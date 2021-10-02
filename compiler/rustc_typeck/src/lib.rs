@@ -143,7 +143,7 @@ fn require_same_types<'tcx>(
     tcx.infer_ctxt().enter(|ref infcx| {
         let param_env = ty::ParamEnv::empty();
         let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
-        match infcx.at(&cause, param_env).eq(expected, actual) {
+        match infcx.at(cause, param_env).eq(expected, actual) {
             Ok(InferOk { obligations, .. }) => {
                 fulfill_cx.register_predicate_obligations(infcx, obligations);
             }
@@ -187,9 +187,11 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         match tcx.hir().find(hir_id) {
             Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, ref generics, _), .. })) => {
-                let generics_param_span =
-                    if !generics.params.is_empty() { Some(generics.span) } else { None };
-                generics_param_span
+                if !generics.params.is_empty() {
+                    Some(generics.span)
+                } else {
+                    None
+                }
             }
             _ => {
                 span_bug!(tcx.def_span(def_id), "main has a non-function type");

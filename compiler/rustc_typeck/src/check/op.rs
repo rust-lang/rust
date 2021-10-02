@@ -444,7 +444,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // Check if the method would be found if the type param wasn't
                             // involved. If so, it means that adding a trait bound to the param is
                             // enough. Otherwise we do not give the suggestion.
-                            let mut eraser = TypeParamEraser(&self, expr.span);
+                            let mut eraser = TypeParamEraser(self, expr.span);
                             let needs_bound = self
                                 .lookup_op_method(
                                     eraser.fold_ty(lhs_ty),
@@ -475,7 +475,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             bug!("type param visitor stored a non type param: {:?}", ty.kind());
                         }
                     } else if !suggested_deref && !involves_fn {
-                        suggest_impl_missing(&mut err, lhs_ty, &missing_trait);
+                        suggest_impl_missing(&mut err, lhs_ty, missing_trait);
                     }
                 }
                 err.emit();
@@ -718,14 +718,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 }
                             }
                             Str | Never | Char | Tuple(_) | Array(_, _) => {}
-                            Ref(_, ref lty, _) if *lty.kind() == Str => {}
+                            Ref(_, lty, _) if *lty.kind() == Str => {}
                             _ => {
                                 let missing_trait = match op {
                                     hir::UnOp::Neg => "std::ops::Neg",
                                     hir::UnOp::Not => "std::ops::Not",
                                     hir::UnOp::Deref => "std::ops::UnDerf",
                                 };
-                                suggest_impl_missing(&mut err, operand_ty, &missing_trait);
+                                suggest_impl_missing(&mut err, operand_ty, missing_trait);
                             }
                         }
                     }

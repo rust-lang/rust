@@ -41,7 +41,7 @@ fn track_span_parent(def_id: rustc_span::def_id::LocalDefId) {
 fn track_diagnostic(diagnostic: &Diagnostic) {
     tls::with_context_opt(|icx| {
         if let Some(icx) = icx {
-            if let Some(ref diagnostics) = icx.diagnostics {
+            if let Some(diagnostics) = icx.diagnostics {
                 let mut diagnostics = diagnostics.lock();
                 diagnostics.extend(Some(diagnostic.clone()));
             }

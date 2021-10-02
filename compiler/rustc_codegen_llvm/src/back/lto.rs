@@ -109,7 +109,7 @@ fn prepare_lto(
                     .extend(exported_symbols[&cnum].iter().filter_map(symbol_filter));
             }
 
-            let archive = ArchiveRO::open(&path).expect("wanted an rlib");
+            let archive = ArchiveRO::open(path).expect("wanted an rlib");
             let obj_files = archive
                 .iter()
                 .filter_map(|child| child.ok().and_then(|c| c.name().map(|name| (name, c))))
@@ -316,14 +316,14 @@ fn fat_lto(
                 .generic_activity_with_arg("LLVM_fat_lto_link_module", format!("{:?}", name));
             info!("linking {:?}", name);
             let data = bc_decoded.data();
-            linker.add(&data).map_err(|()| {
+            linker.add(data).map_err(|()| {
                 let msg = format!("failed to load bc of {:?}", name);
-                write::llvm_err(&diag_handler, &msg)
+                write::llvm_err(diag_handler, &msg)
             })?;
             serialized_bitcode.push(bc_decoded);
         }
         drop(linker);
-        save_temp_bitcode(&cgcx, &module, "lto.input");
+        save_temp_bitcode(cgcx, &module, "lto.input");
 
         // Fat LTO also suffers from the invalid DWARF issue similar to Thin LTO.
         // Here we rewrite all `DICompileUnit` pointers if there is only one `DICompileUnit`.
@@ -347,14 +347,14 @@ fn fat_lto(
                 ptr as *const *const libc::c_char,
                 symbols_below_threshold.len() as libc::size_t,
             );
-            save_temp_bitcode(&cgcx, &module, "lto.after-restriction");
+            save_temp_bitcode(cgcx, &module, "lto.after-restriction");
         }
 
         if cgcx.no_landing_pads {
             unsafe {
                 llvm::LLVMRustMarkAllFunctionsNounwind(llmod);
             }
-            save_temp_bitcode(&cgcx, &module, "lto.after-nounwind");
+            save_temp_bitcode(cgcx, &module, "lto.after-nounwind");
         }
     }
 
@@ -498,7 +498,7 @@ fn thin_lto(
             symbols_below_threshold.as_ptr(),
             symbols_below_threshold.len() as u32,
         )
-        .ok_or_else(|| write::llvm_err(&diag_handler, "failed to prepare thin LTO context"))?;
+        .ok_or_else(|| write::llvm_err(diag_handler, "failed to prepare thin LTO context"))?;
 
         let data = ThinData(data);
 
@@ -572,7 +572,7 @@ fn thin_lto(
         if let Some(path) = key_map_path {
             if let Err(err) = curr_key_map.save_to_file(&path) {
                 let msg = format!("Error while writing ThinLTO key data: {}", err);
-                return Err(write::llvm_err(&diag_handler, &msg));
+                return Err(write::llvm_err(diag_handler, &msg));
             }
         }
 
@@ -744,8 +744,7 @@ pub unsafe fn optimize_thin_module(
     // crates but for locally codegened modules we may be able to reuse
     // that LLVM Context and Module.
     let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
-    let llmod_raw =
-        parse_module(llcx, &module_name, thin_module.data(), &diag_handler)? as *const _;
+    let llmod_raw = parse_module(llcx, module_name, thin_module.data(), &diag_handler)? as *const _;
     let module = ModuleCodegen {
         module_llvm: ModuleLlvm { llmod_raw, llcx, tm },
         name: thin_module.name().to_string(),
@@ -754,7 +753,7 @@ pub unsafe fn optimize_thin_module(
     {
         let target = &*module.module_llvm.tm;
         let llmod = module.module_llvm.llmod();
-        save_temp_bitcode(&cgcx, &module, "thin-lto-input");
+        save_temp_bitcode(cgcx, &module, "thin-lto-input");
 
         // Before we do much else find the "main" `DICompileUnit` that we'll be
         // using below. If we find more than one though then rustc has changed
@@ -775,7 +774,7 @@ pub unsafe fn optimize_thin_module(
                 .prof
                 .generic_activity_with_arg("LLVM_thin_lto_remove_landing_pads", thin_module.name());
             llvm::LLVMRustMarkAllFunctionsNounwind(llmod);
-            save_temp_bitcode(&cgcx, &module, "thin-lto-after-nounwind");
+            save_temp_bitcode(cgcx, &module, "thin-lto-after-nounwind");
         }
 
         // Up next comes the per-module local analyses that we do for Thin LTO.
@@ -947,7 +946,7 @@ pub fn parse_module<'a>(
         llvm::LLVMRustParseBitcodeForLTO(cx, data.as_ptr(), data.len(), name.as_ptr()).ok_or_else(
             || {
                 let msg = "failed to parse bitcode for LTO module";
-                write::llvm_err(&diag_handler, msg)
+                write::llvm_err(diag_handler, msg)
             },
         )
     }

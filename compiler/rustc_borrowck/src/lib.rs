@@ -277,26 +277,26 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let regioncx = Rc::new(regioncx);
 
-    let flow_borrows = Borrows::new(tcx, &body, &regioncx, &borrow_set)
-        .into_engine(tcx, &body)
+    let flow_borrows = Borrows::new(tcx, body, &regioncx, &borrow_set)
+        .into_engine(tcx, body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
-    let flow_uninits = MaybeUninitializedPlaces::new(tcx, &body, &mdpe)
-        .into_engine(tcx, &body)
+    let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &mdpe)
+        .into_engine(tcx, body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
-    let flow_ever_inits = EverInitializedPlaces::new(tcx, &body, &mdpe)
-        .into_engine(tcx, &body)
+    let flow_ever_inits = EverInitializedPlaces::new(tcx, body, &mdpe)
+        .into_engine(tcx, body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
 
-    let movable_generator = match tcx.hir().get(id) {
+    let movable_generator = !matches!(
+        tcx.hir().get(id),
         Node::Expr(&hir::Expr {
             kind: hir::ExprKind::Closure(.., Some(hir::Movability::Static)),
             ..
-        }) => false,
-        _ => true,
-    };
+        })
+    );
 
     for (idx, move_data_results) in promoted_errors {
         let promoted_body = &promoted[idx];
@@ -374,8 +374,8 @@ fn do_mir_borrowck<'a, 'tcx>(
     mbcx.report_move_errors(move_errors);
 
     rustc_mir_dataflow::visit_results(
-        &body,
-        traversal::reverse_postorder(&body).map(|(bb, _)| bb),
+        body,
+        traversal::reverse_postorder(body).map(|(bb, _)| bb),
         &results,
         &mut mbcx,
     );

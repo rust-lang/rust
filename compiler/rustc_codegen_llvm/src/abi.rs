@@ -526,7 +526,7 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         };
         match self.ret.mode {
             PassMode::Direct(ref attrs) => {
-                attrs.apply_attrs_to_callsite(llvm::AttributePlace::ReturnValue, &bx.cx, callsite);
+                attrs.apply_attrs_to_callsite(llvm::AttributePlace::ReturnValue, bx.cx, callsite);
             }
             PassMode::Indirect { ref attrs, extra_attrs: _, on_stack } => {
                 assert!(!on_stack);

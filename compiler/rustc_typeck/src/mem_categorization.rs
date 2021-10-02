@@ -307,13 +307,13 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 if self.typeck_results.is_method_call(expr) {
                     self.cat_overloaded_place(expr, e_base)
                 } else {
-                    let base = self.cat_expr(&e_base)?;
+                    let base = self.cat_expr(e_base)?;
                     self.cat_deref(expr, base)
                 }
             }
 
             hir::ExprKind::Field(ref base, _) => {
-                let base = self.cat_expr(&base)?;
+                let base = self.cat_expr(base)?;
                 debug!("cat_expr(cat_field): id={} expr={:?} base={:?}", expr.hir_id, expr, base);
 
                 let field_idx = self
@@ -340,7 +340,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                     // dereferencing.
                     self.cat_overloaded_place(expr, base)
                 } else {
-                    let base = self.cat_expr(&base)?;
+                    let base = self.cat_expr(base)?;
                     Ok(self.cat_projection(expr, base, expr_ty, ProjectionKind::Index))
                 }
             }
@@ -350,7 +350,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 self.cat_res(expr.hir_id, expr.span, expr_ty, res)
             }
 
-            hir::ExprKind::Type(ref e, _) => self.cat_expr(&e),
+            hir::ExprKind::Type(ref e, _) => self.cat_expr(e),
 
             hir::ExprKind::AddrOf(..)
             | hir::ExprKind::Call(..)
@@ -674,31 +674,31 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         op(&place_with_id, pat);
 
         match pat.kind {
-            PatKind::Tuple(ref subpats, dots_pos) => {
+            PatKind::Tuple(subpats, dots_pos) => {
                 // (p1, ..., pN)
                 let total_fields = self.total_fields_in_tuple(pat.hir_id, pat.span)?;
 
                 for (i, subpat) in subpats.iter().enumerate_and_adjust(total_fields, dots_pos) {
-                    let subpat_ty = self.pat_ty_adjusted(&subpat)?;
+                    let subpat_ty = self.pat_ty_adjusted(subpat)?;
                     let projection_kind = ProjectionKind::Field(i as u32, VariantIdx::new(0));
                     let sub_place =
                         self.cat_projection(pat, place_with_id.clone(), subpat_ty, projection_kind);
-                    self.cat_pattern_(sub_place, &subpat, op)?;
+                    self.cat_pattern_(sub_place, subpat, op)?;
                 }
             }
 
-            PatKind::TupleStruct(ref qpath, ref subpats, dots_pos) => {
+            PatKind::TupleStruct(ref qpath, subpats, dots_pos) => {
                 // S(p1, ..., pN)
                 let variant_index = self.variant_index_for_adt(qpath, pat.hir_id, pat.span)?;
                 let total_fields =
                     self.total_fields_in_adt_variant(pat.hir_id, variant_index, pat.span)?;
 
                 for (i, subpat) in subpats.iter().enumerate_and_adjust(total_fields, dots_pos) {
-                    let subpat_ty = self.pat_ty_adjusted(&subpat)?;
+                    let subpat_ty = self.pat_ty_adjusted(subpat)?;
                     let projection_kind = ProjectionKind::Field(i as u32, variant_index);
                     let sub_place =
                         self.cat_projection(pat, place_with_id.clone(), subpat_ty, projection_kind);
-                    self.cat_pattern_(sub_place, &subpat, op)?;
+                    self.cat_pattern_(sub_place, subpat, op)?;
                 }
             }
 
@@ -708,7 +708,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 let variant_index = self.variant_index_for_adt(qpath, pat.hir_id, pat.span)?;
 
                 for fp in field_pats {
-                    let field_ty = self.pat_ty_adjusted(&fp.pat)?;
+                    let field_ty = self.pat_ty_adjusted(fp.pat)?;
                     let field_index = self
                         .typeck_results
                         .field_indices()
@@ -722,18 +722,18 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                         field_ty,
                         ProjectionKind::Field(field_index as u32, variant_index),
                     );
-                    self.cat_pattern_(field_place, &fp.pat, op)?;
+                    self.cat_pattern_(field_place, fp.pat, op)?;
                 }
             }
 
             PatKind::Or(pats) => {
                 for pat in pats {
-                    self.cat_pattern_(place_with_id.clone(), &pat, op)?;
+                    self.cat_pattern_(place_with_id.clone(), pat, op)?;
                 }
             }
 
             PatKind::Binding(.., Some(ref subpat)) => {
-                self.cat_pattern_(place_with_id, &subpat, op)?;
+                self.cat_pattern_(place_with_id, subpat, op)?;
             }
 
             PatKind::Box(ref subpat) | PatKind::Ref(ref subpat, _) => {
@@ -741,7 +741,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 // PatKind::Ref since that information is already contained
                 // in the type.
                 let subplace = self.cat_deref(pat, place_with_id)?;
-                self.cat_pattern_(subplace, &subpat, op)?;
+                self.cat_pattern_(subplace, subpat, op)?;
             }
 
             PatKind::Slice(before, ref slice, after) => {
@@ -759,20 +759,20 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                     ProjectionKind::Index,
                 );
                 for before_pat in before {
-                    self.cat_pattern_(elt_place.clone(), &before_pat, op)?;
+                    self.cat_pattern_(elt_place.clone(), before_pat, op)?;
                 }
                 if let Some(ref slice_pat) = *slice {
-                    let slice_pat_ty = self.pat_ty_adjusted(&slice_pat)?;
+                    let slice_pat_ty = self.pat_ty_adjusted(slice_pat)?;
                     let slice_place = self.cat_projection(
                         pat,
                         place_with_id,
                         slice_pat_ty,
                         ProjectionKind::Subslice,
                     );
-                    self.cat_pattern_(slice_place, &slice_pat, op)?;
+                    self.cat_pattern_(slice_place, slice_pat, op)?;
                 }
                 for after_pat in after {
-                    self.cat_pattern_(elt_place.clone(), &after_pat, op)?;
+                    self.cat_pattern_(elt_place.clone(), after_pat, op)?;
                 }
             }
 

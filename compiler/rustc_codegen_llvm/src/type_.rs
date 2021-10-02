@@ -248,7 +248,7 @@ impl Type {
     }
 
     fn ptr_to(&self, address_space: AddressSpace) -> &Type {
-        unsafe { llvm::LLVMPointerType(&self, address_space.0) }
+        unsafe { llvm::LLVMPointerType(self, address_space.0) }
     }
 }
 

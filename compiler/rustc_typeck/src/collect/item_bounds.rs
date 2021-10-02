@@ -26,9 +26,9 @@ fn associated_type_bounds<'tcx>(
     );
 
     let icx = ItemCtxt::new(tcx, assoc_item_def_id);
-    let mut bounds = <dyn AstConv<'_>>::compute_bounds(&icx, item_ty, &ast_bounds);
+    let mut bounds = <dyn AstConv<'_>>::compute_bounds(&icx, item_ty, ast_bounds);
     // Associated types are implicitly sized unless a `?Sized` bound is found
-    <dyn AstConv<'_>>::add_implicitly_sized(&icx, &mut bounds, &ast_bounds, None, span);
+    <dyn AstConv<'_>>::add_implicitly_sized(&icx, &mut bounds, ast_bounds, None, span);
 
     let trait_def_id = tcx.associated_item(assoc_item_def_id).container.id();
     let trait_predicates = tcx.trait_explicit_predicates_and_bounds(trait_def_id.expect_local());
@@ -64,9 +64,9 @@ fn opaque_type_bounds<'tcx>(
             tcx.mk_opaque(opaque_def_id, InternalSubsts::identity_for_item(tcx, opaque_def_id));
 
         let icx = ItemCtxt::new(tcx, opaque_def_id);
-        let mut bounds = <dyn AstConv<'_>>::compute_bounds(&icx, item_ty, &ast_bounds);
+        let mut bounds = <dyn AstConv<'_>>::compute_bounds(&icx, item_ty, ast_bounds);
         // Opaque types are implicitly sized unless a `?Sized` bound is found
-        <dyn AstConv<'_>>::add_implicitly_sized(&icx, &mut bounds, &ast_bounds, None, span);
+        <dyn AstConv<'_>>::add_implicitly_sized(&icx, &mut bounds, ast_bounds, None, span);
         let bounds = bounds.predicates(tcx, item_ty);
 
         debug!("opaque_type_bounds({}) = {:?}", tcx.def_path_str(opaque_def_id), bounds);

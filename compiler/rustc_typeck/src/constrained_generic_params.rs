@@ -206,7 +206,7 @@ pub fn setup_constraining_predicates<'tcx>(
                 // Then the projection only applies if `T` is known, but it still
                 // does not determine `U`.
                 let inputs = parameters_for(tcx, &projection.projection_ty, true);
-                let relies_only_on_inputs = inputs.iter().all(|p| input_parameters.contains(&p));
+                let relies_only_on_inputs = inputs.iter().all(|p| input_parameters.contains(p));
                 if !relies_only_on_inputs {
                     continue;
                 }

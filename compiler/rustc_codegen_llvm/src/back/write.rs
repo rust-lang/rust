@@ -41,7 +41,7 @@ use std::sync::Arc;
 pub fn llvm_err(handler: &rustc_errors::Handler, msg: &str) -> FatalError {
     match llvm::last_error() {
         Some(err) => handler.fatal(&format!("{}: {}", msg, err)),
-        None => handler.fatal(&msg),
+        None => handler.fatal(msg),
     }
 }
 
@@ -96,7 +96,7 @@ pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> &'static mut ll
         None
     };
     let config = TargetMachineFactoryConfig { split_dwarf_file };
-    target_machine_factory(&tcx.sess, tcx.backend_optimization_level(()))(config)
+    target_machine_factory(tcx.sess, tcx.backend_optimization_level(()))(config)
         .unwrap_or_else(|err| llvm_err(tcx.sess.diagnostic(), &err).raise())
 }
 
@@ -558,7 +558,7 @@ pub(crate) unsafe fn optimize(
                 let prepare_for_thin_lto = cgcx.lto == Lto::Thin
                     || cgcx.lto == Lto::ThinLocal
                     || (cgcx.lto != Lto::Fat && cgcx.opts.cg.linker_plugin_lto.enabled());
-                with_llvm_pmb(llmod, &config, opt_level, prepare_for_thin_lto, &mut |b| {
+                with_llvm_pmb(llmod, config, opt_level, prepare_for_thin_lto, &mut |b| {
                     llvm::LLVMRustAddLastExtensionPasses(
                         b,
                         extra_passes.as_ptr(),
@@ -660,9 +660,9 @@ pub(crate) fn link(
         let _timer =
             cgcx.prof.generic_activity_with_arg("LLVM_link_module", format!("{:?}", module.name));
         let buffer = ModuleBuffer::new(module.module_llvm.llmod());
-        linker.add(&buffer.data()).map_err(|()| {
+        linker.add(buffer.data()).map_err(|()| {
             let msg = format!("failed to serialize module {:?}", module.name);
-            llvm_err(&diag_handler, &msg)
+            llvm_err(diag_handler, &msg)
         })?;
     }
     drop(linker);

@@ -199,8 +199,8 @@ fn declare_unused_fn(cx: &CodegenCx<'ll, 'tcx>, def_id: &DefId) -> Instance<'tcx
     );
 
     let llfn = cx.declare_fn(
-        &tcx.symbol_name(instance).name,
-        &cx.fn_abi_of_fn_ptr(
+        tcx.symbol_name(instance).name,
+        cx.fn_abi_of_fn_ptr(
             ty::Binder::dummy(tcx.mk_fn_sig(
                 iter::once(tcx.mk_unit()),
                 tcx.mk_unit(),
