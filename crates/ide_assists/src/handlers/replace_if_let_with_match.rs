@@ -210,11 +210,7 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext) 
                 ast::Expr::BlockExpr(block) => block,
                 expr => make::block_expr(iter::empty(), Some(expr)),
             };
-            let else_expr = match else_expr {
-                ast::Expr::BlockExpr(block) if block.is_empty() => None,
-                ast::Expr::TupleExpr(tuple) if tuple.fields().next().is_none() => None,
-                expr => Some(expr),
-            };
+            let else_expr = if is_empty_expr(&else_expr) { None } else { Some(else_expr) };
             let if_let_expr = make::expr_if(
                 condition,
                 then_block,
