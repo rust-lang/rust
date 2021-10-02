@@ -10,7 +10,7 @@ use enums::{
     EmptyNonExhaustiveEnum, NestedNonExhaustive, NonExhaustiveEnum, NonExhaustiveSingleVariant,
     VariantNonExhaustive,
 };
-use structs::{FunctionalRecord, NestedStruct, NormalStruct};
+use structs::{FunctionalRecord, MixedVisFields, NestedStruct, NormalStruct};
 
 #[non_exhaustive]
 #[derive(Default)]
@@ -140,6 +140,10 @@ fn main() {
     let NestedStruct { bar: NormalStruct { first_field, .. }, .. } = NestedStruct::default();
     //~^ some fields are not explicitly listed
     //~^^ some fields are not explicitly listed
+
+    // Ok: this tests https://github.com/rust-lang/rust/issues/89382
+    #[warn(non_exhaustive_omitted_patterns)]
+    let MixedVisFields { a, b, .. } = MixedVisFields::default();
 
     // Ok: because this only has 1 variant
     #[deny(non_exhaustive_omitted_patterns)]

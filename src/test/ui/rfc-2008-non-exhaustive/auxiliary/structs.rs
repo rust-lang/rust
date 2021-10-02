@@ -31,3 +31,11 @@ pub struct NestedStruct {
     pub foo: u16,
     pub bar: NormalStruct,
 }
+
+#[derive(Default)]
+#[non_exhaustive]
+pub struct MixedVisFields {
+    pub a: u16,
+    pub b: bool,
+    pub(crate) foo: bool,
+}
