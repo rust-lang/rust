@@ -45,7 +45,6 @@
 use self::Constructor::*;
 use self::SliceKind::*;
 
-use super::number_type_size;
 use super::usefulness::{MatchCheckCtxt, PatCtxt};
 
 use rustc_apfloat::ieee::{DoubleS, IeeeFloat, SingleS};
@@ -53,10 +52,8 @@ use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 
 use rustc_hir::{HirId, RangeEnd};
-use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::mir::Field;
 use rustc_middle::ty::subst::GenericArg;
-use rustc_middle::ty::{self, Ty, VariantDef};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 
@@ -619,7 +616,7 @@ impl<'tcx> Constructor<'tcx> {
             Single | Variant(_) => match pcx.ty.kind() {
                 ty::Adt(adt, ..) => {
                     let variant = &adt.variants[self.variant_index_for_adt(adt)];
-                    Fields::list_variant_nonhidden_fields(pcx.cx, pcx.ty, variant).count()
+                    pcx.cx.list_variant_nonhidden_fields(pcx.ty, variant).count()
                 }
                 _ => bug!("Unexpected type for `Single` constructor: {:?}", pcx.ty),
             },
@@ -806,138 +803,7 @@ pub(super) struct SplitWildcard<'tcx> {
 
 impl<'tcx> SplitWildcard<'tcx> {
     pub(super) fn new<'p>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Self {
-        debug!("SplitWildcard::new({:?})", pcx.ty);
-        let cx = pcx.cx;
-        let ty = pcx.ty;
-        let make_range = |size, start, end| {
-            IntRange(IntRange::from_bits(ty, size, start, end, &RangeEnd::Included))
-        };
-        // This determines the set of all possible constructors for the type `ty`. For numbers,
-        // arrays and slices we use ranges and variable-length slices when appropriate.
-        //
-        // If the `exhaustive_patterns` feature is enabled, we make sure to omit constructors that
-        // are statically impossible. E.g., for `Option<!>`, we do not include `Some(_)` in the
-        // returned list of constructors.
-        // Invariant: this is empty if and only if the type is uninhabited (as determined by
-        // `cx.is_uninhabited()`).
-        let all_ctors = match ty.kind() {
-            _ if cx.is_uninhabited(ty) => smallvec![],
-            ty::Bool => smallvec![Bool(false), Bool(true)],
-            ty::Char => {
-                let size = number_type_size(cx.tcx, ty);
-                smallvec![
-                    // The valid Unicode Scalar Value ranges.
-                    make_range(size, '\u{0000}' as u128, '\u{D7FF}' as u128),
-                    make_range(size, '\u{E000}' as u128, '\u{10FFFF}' as u128),
-                ]
-            }
-            ty::Int(_) | ty::Uint(_)
-                if ty.is_ptr_sized_integral()
-                    && !cx.tcx.features().precise_pointer_size_matching =>
-            {
-                // `usize`/`isize` are not allowed to be matched exhaustively unless the
-                // `precise_pointer_size_matching` feature is enabled. So we treat those types like
-                // `#[non_exhaustive]` enums by returning a special unmatcheable constructor.
-                smallvec![NonExhaustive]
-            }
-            &ty::Int(_) => {
-                let size = number_type_size(cx.tcx, ty);
-                let bits = size.bits() as u128;
-                let min = 1u128 << (bits - 1);
-                let max = min - 1;
-                smallvec![make_range(size, min, max)]
-            }
-            &ty::Uint(_) => {
-                let size = number_type_size(cx.tcx, ty);
-                let max = size.truncate(u128::MAX);
-                smallvec![make_range(size, 0, max)]
-            }
-            ty::Adt(def, substs) if def.is_enum() => {
-                // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
-                // additional "unknown" constructor.
-                // There is no point in enumerating all possible variants, because the user can't
-                // actually match against them all themselves. So we always return only the fictitious
-                // constructor.
-                // E.g., in an example like:
-                //
-                // ```
-                //     let err: io::ErrorKind = ...;
-                //     match err {
-                //         io::ErrorKind::NotFound => {},
-                //     }
-                // ```
-                //
-                // we don't want to show every possible IO error, but instead have only `_` as the
-                // witness.
-                let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(ty);
-
-                let is_exhaustive_pat_feature = cx.tcx.features().exhaustive_patterns;
-
-                // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
-                // as though it had an "unknown" constructor to avoid exposing its emptiness. The
-                // exception is if the pattern is at the top level, because we want empty matches to be
-                // considered exhaustive.
-                let is_secretly_empty =
-                    def.variants.is_empty() && !is_exhaustive_pat_feature && !pcx.is_top_level;
-
-                let mut ctors: SmallVec<[_; 1]> = def
-                    .variants
-                    .iter_enumerated()
-                    .filter(|(_, v)| {
-                        // Filter variants that depend on a disabled unstalbe feature.
-                        let is_enabled = !matches!(
-                            cx.tcx.eval_stability(v.def_id, None, DUMMY_SP, None),
-                            EvalResult::Deny { .. }
-                        );
-                        // If `exhaustive_patterns` is enabled, we exclude variants known to be
-                        // uninhabited.
-                        let is_uninhabited = is_exhaustive_pat_feature
-                            && v.uninhabited_from(cx.tcx, substs, def.adt_kind(), cx.param_env)
-                                .contains(cx.tcx, cx.module);
-                        is_enabled && !is_uninhabited
-                    })
-                    .map(|(idx, _)| Variant(idx))
-                    .collect();
-
-                if is_secretly_empty || is_declared_nonexhaustive {
-                    ctors.push(NonExhaustive);
-                }
-                ctors
-            }
-            // The only legal non-wildcard patterns of type `Box` are box patterns, so we emit
-            // that.
-            ty::Adt(def, substs) if def.is_box() => smallvec![BoxPat(substs.type_at(0))],
-            ty::Adt(..) => smallvec![Single],
-            ty::Ref(_, ty, _) => smallvec![Ref(*ty)],
-            ty::Tuple(fs) => smallvec![Tuple(*fs)],
-            ty::Array(sub_ty, len) => {
-                match len.try_eval_usize(cx.tcx, cx.param_env) {
-                    Some(len) => {
-                        // The uninhabited case is already handled.
-                        smallvec![Slice(Slice::new(Some(len as usize), VarLen(0, 0)))]
-                    }
-                    None => {
-                        // Treat arrays of a constant but unknown length like slices.
-                        let kind =
-                            if cx.is_uninhabited(sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
-                        smallvec![Slice(Slice::new(None, kind))]
-                    }
-                }
-            }
-            ty::Slice(sub_ty) => {
-                let kind = if cx.is_uninhabited(sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
-                smallvec![Slice(Slice::new(None, kind))]
-            }
-            // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we don't
-            // expose its emptiness and return `NonExhaustive` below. The exception is if the
-            // pattern is at the top level, because we want empty matches to be considered
-            // exhaustive.
-            ty::Never if pcx.is_top_level => smallvec![],
-            // This type is one for which we cannot list constructors, like `str` or `f64`, or is
-            // uninhabited but `exhaustive_patterns` is disabled.
-            _ => smallvec![NonExhaustive],
-        };
-
+        let all_ctors = pcx.cx.list_constructors_for_type(pcx.ty, pcx.is_top_level);
         SplitWildcard { matrix_ctors: Vec::new(), all_ctors }
     }
 
@@ -1079,36 +945,6 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         Fields::from_iter(cx, tys.into_iter().map(DeconstructedPat::wildcard))
     }
 
-    // In the cases of either a `#[non_exhaustive]` field list or a non-public field, we hide
-    // uninhabited fields in order not to reveal the uninhabitedness of the whole variant.
-    // This lists the fields we keep along with their types.
-    pub(super) fn list_variant_nonhidden_fields<'a>(
-        cx: &'a MatchCheckCtxt<'p, 'tcx>,
-        ty: Ty<'tcx>,
-        variant: &'a VariantDef,
-    ) -> impl Iterator<Item = (Field, Ty<'tcx>)> + Captures<'a> + Captures<'p> {
-        let (adt, substs) = match ty.kind() {
-            ty::Adt(adt, substs) => (adt, substs),
-            _ => bug!(),
-        };
-        // Whether we must not match the fields of this variant exhaustively.
-        let is_non_exhaustive = variant.is_field_list_non_exhaustive() && !adt.did.is_local();
-
-        variant.fields.iter().enumerate().filter_map(move |(i, field)| {
-            let ty = field.ty(cx.tcx, substs);
-            // `field.ty()` doesn't normalize after substituting.
-            let ty = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
-            let is_visible = adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
-            let is_uninhabited = cx.is_uninhabited(ty);
-
-            if is_uninhabited && (!is_visible || is_non_exhaustive) {
-                None
-            } else {
-                Some((Field::new(i), ty))
-            }
-        })
-    }
-
     /// Creates a new list of wildcard fields for a given constructor. The result must have a
     /// length of `constructor.arity()`.
     pub(super) fn wildcards(
@@ -1120,8 +956,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
             Single | Variant(_) => match ty.kind() {
                 ty::Adt(adt, _) => {
                     let variant = &adt.variants[constructor.variant_index_for_adt(adt)];
-                    let tys =
-                        Fields::list_variant_nonhidden_fields(cx, ty, variant).map(|(_, ty)| ty);
+                    let tys = cx.list_variant_nonhidden_fields(ty, variant).map(|(_, ty)| ty);
                     Fields::wildcards_from_tys(cx, tys)
                 }
                 _ => bug!("Unexpected type for `Single` constructor: {:?}", ty),

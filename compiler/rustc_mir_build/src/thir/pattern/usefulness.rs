@@ -309,26 +309,6 @@ crate struct MatchCheckCtxt<'p, 'tcx> {
     crate pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
 }
 
-impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
-    pub(super) fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
-        if self.tcx.features().exhaustive_patterns {
-            self.tcx.is_ty_uninhabited_from(self.module, ty, self.param_env)
-        } else {
-            false
-        }
-    }
-
-    /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
-    pub(super) fn is_foreign_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
-        match ty.kind() {
-            ty::Adt(def, ..) => {
-                def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did.is_local()
-            }
-            _ => false,
-        }
-    }
-}
-
 #[derive(Copy, Clone)]
 pub(super) struct PatCtxt<'a, 'p, 'tcx> {
     pub(super) cx: &'a MatchCheckCtxt<'p, 'tcx>,
