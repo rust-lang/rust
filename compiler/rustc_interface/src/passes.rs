@@ -615,14 +615,12 @@ pub fn write_dep_info(tcx: TyCtxt<'_>) {
 pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.analysis = analysis;
-    providers.index_ast = rustc_ast_lowering::index_ast;
-    providers.lower_to_hir = rustc_ast_lowering::lower_to_hir;
-    providers.hir_crate = rustc_ast_lowering::hir_crate;
     providers.resolver_for_lowering_raw = resolver_for_lowering_raw;
     providers.stripped_cfg_items =
         |tcx, _| tcx.arena.alloc_from_iter(tcx.resolutions(()).stripped_cfg_items.steal());
     providers.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).1;
     providers.early_lint_checks = early_lint_checks;
+    rustc_ast_lowering::provide(providers);
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);

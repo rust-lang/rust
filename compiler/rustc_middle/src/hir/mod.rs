@@ -22,12 +22,12 @@ use rustc_span::{ErrorGuaranteed, ExpnId};
 /// bodies. The Ids are in visitor order. This is used to partition a pass between modules.
 #[derive(Debug, HashStable, Encodable, Decodable)]
 pub struct ModuleItems {
-    submodules: Box<[OwnerId]>,
-    free_items: Box<[ItemId]>,
-    trait_items: Box<[TraitItemId]>,
-    impl_items: Box<[ImplItemId]>,
-    foreign_items: Box<[ForeignItemId]>,
-    body_owners: Box<[LocalDefId]>,
+    pub submodules: Box<[OwnerId]>,
+    pub free_items: Box<[ItemId]>,
+    pub trait_items: Box<[TraitItemId]>,
+    pub impl_items: Box<[ImplItemId]>,
+    pub foreign_items: Box<[ForeignItemId]>,
+    pub body_owners: Box<[LocalDefId]>,
 }
 
 impl ModuleItems {
@@ -160,9 +160,6 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.hir_crate_items = map::hir_crate_items;
-    providers.crate_hash = map::crate_hash;
-    providers.hir_module_items = map::hir_module_items;
     providers.local_def_id_to_hir_id = |tcx, def_id| match tcx.lower_to_hir(def_id) {
         MaybeOwner::Owner(_) => HirId::make_owner(def_id),
         MaybeOwner::NonOwner(hir_id) => hir_id,
