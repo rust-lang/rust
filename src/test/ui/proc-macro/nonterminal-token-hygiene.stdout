@@ -6,19 +6,19 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
         stream: TokenStream [
             Ident {
                 ident: "struct",
-                span: $DIR/nonterminal-token-hygiene.rs:30:5: 30:11 (#5),
+                span: $DIR/nonterminal-token-hygiene.rs:31:5: 31:11 (#5),
             },
             Ident {
                 ident: "S",
-                span: $DIR/nonterminal-token-hygiene.rs:30:12: 30:13 (#5),
+                span: $DIR/nonterminal-token-hygiene.rs:31:12: 31:13 (#5),
             },
             Punct {
                 ch: ';',
                 spacing: Alone,
-                span: $DIR/nonterminal-token-hygiene.rs:30:13: 30:14 (#5),
+                span: $DIR/nonterminal-token-hygiene.rs:31:13: 31:14 (#5),
             },
         ],
-        span: $DIR/nonterminal-token-hygiene.rs:20:27: 20:32 (#6),
+        span: $DIR/nonterminal-token-hygiene.rs:21:27: 21:32 (#6),
     },
 ]
 #![feature /* 0#0 */(prelude_import)]
@@ -29,6 +29,7 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
 // compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene
 // compile-flags: -Z trim-diagnostic-paths=no
 // normalize-stdout-test "\d+#" -> "0#"
+// normalize-stdout-test "expn\d{3,}" -> "expnNNN"
 // aux-build:test-macros.rs
 
 #![feature /* 0#0 */(decl_macro)]
@@ -72,6 +73,7 @@ crate0::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt:
 crate0::{{expn2}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "outer")
 crate0::{{expn3}}: parent: crate0::{{expn2}}, call_site_ctxt: #4, def_site_ctxt: #4, kind: Macro(Bang, "inner")
 crate0::{{expn4}}: parent: crate0::{{expn3}}, call_site_ctxt: #6, def_site_ctxt: #0, kind: Macro(Bang, "print_bang")
+crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "include")
 crate2::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
 
 SyntaxContexts:

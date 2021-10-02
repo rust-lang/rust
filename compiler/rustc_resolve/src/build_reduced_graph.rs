@@ -127,7 +127,6 @@ impl<'a> Resolver<'a> {
     /// If `def_id` refers to a module (in resolver's sense, i.e. a module item, crate root, enum,
     /// or trait), then this function returns that module's resolver representation, otherwise it
     /// returns `None`.
-    /// FIXME: `Module`s for local enums and traits are not currently found.
     crate fn get_module(&mut self, def_id: DefId) -> Option<Module<'a>> {
         if let module @ Some(..) = self.module_map.get(&def_id) {
             return module.copied();
@@ -146,17 +145,21 @@ impl<'a> Resolver<'a> {
                     } else {
                         def_key.disambiguated_data.data.get_opt_name().expect("module without name")
                     };
+                    let expn_id = if def_kind == DefKind::Mod {
+                        self.cstore().module_expansion_untracked(def_id, &self.session)
+                    } else {
+                        // FIXME: Parent expansions for enums and traits are not kept in metadata.
+                        ExpnId::root()
+                    };
 
-                    let module = self.arenas.new_module(
+                    Some(self.new_module(
                         parent,
                         ModuleKind::Def(def_kind, def_id, name),
-                        self.cstore().module_expansion_untracked(def_id, &self.session),
+                        expn_id,
                         self.cstore().get_span_untracked(def_id, &self.session),
                         // FIXME: Account for `#[no_implicit_prelude]` attributes.
                         parent.map_or(false, |module| module.no_implicit_prelude),
-                    );
-                    self.module_map.insert(def_id, module);
-                    Some(module)
+                    ))
                 }
                 _ => None,
             }
@@ -217,8 +220,7 @@ impl<'a> Resolver<'a> {
     }
 
     crate fn build_reduced_graph_external(&mut self, module: Module<'a>) {
-        let def_id = module.def_id().expect("unpopulated module without a def-id");
-        for child in self.cstore().item_children_untracked(def_id, self.session) {
+        for child in self.cstore().item_children_untracked(module.def_id(), self.session) {
             let parent_scope = ParentScope::module(module, self);
             BuildReducedGraphVisitor { r: self, parent_scope }
                 .build_reduced_graph_for_external_crate_res(child);
@@ -759,7 +761,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             ItemKind::Mod(..) => {
-                let module = self.r.arenas.new_module(
+                let module = self.r.new_module(
                     Some(parent),
                     ModuleKind::Def(DefKind::Mod, def_id, ident.name),
                     expansion.to_expn_id(),
@@ -768,7 +770,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         || self.r.session.contains_name(&item.attrs, sym::no_implicit_prelude),
                 );
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
-                self.r.module_map.insert(def_id, module);
 
                 // Descend into the module.
                 self.parent_scope.module = module;
@@ -799,7 +800,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             ItemKind::Enum(_, _) => {
-                let module = self.r.arenas.new_module(
+                let module = self.r.new_module(
                     Some(parent),
                     ModuleKind::Def(DefKind::Enum, def_id, ident.name),
                     expansion.to_expn_id(),
@@ -873,7 +874,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
             ItemKind::Trait(..) => {
                 // Add all the items within to a new module.
-                let module = self.r.arenas.new_module(
+                let module = self.r.new_module(
                     Some(parent),
                     ModuleKind::Def(DefKind::Trait, def_id, ident.name),
                     expansion.to_expn_id(),
@@ -916,7 +917,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let parent = self.parent_scope.module;
         let expansion = self.parent_scope.expansion;
         if self.block_needs_anonymous_module(block) {
-            let module = self.r.arenas.new_module(
+            let module = self.r.new_module(
                 Some(parent),
                 ModuleKind::Block(block.id),
                 expansion.to_expn_id(),
@@ -936,15 +937,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let expansion = self.parent_scope.expansion;
         // Record primary definitions.
         match res {
-            Res::Def(kind @ (DefKind::Mod | DefKind::Enum | DefKind::Trait), def_id) => {
-                let module = self.r.arenas.new_module(
-                    Some(parent),
-                    ModuleKind::Def(kind, def_id, ident.name),
-                    expansion.to_expn_id(),
-                    span,
-                    // FIXME: Account for `#[no_implicit_prelude]` attributes.
-                    parent.no_implicit_prelude,
-                );
+            Res::Def(DefKind::Mod | DefKind::Enum | DefKind::Trait, def_id) => {
+                let module = self.r.expect_module(def_id);
                 self.r.define(parent, ident, TypeNS, (module, vis, span, expansion));
             }
             Res::Def(
