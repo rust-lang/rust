@@ -3,75 +3,48 @@
 
 use smallvec::SmallVec;
 use syntax::SmolStr;
-use tt::Delimiter;
 
 use crate::{tt_iter::TtIter, ParseError};
 
+/// Consider
+///
+/// ```
+/// macro_rules! an_macro {
+///     ($x:expr + $y:expr) => ($y * $x)
+/// }
+/// ```
+///
+/// Stuff to the left of `=>` is a [`MetaTemplate`] pattern (which is matched
+/// with input).
+///
+/// Stuff to the right is a [`MetaTemplate`] template which is used to produce
+/// output.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct MetaTemplate(pub(crate) Vec<Op>);
 
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum OpDelimited<'a> {
-    Op(&'a Op),
-    Open,
-    Close,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct OpDelimitedIter<'a> {
-    inner: &'a Vec<Op>,
-    delimited: Option<&'a Delimiter>,
-    idx: usize,
-}
-
-impl<'a> OpDelimitedIter<'a> {
-    pub(crate) fn is_eof(&self) -> bool {
-        let len = self.inner.len() + if self.delimited.is_some() { 2 } else { 0 };
-        self.idx >= len
+impl MetaTemplate {
+    pub(crate) fn parse_pattern(pattern: &tt::Subtree) -> Result<MetaTemplate, ParseError> {
+        MetaTemplate::parse(pattern, Mode::Pattern)
     }
 
-    pub(crate) fn peek(&self) -> Option<OpDelimited<'a>> {
-        match self.delimited {
-            None => self.inner.get(self.idx).map(OpDelimited::Op),
-            Some(_) => match self.idx {
-                0 => Some(OpDelimited::Open),
-                i if i == self.inner.len() + 1 => Some(OpDelimited::Close),
-                i => self.inner.get(i - 1).map(OpDelimited::Op),
-            },
-        }
+    pub(crate) fn parse_template(template: &tt::Subtree) -> Result<MetaTemplate, ParseError> {
+        MetaTemplate::parse(template, Mode::Template)
     }
 
-    pub(crate) fn reset(&self) -> Self {
-        Self { inner: self.inner, idx: 0, delimited: self.delimited }
-    }
-}
-
-impl<'a> Iterator for OpDelimitedIter<'a> {
-    type Item = OpDelimited<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let res = self.peek();
-        self.idx += 1;
-        res
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.inner.len() + if self.delimited.is_some() { 2 } else { 0 };
-        let remain = len.saturating_sub(self.idx);
-        (remain, Some(remain))
-    }
-}
-
-impl<'a> MetaTemplate {
     pub(crate) fn iter(&self) -> impl Iterator<Item = &Op> {
         self.0.iter()
     }
 
-    pub(crate) fn iter_delimited(
-        &'a self,
-        delimited: Option<&'a Delimiter>,
-    ) -> OpDelimitedIter<'a> {
-        OpDelimitedIter { inner: &self.0, idx: 0, delimited }
+    fn parse(tt: &tt::Subtree, mode: Mode) -> Result<MetaTemplate, ParseError> {
+        let mut src = TtIter::new(tt);
+
+        let mut res = Vec::new();
+        while let Some(first) = src.next() {
+            let op = next_op(first, &mut src, mode)?;
+            res.push(op)
+        }
+
+        Ok(MetaTemplate(res))
     }
 }
 
@@ -80,7 +53,7 @@ pub(crate) enum Op {
     Var { name: SmolStr, kind: Option<SmolStr>, id: tt::TokenId },
     Repeat { tokens: MetaTemplate, kind: RepeatKind, separator: Option<Separator> },
     Leaf(tt::Leaf),
-    Subtree { tokens: MetaTemplate, delimiter: Option<Delimiter> },
+    Subtree { tokens: MetaTemplate, delimiter: Option<tt::Delimiter> },
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -125,27 +98,10 @@ impl Separator {
     }
 }
 
-pub(crate) fn parse_template(template: &tt::Subtree) -> Result<Vec<Op>, ParseError> {
-    parse_inner(template, Mode::Template).into_iter().collect()
-}
-
-pub(crate) fn parse_pattern(pattern: &tt::Subtree) -> Result<Vec<Op>, ParseError> {
-    parse_inner(pattern, Mode::Pattern).into_iter().collect()
-}
-
 #[derive(Clone, Copy)]
 enum Mode {
     Pattern,
     Template,
-}
-
-fn parse_inner(tt: &tt::Subtree, mode: Mode) -> Vec<Result<Op, ParseError>> {
-    let mut src = TtIter::new(tt);
-    std::iter::from_fn(move || {
-        let first = src.next()?;
-        Some(next_op(first, &mut src, mode))
-    })
-    .collect()
 }
 
 macro_rules! err {
@@ -171,10 +127,8 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
             match second {
                 tt::TokenTree::Subtree(subtree) => {
                     let (separator, kind) = parse_repeat(src)?;
-                    let tokens = parse_inner(subtree, mode)
-                        .into_iter()
-                        .collect::<Result<Vec<Op>, ParseError>>()?;
-                    Op::Repeat { tokens: MetaTemplate(tokens), separator, kind }
+                    let tokens = MetaTemplate::parse(subtree, mode)?;
+                    Op::Repeat { tokens, separator, kind }
                 }
                 tt::TokenTree::Leaf(leaf) => match leaf {
                     tt::Leaf::Punct(_) => {
@@ -205,9 +159,8 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
         }
         tt::TokenTree::Leaf(tt) => Op::Leaf(tt.clone()),
         tt::TokenTree::Subtree(subtree) => {
-            let tokens =
-                parse_inner(subtree, mode).into_iter().collect::<Result<Vec<Op>, ParseError>>()?;
-            Op::Subtree { tokens: MetaTemplate(tokens), delimiter: subtree.delimiter }
+            let tokens = MetaTemplate::parse(subtree, mode)?;
+            Op::Subtree { tokens, delimiter: subtree.delimiter }
         }
     };
     Ok(res)
