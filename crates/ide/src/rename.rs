@@ -1902,4 +1902,49 @@ fn function() {
 "#,
         )
     }
+
+    #[test]
+    fn in_macro_multi_mapping() {
+        check(
+            "a",
+            r#"
+fn foo() {
+    macro_rules! match_ast2 {
+        ($node:ident {
+            $( $res:expr, )*
+        }) => {{
+            $( if $node { $res } else )*
+            { loop {} }
+        }};
+    }
+    let $0d = 3;
+    match_ast2! {
+        d {
+            d,
+            d,
+        }
+    };
+}
+"#,
+            r#"
+fn foo() {
+    macro_rules! match_ast2 {
+        ($node:ident {
+            $( $res:expr, )*
+        }) => {{
+            $( if $node { $res } else )*
+            { loop {} }
+        }};
+    }
+    let a = 3;
+    match_ast2! {
+        a {
+            a,
+            a,
+        }
+    };
+}
+"#,
+        )
+    }
 }
