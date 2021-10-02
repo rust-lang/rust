@@ -177,6 +177,13 @@ impl<'a> NumericLiteral<'a> {
 
         let mut digits = input.chars().filter(|&c| c != '_');
 
+        // The exponent may have a sign, output it early, otherwise it will be
+        // treated as a digit
+        if let Some('-') = digits.clone().next() {
+            let _ = digits.next();
+            output.push('-');
+        }
+
         let first_group_size;
 
         if partial_group_first {
