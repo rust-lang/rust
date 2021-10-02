@@ -3,76 +3,15 @@
 
 use smallvec::SmallVec;
 use syntax::SmolStr;
-use tt::Delimiter;
 
 use crate::{tt_iter::TtIter, ParseError};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct MetaTemplate(pub(crate) Vec<Op>);
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum OpDelimited<'a> {
-    Op(&'a Op),
-    Open,
-    Close,
+pub(crate) fn parse_template(template: &tt::Subtree) -> Result<Vec<Op>, ParseError> {
+    parse_inner(template, Mode::Template).into_iter().collect()
 }
 
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct OpDelimitedIter<'a> {
-    inner: &'a Vec<Op>,
-    delimited: Option<&'a Delimiter>,
-    idx: usize,
-}
-
-impl<'a> OpDelimitedIter<'a> {
-    pub(crate) fn is_eof(&self) -> bool {
-        let len = self.inner.len() + if self.delimited.is_some() { 2 } else { 0 };
-        self.idx >= len
-    }
-
-    pub(crate) fn peek(&self) -> Option<OpDelimited<'a>> {
-        match self.delimited {
-            None => self.inner.get(self.idx).map(OpDelimited::Op),
-            Some(_) => match self.idx {
-                0 => Some(OpDelimited::Open),
-                i if i == self.inner.len() + 1 => Some(OpDelimited::Close),
-                i => self.inner.get(i - 1).map(OpDelimited::Op),
-            },
-        }
-    }
-
-    pub(crate) fn reset(&self) -> Self {
-        Self { inner: self.inner, idx: 0, delimited: self.delimited }
-    }
-}
-
-impl<'a> Iterator for OpDelimitedIter<'a> {
-    type Item = OpDelimited<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let res = self.peek();
-        self.idx += 1;
-        res
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.inner.len() + if self.delimited.is_some() { 2 } else { 0 };
-        let remain = len.saturating_sub(self.idx);
-        (remain, Some(remain))
-    }
-}
-
-impl<'a> MetaTemplate {
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &Op> {
-        self.0.iter()
-    }
-
-    pub(crate) fn iter_delimited(
-        &'a self,
-        delimited: Option<&'a Delimiter>,
-    ) -> OpDelimitedIter<'a> {
-        OpDelimitedIter { inner: &self.0, idx: 0, delimited }
-    }
+pub(crate) fn parse_pattern(pattern: &tt::Subtree) -> Result<Vec<Op>, ParseError> {
+    parse_inner(pattern, Mode::Pattern).into_iter().collect()
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -80,7 +19,7 @@ pub(crate) enum Op {
     Var { name: SmolStr, kind: Option<SmolStr>, id: tt::TokenId },
     Repeat { tokens: MetaTemplate, kind: RepeatKind, separator: Option<Separator> },
     Leaf(tt::Leaf),
-    Subtree { tokens: MetaTemplate, delimiter: Option<Delimiter> },
+    Subtree { tokens: MetaTemplate, delimiter: Option<tt::Delimiter> },
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -95,6 +34,15 @@ pub(crate) enum Separator {
     Literal(tt::Literal),
     Ident(tt::Ident),
     Puncts(SmallVec<[tt::Punct; 3]>),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct MetaTemplate(pub(crate) Vec<Op>);
+
+impl MetaTemplate {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &Op> {
+        self.0.iter()
+    }
 }
 
 // Note that when we compare a Separator, we just care about its textual value.
@@ -123,14 +71,6 @@ impl Separator {
             Separator::Puncts(it) => it.len(),
         }
     }
-}
-
-pub(crate) fn parse_template(template: &tt::Subtree) -> Result<Vec<Op>, ParseError> {
-    parse_inner(template, Mode::Template).into_iter().collect()
-}
-
-pub(crate) fn parse_pattern(pattern: &tt::Subtree) -> Result<Vec<Op>, ParseError> {
-    parse_inner(pattern, Mode::Pattern).into_iter().collect()
 }
 
 #[derive(Clone, Copy)]

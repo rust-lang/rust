@@ -63,7 +63,7 @@ use std::rc::Rc;
 
 use crate::{
     expander::{Binding, Bindings, Fragment},
-    parser::{Op, OpDelimited, OpDelimitedIter, RepeatKind, Separator},
+    parser::{Op, RepeatKind, Separator},
     tt_iter::TtIter,
     ExpandError, MetaTemplate,
 };
@@ -747,6 +747,64 @@ fn collect_vars(buf: &mut Vec<SmolStr>, pattern: &MetaTemplate) {
             Op::Subtree { tokens, .. } => collect_vars(buf, tokens),
             Op::Repeat { tokens, .. } => collect_vars(buf, tokens),
         }
+    }
+}
+
+impl MetaTemplate {
+    fn iter_delimited<'a>(&'a self, delimited: Option<&'a tt::Delimiter>) -> OpDelimitedIter<'a> {
+        OpDelimitedIter { inner: &self.0, idx: 0, delimited }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum OpDelimited<'a> {
+    Op(&'a Op),
+    Open,
+    Close,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct OpDelimitedIter<'a> {
+    inner: &'a Vec<Op>,
+    delimited: Option<&'a tt::Delimiter>,
+    idx: usize,
+}
+
+impl<'a> OpDelimitedIter<'a> {
+    fn is_eof(&self) -> bool {
+        let len = self.inner.len() + if self.delimited.is_some() { 2 } else { 0 };
+        self.idx >= len
+    }
+
+    fn peek(&self) -> Option<OpDelimited<'a>> {
+        match self.delimited {
+            None => self.inner.get(self.idx).map(OpDelimited::Op),
+            Some(_) => match self.idx {
+                0 => Some(OpDelimited::Open),
+                i if i == self.inner.len() + 1 => Some(OpDelimited::Close),
+                i => self.inner.get(i - 1).map(OpDelimited::Op),
+            },
+        }
+    }
+
+    fn reset(&self) -> Self {
+        Self { inner: self.inner, idx: 0, delimited: self.delimited }
+    }
+}
+
+impl<'a> Iterator for OpDelimitedIter<'a> {
+    type Item = OpDelimited<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let res = self.peek();
+        self.idx += 1;
+        res
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.inner.len() + if self.delimited.is_some() { 2 } else { 0 };
+        let remain = len.saturating_sub(self.idx);
+        (remain, Some(remain))
     }
 }
 
