@@ -821,7 +821,7 @@ impl ExprCollector<'_> {
                 let ellipsis = p
                     .record_pat_field_list()
                     .expect("every struct should have a field list")
-                    .dotdot_token()
+                    .rest_pat()
                     .is_some();
 
                 Pat::Record { path, args, ellipsis }

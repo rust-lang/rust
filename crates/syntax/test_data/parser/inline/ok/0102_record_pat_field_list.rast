@@ -1,5 +1,5 @@
-SOURCE_FILE@0..119
-  FN@0..118
+SOURCE_FILE@0..156
+  FN@0..155
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -8,8 +8,8 @@ SOURCE_FILE@0..119
       L_PAREN@6..7 "("
       R_PAREN@7..8 ")"
     WHITESPACE@8..9 " "
-    BLOCK_EXPR@9..118
-      STMT_LIST@9..118
+    BLOCK_EXPR@9..155
+      STMT_LIST@9..155
         L_CURLY@9..10 "{"
         WHITESPACE@10..15 "\n    "
         LET_STMT@15..29
@@ -89,7 +89,8 @@ SOURCE_FILE@0..119
                   UNDERSCORE@78..79 "_"
               COMMA@79..80 ","
               WHITESPACE@80..81 " "
-              DOT2@81..83 ".."
+              REST_PAT@81..83
+                DOT2@81..83 ".."
               R_CURLY@83..84 "}"
           WHITESPACE@84..85 " "
           EQ@85..86 "="
@@ -128,6 +129,47 @@ SOURCE_FILE@0..119
             L_PAREN@113..114 "("
             R_PAREN@114..115 ")"
           SEMICOLON@115..116 ";"
-        WHITESPACE@116..117 "\n"
-        R_CURLY@117..118 "}"
-  WHITESPACE@118..119 "\n"
+        WHITESPACE@116..121 "\n    "
+        LET_STMT@121..153
+          LET_KW@121..124 "let"
+          WHITESPACE@124..125 " "
+          RECORD_PAT@125..147
+            PATH@125..126
+              PATH_SEGMENT@125..126
+                NAME_REF@125..126
+                  IDENT@125..126 "S"
+            WHITESPACE@126..127 " "
+            RECORD_PAT_FIELD_LIST@127..147
+              L_CURLY@127..128 "{"
+              WHITESPACE@128..129 " "
+              REST_PAT@129..145
+                ATTR@129..142
+                  POUND@129..130 "#"
+                  L_BRACK@130..131 "["
+                  META@131..141
+                    PATH@131..134
+                      PATH_SEGMENT@131..134
+                        NAME_REF@131..134
+                          IDENT@131..134 "cfg"
+                    TOKEN_TREE@134..141
+                      L_PAREN@134..135 "("
+                      IDENT@135..138 "any"
+                      TOKEN_TREE@138..140
+                        L_PAREN@138..139 "("
+                        R_PAREN@139..140 ")"
+                      R_PAREN@140..141 ")"
+                  R_BRACK@141..142 "]"
+                WHITESPACE@142..143 " "
+                DOT2@143..145 ".."
+              WHITESPACE@145..146 " "
+              R_CURLY@146..147 "}"
+          WHITESPACE@147..148 " "
+          EQ@148..149 "="
+          WHITESPACE@149..150 " "
+          TUPLE_EXPR@150..152
+            L_PAREN@150..151 "("
+            R_PAREN@151..152 ")"
+          SEMICOLON@152..153 ";"
+        WHITESPACE@153..154 "\n"
+        R_CURLY@154..155 "}"
+  WHITESPACE@155..156 "\n"
