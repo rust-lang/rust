@@ -104,7 +104,6 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
 
         self.src_archives.push(read_cache.into_inner());
         Ok(())
-
     }
 
     fn update_symbols(&mut self) {}

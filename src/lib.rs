@@ -73,7 +73,7 @@ mod vtable;
 mod prelude {
     pub(crate) use std::convert::{TryFrom, TryInto};
 
-    pub(crate) use rustc_span::{Span, FileNameDisplayPreference};
+    pub(crate) use rustc_span::{FileNameDisplayPreference, Span};
 
     pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
     pub(crate) use rustc_middle::bug;
@@ -275,10 +275,9 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
         }
         Some(value) => {
             let mut builder =
-                cranelift_codegen::isa::lookup(target_triple.clone())
-                    .unwrap_or_else(|err| {
-                        sess.fatal(&format!("can't compile for {}: {}", target_triple, err));
-                    });
+                cranelift_codegen::isa::lookup(target_triple.clone()).unwrap_or_else(|err| {
+                    sess.fatal(&format!("can't compile for {}: {}", target_triple, err));
+                });
             if let Err(_) = builder.enable(value) {
                 sess.fatal("the specified target cpu isn't currently supported by Cranelift.");
             }
@@ -286,10 +285,9 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
         }
         None => {
             let mut builder =
-                cranelift_codegen::isa::lookup(target_triple.clone())
-                    .unwrap_or_else(|err| {
-                        sess.fatal(&format!("can't compile for {}: {}", target_triple, err));
-                    });
+                cranelift_codegen::isa::lookup(target_triple.clone()).unwrap_or_else(|err| {
+                    sess.fatal(&format!("can't compile for {}: {}", target_triple, err));
+                });
             if target_triple.architecture == target_lexicon::Architecture::X86_64 {
                 // Don't use "haswell" as the default, as it implies `has_lzcnt`.
                 // macOS CI is still at Ivy Bridge EP, so `lzcnt` is interpreted as `bsr`.

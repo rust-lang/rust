@@ -744,8 +744,7 @@ fn codegen_stmt<'tcx>(
                         NullOp::AlignOf => layout.align.abi.bytes(),
                         NullOp::Box => unreachable!(),
                     };
-                    let val =
-                        CValue::const_val(fx, fx.layout_of(fx.tcx.types.usize), val.into());
+                    let val = CValue::const_val(fx, fx.layout_of(fx.tcx.types.usize), val.into());
                     lval.write_cvalue(fx, val);
                 }
                 Rvalue::Aggregate(ref kind, ref operands) => match kind.as_ref() {
