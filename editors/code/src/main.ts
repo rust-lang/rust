@@ -286,7 +286,7 @@ async function patchelf(dest: vscode.Uri): Promise<void> {
                 }
             `;
             const origFile = vscode.Uri.file(dest.fsPath + "-orig");
-            await vscode.workspace.fs.rename(dest, origFile);
+            await vscode.workspace.fs.rename(dest, origFile, { overwrite: true });
             progress.report({ message: "Patching executable", increment: 20 });
             await new Promise((resolve, reject) => {
                 const handle = exec(`nix-build -E - --argstr srcStr '${origFile.fsPath}' -o '${dest.fsPath}'`,
