@@ -58,13 +58,18 @@ impl IntoIterator for UsageSearchResult {
 pub struct FileReference {
     pub range: TextRange,
     pub name: ast::NameLike,
-    pub access: Option<ReferenceAccess>,
+    pub category: Option<ReferenceCategory>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum ReferenceAccess {
-    Read,
+pub enum ReferenceCategory {
+    // FIXME: Add this variant and delete the `retain_adt_literal_usages` function.
+    // Create
     Write,
+    Read,
+    // FIXME: Some day should be able to search in doc comments. Would probably
+    // need to switch from enum to bitflags then?
+    // DocComment
 }
 
 /// Generally, `search_scope` returns files that might contain references for the element.
@@ -472,7 +477,7 @@ impl<'a> FindUsages<'a> {
                 let reference = FileReference {
                     range,
                     name: ast::NameLike::NameRef(name_ref.clone()),
-                    access: None,
+                    category: None,
                 };
                 sink(file_id, reference)
             }
@@ -491,7 +496,7 @@ impl<'a> FindUsages<'a> {
                 let reference = FileReference {
                     range,
                     name: ast::NameLike::NameRef(name_ref.clone()),
-                    access: None,
+                    category: None,
                 };
                 sink(file_id, reference)
             }
@@ -510,7 +515,7 @@ impl<'a> FindUsages<'a> {
                 let reference = FileReference {
                     range,
                     name: ast::NameLike::Lifetime(lifetime.clone()),
-                    access: None,
+                    category: None,
                 };
                 sink(file_id, reference)
             }
@@ -529,7 +534,7 @@ impl<'a> FindUsages<'a> {
                 let reference = FileReference {
                     range,
                     name: ast::NameLike::NameRef(name_ref.clone()),
-                    access: reference_access(&def, name_ref),
+                    category: ReferenceCategory::new(&def, name_ref),
                 };
                 sink(file_id, reference)
             }
@@ -539,7 +544,7 @@ impl<'a> FindUsages<'a> {
                     let reference = FileReference {
                         range,
                         name: ast::NameLike::NameRef(name_ref.clone()),
-                        access: reference_access(&def, name_ref),
+                        category: ReferenceCategory::new(&def, name_ref),
                     };
                     sink(file_id, reference)
                 } else {
@@ -550,14 +555,19 @@ impl<'a> FindUsages<'a> {
                 let field = Definition::Field(field);
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
                 let access = match self.def {
-                    Definition::Field(_) if field == self.def => reference_access(&field, name_ref),
+                    Definition::Field(_) if field == self.def => {
+                        ReferenceCategory::new(&field, name_ref)
+                    }
                     Definition::Local(l) if local == l => {
-                        reference_access(&Definition::Local(local), name_ref)
+                        ReferenceCategory::new(&Definition::Local(local), name_ref)
                     }
                     _ => return false,
                 };
-                let reference =
-                    FileReference { range, name: ast::NameLike::NameRef(name_ref.clone()), access };
+                let reference = FileReference {
+                    range,
+                    name: ast::NameLike::NameRef(name_ref.clone()),
+                    category: access,
+                };
                 sink(file_id, reference)
             }
             _ => false,
@@ -580,14 +590,17 @@ impl<'a> FindUsages<'a> {
                     range,
                     name: ast::NameLike::Name(name.clone()),
                     // FIXME: mutable patterns should have `Write` access
-                    access: Some(ReferenceAccess::Read),
+                    category: Some(ReferenceCategory::Read),
                 };
                 sink(file_id, reference)
             }
             Some(NameClass::ConstReference(def)) if self.def == def => {
                 let FileRange { file_id, range } = self.sema.original_range(name.syntax());
-                let reference =
-                    FileReference { range, name: ast::NameLike::Name(name.clone()), access: None };
+                let reference = FileReference {
+                    range,
+                    name: ast::NameLike::Name(name.clone()),
+                    category: None,
+                };
                 sink(file_id, reference)
             }
             // Resolve trait impl function definitions to the trait definition's version if self.def is the trait definition's
@@ -611,7 +624,7 @@ impl<'a> FindUsages<'a> {
                         let reference = FileReference {
                             range,
                             name: ast::NameLike::Name(name.clone()),
-                            access: None,
+                            category: None,
                         };
                         sink(file_id, reference)
                     })
@@ -642,13 +655,14 @@ fn def_to_ty(sema: &Semantics<RootDatabase>, def: &Definition) -> Option<hir::Ty
     }
 }
 
-fn reference_access(def: &Definition, name_ref: &ast::NameRef) -> Option<ReferenceAccess> {
-    // Only Locals and Fields have accesses for now.
-    if !matches!(def, Definition::Local(_) | Definition::Field(_)) {
-        return None;
-    }
+impl ReferenceCategory {
+    fn new(def: &Definition, r: &ast::NameRef) -> Option<ReferenceCategory> {
+        // Only Locals and Fields have accesses for now.
+        if !matches!(def, Definition::Local(_) | Definition::Field(_)) {
+            return None;
+        }
 
-    let mode = name_ref.syntax().ancestors().find_map(|node| {
+        let mode = r.syntax().ancestors().find_map(|node| {
         match_ast! {
             match (node) {
                 ast::BinExpr(expr) => {
@@ -656,18 +670,19 @@ fn reference_access(def: &Definition, name_ref: &ast::NameRef) -> Option<Referen
                         // If the variable or field ends on the LHS's end then it's a Write (covers fields and locals).
                         // FIXME: This is not terribly accurate.
                         if let Some(lhs) = expr.lhs() {
-                            if lhs.syntax().text_range().end() == name_ref.syntax().text_range().end() {
-                                return Some(ReferenceAccess::Write);
+                            if lhs.syntax().text_range().end() == r.syntax().text_range().end() {
+                                return Some(ReferenceCategory::Write);
                             }
                         }
                     }
-                    Some(ReferenceAccess::Read)
+                    Some(ReferenceCategory::Read)
                 },
                 _ => None
             }
         }
     });
 
-    // Default Locals and Fields to read
-    mode.or(Some(ReferenceAccess::Read))
+        // Default Locals and Fields to read
+        mode.or(Some(ReferenceCategory::Read))
+    }
 }

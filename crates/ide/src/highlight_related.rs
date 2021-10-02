@@ -3,7 +3,7 @@ use ide_db::{
     base_db::FilePosition,
     defs::{Definition, NameClass, NameRefClass},
     helpers::{for_each_break_expr, for_each_tail_expr, node_ext::walk_expr, pick_best_token},
-    search::{FileReference, ReferenceAccess, SearchScope},
+    search::{FileReference, ReferenceCategory, SearchScope},
     RootDatabase,
 };
 use rustc_hash::FxHashSet;
@@ -19,7 +19,7 @@ use crate::{display::TryToNav, references, NavigationTarget};
 #[derive(PartialEq, Eq, Hash)]
 pub struct HighlightedRange {
     pub range: TextRange,
-    pub access: Option<ReferenceAccess>,
+    pub access: Option<ReferenceCategory>,
 }
 
 #[derive(Default, Clone)]
@@ -87,7 +87,7 @@ fn highlight_references(
                 .remove(&file_id)
         })
         .flatten()
-        .map(|FileReference { access, range, .. }| HighlightedRange { range, access });
+        .map(|FileReference { category: access, range, .. }| HighlightedRange { range, access });
 
     let declarations = defs.iter().flat_map(|def| {
         match def {
@@ -355,8 +355,8 @@ mod tests {
                     hl.range,
                     hl.access.map(|it| {
                         match it {
-                            ReferenceAccess::Read => "read",
-                            ReferenceAccess::Write => "write",
+                            ReferenceCategory::Read => "read",
+                            ReferenceCategory::Write => "write",
                         }
                         .to_string()
                     }),

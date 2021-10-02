@@ -16,7 +16,7 @@ use hir::{PathResolution, Semantics};
 use ide_db::{
     base_db::FileId,
     defs::{Definition, NameClass, NameRefClass},
-    search::{ReferenceAccess, SearchScope, UsageSearchResult},
+    search::{ReferenceCategory, SearchScope, UsageSearchResult},
     RootDatabase,
 };
 use rustc_hash::FxHashMap;
@@ -31,13 +31,13 @@ use crate::{display::TryToNav, FilePosition, NavigationTarget};
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
     pub declaration: Option<Declaration>,
-    pub references: FxHashMap<FileId, Vec<(TextRange, Option<ReferenceAccess>)>>,
+    pub references: FxHashMap<FileId, Vec<(TextRange, Option<ReferenceCategory>)>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Declaration {
     pub nav: NavigationTarget,
-    pub access: Option<ReferenceAccess>,
+    pub access: Option<ReferenceCategory>,
 }
 
 // Feature: Find All References
@@ -102,7 +102,7 @@ pub(crate) fn find_all_refs(
                         (
                             file_id,
                             refs.into_iter()
-                                .map(|file_ref| (file_ref.range, file_ref.access))
+                                .map(|file_ref| (file_ref.range, file_ref.category))
                                 .collect(),
                         )
                     })
@@ -149,7 +149,7 @@ pub(crate) fn decl_access(
     def: &Definition,
     syntax: &SyntaxNode,
     range: TextRange,
-) -> Option<ReferenceAccess> {
+) -> Option<ReferenceCategory> {
     match def {
         Definition::Local(_) | Definition::Field(_) => {}
         _ => return None,
@@ -160,7 +160,7 @@ pub(crate) fn decl_access(
         let pat = stmt.pat()?;
         if let ast::Pat::IdentPat(it) = pat {
             if it.mut_token().is_some() {
-                return Some(ReferenceAccess::Write);
+                return Some(ReferenceCategory::Write);
             }
         }
     }
