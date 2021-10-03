@@ -49,11 +49,10 @@ use super::usefulness::{MatchCheckCtxt, PatCtxt};
 
 use rustc_apfloat::ieee::{DoubleS, IeeeFloat, SingleS};
 use rustc_data_structures::captures::Captures;
-use rustc_index::vec::Idx;
 
 use rustc_hir::{HirId, RangeEnd};
 use rustc_middle::ty::subst::GenericArg;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::Ty;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 
@@ -93,16 +92,6 @@ impl IntRange {
         (*self.range.start(), *self.range.end())
     }
 
-    // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
-    #[inline]
-    fn signed_bias(ty: Ty<'_>, ty_size: rustc_target::abi::Size) -> u128 {
-        match *ty.kind() {
-            ty::Int(_) => 1u128 << (ty_size.bits() as u128 - 1),
-            ty::Char | ty::Uint(_) => 0,
-            _ => bug!("invalid type for `IntRange`: {}", ty),
-        }
-    }
-
     #[inline]
     pub(super) fn from_bits<'tcx>(
         ty: Ty<'tcx>,
@@ -111,7 +100,11 @@ impl IntRange {
         hi: u128,
         end: &RangeEnd,
     ) -> IntRange {
-        let bias = IntRange::signed_bias(ty, ty_size);
+        let bias = if MatchCheckCtxt::is_signed_int(ty) {
+            1u128 << (ty_size.bits() as u128 - 1)
+        } else {
+            0
+        };
         // Perform a shift if the underlying types are signed,
         // which makes the interval arithmetic simpler.
         let (lo, hi) = (lo ^ bias, hi ^ bias);
@@ -555,7 +548,7 @@ pub(super) enum Constructor<'tcx> {
     /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
     Str(&'tcx [u8]),
     /// Array and slice patterns.
-    Slice(Slice),
+    Slice(Slice, Ty<'tcx>),
     /// Constants that must not be matched structurally. They are treated as black
     /// boxes for the purposes of exhaustiveness: we must not inspect them, and they
     /// don't count towards making a match exhaustive.
@@ -593,19 +586,8 @@ impl<'tcx> Constructor<'tcx> {
 
     fn as_slice(&self) -> Option<Slice> {
         match self {
-            Slice(slice) => Some(*slice),
+            Slice(slice, _) => Some(*slice),
             _ => None,
-        }
-    }
-
-    pub(super) fn variant_index_for_adt(&self, adt: &'tcx ty::AdtDef) -> VariantIdx {
-        match *self {
-            Variant(idx) => idx,
-            Single => {
-                assert!(!adt.is_enum());
-                VariantIdx::new(0)
-            }
-            _ => bug!("bad constructor {:?} for adt {:?}", self, adt),
         }
     }
 
@@ -613,16 +595,10 @@ impl<'tcx> Constructor<'tcx> {
     /// `Fields::wildcards`.
     pub(super) fn arity(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> usize {
         match self {
-            Single | Variant(_) => match pcx.ty.kind() {
-                ty::Adt(adt, ..) => {
-                    let variant = &adt.variants[self.variant_index_for_adt(adt)];
-                    pcx.cx.list_variant_nonhidden_fields(pcx.ty, variant).count()
-                }
-                _ => bug!("Unexpected type for `Single` constructor: {:?}", pcx.ty),
-            },
+            Single | Variant(_) => pcx.cx.list_variant_nonhidden_fields(pcx.ty, self).count(),
             Tuple(fs) => fs.len(),
             Ref(_) | BoxPat(_) => 1,
-            Slice(slice) => slice.arity(),
+            Slice(slice, _) => slice.arity(),
             Str(..)
             | Bool(..)
             | IntRange(..)
@@ -671,11 +647,11 @@ impl<'tcx> Constructor<'tcx> {
                 split_range.split(int_ranges.cloned());
                 split_range.iter().map(IntRange).collect()
             }
-            &Slice(Slice { kind: VarLen(self_prefix, self_suffix), array_len }) => {
+            &Slice(Slice { kind: VarLen(self_prefix, self_suffix), array_len }, ty) => {
                 let mut split_self = SplitVarLenSlice::new(self_prefix, self_suffix, array_len);
                 let slices = ctors.filter_map(|c| c.as_slice()).map(|s| s.kind);
                 split_self.split(slices);
-                split_self.iter().map(Slice).collect()
+                split_self.iter().map(|s| Slice(s, ty)).collect()
             }
             // Any other constructor can be used unchanged.
             _ => smallvec![self.clone()],
@@ -724,7 +700,7 @@ impl<'tcx> Constructor<'tcx> {
                 }
             }
             (Str(self_val), Str(other_val)) => self_val == other_val,
-            (Slice(self_slice), Slice(other_slice)) => self_slice.is_covered_by(*other_slice),
+            (Slice(self_slice, _), Slice(other_slice, _)) => self_slice.is_covered_by(*other_slice),
 
             // We are trying to inspect an opaque constant. Thus we skip the row.
             (Opaque, _) | (_, Opaque) => false,
@@ -765,7 +741,7 @@ impl<'tcx> Constructor<'tcx> {
                 .iter()
                 .filter_map(|c| c.as_int_range())
                 .any(|other| range.is_covered_by(other)),
-            Slice(slice) => used_ctors
+            Slice(slice, _) => used_ctors
                 .iter()
                 .filter_map(|c| c.as_slice())
                 .any(|other| slice.is_covered_by(other)),
@@ -866,8 +842,7 @@ impl<'tcx> SplitWildcard<'tcx> {
             //
             // The exception is: if we are at the top-level, for example in an empty match, we
             // sometimes prefer reporting the list of constructors instead of just `_`.
-            let report_when_all_missing = pcx.is_top_level
-                && !matches!(pcx.ty.kind(), ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_));
+            let report_when_all_missing = pcx.is_top_level && !MatchCheckCtxt::is_numeric(pcx.ty);
             let ctor = if !self.matrix_ctors.is_empty() || report_when_all_missing {
                 if pcx.is_non_exhaustive {
                     Missing {
@@ -953,23 +928,16 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         constructor: &Constructor<'tcx>,
     ) -> Self {
         let ret = match constructor {
-            Single | Variant(_) => match ty.kind() {
-                ty::Adt(adt, _) => {
-                    let variant = &adt.variants[constructor.variant_index_for_adt(adt)];
-                    let tys = cx.list_variant_nonhidden_fields(ty, variant).map(|(_, ty)| ty);
-                    Fields::wildcards_from_tys(cx, tys)
-                }
-                _ => bug!("Unexpected type for `Single` constructor: {:?}", ty),
-            },
+            Single | Variant(_) => {
+                let tys = cx.list_variant_nonhidden_fields(ty, constructor).map(|(_, ty)| ty);
+                Fields::wildcards_from_tys(cx, tys)
+            }
             Tuple(fs) => Fields::wildcards_from_tys(cx, fs.iter().map(|ty| ty.expect_ty())),
             Ref(ty) | BoxPat(ty) => Fields::wildcards_from_tys(cx, once(*ty)),
-            Slice(slice) => match *ty.kind() {
-                ty::Slice(ty) | ty::Array(ty, _) => {
-                    let arity = slice.arity();
-                    Fields::wildcards_from_tys(cx, (0..arity).map(|_| ty))
-                }
-                _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
-            },
+            Slice(slice, ty) => {
+                let arity = slice.arity();
+                Fields::wildcards_from_tys(cx, (0..arity).map(|_| *ty))
+            }
             Str(..)
             | Bool(..)
             | IntRange(..)
@@ -1068,7 +1036,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 // We return a wildcard for each field of `other_ctor`.
                 Fields::wildcards(cx, self.ty, other_ctor).iter_patterns().collect()
             }
-            (Slice(self_slice), Slice(other_slice))
+            (Slice(self_slice, inner_ty), Slice(other_slice, _))
                 if self_slice.arity() != other_slice.arity() =>
             {
                 // The only tricky case: two slices of different arity. Since `self_slice` covers
@@ -1079,10 +1047,6 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 match self_slice.kind {
                     FixedLen(_) => bug!("{:?} doesn't cover {:?}", self_slice, other_slice),
                     VarLen(prefix, suffix) => {
-                        let inner_ty = match *self.ty.kind() {
-                            ty::Slice(ty) | ty::Array(ty, _) => ty,
-                            _ => bug!("bad slice pattern {:?} {:?}", self.ctor, self.ty),
-                        };
                         let prefix = &self.fields.fields[..prefix];
                         let suffix = &self.fields.fields[self_slice.arity() - suffix..];
                         let wildcard: &_ =
@@ -1143,14 +1107,8 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
 
         match &self.ctor {
             Single | Variant(_) | Tuple(_) => {
-                let variant = match self.ty.kind() {
-                    ty::Adt(adt, _) => Some(&adt.variants[self.ctor.variant_index_for_adt(adt)]),
-                    ty::Tuple(_) => None,
-                    _ => unreachable!(),
-                };
-
-                if let Some(variant) = variant {
-                    write!(f, "{}", variant.ident)?;
+                if let Some(ident) = MatchCheckCtxt::variant_ident(self.ty(), self.ctor()) {
+                    write!(f, "{}", ident)?;
                 }
 
                 // Without `cx`, we can't know which field corresponds to which, so we can't
@@ -1171,7 +1129,7 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                 let subpattern = self.iter_fields().next().unwrap();
                 write!(f, "box {:?}", subpattern)
             }
-            Slice(slice) => {
+            Slice(slice, _) => {
                 let mut subpatterns = self.fields.iter_patterns();
                 write!(f, "[")?;
                 match slice.kind {

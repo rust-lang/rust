@@ -24,12 +24,13 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::mir::{BorrowKind, Field, Mutability};
 use rustc_middle::thir::{Ascription, BindingMode, FieldPat, Pat, PatKind, PatRange, PatTyProj};
-use rustc_middle::ty::{self, ConstKind, DefIdTree, Ty, TyCtxt, VariantDef};
+use rustc_middle::ty::{self, ConstKind, DefIdTree, Ty, TyCtxt};
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::Size;
+use rustc_target::abi::{Size, VariantIdx};
 
 use smallvec::{smallvec, SmallVec};
 use std::cmp::Ordering;
+use std::fmt::Display;
 
 #[derive(Clone, Debug)]
 crate enum PatternError {
@@ -734,18 +735,21 @@ fn pat_to_deconstructed<'p, 'tcx>(
                     fields = Fields::singleton(cx, DeconstructedPat::wildcard(inner_ty));
                 }
                 ty::Adt(adt, _) => {
-                    ctor = match pat.kind.as_ref() {
-                        PatKind::Leaf { .. } => Constructor::Single,
+                    let variant = match *pat.kind {
+                        PatKind::Leaf { .. } => {
+                            ctor = Constructor::Single;
+                            adt.non_enum_variant()
+                        }
                         PatKind::Variant { variant_index, .. } => {
-                            Constructor::Variant(*variant_index)
+                            ctor = Constructor::Variant(variant_index);
+                            &adt.variants[variant_index]
                         }
                         _ => bug!(),
                     };
-                    let variant = &adt.variants[ctor.variant_index_for_adt(adt)];
                     // For each field in the variant, we store the relevant index into `self.fields` if any.
                     let mut field_id_to_id: Vec<Option<usize>> =
                         (0..variant.fields.len()).map(|_| None).collect();
-                    let tys = cx.list_variant_nonhidden_fields(pat.ty, variant).enumerate().map(
+                    let tys = cx.list_variant_nonhidden_fields(pat.ty, &ctor).enumerate().map(
                         |(i, (field, ty))| {
                             field_id_to_id[field.index()] = Some(i);
                             ty
@@ -847,9 +851,11 @@ fn pat_to_deconstructed<'p, 'tcx>(
             fields = Fields::empty();
         }
         PatKind::Array { prefix, slice, suffix } | PatKind::Slice { prefix, slice, suffix } => {
-            let array_len = match pat.ty.kind() {
-                ty::Array(_, length) => Some(length.eval_usize(cx.tcx, cx.param_env) as usize),
-                ty::Slice(_) => None,
+            let (ty, array_len) = match pat.ty.kind() {
+                ty::Array(ty, length) => {
+                    (ty, Some(length.eval_usize(cx.tcx, cx.param_env) as usize))
+                }
+                ty::Slice(ty) => (ty, None),
                 _ => span_bug!(pat.span, "bad ty {:?} for slice pattern", pat.ty),
             };
             let kind = if slice.is_some() {
@@ -857,7 +863,7 @@ fn pat_to_deconstructed<'p, 'tcx>(
             } else {
                 SliceKind::FixedLen(prefix.len() + suffix.len())
             };
-            ctor = Constructor::Slice(Slice::new(array_len, kind));
+            ctor = Constructor::Slice(Slice::new(array_len, kind), ty);
             fields = Fields::from_iter(cx, prefix.iter().chain(suffix).map(mkpat));
         }
         PatKind::Or { .. } => {
@@ -893,10 +899,13 @@ fn deconstructed_to_pat<'p, 'tcx>(
     let kind = match pat.ctor() {
         Single | Variant(_) => match pat.ty().kind() {
             ty::Adt(adt_def, substs) => {
-                let variant_index = pat.ctor().variant_index_for_adt(adt_def);
-                let variant = &adt_def.variants[variant_index];
+                let variant_index = match pat.ctor() {
+                    Variant(idx) => *idx,
+                    Single => VariantIdx::new(0),
+                    _ => bug!("bad constructor {:?} for adt", pat.ctor()),
+                };
                 let subpatterns = cx
-                    .list_variant_nonhidden_fields(pat.ty(), variant)
+                    .list_variant_nonhidden_fields(pat.ty(), pat.ctor())
                     .zip(subpatterns)
                     .map(|((field, _ty), pattern)| FieldPat { field, pattern })
                     .collect();
@@ -920,7 +929,7 @@ fn deconstructed_to_pat<'p, 'tcx>(
         // string literal pattern will never be reported as a non-exhaustiveness witness, so we
         // ignore this issue.
         Ref(_) | BoxPat(_) => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
-        Slice(slice) => {
+        Slice(slice, _) => {
             match slice.kind {
                 SliceKind::FixedLen(_) => {
                     PatKind::Slice { prefix: subpatterns.collect(), slice: None, suffix: vec![] }
@@ -977,6 +986,14 @@ fn deconstructed_to_pat<'p, 'tcx>(
 }
 
 impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
+    fn is_numeric(ty: Ty<'tcx>) -> bool {
+        matches!(ty.kind(), ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_))
+    }
+
+    fn is_signed_int(ty: Ty<'tcx>) -> bool {
+        matches!(ty.kind(), ty::Int(_))
+    }
+
     fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
         if self.tcx.features().exhaustive_patterns {
             self.tcx.is_ty_uninhabited_from(self.module, ty, self.param_env)
@@ -1109,22 +1126,23 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
             ty::Ref(_, ty, _) => smallvec![Ref(*ty)],
             ty::Tuple(fs) => smallvec![Tuple(*fs)],
             ty::Array(sub_ty, len) => {
-                match len.try_eval_usize(cx.tcx, cx.param_env) {
+                let slice = match len.try_eval_usize(cx.tcx, cx.param_env) {
                     Some(len) => {
                         // The uninhabited case is already handled.
-                        smallvec![Slice(self::Slice::new(Some(len as usize), VarLen(0, 0)))]
+                        self::Slice::new(Some(len as usize), VarLen(0, 0))
                     }
                     None => {
                         // Treat arrays of a constant but unknown length like slices.
                         let kind =
                             if cx.is_uninhabited(sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
-                        smallvec![Slice(self::Slice::new(None, kind))]
+                        self::Slice::new(None, kind)
                     }
-                }
+                };
+                smallvec![Slice(slice, sub_ty)]
             }
             ty::Slice(sub_ty) => {
                 let kind = if cx.is_uninhabited(sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
-                smallvec![Slice(self::Slice::new(None, kind))]
+                smallvec![Slice(self::Slice::new(None, kind), sub_ty)]
             }
             // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we don't
             // expose its emptiness and return `NonExhaustive` below. The exception is if the
@@ -1137,18 +1155,40 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
         }
     }
 
+    /// Show the name of the variant corresponding to this constructor.
+    /// `ty` must be `ty::Adt`, and `ctor` must be a constructor for that type.
+    fn variant_ident(ty: Ty<'tcx>, ctor: &Constructor<'tcx>) -> Option<impl Display> {
+        match ty.kind() {
+            ty::Adt(adt, _) => {
+                let variant = match ctor {
+                    Constructor::Variant(idx) => &adt.variants[*idx],
+                    Constructor::Single => adt.non_enum_variant(),
+                    _ => return None,
+                };
+                Some(variant.ident)
+            }
+            _ => None,
+        }
+    }
+
     /// List the fields for this variant.
     /// In the cases of either a `#[non_exhaustive]` field list or a non-public field, we hide
     /// uninhabited fields in order not to reveal the uninhabitedness of the whole variant.
+    /// `ty` must be `ty::Adt`, and `ctor` must be a constructor for that type.
     fn list_variant_nonhidden_fields<'a>(
         &'a self,
         ty: Ty<'tcx>,
-        variant: &'a VariantDef,
+        ctor: &Constructor<'tcx>,
     ) -> impl Iterator<Item = (Field, Ty<'tcx>)> + Captures<'a> + Captures<'p> {
         let cx = self;
         let (adt, substs) = match ty.kind() {
             ty::Adt(adt, substs) => (adt, substs),
             _ => bug!(),
+        };
+        let variant = match ctor {
+            Constructor::Variant(variant_index) => &adt.variants[*variant_index],
+            Constructor::Single => adt.non_enum_variant(),
+            _ => bug!("bad constructor {:?} for adt {:?}", ctor, ty),
         };
         // Whether we must not match the fields of this variant exhaustively.
         let is_non_exhaustive = variant.is_field_list_non_exhaustive() && !adt.did.is_local();
