@@ -10,6 +10,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::{Idx, IndexVec};
@@ -1532,6 +1533,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::SwitchInt { ref discr, switch_ty, .. } => {
+                self.check_operand(discr, term_location);
+
                 let discr_ty = discr.ty(body, tcx);
                 if let Err(terr) = self.sub_types(
                     discr_ty,
@@ -1554,6 +1557,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // FIXME: check the values
             }
             TerminatorKind::Call { ref func, ref args, ref destination, from_hir_call, .. } => {
+                self.check_operand(func, term_location);
+                for arg in args {
+                    self.check_operand(arg, term_location);
+                }
+
                 let func_ty = func.ty(body, tcx);
                 debug!("check_terminator: call, func_ty={:?}", func_ty);
                 let sig = match func_ty.kind() {
@@ -1598,6 +1606,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.check_call_inputs(body, term, &sig, args, term_location, from_hir_call);
             }
             TerminatorKind::Assert { ref cond, ref msg, .. } => {
+                self.check_operand(cond, term_location);
+
                 let cond_ty = cond.ty(body, tcx);
                 if cond_ty != tcx.types.bool {
                     span_mirbug!(self, term, "bad Assert ({:?}, not bool", cond_ty);
@@ -1613,6 +1623,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::Yield { ref value, .. } => {
+                self.check_operand(value, term_location);
+
                 let value_ty = value.ty(body, tcx);
                 match body.yield_ty() {
                     None => span_mirbug!(self, term, "yield in non-generator"),
@@ -1941,15 +1953,51 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
+    fn check_operand(&mut self, op: &Operand<'tcx>, location: Location) {
+        if let Operand::Constant(constant) = op {
+            let maybe_uneval = match constant.literal {
+                ConstantKind::Ty(ct) => match ct.val {
+                    ty::ConstKind::Unevaluated(uv) => Some(uv),
+                    _ => None,
+                },
+                _ => None,
+            };
+            if let Some(uv) = maybe_uneval {
+                if uv.promoted.is_none() {
+                    let tcx = self.tcx();
+                    let def_id = uv.def.def_id_for_type_of();
+                    if tcx.def_kind(def_id) == DefKind::InlineConst {
+                        let predicates = self.prove_closure_bounds(
+                            tcx,
+                            def_id.expect_local(),
+                            uv.substs(tcx),
+                            location,
+                        );
+                        self.normalize_and_prove_instantiated_predicates(
+                            def_id,
+                            predicates,
+                            location.to_locations(),
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     fn check_rvalue(&mut self, body: &Body<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
         let tcx = self.tcx();
 
         match rvalue {
             Rvalue::Aggregate(ak, ops) => {
+                for op in ops {
+                    self.check_operand(op, location);
+                }
                 self.check_aggregate_rvalue(&body, rvalue, ak, ops, location)
             }
 
             Rvalue::Repeat(operand, len) => {
+                self.check_operand(operand, location);
+
                 // If the length cannot be evaluated we must assume that the length can be larger
                 // than 1.
                 // If the length is larger than 1, the repeat expression will need to copy the
@@ -2000,7 +2048,22 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
 
-            Rvalue::NullaryOp(_, ty) | Rvalue::ShallowInitBox(_, ty) => {
+            Rvalue::NullaryOp(_, ty) => {
+                let trait_ref = ty::TraitRef {
+                    def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
+                    substs: tcx.mk_substs_trait(ty, &[]),
+                };
+
+                self.prove_trait_ref(
+                    trait_ref,
+                    location.to_locations(),
+                    ConstraintCategory::SizedBound,
+                );
+            }
+
+            Rvalue::ShallowInitBox(operand, ty) => {
+                self.check_operand(operand, location);
+
                 let trait_ref = ty::TraitRef {
                     def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
                     substs: tcx.mk_substs_trait(ty, &[]),
@@ -2014,6 +2077,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             Rvalue::Cast(cast_kind, op, ty) => {
+                self.check_operand(op, location);
+
                 match cast_kind {
                     CastKind::Pointer(PointerCast::ReifyFnPointer) => {
                         let fn_sig = op.ty(body, tcx).fn_sig(tcx);
@@ -2260,6 +2325,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge,
                 box (left, right),
             ) => {
+                self.check_operand(left, location);
+                self.check_operand(right, location);
+
                 let ty_left = left.ty(body, tcx);
                 match ty_left.kind() {
                     // Types with regions are comparable if they have a common super-type.
@@ -2310,13 +2378,19 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
 
+            Rvalue::Use(operand) | Rvalue::UnaryOp(_, operand) => {
+                self.check_operand(operand, location);
+            }
+
+            Rvalue::BinaryOp(_, box (left, right))
+            | Rvalue::CheckedBinaryOp(_, box (left, right)) => {
+                self.check_operand(left, location);
+                self.check_operand(right, location);
+            }
+
             Rvalue::AddressOf(..)
             | Rvalue::ThreadLocalRef(..)
-            | Rvalue::Use(..)
             | Rvalue::Len(..)
-            | Rvalue::BinaryOp(..)
-            | Rvalue::CheckedBinaryOp(..)
-            | Rvalue::UnaryOp(..)
             | Rvalue::Discriminant(..) => {}
         }
     }
