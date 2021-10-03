@@ -20,15 +20,17 @@ use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CodeLens, CompletionItem, Diagnostic, DiagnosticTag, DocumentFormattingParams, FoldingRange,
-    FoldingRangeParams, HoverContents, Location, NumberOrString, Position, PrepareRenameResponse,
-    Range, RenameParams, SemanticTokensDeltaParams, SemanticTokensFullDeltaResult,
-    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
-    SemanticTokensResult, SymbolInformation, SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
+    FoldingRangeParams, HoverContents, Location, LocationLink, NumberOrString, Position,
+    PrepareRenameResponse, Range, RenameParams, SemanticTokensDeltaParams,
+    SemanticTokensFullDeltaResult, SemanticTokensParams, SemanticTokensRangeParams,
+    SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, SymbolTag,
+    TextDocumentIdentifier, Url, WorkspaceEdit,
 };
-use project_model::TargetKind;
+use project_model::{ProjectWorkspace, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
 use syntax::{algo, ast, AstNode, TextRange, TextSize, T};
+use vfs::AbsPath;
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
@@ -603,6 +605,74 @@ pub(crate) fn handle_parent_module(
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
     let _p = profile::span("handle_parent_module");
+    if let Ok(file_path) = &params.text_document.uri.to_file_path() {
+        if file_path.file_name().unwrap_or_default() == "Cargo.toml" {
+            // search parent workspace and collect a list of `LocationLink`path,
+            // since cargo.toml doesn't have file_id
+            let links: Vec<LocationLink> = snap
+                .workspaces
+                .iter()
+                .filter_map(|ws| match ws {
+                    ProjectWorkspace::Cargo { cargo, .. } => cargo
+                        .packages()
+                        .find(|&pkg| {
+                            cargo[pkg]
+                                .targets
+                                .iter()
+                                .find_map(|&it| {
+                                    let pkg_parent_path = cargo[it].root.parent()?;
+                                    let file_parent_path = AbsPath::assert(file_path.parent()?);
+                                    if pkg_parent_path == file_parent_path {
+                                        Some(())
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .is_some()
+                        })
+                        .and_then(|_| Some(cargo)),
+                    _ => None,
+                })
+                .map(|ws| {
+                    let target_cargo_toml_path = ws.workspace_root().join("Cargo.toml");
+                    let target_cargo_toml_url =
+                        to_proto::url_from_abs_path(&target_cargo_toml_path);
+                    LocationLink {
+                        origin_selection_range: None,
+                        target_uri: target_cargo_toml_url,
+                        target_range: Range::default(),
+                        target_selection_range: Range::default(),
+                    }
+                })
+                .collect::<_>();
+            return Ok(Some(links.into()));
+        }
+
+        // check if invoked at the crate root
+        let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
+        let crate_id = match snap.analysis.crate_for(file_id)?.first() {
+            Some(&crate_id) => crate_id,
+            None => return Ok(None),
+        };
+        let cargo_spec = match CargoTargetSpec::for_file(&snap, file_id)? {
+            Some(it) => it,
+            None => return Ok(None),
+        };
+
+        if snap.analysis.crate_root(crate_id)? == file_id {
+            let cargo_toml_url = to_proto::url_from_abs_path(&cargo_spec.cargo_toml);
+            let res = vec![LocationLink {
+                origin_selection_range: None,
+                target_uri: cargo_toml_url,
+                target_range: Range::default(),
+                target_selection_range: Range::default(),
+            }]
+            .into();
+            return Ok(Some(res));
+        }
+    }
+
+    // locate parent module by semantics
     let position = from_proto::file_position(&snap, params)?;
     let navs = snap.analysis.parent_module(position)?;
     let res = to_proto::goto_definition_response(&snap, None, navs)?;
