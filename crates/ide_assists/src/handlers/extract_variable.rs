@@ -1,6 +1,7 @@
 use stdx::format_to;
 use syntax::{
     ast::{self, AstNode},
+    NodeOrToken,
     SyntaxKind::{
         BLOCK_EXPR, BREAK_EXPR, CLOSURE_EXPR, COMMENT, LOOP_EXPR, MATCH_ARM, MATCH_GUARD,
         PATH_EXPR, RETURN_EXPR,
@@ -30,20 +31,26 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
     if ctx.frange.range.is_empty() {
         return None;
     }
-    let node = ctx.covering_element();
-    if node.kind() == COMMENT {
-        cov_mark::hit!(extract_var_in_comment_is_not_applicable);
-        return None;
-    }
+    let node = match ctx.covering_element() {
+        NodeOrToken::Node(it) => it,
+        NodeOrToken::Token(it) if it.kind() == COMMENT => {
+            cov_mark::hit!(extract_var_in_comment_is_not_applicable);
+            return None;
+        }
+        NodeOrToken::Token(it) => it.parent()?,
+    };
+    let node = node.ancestors().take_while(|anc| anc.text_range() == node.text_range()).last()?;
     let to_extract = node
-        .ancestors()
-        .take_while(|it| it.text_range().contains_range(ctx.frange.range))
+        .descendants()
+        .take_while(|it| ctx.frange.range.contains_range(it.text_range()))
         .find_map(valid_target_expr)?;
+
     if let Some(ty_info) = ctx.sema.type_of_expr(&to_extract) {
         if ty_info.adjusted().is_unit() {
             return None;
         }
     }
+
     let anchor = Anchor::from(&to_extract)?;
     let indent = anchor.syntax().prev_sibling_or_token()?.as_token()?.clone();
     let target = to_extract.syntax().text_range();
@@ -146,8 +153,11 @@ enum Anchor {
 
 impl Anchor {
     fn from(to_extract: &ast::Expr) -> Option<Anchor> {
-        to_extract.syntax().ancestors().take_while(|it| !ast::Item::can_cast(it.kind())).find_map(
-            |node| {
+        to_extract
+            .syntax()
+            .ancestors()
+            .take_while(|it| !ast::Item::can_cast(it.kind()) || ast::MacroCall::can_cast(it.kind()))
+            .find_map(|node| {
                 if let Some(expr) =
                     node.parent().and_then(ast::StmtList::cast).and_then(|it| it.tail_expr())
                 {
@@ -181,8 +191,7 @@ impl Anchor {
                     return Some(Anchor::Before(node));
                 }
                 None
-            },
-        )
+            })
     }
 
     fn syntax(&self) -> &SyntaxNode {
