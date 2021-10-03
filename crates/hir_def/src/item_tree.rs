@@ -475,10 +475,9 @@ macro_rules! mod_items {
                 }
 
                 fn id_from_mod_item(mod_item: ModItem) -> Option<FileItemTreeId<Self>> {
-                    if let ModItem::$typ(id) = mod_item {
-                        Some(id)
-                    } else {
-                        None
+                    match mod_item {
+                        ModItem::$typ(id) => Some(id),
+                        _ => None,
                     }
                 }
 

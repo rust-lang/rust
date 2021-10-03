@@ -204,10 +204,9 @@ impl<'a> InferenceContext<'a> {
                 } else {
                     BindingMode::convert(*mode)
                 };
-                let inner_ty = if let Some(subpat) = subpat {
-                    self.infer_pat(*subpat, &expected, default_bm)
-                } else {
-                    expected
+                let inner_ty = match subpat {
+                    Some(subpat) => self.infer_pat(*subpat, &expected, default_bm),
+                    None => expected,
                 };
                 let inner_ty = self.insert_type_vars_shallow(inner_ty);
 

@@ -103,10 +103,9 @@ impl StaticIndex<'_> {
         for token in tokens {
             let range = token.text_range();
             let node = token.parent().unwrap();
-            let def = if let Some(x) = get_definition(&sema, token.clone()) {
-                x
-            } else {
-                continue;
+            let def = match get_definition(&sema, token.clone()) {
+                Some(x) => x,
+                None => continue,
             };
             let id = if let Some(x) = self.def_map.get(&def) {
                 *x
@@ -124,10 +123,9 @@ impl StaticIndex<'_> {
             let token = self.tokens.get_mut(id).unwrap();
             token.references.push(ReferenceData {
                 range: FileRange { range, file_id },
-                is_definition: if let Some(x) = def.try_to_nav(self.db) {
-                    x.file_id == file_id && x.focus_or_full_range() == range
-                } else {
-                    false
+                is_definition: match def.try_to_nav(self.db) {
+                    Some(x) => x.file_id == file_id && x.focus_or_full_range() == range,
+                    None => false,
                 },
             });
             result.tokens.push((range, id));

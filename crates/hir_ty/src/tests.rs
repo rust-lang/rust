@@ -195,10 +195,9 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                 mismatch.expected.display_test(&db),
                 mismatch.actual.display_test(&db)
             );
-            if let Some(annotation) = mismatches.remove(&range) {
-                assert_eq!(actual, annotation);
-            } else {
-                format_to!(unexpected_type_mismatches, "{:?}: {}\n", range.range, actual);
+            match mismatches.remove(&range) {
+                Some(annotation) => assert_eq!(actual, annotation),
+                None => format_to!(unexpected_type_mismatches, "{:?}: {}\n", range.range, actual),
             }
         }
         for (expr, mismatch) in inference_result.expr_type_mismatches() {
@@ -215,10 +214,9 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                 mismatch.expected.display_test(&db),
                 mismatch.actual.display_test(&db)
             );
-            if let Some(annotation) = mismatches.remove(&range) {
-                assert_eq!(actual, annotation);
-            } else {
-                format_to!(unexpected_type_mismatches, "{:?}: {}\n", range.range, actual);
+            match mismatches.remove(&range) {
+                Some(annotation) => assert_eq!(actual, annotation),
+                None => format_to!(unexpected_type_mismatches, "{:?}: {}\n", range.range, actual),
             }
         }
     }

@@ -47,10 +47,9 @@ impl ResolvedRule {
     ) -> Result<ResolvedRule, SsrError> {
         let resolver =
             Resolver { resolution_scope, placeholders_by_stand_in: rule.placeholders_by_stand_in };
-        let resolved_template = if let Some(template) = rule.template {
-            Some(resolver.resolve_pattern_tree(template)?)
-        } else {
-            None
+        let resolved_template = match rule.template {
+            Some(template) => Some(resolver.resolve_pattern_tree(template)?),
+            None => None,
         };
         Ok(ResolvedRule {
             pattern: resolver.resolve_pattern_tree(rule.pattern)?,

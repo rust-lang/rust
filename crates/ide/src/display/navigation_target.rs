@@ -292,10 +292,9 @@ impl TryToNav for hir::Impl {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         let src = self.source(db)?;
         let derive_attr = self.is_builtin_derive(db);
-        let frange = if let Some(item) = &derive_attr {
-            item.syntax().original_file_range(db)
-        } else {
-            src.syntax().original_file_range(db)
+        let frange = match &derive_attr {
+            Some(item) => item.syntax().original_file_range(db),
+            None => src.syntax().original_file_range(db),
         };
         let focus_range = if derive_attr.is_some() {
             None

@@ -368,10 +368,9 @@ impl<'a> TyLoweringContext<'a> {
                 Some((it, None)) => it,
                 _ => return None,
             };
-        if let TypeNs::GenericParam(param_id) = resolution {
-            Some(param_id)
-        } else {
-            None
+        match resolution {
+            TypeNs::GenericParam(param_id) => Some(param_id),
+            _ => None,
         }
     }
 

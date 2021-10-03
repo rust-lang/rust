@@ -504,10 +504,9 @@ impl server::Literal for Rustc {
     }
 
     fn integer(&mut self, n: &str) -> Self::Literal {
-        let n = if let Ok(n) = n.parse::<i128>() {
-            n.to_string()
-        } else {
-            n.parse::<u128>().unwrap().to_string()
+        let n = match n.parse::<i128>() {
+            Ok(n) => n.to_string(),
+            Err(_) => n.parse::<u128>().unwrap().to_string(),
         };
         Literal { text: n.into(), id: tt::TokenId::unspecified() }
     }

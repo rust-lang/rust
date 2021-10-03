@@ -63,10 +63,9 @@ fn build_completion(
         .set_documentation(ctx.docs(def))
         .set_deprecated(ctx.is_deprecated(def))
         .detail(&pat);
-    if let Some(snippet_cap) = ctx.snippet_cap() {
-        item.insert_snippet(snippet_cap, pat);
-    } else {
-        item.insert_text(pat);
+    match ctx.snippet_cap() {
+        Some(snippet_cap) => item.insert_snippet(snippet_cap, pat),
+        None => item.insert_text(pat),
     };
     item.build()
 }

@@ -60,10 +60,9 @@ impl GenericParamsOwnerEdit for ast::Impl {
         match self.generic_param_list() {
             Some(it) => it,
             None => {
-                let position = if let Some(imp_token) = self.impl_token() {
-                    Position::after(imp_token)
-                } else {
-                    Position::last_child_of(self.syntax())
+                let position = match self.impl_token() {
+                    Some(imp_token) => Position::after(imp_token),
+                    None => Position::last_child_of(self.syntax()),
                 };
                 create_generic_param_list(position)
             }
@@ -72,10 +71,9 @@ impl GenericParamsOwnerEdit for ast::Impl {
 
     fn get_or_create_where_clause(&self) -> ast::WhereClause {
         if self.where_clause().is_none() {
-            let position = if let Some(items) = self.assoc_item_list() {
-                Position::before(items.syntax())
-            } else {
-                Position::last_child_of(self.syntax())
+            let position = match self.assoc_item_list() {
+                Some(items) => Position::before(items.syntax()),
+                None => Position::last_child_of(self.syntax()),
             };
             create_where_clause(position);
         }
@@ -102,10 +100,9 @@ impl GenericParamsOwnerEdit for ast::Trait {
 
     fn get_or_create_where_clause(&self) -> ast::WhereClause {
         if self.where_clause().is_none() {
-            let position = if let Some(items) = self.assoc_item_list() {
-                Position::before(items.syntax())
-            } else {
-                Position::last_child_of(self.syntax())
+            let position = match self.assoc_item_list() {
+                Some(items) => Position::before(items.syntax()),
+                None => Position::last_child_of(self.syntax()),
             };
             create_where_clause(position);
         }
@@ -253,12 +250,9 @@ impl ast::WhereClause {
 
 impl ast::TypeBoundList {
     pub fn remove(&self) {
-        if let Some(colon) =
-            self.syntax().siblings_with_tokens(Direction::Prev).find(|it| it.kind() == T![:])
-        {
-            ted::remove_all(colon..=self.syntax().clone().into())
-        } else {
-            ted::remove(self.syntax())
+        match self.syntax().siblings_with_tokens(Direction::Prev).find(|it| it.kind() == T![:]) {
+            Some(colon) => ted::remove_all(colon..=self.syntax().clone().into()),
+            None => ted::remove(self.syntax()),
         }
     }
 }

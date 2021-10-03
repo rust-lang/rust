@@ -264,10 +264,9 @@ impl<'a> InferenceContext<'a> {
 
                 // collect explicitly written argument types
                 for arg_type in arg_types.iter() {
-                    let arg_ty = if let Some(type_ref) = arg_type {
-                        self.make_ty(type_ref)
-                    } else {
-                        self.table.new_type_var()
+                    let arg_ty = match arg_type {
+                        Some(type_ref) => self.make_ty(type_ref),
+                        None => self.table.new_type_var(),
                     };
                     sig_tys.push(arg_ty);
                 }

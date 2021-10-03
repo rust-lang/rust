@@ -105,10 +105,9 @@ impl IntRange {
 
     #[inline]
     fn from_range(lo: u128, hi: u128, scalar_ty: Scalar) -> IntRange {
-        if let Scalar::Bool = scalar_ty {
-            IntRange { range: lo..=hi }
-        } else {
-            unimplemented!()
+        match scalar_ty {
+            Scalar::Bool => IntRange { range: lo..=hi },
+            _ => unimplemented!(),
         }
     }
 

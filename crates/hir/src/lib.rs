@@ -2119,10 +2119,9 @@ impl Impl {
         };
 
         let fp = TyFingerprint::for_inherent_impl(&ty);
-        let fp = if let Some(fp) = fp {
-            fp
-        } else {
-            return Vec::new();
+        let fp = match fp {
+            Some(fp) => fp,
+            None => return Vec::new(),
         };
 
         let mut all = Vec::new();

@@ -74,10 +74,9 @@ impl<'a> FunctionRender<'a> {
 
     fn render(self, import_to_add: Option<ImportEdit>) -> CompletionItem {
         let params = self.params();
-        let call = if let Some(receiver) = &self.receiver {
-            format!("{}.{}", receiver, &self.name)
-        } else {
-            self.name.clone()
+        let call = match &self.receiver {
+            Some(receiver) => format!("{}.{}", receiver, &self.name),
+            None => self.name.clone(),
         };
         let mut item =
             CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), call.clone());

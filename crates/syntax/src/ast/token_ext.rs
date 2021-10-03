@@ -283,10 +283,9 @@ pub trait HasFormatSpecifier: AstToken {
     where
         F: FnMut(TextRange, FormatSpecifier),
     {
-        let char_ranges = if let Some(char_ranges) = self.char_ranges() {
-            char_ranges
-        } else {
-            return;
+        let char_ranges = match self.char_ranges() {
+            Some(char_ranges) => char_ranges,
+            None => return,
         };
         let mut chars = char_ranges.iter().peekable();
 
@@ -528,10 +527,11 @@ pub trait HasFormatSpecifier: AstToken {
                         }
                     }
 
-                    if let Some((_, Ok('}'))) = chars.peek() {
-                        skip_char_and_emit(&mut chars, FormatSpecifier::Close, &mut callback);
-                    } else {
-                        continue;
+                    match chars.peek() {
+                        Some((_, Ok('}'))) => {
+                            skip_char_and_emit(&mut chars, FormatSpecifier::Close, &mut callback);
+                        }
+                        Some((_, _)) | None => continue,
                     }
                 }
                 _ => {

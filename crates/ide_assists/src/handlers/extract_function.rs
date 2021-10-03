@@ -827,10 +827,9 @@ impl FunctionBody {
         locals
             .map(|local| (local, local.source(ctx.db())))
             .filter(|(_, src)| is_defined_outside_of_body(ctx, self, src))
-            .filter_map(|(local, src)| {
-                if let Either::Left(src) = src.value {
-                    Some((local, src))
-                } else {
+            .filter_map(|(local, src)| match src.value {
+                Either::Left(src) => Some((local, src)),
+                Either::Right(_) => {
                     stdx::never!(false, "Local::is_self returned false, but source is SelfParam");
                     None
                 }

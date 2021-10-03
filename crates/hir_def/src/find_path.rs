@@ -209,10 +209,9 @@ fn find_path_inner(
             ) {
                 path.push_segment(name);
 
-                let new_path = if let Some(best_path) = best_path {
-                    select_best_path(best_path, path, prefer_no_std)
-                } else {
-                    path
+                let new_path = match best_path {
+                    Some(best_path) => select_best_path(best_path, path, prefer_no_std),
+                    None => path,
                 };
                 best_path_len = new_path.len();
                 best_path = Some(new_path);
@@ -243,10 +242,9 @@ fn find_path_inner(
         });
 
         for path in extern_paths {
-            let new_path = if let Some(best_path) = best_path {
-                select_best_path(best_path, path, prefer_no_std)
-            } else {
-                path
+            let new_path = match best_path {
+                Some(best_path) => select_best_path(best_path, path, prefer_no_std),
+                None => path,
             };
             best_path = Some(new_path);
         }
@@ -261,12 +259,11 @@ fn find_path_inner(
         }
     }
 
-    if let Some(prefix) = prefixed.map(PrefixKind::prefix) {
-        best_path.or_else(|| {
+    match prefixed.map(PrefixKind::prefix) {
+        Some(prefix) => best_path.or_else(|| {
             scope_name.map(|scope_name| ModPath::from_segments(prefix, vec![scope_name]))
-        })
-    } else {
-        best_path
+        }),
+        None => best_path,
     }
 }
 
@@ -346,15 +343,13 @@ fn find_local_import_locations(
 
         if let Some((name, vis)) = data.scope.name_of(item) {
             if vis.is_visible_from(db, from) {
-                let is_private = if let Visibility::Module(private_to) = vis {
-                    private_to.local_id == module.local_id
-                } else {
-                    false
+                let is_private = match vis {
+                    Visibility::Module(private_to) => private_to.local_id == module.local_id,
+                    Visibility::Public => false,
                 };
-                let is_original_def = if let Some(module_def_id) = item.as_module_def_id() {
-                    data.scope.declarations().any(|it| it == module_def_id)
-                } else {
-                    false
+                let is_original_def = match item.as_module_def_id() {
+                    Some(module_def_id) => data.scope.declarations().any(|it| it == module_def_id),
+                    None => false,
                 };
 
                 // Ignore private imports. these could be used if we are

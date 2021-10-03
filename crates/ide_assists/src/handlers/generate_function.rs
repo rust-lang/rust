@@ -213,10 +213,9 @@ impl FunctionTemplate {
             Some(cap) => {
                 let cursor = if self.should_focus_return_type {
                     // Focus the return type if there is one
-                    if let Some(ref ret_type) = self.ret_type {
-                        ret_type.syntax()
-                    } else {
-                        self.tail_expr.syntax()
+                    match self.ret_type {
+                        Some(ref ret_type) => ret_type.syntax(),
+                        None => self.tail_expr.syntax(),
                     }
                 } else {
                     self.tail_expr.syntax()
@@ -447,10 +446,9 @@ fn fn_args(
         arg_types.push(match fn_arg_type(ctx, target_module, &arg) {
             Some(ty) => {
                 if !ty.is_empty() && ty.starts_with('&') {
-                    if let Some((new_ty, _)) = useless_type_special_case("", &ty[1..].to_owned()) {
-                        new_ty
-                    } else {
-                        ty
+                    match useless_type_special_case("", &ty[1..].to_owned()) {
+                        Some((new_ty, _)) => new_ty,
+                        None => ty,
                     }
                 } else {
                     ty
@@ -575,20 +573,14 @@ fn next_space_for_fn_in_module(
 ) -> Option<(FileId, GeneratedFunctionTarget)> {
     let file = module_source.file_id.original_file(db);
     let assist_item = match &module_source.value {
-        hir::ModuleSource::SourceFile(it) => {
-            if let Some(last_item) = it.items().last() {
-                GeneratedFunctionTarget::BehindItem(last_item.syntax().clone())
-            } else {
-                GeneratedFunctionTarget::BehindItem(it.syntax().clone())
-            }
-        }
-        hir::ModuleSource::Module(it) => {
-            if let Some(last_item) = it.item_list().and_then(|it| it.items().last()) {
-                GeneratedFunctionTarget::BehindItem(last_item.syntax().clone())
-            } else {
-                GeneratedFunctionTarget::InEmptyItemList(it.item_list()?.syntax().clone())
-            }
-        }
+        hir::ModuleSource::SourceFile(it) => match it.items().last() {
+            Some(last_item) => GeneratedFunctionTarget::BehindItem(last_item.syntax().clone()),
+            None => GeneratedFunctionTarget::BehindItem(it.syntax().clone()),
+        },
+        hir::ModuleSource::Module(it) => match it.item_list().and_then(|it| it.items().last()) {
+            Some(last_item) => GeneratedFunctionTarget::BehindItem(last_item.syntax().clone()),
+            None => GeneratedFunctionTarget::InEmptyItemList(it.item_list()?.syntax().clone()),
+        },
         hir::ModuleSource::BlockExpr(it) => {
             if let Some(last_item) =
                 it.statements().take_while(|stmt| matches!(stmt, ast::Stmt::Item(_))).last()

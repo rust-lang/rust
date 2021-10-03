@@ -104,10 +104,9 @@ impl TyExt for Ty {
     }
 
     fn as_fn_def(&self, db: &dyn HirDatabase) -> Option<FunctionId> {
-        if let Some(CallableDefId::FunctionId(func)) = self.callable_def(db) {
-            Some(func)
-        } else {
-            None
+        match self.callable_def(db) {
+            Some(CallableDefId::FunctionId(func)) => Some(func),
+            Some(CallableDefId::StructId(_) | CallableDefId::EnumVariantId(_)) | None => None,
         }
     }
     fn as_reference(&self) -> Option<(&Ty, Lifetime, Mutability)> {

@@ -250,13 +250,10 @@ fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
             };
             Some(make::expr_method_call(receiver, make::name_ref(method), arg_list))
         }
-        ast::Expr::PrefixExpr(pe) if pe.op_kind()? == ast::UnaryOp::Not => {
-            if let ast::Expr::ParenExpr(parexpr) = pe.expr()? {
-                parexpr.expr()
-            } else {
-                pe.expr()
-            }
-        }
+        ast::Expr::PrefixExpr(pe) if pe.op_kind()? == ast::UnaryOp::Not => match pe.expr()? {
+            ast::Expr::ParenExpr(parexpr) => parexpr.expr(),
+            _ => pe.expr(),
+        },
         ast::Expr::Literal(lit) => match lit.kind() {
             ast::LiteralKind::Bool(b) => match b {
                 true => Some(ast::Expr::Literal(make::expr_literal("false"))),
@@ -276,13 +273,10 @@ pub(crate) fn does_pat_match_variant(pat: &ast::Pat, var: &ast::Pat) -> bool {
     let first_node_text = |pat: &ast::Pat| pat.syntax().first_child().map(|node| node.text());
 
     let pat_head = match pat {
-        ast::Pat::IdentPat(bind_pat) => {
-            if let Some(p) = bind_pat.pat() {
-                first_node_text(&p)
-            } else {
-                return pat.syntax().text() == var.syntax().text();
-            }
-        }
+        ast::Pat::IdentPat(bind_pat) => match bind_pat.pat() {
+            Some(p) => first_node_text(&p),
+            None => return pat.syntax().text() == var.syntax().text(),
+        },
         pat => first_node_text(pat),
     };
 

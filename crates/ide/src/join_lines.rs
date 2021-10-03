@@ -136,10 +136,9 @@ fn remove_newline(
             }
             T!['}'] => {
                 // Removes: comma, newline (incl. surrounding whitespace)
-                let space = if let Some(left) = prev.prev_sibling_or_token() {
-                    compute_ws(left.kind(), next.kind())
-                } else {
-                    " "
+                let space = match prev.prev_sibling_or_token() {
+                    Some(left) => compute_ws(left.kind(), next.kind()),
+                    None => " ",
                 };
                 edit.replace(
                     TextRange::new(prev.text_range().start(), token.text_range().end()),

@@ -82,10 +82,9 @@ impl TyFingerprint {
             TyKind::Ref(_, _, ty) => return TyFingerprint::for_trait_impl(ty),
             TyKind::Tuple(_, subst) => {
                 let first_ty = subst.interned().get(0).map(|arg| arg.assert_ty_ref(&Interner));
-                if let Some(ty) = first_ty {
-                    return TyFingerprint::for_trait_impl(ty);
-                } else {
-                    TyFingerprint::Unit
+                match first_ty {
+                    Some(ty) => return TyFingerprint::for_trait_impl(ty),
+                    None => TyFingerprint::Unit,
                 }
             }
             TyKind::AssociatedType(_, _)

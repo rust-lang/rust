@@ -69,10 +69,11 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
                 None => to_extract.syntax().text_range(),
             };
 
-            if let Anchor::WrapInBlock(_) = anchor {
-                format_to!(buf, "{{ let {} = ", var_name);
-            } else {
-                format_to!(buf, "let {} = ", var_name);
+            match anchor {
+                Anchor::Before(_) | Anchor::Replace(_) => {
+                    format_to!(buf, "let {} = ", var_name)
+                }
+                Anchor::WrapInBlock(_) => format_to!(buf, "{{ let {} = ", var_name),
             };
             format_to!(buf, "{}", to_extract.syntax());
 
