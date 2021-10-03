@@ -97,7 +97,7 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 #[must_use = "if unused the RwLock will immediately unlock"]
 #[cfg_attr(
     not(bootstrap),
-    must_not_suspend = "Holding a RwLockReadGuard across suspend \
+    must_not_suspend = "holding a RwLockReadGuard across suspend \
                       points can cause deadlocks, delays, \
                       and cause Futures to not implement `Send`"
 )]
@@ -123,7 +123,7 @@ unsafe impl<T: ?Sized + Sync> Sync for RwLockReadGuard<'_, T> {}
 #[must_use = "if unused the RwLock will immediately unlock"]
 #[cfg_attr(
     not(bootstrap),
-    must_not_suspend = "Holding a RwLockWriteGuard across suspend \
+    must_not_suspend = "holding a RwLockWriteGuard across suspend \
                       points can cause deadlocks, delays, \
                       and cause Future's to not implement `Send`"
 )]

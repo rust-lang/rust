@@ -1,4 +1,4 @@
-error: renaming of the library `foo` was specified, however this crate contains no `#[link(...)]` attributes referencing this library.
+error: renaming of the library `foo` was specified, however this crate contains no `#[link(...)]` attributes referencing this library
 
 error: aborting due to previous error
 
