@@ -102,7 +102,7 @@ impl NonConstOp for FnCallUnstable {
         );
 
         if ccx.is_const_stable_const_fn() {
-            err.help("Const-stable functions can only call other const-stable functions");
+            err.help("const-stable functions can only call other const-stable functions");
         } else if ccx.tcx.sess.is_nightly_build() {
             if let Some(feature) = feature {
                 err.help(&format!(
