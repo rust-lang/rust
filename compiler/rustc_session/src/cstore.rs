@@ -28,6 +28,7 @@ pub struct CrateSource {
 }
 
 impl CrateSource {
+    #[inline]
     pub fn paths(&self) -> impl Iterator<Item = &PathBuf> {
         self.dylib.iter().chain(self.rlib.iter()).chain(self.rmeta.iter()).map(|p| &p.0)
     }
@@ -47,6 +48,7 @@ pub enum CrateDepKind {
 }
 
 impl CrateDepKind {
+    #[inline]
     pub fn macros_only(self) -> bool {
         match self {
             CrateDepKind::MacrosOnly => true,
@@ -122,10 +124,12 @@ impl ExternCrate {
     /// If true, then this crate is the crate named by the extern
     /// crate referenced above. If false, then this crate is a dep
     /// of the crate.
+    #[inline]
     pub fn is_direct(&self) -> bool {
         self.dependency_of == LOCAL_CRATE
     }
 
+    #[inline]
     pub fn rank(&self) -> impl PartialOrd {
         // Prefer:
         // - direct extern crate to indirect

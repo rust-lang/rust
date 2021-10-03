@@ -26,6 +26,7 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
         }
     }
 
+    #[inline]
     fn hash_body_id(&mut self, id: hir::BodyId, hasher: &mut StableHasher) {
         let hcx = self;
         if hcx.hash_bodies() {
@@ -33,6 +34,7 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
         }
     }
 
+    #[inline]
     fn hash_reference_to_item(&mut self, id: hir::HirId, hasher: &mut StableHasher) {
         let hcx = self;
 
@@ -41,6 +43,7 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
         })
     }
 
+    #[inline]
     fn hash_hir_mod(&mut self, module: &hir::Mod<'_>, hasher: &mut StableHasher) {
         let hcx = self;
         let hir::Mod { inner: ref inner_span, ref item_ids } = *module;
@@ -103,6 +106,7 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
         }
     }
 
+    #[inline]
     fn hash_hir_item_like<F: FnOnce(&mut Self)>(&mut self, f: F) {
         let prev_hash_node_ids = self.node_id_hashing_mode;
         self.node_id_hashing_mode = NodeIdHashingMode::Ignore;
@@ -114,6 +118,7 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Body<'_> {
+    #[inline]
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let hir::Body { params, value, generator_kind } = self;
 

@@ -178,12 +178,14 @@ impl<'a> StableHashingContext<'a> {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
+    #[inline]
     fn hash_stable(&self, _: &mut StableHashingContext<'a>, _: &mut StableHasher) {
         panic!("Node IDs should not appear in incremental state");
     }
 }
 
 impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
+    #[inline]
     fn hash_spans(&self) -> bool {
         self.hash_spans
     }
@@ -198,6 +200,7 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
         self.definitions.def_span(def_id)
     }
 
+    #[inline]
     fn span_data_to_lines_and_cols(
         &mut self,
         span: &SpanData,
