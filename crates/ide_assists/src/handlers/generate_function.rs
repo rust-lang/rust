@@ -51,27 +51,6 @@ pub(crate) fn generate_function(acc: &mut Assists, ctx: &AssistContext) -> Optio
     gen_fn(acc, ctx).or_else(|| gen_method(acc, ctx))
 }
 
-enum FuncExpr {
-    Func(ast::CallExpr),
-    Method(ast::MethodCallExpr),
-}
-
-impl FuncExpr {
-    fn arg_list(&self) -> Option<ast::ArgList> {
-        match self {
-            FuncExpr::Func(fn_call) => fn_call.arg_list(),
-            FuncExpr::Method(m_call) => m_call.arg_list(),
-        }
-    }
-
-    fn syntax(&self) -> &SyntaxNode {
-        match self {
-            FuncExpr::Func(fn_call) => fn_call.syntax(),
-            FuncExpr::Method(m_call) => m_call.syntax(),
-        }
-    }
-}
-
 fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let path_expr: ast::PathExpr = ctx.find_node_at_offset()?;
     let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
@@ -254,7 +233,8 @@ impl FunctionBuilder {
         let needs_pub = target_module.is_some();
         let target_module = target_module.or_else(|| current_module(target.syntax(), ctx))?;
         let fn_name = make::name(fn_name);
-        let (type_params, params) = fn_args(ctx, target_module, FuncExpr::Func(call.clone()))?;
+        let (type_params, params) =
+            fn_args(ctx, target_module, ast::CallableExpr::Call(call.clone()))?;
 
         let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
         let is_async = await_expr.is_some();
@@ -284,7 +264,8 @@ impl FunctionBuilder {
         let needs_pub =
             !module_is_descendant(&current_module(call.syntax(), ctx)?, &target_module, ctx);
         let fn_name = make::name(&name.text());
-        let (type_params, params) = fn_args(ctx, target_module, FuncExpr::Method(call.clone()))?;
+        let (type_params, params) =
+            fn_args(ctx, target_module, ast::CallableExpr::MethodCall(call.clone()))?;
 
         let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
         let is_async = await_expr.is_some();
@@ -392,7 +373,7 @@ fn get_fn_target(
             file = in_file;
             target
         }
-        None => next_space_for_fn_after_call_site(FuncExpr::Func(call))?,
+        None => next_space_for_fn_after_call_site(ast::CallableExpr::Call(call))?,
     };
     Some((target.clone(), file, get_insert_offset(&target)))
 }
@@ -438,7 +419,7 @@ impl GeneratedFunctionTarget {
 fn fn_args(
     ctx: &AssistContext,
     target_module: hir::Module,
-    call: FuncExpr,
+    call: ast::CallableExpr,
 ) -> Option<(Option<ast::GenericParamList>, ast::ParamList)> {
     let mut arg_names = Vec::new();
     let mut arg_types = Vec::new();
@@ -468,8 +449,8 @@ fn fn_args(
         None,
         make::param_list(
             match call {
-                FuncExpr::Func(_) => None,
-                FuncExpr::Method(_) => Some(make::self_param()),
+                ast::CallableExpr::Call(_) => None,
+                ast::CallableExpr::MethodCall(_) => Some(make::self_param()),
             },
             params,
         ),
@@ -553,7 +534,7 @@ fn fn_arg_type(
 /// directly after the current block
 /// We want to write the generated function directly after
 /// fns, impls or macro calls, but inside mods
-fn next_space_for_fn_after_call_site(expr: FuncExpr) -> Option<GeneratedFunctionTarget> {
+fn next_space_for_fn_after_call_site(expr: ast::CallableExpr) -> Option<GeneratedFunctionTarget> {
     let mut ancestors = expr.syntax().ancestors().peekable();
     let mut last_ancestor: Option<SyntaxNode> = None;
     while let Some(next_ancestor) = ancestors.next() {

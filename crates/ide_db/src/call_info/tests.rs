@@ -362,7 +362,6 @@ pub fn foo(mut r: WriteHandler<()>) {
 
 #[test]
 fn call_info_bad_offset() {
-    cov_mark::check!(call_info_bad_offset);
     check(
         r#"
 fn foo(x: u32, y: u32) -> u32 {x + y}

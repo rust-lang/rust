@@ -4,7 +4,6 @@ use indexmap::IndexMap;
 
 use hir::Semantics;
 use ide_db::{
-    call_info::FnCallNode,
     defs::{Definition, NameClass, NameRefClass},
     helpers::pick_best_token,
     search::FileReference,
@@ -101,23 +100,27 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
             _ => None,
         })
         .flatten()
-        .filter_map(|node| FnCallNode::with_node_exact(&node))
+        .filter_map(ast::CallableExpr::cast)
         .filter_map(|call_node| {
-            let name_ref = call_node.name_ref()?;
-            let func_target = match call_node {
-                FnCallNode::CallExpr(expr) => {
-                    let callable = sema.type_of_expr(&expr.expr()?)?.original.as_callable(db)?;
+            let (nav_target, range) = match call_node {
+                ast::CallableExpr::Call(call) => {
+                    let expr = call.expr()?;
+                    let callable = sema.type_of_expr(&expr)?.original.as_callable(db)?;
                     match callable.kind() {
-                        hir::CallableKind::Function(it) => it.try_to_nav(db),
+                        hir::CallableKind::Function(it) => {
+                            let range = expr.syntax().text_range();
+                            it.try_to_nav(db).zip(Some(range))
+                        }
                         _ => None,
                     }
                 }
-                FnCallNode::MethodCallExpr(expr) => {
+                ast::CallableExpr::MethodCall(expr) => {
+                    let range = expr.name_ref()?.syntax().text_range();
                     let function = sema.resolve_method_call(&expr)?;
-                    function.try_to_nav(db)
+                    function.try_to_nav(db).zip(Some(range))
                 }
             }?;
-            Some((func_target, name_ref.syntax().text_range()))
+            Some((nav_target, range))
         })
         .for_each(|(nav, range)| calls.add(nav, range));
 

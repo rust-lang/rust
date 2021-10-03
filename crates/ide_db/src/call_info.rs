@@ -6,7 +6,7 @@ use stdx::format_to;
 use syntax::{
     algo,
     ast::{self, HasArgList, HasName},
-    match_ast, AstNode, Direction, SyntaxNode, SyntaxToken, TextRange, TextSize,
+    AstNode, Direction, SyntaxToken, TextRange, TextSize,
 };
 
 use crate::RootDatabase;
@@ -25,9 +25,11 @@ impl CallInfo {
     pub fn parameter_labels(&self) -> impl Iterator<Item = &str> + '_ {
         self.parameters.iter().map(move |&it| &self.signature[it])
     }
+
     pub fn parameter_ranges(&self) -> &[TextRange] {
         &self.parameters
     }
+
     fn push_param(&mut self, param: &str) {
         if !self.signature.ends_with('(') {
             self.signature.push_str(", ");
@@ -115,31 +117,24 @@ fn call_info_impl(
     token: SyntaxToken,
 ) -> Option<(hir::Callable, Option<usize>)> {
     // Find the calling expression and it's NameRef
-    let calling_node = FnCallNode::with_node(&token.parent()?)?;
+    let parent = token.parent()?;
+    let calling_node = parent.ancestors().filter_map(ast::CallableExpr::cast).find(|it| {
+        it.arg_list()
+            .map_or(false, |it| it.syntax().text_range().contains(token.text_range().start()))
+    })?;
 
     let callable = match &calling_node {
-        FnCallNode::CallExpr(call) => {
-            sema.type_of_expr(&call.expr()?)?.adjusted().as_callable(sema.db)?
+        ast::CallableExpr::Call(call) => {
+            let expr = call.expr()?;
+            sema.type_of_expr(&expr)?.adjusted().as_callable(sema.db)
         }
-        FnCallNode::MethodCallExpr(call) => sema.resolve_method_call_as_callable(call)?,
-    };
+        ast::CallableExpr::MethodCall(call) => sema.resolve_method_call_as_callable(call),
+    }?;
     let active_param = if let Some(arg_list) = calling_node.arg_list() {
-        // Number of arguments specified at the call site
-        let num_args_at_callsite = arg_list.args().count();
-
-        let arg_list_range = arg_list.syntax().text_range();
-        if !arg_list_range.contains_inclusive(token.text_range().start()) {
-            cov_mark::hit!(call_info_bad_offset);
-            return None;
-        }
-        let param = std::cmp::min(
-            num_args_at_callsite,
-            arg_list
-                .args()
-                .take_while(|arg| arg.syntax().text_range().end() <= token.text_range().start())
-                .count(),
-        );
-
+        let param = arg_list
+            .args()
+            .take_while(|arg| arg.syntax().text_range().end() <= token.text_range().start())
+            .count();
         Some(param)
     } else {
         None
@@ -172,61 +167,6 @@ impl ActiveParameter {
             ast::Pat::IdentPat(ident) => ident.name(),
             _ => None,
         })
-    }
-}
-
-#[derive(Debug)]
-pub enum FnCallNode {
-    CallExpr(ast::CallExpr),
-    MethodCallExpr(ast::MethodCallExpr),
-}
-
-impl FnCallNode {
-    fn with_node(syntax: &SyntaxNode) -> Option<FnCallNode> {
-        syntax.ancestors().find_map(|node| {
-            match_ast! {
-                match node {
-                    ast::CallExpr(it) => Some(FnCallNode::CallExpr(it)),
-                    ast::MethodCallExpr(it) => {
-                        let arg_list = it.arg_list()?;
-                        if !arg_list.syntax().text_range().contains_range(syntax.text_range()) {
-                            return None;
-                        }
-                        Some(FnCallNode::MethodCallExpr(it))
-                    },
-                    _ => None,
-                }
-            }
-        })
-    }
-
-    pub fn with_node_exact(node: &SyntaxNode) -> Option<FnCallNode> {
-        match_ast! {
-            match node {
-                ast::CallExpr(it) => Some(FnCallNode::CallExpr(it)),
-                ast::MethodCallExpr(it) => Some(FnCallNode::MethodCallExpr(it)),
-                _ => None,
-            }
-        }
-    }
-
-    pub fn name_ref(&self) -> Option<ast::NameRef> {
-        match self {
-            FnCallNode::CallExpr(call_expr) => Some(match call_expr.expr()? {
-                ast::Expr::PathExpr(path_expr) => path_expr.path()?.segment()?.name_ref()?,
-                _ => return None,
-            }),
-            FnCallNode::MethodCallExpr(call_expr) => {
-                call_expr.syntax().children().find_map(ast::NameRef::cast)
-            }
-        }
-    }
-
-    fn arg_list(&self) -> Option<ast::ArgList> {
-        match self {
-            FnCallNode::CallExpr(expr) => expr.arg_list(),
-            FnCallNode::MethodCallExpr(expr) => expr.arg_list(),
-        }
     }
 }
 

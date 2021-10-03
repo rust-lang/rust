@@ -12,7 +12,7 @@ use ide_db::{
 use itertools::{izip, Itertools};
 use syntax::{
     ast::{self, edit_in_place::Indent, HasArgList, PathExpr},
-    ted, AstNode, SyntaxNode,
+    ted, AstNode,
 };
 
 use crate::{
@@ -178,7 +178,7 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     let name_ref: ast::NameRef = ctx.find_node_at_offset()?;
     let call_info = CallInfo::from_name_ref(name_ref.clone())?;
     let (function, label) = match &call_info.node {
-        CallExprNode::Call(call) => {
+        ast::CallableExpr::Call(call) => {
             let path = match call.expr()? {
                 ast::Expr::PathExpr(path) => path.path(),
                 _ => None,
@@ -190,7 +190,7 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
             };
             (function, format!("Inline `{}`", path))
         }
-        CallExprNode::MethodCallExpr(call) => {
+        ast::CallableExpr::MethodCall(call) => {
             (ctx.sema.resolve_method_call(call)?, format!("Inline `{}`", name_ref))
         }
     };
@@ -223,8 +223,8 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
 
             builder.replace_ast(
                 match call_info.node {
-                    CallExprNode::Call(it) => ast::Expr::CallExpr(it),
-                    CallExprNode::MethodCallExpr(it) => ast::Expr::MethodCallExpr(it),
+                    ast::CallableExpr::Call(it) => ast::Expr::CallExpr(it),
+                    ast::CallableExpr::MethodCall(it) => ast::Expr::MethodCallExpr(it),
                 },
                 replacement,
             );
@@ -232,22 +232,8 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     )
 }
 
-enum CallExprNode {
-    Call(ast::CallExpr),
-    MethodCallExpr(ast::MethodCallExpr),
-}
-
-impl CallExprNode {
-    fn syntax(&self) -> &SyntaxNode {
-        match self {
-            CallExprNode::Call(it) => it.syntax(),
-            CallExprNode::MethodCallExpr(it) => it.syntax(),
-        }
-    }
-}
-
 struct CallInfo {
-    node: CallExprNode,
+    node: ast::CallableExpr,
     arguments: Vec<ast::Expr>,
     generic_arg_list: Option<ast::GenericArgList>,
 }
@@ -261,7 +247,7 @@ impl CallInfo {
             arguments.extend(call.arg_list()?.args());
             Some(CallInfo {
                 generic_arg_list: call.generic_arg_list(),
-                node: CallExprNode::MethodCallExpr(call),
+                node: ast::CallableExpr::MethodCall(call),
                 arguments,
             })
         } else if let Some(segment) = ast::PathSegment::cast(parent) {
@@ -271,7 +257,7 @@ impl CallInfo {
 
             Some(CallInfo {
                 arguments: call.arg_list()?.args().collect(),
-                node: CallExprNode::Call(call),
+                node: ast::CallableExpr::Call(call),
                 generic_arg_list: segment.generic_arg_list(),
             })
         } else {
@@ -367,8 +353,9 @@ fn inline(
                 ted::replace(usage.syntax(), &replacement.syntax().clone_for_update());
             }
         };
-        // izip confuses RA due to our lack of hygiene info currently losing us typeinfo
+        // izip confuses RA due to our lack of hygiene info currently losing us type info causing incorrect errors
         let usages: &[ast::PathExpr] = &*usages;
+        let expr: &ast::Expr = expr;
         match usages {
             // inline single use closure arguments
             [usage]
@@ -414,8 +401,8 @@ fn inline(
     }
 
     let original_indentation = match node {
-        CallExprNode::Call(it) => it.indent_level(),
-        CallExprNode::MethodCallExpr(it) => it.indent_level(),
+        ast::CallableExpr::Call(it) => it.indent_level(),
+        ast::CallableExpr::MethodCall(it) => it.indent_level(),
     };
     body.reindent_to(original_indentation);
 
