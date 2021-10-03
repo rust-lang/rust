@@ -156,7 +156,8 @@ pub(super) fn external_path(
     }
 }
 
-crate fn strip_path(path: Path) -> Path {
+/// Remove the generic arguments from a path.
+crate fn strip_path_generics(path: Path) -> Path {
     let segments = path
         .segments
         .iter()
