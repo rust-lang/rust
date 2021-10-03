@@ -157,7 +157,7 @@ fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Op
     if let ExprKind::Call(func, args) = expr.kind {
         match func.kind {
             ExprKind::Path(QPath::TypeRelative(ty, name))
-                if is_type_diagnostic_item(cx, cx.typeck_results().node_type(ty.hir_id), sym::vec_type) =>
+                if is_type_diagnostic_item(cx, cx.typeck_results().node_type(ty.hir_id), sym::Vec) =>
             {
                 if name.ident.name == sym::new {
                     return Some(VecInitKind::New);
@@ -177,7 +177,7 @@ fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Op
             }
             ExprKind::Path(QPath::Resolved(_, path))
                 if match_def_path(cx, path.res.opt_def_id()?, &paths::DEFAULT_TRAIT_METHOD)
-                    && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::vec_type) =>
+                    && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::Vec) =>
             {
                 return Some(VecInitKind::New);
             }

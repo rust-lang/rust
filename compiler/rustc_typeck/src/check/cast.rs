@@ -438,7 +438,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     let mut label = true;
                     // Check `impl From<self.expr_ty> for self.cast_ty {}` for accurate suggestion:
                     if let Ok(snippet) = fcx.tcx.sess.source_map().span_to_snippet(self.expr.span) {
-                        if let Some(from_trait) = fcx.tcx.get_diagnostic_item(sym::from_trait) {
+                        if let Some(from_trait) = fcx.tcx.get_diagnostic_item(sym::From) {
                             let ty = fcx.resolve_vars_if_possible(self.cast_ty);
                             // Erase regions to avoid panic in `prove_value` when calling
                             // `type_implements_trait`.

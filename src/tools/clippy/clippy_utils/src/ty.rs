@@ -77,16 +77,16 @@ pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<
     // exists and has the desired signature. Unfortunately FnCtxt is not exported
     // so we can't use its `lookup_method` method.
     let into_iter_collections: &[Symbol] = &[
-        sym::vec_type,
-        sym::option_type,
-        sym::result_type,
+        sym::Vec,
+        sym::Option,
+        sym::Result,
         sym::BTreeMap,
         sym::BTreeSet,
-        sym::vecdeque_type,
+        sym::VecDeque,
         sym::LinkedList,
         sym::BinaryHeap,
-        sym::hashset_type,
-        sym::hashmap_type,
+        sym::HashSet,
+        sym::HashMap,
         sym::PathBuf,
         sym::Path,
         sym::Receiver,

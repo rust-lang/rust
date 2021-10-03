@@ -38,11 +38,11 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
 }
 
 fn get_std_collection(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<&'static str> {
-    if is_ty_param_diagnostic_item(cx, qpath, sym::vec_type).is_some() {
+    if is_ty_param_diagnostic_item(cx, qpath, sym::Vec).is_some() {
         Some("Vec")
-    } else if is_ty_param_diagnostic_item(cx, qpath, sym::string_type).is_some() {
+    } else if is_ty_param_diagnostic_item(cx, qpath, sym::String).is_some() {
         Some("String")
-    } else if is_ty_param_diagnostic_item(cx, qpath, sym::hashmap_type).is_some() {
+    } else if is_ty_param_diagnostic_item(cx, qpath, sym::HashMap).is_some() {
         Some("HashMap")
     } else {
         None

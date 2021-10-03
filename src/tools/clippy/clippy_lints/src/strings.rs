@@ -157,7 +157,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
 }
 
 fn is_string(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(e).peel_refs(), sym::string_type)
+    is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(e).peel_refs(), sym::String)
 }
 
 fn is_add(cx: &LateContext<'_>, src: &Expr<'_>, target: &Expr<'_>) -> bool {
@@ -397,7 +397,7 @@ impl LateLintPass<'_> for StringToString {
             if let ExprKind::MethodCall(path, _, [self_arg, ..], _) = &expr.kind;
             if path.ident.name == sym!(to_string);
             let ty = cx.typeck_results().expr_ty(self_arg);
-            if is_type_diagnostic_item(cx, ty, sym::string_type);
+            if is_type_diagnostic_item(cx, ty, sym::String);
             then {
                 span_lint_and_help(
                     cx,

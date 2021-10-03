@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicInResultFn {
         span: Span,
         hir_id: hir::HirId,
     ) {
-        if !matches!(fn_kind, FnKind::Closure) && is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym::result_type) {
+        if !matches!(fn_kind, FnKind::Closure) && is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym::Result) {
             lint_impl_body(cx, span, body);
         }
     }

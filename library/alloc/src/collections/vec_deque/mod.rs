@@ -88,7 +88,7 @@ const MAXIMUM_ZST_CAPACITY: usize = 1 << (usize::BITS - 1); // Largest possible 
 /// [`extend`]: VecDeque::extend
 /// [`append`]: VecDeque::append
 /// [`make_contiguous`]: VecDeque::make_contiguous
-#[cfg_attr(not(test), rustc_diagnostic_item = "vecdeque_type")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "VecDeque")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
 pub struct VecDeque<

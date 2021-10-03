@@ -400,8 +400,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             | ty::Opaque(def_id, _) => def_id,
             _ => return err,
         };
-        let is_option = self.infcx.tcx.is_diagnostic_item(sym::option_type, def_id);
-        let is_result = self.infcx.tcx.is_diagnostic_item(sym::result_type, def_id);
+        let is_option = self.infcx.tcx.is_diagnostic_item(sym::Option, def_id);
+        let is_result = self.infcx.tcx.is_diagnostic_item(sym::Result, def_id);
         if (is_option || is_result) && use_spans.map_or(true, |v| !v.for_closure()) {
             err.span_suggestion_verbose(
                 span.shrink_to_hi(),

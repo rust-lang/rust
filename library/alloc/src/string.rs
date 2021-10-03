@@ -289,7 +289,7 @@ use crate::vec::Vec;
 /// [`Deref`]: core::ops::Deref "ops::Deref"
 /// [`as_str()`]: String::as_str
 #[derive(PartialOrd, Eq, Ord)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "string_type")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "String")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct String {
     vec: Vec<u8>,

@@ -812,7 +812,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
             _ => return,
         }
 
-        let debug = match cx.tcx.get_diagnostic_item(sym::debug_trait) {
+        let debug = match cx.tcx.get_diagnostic_item(sym::Debug) {
             Some(debug) => debug,
             None => return,
         };

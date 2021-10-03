@@ -498,7 +498,7 @@ use crate::{convert, fmt, hint};
 /// See the [module documentation](self) for details.
 #[derive(Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[must_use = "this `Result` may be an `Err` variant, which should be handled"]
-#[rustc_diagnostic_item = "result_type"]
+#[rustc_diagnostic_item = "Result"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Result<T, E> {
     /// Contains the success value

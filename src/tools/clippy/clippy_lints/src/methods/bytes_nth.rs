@@ -12,7 +12,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, recv: &'tcx E
     let ty = cx.typeck_results().expr_ty(recv).peel_refs();
     let caller_type = if ty.is_str() {
         "str"
-    } else if is_type_diagnostic_item(cx, ty, sym::string_type) {
+    } else if is_type_diagnostic_item(cx, ty, sym::String) {
         "String"
     } else {
         return;

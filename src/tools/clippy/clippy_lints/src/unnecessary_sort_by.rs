@@ -168,7 +168,7 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<LintTrigger> {
         if let name = name_ident.ident.name.to_ident_string();
         if name == "sort_by" || name == "sort_unstable_by";
         if let [vec, Expr { kind: ExprKind::Closure(_, _, closure_body_id, _, _), .. }] = args;
-        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(vec), sym::vec_type);
+        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(vec), sym::Vec);
         if let closure_body = cx.tcx.hir().body(*closure_body_id);
         if let &[
             Param { pat: Pat { kind: PatKind::Binding(_, _, left_ident, _), .. }, ..},

@@ -206,9 +206,9 @@ fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr
     let var_arg = &map_args[0];
 
     let (map_type, variant, lint) =
-        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym::option_type) {
+        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym::Option) {
             ("Option", "Some", OPTION_MAP_UNIT_FN)
-        } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym::result_type) {
+        } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym::Result) {
             ("Result", "Ok", RESULT_MAP_UNIT_FN)
         } else {
             return;

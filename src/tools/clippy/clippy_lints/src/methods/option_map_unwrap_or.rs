@@ -25,7 +25,7 @@ pub(super) fn check<'tcx>(
     map_span: Span,
 ) {
     // lint if the caller of `map()` is an `Option`
-    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::option_type) {
+    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option) {
         if !is_copy(cx, cx.typeck_results().expr_ty(unwrap_arg)) {
             // Do not lint if the `map` argument uses identifiers in the `map`
             // argument that are also used in the `unwrap_or` argument

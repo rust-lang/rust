@@ -126,7 +126,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             match adjusted_ty.kind() {
                 ty::Adt(ty::AdtDef { did, .. }, _)
-                    if self.tcx.is_diagnostic_item(sym::vec_type, *did) =>
+                    if self.tcx.is_diagnostic_item(sym::Vec, *did) =>
                 {
                     return self.negative_index(adjusted_ty, index_expr.span, base_expr);
                 }

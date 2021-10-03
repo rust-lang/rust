@@ -12,7 +12,7 @@ use super::OK_EXPECT;
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>) {
     if_chain! {
         // lint if the caller of `ok()` is a `Result`
-        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::result_type);
+        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
         let result_type = cx.typeck_results().expr_ty(recv);
         if let Some(error_type) = get_error_type(cx, result_type);
         if has_debug_impl(error_type, cx);
@@ -33,7 +33,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
 /// Given a `Result<T, E>` type, return its error type (`E`).
 fn get_error_type<'a>(cx: &LateContext<'_>, ty: Ty<'a>) -> Option<Ty<'a>> {
     match ty.kind() {
-        ty::Adt(_, substs) if is_type_diagnostic_item(cx, ty, sym::result_type) => substs.types().nth(1),
+        ty::Adt(_, substs) if is_type_diagnostic_item(cx, ty, sym::Result) => substs.types().nth(1),
         _ => None,
     }
 }
@@ -41,6 +41,6 @@ fn get_error_type<'a>(cx: &LateContext<'_>, ty: Ty<'a>) -> Option<Ty<'a>> {
 /// This checks whether a given type is known to implement Debug.
 fn has_debug_impl<'tcx>(ty: Ty<'tcx>, cx: &LateContext<'tcx>) -> bool {
     cx.tcx
-        .get_diagnostic_item(sym::debug_trait)
+        .get_diagnostic_item(sym::Debug)
         .map_or(false, |debug| implements_trait(cx, ty, debug, &[]))
 }

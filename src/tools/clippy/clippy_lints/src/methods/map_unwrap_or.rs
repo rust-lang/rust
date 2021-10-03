@@ -22,8 +22,8 @@ pub(super) fn check<'tcx>(
     msrv: Option<&RustcVersion>,
 ) -> bool {
     // lint if the caller of `map()` is an `Option`
-    let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::option_type);
-    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::result_type);
+    let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option);
+    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
 
     if is_result && !meets_msrv(msrv, &msrvs::RESULT_MAP_OR_ELSE) {
         return false;

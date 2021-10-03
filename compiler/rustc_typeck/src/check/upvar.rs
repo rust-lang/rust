@@ -877,7 +877,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let auto_traits_def_id = vec![
             self.tcx.lang_items().clone_trait(),
             self.tcx.lang_items().sync_trait(),
-            self.tcx.get_diagnostic_item(sym::send_trait),
+            self.tcx.get_diagnostic_item(sym::Send),
             self.tcx.lang_items().unpin_trait(),
             self.tcx.get_diagnostic_item(sym::unwind_safe_trait),
             self.tcx.get_diagnostic_item(sym::ref_unwind_safe_trait),

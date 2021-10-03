@@ -101,9 +101,9 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
 
         // Get the wrapper and inner types, if can't, abort.
         let (return_type_label, lang_item, inner_type) = if let ty::Adt(adt_def, subst) = return_ty(cx, hir_id).kind() {
-            if cx.tcx.is_diagnostic_item(sym::option_type, adt_def.did) {
+            if cx.tcx.is_diagnostic_item(sym::Option, adt_def.did) {
                 ("Option", OptionSome, subst.type_at(0))
-            } else if cx.tcx.is_diagnostic_item(sym::result_type, adt_def.did) {
+            } else if cx.tcx.is_diagnostic_item(sym::Result, adt_def.did) {
                 ("Result", ResultOk, subst.type_at(0))
             } else {
                 return;

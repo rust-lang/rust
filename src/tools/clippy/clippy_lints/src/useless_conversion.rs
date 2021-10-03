@@ -63,7 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
             },
 
             ExprKind::MethodCall(name, .., args, _) => {
-                if is_trait_method(cx, e, sym::into_trait) && &*name.ident.as_str() == "into" {
+                if is_trait_method(cx, e, sym::Into) && &*name.ident.as_str() == "into" {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(&args[0]);
                     if same_type_and_consts(a, b) {
@@ -103,10 +103,10 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     }
                 }
                 if_chain! {
-                    if is_trait_method(cx, e, sym::try_into_trait) && name.ident.name == sym::try_into;
+                    if is_trait_method(cx, e, sym::TryInto) && name.ident.name == sym::try_into;
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(&args[0]);
-                    if is_type_diagnostic_item(cx, a, sym::result_type);
+                    if is_type_diagnostic_item(cx, a, sym::Result);
                     if let ty::Adt(_, substs) = a.kind();
                     if let Some(a_type) = substs.types().next();
                     if same_type_and_consts(a_type, b);
@@ -134,7 +134,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         let b = cx.typeck_results().expr_ty(&args[0]);
                         if_chain! {
                             if match_def_path(cx, def_id, &paths::TRY_FROM);
-                            if is_type_diagnostic_item(cx, a, sym::result_type);
+                            if is_type_diagnostic_item(cx, a, sym::Result);
                             if let ty::Adt(_, substs) = a.kind();
                             if let Some(a_type) = substs.types().next();
                             if same_type_and_consts(a_type, b);

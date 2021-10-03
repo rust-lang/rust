@@ -64,8 +64,8 @@ impl<'tcx> LateLintPass<'tcx> for UnwrapInResult {
             // first check if it's a method or function
             if let hir::ImplItemKind::Fn(ref _signature, _) = impl_item.kind;
             // checking if its return type is `result` or `option`
-            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id()), sym::result_type)
-                || is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id()), sym::option_type);
+            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id()), sym::Result)
+                || is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id()), sym::Option);
             then {
                 lint_impl_body(cx, impl_item.span, impl_item);
             }
@@ -86,8 +86,8 @@ impl<'a, 'tcx> Visitor<'tcx> for FindExpectUnwrap<'a, 'tcx> {
         // check for `expect`
         if let Some(arglists) = method_chain_args(expr, &["expect"]) {
             let reciever_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
-            if is_type_diagnostic_item(self.lcx, reciever_ty, sym::option_type)
-                || is_type_diagnostic_item(self.lcx, reciever_ty, sym::result_type)
+            if is_type_diagnostic_item(self.lcx, reciever_ty, sym::Option)
+                || is_type_diagnostic_item(self.lcx, reciever_ty, sym::Result)
             {
                 self.result.push(expr.span);
             }
@@ -96,8 +96,8 @@ impl<'a, 'tcx> Visitor<'tcx> for FindExpectUnwrap<'a, 'tcx> {
         // check for `unwrap`
         if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
             let reciever_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
-            if is_type_diagnostic_item(self.lcx, reciever_ty, sym::option_type)
-                || is_type_diagnostic_item(self.lcx, reciever_ty, sym::result_type)
+            if is_type_diagnostic_item(self.lcx, reciever_ty, sym::Option)
+                || is_type_diagnostic_item(self.lcx, reciever_ty, sym::Result)
             {
                 self.result.push(expr.span);
             }

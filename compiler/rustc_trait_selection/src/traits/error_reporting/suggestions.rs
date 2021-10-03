@@ -702,7 +702,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 .filter_map(|lang_item| self.tcx.lang_items().require(*lang_item).ok())
                 .collect();
 
-        never_suggest_borrow.push(self.tcx.get_diagnostic_item(sym::send_trait).unwrap());
+        never_suggest_borrow.push(self.tcx.get_diagnostic_item(sym::Send).unwrap());
 
         let param_env = obligation.param_env;
         let trait_ref = poly_trait_ref.skip_binder();
@@ -1634,8 +1634,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         // Special case the primary error message when send or sync is the trait that was
         // not implemented.
-        let is_send = self.tcx.is_diagnostic_item(sym::send_trait, trait_ref.def_id);
-        let is_sync = self.tcx.is_diagnostic_item(sym::sync_trait, trait_ref.def_id);
+        let is_send = self.tcx.is_diagnostic_item(sym::Send, trait_ref.def_id);
+        let is_sync = self.tcx.is_diagnostic_item(sym::Sync, trait_ref.def_id);
         let hir = self.tcx.hir();
         let trait_explanation = if is_send || is_sync {
             let (trait_name, trait_verb) =

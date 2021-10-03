@@ -206,7 +206,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
                         let deref_span = spans_need_deref.get(&canonical_id);
                         if_chain! {
-                            if is_type_diagnostic_item(cx, ty, sym::vec_type);
+                            if is_type_diagnostic_item(cx, ty, sym::Vec);
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")]);
                             if let TyKind::Path(QPath::Resolved(_, path)) = input.kind;
@@ -245,7 +245,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                             }
                         }
 
-                        if is_type_diagnostic_item(cx, ty, sym::string_type) {
+                        if is_type_diagnostic_item(cx, ty, sym::String) {
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_string()"), ("as_str", "")]) {
                                 diag.span_suggestion(

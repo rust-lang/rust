@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(
                     _ => map_closure_ty.fn_sig(cx.tcx),
                 };
                 let map_closure_return_ty = cx.tcx.erase_late_bound_regions(map_closure_sig.output());
-                is_type_diagnostic_item(cx, map_closure_return_ty, sym::option_type)
+                is_type_diagnostic_item(cx, map_closure_return_ty, sym::Option)
             },
             _ => false,
         };
@@ -55,9 +55,9 @@ pub(super) fn check<'tcx>(
     // lint if caller of `.map().flatten()` is an Option or Result
     let caller_type = match cx.typeck_results().expr_ty(recv).kind() {
         ty::Adt(adt, _) => {
-            if cx.tcx.is_diagnostic_item(sym::option_type, adt.did) {
+            if cx.tcx.is_diagnostic_item(sym::Option, adt.did) {
                 "Option"
-            } else if cx.tcx.is_diagnostic_item(sym::result_type, adt.did) {
+            } else if cx.tcx.is_diagnostic_item(sym::Result, adt.did) {
                 "Result"
             } else {
                 return;
