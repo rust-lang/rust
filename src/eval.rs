@@ -66,6 +66,8 @@ pub struct MiriConfig {
     pub stacked_borrows: bool,
     /// Controls alignment checking.
     pub check_alignment: AlignmentCheck,
+    /// Controls integer and float validity (e.g., initialization) checking.
+    pub check_number_validity: bool,
     /// Controls function [ABI](Abi) checking.
     pub check_abi: bool,
     /// Action for an op requiring communication with the host.
@@ -104,6 +106,7 @@ impl Default for MiriConfig {
             validate: true,
             stacked_borrows: true,
             check_alignment: AlignmentCheck::Int,
+            check_number_validity: false,
             check_abi: true,
             isolated_op: IsolatedOp::Reject(RejectOpWith::Abort),
             ignore_leaks: false,

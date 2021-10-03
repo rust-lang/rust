@@ -1,5 +1,8 @@
 use std::time::SystemTime;
 
+use rustc_hir::LangItem;
+use rustc_middle::ty::{layout::TyAndLayout, query::TyCtxtAt, subst::Subst, Ty};
+
 use crate::*;
 use thread::Time;
 
@@ -44,7 +47,7 @@ fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
     attr_op: &OpTy<'tcx, Tag>,
     kind: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
-    ecx.write_scalar_at_offset(attr_op, 0, kind, ecx.machine.layouts.i32)
+    ecx.write_scalar_at_offset(attr_op, 0, kind, layout_of_maybe_uninit(ecx.tcx, ecx.tcx.types.i32))
 }
 
 // pthread_mutex_t is between 24 and 48 bytes, depending on the platform.
@@ -79,7 +82,7 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
         mutex_op,
         offset,
         kind,
-        ecx.machine.layouts.i32,
+        layout_of_maybe_uninit(ecx.tcx, ecx.tcx.types.i32),
         AtomicWriteOp::Relaxed,
     )
 }
@@ -100,7 +103,7 @@ fn mutex_set_id<'mir, 'tcx: 'mir>(
         mutex_op,
         4,
         id,
-        ecx.machine.layouts.u32,
+        layout_of_maybe_uninit(ecx.tcx, ecx.tcx.types.u32),
         AtomicWriteOp::Relaxed,
     )
 }
@@ -144,7 +147,7 @@ fn rwlock_set_id<'mir, 'tcx: 'mir>(
         rwlock_op,
         4,
         id,
-        ecx.machine.layouts.u32,
+        layout_of_maybe_uninit(ecx.tcx, ecx.tcx.types.u32),
         AtomicWriteOp::Relaxed,
     )
 }
@@ -211,7 +214,7 @@ fn cond_set_id<'mir, 'tcx: 'mir>(
         cond_op,
         4,
         id,
-        ecx.machine.layouts.u32,
+        layout_of_maybe_uninit(ecx.tcx, ecx.tcx.types.u32),
         AtomicWriteOp::Relaxed,
     )
 }
@@ -244,7 +247,12 @@ fn cond_set_clock_id<'mir, 'tcx: 'mir>(
     cond_op: &OpTy<'tcx, Tag>,
     clock_id: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
-    ecx.write_scalar_at_offset(cond_op, 8, clock_id, ecx.machine.layouts.i32)
+    ecx.write_scalar_at_offset(
+        cond_op,
+        8,
+        clock_id,
+        layout_of_maybe_uninit(ecx.tcx, ecx.tcx.types.i32),
+    )
 }
 
 /// Try to reacquire the mutex associated with the condition variable after we
@@ -787,4 +795,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         Ok(0)
     }
+}
+
+fn layout_of_maybe_uninit<'tcx>(tcx: TyCtxtAt<'tcx>, param: Ty<'tcx>) -> TyAndLayout<'tcx> {
+    let def_id = tcx.require_lang_item(LangItem::MaybeUninit, None);
+    let def_ty = tcx.type_of(def_id);
+    let ty = def_ty.subst(*tcx, &[param.into()]);
+
+    let param_env = tcx.param_env(def_id);
+    tcx.layout_of(param_env.and(ty)).unwrap()
 }
