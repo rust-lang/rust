@@ -1501,7 +1501,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".abs_diff(80), 20", stringify!($SelfT), ");")]
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".abs_diff(110), 10", stringify!($SelfT), ");")]
         /// ```
-        #[unstable(feature = "int_abs_diff", issue = "none")]
+        #[unstable(feature = "int_abs_diff", issue = "89492")]
         #[inline]
         pub const fn abs_diff(self, other: Self) -> Self {
             if mem::size_of::<Self>() == 1 {
