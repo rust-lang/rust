@@ -1488,7 +1488,15 @@ impl<T, A: Allocator> Vec<T, A> {
 
         let mut g = BackshiftOnDrop { v: self, processed_len: 0, deleted_cnt: 0, original_len };
 
-        while g.processed_len < original_len {
+        // process_one return a bool indicates whether the processing element should be retained.
+        #[inline(always)]
+        fn process_one<F, T, A: Allocator, const DELETED: bool>(
+            f: &mut F,
+            g: &mut BackshiftOnDrop<'_, T, A>,
+        ) -> bool
+        where
+            F: FnMut(&T) -> bool,
+        {
             // SAFETY: Unchecked element must be valid.
             let cur = unsafe { &mut *g.v.as_mut_ptr().add(g.processed_len) };
             if !f(cur) {
@@ -1498,9 +1506,9 @@ impl<T, A: Allocator> Vec<T, A> {
                 // SAFETY: We never touch this element again after dropped.
                 unsafe { ptr::drop_in_place(cur) };
                 // We already advanced the counter.
-                continue;
+                return false;
             }
-            if g.deleted_cnt > 0 {
+            if DELETED {
                 // SAFETY: `deleted_cnt` > 0, so the hole slot must not overlap with current element.
                 // We use copy for move, and never touch this element again.
                 unsafe {
@@ -1509,6 +1517,19 @@ impl<T, A: Allocator> Vec<T, A> {
                 }
             }
             g.processed_len += 1;
+            return true;
+        }
+
+        // Stage 1: Nothing was deleted.
+        while g.processed_len != original_len {
+            if !process_one::<F, T, A, false>(&mut f, &mut g) {
+                break;
+            }
+        }
+
+        // Stage 2: Some elements were deleted.
+        while g.processed_len != original_len {
+            process_one::<F, T, A, true>(&mut f, &mut g);
         }
 
         // All item are processed. This can be optimized to `set_len` by LLVM.
