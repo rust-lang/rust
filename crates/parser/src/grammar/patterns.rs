@@ -243,27 +243,20 @@ fn record_pat_field_list(p: &mut Parser) {
     let m = p.start();
     p.bump(T!['{']);
     while !p.at(EOF) && !p.at(T!['}']) {
+        let m = p.start();
+        attributes::outer_attrs(p);
+
         match p.current() {
             // A trailing `..` is *not* treated as a REST_PAT.
             T![.] if p.at(T![..]) => {
-                rest_pat(p);
+                p.bump(T![..]);
+                m.complete(p, REST_PAT);
             }
-            T!['{'] => error_block(p, "expected ident"),
-            T![#] => {
-                let m = p.start();
-                attributes::outer_attrs(p);
-                if p.at(T![..]) {
-                    p.bump(T![..]);
-                    m.complete(p, REST_PAT);
-                } else {
-                    record_pat_field(p);
-                    m.complete(p, RECORD_PAT_FIELD);
-                }
+            T!['{'] => {
+                error_block(p, "expected ident");
+                m.abandon(p);
             }
-
             _ => {
-                let m = p.start();
-                attributes::outer_attrs(p);
                 record_pat_field(p);
                 m.complete(p, RECORD_PAT_FIELD);
             }
