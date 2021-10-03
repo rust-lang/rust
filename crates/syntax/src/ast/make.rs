@@ -299,6 +299,9 @@ pub fn expr_return(expr: Option<ast::Expr>) -> ast::Expr {
 pub fn expr_try(expr: ast::Expr) -> ast::Expr {
     expr_from_text(&format!("{}?", expr))
 }
+pub fn expr_await(expr: ast::Expr) -> ast::Expr {
+    expr_from_text(&format!("{}.await", expr))
+}
 pub fn expr_match(expr: ast::Expr, match_arm_list: ast::MatchArmList) -> ast::Expr {
     expr_from_text(&format!("match {} {}", expr, match_arm_list))
 }

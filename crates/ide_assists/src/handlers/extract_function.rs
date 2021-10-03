@@ -1090,7 +1090,7 @@ fn make_call(ctx: &AssistContext, fun: &Function, indent: IndentLevel) -> String
 
     let args = make::arg_list(fun.params.iter().map(|param| param.to_arg(ctx)));
     let name = fun.name.clone();
-    let call_expr = if fun.self_param.is_some() {
+    let mut call_expr = if fun.self_param.is_some() {
         let self_arg = make::expr_path(make::ext::ident_path("self"));
         make::expr_method_call(self_arg, name, args)
     } else {
@@ -1100,6 +1100,9 @@ fn make_call(ctx: &AssistContext, fun: &Function, indent: IndentLevel) -> String
 
     let handler = FlowHandler::from_ret_ty(fun, &ret_ty);
 
+    if fun.control_flow.is_async {
+        call_expr = make::expr_await(call_expr);
+    }
     let expr = handler.make_call_expr(call_expr).indent(indent);
 
     let mut_modifier = |var: &OutlivedLocal| if var.mut_usage_outside_body { "mut " } else { "" };
@@ -1119,10 +1122,8 @@ fn make_call(ctx: &AssistContext, fun: &Function, indent: IndentLevel) -> String
             buf.push_str(") = ");
         }
     }
+
     format_to!(buf, "{}", expr);
-    if fun.control_flow.is_async {
-        buf.push_str(".await");
-    }
     let insert_comma = fun
         .body
         .parent()
@@ -3870,6 +3871,70 @@ async fn $0fun_name() {
 
 async fn some_function() {
 
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_with_await_and_result_not_producing_match_expr() {
+        check_assist(
+            extract_function,
+            r#"
+async fn foo() -> Result<(), ()> {
+    $0async {}.await;
+    Err(())?$0
+}
+"#,
+            r#"
+async fn foo() -> Result<(), ()> {
+    fun_name().await?
+}
+
+async fn $0fun_name() -> _ {
+    async {}.await;
+    Err(())?
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_with_await_and_result_producing_match_expr() {
+        check_assist(
+            extract_function,
+            r#"
+async fn foo() -> i32 {
+    loop {
+        let n = 1;$0
+        let k = async { 1 }.await;
+        if k == 42 {
+            break 3;
+        }
+        let m = k + 1;$0
+        let h = 1 + m;
+    }
+}
+"#,
+            r#"
+async fn foo() -> i32 {
+    loop {
+        let n = 1;
+        let m = match fun_name().await {
+            Ok(value) => value,
+            Err(value) => break value,
+        };
+        let h = 1 + m;
+    }
+}
+
+async fn $0fun_name() -> Result<i32, i32> {
+    let k = async { 1 }.await;
+    if k == 42 {
+        return Err(3);
+    }
+    let m = k + 1;
+    Ok(m)
 }
 "#,
         );
