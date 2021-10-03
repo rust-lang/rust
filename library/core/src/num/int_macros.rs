@@ -885,7 +885,11 @@ macro_rules! int_impl {
         #[inline]
         pub const fn saturating_add_unsigned(self, rhs: $UnsignedT) -> Self {
             // Overflow can only happen at the upper bound
-            self.checked_add_unsigned(rhs).unwrap_or(Self::MAX)
+            // We cannot use `unwrap_or` here because it is not `const`
+            match self.checked_add_unsigned(rhs) {
+                Some(x) => x,
+                None => Self::MAX,
+            }
         }
 
         /// Saturating integer subtraction. Computes `self - rhs`, saturating at the
@@ -928,7 +932,11 @@ macro_rules! int_impl {
         #[inline]
         pub const fn saturating_sub_unsigned(self, rhs: $UnsignedT) -> Self {
             // Overflow can only happen at the lower bound
-            self.checked_sub_unsigned(rhs).unwrap_or(Self::MIN)
+            // We cannot use `unwrap_or` here because it is not `const`
+            match self.checked_sub_unsigned(rhs) {
+                Some(x) => x,
+                None => Self::MIN,
+            }
         }
 
         /// Saturating integer negation. Computes `-self`, returning `MAX` if `self == MIN`
