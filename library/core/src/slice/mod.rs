@@ -1556,7 +1556,7 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// ```compile_fail
+    /// ```
     /// #![feature(slice_split_at_unchecked)]
     ///
     /// let v = [1, 2, 3, 4, 5, 6];
@@ -1581,7 +1581,7 @@ impl<T> [T] {
     /// ```
     #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
     #[inline]
-    unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
+    pub unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
         // SAFETY: Caller has to check that `0 <= mid <= self.len()`
         unsafe { (self.get_unchecked(..mid), self.get_unchecked(mid..)) }
     }
@@ -1605,7 +1605,7 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// ```compile_fail
+    /// ```
     /// #![feature(slice_split_at_unchecked)]
     ///
     /// let mut v = [1, 0, 3, 0, 5, 6];
@@ -1621,7 +1621,7 @@ impl<T> [T] {
     /// ```
     #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
     #[inline]
-    unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
+    pub unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
         let len = self.len();
         let ptr = self.as_mut_ptr();
 
