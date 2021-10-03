@@ -65,7 +65,8 @@
         "onCommand:rust-analyzer.analyzerStatus",
         "onCommand:rust-analyzer.memoryUsage",
         "onCommand:rust-analyzer.reloadWorkspace",
-        "workspaceContains:**/Cargo.toml"
+        "workspaceContains:*/Cargo.toml",
+        "workspaceContains:*/rust-project.json"
     ],
     "main": "./out/main",
     "contributes": {
