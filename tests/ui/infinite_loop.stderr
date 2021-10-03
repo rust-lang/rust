@@ -1,5 +1,5 @@
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:22:11
+  --> $DIR/infinite_loop.rs:20:11
    |
 LL |     while y < 10 {
    |           ^^^^^^
@@ -8,7 +8,7 @@ LL |     while y < 10 {
    = note: this may lead to an infinite or to a never running loop
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:27:11
+  --> $DIR/infinite_loop.rs:25:11
    |
 LL |     while y < 10 && x < 3 {
    |           ^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     while y < 10 && x < 3 {
    = note: this may lead to an infinite or to a never running loop
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:34:11
+  --> $DIR/infinite_loop.rs:32:11
    |
 LL |     while !cond {
    |           ^^^^^
@@ -24,7 +24,7 @@ LL |     while !cond {
    = note: this may lead to an infinite or to a never running loop
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:78:11
+  --> $DIR/infinite_loop.rs:76:11
    |
 LL |     while i < 3 {
    |           ^^^^^
@@ -32,7 +32,7 @@ LL |     while i < 3 {
    = note: this may lead to an infinite or to a never running loop
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:83:11
+  --> $DIR/infinite_loop.rs:81:11
    |
 LL |     while i < 3 && j > 0 {
    |           ^^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL |     while i < 3 && j > 0 {
    = note: this may lead to an infinite or to a never running loop
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:87:11
+  --> $DIR/infinite_loop.rs:85:11
    |
 LL |     while i < 3 {
    |           ^^^^^
@@ -48,7 +48,7 @@ LL |     while i < 3 {
    = note: this may lead to an infinite or to a never running loop
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:102:11
+  --> $DIR/infinite_loop.rs:100:11
    |
 LL |     while i < 3 {
    |           ^^^^^
@@ -56,7 +56,7 @@ LL |     while i < 3 {
    = note: this may lead to an infinite or to a never running loop
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:107:11
+  --> $DIR/infinite_loop.rs:105:11
    |
 LL |     while i < 3 {
    |           ^^^^^
@@ -64,7 +64,7 @@ LL |     while i < 3 {
    = note: this may lead to an infinite or to a never running loop
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:173:15
+  --> $DIR/infinite_loop.rs:171:15
    |
 LL |         while self.count < n {
    |               ^^^^^^^^^^^^^^
@@ -72,7 +72,7 @@ LL |         while self.count < n {
    = note: this may lead to an infinite or to a never running loop
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:181:11
+  --> $DIR/infinite_loop.rs:179:11
    |
 LL |     while y < 10 {
    |           ^^^^^^
@@ -82,7 +82,7 @@ LL |     while y < 10 {
    = help: rewrite it as `if cond { loop { } }`
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:188:11
+  --> $DIR/infinite_loop.rs:186:11
    |
 LL |     while y < 10 {
    |           ^^^^^^
