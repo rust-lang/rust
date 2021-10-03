@@ -313,6 +313,12 @@ changelog-seen = 2
 # this setting's very existence, are all subject to change.)
 #print-step-rusage = false
 
+# Always patch binaries for usage with Nix toolchains. If `true` then binaries
+# will be patched unconditionally. If `false` or unset, binaries will be patched
+# only if the current distribution is NixOS. This option is useful when using
+# a Nix toolchain on non-NixOS distributions.
+#patch-binaries-for-nix = false
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
