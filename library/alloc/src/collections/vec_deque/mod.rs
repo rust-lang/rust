@@ -417,7 +417,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Append all values from `src` to `dst`, wrapping around if needed.
+    /// Copies all values from `src` to `dst`, wrapping around if needed.
     /// Assumes capacity is sufficient.
     #[inline]
     unsafe fn copy_slice(&mut self, dst: usize, src: &[T]) {
