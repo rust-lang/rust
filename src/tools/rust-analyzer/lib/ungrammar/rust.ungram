@@ -618,7 +618,7 @@ RecordPat =
 RecordPatFieldList =
   '{'
     fields:(RecordPatField (',' RecordPatField)* ','?)?
-    '..'?
+    RestPat?
   '}'
 
 RecordPatField =
@@ -646,7 +646,7 @@ BoxPat =
   'box' Pat
 
 RestPat =
-  '..'
+  Attr* '..'
 
 MacroPat =
   MacroCall
