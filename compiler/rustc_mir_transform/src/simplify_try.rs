@@ -713,6 +713,8 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
                 ty::Adt(adt, _) if adt.is_enum() => adt,
                 _ => return StatementEquality::NotEqual,
             };
+            // We need to make sure that the switch value that targets the bb with
+            // SetDiscriminant is the same as the variant discriminant.
             let variant_discr = adt.discriminant_for_variant(self.tcx, *variant_index).val;
             if variant_discr != switch_value {
                 trace!(
@@ -750,20 +752,28 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
             (
                 StatementKind::Assign(box (_, rhs)),
                 StatementKind::SetDiscriminant { place, variant_index },
-            )
-            // we need to make sure that the switch value that targets the bb with SetDiscriminant (y), is the same as the variant index
-            if y_target_and_value.value.is_some() => {
+            ) if y_target_and_value.value.is_some() => {
                 // choose basic block of x, as that has the assign
-                helper(rhs, place, variant_index, y_target_and_value.value.unwrap(), x_target_and_value.target)
+                helper(
+                    rhs,
+                    place,
+                    variant_index,
+                    y_target_and_value.value.unwrap(),
+                    x_target_and_value.target,
+                )
             }
             (
                 StatementKind::SetDiscriminant { place, variant_index },
                 StatementKind::Assign(box (_, rhs)),
-            )
-            // we need to make sure that the switch value that targets the bb with SetDiscriminant (x), is the same as the variant index
-            if x_target_and_value.value.is_some() => {
+            ) if x_target_and_value.value.is_some() => {
                 // choose basic block of y, as that has the assign
-                helper(rhs, place, variant_index, x_target_and_value.value.unwrap(), y_target_and_value.target)
+                helper(
+                    rhs,
+                    place,
+                    variant_index,
+                    x_target_and_value.value.unwrap(),
+                    y_target_and_value.target,
+                )
             }
             _ => {
                 trace!("NO: statements `{:?}` and `{:?}` not considered equal", x, y);
