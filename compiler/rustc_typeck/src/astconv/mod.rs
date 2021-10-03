@@ -1319,7 +1319,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             );
             first_trait.label_with_exp_info(&mut err, "first non-auto trait", "first use");
             err.help(&format!(
-                "consider creating a new trait with all of these as super-traits and using that \
+                "consider creating a new trait with all of these as supertraits and using that \
                  trait here instead: `trait NewTrait: {} {{}}`",
                 regular_traits
                     .iter()
