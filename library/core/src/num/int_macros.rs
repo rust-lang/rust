@@ -501,7 +501,7 @@ macro_rules! int_impl {
             unsafe { intrinsics::unchecked_sub(self, rhs) }
         }
 
-        /// Checked addition with an unsigned integer. Computes `self + rhs`,
+        /// Checked subtraction with an unsigned integer. Computes `self - rhs`,
         /// returning `None` if overflow occurred.
         ///
         /// # Examples
@@ -885,10 +885,7 @@ macro_rules! int_impl {
         #[inline]
         pub const fn saturating_add_unsigned(self, rhs: $UnsignedT) -> Self {
             // Overflow can only happen at the upper bound
-            match self.checked_add_unsigned(rhs) {
-                Some(x) => x,
-                None => Self::MAX,
-            }
+            self.checked_add_unsigned(rhs).unwrap_or(Self::MAX)
         }
 
         /// Saturating integer subtraction. Computes `self - rhs`, saturating at the
@@ -912,7 +909,7 @@ macro_rules! int_impl {
             intrinsics::saturating_sub(self, rhs)
         }
 
-        /// Saturating substraction with an unsigned integer. Computes `self - rhs`,
+        /// Saturating subtraction with an unsigned integer. Computes `self - rhs`,
         /// saturating at the numeric bounds instead of overflowing.
         ///
         /// # Examples
@@ -931,10 +928,7 @@ macro_rules! int_impl {
         #[inline]
         pub const fn saturating_sub_unsigned(self, rhs: $UnsignedT) -> Self {
             // Overflow can only happen at the lower bound
-            match self.checked_sub_unsigned(rhs) {
-                Some(x) => x,
-                None => Self::MIN,
-            }
+            self.checked_sub_unsigned(rhs).unwrap_or(Self::MIN)
         }
 
         /// Saturating integer negation. Computes `-self`, returning `MAX` if `self == MIN`
@@ -1133,7 +1127,7 @@ macro_rules! int_impl {
             intrinsics::wrapping_sub(self, rhs)
         }
 
-        /// Wrapping (modular) substraction with an unsigned integer. Computes
+        /// Wrapping (modular) subtraction with an unsigned integer. Computes
         /// `self - rhs`, wrapping around at the boundary of the type.
         ///
         /// # Examples
@@ -1584,7 +1578,7 @@ macro_rules! int_impl {
 
         /// Calculates `self` - `rhs` with an unsigned `rhs`
         ///
-        /// Returns a tuple of the substraction along with a boolean indicating
+        /// Returns a tuple of the subtraction along with a boolean indicating
         /// whether an arithmetic overflow would occur. If an overflow would
         /// have occurred then the wrapped value is returned.
         ///
