@@ -19,7 +19,6 @@ pub enum MergeBehavior {
 }
 
 impl MergeBehavior {
-    #[inline]
     fn is_tree_allowed(&self, tree: &ast::UseTree) -> bool {
         match self {
             MergeBehavior::Crate => true,
@@ -114,7 +113,7 @@ fn recursive_merge(
                 let rhs_path = rhs_path?;
                 let (lhs_prefix, rhs_prefix) = common_prefix(&lhs_path, &rhs_path)?;
                 if lhs_prefix == lhs_path && rhs_prefix == rhs_path {
-                    let tree_is_self = |tree: ast::UseTree| {
+                    let tree_is_self = |tree: &ast::UseTree| {
                         tree.path().as_ref().map(path_is_self).unwrap_or(false)
                     };
                     // Check if only one of the two trees has a tree list, and
@@ -123,7 +122,7 @@ fn recursive_merge(
                     // the list is already included in the other one via `self`.
                     let tree_contains_self = |tree: &ast::UseTree| {
                         tree.use_tree_list()
-                            .map(|tree_list| tree_list.use_trees().any(tree_is_self))
+                            .map(|tree_list| tree_list.use_trees().any(|it| tree_is_self(&it)))
                             .unwrap_or(false)
                     };
                     match (tree_contains_self(lhs_t), tree_contains_self(&rhs_t)) {
@@ -141,17 +140,18 @@ fn recursive_merge(
                     // glob import of said module see the `merge_self_glob` or
                     // `merge_mod_into_glob` tests.
                     if lhs_t.star_token().is_some() || rhs_t.star_token().is_some() {
-                        *lhs_t = make::use_tree(
-                            make::path_unqualified(make::path_segment_self()),
-                            None,
-                            None,
-                            false,
-                        );
-                        use_trees.insert(idx, make::use_tree_glob());
-                        continue;
-                    }
-
-                    if lhs_t.use_tree_list().is_none() && rhs_t.use_tree_list().is_none() {
+                        if tree_is_self(lhs_t) || tree_is_self(&rhs_t) {
+                            cov_mark::hit!(merge_self_glob);
+                            *lhs_t = make::use_tree(
+                                make::path_unqualified(make::path_segment_self()),
+                                None,
+                                None,
+                                false,
+                            );
+                            use_trees.insert(idx, make::use_tree_glob());
+                            continue;
+                        }
+                    } else if lhs_t.use_tree_list().is_none() && rhs_t.use_tree_list().is_none() {
                         continue;
                     }
                 }

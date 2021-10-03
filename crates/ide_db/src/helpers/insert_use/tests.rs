@@ -612,6 +612,7 @@ fn merge_mod_into_glob() {
 
 #[test]
 fn merge_self_glob() {
+    cov_mark::check!(merge_self_glob);
     check_with_config(
         "self",
         r"use self::*;",
@@ -625,6 +626,17 @@ fn merge_self_glob() {
         },
     )
     // FIXME: have it emit `use {self, *}`?
+}
+
+#[test]
+fn merge_glob() {
+    check_crate(
+        "syntax::SyntaxKind",
+        r"
+use syntax::{SyntaxKind::*};",
+        r"
+use syntax::{SyntaxKind::{*, self}};",
+    )
 }
 
 #[test]
@@ -931,5 +943,5 @@ fn check_merge_only_fail(ra_fixture0: &str, ra_fixture1: &str, mb: MergeBehavior
 fn check_guess(ra_fixture: &str, expected: ImportGranularityGuess) {
     let syntax = ast::SourceFile::parse(ra_fixture).tree().syntax().clone();
     let file = super::ImportScope::from(syntax).unwrap();
-    assert_eq!(file.guess_granularity_from_scope(), expected);
+    assert_eq!(super::guess_granularity_from_scope(&file), expected);
 }
