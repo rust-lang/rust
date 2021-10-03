@@ -18,7 +18,7 @@ use crate::{
 };
 
 pub use self::{
-    expr_ext::{ArrayExprKind, BlockModifier, ElseBranch, LiteralKind},
+    expr_ext::{ArrayExprKind, BlockModifier, CallableExpr, ElseBranch, LiteralKind},
     generated::{nodes::*, tokens::*},
     node_ext::{
         AttrKind, FieldKind, Macro, NameLike, NameOrNameRef, PathSegmentKind, SelfParamKind,

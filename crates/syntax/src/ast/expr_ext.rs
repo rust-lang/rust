@@ -10,7 +10,7 @@ use crate::{
     },
     AstToken,
     SyntaxKind::*,
-    SyntaxToken, T,
+    SyntaxNode, SyntaxToken, T,
 };
 
 impl ast::HasAttrs for ast::Expr {}
@@ -310,5 +310,43 @@ fn test_literal_with_attr() {
 impl ast::RecordExprField {
     pub fn parent_record_lit(&self) -> ast::RecordExpr {
         self.syntax().ancestors().find_map(ast::RecordExpr::cast).unwrap()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum CallableExpr {
+    Call(ast::CallExpr),
+    MethodCall(ast::MethodCallExpr),
+}
+
+impl ast::HasAttrs for CallableExpr {}
+impl ast::HasArgList for CallableExpr {}
+
+impl AstNode for CallableExpr {
+    fn can_cast(kind: parser::SyntaxKind) -> bool
+    where
+        Self: Sized,
+    {
+        ast::CallExpr::can_cast(kind) || ast::MethodCallExpr::can_cast(kind)
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        if let Some(it) = ast::CallExpr::cast(syntax.clone()) {
+            Some(Self::Call(it))
+        } else if let Some(it) = ast::MethodCallExpr::cast(syntax.clone()) {
+            Some(Self::MethodCall(it))
+        } else {
+            None
+        }
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            Self::Call(it) => it.syntax(),
+            Self::MethodCall(it) => it.syntax(),
+        }
     }
 }
