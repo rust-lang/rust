@@ -1958,7 +1958,11 @@ impl Path {
     }
 
     crate fn whole_name(&self) -> String {
-        self.segments.iter().map(|s| s.name.to_string()).intersperse("::".into()).collect()
+        self.segments
+            .iter()
+            .map(|s| if s.name == kw::PathRoot { String::new() } else { s.name.to_string() })
+            .intersperse("::".into())
+            .collect()
     }
 
     /// Checks if this is a `T::Name` path for an associated type.
