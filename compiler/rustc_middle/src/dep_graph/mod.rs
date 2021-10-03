@@ -25,8 +25,8 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
     const NULL: Self = DepKind::Null;
 
     #[inline(always)]
-    fn can_reconstruct_query_key(&self) -> bool {
-        DepKind::can_reconstruct_query_key(self)
+    fn fingerprint_style(&self) -> rustc_query_system::dep_graph::FingerprintStyle {
+        DepKind::fingerprint_style(self)
     }
 
     #[inline(always)]
