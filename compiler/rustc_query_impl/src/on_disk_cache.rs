@@ -664,22 +664,32 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
 
             let data: ExpnData = decoder
                 .with_position(pos.to_usize(), |decoder| decode_tagged(decoder, TAG_EXPN_DATA))?;
-            rustc_span::hygiene::register_local_expn_id(data, hash)
+            let expn_id = rustc_span::hygiene::register_local_expn_id(data, hash);
+
+            #[cfg(debug_assertions)]
+            {
+                use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+                let mut hcx = decoder.tcx.create_stable_hashing_context();
+                let mut hasher = StableHasher::new();
+                hcx.while_hashing_spans(true, |hcx| {
+                    expn_id.expn_data().hash_stable(hcx, &mut hasher)
+                });
+                let local_hash: u64 = hasher.finish();
+                debug_assert_eq!(hash.local_hash(), local_hash);
+            }
+
+            expn_id
         } else {
             let index_guess = decoder.foreign_expn_data[&hash];
-            decoder.tcx.cstore_untracked().expn_hash_to_expn_id(krate, index_guess, hash)
+            decoder.tcx.cstore_untracked().expn_hash_to_expn_id(
+                decoder.tcx.sess,
+                krate,
+                index_guess,
+                hash,
+            )
         };
 
-        #[cfg(debug_assertions)]
-        {
-            use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-            let mut hcx = decoder.tcx.create_stable_hashing_context();
-            let mut hasher = StableHasher::new();
-            hcx.while_hashing_spans(true, |hcx| expn_id.expn_data().hash_stable(hcx, &mut hasher));
-            let local_hash: u64 = hasher.finish();
-            debug_assert_eq!(hash.local_hash(), local_hash);
-        }
-
+        debug_assert_eq!(expn_id.krate, krate);
         Ok(expn_id)
     }
 }
