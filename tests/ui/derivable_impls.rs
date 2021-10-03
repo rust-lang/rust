@@ -227,4 +227,17 @@ impl Default for RepeatDefault2 {
     }
 }
 
+// https://github.com/rust-lang/rust-clippy/issues/7753
+
+pub enum IntOrString {
+    Int(i32),
+    String(String),
+}
+
+impl Default for IntOrString {
+    fn default() -> Self {
+        IntOrString::Int(0)
+    }
+}
+
 fn main() {}
