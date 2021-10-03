@@ -110,7 +110,7 @@ impl TextEdit {
 
         // FIXME: figure out a way to mutate the text in-place or reuse the
         // memory in some other way
-        *text = buf
+        *text = buf;
     }
 
     pub fn union(&mut self, other: TextEdit) -> Result<(), TextEdit> {
@@ -163,13 +163,13 @@ impl TextEditBuilder {
         self.indels.is_empty()
     }
     pub fn replace(&mut self, range: TextRange, replace_with: String) {
-        self.indel(Indel::replace(range, replace_with))
+        self.indel(Indel::replace(range, replace_with));
     }
     pub fn delete(&mut self, range: TextRange) {
-        self.indel(Indel::delete(range))
+        self.indel(Indel::delete(range));
     }
     pub fn insert(&mut self, offset: TextSize, text: String) {
-        self.indel(Indel::insert(offset, text))
+        self.indel(Indel::insert(offset, text));
     }
     pub fn finish(self) -> TextEdit {
         let mut indels = self.indels;

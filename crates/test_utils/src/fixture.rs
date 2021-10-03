@@ -142,14 +142,14 @@ impl Fixture {
 
             if line.starts_with("//-") {
                 let meta = Fixture::parse_meta_line(line);
-                res.push(meta)
+                res.push(meta);
             } else {
                 if line.starts_with("// ")
                     && line.contains(':')
                     && !line.contains("::")
                     && line.chars().all(|it| !it.is_uppercase())
                 {
-                    panic!("looks like invalid metadata line: {:?}", line)
+                    panic!("looks like invalid metadata line: {:?}", line);
                 }
 
                 if let Some(entry) = res.last_mut() {
@@ -256,9 +256,9 @@ impl MiniCore {
         let line = line.strip_prefix("//- minicore:").unwrap().trim();
         for entry in line.split(", ") {
             if res.has_flag(entry) {
-                panic!("duplicate minicore flag: {:?}", entry)
+                panic!("duplicate minicore flag: {:?}", entry);
             }
-            res.activated_flags.push(entry.to_string())
+            res.activated_flags.push(entry.to_string());
         }
 
         res
@@ -354,7 +354,7 @@ impl MiniCore {
             }
 
             if keep {
-                buf.push_str(line)
+                buf.push_str(line);
             }
             if line_region {
                 active_regions.pop().unwrap();

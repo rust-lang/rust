@@ -19,7 +19,7 @@ pub(crate) fn pattern(p: &mut Parser) {
 
 /// Parses a pattern list separated by pipes `|`.
 pub(super) fn pattern_top(p: &mut Parser) {
-    pattern_top_r(p, PAT_RECOVERY_SET)
+    pattern_top_r(p, PAT_RECOVERY_SET);
 }
 
 pub(crate) fn pattern_single(p: &mut Parser) {

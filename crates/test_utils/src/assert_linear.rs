@@ -43,7 +43,7 @@ impl AssertLinear {
     }
 
     pub fn sample(&mut self, x: f64, y: f64) {
-        self.rounds.last_mut().unwrap().samples.push((x, y))
+        self.rounds.last_mut().unwrap().samples.push((x, y));
     }
 }
 
@@ -54,7 +54,7 @@ impl Drop for AssertLinear {
             for round in &self.rounds {
                 eprintln!("\n{}", round.plot);
             }
-            panic!("Doesn't look linear!")
+            panic!("Doesn't look linear!");
         }
     }
 }

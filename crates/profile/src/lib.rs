@@ -92,7 +92,7 @@ pub fn cpu_span() -> CpuSpan {
     {
         eprintln!(
             r#"cpu profiling is disabled, uncomment `default = [ "cpu_profiler" ]` in Cargo.toml to enable."#
-        )
+        );
     }
 
     CpuSpan { _private: () }

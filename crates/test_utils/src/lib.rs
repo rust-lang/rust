@@ -244,7 +244,7 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
 
                             range + line_start.1
                         };
-                        res.push((range, content))
+                        res.push((range, content));
                     }
                     LineAnnotation::Continuation { mut offset, content } => {
                         offset += annotation_offset;
@@ -301,7 +301,7 @@ fn extract_line_annotations(mut line: &str) -> Vec<LineAnnotation> {
         let mut file = false;
         if !continuation && content.starts_with("file") {
             file = true;
-            content = &content["file".len()..]
+            content = &content["file".len()..];
         }
 
         let content = content.trim().to_string();
@@ -371,7 +371,7 @@ fn main() {
 pub fn skip_slow_tests() -> bool {
     let should_skip = std::env::var("CI").is_err() && std::env::var("RUN_SLOW_TESTS").is_err();
     if should_skip {
-        eprintln!("ignoring slow test")
+        eprintln!("ignoring slow test");
     } else {
         let path = project_root().join("./target/.slow_tests_cookie");
         fs::write(&path, ".").unwrap();
@@ -432,7 +432,7 @@ pub fn bench(label: &'static str) -> impl Drop {
 
     impl Drop for Bencher {
         fn drop(&mut self) {
-            eprintln!("{}: {}", self.label, self.sw.elapsed())
+            eprintln!("{}: {}", self.label, self.sw.elapsed());
         }
     }
 

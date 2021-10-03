@@ -81,7 +81,7 @@ impl<N: AstNode> PartialEq for AstPtr<N> {
 
 impl<N: AstNode> Hash for AstPtr<N> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.raw.hash(state)
+        self.raw.hash(state);
     }
 }
 

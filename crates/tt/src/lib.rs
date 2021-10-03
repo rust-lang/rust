@@ -169,7 +169,7 @@ impl fmt::Display for Subtree {
             match tt {
                 TokenTree::Leaf(Leaf::Punct(p)) => {
                     needs_space = p.spacing == Spacing::Alone;
-                    fmt::Display::fmt(p, f)?
+                    fmt::Display::fmt(p, f)?;
                 }
                 tt => fmt::Display::fmt(tt, f)?,
             }

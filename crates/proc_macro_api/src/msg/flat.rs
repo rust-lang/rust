@@ -320,7 +320,7 @@ impl Reader {
                     })
                     .collect(),
             };
-            res[i] = Some(s)
+            res[i] = Some(s);
         }
 
         res[0].take().unwrap()

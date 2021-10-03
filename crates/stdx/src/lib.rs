@@ -45,7 +45,7 @@ fn to_snake_case<F: Fn(&char) -> char>(s: &str, change_case: F) -> String {
         if c.is_ascii_uppercase() && prev {
             // This check is required to not translate `Weird_Case` into `weird__case`.
             if !buf.ends_with('_') {
-                buf.push('_')
+                buf.push('_');
             }
         }
         prev = true;
@@ -60,7 +60,7 @@ pub fn replace(buf: &mut String, from: char, to: &str) {
         return;
     }
     // FIXME: do this in place.
-    *buf = buf.replace(from, to)
+    *buf = buf.replace(from, to);
 }
 
 pub fn trim_indent(mut text: &str) -> String {
@@ -101,7 +101,7 @@ pub fn defer<F: FnOnce()>(f: F) -> impl Drop {
     impl<F: FnOnce()> Drop for D<F> {
         fn drop(&mut self) {
             if let Some(f) = self.0.take() {
-                f()
+                f();
             }
         }
     }

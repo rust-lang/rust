@@ -609,7 +609,7 @@ impl HasFormatSpecifier for ast::String {
                 TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap())
                     + offset,
                 unescaped_char,
-            ))
+            ));
         });
 
         Some(res)
@@ -631,7 +631,7 @@ impl ast::IntNumber {
 
         let mut text = token.text();
         if let Some(suffix) = self.suffix() {
-            text = &text[..text.len() - suffix.len()]
+            text = &text[..text.len() - suffix.len()];
         }
 
         let radix = self.radix();

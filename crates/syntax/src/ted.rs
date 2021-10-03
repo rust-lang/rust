@@ -77,23 +77,23 @@ impl Position {
 }
 
 pub fn insert(position: Position, elem: impl Element) {
-    insert_all(position, vec![elem.syntax_element()])
+    insert_all(position, vec![elem.syntax_element()]);
 }
 pub fn insert_raw(position: Position, elem: impl Element) {
-    insert_all_raw(position, vec![elem.syntax_element()])
+    insert_all_raw(position, vec![elem.syntax_element()]);
 }
 pub fn insert_all(position: Position, mut elements: Vec<SyntaxElement>) {
     if let Some(first) = elements.first() {
         if let Some(ws) = ws_before(&position, first) {
-            elements.insert(0, ws.into())
+            elements.insert(0, ws.into());
         }
     }
     if let Some(last) = elements.last() {
         if let Some(ws) = ws_after(&position, last) {
-            elements.push(ws.into())
+            elements.push(ws.into());
         }
     }
-    insert_all_raw(position, elements)
+    insert_all_raw(position, elements);
 }
 pub fn insert_all_raw(position: Position, elements: Vec<SyntaxElement>) {
     let (parent, index) = match position.repr {
@@ -104,10 +104,10 @@ pub fn insert_all_raw(position: Position, elements: Vec<SyntaxElement>) {
 }
 
 pub fn remove(elem: impl Element) {
-    elem.syntax_element().detach()
+    elem.syntax_element().detach();
 }
 pub fn remove_all(range: RangeInclusive<SyntaxElement>) {
-    replace_all(range, Vec::new())
+    replace_all(range, Vec::new());
 }
 pub fn remove_all_iter(range: impl IntoIterator<Item = SyntaxElement>) {
     let mut it = range.into_iter();
@@ -115,9 +115,9 @@ pub fn remove_all_iter(range: impl IntoIterator<Item = SyntaxElement>) {
         match it.last() {
             Some(mut last) => {
                 if first.index() > last.index() {
-                    mem::swap(&mut first, &mut last)
+                    mem::swap(&mut first, &mut last);
                 }
-                remove_all(first..=last)
+                remove_all(first..=last);
             }
             None => remove(first),
         }
@@ -125,26 +125,26 @@ pub fn remove_all_iter(range: impl IntoIterator<Item = SyntaxElement>) {
 }
 
 pub fn replace(old: impl Element, new: impl Element) {
-    replace_with_many(old, vec![new.syntax_element()])
+    replace_with_many(old, vec![new.syntax_element()]);
 }
 pub fn replace_with_many(old: impl Element, new: Vec<SyntaxElement>) {
     let old = old.syntax_element();
-    replace_all(old.clone()..=old, new)
+    replace_all(old.clone()..=old, new);
 }
 pub fn replace_all(range: RangeInclusive<SyntaxElement>, new: Vec<SyntaxElement>) {
     let start = range.start().index();
     let end = range.end().index();
     let parent = range.start().parent().unwrap();
-    parent.splice_children(start..end + 1, new)
+    parent.splice_children(start..end + 1, new);
 }
 
 pub fn append_child(node: &(impl Into<SyntaxNode> + Clone), child: impl Element) {
     let position = Position::last_child_of(node);
-    insert(position, child)
+    insert(position, child);
 }
 pub fn append_child_raw(node: &(impl Into<SyntaxNode> + Clone), child: impl Element) {
     let position = Position::last_child_of(node);
-    insert_raw(position, child)
+    insert_raw(position, child);
 }
 
 fn ws_before(position: &Position, new: &SyntaxElement) -> Option<SyntaxToken> {

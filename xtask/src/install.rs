@@ -13,7 +13,7 @@ const REQUIRED_RUST_VERSION: u32 = 55;
 impl flags::Install {
     pub(crate) fn run(self) -> Result<()> {
         if cfg!(target_os = "macos") {
-            fix_path_for_mac().context("Fix path for mac")?
+            fix_path_for_mac().context("Fix path for mac")?;
         }
         if let Some(server) = self.server() {
             install_server(server).context("install server")?;
@@ -148,7 +148,7 @@ fn install_server(opts: ServerOpt) -> Result<()> {
         eprintln!(
             "\nWARNING: at least rust 1.{}.0 is required to compile rust-analyzer\n",
             REQUIRED_RUST_VERSION,
-        )
+        );
     }
     let features = match opts.malloc {
         Malloc::System => &[][..],

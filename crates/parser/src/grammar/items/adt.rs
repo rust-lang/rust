@@ -58,7 +58,7 @@ pub(super) fn enum_(p: &mut Parser, m: Marker) {
     if p.at(T!['{']) {
         variant_list(p);
     } else {
-        p.error("expected `{`")
+        p.error("expected `{`");
     }
     m.complete(p, ENUM);
 }

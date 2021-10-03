@@ -120,7 +120,7 @@ impl TreeDiff {
             to.iter().for_each(|to| builder.insert(offset, to.to_string()));
         }
         for (from, to) in self.replacements.iter() {
-            builder.replace(from.text_range(), to.to_string())
+            builder.replace(from.text_range(), to.to_string());
         }
         for text_range in self.deletions.iter().map(SyntaxElement::text_range) {
             builder.delete(text_range);
@@ -233,7 +233,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
                         diff.insertions.entry(insert_pos).or_insert_with(Vec::new).extend(drain);
                         rhs_children = rhs_children_clone;
                     } else {
-                        go(diff, lhs_ele, rhs_ele)
+                        go(diff, lhs_ele, rhs_ele);
                     }
                 }
             }

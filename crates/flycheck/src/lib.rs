@@ -179,7 +179,7 @@ impl FlycheckActor {
                         tracing::error!(
                             "Flycheck failed to run the following command: {:?}",
                             self.check_command()
-                        )
+                        );
                     }
                     self.progress(Progress::DidFinish(res));
                 }
@@ -253,7 +253,7 @@ impl FlycheckActor {
     }
 
     fn send(&self, check_task: Message) {
-        (self.sender)(check_task)
+        (self.sender)(check_task);
     }
 }
 
@@ -334,15 +334,15 @@ impl CargoActor {
                     // Skip certain kinds of messages to only spend time on what's useful
                     JsonMessage::Cargo(message) => match message {
                         cargo_metadata::Message::CompilerArtifact(artifact) if !artifact.fresh => {
-                            self.sender.send(CargoMessage::CompilerArtifact(artifact)).unwrap()
+                            self.sender.send(CargoMessage::CompilerArtifact(artifact)).unwrap();
                         }
                         cargo_metadata::Message::CompilerMessage(msg) => {
-                            self.sender.send(CargoMessage::Diagnostic(msg.message)).unwrap()
+                            self.sender.send(CargoMessage::Diagnostic(msg.message)).unwrap();
                         }
                         _ => (),
                     },
                     JsonMessage::Rustc(message) => {
-                        self.sender.send(CargoMessage::Diagnostic(message)).unwrap()
+                        self.sender.send(CargoMessage::Diagnostic(message)).unwrap();
                     }
                 }
             }

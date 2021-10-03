@@ -16,15 +16,15 @@ pub(super) fn is_use_path_start(p: &Parser) -> bool {
 }
 
 pub(super) fn use_path(p: &mut Parser) {
-    path(p, Mode::Use)
+    path(p, Mode::Use);
 }
 
 pub(crate) fn type_path(p: &mut Parser) {
-    path(p, Mode::Type)
+    path(p, Mode::Type);
 }
 
 pub(super) fn expr_path(p: &mut Parser) {
-    path(p, Mode::Expr)
+    path(p, Mode::Expr);
 }
 
 pub(crate) fn type_path_for_qualifier(p: &mut Parser, qual: CompletedMarker) -> CompletedMarker {
@@ -117,7 +117,7 @@ fn opt_path_type_args(p: &mut Parser, mode: Mode) {
                 params::param_list_fn_trait(p);
                 opt_ret_type(p);
             } else {
-                generic_args::opt_generic_arg_list(p, false)
+                generic_args::opt_generic_arg_list(p, false);
             }
         }
         Mode::Expr => generic_args::opt_generic_arg_list(p, true),

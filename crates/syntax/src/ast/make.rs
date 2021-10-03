@@ -257,7 +257,7 @@ pub fn block_expr(
         format_to!(buf, "    {}\n", stmt);
     }
     if let Some(tail_expr) = tail_expr {
-        format_to!(buf, "    {}\n", tail_expr)
+        format_to!(buf, "    {}\n", tail_expr);
     }
     buf += "}";
     ast_from_text(&format!("fn f() {}", buf))

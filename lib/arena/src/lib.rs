@@ -63,7 +63,7 @@ impl<T> Eq for Idx<T> {}
 
 impl<T> Hash for Idx<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.raw.hash(state)
+        self.raw.hash(state);
     }
 }
 
@@ -71,7 +71,7 @@ impl<T> fmt::Debug for Idx<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut type_name = std::any::type_name::<T>();
         if let Some(idx) = type_name.rfind(':') {
-            type_name = &type_name[idx + 1..]
+            type_name = &type_name[idx + 1..];
         }
         write!(f, "Idx::<{}>({})", type_name, self.raw)
     }

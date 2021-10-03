@@ -34,7 +34,7 @@ fn generic_param(p: &mut Parser) {
         T![const] => const_param(p, m),
         _ => {
             m.abandon(p);
-            p.err_and_bump("expected type parameter")
+            p.err_and_bump("expected type parameter");
         }
     }
 }
@@ -62,7 +62,7 @@ fn type_param(p: &mut Parser, m: Marker) {
         // test type_param_default
         // struct S<T = i32>;
         p.bump(T![=]);
-        types::type_(p)
+        types::type_(p);
     }
     m.complete(p, TYPE_PARAM);
 }

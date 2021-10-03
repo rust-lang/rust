@@ -374,7 +374,7 @@ fn match_expr(p: &mut Parser) -> CompletedMarker {
     if p.at(T!['{']) {
         match_arm_list(p);
     } else {
-        p.error("expected `{`")
+        p.error("expected `{`");
     }
     m.complete(p, MATCH_EXPR)
 }
@@ -602,7 +602,7 @@ fn try_block_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
     if p.at(T!['{']) {
         stmt_list(p);
     } else {
-        p.error("expected a block")
+        p.error("expected a block");
     }
     m.complete(p, BLOCK_EXPR)
 }
@@ -639,7 +639,7 @@ fn meta_var_expr(p: &mut Parser) -> CompletedMarker {
         }
         _ => {
             while !p.at(R_DOLLAR) {
-                p.bump_any()
+                p.bump_any();
             }
             p.bump(R_DOLLAR);
             m.complete(p, ERROR)

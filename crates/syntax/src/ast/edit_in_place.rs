@@ -49,7 +49,7 @@ impl GenericParamsOwnerEdit for ast::Fn {
             } else {
                 Position::last_child_of(self.syntax())
             };
-            create_where_clause(position)
+            create_where_clause(position);
         }
         self.where_clause().unwrap()
     }
@@ -77,7 +77,7 @@ impl GenericParamsOwnerEdit for ast::Impl {
             } else {
                 Position::last_child_of(self.syntax())
             };
-            create_where_clause(position)
+            create_where_clause(position);
         }
         self.where_clause().unwrap()
     }
@@ -107,7 +107,7 @@ impl GenericParamsOwnerEdit for ast::Trait {
             } else {
                 Position::last_child_of(self.syntax())
             };
-            create_where_clause(position)
+            create_where_clause(position);
         }
         self.where_clause().unwrap()
     }
@@ -145,7 +145,7 @@ impl GenericParamsOwnerEdit for ast::Struct {
             } else {
                 Position::last_child_of(self.syntax())
             };
-            create_where_clause(position)
+            create_where_clause(position);
         }
         self.where_clause().unwrap()
     }
@@ -177,7 +177,7 @@ impl GenericParamsOwnerEdit for ast::Enum {
             } else {
                 Position::last_child_of(self.syntax())
             };
-            create_where_clause(position)
+            create_where_clause(position);
         }
         self.where_clause().unwrap()
     }
@@ -234,7 +234,7 @@ impl ast::GenericParamList {
             }
             None => {
                 let after_l_angle = Position::after(self.l_angle_token().unwrap());
-                ted::insert(after_l_angle, generic_param.syntax())
+                ted::insert(after_l_angle, generic_param.syntax());
             }
         }
     }
@@ -247,7 +247,7 @@ impl ast::WhereClause {
                 ted::append_child_raw(self.syntax(), make::token(T![,]));
             }
         }
-        ted::append_child(self.syntax(), predicate.syntax())
+        ted::append_child(self.syntax(), predicate.syntax());
     }
 }
 
@@ -267,7 +267,7 @@ impl ast::PathSegment {
     pub fn get_or_create_generic_arg_list(&self) -> ast::GenericArgList {
         if self.generic_arg_list().is_none() {
             let arg_list = make::generic_arg_list().clone_for_update();
-            ted::append_child(self.syntax(), arg_list.syntax())
+            ted::append_child(self.syntax(), arg_list.syntax());
         }
         self.generic_arg_list().unwrap()
     }
@@ -286,7 +286,7 @@ impl ast::UseTree {
                 break;
             }
         }
-        ted::remove(self.syntax())
+        ted::remove(self.syntax());
     }
 }
 
@@ -301,13 +301,13 @@ impl ast::Use {
             let ws_text = next_ws.syntax().text();
             if let Some(rest) = ws_text.strip_prefix('\n') {
                 if rest.is_empty() {
-                    ted::remove(next_ws.syntax())
+                    ted::remove(next_ws.syntax());
                 } else {
-                    ted::replace(next_ws.syntax(), make::tokens::whitespace(rest))
+                    ted::replace(next_ws.syntax(), make::tokens::whitespace(rest));
                 }
             }
         }
-        ted::remove(self.syntax())
+        ted::remove(self.syntax());
     }
 }
 
@@ -525,7 +525,7 @@ pub trait Indent: AstNode + Clone + Sized {
     fn reindent_to(&self, target_level: IndentLevel) {
         let current_level = IndentLevel::from_node(self.syntax());
         self.dedent(current_level);
-        self.indent(target_level)
+        self.indent(target_level);
     }
 }
 

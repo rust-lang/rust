@@ -70,15 +70,15 @@ impl fmt::Display for StopWatchSpan {
             let mut prefix = "";
             if instructions > 10000 {
                 instructions /= 1000;
-                prefix = "k"
+                prefix = "k";
             }
             if instructions > 10000 {
                 instructions /= 1000;
-                prefix = "m"
+                prefix = "m";
             }
             if instructions > 10000 {
                 instructions /= 1000;
-                prefix = "g"
+                prefix = "g";
             }
             write!(f, ", {}{}instr", instructions, prefix)?;
         }

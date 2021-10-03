@@ -25,19 +25,19 @@ impl PanicContext {
                 if !ctx.is_empty() {
                     eprintln!("Panic context:");
                     for frame in ctx.iter() {
-                        eprintln!("> {}\n", frame)
+                        eprintln!("> {}\n", frame);
                     }
                 }
-                default_hook(panic_info)
-            })
+                default_hook(panic_info);
+            });
         };
-        panic::set_hook(Box::new(hook))
+        panic::set_hook(Box::new(hook));
     }
 }
 
 impl Drop for PanicContext {
     fn drop(&mut self) {
-        with_ctx(|ctx| assert!(ctx.pop().is_some()))
+        with_ctx(|ctx| assert!(ctx.pop().is_some()));
     }
 }
 
@@ -45,5 +45,5 @@ fn with_ctx(f: impl FnOnce(&mut Vec<String>)) {
     thread_local! {
         static CTX: RefCell<Vec<String>> = RefCell::new(Vec::new());
     }
-    CTX.with(|ctx| f(&mut *ctx.borrow_mut()))
+    CTX.with(|ctx| f(&mut *ctx.borrow_mut()));
 }
