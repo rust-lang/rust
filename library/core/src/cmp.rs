@@ -568,6 +568,18 @@ impl Ordering {
     }
 }
 
+#[stable(feature = "convert_ordering_into_i32", since = "1.57.0")]
+impl From<Ordering> for i32 {
+    /// Convert an [`Ordering`] into a signed 32-bit integer.
+    ///
+    /// This function converts an `Ordering` into an integer compatible with C
+    /// FFI. This `i32` value is compatible with the return value of C library
+    /// functions such as `strncmp`.
+    fn from(ordering: Ordering) -> Self {
+        ordering as i32
+    }
+}
+
 /// A helper struct for reverse ordering.
 ///
 /// This struct is a helper to be used with functions like [`Vec::sort_by_key`] and
