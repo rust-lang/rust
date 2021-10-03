@@ -688,7 +688,7 @@ impl Radix {
     pub const ALL: &'static [Radix] =
         &[Radix::Binary, Radix::Octal, Radix::Decimal, Radix::Hexadecimal];
 
-    const fn prefix_len(&self) -> usize {
+    const fn prefix_len(self) -> usize {
         match self {
             Self::Decimal => 0,
             _ => 2,

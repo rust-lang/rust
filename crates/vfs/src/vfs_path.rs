@@ -73,9 +73,8 @@ impl VfsPath {
     pub fn starts_with(&self, other: &VfsPath) -> bool {
         match (&self.0, &other.0) {
             (VfsPathRepr::PathBuf(lhs), VfsPathRepr::PathBuf(rhs)) => lhs.starts_with(rhs),
-            (VfsPathRepr::PathBuf(_), _) => false,
             (VfsPathRepr::VirtualPath(lhs), VfsPathRepr::VirtualPath(rhs)) => lhs.starts_with(rhs),
-            (VfsPathRepr::VirtualPath(_), _) => false,
+            (VfsPathRepr::PathBuf(_) | VfsPathRepr::VirtualPath(_), _) => false,
         }
     }
 

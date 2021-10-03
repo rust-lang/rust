@@ -90,13 +90,13 @@ impl TextEdit {
         }
 
         let mut total_len = TextSize::of(&*text);
-        for indel in self.indels.iter() {
+        for indel in &self.indels {
             total_len += TextSize::of(&indel.insert);
             total_len -= indel.delete.end() - indel.delete.start();
         }
         let mut buf = String::with_capacity(total_len.into());
         let mut prev = 0;
-        for indel in self.indels.iter() {
+        for indel in &self.indels {
             let start: usize = indel.delete.start().into();
             let end: usize = indel.delete.end().into();
             if start > prev {
@@ -126,7 +126,7 @@ impl TextEdit {
 
     pub fn apply_to_offset(&self, offset: TextSize) -> Option<TextSize> {
         let mut res = offset;
-        for indel in self.indels.iter() {
+        for indel in &self.indels {
             if indel.delete.start() >= offset {
                 break;
             }

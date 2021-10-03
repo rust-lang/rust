@@ -311,7 +311,7 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> 
         _ => {
             // test full_range_expr
             // fn foo() { xs[..]; }
-            for &op in [T![..=], T![..]].iter() {
+            for op in [T![..=], T![..]] {
                 if p.at(op) {
                     m = p.start();
                     p.bump(op);

@@ -310,7 +310,7 @@ impl MiniCore {
         // Fixed point loop to compute transitive closure of flags.
         loop {
             let mut changed = false;
-            for &(u, v) in implications.iter() {
+            for &(u, v) in &implications {
                 if self.has_flag(u) && !self.has_flag(v) {
                     self.activated_flags.push(v.to_string());
                     changed = true;

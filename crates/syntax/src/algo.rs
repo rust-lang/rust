@@ -112,14 +112,14 @@ impl TreeDiff {
     pub fn into_text_edit(&self, builder: &mut TextEditBuilder) {
         let _p = profile::span("into_text_edit");
 
-        for (anchor, to) in self.insertions.iter() {
+        for (anchor, to) in &self.insertions {
             let offset = match anchor {
                 TreeDiffInsertPos::After(it) => it.text_range().end(),
                 TreeDiffInsertPos::AsFirstChild(it) => it.text_range().start(),
             };
             to.iter().for_each(|to| builder.insert(offset, to.to_string()));
         }
-        for (from, to) in self.replacements.iter() {
+        for (from, to) in &self.replacements {
             builder.replace(from.text_range(), to.to_string());
         }
         for text_range in self.deletions.iter().map(SyntaxElement::text_range) {
@@ -217,9 +217,8 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
                             cov_mark::hit!(diff_insertions);
                             insert = true;
                             break;
-                        } else {
-                            look_ahead_scratch.push(rhs_child);
                         }
+                        look_ahead_scratch.push(rhs_child);
                     }
                     let drain = look_ahead_scratch.drain(..);
                     if insert {

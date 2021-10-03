@@ -301,7 +301,7 @@ fn print(
         }
     }
 
-    for (child_msg, (duration, count)) in short_children.iter() {
+    for (child_msg, (duration, count)) in &short_children {
         writeln!(out, "    {}{} - {} ({} calls)", current_indent, ms(*duration), child_msg, count)
             .expect("printing profiling info");
     }

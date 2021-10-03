@@ -174,7 +174,7 @@ impl NotifyActor {
             loader::Entry::Directories(dirs) => {
                 let mut res = Vec::new();
 
-                for root in dirs.include.iter() {
+                for root in &dirs.include {
                     let walkdir =
                         WalkDir::new(root).follow_links(true).into_iter().filter_entry(|entry| {
                             if !entry.file_type().is_dir() {

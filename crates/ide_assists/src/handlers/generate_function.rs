@@ -542,11 +542,7 @@ fn fn_arg_type(
         return None;
     }
 
-    if let Ok(rendered) = ty.display_source_code(ctx.db(), target_module.into()) {
-        Some(rendered)
-    } else {
-        None
-    }
+    ty.display_source_code(ctx.db(), target_module.into()).ok()
 }
 
 /// Returns the position inside the current mod or file

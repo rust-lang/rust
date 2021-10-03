@@ -246,7 +246,7 @@ impl<'a> Writer<'a> {
 
     fn enqueue(&mut self, subtree: &'a tt::Subtree) -> u32 {
         let idx = self.subtree.len();
-        let delimiter_id = subtree.delimiter.map(|it| it.id).unwrap_or_else(TokenId::unspecified);
+        let delimiter_id = subtree.delimiter.map_or(TokenId::unspecified(), |it| it.id);
         let delimiter_kind = subtree.delimiter.map(|it| it.kind);
         self.subtree.push(SubtreeRepr { id: delimiter_id, kind: delimiter_kind, tt: [!0, !0] });
         self.work.push_back((idx, subtree));

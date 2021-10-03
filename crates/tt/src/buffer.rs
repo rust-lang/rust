@@ -194,8 +194,7 @@ impl<'a> Cursor<'a> {
                 TokenTree::Subtree(subtree) => Some(TokenTreeRef::Subtree(subtree, Some(tt))),
             },
             Some(Entry::Subtree(tt, subtree, _)) => Some(TokenTreeRef::Subtree(subtree, *tt)),
-            Some(Entry::End(_)) => None,
-            None => None,
+            Some(Entry::End(_)) | None => None,
         }
     }
 

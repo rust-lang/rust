@@ -275,7 +275,7 @@ impl ast::PathSegment {
 
 impl ast::UseTree {
     pub fn remove(&self) {
-        for &dir in [Direction::Next, Direction::Prev].iter() {
+        for dir in [Direction::Next, Direction::Prev] {
             if let Some(next_use_tree) = neighbor(self, dir) {
                 let separators = self
                     .syntax()

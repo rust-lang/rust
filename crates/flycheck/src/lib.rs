@@ -260,7 +260,7 @@ impl FlycheckActor {
 struct CargoHandle {
     child: JodChild,
     #[allow(unused)]
-    thread: jod_thread::JoinHandle<io::Result<bool>>,
+    thread: jod_thread::JoinHandle<bool>,
     receiver: Receiver<CargoMessage>,
 }
 
@@ -279,7 +279,7 @@ impl CargoHandle {
         // It is okay to ignore the result, as it only errors if the process is already dead
         let _ = self.child.kill();
         let exit_status = self.child.wait()?;
-        let read_at_least_one_message = self.thread.join()?;
+        let read_at_least_one_message = self.thread.join();
         if !exit_status.success() && !read_at_least_one_message {
             // FIXME: Read the stderr to display the reason, see `read2()` reference in PR comment:
             // https://github.com/rust-analyzer/rust-analyzer/pull/3632#discussion_r395605298
@@ -304,7 +304,7 @@ impl CargoActor {
     fn new(child_stdout: process::ChildStdout, sender: Sender<CargoMessage>) -> CargoActor {
         CargoActor { child_stdout, sender }
     }
-    fn run(self) -> io::Result<bool> {
+    fn run(self) -> bool {
         // We manually read a line at a time, instead of using serde's
         // stream deserializers, because the deserializer cannot recover
         // from an error, resulting in it getting stuck, because we try to
@@ -347,7 +347,7 @@ impl CargoActor {
                 }
             }
         }
-        Ok(read_at_least_one_message)
+        read_at_least_one_message
     }
 }
 

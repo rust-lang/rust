@@ -215,7 +215,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
         .flat_map(|node| node.traits.iter().map(move |t| (t, node)))
         .into_group_map()
         .into_iter()
-        .sorted_by_key(|(k, _)| k.clone())
+        .sorted_by_key(|(k, _)| *k)
         .map(|(trait_name, nodes)| {
             let name = format_ident!("Any{}", trait_name);
             let trait_name = format_ident!("{}", trait_name);
@@ -558,12 +558,13 @@ impl Field {
 }
 
 fn lower(grammar: &Grammar) -> AstSrc {
-    let mut res = AstSrc::default();
-
-    res.tokens = "Whitespace Comment String ByteString IntNumber FloatNumber"
-        .split_ascii_whitespace()
-        .map(|it| it.to_string())
-        .collect::<Vec<_>>();
+    let mut res = AstSrc {
+        tokens: "Whitespace Comment String ByteString IntNumber FloatNumber"
+            .split_ascii_whitespace()
+            .map(|it| it.to_string())
+            .collect::<Vec<_>>(),
+        ..Default::default()
+    };
 
     let nodes = grammar.iter().collect::<Vec<_>>();
 
