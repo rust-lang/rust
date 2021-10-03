@@ -330,7 +330,7 @@ fn traverse(
             }
         }
 
-        if let Some(_) = macro_highlighter.highlight(element_to_highlight.clone()) {
+        if macro_highlighter.highlight(element_to_highlight.clone()).is_some() {
             continue;
         }
 

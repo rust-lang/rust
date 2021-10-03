@@ -455,7 +455,7 @@ impl ast::RecordExprField {
     /// This will either replace the initializer, or in the case that this is a shorthand convert
     /// the initializer into the name ref and insert the expr as the new initializer.
     pub fn replace_expr(&self, expr: ast::Expr) {
-        if let Some(_) = self.name_ref() {
+        if self.name_ref().is_some() {
             match self.expr() {
                 Some(prev) => ted::replace(prev.syntax(), expr.syntax()),
                 None => ted::append_child(self.syntax(), expr.syntax()),
