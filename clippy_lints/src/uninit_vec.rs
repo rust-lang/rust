@@ -1,24 +1,24 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::get_vec_init_kind;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{
-    match_def_path, path_to_local_id, paths, peel_hir_expr_while, ty::is_uninit_value_valid_for_ty, SpanlessEq,
-};
-use rustc_hir::def::Res;
-use rustc_hir::{Block, Expr, ExprKind, HirId, PatKind, Stmt, StmtKind};
+use clippy_utils::{path_to_local_id, peel_hir_expr_while, ty::is_uninit_value_valid_for_ty, SpanlessEq};
+use rustc_hir::{Block, Expr, ExprKind, HirId, PatKind, PathSegment, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span};
 
+// TODO: add `ReadBuf` (RFC 2930) in "How to fix" once it is available in std
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for the creation of uninitialized `Vec<T>` by calling `set_len()`
-    /// immediately after `with_capacity()` or `reserve()`.
+    /// Checks for `set_len()` call that creates `Vec` with uninitialized elements.
+    /// This is commonly caused by calling `set_len()` right after after calling
+    /// `with_capacity()` or `reserve()`.
     ///
     /// ### Why is this bad?
-    /// It creates `Vec<T>` that contains uninitialized data, which leads to an
+    /// It creates a `Vec` with uninitialized data, which leads to an
     /// undefined behavior with most safe operations.
-    /// Notably, using uninitialized `Vec<u8>` with generic `Read` is unsound.
+    /// Notably, uninitialized `Vec<u8>` must not be used with generic `Read`.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -26,16 +26,25 @@ declare_clippy_lint! {
     /// unsafe { vec.set_len(1000); }
     /// reader.read(&mut vec); // undefined behavior!
     /// ```
-    /// Use an initialized buffer:
-    /// ```rust,ignore
-    /// let mut vec: Vec<u8> = vec![0; 1000];
-    /// reader.read(&mut vec);
-    /// ```
-    /// Or, wrap the content in `MaybeUninit`:
-    /// ```rust,ignore
-    /// let mut vec: Vec<MaybeUninit<T>> = Vec::with_capacity(1000);
-    /// unsafe { vec.set_len(1000); }
-    /// ```
+    ///
+    /// ### How to fix?
+    /// 1. Use an initialized buffer:
+    ///    ```rust,ignore
+    ///    let mut vec: Vec<u8> = vec![0; 1000];
+    ///    reader.read(&mut vec);
+    ///    ```
+    /// 2. Wrap the content in `MaybeUninit`:
+    ///    ```rust,ignore
+    ///    let mut vec: Vec<MaybeUninit<T>> = Vec::with_capacity(1000);
+    ///    vec.set_len(1000);  // `MaybeUninit` can be uninitialized
+    ///    ```
+    /// 3. If you are on nightly, `Vec::spare_capacity_mut()` is available:
+    ///    ```rust,ignore
+    ///    let mut vec: Vec<u8> = Vec::with_capacity(1000);
+    ///    let remaining = vec.spare_capacity_mut();  // `&mut [MaybeUninit<u8>]`
+    ///    // perform initialization with `remaining`
+    ///    vec.set_len(...);  // Safe to call `set_len()` on initialized part
+    ///    ```
     pub UNINIT_VEC,
     correctness,
     "Vec with uninitialized data"
@@ -59,11 +68,11 @@ impl<'tcx> LateLintPass<'tcx> for UninitVec {
 
 fn handle_uninit_vec_pair(
     cx: &LateContext<'tcx>,
-    maybe_with_capacity_or_reserve: &'tcx Stmt<'tcx>,
+    maybe_init_or_reserve: &'tcx Stmt<'tcx>,
     maybe_set_len: &'tcx Expr<'tcx>,
 ) {
     if_chain! {
-        if let Some(vec) = extract_with_capacity_or_reserve_target(cx, maybe_with_capacity_or_reserve);
+        if let Some(vec) = extract_init_or_reserve_target(cx, maybe_init_or_reserve);
         if let Some((set_len_self, call_span)) = extract_set_len_self(cx, maybe_set_len);
         if vec.eq_expr(cx, set_len_self);
         if let ty::Ref(_, vec_ty, _) = cx.typeck_results().expr_ty_adjusted(set_len_self).kind();
@@ -71,12 +80,12 @@ fn handle_uninit_vec_pair(
         // Check T of Vec<T>
         if !is_uninit_value_valid_for_ty(cx, substs.type_at(0));
         then {
-            // FIXME: false positive #7698
+            // FIXME: #7698, false positive of the internal lints
             #[allow(clippy::collapsible_span_lint_calls)]
             span_lint_and_then(
                 cx,
                 UNINIT_VEC,
-                vec![call_span, maybe_with_capacity_or_reserve.span],
+                vec![call_span, maybe_init_or_reserve.span],
                 "calling `set_len()` immediately after reserving a buffer creates uninitialized values",
                 |diag| {
                     diag.help("initialize the buffer or wrap the content in `MaybeUninit`");
@@ -101,15 +110,15 @@ impl<'tcx> LocalOrExpr<'tcx> {
     }
 }
 
-/// Returns the target vec of `Vec::with_capacity()` or `Vec::reserve()`
-fn extract_with_capacity_or_reserve_target(cx: &LateContext<'_>, stmt: &'tcx Stmt<'_>) -> Option<LocalOrExpr<'tcx>> {
+/// Finds the target location where the result of `Vec` initialization is stored
+/// or `self` expression for `Vec::reserve()`.
+fn extract_init_or_reserve_target<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'tcx>) -> Option<LocalOrExpr<'tcx>> {
     match stmt.kind {
         StmtKind::Local(local) => {
-            // let mut x = Vec::with_capacity()
             if_chain! {
                 if let Some(init_expr) = local.init;
                 if let PatKind::Binding(_, hir_id, _, None) = local.pat.kind;
-                if is_with_capacity(cx, init_expr);
+                if get_vec_init_kind(cx, init_expr).is_some();
                 then {
                     Some(LocalOrExpr::Local(hir_id))
                 } else {
@@ -117,40 +126,20 @@ fn extract_with_capacity_or_reserve_target(cx: &LateContext<'_>, stmt: &'tcx Stm
                 }
             }
         },
-        StmtKind::Expr(expr) | StmtKind::Semi(expr) => {
-            match expr.kind {
-                ExprKind::Assign(lhs, rhs, _span) if is_with_capacity(cx, rhs) => {
-                    // self.vec = Vec::with_capacity()
-                    Some(LocalOrExpr::Expr(lhs))
-                },
-                ExprKind::MethodCall(path, _, [self_expr, _], _) => {
-                    // self.vec.reserve()
-                    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr).peel_refs(), sym::vec_type)
-                        && path.ident.name.as_str() == "reserve"
-                    {
-                        Some(LocalOrExpr::Expr(self_expr))
-                    } else {
-                        None
-                    }
-                },
-                _ => None,
-            }
+        StmtKind::Expr(expr) | StmtKind::Semi(expr) => match expr.kind {
+            ExprKind::Assign(lhs, rhs, _span) if get_vec_init_kind(cx, rhs).is_some() => Some(LocalOrExpr::Expr(lhs)),
+            ExprKind::MethodCall(path, _, [self_expr, _], _) if is_reserve(cx, path, self_expr) => {
+                Some(LocalOrExpr::Expr(self_expr))
+            },
+            _ => None,
         },
         StmtKind::Item(_) => None,
     }
 }
 
-fn is_with_capacity(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> bool {
-    if_chain! {
-        if let ExprKind::Call(path_expr, _) = &expr.kind;
-        if let ExprKind::Path(qpath) = &path_expr.kind;
-        if let Res::Def(_, def_id) = cx.qpath_res(qpath, path_expr.hir_id);
-        then {
-            match_def_path(cx, def_id, &paths::VEC_WITH_CAPACITY)
-        } else {
-            false
-        }
-    }
+fn is_reserve(cx: &LateContext<'_>, path: &PathSegment<'_>, self_expr: &Expr<'_>) -> bool {
+    is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr).peel_refs(), sym::Vec)
+        && path.ident.name.as_str() == "reserve"
 }
 
 /// Returns self if the expression is `Vec::set_len()`
@@ -169,14 +158,13 @@ fn extract_set_len_self(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Option<(&
         }
     });
     match expr.kind {
-        ExprKind::MethodCall(_, _, [vec_expr, _], _) => {
-            cx.typeck_results().type_dependent_def_id(expr.hir_id).and_then(|id| {
-                if match_def_path(cx, id, &paths::VEC_SET_LEN) {
-                    Some((vec_expr, expr.span))
-                } else {
-                    None
-                }
-            })
+        ExprKind::MethodCall(path, _, [self_expr, _], _) => {
+            let self_type = cx.typeck_results().expr_ty(self_expr).peel_refs();
+            if is_type_diagnostic_item(cx, self_type, sym::Vec) && path.ident.name.as_str() == "set_len" {
+                Some((self_expr, expr.span))
+            } else {
+                None
+            }
         },
         _ => None,
     }
