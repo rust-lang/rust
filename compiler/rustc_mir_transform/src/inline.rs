@@ -151,8 +151,7 @@ impl<'tcx> Inliner<'tcx> {
         let callee_attrs = self.tcx.codegen_fn_attrs(callsite.callee.def_id());
         self.check_codegen_attributes(callsite, callee_attrs)?;
         self.check_mir_is_available(caller_body, &callsite.callee)?;
-        let callee_body = self.tcx.instance_mir(callsite.callee.def);
-        self.check_mir_body(callsite, callee_body, callee_attrs)?;
+        let callee_body = self.check_mir_body(callsite, callee_attrs)?;
 
         if !self.tcx.consider_optimizing(|| {
             format!("Inline {:?} into {:?}", callsite.callee, caller_body.source)
@@ -385,16 +384,17 @@ impl<'tcx> Inliner<'tcx> {
 
     /// Returns inlining decision that is based on the examination of callee MIR body.
     /// Assumes that codegen attributes have been checked for compatibility already.
-    #[instrument(level = "debug", skip(self, callee_body))]
+    #[instrument(level = "debug", skip(self))]
     fn check_mir_body(
         &self,
         callsite: &CallSite<'tcx>,
-        callee_body: &Body<'tcx>,
         callee_attrs: &CodegenFnAttrs,
-    ) -> Result<(), &'static str> {
-        let cost_info = body_cost(self.tcx, self.param_env, callee_body, |ty| {
-            callsite.callee.subst_mir(self.tcx, &ty)
-        });
+    ) -> Result<&'tcx Body<'tcx>, &'static str> {
+        if let InlineAttr::Always = callee_attrs.inline {
+            debug!("INLINING {:?} because inline(always)", callsite,);
+            let callee_body = self.tcx.instance_mir(callsite.callee.def);
+            return Ok(callee_body);
+        }
 
         let mut threshold = if callee_attrs.requests_inline() {
             self.tcx.sess.opts.unstable_opts.inline_mir_hint_threshold.unwrap_or(100)
@@ -402,26 +402,36 @@ impl<'tcx> Inliner<'tcx> {
             self.tcx.sess.opts.unstable_opts.inline_mir_threshold.unwrap_or(50)
         };
 
+        let callee_summary = self.tcx.instance_mir_summary(callsite.callee.def);
         // Give a bonus functions with a small number of blocks,
         // We normally have two or three blocks for even
         // very small functions.
-        if cost_info.bbcount <= 3 {
+        if callee_summary.bbcount <= 3 {
             threshold += threshold / 4;
+        }
+        if callee_summary.diverges {
+            threshold = 0;
         }
         debug!("    final inline threshold = {}", threshold);
 
-        if cost_info.diverges {
-            threshold = 0;
+        // Fast reject based on unsubstituted MIR.
+        if callee_summary.inlining_cost >= 2 * threshold {
+            return Err("summary cost above threshold");
         }
+
+        let callee_body = self.tcx.instance_mir(callsite.callee.def);
+        let cost_info = body_cost(self.tcx, self.param_env, callee_body, |ty| {
+            callsite.callee.subst_mir(self.tcx, &ty)
+        });
 
         let cost = cost_info.cost;
 
         if let InlineAttr::Always = callee_attrs.inline {
             debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
-            Ok(())
+            Ok(callee_body)
         } else if cost <= threshold {
             debug!("INLINING {:?} [cost={} <= threshold={}]", callsite, cost, threshold);
-            Ok(())
+            Ok(callee_body)
         } else {
             debug!("NOT inlining {:?} [cost={} > threshold={}]", callsite, cost, threshold);
             Err("cost above threshold")

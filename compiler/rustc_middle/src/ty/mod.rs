@@ -17,7 +17,7 @@ pub use self::IntVarValue::*;
 pub use self::Variance::*;
 use crate::metadata::ModChild;
 use crate::middle::privacy::AccessLevels;
-use crate::mir::{Body, GeneratorLayout};
+use crate::mir::{self, Body, GeneratorLayout};
 use crate::traits::{self, Reveal};
 use crate::ty;
 use crate::ty::fast_reject::SimplifiedType;
@@ -2157,6 +2157,38 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::InstanceDef::ClosureOnceShim { .. }
             | ty::InstanceDef::DropGlue(..)
             | ty::InstanceDef::CloneShim(..) => self.mir_shims(instance),
+        }
+    }
+
+    /// Returns the possibly-auto-generated MIR of a `(DefId, Subst)` pair.
+    pub fn instance_mir_summary(self, instance: ty::InstanceDef<'tcx>) -> mir::Summary {
+        match instance {
+            ty::InstanceDef::Item(def) => match self.def_kind(def.did) {
+                DefKind::Const
+                | DefKind::Static(..)
+                | DefKind::AssocConst
+                | DefKind::Ctor(..)
+                | DefKind::AnonConst
+                | DefKind::InlineConst => {
+                    mir::Summary { inlining_cost: 0, bbcount: 0, diverges: false }
+                }
+                // If the caller wants `mir_for_ctfe` of a function they should not be using
+                // `instance_mir`, so we'll assume const fn also wants the optimized version.
+                _ => {
+                    assert_eq!(def.const_param_did, None);
+                    self.optimized_mir_summary(def.did)
+                }
+            },
+            ty::InstanceDef::VTableShim(..)
+            | ty::InstanceDef::ReifyShim(..)
+            | ty::InstanceDef::Intrinsic(..)
+            | ty::InstanceDef::FnPtrShim(..)
+            | ty::InstanceDef::Virtual(..)
+            | ty::InstanceDef::ClosureOnceShim { .. }
+            | ty::InstanceDef::DropGlue(..)
+            | ty::InstanceDef::CloneShim(..) => {
+                mir::Summary { inlining_cost: 0, bbcount: 0, diverges: false }
+            }
         }
     }
 
