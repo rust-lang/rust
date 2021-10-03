@@ -6,8 +6,6 @@ LL | fn test<'x>(x: &'x isize) {
 LL |     drop::<Box<dyn for<'z> FnMut(&'z isize) -> &'z isize>>(Box::new(|z| {
 LL |         x
    |         ^ returning this value requires that `'x` must outlive `'static`
-   |
-   = help: consider replacing `'x` with `'static`
 
 error: aborting due to previous error
 

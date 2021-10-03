@@ -46,8 +46,6 @@ LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get())
 LL | |     });
    | |______^ `cell_a` escapes the function body here
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: aborting due to previous error
 

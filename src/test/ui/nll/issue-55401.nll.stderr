@@ -6,8 +6,6 @@ LL | fn static_to_a_to_static_through_ref_in_tuple<'a>(x: &'a u32) -> &'static u
 LL |     let (ref y, _z): (&'a u32, u32) = (&22, 44);
 LL |     *y
    |     ^^ returning this value requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: aborting due to previous error
 

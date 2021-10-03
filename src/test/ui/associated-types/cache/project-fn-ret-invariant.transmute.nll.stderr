@@ -6,8 +6,6 @@ LL | fn baz<'a, 'b>(x: Type<'a>) -> Type<'static> {
 ...
 LL |     bar(foo, x)
    |     ^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: aborting due to previous error
 

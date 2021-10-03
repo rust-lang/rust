@@ -45,8 +45,6 @@ LL | fn nested<'x>(x: &'x isize) {
 ...
 LL |         if false { return x; }
    |                           ^ returning this value requires that `'x` must outlive `'static`
-   |
-   = help: consider replacing `'x` with `'static`
 
 error: aborting due to 4 previous errors
 

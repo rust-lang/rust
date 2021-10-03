@@ -14,8 +14,6 @@ LL | fn give_some<'a>() {
    |              -- lifetime `'a` defined here
 LL |     want_hrtb::<&'a u32>()
    |     ^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: implementation of `Foo` is not general enough
   --> $DIR/hrtb-just-for-static.rs:30:5

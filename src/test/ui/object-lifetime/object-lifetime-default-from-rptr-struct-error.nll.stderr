@@ -5,8 +5,6 @@ LL | fn c<'a>(t: &'a MyBox<dyn Test+'a>, mut ss: SomeStruct<'a>) {
    |      -- lifetime `'a` defined here
 LL |     ss.t = t;
    |     ^^^^^^^^ assignment requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: aborting due to previous error
 
