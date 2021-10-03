@@ -376,6 +376,7 @@ fn array_try_from_fn() {
     assert_eq!(another_array, Err(SomeError::Foo));
 }
 
+#[cfg(not(panic = "abort"))]
 #[test]
 fn array_try_from_fn_drops_inserted_elements_on_err() {
     static DROP_COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -399,6 +400,7 @@ fn array_try_from_fn_drops_inserted_elements_on_err() {
     assert_eq!(DROP_COUNTER.load(Ordering::SeqCst), 2);
 }
 
+#[cfg(not(panic = "abort"))]
 #[test]
 fn array_try_from_fn_drops_inserted_elements_on_panic() {
     static DROP_COUNTER: AtomicUsize = AtomicUsize::new(0);
