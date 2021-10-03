@@ -285,37 +285,88 @@ use self::Usefulness::*;
 
 use super::deconstruct_pat::{Constructor, DeconstructedPat, Fields, SplitWildcard};
 
+use rustc_arena::TypedArena;
 use rustc_data_structures::captures::Captures;
 
-use rustc_arena::TypedArena;
-use rustc_hir::def_id::DefId;
-use rustc_hir::HirId;
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::{sym, Span, DUMMY_SP};
-
 use smallvec::{smallvec, SmallVec};
-use std::fmt;
+use std::fmt::Display;
+use std::fmt::{self, Debug};
 use std::iter::once;
 
-crate struct MatchCheckCtxt<'p, 'tcx> {
-    crate tcx: TyCtxt<'tcx>,
-    /// The module in which the match occurs. This is necessary for
-    /// checking inhabited-ness of types because whether a type is (visibly)
-    /// inhabited can depend on whether it was defined in the current module or
-    /// not. E.g., `struct Foo { _private: ! }` cannot be seen to be empty
-    /// outside its module and should not be matchable with an empty match statement.
-    crate module: DefId,
-    crate param_env: ty::ParamEnv<'tcx>,
-    crate pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
+/// Context for running the algorithm. This decouples the algorithm from specifics of types and the
+/// like.
+/// The `Copy` and `Debug` bounds are not actually used, but are needed because derived impls add
+/// extra useless bounds on `Cx`.
+pub(crate) trait Context: Debug + Copy {
+    type Ty: Debug + Copy;
+    type TyList: Debug + Clone;
+    type TyListIter: Iterator<Item = Self::Ty>;
+    type VariantIdx: Debug + Copy + Eq;
+    type F32Float: Debug + Display + Clone + PartialOrd;
+    type F64Float: Debug + Display + Clone + PartialOrd;
+    type StringLit: Debug + Clone + Ord;
+    type HirId: Debug + Copy;
+    type Span: Debug + Copy + Default;
+    type Ident: Display;
+
+    fn is_numeric(ty: Self::Ty) -> bool;
+
+    /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
+    fn is_foreign_non_exhaustive_enum(&self, ty: Self::Ty) -> bool;
+
+    fn ty_list_len(ty_list: &Self::TyList) -> usize;
+    fn ty_list_iter(ty_list: &Self::TyList) -> Self::TyListIter;
+
+    /// List the set of possible constructors for the type `ty`. For numbers, arrays and slices we use
+    /// ranges and variable-length slices when appropriate.
+    ///
+    /// If the `exhaustive_patterns` feature is enabled, we make sure to omit constructors that are
+    /// statically impossible. E.g., for `Option<!>`, we do not include `Some(_)` in the returned list
+    /// of constructors.
+    /// Even if `exhaustive_patterns` is disabled, we also omit constructors for empty enums and the
+    /// never type if we are at the top-level in a match, because we want to allow empty matches to be
+    /// valid for those.
+    /// Invariant: this is only empty when the type is uninhabited, and the reverse holds if
+    /// `exhaustive_patterns` is enabled.
+    fn list_constructors_for_type(
+        &self,
+        ty: Self::Ty,
+        is_top_level_pattern: bool,
+    ) -> SmallVec<[Constructor<Self>; 1]>;
+
+    /// Show the name of the variant corresponding to this constructor.
+    /// `ty` must be `ty::Adt`, and `ctor` must be a constructor for that type.
+    fn variant_ident(ty: Self::Ty, ctor: &Constructor<Self>) -> Option<Self::Ident>;
+
+    /// Whether the variant should be hidden from lints.
+    /// `ty` must be `ty::Adt` for an enum, and `idx` must be the index of a variant for that type.
+    fn is_doc_hidden_variant(&self, ty: Self::Ty, idx: Self::VariantIdx) -> bool;
+
+    /// List the fields for this variant.
+    /// In the cases of either a `#[non_exhaustive]` field list or a non-public field, we hide
+    /// uninhabited fields in order not to reveal the uninhabitedness of the whole variant.
+    /// `ty` must be `ty::Adt`, and `ctor` must be a constructor for that type.
+    fn list_variant_nonhidden_fields(
+        &self,
+        ty: Self::Ty,
+        ctor: &Constructor<Self>,
+    ) -> Vec<Self::Ty>;
+
+    fn span_bug(span: Self::Span, f: impl Fn() -> String) -> !;
+}
+
+crate struct UsefulnessCtxt<'p, Cx: Context> {
+    crate cx: Cx,
+    crate pattern_arena: &'p TypedArena<DeconstructedPat<'p, Cx>>,
 }
 
 #[derive(Copy, Clone)]
-pub(super) struct PatCtxt<'a, 'p, 'tcx> {
-    pub(super) cx: &'a MatchCheckCtxt<'p, 'tcx>,
+pub(super) struct PatCtxt<'a, 'p, Cx: Context> {
+    pub(super) ucx: &'a UsefulnessCtxt<'p, Cx>,
     /// Type of the current column under investigation.
-    pub(super) ty: Ty<'tcx>,
+    pub(super) ty: Cx::Ty,
     /// Span of the current pattern under investigation.
-    pub(super) span: Span,
+    pub(super) span: Cx::Span,
     /// Whether the current pattern is the whole pattern as found in a match arm, or if it's a
     /// subpattern.
     pub(super) is_top_level: bool,
@@ -323,7 +374,7 @@ pub(super) struct PatCtxt<'a, 'p, 'tcx> {
     pub(super) is_non_exhaustive: bool,
 }
 
-impl<'a, 'p, 'tcx> fmt::Debug for PatCtxt<'a, 'p, 'tcx> {
+impl<'a, 'p, Cx: Context> Debug for PatCtxt<'a, 'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PatCtxt").field("ty", &self.ty).finish()
     }
@@ -332,16 +383,16 @@ impl<'a, 'p, 'tcx> fmt::Debug for PatCtxt<'a, 'p, 'tcx> {
 /// A row of a matrix. Rows of len 1 are very common, which is why `SmallVec[_; 2]`
 /// works well.
 #[derive(Clone)]
-struct PatStack<'p, 'tcx> {
-    pats: SmallVec<[&'p DeconstructedPat<'p, 'tcx>; 2]>,
+struct PatStack<'p, Cx: Context> {
+    pats: SmallVec<[&'p DeconstructedPat<'p, Cx>; 2]>,
 }
 
-impl<'p, 'tcx> PatStack<'p, 'tcx> {
-    fn from_pattern(pat: &'p DeconstructedPat<'p, 'tcx>) -> Self {
+impl<'p, Cx: Context> PatStack<'p, Cx> {
+    fn from_pattern(pat: &'p DeconstructedPat<'p, Cx>) -> Self {
         Self::from_vec(smallvec![pat])
     }
 
-    fn from_vec(vec: SmallVec<[&'p DeconstructedPat<'p, 'tcx>; 2]>) -> Self {
+    fn from_vec(vec: SmallVec<[&'p DeconstructedPat<'p, Cx>; 2]>) -> Self {
         PatStack { pats: vec }
     }
 
@@ -353,17 +404,17 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         self.pats.len()
     }
 
-    fn head(&self) -> &'p DeconstructedPat<'p, 'tcx> {
+    fn head(&self) -> &'p DeconstructedPat<'p, Cx> {
         self.pats[0]
     }
 
-    fn iter(&self) -> impl Iterator<Item = &DeconstructedPat<'p, 'tcx>> {
+    fn iter(&self) -> impl Iterator<Item = &DeconstructedPat<'p, Cx>> {
         self.pats.iter().copied()
     }
 
     // Recursively expand the first pattern into its subpatterns. Only useful if the pattern is an
     // or-pattern. Panics if `self` is empty.
-    fn expand_or_pat<'a>(&'a self) -> impl Iterator<Item = PatStack<'p, 'tcx>> + Captures<'a> {
+    fn expand_or_pat<'a>(&'a self) -> impl Iterator<Item = PatStack<'p, Cx>> + Captures<'a> {
         self.head().iter_fields().map(move |pat| {
             let mut new_patstack = PatStack::from_pattern(pat);
             new_patstack.pats.extend_from_slice(&self.pats[1..]);
@@ -379,19 +430,19 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     /// This is roughly the inverse of `Constructor::apply`.
     fn pop_head_constructor(
         &self,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
-        ctor: &Constructor<'tcx>,
-    ) -> PatStack<'p, 'tcx> {
+        ucx: &UsefulnessCtxt<'p, Cx>,
+        ctor: &Constructor<Cx>,
+    ) -> PatStack<'p, Cx> {
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
-        let mut new_fields: SmallVec<[_; 2]> = self.head().specialize(cx, ctor);
+        let mut new_fields: SmallVec<[_; 2]> = self.head().specialize(ucx, ctor);
         new_fields.extend_from_slice(&self.pats[1..]);
         PatStack::from_vec(new_fields)
     }
 }
 
 /// Pretty-printing for matrix row.
-impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
+impl<'p, Cx: Context> Debug for PatStack<'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "+")?;
         for pat in self.iter() {
@@ -403,11 +454,11 @@ impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
 
 /// A 2D matrix.
 #[derive(Clone)]
-pub(super) struct Matrix<'p, 'tcx> {
-    patterns: Vec<PatStack<'p, 'tcx>>,
+pub(super) struct Matrix<'p, Cx: Context> {
+    patterns: Vec<PatStack<'p, Cx>>,
 }
 
-impl<'p, 'tcx> Matrix<'p, 'tcx> {
+impl<'p, Cx: Context> Matrix<'p, Cx> {
     fn empty() -> Self {
         Matrix { patterns: vec![] }
     }
@@ -419,7 +470,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
     /// expands it.
-    fn push(&mut self, row: PatStack<'p, 'tcx>) {
+    fn push(&mut self, row: PatStack<'p, Cx>) {
         if !row.is_empty() && row.head().is_or_pat() {
             for row in row.expand_or_pat() {
                 self.patterns.push(row);
@@ -432,20 +483,20 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// Iterate over the first component of each row
     fn heads<'a>(
         &'a self,
-    ) -> impl Iterator<Item = &'p DeconstructedPat<'p, 'tcx>> + Clone + Captures<'a> {
+    ) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Clone + Captures<'a> {
         self.patterns.iter().map(|r| r.head())
     }
 
     /// This computes `S(constructor, self)`. See top of the file for explanations.
     fn specialize_constructor(
         &self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
-        ctor: &Constructor<'tcx>,
-    ) -> Matrix<'p, 'tcx> {
+        pcx: PatCtxt<'_, 'p, Cx>,
+        ctor: &Constructor<Cx>,
+    ) -> Matrix<'p, Cx> {
         let mut matrix = Matrix::empty();
         for row in &self.patterns {
             if ctor.is_covered_by(pcx, row.head().ctor()) {
-                let new_row = row.pop_head_constructor(pcx.cx, ctor);
+                let new_row = row.pop_head_constructor(pcx.ucx, ctor);
                 matrix.push(new_row);
             }
         }
@@ -462,7 +513,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 /// + false + [_]               +
 /// + _     + [_, _, tail @ ..] +
 /// ```
-impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
+impl<'p, Cx: Context> Debug for Matrix<'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "\n")?;
 
@@ -496,15 +547,15 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
 /// witnesses of non-exhaustiveness when there are any.
 /// Which variant to use is dictated by `ArmType`.
 #[derive(Debug)]
-enum Usefulness<'p, 'tcx> {
+enum Usefulness<'p, Cx: Context> {
     /// If we don't care about witnesses, simply remember if the pattern was useful.
     NoWitnesses { useful: bool },
     /// Carries a list of witnesses of non-exhaustiveness. If empty, indicates that the whole
     /// pattern is unreachable.
-    WithWitnesses(Vec<Witness<'p, 'tcx>>),
+    WithWitnesses(Vec<Witness<'p, Cx>>),
 }
 
-impl<'p, 'tcx> Usefulness<'p, 'tcx> {
+impl<'p, Cx: Context> Usefulness<'p, Cx> {
     fn new_useful(preference: ArmType) -> Self {
         match preference {
             // A single (empty) witness of reachability.
@@ -545,9 +596,9 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
     /// with the results of specializing with the other constructors.
     fn apply_constructor(
         self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
-        matrix: &Matrix<'p, 'tcx>, // used to compute missing ctors
-        ctor: &Constructor<'tcx>,
+        pcx: PatCtxt<'_, 'p, Cx>,
+        matrix: &Matrix<'p, Cx>, // used to compute missing ctors
+        ctor: &Constructor<Cx>,
     ) -> Self {
         match self {
             NoWitnesses { .. } => self,
@@ -566,47 +617,28 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
 
                         // This lets us know if we skipped any variants because they are marked
                         // `doc(hidden)`.
-                        let mut doc_hidden_variant = false;
+                        let mut hid_some_variants = false;
                         // Construct for each missing constructor a "wild" version of this
                         // constructor, that matches everything that can be built with
                         // it. For example, if `ctor` is a `Constructor::Variant` for
                         // `Option::Some`, we get the pattern `Some(_)`.
-                        let mut new: Vec<DeconstructedPat<'_, '_>> = split_wildcard
+                        let mut new: Vec<DeconstructedPat<'_, _>> = split_wildcard
                             .iter_missing(pcx)
-                            .filter_map(|missing_ctor| {
-                                // Check if this variant is marked `doc(hidden)`
+                            .filter(|missing_ctor| {
                                 if let Constructor::Variant(idx) = missing_ctor {
-                                    if let ty::Adt(adt, _) = pcx.ty.kind() {
-                                        if pcx
-                                            .cx
-                                            .tcx
-                                            .get_attrs(adt.variants[*idx].def_id)
-                                            .iter()
-                                            .find_map(|attr| {
-                                                if attr.has_name(sym::doc) {
-                                                    attr.meta_item_list()
-                                                } else {
-                                                    None
-                                                }
-                                            })
-                                            .map(|items| {
-                                                items
-                                                    .iter()
-                                                    .find(|item| item.has_name(sym::hidden))
-                                                    .is_some()
-                                            })
-                                            .unwrap_or(false)
-                                        {
-                                            doc_hidden_variant = true;
-                                            return None;
-                                        }
+                                    if pcx.ucx.cx.is_doc_hidden_variant(pcx.ty, *idx) {
+                                        hid_some_variants = true;
+                                        return false;
                                     }
                                 }
-                                Some(DeconstructedPat::wild_from_ctor(pcx, missing_ctor.clone()))
+                                true
+                            })
+                            .map(|missing_ctor| {
+                                DeconstructedPat::wild_from_ctor(pcx, missing_ctor.clone())
                             })
                             .collect();
 
-                        if doc_hidden_variant {
+                        if hid_some_variants {
                             new.push(DeconstructedPat::wildcard(pcx.ty));
                         }
 
@@ -680,11 +712,11 @@ enum ArmType {
 ///
 /// The final `Pair(Some(_), true)` is then the resulting witness.
 #[derive(Debug)]
-crate struct Witness<'p, 'tcx>(Vec<DeconstructedPat<'p, 'tcx>>);
+crate struct Witness<'p, Cx: Context>(Vec<DeconstructedPat<'p, Cx>>);
 
-impl<'p, 'tcx> Witness<'p, 'tcx> {
+impl<'p, Cx: Context> Witness<'p, Cx> {
     /// Asserts that the witness contains a single pattern, and returns it.
-    fn single_pattern(self) -> DeconstructedPat<'p, 'tcx> {
+    fn single_pattern(self) -> DeconstructedPat<'p, Cx> {
         assert_eq!(self.0.len(), 1);
         self.0.into_iter().next().unwrap()
     }
@@ -702,13 +734,13 @@ impl<'p, 'tcx> Witness<'p, 'tcx> {
     ///
     /// left_ty: struct X { a: (bool, &'static str), b: usize}
     /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
-    fn apply_constructor(mut self, pcx: PatCtxt<'_, 'p, 'tcx>, ctor: &Constructor<'tcx>) -> Self {
+    fn apply_constructor(mut self, pcx: PatCtxt<'_, 'p, Cx>, ctor: &Constructor<Cx>) -> Self {
         let pat = {
             let len = self.0.len();
             let arity = ctor.arity(pcx);
             let pats = self.0.drain((len - arity)..).rev();
-            let fields = Fields::from_iter(pcx.cx, pats);
-            DeconstructedPat::new(ctor.clone(), fields, pcx.ty, DUMMY_SP)
+            let fields = Fields::from_iter(pcx.ucx, pats);
+            DeconstructedPat::new(ctor.clone(), fields, pcx.ty, Cx::Span::default())
         };
 
         self.0.push(pat);
@@ -741,18 +773,18 @@ impl<'p, 'tcx> Witness<'p, 'tcx> {
 /// relied on for soundness.
 #[instrument(
     level = "debug",
-    skip(cx, matrix, report, witness_preference, hir_id, is_under_guard, is_top_level)
+    skip(ucx, matrix, report, witness_preference, hir_id, is_under_guard, is_top_level)
 )]
-fn is_useful<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    matrix: &Matrix<'p, 'tcx>,
-    v: &PatStack<'p, 'tcx>,
-    report: &mut UsefulnessReport<'p, 'tcx>,
+fn is_useful<'p, Cx: Context>(
+    ucx: &UsefulnessCtxt<'p, Cx>,
+    matrix: &Matrix<'p, Cx>,
+    v: &PatStack<'p, Cx>,
+    report: &mut UsefulnessReport<'p, Cx>,
     witness_preference: ArmType,
-    hir_id: HirId,
+    hir_id: Cx::HirId,
     is_under_guard: bool,
     is_top_level: bool,
-) -> Usefulness<'p, 'tcx> {
+) -> Usefulness<'p, Cx> {
     debug!("matrix,v={:?}{:?}", matrix, v);
     let Matrix { patterns: rows, .. } = matrix;
 
@@ -774,8 +806,8 @@ fn is_useful<'p, 'tcx>(
     assert!(rows.iter().all(|r| r.len() == v.len()));
 
     let ty = v.head().ty();
-    let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
-    let pcx = PatCtxt { cx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };
+    let is_non_exhaustive = ucx.cx.is_foreign_non_exhaustive_enum(ty);
+    let pcx = PatCtxt { ucx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };
 
     // If the first pattern is an or-pattern, expand it.
     let mut ret = Usefulness::new_not_useful(witness_preference);
@@ -785,7 +817,7 @@ fn is_useful<'p, 'tcx>(
         let mut matrix = matrix.clone();
         for v in v.expand_or_pat() {
             let usefulness = is_useful(
-                cx,
+                ucx,
                 &matrix,
                 &v,
                 report,
@@ -823,9 +855,9 @@ fn is_useful<'p, 'tcx>(
         for ctor in split_ctors {
             debug!("specialize({:?})", ctor);
             let spec_matrix = start_matrix.specialize_constructor(pcx, &ctor);
-            let v = v.pop_head_constructor(cx, &ctor);
+            let v = v.pop_head_constructor(ucx, &ctor);
             let usefulness = is_useful(
-                cx,
+                ucx,
                 &spec_matrix,
                 &v,
                 report,
@@ -879,10 +911,10 @@ fn is_useful<'p, 'tcx>(
 
 /// The arm of a match expression.
 #[derive(Clone, Copy)]
-crate struct MatchArm<'p, 'tcx> {
+crate struct MatchArm<'p, Cx: Context> {
     /// The pattern must have been lowered through `check_match::MatchVisitor::lower_pattern`.
-    crate pat: &'p DeconstructedPat<'p, 'tcx>,
-    crate hir_id: HirId,
+    crate pat: &'p DeconstructedPat<'p, Cx>,
+    crate hir_id: Cx::HirId,
     crate has_guard: bool,
 }
 
@@ -894,20 +926,32 @@ crate enum Reachability {
 }
 
 /// The output of checking a match for exhaustiveness and arm reachability.
-#[derive(Default)]
-crate struct UsefulnessReport<'p, 'tcx> {
+crate struct UsefulnessReport<'p, Cx: Context> {
     /// For each arm of the input, whether that arm is reachable after the arms above it.
-    crate arm_usefulness: Vec<(MatchArm<'p, 'tcx>, Reachability)>,
+    crate arm_usefulness: Vec<(MatchArm<'p, Cx>, Reachability)>,
     /// If the match is exhaustive, this is empty. If not, this contains witnesses for the lack of
     /// exhaustiveness.
-    crate non_exhaustiveness_witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
+    crate non_exhaustiveness_witnesses: Vec<DeconstructedPat<'p, Cx>>,
     /// Reports any unreachable sub-or-patterns.
-    crate unreachable_subpatterns: Vec<(Span, HirId)>,
+    crate unreachable_subpatterns: Vec<(Cx::Span, Cx::HirId)>,
     /// Report when some variants of a `non_exhaustive` enum failed to be listed explicitly.
     crate non_exhaustive_omitted_patterns:
-        Vec<(Ty<'tcx>, Span, HirId, Vec<DeconstructedPat<'p, 'tcx>>)>,
+        Vec<(Cx::Ty, Cx::Span, Cx::HirId, Vec<DeconstructedPat<'p, Cx>>)>,
     /// Report likely incorrect range patterns (#63987)
-    crate overlapping_range_endpoints: Vec<(Span, HirId, Vec<DeconstructedPat<'p, 'tcx>>)>,
+    crate overlapping_range_endpoints: Vec<(Cx::Span, Cx::HirId, Vec<DeconstructedPat<'p, Cx>>)>,
+}
+
+// Can't derive because it adds a bound on `Cx`.
+impl<'p, Cx: Context> Default for UsefulnessReport<'p, Cx> {
+    fn default() -> Self {
+        Self {
+            arm_usefulness: Default::default(),
+            non_exhaustiveness_witnesses: Default::default(),
+            unreachable_subpatterns: Default::default(),
+            non_exhaustive_omitted_patterns: Default::default(),
+            overlapping_range_endpoints: Default::default(),
+        }
+    }
 }
 
 /// The entrypoint for the usefulness algorithm. Computes whether a match is exhaustive and which
@@ -915,17 +959,17 @@ crate struct UsefulnessReport<'p, 'tcx> {
 ///
 /// Note: the input patterns must have been lowered through
 /// `check_match::MatchVisitor::lower_pattern`.
-crate fn compute_match_usefulness<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    arms: &[MatchArm<'p, 'tcx>],
-    scrut_hir_id: HirId,
-    scrut_ty: Ty<'tcx>,
-) -> UsefulnessReport<'p, 'tcx> {
+crate fn compute_match_usefulness<'p, Cx: Context>(
+    ucx: &UsefulnessCtxt<'p, Cx>,
+    arms: &[MatchArm<'p, Cx>],
+    scrut_hir_id: Cx::HirId,
+    scrut_ty: Cx::Ty,
+) -> UsefulnessReport<'p, Cx> {
     let mut report = UsefulnessReport::default();
     let mut matrix = Matrix::empty();
     for arm in arms {
         let v = PatStack::from_pattern(arm.pat);
-        is_useful(cx, &matrix, &v, &mut report, RealArm, arm.hir_id, arm.has_guard, true);
+        is_useful(ucx, &matrix, &v, &mut report, RealArm, arm.hir_id, arm.has_guard, true);
         if !arm.has_guard {
             matrix.push(v);
         }
@@ -940,10 +984,10 @@ crate fn compute_match_usefulness<'p, 'tcx>(
         report.arm_usefulness.push((*arm, reachability));
     }
 
-    let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty));
+    let wild_pattern = ucx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty));
     let v = PatStack::from_pattern(wild_pattern);
     let usefulness =
-        is_useful(cx, &matrix, &v, &mut report, FakeExtraWildcard, scrut_hir_id, false, true);
+        is_useful(ucx, &matrix, &v, &mut report, FakeExtraWildcard, scrut_hir_id, false, true);
     report.non_exhaustiveness_witnesses = match usefulness {
         WithWitnesses(pats) => pats.into_iter().map(|w| w.single_pattern()).collect(),
         NoWitnesses { .. } => bug!(),

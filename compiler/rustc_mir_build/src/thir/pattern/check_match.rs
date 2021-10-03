@@ -1,8 +1,8 @@
 use super::deconstruct_pat::{Constructor, DeconstructedPat};
 use super::usefulness::{
-    compute_match_usefulness, MatchArm, MatchCheckCtxt, Reachability, UsefulnessReport,
+    compute_match_usefulness, MatchArm, Reachability, UsefulnessCtxt, UsefulnessReport,
 };
-use super::{deconstructed_to_pat, pat_to_deconstructed, PatCtxt, PatternError};
+use super::{deconstructed_to_pat, pat_to_deconstructed, MatchCheckCtxt, PatCtxt, PatternError};
 
 use rustc_arena::TypedArena;
 use rustc_ast::Mutability;
@@ -51,7 +51,7 @@ struct MatchVisitor<'a, 'p, 'tcx> {
     tcx: TyCtxt<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
+    pattern_arena: &'p TypedArena<DeconstructedPat<'p, MatchCheckCtxt<'tcx>>>,
 }
 
 impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
@@ -128,10 +128,10 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
     fn lower_pattern(
         &self,
-        cx: &mut MatchCheckCtxt<'p, 'tcx>,
+        cx: &UsefulnessCtxt<'p, MatchCheckCtxt<'tcx>>,
         pat: &'tcx hir::Pat<'tcx>,
         have_errors: &mut bool,
-    ) -> &'p DeconstructedPat<'p, 'tcx> {
+    ) -> &'p DeconstructedPat<'p, MatchCheckCtxt<'tcx>> {
         let mut patcx = PatCtxt::new(self.tcx, self.param_env, self.typeck_results);
         patcx.include_lint_checks();
         let pattern = patcx.lower_pattern(pat);
@@ -143,13 +143,13 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         pattern
     }
 
-    fn new_cx(&self, hir_id: HirId) -> MatchCheckCtxt<'p, 'tcx> {
-        MatchCheckCtxt {
+    fn new_cx(&self, hir_id: HirId) -> UsefulnessCtxt<'p, MatchCheckCtxt<'tcx>> {
+        let cx = MatchCheckCtxt {
             tcx: self.tcx,
             param_env: self.param_env,
             module: self.tcx.parent_module(hir_id).to_def_id(),
-            pattern_arena: &self.pattern_arena,
-        }
+        };
+        UsefulnessCtxt { cx, pattern_arena: &self.pattern_arena }
     }
 
     fn check_let(&mut self, pat: &'tcx hir::Pat<'tcx>, expr: &hir::Expr<'_>, span: Span) {
@@ -165,15 +165,16 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         arms: &'tcx [hir::Arm<'tcx>],
         source: hir::MatchSource,
     ) {
-        let mut cx = self.new_cx(scrut.hir_id);
+        let ucx = self.new_cx(scrut.hir_id);
+        let cx = &ucx.cx;
 
         for arm in arms {
             // Check the arm for some things unrelated to exhaustiveness.
             self.check_patterns(&arm.pat, Refutable);
             if let Some(hir::Guard::IfLet(ref pat, _)) = arm.guard {
                 self.check_patterns(pat, Refutable);
-                let tpat = self.lower_pattern(&mut cx, pat, &mut false);
-                check_let_reachability(&mut cx, pat.hir_id, tpat, tpat.span());
+                let tpat = self.lower_pattern(&ucx, pat, &mut false);
+                check_let_reachability(&ucx, pat.hir_id, tpat, tpat.span());
             }
         }
 
@@ -182,7 +183,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         let arms: Vec<_> = arms
             .iter()
             .map(|hir::Arm { pat, guard, .. }| MatchArm {
-                pat: self.lower_pattern(&mut cx, pat, &mut have_errors),
+                pat: self.lower_pattern(&ucx, pat, &mut have_errors),
                 hir_id: pat.hir_id,
                 has_guard: guard.is_some(),
             })
@@ -194,7 +195,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         }
 
         let scrut_ty = self.typeck_results.expr_ty_adjusted(scrut);
-        let report = compute_match_usefulness(&cx, &arms, scrut.hir_id, scrut_ty);
+        let report = compute_match_usefulness(&ucx, &arms, scrut.hir_id, scrut_ty);
 
         match source {
             hir::MatchSource::ForLoopDesugar | hir::MatchSource::Normal => {
@@ -215,12 +216,13 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
     }
 
     fn check_irrefutable(&self, pat: &'tcx Pat<'tcx>, origin: &str, sp: Option<Span>) {
-        let mut cx = self.new_cx(pat.hir_id);
+        let ucx = self.new_cx(pat.hir_id);
+        let cx = &ucx.cx;
 
-        let pattern = self.lower_pattern(&mut cx, pat, &mut false);
+        let pattern = self.lower_pattern(&ucx, pat, &mut false);
         let pattern_ty = pattern.ty();
         let arms = vec![MatchArm { pat: pattern, hir_id: pat.hir_id, has_guard: false }];
-        let report = compute_match_usefulness(&cx, &arms, pat.hir_id, pattern_ty);
+        let report = compute_match_usefulness(&ucx, &arms, pat.hir_id, pattern_ty);
         report_exhaustiveness_lints(&cx, &report);
 
         // Note: we ignore whether the pattern is unreachable (i.e. whether the type is empty). We
@@ -359,7 +361,7 @@ fn check_for_bindings_named_same_as_variants(
 }
 
 /// Checks for common cases of "catchall" patterns that may not be intended as such.
-fn pat_is_catchall(pat: &DeconstructedPat<'_, '_>) -> bool {
+fn pat_is_catchall(pat: &DeconstructedPat<'_, MatchCheckCtxt<'_>>) -> bool {
     use Constructor::*;
     match pat.ctor() {
         Wildcard => true,
@@ -440,13 +442,14 @@ fn irrefutable_let_pattern(tcx: TyCtxt<'_>, id: HirId, span: Span) {
 }
 
 fn check_let_reachability<'p, 'tcx>(
-    cx: &mut MatchCheckCtxt<'p, 'tcx>,
+    ucx: &UsefulnessCtxt<'p, MatchCheckCtxt<'tcx>>,
     pat_id: HirId,
-    pat: &'p DeconstructedPat<'p, 'tcx>,
+    pat: &'p DeconstructedPat<'p, MatchCheckCtxt<'tcx>>,
     span: Span,
 ) {
+    let cx = &ucx.cx;
     let arms = [MatchArm { pat, hir_id: pat_id, has_guard: false }];
-    let report = compute_match_usefulness(&cx, &arms, pat_id, pat.ty());
+    let report = compute_match_usefulness(&ucx, &arms, pat_id, pat.ty());
     report_exhaustiveness_lints(&cx, &report);
 
     // Report if the pattern is unreachable, which can only occur when the type is uninhabited.
@@ -460,8 +463,8 @@ fn check_let_reachability<'p, 'tcx>(
 
 /// Report unreachable arms, if any.
 fn report_arm_reachability<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    report: &UsefulnessReport<'p, 'tcx>,
+    cx: &MatchCheckCtxt<'tcx>,
+    report: &UsefulnessReport<'p, MatchCheckCtxt<'tcx>>,
 ) {
     let mut catchall = None;
     for (arm, reachability) in report.arm_usefulness.iter() {
@@ -479,8 +482,8 @@ fn report_arm_reachability<'p, 'tcx>(
 
 /// Report various things detected during exhaustiveness checking.
 fn report_exhaustiveness_lints<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    report: &UsefulnessReport<'p, 'tcx>,
+    cx: &MatchCheckCtxt<'tcx>,
+    report: &UsefulnessReport<'p, MatchCheckCtxt<'tcx>>,
 ) {
     if !report.unreachable_subpatterns.is_empty() {
         let mut unreachables = report.unreachable_subpatterns.clone();
@@ -502,11 +505,11 @@ fn report_exhaustiveness_lints<'p, 'tcx>(
 ///
 /// NB: The partner lint for structs lives in `compiler/rustc_typeck/src/check/pat.rs`.
 pub(super) fn lint_non_exhaustive_omitted_patterns<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
+    cx: &MatchCheckCtxt<'tcx>,
     scrut_ty: Ty<'tcx>,
     span: Span,
     hir_id: HirId,
-    witnesses: &[DeconstructedPat<'p, 'tcx>],
+    witnesses: &[DeconstructedPat<'p, MatchCheckCtxt<'tcx>>],
 ) {
     let joined_patterns = joined_uncovered_patterns(cx, &witnesses);
     cx.tcx.struct_span_lint_hir(NON_EXHAUSTIVE_OMITTED_PATTERNS, hir_id, span, |build| {
@@ -525,10 +528,10 @@ pub(super) fn lint_non_exhaustive_omitted_patterns<'p, 'tcx>(
 
 /// Lint on likely incorrect range patterns (#63987)
 pub(super) fn lint_overlapping_range_endpoints<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
+    cx: &MatchCheckCtxt<'tcx>,
     span: Span,
     hir_id: HirId,
-    overlaps: &[DeconstructedPat<'p, 'tcx>],
+    overlaps: &[DeconstructedPat<'p, MatchCheckCtxt<'tcx>>],
 ) {
     if !overlaps.is_empty() {
         cx.tcx.struct_span_lint_hir(OVERLAPPING_RANGE_ENDPOINTS, hir_id, span, |lint| {
@@ -548,10 +551,10 @@ pub(super) fn lint_overlapping_range_endpoints<'p, 'tcx>(
 
 /// Report that a match is not exhaustive.
 fn non_exhaustive_match<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
+    cx: &MatchCheckCtxt<'tcx>,
     scrut_ty: Ty<'tcx>,
     sp: Span,
-    witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
+    witnesses: Vec<DeconstructedPat<'p, MatchCheckCtxt<'tcx>>>,
     is_empty_match: bool,
 ) {
     let non_empty_enum = match scrut_ty.kind() {
@@ -619,8 +622,8 @@ fn non_exhaustive_match<'p, 'tcx>(
 }
 
 crate fn joined_uncovered_patterns<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    witnesses: &[DeconstructedPat<'p, 'tcx>],
+    cx: &MatchCheckCtxt<'tcx>,
+    witnesses: &[DeconstructedPat<'p, MatchCheckCtxt<'tcx>>],
 ) -> String {
     const LIMIT: usize = 3;
     let pat_to_str = |pat| deconstructed_to_pat(cx, pat).to_string();
@@ -640,7 +643,7 @@ crate fn joined_uncovered_patterns<'p, 'tcx>(
 }
 
 crate fn pattern_not_covered_label(
-    witnesses: &[DeconstructedPat<'_, '_>],
+    witnesses: &[DeconstructedPat<'_, MatchCheckCtxt<'_>>],
     joined_patterns: &str,
 ) -> String {
     format!("pattern{} {} not covered", rustc_errors::pluralize!(witnesses.len()), joined_patterns)
@@ -648,10 +651,10 @@ crate fn pattern_not_covered_label(
 
 /// Point at the definition of non-covered `enum` variants.
 fn adt_defined_here<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
+    cx: &MatchCheckCtxt<'tcx>,
     err: &mut DiagnosticBuilder<'_>,
     ty: Ty<'tcx>,
-    witnesses: &[DeconstructedPat<'p, 'tcx>],
+    witnesses: &[DeconstructedPat<'p, MatchCheckCtxt<'tcx>>],
 ) {
     let ty = ty.peel_refs();
     if let ty::Adt(def, _) = ty.kind() {
@@ -668,10 +671,13 @@ fn adt_defined_here<'p, 'tcx>(
 }
 
 fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'a>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
+    cx: &MatchCheckCtxt<'tcx>,
     def: &AdtDef,
-    patterns: impl Iterator<Item = &'a DeconstructedPat<'p, 'tcx>>,
-) -> Vec<Span> {
+    patterns: impl Iterator<Item = &'a DeconstructedPat<'p, MatchCheckCtxt<'tcx>>>,
+) -> Vec<Span>
+where
+    MatchCheckCtxt<'tcx>: 'p,
+{
     use Constructor::*;
     let mut covered = vec![];
     for pattern in patterns {

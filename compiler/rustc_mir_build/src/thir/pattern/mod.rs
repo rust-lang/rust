@@ -6,17 +6,18 @@ mod deconstruct_pat;
 mod usefulness;
 
 pub(crate) use self::check_match::check_match;
-
+use self::deconstruct_pat::{Constructor, DeconstructedPat, Fields, IntRange, Slice, SliceKind};
+use self::usefulness::UsefulnessCtxt;
 use crate::thir::util::UserAnnotatedTyHelpers;
-use deconstruct_pat::{Constructor, DeconstructedPat, Fields, IntRange, Slice, SliceKind};
-use usefulness::MatchCheckCtxt;
 
+use rustc_apfloat::ieee::{DoubleS, IeeeFloat, SingleS};
 use rustc_data_structures::captures::Captures;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::def_id::DefId;
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
-use rustc_hir::RangeEnd;
+use rustc_hir::{HirId, RangeEnd};
 use rustc_index::vec::Idx;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::mir::interpret::{
@@ -24,13 +25,15 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::mir::{BorrowKind, Field, Mutability};
 use rustc_middle::thir::{Ascription, BindingMode, FieldPat, Pat, PatKind, PatRange, PatTyProj};
+use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::{self, ConstKind, DefIdTree, Ty, TyCtxt};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::symbol::Ident;
+use rustc_span::{sym, Span, DUMMY_SP};
 use rustc_target::abi::{Size, VariantIdx};
 
 use smallvec::{smallvec, SmallVec};
 use std::cmp::Ordering;
-use std::fmt::Display;
+use std::fmt;
 
 #[derive(Clone, Debug)]
 crate enum PatternError {
@@ -252,7 +255,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
             hir::PatKind::Tuple(ref pats, ddpos) => {
                 let tys = match ty.kind() {
-                    ty::Tuple(ref tys) => tys,
+                    ty::Tuple(tys) => tys,
                     _ => span_bug!(pat.span, "unexpected type for tuple pattern: {:?}", ty),
                 };
                 let subpatterns = self.lower_tuple_subpats(pats, tys.len(), ddpos);
@@ -690,10 +693,12 @@ fn fast_try_eval_bits<'tcx>(
 }
 
 fn pat_to_deconstructed<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
+    ucx: &UsefulnessCtxt<'p, MatchCheckCtxt<'tcx>>,
     pat: &Pat<'tcx>,
-) -> DeconstructedPat<'p, 'tcx> {
-    let mkpat = |pat| pat_to_deconstructed(cx, pat);
+) -> DeconstructedPat<'p, MatchCheckCtxt<'tcx>> {
+    use deconstruct_pat::RangeEnd;
+    let cx = &ucx.cx;
+    let mkpat = |pat| pat_to_deconstructed(ucx, pat);
     let ctor;
     let fields;
     match pat.kind.as_ref() {
@@ -708,12 +713,12 @@ fn pat_to_deconstructed<'p, 'tcx>(
                 ty::Adt(adt, _) if adt.is_box() => Constructor::BoxPat(subpattern.ty),
                 _ => Constructor::Ref(subpattern.ty),
             };
-            fields = Fields::singleton(cx, mkpat(subpattern));
+            fields = Fields::singleton(ucx, mkpat(subpattern));
         }
         PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
             match pat.ty.kind() {
                 ty::Tuple(fs) => {
-                    ctor = Constructor::Tuple(fs);
+                    ctor = Constructor::Tuple(fs.as_ref());
                     let mut wilds: SmallVec<[_; 2]> = fs
                         .iter()
                         .map(|ty| ty.expect_ty())
@@ -722,7 +727,7 @@ fn pat_to_deconstructed<'p, 'tcx>(
                     for pat in subpatterns {
                         wilds[pat.field.index()] = mkpat(&pat.pattern);
                     }
-                    fields = Fields::from_iter(cx, wilds);
+                    fields = Fields::from_iter(ucx, wilds);
                 }
                 ty::Adt(adt, substs) if adt.is_box() => {
                     // If we're here, the pattern is using the private `Box(_, _)` constructor.
@@ -732,7 +737,7 @@ fn pat_to_deconstructed<'p, 'tcx>(
                     // explanation: https://github.com/rust-lang/rust/pull/82789#issuecomment-796921977
                     let inner_ty = substs.type_at(0);
                     ctor = Constructor::BoxPat(inner_ty);
-                    fields = Fields::singleton(cx, DeconstructedPat::wildcard(inner_ty));
+                    fields = Fields::singleton(ucx, DeconstructedPat::wildcard(inner_ty));
                 }
                 ty::Adt(adt, _) => {
                     let variant = match *pat.kind {
@@ -761,7 +766,7 @@ fn pat_to_deconstructed<'p, 'tcx>(
                             wilds[i] = mkpat(&pat.pattern);
                         }
                     }
-                    fields = Fields::from_iter(cx, wilds);
+                    fields = Fields::from_iter(ucx, wilds);
                 }
                 _ => bug!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, pat.ty),
             }
@@ -774,9 +779,15 @@ fn pat_to_deconstructed<'p, 'tcx>(
                     ctor = match fast_try_eval_bits(cx.tcx, cx.param_env, size, value) {
                         Some(bits) => match pat.ty.kind() {
                             ty::Bool => Constructor::Bool(bits != 0),
-                            ty::Char | ty::Int(_) | ty::Uint(_) => Constructor::IntRange(
-                                IntRange::from_bits(pat.ty, size, bits, bits, &RangeEnd::Included),
-                            ),
+                            ty::Char | ty::Int(_) | ty::Uint(_) => {
+                                Constructor::IntRange(IntRange::from_bits(
+                                    size.bits(),
+                                    MatchCheckCtxt::is_signed_int(pat.ty),
+                                    bits,
+                                    bits,
+                                    &RangeEnd::Included,
+                                ))
+                            }
                             ty::Float(ty::FloatTy::F32) => {
                                 let value = rustc_apfloat::ieee::Single::from_bits(bits);
                                 Constructor::F32Range(value, value, RangeEnd::Included)
@@ -791,7 +802,7 @@ fn pat_to_deconstructed<'p, 'tcx>(
                     };
                     fields = Fields::empty();
                 }
-                ty::Ref(_, t, _) if t.is_str() => {
+                &ty::Ref(_, t, _) if t.is_str() => {
                     if let ty::ConstKind::Value(val @ ConstValue::Slice { .. }) = value.val {
                         let bytes = get_slice_bytes(&cx.tcx, val);
                         // We want a `&str` constant to behave like a `Deref` pattern, to be compatible
@@ -808,7 +819,7 @@ fn pat_to_deconstructed<'p, 'tcx>(
                             pat.span,
                         );
                         ctor = Constructor::Ref(t);
-                        fields = Fields::singleton(cx, subpattern)
+                        fields = Fields::singleton(ucx, subpattern)
                     } else {
                         // FIXME(Nadrieril): Does this ever happen?
                         ctor = Constructor::Opaque;
@@ -827,15 +838,23 @@ fn pat_to_deconstructed<'p, 'tcx>(
         &PatKind::Range(PatRange { lo, hi, end }) => {
             use rustc_apfloat::Float;
             let ty = lo.ty;
+            let end = match end {
+                rustc_hir::RangeEnd::Included => RangeEnd::Included,
+                rustc_hir::RangeEnd::Excluded => RangeEnd::Excluded,
+            };
             let size = number_type_size(cx.tcx, ty);
             let lo = fast_try_eval_bits(cx.tcx, cx.param_env, size, lo)
                 .unwrap_or_else(|| bug!("expected bits of {:?}, got {:?}", ty, lo));
             let hi = fast_try_eval_bits(cx.tcx, cx.param_env, size, hi)
                 .unwrap_or_else(|| bug!("expected bits of {:?}, got {:?}", ty, hi));
             ctor = match ty.kind() {
-                ty::Char | ty::Int(_) | ty::Uint(_) => {
-                    Constructor::IntRange(IntRange::from_bits(ty, size, lo, hi, &end))
-                }
+                ty::Char | ty::Int(_) | ty::Uint(_) => Constructor::IntRange(IntRange::from_bits(
+                    size.bits(),
+                    MatchCheckCtxt::is_signed_int(ty),
+                    lo,
+                    hi,
+                    &end,
+                )),
                 ty::Float(ty::FloatTy::F32) => {
                     let lo = rustc_apfloat::ieee::Single::from_bits(lo);
                     let hi = rustc_apfloat::ieee::Single::from_bits(hi);
@@ -863,8 +882,8 @@ fn pat_to_deconstructed<'p, 'tcx>(
             } else {
                 SliceKind::FixedLen(prefix.len() + suffix.len())
             };
-            ctor = Constructor::Slice(Slice::new(array_len, kind), ty);
-            fields = Fields::from_iter(cx, prefix.iter().chain(suffix).map(mkpat));
+            ctor = Constructor::Slice(Slice::new(array_len, kind), *ty);
+            fields = Fields::from_iter(ucx, prefix.iter().chain(suffix).map(mkpat));
         }
         PatKind::Or { .. } => {
             /// Recursively expand this pattern into its subpatterns.
@@ -881,15 +900,15 @@ fn pat_to_deconstructed<'p, 'tcx>(
             let mut pats = Vec::new();
             expand(pat, &mut pats);
             ctor = Constructor::Or;
-            fields = Fields::from_iter(cx, pats.into_iter().map(mkpat));
+            fields = Fields::from_iter(ucx, pats.into_iter().map(mkpat));
         }
     }
     DeconstructedPat::new(ctor, fields, pat.ty, pat.span)
 }
 
 fn deconstructed_to_pat<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    pat: &DeconstructedPat<'p, 'tcx>,
+    cx: &MatchCheckCtxt<'tcx>,
+    pat: &DeconstructedPat<'p, MatchCheckCtxt<'tcx>>,
 ) -> Pat<'tcx> {
     use Constructor::*;
     let is_wildcard = |pat: &Pat<'_>| {
@@ -967,6 +986,10 @@ fn deconstructed_to_pat<'p, 'tcx>(
             if lo == hi {
                 PatKind::Constant { value: lo_const }
             } else {
+                let end = match end {
+                    deconstruct_pat::RangeEnd::Included => rustc_hir::RangeEnd::Included,
+                    deconstruct_pat::RangeEnd::Excluded => rustc_hir::RangeEnd::Excluded,
+                };
                 PatKind::Range(PatRange { lo: lo_const, hi: hi_const, end })
             }
         }
@@ -985,24 +1008,39 @@ fn deconstructed_to_pat<'p, 'tcx>(
     Pat { ty: pat.ty(), span: DUMMY_SP, kind: Box::new(kind) }
 }
 
-impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
+#[derive(Copy, Clone)]
+crate struct MatchCheckCtxt<'tcx> {
+    crate tcx: TyCtxt<'tcx>,
+    crate param_env: ty::ParamEnv<'tcx>,
+    /// The module in which the match occurs. This is necessary for
+    /// checking inhabited-ness of types because whether a type is (visibly)
+    /// inhabited can depend on whether it was defined in the current module or
+    /// not. E.g., `struct Foo { _private: ! }` cannot be seen to be empty
+    /// outside its module and should not be matchable with an empty match statement.
+    crate module: DefId,
+}
+
+impl<'tcx> fmt::Debug for MatchCheckCtxt<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MatchCheckCtxt").field("module", &self.module).finish()
+    }
+}
+
+impl<'tcx> usefulness::Context for MatchCheckCtxt<'tcx> {
+    type Ty = Ty<'tcx>;
+    type TyList = &'tcx [GenericArg<'tcx>];
+    type VariantIdx = VariantIdx;
+    type F32Float = IeeeFloat<SingleS>;
+    type F64Float = IeeeFloat<DoubleS>;
+    type StringLit = &'tcx [u8];
+    type HirId = HirId;
+    type Span = Span;
+    type Ident = Ident;
+
     fn is_numeric(ty: Ty<'tcx>) -> bool {
         matches!(ty.kind(), ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_))
     }
 
-    fn is_signed_int(ty: Ty<'tcx>) -> bool {
-        matches!(ty.kind(), ty::Int(_))
-    }
-
-    fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
-        if self.tcx.features().exhaustive_patterns {
-            self.tcx.is_ty_uninhabited_from(self.module, ty, self.param_env)
-        } else {
-            false
-        }
-    }
-
-    /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
     fn is_foreign_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind() {
             ty::Adt(def, ..) => {
@@ -1012,28 +1050,36 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
         }
     }
 
-    /// List the set of possible constructors for the type `ty`. For numbers, arrays and slices we use
-    /// ranges and variable-length slices when appropriate.
-    ///
-    /// If the `exhaustive_patterns` feature is enabled, we make sure to omit constructors that are
-    /// statically impossible. E.g., for `Option<!>`, we do not include `Some(_)` in the returned list
-    /// of constructors.
-    /// Even if `exhaustive_patterns` is disabled, we also omit constructors for empty enums and the
-    /// never type if we are at the top-level in a match, because we want to allow empty matches to be
-    /// valid for those.
-    /// Invariant: this is only empty when the type is uninhabited, and the reverse holds if
-    /// `exhaustive_patterns` is enabled.
+    fn ty_list_len(ty_list: &Self::TyList) -> usize {
+        ty_list.len()
+    }
+
+    type TyListIter = std::iter::Map<
+        std::iter::Copied<std::slice::Iter<'tcx, GenericArg<'tcx>>>,
+        fn(GenericArg<'tcx>) -> Ty<'tcx>,
+    >;
+    fn ty_list_iter(ty_list: &Self::TyList) -> Self::TyListIter {
+        ty_list.iter().copied().map(GenericArg::expect_ty)
+    }
+
     fn list_constructors_for_type(
         &self,
         ty: Ty<'tcx>,
         is_top_level_pattern: bool,
-    ) -> SmallVec<[Constructor<'tcx>; 1]> {
+    ) -> SmallVec<[Constructor<Self>; 1]> {
         use Constructor::*;
         use SliceKind::*;
         let cx = self;
+
         debug!("list_constructors_for_type({:?})", ty);
-        let make_range = |size, start, end| {
-            IntRange(self::IntRange::from_bits(ty, size, start, end, &RangeEnd::Included))
+        let make_range = |size: Size, start, end| {
+            IntRange(self::IntRange::from_bits(
+                size.bits(),
+                Self::is_signed_int(ty),
+                start,
+                end,
+                &deconstruct_pat::RangeEnd::Included,
+            ))
         };
         match ty.kind() {
             _ if cx.is_uninhabited(ty) => smallvec![],
@@ -1124,7 +1170,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
             ty::Adt(def, substs) if def.is_box() => smallvec![BoxPat(substs.type_at(0))],
             ty::Adt(..) => smallvec![Single],
             ty::Ref(_, ty, _) => smallvec![Ref(*ty)],
-            ty::Tuple(fs) => smallvec![Tuple(*fs)],
+            ty::Tuple(fs) => smallvec![Tuple(fs.as_ref())],
             ty::Array(sub_ty, len) => {
                 let slice = match len.try_eval_usize(cx.tcx, cx.param_env) {
                     Some(len) => {
@@ -1138,11 +1184,11 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                         self::Slice::new(None, kind)
                     }
                 };
-                smallvec![Slice(slice, sub_ty)]
+                smallvec![Slice(slice, *sub_ty)]
             }
             ty::Slice(sub_ty) => {
                 let kind = if cx.is_uninhabited(sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
-                smallvec![Slice(self::Slice::new(None, kind), sub_ty)]
+                smallvec![Slice(self::Slice::new(None, kind), *sub_ty)]
             }
             // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we don't
             // expose its emptiness and return `NonExhaustive` below. The exception is if the
@@ -1155,9 +1201,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
         }
     }
 
-    /// Show the name of the variant corresponding to this constructor.
-    /// `ty` must be `ty::Adt`, and `ctor` must be a constructor for that type.
-    fn variant_ident(ty: Ty<'tcx>, ctor: &Constructor<'tcx>) -> Option<impl Display> {
+    fn variant_ident(ty: Ty<'tcx>, ctor: &Constructor<Self>) -> Option<Ident> {
         match ty.kind() {
             ty::Adt(adt, _) => {
                 let variant = match ctor {
@@ -1171,6 +1215,49 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
         }
     }
 
+    fn is_doc_hidden_variant(&self, ty: Ty<'tcx>, idx: Self::VariantIdx) -> bool {
+        if let ty::Adt(adt, _) = ty.kind() {
+            let variant = &adt.variants[idx];
+            let attrs = self.tcx.get_attrs(variant.def_id);
+            for attr in attrs.iter() {
+                if attr.has_name(sym::doc) {
+                    let items = attr.meta_item_list().unwrap_or_default();
+                    if items.iter().find(|item| item.has_name(sym::hidden)).is_some() {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    fn list_variant_nonhidden_fields(
+        &self,
+        ty: Ty<'tcx>,
+        ctor: &Constructor<Self>,
+    ) -> Vec<Ty<'tcx>> {
+        self.list_variant_nonhidden_fields(ty, ctor).map(|(_, ty)| ty).collect()
+    }
+
+    fn span_bug(span: Self::Span, f: impl Fn() -> String) -> ! {
+        let error = f();
+        span_bug!(span, "{}", error)
+    }
+}
+
+impl<'tcx> MatchCheckCtxt<'tcx> {
+    fn is_signed_int(ty: Ty<'tcx>) -> bool {
+        matches!(ty.kind(), ty::Int(_))
+    }
+
+    fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
+        if self.tcx.features().exhaustive_patterns {
+            self.tcx.is_ty_uninhabited_from(self.module, ty, self.param_env)
+        } else {
+            false
+        }
+    }
+
     /// List the fields for this variant.
     /// In the cases of either a `#[non_exhaustive]` field list or a non-public field, we hide
     /// uninhabited fields in order not to reveal the uninhabitedness of the whole variant.
@@ -1178,8 +1265,8 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
     fn list_variant_nonhidden_fields<'a>(
         &'a self,
         ty: Ty<'tcx>,
-        ctor: &Constructor<'tcx>,
-    ) -> impl Iterator<Item = (Field, Ty<'tcx>)> + Captures<'a> + Captures<'p> {
+        ctor: &Constructor<Self>,
+    ) -> impl Iterator<Item = (Field, Ty<'tcx>)> + Captures<'a> {
         let cx = self;
         let (adt, substs) = match ty.kind() {
             ty::Adt(adt, substs) => (adt, substs),
