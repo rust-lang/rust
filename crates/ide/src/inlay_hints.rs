@@ -2,6 +2,7 @@ use either::Either;
 use hir::{known, Callable, HasVisibility, HirDisplay, Semantics, TypeInfo};
 use ide_db::RootDatabase;
 use ide_db::{base_db::FileRange, helpers::FamousDefs};
+use itertools::Itertools;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, AstNode, HasArgList, HasName},
@@ -198,14 +199,26 @@ fn get_bind_pat_hints(
 
     let descended = sema.descend_node_into_attributes(pat.clone()).pop();
     let desc_pat = descended.as_ref().unwrap_or(pat);
-    let krate = sema.scope(desc_pat.syntax()).module().map(|it| it.krate());
-    let famous_defs = FamousDefs(sema, krate);
-
     let ty = sema.type_of_pat(&desc_pat.clone().into())?.original;
 
     if should_not_display_type_hint(sema, &pat, &ty) {
         return None;
     }
+
+    let krate = sema.scope(desc_pat.syntax()).module().map(|it| it.krate());
+    let famous_defs = FamousDefs(sema, krate);
+    let label = hint_iterator(sema, &famous_defs, config, &ty);
+
+    let label = match label {
+        Some(label) => label,
+        None => {
+            let ty_name = ty.display_truncated(sema.db, config.max_length).to_string();
+            if is_named_constructor(sema, pat, &ty_name).is_some() {
+                return None;
+            }
+            ty_name.into()
+        }
+    };
 
     acc.push(InlayHint {
         range: match pat.name() {
@@ -213,11 +226,66 @@ fn get_bind_pat_hints(
             None => pat.syntax().text_range(),
         },
         kind: InlayKind::TypeHint,
-        label: hint_iterator(sema, &famous_defs, config, &ty)
-            .unwrap_or_else(|| ty.display_truncated(sema.db, config.max_length).to_string().into()),
+        label,
     });
 
     Some(())
+}
+
+fn is_named_constructor(
+    sema: &Semantics<RootDatabase>,
+    pat: &ast::IdentPat,
+    ty_name: &str,
+) -> Option<()> {
+    let let_node = pat.syntax().parent()?;
+    let expr = match_ast! {
+        match let_node {
+            ast::LetStmt(it) => it.initializer(),
+            ast::Condition(it) => it.expr(),
+            _ => None,
+        }
+    }?;
+
+    let expr = sema.descend_node_into_attributes(expr.clone()).pop().unwrap_or(expr);
+    // unwrap postfix expressions
+    let expr = match expr {
+        ast::Expr::TryExpr(it) => it.expr(),
+        ast::Expr::AwaitExpr(it) => it.expr(),
+        expr => Some(expr),
+    }?;
+    let expr = match expr {
+        ast::Expr::CallExpr(call) => match call.expr()? {
+            ast::Expr::PathExpr(p) => p,
+            _ => return None,
+        },
+        _ => return None,
+    };
+    let path = expr.path()?;
+
+    // Check for tuple-struct or tuple-variant in which case we can check the last segment
+    let callable = sema.type_of_expr(&ast::Expr::PathExpr(expr))?.original.as_callable(sema.db);
+    let callable_kind = callable.map(|it| it.kind());
+    if let Some(hir::CallableKind::TupleStruct(_) | hir::CallableKind::TupleEnumVariant(_)) =
+        callable_kind
+    {
+        if let Some(ctor) = path.segment() {
+            return (&ctor.to_string() == ty_name).then(|| ());
+        }
+    }
+
+    // otherwise use the qualifying segment as the constructor name
+    let qual_seg = path.qualifier()?.segment()?;
+    let ctor_name = match qual_seg.kind()? {
+        ast::PathSegmentKind::Name(name_ref) => {
+            match qual_seg.generic_arg_list().map(|it| it.generic_args()) {
+                Some(generics) => format!("{}<{}>", name_ref, generics.format(", ")),
+                None => name_ref.to_string(),
+            }
+        }
+        ast::PathSegmentKind::Type { type_ref: Some(ty), trait_ref: None } => ty.to_string(),
+        _ => return None,
+    };
+    (&ctor_name == ty_name).then(|| ())
 }
 
 /// Checks if the type is an Iterator from std::iter and replaces its hint with an `impl Iterator<Item = Ty>`.
@@ -470,10 +538,12 @@ mod tests {
         max_length: None,
     };
 
+    #[track_caller]
     fn check(ra_fixture: &str) {
         check_with_config(TEST_CONFIG, ra_fixture);
     }
 
+    #[track_caller]
     fn check_params(ra_fixture: &str) {
         check_with_config(
             InlayHintsConfig {
@@ -486,6 +556,7 @@ mod tests {
         );
     }
 
+    #[track_caller]
     fn check_types(ra_fixture: &str) {
         check_with_config(
             InlayHintsConfig {
@@ -498,6 +569,7 @@ mod tests {
         );
     }
 
+    #[track_caller]
     fn check_chains(ra_fixture: &str) {
         check_with_config(
             InlayHintsConfig {
@@ -510,6 +582,7 @@ mod tests {
         );
     }
 
+    #[track_caller]
     fn check_with_config(config: InlayHintsConfig, ra_fixture: &str) {
         let (analysis, file_id) = fixture::file(&ra_fixture);
         let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
@@ -519,6 +592,7 @@ mod tests {
         assert_eq!(expected, actual, "\nExpected:\n{:#?}\n\nActual:\n{:#?}", expected, actual);
     }
 
+    #[track_caller]
     fn check_expect(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
         let (analysis, file_id) = fixture::file(&ra_fixture);
         let inlay_hints = analysis.inlay_hints(&config, file_id).unwrap();
@@ -1191,11 +1265,12 @@ trait Display {}
 trait Sync {}
 
 fn main() {
-    let _v = Vec::<Box<&(dyn Display + Sync)>>::new();
+    // The block expression wrapping disables the constructor hint hiding logic
+    let _v = { Vec::<Box<&(dyn Display + Sync)>>::new() };
       //^^ Vec<Box<&(dyn Display + Sync)>>
-    let _v = Vec::<Box<*const (dyn Display + Sync)>>::new();
+    let _v = { Vec::<Box<*const (dyn Display + Sync)>>::new() };
       //^^ Vec<Box<*const (dyn Display + Sync)>>
-    let _v = Vec::<Box<dyn Display + Sync>>::new();
+    let _v = { Vec::<Box<dyn Display + Sync>>::new() };
       //^^ Vec<Box<dyn Display + Sync>>
 }
 "#,
@@ -1229,6 +1304,48 @@ fn main() {
         let _chained = iter::repeat(t).take(10);
           //^^^^^^^^ impl Iterator<Item = T>
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn skip_constructor_type_hints() {
+        check_types(
+            r#"
+//- minicore: try
+use core::ops::ControlFlow;
+
+struct Struct;
+struct TupleStruct();
+
+impl Struct {
+    fn new() -> Self {
+        Struct
+    }
+    fn try_new() -> ControlFlow<(), Self> {
+        ControlFlow::Continue(Struct)
+    }
+}
+
+struct Generic<T>(T);
+impl Generic<i32> {
+    fn new() -> Self {
+        Generic(0)
+    }
+}
+
+fn main() {
+    let strukt = Struct::new();
+    let tuple_struct = TupleStruct();
+    let generic0 = Generic::new();
+     // ^^^^^^^^ Generic<i32>
+    let generic1 = Generic::<i32>::new();
+    let generic2 = <Generic<i32>>::new();
+}
+
+fn fallible() -> ControlFlow<()> {
+    let strukt = Struct::try_new()?;
 }
 "#,
         );
