@@ -47,6 +47,8 @@ pub struct ZeroSizeWithPhantomData(::std::marker::PhantomData<i32>);
 extern "C" {
     pub fn ptr_type1(size: *const Foo); //~ ERROR: uses type `Foo`
     pub fn ptr_type2(size: *const Foo); //~ ERROR: uses type `Foo`
+    pub fn ptr_unit(p: *const ());
+    pub fn ptr_tuple(p: *const ((),)); //~ ERROR: uses type `((),)`
     pub fn slice_type(p: &[u32]); //~ ERROR: uses type `[u32]`
     pub fn str_type(p: &str); //~ ERROR: uses type `str`
     pub fn box_type(p: Box<u32>); //~ ERROR uses type `Box<u32>`

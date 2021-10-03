@@ -66,6 +66,10 @@ pub extern "C" fn ptr_type1(size: *const Foo) { }
 
 pub extern "C" fn ptr_type2(size: *const Foo) { }
 
+pub extern "C" fn ptr_unit(p: *const ()) { }
+
+pub extern "C" fn ptr_tuple(p: *const ((),)) { }
+
 pub extern "C" fn slice_type(p: &[u32]) { }
 //~^ ERROR: uses type `[u32]`
 
