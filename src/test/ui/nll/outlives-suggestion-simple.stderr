@@ -92,13 +92,20 @@ LL |         self.x
 error[E0521]: borrowed data escapes outside of associated function
   --> $DIR/outlives-suggestion-simple.rs:73:9
    |
+LL | impl<'a> Foo2<'a> {
+   |      -- lifetime `'a` defined here
+LL |     // should not produce outlives suggestions to name 'self
 LL |     fn get_bar(&self) -> Bar2 {
    |                -----
    |                |
    |                `self` declared here, outside of the associated function body
    |                `self` is a reference that is only valid in the associated function body
+   |                let's call the lifetime of this reference `'1`
 LL |         Bar2::new(&self)
-   |         ^^^^^^^^^^^^^^^^ `self` escapes the associated function body here
+   |         ^^^^^^^^^^^^^^^^
+   |         |
+   |         `self` escapes the associated function body here
+   |         argument requires that `'1` must outlive `'a`
 
 error: aborting due to 9 previous errors
 
