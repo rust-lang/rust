@@ -300,6 +300,17 @@ pub mod ops {
             #[lang = "branch"]
             fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
         }
+
+        impl<B, C> Try for ControlFlow<B, C> {
+            type Output = C;
+            type Residual = ControlFlow<B, convert::Infallible>;
+            fn from_output(output: Self::Output) -> Self {}
+            fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {}
+        }
+
+        impl<B, C> FromResidual for ControlFlow<B, C> {
+            fn from_residual(residual: ControlFlow<B, convert::Infallible>) -> Self {}
+        }
     }
     pub use self::try_::{ControlFlow, FromResidual, Try};
     // endregion:try

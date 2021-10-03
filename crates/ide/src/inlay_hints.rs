@@ -198,14 +198,26 @@ fn get_bind_pat_hints(
 
     let descended = sema.descend_node_into_attributes(pat.clone()).pop();
     let desc_pat = descended.as_ref().unwrap_or(pat);
-    let krate = sema.scope(desc_pat.syntax()).module().map(|it| it.krate());
-    let famous_defs = FamousDefs(sema, krate);
-
     let ty = sema.type_of_pat(&desc_pat.clone().into())?.original;
 
     if should_not_display_type_hint(sema, &pat, &ty) {
         return None;
     }
+
+    let krate = sema.scope(desc_pat.syntax()).module().map(|it| it.krate());
+    let famous_defs = FamousDefs(sema, krate);
+    let label = hint_iterator(sema, &famous_defs, config, &ty);
+
+    let label = match label {
+        Some(label) => label,
+        None => {
+            let ty = ty.display_truncated(sema.db, config.max_length).to_string();
+            if Some(&*ty) == get_constructor_name(sema, pat).as_deref() {
+                return None;
+            }
+            ty.into()
+        }
+    };
 
     acc.push(InlayHint {
         range: match pat.name() {
@@ -213,11 +225,40 @@ fn get_bind_pat_hints(
             None => pat.syntax().text_range(),
         },
         kind: InlayKind::TypeHint,
-        label: hint_iterator(sema, &famous_defs, config, &ty)
-            .unwrap_or_else(|| ty.display_truncated(sema.db, config.max_length).to_string().into()),
+        label,
     });
 
     Some(())
+}
+
+fn get_constructor_name(sema: &Semantics<RootDatabase>, pat: &ast::IdentPat) -> Option<String> {
+    let it = pat.syntax().parent()?;
+    let expr = match_ast! {
+        match it {
+            ast::LetStmt(it) => it.initializer(),
+            ast::Condition(it) => it.expr(),
+            _ => None,
+        }
+    };
+
+    if let Some(expr) = expr {
+        let expr = sema.descend_node_into_attributes(expr.clone()).pop().unwrap_or(expr);
+        let expr = match expr {
+            ast::Expr::TryExpr(it) => it.expr(),
+            ast::Expr::AwaitExpr(it) => it.expr(),
+            expr => Some(expr),
+        }?;
+        let path = match expr {
+            ast::Expr::CallExpr(call) => match call.expr()? {
+                ast::Expr::PathExpr(p) => p.path(),
+                _ => None,
+            },
+            _ => None,
+        }?;
+        let seg = path.qualifier()?.segment()?;
+        return Some(seg.to_string());
+    }
+    None
 }
 
 /// Checks if the type is an Iterator from std::iter and replaces its hint with an `impl Iterator<Item = Ty>`.
@@ -1229,6 +1270,51 @@ fn main() {
         let _chained = iter::repeat(t).take(10);
           //^^^^^^^^ impl Iterator<Item = T>
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn skip_constructor_type_hints() {
+        check_types(
+            r#"
+//- minicore: try
+use core::ops::ControlFlow;
+
+struct Struct;
+struct TupleStruct();
+
+impl Struct {
+    fn new() -> Self {
+        Struct
+    }
+    fn try_new() -> ControlFlow<(), Self> {
+        ControlFlow::Continue(Struct)
+    }
+}
+
+struct Generic<T>(T);
+impl Generic<i32> {
+    fn new() -> Self {
+        Generic(0)
+    }
+}
+
+fn main() {
+    let strukt = Struct::new();
+    let tuple_struct = TupleStruct();
+     // ^^^^^^^^^^^^ TupleStruct
+    let generic0 = Generic::new();
+     // ^^^^^^^^ Generic<i32>
+    let generic1 = Generic::<i32>::new();
+     // ^^^^^^^^ Generic<i32>
+    let generic2 = <Generic<i32>>::new();
+     // ^^^^^^^^ Generic<i32>
+}
+
+fn fallible() -> ControlFlow<()> {
+    let strukt = Struct::try_new()?;
 }
 "#,
         );
