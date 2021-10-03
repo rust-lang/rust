@@ -1267,8 +1267,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
                 return normalized_value.clean(cx);
             }
 
-            let segments = if p.is_global() { &p.segments[1..] } else { &p.segments };
-            let trait_segments = &segments[..segments.len() - 1];
+            let trait_segments = &p.segments[..p.segments.len() - 1];
             let trait_def = cx.tcx.associated_item(p.res.def_id()).container.id();
             let trait_ = self::Path {
                 res: Res::Def(DefKind::Trait, trait_def),
