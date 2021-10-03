@@ -100,10 +100,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::If(ref cond, ref then, ref else_opt) => {
                     self.lower_expr_if(cond, then, else_opt.as_deref())
                 }
-                ExprKind::While(ref cond, ref body, opt_label) => self
-                    .with_loop_scope(e.id, |this| {
-                        this.lower_expr_while_in_loop_scope(e.span, cond, body, opt_label)
-                    }),
+                ExprKind::While(ref cond, ref body, opt_label) => {
+                    self.with_loop_scope(e.id, |this| {
+                        let span =
+                            this.mark_span_with_reason(DesugaringKind::WhileLoop, e.span, None);
+                        this.lower_expr_while_in_loop_scope(span, cond, body, opt_label)
+                    })
+                }
                 ExprKind::Loop(ref body, opt_label) => self.with_loop_scope(e.id, |this| {
                     hir::ExprKind::Loop(
                         this.lower_block(body, false),
