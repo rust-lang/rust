@@ -1,9 +1,9 @@
-#![feature(auto_traits)]
-#![feature(negative_impls)]
+// Regression test for issue #84075.
 
-auto trait Magic : Sized where Option<Self> : Magic {} //~ ERROR E0568
-//~^ ERROR E0568
-impl<T:Magic> Magic for T {}
+#![feature(auto_traits)]
+
+auto trait Magic where Self: Copy {} //~ ERROR E0568
+impl<T: Magic> Magic for T {}
 
 fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
 

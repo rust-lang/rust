@@ -683,31 +683,53 @@ impl<'a> AstValidator<'a> {
         }
     }
 
+    fn emit_e0568(&self, span: Span, ident_span: Span) {
+        struct_span_err!(
+            self.session,
+            span,
+            E0568,
+            "auto traits cannot have super traits or lifetime bounds"
+        )
+        .span_label(ident_span, "auto trait cannot have super traits or lifetime bounds")
+        .span_suggestion(
+            span,
+            "remove the super traits or lifetime bounds",
+            String::new(),
+            Applicability::MachineApplicable,
+        )
+        .emit();
+    }
+
     fn deny_super_traits(&self, bounds: &GenericBounds, ident_span: Span) {
-        if let [first @ last] | [first, .., last] = &bounds[..] {
-            let span = first.span().to(last.span());
-            struct_span_err!(self.session, span, E0568, "auto traits cannot have super traits")
-                .span_label(ident_span, "auto trait cannot have super traits")
-                .span_suggestion(
-                    span,
-                    "remove the super traits",
-                    String::new(),
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+        if let [.., last] = &bounds[..] {
+            let span = ident_span.shrink_to_hi().to(last.span());
+            self.emit_e0568(span, ident_span);
+        }
+    }
+
+    fn deny_where_clause(&self, where_clause: &WhereClause, ident_span: Span) {
+        if !where_clause.predicates.is_empty() {
+            self.emit_e0568(where_clause.span, ident_span);
         }
     }
 
     fn deny_items(&self, trait_items: &[P<AssocItem>], ident_span: Span) {
         if !trait_items.is_empty() {
             let spans: Vec<_> = trait_items.iter().map(|i| i.ident.span).collect();
+            let total_span = trait_items.first().unwrap().span.to(trait_items.last().unwrap().span);
             struct_span_err!(
                 self.session,
                 spans,
                 E0380,
-                "auto traits cannot have methods or associated items"
+                "auto traits cannot have associated items"
             )
-            .span_label(ident_span, "auto trait cannot have items")
+            .span_suggestion(
+                total_span,
+                "remove these associated items",
+                String::new(),
+                Applicability::MachineApplicable,
+            )
+            .span_label(ident_span, "auto trait cannot have associated items")
             .emit();
         }
     }
@@ -1184,6 +1206,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     // Auto traits cannot have generics, super traits nor contain items.
                     self.deny_generic_params(generics, item.ident.span);
                     self.deny_super_traits(bounds, item.ident.span);
+                    self.deny_where_clause(&generics.where_clause, item.ident.span);
                     self.deny_items(trait_items, item.ident.span);
                 }
                 self.no_questions_in_bounds(bounds, "supertraits", true);

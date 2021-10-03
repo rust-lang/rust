@@ -1,10 +1,10 @@
-error[E0380]: auto traits cannot have methods or associated items
+error[E0380]: auto traits cannot have associated items
   --> $DIR/issue-23080-2.rs:5:10
    |
 LL | unsafe auto trait Trait {
-   |                   ----- auto trait cannot have items
+   |                   ----- auto trait cannot have associated items
 LL |     type Output;
-   |          ^^^^^^
+   |     -----^^^^^^- help: remove these associated items
 
 error: aborting due to previous error
 
