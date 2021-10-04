@@ -437,12 +437,18 @@ pub fn configure_and_expand(
     });
 
     // Add all buffered lints from the `ParseSess` to the `Session`.
-    sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
-        info!("{} parse sess buffered_lints", buffered_lints.len());
-        for early_lint in buffered_lints.drain(..) {
-            resolver.lint_buffer().add_early_lint(early_lint);
-        }
-    });
+    // The ReplaceBodyWithLoop pass may have deleted some AST nodes, potentially
+    // causing a delay_span_bug later if a buffered lint refers to such a deleted
+    // AST node (issue #87308). Since everybody_loops is for pretty-printing only,
+    // anyway, we simply skip all buffered lints here.
+    if !matches!(sess.opts.pretty, Some(PpMode::Source(PpSourceMode::EveryBodyLoops))) {
+        sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
+            info!("{} parse sess buffered_lints", buffered_lints.len());
+            for early_lint in buffered_lints.drain(..) {
+                resolver.lint_buffer().add_early_lint(early_lint);
+            }
+        });
+    }
 
     Ok(krate)
 }
