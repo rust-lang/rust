@@ -1,6 +1,7 @@
 use crate::check::FnCtxt;
 use rustc_ast as ast;
 
+use crate::path::BytePos;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
