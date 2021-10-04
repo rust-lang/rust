@@ -544,8 +544,8 @@ impl<T> Option<T> {
     /// ```
     #[must_use = "if you intended to assert that this has a value, consider `.unwrap()` instead"]
     #[inline]
-    #[rustc_const_stable(feature = "const_option", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_option", since = "1.48.0")]
     pub const fn is_some(&self) -> bool {
         matches!(*self, Some(_))
     }
@@ -564,8 +564,8 @@ impl<T> Option<T> {
     #[must_use = "if you intended to assert that this doesn't have a value, consider \
                   `.and_then(|_| panic!(\"`Option` had a value when expected `None`\"))` instead"]
     #[inline]
-    #[rustc_const_stable(feature = "const_option", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_option", since = "1.48.0")]
     pub const fn is_none(&self) -> bool {
         !self.is_some()
     }
@@ -1318,8 +1318,10 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn take(&mut self) -> Option<T> {
-        mem::take(self)
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
+    pub const fn take(&mut self) -> Option<T> {
+        // FIXME replace `mem::replace` by `mem::take` when the latter is const ready
+        mem::replace(self, None)
     }
 
     /// Replaces the actual value in the option by the value given in parameter,
@@ -1340,8 +1342,9 @@ impl<T> Option<T> {
     /// assert_eq!(old, None);
     /// ```
     #[inline]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     #[stable(feature = "option_replace", since = "1.31.0")]
-    pub fn replace(&mut self, value: T) -> Option<T> {
+    pub const fn replace(&mut self, value: T) -> Option<T> {
         mem::replace(self, Some(value))
     }
 
@@ -1446,8 +1449,14 @@ impl<T: Copy> Option<&T> {
     /// assert_eq!(copied, Some(12));
     /// ```
     #[stable(feature = "copied", since = "1.35.0")]
-    pub fn copied(self) -> Option<T> {
-        self.map(|&t| t)
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
+    pub const fn copied(self) -> Option<T> {
+        // FIXME: this implementation, which sidesteps using `Option::map` since it's not const
+        // ready yet, should be reverted when possible to avoid code repetition
+        match self {
+            Some(&v) => Some(v),
+            None => None,
+        }
     }
 }
 
