@@ -2188,7 +2188,12 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
 
     /// Copies elements from `src` range to the end of the vector.
     ///
-    /// ## Examples
+    /// # Panics
+    ///
+    /// Panics if the starting point is greater than the end point or if
+    /// the end point is greater than the length of the vector.
+    ///
+    /// # Examples
     ///
     /// ```
     /// let mut vec = vec![0, 1, 2, 3, 4];
