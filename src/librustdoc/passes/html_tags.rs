@@ -52,7 +52,7 @@ fn drop_tag(
                 continue;
             }
             let last_tag_name_low = last_tag_name.to_lowercase();
-            if ALLOWED_UNCLOSED.iter().any(|&at| at == last_tag_name_low) {
+            if ALLOWED_UNCLOSED.contains(&last_tag_name_low.as_str()) {
                 continue;
             }
             // `tags` is used as a queue, meaning that everything after `pos` is included inside it.
@@ -207,7 +207,7 @@ impl<'a, 'tcx> DocFolder for InvalidHtmlTagsLinter<'a, 'tcx> {
 
             for (tag, range) in tags.iter().filter(|(t, _)| {
                 let t = t.to_lowercase();
-                ALLOWED_UNCLOSED.iter().find(|&&at| at == t).is_none()
+                !ALLOWED_UNCLOSED.contains(&t.as_str())
             }) {
                 report_diag(&format!("unclosed HTML tag `{}`", tag), range);
             }
