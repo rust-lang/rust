@@ -533,19 +533,10 @@ impl Analysis {
         &self,
         config: &CompletionConfig,
         position: FilePosition,
-        full_import_path: &str,
-        imported_name: String,
+        imports: impl IntoIterator<Item = (String, String)> + std::panic::UnwindSafe,
     ) -> Cancellable<Vec<TextEdit>> {
         Ok(self
-            .with_db(|db| {
-                ide_completion::resolve_completion_edits(
-                    db,
-                    config,
-                    position,
-                    full_import_path,
-                    imported_name,
-                )
-            })?
+            .with_db(|db| ide_completion::resolve_completion_edits(db, config, position, imports))?
             .unwrap_or_default())
     }
 

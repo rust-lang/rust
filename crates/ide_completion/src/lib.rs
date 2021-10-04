@@ -175,8 +175,7 @@ pub fn resolve_completion_edits(
     db: &RootDatabase,
     config: &CompletionConfig,
     position: FilePosition,
-    full_import_path: &str,
-    imported_name: String,
+    imports: impl IntoIterator<Item = (String, String)>,
 ) -> Option<Vec<TextEdit>> {
     let ctx = CompletionContext::new(db, position, config)?;
     let position_for_import = position_for_import(&ctx, None)?;
@@ -185,21 +184,34 @@ pub fn resolve_completion_edits(
     let current_module = ctx.sema.scope(position_for_import).module()?;
     let current_crate = current_module.krate();
 
-    let (import_path, item_to_import) = items_locator::items_with_name(
-        &ctx.sema,
-        current_crate,
-        NameToImport::Exact(imported_name),
-        items_locator::AssocItemSearch::Include,
-        Some(items_locator::DEFAULT_QUERY_SEARCH_LIMIT.inner()),
-    )
-    .filter_map(|candidate| {
-        current_module
-            .find_use_path_prefixed(db, candidate, config.insert_use.prefix_kind)
-            .zip(Some(candidate))
-    })
-    .find(|(mod_path, _)| mod_path.to_string() == full_import_path)?;
-    let import =
-        LocatedImport::new(import_path.clone(), item_to_import, item_to_import, Some(import_path));
+    Some(
+        imports
+            .into_iter()
+            .filter_map(|(full_import_path, imported_name)| {
+                let (import_path, item_to_import) = items_locator::items_with_name(
+                    &ctx.sema,
+                    current_crate,
+                    NameToImport::Exact(imported_name),
+                    items_locator::AssocItemSearch::Include,
+                    Some(items_locator::DEFAULT_QUERY_SEARCH_LIMIT.inner()),
+                )
+                .filter_map(|candidate| {
+                    current_module
+                        .find_use_path_prefixed(db, candidate, config.insert_use.prefix_kind)
+                        .zip(Some(candidate))
+                })
+                .find(|(mod_path, _)| mod_path.to_string() == full_import_path)?;
+                let import = LocatedImport::new(
+                    import_path.clone(),
+                    item_to_import,
+                    item_to_import,
+                    Some(import_path),
+                );
 
-    ImportEdit { import, scope }.to_text_edit(config.insert_use).map(|edit| vec![edit])
+                ImportEdit { import, scope: scope.clone() }
+                    .to_text_edit(config.insert_use)
+                    .map(|edit| edit)
+            })
+            .collect(),
+    )
 }

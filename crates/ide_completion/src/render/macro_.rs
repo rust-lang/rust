@@ -51,8 +51,11 @@ impl<'a> MacroRender<'a> {
         item.kind(SymbolKind::Macro)
             .set_documentation(self.docs.clone())
             .set_deprecated(self.ctx.is_deprecated(self.macro_))
-            .add_import(import_to_add)
             .set_detail(self.detail());
+
+        if let Some(import_to_add) = import_to_add {
+            item.add_import(import_to_add);
+        }
 
         let needs_bang = !(self.ctx.completion.in_use_tree()
             || matches!(self.ctx.completion.path_call_kind(), Some(CallKind::Mac)));

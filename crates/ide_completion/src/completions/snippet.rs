@@ -104,13 +104,15 @@ fn add_custom_completions(
     let import_scope =
         ImportScope::find_insert_use_container_with_macros(&ctx.token.parent()?, &ctx.sema)?;
     ctx.config.snippets.iter().filter(|snip| snip.scope == scope).for_each(|snip| {
-        // FIXME: Support multiple imports
-        let import = match snip.imports(ctx, &import_scope) {
-            Ok(mut imports) => imports.pop(),
+        let imports = match snip.imports(ctx, &import_scope) {
+            Ok(imports) => imports,
             Err(_) => return,
         };
         let mut builder = snippet(ctx, cap, &snip.label, &snip.snippet);
-        builder.add_import(import).detail(snip.description.as_deref().unwrap_or_default());
+        for import in imports.into_iter() {
+            builder.add_import(import);
+        }
+        builder.detail(snip.description.as_deref().unwrap_or_default());
         builder.add_to(acc);
     });
     None
@@ -132,7 +134,7 @@ mod tests {
                     &["ControlFlow::Break(())".into()],
                     &[],
                     &["core::ops::ControlFlow".into()],
-                    None,
+                    crate::SnippetScope::Expr,
                 )
                 .unwrap()],
                 ..TEST_CONFIG

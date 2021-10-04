@@ -231,9 +231,8 @@ fn add_custom_postfix_completions(
     let import_scope =
         ImportScope::find_insert_use_container_with_macros(&ctx.token.parent()?, &ctx.sema)?;
     ctx.config.postfix_snippets.iter().for_each(|snippet| {
-        // FIXME: Support multiple imports
-        let import = match snippet.imports(ctx, &import_scope) {
-            Ok(mut imports) => imports.pop(),
+        let imports = match snippet.imports(ctx, &import_scope) {
+            Ok(imports) => imports,
             Err(_) => return,
         };
         let mut builder = postfix_snippet(
@@ -241,7 +240,9 @@ fn add_custom_postfix_completions(
             snippet.description.as_deref().unwrap_or_default(),
             &format!("{}", snippet.snippet(&receiver_text)),
         );
-        builder.add_import(import);
+        for import in imports.into_iter() {
+            builder.add_import(import);
+        }
         builder.add_to(acc);
     });
     None
@@ -480,7 +481,7 @@ fn main() {
                     &["ControlFlow::Break($receiver)".into()],
                     &[],
                     &["core::ops::ControlFlow".into()],
-                    None,
+                    crate::PostfixSnippetScope::Expr,
                 )
                 .unwrap()],
                 ..TEST_CONFIG

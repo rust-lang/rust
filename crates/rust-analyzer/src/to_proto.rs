@@ -270,14 +270,20 @@ fn completion_item(
         lsp_item.insert_text_format = Some(lsp_types::InsertTextFormat::Snippet);
     }
     if config.completion().enable_imports_on_the_fly {
-        if let Some(import_edit) = item.import_to_add() {
-            let import_path = &import_edit.import.import_path;
-            if let Some(import_name) = import_path.segments().last() {
-                let data = lsp_ext::CompletionResolveData {
-                    position: tdpp.clone(),
-                    full_import_path: import_path.to_string(),
-                    imported_name: import_name.to_string(),
-                };
+        if let imports @ [_, ..] = item.imports_to_add() {
+            let imports: Vec<_> = imports
+                .iter()
+                .filter_map(|import_edit| {
+                    let import_path = &import_edit.import.import_path;
+                    let import_name = import_path.segments().last()?;
+                    Some(lsp_ext::CompletionImport {
+                        full_import_path: import_path.to_string(),
+                        imported_name: import_name.to_string(),
+                    })
+                })
+                .collect();
+            if !imports.is_empty() {
+                let data = lsp_ext::CompletionResolveData { position: tdpp.clone(), imports };
                 lsp_item.data = Some(to_value(data).unwrap());
             }
         }

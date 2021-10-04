@@ -41,7 +41,7 @@ impl Snippet {
         snippet: &[String],
         description: &[String],
         requires: &[String],
-        scope: Option<SnippetScope>,
+        scope: SnippetScope,
     ) -> Option<Self> {
         // validate that these are indeed simple paths
         if requires.iter().any(|path| match ast::Path::parse(path) {
@@ -57,7 +57,7 @@ impl Snippet {
         let description = description.iter().join("\n");
         let description = if description.is_empty() { None } else { Some(description) };
         Some(Snippet {
-            scope: scope.unwrap_or(SnippetScope::Expr),
+            scope,
             label,
             snippet,
             description,
@@ -89,7 +89,7 @@ impl PostfixSnippet {
         snippet: &[String],
         description: &[String],
         requires: &[String],
-        scope: Option<PostfixSnippetScope>,
+        scope: PostfixSnippetScope,
     ) -> Option<Self> {
         // validate that these are indeed simple paths
         if requires.iter().any(|path| match ast::Path::parse(path) {
@@ -105,7 +105,7 @@ impl PostfixSnippet {
         let description = description.iter().join("\n");
         let description = if description.is_empty() { None } else { Some(description) };
         Some(PostfixSnippet {
-            scope: scope.unwrap_or(PostfixSnippetScope::Expr),
+            scope,
             label,
             snippet,
             description,

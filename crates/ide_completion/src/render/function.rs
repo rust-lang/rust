@@ -98,7 +98,10 @@ impl<'a> FunctionRender<'a> {
             }
         }
 
-        item.add_import(import_to_add).lookup_by(self.name);
+        if let Some(import_to_add) = import_to_add {
+            item.add_import(import_to_add);
+        }
+        item.lookup_by(self.name);
 
         let ret_type = self.func.ret_type(self.ctx.db());
         item.set_relevance(CompletionRelevance {

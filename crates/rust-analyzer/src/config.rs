@@ -462,10 +462,10 @@ impl Config {
                     &desc.snippet,
                     &desc.description,
                     &desc.requires,
-                    desc.scope.map(|scope| match scope {
+                    match desc.scope {
                         PostfixSnippetScopeDef::Expr => PostfixSnippetScope::Expr,
                         PostfixSnippetScopeDef::Type => PostfixSnippetScope::Type,
-                    }),
+                    },
                 )
             })
             .collect();
@@ -479,10 +479,10 @@ impl Config {
                     &desc.snippet,
                     &desc.description,
                     &desc.requires,
-                    desc.scope.map(|scope| match scope {
+                    match desc.scope {
                         SnippetScopeDef::Expr => SnippetScope::Expr,
                         SnippetScopeDef::Item => SnippetScope::Item,
-                    }),
+                    },
                 )
             })
             .collect();
@@ -954,15 +954,29 @@ impl Config {
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
 enum PostfixSnippetScopeDef {
     Expr,
     Type,
 }
 
+impl Default for PostfixSnippetScopeDef {
+    fn default() -> Self {
+        PostfixSnippetScopeDef::Expr
+    }
+}
+
 #[derive(Deserialize, Debug, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
 enum SnippetScopeDef {
     Expr,
     Item,
+}
+
+impl Default for SnippetScopeDef {
+    fn default() -> Self {
+        SnippetScopeDef::Expr
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -973,7 +987,8 @@ struct PostfixSnippetDef {
     snippet: Vec<String>,
     #[serde(deserialize_with = "single_or_array")]
     requires: Vec<String>,
-    scope: Option<PostfixSnippetScopeDef>,
+    #[serde(default)]
+    scope: PostfixSnippetScopeDef,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -984,7 +999,8 @@ struct SnippetDef {
     snippet: Vec<String>,
     #[serde(deserialize_with = "single_or_array")]
     requires: Vec<String>,
-    scope: Option<SnippetScopeDef>,
+    #[serde(default)]
+    scope: SnippetScopeDef,
 }
 
 fn single_or_array<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>

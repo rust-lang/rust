@@ -633,6 +633,7 @@ dependencies = [
  "once_cell",
  "profile",
  "rustc-hash",
+ "smallvec",
  "sourcegen",
  "stdx",
  "syntax",
