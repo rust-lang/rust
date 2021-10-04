@@ -52,3 +52,18 @@ fn bench_try_fold(b: &mut Bencher) {
 
     b.iter(|| black_box(ring.iter().try_fold(0, |a, b| Some(a + b))))
 }
+
+#[bench]
+fn bench_from_array_1000(b: &mut Bencher) {
+    const N: usize = 1000;
+    let mut array: [usize; N] = [0; N];
+
+    for i in 0..N {
+        array[i] = i;
+    }
+
+    b.iter(|| {
+        let deq: VecDeque<_> = array.into();
+        black_box(deq);
+    })
+}

@@ -508,6 +508,36 @@ fn test_from_vec_zst_overflow() {
 }
 
 #[test]
+fn test_from_array() {
+    fn test<const N: usize>() {
+        let mut array: [usize; N] = [0; N];
+
+        for i in 0..N {
+            array[i] = i;
+        }
+
+        let deq: VecDeque<_> = array.into();
+
+        for i in 0..N {
+            assert_eq!(deq[i], i);
+        }
+
+        assert!(deq.cap().is_power_of_two());
+        assert_eq!(deq.len(), N);
+    }
+    test::<0>();
+    test::<1>();
+    test::<2>();
+    test::<32>();
+    test::<35>();
+
+    let array = [(); MAXIMUM_ZST_CAPACITY - 1];
+    let deq = VecDeque::from(array);
+    assert!(deq.cap().is_power_of_two());
+    assert_eq!(deq.len(), MAXIMUM_ZST_CAPACITY - 1);
+}
+
+#[test]
 fn test_vec_from_vecdeque() {
     use crate::vec::Vec;
 
