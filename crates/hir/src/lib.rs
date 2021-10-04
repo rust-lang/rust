@@ -2024,7 +2024,7 @@ impl TypeParam {
     }
 
     pub fn trait_bounds(self, db: &dyn HirDatabase) -> Vec<Trait> {
-        db.generic_predicates_for_param(self.id)
+        db.generic_predicates_for_param(self.id, None)
             .iter()
             .filter_map(|pred| match &pred.skip_binders().skip_binders() {
                 hir_ty::WhereClause::Implemented(trait_ref) => {
