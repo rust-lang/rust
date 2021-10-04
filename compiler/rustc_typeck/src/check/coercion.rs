@@ -1484,21 +1484,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     fcx.emit_coerce_suggestions(&mut err, expr, found, expected, None);
                 }
 
-                // Error possibly reported in `check_assign` so avoid emitting error again.
-                let assign_to_bool = expression
-                    // #67273: Use initial expected type as opposed to `expected`.
-                    // Otherwise we end up using prior coercions in e.g. a `match` expression:
-                    // ```
-                    // match i {
-                    //     0 => true, // Because of this...
-                    //     1 => i = 1, // ...`expected == bool` now, but not when checking `i = 1`.
-                    //     _ => (),
-                    // };
-                    // ```
-                    .filter(|e| fcx.is_assign_to_bool(e, self.expected_ty()))
-                    .is_some();
-
-                err.emit_unless(assign_to_bool || unsized_return);
+                err.emit_unless(unsized_return);
 
                 self.final_ty = Some(fcx.tcx.ty_error());
             }

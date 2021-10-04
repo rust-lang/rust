@@ -1,0 +1,9 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-87771-ice-assign-assign-to-bool.rs:3:9
+   |
+LL |     a = a = true;
+   |         ^^^^^^^^ expected `bool`, found `()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
