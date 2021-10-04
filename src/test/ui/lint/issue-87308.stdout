@@ -1,0 +1,14 @@
+#![feature(prelude_import)]
+#![no_std]
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+#[macro_use]
+extern crate std;
+// Regression test for issue #87308.
+
+// compile-flags: -Zunpretty=everybody_loops
+// check-pass
+
+macro_rules! foo { () => { break 'x ; } }
+
+pub fn main() { loop { } }
