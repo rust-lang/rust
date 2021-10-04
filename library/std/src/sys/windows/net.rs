@@ -2,13 +2,13 @@
 
 use crate::cmp;
 use crate::io::{self, IoSlice, IoSliceMut, Read};
+use crate::lazy::SyncOnceCell;
 use crate::mem;
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::windows::io::{
     AsRawSocket, AsSocket, BorrowedSocket, FromRawSocket, IntoRawSocket, OwnedSocket, RawSocket,
 };
 use crate::ptr;
-use crate::sync::Once;
 use crate::sys;
 use crate::sys::c;
 use crate::sys_common::net;
@@ -29,26 +29,31 @@ pub mod netc {
 
 pub struct Socket(OwnedSocket);
 
-static INIT: Once = Once::new();
+static WSA_CLEANUP: SyncOnceCell<unsafe extern "system" fn() -> i32> = SyncOnceCell::new();
 
 /// Checks whether the Windows socket interface has been started already, and
 /// if not, starts it.
 pub fn init() {
-    INIT.call_once(|| unsafe {
+    let _ = WSA_CLEANUP.get_or_init(|| unsafe {
         let mut data: c::WSADATA = mem::zeroed();
         let ret = c::WSAStartup(
             0x202, // version 2.2
             &mut data,
         );
         assert_eq!(ret, 0);
+
+        // Only register `WSACleanup` if `WSAStartup` is actually ever called.
+        // Workaround to prevent linking to `WS2_32.dll` when no network functionality is used.
+        // See issue #85441.
+        c::WSACleanup
     });
 }
 
 pub fn cleanup() {
-    if INIT.is_completed() {
-        // only close the socket interface if it has actually been started
+    // only perform cleanup if network functionality was actually initialized
+    if let Some(cleanup) = WSA_CLEANUP.get() {
         unsafe {
-            c::WSACleanup();
+            cleanup();
         }
     }
 }
