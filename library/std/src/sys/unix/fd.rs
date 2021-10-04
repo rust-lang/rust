@@ -134,7 +134,7 @@ impl FileDesc {
                 self.as_raw_fd(),
                 bufs.as_ptr() as *const libc::iovec,
                 cmp::min(bufs.len(), max_iov()) as c_int,
-                offset as i64,
+                offset as _,
             )
         })?;
         Ok(ret as usize)
@@ -214,7 +214,7 @@ impl FileDesc {
                 self.as_raw_fd(),
                 bufs.as_ptr() as *const libc::iovec,
                 cmp::min(bufs.len(), max_iov()) as c_int,
-                offset as i64,
+                offset as _,
             )
         })?;
         Ok(ret as usize)
