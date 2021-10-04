@@ -4,6 +4,7 @@
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, UnsafeCell};
 use crate::char::EscapeDebugExtArgs;
+use crate::iter;
 use crate::marker::PhantomData;
 use crate::mem;
 use crate::num::fmt as numfmt;
@@ -1116,10 +1117,7 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     match args.fmt {
         None => {
             // We can use default formatting parameters for all arguments.
-            for (i, arg) in args.args.iter().enumerate() {
-                // SAFETY: args.args and args.pieces come from the same Arguments,
-                // which guarantees the indexes are always within bounds.
-                let piece = unsafe { args.pieces.get_unchecked(i) };
+            for (arg, piece) in iter::zip(args.args, args.pieces) {
                 if !piece.is_empty() {
                     formatter.buf.write_str(*piece)?;
                 }
@@ -1130,10 +1128,7 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
         Some(fmt) => {
             // Every spec has a corresponding argument that is preceded by
             // a string piece.
-            for (i, arg) in fmt.iter().enumerate() {
-                // SAFETY: fmt and args.pieces come from the same Arguments,
-                // which guarantees the indexes are always within bounds.
-                let piece = unsafe { args.pieces.get_unchecked(i) };
+            for (arg, piece) in iter::zip(fmt, args.pieces) {
                 if !piece.is_empty() {
                     formatter.buf.write_str(*piece)?;
                 }
