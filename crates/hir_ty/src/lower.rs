@@ -30,6 +30,7 @@ use smallvec::SmallVec;
 use stdx::impl_from;
 use syntax::ast;
 
+use crate::all_super_traits;
 use crate::{
     consteval,
     db::HirDatabase,
@@ -531,9 +532,10 @@ impl<'a> TyLoweringContext<'a> {
 
     fn select_associated_type(&self, res: Option<TypeNs>, segment: PathSegment<'_>) -> Ty {
         if let Some(res) = res {
-            let ty = associated_type_shorthand_candidates(
+            let ty = named_associated_type_shorthand_candidates(
                 self.db,
                 res,
+                Some(segment.name.clone()),
                 move |name, t, associated_ty| {
                     if name == segment.name {
                         let substs = match self.type_param_mode {
@@ -555,16 +557,16 @@ impl<'a> TyLoweringContext<'a> {
                         // associated_type_shorthand_candidates does not do that
                         let substs = substs.shifted_in_from(&Interner, self.in_binders);
                         // FIXME handle type parameters on the segment
-                        return Some(
+                        Some(
                             TyKind::Alias(AliasTy::Projection(ProjectionTy {
                                 associated_ty_id: to_assoc_type_id(associated_ty),
                                 substitution: substs,
                             }))
                             .intern(&Interner),
-                        );
+                        )
+                    } else {
+                        None
                     }
-
-                    None
                 },
             );
 
@@ -935,6 +937,15 @@ pub fn callable_item_sig(db: &dyn HirDatabase, def: CallableDefId) -> PolyFnSig 
 pub fn associated_type_shorthand_candidates<R>(
     db: &dyn HirDatabase,
     res: TypeNs,
+    cb: impl FnMut(&Name, &TraitRef, TypeAliasId) -> Option<R>,
+) -> Option<R> {
+    named_associated_type_shorthand_candidates(db, res, None, cb)
+}
+
+fn named_associated_type_shorthand_candidates<R>(
+    db: &dyn HirDatabase,
+    res: TypeNs,
+    assoc_name: Option<Name>,
     mut cb: impl FnMut(&Name, &TraitRef, TypeAliasId) -> Option<R>,
 ) -> Option<R> {
     let mut search = |t| {
@@ -959,7 +970,7 @@ pub fn associated_type_shorthand_candidates<R>(
             db.impl_trait(impl_id)?.into_value_and_skipped_binders().0,
         ),
         TypeNs::GenericParam(param_id) => {
-            let predicates = db.generic_predicates_for_param(param_id);
+            let predicates = db.generic_predicates_for_param(param_id, assoc_name);
             let res = predicates.iter().find_map(|pred| match pred.skip_binders().skip_binders() {
                 // FIXME: how to correctly handle higher-ranked bounds here?
                 WhereClause::Implemented(tr) => search(
@@ -1022,6 +1033,7 @@ pub(crate) fn field_types_query(
 pub(crate) fn generic_predicates_for_param_query(
     db: &dyn HirDatabase,
     param_id: TypeParamId,
+    assoc_name: Option<Name>,
 ) -> Arc<[Binders<QuantifiedWhereClause>]> {
     let resolver = param_id.parent.resolver(db.upcast());
     let ctx =
@@ -1031,13 +1043,46 @@ pub(crate) fn generic_predicates_for_param_query(
         .where_predicates_in_scope()
         // we have to filter out all other predicates *first*, before attempting to lower them
         .filter(|pred| match pred {
-            WherePredicate::ForLifetime { target, .. }
-            | WherePredicate::TypeBound { target, .. } => match target {
-                WherePredicateTypeTarget::TypeRef(type_ref) => {
-                    ctx.lower_ty_only_param(type_ref) == Some(param_id)
+            WherePredicate::ForLifetime { target, bound, .. }
+            | WherePredicate::TypeBound { target, bound, .. } => {
+                match target {
+                    WherePredicateTypeTarget::TypeRef(type_ref) => {
+                        if ctx.lower_ty_only_param(type_ref) != Some(param_id) {
+                            return false;
+                        }
+                    }
+                    WherePredicateTypeTarget::TypeParam(local_id) => {
+                        if *local_id != param_id.local_id {
+                            return false;
+                        }
+                    }
+                };
+
+                match &**bound {
+                    TypeBound::ForLifetime(_, path) | TypeBound::Path(path, _) => {
+                        // Only lower the bound if the trait could possibly define the associated
+                        // type we're looking for.
+
+                        let assoc_name = match &assoc_name {
+                            Some(it) => it,
+                            None => return true,
+                        };
+                        let tr = match resolver
+                            .resolve_path_in_type_ns_fully(db.upcast(), path.mod_path())
+                        {
+                            Some(TypeNs::TraitId(tr)) => tr,
+                            _ => return false,
+                        };
+
+                        all_super_traits(db.upcast(), tr).iter().any(|tr| {
+                            db.trait_data(*tr).items.iter().any(|(name, item)| {
+                                matches!(item, AssocItemId::TypeAliasId(_)) && name == assoc_name
+                            })
+                        })
+                    }
+                    TypeBound::Lifetime(_) | TypeBound::Error => false,
                 }
-                WherePredicateTypeTarget::TypeParam(local_id) => *local_id == param_id.local_id,
-            },
+            }
             WherePredicate::Lifetime { .. } => false,
         })
         .flat_map(|pred| ctx.lower_where_predicate(pred, true).map(|p| make_binders(&generics, p)))
@@ -1056,6 +1101,7 @@ pub(crate) fn generic_predicates_for_param_recover(
     _db: &dyn HirDatabase,
     _cycle: &[String],
     _param_id: &TypeParamId,
+    _assoc_name: &Option<Name>,
 ) -> Arc<[Binders<QuantifiedWhereClause>]> {
     Arc::new([])
 }

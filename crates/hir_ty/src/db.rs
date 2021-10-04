@@ -61,6 +61,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn generic_predicates_for_param(
         &self,
         param_id: TypeParamId,
+        assoc_name: Option<Name>,
     ) -> Arc<[Binders<QuantifiedWhereClause>]>;
 
     #[salsa::invoke(crate::lower::generic_predicates_query)]

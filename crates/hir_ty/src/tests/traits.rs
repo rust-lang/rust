@@ -2100,7 +2100,8 @@ fn test() {
 
 #[test]
 fn unselected_projection_in_trait_env_cycle_1() {
-    // this is a legitimate cycle
+    // This is not a cycle, because the `T: Trait2<T::Item>` bound depends only on the `T: Trait`
+    // bound, not on itself (since only `Trait` can define `Item`).
     check_types(
         r#"
 trait Trait {
@@ -2111,7 +2112,7 @@ trait Trait2<T> {}
 
 fn test<T: Trait>() where T: Trait2<T::Item> {
     let x: T::Item = no_matter;
-}                  //^^^^^^^^^ {unknown}
+}                  //^^^^^^^^^ Trait::Item<T>
 "#,
     );
 }
