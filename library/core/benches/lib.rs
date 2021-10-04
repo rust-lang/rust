@@ -15,3 +15,4 @@ mod num;
 mod ops;
 mod pattern;
 mod slice;
+mod str;
