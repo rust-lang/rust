@@ -2117,7 +2117,7 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    /// Computes the def-ids of the transitive super-traits of `trait_def_id`. This (intentionally)
+    /// Computes the def-ids of the transitive supertraits of `trait_def_id`. This (intentionally)
     /// does not compute the full elaborated super-predicates but just the set of def-ids. It is used
     /// to identify which traits may define a given associated type to help avoid cycle errors.
     /// Returns a `DefId` iterator.

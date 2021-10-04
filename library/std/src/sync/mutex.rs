@@ -190,7 +190,7 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
 #[must_use = "if unused the Mutex will immediately unlock"]
 #[cfg_attr(
     not(bootstrap),
-    must_not_suspend = "Holding a MutexGuard across suspend \
+    must_not_suspend = "holding a MutexGuard across suspend \
                       points can cause deadlocks, delays, \
                       and cause Futures to not implement `Send`"
 )]

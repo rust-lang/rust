@@ -1339,7 +1339,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         };
 
         if module.is_trait() {
-            self.r.session.span_err(import.span, "items in traits are not importable.");
+            self.r.session.span_err(import.span, "items in traits are not importable");
             return;
         } else if ptr::eq(module, import.parent_scope.module) {
             return;

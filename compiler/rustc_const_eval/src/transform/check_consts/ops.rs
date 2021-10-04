@@ -368,23 +368,6 @@ impl NonConstOp for MutDeref {
     }
 }
 
-#[derive(Debug)]
-pub struct Panic;
-impl NonConstOp for Panic {
-    fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
-        Status::Unstable(sym::const_panic)
-    }
-
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        feature_err(
-            &ccx.tcx.sess.parse_sess,
-            sym::const_panic,
-            span,
-            &format!("panicking in {}s is unstable", ccx.const_kind()),
-        )
-    }
-}
-
 /// A call to a `panic()` lang item where the first argument is _not_ a `&str`.
 #[derive(Debug)]
 pub struct PanicNonStr;
@@ -407,7 +390,7 @@ impl NonConstOp for RawPtrComparison {
         let mut err = ccx
             .tcx
             .sess
-            .struct_span_err(span, "pointers cannot be reliably compared during const eval.");
+            .struct_span_err(span, "pointers cannot be reliably compared during const eval");
         err.note(
             "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> \
             for more information",
@@ -443,7 +426,7 @@ impl NonConstOp for RawPtrToIntCast {
         let mut err = ccx
             .tcx
             .sess
-            .struct_span_err(span, "pointers cannot be cast to integers during const eval.");
+            .struct_span_err(span, "pointers cannot be cast to integers during const eval");
         err.note("at compile-time, pointers do not have an integer value");
         err.note(
             "avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior",

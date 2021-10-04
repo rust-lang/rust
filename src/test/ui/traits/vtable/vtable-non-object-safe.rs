@@ -6,7 +6,7 @@
 
 #[rustc_dump_vtable]
 trait A: Iterator {}
-//~^ error Vtable
+//~^ error vtable
 
 impl<T> A for T where T: Iterator {}
 

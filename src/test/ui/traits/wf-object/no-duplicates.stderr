@@ -6,7 +6,7 @@ LL | type _0 = dyn Obj + Obj;
    |               |
    |               first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -17,7 +17,7 @@ LL | type _1 = dyn Send + Obj + Obj;
    |                      |
    |                      first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -28,7 +28,7 @@ LL | type _2 = dyn Obj + Send + Obj;
    |               |
    |               first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -39,7 +39,7 @@ LL | type _4 = dyn for<'a> ObjL<'a> + for<'b> ObjL<'b>;
    |               |
    |               first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: for<'a> ObjL<'a> + for<'b> ObjL<'b> {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: for<'a> ObjL<'a> + for<'b> ObjL<'b> {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -50,7 +50,7 @@ LL | type _5 = dyn ObjT<for<'a> fn(&'a u8)> + ObjT<for<'b> fn(&'b u8)>;
    |               |
    |               first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: ObjT<for<'a> fn(&'a u8)> + ObjT<for<'b> fn(&'b u8)> {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjT<for<'a> fn(&'a u8)> + ObjT<for<'b> fn(&'b u8)> {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error: aborting due to 5 previous errors

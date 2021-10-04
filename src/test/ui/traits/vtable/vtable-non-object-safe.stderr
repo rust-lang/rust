@@ -1,4 +1,4 @@
-error: Vtable entries for `<std::vec::IntoIter<u8> as A>`: [
+error: vtable entries for `<std::vec::IntoIter<u8> as A>`: [
     MetadataDropInPlace,
     MetadataSize,
     MetadataAlign,

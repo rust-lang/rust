@@ -521,10 +521,12 @@ trait RangeIteratorImpl {
     // Iterator
     fn spec_next(&mut self) -> Option<Self::Item>;
     fn spec_nth(&mut self, n: usize) -> Option<Self::Item>;
+    fn spec_advance_by(&mut self, n: usize) -> Result<(), usize>;
 
     // DoubleEndedIterator
     fn spec_next_back(&mut self) -> Option<Self::Item>;
     fn spec_nth_back(&mut self, n: usize) -> Option<Self::Item>;
+    fn spec_advance_back_by(&mut self, n: usize) -> Result<(), usize>;
 }
 
 impl<A: Step> RangeIteratorImpl for ops::Range<A> {
@@ -556,6 +558,22 @@ impl<A: Step> RangeIteratorImpl for ops::Range<A> {
     }
 
     #[inline]
+    default fn spec_advance_by(&mut self, n: usize) -> Result<(), usize> {
+        let available = if self.start <= self.end {
+            Step::steps_between(&self.start, &self.end).unwrap_or(usize::MAX)
+        } else {
+            0
+        };
+
+        let taken = available.min(n);
+
+        self.start =
+            Step::forward_checked(self.start.clone(), taken).expect("`Step` invariants not upheld");
+
+        if taken < n { Err(taken) } else { Ok(()) }
+    }
+
+    #[inline]
     default fn spec_next_back(&mut self) -> Option<A> {
         if self.start < self.end {
             self.end =
@@ -578,6 +596,22 @@ impl<A: Step> RangeIteratorImpl for ops::Range<A> {
 
         self.end = self.start.clone();
         None
+    }
+
+    #[inline]
+    default fn spec_advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        let available = if self.start <= self.end {
+            Step::steps_between(&self.start, &self.end).unwrap_or(usize::MAX)
+        } else {
+            0
+        };
+
+        let taken = available.min(n);
+
+        self.end =
+            Step::backward_checked(self.end.clone(), taken).expect("`Step` invariants not upheld");
+
+        if taken < n { Err(taken) } else { Ok(()) }
     }
 }
 
@@ -608,6 +642,25 @@ impl<T: TrustedStep> RangeIteratorImpl for ops::Range<T> {
     }
 
     #[inline]
+    fn spec_advance_by(&mut self, n: usize) -> Result<(), usize> {
+        let available = if self.start <= self.end {
+            Step::steps_between(&self.start, &self.end).unwrap_or(usize::MAX)
+        } else {
+            0
+        };
+
+        let taken = available.min(n);
+
+        // SAFETY: the conditions above ensure that the count is in bounds. If start <= end
+        // then steps_between either returns a bound to which we clamp or returns None which
+        // together with the initial inequality implies more than usize::MAX steps.
+        // Otherwise 0 is returned which always safe to use.
+        self.start = unsafe { Step::forward_unchecked(self.start.clone(), taken) };
+
+        if taken < n { Err(taken) } else { Ok(()) }
+    }
+
+    #[inline]
     fn spec_next_back(&mut self) -> Option<T> {
         if self.start < self.end {
             // SAFETY: just checked precondition
@@ -630,6 +683,22 @@ impl<T: TrustedStep> RangeIteratorImpl for ops::Range<T> {
 
         self.end = self.start.clone();
         None
+    }
+
+    #[inline]
+    fn spec_advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        let available = if self.start <= self.end {
+            Step::steps_between(&self.start, &self.end).unwrap_or(usize::MAX)
+        } else {
+            0
+        };
+
+        let taken = available.min(n);
+
+        // SAFETY: same as the spec_advance_by() implementation
+        self.end = unsafe { Step::backward_unchecked(self.end.clone(), taken) };
+
+        if taken < n { Err(taken) } else { Ok(()) }
     }
 }
 
@@ -675,6 +744,11 @@ impl<A: Step> Iterator for ops::Range<A> {
     #[inline]
     fn is_sorted(self) -> bool {
         true
+    }
+
+    #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        self.spec_advance_by(n)
     }
 
     #[inline]
@@ -749,6 +823,11 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<A> {
         self.spec_nth_back(n)
+    }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        self.spec_advance_back_by(n)
     }
 }
 

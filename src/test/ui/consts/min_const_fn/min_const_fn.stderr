@@ -164,7 +164,7 @@ LL | const fn foo26() -> &'static u32 { &BAR }
    |
    = help: consider extracting the value of the `static` to a `const`, and referring to that
 
-error: pointers cannot be cast to integers during const eval.
+error: pointers cannot be cast to integers during const eval
   --> $DIR/min_const_fn.rs:92:42
    |
 LL | const fn foo30(x: *const u32) -> usize { x as usize }
@@ -173,7 +173,7 @@ LL | const fn foo30(x: *const u32) -> usize { x as usize }
    = note: at compile-time, pointers do not have an integer value
    = note: avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior
 
-error: pointers cannot be cast to integers during const eval.
+error: pointers cannot be cast to integers during const eval
   --> $DIR/min_const_fn.rs:94:63
    |
 LL | const fn foo30_with_unsafe(x: *const u32) -> usize { unsafe { x as usize } }
@@ -182,7 +182,7 @@ LL | const fn foo30_with_unsafe(x: *const u32) -> usize { unsafe { x as usize } 
    = note: at compile-time, pointers do not have an integer value
    = note: avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior
 
-error: pointers cannot be cast to integers during const eval.
+error: pointers cannot be cast to integers during const eval
   --> $DIR/min_const_fn.rs:96:42
    |
 LL | const fn foo30_2(x: *mut u32) -> usize { x as usize }
@@ -191,7 +191,7 @@ LL | const fn foo30_2(x: *mut u32) -> usize { x as usize }
    = note: at compile-time, pointers do not have an integer value
    = note: avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior
 
-error: pointers cannot be cast to integers during const eval.
+error: pointers cannot be cast to integers during const eval
   --> $DIR/min_const_fn.rs:98:63
    |
 LL | const fn foo30_2_with_unsafe(x: *mut u32) -> usize { unsafe { x as usize } }

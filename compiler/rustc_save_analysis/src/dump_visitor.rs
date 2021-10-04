@@ -682,7 +682,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             );
         }
 
-        // super-traits
+        // supertraits
         for super_bound in trait_refs.iter() {
             let (def_id, sub_span) = match *super_bound {
                 hir::GenericBound::Trait(ref trait_ref, _) => (

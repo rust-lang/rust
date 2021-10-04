@@ -1,4 +1,4 @@
-error: Vtable entries for `<S as D>`: [
+error: vtable entries for `<S as D>`: [
     MetadataDropInPlace,
     MetadataSize,
     MetadataAlign,
@@ -16,7 +16,7 @@ LL | |     fn foo_d(&self) {}
 LL | | }
    | |_^
 
-error: Vtable entries for `<S as C>`: [
+error: vtable entries for `<S as C>`: [
     MetadataDropInPlace,
     MetadataSize,
     MetadataAlign,

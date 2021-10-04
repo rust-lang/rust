@@ -1,4 +1,4 @@
-error: pointers cannot be cast to integers during const eval.
+error: pointers cannot be cast to integers during const eval
   --> $DIR/issue-17458.rs:1:28
    |
 LL | static X: usize = unsafe { core::ptr::null::<usize>() as usize };

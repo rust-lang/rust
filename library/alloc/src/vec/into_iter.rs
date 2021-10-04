@@ -162,6 +162,29 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     }
 
     #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        let step_size = self.len().min(n);
+        let to_drop = ptr::slice_from_raw_parts_mut(self.ptr as *mut T, step_size);
+        if mem::size_of::<T>() == 0 {
+            // SAFETY: due to unchecked casts of unsigned amounts to signed offsets the wraparound
+            // effectively results in unsigned pointers representing positions 0..usize::MAX,
+            // which is valid for ZSTs.
+            self.ptr = unsafe { arith_offset(self.ptr as *const i8, step_size as isize) as *mut T }
+        } else {
+            // SAFETY: the min() above ensures that step_size is in bounds
+            self.ptr = unsafe { self.ptr.add(step_size) };
+        }
+        // SAFETY: the min() above ensures that step_size is in bounds
+        unsafe {
+            ptr::drop_in_place(to_drop);
+        }
+        if step_size < n {
+            return Err(step_size);
+        }
+        Ok(())
+    }
+
+    #[inline]
     fn count(self) -> usize {
         self.len()
     }
@@ -202,6 +225,29 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
 
             Some(unsafe { ptr::read(self.end) })
         }
+    }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        let step_size = self.len().min(n);
+        if mem::size_of::<T>() == 0 {
+            // SAFETY: same as for advance_by()
+            self.end = unsafe {
+                arith_offset(self.end as *const i8, step_size.wrapping_neg() as isize) as *mut T
+            }
+        } else {
+            // SAFETY: same as for advance_by()
+            self.end = unsafe { self.end.offset(step_size.wrapping_neg() as isize) };
+        }
+        let to_drop = ptr::slice_from_raw_parts_mut(self.end as *mut T, step_size);
+        // SAFETY: same as for advance_by()
+        unsafe {
+            ptr::drop_in_place(to_drop);
+        }
+        if step_size < n {
+            return Err(step_size);
+        }
+        Ok(())
     }
 }
 

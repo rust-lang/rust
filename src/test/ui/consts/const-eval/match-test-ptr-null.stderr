@@ -1,4 +1,4 @@
-error: pointers cannot be cast to integers during const eval.
+error: pointers cannot be cast to integers during const eval
   --> $DIR/match-test-ptr-null.rs:6:15
    |
 LL |         match &1 as *const i32 as usize {
