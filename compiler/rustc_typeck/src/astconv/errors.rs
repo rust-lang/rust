@@ -199,7 +199,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     /// When there are any missing associated types, emit an E0191 error and attempt to supply a
     /// reasonable suggestion on how to write it. For the case of multiple associated types in the
-    /// same trait bound have the same name (as they come from different super-traits), we instead
+    /// same trait bound have the same name (as they come from different supertraits), we instead
     /// emit a generic note suggesting using a `where` clause to constraint instead.
     pub(crate) fn complain_about_missing_associated_types(
         &self,
@@ -340,7 +340,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                          using the fully-qualified path to the associated types";
         if !where_constraints.is_empty() && suggestions.is_empty() {
             // If there are duplicates associated type names and a single trait bound do not
-            // use structured suggestion, it means that there are multiple super-traits with
+            // use structured suggestion, it means that there are multiple supertraits with
             // the same associated type name.
             err.help(where_msg);
         }
