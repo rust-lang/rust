@@ -1030,7 +1030,8 @@ impl CrateError {
                         add,
                     );
                     err.help(&format!(
-                        "please recompile that crate using this compiler ({})",
+                        "please recompile that crate using this compiler ({}) \
+                         (consider running `cargo clean` first)",
                         rustc_version(),
                     ));
                     let mismatches = locator.crate_rejections.via_version.iter();
