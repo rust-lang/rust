@@ -3,7 +3,6 @@
 #![feature(const_trait_impl)]
 #![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
-#![feature(const_panic)]
 #![cfg_attr(precise, feature(const_precise_live_drops))]
 
 struct S<'a>(&'a mut u8);

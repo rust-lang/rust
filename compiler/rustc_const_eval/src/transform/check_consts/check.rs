@@ -887,8 +887,6 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
 
                 // At this point, we are calling a function, `callee`, whose `DefId` is known...
                 if is_lang_panic_fn(tcx, callee) {
-                    self.check_op(ops::Panic);
-
                     // `begin_panic` and `panic_display` are generic functions that accept
                     // types other than str. Check to enforce that only str can be used in
                     // const-eval.

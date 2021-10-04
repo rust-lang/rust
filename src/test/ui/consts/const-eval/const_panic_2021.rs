@@ -1,5 +1,4 @@
 // edition:2021
-#![feature(const_panic)]
 #![crate_type = "lib"]
 
 const MSG: &str = "hello";

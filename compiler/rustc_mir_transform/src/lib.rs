@@ -1,7 +1,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
-#![feature(const_panic)]
+#![cfg_attr(bootstrap, feature(const_panic))]
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
 #![feature(map_try_insert)]

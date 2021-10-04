@@ -2,8 +2,6 @@
 
 // run-pass
 
-#![feature(const_panic)]
-
 const X: i32 = {
     let mut x = 0;
     let _ = true && { x = 1; false };

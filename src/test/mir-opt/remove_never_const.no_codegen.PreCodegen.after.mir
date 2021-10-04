@@ -1,11 +1,11 @@
 // MIR for `no_codegen` after PreCodegen
 
 fn no_codegen() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/remove-never-const.rs:19:20: 19:20
+    let mut _0: ();                      // return place in scope 0 at $DIR/remove-never-const.rs:18:20: 18:20
     scope 1 {
     }
 
     bb0: {
-        unreachable;                     // scope 0 at $DIR/remove-never-const.rs:20:13: 20:33
+        unreachable;                     // scope 0 at $DIR/remove-never-const.rs:19:13: 19:33
     }
 }

@@ -1,7 +1,7 @@
 // compile-flags: --crate-type=lib
 // check-pass
 
-#![feature(const_ptr_is_null, const_panic)]
+#![feature(const_ptr_is_null)]
 
 const FOO: &usize = &42;
 
