@@ -225,9 +225,12 @@ config_data! {
         /// Whether to show `Method References` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
         lens_methodReferences: bool = "false",
-        /// Whether to show `References` lens. Only applies when
-        /// `#rust-analyzer.lens.enable#` is set.
+        /// Whether to show `References` lens for Struct, Enum, Union and Trait.
+        /// Only applies when `#rust-analyzer.lens.enable#` is set.
         lens_references: bool = "false",
+        /// Whether to show `References` lens for Enum Variants.
+        /// Only applies when `#rust-analyzer.lens.enable#` is set.
+        lens_enumVariantReferences: bool = "false",
         /// Internal config: use custom client-side commands even when the
         /// client doesn't set the corresponding capability.
         lens_forceCustomCommands: bool = "true",
@@ -323,6 +326,7 @@ pub struct LensConfig {
     pub implementations: bool,
     pub method_refs: bool,
     pub refs: bool, // for Struct, Enum, Union and Trait
+    pub enum_variant_refs: bool,
 }
 
 impl LensConfig {
@@ -339,7 +343,7 @@ impl LensConfig {
     }
 
     pub fn references(&self) -> bool {
-        self.method_refs || self.refs
+        self.method_refs || self.refs || self.enum_variant_refs
     }
 }
 
@@ -805,6 +809,7 @@ impl Config {
             implementations: self.data.lens_enable && self.data.lens_implementations,
             method_refs: self.data.lens_enable && self.data.lens_methodReferences,
             refs: self.data.lens_enable && self.data.lens_references,
+            enum_variant_refs: self.data.lens_enable && self.data.lens_enumVariantReferences,
         }
     }
     pub fn hover_actions(&self) -> HoverActionsConfig {

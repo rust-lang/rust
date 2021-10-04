@@ -5,7 +5,7 @@ use ide_db::{
     helpers::visit_file_defs,
     RootDatabase,
 };
-use syntax::{ast::HasName, AstNode, TextRange};
+use syntax::{ast::HasName, AstNode, TextRange, TextSize};
 
 use crate::{
     fn_references::find_all_methods,
@@ -40,6 +40,7 @@ pub struct AnnotationConfig {
     pub annotate_impls: bool,
     pub annotate_references: bool,
     pub annotate_method_references: bool,
+    pub annotate_enum_variant_references: bool,
 }
 
 pub(crate) fn annotations(
@@ -63,18 +64,33 @@ pub(crate) fn annotations(
 
     visit_file_defs(&Semantics::new(db), file_id, &mut |def| match def {
         Either::Left(def) => {
-            let range = match def {
+            let (range, ranges_variants) = match def {
                 hir::ModuleDef::Const(konst) => {
-                    konst.source(db).and_then(|node| name_range(&node, file_id))
+                    (konst.source(db).and_then(|node| name_range(&node, file_id)), vec![None])
                 }
                 hir::ModuleDef::Trait(trait_) => {
-                    trait_.source(db).and_then(|node| name_range(&node, file_id))
+                    (trait_.source(db).and_then(|node| name_range(&node, file_id)), vec![None])
                 }
-                hir::ModuleDef::Adt(adt) => {
-                    adt.source(db).and_then(|node| name_range(&node, file_id))
-                }
-                _ => None,
+                hir::ModuleDef::Adt(adt) => match adt {
+                    hir::Adt::Enum(enum_) => (
+                        enum_.source(db).and_then(|node| name_range(&node, file_id)),
+                        if config.annotate_enum_variant_references {
+                            enum_
+                                .variants(db)
+                                .into_iter()
+                                .map(|variant| {
+                                    variant.source(db).and_then(|node| name_range(&node, file_id))
+                                })
+                                .collect()
+                        } else {
+                            vec![None]
+                        },
+                    ),
+                    _ => (adt.source(db).and_then(|node| name_range(&node, file_id)), vec![None]),
+                },
+                _ => (None, vec![None]),
             };
+
             let (range, offset) = match range {
                 Some(range) => (range, range.start()),
                 None => return,
@@ -97,6 +113,26 @@ pub(crate) fn annotations(
                         data: None,
                     },
                 });
+            }
+
+            if config.annotate_enum_variant_references {
+                let mut variants_metadata: Vec<(TextRange, TextSize)> = Vec::new();
+                for range_variant in ranges_variants.into_iter() {
+                    let (range, offset) = match range_variant {
+                        Some(range) => (range, range.start()),
+                        None => return,
+                    };
+                    variants_metadata.push((range, offset))
+                }
+                for variant_metadata in variants_metadata.into_iter() {
+                    annotations.push(Annotation {
+                        range: variant_metadata.0,
+                        kind: AnnotationKind::HasReferences {
+                            position: FilePosition { file_id, offset: variant_metadata.1 },
+                            data: None,
+                        },
+                    });
+                }
             }
 
             fn name_range<T: HasName>(node: &InFile<T>, file_id: FileId) -> Option<TextRange> {
@@ -173,6 +209,7 @@ mod tests {
                     annotate_impls: true,
                     annotate_references: true,
                     annotate_method_references: true,
+                    annotate_enum_variant_references: true,
                 },
                 file_id,
             )
