@@ -1,6 +1,5 @@
-use core::slice::Iter;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_index::vec::{Enumerated, IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_span::Span;
@@ -337,7 +336,9 @@ impl MovePathLookup {
 
     /// An enumerated iterator of `local`s and their associated
     /// `MovePathIndex`es.
-    pub fn iter_locals_enumerated(&self) -> Enumerated<Local, Iter<'_, MovePathIndex>> {
+    pub fn iter_locals_enumerated(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (Local, &MovePathIndex)> + ExactSizeIterator {
         self.locals.iter_enumerated()
     }
 }
