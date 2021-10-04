@@ -64,7 +64,7 @@ pub(crate) fn annotations(
 
     visit_file_defs(&Semantics::new(db), file_id, &mut |def| match def {
         Either::Left(def) => {
-            let (range, ranges_variants) = match def {
+            let (range, ranges_enum_variants) = match def {
                 hir::ModuleDef::Const(konst) => {
                     (konst.source(db).and_then(|node| name_range(&node, file_id)), vec![None])
                 }
@@ -116,19 +116,19 @@ pub(crate) fn annotations(
             }
 
             if config.annotate_enum_variant_references {
-                let mut variants_metadata: Vec<(TextRange, TextSize)> = Vec::new();
-                for range_variant in ranges_variants.into_iter() {
-                    let (range, offset) = match range_variant {
+                let mut enum_variants_metadata: Vec<(TextRange, TextSize)> = Vec::new();
+                for range_enum_variant in ranges_enum_variants.into_iter() {
+                    let (range, offset) = match range_enum_variant {
                         Some(range) => (range, range.start()),
                         None => return,
                     };
-                    variants_metadata.push((range, offset))
+                    enum_variants_metadata.push((range, offset))
                 }
-                for variant_metadata in variants_metadata.into_iter() {
+                for enum_variant_metadata in enum_variants_metadata.into_iter() {
                     annotations.push(Annotation {
-                        range: variant_metadata.0,
+                        range: enum_variant_metadata.0,
                         kind: AnnotationKind::HasReferences {
-                            position: FilePosition { file_id, offset: variant_metadata.1 },
+                            position: FilePosition { file_id, offset: enum_variant_metadata.1 },
                             data: None,
                         },
                     });
