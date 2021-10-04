@@ -362,24 +362,12 @@ impl<'a> Read for ExampleSliceReader<'a> {
 fn test_read_to_end_capacity() -> io::Result<()> {
     let input = &b"foo"[..];
 
-    // read_to_end() generally needs to over-allocate, both for efficiency
-    // and so that it can distinguish EOF. Assert that this is the case
-    // with this simple ExampleSliceReader struct, which uses the default
-    // implementation of read_to_end. Even though vec1 is allocated with
-    // exactly enough capacity for the read, read_to_end will allocate more
-    // space here.
+    // read_to_end() takes care not to over-allocate when a buffer is the
+    // exact size needed.
     let mut vec1 = Vec::with_capacity(input.len());
     ExampleSliceReader { slice: input }.read_to_end(&mut vec1)?;
     assert_eq!(vec1.len(), input.len());
-    assert!(vec1.capacity() > input.len(), "allocated more");
-
-    // However, std::io::Take includes an implementation of read_to_end
-    // that will not allocate when the limit has already been reached. In
-    // this case, vec2 never grows.
-    let mut vec2 = Vec::with_capacity(input.len());
-    ExampleSliceReader { slice: input }.take(input.len() as u64).read_to_end(&mut vec2)?;
-    assert_eq!(vec2.len(), input.len());
-    assert_eq!(vec2.capacity(), input.len(), "did not allocate more");
+    assert_eq!(vec1.capacity(), input.len(), "did not allocate more");
 
     Ok(())
 }
