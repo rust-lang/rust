@@ -1,4 +1,4 @@
-error: Sanitizer is incompatible with statically linked libc, disable it using `-C target-feature=-crt-static`
+error: sanitizer is incompatible with statically linked libc, disable it using `-C target-feature=-crt-static`
 
 error: aborting due to previous error
 

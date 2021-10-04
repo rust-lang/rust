@@ -1,4 +1,4 @@
-warning: anonymous parameters are deprecated and will be removed in the next edition.
+warning: anonymous parameters are deprecated and will be removed in the next edition
   --> $DIR/anon-params-deprecated.rs:9:12
    |
 LL |     fn foo(i32);
@@ -12,7 +12,7 @@ LL | #![warn(anonymous_parameters)]
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
 
-warning: anonymous parameters are deprecated and will be removed in the next edition.
+warning: anonymous parameters are deprecated and will be removed in the next edition
   --> $DIR/anon-params-deprecated.rs:12:30
    |
 LL |     fn bar_with_default_impl(String, String) {}
@@ -21,7 +21,7 @@ LL |     fn bar_with_default_impl(String, String) {}
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
 
-warning: anonymous parameters are deprecated and will be removed in the next edition.
+warning: anonymous parameters are deprecated and will be removed in the next edition
   --> $DIR/anon-params-deprecated.rs:12:38
    |
 LL |     fn bar_with_default_impl(String, String) {}

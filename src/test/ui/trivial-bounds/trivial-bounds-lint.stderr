@@ -1,4 +1,4 @@
-error: Trait bound i32: Copy does not depend on any type or lifetime parameters
+error: trait bound i32: Copy does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-lint.rs:5:21
    |
 LL | struct A where i32: Copy;
@@ -10,37 +10,37 @@ note: the lint level is defined here
 LL | #![deny(trivial_bounds)]
    |         ^^^^^^^^^^^^^^
 
-error: Trait bound i32: X<()> does not depend on any type or lifetime parameters
+error: trait bound i32: X<()> does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-lint.rs:18:30
    |
 LL | fn global_param() where i32: X<()> {}
    |                              ^^^^^
 
-error: Trait bound i32: Z does not depend on any type or lifetime parameters
+error: trait bound i32: Z does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-lint.rs:22:35
    |
 LL | fn global_projection() where i32: Z<S = i32> {}
    |                                   ^^^^^^^^^^
 
-error: Lifetime bound i32: 'static does not depend on any type or lifetime parameters
+error: lifetime bound i32: 'static does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-lint.rs:29:34
    |
 LL | fn global_lifetimes() where i32: 'static, &'static str: 'static {}
    |                                  ^^^^^^^
 
-error: Lifetime bound &'static str: 'static does not depend on any type or lifetime parameters
+error: lifetime bound &'static str: 'static does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-lint.rs:29:57
    |
 LL | fn global_lifetimes() where i32: 'static, &'static str: 'static {}
    |                                                         ^^^^^^^
 
-error: Lifetime bound 'static: 'static does not depend on any type or lifetime parameters
+error: lifetime bound 'static: 'static does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-lint.rs:35:37
    |
 LL | fn global_outlives() where 'static: 'static {}
    |                                     ^^^^^^^
 
-error: Trait bound i32: Copy does not depend on any type or lifetime parameters
+error: trait bound i32: Copy does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-lint.rs:38:46
    |
 LL | fn mixed_bounds<T: Copy>() where i32: X<T> + Copy {}

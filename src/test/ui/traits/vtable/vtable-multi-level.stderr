@@ -1,4 +1,4 @@
-error: Vtable entries for `<S as O>`: [
+error: vtable entries for `<S as O>`: [
     MetadataDropInPlace,
     MetadataSize,
     MetadataAlign,
@@ -37,7 +37,7 @@ LL | |     fn foo_o(&self) {}
 LL | | }
    | |_^
 
-error: Vtable entries for `<S as B>`: [
+error: vtable entries for `<S as B>`: [
     MetadataDropInPlace,
     MetadataSize,
     MetadataAlign,
@@ -51,7 +51,7 @@ LL | |     fn foo_b(&self) {}
 LL | | }
    | |_^
 
-error: Vtable entries for `<S as D>`: [
+error: vtable entries for `<S as D>`: [
     MetadataDropInPlace,
     MetadataSize,
     MetadataAlign,
@@ -65,7 +65,7 @@ LL | |     fn foo_d(&self) {}
 LL | | }
    | |_^
 
-error: Vtable entries for `<S as E>`: [
+error: vtable entries for `<S as E>`: [
     MetadataDropInPlace,
     MetadataSize,
     MetadataAlign,
@@ -79,7 +79,7 @@ LL | |     fn foo_e(&self) {}
 LL | | }
    | |_^
 
-error: Vtable entries for `<S as F>`: [
+error: vtable entries for `<S as F>`: [
     MetadataDropInPlace,
     MetadataSize,
     MetadataAlign,
@@ -96,7 +96,7 @@ LL | |     fn foo_f(&self) {}
 LL | | }
    | |_^
 
-error: Vtable entries for `<S as H>`: [
+error: vtable entries for `<S as H>`: [
     MetadataDropInPlace,
     MetadataSize,
     MetadataAlign,
@@ -110,7 +110,7 @@ LL | |     fn foo_h(&self) {}
 LL | | }
    | |_^
 
-error: Vtable entries for `<S as I>`: [
+error: vtable entries for `<S as I>`: [
     MetadataDropInPlace,
     MetadataSize,
     MetadataAlign,
@@ -124,7 +124,7 @@ LL | |     fn foo_i(&self) {}
 LL | | }
    | |_^
 
-error: Vtable entries for `<S as J>`: [
+error: vtable entries for `<S as J>`: [
     MetadataDropInPlace,
     MetadataSize,
     MetadataAlign,
@@ -141,7 +141,7 @@ LL | |     fn foo_j(&self) {}
 LL | | }
    | |_^
 
-error: Vtable entries for `<S as K>`: [
+error: vtable entries for `<S as K>`: [
     MetadataDropInPlace,
     MetadataSize,
     MetadataAlign,
@@ -155,7 +155,7 @@ LL | |     fn foo_k(&self) {}
 LL | | }
    | |_^
 
-error: Vtable entries for `<S as L>`: [
+error: vtable entries for `<S as L>`: [
     MetadataDropInPlace,
     MetadataSize,
     MetadataAlign,
@@ -169,7 +169,7 @@ LL | |     fn foo_l(&self) {}
 LL | | }
    | |_^
 
-error: Vtable entries for `<S as M>`: [
+error: vtable entries for `<S as M>`: [
     MetadataDropInPlace,
     MetadataSize,
     MetadataAlign,
@@ -186,7 +186,7 @@ LL | |     fn foo_m(&self) {}
 LL | | }
    | |_^
 
-error: Vtable entries for `<S as N>`: [
+error: vtable entries for `<S as N>`: [
     MetadataDropInPlace,
     MetadataSize,
     MetadataAlign,

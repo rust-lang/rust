@@ -11,7 +11,7 @@ note: the lint level is defined here
    |
 LL | #![deny(must_not_suspend)]
    |         ^^^^^^^^^^^^^^^^
-note: Holding a MutexGuard across suspend points can cause deadlocks, delays, and cause Futures to not implement `Send`
+note: holding a MutexGuard across suspend points can cause deadlocks, delays, and cause Futures to not implement `Send`
   --> $DIR/mutex.rs:7:9
    |
 LL |     let _guard = m.lock().unwrap();

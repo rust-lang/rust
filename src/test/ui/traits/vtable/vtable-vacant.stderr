@@ -1,4 +1,4 @@
-error: Vtable entries for `<S as B>`: [
+error: vtable entries for `<S as B>`: [
     MetadataDropInPlace,
     MetadataSize,
     MetadataAlign,

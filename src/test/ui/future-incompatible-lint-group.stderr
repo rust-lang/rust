@@ -1,4 +1,4 @@
-warning: anonymous parameters are deprecated and will be removed in the next edition.
+warning: anonymous parameters are deprecated and will be removed in the next edition
   --> $DIR/future-incompatible-lint-group.rs:7:10
    |
 LL |     fn f(u8) {}

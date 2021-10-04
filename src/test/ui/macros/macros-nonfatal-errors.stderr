@@ -138,7 +138,7 @@ error: inline assembly must be a string literal
 LL |     llvm_asm!(invalid);
    |               ^^^^^^^
 
-error: concat_idents! requires ident args.
+error: concat_idents! requires ident args
   --> $DIR/macros-nonfatal-errors.rs:102:5
    |
 LL |     concat_idents!("not", "idents");

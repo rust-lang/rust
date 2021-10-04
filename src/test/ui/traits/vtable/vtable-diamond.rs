@@ -13,13 +13,13 @@ trait B: A {
 
 #[rustc_dump_vtable]
 trait C: A {
-    //~^ error Vtable
+    //~^ error vtable
     fn foo_c(&self) {}
 }
 
 #[rustc_dump_vtable]
 trait D: B + C {
-    //~^ error Vtable
+    //~^ error vtable
     fn foo_d(&self) {}
 }
 

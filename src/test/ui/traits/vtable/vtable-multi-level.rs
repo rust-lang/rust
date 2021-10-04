@@ -17,7 +17,7 @@ trait A {
 
 #[rustc_dump_vtable]
 trait B {
-    //~^ error Vtable
+    //~^ error vtable
     fn foo_b(&self) {}
 }
 
@@ -28,19 +28,19 @@ trait C: A + B {
 
 #[rustc_dump_vtable]
 trait D {
-    //~^ error Vtable
+    //~^ error vtable
     fn foo_d(&self) {}
 }
 
 #[rustc_dump_vtable]
 trait E {
-    //~^ error Vtable
+    //~^ error vtable
     fn foo_e(&self) {}
 }
 
 #[rustc_dump_vtable]
 trait F: D + E {
-    //~^ error Vtable
+    //~^ error vtable
     fn foo_f(&self) {}
 }
 
@@ -51,49 +51,49 @@ trait G: C + F {
 
 #[rustc_dump_vtable]
 trait H {
-    //~^ error Vtable
+    //~^ error vtable
     fn foo_h(&self) {}
 }
 
 #[rustc_dump_vtable]
 trait I {
-    //~^ error Vtable
+    //~^ error vtable
     fn foo_i(&self) {}
 }
 
 #[rustc_dump_vtable]
 trait J: H + I {
-    //~^ error Vtable
+    //~^ error vtable
     fn foo_j(&self) {}
 }
 
 #[rustc_dump_vtable]
 trait K {
-    //~^ error Vtable
+    //~^ error vtable
     fn foo_k(&self) {}
 }
 
 #[rustc_dump_vtable]
 trait L {
-    //~^ error Vtable
+    //~^ error vtable
     fn foo_l(&self) {}
 }
 
 #[rustc_dump_vtable]
 trait M: K + L {
-    //~^ error Vtable
+    //~^ error vtable
     fn foo_m(&self) {}
 }
 
 #[rustc_dump_vtable]
 trait N: J + M {
-    //~^ error Vtable
+    //~^ error vtable
     fn foo_n(&self) {}
 }
 
 #[rustc_dump_vtable]
 trait O: G + N {
-    //~^ error Vtable
+    //~^ error vtable
     fn foo_o(&self) {}
 }
 
