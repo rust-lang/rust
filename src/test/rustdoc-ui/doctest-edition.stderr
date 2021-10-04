@@ -16,7 +16,7 @@ LL | #![deny(rustdoc::invalid_rust_codeblocks)]
 help: mark blocks that do not contain Rust code as text
    |
 LL | //! ```text
-   |        ++++
+   |     ~~~~~~~
 
 error: aborting due to previous error
 
