@@ -1,14 +1,8 @@
-// Test that `assert` works when `const_panic` is enabled.
-
-// revisions: stock const_panic
-
-#![cfg_attr(const_panic, feature(const_panic))]
+// Test that `assert` works in consts.
 
 const _: () = assert!(true);
-//[stock]~^ ERROR panicking in constants is unstable
 
 const _: () = assert!(false);
-//[stock]~^ ERROR panicking in constants is unstable
-//[const_panic]~^^ ERROR evaluation of constant value failed
+//~^ ERROR evaluation of constant value failed
 
 fn main() {}

@@ -1,13 +1,11 @@
-error[E0658]: panicking in constants is unstable
-  --> $DIR/issue-76064.rs:3:17
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-76064.rs:1:17
    |
 LL | struct Bug([u8; panic!("panic")]);
-   |                 ^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^ the evaluated program panicked at 'panic', $DIR/issue-76064.rs:1:17
    |
-   = note: see issue #51999 <https://github.com/rust-lang/rust/issues/51999> for more information
-   = help: add `#![feature(const_panic)]` to the crate attributes to enable
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0658`.
+For more information about this error, try `rustc --explain E0080`.

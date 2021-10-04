@@ -1,8 +1,6 @@
 // Tests that the compiler does not ICE when const-evaluating a `panic!()` invocation with a
 // non-`&str` argument.
 
-#![feature(const_panic)]
-
 const _: () = panic!(1);
 //~^ ERROR: argument to `panic!()` in a const context must have type `&str`
 

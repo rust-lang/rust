@@ -1,13 +1,11 @@
-error[E0658]: panicking in statics is unstable
+error[E0080]: could not evaluate static initializer
   --> $DIR/issue-32829.rs:1:22
    |
 LL | static S : u64 = { { panic!("foo"); 0 } };
-   |                      ^^^^^^^^^^^^^^
+   |                      ^^^^^^^^^^^^^^ the evaluated program panicked at 'foo', $DIR/issue-32829.rs:1:22
    |
-   = note: see issue #51999 <https://github.com/rust-lang/rust/issues/51999> for more information
-   = help: add `#![feature(const_panic)]` to the crate attributes to enable
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0658`.
+For more information about this error, try `rustc --explain E0080`.

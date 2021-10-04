@@ -7,19 +7,19 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  pointer arithmetic failed: alloc3 has size $WORD, so pointer to $TWO_WORDS bytes starting at offset 0 is out-of-bounds
    |                  inside `ptr::const_ptr::<impl *const usize>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-  ::: $DIR/ptr_comparisons.rs:61:34
+  ::: $DIR/ptr_comparisons.rs:60:34
    |
 LL | const _: *const usize = unsafe { (FOO as *const usize).offset(2) };
-   |                                  ------------------------------- inside `_` at $DIR/ptr_comparisons.rs:61:34
+   |                                  ------------------------------- inside `_` at $DIR/ptr_comparisons.rs:60:34
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ptr_comparisons.rs:64:33
+  --> $DIR/ptr_comparisons.rs:63:33
    |
 LL |     unsafe { std::ptr::addr_of!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ dereferencing pointer failed: alloc3 has size $WORD, so pointer to 1000 bytes starting at offset 0 is out-of-bounds
 
 error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:68:27
+  --> $DIR/ptr_comparisons.rs:67:27
    |
 LL | const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) + 4 };
    | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -31,7 +31,7 @@ LL | const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) +
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:73:27
+  --> $DIR/ptr_comparisons.rs:72:27
    |
 LL | const _: usize = unsafe { *std::mem::transmute::<&&usize, &usize>(&FOO) + 4 };
    | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
