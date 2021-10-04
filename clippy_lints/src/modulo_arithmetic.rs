@@ -128,7 +128,7 @@ impl<'tcx> LateLintPass<'tcx> for ModuloArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         match &expr.kind {
             ExprKind::Binary(op, lhs, rhs) | ExprKind::AssignOp(op, lhs, rhs) => {
-                if let BinOpKind::Rem = op.node {
+                if op.node == BinOpKind::Rem {
                     let lhs_operand = analyze_operand(lhs, cx, expr);
                     let rhs_operand = analyze_operand(rhs, cx, expr);
                     if_chain! {

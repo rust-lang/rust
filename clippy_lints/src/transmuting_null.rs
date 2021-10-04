@@ -49,8 +49,8 @@ impl<'tcx> LateLintPass<'tcx> for TransmutingNull {
                 let mut const_eval_context = constant_context(cx, cx.typeck_results());
                 if_chain! {
                     if let ExprKind::Path(ref _qpath) = arg.kind;
-                    let x = const_eval_context.expr(arg);
-                    if let Some(Constant::RawPtr(0)) = x;
+                    if let Some(Constant::RawPtr(x)) = const_eval_context.expr(arg);
+                    if x == 0;
                     then {
                         span_lint(cx, TRANSMUTING_NULL, expr.span, LINT_MSG)
                     }

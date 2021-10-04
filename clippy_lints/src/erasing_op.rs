@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for ErasingOp {
 }
 
 fn check(cx: &LateContext<'_>, e: &Expr<'_>, span: Span) {
-    if let Some(Constant::Int(0)) = constant_simple(cx, cx.typeck_results(), e) {
+    if constant_simple(cx, cx.typeck_results(), e) == Some(Constant::Int(0)) {
         span_lint(
             cx,
             ERASING_OP,

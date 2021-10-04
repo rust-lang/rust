@@ -81,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
             if let Some(trait_ref) = &hir_impl.of_trait;
             if let Some(trait_id) = trait_ref.trait_def_id();
             if send_trait == trait_id;
-            if let ImplPolarity::Positive = hir_impl.polarity;
+            if hir_impl.polarity == ImplPolarity::Positive;
             if let Some(ty_trait_ref) = cx.tcx.impl_trait_ref(item.def_id);
             if let self_ty = ty_trait_ref.self_ty();
             if let ty::Adt(adt_def, impl_trait_substs) = self_ty.kind();

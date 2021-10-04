@@ -74,7 +74,7 @@ impl<'a> NumericLiteral<'a> {
         };
 
         // Grab part of the literal after prefix, if present.
-        let (prefix, mut sans_prefix) = if let Radix::Decimal = radix {
+        let (prefix, mut sans_prefix) = if radix == Radix::Decimal {
             (None, lit)
         } else {
             let (p, s) = lit.split_at(2);
@@ -179,7 +179,7 @@ impl<'a> NumericLiteral<'a> {
 
         // The exponent may have a sign, output it early, otherwise it will be
         // treated as a digit
-        if let Some('-') = digits.clone().next() {
+        if digits.clone().next() == Some('-') {
             let _ = digits.next();
             output.push('-');
         }

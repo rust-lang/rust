@@ -563,7 +563,7 @@ fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute) {
             skip_item.path.segments.last().expect("empty path in attribute").ident.name == sym::skip;
         // Only lint outer attributes, because custom inner attributes are unstable
         // Tracking issue: https://github.com/rust-lang/rust/issues/54726
-        if let AttrStyle::Outer = attr.style;
+        if attr.style == AttrStyle::Outer;
         then {
             span_lint_and_sugg(
                 cx,
