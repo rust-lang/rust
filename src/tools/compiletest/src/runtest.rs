@@ -8,7 +8,7 @@ use crate::common::{CompareMode, FailMode, PassMode};
 use crate::common::{Config, TestPaths};
 use crate::common::{Pretty, RunPassValgrind};
 use crate::common::{UI_RUN_STDERR, UI_RUN_STDOUT};
-use crate::compute_diff::{write_diff, write_rustdoc_diff};
+use crate::compute_diff::{write_diff, write_filtered_diff};
 use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
 use crate::json;
@@ -2403,7 +2403,16 @@ impl<'test> TestCx<'test> {
 
         let diff_filename = format!("build/tmp/rustdoc-compare-{}.diff", std::process::id());
 
-        if !write_rustdoc_diff(&diff_filename, out_dir, &compare_dir, self.config.verbose) {
+        if !write_filtered_diff(
+            &diff_filename,
+            out_dir,
+            &compare_dir,
+            self.config.verbose,
+            |file_type, extension| {
+                file_type.is_file()
+                    && (extension == Some("html".into()) || extension == Some("js".into()))
+            },
+        ) {
             return;
         }
 

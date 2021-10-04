@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::fs::{File, FileType};
 use std::path::Path;
 
 #[derive(Debug, PartialEq)]
@@ -106,23 +107,26 @@ pub(crate) fn write_diff(expected: &str, actual: &str, context_size: usize) -> S
     output
 }
 
+/// Filters based on filetype and extension whether to diff a file.
+///
 /// Returns whether any data was actually written.
-pub(crate) fn write_rustdoc_diff(
+pub(crate) fn write_filtered_diff<Filter>(
     diff_filename: &str,
     out_dir: &Path,
     compare_dir: &Path,
     verbose: bool,
-) -> bool {
-    use std::fs::File;
+    filter: Filter,
+) -> bool
+where
+    Filter: Fn(FileType, Option<&str>) -> bool,
+{
     use std::io::{Read, Write};
     let mut diff_output = File::create(diff_filename).unwrap();
     let mut wrote_data = false;
     for entry in walkdir::WalkDir::new(out_dir) {
         let entry = entry.expect("failed to read file");
         let extension = entry.path().extension().and_then(|p| p.to_str());
-        if entry.file_type().is_file()
-            && (extension == Some("html".into()) || extension == Some("js".into()))
-        {
+        if filter(entry.file_type(), extension) {
             let expected_path = compare_dir.join(entry.path().strip_prefix(&out_dir).unwrap());
             let expected = if let Ok(s) = std::fs::read(&expected_path) { s } else { continue };
             let actual_path = entry.path();
