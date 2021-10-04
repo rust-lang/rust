@@ -2137,6 +2137,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// in order to be able to clone the passed value.
     /// If you need more flexibility (or want to rely on [`Default`] instead of
     /// [`Clone`]), use [`Vec::resize_with`].
+    /// If you only need to resize to a smaller size, use [`Vec::truncate`].
     ///
     /// # Examples
     ///
