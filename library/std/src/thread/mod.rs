@@ -1460,6 +1460,8 @@ fn _assert_sync_and_send() {
 ///
 /// let count = thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
 /// ```
+#[doc(alias = "hardware_concurrency")] // Alias for C++ `std::thread::hardware_concurrency`.
+#[doc(alias = "available_concurrency")] // Alias for a name we gave this API on unstable.
 #[unstable(feature = "available_parallelism", issue = "74479")]
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {
     imp::available_parallelism()
