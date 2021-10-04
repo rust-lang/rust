@@ -37,7 +37,6 @@ pub struct Snippet {
     pub description: Option<String>,
     pub requires: Box<[String]>,
 }
-
 impl Snippet {
     pub fn new(
         label: String,
@@ -46,19 +45,7 @@ impl Snippet {
         requires: &[String],
         scope: SnippetScope,
     ) -> Option<Self> {
-        // validate that these are indeed simple paths
-        if requires.iter().any(|path| match ast::Path::parse(path) {
-            Ok(path) => path.segments().any(|seg| {
-                !matches!(seg.kind(), Some(ast::PathSegmentKind::Name(_)))
-                    || seg.generic_arg_list().is_some()
-            }),
-            Err(_) => true,
-        }) {
-            return None;
-        }
-        let snippet = snippet.iter().join("\n");
-        let description = description.iter().join("\n");
-        let description = if description.is_empty() { None } else { Some(description) };
+        let (snippet, description) = validate_snippet(snippet, description, requires)?;
         Some(Snippet {
             scope,
             label,
@@ -68,12 +55,12 @@ impl Snippet {
         })
     }
 
-    // FIXME: This shouldn't be fallible
+    /// Returns None if the required items do not resolve.
     pub(crate) fn imports(
         &self,
         ctx: &CompletionContext,
         import_scope: &ImportScope,
-    ) -> Result<Vec<ImportEdit>, ()> {
+    ) -> Option<Vec<ImportEdit>> {
         import_edits(ctx, import_scope, &self.requires)
     }
 
@@ -94,19 +81,7 @@ impl PostfixSnippet {
         requires: &[String],
         scope: PostfixSnippetScope,
     ) -> Option<Self> {
-        // validate that these are indeed simple paths
-        if requires.iter().any(|path| match ast::Path::parse(path) {
-            Ok(path) => path.segments().any(|seg| {
-                !matches!(seg.kind(), Some(ast::PathSegmentKind::Name(_)))
-                    || seg.generic_arg_list().is_some()
-            }),
-            Err(_) => true,
-        }) {
-            return None;
-        }
-        let snippet = snippet.iter().join("\n");
-        let description = description.iter().join("\n");
-        let description = if description.is_empty() { None } else { Some(description) };
+        let (snippet, description) = validate_snippet(snippet, description, requires)?;
         Some(PostfixSnippet {
             scope,
             label,
@@ -116,12 +91,12 @@ impl PostfixSnippet {
         })
     }
 
-    // FIXME: This shouldn't be fallible
+    /// Returns None if the required items do not resolve.
     pub(crate) fn imports(
         &self,
         ctx: &CompletionContext,
         import_scope: &ImportScope,
-    ) -> Result<Vec<ImportEdit>, ()> {
+    ) -> Option<Vec<ImportEdit>> {
         import_edits(ctx, import_scope, &self.requires)
     }
 
@@ -142,32 +117,52 @@ fn import_edits(
     ctx: &CompletionContext,
     import_scope: &ImportScope,
     requires: &[String],
-) -> Result<Vec<ImportEdit>, ()> {
+) -> Option<Vec<ImportEdit>> {
     let resolve = |import| {
         let path = ast::Path::parse(import).ok()?;
-        match ctx.scope.speculative_resolve(&path)? {
-            hir::PathResolution::Macro(_) => None,
-            hir::PathResolution::Def(def) => {
-                let item = def.into();
-                let path = ctx.scope.module()?.find_use_path_prefixed(
-                    ctx.db,
-                    item,
-                    ctx.config.insert_use.prefix_kind,
-                )?;
-                Some((path.len() > 1).then(|| ImportEdit {
-                    import: LocatedImport::new(path.clone(), item, item, None),
-                    scope: import_scope.clone(),
-                }))
-            }
-            _ => None,
-        }
+        let item = match ctx.scope.speculative_resolve(&path)? {
+            hir::PathResolution::Macro(mac) => mac.into(),
+            hir::PathResolution::Def(def) => def.into(),
+            _ => return None,
+        };
+        let path = ctx.scope.module()?.find_use_path_prefixed(
+            ctx.db,
+            item,
+            ctx.config.insert_use.prefix_kind,
+        )?;
+        Some((path.len() > 1).then(|| ImportEdit {
+            import: LocatedImport::new(path.clone(), item, item, None),
+            scope: import_scope.clone(),
+        }))
     };
     let mut res = Vec::with_capacity(requires.len());
     for import in requires {
         match resolve(import) {
             Some(first) => res.extend(first),
-            None => return Err(()),
+            None => return None,
         }
     }
-    Ok(res)
+    Some(res)
+}
+
+fn validate_snippet(
+    snippet: &[String],
+    description: &[String],
+    requires: &[String],
+) -> Option<(String, Option<String>)> {
+    // validate that these are indeed simple paths
+    // we can't save the paths unfortunately due to them not being Send+Sync
+    if requires.iter().any(|path| match ast::Path::parse(path) {
+        Ok(path) => path.segments().any(|seg| {
+            !matches!(seg.kind(), Some(ast::PathSegmentKind::Name(_)))
+                || seg.generic_arg_list().is_some()
+        }),
+        Err(_) => true,
+    }) {
+        return None;
+    }
+    let snippet = snippet.iter().join("\n");
+    let description = description.iter().join("\n");
+    let description = if description.is_empty() { None } else { Some(description) };
+    Some((snippet, description))
 }

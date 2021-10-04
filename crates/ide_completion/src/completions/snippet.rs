@@ -105,8 +105,8 @@ fn add_custom_completions(
         ImportScope::find_insert_use_container_with_macros(&ctx.token.parent()?, &ctx.sema)?;
     ctx.config.snippets.iter().filter(|snip| snip.scope == scope).for_each(|snip| {
         let imports = match snip.imports(ctx, &import_scope) {
-            Ok(imports) => imports,
-            Err(_) => return,
+            Some(imports) => imports,
+            None => return,
         };
         let mut builder = snippet(ctx, cap, &snip.label, &snip.snippet);
         for import in imports.into_iter() {

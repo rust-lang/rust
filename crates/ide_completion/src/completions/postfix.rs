@@ -232,8 +232,8 @@ fn add_custom_postfix_completions(
         ImportScope::find_insert_use_container_with_macros(&ctx.token.parent()?, &ctx.sema)?;
     ctx.config.postfix_snippets.iter().for_each(|snippet| {
         let imports = match snippet.imports(ctx, &import_scope) {
-            Ok(imports) => imports,
-            Err(_) => return,
+            Some(imports) => imports,
+            None => return,
         };
         let mut builder = postfix_snippet(
             &snippet.label,
