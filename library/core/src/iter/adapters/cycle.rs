@@ -79,6 +79,27 @@ where
         }
     }
 
+    #[inline]
+    #[rustc_inherit_overflow_checks]
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        let mut rem = n;
+        match self.iter.advance_by(rem) {
+            ret @ Ok(_) => return ret,
+            Err(advanced) => rem -= advanced,
+        }
+
+        while rem > 0 {
+            self.iter = self.orig.clone();
+            match self.iter.advance_by(rem) {
+                ret @ Ok(_) => return ret,
+                Err(0) => return Err(n - rem),
+                Err(advanced) => rem -= advanced,
+            }
+        }
+
+        Ok(())
+    }
+
     // No `fold` override, because `fold` doesn't make much sense for `Cycle`,
     // and we can't do anything better than the default.
 }
