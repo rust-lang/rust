@@ -146,7 +146,7 @@ fn test_format_int_exp_precision() {
     assert_eq!(format!("{:.1000e}", 1), format!("1.{}e0", "0".repeat(1000)));
     //test zero precision
     assert_eq!(format!("{:.0e}", 1), format!("1e0",));
-    assert_eq!(format!("{:.0e}", 25), format!("3e1",));
+    assert_eq!(format!("{:.0e}", 35), format!("4e1",));
 
     //test padding with precision (and sign)
     assert_eq!(format!("{:+10.3e}", 1), "  +1.000e0");
