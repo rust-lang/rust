@@ -24,6 +24,7 @@ use rustc_target::abi::{Integer, TagEncoding, Variants};
 use smallvec::SmallVec;
 
 use std::fmt::Write;
+use std::rc::Rc;
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
 // any caching, i.e., calling the function twice with the same type will also do
@@ -33,14 +34,18 @@ pub fn compute_debuginfo_type_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     t: Ty<'tcx>,
     qualified: bool,
-    type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), String>,
+    type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), Rc<str>>,
 ) -> String {
     let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
+
+    if let Some(type_name) = type_name_cache.get(&(t, qualified)) {
+        return String::from(&type_name[..]);
+    }
 
     let mut result = String::with_capacity(64);
     let mut visited = FxHashSet::default();
     push_debuginfo_type_name(tcx, t, qualified, &mut result, &mut visited, type_name_cache);
-    if type_name_cache.insert((t, qualified), result.clone()).is_some() {
+    if type_name_cache.insert((t, qualified), Rc::from(&*result)).is_some() {
         bug!("type name is already in the type name cache!");
     }
     result
@@ -54,9 +59,8 @@ fn push_debuginfo_type_name<'tcx>(
     qualified: bool,
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
-    type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), String>,
+    type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), Rc<str>>,
 ) {
-    // Check if we have seen this type and qualifier before.
     if let Some(type_name) = type_name_cache.get(&(t, qualified)) {
         output.push_str(&type_name[..]);
         return;
@@ -437,7 +441,7 @@ fn push_debuginfo_type_name<'tcx>(
         substs: SubstsRef<'tcx>,
         output: &mut String,
         visited: &mut FxHashSet<Ty<'tcx>>,
-        type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), String>,
+        type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), Rc<str>>,
     ) {
         let layout = tcx.layout_of(tcx.param_env(def.did).and(ty)).expect("layout error");
 
@@ -555,7 +559,7 @@ fn push_generic_params_internal<'tcx>(
     substs: SubstsRef<'tcx>,
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
-    type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), String>,
+    type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), Rc<str>>,
 ) -> bool {
     if substs.non_erasable_generics().next().is_none() {
         return false;
@@ -642,7 +646,7 @@ pub fn push_generic_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     substs: SubstsRef<'tcx>,
     output: &mut String,
-    type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), String>,
+    type_name_cache: &mut FxHashMap<(Ty<'tcx>, bool), Rc<str>>,
 ) {
     let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
     let mut visited = FxHashSet::default();

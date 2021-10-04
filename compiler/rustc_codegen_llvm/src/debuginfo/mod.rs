@@ -38,6 +38,7 @@ use rustc_target::abi::{Primitive, Size};
 use libc::c_uint;
 use smallvec::SmallVec;
 use std::cell::RefCell;
+use std::rc::Rc;
 use std::iter;
 use tracing::debug;
 
@@ -63,7 +64,7 @@ pub struct CrateDebugContext<'a, 'tcx> {
     builder: &'a mut DIBuilder<'a>,
     created_files: RefCell<FxHashMap<(Option<String>, Option<String>), &'a DIFile>>,
     created_enum_disr_types: RefCell<FxHashMap<(DefId, Primitive), &'a DIType>>,
-    type_name_cache: RefCell<FxHashMap<(Ty<'tcx>, bool), String>>,
+    type_name_cache: RefCell<FxHashMap<(Ty<'tcx>, bool), Rc<str>>>,
 
     type_map: RefCell<TypeMap<'a, 'tcx>>,
     namespace_map: RefCell<DefIdMap<&'a DIScope>>,
