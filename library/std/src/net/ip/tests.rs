@@ -224,6 +224,7 @@ fn ip_properties() {
             let global: u8 = 1 << 2;
             let multicast: u8 = 1 << 3;
             let doc: u8 = 1 << 4;
+            let benchmarking: u8 = 1 << 5;
 
             if ($mask & unspec) == unspec {
                 assert!(ip!($s).is_unspecified());
@@ -254,6 +255,12 @@ fn ip_properties() {
             } else {
                 assert!(!ip!($s).is_documentation());
             }
+
+            if ($mask & benchmarking) == benchmarking {
+                assert!(ip!($s).is_benchmarking());
+            } else {
+                assert!(!ip!($s).is_benchmarking());
+            }
         }};
     }
 
@@ -262,6 +269,7 @@ fn ip_properties() {
     let global: u8 = 1 << 2;
     let multicast: u8 = 1 << 3;
     let doc: u8 = 1 << 4;
+    let benchmarking: u8 = 1 << 5;
 
     check!("0.0.0.0", unspec);
     check!("0.0.0.1");
@@ -280,9 +288,9 @@ fn ip_properties() {
     check!("239.255.255.255", global | multicast);
     check!("255.255.255.255");
     // make sure benchmarking addresses are not global
-    check!("198.18.0.0");
-    check!("198.18.54.2");
-    check!("198.19.255.255");
+    check!("198.18.0.0", benchmarking);
+    check!("198.18.54.2", benchmarking);
+    check!("198.19.255.255", benchmarking);
     // make sure addresses reserved for protocol assignment are not global
     check!("192.0.0.0");
     check!("192.0.0.255");
@@ -313,6 +321,7 @@ fn ip_properties() {
     check!("ff08::", multicast);
     check!("ff0e::", global | multicast);
     check!("2001:db8:85a3::8a2e:370:7334", doc);
+    check!("2001:2::ac32:23ff:21", global | benchmarking);
     check!("102:304:506:708:90a:b0c:d0e:f10", global);
 }
 
@@ -467,21 +476,22 @@ fn ipv6_properties() {
             assert_eq!(&ip!($s).octets(), octets);
             assert_eq!(Ipv6Addr::from(*octets), ip!($s));
 
-            let unspecified: u16 = 1 << 0;
-            let loopback: u16 = 1 << 1;
-            let unique_local: u16 = 1 << 2;
-            let global: u16 = 1 << 3;
-            let unicast_link_local: u16 = 1 << 4;
-            let unicast_global: u16 = 1 << 7;
-            let documentation: u16 = 1 << 8;
-            let multicast_interface_local: u16 = 1 << 9;
-            let multicast_link_local: u16 = 1 << 10;
-            let multicast_realm_local: u16 = 1 << 11;
-            let multicast_admin_local: u16 = 1 << 12;
-            let multicast_site_local: u16 = 1 << 13;
-            let multicast_organization_local: u16 = 1 << 14;
-            let multicast_global: u16 = 1 << 15;
-            let multicast: u16 = multicast_interface_local
+            let unspecified: u32 = 1 << 0;
+            let loopback: u32 = 1 << 1;
+            let unique_local: u32 = 1 << 2;
+            let global: u32 = 1 << 3;
+            let unicast_link_local: u32 = 1 << 4;
+            let unicast_global: u32 = 1 << 7;
+            let documentation: u32 = 1 << 8;
+            let benchmarking: u32 = 1 << 16;
+            let multicast_interface_local: u32 = 1 << 9;
+            let multicast_link_local: u32 = 1 << 10;
+            let multicast_realm_local: u32 = 1 << 11;
+            let multicast_admin_local: u32 = 1 << 12;
+            let multicast_site_local: u32 = 1 << 13;
+            let multicast_organization_local: u32 = 1 << 14;
+            let multicast_global: u32 = 1 << 15;
+            let multicast: u32 = multicast_interface_local
                 | multicast_admin_local
                 | multicast_global
                 | multicast_link_local
@@ -524,6 +534,11 @@ fn ipv6_properties() {
             } else {
                 assert!(!ip!($s).is_documentation());
             }
+            if ($mask & benchmarking) == benchmarking {
+                assert!(ip!($s).is_benchmarking());
+            } else {
+                assert!(!ip!($s).is_benchmarking());
+            }
             if ($mask & multicast) != 0 {
                 assert!(ip!($s).multicast_scope().is_some());
                 assert!(ip!($s).is_multicast());
@@ -562,20 +577,21 @@ fn ipv6_properties() {
         }
     }
 
-    let unspecified: u16 = 1 << 0;
-    let loopback: u16 = 1 << 1;
-    let unique_local: u16 = 1 << 2;
-    let global: u16 = 1 << 3;
-    let unicast_link_local: u16 = 1 << 4;
-    let unicast_global: u16 = 1 << 7;
-    let documentation: u16 = 1 << 8;
-    let multicast_interface_local: u16 = 1 << 9;
-    let multicast_link_local: u16 = 1 << 10;
-    let multicast_realm_local: u16 = 1 << 11;
-    let multicast_admin_local: u16 = 1 << 12;
-    let multicast_site_local: u16 = 1 << 13;
-    let multicast_organization_local: u16 = 1 << 14;
-    let multicast_global: u16 = 1 << 15;
+    let unspecified: u32 = 1 << 0;
+    let loopback: u32 = 1 << 1;
+    let unique_local: u32 = 1 << 2;
+    let global: u32 = 1 << 3;
+    let unicast_link_local: u32 = 1 << 4;
+    let unicast_global: u32 = 1 << 7;
+    let documentation: u32 = 1 << 8;
+    let benchmarking: u32 = 1 << 16;
+    let multicast_interface_local: u32 = 1 << 9;
+    let multicast_link_local: u32 = 1 << 10;
+    let multicast_realm_local: u32 = 1 << 11;
+    let multicast_admin_local: u32 = 1 << 12;
+    let multicast_site_local: u32 = 1 << 13;
+    let multicast_organization_local: u32 = 1 << 14;
+    let multicast_global: u32 = 1 << 15;
 
     check!("::", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unspecified);
 
@@ -669,6 +685,12 @@ fn ipv6_properties() {
         "2001:db8:85a3::8a2e:370:7334",
         &[0x20, 1, 0xd, 0xb8, 0x85, 0xa3, 0, 0, 0, 0, 0x8a, 0x2e, 3, 0x70, 0x73, 0x34],
         documentation
+    );
+
+    check!(
+        "2001:2::ac32:23ff:21",
+        &[0x20, 1, 0, 2, 0, 0, 0, 0, 0, 0, 0xac, 0x32, 0x23, 0xff, 0, 0x21],
+        global | unicast_global | benchmarking
     );
 
     check!(
@@ -873,6 +895,9 @@ fn ipv6_const() {
 
     const IS_DOCUMENTATION: bool = IP_ADDRESS.is_documentation();
     assert!(!IS_DOCUMENTATION);
+
+    const IS_BENCHMARKING: bool = IP_ADDRESS.is_benchmarking();
+    assert!(!IS_BENCHMARKING);
 
     const IS_UNICAST_GLOBAL: bool = IP_ADDRESS.is_unicast_global();
     assert!(!IS_UNICAST_GLOBAL);
