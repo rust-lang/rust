@@ -590,7 +590,7 @@ impl<'a> AstValidator<'a> {
                 )
                 .span_label(self.current_extern_span(), "in this `extern` block")
                 .note(&format!(
-                    "This limitation may be lifted in the future; see issue #{} <https://github.com/rust-lang/rust/issues/{}> for more information",
+                    "this limitation may be lifted in the future; see issue #{} <https://github.com/rust-lang/rust/issues/{}> for more information",
                     n, n,
                 ))
                 .emit();

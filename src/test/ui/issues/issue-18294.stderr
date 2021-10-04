@@ -1,4 +1,4 @@
-error: pointers cannot be cast to integers during const eval.
+error: pointers cannot be cast to integers during const eval
   --> $DIR/issue-18294.rs:3:31
    |
 LL |     const Y: usize = unsafe { &X as *const u32 as usize };

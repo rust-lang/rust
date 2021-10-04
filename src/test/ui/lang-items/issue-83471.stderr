@@ -26,7 +26,7 @@ LL | #[lang = "fn"]
    |
    = help: add `#![feature(lang_items)]` to the crate attributes to enable
 
-warning: anonymous parameters are deprecated and will be removed in the next edition.
+warning: anonymous parameters are deprecated and will be removed in the next edition
   --> $DIR/issue-83471.rs:15:13
    |
 LL |     fn call(export_name);

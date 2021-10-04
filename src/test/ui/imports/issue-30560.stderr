@@ -1,4 +1,4 @@
-error: items in traits are not importable.
+error: items in traits are not importable
   --> $DIR/issue-30560.rs:7:5
    |
 LL | use T::*;

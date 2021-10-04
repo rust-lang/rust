@@ -16,7 +16,7 @@ LL | const fn cmp(x: fn(), y: fn()) -> bool {
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
 
-error: pointers cannot be reliably compared during const eval.
+error: pointers cannot be reliably compared during const eval
   --> $DIR/cmp_fn_pointers.rs:4:14
    |
 LL |     unsafe { x == y }

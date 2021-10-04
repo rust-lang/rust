@@ -13,7 +13,7 @@ trait A {
 
 #[rustc_dump_vtable]
 trait B: A {
-    //~^ error Vtable
+    //~^ error vtable
     fn foo_b1(&self) {}
     fn foo_b2(&self) where Self: Send {}
 }

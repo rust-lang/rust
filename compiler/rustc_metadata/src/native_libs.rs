@@ -319,13 +319,13 @@ impl Collector<'tcx> {
                     self.tcx.sess.err(&format!(
                         "renaming of the library `{}` was specified, \
                                                 however this crate contains no `#[link(...)]` \
-                                                attributes referencing this library.",
+                                                attributes referencing this library",
                         lib.name
                     ));
                 } else if !renames.insert(&lib.name) {
                     self.tcx.sess.err(&format!(
                         "multiple renamings were \
-                                                specified for library `{}` .",
+                                                specified for library `{}`",
                         lib.name
                     ));
                 }
