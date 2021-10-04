@@ -260,7 +260,6 @@ symbols! {
         TyCtxt,
         TyKind,
         Unknown,
-        UnsafeArg,
         Vec,
         VecDeque,
         Yield,
