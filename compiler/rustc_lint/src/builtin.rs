@@ -2478,14 +2478,11 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 // Find calls to `mem::{uninitialized,zeroed}` methods.
                 if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
                     let def_id = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
-
-                    if cx.tcx.is_diagnostic_item(sym::mem_zeroed, def_id) {
-                        return Some(InitKind::Zeroed);
-                    } else if cx.tcx.is_diagnostic_item(sym::mem_uninitialized, def_id) {
-                        return Some(InitKind::Uninit);
-                    } else if cx.tcx.is_diagnostic_item(sym::transmute, def_id) && is_zero(&args[0])
-                    {
-                        return Some(InitKind::Zeroed);
+                    match cx.tcx.get_diagnostic_name(def_id) {
+                        Some(sym::mem_zeroed) => return Some(InitKind::Zeroed),
+                        Some(sym::mem_uninitialized) => return Some(InitKind::Uninit),
+                        Some(sym::transmute) if is_zero(&args[0]) => return Some(InitKind::Zeroed),
+                        _ => {}
                     }
                 }
             } else if let hir::ExprKind::MethodCall(_, _, ref args, _) = expr.kind {
@@ -2497,11 +2494,10 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     if let hir::ExprKind::Call(ref path_expr, _) = args[0].kind {
                         if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
                             let def_id = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
-
-                            if cx.tcx.is_diagnostic_item(sym::maybe_uninit_zeroed, def_id) {
-                                return Some(InitKind::Zeroed);
-                            } else if cx.tcx.is_diagnostic_item(sym::maybe_uninit_uninit, def_id) {
-                                return Some(InitKind::Uninit);
+                            match cx.tcx.get_diagnostic_name(def_id) {
+                                Some(sym::maybe_uninit_zeroed) => return Some(InitKind::Zeroed),
+                                Some(sym::maybe_uninit_uninit) => return Some(InitKind::Uninit),
+                                _ => {}
                             }
                         }
                     }
@@ -3091,8 +3087,10 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
                 rustc_hir::ExprKind::Call(ref path, _) => {
                     if let rustc_hir::ExprKind::Path(ref qpath) = path.kind {
                         if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id() {
-                            return cx.tcx.is_diagnostic_item(sym::ptr_null, def_id)
-                                || cx.tcx.is_diagnostic_item(sym::ptr_null_mut, def_id);
+                            return matches!(
+                                cx.tcx.get_diagnostic_name(def_id),
+                                Some(sym::ptr_null | sym::ptr_null_mut)
+                            );
                         }
                     }
                 }

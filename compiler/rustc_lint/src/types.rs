@@ -1541,8 +1541,7 @@ impl InvalidAtomicOrdering {
             if let ExprKind::Call(ref func, ref args) = expr.kind;
             if let ExprKind::Path(ref func_qpath) = func.kind;
             if let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id();
-            if cx.tcx.is_diagnostic_item(sym::fence, def_id) ||
-                cx.tcx.is_diagnostic_item(sym::compiler_fence, def_id);
+            if matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::fence | sym::compiler_fence));
             if let ExprKind::Path(ref ordering_qpath) = &args[0].kind;
             if let Some(ordering_def_id) = cx.qpath_res(ordering_qpath, args[0].hir_id).opt_def_id();
             if Self::matches_ordering(cx, ordering_def_id, &[sym::Relaxed]);

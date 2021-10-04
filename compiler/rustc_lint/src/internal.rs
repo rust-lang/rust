@@ -33,12 +33,10 @@ impl LateLintPass<'_> for DefaultHashTypes {
             // don't lint imports, only actual usages
             return;
         }
-        let replace = if cx.tcx.is_diagnostic_item(sym::HashMap, def_id) {
-            "FxHashMap"
-        } else if cx.tcx.is_diagnostic_item(sym::HashSet, def_id) {
-            "FxHashSet"
-        } else {
-            return;
+        let replace = match cx.tcx.get_diagnostic_name(def_id) {
+            Some(sym::HashMap) => "FxHashMap",
+            Some(sym::HashSet) => "FxHashSet",
+            _ => return,
         };
         cx.struct_span_lint(DEFAULT_HASH_TYPES, path.span, |lint| {
             let msg = format!(
@@ -174,26 +172,29 @@ fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, ty: &Ty<'_>) -> Option<String> {
     if let TyKind::Path(qpath) = &ty.kind {
         if let QPath::Resolved(_, path) = qpath {
             match path.res {
-                Res::Def(_, did) => {
-                    if cx.tcx.is_diagnostic_item(sym::Ty, did) {
-                        return Some(format!("Ty{}", gen_args(path.segments.last().unwrap())));
-                    } else if cx.tcx.is_diagnostic_item(sym::TyCtxt, did) {
-                        return Some(format!("TyCtxt{}", gen_args(path.segments.last().unwrap())));
+                Res::Def(_, def_id) => {
+                    if let Some(name @ (sym::Ty | sym::TyCtxt)) = cx.tcx.get_diagnostic_name(def_id)
+                    {
+                        return Some(format!(
+                            "{}{}",
+                            name,
+                            gen_args(path.segments.last().unwrap())
+                        ));
                     }
                 }
                 // Only lint on `&Ty` and `&TyCtxt` if it is used outside of a trait.
                 Res::SelfTy(None, Some((did, _))) => {
                     if let ty::Adt(adt, substs) = cx.tcx.type_of(did).kind() {
-                        if cx.tcx.is_diagnostic_item(sym::Ty, adt.did) {
+                        if let Some(name @ (sym::Ty | sym::TyCtxt)) =
+                            cx.tcx.get_diagnostic_name(adt.did)
+                        {
                             // NOTE: This path is currently unreachable as `Ty<'tcx>` is
                             // defined as a type alias meaning that `impl<'tcx> Ty<'tcx>`
                             // is not actually allowed.
                             //
                             // I(@lcnr) still kept this branch in so we don't miss this
                             // if we ever change it in the future.
-                            return Some(format!("Ty<{}>", substs[0]));
-                        } else if cx.tcx.is_diagnostic_item(sym::TyCtxt, adt.did) {
-                            return Some(format!("TyCtxt<{}>", substs[0]));
+                            return Some(format!("{}<{}>", name, substs[0]));
                         }
                     }
                 }
