@@ -116,7 +116,7 @@ pub(crate) fn annotations(
             }
 
             if config.annotate_enum_variant_references {
-                let mut enum_variants_metadata: Vec<(TextRange, TextSize)> = Vec::new();
+                let mut enum_variants_metadata: Vec<(TextRange, TextSize)> = Vec::with_capacity(ranges_enum_variants.len());
                 for range_enum_variant in ranges_enum_variants.into_iter() {
                     let (range, offset) = match range_enum_variant {
                         Some(range) => (range, range.start()),
