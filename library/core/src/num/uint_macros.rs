@@ -1037,10 +1037,13 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn saturating_add_signed(self, rhs: $SignedT) -> Self {
-            if rhs >= 0 {
-                self.saturating_add(rhs as Self)
+            let (res, overflow) = self.overflowing_add(rhs as Self);
+            if overflow == (rhs < 0) {
+                res
+            } else if overflow {
+                Self::MAX
             } else {
-                self.saturating_sub(rhs.unsigned_abs())
+                0
             }
         }
 
