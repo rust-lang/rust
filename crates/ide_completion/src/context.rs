@@ -869,7 +869,8 @@ mod tests {
 
     fn check_expected_type_and_name(ra_fixture: &str, expect: Expect) {
         let (db, pos) = position(ra_fixture);
-        let completion_context = CompletionContext::new(&db, pos, &TEST_CONFIG).unwrap();
+        let config = TEST_CONFIG;
+        let completion_context = CompletionContext::new(&db, pos, &config).unwrap();
 
         let ty = completion_context
             .expected_type

@@ -24,7 +24,7 @@ use text_edit::TextEdit;
 use crate::{completions::Completions, context::CompletionContext, item::CompletionKind};
 
 pub use crate::{
-    config::CompletionConfig,
+    config::{CompletionConfig, PostfixSnippet},
     item::{CompletionItem, CompletionItemKind, CompletionRelevance, ImportEdit},
 };
 

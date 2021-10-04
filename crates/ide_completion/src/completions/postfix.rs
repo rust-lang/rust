@@ -3,7 +3,7 @@
 mod format_like;
 
 use ide_db::{
-    helpers::{FamousDefs, SnippetCap},
+    helpers::{import_assets::LocatedImport, insert_use::ImportScope, FamousDefs, SnippetCap},
     ty_filter::TryEnum,
 };
 use syntax::{
@@ -18,7 +18,7 @@ use crate::{
     context::CompletionContext,
     item::{Builder, CompletionKind},
     patterns::ImmediateLocation,
-    CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
+    CompletionItem, CompletionItemKind, CompletionRelevance, Completions, ImportEdit,
 };
 
 pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
@@ -55,6 +55,10 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     };
 
     let postfix_snippet = build_postfix_snippet_builder(ctx, cap, &dot_receiver);
+
+    if !ctx.config.postfix_snippets.is_empty() {
+        add_custom_postfix_completions(acc, ctx, &postfix_snippet, &receiver_text);
+    }
 
     let try_enum = TryEnum::from_ty(&ctx.sema, &receiver_ty.strip_references());
     if let Some(try_enum) = &try_enum {
@@ -218,13 +222,62 @@ fn build_postfix_snippet_builder<'a>(
     }
 }
 
+fn add_custom_postfix_completions(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    postfix_snippet: impl Fn(&str, &str, &str) -> Builder,
+    receiver_text: &str,
+) -> Option<()> {
+    let import_scope =
+        ImportScope::find_insert_use_container_with_macros(&ctx.token.parent()?, &ctx.sema)?;
+    ctx.config.postfix_snippets.iter().for_each(|snippet| {
+        // FIXME: Support multiple imports
+        let import = match snippet.requires.get(0) {
+            Some(import) => {
+                let res = (|| {
+                    let path = ast::Path::parse(import).ok()?;
+                    match ctx.scope.speculative_resolve(&path)? {
+                        hir::PathResolution::Macro(_) => None,
+                        hir::PathResolution::Def(def) => {
+                            let item = def.into();
+                            let path = ctx.scope.module()?.find_use_path_prefixed(
+                                ctx.db,
+                                item,
+                                ctx.config.insert_use.prefix_kind,
+                            )?;
+                            Some((path.len() > 1).then(|| ImportEdit {
+                                import: LocatedImport::new(path.clone(), item, item, None),
+                                scope: import_scope.clone(),
+                            }))
+                        }
+                        _ => None,
+                    }
+                })();
+                match res {
+                    Some(it) => it,
+                    None => return,
+                }
+            }
+            None => None,
+        };
+        let mut builder = postfix_snippet(
+            &snippet.label,
+            snippet.description.as_deref().unwrap_or_default(),
+            &format!("{}", snippet.snippet(&receiver_text)),
+        );
+        builder.add_import(import);
+        builder.add_to(acc);
+    });
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
 
     use crate::{
-        tests::{check_edit, filtered_completion_list},
-        CompletionKind,
+        tests::{check_edit, check_edit_with_config, filtered_completion_list, TEST_CONFIG},
+        CompletionConfig, CompletionKind, PostfixSnippet,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
@@ -440,6 +493,32 @@ fn main() {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn custom_postfix_completion() {
+        check_edit_with_config(
+            CompletionConfig {
+                postfix_snippets: vec![PostfixSnippet::new(
+                    "break".into(),
+                    &["ControlFlow::Break($target)".into()],
+                    &[],
+                    &["core::ops::ControlFlow".into()],
+                )
+                .unwrap()],
+                ..TEST_CONFIG
+            },
+            "break",
+            r#"
+//- minicore: try
+fn main() { 42.$0 }
+"#,
+            r#"
+use core::ops::ControlFlow;
+
+fn main() { ControlFlow::Break(42) }
+"#,
+        );
     }
 
     #[test]

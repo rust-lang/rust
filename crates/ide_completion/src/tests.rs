@@ -74,6 +74,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
         group: true,
         skip_glob_imports: true,
     },
+    postfix_snippets: Vec::new(),
 };
 
 pub(crate) fn completion_list(ra_fixture: &str) -> String {

@@ -12,7 +12,7 @@ use std::{ffi::OsString, iter, path::PathBuf};
 use flycheck::FlycheckConfig;
 use ide::{
     AssistConfig, CompletionConfig, DiagnosticsConfig, HighlightRelatedConfig, HoverConfig,
-    HoverDocFormat, InlayHintsConfig, JoinLinesConfig,
+    HoverDocFormat, InlayHintsConfig, JoinLinesConfig, PostfixSnippet,
 };
 use ide_db::helpers::{
     insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
@@ -114,6 +114,8 @@ config_data! {
         completion_addCallParenthesis: bool      = "true",
         /// Whether to show postfix snippets like `dbg`, `if`, `not`, etc.
         completion_postfix_enable: bool          = "true",
+        /// Custom postfix completions to show.
+        completion_postfix_snippets: FxHashMap<String, PostfixSnippetDesc> = "{}",
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
         completion_autoimport_enable: bool       = "true",
@@ -296,6 +298,7 @@ pub struct Config {
     detached_files: Vec<AbsPathBuf>,
     pub discovered_projects: Option<Vec<ProjectManifest>>,
     pub root_path: AbsPathBuf,
+    postfix_snippets: Vec<ide::PostfixSnippet>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -431,6 +434,7 @@ impl Config {
             detached_files: Vec::new(),
             discovered_projects: None,
             root_path,
+            postfix_snippets: Default::default(),
         }
     }
     pub fn update(&mut self, mut json: serde_json::Value) {
@@ -443,6 +447,14 @@ impl Config {
             .map(AbsPathBuf::assert)
             .collect();
         self.data = ConfigData::from_json(json);
+        self.postfix_snippets = self
+            .data
+            .completion_postfix_snippets
+            .iter()
+            .flat_map(|(label, desc)| {
+                PostfixSnippet::new(label.clone(), &desc.snippet, &desc.description, &desc.requires)
+            })
+            .collect();
     }
 
     pub fn json_schema() -> serde_json::Value {
@@ -778,6 +790,7 @@ impl Config {
                     .snippet_support?,
                 false
             )),
+            postfix_snippets: self.postfix_snippets.clone(),
         }
     }
     pub fn assist(&self) -> AssistConfig {
@@ -906,6 +919,47 @@ impl Config {
             yield_points: self.data.highlightRelated_yieldPoints,
         }
     }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct PostfixSnippetDesc {
+    #[serde(deserialize_with = "single_or_array")]
+    description: Vec<String>,
+    #[serde(deserialize_with = "single_or_array")]
+    snippet: Vec<String>,
+    #[serde(deserialize_with = "single_or_array")]
+    requires: Vec<String>,
+}
+
+fn single_or_array<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct SingleOrVec;
+
+    impl<'de> serde::de::Visitor<'de> for SingleOrVec {
+        type Value = Vec<String>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("string or array of strings")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(vec![value.to_owned()])
+        }
+
+        fn visit_seq<A>(self, seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::SeqAccess<'de>,
+        {
+            Deserialize::deserialize(serde::de::value::SeqAccessDeserializer::new(seq))
+        }
+    }
+
+    deserializer.deserialize_any(SingleOrVec)
 }
 
 #[derive(Deserialize, Debug, Clone)]
