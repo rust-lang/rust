@@ -270,10 +270,9 @@ pub struct ArgumentV1<'a> {
 /// of `format_args!(..)` and reduce the scope of the `unsafe` block.
 #[allow(missing_debug_implementations)]
 #[doc(hidden)]
+#[non_exhaustive]
 #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-pub struct UnsafeArg {
-    _private: (),
-}
+pub struct UnsafeArg;
 
 impl UnsafeArg {
     /// See documentation where `UnsafeArg` is required to know when it is safe to
@@ -282,7 +281,7 @@ impl UnsafeArg {
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     #[inline(always)]
     pub unsafe fn new() -> Self {
-        Self { _private: () }
+        Self
     }
 }
 
