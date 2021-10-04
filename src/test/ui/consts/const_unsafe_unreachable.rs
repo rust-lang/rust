@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(const_unreachable_unchecked)]
-
 const unsafe fn foo(x: bool) -> bool {
     match x {
         true => true,
@@ -12,5 +10,5 @@ const unsafe fn foo(x: bool) -> bool {
 const BAR: bool = unsafe { foo(true) };
 
 fn main() {
-  assert_eq!(BAR, true);
+    assert_eq!(BAR, true);
 }

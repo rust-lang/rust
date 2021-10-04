@@ -735,7 +735,7 @@ extern "rust-intrinsic" {
     /// reach code marked with this function.
     ///
     /// The stabilized version of this intrinsic is [`core::hint::unreachable_unchecked`].
-    #[rustc_const_unstable(feature = "const_unreachable_unchecked", issue = "53188")]
+    #[rustc_const_stable(feature = "const_unreachable_unchecked", since = "1.57.0")]
     pub fn unreachable() -> !;
 
     /// Informs the optimizer that a condition is always true.

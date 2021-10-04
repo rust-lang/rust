@@ -103,7 +103,6 @@
 #![feature(const_trait_impl)]
 #![feature(const_type_id)]
 #![feature(const_type_name)]
-#![feature(const_unreachable_unchecked)]
 #![feature(const_default_impls)]
 #![feature(duration_consts_2)]
 #![feature(ptr_metadata)]
