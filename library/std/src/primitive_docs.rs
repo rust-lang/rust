@@ -1104,11 +1104,11 @@ mod prim_usize {}
 /// * [`Clone`] \(Note that this will not defer to `T`'s `Clone` implementation if it exists!)
 /// * [`Deref`]
 /// * [`Borrow`]
-/// * [`Pointer`]
+/// * [`fmt::Pointer`]
 ///
 /// [`Deref`]: ops::Deref
 /// [`Borrow`]: borrow::Borrow
-/// [`Pointer`]: fmt::Pointer
+/// [`fmt::Pointer`]: fmt::Pointer
 ///
 /// `&mut T` references get all of the above except `Copy` and `Clone` (to prevent creating
 /// multiple simultaneous mutable borrows), plus the following, regardless of the type of its
@@ -1124,7 +1124,7 @@ mod prim_usize {}
 /// The following traits are implemented on `&T` references if the underlying `T` also implements
 /// that trait:
 ///
-/// * All the traits in [`std::fmt`] except [`Pointer`] and [`fmt::Write`]
+/// * All the traits in [`std::fmt`] except [`fmt::Pointer`] (which is implemented regardless of the type of its referent) and [`fmt::Write`]
 /// * [`PartialOrd`]
 /// * [`Ord`]
 /// * [`PartialEq`]
@@ -1133,9 +1133,10 @@ mod prim_usize {}
 /// * [`Fn`] \(in addition, `&T` references get [`FnMut`] and [`FnOnce`] if `T: Fn`)
 /// * [`Hash`]
 /// * [`ToSocketAddrs`]
+/// * [`Send`] \(`&T` references also require <code>T: [Sync]</code>)
 ///
 /// [`std::fmt`]: fmt
-/// ['Pointer`]: fmt::Pointer
+/// [`fmt::Pointer`]: fmt::Pointer
 /// [`Hash`]: hash::Hash
 #[doc = concat!("[`ToSocketAddrs`]: ", include_str!("../primitive_docs/net_tosocketaddrs.md"))]
 ///
@@ -1150,7 +1151,6 @@ mod prim_usize {}
 /// * [`ExactSizeIterator`]
 /// * [`FusedIterator`]
 /// * [`TrustedLen`]
-/// * [`Send`] \(note that `&T` references only get `Send` if <code>T: [Sync]</code>)
 /// * [`io::Write`]
 /// * [`Read`]
 /// * [`Seek`]
