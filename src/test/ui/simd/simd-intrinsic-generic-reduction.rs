@@ -24,15 +24,6 @@ struct f32x4(pub f32, pub f32, pub f32, pub f32);
 #[derive(Copy, Clone)]
 struct b8x4(pub i8, pub i8, pub i8, pub i8);
 
-#[repr(simd)]
-#[derive(Copy, Clone)]
-struct b8x16(
-    pub i8, pub i8, pub i8, pub i8,
-    pub i8, pub i8, pub i8, pub i8,
-    pub i8, pub i8, pub i8, pub i8,
-    pub i8, pub i8, pub i8, pub i8
-);
-
 extern "platform-intrinsic" {
     fn simd_reduce_add_unordered<T, U>(x: T) -> U;
     fn simd_reduce_mul_unordered<T, U>(x: T) -> U;
