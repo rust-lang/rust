@@ -145,12 +145,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr_ty = self.resolve_vars_with_obligations(checked_ty);
         let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e);
 
-        if self.is_assign_to_bool(expr, expected) {
-            // Error reported in `check_assign` so avoid emitting error again.
-            err.delay_as_bug();
-            return (expected, None);
-        }
-
         self.emit_coerce_suggestions(&mut err, expr, expr_ty, expected, expected_ty_expr);
 
         (expected, Some(err))
@@ -170,14 +164,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_label(ty.span, "expected due to this");
             }
         }
-    }
-
-    /// Returns whether the expected type is `bool` and the expression is `x = y`.
-    pub fn is_assign_to_bool(&self, expr: &hir::Expr<'_>, expected: Ty<'tcx>) -> bool {
-        if let hir::ExprKind::Assign(..) = expr.kind {
-            return expected == self.tcx.types.bool;
-        }
-        false
     }
 
     /// If the expected type is an enum (Issue #55250) with any variants whose
