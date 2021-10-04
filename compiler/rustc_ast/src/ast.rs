@@ -1211,6 +1211,8 @@ impl Expr {
                 }
             }
 
+            ExprKind::Underscore => TyKind::Infer,
+
             // This expression doesn't look like a type syntactically.
             _ => return None,
         };
