@@ -130,6 +130,7 @@ mod handlers {
     mod flip_binexpr;
     mod flip_comma;
     mod flip_trait_bound;
+    mod generate_constant;
     mod generate_default_from_enum_variant;
     mod generate_default_from_new;
     mod generate_deref;
@@ -205,6 +206,7 @@ mod handlers {
             flip_binexpr::flip_binexpr,
             flip_comma::flip_comma,
             flip_trait_bound::flip_trait_bound,
+            generate_constant::generate_constant,
             generate_default_from_enum_variant::generate_default_from_enum_variant,
             generate_default_from_new::generate_default_from_new,
             generate_deref::generate_deref,

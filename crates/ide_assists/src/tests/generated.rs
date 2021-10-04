@@ -649,6 +649,28 @@ fn foo<T: Copy + Clone>() { }
 }
 
 #[test]
+fn doctest_generate_constant() {
+    check_doc_test(
+        "generate_constant",
+        r#####"
+struct S { i: usize }
+impl S { pub fn new(n: usize) {} }
+fn main() {
+    let v = S::new(CAPA$0CITY);
+}
+"#####,
+        r#####"
+struct S { i: usize }
+impl S { pub fn new(n: usize) {} }
+fn main() {
+    const CAPACITY: usize = $0;
+    let v = S::new(CAPACITY);
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_generate_default_from_enum_variant() {
     check_doc_test(
         "generate_default_from_enum_variant",
