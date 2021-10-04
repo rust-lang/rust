@@ -355,8 +355,14 @@ Whether to show `Method References` lens. Only applies when
 [[rust-analyzer.lens.references]]rust-analyzer.lens.references (default: `false`)::
 +
 --
-Whether to show `References` lens. Only applies when
-`#rust-analyzer.lens.enable#` is set.
+Whether to show `References` lens for Struct, Enum, Union and Trait.
+Only applies when `#rust-analyzer.lens.enable#` is set.
+--
+[[rust-analyzer.lens.enumVariantReferences]]rust-analyzer.lens.enumVariantReferences (default: `false`)::
++
+--
+Whether to show `References` lens for Enum Variants.
+Only applies when `#rust-analyzer.lens.enable#` is set.
 --
 [[rust-analyzer.lens.forceCustomCommands]]rust-analyzer.lens.forceCustomCommands (default: `true`)::
 +

@@ -793,12 +793,12 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.lens.references": {
-                    "markdownDescription": "Whether to show `References` lens for Struct, Enum, Union and Trait. Only applies when\n`#rust-analyzer.lens.enable#` is set.",
+                    "markdownDescription": "Whether to show `References` lens for Struct, Enum, Union and Trait.\nOnly applies when `#rust-analyzer.lens.enable#` is set.",
                     "default": false,
                     "type": "boolean"
                 },
                 "rust-analyzer.lens.enumVariantReferences": {
-                    "markdownDescription": "Whether to show `References` lens for Enum Variants. Only applies when\n`#rust-analyzer.lens.enable#` is set.",
+                    "markdownDescription": "Whether to show `References` lens for Enum Variants.\nOnly applies when `#rust-analyzer.lens.enable#` is set.",
                     "default": false,
                     "type": "boolean"
                 },
