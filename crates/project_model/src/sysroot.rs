@@ -188,13 +188,13 @@ fn get_rustc_src(sysroot_path: &AbsPath) -> Option<ManifestPath> {
 }
 
 fn get_rust_src(sysroot_path: &AbsPath) -> Option<AbsPathBuf> {
-    // Try the new path first since the old one still exists.
-    let rust_src = sysroot_path.join("lib/rustlib/src/rust");
-    tracing::debug!(
-        "Checking sysroot (looking for `library` and `src` dirs): {}",
-        rust_src.display()
-    );
-    ["library", "src"].iter().map(|it| rust_src.join(it)).find(|it| fs::metadata(it).is_ok())
+    let rust_src = sysroot_path.join("lib/rustlib/src/rust/library");
+    tracing::debug!("Checking sysroot: {}", rust_src.display());
+    if fs::metadata(&rust_src).is_ok() {
+        Some(rust_src)
+    } else {
+        None
+    }
 }
 
 const SYSROOT_CRATES: &str = "
