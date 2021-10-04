@@ -323,6 +323,7 @@ pub struct AssertParamIsEq<T: Eq + ?Sized> {
 /// ```
 #[derive(Clone, Copy, PartialEq, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[repr(i8)]
 pub enum Ordering {
     /// An ordering where a compared value is less than another.
     #[stable(feature = "rust1", since = "1.0.0")]
