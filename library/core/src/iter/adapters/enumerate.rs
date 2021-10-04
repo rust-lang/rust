@@ -112,6 +112,21 @@ where
         self.iter.fold(init, enumerate(self.count, fold))
     }
 
+    #[inline]
+    #[rustc_inherit_overflow_checks]
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        match self.iter.advance_by(n) {
+            ret @ Ok(_) => {
+                self.count += n;
+                ret
+            }
+            ret @ Err(advanced) => {
+                self.count += advanced;
+                ret
+            }
+        }
+    }
+
     #[rustc_inherit_overflow_checks]
     #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item
@@ -190,6 +205,13 @@ where
 
         let count = self.count + self.iter.len();
         self.iter.rfold(init, enumerate(count, fold))
+    }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        // we do not need to update the count since that only tallies the number of items
+        // consumed from the front. consuming items from the back can never reduce that.
+        self.iter.advance_back_by(n)
     }
 }
 
